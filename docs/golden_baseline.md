@@ -44,19 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6, late night, recency): `baseline_b157258`
+### Current baseline (Nov 7, bare defences ungraded): `baseline_7034f36`
 
-`tools/golden/baseline_b157258/` is the capture from `claude/recency` at `b157258`: recency
-in bounded attention (card age fade, topic of the day, recall on presentation), the headline
-blend scaled by strength, and a dawn refresh of every living mind
-(`docs/premises_plan.md`, "Recency as built"). This is meant to change behaviour, and it
-does from day 1: cards from night 0 are a day old by the first refresh, so bounded minds
-rank their leftover attention differently. Against `baseline_4e54261`, 900 parts at record
-1 (greta on odette, 0.1933 → 0.1926), 692 at record 5 (merrin on nisha, 0.067 → −0.031, an
-attention swap), 54875 and 98933 at record 16, and 42 at record 21, the first dawn refresh
-(a new record). Record counts move with the dawn refreshes and the changed games: 42
-111 → 112, 54875 286 → 321, 692 312 → 302, 900 133 → 147, 98933 229 → 186. Two captures
-identical.
+`tools/golden/baseline_7034f36/` is the capture from `7034f36`. An NPC's defence with no grounds is
+no longer put through step 3's graded test (decided with Michael). A behaviour change, but a
+small one: every seed parts from `baseline_5ba1d64` at its first stored bare challenge, which
+has no `graded` result now. Ignoring `graded`, the first belief differences are about 4e-5 in
+suspicion, from day 1 or 2's refreshes. Seed 54875 records 267 records instead of 286. The final
+results are unchanged. Two captures identical.
+
+### Previous baseline (Nov 7, step 3 speed): `baseline_5ba1d64`
+
+`tools/golden/baseline_5ba1d64/` is the capture from `5ba1d64`: `baseline_4e54261` with graded
+challenges no longer running two of their three evaluations (the source's prior comes from the
+holds evaluation; the cause isn't weighed when the effect is zero). The games are the same:
+ignoring the `graded` diagnostics, every value matches `baseline_4e54261` within 1e-9 and every
+seed has the same records (`--ignore engine,graded --tol 1e-9`). At `--tol 0` they part at the
+first stored challenge: `graded.cause` and `evil_share` are 0 where the effect is 0, and r,
+`wrong` and the agreements differ in the last digits (1e-15). Two captures identical.
 
 ### Previous baseline (Nov 6, night, PR #95): `baseline_4e54261`
 
@@ -257,7 +262,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_b157258 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_7034f36 /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

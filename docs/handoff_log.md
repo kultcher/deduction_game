@@ -27,6 +27,101 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 afternoon, Claude-Bailiff: bespoke papercraft map to main (`mock/bespoke-map`)
+
+- Base `862cd27` (main after #102). Status: green, merging on Michael's go-ahead. Next actor: Michael (playtest).
+- Brings in the hand-painted town map (`assets/art/map/town_open.png`, `BESPOKE = true` in
+  `ui/map_view.gd`) with Michael's and Codex's papercraft buildings and lots, from the mock branch.
+- New: each townsperson's own cottage (`assets/art/cottages_poc/<name>-cottage-papercraft-v1.png`,
+  `MapView.cottage_art`) replaces the generic cottage and coloured dot. Anyone without art keeps the old look.
+- New: daytime talks and location searches in a building or the Town Hall sit in that building's
+  interior (`assets/art/interiors_poc/<loc>-papercraft-v1.png`), not the blurred map.
+  `DayConversationView.set_location` shows the room; `SCENERY_SHADER` softens it (light blur, dimmed to
+  0.7, vignette). Homes and crime scenes keep the map blur.
+- Tests: new `test_location_art` (32 checks: every location has an interior, every cast member a
+  cottage, the view swaps room and blur). `test_ui_controls` and `test_buildings_tavern_town_hall` were
+  failing on the mock branch because they read the old `BLOCK_RECTS`. They now use `_block_rect`, and the
+  Square check covers the bespoke lots. Golden identical to `baseline_7034f36`; the map is UI only.
+
+## 2026-11-08 early, Claude-Bailiff: background soundtrack (`audio/soundtrack`)
+
+- Base `f4906ed` (main after #101). Status: green, ready to merge. Next actor: Michael (playtest by ear).
+- New autoload `Soundtrack` (`ui/soundtrack.gd`) plays Michael's two Google Flow tracks
+  (`assets/audio/music/town_square_a.ogg`, `town_square_b.ogg`) whole, A then B then A, from launch
+  to close. It ignores game events for now. The next track starts 6 s before the current one ends, so they
+  overlap through each track's own fade-out. Each Flow export had a stray restart in its
+  last second or two; that's trimmed off.
+- Plays through a `Music` bus created at runtime (default -10 dB, 3 s fade-in). Settings live in
+  `user://settings.cfg` `[audio] music_enabled / music_volume_db`; there's no UI for them yet.
+- Headless runs (suites, sweeps, golden captures) return in `_ready` and never load the
+  streams: golden identical to `baseline_7034f36`, 122/122 suites.
+- Tried and set aside: bar-aligned loop points (75 BPM, 3.2 s bars). Michael could hear
+  the seams. The tracks are a half step apart (A E-flat minor, B D minor). Raising B a semitone with
+  rubberband keeps it on the grid, if we later want a bar-synced A-to-B switch after day 3
+  (Godot's `AudioStreamInteractive`).
+
+## 2026-11-07 night, Claude-Bailiff: UI control-flow pass (`ui/control-flow`)
+
+These are Michael's Nov 7 UX fixes. Nothing moves on while something is being shown.
+- **Presentation lock** (`ui/main.gd` `_presenting`). It holds while the stage speaks, the
+  vote is counted, traces are up or the town is still testifying. During that time the pane
+  offers only Continue or "Finish the count", the command box is off, and map clicks don't
+  act. The meeting can't close mid-count, so the vote explanations no longer appear at night.
+- **Approaches:** an approach (or a protection request) waits for an answer. Other commands
+  are refused, a wait included.
+- **Traces first:** traces from a search that ends the evening are read before the meeting.
+- **Courtroom stage:**
+  - Lines wait for Continue.
+  - One speaker's consecutive lines share a window, up to 420 characters.
+  - An Auto-advance toggle under the controls is off by default and kept in
+    `user://settings.cfg`, with a hold of 2–9 s.
+  - The log follows the stage: `logged(events)` fires as each entry comes forward.
+  - Testimony is worked out at most one speaker ahead.
+- **Day pane before you move:** "Examine <block>"; once zoomed in, "Visit <block>", the
+  block's crime scene and "Back to town view". Talk-to appears only for someone you clicked.
+- **Sightings:** "ask seen" never covers the current phase. Someone who approached to tell
+  you their gift (news, frame, divulge) shares all their sightings in that conversation.
+
+New suite `test_control_flow`; 21 of its checks fail on the old code. Checks: 298 parse,
+121/121 suites, golden identical to `baseline_7034f36`. Not done: Workshop presentations at
+a meeting still print straight to the log rather than through the stage.
+
+## 2026-11-07 night, Claude-Bailiff: bare defences ungraded (`perf/bare-defence-skip`)
+
+Michael's call: an NPC's defence with no grounds isn't put through step 3's graded test. It
+brings nothing new; the listener already weighed the rest of the evidence. `SharedLedger`
+marks such challenges `bare`, and `ReadingChallenges.assess` skips them. They still count
+through the older challenge rules, and Workshop challenges are graded as before. A check in
+`test_defence_grounds` fails without the change. Passive 10-NPC game (seed 100000): 35 s
+became 20 s, about where it was before step 3.
+
+Checks: 297 parse, 120/120 suites, two captures identical. New baseline `baseline_7034f36`, a
+small behaviour change (see `docs/golden_baseline.md`).
+
+(My local check script's suite line read an old results file when copied with sed, so it
+printed a stale count. The real results were 120/120 for #99 and here, and CI agreed for #99.
+The script is fixed.)
+
+## 2026-11-07 evening, Claude-Bailiff: step 3 speed fix (`perf/step3-speed`)
+
+The step 3 slowdown in the Nov 7 A/B (`claude/premises-ab-2026-11-07.md`) comes from NPC
+bare defences. Every challenge in a passive game and in an M4-bot game was a bare defence:
+no grounds, hearing 0.03–0.05. Every listener holding one ran `graded_challenge` at every
+refresh, and each run made three full CaseEval evaluations. Caching doesn't help: 541 of 586
+inputs were distinct. Two of the evaluations were avoidable without changing a decision:
+- **r's prior** comes from the holds evaluation's per-person prior. The separate "good"
+  evaluation agreed to 1e-14.
+- **The cause is skipped when the effect is zero.** That covers the source-evil and
+  Delusional evaluations, and 91% of challenges in a passive game.
+One game, 10 NPCs: passive (seed 100000) went from 71 s to 35 s; M4 bot (seed 100003) from
+214 s to 152 s. Outcomes were the same.
+
+Checks: 297 parse, 116/116 suites, two captures identical. New baseline `baseline_5ba1d64`;
+the games are the same (see `docs/golden_baseline.md`).
+
+**Open, for Michael:** skipping graded scoring for bare defences altogether (no supports,
+hearing < 0.1) takes those two games to 19 s and 112 s. That would end bare defences' slight
+step 3 effect. Not done.
 ## 2026-11-06 late night, Claude-Quill: recency and the headline blend on `claude/recency` (from main `226d566`)
 
 Plan: `docs/premises_plan.md`, "Recency as built" and "The headline blend". All attention;

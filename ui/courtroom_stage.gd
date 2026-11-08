@@ -4,12 +4,20 @@
 ## the press, the supporters, the voters who explain themselves and the gallows' last words.
 ## Presentation only; it reads the speech events the game already emits.
 ##
-## Each line reveals at REVEAL_PER_SECOND, then holds and moves on by itself. A click on the
-## speech finishes the line, a second click (or Continue) brings the next speaker on, and
-## "Back to the circle" clears the stage. `finished` fires when the stage empties.
+## Each line reveals at REVEAL_PER_SECOND and waits for Continue (Nov 7, with Michael): a
+## click on the speech finishes the line, a second click (or Continue) brings the next
+## speaker on, and "Back to the circle" clears the stage. Consecutive lines from one speaker
+## share a window when they fit. The "Auto-advance" toggle under the controls brings the
+## next speaker on by itself after a hold (kept between sessions). `finished` fires when the
+## stage empties.
+##
+## The log follows the stage: each entry carries the events that lead up to it, and
+## `logged` fires with them as the entry comes forward (or, for entries with nothing to
+## show, as soon as the stage reaches them). Clearing the stage logs what's left at once.
 extends Control
 
 signal finished
+signal logged(events: Array)
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
@@ -20,9 +28,11 @@ const FormattedLabel = preload("res://ui/formatted_text_label.gd")
 
 const REVEAL_PER_SECOND = 90.0
 const FADE_SECONDS = 0.15
-const HOLD_BASE = 1.1          # seconds a fully shown line stays before the next speaker
-const HOLD_PER_CHAR = 0.012
-const HOLD_MAX = 4.0
+const HOLD_BASE = 2.0          # auto-advance: seconds a fully shown line stays before the next speaker
+const HOLD_PER_CHAR = 0.03
+const HOLD_MAX = 9.0
+const MERGE_MAX = 420          # one speaker's consecutive lines share a window up to this many characters
+const SETTINGS_PATH = "user://settings.cfg"
 
 var formatter = Formatter.new()
 var renderer = Renderer.new()
@@ -35,10 +45,11 @@ var muted_banner: Label
 var status_pill: Label
 var continue_button: Button
 var clear_button: Button
+var auto_toggle: CheckBox
 
-var queue: Array = []          # {speaker, name, text, expression}
+var queue: Array = []          # {speaker, name, text, expression, log}; log-only entries have speaker ""
 var current: Dictionary = {}
-var auto_advance: bool = true
+var auto_advance: bool = false
 var status_for: Callable       # speaker id -> the status pill's text
 var _reveal_position: float = 0.0
 var _reveal_total: int = 0
@@ -161,6 +172,13 @@ void fragment() {
 	clear_button.tooltip_text = "Skip the rest of what's being said (it's all in the log)."
 	clear_button.pressed.connect(clear)
 	controls.add_child(clear_button)
+	auto_toggle = CheckBox.new()
+	auto_toggle.text = "Auto-advance"
+	auto_toggle.tooltip_text = "Bring the next speaker on by itself after a pause."
+	auto_advance = _load_auto()
+	auto_toggle.button_pressed = auto_advance
+	auto_toggle.toggled.connect(set_auto_advance)
+	controls.add_child(auto_toggle)
 	gui_input.connect(_on_input)
 	hide()
 
@@ -177,22 +195,88 @@ func _portrait_rect() -> TextureRect:
 	return r
 
 
-## Queue the speech events among `events` (townsfolk only); returns how many were queued.
+## Queue `events`: townsfolk speech comes forward, everything else rides along to the log.
+## Returns how many speeches were queued.
 func push(events: Array) -> int:
 	_build()
 	var added: int = 0
+	var chunk: Array = []
+	var last: Dictionary = {}     # the entry the next card events attach to
 	for e in events:
-		if e.get("k", "") != "speech":
+		var k: String = str(e.get("k", ""))
+		if k == "card" and not last.is_empty() and chunk.is_empty():
+			last.log.append(e)
+			continue
+		chunk.append(e)
+		last = {}
+		if k != "speech":
 			continue
 		var id: String = str(e.get("speaker", ""))
 		if id == "" or id == "player":
 			continue
-		queue.append({"speaker": id, "name": str(e.get("name", id)), "text": str(e.get("text", "")),
-			"expression": str(e.get("expression", "neutral")) if int(e.get("expression_strength", 1)) > 0 else "neutral"})
-		added += 1
-	if added > 0 and current.is_empty() and _delay <= 0.0:
-		_next()
+		var text: String = str(e.get("text", ""))
+		var expr: String = str(e.get("expression", "neutral")) if int(e.get("expression_strength", 1)) > 0 else "neutral"
+		var tail: Dictionary = queue.back() if not queue.is_empty() else {}
+		if not tail.is_empty() and tail.speaker == id and chunk.size() == 1 and not _silent(tail.text) and not _silent(text) \
+				and tail.text.length() + text.length() + 1 <= MERGE_MAX:
+			tail.text += "\n" + text
+			tail.expression = expr
+			tail.log.append_array(chunk)
+			last = tail
+		else:
+			last = {"speaker": id, "name": str(e.get("name", id)), "text": text, "expression": expr, "log": chunk}
+			queue.append(last)
+			added += 1
+		chunk = []
+	if not chunk.is_empty():
+		queue.append({"speaker": "", "log": chunk})
+	if current.is_empty():
+		_drain_log()
+		if not queue.is_empty() and _delay <= 0.0:
+			_next()
 	return added
+
+
+## Events for the log only, in order with the stage.
+func push_log(events: Array) -> void:
+	if events.is_empty():
+		return
+	queue.append({"speaker": "", "log": events.duplicate()})
+	if current.is_empty():
+		_drain_log()
+
+
+## Log-only entries at the head of the queue go out at once.
+func _drain_log() -> void:
+	while not queue.is_empty() and queue[0].speaker == "":
+		logged.emit(queue.pop_front().log)
+
+
+func _silent(text: String) -> bool:
+	return text.strip_edges() in ["...", "…"]
+
+
+func set_auto_advance(on: bool) -> void:
+	auto_advance = on
+	_hold = 0.0
+	if auto_toggle != null and auto_toggle.button_pressed != on:
+		auto_toggle.set_pressed_no_signal(on)
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)
+	cfg.set_value("vn", "auto_advance", on)
+	cfg.save(SETTINGS_PATH)
+
+
+func _load_auto() -> bool:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) != OK:
+		return false
+	return bool(cfg.get_value("vn", "auto_advance", false))
+
+
+## Speeches still to come after the one on stage.
+func waiting() -> int:
+	return queue.filter(func(q): return q.speaker != "").size()
 
 
 ## The phase, the block and what the vote needs, top right ("" hides it).
@@ -222,23 +306,39 @@ func advance() -> void:
 	_next()
 
 
-## Everything still to be said is skipped (the log keeps it).
+## A new case: drop everything, logging nothing.
+func reset() -> void:
+	queue = []
+	current = {}
+	_delay = 0.0
+	_hold = 0.0
+	hide()
+
+
+## Everything still to be said is skipped; the log gets it at once.
 func clear() -> void:
 	var was_busy: bool = busy()
-	queue.clear()
+	var rest: Array = queue
+	queue = []
 	_delay = 0.0
+	for q in rest:
+		logged.emit(q.log)
 	_finish(was_busy)
 
 
 func _next() -> void:
-	if queue.is_empty():
-		_finish(not current.is_empty())
-		return
 	var prev_speaker: String = str(current.get("speaker", ""))
+	var was_busy: bool = not current.is_empty()
+	current = {}
+	_drain_log()
+	if queue.is_empty():
+		_finish(was_busy)
+		return
 	current = queue.pop_front()
+	logged.emit(current.log)
 	_hold = 0.0
 	var id: String = current.speaker
-	var silent: bool = current.text.strip_edges() in ["...", "…"]
+	var silent: bool = _silent(current.text)
 	var expr: String = current.expression
 	if silent and expr == "neutral":
 		expr = "concerned"
@@ -253,7 +353,7 @@ func _next() -> void:
 	_reveal_total = speech.get_total_character_count()
 	_reveal_position = 0.0
 	speech.visible_characters = 0
-	continue_button.text = "Continue" if not queue.is_empty() else "Done"
+	continue_button.text = "Continue" if waiting() > 0 else "Done"
 	show()
 
 

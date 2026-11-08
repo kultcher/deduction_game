@@ -22,12 +22,14 @@ the listener's pinned own readings.
 **Step 1 (Nov 6, Claude-Quill, PR #92):** built; see "Step 1 as built" below.
 **Step 2 (Nov 6, Claude-Quill, PR #93):** built; see "Step 2 as built".
 **Step 3 (Nov 6, Claude-Quill, PR #95, Bailiff's review fixes):** built; see "Step 3 as built".
-Steps 1–3 are on main; their acceptance A/B with the M4 bot is Tally's, with attention
-budgets fixed between arms.
-**Recency and the headline fix (Nov 6, Claude-Quill, branch `claude/recency`):** built; see
-"Recency as built" and "The headline blend" below. Its own A/B, separate from steps 1–3.
-**Tabled (Nov 6, with Michael):** step 4's Minion-specific reads (Scion, Revenant) and
-assumptions as conditional beliefs (proposal 6).
+Steps 1–3 are on main, with step 3's speed fixes (#99, #100). Tally's A/B (Nov 7, Project
+`claude/premises-ab-2026-11-07.md`) found them flat on outcomes with the M4 bot, which never
+files suspicious or secret premises or challenges.
+**Recency and the headline fix (Nov 6, Claude-Quill, PR #96, refreshed onto main Nov 8):**
+built; see "Recency as built" and "The headline blend" below. Its own A/B, separate from
+steps 1–3.
+**Deferred (Michael, Nov 8):** step 4 (Minion-specific reads: Scion, Revenant; movement
+premises). **Tabled (Nov 6):** assumptions as conditional beliefs (proposal 6).
 
 **Restored Nov 6:** the Nov 5 late-night decisions (23:10 and 23:35 ET, with Michael) were
 lost when this doc was rebuilt from the 22:50 copy. They're back in "Decisions": suspicious as
@@ -365,6 +367,14 @@ secret premise is **the player's word**, weighted by credibility.
   probably wants a strength floor. Left for a decision.
 
 ## Step 3 as built (Nov 6)
+
+**Nov 7, with Michael: bare defences aren't graded.** An NPC's defence with no grounds
+("X is lying", "misled") brings nothing new, and the graded test asks whether the rest of the
+evidence makes the reading look wrong. The listener's beliefs already rest on that same
+evidence. `SharedLedger` marks such challenges `bare`, and `ReadingChallenges.assess` leaves
+them out of `graded_challenge`. They still count through the older challenge rules. Workshop
+challenges bring presented evidence and are graded as before. (Speed: they were every
+challenge in bot and passive games; see `claude/premises-ab-2026-11-07.md`.)
 
 Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f14`).
 

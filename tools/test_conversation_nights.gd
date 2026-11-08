@@ -167,9 +167,9 @@ func co_present_sightings():
 		{"kind": "saw", "who": c.id, "day": 2, "phase": C.AFTERNOON, "loc": "smithy", "block": "market", "with": a.id}]
 	var state = w.rng.state
 	var day = Mind.answer_today(w, n, "", w.player_loc)
-	check(not day.facts.any(func(f): return a.id in f.subject and f.phase == C.AFTERNOON), "current sightings and conversation partners beside the player are omitted")
-	check(day.facts.any(func(f): return f.subject == [a.id] and f.phase == C.MORNING), "an older sighting of a person beside the player survives")
-	check(day.facts.any(func(f): return f.subject == [b.id]) and day.facts.any(func(f): return f.subject == [c.id]), "same-block other places and independent sightings of a conversation partner survive")
+	# "Today" is earlier today (Nov 7): this phase is in front of the player.
+	check(not day.facts.any(func(f): return f.kind == "sighting" and not f.get("self_report", false) and f.phase == C.AFTERNOON), "this phase's sightings are left out of 'today'")
+	check(day.facts.any(func(f): return f.subject == [a.id] and f.phase == C.MORNING), "an earlier sighting of a person beside the player survives")
 	check(w.rng.state == state, "co-presence filtering adds no RNG draws")
 	var reply = {"lines": [], "facts": []}
 	preload("res://game/recent_sightings.gd").append_to(w, n, a, reply, [])
