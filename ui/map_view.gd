@@ -303,7 +303,7 @@ func _draw() -> void:
 		if cot_lot != null:
 			for n in w.npcs:
 				var c: Vector2 = _home_slot(n)
-				draw_texture_rect(cot_lot, _r(_px_rect(Rect2(c.x - 48, c.y - 26, 96, 56))), false, tint)
+				draw_texture_rect(cot_lot, _r(_px_rect(Rect2(c.x - 64, c.y - 12, 128, 58))), false, tint)   # wide enough to show round the cottage
 	# Dressing behind everything.
 	for d in ([] if BESPOKE else DECOR):
 		var t = _art("decor/" + d[0], 0.4)
