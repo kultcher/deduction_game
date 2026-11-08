@@ -27,6 +27,23 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 early, Claude-Bailiff: background soundtrack (`audio/soundtrack`)
+
+- Base `f4906ed` (main after #101). Status: green, ready to merge. Next actor: Michael (playtest by ear).
+- New autoload `Soundtrack` (`ui/soundtrack.gd`) plays Michael's two Google Flow tracks
+  (`assets/audio/music/town_square_a.ogg`, `town_square_b.ogg`) whole, A then B then A, from launch
+  to close. It ignores game events for now. The next track starts 6 s before the current one ends, so they
+  overlap through each track's own fade-out. Each Flow export had a stray restart in its
+  last second or two; that's trimmed off.
+- Plays through a `Music` bus created at runtime (default -10 dB, 3 s fade-in). Settings live in
+  `user://settings.cfg` `[audio] music_enabled / music_volume_db`; there's no UI for them yet.
+- Headless runs (suites, sweeps, golden captures) return in `_ready` and never load the
+  streams: golden identical to `baseline_7034f36`, 122/122 suites.
+- Tried and set aside: bar-aligned loop points (75 BPM, 3.2 s bars). Michael could hear
+  the seams. The tracks are a half step apart (A E-flat minor, B D minor). Raising B a semitone with
+  rubberband keeps it on the grid, if we later want a bar-synced A-to-B switch after day 3
+  (Godot's `AudioStreamInteractive`).
+
 ## 2026-11-07 night, Claude-Bailiff: UI control-flow pass (`ui/control-flow`)
 
 These are Michael's Nov 7 UX fixes. Nothing moves on while something is being shown.
