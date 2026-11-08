@@ -1,0 +1,191 @@
+## Demon types, step 2 (docs/demon_types_plan.md): daytime presence and Breathstealer by
+## presence.
+##   godot --headless --path . --script res://tools/test_day_presence.gd
+extends SceneTree
+
+const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
+const DayPresence = preload("res://workshop/day_presence.gd")
+const History = preload("res://workshop/live_history.gd")
+const Game = preload("res://game/game.gd")
+const WorkshopBridge = preload("res://game/workshop_bridge.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
+const Assess = preload("res://workshop/live_assessment.gd")
+
+var _checks: int = 0
+var _fails: int = 0
+
+
+func _check(ok: bool, label: String) -> void:
+	_checks += 1
+	print(("PASS: " if ok else "FAIL: ") + label)
+	if not ok:
+		_fails += 1
+		push_error("FAIL: " + label)
+
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+
+func _ctx(kind: String, subject: String, data: Dictionary) -> Dictionary:
+	return {"id": "%s_%s" % [kind, subject], "kind": "context", "context_kind": kind, "subject": subject, "data": data}
+
+
+func _view(ids: Array, day: int, events: Array = [], watched: Array = []) -> Dictionary:
+	var people: Array = []
+	for id in ids:
+		people.append({"id": id, "name": id.to_upper(), "home": "hill", "alive": true})
+	return {"people": people, "day": day, "cards": [], "timeline": History.from_events(events), "watched": watched,
+		"script_minions": ["breathstealer"]}
+
+
+func _run() -> void:
+	_test_prior_matches_sim()
+	_test_evidence()
+	_test_breath_factor()
+	_test_case_eval_kernel()
+	_test_game_records_watch()
+	print("%d checks, %d failed" % [_checks, _fails])
+	quit(1 if _fails > 0 else 0)
+
+
+## The idle prior is the sim's own: sample World._choose_idle_location and compare.
+func _test_prior_matches_sim() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(4242, 7)
+	var n = g.w.npcs[0]
+	n.friends = []
+	var cards: Array = [_ctx("work", n.id, {"loc": n.work, "work_phases": [] }), _ctx("haunt", n.id, {"locs": n.haunts.duplicate()})]
+	var table: Dictionary = DayPresence.build(_view([n.id], 1), cards)
+	var worst: float = 0.0
+	var draws: int = 20000
+	for p in range(3):
+		g.w.phase = p
+		var counts: Dictionary = {}
+		for i in range(draws):
+			var l: String = g.w._choose_idle_location(n)
+			counts[l] = counts.get(l, 0) + 1
+		for l in DayPresence.PLACES + ["home"]:
+			var model: float = DayPresence.at(table, n.id, 1, p, l)
+			worst = maxf(worst, absf(model - float(counts.get(l, 0)) / draws))
+	_check(worst < 0.015, "the idle prior matches the sim's choices with known haunts (worst gap %.4f)" % worst)
+	# Unknown haunts: the 0.4 haunt share spreads over the places they could be.
+	var t2: Dictionary = DayPresence.build(_view([n.id], 1), [_ctx("work", n.id, {"loc": n.work, "work_phases": []})])
+	var s: float = 0.0
+	for l in DayPresence.PLACES + ["home"]:
+		s += DayPresence.at(t2, n.id, 1, 0, l)
+	_check(absf(s - 1.0) < 1e-9 and DayPresence.at(t2, n.id, 1, 0, n.work) < DayPresence.at(t2, n.id, 1, 0, DayPresence.PLACES.filter(func(l): return l != n.work)[0]),
+		"with haunts unknown the slot still sums to 1, and the workplace isn't a haunt")
+
+
+func _test_evidence() -> void:
+	var ids: Array = ["a", "b", "c"]
+	var cards: Array = [_ctx("work", "a", {"loc": "smithy", "work_phases": [0]}), _ctx("haunt", "b", {"locs": ["tavern", "chapel"]})]
+	var t: Dictionary = DayPresence.build(_view(ids, 2), cards)
+	_check(DayPresence.at(t, "a", 1, 0, "smithy") == 1.0, "a working phase puts someone at their workplace")
+	# The player watched the market on day 1 afternoon and saw only c at the bakery.
+	var watched: Array = [{"day": 1, "phase": "afternoon", "block": "market", "at": {"smithy": [], "bakery": ["c"]}}]
+	var tw: Dictionary = DayPresence.build(_view(ids, 2, [], watched), cards)
+	_check(DayPresence.at(tw, "c", 1, 1, "bakery") == 1.0, "listed on the watched block: certain")
+	_check(DayPresence.on_block(tw, "a", 1, 1, "market") == 0.0 and DayPresence.on_block(t, "a", 1, 1, "market") > 0.0,
+		"not listed on the watched block: that block is ruled out")
+	_check(absf(DayPresence.on_block(tw, "a", 1, 1, "square") - DayPresence.on_block(t, "a", 1, 1, "square") / (1.0 - DayPresence.on_block(t, "a", 1, 1, "market"))) < 1e-9,
+		"the rest is renormalized")
+	_check(DayPresence.on_block(tw, "a", 1, 2, "market") == DayPresence.on_block(t, "a", 1, 2, "market"), "other phases are untouched")
+	# An NPC says b was at the well in the morning of day 2.
+	var told: Array = cards + [{"id": "t1", "kind": "location", "source": "c", "subjects": ["b"], "day": 2, "block": "square", "loc": "well", "observed_at": {"day": 2, "phase": "morning"}}]
+	var tt: Dictionary = DayPresence.build(_view(ids, 2), told)
+	var before: float = DayPresence.at(t, "b", 2, 0, "well")
+	var after: float = DayPresence.at(tt, "b", 2, 0, "well")
+	_check(after > before and after < 1.0, "an NPC's sighting raises the chance without settling it (%.3f to %.3f)" % [before, after])
+	var mine: Array = cards + [{"id": "t2", "kind": "location", "source": "player", "subjects": ["b"], "day": 2, "block": "square", "loc": "well", "observed_at": {"day": 2, "phase": "morning"}}]
+	_check(DayPresence.at(DayPresence.build(_view(ids, 2), mine), "b", 2, 0, "well") == 1.0, "the player's own sighting settles it")
+	# The dead are nowhere.
+	var dead_view: Dictionary = _view(ids, 2, [{"kind": "demon_death", "subjects": ["c"], "at": {"day": 1, "phase": "night"}, "by": ""}])
+	_check(DayPresence.on_block(DayPresence.build(dead_view, cards), "c", 2, 0, "square") == 0.0, "someone killed in the night is nowhere the next day")
+
+
+func _test_breath_factor() -> void:
+	# v1, v2, v3 silenced on days 1-3. The player watched the victims' block in the evening
+	# each day and saw the victim with m; x was never there.
+	var ids: Array = ["m", "x", "y", "v1", "v2", "v3"]
+	var events: Array = []
+	var watched: Array = []
+	var cards: Array = []
+	for d in range(1, 4):
+		var v: String = "v%d" % d
+		events.append({"kind": "silenced", "subjects": [v], "at": {"day": d, "phase": "evening"}, "by": "town"})
+		watched.append({"day": d, "phase": "evening", "block": "docks", "at": {"wharf": [v, "m"], "mill": []}})
+	var f: Dictionary = DayPresence.breath_factor(_view(ids, 3, events, watched), cards)
+	_check(not f.is_empty() and f.silencings.size() == 3, "three silencings make a factor")
+	var w: PackedFloat64Array = f.get("weights", PackedFloat64Array())
+	_check(w.size() == 6 and w[0] > w[1] and w[0] > w[2], "the one person near every silencing weighs most (m %.3f, x %.3f, y %.3f)" % [w[0], w[1], w[2]])
+	_check(w[3] == 0.0 and w[4] == 0.0 and w[5] == 0.0, "a victim can't be the silencer of their own silencing")
+	var f1: Dictionary = DayPresence.breath_factor(_view(ids, 3, events.slice(0, 1), watched), cards)
+	var one: float = f1.weights[0] / maxf(f1.weights[1], 1e-12)
+	var three: float = w[0] / maxf(w[1], 1e-12)
+	_check(three > one * 1.5, "the evidence builds up across silencings (m:x %.2f after one, %.2f after three)" % [one, three])
+	# Per world: the mean over the world's minions, mixed with err.
+	var err: float = Tuning.Workshop.DEFAULT_ERR
+	var with_m: float = DayPresence.breath_score({"evil": 0b011, "demon": 1}, f, err)  # m the minion, x the Demon
+	var with_x: float = DayPresence.breath_score({"evil": 0b011, "demon": 0}, f, err)  # x the minion, m the Demon
+	_check(absf(with_m - ((1.0 - err) * w[0] + err)) < 1e-12 and with_m > with_x, "a world where m is the minion scores higher")
+	var two: float = DayPresence.breath_score({"evil": 0b111, "demon": 2}, f, err)
+	_check(absf(two - ((1.0 - err) * 0.5 * (w[0] + w[1]) + err)) < 1e-12, "two minions: either could be the Breathstealer")
+	var off: Dictionary = _view(ids, 3, events, watched)
+	off["script_minions"] = ["poisoner"]
+	_check(DayPresence.breath_factor(off, cards).is_empty(), "no factor when the script has no Breathstealer")
+	_check(DayPresence.breath_factor(_view(ids, 3, [], watched), cards).is_empty(), "no factor without a silencing")
+
+
+## The C# kernel (CaseEval move kind 3) agrees with the GDScript reference, and the solver
+## carries the watch record and builds the factor.
+func _test_case_eval_kernel() -> void:
+	var SolverBackend = load("res://workshop/solver_backend.gd")
+	var b = SolverBackend._bridge()
+	var weights := PackedFloat64Array([2.5, 0.25, 1.0, 0.0, 0.75])
+	var err: float = Tuning.Workshop.DEFAULT_ERR
+	var h: int = int(b.CaseEvalRegisterPresenceWeights(weights))
+	var ok: bool = true
+	for world in [{"evil": 0b00011, "demon": 1}, {"evil": 0b00011, "demon": 0}, {"evil": 0b10101, "demon": 2}, {"evil": 0b01000, "demon": 3}, {"evil": 0b00110}]:
+		var gd: float = DayPresence.breath_score(world, {"weights": weights}, err)
+		var cs: float = float(b.CaseEvalPresenceScore(SolverBackend.pack_world(world), h, err))
+		ok = ok and absf(gd - cs) < 1e-12
+	_check(ok, "the C# presence score matches the GDScript reference")
+
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(54875, 7)
+	var victim = g.w.living_good()[0]
+	g.w.public_event("silenced", [victim.id], "town")
+	g.watched = [{"day": 1, "phase": "evening", "block": "square", "at": {"tavern": [victim.id, g.w.npcs[1].id], "well": []}}]
+	var snap: Dictionary = WorkshopBridge.capture(g, [])
+	_check(snap.get("watched", []) == g.watched, "the snapshot carries the watch record")
+	var view: Dictionary = Assess.prepare(snap).get("view", {})
+	_check(view.get("watched", []) == g.watched, "the solver's view carries the watch record")
+	if not view.is_empty():
+		_check(not DayPresence.breath_factor(view, view.get("cards", [])).is_empty(), "a dealt case with a silencing builds the factor")
+
+
+func _test_game_records_watch() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(54875, 7)
+	g.start_day() if g.has_method("start_day") else null
+	var before: int = g.watched.size()
+	g.command("go smithy")
+	_check(g.watched.size() == before + 1, "going somewhere in a day phase records a watch")
+	if g.watched.size() > before:
+		var e: Dictionary = g.watched[-1]
+		var listed: Array = []
+		for l in e.at:
+			listed.append_array(e.at[l])
+		var truth: Array = []
+		for l in C.LOCATIONS:
+			if C.LOCATIONS[l].block == e.block:
+				truth.append_array(g.w.npcs_at(l).map(func(x): return x.id))
+		listed.sort()
+		truth.sort()
+		_check(e.block == "market" and listed == truth, "the watch lists everyone at the block's public places")

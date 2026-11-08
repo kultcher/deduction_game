@@ -59,7 +59,8 @@ static func normalize(input: Dictionary) -> Dictionary:
 		"venue": input.venue, "evidence": [], "selected": [], "board_map": {},
 		"private_evidence": [], "public_events": input.public_events.duplicate(true),
 		"arguments": [], "root": input.get("root", 0), "listener": input.get("listener", {}).duplicate(true),
-		"issues": input.get("issues", []).duplicate(true), "assessment_ready": false}
+		"issues": input.get("issues", []).duplicate(true), "assessment_ready": false,
+		"watched": input.get("watched", []).duplicate(true)}
 	var by_id = {}
 	for receipt in input.get("receipts", []):
 		var card = normalize_card(receipt.card)

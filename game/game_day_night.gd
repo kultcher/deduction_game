@@ -282,6 +282,7 @@ static func _observe(g) -> void:
 				g._facts([{"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(other), "loc": other, "day": g.w.day,
 					"phase": g.w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
 					[x.name, g.w.loc_name(other), g.w.day, g.w.phase_name()]}])
+	_note_watch(g, l)
 	if not l.begins_with("home_"):
 		_note_haunt_sightings(g, l)
 	if g.w.scenes.has(l):
@@ -455,6 +456,25 @@ static func _search_regulars(g, l: String) -> bool:
 
 ## Seeing someone idle at one of their haunts, from the same block, on enough different days
 ## (HAUNT_SIGHTING_DAYS; more for the tavern) teaches you it's a haunt of theirs.
+## The player saw everyone at every public place on this block this phase (the location
+## itself plus "Nearby"): a full roster, so the solver can count not being seen
+## (workshop/day_presence.gd). A free move stays on the block, so one entry per phase.
+static func _note_watch(g, l: String) -> void:
+	if g.w.phase > C.EVENING:
+		return
+	var blk: String = g.w.loc_block(l)
+	if not blk in C.BLOCKS:
+		return
+	for e in g.watched:
+		if e.day == g.w.day and e.phase == C.PHASES[g.w.phase].to_lower():
+			return
+	var at: Dictionary = {}
+	for loc in C.LOCATIONS:
+		if C.LOCATIONS[loc].block == blk:
+			at[loc] = g.w.npcs_at(loc).map(func(n): return n.id)
+	g.watched.append({"day": g.w.day, "phase": C.PHASES[g.w.phase].to_lower(), "block": blk, "at": at})
+
+
 static func _note_haunt_sightings(g, l: String) -> void:
 	for x in g.w.living():
 		if x.working or not (x.loc in x.haunts) or g.w.loc_block(x.loc) != g.w.loc_block(l):

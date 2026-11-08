@@ -147,6 +147,10 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	var dt_id: String = WorkshopCanvas.Evidence.normalize_card(g.board[death_num - 1]).id
 	s1_board.connect_cards("e:" + tr_id, root_s1)
 	s1_board.connect_cards("e:" + dt_id, root_s1)
+	# Being near a silencing is Stage 1 now (Breathstealer by presence in CaseEval), so the
+	# Stage 1 reference cites the silencing and the conversation too.
+	for num in [sil_num, conv_num]:
+		s1_board.connect_cards("e:" + WorkshopCanvas.Evidence.normalize_card(g.board[num - 1]).id, root_s1)
 	var p_s1: String = s1_board.add_profile_info(target.id, ["home_work"])
 	s1_board.connect_cards(p_s1, root_s1)
 	var filed_s1: int = WorkshopCanvas.file(g, s1_board.compile(root_s1))
@@ -173,8 +177,8 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	var hub_s2_app: float = float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
 	var hub_incs: Array = listener.workshop_state.get("circumstantial_incidents", {}).get(target.id, [])
 	_check(is_equal_approx(hub_s1_req, s1_req), "routing Stage 1 trace/profile evidence through a Circumstantial Hub preserves exact Stage 1 weight")
-	_check(hub_s2_app > 0.0 and hub_s2_app <= Tuning.Workshop.CIRCUMSTANTIAL_INCIDENT_MAX + 1e-6 and listener.suspicion[target.id] > s1_susp, "qualifying Breathstealer proximity adds bounded Stage 2 suspicion (<= +0.015) on top of Stage 1")
-	_check(hub_incs.size() == 1 and str(hub_incs[0].get("label", "")).begins_with("Spoke with "), "direct conversation before silence uses accurate Spoke-with label")
+	_check(hub_s2_app >= 0.0 and hub_s2_app <= Tuning.Workshop.CIRCUMSTANTIAL_INCIDENT_MAX + 1e-6 and listener.suspicion[target.id] >= s1_susp - 1e-9, "the hub adds no more than bounded Stage 2 suspicion on top of Stage 1")
+	_check(not hub_incs.any(func(i): return str(i.get("family", "")) == "breathstealer_proximity"), "being near a silencing is no longer a Stage 2 incident (it's weighed jointly in Stage 1)")
 
 func _test_association_alibi_boundary_and_trace_guards() -> void:
 	var g = _game(2407, 7)
@@ -292,6 +296,9 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": listener.id, "day": 1, "phase": 0, "text": "At odds with victim"})
 
 	var view: Dictionary = WorkshopCanvas.view(g)
+	# The notebook's cards feed the shared baseline (the conversation by a silencing does, via
+	# Breathstealer by presence), so take the baseline once they're all in.
+	Mind.refresh_beliefs(g.w, listener, "baseline with the notebook")
 	var baseline_before: float = listener.suspicion[target.id]
 	var board = CanvasModel.new(view)
 	var root: String = board.selected
@@ -363,6 +370,8 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 		"locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing",
 		"text": "Scene trace: farthing (the Bakery or the Tavern).",
 	})
+	# A Stage 2 incident to hold (being near the silencing is Stage 1 now): at odds with the victim.
+	g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": control_listener.id, "day": 1, "phase": 0, "text": "At odds with victim"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root: String = board.selected
@@ -371,7 +380,7 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	for num in [death_num, trace_num, sil_num, conv_num]:
 		var cid: String = WorkshopCanvas.Evidence.normalize_card(g.board[num - 1]).id
 		board.connect_cards("e:" + cid, hub)
-	var pnode: String = board.add_profile_info(target.id, ["home_work"])
+	var pnode: String = board.add_profile_info(target.id, ["home_work", "bonds"])
 	board.connect_cards(pnode, hub)
 	board.connect_cards(hub, root)
 	var filed: int = WorkshopCanvas.file(g, board.compile(root))

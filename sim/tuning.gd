@@ -810,6 +810,9 @@ class Workshop:
 	const DEFAULT_ERR = 0.01
 	const OWN_ERR = 0.002
 	const NIGHTWATCH_REPORT_ERROR = 0.08
+	## Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone
+	## was is trusted (the player's own sightings and watch record are certain).
+	const PRESENCE_TESTIMONY_TRUST = 0.8
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0

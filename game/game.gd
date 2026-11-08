@@ -84,6 +84,7 @@ var divulge_due: Array = []
 var known_haunts = {}
 var regulars_searched = {}   # place -> true: a place's regulars can be asked about once per game
 var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
+var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
 # Every time the legacy rules judged something the shared model couldn't read (always
@@ -255,6 +256,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	known_haunts = {}
 	regulars_searched = {}
 	haunt_sightings = {}
+	watched = []
 	known_relationships = {}
 	fallback_count = 0
 	shared_fallbacks = []
