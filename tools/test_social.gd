@@ -286,7 +286,8 @@ func _test_fake_watch_story() -> void:
 			print("  inconsistent: ", txt)
 	_check(bad == 0, "a false Night Watch's night story matches their fake report (%d cases)" % tried)
 
-## "Ask today" leaves out people you can see beside you; "ask seen <time>" narrows it.
+## "Ask today" covers earlier today, not this phase (you can see who's around yourself;
+## Nov 7); "ask seen <time>" narrows it.
 func _test_ask_seen() -> void:
 	var g = _game(7300)
 	var w = g.w
@@ -297,12 +298,14 @@ func _test_ask_seen() -> void:
 	x.loc = "tavern"
 	y.loc = "smithy"
 	n.traits["gossip"] = 1.0
+	w.phase = 1
 	n.beliefs = [
-		{"kind": "saw", "who": x.id, "loc": "tavern", "block": "square", "day": 1, "phase": 0, "with": ""},
+		{"kind": "saw", "who": x.id, "loc": "tavern", "block": "square", "day": 1, "phase": 1, "with": ""},
 		{"kind": "saw", "who": y.id, "loc": "smithy", "block": "market", "day": 1, "phase": 0, "with": ""}]
 	var r1 = Mind.answer_today(w, n, "", "tavern")
 	var t1 = r1["lines"][0]["text"]
-	_check(not (x.name in t1) and y.name in t1, "people beside you this phase are left out (%s)" % t1)
+	_check(not (x.name in t1) and y.name in t1, "earlier today, not this phase (%s)" % t1)
+	n.beliefs[0].phase = 0
 	n.beliefs.append({"kind": "saw", "who": x.id, "loc": "well", "block": "square", "day": 0, "phase": 2, "with": ""})
 	w.day = 1
 	var r2 = Mind.answer_today(w, n, "yesterday", "tavern")

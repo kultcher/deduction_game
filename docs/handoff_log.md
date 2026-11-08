@@ -27,6 +27,32 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-07 night, Claude-Bailiff: UI control-flow pass (`ui/control-flow`)
+
+These are Michael's Nov 7 UX fixes. Nothing moves on while something is being shown.
+- **Presentation lock** (`ui/main.gd` `_presenting`). It holds while the stage speaks, the
+  vote is counted, traces are up or the town is still testifying. During that time the pane
+  offers only Continue or "Finish the count", the command box is off, and map clicks don't
+  act. The meeting can't close mid-count, so the vote explanations no longer appear at night.
+- **Approaches:** an approach (or a protection request) waits for an answer. Other commands
+  are refused, a wait included.
+- **Traces first:** traces from a search that ends the evening are read before the meeting.
+- **Courtroom stage:**
+  - Lines wait for Continue.
+  - One speaker's consecutive lines share a window, up to 420 characters.
+  - An Auto-advance toggle under the controls is off by default and kept in
+    `user://settings.cfg`, with a hold of 2–9 s.
+  - The log follows the stage: `logged(events)` fires as each entry comes forward.
+  - Testimony is worked out at most one speaker ahead.
+- **Day pane before you move:** "Examine <block>"; once zoomed in, "Visit <block>", the
+  block's crime scene and "Back to town view". Talk-to appears only for someone you clicked.
+- **Sightings:** "ask seen" never covers the current phase. Someone who approached to tell
+  you their gift (news, frame, divulge) shares all their sightings in that conversation.
+
+New suite `test_control_flow`; 21 of its checks fail on the old code. Checks: 298 parse,
+121/121 suites, golden identical to `baseline_7034f36`. Not done: Workshop presentations at
+a meeting still print straight to the log rather than through the stage.
+
 ## 2026-11-07 night, Claude-Bailiff: bare defences ungraded (`perf/bare-defence-skip`)
 
 Michael's call: an NPC's defence with no grounds isn't put through step 3's graded test. It

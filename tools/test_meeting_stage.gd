@@ -1,6 +1,8 @@
 ## Meeting plan M3a (docs/meeting_flow_plan.md section 5.2): the courtroom stage.
 ##   - Townsfolk speech comes forward one speaker at a time; the player's own lines don't.
-##   - A line reveals, holds, and moves on; a click finishes it, a second brings the next.
+##   - A line reveals and waits for Continue (Nov 7); a click finishes it, a second brings
+##     the next. The Auto-advance toggle moves on by itself after a hold. One speaker's
+##     consecutive lines share a window; the log follows the stage, entry by entry.
 ##   - A vote waits for the speakers before it, and what's said after the tally waits for
 ##     the count; finishing the count skips the wait.
 ##   - Last words keep the circle up after the meeting closes; the map returns after.
@@ -75,10 +77,16 @@ func _test_stage() -> void:
 	_check(stage.speech.visible_characters == -1 and stage.speaker_label.text == "Isolde", "a click finishes the line")
 	stage.advance()
 	_check(stage.speaker_label.text == "Bart" and stage.continue_button.text == "Done", "a second click brings on the next speaker")
-	# Left alone, the line reveals and the stage moves on by itself.
+	# Left alone, the line reveals and waits for Continue (Nov 7).
 	stage._process(10.0)
 	stage._process(10.0)
-	_check(not stage.busy() and not stage.visible and done[0] == 1, "left alone, the last line reveals, holds and clears the stage")
+	_check(stage.busy() and stage.visible and stage.speaker_label.text == "Bart" and done[0] == 0, "left alone, the line reveals and waits for Continue")
+	_check(stage.auto_toggle != null and stage.auto_toggle.text == "Auto-advance" and not stage.auto_toggle.button_pressed, "an Auto-advance toggle sits under the controls, off by default (%s)" % [[stage.auto_toggle, stage.auto_toggle.text if stage.auto_toggle else "", stage.auto_toggle.button_pressed if stage.auto_toggle else ""]])
+	stage.auto_advance = true
+	stage._process(10.0)
+	stage._process(10.0)
+	_check(not stage.busy() and not stage.visible and done[0] == 1, "with Auto-advance on, the last line holds and clears the stage")
+	stage.auto_advance = false
 	stage.push([_speech("agnes", "Agnes", "...")])
 	_check(stage.muted_banner.visible, "a silenced speaker shows the stolen-voice banner")
 	stage.clear()
@@ -88,6 +96,25 @@ func _test_stage() -> void:
 	_check(stage.busy() and not stage.visible, "during the dusk arrival the ring shows first")
 	stage._process(1.3)
 	_check(stage.visible and stage.speaker_label.text == "Agnes", "then the first speaker comes forward")
+	stage.clear()
+	# One speaker's consecutive lines share a window; the log follows the stage.
+	var logged: Array = []
+	stage.logged.connect(func(evs): logged.append(evs.map(func(e): return str(e.get("text", "")))))
+	stage.push([{"k": "narration", "text": "The town gathers."}, _speech("isolde", "Isolde", "I was at the chapel."),
+		_speech("isolde", "Isolde", "All night."), {"k": "card", "n": 3}, {"k": "narration", "text": "Bart stands."}, _speech("bart", "Bart", "Hm.")])
+	_check(stage.speaker_label.text == "Isolde" and "I was at the chapel." in stage.current.text and "All night." in stage.current.text and stage.waiting() == 1,
+		"one speaker's consecutive lines share a window (%d waiting)" % stage.waiting())
+	_check(logged.size() == 1 and logged[0] == ["The town gathers.", "I was at the chapel.", "All night.", ""],
+		"the log gets what's on stage, and what led up to it, as it comes forward (%s)" % str(logged))
+	stage.advance()
+	stage.advance()
+	_check(logged.size() == 2 and logged[1] == ["Bart stands.", "Hm."], "the next speaker's part of the log comes with them")
+	stage.push([_speech("agnes", "Agnes", "One."), _speech("bart", "Bart", "Two."), {"k": "narration", "text": "The end."}])
+	stage.clear()
+	_check(logged.size() == 5 and logged[3] == ["Two."] and logged[4] == ["The end."], "skipping to the circle logs the rest at once, in order (%s)" % str(logged))
+	var long_a: String = "x".repeat(300)
+	stage.push([_speech("isolde", "Isolde", long_a), _speech("isolde", "Isolde", long_a)])
+	_check(stage.waiting() == 1, "lines too long to share a window get their own")
 	stage.clear()
 	holder.queue_free()
 	await process_frame
