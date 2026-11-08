@@ -27,6 +27,22 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 afternoon, Claude-Bailiff: bespoke papercraft map to main (`mock/bespoke-map`)
+
+- Base `862cd27` (main after #102). Status: green, merging on Michael's go-ahead. Next actor: Michael (playtest).
+- Brings in the hand-painted town map (`assets/art/map/town_open.png`, `BESPOKE = true` in
+  `ui/map_view.gd`) with Michael's and Codex's papercraft buildings and lots, from the mock branch.
+- New: each townsperson's own cottage (`assets/art/cottages_poc/<name>-cottage-papercraft-v1.png`,
+  `MapView.cottage_art`) replaces the generic cottage and coloured dot. Anyone without art keeps the old look.
+- New: daytime talks and location searches in a building or the Town Hall sit in that building's
+  interior (`assets/art/interiors_poc/<loc>-papercraft-v1.png`), not the blurred map.
+  `DayConversationView.set_location` shows the room; `SCENERY_SHADER` softens it (light blur, dimmed to
+  0.7, vignette). Homes and crime scenes keep the map blur.
+- Tests: new `test_location_art` (32 checks: every location has an interior, every cast member a
+  cottage, the view swaps room and blur). `test_ui_controls` and `test_buildings_tavern_town_hall` were
+  failing on the mock branch because they read the old `BLOCK_RECTS`. They now use `_block_rect`, and the
+  Square check covers the bespoke lots. Golden identical to `baseline_7034f36`; the map is UI only.
+
 ## 2026-11-08 early, Claude-Bailiff: background soundtrack (`audio/soundtrack`)
 
 - Base `f4906ed` (main after #101). Status: green, ready to merge. Next actor: Michael (playtest by ear).

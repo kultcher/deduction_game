@@ -582,7 +582,7 @@ func presentation_options():
 	await process_frame
 	check(scene.map._name_labels.size() == g.w.living().size(), "crowded zoomed map retains every visible person's name")
 	for name in scene.map._name_labels:
-		check(scene.map._r(scene.map.BLOCK_RECTS[scene.map.zoom_block]).encloses(name.rect), "rendered name stays inside the undimmed zoomed block: " + name.id)
+		check(scene.map._r(scene.map._block_rect(scene.map.zoom_block)).encloses(name.rect), "rendered name stays inside the undimmed zoomed block: " + name.id)
 		check(not scene.map._label_obstacles.any(func(r): return r != name.rect and r.intersects(name.rect)), "rendered name stays clear of place signs and other names: " + name.id)
 	var elsewhere = g.w.living()[-1]
 	elsewhere.loc = "wharf"
