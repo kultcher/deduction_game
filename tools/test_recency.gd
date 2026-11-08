@@ -8,6 +8,7 @@ const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Recency = preload("res://sim/recency.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
+const MindMeeting = preload("res://sim/mind_meeting.gd")
 var checks = 0
 var fails = 0
 
@@ -16,6 +17,7 @@ func _init() -> void:
 	_topic()
 	_ranking()
 	_recall()
+	_cited()
 	print("Recency: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -118,6 +120,55 @@ func _recall() -> void:
 	check(absf(b.recalled - b.drifted) <= absf(f.recalled - b.drifted) + 0.02, "and not past it")
 	check(absf(b.repeated - b.recalled) < 0.005, "repeating it at once changes nothing more")
 	check(not b.refresh.is_empty(), "the presentation recorded the card as brought back to mind")
+
+
+## An NPC who states a reason before the town (nomination, public accusation) brings the
+## cards behind it back to mind for every hearer; a hinted, unshared reason brings nothing.
+func _cited() -> void:
+	check(MindMeeting._reason_cards({"card_id": "fact:a", "root_ids": []}) == ["fact:a"], "a plain reason cites its own card")
+	check(MindMeeting._reason_cards({"card_id": "joint:x", "root_ids": ["fact:b", "fact:c", "fact:b"]}) == ["fact:b", "fact:c"], "a joint reason cites its roots, once each")
+	check(MindMeeting._reason_cards({"card_id": "circ:odette"}).is_empty(), "a circumstantial reason cites no card")
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(692, 7)
+	var w = g.w
+	var n = w.npcs[1]
+	var t = w.npcs[2]
+	MindMeeting.recall_cited(w, n, t.id, [""], [])
+	check(w.living().all(func(l): return (l.shadow if l.is_evil() and l.shadow != null else l).workshop_state.get("card_refresh", {}).is_empty()), "nothing spoken, nothing recalled")
+	MindMeeting.recall_cited(w, n, t.id, [], ["fact:relayed"])
+	check(w.living().all(func(l): return int((l.shadow if l.is_evil() and l.shadow != null else l).workshop_state.get("card_refresh", {}).get("fact:relayed", -1)) == w.day), "a cited card is back on every hearer's mind today, evil covers included")
+	# In play: by day 4 of a passive game the town's nominations and accusations have
+	# recalled cards, and most of them are cards the hearers hold.
+	var p = Game.new()
+	p.detailed_logging = false
+	p.new_case(900, 7)
+	var guard: int = 0
+	while p.state != "over" and p.w.day < 4 and guard < 300:
+		guard += 1
+		match p.state:
+			"approach": p.command("decline")
+			"day": p.command("wait")
+			"meeting": p.command("done" if p.town_quiet else "wait")
+			"talk": p.command("bye")
+			"nomination": p.command("vote no")
+			"night": p.command("sleep")
+			_: break
+	var total: int = 0
+	var held: int = 0
+	for l in p.w.living():
+		var mind = l.shadow if l.is_evil() and l.shadow != null else l
+		var ev: Dictionary = p._workshop_evaluations.get(mind.id + (":cover" if mind.is_shadow else ":good"), {})
+		if ev.is_empty():
+			continue
+		var ids: Dictionary = {}
+		for c in ev.input[0].view.cards:
+			ids[c.id] = true
+		for id in mind.workshop_state.get("card_refresh", {}):
+			total += 1
+			held += 1 if ids.has(id) else 0
+	print("cited: %d recalled cards on day 4 minds, %d held by that mind" % [total, held])
+	check(total > 0 and held * 2 > total, "the town's spoken reasons recall cards the hearers hold (%d of %d)" % [held, total])
 
 func _setup():
 	var g = Game.new()
