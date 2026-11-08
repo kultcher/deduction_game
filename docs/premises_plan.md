@@ -362,6 +362,14 @@ secret premise is **the player's word**, weighted by credibility.
 
 ## Step 3 as built (Nov 6)
 
+**Nov 7, with Michael: bare defences aren't graded.** An NPC's defence with no grounds
+("X is lying", "misled") brings nothing new, and the graded test asks whether the rest of the
+evidence makes the reading look wrong. The listener's beliefs already rest on that same
+evidence. `SharedLedger` marks such challenges `bare`, and `ReadingChallenges.assess` leaves
+them out of `graded_challenge`. They still count through the older challenge rules. Workshop
+challenges bring presented evidence and are graded as before. (Speed: they were every
+challenge in bot and passive games; see `claude/premises-ab-2026-11-07.md`.)
+
 Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f14`).
 
 - **Graded challenges** (`ReadingChallenges.graded_challenge`). For a challenged reading R:
