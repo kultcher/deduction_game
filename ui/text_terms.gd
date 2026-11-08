@@ -30,6 +30,17 @@ func _init(include_defaults: bool = true) -> void:
 			"icon_path": path if FileAccess.file_exists(path) else "",
 			"aliases": [{"text": role["name"], "case_sensitive": role_id in AMBIGUOUS_ROLES},
 				{"text": role["name"], "role_only": true}, {"text": role_id, "role_only": true}]})
+	# Secrets, in violet with their icons. Their names are ordinary words too ("marked",
+	# "delusional"), so prose matches only the capitalized name; role_context also takes the id.
+	for secret_id in C.SECRET_MODS:
+		var secret: Dictionary = C.SECRET_MODS[secret_id]
+		var spath = "res://assets/ui/roles/%s.png" % secret_id
+		register_term({"id": "secret:" + secret_id, "kind": "secret", "content_id": secret_id,
+			"color": UITheme.color("role_secret"), "bold": true,
+			"label": secret["name"], "tooltip": secret["name"] + " (secret)\n" + secret["desc"],
+			"icon_path": spath if FileAccess.file_exists(spath) else "",
+			"aliases": [{"text": secret["name"], "case_sensitive": true},
+				{"text": secret["name"], "role_only": true}, {"text": secret_id, "role_only": true}]})
 
 ## Extend with any kind of term. Optional appearance: color (null inherits), icon_path,
 ## tooltip. Aliases are strings (case-insensitive) or {text, case_sensitive, role_only}.
