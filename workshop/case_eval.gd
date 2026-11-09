@@ -685,6 +685,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
 		key_input.append(case_data.get("reading_challenges", {}).keys())
+	if not view.get("regular_haunts", {}).is_empty():
+		key_input.append(view.regular_haunts)  # traces and presence read the listener's regular knowledge
 	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
 		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
 	var key = hash(key_input)

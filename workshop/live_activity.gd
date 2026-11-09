@@ -465,7 +465,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if observations.is_empty():
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {})]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
@@ -567,6 +567,13 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 				if l in DayPresence.PLACES and l not in known:
 					known.append(l)
 			haunts[subj] = known
+	var regular: Dictionary = view.get("regular_haunts", {})
+	for subj in regular:
+		var known: Array = haunts.get(subj, [])
+		for l in regular[subj]:
+			if l in DayPresence.PLACES and l not in known:
+				known.append(l)
+		haunts[subj] = known
 	var out: Array = []
 	var seen: Dictionary = {}
 	for e in events:
@@ -1269,6 +1276,9 @@ static func _evaluate_trace_for_person_impl(view: Dictionary, cards: Array, trac
 				for hl in c.get("data", {}).get("locs", [c.get("data", {}).get("loc", "")]):
 					if hl != "" and hl not in haunts:
 						haunts.append(hl)
+		for hl in view.get("regular_haunts", {}).get(person_id, []):
+			if hl not in haunts:
+				haunts.append(hl)
 		if work_loc != "" and work_loc in locs:
 			return {"state": "matches", "weight": match_w, "missing": "", "reason": "works at " + C.LOCATIONS.get(work_loc, {}).get("name", work_loc)}
 		for hl in haunts:

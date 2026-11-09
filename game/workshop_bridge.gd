@@ -184,9 +184,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 			card["via"] = claim.get("via", "")
 			input.receipts.append({"card": card, "private": true})
 	if w != null:
-		for card in known_haunts(w, n):
-			card["when"] = CardModel.when(card, now.day, now.phase)
-			input.receipts.append({"card": card, "private": true})
+		input["regular_haunts"] = known_haunts(w, n)
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -221,14 +219,14 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 ## anyone's haunt that is their own workplace or one of their own haunts. Everything else
 ## the town says about haunts in conversation stays out of their reasoning until the
 ## Demonologist shows it to them (a haunt card in a case).
-static func known_haunts(w, n) -> Array:
+## It's knowledge for the trace and presence models (view.regular_haunts), not evidence: it
+## never enters the ledger, ownership or citations.
+static func known_haunts(w, n) -> Dictionary:
 	var spots: Array = [n.work] + n.haunts
-	var out: Array = []
+	var out: Dictionary = {}
 	for o in w.npcs:
 		for h in o.haunts:
 			if o.id != n.id and not h in spots:
 				continue
-			out.append({"kind": "haunt", "subject": [o.id], "source": n.id, "loc": h, "locs": [h],
-				"block": w.loc_block(h), "day": 0, "phase": 0, "class": "circumstantial",
-				"text": "%s often goes to %s when off work." % [o.name, w.loc_name(h)]})
+			out[o.id] = out.get(o.id, []) + [h]
 	return out

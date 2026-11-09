@@ -123,7 +123,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"script_minions": snapshot.rules.get("minions", []).duplicate(),
 		"script_demons": snapshot.rules.get("demons", ["demon"]).duplicate(),
 		"timeline": History.from_events(snapshot.public_events),
-		"watched": snapshot.get("watched", []).duplicate(true)}
+		"watched": snapshot.get("watched", []).duplicate(true),
+		# The haunts a regular knows (WorkshopBridge.known_haunts); the Demonologist's view has none.
+		"regular_haunts": snapshot.get("regular_haunts", {}).duplicate(true)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
 	for card in cards:

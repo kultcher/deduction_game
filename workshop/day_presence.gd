@@ -74,6 +74,14 @@ static func build(view: Dictionary, cards: Array) -> Dictionary:
 				if l in PLACES and l not in known:
 					known.append(l)
 			haunts[subj] = known
+	# The haunts the listener knows as a regular (WorkshopBridge.known_haunts).
+	var regular: Dictionary = view.get("regular_haunts", {})
+	for subj in regular:
+		var known: Array = haunts.get(subj, [])
+		for l in regular[subj]:
+			if l in PLACES and l not in known:
+				known.append(l)
+		haunts[subj] = known
 	var out: Dictionary = {}
 	for pid in ids:
 		out[pid] = {}

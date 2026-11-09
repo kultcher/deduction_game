@@ -185,14 +185,23 @@ func _test_known_haunts() -> void:
 				expect["%s:%s" % [o.id, h]] = true
 	var view: Dictionary = Assess.prepare(WorkshopBridge.capture(g, [], n.id)).get("view", {})
 	var got: Dictionary = {}
-	for c in view.get("cards", []):
-		if c.get("kind", "") == "context" and c.get("context_kind", "") == "haunt":
-			for h in c.get("data", {}).get("locs", []):
-				got["%s:%s" % [str(c.get("subject", "")), h]] = true
+	var regular: Dictionary = view.get("regular_haunts", {})
+	for pid in regular:
+		for h in regular[pid]:
+			got["%s:%s" % [pid, h]] = true
 	_check(expect.size() > n.haunts.size(), "the listener shares a spot with someone's haunt (%d known)" % expect.size())
 	_check(got == expect, "the listener's view holds exactly the haunts a regular would know (%d vs %d)" % [got.size(), expect.size()])
 	var player_view: Dictionary = Assess.prepare(WorkshopBridge.capture(g, [])).get("view", {})
-	_check(not player_view.get("cards", []).any(func(c): return c.get("context_kind", "") == "haunt"), "the Demonologist's own view gets no haunts for free")
+	_check(player_view.get("regular_haunts", {}).is_empty(), "the Demonologist's own view gets no haunts for free")
+	_check(not view.get("cards", []).any(func(c): return c.get("context_kind", "") == "haunt"), "regular knowledge isn't evidence: no haunt cards in the listener's view")
+	# The trace model counts them as discovered.
+	var TraceSolver = load("res://workshop/trace_solver.gd")
+	var profs: Dictionary = TraceSolver.discovered_profiles(view)
+	var other: String = ""
+	for pid in regular:
+		if pid != n.id:
+			other = pid
+	_check(other != "" and profs[other].known_haunts == regular[other].slice(0, 2), "the trace model knows a fellow regular's haunt")
 
 
 func _test_game_records_watch() -> void:
