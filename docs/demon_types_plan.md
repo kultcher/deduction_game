@@ -175,8 +175,22 @@ Breathstealer.
   - P(hexed L) is the demon's presence at L that day (step 2's table), weighted by when a
     Hexer strikes and normalized over the public places it was likely in.
   - At s = 0 nothing changes (golden identical).
+  - The Hexer avoids hexing its own workplace, so time a suspect spends at work counts
+    `HEX_OWN_WORK_WEIGHT` (0.4) in P(hexed L). Without this, the factor favoured the
+    victim's coworkers: they're present all day at the victim's workplace.
+  - The solver needs each person's workplace for the regulars, so the bridge now hands
+    `work` and `work_phases` (public, as on the board) in the view's people.
 - **Tests:** `test_demon_types` (26 checks: the factor against a hand computation, and a
   demon far from the victim's places scores lower).
+
+**First probe (Nov 9):** 12 passive cases, 10 NPCs, forced Hexer. The probe compares the
+good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
+- It's neutral to slightly negative: 8 games ran to day 4. Three were unchanged, four
+  went lower (e.g. 0.024 → 0.012, 0.238 → 0.172) and one went higher (0.357 → 0.416).
+- Passive play rarely produces a watch at the hexed place, so the factor mostly spreads
+  belief over everyone present. Its real test is a player who watches public places.
+- `autoplay --force-demon daykiller` deals the Hexer, with the Demon still on the script,
+  for bot runs.
 
 **Not yet:**
 - The bot testing the type (vigils on likely victims' blocks).
