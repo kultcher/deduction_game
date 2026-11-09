@@ -27,6 +27,29 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-09, Claude-Bailiff: demon types step 3, the Hexer (`claude/day-killer`, held draft)
+
+- **Base:** `claude/day-presence` (#107) plus main at `0d10089`. The PR carries #107 too,
+  so the two land together, after Michael has played the Hexer.
+- **Status:** green.
+  - 129/129 suites pass.
+  - Golden is identical to `baseline_db5b24e` (A = B = baseline). The Hexer is only dealt
+    when a script lists two demon types.
+- **What's in it:**
+  - The role `daykiller` (display name "Hexer", a working name), in `sim/roles/daykiller.gd`.
+  - The solver's whole-world mixture, `(1-s)*walk + s*day*HexFactor`.
+  - People in the solver view now carry `work` / `work_phases`, which are public.
+  - `autoplay --force-demon daykiller`.
+  - Details: `docs/demon_types_plan.md`, step 3.
+- **Test change:** in `test_workshop_circumstantial_hub`, the post-retract check now uses
+  the listener's own baseline. With public occupations, the control NPC's Stage 1 differs
+  from the listener's before any case.
+- **Probe:** in passive play the hex factor is neutral to slightly negative. The real test
+  is a player watching public places.
+- **Next:** Michael playtests a forced Hexer. Then tune the hex odds and the floor.
+
+---
+
 ## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
 
 - Base `dc2418c` (main after #96). Status: green, golden identical to `baseline_db5b24e`. Next actor: none.
