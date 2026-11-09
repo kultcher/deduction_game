@@ -46,6 +46,7 @@ func _run() -> void:
 	_test_breath_factor()
 	_test_case_eval_kernel()
 	_test_game_records_watch()
+	_test_known_haunts()
 	print("%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
 
@@ -167,6 +168,31 @@ func _test_case_eval_kernel() -> void:
 	_check(view.get("watched", []) == g.watched, "the solver's view carries the watch record")
 	if not view.is_empty():
 		_check(not DayPresence.breath_factor(view, view.get("cards", [])).is_empty(), "a dealt case with a silencing builds the factor")
+
+
+## Regulars know regulars: an NPC's reasoning holds its own haunts and anyone's haunt that is
+## its workplace or one of its haunts, and no other haunt.
+func _test_known_haunts() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(54875, 7)
+	var n = g.w.living_good()[0]
+	var spots: Array = [n.work] + n.haunts
+	var expect: Dictionary = {}
+	for o in g.w.npcs:
+		for h in o.haunts:
+			if o.id == n.id or h in spots:
+				expect["%s:%s" % [o.id, h]] = true
+	var view: Dictionary = Assess.prepare(WorkshopBridge.capture(g, [], n.id)).get("view", {})
+	var got: Dictionary = {}
+	for c in view.get("cards", []):
+		if c.get("kind", "") == "context" and c.get("context_kind", "") == "haunt":
+			for h in c.get("data", {}).get("locs", []):
+				got["%s:%s" % [str(c.get("subject", "")), h]] = true
+	_check(expect.size() > n.haunts.size(), "the listener shares a spot with someone's haunt (%d known)" % expect.size())
+	_check(got == expect, "the listener's view holds exactly the haunts a regular would know (%d vs %d)" % [got.size(), expect.size()])
+	var player_view: Dictionary = Assess.prepare(WorkshopBridge.capture(g, [])).get("view", {})
+	_check(not player_view.get("cards", []).any(func(c): return c.get("context_kind", "") == "haunt"), "the Demonologist's own view gets no haunts for free")
 
 
 func _test_game_records_watch() -> void:

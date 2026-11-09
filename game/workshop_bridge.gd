@@ -86,7 +86,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 			if n == null:
 				input.issues.append({"code": "cover_unavailable", "fact": "", "detail": listener_id})
 			else:
-				_listener(input, n, now)
+				_listener(input, n, now, g.w)
 				input.listener["recency"] = preload("res://sim/recency.gd").snapshot(g.w, n)
 	return Evidence.normalize(input)
 
@@ -135,7 +135,7 @@ static func _lean(n) -> Dictionary:
 		belief[id] = belief[id] - mean
 	return belief
 
-static func _listener(input: Dictionary, n, now: Dictionary) -> void:
+static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	# "trust" is how far the shared model takes the player's word: credibility, not rapport.
 	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "lean": _lean(n),
 		"committed_requested": n.workshop_state.get("committed_requested", {}).duplicate(true), "own_gift": n.role,
@@ -183,6 +183,10 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 			var card = _reading(source, e)
 			card["via"] = claim.get("via", "")
 			input.receipts.append({"card": card, "private": true})
+	if w != null:
+		for card in known_haunts(w, n):
+			card["when"] = CardModel.when(card, now.day, now.phase)
+			input.receipts.append({"card": card, "private": true})
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -211,3 +215,20 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 		card["phase"] = e.phase
 	card["when"] = CardModel.when(card, card.day, -1)
 	return card
+
+
+## The haunts an NPC knows without being told (regulars know regulars): their own, and
+## anyone's haunt that is their own workplace or one of their own haunts. Everything else
+## the town says about haunts in conversation stays out of their reasoning until the
+## Demonologist shows it to them (a haunt card in a case).
+static func known_haunts(w, n) -> Array:
+	var spots: Array = [n.work] + n.haunts
+	var out: Array = []
+	for o in w.npcs:
+		for h in o.haunts:
+			if o.id != n.id and not h in spots:
+				continue
+			out.append({"kind": "haunt", "subject": [o.id], "source": n.id, "loc": h, "locs": [h],
+				"block": w.loc_block(h), "day": 0, "phase": 0, "class": "circumstantial",
+				"text": "%s often goes to %s when off work." % [o.name, w.loc_name(h)]})
+	return out
