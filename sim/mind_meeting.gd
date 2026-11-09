@@ -250,8 +250,10 @@ static func _late_relay(w, n, lines: Array, facts: Array) -> void:
 			var Muddler = preload("res://sim/muddler.gd")
 			var spoken_e: Dictionary = Muddler.maybe_muddle_reading(w, n, src_id, e)
 			var rn: String = C.role_name(spoken_e["role"])
-			# The reading's text carries no time: say when, relative to today.
-			var said: String = "%s %s" % [C.spoken_when(int(spoken_e.get("day", w.day)), w.day), C.third_person(reading_body(spoken_e["text"]))]
+			# Say when, relative to today, once: a "night N" inside the reading's own text (the
+			# Veteran's, the Medium's) is dropped if it's that night, or said as a person would.
+			var rday: int = int(spoken_e.get("day", w.day))
+			var said: String = "%s %s" % [C.spoken_when(rday, w.day), C.third_person(relay_body(reading_body(spoken_e["text"]), rday, w.day))]
 			lines.append(say_voiced(n, "meeting_late_relay", "Before %s died, they told me they were the %s, and that %s." % [src.name, rn, said],
 				{"dead": src.name, "role": rn, "reading": said}))
 			var f: Dictionary = info_fact(w, src, spoken_e)
@@ -333,6 +335,23 @@ static func _claim_line(n, role: String) -> Dictionary:
 	}
 	var fallback = "%sI am the %s." % [openers.get(n.style, ""), C.role_name(role)]
 	return say_voiced(n, "public_claim", fallback, {"role": C.role_name(role)})
+
+## A relayed reading's body with its numbered nights put right for a speaker on `today`:
+## the reading's own night is already said up front, so " on night N" for it goes; any other
+## night is said the spoken way ("on the second night"). Card text keeps its numbers.
+static func relay_body(body: String, reading_day: int, today: int) -> String:
+	var re := RegEx.new()
+	re.compile(" on night (\\d+)")
+	var out: String = ""
+	var cursor: int = 0
+	for m in re.search_all(body):
+		out += body.substr(cursor, m.get_start() - cursor)
+		var nd: int = int(m.get_string(1))
+		if nd != reading_day:
+			out += " " + C.spoken_when(nd, today)
+		cursor = m.get_end()
+	out += body.substr(cursor)
+	return C.natural_nights(out)
 
 ## Construct the exact public-facing report before a presentation layer touches it.
 static func _info_intent(w, n, e: Dictionary) -> Dictionary:

@@ -42,3 +42,5 @@ test_premise_step3
 test_recency
 test_bot_m4
 test_haunt_learning
+test_control_flow
+test_review_fixes
