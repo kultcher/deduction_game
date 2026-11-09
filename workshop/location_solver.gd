@@ -133,10 +133,10 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 		var reason: String = ""
 		if best >= CERTAIN:
 			verdict = "fits"
-			reason = "%s %s" % [cells[best_cell].text, PHASES[best_cell]]
+			reason = "%s: %s" % [PHASES[best_cell].capitalize(), cells[best_cell].text]
 		elif best_cell >= 0 and cells[best_cell].state == "reported" and best >= 0.5:
 			verdict = "fits"
-			reason = "%s %s (reported)" % [cells[best_cell].text, PHASES[best_cell]]
+			reason = "%s: %s" % [PHASES[best_cell].capitalize(), cells[best_cell].text]
 		elif p_any <= 1e-9:
 			verdict = "ruled_out"
 			reason = "accounted for elsewhere all day"

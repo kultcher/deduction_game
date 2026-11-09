@@ -12,6 +12,8 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const DayPresence = preload("res://workshop/day_presence.gd")
 const LocationSolver = preload("res://workshop/location_solver.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
+const CaseView = preload("res://ui/case_view.gd")
+const UITheme = preload("res://ui/theme.gd")
 
 var _checks: int = 0
 var _fails: int = 0
@@ -126,5 +128,51 @@ func _run() -> void:
 		var r_err: String = copy.restore(board.export_data(), session)
 		_check(r_err == "" and copy.nodes.has(nid), "the canvas restores with the node (%s)" % r_err)
 
+	await _test_ui()
 	print("%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
+
+
+## The panel in the Case Board, and committing from it. `--screenshot PATH` saves the panel.
+func _test_ui() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(54875, 7)
+	g.start_day() if g.has_method("start_day") else null
+	g.command("go tavern")
+	g.command("wait")
+	g.command("go smithy")
+	var cv = CaseView.new()
+	cv.workshop_execute = func(_cmd, _prog): pass
+	root.add_child(cv)
+	cv.build(UITheme.serif())
+	await process_frame
+	cv.set_game(g)
+	cv.size = Vector2(1600, 900)
+	for i in range(3):
+		await process_frame
+	_check(cv.panels.has("whereabouts") and cv.panel_buttons.has("whereabouts") and cv.location_solver != null, "the Case Board has a Whereabouts panel and dock button")
+	cv.set_panel_open("whereabouts", true)
+	var panel = cv.location_solver
+	panel.set_question({"kind": "place", "day": g.w.day, "loc": "tavern"})
+	_check(not panel.commit_btn.disabled and panel.last_result.rows.size() == g.w.npcs.size(), "a watched day enables Commit, a row per person")
+	_check(panel.place_pick.visible and panel.day_pick.visible, "a place question shows the place and day pickers")
+	await process_frame
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var si: int = args.find("--screenshot")
+	if si >= 0 and si + 1 < args.size():
+		for i in range(3):
+			await process_frame
+		root.get_texture().get_image().save_png(args[si + 1])
+	panel.commit_requested.emit(panel.question.duplicate(true))
+	await process_frame
+	var editor = cv.workshop.editor
+	var keys: Array = editor.board.nodes.keys().filter(func(k): return editor.board.nodes[k].kind == "whereabouts")
+	_check(keys.size() == 1, "committing adds a Whereabouts card to the Workshop")
+	if keys.size() == 1:
+		editor.remove_node(keys[0])
+		_check(not editor.board.nodes.has(keys[0]), "the Workshop removes it")
+		editor._undo_remove()
+		_check(editor.board.nodes.has(keys[0]), "and undo restores it")
+	cv.queue_free()
+	await process_frame

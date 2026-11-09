@@ -22,6 +22,7 @@ const ProfilePanel = preload("res://ui/profile_panel.gd")
 const BoardPanel = preload("res://ui/board_panel.gd")
 const WorkshopDrawer = preload("res://ui/workshop_drawer.gd")
 const TraceSolverPanel = preload("res://ui/trace_solver_panel.gd")
+const LocationSolverPanel = preload("res://ui/location_solver_panel.gd")
 
 var g
 var mono: Font
@@ -59,6 +60,7 @@ var hidden_check: CheckBox
 var staged: Array = []        # board cards currently in the Case Workshop (marked on the board)
 var workshop                  # ui/workshop_drawer.gd
 var trace_solver              # ui/trace_solver_panel.gd
+var location_solver           # ui/location_solver_panel.gd
 var workshop_execute: Callable  # runs a workshop command through the main screen
 var canvas: Control
 var panels: Dictionary = {}
@@ -203,7 +205,7 @@ func build(font: Font) -> void:
 	dock.add_theme_constant_override("h_separation", 8)
 	dock.add_theme_constant_override("v_separation", 4)
 	root.add_child(dock)
-	for entry in [["cards", "Card List"], ["profile", "Profile"], ["traces", "Trace Solver"]]:
+	for entry in [["cards", "Card List"], ["profile", "Profile"], ["traces", "Trace Solver"], ["whereabouts", "Whereabouts"]]:
 		var key: String = entry[0]
 		var toggle = _btn(dock, entry[1], func(): set_panel_open(key, not panels[key].visible))
 		toggle.toggle_mode = true
@@ -295,6 +297,20 @@ func build(font: Font) -> void:
 		else:
 			trace_solver.refresh()
 		set_panel_open("traces", true))
+	var where_panel = _make_panel("whereabouts", "Whereabouts", Vector2(900, 600))
+	location_solver = LocationSolverPanel.new()
+	location_solver.person_clicked.connect(func(pid: String):
+		state.select_person(pid)
+		show_profile(pid, true))
+	location_solver.commit_requested.connect(func(q: Dictionary):
+		open_workshop_whereabouts(q))
+	where_panel.content.add_child(location_solver)
+	workshop.location_solver_requested.connect(func(q: Dictionary):
+		if not q.is_empty():
+			location_solver.set_question(q)
+		else:
+			location_solver.refresh()
+		set_panel_open("whereabouts", true))
 	_queue_panel_layout()
 
 func _make_panel(key: String, title: String, initial_size: Vector2):
@@ -315,6 +331,8 @@ func set_panel_open(key: String, on: bool) -> void:
 			_panels_placed = true
 		panel.fit_inside()
 		panel.move_to_front()
+		if key == "whereabouts" and location_solver != null:
+			location_solver.refresh()
 	panel.visible = on
 
 func _queue_panel_layout() -> void:
@@ -388,6 +406,8 @@ func _layout_panels() -> void:
 		panels["profile"].move_to(Vector2(canvas.size.x - panels["profile"].size.x - 8, 8))
 		if panels.has("traces"):
 			panels["traces"].move_to(Vector2(maxf(16.0, (canvas.size.x - panels["traces"].size.x) * 0.5), 24.0))
+		if panels.has("whereabouts"):
+			panels["whereabouts"].move_to(Vector2(maxf(16.0, (canvas.size.x - panels["whereabouts"].size.x) * 0.5), 40.0))
 
 func _heading(t: String) -> Label:
 	var l = Label.new()
@@ -449,6 +469,7 @@ func set_game(game) -> void:
 		lp.set_item_metadata(lp.item_count - 1, l)
 	profile.setup(g, state)
 	trace_solver.set_game(g)
+	location_solver.set_game(g)
 	workshop.collapse()
 	workshop.set_game(g)
 	_fill_kinds()
@@ -469,6 +490,8 @@ func refresh() -> void:
 	_refresh_profile()
 	if trace_solver != null:
 		trace_solver.refresh()
+	if location_solver != null and panels.has("whereabouts") and panels["whereabouts"].visible:
+		location_solver.refresh()
 	if visible:
 		workshop.refresh()
 	_refresh_staged()
@@ -676,6 +699,17 @@ func open_workshop_trace_chain(selected_by_night: Dictionary) -> String:
 	_refresh_staged()
 	if node_id != "":
 		status_label.text = "Committed Trace Chain (%d night%s) to the Case Workshop." % [selected_by_night.size(), "" if selected_by_night.size() == 1 else "s"]
+	return node_id
+
+func open_workshop_whereabouts(question: Dictionary) -> String:
+	visible = true
+	workshop.open(0.5)
+	var node_id: String = workshop.add_whereabouts(question)
+	_refresh_staged()
+	if node_id != "":
+		status_label.text = "Committed a Whereabouts card to the Case Workshop."
+	else:
+		status_label.text = "Nothing recorded for that day yet: watch a block or hear where people were first."
 	return node_id
 
 func _refresh_staged() -> void:
