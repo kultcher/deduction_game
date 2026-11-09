@@ -24,6 +24,11 @@ const COLORS = {
 	"heard": Color(0.76, 0.74, 0.78),       # cards someone told you
 	"role_good": Color(0.25, 0.60, 0.90),   # deeper blue than Nisha; reserved for role words
 	"role_evil": Color(0.94, 0.28, 0.28),   # reserved red for evil role words
+	"role_secret": Color(0.72, 0.55, 0.95), # violet for secret words, on navy
+	# Team colours for role names and icons on paper (the script sheet), Clocktower-style.
+	"role_good_ink": Color(0.12, 0.36, 0.68),
+	"role_secret_ink": Color(0.42, 0.22, 0.6),
+	"role_evil_ink": Color(0.66, 0.12, 0.12),
 	"deduction": Color(0.95, 0.8, 0.45),
 	"hidden": Color(0.45, 0.45, 0.5),
 	"string": Color(0.78, 0.13, 0.12),      # red string on the board
