@@ -717,12 +717,13 @@ func _idle_pairable() -> Array:
 func _pre_pair() -> void:
 	var max_pairs = 1 if n_npcs < 10 else n_npcs / 5
 	var made = 0
-	while made < max_pairs:
+	# Each pair slot rolls on its own (Nov 8): one failed roll no longer silences the phase.
+	for slot in range(max_pairs):
 		var cands = _idle_pairable()
 		if cands.size() < 2 or player_options().size() - 2 < 3:
 			break
 		if not decision_roll(null, "pre_phase_conversation", Tuning.Setup.PRE_PHASE_CHAT_CHANCE):
-			break
+			continue
 		var pr = _choose_pair(cands)
 		if pr.is_empty():
 			break
@@ -1954,7 +1955,8 @@ func find_totem(l: String) -> Dictionary:
 func start_new_day() -> void:
 	day += 1
 	phase = C.MORNING
-	daily_npc_shares = []
+	# Yesterday's talk still circulates at the tavern (Nov 8); older talk drops out.
+	daily_npc_shares = daily_npc_shares.filter(func(r): return int(r.get("day", -9)) >= day - 1)
 	_evening_chats_done_day = -1
 	if day > max_days and not game_over:
 		dlog.set_time(day, "Morning")

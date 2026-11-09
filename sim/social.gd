@@ -162,9 +162,14 @@ static func _pick_item(w, s, l):
 			cands.append([hint_w, {"kind": "role_hint", "about": s.id, "from": s.id, "package": pkg, "key": hint_key, "lie": s.is_evil()}])
 		var claim_key: String = "role_claim:" + s.id
 		var claim_ok: bool = bond >= Tuning.Social.SHARE_ROLE_CLAIM_BOND_MIN or (bond >= Tuning.Social.SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN and s.pressure >= Tuning.Social.SHARE_ROLE_CLAIM_PRESSURE_MIN)
-		if claim_ok and not s.protect_lock and not _told(s, l, claim_key) and str(l.known_claims.get(s.id, {}).get("role", "")) != my_role:
+		# The day-1 confidant: until they've told one person, on day 1 only, a lower bar and a
+		# stronger pull (evil uses the same rule with its bluff, so a confidence is no tell).
+		var confide: bool = w.day <= 1 and not s.confided and bond >= Tuning.Social.SHARE_ROLE_CONFIDE_BOND_MIN
+		if (claim_ok or confide) and not s.protect_lock and not _told(s, l, claim_key) and str(l.known_claims.get(s.id, {}).get("role", "")) != my_role:
 			var claim_w: float = (1.0 - priv) * Tuning.Social.SHARE_ROLE_CLAIM_SLOPE * maxf(Tuning.Social.SHARE_ROLE_CLAIM_MIN_WEIGHT, bond - Tuning.Social.SHARE_ROLE_CLAIM_BOND_FLOOR) + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
-			cands.append([claim_w, {"kind": "role_claim", "about": s.id, "from": s.id, "role": my_role, "key": claim_key, "lie": s.is_evil()}])
+			if confide:
+				claim_w += Tuning.Social.SHARE_ROLE_CONFIDE_BONUS
+			cands.append([claim_w, {"kind": "role_claim", "about": s.id, "from": s.id, "role": my_role, "key": claim_key, "lie": s.is_evil(), "confide": confide}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
 	var has_recent_night_sighting: bool = false
 	for b in s.beliefs:
@@ -400,6 +405,13 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 				"via": s.id, "first_claimed_day": mini(int(prev.get("first_claimed_day", w.day)), w.day)}
 			Mind.hear_claim(w, l, s.id, item["role"], wgt, "relayed")
 			l.hearsay.append(hs)
+			if not public and not item.get("relay", false) and item.get("about", "") == s.id:
+				s.confided = true
+				if item.get("confide", false):
+					# Trusted with a secret, the listener warms to them; the confider a little too.
+					l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + Tuning.Social.CONFIDE_TRUST_LISTENER, 0.0, 1.0)
+					s.npc_trust[l.id] = clampf(s.npc_trust.get(l.id, 0.5) + Tuning.Social.CONFIDE_TRUST_TELLER, 0.0, 1.0)
+					w.dlog.add("confide", s.id, l.id, {"role": item["role"], "lie": item.get("lie", false)}, "%s confides their gift to %s." % [s.name, l.name])
 		"opinion", "unease":
 			# Remember the conversation and teller, without turning their conclusion
 			# into evidence about its target (Q4).
@@ -900,13 +912,17 @@ static func tavern_evening_gossip(g) -> Dictionary:
 	var candidates: Array = []
 	var seen_keys: Dictionary = {}
 
-	# 1. Spoken NPC-to-NPC items from anywhere in town today (evil strategizing never enters daily_npc_shares).
+	# 1. Spoken NPC-to-NPC items from anywhere in town today and yesterday (evil strategizing
+	# never enters daily_npc_shares). Yesterday's weigh less (TAVERN_YESTERDAY_MULT).
+	var group_mult: Dictionary = {}
 	for rec in w.daily_npc_shares:
-		if int(rec.get("day", -1)) != w.day:
+		var rec_day: int = int(rec.get("day", -1))
+		if rec_day != w.day and rec_day != w.day - 1:
 			continue
 		var it: Dictionary = rec.get("item", {})
 		var ik: String = str(it.get("kind", ""))
 		var share_group: String = "share:%d" % candidates.size()
+		group_mult[share_group] = 1.0 if rec_day == w.day else Tuning.Social.TAVERN_YESTERDAY_MULT
 		if ik in ["opinion", "unease", "case", ""]:
 			continue
 		if ik == "reading":
@@ -1050,6 +1066,8 @@ static func tavern_evening_gossip(g) -> Dictionary:
 							"tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
 							"text": "Tavern rumour: %s %s." % [o.name, stext]}})
 
+	for c in candidates:
+		c["weight"] = float(c.get("weight", 0.0)) * float(group_mult.get(str(c.get("group", "")), 1.0))
 	# 2. Non-case-board profile backfill pool: unlearned haunts and public town relationships (never Secret Lovers).
 	for n in w.npcs:
 		var known_h: Array = g.known_haunts.get(n.id, [])

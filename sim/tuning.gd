@@ -414,6 +414,13 @@ class Social:
 	const SHARE_ROLE_CLAIM_SLOPE = 1.8
 	const SHARE_ROLE_CLAIM_BOND_FLOOR = 0.45  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_MIN_WEIGHT = 0.05
+	## Day-1 confidant (Nov 8, BotC's "find one person to trust"): until they've told someone,
+	## and only on day 1, an NPC will tell a less-trusted listener their gift, and is likelier
+	## to. Target: once or twice a game. The pair warms to each other.
+	const SHARE_ROLE_CONFIDE_BOND_MIN = 0.42
+	const SHARE_ROLE_CONFIDE_BONUS = 0.6
+	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
+	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
 	const ROLE_NEWS_LAST_DAY = 2
 	## What an evil listener makes of a peer's role hint / claim (a target worth watching).
@@ -437,6 +444,8 @@ class Social:
 	const TAVERN_UNHEARD_SPOKEN_WEIGHT = 4.0
 	const TAVERN_BACKFILL_PROFILE_WEIGHT = 1.2
 	const TAVERN_HEARD_SPOKEN_WEIGHT = 0.2
+	## Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8).
+	const TAVERN_YESTERDAY_MULT = 0.6
 	## Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller
 	## below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener
 	## trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing.
