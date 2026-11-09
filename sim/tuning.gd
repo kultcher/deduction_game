@@ -407,13 +407,27 @@ class Social:
 	const SHARE_ROLE_HINT_BOND_MIN = 0.45  # was 0.55 (Nov 5: acquaintances, not only friends)
 	const SHARE_ROLE_HINT_OPENNESS_SCALE = 0.9
 	const SHARE_ROLE_HINT_BOND_OFFSET = 0.15
-	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.2
+	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.35  # was 0.2 (Nov 8: 2-3 hints a game)
 	const SHARE_ROLE_CLAIM_BOND_MIN = 0.58  # was 0.68 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN = 0.5  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURE_MIN = 0.55
 	const SHARE_ROLE_CLAIM_SLOPE = 1.8
 	const SHARE_ROLE_CLAIM_BOND_FLOOR = 0.45  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_MIN_WEIGHT = 0.05
+	## Day-1 confidant (Nov 8, BotC's "find one person to trust"): until they've told someone,
+	## and only on day 1, an NPC will tell a less-trusted listener their gift, and is likelier
+	## to. Target: once or twice a game. The pair warms to each other.
+	const SHARE_ROLE_CONFIDE_BONUS = 0.15        # added to the gift roll's openness
+	const CONFIDE_MAX_PER_GAME = 2
+	## The gift topic in NPC talk (Social._gift_disclosure, Nov 8): how often it comes up, and
+	## the roll's spread (the Demonologist's version uses a daily mood of +-OPENNESS_JITTER).
+	const SHARE_GIFT_TOPIC_BASE = 0.3
+	const SHARE_GIFT_TOPIC_OPENNESS = 0.5
+	const SHARE_GIFT_TOPIC_GOSSIP = 0.2
+	const SHARE_GIFT_JITTER = 0.2
+	const SHARE_GIFT_PEER_OFFSET = -0.1   # a touch more guarded with a neighbour than with the Demonologist
+	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
+	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
 	const ROLE_NEWS_LAST_DAY = 2
 	## What an evil listener makes of a peer's role hint / claim (a target worth watching).
@@ -437,6 +451,8 @@ class Social:
 	const TAVERN_UNHEARD_SPOKEN_WEIGHT = 4.0
 	const TAVERN_BACKFILL_PROFILE_WEIGHT = 1.2
 	const TAVERN_HEARD_SPOKEN_WEIGHT = 0.2
+	## Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8).
+	const TAVERN_YESTERDAY_MULT = 0.6
 	## Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller
 	## below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener
 	## trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing.

@@ -51,6 +51,17 @@ func _run() -> void:
 		_check(block.encloses(street) and street.end.y - 90.0 >= block.position.y,
 			"%s street standees fit inside the %s block" % [b, b])
 
+	# The map layout scene (ui/map_layout/map_layout.tscn, edited by hand in the editor):
+	# every block keeps a cottage spot per resident of the biggest town (10 people: 3 a
+	# block), inside the block; every place on the map has a lot.
+	for b in MapView.MAP_BLOCKS:
+		var spots: Array = MapView.MAP_COTTAGES.get(b, [])
+		_check(spots.size() >= 3, "%s has a cottage spot for each of its residents (%d)" % [b, spots.size()])
+		_check(spots.all(func(c): return MapView.MAP_BLOCKS[b].has_point(Vector2(c[0], c[1]))), "%s's cottage spots are inside the block" % b)
+		_check(MapView.MAP_SIGNS.has(b) and MapView.MAP_STREETS.has(b), "%s has a sign and a street" % b)
+	for l in MapView.PAPER_ART:
+		_check(MapView.MAP_PADS.has(l), "%s has a lot on the map layout" % l)
+
 	# The view swaps between the room and the blurred map.
 	var view = ConversationView.new()
 	root.add_child(view)

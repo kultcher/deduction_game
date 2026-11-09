@@ -42,6 +42,8 @@ var map
 var map_stage: Control
 var conversation_view
 var conversation_show_map = false
+var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
+var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
 ## Crime-scene traces from the last search, shown one at a time in the conversation view.
 var inspect_pages: Array = []
@@ -549,25 +551,25 @@ func _build_roles(embedded: bool) -> void:
 	for ch in roles_box.get_children():
 		roles_box.remove_child(ch)
 		ch.queue_free()
-	var cols: BoxContainer = VBoxContainer.new() if embedded else HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 18)
-	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	roles_box.add_child(cols)
-	var left = VBoxContainer.new()
-	var right = VBoxContainer.new()
-	for c in [left, right]:
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		c.add_theme_constant_override("separation", 6)
-		cols.add_child(c)
-	_roles_group(left, "Gifts of the town", g.w.case_script.town)
-	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], g.w.case_script.demons + g.w.case_script.minions)
+	# Four stacked sections, as on a Clocktower script sheet: gifts, secrets, minions, demons.
+	# Each lays its roles out in two columns in the window, one when pinned beside the profile.
+	var sections = VBoxContainer.new()
+	sections.name = "ScriptSections"
+	sections.add_theme_constant_override("separation", 14)
+	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	roles_box.add_child(sections)
+	var sc = g.w.case_script
+	var minions: int = g.w.minion_ids.size()
+	_roles_group(sections, "Gifts of the town", sc.town, "good", embedded)
+	_roles_group(sections, "Secrets: one in play, on top of a gift", sc.secrets, "secret", embedded)
+	_roles_group(sections, "Minions: %d in play" % minions, sc.minions, "evil", embedded)
+	var demon_box = _roles_group(sections, "Demon" if sc.demons.size() == 1 else "Demons: one in play", sc.demons, "evil", embedded)
 	var night_rule = Label.new()
 	night_rule.name = "DemonNightRule"
 	night_rule.text = C.DEMON_NIGHT_RULE
 	night_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	night_rule.add_theme_color_override("font_color", UITheme.color("ink"))
-	right.add_child(night_rule)
-	_roles_group(right, "Secrets: one in play, on top of a gift", g.w.case_script.secrets)
+	demon_box.add_child(night_rule)
 	var summary = Label.new()
 	summary.name = "SetupSummary"
 	summary.text = setup_summary(g.w.n_npcs)
@@ -578,24 +580,65 @@ func _build_roles(embedded: bool) -> void:
 	bottom_pad.custom_minimum_size = Vector2(0, 12)
 	roles_box.add_child(bottom_pad)
 
-func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
-	var ink = UITheme.color("ink")
+## Team colours on the script sheet: blue gifts, violet secrets, red for the demon's side.
+const ROLE_TEAM_COLOR = {"good": "role_good_ink", "secret": "role_secret_ink", "evil": "role_evil_ink"}
+
+## Recolours a role icon's dark ink to its team colour, keeping the gold and paper fills.
+static var _icon_shader: Shader = null
+static func _team_icon_material(team_color: Color) -> ShaderMaterial:
+	if _icon_shader == null:
+		_icon_shader = Shader.new()
+		_icon_shader.code = """shader_type canvas_item;
+uniform vec4 tint : source_color;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+	float ink = 1.0 - smoothstep(0.18, 0.42, lum);
+	COLOR = vec4(mix(c.rgb, tint.rgb, ink), c.a);
+}"""
+	var m = ShaderMaterial.new()
+	m.shader = _icon_shader
+	m.set_shader_parameter("tint", team_color)
+	return m
+
+## One section: its heading, then its roles in a grid. Returns the section box.
+func _roles_group(parent: Container, title: String, roles: Array, team: String, embedded: bool) -> VBoxContainer:
+	var team_color: Color = UITheme.color(ROLE_TEAM_COLOR[team])
+	var box = VBoxContainer.new()
+	box.name = "Section_" + team
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 6)
+	parent.add_child(box)
 	var h = Label.new()
 	h.text = title
 	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	h.add_theme_font_size_override("font_size", 18)
-	h.add_theme_color_override("font_color", UITheme.color("red"))
+	h.add_theme_color_override("font_color", team_color)
 	box.add_child(h)
+	var rule = ColorRect.new()
+	rule.color = Color(team_color, 0.45)
+	rule.custom_minimum_size = Vector2(0, 2)
+	box.add_child(rule)
+	var grid = GridContainer.new()
+	grid.columns = 1 if embedded else 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 10)
+	box.add_child(grid)
+	var icon_material := _team_icon_material(team_color)
 	for r in roles:
 		var row = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		box.add_child(row)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(row)
 		var ic = TextureRect.new()
 		var rt = UITheme.tex("ui/roles/" + r, 0.1)
 		ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.1)  # icons for new gifts still to come
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.custom_minimum_size = Vector2(34, 34)
+		ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		ic.material = icon_material
 		row.add_child(ic)
 		var col = VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -604,7 +647,7 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 		var nm = Label.new()
 		nm.text = C.role_name(r)
 		nm.add_theme_font_size_override("font_size", 16)
-		nm.add_theme_color_override("font_color", ink)
+		nm.add_theme_color_override("font_color", team_color)
 		col.add_child(nm)
 		var d = Label.new()
 		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
@@ -623,6 +666,7 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 			c2.add_theme_font_size_override("font_size", 13)
 			c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
 			col.add_child(c2)
+	return box
 
 enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE }
 
@@ -686,10 +730,34 @@ func _run(cmd: String) -> void:
 		_print(g.command(cmd))   # refused; no new events
 		return
 	var out: String = g.command(cmd)
+	# A conversation that ran out of questions ended the phase too: what comes after it (the
+	# next phase's header, the meeting's headline, who was silenced) waits in the log until
+	# the player leaves the conversation, so the log never runs ahead of the scene.
+	var verb0: String = cmd.strip_edges().get_slice(" ", 0).to_lower()
+	var talk_ran_out: bool = previous_state == "talk" and g.state != "talk" and not verb0 in ["bye", "leave", "done"]
+	var deferred_meeting: bool = false
+	if talk_ran_out:
+		var evs: Array = g.last_events
+		var cut: int = -1
+		for i in range(evs.size()):
+			if str(evs[i].get("k", "")) in ["header", "headline"]:
+				cut = i
+				break
+		if cut > 0:
+			_deferred_log_events = evs.slice(cut)
+			if g.state in ["meeting", "nomination"]:
+				# The meeting itself waits too: the stage takes it up when they leave.
+				deferred_meeting = true
+				_deferred_meeting_events = evs.slice(cut)
+				_deferred_log_events = []
+				_print(Game.render(evs.slice(0, cut)))
+			else:
+				out = Game.render(evs.slice(0, cut))
 	# What's said at the meeting reaches the log as the stage shows it (see _log_events).
-	if not _meeting_owns_log(previous_state):
+	if not deferred_meeting and not _meeting_owns_log(previous_state):
 		_print(out)
-	_capture_meeting(previous_state)
+	if not deferred_meeting:
+		_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
 	if not conversation_finished:
@@ -747,7 +815,11 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 func _capture_scene_search(cmd: String) -> void:
 	inspect_pages.clear()
 	inspect_index = 0
-	if cmd.strip_edges().get_slice(" ", 0).to_lower() not in ["search", "s"]:
+	var verb: String = cmd.strip_edges().get_slice(" ", 0).to_lower()
+	if verb in ["gossip", "records", "register", "town_hall", "inspect"]:
+		_capture_place_reading(verb)
+		return
+	if verb not in ["search", "s"]:
 		return
 	var prose: Array = []
 	var cards: Array = []
@@ -770,9 +842,32 @@ func _capture_scene_search(cmd: String) -> void:
 	if not inspect_pages.is_empty():
 		_show_inspect_page()
 
+## Tavern gossip and Town Hall records come up in the conversation view over the building's
+## interior, like a crime-scene trace: the building where the portrait goes, what you learned
+## in the speech bubble. The log keeps the same text. Only the command's own narration, up to
+## the next phase's header (gossip ends the evening), goes on the page.
+func _capture_place_reading(verb: String) -> void:
+	if g.last_events.any(func(e): return e.get("k", "") == "error"):
+		return
+	var text_parts: Array = []
+	for e in g.last_events:
+		var k: String = str(e.get("k", ""))
+		if k in ["header", "headline"]:
+			break
+		if k == "narration" and str(e.get("text", "")).strip_edges() != "":
+			text_parts.append(str(e.get("text", "")))
+	if text_parts.is_empty():
+		return
+	var gossip: bool = verb == "gossip"
+	var loc: String = "tavern" if gossip else "town_hall"
+	var title: String = "The Drowned Lamb · evening gossip" if gossip else "The Town Hall · parish records"
+	inspect_pages.append({"title": title, "texture": UITheme.tex("art/" + MapView.PAPER_ART.get(loc, ""), 0.5), "text": "\n".join(PackedStringArray(text_parts)),
+		"loc": loc, "button": "Done"})
+	_show_inspect_page()
+
 func _show_inspect_page() -> void:
 	var page: Dictionary = inspect_pages[inspect_index]
-	conversation_view.set_location(g.loc)
+	conversation_view.set_location(str(page.get("loc", g.loc)))
 	conversation_view.show_item(page.title, page.texture, page.text)
 
 func _inspect_next() -> void:
@@ -790,6 +885,15 @@ func _inspect_next() -> void:
 
 func _leave_finished_conversation() -> void:
 	conversation_finished = false
+	if not _deferred_log_events.is_empty():
+		_log_events(_deferred_log_events)
+		_deferred_log_events = []
+	if not _deferred_meeting_events.is_empty():
+		var evs: Array = _deferred_meeting_events
+		_deferred_meeting_events = []
+		if g.state in ["meeting", "nomination"]:
+			meeting_view.arrive()
+			meeting_view.consume(evs)
 	_consume_headlines()
 	if g.meeting_streaming():
 		_stream_meeting()
@@ -968,8 +1072,9 @@ func _refresh_actions() -> void:
 		return
 	if not inspect_pages.is_empty():
 		var more: bool = inspect_index < inspect_pages.size() - 1
-		_button(conversation_view.controls, "Next trace" if more else "Done", _inspect_next)
-		action_title.text = "Reading the traces"
+		var page_now: Dictionary = inspect_pages[inspect_index]
+		_button(conversation_view.controls, "Next trace" if more else str(page_now.get("button", "Done")), _inspect_next)
+		action_title.text = "Reading the traces" if not page_now.has("loc") else ("Listening to the gossip" if page_now.loc == "tavern" else "Reading the records")
 		_hint("Finish reading before you move on.")
 		return
 	if _presenting():
@@ -1009,8 +1114,10 @@ func _refresh_actions() -> void:
 				actions = lower_actions
 		"meeting":
 			action_title.text = "Day %d: the town meeting" % w.day
-			if not g.presented_today and g.board.any(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false)):
-				_button(actions, "Show your ward or scorched sigil…", func(): _card_picker("Show the town a protection receipt", func(c): return c.kind in ["ward", "scorched_sigil"], func(num, _x): _run("present %d" % num), false))
+			# Wards and scorched sigils are shown, not argued: one button each, free of the floor.
+			for pc in g.board.filter(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false) and not g.shown_protection.has(int(c.n))):
+				var pnum: int = int(pc.n)
+				_button(actions, "Show the town %s" % g.protection_label(pc), func(): _run("present %d" % pnum))
 			_map_toggle()
 			_button(actions, "Let the town speak (wait)", func(): _run("wait"))
 			if not g.presented_today:

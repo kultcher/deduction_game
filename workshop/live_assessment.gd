@@ -121,6 +121,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"script_minions": snapshot.rules.get("minions", []).duplicate(),
+		"script_demons": snapshot.rules.get("demons", ["demon"]).duplicate(),
 		"timeline": History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
@@ -923,7 +924,7 @@ static func _registrar_roles_valid(value) -> bool:
 	var minion_cnt: int = 0
 	for r in value:
 		var rs: String = str(r)
-		if seen.has(rs) or rs == "registrar" or rs == "demon":
+		if seen.has(rs) or rs == "registrar" or C.is_demon(rs):
 			return false
 		if rs in C.MINION_ROLES:
 			minion_cnt += 1

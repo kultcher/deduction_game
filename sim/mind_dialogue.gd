@@ -527,7 +527,7 @@ static func _day_roll(id: String, day: int, salt: int) -> float:
 ## bluff walks at night too; they ask for the ward instead, if it's still to give.
 static func protection_kind(w, n) -> String:
 	if n.is_evil():
-		var walks: bool = n.role == "demon" or C.ROLES[n.role].get("night_walk", false)
+		var walks: bool = (C.is_demon(n.role) and not C.is_day_demon(n.role)) or C.ROLES[n.role].get("night_walk", false)
 		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
 		if walks and not (bluff != "" and C.ROLES[bluff].get("night_walk", false)):
 			return "ward" if w.tools.get("ward", 0) > 0 else ""

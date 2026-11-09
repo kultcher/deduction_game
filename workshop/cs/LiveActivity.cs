@@ -173,6 +173,10 @@ internal static class LiveActivityKernel
         public double[] ProfConverted = Array.Empty<double>();
         public SceneTableData[] SceneTables = Array.Empty<SceneTableData>();
         public ScionSplitData[] ScionSplits = Array.Empty<ScionSplitData>();
+        /// <summary>Share of the script's possible demons that never walk at night (0 = walking only).
+        /// ProfDemon is already mixed (it's linear in the one demon's profile); the Scion splits keep
+        /// walking profiles and are mixed after multiplying pre and post, over one shared type.</summary>
+        public double DayDemonShare;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1479,6 +1483,7 @@ internal static class LiveActivityKernel
     ///   Then for each scion split:
     ///     PreGood[N], PreMinion[N], PreDemon[N], PostGood[N], PostMinion[N], PostDemon[N],
     ///     followed by PreScenes doubles and PostScenes doubles using the exact same scene layout!
+    ///   Then, optionally, one trailing double: DayDemonShare (absent = 0).
     /// </summary>
     public static int RegisterCompiledFactor(int[] metaInts, double[] metaDoubles)
     {
@@ -1539,6 +1544,12 @@ internal static class LiveActivityKernel
                 split.PostScenes[qs] = ReadSceneTable(n, metaInts, ref iPos, metaDoubles, ref dPos);
             }
             factor.ScionSplits[k] = split;
+        }
+
+        // Optional trailing double: the day-killer share. Absent means 0, so old packings read the same.
+        if (dPos < metaDoubles.Length)
+        {
+            factor.DayDemonShare = metaDoubles[dPos++];
         }
 
         return SolverContext.RegisterMovementFactor(factor);
@@ -1659,7 +1670,23 @@ internal static class LiveActivityKernel
                     split.PostScenes,
                     factor.TracePasserEps,
                     factor.TraceUnknownWeight);
-                return 0.5 * direct + 0.5 * (preS * postS);
+                double succession = preS * postS;
+                double share = factor.DayDemonShare;
+                if (share > 0.0)
+                {
+                    // The demon's type is one hidden fact for the whole case, so mix the
+                    // product: (1-s)*Wpre*Wpost + s*Dpre*Dpost, where a day demon moves like a minion.
+                    double preDay = BaseScore(
+                        factor.PeopleCount, evil, convIdx, execIdx, false,
+                        split.PreGood, split.PreMinion, split.PreMinion, Array.Empty<double>(),
+                        split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+                    double postDay = BaseScore(
+                        factor.PeopleCount, evil, convIdx, dIdx, false,
+                        split.PostGood, split.PostMinion, split.PostMinion, Array.Empty<double>(),
+                        split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+                    succession = (1.0 - share) * succession + share * (preDay * postDay);
+                }
+                return 0.5 * direct + 0.5 * succession;
             }
         }
         return direct;

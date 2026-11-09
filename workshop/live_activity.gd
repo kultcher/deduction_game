@@ -464,6 +464,8 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
+	if day_demon_share(view) > 0.0:
+		input.append({"day_demon_share": day_demon_share(view)})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -496,6 +498,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		DEMON_DETOUR, packed_checked.ints, packed_checked.doubles
 	)
 	var n: int = ids.size()
+	var share: float = day_demon_share(view)
 	var stride: int = 4 if has_curse else 3
 	var profiles: Array = []
 	profiles.resize(n)
@@ -504,7 +507,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		var p_dict: Dictionary = {
 			"good": raw_prof[b],
 			"minion": raw_prof[b + 1],
-			"demon": raw_prof[b + 2],
+			"demon": mix_demon(raw_prof[b + 2], raw_prof[b + 1], share),
 		}
 		if has_curse:
 			p_dict["converted"] = raw_prof[b + 3]
@@ -516,6 +519,10 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
 	result[0]["relationships"] = relationships(view, cards)
+	if share > 0.0:
+		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
+		# pre x post product over the one shared type (see ScoreWorldCore).
+		result[0]["day_demon_share"] = share
 	return result
 
 static func _append_scene_packed(n: int, st: Dictionary, meta_ints: PackedInt32Array, meta_doubles: PackedFloat64Array) -> void:
@@ -552,7 +559,9 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	if _mru_epoch != epoch:
 		_factor_handles.clear()
 		_mru_epoch = epoch
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])])
+	var day_share: float = float(factor.get("day_demon_share", 0.0))
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -614,6 +623,9 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 			_append_scene_packed(n, st, meta_ints, meta_doubles)
 		for st in post_sc:
 			_append_scene_packed(n, st, meta_ints, meta_doubles)
+	if day_share > 0.0:
+		# Trailing, so a share of 0 packs exactly as before.
+		meta_doubles.append(day_share)
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.register_factor", pack_u)
@@ -668,11 +680,19 @@ static func _scores_dispatch(universe: Array, factor: Dictionary, u_handle: int,
 
 static func _likelihood(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	if not SolverBackend.profiling_enabled:
-		return _likelihood_dispatch(view, cards, person, alignment)
+		return _likelihood_typed(view, cards, person, alignment)
 	var _st: int = SolverBackend.begin_stage("live_activity")
-	var _res: float = _likelihood_dispatch(view, cards, person, alignment)
+	var _res: float = _likelihood_typed(view, cards, person, alignment)
 	SolverBackend.end_stage(_st)
 	return _res
+
+## The demon's likelihood mixes over demon types (mix_demon); every other alignment is as before.
+static func _likelihood_typed(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
+	var walking: float = _likelihood_dispatch(view, cards, person, alignment)
+	var share: float = day_demon_share(view) if alignment == "demon" else 0.0
+	if share <= 0.0:
+		return walking
+	return mix_demon(walking, _likelihood_dispatch(view, cards, person, "minion"), share)
 
 static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Dictionary, alignment: String) -> float:
 	var ids: Array = view.people.map(func(p): return p.id)
@@ -754,6 +774,32 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 				weight *= sum
 			total += weight
 	return total
+
+## The share of the script's possible demons that never walk at night (the day-killer,
+## docs/demon_types_plan.md). 0 on every script the game deals today, which leaves every
+## movement likelihood exactly as before.
+static func day_demon_share(view: Dictionary) -> float:
+	var demons: Array = view.get("script_demons", [])
+	if demons.is_empty():
+		return 0.0
+	var day: int = 0
+	for d in demons:
+		if C.is_day_demon(str(d)):
+			day += 1
+	return float(day) / float(demons.size())
+
+## The demon slot's movement likelihood, mixed over the script's demon types. A day-killer
+## kills without walking, so at night it's out like a minion. The type is one hidden fact for
+## the whole case, and in any world only the demon's own movement factor depends on it, so
+## mixing that person's whole likelihood (every night at once) is exact:
+##   sum_t pi_t * prod_i L_i^t = prod_{i != demon} L_i * (pi_walk * L_walk + pi_day * L_still).
+## Mixing night by night instead would act as if the type were redrawn each night, and
+## evidence about it wouldn't build up. Trace and scene factors don't change: either demon
+## is at the victim's house. Returns `walking` untouched when the share is 0.
+static func mix_demon(walking: float, still: float, share: float) -> float:
+	if share <= 0.0:
+		return walking
+	return walking * (1.0 - share) + still * share
 
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
 	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}

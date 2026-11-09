@@ -22,6 +22,13 @@ static func script_minions(g) -> Array:
 	return (sc.minions if sc != null else ScriptDef.default_minions()).duplicate()
 
 
+## The demon types this case's script may deal: the solver mixes over them where they
+## behave differently (docs/demon_types_plan.md). The Default script deals the Demon only.
+static func script_demons(g) -> Array:
+	var sc = g.w.case_script
+	return (sc.demons if sc != null and not sc.demons.is_empty() else ["demon"]).duplicate()
+
+
 static func capture(g, selected: Array, listener_id: String = "", venue: String = "private", cover_mind = null) -> Dictionary:
 	var now = {"day": g.w.day, "phase": g._phase_now()}
 	var input = {"case_id": "case:%d:%d" % [g.w.seed_value, g.w.n_npcs], "now": now, "venue": venue,
@@ -29,7 +36,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
 			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g),
-			"minions": script_minions(g)}}
+			"minions": script_minions(g), "demons": script_demons(g)}}
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})
 	for n in g.w.npcs:
