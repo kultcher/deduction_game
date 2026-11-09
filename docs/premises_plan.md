@@ -531,14 +531,33 @@ solver or C# moved. The code is `sim/recency.gd`.
   seven minds in seeds 900 and 1001 carried day-3 attention into day 4, off by up to 0.21).
   A mind that already refreshed that morning hits its cache. A topic raised mid-day reaches
   each mind at its next refresh, which in practice is the meeting's own hearing.
-- **Watch: saturation.** Before the decay fix, seed 900 had five people at 1.0 on day 3.
-  With it, seeds 900, 1001 and 1002 have at most three at the cap on any day (usually the
-  nominee and one or two accused) and the rest fading 0.5, 0.25. If Tally's A/B still shows
-  the topic ranking nobody above anybody, the next lever is a lower cap or normalising by
-  the day's busiest subject.
-- **Not yet:** evil doesn't steer the topic (it plugs into `Recency.topic`), and reasons
-  given in private talks or in defences don't recall cards (only nominations and public
-  accusations do).
+- **Evil already steers the topic** (Nov 8, with Michael). The topic comes from public acts
+  whoever makes them, so evil steers it with what it already does at the meeting:
+  - nominating or accusing the scapegoat puts them on the topic (1.0 or 0.6), so every card
+    about them gains attention, planted readings included;
+  - an evil nominator's stated bluff reason recalls its cards (`recall_cited`), so a planted
+    reading stays fresh as long as evil keeps citing it;
+  - defending a teammate puts the teammate on the topic (0.3) and draws attention to the
+    cards against them: a realistic price for defending your own.
+- **What nobody can do yet: divert attention.** Topic weights are absolute, not shares of
+  the day's attention. Accusing three others doesn't lower the topic weight of a teammate
+  already under fire, so misdirection ("bury the real suspect under a louder accusation")
+  doesn't work through attention.
+- **Watch: saturation, and the lever it decides.** Before the decay fix, seed 900 had five
+  people at 1.0 on day 3. With it, seeds 900, 1001 and 1002 have at most three at the cap
+  on any day (usually the nominee and one or two accused), the rest fading 0.5, 0.25. If
+  Tally's A/B still shows the topic ranking nobody above anybody, there are two levers, and
+  choosing between them is a design call:
+  1. **Lower the cap.** It fixes saturation and changes nothing else: attention still
+     can't be diverted.
+  2. **Scale by the day's busiest subject** (each person's weight over the highest that
+     day). It fixes saturation and creates misdirection for everyone: evil piling onto
+     the scapegoat shrinks a teammate's relative share, and a good player's loud case
+     shrinks everyone else's. Realistic, but it hands evil a lever it isn't tuned for.
+     Once it's in, deliberate evil timing (pushing the scapegoat on the day a teammate is
+     under suspicion) becomes worth building; before it, there's nothing to divert.
+- **Not yet:** reasons given in private talks or in defences don't recall cards (only
+  nominations and public accusations do).
 - **Measure:** its own A/B (Tally): long games (day 5+), "identified but lost", and how long
   a good day-1 read survives. Expected to make the town somewhat worse in long games.
 
