@@ -199,3 +199,43 @@ good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
 - The New Case / editor UI showing both demons. The script view already lists every
   demon on the script.
 - Tuning: the hex odds and the floor are first guesses.
+
+### What the town knows about places (Nov 9, with Michael)
+
+**Haunts: regulars know regulars.**
+- In conversation, NPCs know everyone's true haunts. They point the Demonologist at
+  them, tell them outright, and fill them in through tavern gossip.
+- Their reasoning knows less. Each NPC knows its own haunts, plus anyone's haunt that is its
+  workplace or one of its own haunts (`WorkshopBridge.known_haunts` →
+  `view.regular_haunts`).
+- That knowledge is used by the day-presence prior, the Hexer's victim places, the trace
+  profiles and the movement trace weight. It never enters the ledger or citations. The
+  Demonologist's own view gets none.
+
+**The day log and the Whereabouts solver.**
+- **The leak:** listeners used to get the Demonologist's full watch record for free. Now only
+  the Demonologist's own view carries `view.watched`.
+- **The day log:** each watch adds to a hidden `watch_log` receipt, one per day
+  (`game_day_night._record_day_log`). It holds who was at each public place of the watched
+  block, each phase, empty places included. A listener hears it only when it's cited, as
+  one card (one slot in its reading budget). Day presence reads logs from the considered
+  cards, so the budget applies.
+- **The solver:** `workshop/location_solver.gd` answers one question:
+  - a demon death: who was at the victim's places that day;
+  - a silencing: who was out on the victim's block;
+  - a place on a day.
+
+  For each person and phase it shows what's known (seen, reported by someone, at work, off
+  the watched block, free time). It sorts people into fits / unknown / ruled out, using day
+  presence's odds; unknown is never backfilled.
+- **The UI:** the Case Board's Whereabouts panel (`ui/location_solver_panel.gd`; also
+  reached from the Workshop's "Whereabouts" button) commits a Whereabouts node. The node
+  cites the day's log plus the NPC reports that bear on the answer.
+- **Tests:** `test_location_solver` (29 checks, including the panel and a screenshot via
+  `--screenshot PATH`).
+- **Not yet:**
+  - The bot never builds a Whereabouts node, so in autoplay the town no longer hears the
+    bot's watches. Golden is unchanged.
+  - The per-person daytime sighting cards are still on the board. Folding them into the
+    day log is a possible UI follow-up.
+

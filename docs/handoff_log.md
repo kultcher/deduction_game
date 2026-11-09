@@ -27,6 +27,24 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
+
+- **Status:** green.
+  - 130/130 suites pass.
+  - Golden is identical to `baseline_db5b24e`.
+- **Haunts:** NPC reasoning knows the haunts that fall on its own spots
+  (`view.regular_haunts`), not the town's gossip.
+- **The watch leak is closed:** listeners hear the player's watches only through a cited
+  day log (`watch_log` receipt).
+- **New:** the location solver (`workshop/location_solver.gd`), the Case Board Whereabouts
+  panel, and the Workshop node.
+- **Details:** `docs/demon_types_plan.md`, "What the town knows about places".
+- **Next:**
+  - Michael plays it.
+  - The bot could cite day logs (a follow-up).
+
+---
+
 ## 2026-11-09, Claude-Bailiff: demon types step 3, the Hexer (`claude/day-killer`, held draft)
 
 - **Base:** `claude/day-presence` (#107) plus main at `0d10089`. The PR carries #107 too,
