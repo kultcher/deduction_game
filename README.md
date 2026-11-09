@@ -171,8 +171,8 @@ add the Augur, Chronicler, Confessor, Executor, Magistrate, Monitor and Registra
 
 - **Poisoner:** each night one person's gift fails or lies until the next night.
 - **Breathstealer:** once a day silences someone on its block from that evening's meeting
-  to the next; the silenced can't claim, testify, nominate or talk with you (they still
-  vote).
+  to the next; the silenced can't claim, testify, nominate or answer you (they still
+  vote, and a card you show them still moves their beliefs).
 - **Revenant:** hides a totem somewhere. Hanged with a totem hidden, it turns a good
   yes-voter evil. `search` at the totem's location burns it.
 - **Scion:** becomes the demon if the demon is executed while five or more are alive.

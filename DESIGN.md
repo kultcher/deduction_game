@@ -284,7 +284,8 @@ Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept 
 | Minion | Ability |
 |---|---|
 | Poisoner | Each night poisons one person: their gift fails or lies until the next night. Out at night. With no Poisoner in play the demon is the only evil out at night. |
-| Breathstealer | Once a day (any day phase, likelier later), silences someone on the same block, wherever they are on it. It must be out, not at home. The silence takes hold at that evening's meeting and lasts until the next evening. The silenced can't claim, testify, accuse, nominate, defend, talk with you or chat with NPCs; they can still vote. Never the same person twice running. Picks the most dangerous voice. |
+| Breathstealer | Once a day (any day phase, likelier later), silences someone on the same block, wherever they are on it. It must be out, not at home. The silence takes hold at that evening's meeting and lasts until the next evening. The silenced can't claim, testify, accuse, nominate, defend, answer you or chat with NPCs; they can still vote. You can still call on them: asking costs
+nothing, and a card shown to them costs a question and moves their beliefs without a reply. Never the same person twice running. Picks the most dangerous voice. |
 | Brute (experimental: not dealt automatically until the solver models it) | While alive, hunts and kills in place of the demon, dropping two traces; the demon stays home. Registers as a minion, not the demon. |
 | Revenant | Hides a totem at a location it visits, on any day that began with no totem in play. If hanged with a totem hidden (and not poisoned), a random good yes-voter turns evil; the town is warned. `search` at the totem's location burns it (it's caked with the Revenant's home material, a lead). Found before the hanging: no curse. Found after: the turned soul is good again. Teammates often vote to let a Revenant with a totem hang. |
 | Scion | If the demon is executed while five or more are alive, the Scion becomes the demon (no double kill). |
@@ -385,7 +386,7 @@ scouting tool). Then one action:
 - **Search** the location: crime scenes give the traces; anywhere can turn up drops or a
   totem.
 - **Gossip** (the tavern, Evening only): the evening's NPC conversations finish, then you
-  overhear 3–5 anonymised items from the day's shares, backfilled with unlearned haunts and
+  overhear 3–5 anonymised items from the day's shares (yesterday's too, at 0.6× weight), backfilled with unlearned haunts and
   public bonds (never the Secret Lovers). These become **rumour** cards: dotted on the
   timeline, not pressable and not usable in the Workshop.
 - **Town Hall records** (Morning or Afternoon, 3 times a case): the ledgers name two gifts,
@@ -844,7 +845,8 @@ been known to sleepwalk"; two claimants prove a liar.
   an unnamed source. **[open]**
 - **NPC-to-NPC credibility:** split NPC-to-NPC trust into liking and believing, as the
   player's is. **[open]**
-- **NPC memory and recency bias.** **[open]**
+- **NPC memory and recency bias.** Attention-level recency is on main (#96; `docs/premises_plan.md`,
+  "Recency as built"). **[open]**
 
 **Social retuning** **[tentative]** (candidates for one unified retuning proposal; details
 in BACKLOG): Privacy without compounding trust penalties; evidence building NPC-to-NPC
@@ -1051,13 +1053,15 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   Close button. **Case notes** and **Roles** (every gift on the script, its icon and who
   has claimed it) are movable windows from either screen.
 - **Painted map** (`ui/map_view.gd`): painted block bases, building sprites with signs
-  (the Town Hall third on the Square), cottages with the owner's colour at the door
-  (crossed out as crime scenes), roads with lamps, paper standees (busy ones marked, your
+  (the Town Hall third on the Square), each townsperson's own cottage (the owner's colour at the
+  door where there's no art; crossed out as crime scenes), roads with lamps, paper standees (busy ones marked, your
   conversation partner framed gold), night tint, zoom to a block. Clicking a townsfolk row
-  highlights their home, workplace, visible icon and known haunts.
+  highlights their home, workplace, visible icon and known haunts. Block areas, streets, signs,
+  lots and cottage spots live in the editable scene `ui/map_layout/map_layout.tscn`.
 - **Daytime conversations** (`ui/day_conversation_view.gd`): a visual-novel view with the
   speaker's portrait in five expressions (neutral, warm, harsh, concerned, sorrowful) and
-  paced lines.
+  paced lines. Talks and searches in a building or the Town Hall sit in its interior; homes and
+  crime scenes keep the blurred map.
 - **Headline notices** (`ui/headline_overlay.gd`): dawn, nightfall, deaths, nominations,
   executions, curses, burned totems and the end of the case, shown one at a time over the
   game; a click skips.

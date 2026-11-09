@@ -495,8 +495,8 @@ Candidates for a unified retuning proposal, not approved changes.
   yet. Each needs a hint package and solver support before it goes live. [open]
 
 - **Scripts, follow-ups** (script builder plan, Nov 4):
-  - **Multiple demon types:** code across the sim checks `role == "demon"`; a second
-    demon type needs an `is_demon` helper and solver support.
+  - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
+    solver's demon-type mix); the day-killer itself isn't dealt yet (`docs/demon_types_plan.md`).
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
     roster outgrows one script.
   - **Remember the last script** between runs (session-only now).
@@ -541,7 +541,7 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Larger towns (12–15):** only after the core loop works at 7/10. [watch]
 
-- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on PR #96,
+- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on main (PR #96, Nov 9),
   `docs/premises_plan.md` "Recency as built", including NPCs' spoken reasons and how evil steers the topic; diverting attention waits on the saturation call]
 
 - **Dead NPCs:** no ghost votes for now; keep the door open (a final-day Séance vote).

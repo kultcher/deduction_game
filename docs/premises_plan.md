@@ -25,8 +25,8 @@ the listener's pinned own readings.
 Steps 1–3 are on main, with step 3's speed fixes (#99, #100). Tally's A/B (Nov 7, Project
 `claude/premises-ab-2026-11-07.md`) found them flat on outcomes with the M4 bot, which never
 files suspicious or secret premises or challenges.
-**Recency and the headline fix (Nov 6, Claude-Quill, PR #96, refreshed onto main Nov 8):**
-built; see "Recency as built" and "The headline blend" below. Its own A/B, separate from
+**Recency and the headline fix (Nov 6, Claude-Quill, PR #96, merged Nov 9):**
+on main; see "Recency as built" and "The headline blend" below. Its own A/B, separate from
 steps 1–3.
 **Deferred (Michael, Nov 8):** step 4 (Minion-specific reads: Scion, Revenant; movement
 premises). **Tabled (Nov 6):** assumptions as conditional beliefs (proposal 6).

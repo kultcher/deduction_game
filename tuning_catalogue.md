@@ -254,16 +254,25 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_SIGHTING_SCENE_BONUS` | `0.4` |  | `sim/social.gd` |
 | `SHARE_ALIBI_WEIGHT` | `0.22` |  | `sim/social.gd` |
 | `MUDDLER_CHANCE` | `0.65` |  | `sim/muddler.gd` |
-| `SHARE_ROLE_HINT_BOND_MIN` | `0.45` | was 0.55 (Nov 5: acquaintances, not only friends) | `sim/social.gd` |
-| `SHARE_ROLE_HINT_OPENNESS_SCALE` | `0.9` |  | `sim/social.gd` |
-| `SHARE_ROLE_HINT_BOND_OFFSET` | `0.15` |  | `sim/social.gd` |
-| `SHARE_ROLE_HINT_GOSSIP_SCALE` | `0.2` |  | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_BOND_MIN` | `0.58` | was 0.68 (Nov 5) | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN` | `0.5` | was 0.55 (Nov 5) | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_PRESSURE_MIN` | `0.55` |  | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_SLOPE` | `1.8` |  | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_BOND_FLOOR` | `0.45` | was 0.55 (Nov 5) | `sim/social.gd` |
-| `SHARE_ROLE_CLAIM_MIN_WEIGHT` | `0.05` |  | `sim/social.gd` |
+| `SHARE_ROLE_HINT_BOND_MIN` | `0.45` | was 0.55 (Nov 5: acquaintances, not only friends) | (unused) |
+| `SHARE_ROLE_HINT_OPENNESS_SCALE` | `0.9` |  | (unused) |
+| `SHARE_ROLE_HINT_BOND_OFFSET` | `0.15` |  | (unused) |
+| `SHARE_ROLE_HINT_GOSSIP_SCALE` | `0.35` | was 0.2 (Nov 8: 2-3 hints a game) | (unused) |
+| `SHARE_ROLE_CLAIM_BOND_MIN` | `0.58` | was 0.68 (Nov 5) | (unused) |
+| `SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN` | `0.5` | was 0.55 (Nov 5) | (unused) |
+| `SHARE_ROLE_CLAIM_PRESSURE_MIN` | `0.55` |  | (unused) |
+| `SHARE_ROLE_CLAIM_SLOPE` | `1.8` |  | (unused) |
+| `SHARE_ROLE_CLAIM_BOND_FLOOR` | `0.45` | was 0.55 (Nov 5) | (unused) |
+| `SHARE_ROLE_CLAIM_MIN_WEIGHT` | `0.05` |  | (unused) |
+| `SHARE_ROLE_CONFIDE_BONUS` | `0.15` | added to the gift roll's openness | `sim/social.gd` |
+| `CONFIDE_MAX_PER_GAME` | `2` |  | `sim/social.gd` |
+| `SHARE_GIFT_TOPIC_BASE` | `0.3` | The gift topic in NPC talk (Social._gift_disclosure, Nov 8): how often it comes up, and the roll's spread (the Demonologist's version uses a daily mood of +-OPENNESS_JITTER). | `sim/social.gd` |
+| `SHARE_GIFT_TOPIC_OPENNESS` | `0.5` |  | `sim/social.gd` |
+| `SHARE_GIFT_TOPIC_GOSSIP` | `0.2` |  | `sim/social.gd` |
+| `SHARE_GIFT_JITTER` | `0.2` |  | `sim/social.gd` |
+| `SHARE_GIFT_PEER_OFFSET` | `-0.1` | a touch more guarded with a neighbour than with the Demonologist | `sim/social.gd` |
+| `CONFIDE_TRUST_LISTENER` | `0.08` | the listener toward the one who confided | `sim/social.gd` |
+| `CONFIDE_TRUST_TELLER` | `0.04` | the confider toward the listener | `sim/social.gd` |
 | `ROLE_NEWS_LAST_DAY` | `2` | Good NPCs with an untold gift count as having news on these early days. | `sim/social.gd` |
 | `EVIL_ROLE_HINT_THREAT` | `0.5` | What an evil listener makes of a peer's role hint / claim (a target worth watching). | `sim/evil.gd` |
 | `EVIL_ROLE_CLAIM_THREAT` | `1.5` |  | `sim/evil.gd` |
@@ -280,6 +289,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social.gd` |
 | `TAVERN_BACKFILL_PROFILE_WEIGHT` | `1.2` |  | `sim/social.gd` |
 | `TAVERN_HEARD_SPOKEN_WEIGHT` | `0.2` |  | `sim/social.gd` |
+| `TAVERN_YESTERDAY_MULT` | `0.6` | Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8). | `sim/social.gd` |
 | `GOSSIP_BOND` | `0.02` | Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing. | `sim/social.gd` |
 | `GOSSIP_BELIEVED_BELOW` | `0.4` |  | `sim/mind.gd`, `sim/social.gd` |
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
@@ -435,15 +445,15 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
-| `OPENNESS_BASE_OFFSET` | `-0.72` |  | `sim/mind_dialogue.gd` |
-| `OPENNESS_PRIVACY_WEIGHT` | `1.0` |  | `sim/mind_dialogue.gd` |
-| `OPENNESS_TRUST_WEIGHT` | `1.2` |  | `sim/mind_dialogue.gd` |
-| `OPENNESS_PRESSURE_WEIGHT` | `0.6` |  | `sim/mind_dialogue.gd` |
-| `OPENNESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `OPENNESS_DAY_SLOPE` | `0.1` |  | `sim/mind_dialogue.gd` |
+| `OPENNESS_BASE_OFFSET` | `-0.72` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
+| `OPENNESS_PRIVACY_WEIGHT` | `1.0` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
+| `OPENNESS_TRUST_WEIGHT` | `1.2` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
+| `OPENNESS_PRESSURE_WEIGHT` | `0.6` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
+| `OPENNESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
+| `OPENNESS_DAY_SLOPE` | `0.1` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
 | `OPENNESS_JITTER` | `0.1` | was 0.2; a daily sample since Oct 30 | `sim/mind_dialogue.gd` |
-| `TIER_VAGUE` | `0.15` |  | `sim/mind_dialogue.gd` |
-| `TIER_PARTIAL` | `0.45` |  | `sim/mind_dialogue.gd` |
+| `TIER_VAGUE` | `0.15` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
+| `TIER_PARTIAL` | `0.45` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
 | `TIER_FULL` | `0.75` |  | `sim/mind_dialogue.gd` |
 | `HINT_FOLLOWUP_TRUST_PIVOT` | `0.45` | Hint follow-ups, protection & confidence requests | `sim/mind_dialogue.gd` |
 | `HINT_FOLLOWUP_TRUST_SLOPE` | `2.0` |  | `sim/mind_dialogue.gd` |
@@ -600,6 +610,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `LR_STRONG` | `10.0` |  | `workshop/case_eval.gd` |
 | `PRIOR_K` | `1.5` | Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x). | `workshop/case_eval.gd` |
 | `HEADLINE_WEIGHT` | `1.0` | Headline reading (`Jury._headline`): how far a listener takes a strong evil reading at its word, on top of the full model. Effect = model + HEADLINE_WEIGHT * (1 - Insight) * (headline - model) where the headline is higher. The per-role values are the chance each named person is evil "if the reading is simply true" (1.0 = full share). | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
+| `HEADLINE_FULL_AT` | `0.1` | The blend toward the headline grows with the headline's strength, full at this value (about one Seer ping at default trust). Before Nov 6 any positive headline, however faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5. | `workshop/jury.gd` |
 | `LEAN_MIN` | `0.05` | Directional Confidence: below this lean (suspicion minus the listener's average) there is no hunch to defend, so Confidence doesn't resist (Oct 30). | `workshop/jury.gd` |
 | `HEADLINE_SEER` | `1.0` | "one of A/B is the Demon": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `HEADLINE_ARCHIVIST` | `1.0` | "one of A/B holds <evil role>": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
@@ -694,6 +705,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SALIENCE_TARGET` | `4.0` |  | `workshop/reasoner.gd` |
 | `SALIENCE_NAMED` | `2.0` |  | `workshop/reasoner.gd` |
 | `SALIENCE_EXCLUSION` | `1.0` |  | `workshop/reasoner.gd` |
+| `RECENCY_DECAY_LOW` | `0.5` | Recency (sim/recency.gd): attention drifts. A card loses salience by days since it was learned or last brought up, at RECENCY_DECAY_LOW per day for Insight 0 down to RECENCY_DECAY_HIGH for Insight 1, at most RECENCY_AGE_CAP. A card naming (or from) today's topic gains RECENCY_TOPIC_WEIGHT times that person's topic weight (0..1). | `sim/recency.gd` |
+| `RECENCY_DECAY_HIGH` | `0.1` |  | `sim/recency.gd` |
+| `RECENCY_AGE_CAP` | `3.0` |  | `sim/recency.gd` |
+| `RECENCY_TOPIC_WEIGHT` | `1.5` |  | `sim/recency.gd` |
+| `RECENCY_TOPIC_EVENTS` | `{"nomination": 1.0, "accusation": 0.6, "argued": 0.6, "defence": 0.3}` | The topic of the day: what each public act adds to a person's topic weight (summed, capped at 1), and how much of it is left each following day. | `sim/recency.gd` |
+| `RECENCY_TOPIC_DAILY` | `0.5` |  | `sim/recency.gd` |
 | `INSIGHT_LOW_CUTOFF` | `0.34` |  | `workshop/reasoner.gd` |
 | `INSIGHT_MEDIUM_CUTOFF` | `0.67` |  | `workshop/reasoner.gd` |
 | `PROFILE_LOW` | `{ "name": "Low", "cards": 4, "lines": 2, "support": 12, "rivals": 3, "complet...` |  | `workshop/reasoner.gd` |

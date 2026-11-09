@@ -1,6 +1,6 @@
 # Demon types: the day-killer
 
-Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 built (branch `claude/demon-types`).
+Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 built, on main (#105).
 Steps 2 and 3 not started.
 
 ## The idea
