@@ -416,6 +416,8 @@ const ROLES = {
 		"desc": "Each night, learns how many of their two living lane-neighbours are evil. (Benched: not in the script.)"},
 	"demon": {"name": "Demon", "align": "evil", "kind": "evil",
 		"desc": "Kills one person each night (not the first)."},
+	"daykiller": {"name": "Hexer", "align": "evil", "kind": "evil", "day": true,
+		"desc": "Never walks by night. Once a day it hexes a public place it's in; that night one good soul who works or idles there dies."},
 	"poisoner": {"name": "Poisoner", "align": "evil", "kind": "evil", "minion": true, "night_walk": true,
 		"desc": "Each night, poisons one person; their gift fails or lies until the next night."},
 	"breathstealer": {"name": "Breathstealer", "align": "evil", "kind": "evil", "minion": true, "day": true,
@@ -432,7 +434,7 @@ const ROLES = {
 const GOOD_ROLES = ["archivist", "augur", "chronicler", "clerk", "confessor", "dowser", "executor", "gravedigger", "lamplighter",
 	"magistrate", "martyr", "medium", "monitor", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
 const MINION_ROLES = ["breathstealer", "brute", "poisoner", "revenant", "scion"]
-const EVIL_ROLES = ["demon", "breathstealer", "brute", "poisoner", "revenant", "scion"]
+const EVIL_ROLES = ["demon", "daykiller", "breathstealer", "brute", "poisoner", "revenant", "scion"]
 ## Gifts that produce readings to share.
 const INFO_ROLES = ["archivist", "augur", "chronicler", "clerk", "confessor", "dowser", "executor", "gravedigger", "hearthwitch",
 	"lamplighter", "magistrate", "medium", "monitor", "nightwatch", "psychologist", "registrar", "rumormonger", "seer", "surveyor"]

@@ -174,9 +174,21 @@ internal static class LiveActivityKernel
         public SceneTableData[] SceneTables = Array.Empty<SceneTableData>();
         public ScionSplitData[] ScionSplits = Array.Empty<ScionSplitData>();
         /// <summary>Share of the script's possible demons that never walk at night (0 = walking only).
-        /// ProfDemon is already mixed (it's linear in the one demon's profile); the Scion splits keep
-        /// walking profiles and are mixed after multiplying pre and post, over one shared type.</summary>
+        /// Above 0, every profile is the walking one and ScoreWorldCore mixes whole-world scores:
+        /// (1-s)*walk + s*day*HexFactor, a day demon moving like a minion.</summary>
         public double DayDemonShare;
+        /// <summary>The Hexer's kills (docs/demon_types_plan.md, step 3): for each demon kill or
+        /// attack, the victim's regular places with each person's chance of having hexed them
+        /// that day. Empty unless DayDemonShare &gt; 0. See HexFactor.</summary>
+        public HexKill[] HexKills = Array.Empty<HexKill>();
+        public double HexFloor;
+    }
+
+    internal sealed class HexKill
+    {
+        public int AliveMask;        // living at that night
+        public int[] RegMasks = Array.Empty<int>();       // per place: its regulars (known work and haunts)
+        public double[][] Shares = Array.Empty<double[]>(); // per place: P(person i hexed it that day)
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1551,6 +1563,31 @@ internal static class LiveActivityKernel
         {
             factor.DayDemonShare = metaDoubles[dPos++];
         }
+        // Optional trailing Hexer kills: ints [K, (places, aliveMask, regMask x places) x K],
+        // doubles [floor, (n shares per place) ...]. Only written with a share above 0.
+        if (iPos < metaInts.Length && dPos < metaDoubles.Length)
+        {
+            int k = metaInts[iPos++];
+            factor.HexFloor = metaDoubles[dPos++];
+            factor.HexKills = new HexKill[k];
+            for (int i = 0; i < k; i++)
+            {
+                var hk = new HexKill();
+                int places = metaInts[iPos++];
+                hk.AliveMask = metaInts[iPos++];
+                hk.RegMasks = new int[places];
+                hk.Shares = new double[places][];
+                for (int p = 0; p < places; p++)
+                {
+                    hk.RegMasks[p] = metaInts[iPos++];
+                    var sh = new double[n];
+                    for (int j = 0; j < n; j++)
+                        sh[j] = metaDoubles[dPos++];
+                    hk.Shares[p] = sh;
+                }
+                factor.HexKills[i] = hk;
+            }
+        }
 
         return SolverContext.RegisterMovementFactor(factor);
     }
@@ -1618,6 +1655,48 @@ internal static class LiveActivityKernel
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static double ScoreWorldCore(WorldEntry world, CompiledMovementFactor factor)
     {
+        double share = factor.DayDemonShare;
+        if (share <= 0.0)
+            return ScoreTyped(world, factor, false);
+        // The demon's type is one hidden fact for the whole case: score the world as a walking
+        // demon and as a Hexer (out at night like a minion, times the chance its hexes drew
+        // these victims), then mix: (1-s)*walk + s*day*hex.
+        double walk = ScoreTyped(world, factor, false);
+        double day = ScoreTyped(world, factor, true);
+        return (1.0 - share) * walk + share * day * HexFactor(world, factor);
+    }
+
+    /// <summary>
+    /// For a Hexer world: the product over kills of how likely the hex drew this victim,
+    /// relative to a walking demon choosing among all the living good. Per kill:
+    /// sum over the victim's places L of P(the demon hexed L that day) * goodAlive / goodRegulars(L),
+    /// plus HexFloor for a regular place nobody knows of (an unlearned haunt).
+    /// </summary>
+    internal static double HexFactor(WorldEntry world, CompiledMovementFactor factor)
+    {
+        int dIdx = world.DemonOrMinusOne;
+        if (dIdx < 0 || factor.HexKills.Length == 0)
+            return 1.0;
+        int evil = world.Evil;
+        double m = 1.0;
+        foreach (var hk in factor.HexKills)
+        {
+            int goodAlive = System.Numerics.BitOperations.PopCount((uint)(hk.AliveMask & ~evil));
+            double s = 0.0;
+            for (int p = 0; p < hk.RegMasks.Length; p++)
+            {
+                int goodRegs = System.Numerics.BitOperations.PopCount((uint)(hk.RegMasks[p] & ~evil & hk.AliveMask));
+                if (goodRegs <= 0)
+                    continue;
+                s += hk.Shares[p][dIdx] * goodAlive / goodRegs;
+            }
+            m *= s + factor.HexFloor;
+        }
+        return m;
+    }
+
+    private static double ScoreTyped(WorldEntry world, CompiledMovementFactor factor, bool dayType)
+    {
         int dIdx = world.DemonOrMinusOne;
         int evil = world.Evil;
         int convIdx = world.ConvertedOrMinusOne;
@@ -1630,7 +1709,7 @@ internal static class LiveActivityKernel
             factor.HasConvertedProfiles,
             factor.ProfGood,
             factor.ProfMinion,
-            factor.ProfDemon,
+            dayType ? factor.ProfMinion : factor.ProfDemon,
             factor.ProfConverted,
             factor.SceneTables,
             factor.TracePasserEps,
@@ -1645,48 +1724,14 @@ internal static class LiveActivityKernel
                 && (split.AliveDemonMask & (1 << dIdx)) != 0)
             {
                 double preS = BaseScore(
-                    factor.PeopleCount,
-                    evil,
-                    convIdx,
-                    execIdx,
-                    false,
-                    split.PreGood,
-                    split.PreMinion,
-                    split.PreDemon,
-                    Array.Empty<double>(),
-                    split.PreScenes,
-                    factor.TracePasserEps,
-                    factor.TraceUnknownWeight);
+                    factor.PeopleCount, evil, convIdx, execIdx, false,
+                    split.PreGood, split.PreMinion, dayType ? split.PreMinion : split.PreDemon, Array.Empty<double>(),
+                    split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
                 double postS = BaseScore(
-                    factor.PeopleCount,
-                    evil,
-                    convIdx,
-                    dIdx,
-                    false,
-                    split.PostGood,
-                    split.PostMinion,
-                    split.PostDemon,
-                    Array.Empty<double>(),
-                    split.PostScenes,
-                    factor.TracePasserEps,
-                    factor.TraceUnknownWeight);
-                double succession = preS * postS;
-                double share = factor.DayDemonShare;
-                if (share > 0.0)
-                {
-                    // The demon's type is one hidden fact for the whole case, so mix the
-                    // product: (1-s)*Wpre*Wpost + s*Dpre*Dpost, where a day demon moves like a minion.
-                    double preDay = BaseScore(
-                        factor.PeopleCount, evil, convIdx, execIdx, false,
-                        split.PreGood, split.PreMinion, split.PreMinion, Array.Empty<double>(),
-                        split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
-                    double postDay = BaseScore(
-                        factor.PeopleCount, evil, convIdx, dIdx, false,
-                        split.PostGood, split.PostMinion, split.PostMinion, Array.Empty<double>(),
-                        split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
-                    succession = (1.0 - share) * succession + share * (preDay * postDay);
-                }
-                return 0.5 * direct + 0.5 * succession;
+                    factor.PeopleCount, evil, convIdx, dIdx, false,
+                    split.PostGood, split.PostMinion, dayType ? split.PostMinion : split.PostDemon, Array.Empty<double>(),
+                    split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+                return 0.5 * direct + 0.5 * (preS * postS);
             }
         }
         return direct;

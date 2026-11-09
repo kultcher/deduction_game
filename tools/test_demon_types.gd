@@ -78,7 +78,7 @@ func _run() -> void:
 	_check(C.is_demon("demon") and C.is_demon("daykiller"), "is_demon covers the Demon and the reserved day-killer")
 	_check(not C.is_demon("scion") and not C.is_demon("seer"), "is_demon doesn't cover a Scion before it rises, or a town role")
 	_check(C.is_day_demon("daykiller") and not C.is_day_demon("demon"), "only the day-killer is a day demon")
-	_check(not C.ROLES.has("daykiller"), "the day-killer isn't a dealable role yet")
+	_check(C.ROLES.has("daykiller") and not "daykiller" in C.DEMON_ROLES, "the day-killer (the Hexer) is a role, apart from the walking Demon")
 
 	# The share comes from the script's demons.
 	_check(LiveActivity.day_demon_share(_view(["demon"])) == 0.0, "a script with only the Demon has no day-killer share")
@@ -108,8 +108,9 @@ func _run() -> void:
 		for i in range(f0[0].profiles.size()):
 			var p0: Dictionary = f0[0].profiles[i]
 			var ph: Dictionary = f_half[0].profiles[i]
-			ok = ok and ph.good == p0.good and ph.minion == p0.minion and _close(ph.demon, 0.5 * p0.demon + 0.5 * p0.minion)
-		_check(ok, "factor profiles: the demon entry is mixed, good and minion are untouched")
+			ok = ok and ph.good == p0.good and ph.minion == p0.minion and ph.demon == p0.demon
+		_check(ok, "factor profiles stay walking with a Hexer possible: C# mixes whole-world scores (step 3)")
+		_check(f_half[0].has("hex_kills") and f_half[0].hex_kills.size() == 2 and not f0[0].has("hex_kills"), "with a Hexer possible the factor carries the two kills' hex data")
 		_check(f0[0].scene_tables == f_half[0].scene_tables, "trace and scene tables don't change: either demon is at the victim's house")
 	var again: Array = LiveActivity.factors(_view(["demon"]), cards, {})
 	_check(not again.is_empty() and again[0].profiles == f0[0].profiles, "the factor cache keeps the two views apart")
@@ -128,6 +129,42 @@ func _run() -> void:
 	var f_cross: Dictionary = _split_factor(0.0, false, 0.5)
 	_check(not _close(s_mix, LiveActivity.score(world, f_cross)), "pre-mixing the before and after profiles would give a different score")
 	_check(LiveActivity.score(world, _split_factor(0.0, false)) == s_walk, "the factor cache keeps shared and walking-only splits apart")
+
+	# The Hexer factor (step 3): one kill, the victim (person 3) a regular of two places.
+	# Place 0's regulars are 1 and 3, place 1's are 2 and 3. Person 0 hexed place 0 with 0.8.
+	var hk: Array = [{"night": 1, "victim": "d", "places": ["smithy", "tavern"], "alive_mask": 0b1111,
+		"reg_masks": [0b1010, 0b1100], "shares": [[0.8, 0.1, 0.0, 0.0], [0.1, 0.0, 0.6, 0.0]]}]
+	var base_main: Array = []
+	var day_main: Array = []
+	for i in range(4):
+		base_main.append({"good": 0.5, "minion": 0.4, "demon": 0.3 + 0.1 * i})
+		day_main.append({"good": 0.5, "minion": 0.4, "demon": 0.4})
+	var fw: Dictionary = {"profiles": base_main, "scene_tables": [], "scion_splits": []}
+	var fd: Dictionary = {"profiles": day_main, "scene_tables": [], "scion_splits": []}
+	var fm: Dictionary = {"profiles": base_main, "scene_tables": [], "scion_splits": [], "day_demon_share": 0.5, "hex_kills": hk, "hex_floor": 0.15}
+	var w0: Dictionary = {"evil": 0b0011, "demon": 0}   # 0 the Hexer, 1 a minion
+	var w2: Dictionary = {"evil": 0b0101, "demon": 2}   # 2 the Hexer
+	for pair in [[w0, 0], [w2, 2]]:
+		var hw: Dictionary = pair[0]
+		var d: int = pair[1]
+		var evil: int = int(hw.evil)
+		var good_alive: int = 0
+		for j in range(4):
+			if not (evil >> j) & 1:
+				good_alive += 1
+		var m: float = 0.15
+		for p in range(2):
+			var regs: int = 0
+			for j in range(4):
+				if (int(hk[0].reg_masks[p]) >> j) & 1 and not (evil >> j) & 1:
+					regs += 1
+			if regs > 0:
+				m += float(hk[0].shares[p][d]) * good_alive / regs
+		var expect: float = 0.5 * LiveActivity.score(hw, fw) + 0.5 * LiveActivity.score(hw, fd) * m
+		_check(_close(LiveActivity.score(hw, fm), expect), "the Hexer factor: (1-s)*walk + s*day*hex for demon %d (hex %.3f)" % [d, m])
+	var fm_far: Dictionary = fm.duplicate(true)
+	fm_far.hex_kills[0].shares = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
+	_check(LiveActivity.score(w0, fm_far) < LiveActivity.score(w0, fm), "a demon nowhere near the victim's places is a weaker Hexer world")
 
 	# The bridge hands the script's demons to the solver.
 	var g = Game.new()
