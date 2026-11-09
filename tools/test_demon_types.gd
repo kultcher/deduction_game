@@ -173,5 +173,16 @@ func _run() -> void:
 	var snap: Dictionary = WorkshopBridge.capture(g, [])
 	_check(snap.rules.get("demons", []) == ["demon"], "a dealt case's snapshot lists its script's demons")
 
+	# A demon guess of either type: one at a time, and naming the right person counts.
+	var CaseMetrics = load("res://game/case_metrics.gd")
+	var gg = Game.new()
+	gg.detailed_logging = false
+	gg.new_case(54875, 7)
+	var a_id: String = gg.w.npcs[0].id
+	var b_id: String = gg.w.npcs[1].id
+	gg.set_guess(a_id, "demon", 2)
+	gg.set_guess(b_id, "daykiller", 2)
+	_check(CaseMetrics.demon_guesses(gg.guesses) == [b_id], "a Hexer guess replaces a Demon guess on someone else")
+	_check(CaseMetrics.demon_guesses({"x": {"guess": "daykiller"}, "y": {"guess": "seer"}}) == ["x"], "a Hexer guess is a demon guess")
 	print("%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)

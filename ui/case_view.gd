@@ -498,7 +498,7 @@ func refresh() -> void:
 
 func open_theory() -> void:
 	# Select the existing candidate or leave the ordinary first profile selected.
-	var ids = Metrics.named_guesses(g.guesses, "demon")
+	var ids = Metrics.demon_guesses(g.guesses)
 	if not ids.is_empty():
 		for i in range(prof_opt.item_count):
 			if prof_opt.get_item_metadata(i) == ids[0]:

@@ -360,8 +360,9 @@ static func set_guess(g, id: String, guess: String, confidence: int) -> bool:
 		return false
 	var before = g.guesses.duplicate(true)
 	# These are nominations for two unique identities, not a list of alternate suspects.
-	if guess == "demon" or C.is_minion(guess):
-		for old_id in CaseMetrics.named_guesses(g.guesses, guess):
+	# One demon is in play, whatever its type: a demon guess replaces any other.
+	if C.is_demon(guess) or C.is_minion(guess):
+		for old_id in (CaseMetrics.demon_guesses(g.guesses) if C.is_demon(guess) else CaseMetrics.named_guesses(g.guesses, guess)):
 			if old_id != id:
 				g.guesses[old_id]["guess"] = "?"
 				g.guesses[old_id]["confidence"] = 1
@@ -415,7 +416,7 @@ static func capture_prediction(g, reason: String, extra: Dictionary = {}) -> Dic
 
 static func theory_status(g) -> String:
 	var parts: Array = []
-	var dids = CaseMetrics.named_guesses(g.guesses, "demon")
+	var dids = CaseMetrics.demon_guesses(g.guesses)
 	parts.append("Demon: %s" % (g.w.by_id[dids[0]].name if dids.size() == 1 else "not recorded"))
 	var mids = CaseMetrics.minion_guesses(g.guesses)
 	parts.append("Minion%s: %s" % ["" if g.w.minion_ids.size() == 1 else "s", ", ".join(PackedStringArray(mids.map(func(i): return "%s (%s)" % [g.w.by_id[i].name, C.role_name(g.guesses[i]["guess"])]))) if not mids.is_empty() else "not recorded"])
