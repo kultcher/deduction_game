@@ -837,6 +837,9 @@ class Workshop:
 	## A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown
 	## haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1.
 	const HEX_UNKNOWN_FLOOR = 0.15
+	## Time a person spends at their own workplace, as a place they might have hexed: the
+	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
+	const HEX_OWN_WORK_WEIGHT = 0.4
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0

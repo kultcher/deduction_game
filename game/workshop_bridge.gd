@@ -41,7 +41,8 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})
 	for n in g.w.npcs:
-		input.people.append({"id": n.id, "name": n.name, "home": n.home_block, "alive": n.alive})
+		# Occupations are public (the town board), so day presence knows who works where.
+		input.people.append({"id": n.id, "name": n.name, "home": n.home_block, "alive": n.alive, "work": n.work, "work_phases": n.work_phases.duplicate()})
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
 			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind in ["silenced", "vote", "nomination", "meeting"] else "unknown")}})

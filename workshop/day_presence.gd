@@ -58,6 +58,10 @@ static func build(view: Dictionary, cards: Array) -> Dictionary:
 	var last_day: int = int(view.get("day", 1))
 	var work: Dictionary = {}
 	var haunts: Dictionary = {}
+	# Occupations are public: the view's people carry them (WorkshopBridge.capture).
+	for p in view.get("people", []):
+		if str(p.get("work", "")) != "":
+			work[p.id] = {"loc": str(p.work), "phases": p.get("work_phases", [])}
 	for c in cards:
 		if c.get("kind", "") != "context":
 			continue
@@ -293,9 +297,13 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 	if not minions.is_empty() and "breathstealer" not in minions:
 		return {}
 	var silencings: Array = []
+	var seen: Dictionary = {}
 	for e in view.get("timeline", {}).get("events", []):
 		if e.get("kind", "") == "silenced" and int(e.get("at", {}).get("day", -1)) >= 1:
 			for v in e.get("subjects", []):
+				if seen.has("%d:%s" % [int(e.at.day), v]):
+					continue  # (the timeline can carry an event twice)
+				seen["%d:%s" % [int(e.at.day), v]] = true
 				silencings.append({"day": int(e.at.day), "victim": str(v)})
 	if silencings.is_empty():
 		return {}

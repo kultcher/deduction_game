@@ -455,6 +455,9 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	SolverBackend.end_stage(_st)
 	return _res
 
+## Diagnostics: turn the Hexer factor off to measure what it adds (tools only).
+static var hex_factor_enabled: bool = true
+
 static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if not available(view):
 		return []
@@ -467,7 +470,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
 		# The Hexer factor reads schedules, sightings and the watch record (day presence).
-		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []),
+		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []), "hex_on": hex_factor_enabled,
 			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
@@ -527,7 +530,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
 		# pre x post product over the one shared type (see ScoreWorldCore).
 		result[0]["day_demon_share"] = share
-		result[0]["hex_kills"] = hex_kills(view, cards, ids)
+		result[0]["hex_kills"] = hex_kills(view, cards, ids) if hex_factor_enabled else []
 		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
 	return result
 
@@ -549,6 +552,9 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 	var wsum: float = w[0] + w[1] + w[2]
 	var work: Dictionary = {}
 	var haunts: Dictionary = {}
+	for p in view.get("people", []):
+		if str(p.get("work", "")) != "":
+			work[p.id] = str(p.work)
 	for c in cards:
 		if c.get("kind", "") != "context":
 			continue
@@ -562,11 +568,13 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 					known.append(l)
 			haunts[subj] = known
 	var out: Array = []
+	var seen: Dictionary = {}
 	for e in events:
 		var victim: String = str(e.get("subjects", [""])[0]) if not e.get("subjects", []).is_empty() else ""
 		var night: int = int(e.at.day)
-		if victim == "":
-			continue
+		if victim == "" or seen.has("%d:%s" % [night, victim]):
+			continue  # (the timeline can carry an event twice)
+		seen["%d:%s" % [night, victim]] = true
 		var stamp: Dictionary = {"day": night, "phase": "evening"}
 		var alive_mask: int = 0
 		for i in range(ids.size()):
@@ -588,14 +596,17 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 			reg_masks.append(mask)
 			var row: Array = []
 			for i in range(ids.size()):
+				# The Hexer is wary of hexing its own workplace (Tuning HEXER.own_work_penalty),
+				# so time spent there counts for less, in the place and in the total.
+				var own: String = work.get(ids[i], "")
 				var at_l: float = 0.0
 				var public_mass: float = 0.0
 				for p in range(3):
-					at_l += w[p] / wsum * DayPresence.at(table, ids[i], night, p, l)
-					var pub: float = 0.0
-					for blk in C.BLOCKS:
-						pub += DayPresence.on_block(table, ids[i], night, p, blk)
-					public_mass += w[p] / wsum * pub
+					for pl in DayPresence.PLACES:
+						var a: float = DayPresence.at(table, ids[i], night, p, pl) * (Tuning.Workshop.HEX_OWN_WORK_WEIGHT if pl == own else 1.0)
+						public_mass += w[p] / wsum * a
+						if pl == l:
+							at_l += w[p] / wsum * a
 				row.append(at_l / public_mass if public_mass > 0.0 else 0.0)
 			shares.append(row)
 		out.append({"night": night, "victim": victim, "places": places, "alive_mask": alive_mask, "reg_masks": reg_masks, "shares": shares})

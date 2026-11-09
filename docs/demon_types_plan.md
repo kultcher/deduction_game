@@ -138,30 +138,50 @@ Breathstealer.
 - **Tests:** `tools/test_day_presence.gd`; `test_workshop_circumstantial_hub` updated (being
   near a silencing is Stage 1 now).
 
-### Step 3: the day-killer itself (not started)
+### Step 3: the day-killer itself (first pass built, `claude/day-killer`, held with step 2)
 
-- **The role:** `daykiller` added to `C.ROLES` with its own role file. It isn't a minion, so
-  it doesn't show up as `kind: evil` / `minion`.
-  - **Sim:** it marks a work or haunt place during the day. At night it draws a random good
-    regular (ignoring wards), the ward check runs, and the kill leaves a trace at the house.
-  - **Movement:** at night it's out like a minion.
-- **Solver:**
-  - **The mark's location:** the victim's work or haunts name the candidate places.
-  - **Presence:** the step 2 table gives the demon's presence at those places that day
-    (`DayPresence.at_any`), and the factor can follow Breathstealer by presence: a
-    per-world value from the demon slot, scored in C# like CaseEval move kind 3.
-  - **The victim draw:** the chance the victim was the one drawn is 1/n of the good
-    regulars there. n depends on who's good, so it's a per-world factor.
-  - **Type evidence:** the pattern of victims (always a regular of somewhere the demon was)
-    is weak evidence for the type.
-- **Evil AI:** where to mark. It should avoid its own workplace and prefer busy places;
-  minions can be present to muddy things.
-- **NPCs:** night-walking talk should soften while the type is open. Voiced reasons ("I saw
-  Jory out that night") read the same mixed likelihoods, so they weaken by themselves.
-- **The bot:** test the type (vigils on likely victims' blocks), then check presence at
-  the marked place.
-- **The Gravedigger and role readings:** a reading that names the executed demon's type
-  settles it. Step 1 treats such a reading as naming *a* demon (`is_demon`) but doesn't
-  update the type. Step 3 should, probably by fixing the share from public readings, with
-  care for poisoned and Delusional readers.
-- **Scripts:** the builder and editor allow two demons, and the New Case screen shows both.
+**Built (Nov 9):**
+- **The role:** `daykiller`, display name **Hexer** (a working name), in `C.ROLES`, with
+  its own role file `sim/roles/daykiller.gd`.
+  - It's an evil non-minion (`is_demon`), status `experimental`.
+  - It's in the roster's demons, so a script built with two or more demon types can carry
+    it. The default one-demon scripts never do, so today's deals, golden and sweeps don't
+    change.
+- **The hex (sim):** in a day phase, standing in a public place that has good regulars, the
+  Hexer may hex it, once a day.
+  - Its chance rises through the day (`Tuning.Roles.HEXER.phase_probs` 0.25 / 0.4 / 0.6). It
+    also rises with the regulars' public threat and with how many there are, and drops
+    0.25 at its own workplace.
+  - The evening floor is 0.85, so it isn't trapped by its own schedule.
+  - Logged as `hex` (the hex itself isn't visible to the player).
+- **The kill:** that night a random living good regular of the hexed place is drawn,
+  ignoring wards (`hex_victim`). Then the normal attack outcome runs: the player's ward,
+  the Warden, the Veteran. A kill builds traces at the house as usual.
+  - The Hexer never walks, so no streets, no sightings and no vigils.
+  - No hex that day means no kill (`hex_empty` if the place's regulars are gone).
+  - An active Brute still hunts in its place.
+- **The Veteran** who survives a Hexer learns the Hexer's home block (there's no route).
+- **The Scion** who rises takes over the dead demon's type.
+- **The solver** (`LiveActivity.hex_kills`, C# `LiveActivityKernel.HexFactor`):
+  - With a Hexer on the script (share s > 0), the compiled movement factor keeps walking
+    profiles, and `ScoreWorldCore` scores each world twice:
+    - as a walking demon;
+    - as a Hexer (the demon slot moves like a minion; the Scion's splits likewise).
+  - It returns `(1-s)*walk + s*day*HexFactor`.
+  - For each demon kill or attack, HexFactor is
+    `sum over the victim's known places L of P(demon hexed L that day) * goodAlive / goodRegulars(L)`,
+    plus `HEX_UNKNOWN_FLOOR` (0.15) for a regular place nobody's learned. The whole factor
+    is relative to a walking demon picking among the living good.
+  - P(hexed L) is the demon's presence at L that day (step 2's table), weighted by when a
+    Hexer strikes and normalized over the public places it was likely in.
+  - At s = 0 nothing changes (golden identical).
+- **Tests:** `test_demon_types` (26 checks: the factor against a hand computation, and a
+  demon far from the victim's places scores lower).
+
+**Not yet:**
+- The bot testing the type (vigils on likely victims' blocks).
+- A Gravedigger or role reading that names the type, fixing s.
+- Evil coordination beyond where to hex (minions muddying the hexed place).
+- The New Case / editor UI showing both demons. The script view already lists every
+  demon on the script.
+- Tuning: the hex odds and the floor are first guesses.
