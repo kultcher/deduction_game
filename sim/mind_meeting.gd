@@ -13,6 +13,7 @@ const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
+const Recency = preload("res://sim/recency.gd")
 
 static var _mind_script
 
@@ -393,7 +394,7 @@ static func reason_status(w, n, t_id: String) -> Dictionary:
 		var ranked: Array = case_against(w, n, t_id, 1)
 		if not ranked.is_empty():
 			var top: Dictionary = ranked[0]
-			var resolved = {"why": top["why"], "kind": top["kind"], "entry": top["entry"], "strength": top["strength"], "eid": top.get("eid", "")}
+			var resolved = {"why": top["why"], "kind": top["kind"], "entry": top["entry"], "strength": top["strength"], "eid": top.get("eid", ""), "cards": top.get("cards", [])}
 			if top.has("channel"):
 				resolved["channel"] = top["channel"]
 			if top.has("src"):
@@ -566,7 +567,7 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	if rs["kind"] in ["shared_player", "shared_private"]:
 		return {"tier": "generic", "why": ""} # A joint private reason is not necessarily their own gift to reveal.
 	if rs["kind"] == "relay":
-		return {"tier": "relay", "why": "", "src": rs["src"], "entry": rs["entry"]}
+		return {"tier": "relay", "why": "", "src": rs["src"], "entry": rs["entry"], "cards": rs.get("cards", [])}
 	var cost = reveal_cost(w, n)
 	var parts = {"strength": (rs["strength"] - Tuning.Meeting.REVEAL_STRENGTH_PIVOT) * Tuning.Meeting.REVEAL_STRENGTH_SLOPE,
 		"suspicion": (s2 - Tuning.Meeting.REVEAL_SUSPICION_PIVOT) * Tuning.Meeting.REVEAL_SUSPICION_SLOPE,
@@ -730,6 +731,7 @@ static func accuse_named(w, n, t, lines: Array, facts: Array) -> Dictionary:
 ## What they can say for an accusation: a reason the town already has, a hint at one
 ## they're keeping back, or their gift and its reading brought out now.
 static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, facts: Array) -> Dictionary:
+	var relay_cards: Array = []
 	var hint = false
 	var hint_src: String = ""
 	if n.is_evil():
@@ -749,6 +751,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 			_public_disclosure(w, n, lines, facts)
 		elif tier["tier"] == "relay":
 			relay_reading(w, n, tier["src"], tier["entry"], lines, facts)
+			relay_cards = tier.get("cards", [])
 		hint = tier["tier"] == "hint"
 		hint_src = str(tier.get("eid", ""))
 		why = tier["why"]
@@ -756,6 +759,8 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 	if hint:
 		n.hints[t.id] = {"day": w.day, "src": hint_src}
 	why = Evil.cite(w, n, why)
+	if not hint:
+		recall_cited(w, n, t.id, [why], relay_cards)
 	if not hint and why.begins_with("I saw"):
 		_append_accusation_sighting(w, n, t, why, lines, facts)
 	var prev_target: String = w.stances.get(n.id, {}).get("target", "")
@@ -1363,6 +1368,37 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 	}
 
 
+## The evidence cards a shared reason rests on (their fact ids), for recency: a joint
+## reason's roots, otherwise its own card. Circumstantial and resentment reasons have none.
+static func _reason_cards(raw: Dictionary) -> Array:
+	var ids: Array = []
+	var roots: Array = raw.get("root_ids", [])
+	for id in (roots if not roots.is_empty() else [raw.get("card_id", "")]):
+		if str(id).begins_with("fact:") and str(id) not in ids:
+			ids.append(str(id))
+	return ids
+
+## Recency (sim/recency.gd): an NPC who states a reason before the town brings the cards
+## behind it back to mind for everyone who hears it, as a presentation does for its
+## listener. `whys` are the reasons actually spoken (matched against n's case against t);
+## `extra` are cards cited outright (a relayed reading). A hinted, unshared reason cites
+## nothing. Attention only: nobody's weight on a card changes.
+static func recall_cited(w, n, t_id: String, whys: Array, extra: Array = []) -> void:
+	var ids: Array = extra.duplicate()
+	var spoken: Array = whys.filter(func(x): return str(x) != "")
+	if not spoken.is_empty():
+		for item in case_against(w, n, t_id, 6):
+			if str(item.get("why", "")) in spoken:
+				for id in item.get("cards", []):
+					if id not in ids:
+						ids.append(id)
+	if ids.is_empty():
+		return
+	for l in w.living():
+		var mind = l.shadow if l.is_evil() and l.shadow != null else l
+		Recency.refresh_cards(w, mind, ids)
+	w.dlog.think(n.id, "recall_cited", "Bringing %d card(s) back to the town's mind about %s." % [ids.size(), t_id], {"cards": ids})
+
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var mind = n
 	if n.is_evil():
@@ -1378,6 +1414,7 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 			for raw in raw_list:
 				var resolved: Dictionary = _resolve_shared_reason(w, mind, n, t_id, raw, vis_maps)
 				if not resolved.is_empty() and resolved.get("why", "") != "":
+					resolved["cards"] = _reason_cards(raw)
 					items.append(resolved)
 	var best_res: Dictionary = _mind().best_resentment_against(w, mind, t_id)
 	if not best_res.is_empty():
@@ -1419,6 +1456,10 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, description if description != "" else "no citable reasons on record"], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
 	if items.is_empty():
 		lines.append(say_voiced(n, "nomination_no_reasons", "I don't trust %s, and I can't say better than that." % t.name, {"target": t.name}))
+	var cited_whys: Array = [already] + recap.slice(0, 2)
+	var cited_cards: Array = []
+	if priv.is_empty() and not relays.is_empty():
+		cited_cards = relays[0].get("cards", [])
 	if not recap.is_empty():
 		var recap_s: String = "; and ".join(PackedStringArray(recap.slice(0, 2))).trim_suffix(".")
 		lines.append(say_voiced(n, "nomination_recap", "Remember: %s." % recap_s, {"recap": recap_s}))
@@ -1433,6 +1474,8 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			parts["cost_" + k] = -cost[k]
 		if decide(w, n, "reveal_to_nominate", parts, "Bring out what points at %s (%s) to back the nomination?" % [t.id, top["why"]]):
 			_public_disclosure(w, n, lines, facts)
+			for p_item in priv.slice(0, 2):
+				cited_whys.append(str(p_item.get("why", "")))
 			# The disclosure shares the gift and readings, not sightings: also state the private
 			# observations behind the nomination (as _public_accusation does), so the town hears
 			# them and the nominee's defence can answer them.
@@ -1444,6 +1487,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			lines.append(say_voiced(n, "nomination_held_reason", "And I have another reason I'm not ready to share yet."))
 			facts.append({"kind": "accusation", "subject": [t.id], "source": n.id, "hint": true,
 				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
+	recall_cited(w, n, t.id, cited_whys, cited_cards)
 	return {"lines": lines, "facts": facts}
 
 # ---------------------------------------------------------------- the defence

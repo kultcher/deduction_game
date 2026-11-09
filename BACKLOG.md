@@ -538,7 +538,8 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Larger towns (12–15):** only after the core loop works at 7/10. [watch]
 
-- **NPC memory and recency bias.** (Random ideas) [open]
+- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on PR #96,
+  `docs/premises_plan.md` "Recency as built", including NPCs' spoken reasons and how evil steers the topic; diverting attention waits on the saturation call]
 
 - **Dead NPCs:** no ghost votes for now; keep the door open (a final-day Séance vote).
   [watch]

@@ -983,8 +983,11 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
 		# Only a strong evil reading about this person blends in: with no headline the model's
 		# own effect (including any clearing) stands unchanged.
+		# The pull grows with the headline's strength (Nov 6): a faint ping can't undo a
+		# clearing; a full one (HEADLINE_FULL_AT or more) blends as before.
 		if headline_signal > 0.0 and headline_signal > alignment:
-			alignment += dull * (headline_signal - alignment)
+			var strength: float = minf(1.0, headline_signal / Tuning.Workshop.HEADLINE_FULL_AT)
+			alignment += dull * strength * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):
 			var pattern_case = attention.case.duplicate(true)

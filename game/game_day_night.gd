@@ -581,6 +581,11 @@ static func _resolve_night(g) -> void:
 	g.state = "day"
 	g.moved = false
 	Credibility.dawn(g)
+	# Recency (sim/recency.gd): a new day ages every card and cools yesterday's topic, so
+	# each mind settles its attention at dawn, not whenever its next fact happens to land.
+	# A mind that already refreshed today hits its union cache.
+	for n in g.w.living():
+		Mind.refresh_beliefs(g.w, n, " (a new day)")
 	_morning_report(g)
 	g._maybe_approach()
 
