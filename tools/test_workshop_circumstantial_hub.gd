@@ -399,7 +399,16 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	var s2_after: float = float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))
 	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], outside_before + grief_delta + s1_after + s2_after), "ownership refresh after Mind.adjust does not subtract Stage 2 contribution from outside baseline")
 	g.workshop_retract(filed, listener.id)
-	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta) and is_equal_approx(listener.suspicion[target.id], control_listener.suspicion[target.id]), "withdrawing case after Mind.adjust restores exact post-grief baseline")
+	# The control listener isn't an exact mirror once occupations are public: each NPC's own
+	# day feeds day presence, so their Stage 1 layers differ before any case. So the baseline
+	# is the listener's own: no circumstantial layer left, and a fresh refresh changes nothing.
+	var after_retract: float = listener.suspicion[target.id]
+	var req_retract: float = float(listener.workshop_state.requested.get(target.id, 0.0))
+	Mind.refresh_beliefs(g.w, listener, "post-retract refresh check")
+	_check(is_equal_approx(float(listener.workshop_state.outside[target.id]), outside_before + grief_delta)
+		and is_zero_approx(float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0)))
+		and is_equal_approx(after_retract, outside_before + grief_delta + req_retract)
+		and is_equal_approx(listener.suspicion[target.id], after_retract), "withdrawing case after Mind.adjust restores exact post-grief baseline")
 
 func _test_smear_backlash() -> void:
 	var g = _game(2404, 7)
