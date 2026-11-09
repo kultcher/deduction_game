@@ -395,7 +395,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 				if C.ROLES.get(read_role, {}).get("align") == "evil":
 					flags |= (1 << 9)
 				card_ints[off + 18] = _intern_role(role_map, read_role)
-				if read_role == "demon" and rdef.role_group_key != "pair":
+				if C.is_demon(read_role) and rdef.role_group_key != "pair":
 					card_ints[off + 11] = _scion_exec_alive_demon_mask(view, ids, str(data.get(rdef.role_group_key, "")))
 			elif role_str == "executor":
 				var e_tgt: String = str(data.get("target", ""))
@@ -408,7 +408,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 					if C.ROLES.get(e_role, {}).get("align") == "evil":
 						flags |= (1 << 9)
 					card_ints[off + 18] = _intern_role(role_map, e_role)
-					if e_role == "demon":
+					if C.is_demon(e_role):
 						card_ints[off + 11] = _scion_exec_alive_demon_mask(view, ids, e_tgt)
 					var ex_obs_day: int = int(card.get("observed_at", {}).get("day", -1))
 					if not has_timeline or History.died_before_morning(view, e_tgt, ex_obs_day):
@@ -535,7 +535,7 @@ static func _registrar_roles_ok(roles_val) -> bool:
 	var min_cnt: int = 0
 	for r in roles_val:
 		var rs: String = str(r)
-		if rs == "" or seen.has(rs) or rs == "registrar" or rs == "demon":
+		if rs == "" or seen.has(rs) or rs == "registrar" or C.is_demon(rs):
 			return false
 		if C.is_minion(rs):
 			min_cnt += 1

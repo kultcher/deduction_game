@@ -285,7 +285,7 @@ All new numeric thresholds live directly in `sim/tuning.gd` (zero inline magic n
 
 ## 7. Stretch Goals (Hooks Preserved, Built Later)
 
-- **Stretch A - Live Per-Seat Player Vote**: `w.vote_pending` already counts in seat order (`vote_order`) and passes `yes.size()` to each voter as `yes_so_far`, so late-seat voters (Evil included) already react to the hands before them. What's left is prompting the player's vote when the hand reaches their seat instead of declaring it up front, which means splitting `vote_pending` around the player's seat and pausing the UI sweep there.
+- **Stretch A - Live Per-Seat Player Vote** (deferred, Michael, Nov 8): `w.vote_pending` already counts in seat order (`vote_order`) and passes `yes.size()` to each voter as `yes_so_far`, so late-seat voters (Evil included) already react to the hands before them. What's left is prompting the player's vote when the hand reaches their seat instead of declaring it up front, which means splitting `vote_pending` around the player's seat and pausing the UI sweep there.
 - **Stretch B - Rare NPC Mini-Cases (Max 1-2 Per Case)**: Once the C# solver finishes, allow (at most 1-2 times per case) a high-Insight, high-Confidence NPC with a multi-card joint contradiction (`contrib >= 0.20` in `workshop_state.reasons[target]`) take the floor before nominating to present a 2-card mini-case.
 
 ## 8. Implementation Slices & Verification Checks

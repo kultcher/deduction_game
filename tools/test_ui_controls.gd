@@ -477,6 +477,14 @@ func grimoire_modifiers():
 	check(g.w.rng.state == rng and g.state == st1, "developer summary formatting does not change the game")
 
 
+## The distinct column counts of the Roles sections' grids.
+func _roles_columns(node) -> Array:
+	var out: Array = []
+	for grid in node.find_children("*", "GridContainer", true, false):
+		if grid.columns not in out:
+			out.append(grid.columns)
+	return out
+
 func _roles_rows(node) -> int:
 	var count = 0
 	if node is TextureRect and node.custom_minimum_size == Vector2(34, 34): count += 1
@@ -505,7 +513,7 @@ func presentation_options():
 	check(not scene.roles_pinned and scene.roles_win.visible and not scene.roles_dock.visible, "Roles starts as the existing movable window")
 	scene.roles_pin.button_pressed = true
 	check(scene.roles_pinned and scene.roles_dock.visible and not scene.roles_win.visible and content.get_parent() == scene.roles_dock, "pin moves the same Roles content beside the town profile")
-	check(scene.roles_box.get_child(0) is VBoxContainer and _roles_rows(scene.roles_box) == roles_count, "pinned Roles has all gifts and secrets in one scrollable column")
+	check(_roles_columns(scene.roles_box) == [1] and _roles_rows(scene.roles_box) == roles_count, "pinned Roles has all gifts and secrets in one scrollable column")
 	var summary = scene.roles_box.find_child("SetupSummary", true, false)
 	check(summary != null and summary.text == scene.setup_summary(g.w.n_npcs), "pinned Roles retains rule-based setup counts")
 	var n = g.w.npcs[0]
@@ -528,7 +536,7 @@ func presentation_options():
 	check(not scene.roles_dock.visible, "screen changes do not reopen a panel the player hid")
 	scene._open_roles()
 	scene.roles_pin.button_pressed = false
-	check(not scene.roles_pinned and scene.roles_win.visible and content.get_parent() == scene.roles_window_box and scene.roles_box.get_child(0) is HBoxContainer, "unpin restores the existing two-column Roles window")
+	check(not scene.roles_pinned and scene.roles_win.visible and content.get_parent() == scene.roles_window_box and _roles_columns(scene.roles_box) == [2], "unpin restores the two-column Roles window")
 	check(g.w.rng.state == rng and g.w.phase == phase and JSON.stringify(g.board) == cards, "Roles layout, navigation and toggles change no game data or RNG")
 	var fresh_scene = load("res://ui/main.tscn").instantiate()
 	check(not fresh_scene.roles_pinned, "pin preference is session-only and defaults off in a new UI")
@@ -582,7 +590,7 @@ func presentation_options():
 	await process_frame
 	check(scene.map._name_labels.size() == g.w.living().size(), "crowded zoomed map retains every visible person's name")
 	for name in scene.map._name_labels:
-		check(scene.map._r(scene.map.BLOCK_RECTS[scene.map.zoom_block]).encloses(name.rect), "rendered name stays inside the undimmed zoomed block: " + name.id)
+		check(scene.map._r(scene.map._block_rect(scene.map.zoom_block)).encloses(name.rect), "rendered name stays inside the undimmed zoomed block: " + name.id)
 		check(not scene.map._label_obstacles.any(func(r): return r != name.rect and r.intersects(name.rect)), "rendered name stays clear of place signs and other names: " + name.id)
 	var elsewhere = g.w.living()[-1]
 	elsewhere.loc = "wharf"

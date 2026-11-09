@@ -37,6 +37,44 @@ const BLOCK_TINT = {
 	"square": Color(0.16, 0.18, 0.14), "docks": Color(0.12, 0.15, 0.20),
 }
 const OVERVIEW = Rect2(0, 0, 1000, 700)
+
+# ---------------------------------------------------------------- bespoke base map (mock, Nov 7)
+# One painted map (assets/art/map/town.png, 1536 x 1024) with fixed pads: the large pads take
+# the buildings, the small ones the cottages. Coordinates below are image pixels.
+const BESPOKE = true
+const MAP_PX = Vector2(1536, 1024)
+const MAP_TOP = 16.6          # the image spans the full 1000 wide, centred vertically in 700
+# The layout (blocks, streets, signs, building lots and cottage spots) lives in the editable
+# scene ui/map_layout/map_layout.tscn: open it in the Godot editor and drag things about.
+const Layout = preload("res://ui/map_layout/map_layout.gd")
+const Geo = preload("res://ui/map_layout/map_geometry.gd")
+static var LAYOUT: Dictionary = Layout.load_data()
+static var MAP_IMAGE: String = LAYOUT.image                 # the lot-less map: lots are drawn from assets/art/terrain
+static var MAP_BLOCKS: Dictionary = LAYOUT.blocks           # each block's area on the image (for zoom, hits and highlights)
+static var MAP_PADS: Dictionary = LAYOUT.pads               # building lots: centre x, centre y, width, height, lot art ("" = none)
+static var MAP_COTTAGES: Dictionary = LAYOUT.cottages       # cottage spots per block (lot centres), filled in order
+static var MAP_STREETS: Dictionary = LAYOUT.streets         # a stretch of path on each block, for people out and about
+static var MAP_SIGNS: Dictionary = LAYOUT.signs             # where each block's name sign sits
+const PAPER_ART = {
+	"bakery": "buildings_paper/bakery", "smithy": "buildings_paper/smithy",
+	"tavern": "buildings_paper/tavern", "well": "buildings_paper/well",
+	"chapel": "buildings_paper/chapel", "graveyard": "buildings_paper/graveyard",
+	"wharf": "buildings_paper/wharf", "mill": "buildings_paper/mill",
+	"town_hall": "buildings_paper/town_hall",
+}
+
+## A townsperson's own cottage art (named after them in full: Bartholomew, not bart).
+static func cottage_art(n) -> String:
+	return "cottages_poc/%s-cottage-papercraft-v1" % String(n.name).to_lower()
+
+static func _px(v: Vector2) -> Vector2:
+	return Vector2(v.x * 1000.0 / MAP_PX.x, MAP_TOP + v.y * 1000.0 / MAP_PX.x)
+
+static func _px_rect(r: Rect2) -> Rect2:
+	return Rect2(_px(r.position), r.size * 1000.0 / MAP_PX.x)
+
+static func _block_rect(b: String) -> Rect2:
+	return _px_rect(MAP_BLOCKS[b]) if BESPOKE else BLOCK_RECTS[b]
 const BUILDING_ART = {"tavern": "tavern", "well": "well", "smithy": "smithy", "bakery": "bakery",
 	"wharf": "wharf", "mill": "mill", "chapel": "chapel", "graveyard": "graveyard", "town_hall": "town_hall"}
 ## Shorter signs for blocks with three buildings (the Square with the Town Hall), so
@@ -76,7 +114,7 @@ func zoom_to(block: String) -> void:
 
 func _view_rect() -> Rect2:
 	if zoom_block != "" and BLOCK_RECTS.has(zoom_block):
-		return BLOCK_RECTS[zoom_block].grow(24)
+		return _block_rect(zoom_block).grow(24)
 	return OVERVIEW
 
 func _fit() -> void:
@@ -101,6 +139,8 @@ func _map_buildings_on(b: String) -> Array:
 	return locs
 
 func _loc_rect(l: String) -> Rect2:
+	if BESPOKE and MAP_PADS.has(l):
+		return _px_rect(Geo.building_box(MAP_PADS[l]))
 	var b: String = C.loc_block(l)
 	var R: Rect2 = BLOCK_RECTS[b]
 	var locs: Array = _map_buildings_on(b)
@@ -117,10 +157,23 @@ func _loc_of_rect(rect: Rect2) -> String:
 	return ""
 
 func _street_rect(b: String) -> Rect2:
+	if BESPOKE:
+		return _px_rect(MAP_STREETS[b])
 	var R: Rect2 = BLOCK_RECTS[b]
 	return Rect2(R.position.x + R.size.x * 0.08, R.position.y + R.size.y * 0.6, R.size.x * 0.84, R.size.y * 0.14)
 
+## The centre of a townsperson's cottage lot, in image pixels.
+func _home_slot(n) -> Vector2:
+	var slots: Array = MAP_COTTAGES[n.home_block]
+	var mine: Array = g.w.npcs.filter(func(x): return x.home_block == n.home_block)
+	var k: int = mine.find(n)
+	var c: Array = slots[k % slots.size()]
+	var over: float = 40.0 * (k / slots.size())   # more residents than pads: nudge the extras
+	return Vector2(c[0] + over, c[1] - over * 0.4)
+
 func _home_rect(n) -> Rect2:
+	if BESPOKE:
+		return _px_rect(Geo.cottage_box(_home_slot(n)))
 	var b: String = n.home_block
 	var R: Rect2 = BLOCK_RECTS[b]
 	var residents: Array = g.w.npcs.filter(func(x): return x.home_block == b)
@@ -143,7 +196,7 @@ func _home_rect(n) -> Rect2:
 	return Rect2(x0 + (i % per_row) * (hs + gap), R.position.y + R.size.y - hs - 8 - row * (hs + 4), hs, hs)
 
 func _block_center(b: String) -> Vector2:
-	return BLOCK_RECTS[b].get_center()
+	return _block_rect(b).get_center()
 
 ## A road's course in virtual coordinates. The outer roads to the Docks run down the
 ## sides of the map and in along the bottom, clear of the Square.
@@ -210,15 +263,32 @@ func _draw() -> void:
 	var night = g.state == "night"
 	var tint = Color(0.5, 0.55, 0.85) if night else Color.WHITE
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.07, 0.09, 0.14) if night else Color(0.12, 0.16, 0.18))
+	if BESPOKE:
+		var base_map = _art(MAP_IMAGE, 1.0)
+		if base_map != null:
+			draw_texture_rect(base_map, _r(_px_rect(Rect2(Vector2.ZERO, MAP_PX))), false, tint)
+		# Lots: dirt under the buildings and the cottages.
+		for l in MAP_PADS:
+			var pad: Array = MAP_PADS[l]
+			if pad[4] != "":
+				var lt = _art(pad[4], 0.5)
+				if lt != null:
+					draw_texture_rect(lt, _r(_px_rect(Rect2(pad[0] - pad[2] / 2.0, pad[1] - pad[3] / 2.0, pad[2], pad[3]))), false, tint)
+		# One lot under each cottage that's drawn, so no lot stands empty and no cottage lacks one.
+		var cot_lot = _art("terrain/dirt_c", 0.3)
+		if cot_lot != null:
+			for n in w.npcs:
+				var c: Vector2 = _home_slot(n)
+				draw_texture_rect(cot_lot, _r(_px_rect(Geo.cottage_lot(c))), false, tint)
 	# Dressing behind everything.
-	for d in DECOR:
+	for d in ([] if BESPOKE else DECOR):
 		var t = _art("decor/" + d[0], 0.4)
 		if t != null:
 			var hh: float = d[2]
 			var ww = hh * t.get_width() / t.get_height()
 			_draw_art(t, _r(Rect2(d[1] - Vector2(ww / 2.0, 0), Vector2(ww, hh))), "contain", tint)
 	# Roads: sandy paths with a dark edge, and a lamp halfway along.
-	for road in C.ROADS:
+	for road in ([] if BESPOKE else C.ROADS):
 		var pts: Array = _road_points(road[0], road[1])
 		for i in range(pts.size() - 1):
 			var a = _p(pts[i])
@@ -235,21 +305,24 @@ func _draw() -> void:
 	var unseen_badges: Array = []
 	# Blocks.
 	for b in BLOCK_RECTS:
-		var R: Rect2 = _r(BLOCK_RECTS[b])
-		var base = _art("blocks/" + b, 0.6)
-		if base != null:
-			_draw_art(base, R, "cover", tint)
-		else:
-			draw_rect(R, BLOCK_TINT[b] if not night else BLOCK_TINT[b].darkened(0.45))
+		var R: Rect2 = _r(_block_rect(b))
 		var here = not night and g.moved and w.loc_block(g.loc) == b
-		var border = UITheme.color("accent") if (b == selected_block or here) else Color(0.12, 0.1, 0.08, 0.8)
-		draw_rect(R, border, false, 3.0 if (b == selected_block or here) else 2.0)
+		if not BESPOKE:
+			var base = _art("blocks/" + b, 0.6)
+			if base != null:
+				_draw_art(base, R, "cover", tint)
+			else:
+				draw_rect(R, BLOCK_TINT[b] if not night else BLOCK_TINT[b].darkened(0.45))
+			var border = UITheme.color("accent") if (b == selected_block or here) else Color(0.12, 0.1, 0.08, 0.8)
+			draw_rect(R, border, false, 3.0 if (b == selected_block or here) else 2.0)
+		elif b == selected_block or here:
+			draw_rect(R, UITheme.color("accent"), false, 3.0)
 		if zoom_block == "":
 			_hits.append({"rect": R, "kind": "block", "id": b, "label": C.block_name(b), "hint": "Click to look closer" if not night else "Click to choose it for your vigil"})
 		# Locations and player-only buildings (the Town Hall): building sprites with a name sign.
 		for l in _map_buildings_on(b):
 			var LR: Rect2 = _r(_loc_rect(l))
-			var art = _art("buildings/" + BUILDING_ART.get(l, "cottage_red"), 0.5)
+			var art = _art(PAPER_ART[l], 0.5) if BESPOKE and PAPER_ART.has(l) else _art("buildings/" + BUILDING_ART.get(l, "cottage_red"), 0.5)
 			var drawn = _draw_art(art, LR.grow_individual(0, LR.size.y * 0.1, 0, 0), "contain", tint) if art != null else LR
 			if art == null:
 				draw_rect(LR, Color(0.3, 0.26, 0.22) * tint)
@@ -274,16 +347,19 @@ func _draw() -> void:
 				var un = g.unseen_at_ui(l)
 				var lbl = C.loc_name(l) + ((" (%d more there you can't see from here)" % un) if un > 0 else "")
 				_hits.append({"rect": LR, "kind": "location", "id": l, "label": lbl, "hint": hint})
-		# Homes (and crime scenes): small cottages with the owner's colour on the door.
+		# Homes (and crime scenes): each townsperson's own papercraft cottage in their colours
+		# (Nov 8); anyone without one gets a generic cottage with their colour on the door.
 		for n in w.npcs:
 			if n.home_block != b:
 				continue
 			var HR: Rect2 = _r(_home_rect(n))
-			var cot = _art("buildings/" + ("cottage_red" if n.id.hash() % 2 == 0 else "cottage_blue"), 0.25)
-			var hd = _draw_art(cot, HR.grow(HR.size.x * 0.15), "contain", tint) if cot != null else HR
+			var own = _art(cottage_art(n), 0.25)
+			var cot = own if own != null else _art("buildings/" + ("cottage_red" if n.id.hash() % 2 == 0 else "cottage_blue"), 0.25)
+			var hd = _draw_art(cot, HR.grow(HR.size.x * (0.22 if own != null else 0.15)), "contain", tint) if cot != null else HR
 			if cot == null:
 				draw_rect(HR, Color(0.22, 0.2, 0.18))
-			draw_circle(Vector2(hd.get_center().x, hd.end.y - hd.size.y * 0.12), maxf(3.0, 5.0 * _scale), C.npc_color(n.id))
+			if own == null:
+				draw_circle(Vector2(hd.get_center().x, hd.end.y - hd.size.y * 0.12), maxf(3.0, 5.0 * _scale), C.npc_color(n.id))
 			var sid = "scene_" + n.id
 			if w.scenes.has(sid):
 				draw_line(hd.position, hd.end, Color(0.85, 0.15, 0.15), 3.0)
@@ -305,7 +381,8 @@ func _draw() -> void:
 							home_hint = "click to call on them" + (" (free move)" if g.moved else "")
 					_hits.append({"rect": HR, "kind": "home", "id": n.id, "label": "%s's home" % n.name, "hint": home_hint})
 		# The block's name on a sign.
-		_sign(font, C.block_name(b).trim_prefix("the "), Vector2(R.get_center().x, R.position.y + _fs(16)), _fs(15), b == selected_block)
+		var sign_at: Vector2 = _p(_px(MAP_SIGNS[b])) + Vector2(0, _fs(16)) if BESPOKE else Vector2(R.get_center().x, R.position.y + _fs(16))
+		_sign(font, C.block_name(b).trim_prefix("the "), sign_at, _fs(15), b == selected_block)
 	if night:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.1, 0.25))
 	_draw_selection_marks()
@@ -322,7 +399,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(bc.x - br, bc.y + br * 0.4), "+%d" % bdg["count"], HORIZONTAL_ALIGNMENT_CENTER, br * 2.0, int(br * 1.1), UITheme.color("paper"))
 	# Zoomed in: dim everything outside the block in view.
 	if zoom_block != "" and BLOCK_RECTS.has(zoom_block):
-		var Z: Rect2 = _r(BLOCK_RECTS[zoom_block])
+		var Z: Rect2 = _r(_block_rect(zoom_block))
 		var dim = Color(0.04, 0.05, 0.08, 0.72)
 		draw_rect(Rect2(0, 0, size.x, Z.position.y), dim)
 		draw_rect(Rect2(0, Z.end.y, size.x, size.y - Z.end.y), dim)
@@ -376,7 +453,7 @@ func _draw_people(font) -> void:
 			groups[key] = []
 			rects[key] = rect
 		groups[key].append(n)
-	var h = clampf(54.0 * _scale, 22.0, 120.0)
+	var h = clampf(62.0 * _scale, 25.0, 138.0)   # 15% up on Nov 8
 	var lf = mini(_fs(12), 19)
 	for key in groups:
 		var rect: Rect2 = rects[key]
@@ -390,7 +467,9 @@ func _draw_people(font) -> void:
 			hh = maxf(h * 0.55, avail / (members.size() * 0.78))
 		var step = hh * 0.78
 		var per_row = maxi(1, int(avail / step))
-		var base_y = sr.end.y - (hh * 0.1 if C.LOCATIONS.has(_loc_of_rect(rect)) else -hh * 0.15)
+		# At a building, stand on top of its name plaque (centred 4 px above the building's
+		# foot, _fs(11) * 1.9 tall) rather than over it; at home, just below the cottage.
+		var base_y = sr.end.y - (4.0 + _fs(11) * 0.95 - 2.0 if C.LOCATIONS.has(_loc_of_rect(rect)) else -hh * 0.15)
 		for i in range(members.size()):
 			var n = members[i]
 			var row = i / per_row
@@ -415,7 +494,7 @@ func _draw_people(font) -> void:
 				var width: float = font.get_string_size(n.name, HORIZONTAL_ALIGNMENT_LEFT, -1, lfs).x + 8
 				var desired = Rect2(Vector2(foot.x - width / 2.0, foot.y + 2 + (lfs if (i % 2 == 1 and members.size() > 2) else 0)), Vector2(width, lfs + 5))
 				var label_bounds = Rect2(Vector2(4, 4), size - Vector2(8, 40))
-				if BLOCK_RECTS.has(zoom_block): label_bounds = label_bounds.intersection(_r(BLOCK_RECTS[zoom_block]).grow(-4))
+				if BLOCK_RECTS.has(zoom_block): label_bounds = label_bounds.intersection(_r(_block_rect(zoom_block)).grow(-4))
 				var label = name_label_rect(desired, _label_obstacles, label_bounds)
 				_label_obstacles.append(label)
 				_name_labels.append({"id": n.id, "rect": label})

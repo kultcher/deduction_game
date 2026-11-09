@@ -611,10 +611,13 @@ func _approach_talk(scene) -> void:
 	g.approached_loc = n.loc
 	g.command("decline")
 	_check(not g.can_see(n) and g.can_see_ui(n), "declined approach discloses its location without changing simulation visibility")
-	scene._select_person(n.id)
 	scene._refresh_actions()
 	await process_frame
-	var talk: Array = scene.actions.get_children().filter(func(button): return button is Button and button.text == "Talk to " + n.name)
+	var none: Array = scene.actions.get_children().filter(func(button): return button is Button and not button.is_queued_for_deletion() and button.text.begins_with("Talk to "))
+	_check(none.is_empty(), "nobody's offered for a talk before you've clicked anyone (Nov 7)")
+	scene._on_map_clicked("npc", n.id)
+	await process_frame
+	var talk: Array = scene.actions.get_children().filter(func(button): return button is Button and not button.is_queued_for_deletion() and button.text == "Talk to " + n.name)
 	_check(talk.size() == 1, "the disclosed approach has one real Talk button")
 	if not talk.is_empty():
 		talk[0].pressed.emit()

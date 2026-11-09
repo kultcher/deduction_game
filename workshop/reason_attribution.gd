@@ -1060,7 +1060,7 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 				var no_dt_txt: String = "%s claimed a post-death Executor reading on %s without a matching death" % [Solver.person_name(view, pid), Solver.person_name(view, ex_tid)]
 				return [no_dt_txt, no_dt_txt]
 			if ex_tid != "" and ex_rid != "":
-				var ex_txt: String = "%s claimed %s was the %s, which doesn't fit what we know" % [Solver.person_name(view, pid), Solver.person_name(view, ex_tid), C.role_name(ex_rid)]
+				var ex_txt: String = "%s claimed %s was the %s, which doesn't fit the facts as I know them" % [Solver.person_name(view, pid), Solver.person_name(view, ex_tid), C.role_name(ex_rid)]
 				return [ex_txt, ex_txt]
 		if crole == "gravedigger":
 			var ex_id: String = str(data.get("executed", ""))
@@ -1070,9 +1070,9 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 				var no_ex_txt: String = "%s claimed a Gravedigger reading on %s when no such hanging happened" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id)]
 				return [no_ex_txt, no_ex_txt]
 			if ex_id != "" and r_id != "":
-				var gd_txt: String = "%s claimed %s was the %s, which doesn't fit what we know" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id), C.role_name(r_id)]
+				var gd_txt: String = "%s claimed %s was the %s, which doesn't fit the facts as I know them" % [Solver.person_name(view, pid), Solver.person_name(view, ex_id), C.role_name(r_id)]
 				return [gd_txt, gd_txt]
-		var imp_txt: String = "their %s report doesn't fit what we know" % C.role_name(crole)
+		var imp_txt: String = "their %s report doesn't fit the facts as I know them" % C.role_name(crole)
 		return [imp_txt, imp_txt]
 
 	var own_src: bool = (csrc == self_id)
@@ -1117,6 +1117,14 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 			if data.has("block"):
 				var s_blk: String = C.block_name(str(data.get("block", "square")))
 				var s_what: String = "everyone living on %s is on the same side" % s_blk if bool(data.get("same", false)) else "the people living on %s aren't all on one side" % s_blk
+				var lives_there: bool = view.get("people", []).any(func(p): return p.get("id", "") == pid and p.get("home", "") == str(data.get("block", "")))
+				if not lives_there:
+					# Someone off the block: the reading weighs on them through the other reports
+					# it clashes with (an Archivist pair on that block, say), not through their home.
+					return [
+						"%s reading says %s, and taken with the other reports that points at them" % [own_poss, s_what],
+						"%s reading says %s, and taken with the other reports that points at them" % [third_poss, s_what],
+					]
 				return [
 					"%s reading says %s, and they live there" % [own_poss, s_what],
 					"%s reading says %s, and they live there" % [third_poss, s_what],

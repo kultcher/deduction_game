@@ -527,7 +527,7 @@ static func _day_roll(id: String, day: int, salt: int) -> float:
 ## bluff walks at night too; they ask for the ward instead, if it's still to give.
 static func protection_kind(w, n) -> String:
 	if n.is_evil():
-		var walks: bool = n.role == "demon" or C.ROLES[n.role].get("night_walk", false)
+		var walks: bool = (C.is_demon(n.role) and not C.is_day_demon(n.role)) or C.ROLES[n.role].get("night_walk", false)
 		var bluff: String = w.evil_plan["bluffs"].get(n.id, "")
 		if walks and not (bluff != "" and C.ROLES[bluff].get("night_walk", false)):
 			return "ward" if w.tools.get("ward", 0) > 0 else ""
@@ -1010,12 +1010,12 @@ static func sighting_is_here(w, b: Dictionary, who: String, near_loc: String = "
 	return here != "" and b.get("day", -1) == w.day and b.get("phase", -1) == w.phase \
 		and w.by_id.has(who) and w.by_id[who].loc == here
 
-## Who they've seen around by day. when: "" (recently: today and yesterday), "morning",
+## Who they've seen around by day. when: "" (earlier today, before this phase), "morning",
 ## "afternoon", "evening" (today) or "yesterday". near_loc: the exact place where the player is right now;
 ## people seen there this phase are left out (you can see them yourself), and memory reaches
 ## further back instead.
-## "Where were you, and who did you see?" for a daytime frame: "" (earlier today, up to
-## now), "morning" / "afternoon" / "evening" (today), "yesterday", or "yesterday
+## "Where were you, and who did you see?" for a daytime frame: "" (earlier today, not
+## this phase), "morning" / "afternoon" / "evening" (today), "yesterday", or "yesterday
 ## morning" / "yesterday afternoon" / "yesterday evening". They say where they were
 ## (daytime whereabouts are open to anyone's eyes), then who they saw: as many as their
 ## memory (Insight) holds and their Gossip lets them share.
@@ -1033,8 +1033,9 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 	if ph >= 0:
 		phases = [ph]
 	else:
+		# Earlier today (the current phase is in front of the player), or all of yesterday.
 		for p in range(3):
-			if yday or p <= w.phase:
+			if yday or p < w.phase:
 				phases.append(p)
 	var in_frame = func(b) -> bool:
 		return b["day"] == day and b["phase"] in phases
@@ -1059,6 +1060,11 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 		was_s = ", and ".join(PackedStringArray(was))
 		was_s = was_s[0].to_upper() + was_s.substr(1)
 	var limit = _gossip_share(w, n, "share_sightings")
+	# Someone who sought you out to tell you their gift is open with you for that conversation
+	# (Nov 7): they share every sighting they remember, not just what their Gossip allows.
+	var opened_up: bool = n.dialogue_memory.get("conversation", {}).get("opened_up", false)
+	if opened_up:
+		limit = maxi(limit, Tuning.Dialogue.DAY_MEMORY_BASE + int(round(trait_of(n, "insight") * Tuning.Dialogue.DAY_MEMORY_INSIGHT_SCALE)))
 	if limit == 0:
 		var refuse_prefix: String = (was_s + ". ") if was_s != "" else ""
 		var refuse_tail: String = Dialogue.voice_line(n.id, "day_sightings_refuse", "Who else goes where is none of my business.")

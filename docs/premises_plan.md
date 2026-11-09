@@ -21,10 +21,15 @@ the listener's pinned own readings.
 
 **Step 1 (Nov 6, Claude-Quill, PR #92):** built; see "Step 1 as built" below.
 **Step 2 (Nov 6, Claude-Quill, PR #93):** built; see "Step 2 as built".
-**Step 3 (Nov 6, Claude-Quill, branch `claude/premises-step3`, on Bailiff's step 2 fixes):**
-built; see "Step 3 as built". Its acceptance A/B with the M4 bot is Tally's (overnight), with attention budgets
-fixed between arms. Step 4 isn't started. Deliberate recency in attention is a separate
-step after step 1 (see "Recency: the topic of the day" below).
+**Step 3 (Nov 6, Claude-Quill, PR #95, Bailiff's review fixes):** built; see "Step 3 as built".
+Steps 1–3 are on main, with step 3's speed fixes (#99, #100). Tally's A/B (Nov 7, Project
+`claude/premises-ab-2026-11-07.md`) found them flat on outcomes with the M4 bot, which never
+files suspicious or secret premises or challenges.
+**Recency and the headline fix (Nov 6, Claude-Quill, PR #96, refreshed onto main Nov 8):**
+built; see "Recency as built" and "The headline blend" below. Its own A/B, separate from
+steps 1–3.
+**Deferred (Michael, Nov 8):** step 4 (Minion-specific reads: Scion, Revenant; movement
+premises). **Tabled (Nov 6):** assumptions as conditional beliefs (proposal 6).
 
 **Restored Nov 6:** the Nov 5 late-night decisions (23:10 and 23:35 ET, with Michael) were
 lost when this doc was rebuilt from the 22:50 copy. They're back in "Decisions": suspicious as
@@ -363,6 +368,14 @@ secret premise is **the player's word**, weighted by credibility.
 
 ## Step 3 as built (Nov 6)
 
+**Nov 7, with Michael: bare defences aren't graded.** An NPC's defence with no grounds
+("X is lying", "misled") brings nothing new, and the graded test asks whether the rest of the
+evidence makes the reading look wrong. The listener's beliefs already rest on that same
+evidence. `SharedLedger` marks such challenges `bare`, and `ReadingChallenges.assess` leaves
+them out of `graded_challenge`. They still count through the older challenge rules. Workshop
+challenges bring presented evidence and are graded as before. (Speed: they were every
+challenge in bot and passive games; see `claude/premises-ab-2026-11-07.md`.)
+
 Built on Bailiff's step 1 and 2 review fixes (`claude/premises-step2` at `5514f14`).
 
 - **Graded challenges** (`ReadingChallenges.graded_challenge`). For a challenged reading R:
@@ -465,6 +478,109 @@ and never faded).
 - **Measure separately.** It likely makes the town worse in long games, so it gets its own
   A/B after step 1, not mixed into step 1's.
 - **For the evil-mind work:** evil could steer the topic away from a teammate.
+
+### Recency as built (Nov 6, Claude-Quill)
+
+All of it is attention (`Reasoner._salience`); no card's weight changes, and nothing in the
+solver or C# moved. The code is `sim/recency.gd`.
+
+- **Card age.** A card's salience loses `age_days × fade`, at most `RECENCY_AGE_CAP` (3.0).
+  The fade runs from `RECENCY_DECAY_LOW` (0.5 a day) at Insight 0 to `RECENCY_DECAY_HIGH`
+  (0.1) at Insight 1. Age is days since the later of when the listener learned the card
+  (`learned_at`, else `observed_at`) and when it was last brought back to mind. For scale:
+  salience is base 1, +2 for a gift reading, +4 for naming the premise's target, +2 for
+  naming someone the presented cards name. A four-day-old Seer reading costs a low-Insight
+  mind 2.0 (it falls behind a fresh card about the topic) and a sharp one 0.4.
+- **The topic of the day** (`Recency.topic`, shared by the whole town): a nomination adds
+  1.0 to its nominee, a public accusation 0.6, a case the player argued at a meeting 0.6
+  (`World.meeting_arguments`), a defence 0.3 to the defended (`World.defences`). Each day's
+  acts are summed and capped at 1, and the running total halves each quiet day
+  (`RECENCY_TOPIC_DAILY`), so a busy day saturates its subject for that day only (fixed Nov 8
+  from Codex's review on #96: each act used to fade on its own before the cap, so
+  nomination plus accusation read 1.0 then 0.8 instead of 1.0 then 0.5). A card naming or
+  coming from someone on the topic gains `RECENCY_TOPIC_WEIGHT` (1.5) times their weight.
+- **Calling attention back.** Presenting a card resets its age for that listener
+  (`Recency.refresh_cards`, in `WorkshopPresentation`); at a meeting every hearer gets the
+  presentation, so it resets for each. Because cards are held once at their highest weight,
+  re-presenting can only restore attention: the belief moves back toward the full-attention
+  value and no further, and repeating it while fresh does nothing (`test_recency`: a
+  low-Insight listener's view of one person drifted to −0.020 against their full-attention
+  0.010, came back to −0.013, and a repeat changed nothing).
+- **NPCs calling attention back** (Nov 8). When an NPC nominates or publicly accuses and
+  states a reason, the cards behind it are refreshed for every living hearer
+  (`MindMeeting.recall_cited`). What counts as stated: the nomination's headline reason, the
+  "Remember: …" recap, a reading the nominator reveals or relays. A hinted "I have a reason
+  I'm not ready to share" recalls nothing. Shared reasons already carry their card ids
+  (`card_id`, or `root_ids` for a joint reason), and those are the content ids every
+  listener's attention uses, so a cited card is recalled for each hearer who holds it and
+  ignored by those who don't (seed 900 by day 4: 39 recalls, 31 of them cards the hearer
+  held). Evil nominators recall too: it moves attention, not weight. Before this, a
+  nomination only put the nominee on the topic (+1.5 to every card about them), which a
+  low-Insight mind's age penalty could outweigh (a four-day-old reading on the nominee: −2.0
+  + 1.5 = −0.5; recalled, +1.5).
+- **Own readings stay pinned** (step 0b): your own gift never drifts out of view. Presented
+  cards are always attended, as before. Recency ranks only what competes for the leftover
+  budget.
+- **Plumbing:** `WorkshopBridge.capture` adds `listener.recency` = {today, topic,
+  card_refresh}; `LiveAssessment._listener` carries it; fixtures and tools without it are
+  unchanged. A presentation settles its recency (the refresh, the meeting topic) before it
+  captures, so it is judged with the attention it creates.
+- **When it takes effect.** Attention is read when a mind refreshes. Every living mind
+  refreshes at dawn (`game_day_night.gd`), so a card's age and yesterday's cooled topic take
+  hold each morning even for a mind that heard nothing new overnight (before this, two of
+  seven minds in seeds 900 and 1001 carried day-3 attention into day 4, off by up to 0.21).
+  A mind that already refreshed that morning hits its cache. A topic raised mid-day reaches
+  each mind at its next refresh, which in practice is the meeting's own hearing.
+- **Evil already steers the topic** (Nov 8, with Michael). The topic comes from public acts
+  whoever makes them, so evil steers it with what it already does at the meeting:
+  - nominating or accusing the scapegoat puts them on the topic (1.0 or 0.6), so every card
+    about them gains attention, planted readings included;
+  - an evil nominator's stated bluff reason recalls its cards (`recall_cited`), so a planted
+    reading stays fresh as long as evil keeps citing it;
+  - defending a teammate puts the teammate on the topic (0.3) and draws attention to the
+    cards against them: a realistic price for defending your own.
+- **What nobody can do yet: divert attention.** Topic weights are absolute, not shares of
+  the day's attention. Accusing three others doesn't lower the topic weight of a teammate
+  already under fire, so misdirection ("bury the real suspect under a louder accusation")
+  doesn't work through attention.
+- **Watch: saturation, and the lever it decides.** Before the decay fix, seed 900 had five
+  people at 1.0 on day 3. With it, seeds 900, 1001 and 1002 have at most three at the cap
+  on any day (usually the nominee and one or two accused), the rest fading 0.5, 0.25. If
+  Tally's A/B still shows the topic ranking nobody above anybody, there are two levers, and
+  choosing between them is a design call:
+  1. **Lower the cap.** It fixes saturation and changes nothing else: attention still
+     can't be diverted.
+  2. **Scale by the day's busiest subject** (each person's weight over the highest that
+     day). It fixes saturation and creates misdirection for everyone: evil piling onto
+     the scapegoat shrinks a teammate's relative share, and a good player's loud case
+     shrinks everyone else's. Realistic, but it hands evil a lever it isn't tuned for.
+     Once it's in, deliberate evil timing (pushing the scapegoat on the day a teammate is
+     under suspicion) becomes worth building; before it, there's nothing to divert.
+- **Not yet:** reasons given in private talks or in defences don't recall cards (only
+  nominations and public accusations do).
+- **Measure:** its own A/B (Tally): long games (day 5+), "identified but lost", and how long
+  a good day-1 read survives. Expected to make the town somewhat worse in long games.
+
+### The headline blend (Nov 6, folded in with recency)
+
+`Jury`'s headline rule lets a low-Insight listener take a strong evil reading at its word:
+where the reading's literal claim beats the model, `alignment += dull × (headline −
+alignment)`, `dull` = 1 − Insight. Before, any positive headline pulled by the whole gap, so
+a faint ping (0.001) halved a clearing (−0.377 → −0.188 at Insight 0.5; the step 2
+secret-word test, where a trusted player's word cleared p3 less than a doubted one's).
+Now the pull is scaled by the headline's strength: `dull × min(1, headline /
+HEADLINE_FULL_AT) × (headline − alignment)`, full at 0.1 (about one Seer ping at default
+trust).
+
+| Case (Insight 0.5) | Model | Headline | Before | Now |
+|---|---|---|---|---|
+| A faint ping against a clearing (step 2 test) | −0.377 | 0.001 | −0.188 | −0.375 |
+| A real Seer ping, the model agrees a little | +0.064 | 0.129 | +0.096 | +0.096 |
+| A strong ping the model's other evidence clears (the rule's purpose) | −0.225 | 0.096 | −0.064 | −0.071 |
+
+In two instrumented golden games (seeds 900 and 42) the blend fired 16 times, every time
+with a headline of 0.08 to 0.21; the scaling changes two of them, by less than 0.002 each.
+The step 2 suite now checks that a trusted player's word clears more than a doubted one's.
 
 ## Tally's Nov 5 findings and how they change the plan
 

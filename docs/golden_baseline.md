@@ -44,7 +44,64 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 6, night, PR #95): `baseline_4e54261`
+### Current baseline (Nov 8, night): `baseline_db5b24e`
+
+`tools/golden/baseline_db5b24e/` is the capture from `claude/recency` at `db5b24e`: PR #96
+(recency, below) merged with main after #105–#109. It takes in three behaviour changes that
+reached main tonight without a baseline of their own, so main's golden check was red between
+#108 and this merge (Michael merged them for playtesting):
+- #108, playtest 1709 fixes: one accusation per speaker per target per meeting (fewer
+  testimony draws), the silenced give no greeting, the ward/sigil showing frees the floor,
+  and reworded reasons ("doesn't fit the facts as I know them", the Surveyor's off-block
+  line) that change reply text.
+- #109, NPC chatter: per-slot conversation rolls, yesterday's talk at the tavern, the
+  one-roll gift disclosure in NPC talk and the day-1 confidant. These change world RNG use
+  from the first morning, so 54875, 692 and 98933 differ from the meta record on.
+- #105 (demon types step 1) changed nothing (share 0).
+
+Against `baseline_9a09894` (recency alone): 42 parts at record 41, 900 at record 2, the
+other three at the meta record. Record counts: 42 142, 54875 254, 692 250, 900 169, 98933
+275. Two captures identical.
+
+### Previous baseline (Nov 8, recency, branch only): `baseline_9a09894`
+
+Removed: it never reached main (superseded by `baseline_db5b24e` above).
+
+`tools/golden/baseline_9a09894/` is the capture from `claude/recency` at `9a09894` (PR #96,
+on main `7017a98`): recency in bounded attention (card age fade, topic of the day, recall
+on presentation, and NPCs' spoken reasons recalling their cards), the headline blend
+scaled by strength, a dawn refresh of every living mind, and the topic halving from its
+capped value (`docs/premises_plan.md`, "Recency as built"). This is meant to change
+behaviour, and it does from day 1: cards from night 0 are a day old by the first refresh,
+so bounded minds rank their leftover attention differently. Against `baseline_7034f36`,
+900 parts at record 1 (greta on odette, 0.1933 → 0.1926), 692 at record 5 (merrin on
+nisha, 0.067 → −0.031, an attention swap), 54875 and 98933 at record 16, and 42 at record
+21, the first dawn refresh (a new record). Record counts: 42 111 → 142, 54875 267 → 265,
+692 312 → 288, 900 133 → 131, 98933 229 → 186. Against the branch's own earlier
+`baseline_06d26bf` (never on main, removed, as is `baseline_b157258`), the NPC recall
+first shows at the day-1 meeting (900 record 22: a cited card moves up Constance's
+attention order). Two captures identical.
+
+### Previous baseline (Nov 7, bare defences ungraded): `baseline_7034f36`
+
+`tools/golden/baseline_7034f36/` is the capture from `7034f36`. An NPC's defence with no grounds is
+no longer put through step 3's graded test (decided with Michael). A behaviour change, but a
+small one: every seed parts from `baseline_5ba1d64` at its first stored bare challenge, which
+has no `graded` result now. Ignoring `graded`, the first belief differences are about 4e-5 in
+suspicion, from day 1 or 2's refreshes. Seed 54875 records 267 records instead of 286. The final
+results are unchanged. Two captures identical.
+
+### Previous baseline (Nov 7, step 3 speed): `baseline_5ba1d64`
+
+`tools/golden/baseline_5ba1d64/` is the capture from `5ba1d64`: `baseline_4e54261` with graded
+challenges no longer running two of their three evaluations (the source's prior comes from the
+holds evaluation; the cause isn't weighed when the effect is zero). The games are the same:
+ignoring the `graded` diagnostics, every value matches `baseline_4e54261` within 1e-9 and every
+seed has the same records (`--ignore engine,graded --tol 1e-9`). At `--tol 0` they part at the
+first stored challenge: `graded.cause` and `evil_share` are 0 where the effect is 0, and r,
+`wrong` and the agreements differ in the last digits (1e-15). Two captures identical.
+
+### Previous baseline (Nov 6, night, PR #95): `baseline_4e54261`
 
 `tools/golden/baseline_4e54261/` is the capture from `4e54261`. It replaces Quill's
 `baseline_858495d` (never on main; removed) after Bailiff's step 3 review fixes: "the
@@ -243,7 +300,7 @@ running when a script fails to compile, and the capture then records the broken 
 
 ```
 godot --headless --path . --script res://tools/golden_capture.gd -- --out /abs/candidate
-python3 tools/golden_diff.py tools/golden/baseline_4e54261 /abs/candidate
+python3 tools/golden_diff.py tools/golden/baseline_db5b24e /abs/candidate
 ```
 
 Options: `--seeds 900:7,54875:10` and `--day N` on the capture (a subset only diffs

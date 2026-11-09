@@ -29,6 +29,7 @@ var loc = ""             # current location id, "home", or "night:<block>"
 var working = false      # at work this phase
 var busy_with = ""       # npc id they're in conversation with this phase
 var pair_day = -1        # day they last had an NPC conversation (max one per day)
+var confided = false     # has privately told someone their gift (or bluff): the day-1 confidant window is closed
 var night_block = ""
 var night_path: Array = []   # blocks walked through last night (home -> destination)
 var out_last_night = false

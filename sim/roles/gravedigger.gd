@@ -35,7 +35,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 		role = w.pick(w.case_script.demons + w.case_script.minions)
 		entry["why"] = "Marked reads as evil"
 	if broken:
-		role = w.pick(C.ROLES.keys().filter(func(x): return x != ex.role and x != "demon" and x != "hearthwitch"))
+		role = w.pick(C.ROLES.keys().filter(func(x): return x != ex.role and not C.is_demon(x) and x != "hearthwitch"))
 	entry["data"] = {"executed": ex.id, "role": role}
 	entry["true"] = role == ex.role
 	entry["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)]

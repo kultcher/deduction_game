@@ -42,6 +42,8 @@ var map
 var map_stage: Control
 var conversation_view
 var conversation_show_map = false
+var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
+var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
 ## Crime-scene traces from the last search, shown one at a time in the conversation view.
 var inspect_pages: Array = []
@@ -210,8 +212,10 @@ func _ready() -> void:
 	meeting_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	meeting_view.visible = false
 	meeting_view.person_clicked.connect(func(id): _select_person(id))
-	# Last words outlast the meeting: once the stage clears, the map comes back.
-	meeting_view.stage.finished.connect(func(): if g != null and g.state not in ["meeting", "nomination"]: _refresh_all())
+	# The log follows the stage, speaker by speaker; once nothing is left to show (last words
+	# included), the actions come back.
+	meeting_view.stage.logged.connect(_log_events)
+	meeting_view.settled.connect(func(): if g != null: _refresh_all())
 	upper.add_child(meeting_view)
 	var castbox = VBoxContainer.new()
 	castbox.custom_minimum_size = Vector2(330, 0)
@@ -454,6 +458,7 @@ func _new_case() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	conversation_finished = false
+	_day_pick = ""
 	conversation_show_map = false
 	inspect_pages.clear()
 	_case_seed = int(seed_box.value)
@@ -546,25 +551,25 @@ func _build_roles(embedded: bool) -> void:
 	for ch in roles_box.get_children():
 		roles_box.remove_child(ch)
 		ch.queue_free()
-	var cols: BoxContainer = VBoxContainer.new() if embedded else HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 18)
-	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	roles_box.add_child(cols)
-	var left = VBoxContainer.new()
-	var right = VBoxContainer.new()
-	for c in [left, right]:
-		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		c.add_theme_constant_override("separation", 6)
-		cols.add_child(c)
-	_roles_group(left, "Gifts of the town", g.w.case_script.town)
-	_roles_group(right, "The demon's side: the demon and %d minion%s" % [g.w.minion_ids.size(), "" if g.w.minion_ids.size() == 1 else "s"], g.w.case_script.demons + g.w.case_script.minions)
+	# Four stacked sections, as on a Clocktower script sheet: gifts, secrets, minions, demons.
+	# Each lays its roles out in two columns in the window, one when pinned beside the profile.
+	var sections = VBoxContainer.new()
+	sections.name = "ScriptSections"
+	sections.add_theme_constant_override("separation", 14)
+	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	roles_box.add_child(sections)
+	var sc = g.w.case_script
+	var minions: int = g.w.minion_ids.size()
+	_roles_group(sections, "Gifts of the town", sc.town, "good", embedded)
+	_roles_group(sections, "Secrets: one in play, on top of a gift", sc.secrets, "secret", embedded)
+	_roles_group(sections, "Minions: %d in play" % minions, sc.minions, "evil", embedded)
+	var demon_box = _roles_group(sections, "Demon" if sc.demons.size() == 1 else "Demons: one in play", sc.demons, "evil", embedded)
 	var night_rule = Label.new()
 	night_rule.name = "DemonNightRule"
 	night_rule.text = C.DEMON_NIGHT_RULE
 	night_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	night_rule.add_theme_color_override("font_color", UITheme.color("ink"))
-	right.add_child(night_rule)
-	_roles_group(right, "Secrets: one in play, on top of a gift", g.w.case_script.secrets)
+	demon_box.add_child(night_rule)
 	var summary = Label.new()
 	summary.name = "SetupSummary"
 	summary.text = setup_summary(g.w.n_npcs)
@@ -575,24 +580,65 @@ func _build_roles(embedded: bool) -> void:
 	bottom_pad.custom_minimum_size = Vector2(0, 12)
 	roles_box.add_child(bottom_pad)
 
-func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
-	var ink = UITheme.color("ink")
+## Team colours on the script sheet: blue gifts, violet secrets, red for the demon's side.
+const ROLE_TEAM_COLOR = {"good": "role_good_ink", "secret": "role_secret_ink", "evil": "role_evil_ink"}
+
+## Recolours a role icon's dark ink to its team colour, keeping the gold and paper fills.
+static var _icon_shader: Shader = null
+static func _team_icon_material(team_color: Color) -> ShaderMaterial:
+	if _icon_shader == null:
+		_icon_shader = Shader.new()
+		_icon_shader.code = """shader_type canvas_item;
+uniform vec4 tint : source_color;
+void fragment() {
+	vec4 c = texture(TEXTURE, UV);
+	float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+	float ink = 1.0 - smoothstep(0.18, 0.42, lum);
+	COLOR = vec4(mix(c.rgb, tint.rgb, ink), c.a);
+}"""
+	var m = ShaderMaterial.new()
+	m.shader = _icon_shader
+	m.set_shader_parameter("tint", team_color)
+	return m
+
+## One section: its heading, then its roles in a grid. Returns the section box.
+func _roles_group(parent: Container, title: String, roles: Array, team: String, embedded: bool) -> VBoxContainer:
+	var team_color: Color = UITheme.color(ROLE_TEAM_COLOR[team])
+	var box = VBoxContainer.new()
+	box.name = "Section_" + team
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 6)
+	parent.add_child(box)
 	var h = Label.new()
 	h.text = title
 	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	h.add_theme_font_size_override("font_size", 18)
-	h.add_theme_color_override("font_color", UITheme.color("red"))
+	h.add_theme_color_override("font_color", team_color)
 	box.add_child(h)
+	var rule = ColorRect.new()
+	rule.color = Color(team_color, 0.45)
+	rule.custom_minimum_size = Vector2(0, 2)
+	box.add_child(rule)
+	var grid = GridContainer.new()
+	grid.columns = 1 if embedded else 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 10)
+	box.add_child(grid)
+	var icon_material := _team_icon_material(team_color)
 	for r in roles:
 		var row = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		box.add_child(row)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(row)
 		var ic = TextureRect.new()
 		var rt = UITheme.tex("ui/roles/" + r, 0.1)
 		ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.1)  # icons for new gifts still to come
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.custom_minimum_size = Vector2(34, 34)
+		ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		ic.material = icon_material
 		row.add_child(ic)
 		var col = VBoxContainer.new()
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -601,7 +647,7 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 		var nm = Label.new()
 		nm.text = C.role_name(r)
 		nm.add_theme_font_size_override("font_size", 16)
-		nm.add_theme_color_override("font_color", ink)
+		nm.add_theme_color_override("font_color", team_color)
 		col.add_child(nm)
 		var d = Label.new()
 		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
@@ -620,6 +666,7 @@ func _roles_group(box: VBoxContainer, title: String, roles: Array) -> void:
 			c2.add_theme_font_size_override("font_size", 13)
 			c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
 			col.add_child(c2)
+	return box
 
 enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE }
 
@@ -668,7 +715,7 @@ func _open_theory() -> void:
 func _on_submit(text: String) -> void:
 	var t = text.strip_edges()
 	input.clear()
-	if t == "":
+	if t == "" or _presenting():
 		return
 	history.append(t)
 	hist_i = history.size()
@@ -679,14 +726,44 @@ func _run(cmd: String) -> void:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
-	_print(g.command(cmd))
-	_capture_meeting(previous_state)
+	if g.meeting_streaming() or g.workshop_presenting:
+		_print(g.command(cmd))   # refused; no new events
+		return
+	var out: String = g.command(cmd)
+	# A conversation that ran out of questions ended the phase too: what comes after it (the
+	# next phase's header, the meeting's headline, who was silenced) waits in the log until
+	# the player leaves the conversation, so the log never runs ahead of the scene.
+	var verb0: String = cmd.strip_edges().get_slice(" ", 0).to_lower()
+	var talk_ran_out: bool = previous_state == "talk" and g.state != "talk" and not verb0 in ["bye", "leave", "done"]
+	var deferred_meeting: bool = false
+	if talk_ran_out:
+		var evs: Array = g.last_events
+		var cut: int = -1
+		for i in range(evs.size()):
+			if str(evs[i].get("k", "")) in ["header", "headline"]:
+				cut = i
+				break
+		if cut > 0:
+			_deferred_log_events = evs.slice(cut)
+			if g.state in ["meeting", "nomination"]:
+				# The meeting itself waits too: the stage takes it up when they leave.
+				deferred_meeting = true
+				_deferred_meeting_events = evs.slice(cut)
+				_deferred_log_events = []
+				_print(Game.render(evs.slice(0, cut)))
+			else:
+				out = Game.render(evs.slice(0, cut))
+	# What's said at the meeting reaches the log as the stage shows it (see _log_events).
+	if not deferred_meeting and not _meeting_owns_log(previous_state):
+		_print(out)
+	if not deferred_meeting:
+		_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
 	if not conversation_finished:
 		_consume_headlines()
 		_show_notes()
-	if g.meeting_streaming() and not conversation_finished:
+	if g.meeting_streaming() and not conversation_finished and inspect_pages.is_empty():
 		_stream_meeting()
 		return
 	if g.state == "talk" and g.talk_with != null:
@@ -694,6 +771,22 @@ func _run(cmd: String) -> void:
 	_refresh_all()
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
+
+## A command's log goes through the stage when the meeting is (or was) on.
+func _meeting_owns_log(previous_state: String) -> bool:
+	return previous_state in ["meeting", "nomination"] or g.state in ["meeting", "nomination"]
+
+func _log_events(evs: Array) -> void:
+	var text: String = Game.render(evs)
+	if text != "":
+		_print(text)
+
+## Something is still being shown (a speaker, a vote count, a trace, the town still
+## speaking): nothing moves on until it's done (Nov 7). The action pane offers Continue.
+func _presenting() -> bool:
+	if g == null:
+		return false
+	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty()
 
 ## What's said at the meeting comes forward on the courtroom stage (meeting plan M3a).
 func _capture_meeting(previous_state: String) -> void:
@@ -708,6 +801,7 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 		if previous_state != "talk" or conversation_view.person_id != g.talk_with.id:
 			conversation_show_map = false
 			conversation_view.begin(g.talk_with.id, g.talk_with.name)
+			conversation_view.set_location(g.loc)
 		conversation_view.consume(g.last_events)
 	elif previous_state == "talk":
 		conversation_view.consume(g.last_events)
@@ -721,7 +815,11 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 func _capture_scene_search(cmd: String) -> void:
 	inspect_pages.clear()
 	inspect_index = 0
-	if cmd.strip_edges().get_slice(" ", 0).to_lower() not in ["search", "s"]:
+	var verb: String = cmd.strip_edges().get_slice(" ", 0).to_lower()
+	if verb in ["gossip", "records", "register", "town_hall", "inspect"]:
+		_capture_place_reading(verb)
+		return
+	if verb not in ["search", "s"]:
 		return
 	var prose: Array = []
 	var cards: Array = []
@@ -744,8 +842,32 @@ func _capture_scene_search(cmd: String) -> void:
 	if not inspect_pages.is_empty():
 		_show_inspect_page()
 
+## Tavern gossip and Town Hall records come up in the conversation view over the building's
+## interior, like a crime-scene trace: the building where the portrait goes, what you learned
+## in the speech bubble. The log keeps the same text. Only the command's own narration, up to
+## the next phase's header (gossip ends the evening), goes on the page.
+func _capture_place_reading(verb: String) -> void:
+	if g.last_events.any(func(e): return e.get("k", "") == "error"):
+		return
+	var text_parts: Array = []
+	for e in g.last_events:
+		var k: String = str(e.get("k", ""))
+		if k in ["header", "headline"]:
+			break
+		if k == "narration" and str(e.get("text", "")).strip_edges() != "":
+			text_parts.append(str(e.get("text", "")))
+	if text_parts.is_empty():
+		return
+	var gossip: bool = verb == "gossip"
+	var loc: String = "tavern" if gossip else "town_hall"
+	var title: String = "The Drowned Lamb · evening gossip" if gossip else "The Town Hall · parish records"
+	inspect_pages.append({"title": title, "texture": UITheme.tex("art/" + MapView.PAPER_ART.get(loc, ""), 0.5), "text": "\n".join(PackedStringArray(text_parts)),
+		"loc": loc, "button": "Done"})
+	_show_inspect_page()
+
 func _show_inspect_page() -> void:
 	var page: Dictionary = inspect_pages[inspect_index]
+	conversation_view.set_location(str(page.get("loc", g.loc)))
 	conversation_view.show_item(page.title, page.texture, page.text)
 
 func _inspect_next() -> void:
@@ -753,12 +875,25 @@ func _inspect_next() -> void:
 	if inspect_index >= inspect_pages.size():
 		inspect_pages.clear()
 		inspect_index = 0
+		# A search that ended the evening: the meeting waited for you to finish reading.
+		if g.meeting_streaming() and not conversation_finished:
+			_stream_meeting()
+			return
 	else:
 		_show_inspect_page()
 	_refresh_all()
 
 func _leave_finished_conversation() -> void:
 	conversation_finished = false
+	if not _deferred_log_events.is_empty():
+		_log_events(_deferred_log_events)
+		_deferred_log_events = []
+	if not _deferred_meeting_events.is_empty():
+		var evs: Array = _deferred_meeting_events
+		_deferred_meeting_events = []
+		if g.state in ["meeting", "nomination"]:
+			meeting_view.arrive()
+			meeting_view.consume(evs)
 	_consume_headlines()
 	if g.meeting_streaming():
 		_stream_meeting()
@@ -770,26 +905,29 @@ func _run_seq(cmds: Array) -> void:
 	for c in cmds:
 		var before = g.state
 		_run(c)
-		if g.meeting_streaming():
+		if g.meeting_streaming() or g.state == "approach" or _presenting():
 			break
 		if g.state == "over" or (before == g.state and g.last_events.any(func(e): return e.get("k", "") == "error")):
 			break
 
-## The meeting's testimony, one speaker at a time: each speaker's lines show while the next
-## is worked out. Actions wait until the town has spoken.
+## The meeting's testimony, one speaker at a time: the next speaker is worked out while the
+## current one is on the stage, never more than one ahead, so the stage (and the log, which
+## follows it) moves at the player's pace. Actions wait until the town has spoken.
 const STREAM_GAP = 0.15   # seconds between speakers, at least (the work itself takes longer)
 
 func _stream_meeting() -> void:
 	_refresh_all()
-	while g.meeting_streaming():
+	var game = g
+	while game == g and g.meeting_streaming():
 		await get_tree().process_frame
+		if meeting_view.stage.waiting() > 0:
+			continue
 		var started: int = Time.get_ticks_msec()
-		var text: String = g.testimony_step()
-		if text != "":
-			_print(text)
+		g.testimony_step()
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 		meeting_view.refresh()
+		_refresh_actions()   # Continue appears as soon as someone's on the stage
 		var left: float = STREAM_GAP - (Time.get_ticks_msec() - started) / 1000.0
 		if left > 0.0:
 			await get_tree().create_timer(left).timeout
@@ -800,14 +938,13 @@ func _stream_meeting() -> void:
 ## Finish a streamed meeting at once (tests and scripted clicks that can't wait).
 func finish_streaming() -> void:
 	while g != null and g.meeting_streaming():
-		var text: String = g.testimony_step()
-		if text != "":
-			_print(text)
+		g.testimony_step()
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 	_refresh_all()
 
 var _last_phase_key = ""
+var _day_pick: String = ""   # the person you clicked this phase (the profile panel's default doesn't count)
 
 func _refresh_all() -> void:
 	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
@@ -818,19 +955,21 @@ func _refresh_all() -> void:
 		_last_phase_key = key
 		map.zoom_block = ""
 		map.selected_block = ""
+		_day_pick = ""
 	if g.state in ["day", "talk", "approach"] and g.moved:
 		map.zoom_block = g.w.loc_block(g.loc)
 	_refresh_side()
 	_refresh_actions()
 	var meeting = g.state in ["meeting", "nomination"]
-	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination"):
-		meeting_show_map = false  # a vote starting (or being counted) brings the circle back
+	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination") or meeting_view.presenting():
+		meeting_show_map = false  # a vote starting (or being counted), or anyone speaking, brings the circle back
 	_last_state = g.state
 	var last_words: bool = not meeting and meeting_view.stage_busy()   # the gallows, after the meeting closes
-	map_stage.visible = conversation_finished or (not meeting and not last_words) or meeting_show_map
-	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or not inspect_pages.is_empty()
-	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished
-	input.editable = not conversation_finished
+	var reading: bool = not inspect_pages.is_empty()   # traces from the evening's search come before the meeting
+	map_stage.visible = conversation_finished or reading or (not meeting and not last_words) or meeting_show_map
+	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or reading
+	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished and not reading
+	input.editable = not conversation_finished and not _presenting()
 	if meeting:
 		meeting_view.refresh()
 	else:
@@ -856,6 +995,7 @@ func _select_person(id: String) -> void:
 
 func _on_town_person_clicked(id: String) -> void:
 	var selected: String = "" if cast_list.selected == id else id
+	_day_pick = id   # their profile stays up either way
 	cast_list.selected = selected
 	map.selected_npc = selected
 	if selected != "":
@@ -879,7 +1019,10 @@ func _swatch(c: Color) -> ImageTexture:
 # ---------------------------------------------------------------- map clicks
 
 func _on_map_clicked(kind: String, id: String) -> void:
+	if _presenting() and kind != "npc":
+		return
 	if kind == "npc":
+		_day_pick = id
 		_select_person(id)
 		if g.state == "day": _refresh_actions()
 		if g.state == "night":
@@ -929,10 +1072,18 @@ func _refresh_actions() -> void:
 		return
 	if not inspect_pages.is_empty():
 		var more: bool = inspect_index < inspect_pages.size() - 1
-		_button(conversation_view.controls, "Next trace" if more else "Done", _inspect_next)
-	if g.meeting_streaming():
-		action_title.text = "Day %d: the town meeting" % w.day
-		_hint("The town is speaking…")
+		var page_now: Dictionary = inspect_pages[inspect_index]
+		_button(conversation_view.controls, "Next trace" if more else str(page_now.get("button", "Done")), _inspect_next)
+		action_title.text = "Reading the traces" if not page_now.has("loc") else ("Listening to the gossip" if page_now.loc == "tavern" else "Reading the records")
+		_hint("Finish reading before you move on.")
+		return
+	if _presenting():
+		action_title.text = ("Day %d: the town meeting" % w.day) if g.state in ["meeting", "nomination"] or g.meeting_streaming() else "The town is speaking"
+		if meeting_view.stage.busy():
+			_button(actions, "Continue", func(): meeting_view.stage.advance())
+		elif meeting_view.animating():
+			_button(actions, "Finish the count", func(): meeting_view.finish())
+		_hint("The town is speaking…" if g.meeting_streaming() or meeting_view.stage.busy() else "The hand goes round…")
 		return
 	match g.state:
 		"day":
@@ -963,8 +1114,10 @@ func _refresh_actions() -> void:
 				actions = lower_actions
 		"meeting":
 			action_title.text = "Day %d: the town meeting" % w.day
-			if not g.presented_today and g.board.any(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false)):
-				_button(actions, "Show your ward or scorched sigil…", func(): _card_picker("Show the town a protection receipt", func(c): return c.kind in ["ward", "scorched_sigil"], func(num, _x): _run("present %d" % num), false))
+			# Wards and scorched sigils are shown, not argued: one button each, free of the floor.
+			for pc in g.board.filter(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false) and not g.shown_protection.has(int(c.n))):
+				var pnum: int = int(pc.n)
+				_button(actions, "Show the town %s" % g.protection_label(pc), func(): _run("present %d" % pnum))
 			_map_toggle()
 			_button(actions, "Let the town speak (wait)", func(): _run("wait"))
 			if not g.presented_today:
@@ -1047,21 +1200,31 @@ func _talk_to_person(id: String) -> void:
 func _actions_day(w) -> void:
 	if not g.moved:
 		action_title.text = "Day %d, %s: where will you go?" % [w.day, C.PHASES[w.phase].to_lower()]
-		_hint("Click a block to look closer or a person to inspect their profile. Choose Talk to start a conversation.")
-		var selected = w.by_id.get(_side_person_id())
-		if selected != null and selected.alive and g.can_see_ui(selected):
-			var talk = _button(actions, "Talk to %s" % selected.name, func(): _talk_to_person(selected.id), C.npc_color(selected.id))
-			talk.disabled = selected.busy_with != ""
+		var picked = w.by_id.get(_day_pick)
+		if picked != null and picked.alive and g.can_see_ui(picked):
+			var talk = _button(actions, "Talk to %s" % picked.name, func(): _talk_to_person(picked.id), C.npc_color(picked.id))
+			talk.disabled = picked.busy_with != ""
 		if map.zoom_block != "" and C.BLOCKS.has(map.zoom_block):
-			for l in C.LOCATIONS.keys() + C.PLAYER_BUILDINGS.keys():
-				if C.loc_block(l) != map.zoom_block:
-					continue
-				var loc_id: String = l
-				_button(actions, "Go to %s" % w.loc_name(loc_id), func(): _run("go " + loc_id))
+			# Zoomed in on a block: go there (its busiest spot; the other is a free step away),
+			# to its crime scene, or back out.
+			var zb: String = map.zoom_block
+			_hint("Click a spot on the block to go straight there, or a person to inspect their profile.")
+			_button(actions, "Visit %s" % C.block_name(zb), func(): _run("go " + zb))
 			for sid in w.scenes:
-				if w.scenes[sid].get("block", "") == map.zoom_block:
+				if w.scenes[sid].get("block", "") == zb:
 					var scene_id: String = sid
 					_button(actions, "Go to %s (crime scene)" % w.scenes[scene_id]["name"], func(): _run("go " + scene_id))
+			_button(actions, "Back to town view", func():
+				map.zoom_block = ""
+				map.refresh()
+				_refresh_actions())
+		else:
+			_hint("Examine a block to look closer, or click a person to inspect their profile.")
+			for b in C.BLOCKS.keys():
+				var blk: String = b
+				_button(actions, "Examine %s" % C.block_name(blk), func():
+					map.zoom_to(blk)
+					_refresh_actions())
 		_button(actions, "Wait (let the %s pass)" % C.PHASES[w.phase].to_lower(), func(): _run("wait"))
 		return
 	action_title.text = "%s, %s" % [w.loc_name(g.loc).capitalize(), C.PHASES[w.phase].to_lower()]
@@ -1354,7 +1517,10 @@ func _gift_request_picker(anchor: Control, role: String, verb: String) -> void:
 
 ## "Ask where they were and who they saw…": a time to ask about.
 func _ask_when_picker(anchor: Control) -> void:
-	var items: Array = [["…today", "ask seen today", null], ["…last night", "ask night", null]]
+	# Not this phase: you can see who's around for yourself.
+	var items: Array = [["…last night", "ask night", null]]
+	if g.w.phase > 0:
+		items.push_front(["…earlier today", "ask seen today", null])
 	if g.w.day > 1:
 		for ph in [2, 1, 0]:
 			items.append(["…yesterday %s" % C.PHASES[ph].to_lower(), "ask seen yesterday " + C.PHASES[ph].to_lower(), null])
