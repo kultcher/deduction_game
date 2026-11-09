@@ -807,8 +807,8 @@ static func ledger_hear(w, n, eid: String, _effects: Array = [], weight: float =
 	e["times"] = times + 1
 	var old_w: float = e["weight"]
 	for k in meta:
-		if k == "base":
-			e["meta"]["base"] = maxf(e["meta"].get("base", 0.0), meta["base"])
+		if k in ["base", "agreement"]:
+			e["meta"][k] = maxf(float(e["meta"].get(k, -1.0)), float(meta[k]))
 		elif k != "supports":
 			e["meta"][k] = meta[k]
 	if meta.has("supports"):
@@ -933,7 +933,13 @@ static func _refresh_ledger_preferences(w, n) -> void:
 			# A presentation-backed argument (a deduction cited to accuse or defend) is heard
 			# at its agreement: the same acceptance gate as presented premises below applies
 			# (Codex review of PR #92). Other social arguments are unaffected.
-			if meta.has("workshop_case") and float(e.get("weight", 0.0)) < Tuning.Workshop.PREMISE_PREF_MIN_AGREEMENT:
+			# Gate on the agreement itself, not the stored weight (which folds in the venue and
+			# trust: maintenance 2026-11-07 A2). Entries from before the agreement was stored
+			# fall back to the weight.
+			var arg_agreement: float = float(meta.get("agreement", -1.0))
+			if arg_agreement < 0.0:
+				arg_agreement = float(e.get("weight", 0.0))
+			if meta.has("workshop_case") and arg_agreement < Tuning.Workshop.PREMISE_PREF_MIN_AGREEMENT:
 				continue
 			_apply_conclusion_pref(n, meta.get("conclusion", {}), eff)
 	var withdrawn: Dictionary = n.workshop_state.get("withdrawn", {})

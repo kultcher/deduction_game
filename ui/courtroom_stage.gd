@@ -234,6 +234,10 @@ func push(events: Array) -> int:
 		_drain_log()
 		if not queue.is_empty() and _delay <= 0.0:
 			_next()
+	elif continue_button != null:
+		# The meeting works out the next speaker while this one is on stage: once someone is
+		# waiting, the button says so (Steward, Nov 8).
+		continue_button.text = "Continue" if waiting() > 0 else "Done"
 	return added
 
 

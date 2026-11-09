@@ -199,7 +199,7 @@ static func _social(w, n, ded: Dictionary, board: Array, scale: float, c: Dictio
 	var base: float = agreement * scale
 	var gain = 0.0
 	if base > Tuning.Presentation.SOCIAL_MIN_BASE:
-		gain = _record(w, n, ded, c, supports, board, base, trace_id)
+		gain = _record(w, n, ded, c, supports, board, base, trace_id, agreement)
 	w.dlog.decision(n.id, "argument", "evaluation", agreement,
 		{"route": route, "agreement": agreement, "scale": scale, "base": base, "trust_at_apply": n.trust,
 			"stored_weight_gain": gain, "stance_thresholds": {"accept": 0.6, "partial": 0.35}}, c.get("a", ""), trace_id)
@@ -226,12 +226,12 @@ static func _social(w, n, ded: Dictionary, board: Array, scale: float, c: Dictio
 
 ## The accepted position, as an `arg:` ledger entry the preference pass reads. Social only:
 ## the shared model ignores `arg:` entries, so this never moves suspicion.
-static func _record(w, n, ded: Dictionary, c: Dictionary, supports: Array, board: Array, base: float, trace_id: int) -> float:
+static func _record(w, n, ded: Dictionary, c: Dictionary, supports: Array, board: Array, base: float, trace_id: int, agreement: float = -1.0) -> float:
 	var ledger_id = "arg:" + Deduction.conclusion_key(c)
 	if ded.has("workshop_case"):
 		ledger_id = "arg:workshop:%d" % ded.n
 	var h = Mind.ledger_hear(w, n, ledger_id, [], base * (0.5 + n.trust), [],
-		{"kind": "arg", "base": base, "text": Deduction.conclusion_text(w, c),
+		{"kind": "arg", "base": base, "agreement": agreement, "text": Deduction.conclusion_text(w, c),
 			"said": "what you told me, that %s" % Deduction.conclusion_text(w, c),
 			"supports": support_refs(supports, board), "conclusion": c.duplicate(true),
 			"workshop_case": str(ded.get("n", 0)), "workshop_conclusion": c.type})

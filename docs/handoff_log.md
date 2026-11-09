@@ -27,6 +27,20 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
+
+- Base `dc2418c` (main after #96). Status: green, golden identical to `baseline_db5b24e`. Next actor: none.
+- Codex on #108: a silenced listener shown a trace no longer passes on a haunt (`profile_haunts` cleared).
+- Steward Nov 8 A1: the stage button says Continue once the next speaker is queued (`CourtroomStage.push`).
+- Steward Nov 7 A1: late relays say the night once (`MindMeeting.relay_body`: the reading's own " on night N"
+  dropped, other nights spoken, night 0 natural).
+- Steward Nov 7 A2: the protect-preference gate reads the stored agreement (`arg:` meta `agreement`, kept at its
+  max), not the weight.
+- Steward Nov 7 A4: Poisoner candidates for a failed-gift group come from every reading's night.
+- Not done: Steward Nov 7 A3 (a group "don't fit together" challenge overwrites the first card's own challenge).
+  Every consumer keys `reading_challenges` by card id, so it needs several challenges per card: its own PR.
+- `ci_fast_suites.txt` adds `test_control_flow` (about 10 s) and the new `test_review_fixes` (7 checks).
+
 ## 2026-11-08 night, Claude-Bailiff: playtest 1709 fixes (`claude/1709-polish`)
 
 - Base `72407b2` (main after #106). Status: suites green; **golden moves on purpose** (needs Michael's OK to

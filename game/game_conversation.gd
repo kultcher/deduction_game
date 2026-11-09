@@ -503,6 +503,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 		# lines and no spoken cards. It still takes their time: one question, like any showing.
 		r["lines"] = []
 		r["facts"] = []
+		r["profile_haunts"] = []   # a trace's haunt tip is something said (Codex, #108)
 		r["repeated"] = false
 		r["narration"] = ["%s reads it in silence. They can't answer until tomorrow evening." % n.name]
 	# Something they've already heard from you: they say so, and it costs no question.
