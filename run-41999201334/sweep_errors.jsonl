@@ -1,0 +1,1 @@
+{"seed": 100291, "cell": "10_bot_0.6", "kind": "engine_errors", "count": 3, "lines": ["ERROR: System.IndexOutOfRangeException: Index was outside the bounds of the array.", "SCRIPT ERROR: Invalid call. Nonexistent function 'CaseEvalEvaluatePosterior' in base 'CSharpScript'.", "SCRIPT ERROR: Invalid access to property or key 'impossible' on a base object of type 'Dictionary'."]}
