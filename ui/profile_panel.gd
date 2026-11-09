@@ -21,6 +21,7 @@ const FormattedTextLabel = preload("res://ui/formatted_text_label.gd")
 
 const TABS = ["About", "Their claims", "About them"]
 const TraitBars = preload("res://ui/trait_bars.gd")
+const PlaceStrip = preload("res://ui/place_strip.gd")
 
 var g
 var state
@@ -30,6 +31,7 @@ var name_label: Label
 var sub_label: Label
 var claim_icon: TextureRect
 var claim_label: RichTextLabel
+var places: Control   # ui/place_strip.gd: workplace and haunts as you know them
 var guess_opt: OptionButton
 var conf_opt: OptionButton      # confidence in the role guess: Flimsy, Maybe, Likely, Confirmed
 var secret_opt: OptionButton
@@ -111,6 +113,14 @@ func build() -> void:
 	claim_label.hint_underlined = false
 	UITheme.rich_text_fonts(claim_label, UITheme.serif())
 	crow.add_child(claim_label)
+	places = PlaceStrip.new()
+	if compact:
+		places.side = 30.0
+		places.gap = 8.0
+		places.custom_minimum_size = Vector2(3 * places.side + 2 * places.gap, places.side + 16)
+	var prow = HBoxContainer.new()
+	prow.add_child(places)
+	info.add_child(prow)
 	# Your guesses: pencilled notes, visibly yours, not facts. A role and a secret, each
 	# with how sure you are.
 	var gl = Label.new()
@@ -362,6 +372,7 @@ func refresh() -> void:
 	claim_label.clear()
 	renderer.append_to(claim_label, formatter.format_text(claim_txt, {"surface": "paper", "icons": false, "role_context": true}))
 	claim_icon.texture = UITheme.tex("ui/roles/" + role, 0.07) if role != "" else null
+	places.show_person(g, n)
 	var gs: Dictionary = p["guess"]
 	guess_opt.select(0)
 	for i in range(guess_opt.item_count):
