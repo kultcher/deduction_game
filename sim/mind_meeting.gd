@@ -707,6 +707,8 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		t = ranked[0]
 		s2 = susp(n, t.id)
 		acc_resent = _mind().resentment_toward(w, n, t.id)
+	if already_accused(w, n, t.id):
+		return null # They've said it at this meeting already; once is enough.
 	var parts = {"suspicion": (s2 - Tuning.Meeting.ACCUSE_SUSPICION_PIVOT) * Tuning.Meeting.ACCUSE_SUSPICION_SLOPE, "confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Meeting.ACCUSE_CONFIDENCE_SLOPE,
 		"pressure_deflect": n.pressure * Tuning.Meeting.ACCUSE_PRESSURE_DEFLECT}
 	if acc_resent > 0.0:
@@ -804,6 +806,10 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
 	return {"line": line,
 		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": text, "hint": hint}}
+
+## n has already accused t at the current meeting (testimony or a supporter's pile-on).
+static func already_accused(w, n, t_id: String) -> bool:
+	return w.meeting.get("accusations", []).any(func(a): return a.get("by", "") == n.id and a.get("target", "") == t_id)
 
 ## Who else (living, not n) already said this at the current meeting, or "".
 static func _said_by_other(w, n, key: String) -> String:
@@ -1918,6 +1924,10 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 		"vote_no_distrust_nominator":
 			return say_voiced(v, key, "The case against %s troubles me, yes, though I don't trust %s's hand in pushing it." % [t.name, nom_name],
 				{"nominee": t.name, "nominator": nom_name})
+	if nom_id != "player":
+		# Not the Demonologist's nomination: don't hand them a case they never made.
+		return say_voiced(v, "vote_no_short_of_rope_town", "There's something in what %s says about %s, but not enough to hang them today." % [nom_name if nom_name != "" else "the accuser", t.name],
+			{"nominee": t.name, "nominator": nom_name})
 	return say_voiced(v, "vote_no_short_of_rope", "Your case against %s has merit, Demonologist, just not enough to hang them today." % t.name, {"nominee": t.name})
 
 

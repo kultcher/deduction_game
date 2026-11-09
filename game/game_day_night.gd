@@ -158,8 +158,12 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			g.talk_offered = false
 			g.state = "talk"
 			g.w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01)})
-			g._line(Mind.greeting_line(g.w, n, g._greeting_context(n)))
-			if not n.remarks.is_empty() and not n.is_evil():
+			if n.silenced:
+				# The Breathstealer took their voice: no greeting, no remarks.
+				g._narr("%s meets your eye and touches their throat: no words come. They can't speak until tomorrow evening, but they can read what you show them." % n.name)
+			else:
+				g._line(Mind.greeting_line(g.w, n, g._greeting_context(n)))
+			if not n.silenced and not n.remarks.is_empty() and not n.is_evil():
 				var said: String = n.remarks.pop_front()
 				g.w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				g._lines([Mind.reconsideration_line(n, said)])
