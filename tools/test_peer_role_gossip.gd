@@ -71,6 +71,15 @@ func _pick_kind(w, s, l, kind: String, tries: int = 80) -> Variant:
 	return null
 
 
+func _kind_counts(w, s, l, tries: int = 300) -> Dictionary:
+	var seen: Dictionary = {}
+	for i in range(tries):
+		var item = Social._pick_item(w, s, l)
+		if item != null:
+			seen[item["kind"]] = seen.get(item["kind"], 0) + 1
+	return seen
+
+
 func _kinds_offered(w, s, l, tries: int = 80) -> Dictionary:
 	var seen: Dictionary = {}
 	for i in range(tries):
@@ -137,27 +146,35 @@ func _test_evil_bluff_claim() -> void:
 		_check(l.known_claims.get(e.id, {}).get("role", "") == bluff, "the good listener records the bluff as a claim")
 
 
+## One roll since Nov 8 (Social._gift_disclosure): the same openness score as answering the
+## Demonologist picks nothing, a hint or the gift, so trust and pressure shift the odds.
 func _test_hint_only_at_moderate_bond() -> void:
 	var g = _game(7103)
 	var w = g.w
+	w.day = 2   # past the day-1 confidant window
 	var pr: Array = _good_pair(w, ["seer", "warden", "clerk"])
 	var s = pr[0]
 	var l = pr[1]
-	_prime(w, s, l, 0.5)  # above the hint bar (0.45), below the claim bar (0.58)
-	var kinds: Dictionary = _kinds_offered(w, s, l)
-	_check(kinds.has("role_hint") and not kinds.has("role_claim"), "moderate bond offers a hint but no claim (%s)" % str(kinds.keys()))
+	_prime(w, s, l, 0.5)
+	s.traits["privacy"] = 0.5
+	var kinds: Dictionary = _kind_counts(w, s, l)
+	_check(kinds.get("role_hint", 0) > kinds.get("role_claim", 0), "at moderate bond a hint is likelier than the gift (%s)" % str(kinds))
 	var item = _pick_kind(w, s, l, "role_hint")
 	if item != null:
 		Social._deliver(w, s, l, item)
 		_check(not l.known_claims.has(s.id) and l.hearsay.any(func(h): return h["kind"] == "role_hint" and h["package"] == C.package_of(s.role)),
 			"a hint is remembered by family, with no claim on record")
-	# Moderate bond under pressure can unlock the claim.
-	s.pressure = Tuning.Social.SHARE_ROLE_CLAIM_PRESSURE_MIN
-	s.told_to.erase(l.id + "|role_claim:" + s.id)
-	_check(_kinds_offered(w, s, l).has("role_claim"), "pressure unlocks a claim at moderate bond")
-	_prime(w, s, l, 0.4)
-	var low: Dictionary = _kinds_offered(w, s, l)
-	_check(not low.has("role_hint") and not low.has("role_claim"), "low bond shares nothing about the gift")
+	s.told_to.erase(l.id + "|role_hint:" + s.id)
+	l.hearsay = []
+	var calm: Dictionary = _kind_counts(w, s, l)
+	s.pressure = 1.0
+	var pressed: Dictionary = _kind_counts(w, s, l)
+	_check(pressed.get("role_claim", 0) > calm.get("role_claim", 0), "pressure makes the gift itself likelier (%s vs %s)" % [str(pressed), str(calm)])
+	s.pressure = 0.0
+	_prime(w, s, l, 0.1)
+	s.traits["privacy"] = 0.5
+	var low: Dictionary = _kind_counts(w, s, l)
+	_check(low.get("role_claim", 0) == 0 and low.get("role_hint", 0) < kinds.get("role_hint", 0), "low bond: no gift, and fewer hints (%s)" % str(low))
 
 
 func _test_protect_lock_withholds_claim() -> void:

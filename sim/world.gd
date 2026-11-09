@@ -71,6 +71,7 @@ var meeting = {}
 
 ## Player tools and night choices.
 var tools = {"ward": 1, "clemency": 1}
+var confides_made: int = 0              # day-1 confidant claims so far (Social._gift_disclosure; capped)
 var daily_npc_shares: Array = []    # Non-strategizing NPC-to-NPC items spoken today
 var _evening_chats_done_day: int = -1
 var initial_good_roles: Array = []  # Good roles dealt at case start (unaffected by death/curse)
@@ -368,6 +369,7 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 	day = 0
 	phase = C.NIGHT
 	daily_npc_shares = []
+	confides_made = 0
 	_evening_chats_done_day = -1
 	initial_good_roles = []
 	town_hall_uses_left = Tuning.Setup.TOWN_HALL_USES_PER_CASE

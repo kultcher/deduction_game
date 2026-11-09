@@ -417,8 +417,14 @@ class Social:
 	## Day-1 confidant (Nov 8, BotC's "find one person to trust"): until they've told someone,
 	## and only on day 1, an NPC will tell a less-trusted listener their gift, and is likelier
 	## to. Target: once or twice a game. The pair warms to each other.
-	const SHARE_ROLE_CONFIDE_BOND_MIN = 0.45
-	const SHARE_ROLE_CONFIDE_BONUS = 0.2
+	const SHARE_ROLE_CONFIDE_BONUS = 0.15        # added to the gift roll's openness
+	const CONFIDE_MAX_PER_GAME = 2
+	## The gift topic in NPC talk (Social._gift_disclosure, Nov 8): how often it comes up, and
+	## the roll's spread (the Demonologist's version uses a daily mood of +-OPENNESS_JITTER).
+	const SHARE_GIFT_TOPIC_BASE = 0.1
+	const SHARE_GIFT_TOPIC_OPENNESS = 0.4
+	const SHARE_GIFT_TOPIC_GOSSIP = 0.2
+	const SHARE_GIFT_JITTER = 0.2
 	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
 	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
