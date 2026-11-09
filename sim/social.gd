@@ -301,7 +301,7 @@ static func _gift_disclosure(w, s, l, topic: Dictionary, bond: float):
 		"privacy": (1.0 - trait_of(s, "privacy")) * Tuning.Dialogue.OPENNESS_PRIVACY_WEIGHT,
 		"trust": bond * Tuning.Dialogue.OPENNESS_TRUST_WEIGHT,
 		"pressure": s.pressure * Tuning.Dialogue.OPENNESS_PRESSURE_WEIGHT * (1.0 - Tuning.Dialogue.OPENNESS_COMPOSURE_DAMP * trait_of(s, "composure")),
-		"day": Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1), "base": Tuning.Dialogue.OPENNESS_BASE_OFFSET, "roll": jitter}
+		"day": Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1), "base": Tuning.Dialogue.OPENNESS_BASE_OFFSET + Tuning.Social.SHARE_GIFT_PEER_OFFSET, "roll": jitter}
 	if C.has_role_def(role):
 		C.role_def(role).score_disclosure_tier(w, s, parts)
 	var confide: bool = w.day <= 1 and not s.confided and w.confides_made < Tuning.Social.CONFIDE_MAX_PER_GAME

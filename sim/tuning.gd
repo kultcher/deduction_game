@@ -421,10 +421,11 @@ class Social:
 	const CONFIDE_MAX_PER_GAME = 2
 	## The gift topic in NPC talk (Social._gift_disclosure, Nov 8): how often it comes up, and
 	## the roll's spread (the Demonologist's version uses a daily mood of +-OPENNESS_JITTER).
-	const SHARE_GIFT_TOPIC_BASE = 0.1
-	const SHARE_GIFT_TOPIC_OPENNESS = 0.4
+	const SHARE_GIFT_TOPIC_BASE = 0.3
+	const SHARE_GIFT_TOPIC_OPENNESS = 0.5
 	const SHARE_GIFT_TOPIC_GOSSIP = 0.2
 	const SHARE_GIFT_JITTER = 0.2
+	const SHARE_GIFT_PEER_OFFSET = -0.1   # a touch more guarded with a neighbour than with the Demonologist
 	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
 	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
