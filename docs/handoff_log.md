@@ -27,6 +27,29 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 night, Claude-Bailiff: demon types step 2, daytime presence (`claude/day-presence`)
+
+- Base `99fdde1` (main after #105). Status: green, **held unmerged** until the day-killer (step 3) is
+  tested (Michael's call). Next actor: whoever builds step 3, on top of this branch.
+- Design and details: `docs/demon_types_plan.md`, step 2.
+- `Game.watched`: the roster of every public place on the block the player watched each day phase
+  (`GameDayNight._note_watch`). Carried by the snapshot (`Evidence.normalize`) and the solver view.
+- `workshop/day_presence.gd`: presence table (schedule prior from the sim, updated by the watch record,
+  player sightings and NPC reports) and `breath_factor` (Breathstealer by presence).
+- CaseEval movement factor kind 3 (`CaseEvalKernel.PresenceScore`, weights via
+  `SolverBridge.CaseEvalRegisterPresenceWeights`). The CaseEval compile key adds the watch record when
+  someone has been silenced.
+- The circumstantial hub no longer makes the one-day "near a silencing" incident. Hub and regression
+  fixtures that leaned on it now use a rivalry with the victim.
+- Checks: 125/125 suites; golden identical to `baseline_7034f36` (no golden seed has a silencing).
+- **Balance flag (Tally):** 24 Breathstealer deals (7 NPCs, dynamic, seeds 1004-1100), analyst bot,
+  main vs branch: good wins 15 -> 18, Breathstealer executed 10 -> 17 (now often day 1-2), evil
+  executions 23 -> 35, good executions 16 -> 14. Mean game time 57.8 s -> 55.4 s (no slowdown).
+  Small sample; the watch roster makes the silencer easy to spot when the player watched the victim's
+  block. Worth a proper sweep before merge.
+- Evening-loop cleanup in the movement model (dead `evening` variable, 4x inner loop) deliberately left
+  out: it should be golden-identical and wants its own PR to prove that.
+
 ## 2026-11-08 evening, Claude-Bailiff: demon types step 1 (`claude/demon-types`)
 
 - Base `f167c63` (main after #104). Status: green, ready to merge. Next actor: whoever takes step 2 (daytime presence).

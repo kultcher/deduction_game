@@ -1,7 +1,7 @@
 # Demon types: the day-killer
 
-Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 built (branch `claude/demon-types`).
-Steps 2 and 3 not started.
+Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 merged (#105). Step 2 built on
+`claude/day-presence`, held until the day-killer (step 3) is tested. Step 3 not started.
 
 ## The idea
 
@@ -93,12 +93,50 @@ the type wouldn't build up over several nights.
   The golden capture is identical to the baseline.
 - **Test:** `tools/test_demon_types.gd` (22 checks, including a hand-built Scion split).
 
-### Step 2: daytime presence (not started)
+### Step 2: daytime presence (built, branch `claude/day-presence`, held until step 3 is tested)
 
-A likelihood that a person was at place L during a day phase. It's built from known work and
-haunt schedules plus sightings and conversations at L. The player sees only part of the day,
-so the absence of a sighting is weak evidence. The same channel closes the backlog's
-"Breathstealer by presence" gap.
+**The watch record.** When the player spends a day phase somewhere, they see everyone at
+every public place on that block (the place itself plus "Nearby"). The game now keeps that
+roster per phase (`Game.watched`, recorded in `GameDayNight._note_watch`). The snapshot and
+the solver's view carry it as `watched`. This is what makes not being seen count: before,
+the solver only had the sightings, so it couldn't tell "nobody saw X" from "nobody looked".
+
+**The presence table** (`workshop/day_presence.gd`). For each person, day and day phase, the
+chance they were at each of the 8 town places or at home:
+- **Prior:** the sim's own schedule model. A working phase puts someone at their workplace.
+  An idle phase follows the per-phase odds in `World._choose_idle_location`, with
+  `IDLE_HAUNT_CHANCE` going to their two haunts (known ones from haunt cards; unknown ones
+  spread over the places they could be). The afternoon's friend visit is spread over the
+  workplaces in use, since friendships aren't known. `test_day_presence` samples the sim's
+  function and checks the prior matches it.
+- **Evidence:** the watch record (listed is certain; not listed rules that block out), the
+  player's own sightings (certain), NPC-reported sightings (trusted at
+  `PRESENCE_TESTIMONY_TRUST`, 0.8). The dead are nowhere.
+- **Slots are independent.** The sim draws each phase afresh, so there's no coupling to model.
+- **Queries:** `at`, `on_block`, `same_block`, `at_any` (at any of some places in any of some
+  phases: what step 3's mark needs).
+
+**First user: Breathstealer by presence** (the backlog item). The Breathstealer silences
+someone out on its own block, in one of the day phases, so for each silencing the silencer
+was on the victim's block in that phase. For each person m:
+
+    A_m = product over silencings of  sum over phases p of  P(not yet before p) * h_p * c_p
+
+where c_p is the chance m and the victim were out on the same block in p, and h_p is the
+sim's chance of acting that phase (the mean of its low and high odds). A victim can't be
+their own silencer. The per-world factor is the mean of A_m over the world's minions (each is
+equally likely to hold the role), mixed with `DEFAULT_ERR`. It's a CaseEval movement factor
+(kind 3, scored in C# by `CaseEvalKernel.PresenceScore`, with a GDScript reference
+`DayPresence.breath_score`), so it feeds the shared model and case evaluation like the
+Augur's daytime-crossing factor. No factor when nobody was silenced or the script has no
+Breathstealer.
+- It replaces the circumstantial hub's one-day "near a silencing" incident, which couldn't
+  build up across silencings. The card still counts as relevant to the hub's target.
+- **Limits:** who the Breathstealer picks among the people on its block (the threat ranking)
+  isn't modelled, only that they had to be there. The watch record is the player's, so it's
+  in every listener's view (like the rest of the shared notebook).
+- **Tests:** `tools/test_day_presence.gd`; `test_workshop_circumstantial_hub` updated (being
+  near a silencing is Stage 1 now).
 
 ### Step 3: the day-killer itself (not started)
 
@@ -109,7 +147,9 @@ so the absence of a sighting is weak evidence. The same channel closes the backl
   - **Movement:** at night it's out like a minion.
 - **Solver:**
   - **The mark's location:** the victim's work or haunts name the candidate places.
-  - **Presence:** the step 2 channel gives the demon's presence at those places that day.
+  - **Presence:** the step 2 table gives the demon's presence at those places that day
+    (`DayPresence.at_any`), and the factor can follow Breathstealer by presence: a
+    per-world value from the demon slot, scored in C# like CaseEval move kind 3.
   - **The victim draw:** the chance the victim was the one drawn is 1/n of the good
     regulars there. n depends on who's good, so it's a per-world factor.
   - **Type evidence:** the pattern of victims (always a regular of somewhere the demon was)
