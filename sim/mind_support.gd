@@ -98,6 +98,14 @@ static func danger(w, s, d, ctx: Dictionary) -> float:
 ## The bystander's move: a good mind decides as itself; an evil one as its good self would,
 ## unless breaking cover is worth it.
 static func choose(w, s, d, ctx: Dictionary) -> Dictionary:
+	var pick: Dictionary = _choose(w, s, d, ctx)
+	# Piling on is restating an accusation: not twice at one meeting by the same speaker.
+	if pick.get("move", "") == "pile_on" and MindMeeting.already_accused(w, s, d.id):
+		return {}
+	return pick
+
+
+static func _choose(w, s, d, ctx: Dictionary) -> Dictionary:
 	if not s.is_evil():
 		return _choose_good(w, s, d, ctx)
 	var sh = _mind().shadow_eval(w, s, func(sh): return _choose_good(w, sh, d, ctx))
@@ -271,7 +279,15 @@ static func _speak(w, s, d, choice: Dictionary, ctx: Dictionary, out: Dictionary
 		"exonerate":
 			match choice.get("how", ""):
 				"reveal":
+					var before: int = lines.size()
 					MindMeeting._public_disclosure(w, s, lines, facts)
+					if lines.size() == before:
+						# Nothing new to disclose (already public): say again what clears them, so
+						# the closing line has its reason in the same breath.
+						for e in choice.get("entries", []).slice(0, 1):
+							var said: String = str(e.get("text", "")).trim_suffix(".")
+							if said != "":
+								lines.append(_mind().say_voiced(s, "support_exonerate_recall", "Remember what my gift told me: %s." % said, {"target": d.name, "reading": said}))
 					lines.append(_mind().say_voiced(s, "support_exonerate", "That's why I won't see %s hang." % d.name, {"target": d.name}))
 				"hint":
 					lines.append(_mind().say_voiced(s, "support_hint", "I have reason to believe %s is innocent, though I'm not ready to say why." % d.name, {"target": d.name}))

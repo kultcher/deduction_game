@@ -27,6 +27,26 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-08 night, Claude-Bailiff: playtest 1709 fixes (`claude/1709-polish`)
+
+- Base `72407b2` (main after #106). Status: suites green; **golden moves on purpose** (needs Michael's OK to
+  re-baseline). Next actor: Michael (re-baseline call, then merge).
+- Reason wording: "doesn't fit what we know" -> "doesn't fit the facts as I know them"; a Surveyor reason about
+  someone off the block no longer says "and they live there" (`reason_attribution._report_why_pair`).
+- No repeated accusations: one accusation per speaker per target per meeting (`MindMeeting.already_accused`;
+  testimony and supporter pile-ons). Changes RNG draws, so the golden capture diverges from day 1-2.
+- Vote resistance line on an NPC's nomination no longer says "Your case..., Demonologist" (`_resistance_line`).
+- Supporter "exonerate by reveal" with nothing new to disclose restates the clearing reading before "That's why
+  I won't see X hang" (`mind_support._speak`).
+- Silenced in conversation: no greeting; ask/press stay free (they can't answer); showing a card costs a
+  question and gets no spoken answer (their beliefs still move).
+- Wards and scorched sigils shown at the meeting don't take the day's floor; one button per receipt, naming it.
+- Gossip and Town Hall results come up in the conversation view over the building (`main._capture_place_reading`).
+- A conversation that runs out of questions and ends the phase holds the next header / meeting opening out of the
+  log until the player leaves (`main._run`, `_leave_finished_conversation`).
+- Not done: claim icon showing before the claim is spoken (Michael: only if safe).
+- Test: `tools/test_playtest_1709.gd` (17 checks); `test_evidence_cards` updated for the free ward showing.
+
 ## 2026-11-08 ~17:50, Claude-Tally: the town map's layout is an editable scene
 
 - Branch `claude/ui-script-map` (PR #106). Block areas, streets, block signs, building lots and

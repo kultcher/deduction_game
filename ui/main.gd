@@ -42,6 +42,8 @@ var map
 var map_stage: Control
 var conversation_view
 var conversation_show_map = false
+var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
+var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
 ## Crime-scene traces from the last search, shown one at a time in the conversation view.
 var inspect_pages: Array = []
@@ -728,10 +730,34 @@ func _run(cmd: String) -> void:
 		_print(g.command(cmd))   # refused; no new events
 		return
 	var out: String = g.command(cmd)
+	# A conversation that ran out of questions ended the phase too: what comes after it (the
+	# next phase's header, the meeting's headline, who was silenced) waits in the log until
+	# the player leaves the conversation, so the log never runs ahead of the scene.
+	var verb0: String = cmd.strip_edges().get_slice(" ", 0).to_lower()
+	var talk_ran_out: bool = previous_state == "talk" and g.state != "talk" and not verb0 in ["bye", "leave", "done"]
+	var deferred_meeting: bool = false
+	if talk_ran_out:
+		var evs: Array = g.last_events
+		var cut: int = -1
+		for i in range(evs.size()):
+			if str(evs[i].get("k", "")) in ["header", "headline"]:
+				cut = i
+				break
+		if cut > 0:
+			_deferred_log_events = evs.slice(cut)
+			if g.state in ["meeting", "nomination"]:
+				# The meeting itself waits too: the stage takes it up when they leave.
+				deferred_meeting = true
+				_deferred_meeting_events = evs.slice(cut)
+				_deferred_log_events = []
+				_print(Game.render(evs.slice(0, cut)))
+			else:
+				out = Game.render(evs.slice(0, cut))
 	# What's said at the meeting reaches the log as the stage shows it (see _log_events).
-	if not _meeting_owns_log(previous_state):
+	if not deferred_meeting and not _meeting_owns_log(previous_state):
 		_print(out)
-	_capture_meeting(previous_state)
+	if not deferred_meeting:
+		_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
 	if not conversation_finished:
@@ -789,7 +815,11 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 func _capture_scene_search(cmd: String) -> void:
 	inspect_pages.clear()
 	inspect_index = 0
-	if cmd.strip_edges().get_slice(" ", 0).to_lower() not in ["search", "s"]:
+	var verb: String = cmd.strip_edges().get_slice(" ", 0).to_lower()
+	if verb in ["gossip", "records", "register", "town_hall", "inspect"]:
+		_capture_place_reading(verb)
+		return
+	if verb not in ["search", "s"]:
 		return
 	var prose: Array = []
 	var cards: Array = []
@@ -812,9 +842,32 @@ func _capture_scene_search(cmd: String) -> void:
 	if not inspect_pages.is_empty():
 		_show_inspect_page()
 
+## Tavern gossip and Town Hall records come up in the conversation view over the building's
+## interior, like a crime-scene trace: the building where the portrait goes, what you learned
+## in the speech bubble. The log keeps the same text. Only the command's own narration, up to
+## the next phase's header (gossip ends the evening), goes on the page.
+func _capture_place_reading(verb: String) -> void:
+	if g.last_events.any(func(e): return e.get("k", "") == "error"):
+		return
+	var text_parts: Array = []
+	for e in g.last_events:
+		var k: String = str(e.get("k", ""))
+		if k in ["header", "headline"]:
+			break
+		if k == "narration" and str(e.get("text", "")).strip_edges() != "":
+			text_parts.append(str(e.get("text", "")))
+	if text_parts.is_empty():
+		return
+	var gossip: bool = verb == "gossip"
+	var loc: String = "tavern" if gossip else "town_hall"
+	var title: String = "The Drowned Lamb · evening gossip" if gossip else "The Town Hall · parish records"
+	inspect_pages.append({"title": title, "texture": UITheme.tex("art/" + MapView.PAPER_ART.get(loc, ""), 0.5), "text": "\n".join(PackedStringArray(text_parts)),
+		"loc": loc, "button": "Done"})
+	_show_inspect_page()
+
 func _show_inspect_page() -> void:
 	var page: Dictionary = inspect_pages[inspect_index]
-	conversation_view.set_location(g.loc)
+	conversation_view.set_location(str(page.get("loc", g.loc)))
 	conversation_view.show_item(page.title, page.texture, page.text)
 
 func _inspect_next() -> void:
@@ -832,6 +885,15 @@ func _inspect_next() -> void:
 
 func _leave_finished_conversation() -> void:
 	conversation_finished = false
+	if not _deferred_log_events.is_empty():
+		_log_events(_deferred_log_events)
+		_deferred_log_events = []
+	if not _deferred_meeting_events.is_empty():
+		var evs: Array = _deferred_meeting_events
+		_deferred_meeting_events = []
+		if g.state in ["meeting", "nomination"]:
+			meeting_view.arrive()
+			meeting_view.consume(evs)
 	_consume_headlines()
 	if g.meeting_streaming():
 		_stream_meeting()
@@ -1010,8 +1072,9 @@ func _refresh_actions() -> void:
 		return
 	if not inspect_pages.is_empty():
 		var more: bool = inspect_index < inspect_pages.size() - 1
-		_button(conversation_view.controls, "Next trace" if more else "Done", _inspect_next)
-		action_title.text = "Reading the traces"
+		var page_now: Dictionary = inspect_pages[inspect_index]
+		_button(conversation_view.controls, "Next trace" if more else str(page_now.get("button", "Done")), _inspect_next)
+		action_title.text = "Reading the traces" if not page_now.has("loc") else ("Listening to the gossip" if page_now.loc == "tavern" else "Reading the records")
 		_hint("Finish reading before you move on.")
 		return
 	if _presenting():
@@ -1051,8 +1114,10 @@ func _refresh_actions() -> void:
 				actions = lower_actions
 		"meeting":
 			action_title.text = "Day %d: the town meeting" % w.day
-			if not g.presented_today and g.board.any(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false)):
-				_button(actions, "Show your ward or scorched sigil…", func(): _card_picker("Show the town a protection receipt", func(c): return c.kind in ["ward", "scorched_sigil"], func(num, _x): _run("present %d" % num), false))
+			# Wards and scorched sigils are shown, not argued: one button each, free of the floor.
+			for pc in g.board.filter(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false) and not g.shown_protection.has(int(c.n))):
+				var pnum: int = int(pc.n)
+				_button(actions, "Show the town %s" % g.protection_label(pc), func(): _run("present %d" % pnum))
 			_map_toggle()
 			_button(actions, "Let the town speak (wait)", func(): _run("wait"))
 			if not g.presented_today:
