@@ -243,6 +243,20 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var card = {"id": e.id, "fact_id": e.fact_id, "source": e.source, "text": e.text,
 		"subject": e.subjects[0] if not e.subjects.is_empty() else "", "subjects": e.subjects.duplicate(),
 		"night": night, "observed_at": e.observed_at, "block": block, "role": "", "data": {}}
+	if e.kind == "watch_log" and e.source == "player" and night >= 1 and e.content.get("watches") is Array:
+		# The Demonologist's day log: the watch roster for one day (game_day_night._record_day_log).
+		var watches: Array = []
+		for wt in e.content.watches:
+			if not wt is Dictionary or int(wt.get("day", -1)) != night or str(wt.get("block", "")) not in C.BLOCKS or str(wt.get("phase", "")) not in ["morning", "afternoon", "evening"] or not wt.get("at") is Dictionary:
+				return {}
+			for l in wt.at:
+				if l not in C.LOCATIONS or not wt.at[l] is Array or not wt.at[l].all(func(pid): return pid in ids):
+					return {}
+			watches.append(wt.duplicate(true))
+		card["kind"] = "watch_log"
+		card["night"] = -1  # daytime whereabouts, not a night outing
+		card["data"] = {"day": night, "watches": watches}
+		return card
 	if e.kind == "hint" and e.source in ids and e.subjects == [e.source] and night >= 0 and e.observed_at.phase != "unknown" and e.content.get("package", "") in C.HINT_PACKAGES:
 		var roles: Array = C.HINT_PACKAGES[e.content.package].roles
 		var stated = e.content.get("roles", roles)

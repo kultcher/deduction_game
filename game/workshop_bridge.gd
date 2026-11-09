@@ -37,7 +37,9 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
 			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g),
 			"minions": script_minions(g), "demons": script_demons(g)},
-		"watched": g.watched.duplicate(true) if "watched" in g else []}
+		# Only the Demonologist's own view holds the raw watch record. A listener hears it
+		# through day-log receipts cited in a case (watch_log, workshop/location_solver.gd).
+		"watched": g.watched.duplicate(true) if "watched" in g and listener_id == "" else []}
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})
 	for n in g.w.npcs:

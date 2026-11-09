@@ -155,9 +155,26 @@ static func _prior(pid: String, p: int, work: Dictionary, haunts: Dictionary, bu
 	return dist
 
 
+## The watches in play: the Demonologist's own record (`view.watched`, their view only) and
+## the day logs among the cards (a listener's, as cited to them), one per day and phase.
+static func watches(view: Dictionary, cards: Array) -> Array:
+	var out: Array = []
+	var seen: Dictionary = {}
+	var logs: Array = []
+	for c in cards:
+		if c.get("kind", "") == "watch_log":
+			logs.append_array(c.get("data", {}).get("watches", []))
+	for wtch in view.get("watched", []) + logs:
+		var k: String = "%d:%s" % [int(wtch.get("day", -1)), str(wtch.get("phase", ""))]
+		if not seen.has(k):
+			seen[k] = true
+			out.append(wtch)
+	return out
+
+
 static func _apply_evidence(view: Dictionary, cards: Array, out: Dictionary) -> void:
 	# The player's watch: everyone at the block's public places is listed.
-	for wtch in view.get("watched", []):
+	for wtch in watches(view, cards):
 		var p: int = phase_index(wtch.get("phase", ""))
 		var key: String = "%d:%d" % [int(wtch.get("day", -1)), p]
 		var blk: String = str(wtch.get("block", ""))

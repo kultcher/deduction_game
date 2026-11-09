@@ -477,6 +477,23 @@ static func _note_watch(g, l: String) -> void:
 		if C.LOCATIONS[loc].block == blk:
 			at[loc] = g.w.npcs_at(loc).map(func(n): return n.id)
 	g.watched.append({"day": g.w.day, "phase": C.PHASES[g.w.phase].to_lower(), "block": blk, "at": at})
+	_record_day_log(g, g.w.day)
+
+
+## The day's watches as one hidden receipt (the "day log"): who was at each public place on
+## the blocks you spent a phase on, the empty places too. It's how the town hears your
+## watches, in one piece (one card in a listener's budget), and only when a Whereabouts node
+## cites it (workshop/location_solver.gd). A new receipt each time the day's record grows;
+## the latest one is the day's log.
+static func _record_day_log(g, day: int) -> int:
+	var watches: Array = g.watched.filter(func(e): return int(e.day) == day).map(func(e): return e.duplicate(true))
+	if watches.is_empty():
+		return 0
+	var parts: Array = watches.map(func(e): return "%s: %s" % [str(e.phase), C.block_name(str(e.block))])
+	var last_phase: int = C.PHASES.map(func(p): return p.to_lower()).find(str(watches[-1].phase))
+	return g.add_profile_receipt({"kind": "watch_log", "subject": [], "source": "player", "day": day, "phase": last_phase,
+		"watches": watches, "class": "concrete",
+		"text": "Your record of who was at each place on day %d (%s)." % [day, ", ".join(PackedStringArray(parts))]})
 
 
 static func _note_haunt_sightings(g, l: String) -> void:

@@ -471,7 +471,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if day_demon_share(view) > 0.0:
 		# The Hexer factor reads schedules, sightings and the watch record (day presence).
 		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []), "hex_on": hex_factor_enabled,
-			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
+			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening", "watch_log"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
