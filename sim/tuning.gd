@@ -407,7 +407,7 @@ class Social:
 	const SHARE_ROLE_HINT_BOND_MIN = 0.45  # was 0.55 (Nov 5: acquaintances, not only friends)
 	const SHARE_ROLE_HINT_OPENNESS_SCALE = 0.9
 	const SHARE_ROLE_HINT_BOND_OFFSET = 0.15
-	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.2
+	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.35  # was 0.2 (Nov 8: 2-3 hints a game)
 	const SHARE_ROLE_CLAIM_BOND_MIN = 0.58  # was 0.68 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN = 0.5  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURE_MIN = 0.55
@@ -417,8 +417,8 @@ class Social:
 	## Day-1 confidant (Nov 8, BotC's "find one person to trust"): until they've told someone,
 	## and only on day 1, an NPC will tell a less-trusted listener their gift, and is likelier
 	## to. Target: once or twice a game. The pair warms to each other.
-	const SHARE_ROLE_CONFIDE_BOND_MIN = 0.42
-	const SHARE_ROLE_CONFIDE_BONUS = 0.6
+	const SHARE_ROLE_CONFIDE_BOND_MIN = 0.45
+	const SHARE_ROLE_CONFIDE_BONUS = 0.2
 	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
 	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
