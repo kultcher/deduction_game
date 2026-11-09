@@ -55,6 +55,7 @@ var town_relationships: Array = [] # Rolled public bonds, captured before secret
 var public_claims: Array = []       # {day, who, role}
 var stances = {}                    # accuser id -> {target, day}: their latest public accusation
 var defences = {}                   # supporter id -> {target, day}: their latest public word for someone (M2c)
+var meeting_arguments = []          # recency: [{day, target}] the player argued at a meeting
 var suspicious_pressure = {}        # premises step 2: "target|cards" -> {sum, count, applied, venue, heard}
 var totem = {}                      # the Revenant's hidden totem: {loc, day, owner} or {}
 var totem_at_dawn = false           # a totem was in play when the day began (no new one today)
@@ -71,6 +72,7 @@ var meeting = {}
 
 ## Player tools and night choices.
 var tools = {"ward": 1, "clemency": 1}
+var confides_made: int = 0              # day-1 confidant claims so far (Social._gift_disclosure; capped)
 var daily_npc_shares: Array = []    # Non-strategizing NPC-to-NPC items spoken today
 var _evening_chats_done_day: int = -1
 var initial_good_roles: Array = []  # Good roles dealt at case start (unaffected by death/curse)
@@ -368,6 +370,7 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 	day = 0
 	phase = C.NIGHT
 	daily_npc_shares = []
+	confides_made = 0
 	_evening_chats_done_day = -1
 	initial_good_roles = []
 	town_hall_uses_left = Tuning.Setup.TOWN_HALL_USES_PER_CASE
@@ -717,12 +720,13 @@ func _idle_pairable() -> Array:
 func _pre_pair() -> void:
 	var max_pairs = 1 if n_npcs < 10 else n_npcs / 5
 	var made = 0
-	while made < max_pairs:
+	# Each pair slot rolls on its own (Nov 8): one failed roll no longer silences the phase.
+	for slot in range(max_pairs):
 		var cands = _idle_pairable()
 		if cands.size() < 2 or player_options().size() - 2 < 3:
 			break
 		if not decision_roll(null, "pre_phase_conversation", Tuning.Setup.PRE_PHASE_CHAT_CHANCE):
-			break
+			continue
 		var pr = _choose_pair(cands)
 		if pr.is_empty():
 			break
@@ -1954,7 +1958,8 @@ func find_totem(l: String) -> Dictionary:
 func start_new_day() -> void:
 	day += 1
 	phase = C.MORNING
-	daily_npc_shares = []
+	# Yesterday's talk still circulates at the tavern (Nov 8); older talk drops out.
+	daily_npc_shares = daily_npc_shares.filter(func(r): return int(r.get("day", -9)) >= day - 1)
 	_evening_chats_done_day = -1
 	if day > max_days and not game_over:
 		dlog.set_time(day, "Morning")

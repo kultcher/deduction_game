@@ -176,7 +176,10 @@ func ward_evidence():
 	g.command("present %d" % sigil.n)
 	check(is_equal_approx(target.trust, 0.5) and is_equal_approx(other.trust, 0.35), "meeting showing grants protectee +0.20 total and skips previously rewarded listeners")
 	check(g.w.living().all(func(n): return n == target or is_equal_approx(n.trust, 0.35)), "every other living NPC receives +0.05 irrespective of alignment")
-	check(g.presented_today and sigil.learned.any(func(d): return d.public) and not sigil.private, "meeting showing consumes the normal floor and makes the receipt public")
+	check(not g.presented_today and g.shown_protection.has(int(sigil.n)) and sigil.learned.any(func(d): return d.public) and not sigil.private, "meeting showing leaves the day's floor free and makes the receipt public")
+	var trust_now: float = target.trust
+	g.command("present %d" % sigil.n)
+	check(is_equal_approx(target.trust, trust_now) and g.shown_protection.size() == 1, "a protection receipt is shown to the town once")
 	check(g.workshop_deliveries.size() == deliveries, "showing protection context does not invent a shared-model adapter")
 	var second = g.add_card({"kind": "scorched_sigil", "subject": [other.id], "source": "evidence", "target": other.id, "text": "Another distinct sigil", "private": true})
 	other.trust = 0.49

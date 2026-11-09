@@ -1,5 +1,6 @@
 ## Deterministic, bounded hypothesis testing. Never consumes the referee's worlds.
 extends RefCounted
+const Recency = preload("res://sim/recency.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
@@ -234,6 +235,9 @@ static func _salience(card: Dictionary, focus: Dictionary, listener: Dictionary,
 		score += Tuning.Workshop.SALIENCE_NAMED
 	elif gift and target != "" and card.get("role", "") in COUNTED_GROUP_ROLES:
 		score += Tuning.Workshop.SALIENCE_EXCLUSION
+	# Recency: older cards drift out of a bounded mind's attention; the town's topic of the
+	# day draws it (sim/recency.gd).
+	score += Recency.salience(card, people, listener.get("recency", {}), float(listener.get("insight", 0.5)))
 	return score
 
 ## Gift readings (always), and those that count only in a live game.

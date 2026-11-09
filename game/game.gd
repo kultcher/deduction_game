@@ -63,6 +63,7 @@ var prediction_spoiled = false
 var case_summary: Dictionary = {}
 var show_hidden = false     # include cards the player has hidden
 var sigil_heard = {} # Receipt number -> listener IDs; trust rewards are once per NPC per sigil.
+var shown_protection = {} # Receipt number -> true: a ward or sigil already shown to the whole town (it doesn't take the floor)
 var ward_log = {}           # night -> who you warded
 ## Promises for tonight: {"ward": id, "vigil": {id: block}}. Kept or broken when you choose
 ## your night work.
@@ -250,6 +251,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	log_paths = []
 	ward_log = {}
 	sigil_heard = {}
+	shown_protection = {}
 	_testimony = {}
 	offer = {}
 	talk_offered = false
@@ -917,6 +919,9 @@ func delete_deduction(num: int) -> String:
 ## evidence effect. Claude owns that adapter; this only delivers the approved trust.
 func _ward_context_card(rest: String) -> Dictionary:
 	return GamePresentation._ward_context_card(self, rest)
+
+func protection_label(card: Dictionary) -> String:
+	return GamePresentation.protection_label(self, card)
 
 func _show_ward_context(card: Dictionary, listeners: Array) -> Dictionary:
 	return GamePresentation._show_ward_context(self, card, listeners)
