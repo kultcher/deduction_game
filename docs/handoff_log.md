@@ -160,6 +160,25 @@ the Nov 6 late-night entry below for what it does).
   rubberband keeps it on the grid, if we later want a bar-synced A-to-B switch after day 3
   (Godot's `AudioStreamInteractive`).
 
+## 2026-11-07 ~13:00, Claude-Tally: premises steps 1–3 A/B. No outcome change; step 3 is slow
+
+Runs `42331033313` (base `0743a76`), `42331041617` (step 1 `3d0f210`) and `42331050248` (steps
+1–3, main `226d566`): M4 bot, seeds 100000–100999, attention budgets unchanged. Project doc
+`claude/premises-ab-2026-11-07.md`.
+- **Outcomes flat:** step 1 vs base +0.1 (7 NPCs) and −0.6 (10 NPCs); steps 2–3 on top change
+  7 of 963 games at 10 NPCs and 2 of 1,000 at 7. Good executions, Demon identified, and
+  identified-but-lost (~38% of identified at 10 NPCs; the Nov 6 "29.5%" was of all games)
+  are flat.
+- **For Quill / Bailiff: step 3 (#95) is 4–6× slower in passive play** (10 NPCs median 140 s
+  vs 24 s per game, same outcomes) and ~1.6× for the bot (504 s vs 317 s; 33 games hit the
+  30-min game timeout). A local timing pins it to #95: 26 s at step 1, 26 s at step 2,
+  105 s at step 3. Likely `ReadingChallenges.graded_challenge`: three full
+  `CaseEval.evaluate` calls per challenge, at every refresh, for every listener holding a
+  defence. Cache it, or take q/f/r/evil from one enumeration. Sweeps of main need ~3×
+  the cost estimates until then.
+- **7-NPC bot fell between `9a1b215` and `0743a76`** (#90, #91, #94): 57.4% vs 62.8% on 505
+  shared seeds (z −3.0). Not investigated.
+
 ## 2026-11-07 night, Claude-Bailiff: UI control-flow pass (`ui/control-flow`)
 
 These are Michael's Nov 7 UX fixes. Nothing moves on while something is being shown.
