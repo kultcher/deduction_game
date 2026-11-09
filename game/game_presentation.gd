@@ -444,14 +444,30 @@ static func _show_ward_context(g, card: Dictionary, listeners: Array) -> Diction
 	return {"lines": ["You show %s: %s" % ["the town" if public_show else ", ".join(PackedStringArray(listeners.map(func(n): return n.name))), card.text]], "facts": []}
 
 
+## What a protection receipt shows, for buttons and prompts ("your ward on Agnes's door, night 2").
+static func protection_label(g, card: Dictionary) -> String:
+	var t = g.w.by_id.get(str(card.get("target", "")))
+	var who: String = ("%s's" % t.name) if t != null else "a"
+	var night: int = int(card.get("night", card.get("day", -1)))
+	var when: String = (", night %d" % night) if night >= 0 else ""
+	if card.get("kind", "") == "scorched_sigil":
+		return "the scorched sigil on %s door%s" % [who, when]
+	return "your ward on %s door%s" % [who, when]
+
+
 static func _present_deduction(g, rest: String, progress: Callable = Callable()) -> void:
-	if g.presented_today:
-		g._err("You've already had the floor today.")
-		return
+	# A ward or scorched sigil is shown, not argued: it doesn't take the day's floor, and
+	# each one is shown to the whole town once.
 	var context_card: Dictionary = _ward_context_card(g, rest)
 	if not context_card.is_empty():
-		g.presented_today = true
+		if g.shown_protection.has(int(context_card.n)):
+			g._err("The town has already seen %s." % protection_label(g, context_card))
+			return
+		g.shown_protection[int(context_card.n)] = true
 		g._lines(_show_ward_context(g, context_card, g.w.living()).lines)
+		return
+	if g.presented_today:
+		g._err("You've already had the floor today.")
 		return
 	var num = rest.strip_edges().trim_prefix("#").to_int()
 	if num < 1 or num > g.board.size() or g.board[num - 1]["kind"] != "deduction" or g.board[num - 1].get("deleted", false):

@@ -290,7 +290,8 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 		if not context_card.is_empty():
 			r = g._show_ward_context(context_card, [n])
 			verb = "ward_context"
-	if n.silenced and verb in ["ask", "a", "tell", "t", "present", "accuse", "show", "press"]:
+	# Silenced: they can't answer anything, but they can still read what you show them.
+	if n.silenced and verb in ["ask", "a", "press", "confront"]:
 		g.w.observe_decision(n, "conversation", false, {"gate": "silenced; cannot answer; no roll"})
 		g._narr("%s opens their mouth, but no sound comes. They can't speak (until tomorrow evening)." % n.name)
 		return
@@ -497,6 +498,14 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 		_:
 			g._err("In conversation: ask gift | ask night | ask today | ask seen <morning|afternoon|evening|yesterday [phase]> | ask are <gift> | ask about <name or gift> | present <card#> [for|against <name>] | bye")
 			return
+	if n.silenced and verb in ["tell", "accuse", "convince", "argue", "defend", "vouch", "trace_ask", "ward_context"]:
+		# They take it in (their beliefs move as usual) but can't say a word about it, so no
+		# lines and no spoken cards. It still takes their time: one question, like any showing.
+		r["lines"] = []
+		r["facts"] = []
+		r["profile_haunts"] = []   # a trace's haunt tip is something said (Codex, #108)
+		r["repeated"] = false
+		r["narration"] = ["%s reads it in silence. They can't answer until tomorrow evening." % n.name]
 	# Something they've already heard from you: they say so, and it costs no question.
 	_repeat_refusal(n, r)
 	var repeat: bool = r.get("repeated", false)

@@ -12,6 +12,27 @@ const FADE_SECONDS = 0.15
 const PORTRAIT_FRAME = [0.01, 0.02, 0.48, 1.0]   # anchors: left, top, right, bottom
 const ITEM_FRAME = [0.07, 0.12, 0.42, 0.72]      # an object sits level with the speech bubble
 const REVEAL_PER_SECOND = 90.0
+## A light blur (about 2 px at 1080p), dimmed and warmed, darker towards the edges.
+const SCENERY_SHADER = """shader_type canvas_item;
+uniform float blur = 1.6;
+uniform float dim = 0.7;
+void fragment() {
+	vec3 sum = vec3(0.0);
+	for (int x = -2; x <= 2; x++) {
+		for (int y = -2; y <= 2; y++) {
+			sum += texture(TEXTURE, UV + vec2(float(x), float(y)) * TEXTURE_PIXEL_SIZE * blur).rgb;
+		}
+	}
+	vec2 d = UV - vec2(0.5);
+	float vignette = 1.0 - smoothstep(0.35, 0.85, length(d * vec2(1.0, 1.3)));
+	COLOR = vec4(sum / 25.0 * dim * (0.78 + 0.22 * vignette) * vec3(1.03, 0.98, 0.92), 1.0);
+}"""
+
+## The interior art for a location id, or "" where there's none (homes, crime scenes).
+static func scenery_path(loc: String) -> String:
+	if loc == "" or loc.begins_with("home_") or loc.begins_with("scene_"):
+		return ""
+	return "art/interiors_poc/%s-papercraft-v1" % loc.replace("_", "-")
 
 var formatter = Formatter.new()
 var renderer = Renderer.new()
@@ -27,6 +48,12 @@ var controls: HFlowContainer
 var action_hint: Label
 var person_id = ""
 var lines: Array = []
+## The room the talk happens in (Nov 8): a papercraft interior behind the portrait for the
+## town's buildings, softened and dimmed so the portrait reads first. Homes, crime scenes and
+## anywhere without art keep the blurred map.
+var scenery: TextureRect
+var map_blur: ColorRect
+var location = ""
 
 var _built: bool = false
 
@@ -60,6 +87,19 @@ void fragment() {
 	material.shader = shader
 	backdrop.material = material
 	add_child(backdrop)
+	map_blur = backdrop
+	scenery = TextureRect.new()
+	scenery.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scenery.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	scenery.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	scenery.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var soft = Shader.new()
+	soft.code = SCENERY_SHADER
+	var soft_material = ShaderMaterial.new()
+	soft_material.shader = soft
+	scenery.material = soft_material
+	scenery.hide()
+	add_child(scenery)
 	portrait = TextureRect.new()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -148,6 +188,17 @@ func begin(id: String, name: String) -> void:
 	speaker.text = name
 	speaker.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(id)))
 	_render()
+
+## Put the conversation in a room: the location's interior if there is art for it,
+## otherwise the blurred map behind.
+func set_location(loc: String) -> void:
+	_build()
+	location = loc
+	var rel := scenery_path(loc)
+	var tex = UITheme.tex(rel) if rel != "" else null
+	scenery.texture = tex
+	scenery.visible = tex != null
+	map_blur.visible = tex == null
 
 ## Item mode: an object (a crime-scene trace) where the portrait goes, with its text in the
 ## speech bubble. No speaker, so expressions and speech events are ignored until `begin`.

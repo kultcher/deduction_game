@@ -151,20 +151,22 @@ static func _pick_item(w, s, l):
 			var key: String = "case:" + str(c.card.get("n", c.card.text))
 			if about != l.id and not _told(s, l, key):
 				cands.append([gos * Tuning.Social.SHARE_CASE_GOSSIP_SCALE, {"kind": "case", "about": about, "card": c["card"], "from": "player", "key": key}])
-	# Their own gift, told privately (M1). Evil uses its agreed bluff with the same formulas,
-	# so a private claim is a social clue, never an alignment test.
+	# Their own gift, told privately (M1; one roll since Nov 8). "Their gift" is one topic in
+	# the draw; when it comes up, a single openness score (the same formula as answering the
+	# Demonologist, `MindDialogue._target_tier`, with trust in this listener) picks what they
+	# say: nothing, a hint at its family, or the gift itself. Evil uses its agreed bluff with
+	# the same formula, so a private claim is a social clue, never an alignment test.
 	var my_role: String = _my_role(w, s)
 	if my_role != "" and not s.claim_public:
 		var pkg: String = C.package_of(my_role)
 		var hint_key: String = "role_hint:" + s.id
-		if pkg != "" and bond >= Tuning.Social.SHARE_ROLE_HINT_BOND_MIN and not _told(s, l, hint_key) and not l.known_claims.has(s.id):
-			var hint_w: float = (1.0 - priv) * Tuning.Social.SHARE_ROLE_HINT_OPENNESS_SCALE * (bond - Tuning.Social.SHARE_ROLE_HINT_BOND_MIN + Tuning.Social.SHARE_ROLE_HINT_BOND_OFFSET) + gos * Tuning.Social.SHARE_ROLE_HINT_GOSSIP_SCALE
-			cands.append([hint_w, {"kind": "role_hint", "about": s.id, "from": s.id, "package": pkg, "key": hint_key, "lie": s.is_evil()}])
 		var claim_key: String = "role_claim:" + s.id
-		var claim_ok: bool = bond >= Tuning.Social.SHARE_ROLE_CLAIM_BOND_MIN or (bond >= Tuning.Social.SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN and s.pressure >= Tuning.Social.SHARE_ROLE_CLAIM_PRESSURE_MIN)
-		if claim_ok and not s.protect_lock and not _told(s, l, claim_key) and str(l.known_claims.get(s.id, {}).get("role", "")) != my_role:
-			var claim_w: float = (1.0 - priv) * Tuning.Social.SHARE_ROLE_CLAIM_SLOPE * maxf(Tuning.Social.SHARE_ROLE_CLAIM_MIN_WEIGHT, bond - Tuning.Social.SHARE_ROLE_CLAIM_BOND_FLOOR) + Tuning.Social.SHARE_READING_PRESSURE_SCALE * s.pressure
-			cands.append([claim_w, {"kind": "role_claim", "about": s.id, "from": s.id, "role": my_role, "key": claim_key, "lie": s.is_evil()}])
+		var can_hint: bool = pkg != "" and not _told(s, l, hint_key) and not l.known_claims.has(s.id)
+		var can_claim: bool = not s.protect_lock and not _told(s, l, claim_key) and str(l.known_claims.get(s.id, {}).get("role", "")) != my_role
+		if can_hint or can_claim:
+			var topic_w: float = Tuning.Social.SHARE_GIFT_TOPIC_BASE + (1.0 - priv) * Tuning.Social.SHARE_GIFT_TOPIC_OPENNESS + gos * Tuning.Social.SHARE_GIFT_TOPIC_GOSSIP
+			cands.append([topic_w, {"kind": "gift_topic", "about": s.id, "from": s.id, "role": my_role, "package": pkg, "key": "gift_topic:" + s.id,
+				"can_hint": can_hint, "can_claim": can_claim, "lie": s.is_evil()}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
 	var has_recent_night_sighting: bool = false
 	for b in s.beliefs:
@@ -280,8 +282,49 @@ static func _pick_item(w, s, l):
 		r2 -= maxf(c[0], 0.0)
 		if r2 <= 0:
 			w.observe_weighted(s, "npc_share", cands, c[1]["key"], observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, Tuning.Social.IDLE_CHAT_WEIGHT)
+			if c[1]["kind"] == "gift_topic":
+				return _gift_disclosure(w, s, l, c[1], bond)
 			return c[1]
 	w.observe_weighted(s, "npc_share", cands, "nothing", observed_draw, {"privacy": priv, "gossip": gos, "trust_in_listener": bond, "pressure": s.pressure}, l.id, Tuning.Social.IDLE_CHAT_WEIGHT)
+	return null
+
+## The gift topic came up: one openness score picks the tier, as with the Demonologist
+## (`MindDialogue._target_tier`): below TIER_VAGUE nothing, then a hint, then the gift (a
+## full-tier answer is the gift too; their readings travel as their own items). The score
+## uses trust in this listener and a random draw in place of the daily mood. On day 1, until
+## they've told someone and while the town has had fewer than CONFIDE_MAX_PER_GAME confidings,
+## the confidant bonus is added: a confided claim warms the pair (see `_deliver`).
+static func _gift_disclosure(w, s, l, topic: Dictionary, bond: float):
+	var role: String = str(topic.role)
+	var jitter: float = (w.rng.randf() - 0.5) * 2.0 * Tuning.Social.SHARE_GIFT_JITTER
+	var parts: Dictionary = {
+		"privacy": (1.0 - trait_of(s, "privacy")) * Tuning.Dialogue.OPENNESS_PRIVACY_WEIGHT,
+		"trust": bond * Tuning.Dialogue.OPENNESS_TRUST_WEIGHT,
+		"pressure": s.pressure * Tuning.Dialogue.OPENNESS_PRESSURE_WEIGHT * (1.0 - Tuning.Dialogue.OPENNESS_COMPOSURE_DAMP * trait_of(s, "composure")),
+		"day": Tuning.Dialogue.OPENNESS_DAY_SLOPE * (w.day - 1), "base": Tuning.Dialogue.OPENNESS_BASE_OFFSET + Tuning.Social.SHARE_GIFT_PEER_OFFSET, "roll": jitter}
+	if C.has_role_def(role):
+		C.role_def(role).score_disclosure_tier(w, s, parts)
+	var confide: bool = w.day <= 1 and not s.confided and w.confides_made < Tuning.Social.CONFIDE_MAX_PER_GAME
+	if confide:
+		parts["confidant"] = Tuning.Social.SHARE_ROLE_CONFIDE_BONUS
+	var openness: float = 0.0
+	for v in parts.values():
+		openness += float(v)
+	var tier: int = 1
+	if openness > Tuning.Dialogue.TIER_PARTIAL:
+		tier = 3
+	elif openness > Tuning.Dialogue.TIER_VAGUE:
+		tier = 2
+	if tier == 3 and not topic.can_claim:
+		tier = 2
+	if tier == 2 and not topic.can_hint:
+		tier = 1
+	w.observe_decision(s, "npc_gift_disclosure", tier, {"openness": openness, "parts": parts,
+		"thresholds": [{"above": Tuning.Dialogue.TIER_PARTIAL, "tier": 3}, {"above": Tuning.Dialogue.TIER_VAGUE, "tier": 2}, {"otherwise": 1}]}, l.id)
+	if tier == 3:
+		return {"kind": "role_claim", "about": s.id, "from": s.id, "role": role, "key": "role_claim:" + s.id, "lie": s.is_evil(), "confide": confide}
+	if tier == 2:
+		return {"kind": "role_hint", "about": s.id, "from": s.id, "package": str(topic.package), "key": "role_hint:" + s.id, "lie": s.is_evil()}
 	return null
 
 ## Public ordinary sightings use the same hearing/receipt path as private shares.
@@ -400,6 +443,14 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 				"via": s.id, "first_claimed_day": mini(int(prev.get("first_claimed_day", w.day)), w.day)}
 			Mind.hear_claim(w, l, s.id, item["role"], wgt, "relayed")
 			l.hearsay.append(hs)
+			if not public and not item.get("relay", false) and item.get("about", "") == s.id:
+				s.confided = true
+				if item.get("confide", false):
+					w.confides_made += 1
+					# Trusted with a secret, the listener warms to them; the confider a little too.
+					l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + Tuning.Social.CONFIDE_TRUST_LISTENER, 0.0, 1.0)
+					s.npc_trust[l.id] = clampf(s.npc_trust.get(l.id, 0.5) + Tuning.Social.CONFIDE_TRUST_TELLER, 0.0, 1.0)
+					w.dlog.add("confide", s.id, l.id, {"role": item["role"], "lie": item.get("lie", false)}, "%s confides their gift to %s." % [s.name, l.name])
 		"opinion", "unease":
 			# Remember the conversation and teller, without turning their conclusion
 			# into evidence about its target (Q4).
@@ -900,13 +951,17 @@ static func tavern_evening_gossip(g) -> Dictionary:
 	var candidates: Array = []
 	var seen_keys: Dictionary = {}
 
-	# 1. Spoken NPC-to-NPC items from anywhere in town today (evil strategizing never enters daily_npc_shares).
+	# 1. Spoken NPC-to-NPC items from anywhere in town today and yesterday (evil strategizing
+	# never enters daily_npc_shares). Yesterday's weigh less (TAVERN_YESTERDAY_MULT).
+	var group_mult: Dictionary = {}
 	for rec in w.daily_npc_shares:
-		if int(rec.get("day", -1)) != w.day:
+		var rec_day: int = int(rec.get("day", -1))
+		if rec_day != w.day and rec_day != w.day - 1:
 			continue
 		var it: Dictionary = rec.get("item", {})
 		var ik: String = str(it.get("kind", ""))
 		var share_group: String = "share:%d" % candidates.size()
+		group_mult[share_group] = 1.0 if rec_day == w.day else Tuning.Social.TAVERN_YESTERDAY_MULT
 		if ik in ["opinion", "unease", "case", ""]:
 			continue
 		if ik == "reading":
@@ -1050,6 +1105,8 @@ static func tavern_evening_gossip(g) -> Dictionary:
 							"tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
 							"text": "Tavern rumour: %s %s." % [o.name, stext]}})
 
+	for c in candidates:
+		c["weight"] = float(c.get("weight", 0.0)) * float(group_mult.get(str(c.get("group", "")), 1.0))
 	# 2. Non-case-board profile backfill pool: unlearned haunts and public town relationships (never Secret Lovers).
 	for n in w.npcs:
 		var known_h: Array = g.known_haunts.get(n.id, [])

@@ -18,6 +18,12 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 (M2d); the VN courtroom (M3a); the bot cutover and balance sweep
 (M4).
 
+
+**Deferred (Michael, Nov 8)** and not on the active list: premises step 4 (Scion/Revenant
+and movement premises, `docs/premises_plan.md`); contradiction callouts and poses on the
+courtroom stage; the live seat-by-seat player vote (meeting plan stretch A); procedural
+towns.
+
 ---
 
 ## 1. Bugs and quick fixes (hours, low risk)
@@ -152,26 +158,6 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 
   [open; Michael to decide]
 
-- **Agreement has to reach the vote.** (54875) Six or seven good NPCs said "That makes
-  sense to me: Constance is evil" at three meetings and voted no. Late-game urgency and
-  the execution-priority vote term are now built; still open:
-  - **Acceptance doesn't hold.** The voiced stance now follows the belief change, but an
-    accepted "X is evil" still fades into the general suspicion score. It should set a
-    floor (or a vote term) while its support stands.
-  - **"I'm more suspicious of Edda" is relative** (top suspect more than 0.05 above), so
-    it's said by people who won't vote for Edda either. Say it only when the preference
-    would change a vote.
-
-  [decided; amounts open]
-
-- **Evil's cover priorities are backward.** (54875) Arguing against a case on a teammate
-  breaks cover, while a vote that isn't close keeps it. Words don't hang anyone, so cover
-  is cheap to keep there; votes are what matter. Scale argument stakes by how pivotal the
-  listener's agreement is, or keep the stance consistent with the vote that follows. When
-  an evil listener is named in the same reading as the accused, its rejection should use
-  the implicated-listener voice ("it's about me too, and I know I'm good"). (user,
-  Oct 23) [decided]
-
 - **Evil meetings are over-weighted and always visible.** (54875) The pairing that matters
   happens before the player picks a place, and evil gets a large bonus whenever a member
   holds unshared intel (nearly always), so the same evil pairs meet on consecutive days.
@@ -206,10 +192,10 @@ vote resistance lines, including "when they agree and still vote no, they say wh
   about it, and how evil can claim it too. Keep these as attributed claims, not alignment
   confirmations. (61251/25923) [open]
 
-- **Evil vote stakes beyond the Demon.** Evil already avoids nominating or voting for its
-  Demon, and the Scion-aware rules cover a live Scion. Future tactical bussing (including
-  deliberate Scion succession) needs remaining-voter estimates and a team-benefit policy;
-  keep ordinary minion bussing meanwhile. (25923) [open]
+- **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17) A good NPC sometimes bends the
+  truth for a reason of its own (shielding a friend, hiding a secret errand), so a caught
+  lie isn't automatically evil. Needs care: lies currently implicate strongly. [open;
+  stretch]
 
 - **Backing a strong case builds trust.** Nominating or voting for someone the town
   strongly suspects (and who turns out evil, or is widely believed so) earns a little
@@ -499,16 +485,16 @@ Candidates for a unified retuning proposal, not approved changes.
   Lovers' relationship mods, including the Lovers downside (when one dies, the other
   withdraws visibly). [open; Lovers downside decided]
 
-- **Roster expansion.** Built since Oct 30: Augur, Chronicler, Executor, Magistrate and
-  Registrar. Still to come: On Deck gifts (Tracker, Clairvoyant, Beckon, Tallyman,
-  Bellringer…), minions (Framer/Forger with evidence planting, Blackmailer, Hexer,
-  Informant), the Debtor secret. Each needs a hint package and solver support before it
-  goes live. [open]
+- **Roster expansion.** Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
+  Registrar, Psychologist, Monitor, Confessor, Sexton and the Brute. Still to come: On Deck
+  gifts (Tracker, Clairvoyant, Beckon, Tallyman, Bellringer, Bellwether…), minions
+  (Framer/Forger with evidence planting, Blackmailer, Hexer with two cursed townsfolk at
+  once, Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
+  Mesmerize, a daytime "rouse"). Bellwether, the Sower and Dusk Compulsion come from the
+  Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
+  yet. Each needs a hint package and solver support before it goes live. [open]
 
 - **Scripts, follow-ups** (script builder plan, Nov 4):
-  - **The off-script tell:** NPC reasoning and the solver should treat a claim to an
-    off-script role as a lie; the solver's role options still cover the whole roster.
-    Changes behaviour (golden re-record, C# port).
   - **Multiple demon types:** code across the sim checks `role == "demon"`; a second
     demon type needs an `is_demon` helper and solver support.
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
@@ -526,6 +512,19 @@ Candidates for a unified retuning proposal, not approved changes.
   the well" is itself a clue, and it gives location-based night tools something to
   target. [open]
 
+- **Learning resources: tooltips, an in-game wiki and a tutorial.** (Nov 3 plan v8, zone
+  18; restored Nov 8) Three layers, from one data registry so they never drift:
+  1. **Tooltips and terms:** extend `ui/text_terms.gd` beyond roles and people to the
+     mechanics (Marked, Delusional, On the Block, Vigil, Ward, Clemency, Traces,
+     Circumstantial, traits, night order), plus tooltips on UI controls.
+  2. **In-game wiki / field manual:** replaces the plain Help text with a searchable,
+     hyperlinked codex, opened by clicking a term in the log, speech or cards.
+  3. **Guided tutorial:** a curated 7-NPC case with light coach marks (moving between
+     blocks, vigils and traces, building and framing a Workshop case, the trial). Build it
+     after the meeting and premises work settles, so its steps don't churn.
+
+  Layers 1 and 2 are UI and data only and can be built any time. [decided: direction]
+
 - **Player toolbox:** Autopsy, Séance, Scry, Binding circle; demon types with bestiary
   entries; exorcism / true-name alternate win. [open]
 
@@ -538,11 +537,12 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Storyteller/director and solvability check:** poisoned readings become arbitrary
   (chosen plausibly) rather than inverted; check that a case can be solved. [open]
 
-- **Procedural town:** blocks, buildings and roads generated per case. [open]
+- **Procedural town:** blocks, buildings and roads generated per case. [deferred, Nov 8]
 
 - **Larger towns (12–15):** only after the core loop works at 7/10. [watch]
 
-- **NPC memory and recency bias.** (Random ideas) [open]
+- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on PR #96,
+  `docs/premises_plan.md` "Recency as built", including NPCs' spoken reasons and how evil steers the topic; diverting attention waits on the saturation call]
 
 - **Dead NPCs:** no ghost votes for now; keep the door open (a final-day Séance vote).
   [watch]

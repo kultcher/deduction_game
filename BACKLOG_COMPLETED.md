@@ -3,6 +3,46 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Moved Nov 8, 2026 (Michael's review)
+
+### Settled
+
+Michael: NPCs carrying agreement through to their votes, and evil's voting strategy, are in a
+good place after the late-game urgency and execution-priority terms, the M2d resistance lines
+and the M4 sweeps. Moved off the list as they stood.
+
+- **Agreement has to reach the vote.** (54875) Six or seven good NPCs said "That makes
+  sense to me: Constance is evil" at three meetings and voted no. Late-game urgency and
+  the execution-priority vote term are now built; still open:
+  - **Acceptance doesn't hold.** The voiced stance now follows the belief change, but an
+    accepted "X is evil" still fades into the general suspicion score. It should set a
+    floor (or a vote term) while its support stands.
+  - **"I'm more suspicious of Edda" is relative** (top suspect more than 0.05 above), so
+    it's said by people who won't vote for Edda either. Say it only when the preference
+    would change a vote.
+
+  [decided; amounts open]
+
+- **Evil's cover priorities are backward.** (54875) Arguing against a case on a teammate
+  breaks cover, while a vote that isn't close keeps it. Words don't hang anyone, so cover
+  is cheap to keep there; votes are what matter. Scale argument stakes by how pivotal the
+  listener's agreement is, or keep the stance consistent with the vote that follows. When
+  an evil listener is named in the same reading as the accused, its rejection should use
+  the implicated-listener voice ("it's about me too, and I know I'm good"). (user,
+  Oct 23) [decided]
+
+- **Evil vote stakes beyond the Demon.** Evil already avoids nominating or voting for its
+  Demon, and the Scion-aware rules cover a live Scion. Future tactical bussing (including
+  deliberate Scion succession) needs remaining-voter estimates and a team-benefit policy;
+  keep ordinary minion bussing meanwhile. (25923) [open]
+
+### Dropped
+
+- **The off-script tell** (from "Scripts, follow-ups"): "NPC reasoning and the solver
+  should treat a claim to an off-script role as a lie; the solver's role options still
+  cover the whole roster." Michael: an off-script claim should simply never happen, and he
+  hasn't seen one. Dropped rather than built.
+
 ## Moved Nov 4, 2026 (documentation audit, Claude-Tally)
 
 Checked against `main` at `e54c2fd`. Original wording kept; each entry ends with a closing note.

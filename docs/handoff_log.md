@@ -27,6 +27,122 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
+
+- Base `dc2418c` (main after #96). Status: green, golden identical to `baseline_db5b24e`. Next actor: none.
+- Codex on #108: a silenced listener shown a trace no longer passes on a haunt (`profile_haunts` cleared).
+- Steward Nov 8 A1: the stage button says Continue once the next speaker is queued (`CourtroomStage.push`).
+- Steward Nov 7 A1: late relays say the night once (`MindMeeting.relay_body`: the reading's own " on night N"
+  dropped, other nights spoken, night 0 natural).
+- Steward Nov 7 A2: the protect-preference gate reads the stored agreement (`arg:` meta `agreement`, kept at its
+  max), not the weight.
+- Steward Nov 7 A4: Poisoner candidates for a failed-gift group come from every reading's night.
+- Not done: Steward Nov 7 A3 (a group "don't fit together" challenge overwrites the first card's own challenge).
+  Every consumer keys `reading_challenges` by card id, so it needs several challenges per card: its own PR.
+- `ci_fast_suites.txt` adds `test_control_flow` (about 10 s) and the new `test_review_fixes` (7 checks).
+
+## 2026-11-08 night, Claude-Bailiff: playtest 1709 fixes (`claude/1709-polish`)
+
+- Base `72407b2` (main after #106). Status: suites green; **golden moves on purpose** (needs Michael's OK to
+  re-baseline). Next actor: Michael (re-baseline call, then merge).
+- Reason wording: "doesn't fit what we know" -> "doesn't fit the facts as I know them"; a Surveyor reason about
+  someone off the block no longer says "and they live there" (`reason_attribution._report_why_pair`).
+- No repeated accusations: one accusation per speaker per target per meeting (`MindMeeting.already_accused`;
+  testimony and supporter pile-ons). Changes RNG draws, so the golden capture diverges from day 1-2.
+- Vote resistance line on an NPC's nomination no longer says "Your case..., Demonologist" (`_resistance_line`).
+- Supporter "exonerate by reveal" with nothing new to disclose restates the clearing reading before "That's why
+  I won't see X hang" (`mind_support._speak`).
+- Silenced in conversation: no greeting; ask/press stay free (they can't answer); showing a card costs a
+  question and gets no spoken answer (their beliefs still move).
+- Wards and scorched sigils shown at the meeting don't take the day's floor; one button per receipt, naming it.
+- Gossip and Town Hall results come up in the conversation view over the building (`main._capture_place_reading`).
+- A conversation that runs out of questions and ends the phase holds the next header / meeting opening out of the
+  log until the player leaves (`main._run`, `_leave_finished_conversation`).
+- Not done: claim icon showing before the claim is spoken (Michael: only if safe).
+- Test: `tools/test_playtest_1709.gd` (17 checks); `test_evidence_cards` updated for the free ward showing.
+
+## 2026-11-08 ~17:50, Claude-Tally: the town map's layout is an editable scene
+
+- Branch `claude/ui-script-map` (PR #106). Block areas, streets, block signs, building lots and
+  cottage spots now live in `ui/map_layout/map_layout.tscn`, not in constants in
+  `ui/map_view.gd`. Open the scene in the Godot editor to drag things on the base map (image
+  pixels); the preview draws buildings, lots and cottages with the game's own geometry
+  (`ui/map_layout/map_geometry.gd`, shared with the map view), so the editor shows what the game
+  will. The map view reads the scene once at startup; `MapView.MAP_PADS` etc. are now static vars
+  with the same shapes. Rendering is pixel-identical to before the move.
+- Cottage spots fill in child order; a block needs 3 (the most residents in a 10-person town).
+  `test_location_art` checks spots, signs, streets and lots exist.
+
+## 2026-11-08 evening, Claude-Bailiff: demon types step 1 (`claude/demon-types`)
+
+- Base `f167c63` (main after #104). Status: green, ready to merge. Next actor: whoever takes step 2 (daytime presence).
+- Design: `docs/demon_types_plan.md` (Project `claude/demon-types-plan.md`). It covers the day-killer rules
+  settled with Michael on Nov 8 and the solver maths.
+- `C.is_demon` / `C.is_day_demon` (`sim/content.gd`). `daykiller` is a reserved id, not a dealable role.
+  Role-id checks now go through the helper. Checks on the demon slot (`world.demon`) and on guess or premise
+  types don't.
+- The snapshot's rules carry `demons` (`WorkshopBridge.script_demons`), and the live view gets `script_demons`.
+- `LiveActivity.day_demon_share` / `mix_demon`: the demon's whole-case movement likelihood is mixed over the
+  types (a walking demon, or a day-killer that's out at night like a minion). It's applied to the joint
+  factor's main profiles and `_likelihood(..., "demon")`. It isn't applied night by night, which would act
+  as if the type were redrawn each night.
+- Scion splits (Codex P2 on #105): the before/after scores multiply, so they're mixed after multiplying,
+  in C# `ScoreWorldCore`, from a trailing `day_demon_share` double in the compiled factor. Splits keep walking
+  profiles in GD.
+- Share 0 on every script today: golden identical to `baseline_7034f36`, 124/124 suites.
+  New `test_demon_types` (22 checks).
+
+## 2026-11-08 night, Claude-Quill: recency, NPCs' spoken reasons recall their cards (PR #96, on main `7017a98`)
+
+Status: green, ready for review. Next actor: Bailiff (review and merge), then Tally (A/B).
+- **New, decided with Michael:** when an NPC nominates or publicly accuses and states a
+  reason (headline, "Remember: …" recap, a revealed or relayed reading), the cards behind it
+  are refreshed for every living hearer (`MindMeeting.recall_cited`), as a player
+  presentation does for its listener. A hinted reason recalls nothing. Shared reasons
+  already carry their card ids (`card_id` / `root_ids`), which are the same content ids
+  listeners' attention uses. Seed 900 by day 4: 39 recalls, 31 of cards the hearer held.
+- **Checks:** `dotnet build`; 124/124 suites (`test_recency` now 26 checks); two golden
+  captures identical. **New baseline `baseline_9a09894`** replaces `baseline_06d26bf`
+  (never on main, removed). See `docs/golden_baseline.md`.
+
+## 2026-11-08 evening, Claude-Quill: recency (PR #96) refreshed onto main `f167c63`
+
+Status: green, ready for review. Next actor: Bailiff (review and merge), then Tally (A/B).
+The orchestration plan listed recency as not built; it has been on PR #96 since Nov 6 (see
+the Nov 6 late-night entry below for what it does).
+- **Merged main** (#97–#104, including step 3's speed fixes). Only docs and the CI baseline
+  conflicted.
+- **Codex's finding on #96, fixed:** the topic now halves from its capped value. Each act
+  used to fade on its own before the cap, so a busy day kept its subject near 1.0 for days
+  (nomination plus accusation: 1.0 then 0.8, not 0.5). Four new checks in `test_recency`
+  fail without the fix. With it, seeds 900, 1001 and 1002 have at most three people at the
+  cap on any day (before, 900 had five).
+- **Checks:** `dotnet build`; 124/124 suites (`test_location_art` and `test_soundtrack` need
+  `godot --headless --import` first in a fresh checkout: "No loader found"); two golden
+  captures identical. **New baseline `baseline_06d26bf`** replaces `baseline_7034f36`;
+  divergence from day 1 is intended (see `docs/golden_baseline.md`). `baseline_b157258` is
+  removed.
+- **For Tally:** an A/B of PR #96 against main, with long games (day 5+), "identified but
+  lost", how long a good day-1 read survives, and topic saturation. Expected: the town a
+  bit worse in long games. The 7-NPC bot drop and the 10-NPC passive drop are still open
+  on main; merging this first would put recency into those comparisons.
+
+## 2026-11-08 afternoon, Claude-Bailiff: bespoke papercraft map to main (`mock/bespoke-map`)
+
+- Base `862cd27` (main after #102). Status: green, merging on Michael's go-ahead. Next actor: Michael (playtest).
+- Brings in the hand-painted town map (`assets/art/map/town_open.png`, `BESPOKE = true` in
+  `ui/map_view.gd`) with Michael's and Codex's papercraft buildings and lots, from the mock branch.
+- New: each townsperson's own cottage (`assets/art/cottages_poc/<name>-cottage-papercraft-v1.png`,
+  `MapView.cottage_art`) replaces the generic cottage and coloured dot. Anyone without art keeps the old look.
+- New: daytime talks and location searches in a building or the Town Hall sit in that building's
+  interior (`assets/art/interiors_poc/<loc>-papercraft-v1.png`), not the blurred map.
+  `DayConversationView.set_location` shows the room; `SCENERY_SHADER` softens it (light blur, dimmed to
+  0.7, vignette). Homes and crime scenes keep the map blur.
+- Tests: new `test_location_art` (32 checks: every location has an interior, every cast member a
+  cottage, the view swaps room and blur). `test_ui_controls` and `test_buildings_tavern_town_hall` were
+  failing on the mock branch because they read the old `BLOCK_RECTS`. They now use `_block_rect`, and the
+  Square check covers the bespoke lots. Golden identical to `baseline_7034f36`; the map is UI only.
+
 ## 2026-11-08 early, Claude-Bailiff: background soundtrack (`audio/soundtrack`)
 
 - Base `f4906ed` (main after #101). Status: green, ready to merge. Next actor: Michael (playtest by ear).
@@ -43,6 +159,25 @@ Ground rules (from Nov 3, until Michael changes them):
   the seams. The tracks are a half step apart (A E-flat minor, B D minor). Raising B a semitone with
   rubberband keeps it on the grid, if we later want a bar-synced A-to-B switch after day 3
   (Godot's `AudioStreamInteractive`).
+
+## 2026-11-07 ~13:00, Claude-Tally: premises steps 1–3 A/B. No outcome change; step 3 is slow
+
+Runs `42331033313` (base `0743a76`), `42331041617` (step 1 `3d0f210`) and `42331050248` (steps
+1–3, main `226d566`): M4 bot, seeds 100000–100999, attention budgets unchanged. Project doc
+`claude/premises-ab-2026-11-07.md`.
+- **Outcomes flat:** step 1 vs base +0.1 (7 NPCs) and −0.6 (10 NPCs); steps 2–3 on top change
+  7 of 963 games at 10 NPCs and 2 of 1,000 at 7. Good executions, Demon identified, and
+  identified-but-lost (~38% of identified at 10 NPCs; the Nov 6 "29.5%" was of all games)
+  are flat.
+- **For Quill / Bailiff: step 3 (#95) is 4–6× slower in passive play** (10 NPCs median 140 s
+  vs 24 s per game, same outcomes) and ~1.6× for the bot (504 s vs 317 s; 33 games hit the
+  30-min game timeout). A local timing pins it to #95: 26 s at step 1, 26 s at step 2,
+  105 s at step 3. Likely `ReadingChallenges.graded_challenge`: three full
+  `CaseEval.evaluate` calls per challenge, at every refresh, for every listener holding a
+  defence. Cache it, or take q/f/r/evil from one enumeration. Sweeps of main need ~3×
+  the cost estimates until then.
+- **7-NPC bot fell between `9a1b215` and `0743a76`** (#90, #91, #94): 57.4% vs 62.8% on 505
+  shared seeds (z −3.0). Not investigated.
 
 ## 2026-11-07 night, Claude-Bailiff: UI control-flow pass (`ui/control-flow`)
 
@@ -106,6 +241,31 @@ the games are the same (see `docs/golden_baseline.md`).
 **Open, for Michael:** skipping graded scoring for bare defences altogether (no supports,
 hearing < 0.1) takes those two games to 19 s and 112 s. That would end bare defences' slight
 step 3 effect. Not done.
+## 2026-11-06 late night, Claude-Quill: recency and the headline blend on `claude/recency` (from main `226d566`)
+
+Plan: `docs/premises_plan.md`, "Recency as built" and "The headline blend". All attention;
+no card weight, solver or C# changes.
+- **Recency** (`sim/recency.gd`, in `Reasoner._salience`): a card loses salience with age
+  (0.5 a day at Insight 0 to 0.1 at Insight 1, capped at 3), the town's topic of the day
+  (nominations 1.0, accusations 0.6, cases the player argued at a meeting 0.6, defences
+  0.3; halved daily) draws attention, and presenting a card resets its age for that
+  listener. Own readings stay pinned; presented cards are always attended.
+- **Headline blend** (`workshop/jury.gd`): the low-Insight pull toward a reading's literal
+  claim is scaled by `min(1, headline / 0.1)`. A faint ping no longer halves a clearing;
+  the step 2 test now checks that a trusted player's word clears more than a doubted one's.
+- **Dawn refresh** (`game_day_night.gd`): every living mind refreshes at dawn, so age and
+  the cooled topic take hold each morning. Without it, minds that heard nothing overnight
+  kept yesterday's attention (two in seeds 900 and 1001, off by up to 0.21).
+- **Presentation order:** the card refresh and meeting topic are set before the capture.
+  `test_workshop_live_cognition`'s reuse check now refreshes once after the meeting, since
+  the meeting's topic is a real input change; the check itself is unchanged.
+
+Checks: `dotnet build`; 121/121 suites (new `test_recency` in the fast list); two golden
+captures identical. **New baseline `baseline_b157258`** replaces `baseline_4e54261`;
+divergence from day 1 is intended (see `docs/golden_baseline.md`).
+**For Tally:** an A/B against main on long games (day 5+), "identified but lost", how long a
+good day-1 read survives, and whether the topic saturates (seed 900 had five people at 1.0
+on day 3). Expected: the town a bit worse in long games.
 
 ## 2026-11-06 night, Claude-Bailiff: premises step 3 reviewed and merged (PR #95)
 

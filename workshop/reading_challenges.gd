@@ -169,7 +169,11 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 						result.sources[report.source] = minf(result.sources.get(report.source, 1.0), 1.0 - Tuning.Workshop.CHALLENGE_SOURCE_PENALTY_SCALE * cause_agreement)
 			elif challenge.mode == "impaired":
 				cause_agreement = g_agree
-				candidates = poisoner_candidates(view, report, value, cards)
+				# Everyone seen out on any of the group's nights (maintenance 2026-11-07 A4).
+				for member in group:
+					var m_card: Dictionary = Solver.card_by_id(view, member)
+					if not m_card.is_empty():
+						candidates.merge(poisoner_candidates(view, m_card, value, cards))
 			elif challenge.mode in ["misled", "unlikely", "delusional"]:
 				cause_agreement = maxf(cause_agreement, g_agree)
 			backfire = graded.backfire

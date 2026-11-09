@@ -121,6 +121,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": epoch, "history": [],
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"script_minions": snapshot.rules.get("minions", []).duplicate(),
+		"script_demons": snapshot.rules.get("demons", ["demon"]).duplicate(),
 		"timeline": History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
@@ -806,7 +807,7 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 		"reading_reliability": reliability, "knowledge": {"self": src.id, "good": good, "own_role": src.own_gift, "public_roles": public_roles,
 			"own_reports": cards.filter(func(c): return c.id in snapshot.private_evidence).map(func(c): return c.id),
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},
-		"ledger": {}, "case_memory": {}}
+		"ledger": {}, "case_memory": {}, "recency": src.get("recency", {}).duplicate(true)}
 	if public_roles.is_empty():
 		result.knowledge.erase("public_roles")
 	if cursed:
@@ -923,7 +924,7 @@ static func _registrar_roles_valid(value) -> bool:
 	var minion_cnt: int = 0
 	for r in value:
 		var rs: String = str(r)
-		if seen.has(rs) or rs == "registrar" or rs == "demon":
+		if seen.has(rs) or rs == "registrar" or C.is_demon(rs):
 			return false
 		if rs in C.MINION_ROLES:
 			minion_cnt += 1

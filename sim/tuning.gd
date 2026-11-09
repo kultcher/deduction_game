@@ -407,13 +407,27 @@ class Social:
 	const SHARE_ROLE_HINT_BOND_MIN = 0.45  # was 0.55 (Nov 5: acquaintances, not only friends)
 	const SHARE_ROLE_HINT_OPENNESS_SCALE = 0.9
 	const SHARE_ROLE_HINT_BOND_OFFSET = 0.15
-	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.2
+	const SHARE_ROLE_HINT_GOSSIP_SCALE = 0.35  # was 0.2 (Nov 8: 2-3 hints a game)
 	const SHARE_ROLE_CLAIM_BOND_MIN = 0.58  # was 0.68 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURED_BOND_MIN = 0.5  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_PRESSURE_MIN = 0.55
 	const SHARE_ROLE_CLAIM_SLOPE = 1.8
 	const SHARE_ROLE_CLAIM_BOND_FLOOR = 0.45  # was 0.55 (Nov 5)
 	const SHARE_ROLE_CLAIM_MIN_WEIGHT = 0.05
+	## Day-1 confidant (Nov 8, BotC's "find one person to trust"): until they've told someone,
+	## and only on day 1, an NPC will tell a less-trusted listener their gift, and is likelier
+	## to. Target: once or twice a game. The pair warms to each other.
+	const SHARE_ROLE_CONFIDE_BONUS = 0.15        # added to the gift roll's openness
+	const CONFIDE_MAX_PER_GAME = 2
+	## The gift topic in NPC talk (Social._gift_disclosure, Nov 8): how often it comes up, and
+	## the roll's spread (the Demonologist's version uses a daily mood of +-OPENNESS_JITTER).
+	const SHARE_GIFT_TOPIC_BASE = 0.3
+	const SHARE_GIFT_TOPIC_OPENNESS = 0.5
+	const SHARE_GIFT_TOPIC_GOSSIP = 0.2
+	const SHARE_GIFT_JITTER = 0.2
+	const SHARE_GIFT_PEER_OFFSET = -0.1   # a touch more guarded with a neighbour than with the Demonologist
+	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
+	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
 	const ROLE_NEWS_LAST_DAY = 2
 	## What an evil listener makes of a peer's role hint / claim (a target worth watching).
@@ -437,6 +451,8 @@ class Social:
 	const TAVERN_UNHEARD_SPOKEN_WEIGHT = 4.0
 	const TAVERN_BACKFILL_PROFILE_WEIGHT = 1.2
 	const TAVERN_HEARD_SPOKEN_WEIGHT = 0.2
+	## Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8).
+	const TAVERN_YESTERDAY_MULT = 0.6
 	## Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller
 	## below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener
 	## trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing.
@@ -822,6 +838,10 @@ class Workshop:
 	## (headline - model) where the headline is higher. The per-role values are the chance
 	## each named person is evil "if the reading is simply true" (1.0 = full share).
 	const HEADLINE_WEIGHT = 1.0
+	## The blend toward the headline grows with the headline's strength, full at this value
+	## (about one Seer ping at default trust). Before Nov 6 any positive headline, however
+	## faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5.
+	const HEADLINE_FULL_AT = 0.1
 	## Directional Confidence: below this lean (suspicion minus the listener's average) there
 	## is no hunch to defend, so Confidence doesn't resist (Oct 30).
 	const LEAN_MIN = 0.05
@@ -993,6 +1013,18 @@ class Workshop:
 	const SALIENCE_TARGET = 4.0
 	const SALIENCE_NAMED = 2.0
 	const SALIENCE_EXCLUSION = 1.0
+	## Recency (sim/recency.gd): attention drifts. A card loses salience by days since it was
+	## learned or last brought up, at RECENCY_DECAY_LOW per day for Insight 0 down to
+	## RECENCY_DECAY_HIGH for Insight 1, at most RECENCY_AGE_CAP. A card naming (or from)
+	## today's topic gains RECENCY_TOPIC_WEIGHT times that person's topic weight (0..1).
+	const RECENCY_DECAY_LOW = 0.5
+	const RECENCY_DECAY_HIGH = 0.1
+	const RECENCY_AGE_CAP = 3.0
+	const RECENCY_TOPIC_WEIGHT = 1.5
+	## The topic of the day: what each public act adds to a person's topic weight (summed,
+	## capped at 1), and how much of it is left each following day.
+	const RECENCY_TOPIC_EVENTS = {"nomination": 1.0, "accusation": 0.6, "argued": 0.6, "defence": 0.3}
+	const RECENCY_TOPIC_DAILY = 0.5
 	const INSIGHT_LOW_CUTOFF = 0.34
 	const INSIGHT_MEDIUM_CUTOFF = 0.67
 	const PROFILE_LOW = {
