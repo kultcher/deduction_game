@@ -40,7 +40,7 @@ This document tracks the work zones across the project, sequences them into six 
   2. **Premises recency** ("the topic of the day", zone 14): on main (PR #96, Nov 9); its own A/B is next.
   3. **Case board visuals** (zone 5), then text steps 4–5; **tooltips and the wiki** (zone 15, layers 1–2) fit alongside, since all of it is UI and data.
   4. **Roles** (zone 3) once balance is steadier; each needs a hint package and solver support.
-- **Baseline rule:** one behaviour change lands at a time, each with its own golden baseline. UI-only and docs-only changes must match the current baseline (`baseline_db5b24e`, from PR #96 merged with main on Nov 8) at `--tol 0`.
+- **Baseline rule:** one behaviour change lands at a time, each with its own golden baseline. UI-only and docs-only changes must match the current baseline (`baseline_0e64b81`, from #117 on Nov 10; see `docs/golden_baseline.md`) at `--tol 0`.
 
 ## 1b. Deferred (Michael, Nov 8)
 

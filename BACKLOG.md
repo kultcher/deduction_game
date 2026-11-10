@@ -574,7 +574,7 @@ Workshop and the shared model can't express yet.
   time. (96773: Bartholomew was nearby for each.) Built on `claude/day-presence` (demon
   types step 2), held with the day-killer: a joint CaseEval factor over the presence
   table, replacing the hub's one-day incident. The Breathstealer decision (does silence
-  prove the victim good?) is still open and separate. [built, unmerged]
+  prove the victim good?) is still open and separate. [built, merged with #111 on Nov 10]
 
 - **Night companions of the proven evil:** out on the same block on the same nights as
   someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1

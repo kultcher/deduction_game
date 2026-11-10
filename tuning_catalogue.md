@@ -13,6 +13,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
+| `MUDDLER_GOSSIP_FLOOR` | `0.7` | The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret only shows when they relay what they've heard. | `sim/world.gd` |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
@@ -23,7 +24,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world.gd` |
 | `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
-| `EXTRA_WORK_SHIFT_CHANCE` | `0.3` | Schedule & relationship generation | `sim/world.gd` |
+| `EXTRA_WORK_SHIFT_CHANCE` | `0.0` | Nov 10: everyone works a single shift (was 0.3) | `sim/world.gd` |
+| `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
 | `FRIEND_PAIR_CUTOFF` | `0.2` |  | `sim/world.gd` |
 | `RIVAL_PAIR_CUTOFF` | `0.32` |  | `sim/world.gd` |
 | `INITIAL_SUSPICION_BASE` | `0.1` | Initial NPC-to-NPC suspicion & trust priors | `sim/world.gd` |
@@ -41,10 +43,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLAYER_TRUST_MIN` | `0.1` |  | `sim/world.gd` |
 | `PLAYER_TRUST_MAX` | `0.9` |  | `sim/world.gd` |
 | `OWN_ROLE_CLAIM_WEIGHT` | `1.5` | First-hand knowledge weight of an NPC's own true gift | `sim/mind.gd`, `sim/world.gd` |
-| `IDLE_HAUNT_CHANCE` | `0.4` | Conversation & movement rates | `sim/world.gd` |
+| `IDLE_HAUNT_CHANCE` | `0.4` | Conversation & movement rates | `sim/world.gd`, `workshop/day_presence.gd` |
 | `HAUNT_SIGHTING_DAYS` | `2` |  | `game/game_day_night.gd` |
 | `HAUNT_SIGHTING_DAYS_TAVERN` | `3` |  | `game/game_day_night.gd` |
-| `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd` |
+| `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd`, `ui/map_view.gd` |
 | `PAIR_SILENCED_WEIGHT` | `0.02` |  | `sim/world.gd` |
 | `PAIR_TRUST_PIVOT` | `0.3` |  | `sim/world.gd` |
 | `PAIR_TRUST_SLOPE` | `2.0` |  | `sim/world.gd` |
@@ -86,7 +88,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HIDE_FROM_DEMON_CLAIM_D2` | `-0.3` |  | `sim/role_def.gd` |
 | `HIDE_FROM_DEMON_CLAIM_D3` | `-0.1` |  | `sim/role_def.gd` |
 | `WARDEN_HIDE_CLAIM_FLOOR` | `-0.35` |  | `sim/role_def.gd` |
-| `ONGOING_INFO_EARLY_CLAIM` | `-0.45` |  | `sim/role_def.gd` |
+| `ONGOING_INFO_EARLY_CLAIM` | `-0.4` | Nov 10: was -0.45 (case 12926's day-1 wall) | `sim/role_def.gd` |
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
 | `SEER` | `{ "public_threat_bonus": 1.0, "red_herring_defence_eff": -0.12, "focus_base":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
@@ -103,7 +105,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `MARTYR` | `{ "claim_chosen_bonus": 0.4, "pick_min_score": 0.62, "pick_susp_scale": 0.5, ...` |  | `sim/roles/martyr.gd` |
 | `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
-| `BREATHSTEALER` | `{ "phase_probs_high": [0.3, 0.5, 1.0], "phase_probs_low": [0.15, 0.3, 0.7], "...` |  | `sim/roles/breathstealer.gd` |
+| `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
+| `BREATHSTEALER` | `{ "phase_probs_high": [0.3, 0.5, 1.0], "phase_probs_low": [0.15, 0.3, 0.7], "...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
 | `REVENANT` | `{ "place_totem_probs": [0.45, 0.6, 1.0], "curse_voter_eff": 0.15, "evil_vote_...` |  | `sim/roles/revenant.gd` |
 | `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/world.gd` |
 | `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world.gd` |
@@ -503,6 +506,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_HAUNTS_TRUST_SCALE` | `0.5` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_CAP` | `0.9` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_ALL_SHARE` | `0.4` |  | `game/game_conversation.gd` |
+| `SHARE_HAUNTS_NONE_KNOWN_BONUS` | `0.2` | Added to the haunt roll when you know none of that person's haunts yet (Nov 10). | `game/game_conversation.gd` |
 | `SHARE_TRAIT_BASE` | `0.1` |  | `game/game_conversation.gd` |
 | `SHARE_TRAIT_GOSSIP_SCALE` | `0.35` |  | `game/game_conversation.gd` |
 | `SHARE_TRAIT_TRUST_SCALE` | `0.3` |  | `game/game_conversation.gd` |
@@ -605,6 +609,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
 | `OWN_ERR` | `0.002` |  | `workshop/case_eval.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
+| `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
+| `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
+| `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity.gd` |
+| `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity.gd` |
 | `LR_WEAK` | `1.5` |  | `workshop/case_eval.gd` |
 | `LR_MODERATE` | `3.0` |  | `workshop/case_eval.gd` |
 | `LR_STRONG` | `10.0` |  | `workshop/case_eval.gd` |
