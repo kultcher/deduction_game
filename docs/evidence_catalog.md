@@ -1,6 +1,6 @@
 # Evidence catalog
 
-First pass, Nov 9 2026, Claude-Quill. **Judged from the code** at main `407069d`, not measured. Strengths here are reasoned from the model's rules and constants. The second pass will replace them with measured shifts from a reference town, at two trust levels, and correct whatever this pass gets wrong. Code pointers for every entry are in `docs/evidence_catalog_code.md`.
+First pass, Nov 9 2026, Claude-Quill. **Judged from the code** at main `407069d`, not measured; entries C8, D7 and D8 updated for the day-killer branch (`claude/day-killer`, PR #111). The measured pass is in `docs/evidence_catalog_measured.md`. Strengths here are reasoned from the model's rules and constants. The second pass will replace them with measured shifts from a reference town, at two trust levels, and correct whatever this pass gets wrong. Code pointers for every entry are in `docs/evidence_catalog_code.md`.
 
 ## How to read this
 
@@ -90,66 +90,68 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 
 ## Summary
 
-"Alone" says what the card is worth with nothing else. "Key partner" is what most raises its value.
+"Alone" says what the card is worth with nothing else. "Key partner" is what most raises its value. "Measured" is separation (evil minus good) or the step on the subject, from `docs/evidence_catalog_measured.md`; where it disagrees with the judged strength, the measured pass is the better guide.
 
-| # | Evidence | System | Strength (judged) | Alone? | Key partner |
-|---|---|---|---|---|---|
-| A1 | Seer reading | worlds, role table (Red Herring), likelihood | "no": strong; "yes": moderate | yes | overlapping Seer readings; a known-good in the pair |
-| A2 | Dowser count | worlds, likelihood | moderate; strong at 0 or full | partly | overlapping groups |
-| A3 | Surveyor (block parity) | worlds, likelihood | weak to moderate | no | anyone on that block known |
-| A4 | Augur (crossed the Demon) | worlds, likelihood, day sightings | moderate | no | that day's public sightings |
-| A5 | Confessor visit | worlds, likelihood | "good": strong; "forgot": weak | "good" yes | sightings of the Confessor's visit |
-| A6 | Chronicler trio | worlds, likelihood | strong | yes | a second trio member resolved |
-| A7 | Magistrate (nominator vs nominee) | worlds, likelihood, nomination record | moderate | partly | either person resolved |
-| A8 | Clerk (one of two holds gift G) | role table | moderate | partly | claims of gift G |
-| A9 | Archivist (one of two is Minion M) | role table | strong | yes | either person cleared |
-| A10 | Rumormonger (one of two carries secret S) | worlds | moderate | partly | a secret confession |
-| A11 | Gravedigger (executed's role) | role table, chronology | decisive | yes | the execution |
-| A12 | Executor (assigned person's role on death) | role table, chronology | decisive (once they die) | after a death | that death |
-| A13 | Registrar (role list + checks) | role table | moderate | partly | claims of the listed roles |
-| A14 | Monitor (role of a walker on their block) | worlds, movement | moderate | no | night sightings on that block |
-| A15 | Psychologist (one of two statements false) | worlds, factored channels | moderate | no | holding both statements |
-| A16 | Night Watch (who passed a block) | movement | moderate | partly | home alibis of those seen |
-| A17 | Lamplighter (how many were out) | movement (routes) | weak | no | sightings that night |
-| A18 | Medium (relays a dead person's item) | relay channels, role table | as the item, discounted | partly | the dead person's own claims |
-| A19 | Warden (guarded a door; a "save") | movement, worlds | weak; "save": moderate | partly | the quiet night |
-| A20 | Veteran (survived; attacker's block) | movement, role table | moderate | partly | evening and night sightings |
-| A21 | Martyr (chose someone; died in their place) | role table, public event | event: decisive | event yes | the execution |
-| A22 | Sexton (tolled the bell) | role table, chronology | weak | no | a minion effect that didn't happen |
-| A23 | Hearthwitch (benched) | worlds | — | — | — |
-| B1 | Role claim | role table, bluff weight | weak alone; strong in a clash | no | counter-claims, role readings |
-| B2 | Gift-family hint | speech factor | weak | yes | a later full claim |
-| B3 | Secret confession | movement, worlds | context (explains outings) | no | the outings it explains |
-| B4 | Refusal to share whereabouts | circumstantial | weak (circumstantial) | no | Stage 1 evidence on them |
-| B5 | Town Hall records (one of two roles in play) | role table | moderate | no | claims of those roles |
-| C1 | Day sighting / conversation | circumstantial, Augur | context | no | Augur, Breathstealer, suspicion of the partner |
-| C2 | Evening sighting | movement, traces | context to weak | no | quarter traces, soot |
-| C3 | Night sighting (someone out) | movement | moderate | yes | home alibi; walking-gift claim |
-| C4 | Home alibi | movement, testimony honesty | weak | no | a sighting that contradicts it |
-| C5 | Dropped belongings (owner known) | movement | strong (certain outing) | yes | the night's murder route |
-| C6 | Mud or soot drop (owner's block only) | movement | weak to moderate | no | residents of that block |
-| C7 | Vigil (player watched a block) | movement | strong for exclusion | yes | murder route through the block |
-| D1 | Demon victim | public factor, chronology | strong toward good | yes | — |
-| D2 | Crime-scene trace (locations / quarter / connection) | movement, trace solver | moderate; strong in chains | partly | profile context; more traces |
-| D3 | Quiet night (no death) | movement, role table | weak to moderate | no | Warden, Veteran, ward |
-| D4 | Scorched sigil (ward held) | movement, chronology | moderate | partly | the warded person's neighbours' routes |
-| D5 | Revenant totem / curse | role table, chronology | moderate | partly | the hanging that triggered it |
-| D6 | Execution | chronology | context | no | Gravedigger, Martyr, Scion |
-| D7 | Silenced at the meeting | public factor, circumstantial | weak toward good | yes | sightings near the victim that day |
-| E1 | Vote / nomination record | circumstantial, Magistrate | weak (circumstantial) | no | the nominee's later resolution |
-| E2 | Accusation / opinion / gossip | none | none | — | — |
-| E3 | Tavern rumour | none in the Workshop | none | — | — |
-| F1 | Home / work / haunt | context | context | no | traces |
-| F2 | Trait (composure, privacy) | circumstantial | weak | no | Stage 1 evidence |
-| F3 | Bond (friend / rival) | circumstantial, traces | weak | no | suspected friend, murdered rival, connection trace |
-| G1 | Evil / Demon / Minion / not-the-Demon premise | the claim tested | as its cards | — | — |
-| G2 | Suspicious premise | half-weight hearing + pressure | its cards at half | — | — |
-| G3 | Good premise | the claim tested | as its cards | — | — |
-| G4 | Secret premise ("X holds S") | the player's word | weak to moderate | yes | the player's credibility |
-| G5 | Holds their claimed gift | the role table | as "good" | — | — |
-| G6 | Conflict premise | case consistency | as its cards | — | — |
-| G7 | Reading challenge (misled / lying / failed gift / Delusional / these don't fit) | leave-one-out, reliability | moderate when grounded | no | grounds cards |
-| H | Distorters: Marked, Red Herring, Delusional, Poisoner, Muddler, Sleepwalker, Lovers, curse, Scion, Brute, Breathstealer, Sexton's bell | — | — | — | — |
+| # | Evidence | System | Strength (judged) | Measured (7 NPCs, heard at 0.8) | Alone? | Key partner |
+|---|---|---|---|---|---|---|
+| A1 | Seer reading | worlds, role table (Red Herring), likelihood | "no": strong; "yes": moderate | negligible (+0.013); "yes" false 42% of the time | yes | overlapping Seer readings; a known-good in the pair |
+| A2 | Dowser count | worlds, likelihood | moderate; strong at 0 or full | strong at 7 (+0.108), weak at 10 | partly | overlapping groups |
+| A3 | Surveyor (block parity) | worlds, likelihood | weak to moderate | moderate at 7 (+0.088), negligible at 10 | no | anyone on that block known |
+| A4 | Augur (crossed the Demon) | worlds, likelihood, day sightings | moderate | negligible alone | no | that day's public sightings |
+| A5 | Confessor visit | worlds, likelihood | "good": strong; "forgot": weak | moderate (+0.054); "good" clears its target by 0.36 | "good" yes | sightings of the Confessor's visit |
+| A6 | Chronicler trio | worlds, likelihood | strong | not dealt by day 3 | yes | a second trio member resolved |
+| A7 | Magistrate (nominator vs nominee) | worlds, likelihood, nomination record | moderate | moderate at 7 (+0.087), negligible at 10 | partly | either person resolved |
+| A8 | Clerk (one of two holds gift G) | role table | moderate | moderate, all on the reader | partly | claims of gift G |
+| A9 | Archivist (one of two is Minion M) | role table | strong | +0.15 on both named; separation negligible | yes | either person cleared |
+| A10 | Rumormonger (one of two carries secret S) | worlds | moderate | moderate (+0.054) | partly | a secret confession |
+| A11 | Gravedigger (executed's role) | role table, chronology | decisive | strong (+0.19) | yes | the execution |
+| A12 | Executor (assigned person's role on death) | role table, chronology | decisive (once they die) | moderate, mostly assignments | after a death | that death |
+| A13 | Registrar (role list + checks) | role table | moderate | moderate, all on the reader | partly | claims of the listed roles |
+| A14 | Monitor (role of a walker on their block) | worlds, movement | moderate | moderate, all on the reader | no | night sightings on that block |
+| A15 | Psychologist (one of two statements false) | worlds, factored channels | moderate | negligible alone | no | holding both statements |
+| A16 | Night Watch (who passed a block) | movement | moderate | negligible (+0.017) | partly | home alibis of those seen |
+| A17 | Lamplighter (how many were out) | movement (routes) | weak | negligible | no | sightings that night |
+| A18 | Medium (relays a dead person's item) | relay channels, role table | as the item, discounted | negligible at 7, moderate at 10 | partly | the dead person's own claims |
+| A19 | Warden (guarded a door; a "save") | movement, worlds | weak; "save": moderate | not measured | partly | the quiet night |
+| A20 | Veteran (survived; attacker's block) | movement, role table | moderate | too few | partly | evening and night sightings |
+| A21 | Martyr (chose someone; died in their place) | role table, public event | event: decisive | moderate (report) | event yes | the execution |
+| A22 | Sexton (tolled the bell) | role table, chronology | weak | negligible | no | a minion effect that didn't happen |
+| A23 | Hearthwitch (benched) | worlds | — | — | — | — |
+| B1 | Role claim | role table, bluff weight | weak alone; strong in a clash | none alone; clash +0.15 on both | no | counter-claims, role readings |
+| B2 | Gift-family hint | speech factor | weak | none when gossiped | yes | a later full claim |
+| B3 | Secret confession | movement, worlds | context (explains outings) | none when gossiped | no | the outings it explains |
+| B4 | Refusal to share whereabouts | circumstantial | weak (circumstantial) | not measured | no | Stage 1 evidence on them |
+| B5 | Town Hall records (one of two roles in play) | role table | moderate | not measured | no | claims of those roles |
+| C1 | Day sighting / conversation | circumstantial, Augur | context | not measured | no | Augur, Breathstealer, suspicion of the partner |
+| C2 | Evening sighting | movement, traces | context to weak | not measured | no | quarter traces, soot |
+| C3 | Night sighting (someone out) | movement | moderate | +0.20 on an evil subject | yes | home alibi; walking-gift claim |
+| C4 | Home alibi | movement, testimony honesty | weak | clears evil by 0.14 | no | a sighting that contradicts it |
+| C5 | Dropped belongings (owner known) | movement | strong (certain outing) | +0.20 on an evil owner | yes | the night's murder route |
+| C6 | Mud or soot drop (owner's block only) | movement | weak to moderate | not measured | no | residents of that block |
+| C7 | Vigil (player watched a block) | movement | strong for exclusion | not measured | yes | murder route through the block |
+| C8 | Day log (who was at a watched block's places) | day presence, Whereabouts solver | moderate for the Hexer and Breathstealer | not measured | partly | a Hexer kill or a silencing that day |
+| D1 | Demon victim | public factor, chronology | strong toward good | −0.60 on the victim | yes | — |
+| D2 | Crime-scene trace (locations / quarter / connection) | movement, trace solver | moderate; strong in chains | 0 alone, +0.03 with profiles | partly | profile context; more traces |
+| D3 | Quiet night (no death) | movement, role table | weak to moderate | not measured | no | Warden, Veteran, ward |
+| D4 | Scorched sigil (ward held) | movement, chronology | moderate | not measured | partly | the warded person's neighbours' routes |
+| D5 | Revenant totem / curse | role table, chronology | moderate | not measured | partly | the hanging that triggered it |
+| D6 | Execution | chronology | context | — | no | Gravedigger, Martyr, Scion |
+| D7 | Silenced at the meeting | public factor; day presence (Breathstealer) | weak toward good | −0.16 on the silenced | yes | the day log of the victim's block |
+| D8 | Hexer kill (day-killer demon) | day presence (HexFactor) | weak to moderate | not measured | partly | the day log of the victim's places |
+| E1 | Vote / nomination record | circumstantial, Magistrate | weak (circumstantial) | not measured | no | the nominee's later resolution |
+| E2 | Accusation / opinion / gossip | none | none | — | — | — |
+| E3 | Tavern rumour | none in the Workshop | none | — | — | — |
+| F1 | Home / work / haunt | context | context | not measured | no | traces |
+| F2 | Trait (composure, privacy) | circumstantial | weak | not measured | no | Stage 1 evidence |
+| F3 | Bond (friend / rival) | circumstantial, traces | weak | not measured | no | suspected friend, murdered rival, connection trace |
+| G1 | Evil / Demon / Minion / not-the-Demon premise | the claim tested | as its cards | — | — | — |
+| G2 | Suspicious premise | half-weight hearing + pressure | its cards at half | — | — | — |
+| G3 | Good premise | the claim tested | as its cards | — | — | — |
+| G4 | Secret premise ("X holds S") | the player's word | weak to moderate | — | yes | the player's credibility |
+| G5 | Holds their claimed gift | the role table | as "good" | — | — | — |
+| G6 | Conflict premise | case consistency | as its cards | — | — | — |
+| G7 | Reading challenge (misled / lying / failed gift / Delusional / these don't fit) | leave-one-out, reliability | moderate when grounded | — | no | grounds cards |
+| H | Distorters: Marked, Red Herring, Delusional, Poisoner, Muddler, Sleepwalker, Lovers, curse, Scion, Brute, Breathstealer, Sexton's bell | — | — | — | — | — |
 
 ## A. Gift readings
 
@@ -517,6 +519,15 @@ Not on any script. It counts evil among two living lane neighbours.
 - **Strength:** strong for exclusion. An empty vigil on a claimed walker's block is about 10:1 against the claim.
 - **Becomes useful with:** a murder route through the block.
 
+### C8. Day log (who was at a watched block's places)
+*(day-killer branch, `claude/day-killer`)*
+- **Source and timing:** the player, each day phase spent on a block: everyone at every public place on that block, empty places included. One hidden `watch_log` receipt per day.
+- **Says:** who was at each place, and that anyone not listed wasn't at that block's places that phase.
+- **System:** the day-presence table (each person's odds of being at each place or home, per day and phase). The player's own view carries the full watch record. A listener hears it only when it's cited, as one card in their reading budget. The Whereabouts solver turns it into "fits / unknown / ruled out" for one question (a Demon death, a silencing, a place on a day).
+- **Strength:** moderate, for the questions it answers (where the Hexer stood, who was near a silenced person). Context otherwise.
+- **Becomes useful with:** a Hexer kill (D8) or a silencing (D7) that day; NPC sighting reports (trusted at the presence model's testimony trust); known haunts.
+- **Gaps:** the bot never builds a Whereabouts node, so in autoplay the town doesn't hear the bot's watches.
+
 ## D. Crime scenes and night events
 
 ### D1. Demon victim
@@ -559,9 +570,19 @@ Not on any script. It counts evil among two living lane neighbours.
 - **Becomes useful with:** the Gravedigger; the Martyr; the Scion (the Demon executed with five or more alive).
 
 ### D7. Silenced at the meeting
-- **System:** public factor (about 0.66× odds of evil: the Breathstealer silences threats) and circumstantial (people with the victim that day before the silencing).
-- **Strength:** weak toward good for the silenced person.
-- **Becomes useful with:** day sightings near the victim (C1), which point at the Breathstealer.
+- **System:**
+  - a public factor on the silenced person (about 0.66× odds of evil: the Breathstealer silences threats);
+  - on the day-killer branch, a joint CaseEval factor ("Breathstealer by presence"). Each world's Minions are weighed by the chance they were on the victim's block in the same phase, across every silencing. It replaces the circumstantial hub's one-day proximity incident.
+- **Strength:** weak toward good for the silenced person; the presence factor points at the Breathstealer as far as the day's whereabouts are known.
+- **Becomes useful with:** the day log of the victim's block (C8); NPC sightings that day (C1).
+
+### D8. Hexer kill (day-killer demon)
+*(day-killer branch; only on scripts that list two demon types)*
+- **Source and timing:** a Hexer hexes a public place it stands in, during a day phase, with good regulars present. That night a random living good regular of that place dies. It never walks, so it leaves no night sightings or vigil evidence; traces at the house work as usual.
+- **System:** day presence. Each world scores `(1 − s)·walk + s·day·HexFactor`, where `s` is the script's Hexer share and, in the day term, the Demon slot moves like a Minion. HexFactor: for each kill, the sum over the victim's known places of P(the Demon was there) × good alive / good regulars, with a floor of 0.15.
+- **Strength:** weak to moderate. It depends on how much of the victim's places' daytime is known.
+- **Becomes useful with:** the day log (C8) of the victim's places that day; known haunts; a Veteran who survives a Hexer (learns its home block).
+- **Undermines:** night-movement evidence for the Demon. With a Hexer possible, being out at night says less about being the Demon.
 
 ## E. Public behaviour
 
