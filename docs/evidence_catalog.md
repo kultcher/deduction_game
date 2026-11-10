@@ -124,7 +124,7 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 | B5 | Town Hall records (one of two roles in play) | role table | moderate | not measured | no | claims of those roles |
 | C1 | Day sighting / conversation | circumstantial, Augur | context | not measured | no | Augur, Breathstealer, suspicion of the partner |
 | C2 | Evening sighting | movement, traces | context to weak | not measured | no | quarter traces, soot |
-| C3 | Night sighting (someone out) | movement | moderate | +0.20 on an evil subject | yes | home alibi; walking-gift claim |
+| C3 | Night sighting (someone out) | movement | moderate | Demon +0.26; a Minion −0.11 | yes | home alibi; walking-gift claim |
 | C4 | Home alibi | movement, testimony honesty | weak | clears evil by 0.14 | no | a sighting that contradicts it |
 | C5 | Dropped belongings (owner known) | movement | strong (certain outing) | +0.20 on an evil owner | yes | the night's murder route |
 | C6 | Mud or soot drop (owner's block only) | movement | weak to moderate | not measured | no | residents of that block |

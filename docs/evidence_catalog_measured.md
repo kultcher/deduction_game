@@ -142,6 +142,8 @@ Steps on the card's subject. For sightings, alibis and claims, trust is in the t
 | Evidence | Subject | n (7 / 10 NPCs) | 7 NPCs, trust 0.4 | 7 NPCs, trust 0.8 | 10 NPCs, trust 0.8 | Separation, 7 NPCs, 0.8 |
 |---|---|---|---|---|---|---|
 | Night sighting (heard) | evil | 105 / 97 | +0.079 | +0.203 | +0.145 | +0.110 |
+| … of the Demon | Demon | 70 / 53 | — | +0.263 | +0.165 | — |
+| … of a Minion | Minion | 35 / 44 | — | **−0.114** | **−0.068** | — |
 | Night sighting (heard) | good | 155 / 159 | −0.003 | −0.028 | −0.021 | +0.009 |
 | Home alibi (from the subject) | evil | 105 / 97 | −0.176 | −0.142 | −0.065 | −0.075 |
 | Home alibi (from the subject) | good | 155 / 159 | −0.031 | −0.027 | −0.018 | +0.008 |
@@ -159,7 +161,21 @@ Steps on the card's subject. For sightings, alibis and claims, trust is in the t
 
 Only the "locations" trace family turned up on these scripts. Presented alone, a trace averages +0.008 on the Demon and is 0 at the median.
 
-<!-- HEXER -->
+## With the Hexer on the script
+
+Ten-person towns with the day-killer forced onto the script (the Demon stays on it too, so the solver weighs both); the Hexer was the Demon in 92% of the measured rows. Compared with the default runs on the same seeds:
+
+| Evidence | Default | Hexer on the script |
+|---|---|---|
+| Night sighting of an evil person (trust 0.8) | +0.145 | +0.030 |
+| Home alibi of an evil person | −0.065 | −0.024 |
+| Sighting + contradicting alibi | 0.000 | about 0 |
+| Claim clash (both claimants) | +0.187 | +0.216 |
+| Trace alone / with profiles | 0.000 / +0.012 | +0.005 / +0.027 |
+| Night Watch reading (separation) | +0.017 | +0.002 |
+| Surveyor / Confessor / Medium (separation) | +0.013 / +0.027 / +0.063 | +0.079 / +0.076 / +0.117 |
+
+The Hexer never walks, so there's no Demon to see at night. Every evil person seen out is a Minion, and night evidence about the Demon goes quiet: the Night Watch drops to nothing. Readings that don't depend on movement come out about the same or stronger. The Surveyor, Confessor and Medium rows rest on 5–23 readings each, so treat those gains as a hint, not a result. The Hexer's own evidence (the day log, its kills' HexFactor) needs watched days, which passive play doesn't make.
 
 ## Findings
 
@@ -180,6 +196,8 @@ These are the places where the measured pass corrects the judged one, plus behav
 9. **Role claims alone move nothing** (about −0.008). A clash raises both claimants by +0.15 to +0.19, the true holder included. Net separation is small (+0.03): the listener can't tell which claimant is lying.
 10. **Repetition matters more than any one reading.** All of a Dowser's or Magistrate's readings by day 3 reach +0.26 separation, against +0.09 to +0.11 for one. The same holds for the Registrar (+0.20), Confessor (+0.19) and Executor (+0.16).
 11. **Being seen out at night barely hurts a good person,** and often helps a little (−0.02 to −0.03), when the sighting puts them away from the murder.
+12. **A Minion seen out at night loses suspicion** (−0.114 at 7, −0.068 at 10), while the Demon seen out gains +0.263 / +0.165. With nothing else known, a good person's chance of being out is about the same as a Minion's (5% ordinary, plus an unclaimed walking gift weighted 15% and a secret weighted 10%, against a Minion's 25%). So the sighting doesn't point at evil, but it does put them away from the murder, which clears them of being the Demon. The town only learns from sightings of the Demon. Possibly intended (Minions blend in), but it means a Minion's night outings help it.
+13. **With a Hexer possible, night movement says little about anyone** (an evil person seen out: +0.145 drops to +0.030). The day log and the Hexer's kill factor are meant to replace it, and need a played (watched) game to measure.
 
 ## What this changes in the catalog
 
