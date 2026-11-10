@@ -255,6 +255,5 @@ good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
     chance drops by 0.3 (`watched_penalty`).
   - This never applies in the evening: by then it hasn't hexed that day.
 - **Unchanged:** single-regular hexes, and the own-workplace penalty (0.25).
-- **Bot check:** 16 forced-Hexer autoplay games hexed on 64 of 67 days (was about 1 in 2
-  on days spent at its own work).
+- **Bot check:** 16 forced-Hexer autoplay games (seeds 8100–8115) hexed on 60 of 65 days.
 
