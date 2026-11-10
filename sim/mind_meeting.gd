@@ -1714,7 +1714,24 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_strengths["pair_other"] = 1.0
 					move_scales["pair_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
-			if moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
+			# A good defender who knows the sighting is true (they were out that night, and
+			# aren't a sleepwalker who believes they slept) owns it and gives their account,
+			# rather than calling the watcher a liar (Case 12926: Nisha, the Sexton, out
+			# tolling the bell, called Fenwick's and Hollis's sightings fabricated).
+			var saw_me_true: bool = false
+			if not d.is_evil() and bool(rd.get("true", false)) and d.id in dd.get("seen", []) and d.secret_mod != "sleepwalker":
+				var nd_s: int = int(rd.get("day", -1))
+				saw_me_true = nd_s >= 0 and str(d.history.get(w.time_key(nd_s, C.NIGHT), "")).begins_with("night:")
+				if saw_me_true and moves.size() < 2 and not ("dispute_night" in moves):
+					lines.append(say_voiced(d, "defence_true_sighting", "%s saw true: I was out that night. Hear why from me." % src.name, {"source": src.name}))
+					var acct_s: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, nd_s, true)
+					lines.append_array(acct_s.get("lines", []))
+					facts.append_array(acct_s.get("facts", []))
+					moves.append("dispute_night")
+					move_strengths["dispute_night"] = 1.0
+					move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
+					defence_scopes["dispute_night"] = {"type": "plea"}
+			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
 				if trait_of(d, "confidence") > 0.6:
 					var lie_key: String = "lying:" + src_id
 					if _said_by_other(w, d, lie_key) != "":
