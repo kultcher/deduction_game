@@ -6,6 +6,7 @@ signal cards_dropped(numbers: Array)
 signal contents_changed
 signal trace_solver_requested(selected_by_night: Dictionary)
 signal location_solver_requested(question: Dictionary)
+signal fullscreen_toggled
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
 var g
@@ -17,6 +18,7 @@ var debug_menu: MenuButton
 var filed_row: HFlowContainer
 var undo_button: Button
 var _undo: Dictionary = {}
+var fullscreen_btn: Button
 var _numbers_key = []
 var _numbers: Array = []
 var field_menu: PopupMenu
@@ -147,6 +149,9 @@ func _ready() -> void:
 	var loc_solver_btn = _button(tools, "Whereabouts", func(): location_solver_requested.emit({}))
 	loc_solver_btn.name = "OpenLocationSolver"
 	loc_solver_btn.tooltip_text = "Opens the Whereabouts panel to cross-reference who was where on a day and commit one Whereabouts card citing your record of that day."
+	fullscreen_btn = _button(tools, "Fullscreen", func(): fullscreen_toggled.emit())
+	fullscreen_btn.name = "WorkshopFullscreen"
+	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Shift-drag on empty canvas to box-select cards; drag one to move them all, Delete to remove them."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))
@@ -165,6 +170,7 @@ func _ready() -> void:
 	canvas.layout_changed.connect(_store)
 	canvas.cards_dropped.connect(func(numbers): cards_dropped.emit(numbers))
 	canvas.removal_requested.connect(remove_node)
+	canvas.group_removal_requested.connect(remove_nodes)
 	canvas.field_requested.connect(_field_popup)
 	canvas.detail_label = _detail_label
 	canvas.tooltip_text = "Case Workshop"
@@ -737,9 +743,37 @@ func _refresh_filed() -> void:
 func remove_node(id: String) -> void:
 	if board == null or not board.nodes.has(id):
 		return
-	var node: Dictionary = board.nodes[id]
 	var title_text: String = board.title(id)
 	_undo = {"canvas": board.export_data(), "root": case_root, "files": files.duplicate(true)}
+	_remove_one(id)
+	if not board.nodes.has(case_root):
+		case_root = board.selected
+	undo_button.disabled = false
+	_session_changed()
+	status.text = "Removed %s from the Workshop. The original stays on the case board." % title_text
+
+## Remove a box selection in one step of undo (Nov 10).
+func remove_nodes(ids: Array) -> void:
+	if board == null:
+		return
+	var present: Array = ids.filter(func(i): return board.nodes.has(i))
+	if present.is_empty():
+		return
+	if present.size() == 1:
+		remove_node(present[0])
+		return
+	_undo = {"canvas": board.export_data(), "root": case_root, "files": files.duplicate(true)}
+	for i in present:
+		if board.nodes.has(i):
+			_remove_one(i)
+	if not board.nodes.has(case_root):
+		case_root = board.selected
+	undo_button.disabled = false
+	_session_changed()
+	status.text = "Removed %d cards from the Workshop. The originals stay on the case board." % present.size()
+
+func _remove_one(id: String) -> void:
+	var node: Dictionary = board.nodes[id]
 	match node.kind:
 		"evidence":
 			board.remove_evidence(id)
@@ -758,11 +792,10 @@ func remove_node(id: String) -> void:
 		"premise":
 			board.remove_premise(id)
 			files.erase(id)
-	if not board.nodes.has(case_root):
-		case_root = board.selected
-	undo_button.disabled = false
-	_session_changed()
-	status.text = "Removed %s from the Workshop. The original stays on the case board." % title_text
+
+func set_fullscreen_label(on: bool) -> void:
+	if fullscreen_btn != null:
+		fullscreen_btn.text = "Exit fullscreen" if on else "Fullscreen"
 
 func _undo_remove() -> void:
 	if _undo.is_empty():
@@ -784,10 +817,17 @@ func _extend_context(id: String) -> void:
 	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "circumstantial", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
+	if id in canvas.group and canvas.group.size() > 1:
+		context_menu.add_item("Remove selected (%d)" % canvas.group.size(), 205)
 
 func _context_action(action: int) -> void:
 	if action == 204:
 		remove_node(context_id)
+		return
+	if action == 205:
+		var ids_g: Array = canvas.group.duplicate()
+		canvas.group = []
+		remove_nodes(ids_g)
 		return
 	super(action)
 
