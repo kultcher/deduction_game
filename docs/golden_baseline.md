@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 10): `baseline_0e64b81`
+### Current baseline (Nov 10): `baseline_73b103a`
+
+`tools/golden/baseline_73b103a/` is the capture from `claude/challenge-reliability`. An
+accepted "lying" challenge no longer discounts the reading's reliability (belief-model plan,
+Phase 1 fix 2).
+- **Divergence from `baseline_0e64b81`:** only 98933, at record 256 (refresh #221, Isolde's
+  cover on day 3, afternoon), by about 1e-6 in two requested suspicions. 42, 54875, 692 and
+  900 are identical.
+- **Record counts:** 42 90, 54875 321, 692 251, 900 143, 98933 285.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 10): `baseline_0e64b81`
 
 `tools/golden/baseline_0e64b81/` is the capture from `claude/npc-behaviour-1110` (#117).
 Everyone now works one shift. The old extra-shift roll still draws, so setup deals the same;
