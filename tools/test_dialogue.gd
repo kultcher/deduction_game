@@ -523,6 +523,7 @@ func _live() -> void:
 	n.history[w.time_key(2, C.NIGHT)] = "night:hill"
 	var refusal_seen = false
 	for i in range(30):
+		n.dialogue_memory.erase("night_accounts")  # each try a fresh account, not a repeat of the last
 		var answer = Mind.answer_night(w, n, 2)
 		if answer["facts"].any(func(f): return f["kind"] == "refusal"):
 			refusal_seen = true
@@ -581,7 +582,9 @@ func _live() -> void:
 		"I'm the Clerk." in conceded["lines"][0]["text"], "real newly authorized gift disclosure acknowledges the previous challenge")
 	_check(conceded["facts"].any(func(f): return f.get("kind", "") == "claim" and f.get("role", "") == "clerk"), "contextual first reveal still creates the same approved role claim")
 	_case_with(g, ["agnes"])
-	_check(g.w.by_id["agnes"].dialogue_memory.is_empty(), "starting a new case discards prior dialogue memory")
+	# (The new case's own first-morning talk may already have left memories; none of the
+	# last case's exchanges, like the gift challenge, survive.)
+	_check(not "challenge_gift" in str(g.w.by_id["agnes"].dialogue_memory), "starting a new case discards prior dialogue memory")
 
 ## The cast is drawn from a larger pool each case: find a seed that deals these people.
 func _case_with(g, ids: Array) -> void:

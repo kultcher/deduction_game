@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 9, late): `baseline_14f999c`
+### Current baseline (Nov 10): `baseline_0e64b81`
+
+`tools/golden/baseline_0e64b81/` is the capture from `claude/npc-behaviour-1110` (#117).
+Everyone now works one shift. The old extra-shift roll still draws, so setup deals the same;
+every NPC with an old extra shift now has that phase free.
+- **Divergence from `baseline_14f999c`:**
+  - 54875 and 98933 part at the meta record (whose NPCs carry extra shifts).
+  - 42 parts at record 2, 692 at record 3 and 900 at record 11, all on day 1 (more idle
+    moves).
+- **Smaller changes on the same branch:** the haunt-roll bonus, the dead's answers, and the
+  −0.40 day-1 term.
+- **Record counts:** 42 90, 54875 321, 692 251, 900 143, 98933 285.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 9, late): `baseline_14f999c`
 
 `tools/golden/baseline_14f999c/` is the capture from `claude/small-fixes-1109` at `14f999c`,
 which is stacked on #113. Against `baseline_e25fca9`, only 692 changes, at record 76:
