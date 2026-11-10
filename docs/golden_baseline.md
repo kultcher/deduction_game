@@ -49,8 +49,10 @@ only by two intended 2c fixes:
 `tools/golden/baseline_0e64b81/` is the capture from `claude/npc-behaviour-1110` (#117).
 Everyone now works one shift. The old extra-shift roll still draws, so setup deals the same;
 every NPC with an old extra shift now has that phase free.
-- **Divergence:** all five seeds part from `baseline_14f999c` at the meta record (the
-  tuning fingerprint), then in play from the first morning (more idle moves).
+- **Divergence from `baseline_14f999c`:**
+  - 54875 and 98933 part at the meta record (whose NPCs carry extra shifts).
+  - 42 parts at record 2, 692 at record 3 and 900 at record 11, all on day 1 (more idle
+    moves).
 - **Smaller changes on the same branch:** the haunt-roll bonus, the dead's answers, and the
   −0.40 day-1 term.
 - **Record counts:** 42 90, 54875 321, 692 251, 900 143, 98933 285.
