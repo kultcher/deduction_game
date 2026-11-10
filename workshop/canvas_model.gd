@@ -4,6 +4,7 @@ const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const C = preload("res://sim/content.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
+const LocationSolver = preload("res://workshop/location_solver.gd")
 const PROFILE_FACETS = ["home_work", "haunts", "personality", "bonds"]
 const PROFILE_FACET_NAMES = {"home_work": "Home & Work", "haunts": "Haunts", "personality": "Personality", "bonds": "Bonds"}
 var view: Dictionary
@@ -246,6 +247,60 @@ func remove_trace_chain(id: String) -> void:
 		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
 	version += 1
 
+## A Whereabouts node (workshop/location_solver.gd): one question's answer, citing the day's
+## log and the NPC reports that bear on it.
+func add_whereabouts(question: Dictionary, at: Vector2 = Vector2(240, 320)) -> String:
+	var res: Dictionary = LocationSolver.evaluate(view, question)
+	if res.log_ids.is_empty() and res.report_ids.is_empty():
+		return ""
+	var qk: String = LocationSolver.key(question)
+	for key in nodes:
+		if nodes[key].kind == "whereabouts" and LocationSolver.key(nodes[key].question) == qk:
+			_fill_whereabouts(key, res)
+			selected = key
+			version += 1
+			return key
+	serial += 1
+	var id = "wh:%d" % serial
+	while nodes.has(id):
+		serial += 1
+		id = "wh:%d" % serial
+	nodes[id] = {"id": id, "kind": "whereabouts", "question": res.question, "at": [at.x, at.y]}
+	_fill_whereabouts(id, res)
+	selected = id
+	version += 1
+	return id
+
+func _fill_whereabouts(id: String, res: Dictionary) -> void:
+	nodes[id]["log_ids"] = res.log_ids.duplicate()
+	nodes[id]["report_ids"] = res.report_ids.duplicate()
+	nodes[id]["summary"] = {"fits": res.fits.duplicate(), "unknown": res.unknown.duplicate(), "ruled_out": res.ruled_out.duplicate()}
+
+## Re-read the question against today's record (a later watch grows the day's log).
+func sync_whereabouts(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "whereabouts":
+		return
+	var res: Dictionary = LocationSolver.evaluate(view, nodes[id].question)
+	if not res.log_ids.is_empty() or not res.report_ids.is_empty():
+		_fill_whereabouts(id, res)
+		version += 1
+
+func remove_whereabouts(id: String) -> void:
+	if not nodes.has(id) or nodes[id].kind != "whereabouts":
+		return
+	remove_trace_chain_like(id)
+
+func remove_trace_chain_like(id: String) -> void:
+	links = links.filter(func(edge): return edge.from != id and edge.to != id)
+	for node in nodes.values():
+		if node.kind in ["contradiction", "modifier"]:
+			node.prior_links = node.get("prior_links", []).filter(func(edge): return edge.from != id and edge.to != id)
+	nodes.erase(id)
+	if selected == id or not nodes.has(selected):
+		var premises: Array = nodes.keys().filter(func(key): return nodes[key].kind == "premise")
+		selected = premises[0] if not premises.is_empty() else (nodes.keys()[0] if not nodes.is_empty() else "")
+	version += 1
+
 func hub_premise_targets(id: String, seen: Array = []) -> Array:
 	if id in seen or not nodes.has(id):
 		return []
@@ -314,7 +369,7 @@ func connect_cards(from: String, to: String) -> String:
 		var swap = from
 		from = to
 		to = swap
-	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "trace_chain", "contradiction", "modifier"]:
+	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "contradiction", "modifier"]:
 		var swap_c = from
 		from = to
 		to = swap_c
@@ -340,7 +395,7 @@ func connect_cards(from: String, to: String) -> String:
 	if links.any(func(edge): return edge.from == from and edge.to == to):
 		return "These cards are already linked."
 	var relation = "supports"
-	if a.kind in ["evidence", "profile_info", "trace_chain"] and b.kind in ["evidence", "profile_info", "trace_chain"]:
+	if a.kind in ["evidence", "profile_info", "trace_chain", "whereabouts"] and b.kind in ["evidence", "profile_info", "trace_chain", "whereabouts"]:
 		relation = "read_together"
 	if _gift_link(a, b):
 		relation = "explains_outing"
@@ -757,6 +812,11 @@ func _evidence(ids: Array) -> Array:
 				for tid in nodes[id].get(field, []):
 					if tid not in result:
 						result.append(tid)
+		elif nodes[id].kind == "whereabouts":
+			for field in ["log_ids", "report_ids"]:
+				for wid in nodes[id].get(field, []):
+					if wid not in result:
+						result.append(wid)
 	result.sort()
 	return result
 
@@ -785,6 +845,8 @@ func title(id: String) -> String:
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
 	if node.kind == "circumstantial":
 		return "Circumstantial Evidence"
+	if node.kind == "whereabouts":
+		return "Whereabouts · " + LocationSolver.label(view, node.get("question", {}))
 	if node.kind == "trace_chain":
 		var n_cnt: int = node.get("trace_ids", []).size()
 		return "Trace Chain (%d night%s)" % [n_cnt, "" if n_cnt == 1 else "s"]
@@ -836,7 +898,7 @@ func restore(value, session) -> String:
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]
-		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "trace_chain", "circumstantial", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
+		if not id is String or not n is Dictionary or n.get("id") != id or n.get("kind") not in ["evidence", "profile_info", "trace_chain", "whereabouts", "circumstantial", "premise", "contradiction", "modifier"] or not n.get("at") is Array or n.at.size() != 2 or not n.at.all(func(x): return (x is float or x is int) and is_finite(float(x)) and absf(float(x)) <= 100000):
 			return "Invalid canvas card or position."
 		if n.kind == "evidence":
 			if not n.get("card") is String or n.card in evidence or Solver.card_by_id(view, n.card).is_empty() or not n.get("answers") is Dictionary or not n.get("reasons") is Dictionary or not n.get("citations") is Dictionary:
@@ -875,6 +937,13 @@ func restore(value, session) -> String:
 					return "Invalid trace chain receipt."
 			if not n.get("assessment") is Dictionary or n.get("assessment", {}).is_empty():
 				n["assessment"] = TraceSolver.compile_assessment(view, n.get("selected_by_night", {}))
+		elif n.kind == "whereabouts":
+			var q = n.get("question")
+			if not q is Dictionary or str(q.get("kind", "")) not in ["kill", "silence", "place"] or not n.get("log_ids") is Array or not n.get("report_ids") is Array:
+				return "Invalid whereabouts card."
+			for arr_name in ["log_ids", "report_ids"]:
+				if not n[arr_name].all(func(cid): return cid is String and not Solver.card_by_id(view, cid).is_empty()):
+					return "Invalid whereabouts receipt."
 		elif n.kind == "modifier":
 			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
 				return "Invalid reading modifier."

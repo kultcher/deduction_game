@@ -44,7 +44,55 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 8, night): `baseline_db5b24e`
+### Current baseline (Nov 10): `baseline_0e64b81`
+
+`tools/golden/baseline_0e64b81/` is the capture from `claude/npc-behaviour-1110` (#117).
+Everyone now works one shift. The old extra-shift roll still draws, so setup deals the same;
+every NPC with an old extra shift now has that phase free.
+- **Divergence from `baseline_14f999c`:**
+  - 54875 and 98933 part at the meta record (whose NPCs carry extra shifts).
+  - 42 parts at record 2, 692 at record 3 and 900 at record 11, all on day 1 (more idle
+    moves).
+- **Smaller changes on the same branch:** the haunt-roll bonus, the dead's answers, and the
+  −0.40 day-1 term.
+- **Record counts:** 42 90, 54875 321, 692 251, 900 143, 98933 285.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 9, late): `baseline_14f999c`
+
+`tools/golden/baseline_14f999c/` is the capture from `claude/small-fixes-1109` at `14f999c`,
+which is stacked on #113. Against `baseline_e25fca9`, only 692 changes, at record 76:
+Nisha's defence is now a plea, not a challenge. She was out on the night Constance's
+reading put her out, so she gives her account instead of calling the reading a lie (the
+true-sighting defence). 42, 54875, 900 and 98933 are identical.
+
+The branch's other changes don't reach the golden seeds:
+- the board marks;
+- the living-rival line;
+- the clash-with-own-beliefs line;
+- the doubt-after-a-hanging clause;
+- the Breathstealer crowd boost: no Breathstealer acted in a crowd of three.
+
+### Previous baseline (Nov 9, night): `baseline_e25fca9`
+
+`tools/golden/baseline_e25fca9/` is the capture from `claude/log-12926` at `e25fca9`. That
+branch rewords an accusation reason when it rests on a reading about someone else. The old
+wording was "my own reading contradicts their account". The new wording names the reading,
+for example "my reading cleared Fenwick, and that doesn't square with their account".
+- **900 and 54875:** only the reason text changes.
+- **42 and 692:** behaviour changes too, because the meeting skips a point when its text was
+  already spoken (`mind_meeting`, `spoken`). Distinct readings that used to share the
+  generic wording no longer collapse into one, so different items get said, and owned
+  defences and applied suspicion shift from there.
+- **98933:** identical.
+- **The Muddler's gossip floor** (also on that branch) changes nothing here: the default
+  script has no Muddler.
+
+Against `baseline_db5b24e`: 42 parts at record 43, 54875 at record 208, 692 at record 68,
+900 at record 21; 98933 is identical. Record counts: 42 147, 54875 260, 692 207, 900 172,
+98933 275. Two captures were identical.
+
+### Previous baseline (Nov 8, night): `baseline_db5b24e`
 
 `tools/golden/baseline_db5b24e/` is the capture from `claude/recency` at `db5b24e`: PR #96
 (recency, below) merged with main after #105–#109. It takes in three behaviour changes that

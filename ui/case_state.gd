@@ -99,6 +99,9 @@ func _involves(g, card: Dictionary, id: String) -> bool:
 			for m in CardModel.place_markers(card):
 				if m["who"] == id:
 					return true
+			# A Dowser reading is one node on the Dowser, but it's about the whole group.
+			if card.get("kind", "") == "info" and card.get("role", "") == "dowser" and id in card.get("data", {}).get("group", []):
+				return true
 			return false
 	return id in CardModel.about(card) or card.get("source", "") == id or card.get("via", "") == id or id in card.get("yes", [])
 

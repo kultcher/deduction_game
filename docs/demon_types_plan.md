@@ -1,7 +1,7 @@
 # Demon types: the day-killer
 
-Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 built, on main (#105).
-Steps 2 and 3 not started.
+Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 merged (#105). Steps 2 and 3
+(first pass) merged to main together with #111 (Nov 10).
 
 ## The idea
 
@@ -93,35 +93,180 @@ the type wouldn't build up over several nights.
   The golden capture is identical to the baseline.
 - **Test:** `tools/test_demon_types.gd` (22 checks, including a hand-built Scion split).
 
-### Step 2: daytime presence (not started)
+### Step 2: daytime presence (built, merged with #111 on Nov 10)
 
-A likelihood that a person was at place L during a day phase. It's built from known work and
-haunt schedules plus sightings and conversations at L. The player sees only part of the day,
-so the absence of a sighting is weak evidence. The same channel closes the backlog's
-"Breathstealer by presence" gap.
+**The watch record.** When the player spends a day phase somewhere, they see everyone at
+every public place on that block (the place itself plus "Nearby"). The game now keeps that
+roster per phase (`Game.watched`, recorded in `GameDayNight._note_watch`). The snapshot and
+the solver's view carry it as `watched`. This is what makes not being seen count: before,
+the solver only had the sightings, so it couldn't tell "nobody saw X" from "nobody looked".
 
-### Step 3: the day-killer itself (not started)
+**The presence table** (`workshop/day_presence.gd`). For each person, day and day phase, the
+chance they were at each of the 8 town places or at home:
+- **Prior:** the sim's own schedule model. A working phase puts someone at their workplace.
+  An idle phase follows the per-phase odds in `World._choose_idle_location`, with
+  `IDLE_HAUNT_CHANCE` going to their two haunts (known ones from haunt cards; unknown ones
+  spread over the places they could be). The afternoon's friend visit is spread over the
+  workplaces in use, since friendships aren't known. `test_day_presence` samples the sim's
+  function and checks the prior matches it.
+- **Evidence:** the watch record (listed is certain; not listed rules that block out), the
+  player's own sightings (certain), NPC-reported sightings (trusted at
+  `PRESENCE_TESTIMONY_TRUST`, 0.8). The dead are nowhere.
+- **Slots are independent.** The sim draws each phase afresh, so there's no coupling to model.
+- **Queries:** `at`, `on_block`, `same_block`, `at_any` (at any of some places in any of some
+  phases: what step 3's mark needs).
 
-- **The role:** `daykiller` added to `C.ROLES` with its own role file. It isn't a minion, so
-  it doesn't show up as `kind: evil` / `minion`.
-  - **Sim:** it marks a work or haunt place during the day. At night it draws a random good
-    regular (ignoring wards), the ward check runs, and the kill leaves a trace at the house.
-  - **Movement:** at night it's out like a minion.
-- **Solver:**
-  - **The mark's location:** the victim's work or haunts name the candidate places.
-  - **Presence:** the step 2 channel gives the demon's presence at those places that day.
-  - **The victim draw:** the chance the victim was the one drawn is 1/n of the good
-    regulars there. n depends on who's good, so it's a per-world factor.
-  - **Type evidence:** the pattern of victims (always a regular of somewhere the demon was)
-    is weak evidence for the type.
-- **Evil AI:** where to mark. It should avoid its own workplace and prefer busy places;
-  minions can be present to muddy things.
-- **NPCs:** night-walking talk should soften while the type is open. Voiced reasons ("I saw
-  Jory out that night") read the same mixed likelihoods, so they weaken by themselves.
-- **The bot:** test the type (vigils on likely victims' blocks), then check presence at
-  the marked place.
-- **The Gravedigger and role readings:** a reading that names the executed demon's type
-  settles it. Step 1 treats such a reading as naming *a* demon (`is_demon`) but doesn't
-  update the type. Step 3 should, probably by fixing the share from public readings, with
-  care for poisoned and Delusional readers.
-- **Scripts:** the builder and editor allow two demons, and the New Case screen shows both.
+**First user: Breathstealer by presence** (the backlog item). The Breathstealer silences
+someone out on its own block, in one of the day phases, so for each silencing the silencer
+was on the victim's block in that phase. For each person m:
+
+    A_m = product over silencings of  sum over phases p of  P(not yet before p) * h_p * c_p
+
+where c_p is the chance m and the victim were out on the same block in p, and h_p is the
+sim's chance of acting that phase (the mean of its low and high odds). A victim can't be
+their own silencer. The per-world factor is the mean of A_m over the world's minions (each is
+equally likely to hold the role), mixed with `DEFAULT_ERR`. It's a CaseEval movement factor
+(kind 3, scored in C# by `CaseEvalKernel.PresenceScore`, with a GDScript reference
+`DayPresence.breath_score`), so it feeds the shared model and case evaluation like the
+Augur's daytime-crossing factor. No factor when nobody was silenced or the script has no
+Breathstealer.
+- It replaces the circumstantial hub's one-day "near a silencing" incident, which couldn't
+  build up across silencings. The card still counts as relevant to the hub's target.
+- **Limits:** who the Breathstealer picks among the people on its block (the threat ranking)
+  isn't modelled, only that they had to be there. The watch record is the player's, so it's
+  in every listener's view (like the rest of the shared notebook).
+- **Tests:** `tools/test_day_presence.gd`; `test_workshop_circumstantial_hub` updated (being
+  near a silencing is Stage 1 now).
+
+### Step 3: the day-killer itself (first pass built, merged with #111 on Nov 10)
+
+**Built (Nov 9):**
+- **The role:** `daykiller`, display name **Hexer** (a working name), in `C.ROLES`, with
+  its own role file `sim/roles/daykiller.gd`.
+  - It's an evil non-minion (`is_demon`), status `experimental`.
+  - It's in the roster's demons, so a script built with two or more demon types can carry
+    it. The default one-demon scripts never do, so today's deals, golden and sweeps don't
+    change.
+- **The hex (sim):** in a day phase, standing in a public place that has good regulars, the
+  Hexer may hex it, once a day.
+  - Its chance rises through the day (`Tuning.Roles.HEXER.phase_probs` 0.25 / 0.4 / 0.6). It
+    also rises with the regulars' public threat and with how many there are, and drops
+    0.25 at its own workplace.
+  - The evening floor is 0.85, so it isn't trapped by its own schedule.
+  - Logged as `hex` (the hex itself isn't visible to the player).
+- **The kill:** that night a random living good regular of the hexed place is drawn,
+  ignoring wards (`hex_victim`). Then the normal attack outcome runs: the player's ward,
+  the Warden, the Veteran. A kill builds traces at the house as usual.
+  - The Hexer never walks, so no streets, no sightings and no vigils.
+  - No hex that day means no kill (`hex_empty` if the place's regulars are gone).
+  - An active Brute still hunts in its place.
+- **The Veteran** who survives a Hexer learns the Hexer's home block (there's no route).
+- **The Scion** who rises takes over the dead demon's type.
+- **The solver** (`LiveActivity.hex_kills`, C# `LiveActivityKernel.HexFactor`):
+  - With a Hexer on the script (share s > 0), the compiled movement factor keeps walking
+    profiles, and `ScoreWorldCore` scores each world twice:
+    - as a walking demon;
+    - as a Hexer (the demon slot moves like a minion; the Scion's splits likewise).
+  - It returns `(1-s)*walk + s*day*HexFactor`.
+  - For each demon kill or attack, HexFactor is
+    `sum over the victim's known places L of P(demon hexed L that day) * goodAlive / goodRegulars(L)`,
+    plus `HEX_UNKNOWN_FLOOR` (0.15) for a regular place nobody's learned. The whole factor
+    is relative to a walking demon picking among the living good.
+  - P(hexed L) is the demon's presence at L that day (step 2's table), weighted by when a
+    Hexer strikes and normalized over the public places it was likely in.
+  - At s = 0 nothing changes (golden identical).
+  - The Hexer avoids hexing its own workplace, so time a suspect spends at work counts
+    `HEX_OWN_WORK_WEIGHT` (0.4) in P(hexed L). Without this, the factor favoured the
+    victim's coworkers: they're present all day at the victim's workplace.
+  - The solver needs each person's workplace for the regulars, so the bridge now hands
+    `work` and `work_phases` (public, as on the board) in the view's people.
+- **Tests:** `test_demon_types` (26 checks: the factor against a hand computation, and a
+  demon far from the victim's places scores lower).
+
+**First probe (Nov 9):** 12 passive cases, 10 NPCs, forced Hexer. The probe compares the
+good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
+- It's neutral to slightly negative: 8 games ran to day 4. Three were unchanged, four
+  went lower (e.g. 0.024 → 0.012, 0.238 → 0.172) and one went higher (0.357 → 0.416).
+- Passive play rarely produces a watch at the hexed place, so the factor mostly spreads
+  belief over everyone present. Its real test is a player who watches public places.
+- `autoplay --force-demon daykiller` deals the Hexer, with the Demon still on the script,
+  for bot runs.
+
+**Not yet:**
+- The bot testing the type (vigils on likely victims' blocks).
+- A Gravedigger or role reading that names the type, fixing s.
+- Evil coordination beyond where to hex (minions muddying the hexed place).
+- The New Case / editor UI showing both demons. The script view already lists every
+  demon on the script.
+- Tuning: the hex odds and the floor are first guesses.
+
+### What the town knows about places (Nov 9, with Michael)
+
+**Haunts: regulars know regulars.**
+- In conversation, NPCs know everyone's true haunts. They point the Demonologist at
+  them, tell them outright, and fill them in through tavern gossip.
+- Their reasoning knows less. Each NPC knows its own haunts, plus anyone's haunt that is its
+  workplace or one of its own haunts (`WorkshopBridge.known_haunts` →
+  `view.regular_haunts`).
+- That knowledge is used by the day-presence prior, the Hexer's victim places, the trace
+  profiles and the movement trace weight. It never enters the ledger or citations. The
+  Demonologist's own view gets none.
+
+**The day log and the Whereabouts solver.**
+- **The leak:** listeners used to get the Demonologist's full watch record for free. Now only
+  the Demonologist's own view carries `view.watched`.
+- **The day log:** each watch adds to a hidden `watch_log` receipt, one per day
+  (`game_day_night._record_day_log`). It holds who was at each public place of the watched
+  block, each phase, empty places included. A listener hears it only when it's cited, as
+  one card (one slot in its reading budget). Day presence reads logs from the considered
+  cards, so the budget applies.
+- **The solver:** `workshop/location_solver.gd` answers one question:
+  - a demon death: who was at the victim's places that day;
+  - a silencing: who was out on the victim's block;
+  - a place on a day.
+
+  For each person and phase it shows what's known (seen, reported by someone, at work, off
+  the watched block, free time). It sorts people into fits / unknown / ruled out, using day
+  presence's odds; unknown is never backfilled.
+- **The UI:** the Case Board's Whereabouts panel (`ui/location_solver_panel.gd`; also
+  reached from the Workshop's "Whereabouts" button) commits a Whereabouts node. The node
+  cites the day's log plus the NPC reports that bear on the answer.
+- **Tests:** `test_location_solver` (29 checks, including the panel and a screenshot via
+  `--screenshot PATH`).
+- **Not yet:**
+  - The bot never builds a Whereabouts node, so in autoplay the town no longer hears the
+    bot's watches. Golden is unchanged.
+  - The per-person daytime sighting cards are still on the board. Folding them into the
+    day log is a possible UI follow-up.
+
+### Hexer pass (Nov 10, with Michael)
+- **Out in the evening.** On an evening it hasn't hexed, it goes out to a public place with
+  good regulars instead of staying home. Its preferred target's workplace and haunts come
+  first (`free_location`).
+- **Seeking its target.** In a free phase, when its preferred target (the biggest public
+  threat) is working at a public place, it goes there 35% of the time
+  (`HEXER.seek_target_chance`).
+  - The hex still falls on a random good regular of the place, as before.
+  - The solver gives the victim's workplace a 25% share of a free, unobserved phase during
+    the victim's shift (`Workshop.HEX_SEEK_SHARE`).
+- **Hexing when watched.** The hex is decided at the end of each day phase, once the
+  Demonologist's place is known (`world.end_day_phase` → `hex_decision`).
+  - If the Demonologist was there and fewer than three others were (`cover_needed`), the
+    chance drops by 0.3 (`watched_penalty`).
+  - This never applies in the evening: by then it hasn't hexed that day.
+- **Unchanged:** single-regular hexes, and the own-workplace penalty (0.25).
+- **Bot check:** 16 forced-Hexer autoplay games (seeds 8100–8115) hexed on 60 of 65 days.
+
+- **Codex review fixes (#111).**
+  - *Daytime evidence alone.* A Whereabouts argument citing only a day log or morning and
+    afternoon reports now reaches the Hexer factor. `live_assessment` turns on the movement
+    model for `watch_log` and `location` cards when a Hexer is possible. The factor no longer
+    needs a night card (`LiveActivity.has_day_evidence`).
+  - *Scion succession.* In a world where the executed person was the demon and a Scion rose,
+    the kills before the execution are scored against the executed demon. The other kills
+    are scored against the successor.
+    - The mixture is branch by branch:
+      `0.5·direct·hex(direct) + 0.5·(pre×post)·hex(split)` (`ScoreDayType`).
+    - Successions come from `LiveActivity.hex_successions`, with the same crowd gate as the
+      movement splits. They need only a hex kill before the execution.
+  - `test_demon_types` now has 41 checks.

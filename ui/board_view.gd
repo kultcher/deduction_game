@@ -261,12 +261,43 @@ func _draw() -> void:
 		if not row_y.has(row) or not col_x.has(col):
 			continue
 		var idxs: Array = by_cell[key]
-		for k in range(idxs.size()):
-			var it: Dictionary = lay["items"][idxs[k]]
-			if lay["view"] == "places":
-				_draw_dot(it, row, col, k)
-			else:
-				_draw_card_item(it, row, col, k)
+		if lay["view"] == "places":
+			# Conversations bridge the dots they're about; everything else takes a slot.
+			var slot: int = 0
+			var drawn: Dictionary = {}   # who -> dot centre (world), first dot per person
+			var convos: Array = []
+			for k in range(idxs.size()):
+				var it: Dictionary = lay["items"][idxs[k]]
+				if it["mark"] == "convo":
+					convos.append(it)
+					continue
+				_draw_dot(it, row, col, slot)
+				if it["who"] != "" and not drawn.has(it["who"]):
+					drawn[it["who"]] = _dot_center(row, col, slot)
+				slot += 1
+			var done: Dictionary = {}
+			var stacked: Dictionary = {}   # anchor -> count: several reports of one talk fan out
+			for it2 in convos:
+				if done.has(it2["card"]):
+					continue
+				done[it2["card"]] = true
+				var subj: Array = g.board[it2["card"] - 1].get("subject", [])
+				var anchors: Array = subj.filter(func(p): return drawn.has(p)).map(func(p): return drawn[p])
+				var at: Vector2
+				if anchors.size() >= 2:
+					at = (anchors[0] + anchors[1]) / 2.0 - Vector2(0, DOT * 0.5)
+				elif anchors.size() == 1:
+					at = anchors[0] + Vector2(DOT * 0.42, -DOT * 0.42)
+				else:
+					at = _dot_center(row, col, slot)
+					slot += 1
+				var ak: String = "%d,%d" % [int(at.x), int(at.y)]
+				var nth: int = int(stacked.get(ak, 0))
+				stacked[ak] = nth + 1
+				_draw_convo(it2, at + Vector2(DOT * 0.56 * nth, 0))
+		else:
+			for k in range(idxs.size()):
+				_draw_card_item(lay["items"][idxs[k]], row, col, k)
 	# Deductions pinned to this view.
 	for n in lay.get("pinned", []):
 		_draw_pinned(n)
@@ -387,6 +418,32 @@ func _icon_for(card: Dictionary, it: Dictionary):
 		return UITheme.tex("ui/roles/" + role, 0.1)
 	return null
 
+func _dot_center(row: String, col: String, k: int) -> Vector2:
+	var per_line = maxi(1, int((COL_W - 8.0) / (DOT + 6.0)))
+	return Vector2(col_x[col] + 4.0 + (k % per_line) * (DOT + 6.0) + DOT / 2.0 + 2.0, row_y[row] + ROW_PAD / 2.0 + (k / per_line) * (DOT + 18.0) + DOT / 2.0)
+
+## A conversation you saw or were told of: a small node between the two people's dots
+## (world position `at`), pointing at the conversation card.
+func _draw_convo(it: Dictionary, at: Vector2) -> void:
+	var c = to_screen(at)
+	var rad = DOT * 0.26 * zoom
+	var hit = Rect2(c - Vector2(rad, rad), Vector2(rad, rad) * 2.0)
+	if not hit.intersects(Rect2(Vector2.ZERO, size)):
+		return
+	var n: int = it["card"]
+	var fade = UITheme.card_color(g.board[n - 1])
+	_items.append({"rect": hit, "n": n})
+	var firsthand: bool = g.board[n - 1].get("source", "") in ["player", "evidence", ""]
+	draw_circle(c + Vector2(1.0, 1.5) * zoom, rad, Color(0, 0, 0, 0.4) * fade)
+	draw_circle(c, rad, (UITheme.color("paper") if firsthand else UITheme.color("bg")) * fade)
+	draw_arc(c, rad, 0, TAU, 20, UITheme.color("string") * fade, maxf(1.5, 2.5 * zoom))
+	# Two speech dots: people talking.
+	var dr: float = maxf(1.2, rad * 0.18)
+	draw_circle(c + Vector2(-rad * 0.32, 0), dr, UITheme.color("ink") * fade)
+	draw_circle(c + Vector2(rad * 0.32, 0), dr, UITheme.color("ink") * fade)
+	if n == state.selected_card or n == _hover:
+		draw_arc(c, rad + 3 * zoom, 0, TAU, 20, UITheme.color("string") if n == state.selected_card else UITheme.color("accent"), 2.0)
+
 func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 	var per_line = maxi(1, int((COL_W - 8.0) / (DOT + 6.0)))
 	var cx = col_x[col] + 4.0 + (k % per_line) * (DOT + 6.0) + DOT / 2.0 + 2.0
@@ -402,7 +459,10 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 	var who: String = it["who"]
 	var mark: String = it["mark"]
 	var col_c = (C.npc_color(who) if g.w.by_id.has(who) else UITheme.color("paper_dim")) * fade
-	draw_circle(c + Vector2(1.5, 2.5) * zoom, rad, Color(0, 0, 0, 0.4) * fade)
+	if mark == "home":
+		draw_rect(Rect2(c - Vector2(rad, rad) * 0.86 + Vector2(1.5, 2.5) * zoom, Vector2(rad, rad) * 1.72), Color(0, 0, 0, 0.4) * fade)
+	else:
+		draw_circle(c + Vector2(1.5, 2.5) * zoom, rad, Color(0, 0, 0, 0.4) * fade)
 	match mark:
 		"solid":
 			draw_circle(c, rad, col_c)
@@ -410,14 +470,29 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 			draw_circle(c, rad, UITheme.color("bg") * fade)
 			draw_arc(c, rad - 2 * zoom, 0, TAU, 28, col_c, maxf(2.0, 4.0 * zoom))
 		"dotted":
-			draw_circle(c, rad, UITheme.color("bg") * fade)
-			var segs: int = 8
-			var r_arc: float = rad - 2.0 * zoom
-			var w_arc: float = maxf(2.0, 3.5 * zoom)
+			# Tavern gossip: on the board for reference, never evidence. A faint fill and a
+			# dotted white ring set it apart from anything you saw or were told.
+			draw_circle(c, rad, Color(col_c, 0.35))
+			var segs: int = 10
+			var r_arc: float = rad - 1.5 * zoom
+			var w_arc: float = maxf(2.0, 3.0 * zoom)
 			for s_i in range(segs):
 				var a0: float = TAU * float(s_i) / float(segs)
-				var a1: float = a0 + (TAU / float(segs)) * 0.52
-				draw_arc(c, r_arc, a0, a1, 5, col_c, w_arc)
+				var a1: float = a0 + (TAU / float(segs)) * 0.5
+				draw_arc(c, r_arc, a0, a1, 5, Color(1, 1, 1, 0.95) * fade, w_arc)
+		"home":
+			# An alibi ("I was home"): a square outline, a claim about a house, not a sighting.
+			var sq := Rect2(c - Vector2(rad, rad) * 0.86, Vector2(rad, rad) * 1.72)
+			draw_rect(sq, UITheme.color("bg") * fade)
+			draw_rect(sq, col_c, false, maxf(2.0, 3.5 * zoom))
+		"dowser":
+			# A Dowser reading: the Dowser's colour ring, their gift's icon, and evil / scanned.
+			draw_circle(c, rad, UITheme.color("paper") * fade)
+			draw_arc(c, rad - 2 * zoom, 0, TAU, 28, col_c, maxf(2.0, 4.0 * zoom))
+			var dt = UITheme.tex("ui/roles/dowser", 0.12)
+			if dt != null:
+				var isz: float = rad * 1.35
+				draw_texture_rect(dt, Rect2(c - Vector2(isz, isz) / 2.0, Vector2(isz, isz)), false, Color(1, 1, 1, 1) * fade)
 		"ability":
 			draw_circle(c, rad, col_c.darkened(0.15))
 			draw_arc(c, rad + 2 * zoom, 0, TAU, 28, UITheme.color("border") * fade, maxf(1.5, 2.5 * zoom))
@@ -427,16 +502,27 @@ func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 				draw_texture_rect(t, hit, false, fade)
 			else:
 				draw_rect(hit, UITheme.color("red") * fade)
+	if mark == "dowser":
+		var dcard: Dictionary = g.board[n - 1]
+		var dd: Dictionary = dcard.get("data", {})
+		var frac: String = "%d/%d" % [int(dd.get("count", 0)), dd.get("group", []).size()]
+		var ffs = int(clampf(13 * zoom, 8, 26))
+		var fw: float = _font.get_string_size(frac, HORIZONTAL_ALIGNMENT_LEFT, -1, ffs).x + 8.0 * zoom
+		var pill := Rect2(c + Vector2(rad * 0.25, rad * 0.35), Vector2(fw, ffs + 4.0 * zoom))
+		draw_style_box(UITheme.flat(UITheme.color("paper"), col_c, 1, 6, 0), pill)
+		draw_string(_font, pill.position + Vector2(4.0 * zoom, ffs), frac, HORIZONTAL_ALIGNMENT_LEFT, -1, ffs, UITheme.color("ink") * fade)
 	if who != "" and g.w.by_id.has(who):
 		var initial: String = g.w.by_id[who].name.substr(0, 1)
 		var fs = int(clampf(15 * zoom, 7, 30))
-		draw_string(_font, c + Vector2(-rad, fs * 0.35), initial, HORIZONTAL_ALIGNMENT_CENTER, rad * 2, fs,
-			UITheme.color("ink") * fade if mark not in ["hollow", "dotted"] else col_c)
+		if mark != "dowser":
+			draw_string(_font, c + Vector2(-rad, fs * 0.35), initial, HORIZONTAL_ALIGNMENT_CENTER, rad * 2, fs,
+				UITheme.color("ink") * fade if mark not in ["hollow", "home", "dotted"] else (Color(1, 1, 1, 0.95) * fade if mark == "dotted" else col_c))
 		if _lod() >= 2:
 			var card: Dictionary = g.board[n - 1]
 			var where = C.loc_name(card["loc"]).trim_prefix("the ") if C.LOCATIONS.has(card.get("loc", "")) else ""
-			var lab = g.w.by_id[who].name if state.rows_by == "place" else (where if where != "" else C.block_name(card.get("block", "")))
-			if card.get("kind", "") == "alibi":
+			var blk_l: String = str(card.get("block", card.get("data", {}).get("block", "") if card.get("data") is Dictionary else ""))
+			var lab = g.w.by_id[who].name if state.rows_by == "place" else (where if where != "" else (C.block_name(blk_l) if blk_l in C.BLOCKS else ""))
+			if card.get("kind", "") == "alibi" and state.rows_by != "place":
 				lab = "home"
 			var lw = (DOT + 6.0) * zoom
 			draw_string(_font, c + Vector2(-lw / 2, rad + 11 * zoom), lab, HORIZONTAL_ALIGNMENT_CENTER, lw, int(clampf(8 * zoom, 7, 16)), UITheme.color("text") * fade)

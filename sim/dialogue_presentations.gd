@@ -308,19 +308,30 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 			primary_key = "present_accept_open" if believed_stance == "accept" else ("present_partial" if believed_stance == "partial" else "present_unmoved")
 			parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label}))
 	elif bounded and status not in ["provisional", "entailed_in_attention", "rival_found", "inconsistent", "counterexample_found", ""]:
-		primary_key = "present_lost_thread"
-		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
+		# No version of events fits the case and what they already hold (support search
+		# empty from the start): it clashes with their own beliefs, not "too many pieces"
+		# (Case 12926: 3-report case, 9-12 accepted cards of their own).
+		var clashes: bool = status == "unresolved" and bool(reasoning.get("support_exhausted", false)) and int(reasoning.get("support_tested", 0)) == 0
+		primary_key = "present_clashes_own" if clashes else "present_lost_thread"
+		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical if not clashes else "That doesn't square with what I already know; I can't make it all fit together, though I'm not saying you're wrong."))
 		if believed_stance in ["accept", "partial"]:
 			var b_key: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
 			parts.append(Dialogue.voice_line(listener.id, b_key, "", {"target": target_label}))
 	elif agreement <= -0.2 or (status == "counterexample_found" and bool(reasoning.get("support_exhausted", false))):
 		var rivals: Array = ev.get("rivals", [])
 		var rival_id: String = ""
-		if believed_stance != "accept" and not rivals.is_empty() and rivals[0] is Dictionary:
-			if float(rivals[0].get("shift", 0.0)) > 0.2 and float(rivals[0].get("posterior", 0.0)) > 0.5:
-				var cand_r: String = str(rivals[0].get("id", ""))
-				if cand_r != "" and cand_r != listener.id and w.by_id.has(cand_r):
+		# The likeliest other evil the case points at: someone living, not the listener or
+		# the target (Case 12926: Edda named Nisha, hanged two days before).
+		if believed_stance != "accept":
+			for rv in rivals:
+				if not rv is Dictionary:
+					continue
+				var cand_r: String = str(rv.get("id", ""))
+				if cand_r == "" or cand_r == listener.id or cand_r == stance_subject or not w.by_id.has(cand_r) or not w.by_id[cand_r].alive:
+					continue
+				if float(rv.get("shift", 0.0)) > 0.2 and float(rv.get("posterior", 0.0)) > 0.5:
 					rival_id = cand_r
+				break
 		if rival_id != "":
 			primary_key = "present_points_elsewhere"
 			parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label, "rival": w.by_id[rival_id].name}))
@@ -354,7 +365,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 					primary_key = "present_unmoved"
 					parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label}))
 
-	if bounded and primary_key not in ["present_lost_thread", "present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none"]:
+	if bounded and primary_key not in ["present_lost_thread", "present_clashes_own", "present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none"]:
 		var ignored_arr: Array = reasoning.get("ignored", [])
 		var pres_rep: Array = snapshot.get("selected", []) if snapshot.has("selected") else view.get("listener", {}).get("knowledge", {}).get("presented_reports", [])
 		var ignored_presented: bool = ignored_arr.any(func(id): return id in pres_rep)

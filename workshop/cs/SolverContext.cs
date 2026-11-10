@@ -206,6 +206,7 @@ internal static class SolverContext
         PackedUniverseByKey.Clear();
         UniverseMetaByHandle.Clear();
         MovementFactors.Clear();
+        PresenceWeights.Clear();
         CompiledCases.Clear();
         Programs.Clear();
         Circuits.Clear();
@@ -305,6 +306,19 @@ internal static class SolverContext
         }
         return meta;
     }
+
+    private static readonly List<double[]> PresenceWeights = new(16);
+
+    /// <summary>Per-person weights for a Breathstealer-by-presence factor (CaseEval kind 3).</summary>
+    public static int RegisterPresenceWeights(double[] weights)
+    {
+        int handle = PresenceWeights.Count;
+        PresenceWeights.Add((double[])weights.Clone());
+        return handle;
+    }
+
+    public static double[] GetPresenceWeights(int handle) =>
+        (handle >= 0 && handle < PresenceWeights.Count) ? PresenceWeights[handle] : Array.Empty<double>();
 
     public static int RegisterMovementFactor(LiveActivityKernel.CompiledMovementFactor factor)
     {

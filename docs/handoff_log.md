@@ -27,6 +27,47 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
+
+- **Status:** green.
+  - 130/130 suites pass.
+  - Golden is identical to `baseline_db5b24e`.
+- **Haunts:** NPC reasoning knows the haunts that fall on its own spots
+  (`view.regular_haunts`), not the town's gossip.
+- **The watch leak is closed:** listeners hear the player's watches only through a cited
+  day log (`watch_log` receipt).
+- **New:** the location solver (`workshop/location_solver.gd`), the Case Board Whereabouts
+  panel, and the Workshop node.
+- **Details:** `docs/demon_types_plan.md`, "What the town knows about places".
+- **Next:**
+  - Michael plays it.
+  - The bot could cite day logs (a follow-up).
+
+---
+
+## 2026-11-09, Claude-Bailiff: demon types step 3, the Hexer (`claude/day-killer`, held draft)
+
+- **Base:** `claude/day-presence` (#107) plus main at `0d10089`. The PR carries #107 too,
+  so the two land together, after Michael has played the Hexer.
+- **Status:** green.
+  - 129/129 suites pass.
+  - Golden is identical to `baseline_db5b24e` (A = B = baseline). The Hexer is only dealt
+    when a script lists two demon types.
+- **What's in it:**
+  - The role `daykiller` (display name "Hexer", a working name), in `sim/roles/daykiller.gd`.
+  - The solver's whole-world mixture, `(1-s)*walk + s*day*HexFactor`.
+  - People in the solver view now carry `work` / `work_phases`, which are public.
+  - `autoplay --force-demon daykiller`.
+  - Details: `docs/demon_types_plan.md`, step 3.
+- **Test change:** in `test_workshop_circumstantial_hub`, the post-retract check now uses
+  the listener's own baseline. With public occupations, the control NPC's Stage 1 differs
+  from the listener's before any case.
+- **Probe:** in passive play the hex factor is neutral to slightly negative. The real test
+  is a player watching public places.
+- **Next:** Michael playtests a forced Hexer. Then tune the hex odds and the floor.
+
+---
+
 ## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
 
 - Base `dc2418c` (main after #96). Status: green, golden identical to `baseline_db5b24e`. Next actor: none.
@@ -60,6 +101,29 @@ Ground rules (from Nov 3, until Michael changes them):
   log until the player leaves (`main._run`, `_leave_finished_conversation`).
 - Not done: claim icon showing before the claim is spoken (Michael: only if safe).
 - Test: `tools/test_playtest_1709.gd` (17 checks); `test_evidence_cards` updated for the free ward showing.
+
+## 2026-11-08 night, Claude-Bailiff: demon types step 2, daytime presence (`claude/day-presence`)
+
+- Base `99fdde1` (main after #105). Status: green, **held unmerged** until the day-killer (step 3) is
+  tested (Michael's call). Next actor: whoever builds step 3, on top of this branch.
+- Design and details: `docs/demon_types_plan.md`, step 2.
+- `Game.watched`: the roster of every public place on the block the player watched each day phase
+  (`GameDayNight._note_watch`). Carried by the snapshot (`Evidence.normalize`) and the solver view.
+- `workshop/day_presence.gd`: presence table (schedule prior from the sim, updated by the watch record,
+  player sightings and NPC reports) and `breath_factor` (Breathstealer by presence).
+- CaseEval movement factor kind 3 (`CaseEvalKernel.PresenceScore`, weights via
+  `SolverBridge.CaseEvalRegisterPresenceWeights`). The CaseEval compile key adds the watch record when
+  someone has been silenced.
+- The circumstantial hub no longer makes the one-day "near a silencing" incident. Hub and regression
+  fixtures that leaned on it now use a rivalry with the victim.
+- Checks: 125/125 suites; golden identical to `baseline_7034f36` (no golden seed has a silencing).
+- **Balance flag (Tally):** 24 Breathstealer deals (7 NPCs, dynamic, seeds 1004-1100), analyst bot,
+  main vs branch: good wins 15 -> 18, Breathstealer executed 10 -> 17 (now often day 1-2), evil
+  executions 23 -> 35, good executions 16 -> 14. Mean game time 57.8 s -> 55.4 s (no slowdown).
+  Small sample; the watch roster makes the silencer easy to spot when the player watched the victim's
+  block. Worth a proper sweep before merge.
+- Evening-loop cleanup in the movement model (dead `evening` variable, 4x inner loop) deliberately left
+  out: it should be golden-identical and wants its own PR to prove that.
 
 ## 2026-11-08 ~17:50, Claude-Tally: the town map's layout is an editable scene
 

@@ -779,6 +779,9 @@ func _test_live_voiced_trace_and_hub_delivery() -> void:
 	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced"})
 	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
 	var tr_num: int = g.add_card(trace_card)
+	# Being near the silencing is Stage 1 now (Breathstealer by presence), so the hub's Stage 2
+	# incident here is a rivalry with the victim.
+	g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": g.w.living_good()[4].id, "day": 1, "phase": 0, "text": "At odds with victim"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root_id: String = board.selected
@@ -786,7 +789,7 @@ func _test_live_voiced_trace_and_hub_delivery() -> void:
 	var hub_id: String = board.add_circumstantial_hub()
 	for num in [death_num, tr_num, sil_num, conv_num]:
 		board.connect_cards("e:" + WorkshopCanvas.Evidence.normalize_card(g.board[num - 1]).id, hub_id)
-	var pnode: String = board.add_profile_info(target.id, ["home_work"])
+	var pnode: String = board.add_profile_info(target.id, ["home_work", "bonds"])
 	board.connect_cards(pnode, hub_id)
 	board.connect_cards(hub_id, root_id)
 	var filed_ok: int = WorkshopCanvas.file(g, board.compile(root_id))
@@ -822,6 +825,8 @@ func _test_autoplay_workshop_and_hub_builder() -> void:
 	g.add_card({"kind": "sighting", "source": "player", "subject": [suspect.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "text": "Player vigil sighting"})
 	g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 2, "phase": C.EVENING, "text": "Silenced"})
 	g.add_card({"kind": "conversation", "source": "player", "subject": [suspect.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.MORNING, "text": "Talking before silence"})
+	# A Stage 2 incident for the hub (being near the silencing is Stage 1 now): at odds with the victim.
+	g.add_profile_receipt({"kind": "bond", "subject": [suspect.id, victim.id], "bond_kind": "rival", "source": cleared_other.id, "day": 1, "phase": 0, "text": "At odds with victim"})
 
 	# The analyst reads the board through the shared model (tools/analyst.gd).
 	var Analyst = preload("res://tools/analyst.gd")
@@ -839,7 +844,7 @@ func _test_autoplay_workshop_and_hub_builder() -> void:
 
 	# Also add a public failed vote where suspect voted yes to hang cleared_other so adapted vote cards are tested too
 	g.w.public_event("vote", [cleared_other.id], "town", {"nominee": cleared_other.id, "nominator": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails"})
-	var vote_num: int = g.add_card({"kind": "vote", "source": "player", "subject": [suspect.id, cleared_other.id], "day": 2, "phase": C.EVENING, "nominee": cleared_other.id, "by": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
+	g.add_card({"kind": "vote", "source": "player", "subject": [suspect.id, cleared_other.id], "day": 2, "phase": C.EVENING, "nominee": cleared_other.id, "by": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
 
 	# Full mode (with Hub): files valid Workshop case attaching adapted silenced + conversation + vote cards in hub
 	var sigs_full: Dictionary = {}
@@ -849,8 +854,11 @@ func _test_autoplay_workshop_and_hub_builder() -> void:
 	_check(int(built_full.card) > 0 and built_full.used_hub and not full_hubs.is_empty(), "the analyst attaches a verified Circumstantial Evidence Hub when Stage 1 grounding and Stage 2 incidents align")
 	if not full_hubs.is_empty():
 		var hub_cards: Array = full_hubs[0].get("cards", [])
-		var vote_cid: String = WorkshopCanvas.Evidence.normalize_card(g.board[vote_num - 1]).id
-		_check(hub_cards.size() >= 3 and vote_cid in hub_cards, "BotWorkshop.select_circumstantial_cards selects adapted silenced, conversation, and vote cards via view.timeline.events")
+		# Breathstealer by presence makes the silenced Bart nearly cleared and Constance (the
+		# vote's nominee) a little less so, so the vote's "voted to hang the good" incident no
+		# longer holds here; the silencing and the conversation by it are still selected.
+		var sil_cards: Array = g.board.filter(func(c): return c.get("kind", "") == "silenced").map(func(c): return WorkshopCanvas.Evidence.normalize_card(c).id)
+		_check(hub_cards.size() >= 2 and hub_cards.any(func(id): return id in sil_cards), "BotWorkshop.select_circumstantial_cards selects the adapted silenced and conversation cards via view.timeline.events")
 
 
 func _test_bears_on_trace_no_hidden_truth_leak() -> void:
