@@ -46,3 +46,4 @@ test_control_flow
 test_review_fixes
 test_location_solver
 test_day_presence
+test_workshop_why

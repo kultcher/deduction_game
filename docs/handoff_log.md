@@ -27,6 +27,51 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-10 morning, Claude-Lantern: the "why" breakdown (`claude/workshop-why`)
+
+A new session, at Michael's request (Nov 10, 00:05): a debug and logging readout of why an
+argument moved a listener as far as it did. No dialogue hookup, no behaviour change.
+
+- **Base:** main at `b40fab1` (#111 merged; Bailiff's #115-#117 are on main).
+- **Status:** see the PR for the suite and golden results.
+- **New:** `workshop/case_why.gd` (the evidence half: the premise chain, the surviving
+  alternatives, and per card its status, world share, the model's `q` and leave-one-out),
+  `game/workshop_why.gd` (the belief half for a real listener: the suspicion chain from
+  "settled outright" to "applied", the biggest loss, the vote bar), `tools/test_workshop_why.gd`.
+- **Where it shows:** the Workshop's Debug menu (three new items), `g.workshop_why`
+  (off by default; when on, each presentation logs a `workshop_why` entry per listener),
+  and `tools/explain_case.gd --why`. Described in `docs/DECISION_INSPECTOR.md`.
+- **Touched outside the new files:** `game/game.gd` (two vars), `game/game_presentation.gd`
+  (the recording hook in `_evaluate_deduction_inner`, behind the flag),
+  `ui/live_case_workshop.gd` (the menu items), `tools/explain_case.gd` (`--why`),
+  `tools/ci_fast_suites.txt`.
+- **It reads the model through underscore functions** (`Shared._doubt_adjusted`,
+  `Shared._evaluate_adjusted`, `Jury._eval_listener`, `Jury._card_trust`,
+  `CaseEval._odds`) and re-states the vote need and nomination bar from `_vote_impl` and
+  `_good_nomination_impl`. `test_workshop_why` pins both: the applied step must match what
+  the presentation did, and the vote margin must match a real vote's.
+- **Things the readout showed** (for Tally and Quill; nothing here is changed). Playtest
+  12926 replayed on its own commit (`75b4c8e`), plus bot games on main:
+  - **Re-presenting cards the town already holds can lower suspicion of the subject.** A
+    presentation is a focused pass: the budget covers the presented cards first, so other
+    held cards drop out of view. 12926, day 4, "Kiran is evil" (three cards, all already
+    public): Hollis 0.45 -> 0.25, Dorian 0.17 -> 0.05; day 2, "Lian is evil": four of six
+    listeners fell by 0.10 to 0.30. Seed 900, day 2: Jory 0.56 -> 0.27 (9 of 20 cards
+    read afterwards, 16 before).
+  - **"Nothing fresh" lets the voiced stance part from the belief.** With no new card the
+    reply keeps the scoped stance (`_present`: `fresh.is_empty()`), so Dorian said the case
+    "changes how I see Kiran" while his suspicion of Kiran fell, and then voted no.
+  - **The test juror hears every card at full weight; listeners don't.** The preview's
+    strength is the ceiling, not a forecast.
+  - **World share against `q`:** a Clerk pair held in 93% of the worlds where the Clerk
+    is honest, against the fixed `q` of 0.5 (the evidence catalog's finding 2, now
+    measured per card).
+- **Next:** Michael reads a breakdown on a real playtest log (`explain_case --why`, on the
+  log's own commit). Wiring the biggest loss and the strongest alternative into dialogue is
+  a later step.
+
+---
+
 ## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
 
 - **Status:** green.

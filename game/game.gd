@@ -104,6 +104,10 @@ var log_paths: Array = []
 var debug = false
 var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
 var workshop_compare = false # opt-in diagnostics; never applies the proposed effects
+## Opt-in diagnostics: after each presented case, record why each listener moved as far as
+## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
+var workshop_why = false
+var workshop_whys: Array = []
 ## Opt-in test assertion: unsupported presentations are rejected before any effects.
 var strict_evaluator = C.STRICT_EVALUATOR
 var _workshop_native_submission = false
@@ -228,6 +232,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	town_vibe_heard = {}
 	workshop_deliveries = []
 	workshop_comparisons = []
+	workshop_whys = []
 	_workshop_plans = {}
 	_workshop_evaluations = {}
 	_workshop_reason_ctx = {}

@@ -353,6 +353,7 @@ Main entry types:
 | `deduction`, `deduction_refused`, `deduction_deleted`, `workshop_canvas_filed` | a case the player filed (conclusion, supports, class), one refused and why, one deleted |
 | `argument`, `argument_stance` | an NPC hearing a presented case, and the stance they took |
 | `workshop_presentation`, `workshop_delivery`, `workshop_ownership` | (in the `.trace.jsonl` sidecar) the shared model at work: per listener, the reasoning, the reply and the suspicion vector it applied |
+| `workshop_why` | (only with "Record why each listener moved" on, or `g.workshop_why`) why a listener moved as far as they did on a presented case: the suspicion the case could add at each step, the biggest loss, the strongest surviving alternative, and per card its status, world share and `q` (`docs/DECISION_INSPECTOR.md`) |
 | `legacy_fallback`, `present_fallback`, `social_presentation` | a refresh or presentation the shared model couldn't serve (and why); a card with no direction; a bare belief taken as social speech |
 | `player_present` | the player taking the meeting floor |
 | `night_sighting` | who glimpsed whom at night |
