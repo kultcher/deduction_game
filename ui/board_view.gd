@@ -276,6 +276,7 @@ func _draw() -> void:
 					drawn[it["who"]] = _dot_center(row, col, slot)
 				slot += 1
 			var done: Dictionary = {}
+			var stacked: Dictionary = {}   # anchor -> count: several reports of one talk fan out
 			for it2 in convos:
 				if done.has(it2["card"]):
 					continue
@@ -290,7 +291,10 @@ func _draw() -> void:
 				else:
 					at = _dot_center(row, col, slot)
 					slot += 1
-				_draw_convo(it2, at)
+				var ak: String = "%d,%d" % [int(at.x), int(at.y)]
+				var nth: int = int(stacked.get(ak, 0))
+				stacked[ak] = nth + 1
+				_draw_convo(it2, at + Vector2(DOT * 0.56 * nth, 0))
 		else:
 			for k in range(idxs.size()):
 				_draw_card_item(lay["items"][idxs[k]], row, col, k)
