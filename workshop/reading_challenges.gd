@@ -136,7 +136,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				cause_agreement = 0.0
 				note += " My established good-alignment knowledge does not support the evil-reader explanation."
 			if cause_agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
-				result.sources[report.source] = minf(result.sources.get(report.source, 1.0), 1.0 - Tuning.Workshop.CHALLENGE_SOURCE_PENALTY_SCALE * cause_agreement)
+				pass # no source discount for a lie: see the reports note below
 			else:
 				note += " I am not convinced the reader deliberately lied."
 		elif challenge.mode == "misled" and supported:
@@ -166,7 +166,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				if g_agree > cause_agreement:
 					cause_agreement = g_agree
 					if cause_agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
-						result.sources[report.source] = minf(result.sources.get(report.source, 1.0), 1.0 - Tuning.Workshop.CHALLENGE_SOURCE_PENALTY_SCALE * cause_agreement)
+						pass # no source discount for a lie: see the reports note below
 			elif challenge.mode == "impaired":
 				cause_agreement = g_agree
 				# Everyone seen out on any of the group's nights (maintenance 2026-11-07 A4).
@@ -177,10 +177,18 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			elif challenge.mode in ["misled", "unlikely", "delusional"]:
 				cause_agreement = maxf(cause_agreement, g_agree)
 			backfire = graded.backfire
-		for member in group:
-			if member != id and cards.any(func(c): return c.id == member):
-				result.reports[member] = minf(result.reports.get(member, 1.0), multiplier)
-		result.reports[id] = minf(result.reports.get(id, 1.0), multiplier)
+		# A lie is evidence against the reader, and the world model already counts it: in a
+		# world where the reader is good and healthy the reading must hold, so the clash
+		# with the grounds weighs against that world. Discounting the reading's reliability
+		# would make it fit everywhere and throw that clash away (belief-model plan, Phase 1).
+		# So an accepted "lying" challenge leaves the reading and its source's other readings
+		# at full reliability; honest-error modes (misled, impaired, unlikely, Delusional)
+		# still discount them. The reply and the floor nudge (Jury) still use the result.
+		if challenge.mode != "lying":
+			for member in group:
+				if member != id and cards.any(func(c): return c.id == member):
+					result.reports[member] = minf(result.reports.get(member, 1.0), multiplier)
+			result.reports[id] = minf(result.reports.get(id, 1.0), multiplier)
 		result.results.append({"card": id, "mode": challenge.mode, "supported": supported, "fraction": fraction,
 			"agreement": cause_agreement, "accuracy_agreement": accuracy_agreement, "multiplier": multiplier, "source": report.source, "note": note,
 			"graded": graded, "backfire": backfire, "candidates": candidates, "group": group})

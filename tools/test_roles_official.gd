@@ -716,7 +716,7 @@ func _challenges(view: Dictionary, knowledge: Dictionary, positive: Dictionary, 
 	value.cards = [claimant.id]
 	value.reading_challenges = {claimant.id: {"mode": "lying", "supports": []}}
 	result = preload("res://workshop/reading_challenges.gd").assess(view, value, listener, [claimant])
-	check(result.results[0].agreement == 1.0 and result.sources.has("b"), "firsthand unique-role contradiction can support dishonesty")
+	check(result.results[0].agreement == 1.0 and not result.sources.has("b") and not result.reports.has(claimant.id), "firsthand unique-role contradiction supports dishonesty, and the lie keeps counting against the reader (no reliability discount)")
 	value.reading_challenges[claimant.id].mode = "misled"
 	var analysis = Solver.analyze(view, value, knowledge)
 	check(analysis.proposed == 0, "Misled cannot excuse a duplicate unique role known firsthand")
