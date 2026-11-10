@@ -1724,7 +1724,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 				saw_me_true = nd_s >= 0 and str(d.history.get(w.time_key(nd_s, C.NIGHT), "")).begins_with("night:")
 				if saw_me_true and moves.size() < 2 and not ("dispute_night" in moves):
 					lines.append(say_voiced(d, "defence_true_sighting", "%s saw true: I was out that night. Hear why from me." % src.name, {"source": src.name}))
-					var acct_s: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, nd_s, true)
+					var acct_s: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, nd_s, true, true)
 					lines.append_array(acct_s.get("lines", []))
 					facts.append_array(acct_s.get("facts", []))
 					moves.append("dispute_night")
