@@ -125,8 +125,10 @@ static func _reliability(listener: Dictionary, card: Dictionary) -> float:
 
 static func _scale_reliability(prepared: Dictionary, card: Dictionary, ratio: float) -> void:
 	var rel: Dictionary = prepared.listener.get("reading_reliability", {})
+	var done := {}  # a report's fact_id is usually its id: scale each entry once
 	for k in [card.get("accuracy_origin", ""), Solver.semantic_key(card), card.get("fact_id", ""), card.get("id", "")]:
-		if k != "" and rel.has(k):
+		if k != "" and rel.has(k) and not done.has(k):
+			done[k] = true
 			rel[k] = clampf(float(rel[k]) * ratio, 0.0, 1.0)
 
 static func _post(proposal: Dictionary, id: String) -> float:
@@ -321,8 +323,18 @@ static func presentation(g, real, card: Dictionary, venue: String = "meeting", w
 		var read_now: Array = applied.get("reasoning", {}).get("considered", [])
 		var p_old: Dictionary = _union(n, plan.input, presentations, outside, doubt, focus_was)
 		var others: Array = []
+		# "Not named in the case": leave out everyone the case's cards mention or come from.
+		var named := {}
+		for cid in case_ids:
+			var cc: Dictionary = Solver.card_by_id(plan.prepared.view, cid)
+			if cc.is_empty():
+				continue
+			for p in Reasoner._mentions(cc):
+				named[p] = true
+			if str(cc.get("source", "")) not in ["", "player", "evidence", "town"]:
+				named[str(cc.source)] = true
 		for id in applied.get("effects", {}):
-			if id == target or id == n.id or not p_wo.get("effects", {}).has(id):
+			if id == target or id == n.id or named.has(id) or not p_wo.get("effects", {}).has(id):
 				continue
 			var o_was: float = _post(p_wo, id)
 			var o_now: float = _post(applied, id)
