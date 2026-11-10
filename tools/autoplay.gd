@@ -53,6 +53,7 @@ const MindPodium = preload("res://sim/mind_podium.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 const SweepRecord = preload("res://tools/sweep_record.gd")
+const VoteShape = preload("res://tools/vote_shape.gd")
 
 ## Analyst decision thresholds on the juror's posterior P(evil) (bot policy, not game tuning).
 const TELL_P = 0.55
@@ -140,6 +141,7 @@ func _init() -> void:
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
 		"workshop_cases", "hub_cases"]
 	keys.append_array(NEW_ACTIONS)
+	keys.append_array(VoteShape.KEYS)
 	var stats = {"good": 0, "evil": 0}
 	var case_results: Array = []
 	var scale_cases: Array = []
@@ -175,6 +177,9 @@ func _init() -> void:
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case (workshop %.1f, hub %.1f), NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["workshop_cases"] / gf, stats["hub_cases"] / gf, stats["arguments"] / gf])
+	print("  vote shape: %d votes, unanimous but the nominee %d, only the nominator %d; evil nominations %d (carried %d, hanged %d), on good targets %d (carried %d, hanged %d)" %
+		[stats["votes"], stats["votes_unanimous"], stats["votes_only_nominator"], stats["evil_nominations"], stats["evil_nominations_carried"], stats["evil_nominations_executed"],
+		stats["evil_nominations_good_target"], stats["evil_nominations_good_target_carried"], stats["evil_nominations_good_target_executed"]])
 	print("  New talk actions: " + ", ".join(PackedStringArray(NEW_ACTIONS.map(func(key): return "%s=%d" % [key, stats[key]]))))
 	var summary = Metrics.aggregate(case_results)
 	print("  identification: demon %d, minion %d, both %d; identified but lost %d; eligible recorded theories %d/%d" %
@@ -260,6 +265,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0,
 		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed}
 	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
+	r.merge(VoteShape.build(g.w))
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
 			r["exec_evil"] += 1
