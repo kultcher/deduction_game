@@ -202,6 +202,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			Mind.ledger_hear(g.w, n, eid, [], maxf(0.0, agreement), Mind.support_ref(card), meta)
 	var voiced_stance: String = assessment.stance
 	var already_aligned: bool = false
+	var fell: bool = false  # the case moved their belief away from the claim
 	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
 		var after_susp: float = n.suspicion.get(stance_subject, 0.1)
 		already_aligned = stance_before <= 0.15 if headline.conclusion.type in ["good", "marked"] else stance_before >= 0.48
@@ -211,7 +212,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			# Nothing new (or already convinced) keeps an accepting reply, but only if their belief
 			# didn't move away: a case that lowered their suspicion isn't voiced as agreement
 			# (Dorian, playtest 12926 day 4: "it changes how I see Kiran", then a no vote).
-			var fell: bool = belief_toward(headline.conclusion.type, stance_before, after_susp) <= -STANCE_MOVE.partial
+			fell = belief_toward(headline.conclusion.type, stance_before, after_susp) <= -STANCE_MOVE.partial
 			voiced_stance = assessment.stance if (b_stance == "reject" and not fell and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
 	if not state.has("rewarded_facts"):
 		state.rewarded_facts = {}
@@ -331,7 +332,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	elif repeated_same_audience:
 		spoken_line = Presentations.render_repeat(n, venue != "private", base_canonical, tic_mem)
 	else:
-		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned, fresh.is_empty(), base_canonical, tic_mem)
+		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned and not fell, fresh.is_empty() and not fell, base_canonical, tic_mem)
 		if hub_voiced_tail != "":
 			spoken_line["text"] = str(spoken_line["text"]) + Mind.Dialogue.apply_tics(n.id, hub_voiced_tail, tic_mem)
 	var descriptor_special: String = text if trapped_out else base_canonical
