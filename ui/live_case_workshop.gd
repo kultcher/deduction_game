@@ -5,6 +5,7 @@ signal filed
 signal cards_dropped(numbers: Array)
 signal contents_changed
 signal trace_solver_requested(selected_by_night: Dictionary)
+signal location_solver_requested(question: Dictionary)
 signal fullscreen_toggled
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
@@ -145,6 +146,9 @@ func _ready() -> void:
 	var trace_solver_btn = _button(tools, "Trace Solver", func(): trace_solver_requested.emit({}))
 	trace_solver_btn.name = "OpenTraceSolver"
 	trace_solver_btn.tooltip_text = "Opens the 2-row x N-night Trace Solver matrix to cross-reference crime-scene tokens and scents and commit a bundled Trace Chain node."
+	var loc_solver_btn = _button(tools, "Whereabouts", func(): location_solver_requested.emit({}))
+	loc_solver_btn.name = "OpenLocationSolver"
+	loc_solver_btn.tooltip_text = "Opens the Whereabouts panel to cross-reference who was where on a day and commit one Whereabouts card citing your record of that day."
 	fullscreen_btn = _button(tools, "Fullscreen", func(): fullscreen_toggled.emit())
 	fullscreen_btn.name = "WorkshopFullscreen"
 	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Shift-drag on empty canvas to box-select cards; drag one to move them all, Delete to remove them."
@@ -263,6 +267,10 @@ func refresh() -> void:
 			for arr_key in ["trace_ids", "sibling_trace_ids", "death_ids", "receipt_ids"]:
 				for tid in node.get(arr_key, []):
 					referenced_profile_ids[tid] = true
+		elif node.get("kind") == "whereabouts":
+			for arr_key in ["log_ids", "report_ids"]:
+				for tid in node.get(arr_key, []):
+					referenced_profile_ids[tid] = true
 	for old in board.view.cards:
 		if (board.nodes.has("e:" + old.id) or referenced_profile_ids.has(old.id)) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
@@ -333,6 +341,20 @@ func add_trace_chain(selected_by_night: Dictionary) -> String:
 		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info", "circumstantial", "trace_chain"]).size()
 		at = Vector2(60.0 + (idx % 4) * 320.0, 320.0 + (idx / 4) * 280.0)
 	var id: String = board.add_trace_chain(selected_by_night, at)
+	if id != "":
+		_session_changed()
+		canvas.fit_case(true)
+	return id
+
+func add_whereabouts(question: Dictionary) -> String:
+	if g == null:
+		return ""
+	refresh()
+	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / maxf(canvas.zoom, 0.1) - Vector2(150, 90)
+	if canvas.size.x <= 10.0:
+		var idx: int = board.nodes.values().filter(func(n): return n.kind in ["evidence", "profile_info", "circumstantial", "trace_chain", "whereabouts"]).size()
+		at = Vector2(60.0 + (idx % 4) * 320.0, 320.0 + (idx / 4) * 280.0)
+	var id: String = board.add_whereabouts(question, at)
 	if id != "":
 		_session_changed()
 		canvas.fit_case(true)
@@ -507,6 +529,24 @@ func _refresh_case() -> void:
 		_button(case_box, "Edit selection in Trace Solver", func():
 			answer_window.hide()
 			trace_solver_requested.emit(sel_copy))
+		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
+	elif node.kind == "whereabouts":
+		_clear(case_box)
+		_label(case_box, board.title(answer_id), 22, "accent")
+		_label(case_box, "Your record of who was where that day, handed over as one card: the town hears your watches (and the sightings others told you) through it.", 16)
+		var LocationSolver = preload("res://workshop/location_solver.gd")
+		var wres: Dictionary = LocationSolver.evaluate(board.view, node.get("question", {}))
+		for row in wres.get("rows", []).slice(0, 12):
+			var glyph: String = {"fits": "✓", "unknown": "?", "ruled_out": "✕"}.get(str(row.verdict), "")
+			_label(case_box, "%s %s: %s" % [glyph, str(row.name), str(row.reason)], 15)
+		if wres.log_ids != node.get("log_ids", []) or wres.report_ids != node.get("report_ids", []):
+			_button(case_box, "Sync the day's newer record", func():
+				board.sync_whereabouts(answer_id)
+				_edit())
+		var q_copy: Dictionary = node.get("question", {}).duplicate(true)
+		_button(case_box, "Open in Whereabouts", func():
+			answer_window.hide()
+			location_solver_requested.emit(q_copy))
 		_button(case_box, "Done", func(): answer_window.hide(); _session_changed())
 	elif node.kind == "modifier":
 		_clear(case_box)
@@ -743,6 +783,8 @@ func _remove_one(id: String) -> void:
 			board.remove_circumstantial(id)
 		"trace_chain":
 			board.remove_trace_chain(id)
+		"whereabouts":
+			board.remove_whereabouts(id)
 		"modifier":
 			board.remove_modifier(id)
 		"contradiction":
@@ -772,7 +814,7 @@ func _undo_remove() -> void:
 	status.text = "Restored."
 
 func _extend_context(id: String) -> void:
-	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "trace_chain", "circumstantial", "modifier"]:
+	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "circumstantial", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
 	if id in canvas.group and canvas.group.size() > 1:
@@ -922,6 +964,11 @@ func _field_popup(id: String, field: String) -> void:
 	if node.kind == "trace_chain":
 		if field == "sync_trace_chain":
 			board.sync_trace_chain(id)
+			_edit()
+		return
+	if node.kind == "whereabouts":
+		if field == "sync_whereabouts":
+			board.sync_whereabouts(id)
 			_edit()
 		return
 	if node.kind == "profile_info":

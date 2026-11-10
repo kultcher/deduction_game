@@ -21,7 +21,8 @@ func can_promote_to_demon(sc, alive_before: int, w = null) -> bool:
 
 func promote_to_demon(w, sc) -> void:
 	var old: String = w.demon_id
-	sc.role = "demon"
+	# The Scion takes over the dead demon's type (a Hexer's heir hexes too).
+	sc.role = w.by_id[old].role if w.by_id.has(old) and content().is_demon(w.by_id[old].role) else "demon"
 	w.demon_id = sc.id
 	w.scion_rose = sc.id
 	w.minion_ids.erase(sc.id)

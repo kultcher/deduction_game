@@ -5,6 +5,7 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const History = preload("res://workshop/live_history.gd")
+const DayPresence = preload("res://workshop/day_presence.gd")
 static var cache = {}
 static var route_cache = {}
 const DEMON_DETOUR = Tuning.Workshop.DEMON_DETOUR
@@ -454,18 +455,25 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	SolverBackend.end_stage(_st)
 	return _res
 
+## Diagnostics: turn the Hexer factor off to measure what it adds (tools only).
+static var hex_factor_enabled: bool = true
+
 static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if not available(view):
 		return []
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
-	if observations.is_empty():
+	# With a Hexer possible, daytime evidence alone (a Whereabouts day log, morning and
+	# afternoon reports) still bears on who hexed whom, so it doesn't need a night card.
+	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {})]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
-		input.append({"day_demon_share": day_demon_share(view)})
+		# The Hexer factor reads schedules, sightings and the watch record (day presence).
+		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []), "hex_on": hex_factor_enabled,
+			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening", "watch_log"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -507,7 +515,8 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		var p_dict: Dictionary = {
 			"good": raw_prof[b],
 			"minion": raw_prof[b + 1],
-			"demon": mix_demon(raw_prof[b + 2], raw_prof[b + 1], share),
+			# Walking always: with a Hexer possible, C# mixes whole-world scores (ScoreWorldCore).
+			"demon": raw_prof[b + 2],
 		}
 		if has_curse:
 			p_dict["converted"] = raw_prof[b + 3]
@@ -523,7 +532,141 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
 		# pre x post product over the one shared type (see ScoreWorldCore).
 		result[0]["day_demon_share"] = share
+		result[0]["hex_kills"] = hex_kills(view, cards, ids) if hex_factor_enabled else []
+		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
+		result[0]["hex_successions"] = hex_successions(view, ids, result[0]["hex_kills"])
 	return result
+
+
+## The Hexer's side of each demon kill or attack (docs/demon_types_plan.md, step 3): the
+## victim's known regular places (work and learned haunts), who were regulars of each that
+## day, and each person's chance of having hexed each place that day. The chance comes from
+## the presence table (DayPresence), weighted by when a Hexer tends to strike (Tuning HEXER)
+## and normalized over the public places they were likely in, since the hex falls where the
+## Hexer stands. C#'s HexFactor turns this into a per-world likelihood.
+static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
+	var events: Array = view.get("timeline", {}).get("events", []).filter(func(e): return e.get("kind", "") in ["demon_death", "demon_attack"] and int(e.get("at", {}).get("day", 0)) >= 1)
+	if events.is_empty():
+		return []
+	var table: Dictionary = DayPresence.build(view, cards)
+	var hx: Dictionary = Tuning.Roles.HEXER
+	var q: Array = hx.phase_probs
+	var w: Array = [float(q[0]), (1.0 - float(q[0])) * float(q[1]), (1.0 - float(q[0])) * (1.0 - float(q[1])) * maxf(float(q[2]), float(hx.evening_floor))]
+	var wsum: float = w[0] + w[1] + w[2]
+	var work: Dictionary = {}
+	var haunts: Dictionary = {}
+	var shifts: Dictionary = {}   # id -> work phases (public)
+	for p in view.get("people", []):
+		if str(p.get("work", "")) != "":
+			work[p.id] = str(p.work)
+		shifts[p.id] = p.get("work_phases", []).map(func(x): return int(x))
+	for c in cards:
+		if c.get("kind", "") != "context":
+			continue
+		var subj: String = str(c.get("subject", ""))
+		if c.get("context_kind", "") == "work" and str(c.get("data", {}).get("loc", "")) != "":
+			work[subj] = str(c.data.loc)
+		elif c.get("context_kind", "") == "haunt":
+			var known: Array = haunts.get(subj, [])
+			for l in c.get("data", {}).get("locs", []):
+				if l in DayPresence.PLACES and l not in known:
+					known.append(l)
+			haunts[subj] = known
+	var regular: Dictionary = view.get("regular_haunts", {})
+	for subj in regular:
+		var known: Array = haunts.get(subj, [])
+		for l in regular[subj]:
+			if l in DayPresence.PLACES and l not in known:
+				known.append(l)
+		haunts[subj] = known
+	var out: Array = []
+	var seen: Dictionary = {}
+	for e in events:
+		var victim: String = str(e.get("subjects", [""])[0]) if not e.get("subjects", []).is_empty() else ""
+		var night: int = int(e.at.day)
+		if victim == "" or seen.has("%d:%s" % [night, victim]):
+			continue  # (the timeline can carry an event twice)
+		seen["%d:%s" % [night, victim]] = true
+		var stamp: Dictionary = {"day": night, "phase": "evening"}
+		var alive_mask: int = 0
+		for i in range(ids.size()):
+			if History.observer_alive(view, ids[i], stamp):
+				alive_mask |= 1 << i
+		var places: Array = []
+		if work.has(victim):
+			places.append(work[victim])
+		for l in haunts.get(victim, []):
+			if l not in places:
+				places.append(l)
+		var reg_masks: Array = []
+		var shares: Array = []
+		for l in places:
+			var mask: int = 0
+			for i in range(ids.size()):
+				if work.get(ids[i], "") == l or l in haunts.get(ids[i], []):
+					mask |= 1 << i
+			reg_masks.append(mask)
+			var row: Array = []
+			for i in range(ids.size()):
+				# The Hexer is wary of hexing its own workplace (Tuning HEXER.own_work_penalty),
+				# so time spent there counts for less, in the place and in the total.
+				var own: String = work.get(ids[i], "")
+				var at_l: float = 0.0
+				var public_mass: float = 0.0
+				for p in range(3):
+					# A Hexer may seek out a target at work in its own free time (sim HEXER
+					# seek_target_chance): when the victim worked here this phase and this
+					# person was free and not seen elsewhere, some of their time goes here.
+					var seek: float = 0.0
+					if l == work.get(victim, "") and p in shifts.get(victim, []) and not (p in shifts.get(ids[i], [])):
+						var best_p: float = 0.0
+						for pl2 in DayPresence.PLACES:
+							best_p = maxf(best_p, DayPresence.at(table, ids[i], night, p, pl2))
+						if best_p < 0.999:
+							seek = Tuning.Workshop.HEX_SEEK_SHARE
+					for pl in DayPresence.PLACES:
+						var a: float = DayPresence.at(table, ids[i], night, p, pl) * (Tuning.Workshop.HEX_OWN_WORK_WEIGHT if pl == own else 1.0)
+						a = (1.0 - seek) * a + (seek if pl == l else 0.0)
+						public_mass += w[p] / wsum * a
+						if pl == l:
+							at_l += w[p] / wsum * a
+				row.append(at_l / public_mass if public_mass > 0.0 else 0.0)
+			shares.append(row)
+		out.append({"night": night, "victim": victim, "places": places, "alive_mask": alive_mask, "reg_masks": reg_masks, "shares": shares})
+	return out
+
+
+## Executions that could be a Scion succession for the Hexer factor: in such a world the
+## kills before the execution were the executed demon's hexes, not the successor's, so C#
+## scores those against the executed person (HexFactor's succession branch). Mirrors the
+## movement splits' gate (_scion_succession_splits_cs) on crowd size, but needs only a hex
+## kill before the execution rather than a movement card.
+static func hex_successions(view: Dictionary, ids: Array, kills: Array) -> Array:
+	var out: Array = []
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	if execs.is_empty() or kills.is_empty():
+		return out
+	var deaths: Dictionary = view.get("timeline", {}).get("deaths", {})
+	var ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
+	for day_str in execs:
+		var exec_day: int = int(day_str)
+		if not kills.any(func(k): return int(k.night) < exec_day):
+			continue
+		var alive_before: int = 0
+		for p in view.people:
+			if ticks.get(p.id, 2147483647) >= exec_day * 4 + 2:
+				alive_before += 1
+		if alive_before < 5:
+			continue
+		var alive_mask: int = 0
+		for i in range(ids.size()):
+			if exec_day < int(deaths.get(ids[i], 2147483647)):
+				alive_mask |= 1 << i
+		for exec_id in execs[day_str]:
+			var idx: int = ids.find(exec_id)
+			if idx >= 0:
+				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask})
+	return out
 
 static func _append_scene_packed(n: int, st: Dictionary, meta_ints: PackedInt32Array, meta_doubles: PackedFloat64Array) -> void:
 	var two_c: bool = bool(st.get("two_cited", false))
@@ -561,7 +704,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
 	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share])
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", [])])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -626,6 +769,25 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	if day_share > 0.0:
 		# Trailing, so a share of 0 packs exactly as before.
 		meta_doubles.append(day_share)
+		# Then the Hexer's kills (LiveActivityKernel.HexFactor).
+		var hks: Array = factor.get("hex_kills", [])
+		meta_ints.append(hks.size())
+		meta_doubles.append(float(factor.get("hex_floor", 0.0)))
+		for hk in hks:
+			meta_ints.append(hk.places.size())
+			meta_ints.append(int(hk.alive_mask))
+			meta_ints.append(int(hk.get("night", 0)))
+			for pi in range(hk.places.size()):
+				meta_ints.append(int(hk.reg_masks[pi]))
+				for v in hk.shares[pi]:
+					meta_doubles.append(float(v))
+		# Then the possible successions: [S, (executed, exec day, alive mask) x S].
+		var succ: Array = factor.get("hex_successions", [])
+		meta_ints.append(succ.size())
+		for sc in succ:
+			meta_ints.append(int(sc.executed_idx))
+			meta_ints.append(int(sc.exec_day))
+			meta_ints.append(int(sc.alive_demon_mask))
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.register_factor", pack_u)
@@ -778,6 +940,11 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 ## The share of the script's possible demons that never walk at night (the day-killer,
 ## docs/demon_types_plan.md). 0 on every script the game deals today, which leaves every
 ## movement likelihood exactly as before.
+## Daytime presence evidence the Hexer factor reads (DayPresence): the watch record and
+## morning/afternoon location reports.
+static func has_day_evidence(cards: Array) -> bool:
+	return cards.any(func(c): return c.get("kind", "") in ["watch_log", "location"])
+
 static func day_demon_share(view: Dictionary) -> float:
 	var demons: Array = view.get("script_demons", [])
 	if demons.is_empty():
@@ -1171,6 +1338,9 @@ static func _evaluate_trace_for_person_impl(view: Dictionary, cards: Array, trac
 				for hl in c.get("data", {}).get("locs", [c.get("data", {}).get("loc", "")]):
 					if hl != "" and hl not in haunts:
 						haunts.append(hl)
+		for hl in view.get("regular_haunts", {}).get(person_id, []):
+			if hl not in haunts:
+				haunts.append(hl)
 		if work_loc != "" and work_loc in locs:
 			return {"state": "matches", "weight": match_w, "missing": "", "reason": "works at " + C.LOCATIONS.get(work_loc, {}).get("name", work_loc)}
 		for hl in haunts:

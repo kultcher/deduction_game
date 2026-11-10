@@ -286,6 +286,7 @@ static func _observe(g) -> void:
 				g._facts([{"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(other), "loc": other, "day": g.w.day,
 					"phase": g.w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
 					[x.name, g.w.loc_name(other), g.w.day, g.w.phase_name()]}])
+	_note_watch(g, l)
 	if not l.begins_with("home_"):
 		_note_haunt_sightings(g, l)
 	if g.w.scenes.has(l):
@@ -459,6 +460,42 @@ static func _search_regulars(g, l: String) -> bool:
 
 ## Seeing someone idle at one of their haunts, from the same block, on enough different days
 ## (HAUNT_SIGHTING_DAYS; more for the tavern) teaches you it's a haunt of theirs.
+## The player saw everyone at every public place on this block this phase (the location
+## itself plus "Nearby"): a full roster, so the solver can count not being seen
+## (workshop/day_presence.gd). A free move stays on the block, so one entry per phase.
+static func _note_watch(g, l: String) -> void:
+	if g.w.phase > C.EVENING:
+		return
+	var blk: String = g.w.loc_block(l)
+	if not blk in C.BLOCKS:
+		return
+	for e in g.watched:
+		if e.day == g.w.day and e.phase == C.PHASES[g.w.phase].to_lower():
+			return
+	var at: Dictionary = {}
+	for loc in C.LOCATIONS:
+		if C.LOCATIONS[loc].block == blk:
+			at[loc] = g.w.npcs_at(loc).map(func(n): return n.id)
+	g.watched.append({"day": g.w.day, "phase": C.PHASES[g.w.phase].to_lower(), "block": blk, "at": at})
+	_record_day_log(g, g.w.day)
+
+
+## The day's watches as one hidden receipt (the "day log"): who was at each public place on
+## the blocks you spent a phase on, the empty places too. It's how the town hears your
+## watches, in one piece (one card in a listener's budget), and only when a Whereabouts node
+## cites it (workshop/location_solver.gd). A new receipt each time the day's record grows;
+## the latest one is the day's log.
+static func _record_day_log(g, day: int) -> int:
+	var watches: Array = g.watched.filter(func(e): return int(e.day) == day).map(func(e): return e.duplicate(true))
+	if watches.is_empty():
+		return 0
+	var parts: Array = watches.map(func(e): return "%s: %s" % [str(e.phase), C.block_name(str(e.block))])
+	var last_phase: int = C.PHASES.map(func(p): return p.to_lower()).find(str(watches[-1].phase))
+	return g.add_profile_receipt({"kind": "watch_log", "subject": [], "source": "player", "day": day, "phase": last_phase,
+		"watches": watches, "class": "concrete",
+		"text": "Your record of who was at each place on day %d (%s)." % [day, ", ".join(PackedStringArray(parts))]})
+
+
 static func _note_haunt_sightings(g, l: String) -> void:
 	for x in g.w.living():
 		if x.working or not (x.loc in x.haunts) or g.w.loc_block(x.loc) != g.w.loc_block(l):
@@ -487,6 +524,7 @@ static func _learn_haunt(g, n, l: String, source: String, text: String, via: Str
 
 
 static func _end_phase(g, talked_id: String) -> void:
+	g.w.phase_player_loc = g.loc
 	g.moved = false
 	g.free_move_used = false
 	g.loc = ""

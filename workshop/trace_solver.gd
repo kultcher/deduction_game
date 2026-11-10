@@ -170,6 +170,14 @@ static func discovered_profiles(view: Dictionary) -> Dictionary:
 				var hstr: String = str(hl)
 				if hstr != "" and hstr not in entry.known_haunts and entry.known_haunts.size() < 2:
 					entry.known_haunts.append(hstr)
+	# The haunts the listener knows as a regular (view.regular_haunts) count as discovered.
+	var regular: Dictionary = view.get("regular_haunts", {})
+	for pid in regular:
+		if not profiles.has(pid):
+			continue
+		for hl in regular[pid]:
+			if hl not in profiles[pid].known_haunts and profiles[pid].known_haunts.size() < 2:
+				profiles[pid].known_haunts.append(str(hl))
 	for pid in profiles:
 		var entry: Dictionary = profiles[pid]
 		var klocs: Array = []

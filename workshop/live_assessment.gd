@@ -9,6 +9,7 @@ const C = preload("res://sim/content.gd")
 const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar", "monitor", "confessor"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
+const LiveActivity = preload("res://workshop/live_activity.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent"]
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
@@ -122,13 +123,17 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"script_minions": snapshot.rules.get("minions", []).duplicate(),
 		"script_demons": snapshot.rules.get("demons", ["demon"]).duplicate(),
-		"timeline": History.from_events(snapshot.public_events)}
+		"timeline": History.from_events(snapshot.public_events),
+		"watched": snapshot.get("watched", []).duplicate(true),
+		# The haunts a regular knows (WorkshopBridge.known_haunts); the Demonologist's view has none.
+		"regular_haunts": snapshot.get("regular_haunts", {}).duplicate(true)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
 	for card in cards:
 		if card.kind == "attack":
 			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]) \
+			or (LiveActivity.day_demon_share(view) > 0.0 and LiveActivity.has_day_evidence(cards)):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true
@@ -240,6 +245,20 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 	var card = {"id": e.id, "fact_id": e.fact_id, "source": e.source, "text": e.text,
 		"subject": e.subjects[0] if not e.subjects.is_empty() else "", "subjects": e.subjects.duplicate(),
 		"night": night, "observed_at": e.observed_at, "block": block, "role": "", "data": {}}
+	if e.kind == "watch_log" and e.source == "player" and night >= 1 and e.content.get("watches") is Array:
+		# The Demonologist's day log: the watch roster for one day (game_day_night._record_day_log).
+		var watches: Array = []
+		for wt in e.content.watches:
+			if not wt is Dictionary or int(wt.get("day", -1)) != night or str(wt.get("block", "")) not in C.BLOCKS or str(wt.get("phase", "")) not in ["morning", "afternoon", "evening"] or not wt.get("at") is Dictionary:
+				return {}
+			for l in wt.at:
+				if l not in C.LOCATIONS or not wt.at[l] is Array or not wt.at[l].all(func(pid): return pid in ids):
+					return {}
+			watches.append(wt.duplicate(true))
+		card["kind"] = "watch_log"
+		card["night"] = -1  # daytime whereabouts, not a night outing
+		card["data"] = {"day": night, "watches": watches}
+		return card
 	if e.kind == "hint" and e.source in ids and e.subjects == [e.source] and night >= 0 and e.observed_at.phase != "unknown" and e.content.get("package", "") in C.HINT_PACKAGES:
 		var roles: Array = C.HINT_PACKAGES[e.content.package].roles
 		var stated = e.content.get("roles", roles)

@@ -5,6 +5,8 @@
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
 ##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
 ##
+## --force-demon ID deals that demon type (the Demon stays on the script too, so the
+## solver weighs both): e.g. --force-demon daykiller for the Hexer.
 ## Balance sweep (docs/balance_sweep.md): --dynamic deals each case from
 ## ScriptBuilder.dynamic seeded by the case seed, so a game is reproducible from its seed.
 ## --results-jsonl appends one flat `sweep_v1` record per finished game (tools/sweep_record.gd)
@@ -48,6 +50,7 @@ const Metrics = preload("res://game/case_metrics.gd")
 const BotWorkshop = preload("res://tools/autoplay_workshop.gd")
 const Analyst = preload("res://tools/analyst.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 const SweepRecord = preload("res://tools/sweep_record.gd")
 
@@ -91,6 +94,7 @@ var analyst = {}
 var _belief_key = ""
 var _belief_cache = {}
 var dynamic_scripts = false
+var force_demon = ""          # --force-demon ID: deal this demon type, with the Demon also on the script (demon types step 3)
 var m4 = true
 var _demon_key = ""
 var _demon_guess = ""
@@ -112,6 +116,7 @@ func _init() -> void:
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
 	dynamic_scripts = args.has("dynamic")
+	force_demon = str(args.get("force-demon", ""))
 	m4 = not args.has("pre-m4")
 	var jsonl = null
 	if args.has("results-jsonl"):
@@ -215,6 +220,12 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
 	var case_script = ScriptBuilder.dynamic({"seed": seed_v, "name": "Sweep #%d" % seed_v}) if dynamic_scripts else null
+	if force_demon != "":
+		if case_script == null:
+			case_script = ScriptDef.default_script()
+		if not force_demon in case_script.demons:
+			case_script.demons.append(force_demon)
+		case_script.forced = case_script.forced.filter(func(r): return not r in case_script.demons) + [force_demon]
 	_out(g.new_case(seed_v, npc_count, case_script))
 	if echo:
 		g.w.dlog.echo = true

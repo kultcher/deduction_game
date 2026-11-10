@@ -30,6 +30,7 @@ const TimeModel = preload("res://workshop/chronology.gd")
 const Movement = preload("res://workshop/movement_model.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
 const SpeechEvidence = preload("res://workshop/speech_evidence.gd")
+const DayPresence = preload("res://workshop/day_presence.gd")
 
 ## Chance a healthy reading from a good source is wrong anyway (unmodelled impairment).
 ## Kept small: the rules make a good, healthy reading accurate, and the failures the
@@ -684,6 +685,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
 		key_input.append(case_data.get("reading_challenges", {}).keys())
+	if not view.get("regular_haunts", {}).is_empty():
+		key_input.append(view.regular_haunts)  # traces and presence read the listener's regular knowledge
+	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
+		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
 	var key = hash(key_input)
 	if _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
@@ -722,6 +727,9 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	movement.append_array(PublicEvidence.factors(view))
 	movement.append_array(SpeechEvidence.factors(cards))
 	movement.append_array(_augur_factors(view, cards, case_data, live))
+	var breath: Dictionary = DayPresence.breath_factor(view, cards) if live else {}
+	if not breath.is_empty():
+		movement.append(breath)
 
 	var semantic = {}
 	for card in cards + known:
@@ -796,6 +804,13 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 			move_specs[m_off + 3] = 0
 			move_doubles[fi * 2] = 0.0
 			move_doubles[fi * 2 + 1] = 1.0
+		elif f.get("breath_presence", false):
+			move_specs[m_off] = 3
+			move_specs[m_off + 1] = int(SolverBackend._bridge().CaseEvalRegisterPresenceWeights(f.weights))
+			move_specs[m_off + 2] = 0
+			move_specs[m_off + 3] = 0
+			move_doubles[fi * 2] = DEFAULT_ERR
+			move_doubles[fi * 2 + 1] = 0.0
 		elif f.get("augur_crossing", false):
 			var packed_af: int = (int(f.src_idx) & 0xFFFF) | ((1 if bool(f.yes) else 0) << 16) | ((1 if bool(f.conv_evil) else 0) << 17) | ((1 if bool(f.is_live) else 0) << 18)
 			move_specs[m_off] = 2

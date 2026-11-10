@@ -594,6 +594,28 @@ internal static class CaseEvalKernel
         return cId;
     }
 
+    /// <summary>
+    /// Breathstealer by presence (workshop/day_presence.gd breath_score): the mean weight of
+    /// the world's minions (evil, not the Demon), mixed with err.
+    /// </summary>
+    public static double PresenceScore(long packedWorld, double[] weights, double err)
+    {
+        var w = new WorldEntry(packedWorld);
+        int evilBits = w.Evil;
+        int dIdx = w.DemonOrMinusOne;
+        double s = 0.0;
+        int k = 0;
+        for (int j = 0; j < weights.Length; j++)
+        {
+            if ((evilBits & (1 << j)) != 0 && j != dIdx)
+            {
+                s += weights[j];
+                k++;
+            }
+        }
+        return (1.0 - err) * (k > 0 ? s / k : 0.0) + err;
+    }
+
     private static double[] ComputeClassMovementScores(
         long[] worlds,
         int[] rep,
@@ -619,6 +641,17 @@ internal static class CaseEvalKernel
                 for (int c = 0; c < nc; c++)
                 {
                     outBuf[c] *= LiveActivityKernel.ScoreWorld(worlds[rep[c]], handle);
+                }
+                continue;
+            }
+
+            if (kind == 3)
+            {
+                double[] weights = SolverContext.GetPresenceWeights(moveFactorSpecs[off + 1]);
+                double err = moveFactorDoubles[f * 2];
+                for (int c = 0; c < nc; c++)
+                {
+                    outBuf[c] *= PresenceScore(worlds[rep[c]], weights, err);
                 }
                 continue;
             }

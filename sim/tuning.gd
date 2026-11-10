@@ -212,6 +212,15 @@ class Roles:
 		"conversation_nudge": 0.5,
 	}
 
+	## The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it
+	## stands, by phase, before threat and crowd; the evening floor so it isn't trapped by
+	## its own schedule.
+	const HEXER = {"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08,
+		"own_work_penalty": 0.25, "evening_floor": 0.85,
+		# Nov 10: in a free phase it may go where its preferred target is working; hexing with
+		# the Demonologist watching and fewer than three others there for cover is less likely
+		# (never in the evening of a day it hasn't hexed yet).
+		"seek_target_chance": 0.35, "watched_penalty": 0.3, "cover_needed": 3}
 	const BREATHSTEALER = {
 		"phase_probs_high": [0.3, 0.5, 1.0],
 		"phase_probs_low": [0.15, 0.3, 0.7],
@@ -835,6 +844,18 @@ class Workshop:
 	const DEFAULT_ERR = 0.01
 	const OWN_ERR = 0.002
 	const NIGHTWATCH_REPORT_ERROR = 0.08
+	## Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone
+	## was is trusted (the player's own sightings and watch record are certain).
+	const PRESENCE_TESTIMONY_TRUST = 0.8
+	## A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown
+	## haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1.
+	const HEX_UNKNOWN_FLOOR = 0.15
+	## Time a person spends at their own workplace, as a place they might have hexed: the
+	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
+	const HEX_OWN_WORK_WEIGHT = 0.4
+	## The share of a free phase a Hexer gives to seeking its target at the target's work
+	## (sim HEXER.seek_target_chance, Nov 10), as the solver models it.
+	const HEX_SEEK_SHARE = 0.25
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0

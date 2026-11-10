@@ -170,7 +170,7 @@ static func extract_hub_incidents(
 				matched_cards[cid] = true
 				target_relevant[cid] = true
 
-		# 2. Breathstealer public proximity + Talking with suspected evil (`suspicious_association`).
+		# 2. Near a silencing (relevance only) + Talking with suspected evil (`suspicious_association`).
 		if kind in ["location", "evening"] and target in subjs:
 			var day_num: int = int(c.get("day", c.get("observed_at", {}).get("day", -1)))
 			var phase_str: String = str(c.get("observed_at", {}).get("phase", ""))
@@ -179,28 +179,15 @@ static func extract_hub_incidents(
 			if backs_quarter_trace:
 				stage1_bearing[cid] = true
 			else:
+				# Being near a silencing is no longer an incident here: Breathstealer by presence
+				# (workshop/day_presence.gd breath_factor) weighs it jointly across every
+				# silencing in CaseEval, so the card only stays relevant to the target.
 				for sv in silenced_map.get(day_num, []):
 					if sv == target:
 						continue
 					var direct_pair: bool = sv in subjs
 					var same_slot: bool = blk != "" and phase_str != "" and sv in block_presence.get("%d:%s:%s" % [day_num, phase_str, blk], [])
 					if direct_pair or same_slot:
-						var sv_good: float = 1.0 if sv in known_good else clampf(1.0 - float(post_stage1_susp.get(sv, 0.1)), 0.1, 1.0)
-						var prox_scale: float = 1.0 if direct_pair else 0.9
-						var ikey = "breath_prox:%s:%d" % [target, day_num]
-						var val: float = INCIDENT_MAX * prox_scale * sv_good
-						if val > incidents.get(ikey, {}).get("raw", 0.0):
-							var prox_label: String = (
-								"Spoke with %s on Day %d before they were silenced" % [Solver.person_name(view, sv), day_num]
-								if direct_pair
-								else "Seen on %s in the same %s slot as %s on Day %d before they were silenced" % [C.block_name(blk), phase_str, Solver.person_name(view, sv), day_num]
-							)
-							incidents[ikey] = {
-								"key": ikey,
-								"family": "breathstealer_proximity",
-								"raw": val,
-								"label": prox_label,
-							}
 						matched_cards[cid] = true
 			if c.get("orig_kind", "") == "conversation" and subjs.size() == 2:
 				var partner: String = subjs[0] if subjs[1] == target else subjs[1]
