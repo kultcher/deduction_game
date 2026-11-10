@@ -13,6 +13,9 @@ extends RefCounted
 
 # ---------------------------------------------------------------- 1. World Setup, Movement & Night Traces
 class Setup:
+	## The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret
+	## only shows when they relay what they've heard.
+	const MUDDLER_GOSSIP_FLOOR = 0.7
 	## Case sizes: townsfolk (one carries the secret), minions, demon.
 	const SETUPS = {
 		7: {"town": 5, "minions": 1, "secrets": 1},

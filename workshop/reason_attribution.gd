@@ -891,13 +891,25 @@ static func _augment_joint_leave_one_out(
 		var has_pid_claim: bool = attended.any(func(o): return not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) in ["report", "claim"])
 		var why_own: String
 		var why_pub: String
+		# What the reading says, when it's about someone else (Case 12926: a Confessor's
+		# reading that cleared the man Nisha accused read as a bare "contradicts their account").
+		var gist: String = _reading_gist(view, cand, pid, csrc)
 		if csrc == self_id:
 			found_own_joint = true
-			why_own = "my own reading contradicts their account" if has_pid_claim else "my own reading, taken with the other reports, points at them"
-			why_pub = ("the %s report contradicts their account" % C.role_name(crole)) if has_pid_claim and crole != "" else "the reports considered together point toward them"
+			if gist != "":
+				why_own = ("my reading %s, and that doesn't square with their account" % gist) if has_pid_claim else ("my reading %s, and with the other reports that points at them" % gist)
+			else:
+				why_own = "my own reading contradicts their account" if has_pid_claim else "my own reading, taken with the other reports, points at them"
+			if gist != "" and crole != "" and has_pid_claim:
+				why_pub = "the %s reading %s, and that doesn't square with their account" % [C.role_name(crole), gist]
+			else:
+				why_pub = ("the %s report contradicts their account" % C.role_name(crole)) if has_pid_claim and crole != "" else "the reports considered together point toward them"
 		else:
 			var sname: String = Solver.person_name(view, csrc) if csrc != "player" else "the Demonologist"
-			why_own = ("%s's %s report contradicts their account" % [sname, C.role_name(crole)]) if has_pid_claim and crole != "" else "the reports considered together point toward them"
+			if gist != "" and crole != "":
+				why_own = ("%s's %s reading %s, and that doesn't square with their account" % [sname, C.role_name(crole), gist]) if has_pid_claim else ("%s's %s reading %s, and with the other reports that points at them" % [sname, C.role_name(crole), gist])
+			else:
+				why_own = ("%s's %s report contradicts their account" % [sname, C.role_name(crole)]) if has_pid_claim and crole != "" else "the reports considered together point toward them"
 			why_pub = why_own
 
 		_put_item(items_by_id, {
@@ -1282,6 +1294,24 @@ static func _trust_in(who: String, listener: Dictionary) -> float:
 	var trusts: Dictionary = listener.get("npc_trust", {})
 	return clampf(float(trusts.get(who, 0.5)), 0.0, 1.0) if trusts.has(who) else 1.0
 
+
+## A short gist of a reading about someone other than the accused ("cleared Fenwick",
+## "named Fenwick as evil", "was about Fenwick"); "" when the reading is about the accused
+## or names nobody else.
+static func _reading_gist(view: Dictionary, card: Dictionary, pid: String, src: String) -> String:
+	var data = card.get("data", {})
+	if not data is Dictionary:
+		return ""
+	var target: String = str(data.get("target", ""))
+	if target != "" and target != pid and target != src:
+		var tname: String = Solver.person_name(view, target)
+		if data.get("good") is bool:
+			return ("cleared %s" % tname) if data.good else ("named %s as evil" % tname)
+		return "was about %s" % tname
+	var others: Array = _mentions(card).filter(func(x): return x is String and x != pid and x != src and x != "")
+	if others.size() == 1:
+		return "was about %s" % Solver.person_name(view, str(others[0]))
+	return ""
 
 static func _mentions(card: Dictionary) -> Array:
 	var out: Array = []
