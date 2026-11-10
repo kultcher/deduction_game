@@ -70,6 +70,84 @@ suspicion clamped at 0 understates how far the movers push it.
 godot --headless --path . --script res://tools/explain_case.gd -- logs/case_13910.jsonl --belief fenwick --at 372 [--top 8]
 ```
 
+## Why an argument moved someone this far: the "why" breakdown
+
+`explain_case.gd` shows what a case did. The why breakdown shows where the rest went:
+every discount the shared model applied between "this case proves it" and the suspicion
+that was actually added, each as its own step. It reads the solver's own numbers back; it
+decides nothing. (`workshop/case_why.gd` for the evidence half, `game/workshop_why.gd` for a
+real listener; tests in `tools/test_workshop_why.gd`.)
+
+**Where to see it**
+
+- **Workshop, Debug ▾ > "Why this strength? (test juror, per card)"**: the selected
+  premise, judged by the test juror. Debug must be on.
+- **Workshop, Debug ▾ > "Record why each listener moved, when I present"** (or
+  `g.workshop_why = true`): after each presented case, one breakdown per listener goes to
+  the dev log (`workshop_why`: the chain, the cards and a one-line reason), the trace sidecar
+  (the full text) and **"Show recorded listener breakdowns"**. Off by default.
+- **`tools/explain_case.gd ... --why`**: the same breakdown under each listener of a
+  replayed log.
+
+**The suspicion chain (a real listener).** The suspicion of the premise's subject the case
+could add, with one idealisation dropped per line:
+
+| Step | What it means | The loss to the next step |
+|---|---|---|
+| If the case settled it outright | the ceiling: a posterior of 1 (or 0 for a defence) | the cards don't settle it: other explanations remain |
+| If every card were news, at face value, nothing out of view | every card heard at full weight from a trusted teller; they read everything they hold | hearing weight and trust in the tellers |
+| As they hear each card | their real reliabilities (hearing weight, trust, doubt, challenges) | attention: putting these cards in front of them pushed others out of view |
+| Within their attention | their real card budget, focused on the presented cards | already held: only new cards add anything |
+| Against what they already held | against everything they held before, with their attention where it was | resistance to moving against a lean (Confidence) |
+| After resistance | the requested change | the scale's floor and ceiling |
+| Applied | what the presentation did | |
+
+Then the **action bars**: where a vote and a nomination on the subject stand now, with the
+same parts `MindMeeting._vote_impl` adds up (no statement from the player).
+
+Each step is the listener's own union evaluation, re-run on copies
+(`Shared.prepare` / `Jury.refresh`). "Reads everything" uses the existing developer switch
+`Reasoner.unlimited_cards`. The "without this case" side needs to know what their attention
+was on before the presentation, which the presentation overwrites: recording and
+`explain_case --why` capture it first (`WorkshopWhy.before`).
+
+**The premise chain (any listener, including the test juror).** The chance the premise
+is true: with no cards (their starting view and the public record); if every teller is
+honest and every card exact; allowing that a teller may be evil or deluded; and as this
+listener hears it. The test juror hears every card at full weight, so its last two lines
+are the same: a real listener's are not.
+
+**What's left.** The surviving worlds where the premise is false, grouped by what they
+share: a named teller is evil or can't read true; the cards are true and fit someone else;
+the subject is good but Marked; the subject is evil but in the other role. The largest
+group is "the strongest surviving alternative".
+
+**Per card**
+
+- **Status:** counted · counted, but it fits most worlds (it could hardly have said
+  anything else) · counted, but changes nothing here · argues against the premise · heard,
+  but given no weight · not attended by this listener · rejected by their own checks.
+  `[already held]` marks a card they had before.
+- **Holds in N% of worlds:** how likely the card's content is across the worlds in which
+  its teller can be taken at their word. Measured, not looked up: the neutral listener
+  hears the card alone at full weight, and the weight it leaves in those worlds is the
+  share.
+- **The model's chance a false report says this (q):** what CaseEval itself assumes
+  (`chance_content`). "(fixed)" marks the gifts that use a flat estimate
+  (`ROLE_CONTENT_FIXED`) instead of the share. Where the two numbers differ, an honest
+  reading and a bluffed one are being told apart by more (or less) than the worlds justify.
+- **Heard at:** this listener's reliability for the card.
+- **Premise strength xN with it:** leave-one-out, the case's likelihood ratio with the
+  card over the ratio without it.
+
+**It changes nothing.** No game RNG draw, no write to a mind, a plan or a cache switch
+(`test_workshop_why`: state compared before and after; the same presentations with
+recording on and off leave every mind and the world RNG identical). With recording off
+(the default) nothing is computed, so the golden capture is unchanged. Cost: 5 or 6 union
+evaluations plus a few CaseEval runs per card: about 0.15 s per listener early in a 7-NPC
+case, 0.5 s on day 2 at 10 NPCs and up to 2 s late in a 10-NPC case (so recording adds a
+real pause at a late meeting).
+
 ## Coverage and maintenance
 
 Coverage includes weighted decision checks, gift tiers and withholding gates, protection/confidence requests, pressed nerves, whereabouts slips, opinions, gossip selection, traits/haunts/relationships, approaches and peer-conversation selection, public accusation/nomination/vote calculations, evil cover overrides, and Seer/Night Watch/Warden plus evil target decisions. Actual ability results, setup assignments and incidental flavour/world-generation randomness are outside this inspector's remit. It does not replay alternative decisions.

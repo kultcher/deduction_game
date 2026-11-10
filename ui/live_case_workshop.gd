@@ -25,7 +25,7 @@ var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
 var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
-enum DebugItem { PREVIEW, SUPPORT, WITHDRAW }
+enum DebugItem { PREVIEW, SUPPORT, WITHDRAW, WHY, WHY_RECORD, WHY_SHOW }
 var files: Dictionary = {}
 var execute: Callable
 var progress_window: Window
@@ -125,6 +125,10 @@ func _ready() -> void:
 	dp.add_item("Preview effectiveness (test juror)", DebugItem.PREVIEW)
 	dp.add_item("Review evaluator support", DebugItem.SUPPORT)
 	dp.add_item("Withdraw endorsement…", DebugItem.WITHDRAW)
+	dp.add_separator()
+	dp.add_item("Why this strength? (test juror, per card)", DebugItem.WHY)
+	dp.add_check_item("Record why each listener moved, when I present (adds a pause)", DebugItem.WHY_RECORD)
+	dp.add_item("Show recorded listener breakdowns", DebugItem.WHY_SHOW)
 	dp.id_pressed.connect(_debug_action)
 	title_row.add_child(debug_menu)
 	var tools = HFlowContainer.new()
@@ -417,6 +421,9 @@ func _sync() -> void:
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
 	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Speak on nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
 	debug_menu.visible = g.debug_overlay
+	var why_i: int = debug_menu.get_popup().get_item_index(DebugItem.WHY_RECORD)
+	if why_i >= 0:
+		debug_menu.get_popup().set_item_checked(why_i, g.workshop_why)
 	_refresh_filed()
 	_store()
 
@@ -719,6 +726,32 @@ func _debug_action(id: int) -> void:
 			_support_details()
 		DebugItem.WITHDRAW:
 			_withdraw_window()
+		DebugItem.WHY:
+			_why_test_juror()
+		DebugItem.WHY_RECORD:
+			g.workshop_why = not g.workshop_why
+			var dp: PopupMenu = debug_menu.get_popup()
+			dp.set_item_checked(dp.get_item_index(DebugItem.WHY_RECORD), g.workshop_why)
+		DebugItem.WHY_SHOW:
+			_why_recorded()
+
+## Debug readout (game/workshop_why.gd): what the selected premise's cards are worth to
+## the test juror, where the probability goes instead, and each card's status and share.
+func _why_test_juror() -> void:
+	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():
+		status.text = "Select a premise to explain."
+		return
+	result_output.text = "Working out why…"
+	preview_window.popup_centered_clamped()
+	await get_tree().process_frame
+	var why: Dictionary = preload("res://game/workshop_why.gd").test_juror(g, board.compile(board.selected))
+	result_output.text = str(why.get("text", ""))
+
+func _why_recorded() -> void:
+	var texts: Array = g.workshop_whys.map(func(b): return str(b.get("text", "")))
+	result_output.text = "\n\n————————————————\n\n".join(PackedStringArray(texts)) if not texts.is_empty() \
+		else "No listener breakdowns recorded. Tick \"Record why each listener moved\" in this menu, then present a case."
+	preview_window.popup_centered_clamped()
 
 ## Filed cases, newest last: click one to select its premise on the canvas.
 func _refresh_filed() -> void:
