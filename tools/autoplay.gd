@@ -88,6 +88,7 @@ var transcript = false
 var passive = false
 var no_present = false       # --no-present (Phase 0 silent-bot cell)
 var present_and_vote = false # --present-and-vote (Phase 0 silent-bot cell)
+var _no_present_filed_day: int = -1
 var trace_enabled = true
 var no_workshop_cases = false
 var no_hub = false
@@ -233,6 +234,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	_belief_cache = {}
 	_demon_key = ""
 	_demon_guess = ""
+	_no_present_filed_day = -1
 	talk_policy_used = {}
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
@@ -711,9 +713,11 @@ func _decide_inner() -> String:
 			var others: Array = w.living().filter(func(m): return m != n)
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":
-			if not g.presented_today:
+			if not g.presented_today and not (no_present and _no_present_filed_day == w.day):
 				var ded = _find_or_file_deduction()
-				if ded > 0:
+				if no_present:
+					_no_present_filed_day = w.day   # filed (it backs a nomination, M2a) but not presented
+				elif ded > 0:
 					return "present %d" % ded
 			var ts = _top_suspect()
 			var nominate_p: float = M4_NOMINATE_P if m4 else NOMINATE_P
