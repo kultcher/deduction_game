@@ -50,6 +50,16 @@ should be identical. Next actor: Michael (review), then whoever uses it for Phas
   for Hollis it took Kiran from 78% to 45%.
 - Tests: `tools/test_workshop_why.gd` (new `_extras`).
 
+## 2026-11-10 evening, Claude-Quill: belief-model Phase 0 gap, fix 3, Phase 3 table (PRs #124, #125)
+
+From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, in its Results section.
+
+- **#125** (tools only, stacked on #118): `tools/read_everything_gap.gd`; `tools/measure_evidence.gd --what interactions|premises`, `--declare`, `--no-hexer`; `tools/measure_interactions_summary.py`. Dev hooks, empty in play: `Reasoner.always_keep_kinds` and `LiveActivity.declared_demon_type`.
+- **#124** (draft): own home alibi is lie-aware for an evil subject, in both kernels. Full suite 136/137. `test_workshop_vote_and_alibi`'s "doubting the report raises the watcher" now gives 0.120 against a bar of 0.2. It's held for Michael, and the threshold is unchanged. Golden moves on seeds 42, 54875 and 98933; Bailiff sets the re-baseline.
+- A playtest log replays only at its own build: 12926 at `75b4c8e`. Use a worktree.
+
+---
+
 ## 2026-11-10 morning, Claude-Lantern: the "why" breakdown (`claude/workshop-why`)
 
 A new session, at Michael's request (Nov 10, 00:05): a debug and logging readout of why an
