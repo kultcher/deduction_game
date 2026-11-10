@@ -13,6 +13,14 @@
 ##   A alone, B alone and both. One row per pair and person.
 ## --what premises: the same two cards presented by the player under different premises and
 ##   challenges, against holding them unpresented. One row per variant and person.
+## --what crosschecks: cross-teller pairs a player would present, in the interaction-table
+##   format: an Archivist pair with a clearing Confessor reading, a Dowser count with a
+##   Confessor reading on one of the group, a Psychologist reading with its two statements.
+##   The Confessor readings are constructed (true content, a good teller who claims Confessor).
+## --what challenges: an accusing reading (Archivist pair, Dowser count of 1+) against
+##   constructed Confessor readings clearing everyone it accuses, so the grounds contradict
+##   it. Presented with a lying, misled or failed-gift (impaired) challenge and without.
+## --force-roles a,b: put these roles on the script and deal them.
 ## --declare: stands in for the demon-type declaration (LiveActivity.declared_demon_type).
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -31,12 +39,14 @@ const Canvas = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
+const Psych = preload("res://sim/roles/psychologist.gd")
 
 const TRUSTS = [0.4, 0.8]
 const STOP_DAY = 3
 const FLAT = 0.25
 var rows: Array = []
 var no_hexer: bool = false
+var force_roles: Array = []
 var last_case: Dictionary = {}
 
 func _init() -> void:
@@ -63,6 +73,8 @@ func _init() -> void:
 			what = args[i + 1]
 		elif args[i] == "--no-hexer":
 			no_hexer = true
+		elif args[i] == "--force-roles" and i + 1 < args.size():
+			force_roles = Array(args[i + 1].split(","))
 		elif args[i] == "--declare" and i + 1 < args.size():
 			Activity.declared_demon_type = args[i + 1]
 	var f: FileAccess = FileAccess.open(out_path, FileAccess.WRITE) if out_path != "" else null
@@ -79,6 +91,8 @@ func _init() -> void:
 			"player": _measure_player(g)
 			"interactions": _measure_interactions(g)
 			"premises": _measure_premises(g)
+			"crosschecks": _measure_crosschecks(g)
+			"challenges": _measure_challenges(g)
 		for r in rows.slice(n_rows):
 			if f != null:
 				f.store_line(JSON.stringify(r))
@@ -106,6 +120,16 @@ func _play(sd: int, size: int, dynamic: bool = true, force_demon: String = ""):
 		case_script.forced = case_script.forced.filter(func(r): return not C.is_day_demon(r))
 		if case_script.demons.is_empty():
 			case_script.demons = ["demon"]
+	if not force_roles.is_empty():
+		if case_script == null:
+			case_script = ScriptDef.default_script()
+		for r in force_roles:
+			if C.ROLES[r].align == "good" and not r in case_script.town:
+				case_script.town.append(r)
+			elif C.ROLES[r].get("minion", false) and not r in case_script.minions:
+				case_script.minions.append(r)
+			if not r in case_script.forced:
+				case_script.forced.append(r)
 	g.new_case(sd, size, case_script)
 	var guard: int = 0
 	while g.state != "over" and g.w.day < STOP_DAY and guard < 300:
@@ -843,3 +867,184 @@ func _canvas_node(g, model, view: Dictionary, number: int) -> String:
 			if c.get("number", -1) == number or c.get("n", -1) == number or c.get("text", "") == text:
 				return id
 	return ""
+
+# ---------------------------------------------------------------- constructed cross-checks
+
+## A Confessor reading on `target` by `teller` on night `night`, true to the referee.
+func _confession(g, target: String, night: int, good: bool) -> Dictionary:
+	var nm: String = g.w.by_id[target].name
+	return {"role": "confessor", "data": {"good": good, "target": target}, "day": night, "shared": true,
+		"true": good == (not g.w.by_id[target].is_evil()),
+		"text": ("I heard %s's confession: their heart was pure and their spirit good" % nm) if good else ("%s's spirit gave me nothing" % nm)}
+
+## A good, living NPC to tell constructed Confessor readings: the real Confessor if good,
+## otherwise anyone good outside `exclude`. Returns [npc, claimed role].
+func _confessor_teller(g, exclude: Array) -> Array:
+	for m in g.w.npcs:
+		if m.alive and m.role == "confessor" and not m.is_evil() and m.id not in exclude:
+			return [m, "confessor"]
+	var c = _listener_for(g, exclude)
+	return [c, "confessor"] if c != null else []
+
+## Accusing readings: an Archivist pair, or a Dowser count of one or more. Any teller
+## (an evil one's are its bluffs). [{s, e, accused}]
+func _accusing(g) -> Array:
+	var out: Array = []
+	for r in _readings(g):
+		var d: Dictionary = r.e.get("data", {})
+		match str(r.e.role):
+			"archivist":
+				out.append({"s": r.s, "e": r.e, "accused": Array(d.get("pair", []))})
+			"dowser":
+				if int(d.get("count", 0)) >= 1:
+					out.append({"s": r.s, "e": r.e, "accused": Array(d.get("group", []))})
+	return out.filter(func(x): return x.accused.size() >= 2 and x.accused.all(func(p): return g.w.by_id.has(p)))
+
+func _measure_crosschecks(g) -> void:
+	var w = g.w
+	var night: int = clampi(w.day - 1, 1, 9)
+	for t in TRUSTS:
+		# Archivist pair or Dowser count, with a true Confessor reading clearing one of the
+		# accused (a good one). The pair then points at the other.
+		for x in _accusing(g):
+			var cleared: Array = x.accused.filter(func(p): return not w.by_id[p].is_evil())
+			if cleared.is_empty():
+				continue
+			var ct: Array = _confessor_teller(g, [x.s.id] + x.accused)
+			if ct.is_empty():
+				continue
+			var c = ct[0]
+			var conf: Dictionary = _confession(g, cleared[0], night, true)
+			var l = _listener_for(g, [x.s.id, c.id] + x.accused)
+			if l == null:
+				continue
+			_pair(g, l, str(x.e.role) + "+clearing_confessor", _reading_desc(x.s, x.e), _reading_desc(c, conf), _heard(w, x.s, x.e), _heard(w, c, conf),
+				[_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")], {x.s.id: t, c.id: t}, {"trust": t, "constructed": "b", "focus": x.accused.filter(func(p): return p != cleared[0])})
+		# Psychologist pair readings with their two statements (as one card set).
+		for r in _readings(g):
+			if str(r.e.role) != "psychologist" or str(r.e.get("data", {}).get("mode", "")) != "pair":
+				continue
+			var facts: Array = Psych.companion_facts(w, r.s, r.e)
+			if facts.size() < 2:
+				continue
+			var srcs: Array = facts.map(func(f): return str(f.source))
+			var l = _listener_for(g, [r.s.id] + srcs)
+			if l == null:
+				continue
+			var trust_in: Dictionary = {r.s.id: t}
+			for sid in srcs:
+				trust_in[sid] = 0.5
+			var both: Callable = func(n):
+				for f in facts:
+					_statement(w, n, f)
+			_pair(g, l, "psychologist+its_statements", _reading_desc(r.s, r.e), {"kind": "statements", "sources": srcs, "kinds": facts.map(func(f): return f.kind)},
+				_heard(w, r.s, r.e), both, [_claimed(w, r.s.id, "psychologist")], trust_in, {"trust": t})
+
+## Hear one of a Psychologist's statements first-hand from its source.
+func _statement(w, n, f: Dictionary) -> void:
+	var src = w.by_id[f.source]
+	if f.kind == "info":
+		var e: Dictionary = {"role": f.role, "data": f.data, "day": f.day, "text": f.text, "shared": true}
+		if f.has("phase"):
+			e["phase"] = f.phase
+		Mind.apply_info(w, n, src, e, Mind.heard_weight(n, src))
+		Mind.hear_claim(w, n, src.id, f.role, Mind.Tuning.Mind.PUBLIC_CLAIM_HEARING_WEIGHT, "told")
+	else:
+		var card: Dictionary = f.duplicate(true)
+		card.erase("via")
+		_tell(w, n, src.id, card, 0.5)
+
+# ---------------------------------------------------------------- constructed challenges
+
+func _measure_challenges(g) -> void:
+	var w = g.w
+	var night0: int = maxi(1, w.day - 2)
+	for x in _accusing(g):
+		var ct: Array = _confessor_teller(g, [x.s.id] + x.accused)
+		if ct.is_empty():
+			continue
+		var c = ct[0]
+		# Clear everyone the reading accuses, one Confessor reading a night: the grounds
+		# then contradict it. True grounds if the reading is a bluff.
+		var confs: Array = []
+		for i in range(x.accused.size()):
+			confs.append(_confession(g, x.accused[i], night0 + i, true))
+		var l = _listener_for(g, [x.s.id, c.id] + x.accused)
+		if l == null:
+			continue
+		var na: int = _board_reading(g, x.s, x.e)
+		var nums: Array = [na]
+		for e in confs:
+			nums.append(_board_reading(g, c, e))
+		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")]
+		var held_all: Array = claims + [_heard(w, x.s, x.e)] + confs.map(func(e): return _heard(w, c, e))
+		var accused0: String = x.accused[0]
+		for t in TRUSTS:
+			# Trust t in the grounds' teller (a challenge's grounds need witness quality 0.4+).
+			var trust_in: Dictionary = {x.s.id: 0.5, c.id: t}
+			var variants: Array = [
+				["none", claims, {}],
+				["held", held_all, {}],
+				["evil_teller", claims, {"type": "evil", "target": x.s.id}],
+				["evil_teller+lying", claims, {"type": "evil", "target": x.s.id, "challenge": "lying"}],
+				["good_accused", claims, {"type": "good", "target": accused0}],
+				["good_accused+misled", claims, {"type": "good", "target": accused0, "challenge": "misled"}],
+				["good_accused+impaired", claims, {"type": "good", "target": accused0, "challenge": "impaired"}],
+			]
+			var res: Dictionary = {}
+			for v in variants:
+				var injects: Array = v[1].duplicate()
+				var case_def: Dictionary = v[2]
+				if not case_def.is_empty():
+					injects.append(func(n):
+						n.credibility = t
+						n.trust = t
+						var filed: int = _file_case(g, case_def, nums, na)
+						if filed > 0:
+							_present(g, n, filed))
+				last_case = {}
+				var r: Dictionary = _beliefs(g, l, trust_in, injects)
+				if not r.is_empty():
+					r.merge(last_case, true)
+					res[v[0]] = r
+			if not res.has("none"):
+				continue
+			for id in res.none.e:
+				if id == l.id or not w.by_id.has(id):
+					continue
+				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
+					"evidence": "challenges", "listener": l.id, "trust": t, "reading": _reading_desc(x.s, x.e), "accused": x.accused,
+					"grounds_true": confs.all(func(e): return bool(e["true"])), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
+					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
+					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}
+				for k in res:
+					row.p_evil[k] = float(res[k].e.get(id, 0.0))
+					if res[k].has("case_p_evil"):
+						row.case_p_evil[k] = float(res[k].case_p_evil.get(id, -1.0))
+						row.susp_step[k] = float(res[k].susp_step.get(id, 0.0))
+						if not res[k].get("challenge", {}).is_empty():
+							row.challenge[k] = res[k].challenge
+				rows.append(row)
+
+## Evaluate a filed case for listener n, recording the case's own verdict, the suspicion
+## step and any challenge result in last_case.
+func _present(g, n, filed: int) -> void:
+	var s0: Dictionary = n.suspicion.duplicate(true)
+	CaseEval.captured = []
+	CaseEval.capture_worlds = true
+	var er: Dictionary = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	CaseEval.capture_worlds = false
+	var post: Dictionary = {}
+	for cap in CaseEval.captured:
+		for id in cap.get("people", {}):
+			post[id] = float(cap.people[id].posterior)
+	CaseEval.captured = []
+	last_case = {"case_p_evil": post, "susp_step": {}, "challenge": {}}
+	for res_c in er.get("assessment", {}).get("reading_challenges", []):
+		last_case.challenge = {"mode": res_c.get("mode", ""), "supported": bool(res_c.get("supported", false)), "multiplier": float(res_c.get("multiplier", 1.0)),
+			"agreement": float(res_c.get("agreement", 0.0)), "accuracy_agreement": float(res_c.get("accuracy_agreement", 0.0)),
+			"effect": float(res_c.get("graded", {}).get("effect", 0.0)), "cause": float(res_c.get("graded", {}).get("cause", 0.0)),
+			"backfire": bool(res_c.get("backfire", false))}
+	for id in n.suspicion:
+		last_case.susp_step[id] = float(n.suspicion[id]) - float(s0.get(id, n.suspicion[id]))
