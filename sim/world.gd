@@ -558,6 +558,10 @@ func _assign_secret_mod() -> void:
 			return
 	var a = goods[0]
 	a.secret_mod = k
+	if k == "muddler":
+		# A Muddler only matters if they pass things on (Case 12926: a private Muddler muddled
+		# nothing), so they're at least a fair gossip.
+		a.traits["gossip"] = maxf(float(a.traits.get("gossip", 0.0)), Tuning.Setup.MUDDLER_GOSSIP_FLOOR)
 	if k == "lovers":
 		var b = goods[1]
 		b.secret_mod = "lovers"
