@@ -221,7 +221,7 @@ static func presentation(g, real, card: Dictionary, venue: String = "meeting", w
 				"move": sign * (raw.call(e_with) - raw.call(e_wo_all)), "loss_label": "attention: putting these cards in front of them pushed others out of view"},
 			{"stage": "new", "label": "Against what %s already held (%d of %d cards were not new)" % [real.name, held_n, case_ids.size()],
 				"move": sign * (raw.call(e_with) - raw.call(e_wo)),
-				"loss_label": "nothing was new to them: re-presenting held cards only shifts what else they have in view" if held_n == case_ids.size() else "already held: only new cards add anything"},
+				"loss_label": "nothing was new to them: any change comes from a challenge the case attached, or from what else they now have in view" if held_n == case_ids.size() else "already held: only new cards add anything"},
 			{"stage": "resistance", "label": "After resistance to moving against a lean", "move": sign * (float(e_with.get("requested", 0.0)) - float(e_wo.get("requested", 0.0))),
 				"loss_label": "resistance to moving against a lean (Confidence)"},
 			{"stage": "applied", "label": "Applied to suspicion (the scale runs 0 to 1.5)", "move": sign * (float(e_with.get("after", rest_at)) - float(e_wo.get("after", rest_at))),

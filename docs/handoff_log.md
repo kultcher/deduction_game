@@ -52,12 +52,18 @@ argument moved a listener as far as it did. No dialogue hookup, no behaviour cha
   the presentation did, and the vote margin must match a real vote's.
 - **Things the readout showed** (for Tally and Quill; nothing here is changed). Playtest
   12926 replayed on its own commit (`75b4c8e`), plus bot games on main:
-  - **Re-presenting cards the town already holds can lower suspicion of the subject.** A
-    presentation is a focused pass: the budget covers the presented cards first, so other
-    held cards drop out of view. 12926, day 4, "Kiran is evil" (three cards, all already
-    public): Hollis 0.45 -> 0.25, Dorian 0.17 -> 0.05; day 2, "Lian is evil": four of six
-    listeners fell by 0.10 to 0.30. Seed 900, day 2: Jory 0.56 -> 0.27 (9 of 20 cards
-    read afterwards, 16 before).
+  - **Re-presenting cards the town already holds can lower suspicion of the subject, by
+    two routes** (corrected Nov 10 afternoon; this entry first blamed attention for all of
+    it). 12926, day 4, "Kiran is evil" (three cards, all already public, with a "lying"
+    challenge on Kiran's own reading):
+    - Hollis 0.45 -> 0.25: he accepted the challenge. Accepting sets the reading aside, so
+      its clash with his own confessions stopped counting against Kiran. Without the
+      challenge he rises. Not attention: reading every card he still falls.
+    - Dorian 0.17 -> 0.05: he rejected the challenge. The focused pass swapped five cards
+      at the edge of his 12-card view; with his old view kept, nothing moves.
+    - Not yet attributed to either route: day 2, "Lian is evil" (four of six listeners
+      fell by 0.10 to 0.30) and seed 900, day 2 (Jory 0.56 -> 0.27).
+    - Discussion and direction: project doc `claude/belief-model-direction-2026-11-10.md`.
   - **"Nothing fresh" lets the voiced stance part from the belief.** With no new card the
     reply keeps the scoped stance (`_present`: `fresh.is_empty()`), so Dorian said the case
     "changes how I see Kiran" while his suspicion of Kiran fell, and then voted no.
