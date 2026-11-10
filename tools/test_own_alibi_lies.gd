@@ -43,6 +43,11 @@ func _init() -> void:
 		var demon_sw: float = L.call([own, seen], "demon")
 		check(is_zero_approx(good_sw) and demon_sw > 0.0, "%s: own alibi + a certain sighting out: only evil fits (good %.4f, demon %.4f)" % [backend, good_sw, demon_sw])
 		check(is_zero_approx(L.call([witness, seen], "demon")), "%s: a witness's alibi for someone else is unchanged (still hard)" % backend)
+		# Both alibis held: the witness's stays hard whichever came first (#124 review).
+		var ow: float = L.call([own, witness, seen], "demon")
+		var wo: float = L.call([witness, own, seen], "demon")
+		check(is_zero_approx(ow) and is_zero_approx(wo), "%s: own and witness alibis together keep the witness's hard constraint in either order (%.4f, %.4f)" % [backend, ow, wo])
+		check(is_equal_approx(L.call([own, witness], "demon"), L.call([witness, own], "demon")), "%s: card order doesn't change the likelihood" % backend)
 	print("Own alibi lies: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 

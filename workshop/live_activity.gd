@@ -290,7 +290,7 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 
 		var inc_str: String
 		if kind_code == 5:
-			inc_str = "alibi:" + str(card.get("subject", ""))
+			inc_str = _alibi_incident(card)
 		elif kind_code == 3:
 			inc_str = "trace:%s:%d" % [str(data.get("scene", "")), int(data.get("slot", 0))]
 		else:
@@ -897,7 +897,7 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 		for card in relevant_cards:
 			if card.night != night:
 				continue
-			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
+			var incident: String = _alibi_incident(card) if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
 			if incident in incidents:
 				continue
 			incidents.append(incident)
@@ -1157,7 +1157,7 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 	for c in relevant(cards):
 		if c.get("night", -1) != night or c.kind == "trace" or (c.get("quoted", false) and c.kind != "alibi"):
 			continue
-		var inc: String = "alibi:" + c.subject if c.kind == "alibi" else c.id
+		var inc: String = _alibi_incident(c) if c.kind == "alibi" else c.id
 		if inc not in seen_inc:
 			seen_inc.append(inc)
 			night_obs.append(c)
@@ -1429,6 +1429,13 @@ static func _evaluate_trace_for_person_impl(view: Dictionary, cards: Array, trac
 			return {"state": "contradicts", "weight": Tuning.Setup.TRACE_CONNECTION_MISS_WEIGHT, "missing": "", "reason": "no cited bond, home, or day-%d overlap" % night}
 		return {"state": "unknown", "weight": unk_w, "missing": "bonds or day-%d overlap unresolved" % night, "reason": ""}
 	return {"state": "unknown", "weight": 1.0, "missing": "", "reason": ""}
+
+## Copies of one alibi count once. A person's own alibi and a witness's for them are
+## separate incidents: the own one is lie-aware in evil worlds, the witness's stays hard,
+## so keeping only whichever came first would change beliefs with card order (#124 review).
+static func _alibi_incident(card: Dictionary) -> String:
+	var subject: String = str(card.get("subject", ""))
+	return "alibi:" + subject + (":self" if str(card.get("source", "")) == subject else "")
 
 static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
 	if card.get("quoted", false) and card.kind != "alibi":
