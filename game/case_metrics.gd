@@ -13,6 +13,16 @@ static func minion_guesses(guesses: Dictionary) -> Array:
 	ids.sort()
 	return ids
 
+## Everyone you've guessed is a demon, of any type on the script (the Demon, the Hexer):
+## naming the right person counts even if you guessed the wrong kind of demon.
+static func demon_guesses(guesses: Dictionary) -> Array:
+	var ids: Array = []
+	for id in guesses:
+		if C.is_demon(str(guesses[id].get("guess", ""))):
+			ids.append(id)
+	ids.sort()
+	return ids
+
 static func named_guesses(guesses: Dictionary, role: String) -> Array:
 	var ids: Array = []
 	for id in guesses:
@@ -98,7 +108,7 @@ static func night_stats(w) -> Dictionary:
 
 static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [], snapshots: Array = []) -> Dictionary:
 	var guesses: Dictionary = snapshot.get("guesses", {})
-	var demon_guesses = named_guesses(guesses, "demon")
+	var d_guesses = demon_guesses(guesses)
 	var m_guesses = minion_guesses(guesses)
 	var eligible = not spoiled and not snapshot.is_empty()
 	# Credit goes for naming the active Demon, the original Demon, or having frozen a
@@ -111,10 +121,10 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [],
 				continue
 			var ctx: Dictionary = snap.get("context", {})
 			if (snap.get("reason", "") == "before_execution" and ctx.get("on_block", "") == first) or (snap.get("reason", "") == "before_vote" and ctx.get("nominee", "") == first):
-				if named_guesses(snap.get("guesses", {}), "demon") == [first]:
+				if demon_guesses(snap.get("guesses", {})) == [first]:
 					pre_scion_hit = true
 					break
-	var demon_correct = eligible and (demon_guesses == [w.demon_id] or demon_guesses == [first] or pre_scion_hit)
+	var demon_correct = eligible and (d_guesses == [w.demon_id] or d_guesses == [first] or pre_scion_hit)
 	var true_minions: Array = w.minion_ids.duplicate()
 	true_minions.sort()
 	var minion_correct = eligible and m_guesses == true_minions
@@ -175,7 +185,7 @@ static func summarize(w, snapshot: Dictionary, spoiled: bool, board: Array = [],
 		"demon_evidence_on_board": ev["on_board"], "demon_evidence_reachable": ev["reachable"], "nights": night_stats(w), "complete": w.game_over, "winner": w.winner,
 		"day": w.day, "reason": w.end_reason, "outcome": outcome, "town_saved": saved,
 		"prediction_eligible": eligible, "prediction_spoiled": spoiled, "prediction": snapshot.duplicate(true),
-		"demon_guesses": demon_guesses, "minion_guesses": m_guesses,
+		"demon_guesses": d_guesses, "minion_guesses": m_guesses,
 		"demon_identified": demon_correct, "minion_identified": minion_correct,
 		"both_identified": demon_correct and minion_correct, "identified_but_lost": demon_correct and w.game_over and not saved,
 		"good_initial": goods.size(), "good_surviving": survivors,

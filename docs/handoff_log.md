@@ -27,6 +27,120 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-10 afternoon, Claude-Lantern: why breakdown, what challenges and the view did (`claude/why-challenge-view`)
+
+Base: main `07cbbe6`. Debug and logging only: no belief, vote or RNG changes; golden
+should be identical. Next actor: Michael (review), then whoever uses it for Phase 1 checks.
+
+- **Three new blocks in the listener breakdown** (`game/workshop_why.gd`; the Workshop's
+  recorded breakdowns, the `workshop_why` dev-log row and `explain_case --why`):
+  - **Each challenge the case attached:** how the listener graded it (agreement, the
+    multiplier on the reading), and the subject's and the challenged reader's chance of
+    being evil with the challenge removed.
+  - **Citing:** each cited reading whose reliability changed because the case's own copy
+    counts, and the subject with those readings heard as before.
+  - **Change of view:** which cards left and entered what they read, the subject with the
+    old view kept, and up to four people the case didn't name who moved by 5 points or
+    more, each with their old-view value.
+- **Cost:** one more union evaluation per challenge, one for citing, one for the view.
+- **12926, day 4, "Kiran is evil"**, replayed at `75b4c8e`: the view swap moved people the
+  case didn't name far more than its subject. Edda: Isolde 12% -> 80%, Nisha 89% -> 23%,
+  Fenwick 87% -> 44%, all back to their old values with her old view kept. Fenwick: Lian
+  96% -> 52%. Three of four listeners agreed with the "lying" challenge (0.15 to 0.74);
+  for Hollis it took Kiran from 78% to 45%.
+- Tests: `tools/test_workshop_why.gd` (new `_extras`).
+
+## 2026-11-10 morning, Claude-Lantern: the "why" breakdown (`claude/workshop-why`)
+
+A new session, at Michael's request (Nov 10, 00:05): a debug and logging readout of why an
+argument moved a listener as far as it did. No dialogue hookup, no behaviour change.
+
+- **Base:** main at `b40fab1` (#111 merged; Bailiff's #115-#117 are on main).
+- **Status:** see the PR for the suite and golden results.
+- **New:** `workshop/case_why.gd` (the evidence half: the premise chain, the surviving
+  alternatives, and per card its status, world share, the model's `q` and leave-one-out),
+  `game/workshop_why.gd` (the belief half for a real listener: the suspicion chain from
+  "settled outright" to "applied", the biggest loss, the vote bar), `tools/test_workshop_why.gd`.
+- **Where it shows:** the Workshop's Debug menu (three new items), `g.workshop_why`
+  (off by default; when on, each presentation logs a `workshop_why` entry per listener),
+  and `tools/explain_case.gd --why`. Described in `docs/DECISION_INSPECTOR.md`.
+- **Touched outside the new files:** `game/game.gd` (two vars), `game/game_presentation.gd`
+  (the recording hook in `_evaluate_deduction_inner`, behind the flag),
+  `ui/live_case_workshop.gd` (the menu items), `tools/explain_case.gd` (`--why`),
+  `tools/ci_fast_suites.txt`.
+- **It reads the model through underscore functions** (`Shared._doubt_adjusted`,
+  `Shared._evaluate_adjusted`, `Jury._eval_listener`, `Jury._card_trust`,
+  `CaseEval._odds`) and re-states the vote need and nomination bar from `_vote_impl` and
+  `_good_nomination_impl`. `test_workshop_why` pins both: the applied step must match what
+  the presentation did, and the vote margin must match a real vote's.
+- **Things the readout showed** (for Tally and Quill; nothing here is changed). Playtest
+  12926 replayed on its own commit (`75b4c8e`), plus bot games on main:
+  - **Re-presenting cards the town already holds can lower suspicion of the subject, by
+    two routes** (corrected Nov 10 afternoon; this entry first blamed attention for all of
+    it). 12926, day 4, "Kiran is evil" (three cards, all already public, with a "lying"
+    challenge on Kiran's own reading):
+    - Hollis 0.45 -> 0.25: he accepted the challenge. Accepting sets the reading aside, so
+      its clash with his own confessions stopped counting against Kiran. Without the
+      challenge he rises. Not attention: reading every card he still falls.
+    - Dorian 0.17 -> 0.05: he rejected the challenge. The focused pass swapped five cards
+      at the edge of his 12-card view; with his old view kept, nothing moves.
+    - Not yet attributed to either route: day 2, "Lian is evil" (four of six listeners
+      fell by 0.10 to 0.30) and seed 900, day 2 (Jory 0.56 -> 0.27).
+    - Discussion and direction: project doc `claude/belief-model-direction-2026-11-10.md`.
+  - **"Nothing fresh" lets the voiced stance part from the belief.** With no new card the
+    reply keeps the scoped stance (`_present`: `fresh.is_empty()`), so Dorian said the case
+    "changes how I see Kiran" while his suspicion of Kiran fell, and then voted no.
+  - **The test juror hears every card at full weight; listeners don't.** The preview's
+    strength is the ceiling, not a forecast.
+  - **World share against `q`:** a Clerk pair held in 93% of the worlds where the Clerk
+    is honest, against the fixed `q` of 0.5 (the evidence catalog's finding 2, now
+    measured per card).
+- **Next:** Michael reads a breakdown on a real playtest log (`explain_case --why`, on the
+  log's own commit). Wiring the biggest loss and the strongest alternative into dialogue is
+  a later step.
+
+---
+
+## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
+
+- **Status:** green.
+  - 130/130 suites pass.
+  - Golden is identical to `baseline_db5b24e`.
+- **Haunts:** NPC reasoning knows the haunts that fall on its own spots
+  (`view.regular_haunts`), not the town's gossip.
+- **The watch leak is closed:** listeners hear the player's watches only through a cited
+  day log (`watch_log` receipt).
+- **New:** the location solver (`workshop/location_solver.gd`), the Case Board Whereabouts
+  panel, and the Workshop node.
+- **Details:** `docs/demon_types_plan.md`, "What the town knows about places".
+- **Next:**
+  - Michael plays it.
+  - The bot could cite day logs (a follow-up).
+
+---
+
+## 2026-11-09, Claude-Bailiff: demon types step 3, the Hexer (`claude/day-killer`, held draft)
+
+- **Base:** `claude/day-presence` (#107) plus main at `0d10089`. The PR carries #107 too,
+  so the two land together, after Michael has played the Hexer.
+- **Status:** green.
+  - 129/129 suites pass.
+  - Golden is identical to `baseline_db5b24e` (A = B = baseline). The Hexer is only dealt
+    when a script lists two demon types.
+- **What's in it:**
+  - The role `daykiller` (display name "Hexer", a working name), in `sim/roles/daykiller.gd`.
+  - The solver's whole-world mixture, `(1-s)*walk + s*day*HexFactor`.
+  - People in the solver view now carry `work` / `work_phases`, which are public.
+  - `autoplay --force-demon daykiller`.
+  - Details: `docs/demon_types_plan.md`, step 3.
+- **Test change:** in `test_workshop_circumstantial_hub`, the post-retract check now uses
+  the listener's own baseline. With public occupations, the control NPC's Stage 1 differs
+  from the listener's before any case.
+- **Probe:** in passive play the hex factor is neutral to slightly negative. The real test
+  is a player watching public places.
+- **Next:** Michael playtests a forced Hexer. Then tune the hex odds and the floor.
+
+---
 ## 2026-11-09 night, Claude-Quill: evidence catalog, first pass (`claude/evidence-catalog`, from main `407069d`)
 
 Docs only. `docs/evidence_catalog.md` lists every kind of evidence (each gift's reading,
@@ -72,6 +186,29 @@ readings (Seer, Clerk, Archivist, Gravedigger, Executor, Registrar, Monitor) use
   log until the player leaves (`main._run`, `_leave_finished_conversation`).
 - Not done: claim icon showing before the claim is spoken (Michael: only if safe).
 - Test: `tools/test_playtest_1709.gd` (17 checks); `test_evidence_cards` updated for the free ward showing.
+
+## 2026-11-08 night, Claude-Bailiff: demon types step 2, daytime presence (`claude/day-presence`)
+
+- Base `99fdde1` (main after #105). Status: green, **held unmerged** until the day-killer (step 3) is
+  tested (Michael's call). Next actor: whoever builds step 3, on top of this branch.
+- Design and details: `docs/demon_types_plan.md`, step 2.
+- `Game.watched`: the roster of every public place on the block the player watched each day phase
+  (`GameDayNight._note_watch`). Carried by the snapshot (`Evidence.normalize`) and the solver view.
+- `workshop/day_presence.gd`: presence table (schedule prior from the sim, updated by the watch record,
+  player sightings and NPC reports) and `breath_factor` (Breathstealer by presence).
+- CaseEval movement factor kind 3 (`CaseEvalKernel.PresenceScore`, weights via
+  `SolverBridge.CaseEvalRegisterPresenceWeights`). The CaseEval compile key adds the watch record when
+  someone has been silenced.
+- The circumstantial hub no longer makes the one-day "near a silencing" incident. Hub and regression
+  fixtures that leaned on it now use a rivalry with the victim.
+- Checks: 125/125 suites; golden identical to `baseline_7034f36` (no golden seed has a silencing).
+- **Balance flag (Tally):** 24 Breathstealer deals (7 NPCs, dynamic, seeds 1004-1100), analyst bot,
+  main vs branch: good wins 15 -> 18, Breathstealer executed 10 -> 17 (now often day 1-2), evil
+  executions 23 -> 35, good executions 16 -> 14. Mean game time 57.8 s -> 55.4 s (no slowdown).
+  Small sample; the watch roster makes the silencer easy to spot when the player watched the victim's
+  block. Worth a proper sweep before merge.
+- Evening-loop cleanup in the movement model (dead `evening` variable, 4x inner loop) deliberately left
+  out: it should be golden-identical and wants its own PR to prove that.
 
 ## 2026-11-08 ~17:50, Claude-Tally: the town map's layout is an editable scene
 

@@ -5,6 +5,8 @@
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
 ##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
 ##
+## --force-demon ID deals that demon type (the Demon stays on the script too, so the
+## solver weighs both): e.g. --force-demon daykiller for the Hexer.
 ## Balance sweep (docs/balance_sweep.md): --dynamic deals each case from
 ## ScriptBuilder.dynamic seeded by the case seed, so a game is reproducible from its seed.
 ## --results-jsonl appends one flat `sweep_v1` record per finished game (tools/sweep_record.gd)
@@ -48,8 +50,10 @@ const Metrics = preload("res://game/case_metrics.gd")
 const BotWorkshop = preload("res://tools/autoplay_workshop.gd")
 const Analyst = preload("res://tools/analyst.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 const SweepRecord = preload("res://tools/sweep_record.gd")
+const VoteShape = preload("res://tools/vote_shape.gd")
 
 ## Analyst decision thresholds on the juror's posterior P(evil) (bot policy, not game tuning).
 const TELL_P = 0.55
@@ -91,6 +95,7 @@ var analyst = {}
 var _belief_key = ""
 var _belief_cache = {}
 var dynamic_scripts = false
+var force_demon = ""          # --force-demon ID: deal this demon type, with the Demon also on the script (demon types step 3)
 var m4 = true
 var _demon_key = ""
 var _demon_guess = ""
@@ -112,6 +117,7 @@ func _init() -> void:
 	passive = args.has("passive")
 	trace_enabled = not args.has("no-trace")
 	dynamic_scripts = args.has("dynamic")
+	force_demon = str(args.get("force-demon", ""))
 	m4 = not args.has("pre-m4")
 	var jsonl = null
 	if args.has("results-jsonl"):
@@ -135,6 +141,7 @@ func _init() -> void:
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
 		"workshop_cases", "hub_cases"]
 	keys.append_array(NEW_ACTIONS)
+	keys.append_array(VoteShape.KEYS)
 	var stats = {"good": 0, "evil": 0}
 	var case_results: Array = []
 	var scale_cases: Array = []
@@ -170,6 +177,9 @@ func _init() -> void:
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case (workshop %.1f, hub %.1f), NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["workshop_cases"] / gf, stats["hub_cases"] / gf, stats["arguments"] / gf])
+	print("  vote shape: %d votes, unanimous but the nominee %d, only the nominator %d; evil nominations %d (carried %d, hanged %d), on good targets %d (carried %d, hanged %d)" %
+		[stats["votes"], stats["votes_unanimous"], stats["votes_only_nominator"], stats["evil_nominations"], stats["evil_nominations_carried"], stats["evil_nominations_executed"],
+		stats["evil_nominations_good_target"], stats["evil_nominations_good_target_carried"], stats["evil_nominations_good_target_executed"]])
 	print("  New talk actions: " + ", ".join(PackedStringArray(NEW_ACTIONS.map(func(key): return "%s=%d" % [key, stats[key]]))))
 	var summary = Metrics.aggregate(case_results)
 	print("  identification: demon %d, minion %d, both %d; identified but lost %d; eligible recorded theories %d/%d" %
@@ -215,6 +225,12 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
 	var case_script = ScriptBuilder.dynamic({"seed": seed_v, "name": "Sweep #%d" % seed_v}) if dynamic_scripts else null
+	if force_demon != "":
+		if case_script == null:
+			case_script = ScriptDef.default_script()
+		if not force_demon in case_script.demons:
+			case_script.demons.append(force_demon)
+		case_script.forced = case_script.forced.filter(func(r): return not r in case_script.demons) + [force_demon]
 	_out(g.new_case(seed_v, npc_count, case_script))
 	if echo:
 		g.w.dlog.echo = true
@@ -249,6 +265,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0,
 		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed}
 	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
+	r.merge(VoteShape.build(g.w))
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
 			r["exec_evil"] += 1

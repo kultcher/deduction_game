@@ -36,11 +36,15 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
 			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g),
-			"minions": script_minions(g), "demons": script_demons(g)}}
+			"minions": script_minions(g), "demons": script_demons(g)},
+		# Only the Demonologist's own view holds the raw watch record. A listener hears it
+		# through day-log receipts cited in a case (watch_log, workshop/location_solver.gd).
+		"watched": g.watched.duplicate(true) if "watched" in g and listener_id == "" else []}
 	if venue not in ["private", "meeting", "nomination"]:
 		input.issues.append({"code": "invalid_venue", "fact": "", "detail": venue})
 	for n in g.w.npcs:
-		input.people.append({"id": n.id, "name": n.name, "home": n.home_block, "alive": n.alive})
+		# Occupations are public (the town board), so day presence knows who works where.
+		input.people.append({"id": n.id, "name": n.name, "home": n.home_block, "alive": n.alive, "work": n.work, "work_phases": n.work_phases.duplicate()})
 	for event in g.w.public_log:
 		input.public_events.append({"kind": event.kind, "subjects": event.get("subjects", []).duplicate(),
 			"by": event.get("by", ""), "at": {"day": event.day, "phase": "night" if event.kind == "demon_death" else ("evening" if event.kind in ["silenced", "vote", "nomination", "meeting"] else "unknown")}})
@@ -84,7 +88,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 			if n == null:
 				input.issues.append({"code": "cover_unavailable", "fact": "", "detail": listener_id})
 			else:
-				_listener(input, n, now)
+				_listener(input, n, now, g.w)
 				input.listener["recency"] = preload("res://sim/recency.gd").snapshot(g.w, n)
 	return Evidence.normalize(input)
 
@@ -133,7 +137,7 @@ static func _lean(n) -> Dictionary:
 		belief[id] = belief[id] - mean
 	return belief
 
-static func _listener(input: Dictionary, n, now: Dictionary) -> void:
+static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	# "trust" is how far the shared model takes the player's word: credibility, not rapport.
 	input["listener"] = {"id": n.id, "name": n.name, "trust": n.credibility, "rapport": n.trust, "lean": _lean(n),
 		"committed_requested": n.workshop_state.get("committed_requested", {}).duplicate(true), "own_gift": n.role,
@@ -181,6 +185,8 @@ static func _listener(input: Dictionary, n, now: Dictionary) -> void:
 			var card = _reading(source, e)
 			card["via"] = claim.get("via", "")
 			input.receipts.append({"card": card, "private": true})
+	if w != null:
+		input["regular_haunts"] = known_haunts(w, n)
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -209,3 +215,20 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 		card["phase"] = e.phase
 	card["when"] = CardModel.when(card, card.day, -1)
 	return card
+
+
+## The haunts an NPC knows without being told (regulars know regulars): their own, and
+## anyone's haunt that is their own workplace or one of their own haunts. Everything else
+## the town says about haunts in conversation stays out of their reasoning until the
+## Demonologist shows it to them (a haunt card in a case).
+## It's knowledge for the trace and presence models (view.regular_haunts), not evidence: it
+## never enters the ledger, ownership or citations.
+static func known_haunts(w, n) -> Dictionary:
+	var spots: Array = [n.work] + n.haunts
+	var out: Dictionary = {}
+	for o in w.npcs:
+		for h in o.haunts:
+			if o.id != n.id and not h in spots:
+				continue
+			out[o.id] = out.get(o.id, []) + [h]
+	return out

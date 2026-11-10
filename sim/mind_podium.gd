@@ -138,7 +138,10 @@ static func _refused(w, d, grounds: bool) -> void:
 
 # ---------------------------------------------------------------- press night
 
-static func press_night(w, d, nd: int, grounds: bool) -> Dictionary:
+## `admitted`: the defender has just owned that they were out (a true sighting of them), so
+## the account never falls back to "I was home" (Codex P2 on #115); refusing to say why
+## stays open.
+static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
 	var outcome: String = ""
@@ -216,7 +219,7 @@ static func press_night(w, d, nd: int, grounds: bool) -> Dictionary:
 				outcome = "confess"
 		if outcome == "":
 			var prior: String = d.dialogue_memory.get("night_accounts", {}).get(str(nd), {}).get("kind", "")
-			var bold: bool = (prior == "alibi") if prior in ["alibi", "refusal"] else _mind().decide(w, d, "podium_lie_or_stonewall",
+			var bold: bool = false if admitted else (prior == "alibi") if prior in ["alibi", "refusal"] else _mind().decide(w, d, "podium_lie_or_stonewall",
 				{"confidence": (_trait(d, "confidence") - 0.5) * Tuning.Dialogue.LIE_BOLD_CONF_SLOPE,
 				"privacy_stonewalls": -(_trait(d, "privacy") - 0.5) * Tuning.Dialogue.LIE_BOLD_PRIVACY_SLOPE},
 				"Pressed on night %d before the town: lie outright rather than refuse?" % nd)

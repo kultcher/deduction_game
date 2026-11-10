@@ -473,6 +473,12 @@ public partial class SolverBridge : RefCounted
             night, sceneBlockCode, includeConverted, personHomes, personDeathBeforeNight,
             demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
 
+    public static int CaseEvalRegisterPresenceWeights(double[] weights) =>
+        SolverContext.RegisterPresenceWeights(weights);
+
+    public static double CaseEvalPresenceScore(long packedWorld, int handle, double err) =>
+        CaseEvalKernel.PresenceScore(packedWorld, SolverContext.GetPresenceWeights(handle), err);
+
     public static int LiveRegisterMovementFactor(int[] metaInts, double[] metaDoubles) =>
         LiveActivityKernel.RegisterCompiledFactor(metaInts, metaDoubles);
 

@@ -457,6 +457,7 @@ func _test_sexton_lamplighter_walk_on_toll() -> void:
 	if not tolled:
 		sexton_npc.gift_used = true
 		w.sexton_suppression_night = w.day
+		w.sexton_tolled_night = w.day  # a forced toll walks too (the decision's roll varies by seed)
 
 	w.resolve_night()
 

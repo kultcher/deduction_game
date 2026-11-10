@@ -8,11 +8,13 @@ signal layout_changed
 signal cards_dropped(numbers: Array)     # board cards dragged onto the Workshop
 signal removal_requested(id: String)     # a card dragged out past the left edge
 signal field_requested(id: String, field: String)  # a field on a card was clicked
+signal group_removal_requested(ids: Array)   # Delete with a box selection (Nov 10)
 const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
+const LocationSolver = preload("res://workshop/location_solver.gd")
 const TraceTooltip = preload("res://ui/trace_tooltip.gd")
 var model
 var zoom = 0.85
@@ -23,6 +25,11 @@ var drag = ""
 var panning = false
 var last_mouse = Vector2.ZERO
 var drag_out = false   # the dragged card is past the left edge: release removes it
+## Box selection (Nov 10): Shift-drag on empty canvas draws a box; the cards inside move
+## together when one is dragged, and Delete removes them. No group linking.
+var group: Array = []
+var box_from = null     # screen point where the box started, or null
+var box_to: Vector2 = Vector2.ZERO
 var fields: Dictionary = {}   # id -> [{rect, field}] clickable fields, in screen space
 var tips: Array = []          # [{rect, text}] tooltips for drawn badges and fields
 var answer_buttons: Dictionary = {}   # id -> screen rect of the card's Details/Assume button
@@ -127,6 +134,8 @@ func world_rect(id: String) -> Rect2:
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, circumstantial_layout(id).h))
 	if model.nodes[id].kind == "trace_chain":
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, trace_chain_layout(id).h))
+	if model.nodes[id].kind == "whereabouts":
+		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, whereabouts_layout(id).h))
 	if model.nodes[id].kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
 		return Rect2(Vector2(model.nodes[id].at[0], model.nodes[id].at[1]), Vector2(WIDTH, evidence_layout(id).h))
 	var lines = 0
@@ -186,6 +195,13 @@ func _draw() -> void:
 		draw_string(font, Vector2(lrect.position.x + 6.0, lrect.position.y + lfs + 1.0), lbl["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, lfs, lbl["color"])
 	if linking != "" and hit.has(linking):
 		draw_line(hit[linking].get_center(), get_local_mouse_position(), Color("f3d484"), 2, true)
+	for gid in group:
+		if hit.has(gid):
+			draw_rect(hit[gid].grow(5.0), Color("7fc4ff"), false, 2.0)
+	if box_from != null:
+		var br := Rect2(box_from, Vector2.ZERO).expand(box_to)
+		draw_rect(br, Color(0.5, 0.77, 1.0, 0.12))
+		draw_rect(br, Color("7fc4ff"), false, 1.5)
 	if drag_out:
 		draw_rect(Rect2(Vector2.ZERO, Vector2(10, size.y)), Color(0.85, 0.3, 0.25, 0.9))
 		draw_string(font, Vector2(18, 30), "Release to remove from the Workshop", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 0.75, 0.7))
@@ -203,6 +219,9 @@ func _draw_card(id: String, rect: Rect2) -> void:
 		return
 	if node.kind == "trace_chain":
 		_draw_trace_chain(id, rect)
+		return
+	if node.kind == "whereabouts":
+		_draw_whereabouts(id, rect)
 		return
 	if node.kind in ["evidence", "modifier"] and not _evidence_card(id).is_empty():
 		_draw_evidence(id, rect)
@@ -398,6 +417,17 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 			accept_event()
 			return
+		if not event.pressed and box_from != null and event.button_index == MOUSE_BUTTON_LEFT:
+			var br := Rect2(box_from, Vector2.ZERO).expand(event.position)
+			group = []
+			for gid in hit:
+				var nk: String = str(model.nodes[gid].get("kind", ""))
+				if br.intersects(hit[gid]) and nk != "":
+					group.append(gid)
+			box_from = null
+			queue_redraw()
+			accept_event()
+			return
 		if not event.pressed:
 			var removing: String = drag if drag_out and event.button_index == MOUSE_BUTTON_LEFT else ""
 			if drag != "" or panning:
@@ -417,6 +447,13 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
+		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "" and event.shift_pressed:
+			box_from = event.position
+			box_to = event.position
+			accept_event()
+			return
+		if event.button_index == MOUSE_BUTTON_LEFT and not (chosen in group):
+			group = []
 		if event.button_index == MOUSE_BUTTON_RIGHT and chosen != "":
 			context_requested.emit(chosen)
 		elif event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and chosen == ""):
@@ -439,17 +476,31 @@ func _gui_input(event: InputEvent) -> void:
 				drag = chosen
 		accept_event()
 	elif event is InputEventMouseMotion:
-		if panning:
+		if box_from != null:
+			box_to = event.position
+		elif panning:
 			pan += event.position - last_mouse
 		elif drag != "":
-			var node: Dictionary = model.nodes[drag]
-			var next = Vector2(node.at[0], node.at[1]) + (event.position - last_mouse) / zoom
-			node.at = [next.x, next.y]
-			drag_out = event.position.x < 0.0
+			var movers: Array = group if drag in group else [drag]
+			for mid in movers:
+				if not model.nodes.has(mid):
+					continue
+				var node: Dictionary = model.nodes[mid]
+				var next = Vector2(node.at[0], node.at[1]) + (event.position - last_mouse) / zoom
+				node.at = [next.x, next.y]
+			drag_out = event.position.x < 0.0 and movers.size() == 1
 		last_mouse = event.position
 		queue_redraw()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		linking = ""
+		group = []
+		box_from = null
+		queue_redraw()
+	elif event is InputEventKey and event.pressed and event.keycode in [KEY_DELETE, KEY_BACKSPACE] and not group.is_empty():
+		var ids_g: Array = group.duplicate()
+		group = []
+		group_removal_requested.emit(ids_g)
+		accept_event()
 		queue_redraw()
 
 func fit_case(all_evidence: bool = false) -> void:
@@ -929,6 +980,66 @@ func trace_chain_layout(id: String) -> Dictionary:
 			"tip": "New haunt receipts were learned after committing this Trace Chain. Click to bundle them."})
 		y += 30.0
 	return {"h": y + 44.0, "lines": wrapped, "els": els, "fit_count": ev.get("matches_ids", []).size(), "unk_count": unk_count}
+
+## A Whereabouts card (workshop/location_solver.gd): the question, who fits, and a sync chip
+## when a later watch or report has grown the day's record.
+func whereabouts_layout(id: String) -> Dictionary:
+	var node: Dictionary = model.nodes[id]
+	var res: Dictionary = LocationSolver.evaluate(model.view, node.get("question", {}))
+	var lines: Array = []
+	var q: Dictionary = node.get("question", {})
+	if str(q.get("kind", "")) == "silence":
+		lines.append("Out on %s's block with them" % Solver.person_name(model.view, str(q.get("victim", ""))))
+	else:
+		var names: Array = res.get("places", []).map(func(l): return C.loc_name(l))
+		lines.append("At: " + (", ".join(PackedStringArray(names)) if not names.is_empty() else "no known places"))
+	var watched: Array = res.get("watched_phases", [])
+	lines.append("Your record: " + (", ".join(PackedStringArray(watched)) if not watched.is_empty() else "no watches") + (" · %d told" % res.report_ids.size() if not res.report_ids.is_empty() else ""))
+	var fit_names: Array = res.get("fits", []).slice(0, 4).map(func(pid): return Solver.person_name(model.view, pid))
+	lines.append("Fits: " + (", ".join(PackedStringArray(fit_names)) if not fit_names.is_empty() else "none confirmed") + (" · %d ?" % res.unknown.size() if not res.unknown.is_empty() else "") + (" · %d ruled out" % res.ruled_out.size() if not res.ruled_out.is_empty() else ""))
+	var wrapped: Array = []
+	for row in lines:
+		for ln in _lines(row, WIDTH - 32, 13).slice(0, 2):
+			wrapped.append(ln)
+	var y: float = 52.0 + wrapped.size() * 17.0 + 6.0
+	var els: Array = []
+	if res.log_ids != node.get("log_ids", []) or res.report_ids != node.get("report_ids", []):
+		els.append({"t": "chip", "rect": Rect2(14, y, WIDTH - 28, 24), "text": "+ Sync the day's newer record", "on": false, "disabled": false, "field": "sync_whereabouts",
+			"tip": "You've watched or been told more about this day since committing. Click to cite the fuller record."})
+		y += 30.0
+	return {"h": y + 44.0, "lines": wrapped, "els": els, "fit_count": res.fits.size(), "unk_count": res.unknown.size()}
+
+func _draw_whereabouts(id: String, rect: Rect2) -> void:
+	var lay: Dictionary = whereabouts_layout(id)
+	var paper = Color("e2e6d6")
+	var header = Color("6f8a6a")
+	var ink = Color("26291f")
+	draw_style_box(CanvasSkin.flat(paper, Color("f7d988") if id == model.selected or id == linking else Color("4f6249"), 3 if id == model.selected else 1, 6, 0), rect)
+	var head = Rect2(rect.position, Vector2(rect.size.x, 40 * zoom))
+	draw_rect(head, header)
+	draw_rect(Rect2(rect.position + Vector2(0, 37 * zoom), Vector2(rect.size.x, 3.0 * zoom)), Color("475a43"))
+	var chip_text: String = "%d fit · %d ?" % [int(lay.fit_count), int(lay.unk_count)]
+	var chip_col: Color = Color("497552") if int(lay.fit_count) > 0 else Color("8a6a3b")
+	var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0
+	draw_string(font, rect.position + Vector2(12, 25) * zoom, model.title(id), HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - (cw + 22) * zoom, _fs(15), Color("fbf6ea"))
+	var chip = Rect2(rect.position + Vector2(WIDTH - cw - 8, 9) * zoom, Vector2(cw, 22) * zoom)
+	draw_style_box(CanvasSkin.flat(chip_col, chip_col.darkened(0.25), 1, 9, 0), chip)
+	draw_string(font, chip.position + Vector2(7, 16) * zoom, chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), Color("fbf6ea"))
+	tips.append({"rect": chip, "text": "Your record of who was where that day, as one card. Link it into a Premise: the town hears your watches through it."})
+	var y: float = 52.0
+	for ln in lay.lines:
+		draw_string(font, rect.position + Vector2(16, y + 11) * zoom, ln, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - 32) * zoom, _fs(13), ink)
+		y += 17.0
+	fields[id] = []
+	for el in lay.els:
+		_draw_element(id, rect.position, el)
+	var answer = _answer_rect(rect)
+	answer_buttons[id] = answer
+	draw_style_box(CanvasSkin.flat(Color("eef1e6"), Color("62785c"), 1, 3, 0), answer)
+	draw_string(font, answer.position + Vector2(14, 20) * zoom, "Details", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
+	var link = _link_rect(rect)
+	draw_style_box(CanvasSkin.flat(Color("eef1e6"), Color("62785c"), 1, 3, 0), link)
+	draw_string(font, link.position + Vector2(19, 20) * zoom, "Link", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(15), ink)
 
 func _draw_trace_chain(id: String, rect: Rect2) -> void:
 	var lay: Dictionary = trace_chain_layout(id)

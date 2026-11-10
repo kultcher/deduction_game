@@ -31,6 +31,7 @@ const BreathstealerDef = preload("res://sim/roles/breathstealer.gd")
 const RevenantDef = preload("res://sim/roles/revenant.gd")
 const ScionDef = preload("res://sim/roles/scion.gd")
 const BruteDef = preload("res://sim/roles/brute.gd")
+const DaykillerDef = preload("res://sim/roles/daykiller.gd")
 const MonitorDef = preload("res://sim/roles/monitor.gd")
 const ConfessorDef = preload("res://sim/roles/confessor.gd")
 
@@ -50,7 +51,7 @@ static func _ensure_init() -> void:
 		RumormongerDef, PsychologistDef, VeteranDef, MartyrDef, SextonDef,
 		ChroniclerDef, AugurDef, MagistrateDef, ExecutorDef, RegistrarDef,
 		MonitorDef, ConfessorDef,
-		DemonDef, PoisonerDef, BreathstealerDef, RevenantDef, ScionDef, BruteDef,
+		DemonDef, PoisonerDef, BreathstealerDef, RevenantDef, ScionDef, BruteDef, DaykillerDef,
 	]:
 		var def = script.new()
 		_defs[def.id] = def

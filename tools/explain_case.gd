@@ -14,6 +14,12 @@
 ##                     theirs in the case) or a fact-id prefix; MODE is lying, misled or unlikely.
 ##                     Repeatable; "--challenge fenwick=lying" is the "Fenwick lied" case.
 ## --listener a,b      only these minds
+## --why               after each presentation, print why that mind moved as far as it did:
+##                     the suspicion the case could add at each step (face value, as heard,
+##                     attention, already held, resistance, applied), the biggest loss, the
+##                     vote bar, the strongest surviving alternative, and per card its
+##                     status, world share and what the premise loses without it
+##                     (game/workshop_why.gd). Read-only.
 ## --json OUT          also write every assessment as JSONL
 ##
 ## Belief mode (no --card): --belief PERSON --at SEQ. Replays to SEQ and, for each good
@@ -31,6 +37,7 @@ extends SceneTree
 const Replay = preload("res://tools/log_replay.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
 const Mind = preload("res://sim/mind.gd")
+const WorkshopWhy = preload("res://game/workshop_why.gd")
 
 func _init():
 	var args = OS.get_cmdline_user_args()
@@ -43,6 +50,7 @@ func _init():
 	var only: Array = []
 	var json_out := ""
 	var belief := ""
+	var why := false
 	var top := 8
 	var i := 1
 	while i < args.size():
@@ -53,6 +61,8 @@ func _init():
 				at = int(args[i + 1]); i += 1
 			"--drop":
 				drop = true
+			"--why":
+				why = true
 			"--add":
 				adds.append(str(args[i + 1])); i += 1
 			"--challenge":
@@ -123,6 +133,7 @@ func _init():
 			if not n.alive or n.is_evil() or (not only.is_empty() and not n.id in only):
 				continue
 			var before: float = Mind.susp(n, target)
+			var why_was: Dictionary = WorkshopWhy.before(n) if why else {}
 			var r: Dictionary = g.w.workshop_present.call(n, card, [], "deduction", "meeting", false)
 			var after: float = Mind.susp(n, target)
 			var a: Dictionary = r.get("assessment", {})
@@ -142,6 +153,10 @@ func _init():
 				print("    %-34s reliability %s  accurate %s" % [_short(id, cards_info), "%.2f" % rel[id] if rel.has(id) else " -- ", "%.2f" % acc if acc != null else " -- "])
 			if a.has("response"):
 				print("    says: %s" % str(a.response).substr(0, 160))
+			if why:
+				var b: Dictionary = WorkshopWhy.presentation(g, n, card, "meeting", why_was)
+				print("    " + str(b.get("text", "; ".join(PackedStringArray(b.get("issues", []))))).replace("\n", "\n    "))
+				print("    (breakdown %d ms)" % int(b.get("elapsed_ms", 0)))
 			out_lines.append({"variant": v.label, "listener": n.id, "stance": a.get("stance", ""), "prior": ce.prior, "posterior": ce.posterior,
 				"lr": ce.lr, "category": ce.category, "suspicion_before": before, "suspicion_after": after,
 				"rivals": ce.get("rivals", []), "acceptance": ce.get("acceptance", {}), "reliability": rel})

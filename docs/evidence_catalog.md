@@ -207,16 +207,16 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 ### A4. Augur (crossed the Demon)
 - **Source and timing:** Augur, each evening.
 - **Says:** whether they crossed paths with the Demon in public, on the same block, earlier that day.
-- **System:** worlds, filtered by `augur_day_spec`. Without that day's public sightings, the reading constrains nothing.
+- **System:** worlds, filtered by `augur_day_spec`. Daytime positions come from that day's public sightings and from workplace context (`context` cards with `context_kind == "work"`: work phases and block). With neither, the reading constrains nothing.
 - **Constrains:** that the Demon (or the Marked) was among the people on a block when the Augur was there.
 - **Wrong when:** defaults, plus R (Marked).
 - **Strength:** moderate once sightings exist. "No" clears everyone the Augur shared a block with that day of being the Demon.
 - **Alone:** no.
-- **Becomes useful with:** day sightings and conversations (C1) placing people on the Augur's blocks that day.
+- **Becomes useful with:** day sightings and conversations (C1), or workplace context (F1), placing people on the Augur's blocks that day.
 - **Corroborates:** Seer readings on the same people.
 - **Unlocks:** an Augur "yes" on a day when only one unresolved person shared their block.
 - **Faking:** `q` is the share of worlds where the reading holds.
-- **Gaps:** the player can only check it if the town's sightings that day were recorded.
+- **Gaps:** the player can only check it if that day's positions are known, from recorded sightings or from who was at work.
 
 ### A5. Confessor visit
 - **Source and timing:** Confessor, each night but the first, visits one living person in secret.
@@ -416,11 +416,11 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 
 ### A22. Sexton (tolled the bell)
 - **Source and timing:** Sexton, once per case (not night 0): may toll the bell and walk every parish. All Minion abilities are suppressed until the next night.
-- **System:** the role table and chronology (the knell night).
-- **Constrains:** which night Minion effects (poison, silencing, the Revenant's curse) can't have happened.
+- **System:** the role table (`FlagSextonEnvOk`: the reported night is at least 1, and reported toll nights are consistent).
+- **Constrains:** only the claim's own consistency. The suppression of Minion effects is a **simulation rule**, not a solver constraint: neither `RoleConstraints` nor `Chronology.fault_for()` consults the knell, so the solver doesn't rule out a poisoned reading, a silencing or a curse on a knell night.
 - **Strength:** weak alone.
-- **Becomes useful with:** a Minion effect that should have happened that night.
-- **Unlocks:** a reading on a knell night can't have been poisoned.
+- **Becomes useful with:** a Minion effect that should have happened that night, but only to a reader who reasons it through; the solver doesn't.
+- **Gaps:** enforcing the knell in the solver (no poison window, silencing or curse turn on a knell night) would make "a reading on a knell night can't have been poisoned" true for the town.
 
 ### A23. Hearthwitch (benched)
 Not on any script. It counts evil among two living lane neighbours.
@@ -645,14 +645,14 @@ These aren't evidence. They're what makes evidence wrong, and each entry above l
 | Scion | Becomes the Demon if the Demon is executed with five or more alive. | worlds (succession) |
 | Brute | Hunts in the Demon's place; the Demon stays home. Registers as a Minion. | movement |
 | Breathstealer | Silences someone; the silence is weak evidence they're good. | public factor |
-| Sexton's bell | Suppresses Minion effects for a night. | role table |
+| Sexton's bell | Suppresses Minion effects for a night. | simulation only; the solver checks the claim's consistency, not the suppression |
 
 ## Findings from this pass
 
 1. **Poison isn't a world state.** A poisoned reading is covered only by `err`. For heard readings that's already large (about 0.57 at trust 0.7), so other minds discount it heavily anyway. But the reader's own copy has `err` 0.2%, so a poisoned Dowser is near-certain of their own false count. That's arguably right (they don't know), but the only routes to "that was the night I was poisoned" are indirect: source doubt from caught contradictions, and the player's "failed gift" challenge.
 2. **Fixed `q` for role-table readings.** Seer, Clerk, Archivist, Gravedigger, Executor, Registrar and Monitor all get `q` = 0.5. That's probably too generous to bluffers for readings that hold in few worlds (a Seer "yes", an Archivist pair). The CaseEval comment and the fixed path disagree for the Seer.
 3. **Lamplighter checking.** CaseEval says the Lamplighter's count is checked nowhere (`q` = 1); the movement code uses it to constrain routes. Possibly both are true (it constrains worlds but earns no source credit), but worth confirming.
-4. **The Augur needs day sightings to do anything.** If the town's daytime sightings aren't recorded on the player's board, an Augur reading is inert in the Workshop.
+4. **The Augur needs day positions to do anything.** They come from recorded daytime sightings or workplace context (who was at work, where). With neither on the player's board, an Augur reading is inert in the Workshop.
 5. **Circumstantial evidence is player-only and small by design.** It only exists in cases the player files, caps at +0.045, and only opens when there's Stage 1 evidence. NPCs don't run it on their own.
 6. **Hearthwitch** is benched, but still has solver support.
 

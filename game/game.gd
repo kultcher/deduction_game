@@ -85,6 +85,7 @@ var divulge_due: Array = []
 var known_haunts = {}
 var regulars_searched = {}   # place -> true: a place's regulars can be asked about once per game
 var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
+var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
 # Every time the legacy rules judged something the shared model couldn't read (always
@@ -103,6 +104,10 @@ var log_paths: Array = []
 var debug = false
 var detailed_logging = true  # developer tracing, independent of spoiler/debug scoring
 var workshop_compare = false # opt-in diagnostics; never applies the proposed effects
+## Opt-in diagnostics: after each presented case, record why each listener moved as far as
+## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
+var workshop_why = false
+var workshop_whys: Array = []
 ## Opt-in test assertion: unsupported presentations are rejected before any effects.
 var strict_evaluator = C.STRICT_EVALUATOR
 var _workshop_native_submission = false
@@ -227,6 +232,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	town_vibe_heard = {}
 	workshop_deliveries = []
 	workshop_comparisons = []
+	workshop_whys = []
 	_workshop_plans = {}
 	_workshop_evaluations = {}
 	_workshop_reason_ctx = {}
@@ -257,6 +263,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	known_haunts = {}
 	regulars_searched = {}
 	haunt_sightings = {}
+	watched = []
 	known_relationships = {}
 	fallback_count = 0
 	shared_fallbacks = []
