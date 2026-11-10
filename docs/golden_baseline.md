@@ -44,7 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 9, night): `baseline_e25fca9`
+### Current baseline (Nov 9, late): `baseline_14f999c`
+
+`tools/golden/baseline_14f999c/` is the capture from `claude/small-fixes-1109` at `14f999c`,
+which is stacked on #113. Against `baseline_e25fca9`, only 692 changes, at record 76:
+Nisha's defence is now a plea, not a challenge. She was out on the night Constance's
+reading put her out, so she gives her account instead of calling the reading a lie (the
+true-sighting defence). 42, 54875, 900 and 98933 are identical.
+
+The branch's other changes don't reach the golden seeds:
+- the board marks;
+- the living-rival line;
+- the clash-with-own-beliefs line;
+- the doubt-after-a-hanging clause;
+- the Breathstealer crowd boost: no Breathstealer acted in a crowd of three.
+
+### Previous baseline (Nov 9, night): `baseline_e25fca9`
 
 `tools/golden/baseline_e25fca9/` is the capture from `claude/log-12926` at `e25fca9`. That
 branch rewords an accusation reason when it rests on a reading about someone else. The old

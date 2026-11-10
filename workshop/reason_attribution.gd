@@ -910,6 +910,10 @@ static func _augment_joint_leave_one_out(
 				why_own = ("%s's %s reading %s, and that doesn't square with their account" % [sname, C.role_name(crole), gist]) if has_pid_claim else ("%s's %s reading %s, and with the other reports that points at them" % [sname, C.role_name(crole), gist])
 			else:
 				why_own = ("%s's %s report contradicts their account" % [sname, C.role_name(crole)]) if has_pid_claim and crole != "" else "the reports considered together point toward them"
+			# Leaning on the word of someone the town hanged: say so (Case 12926: Edda and
+			# Nisha cited Lian's Registrar report the day after Lian was hanged).
+			if csrc != "player" and _was_hanged(view, csrc) and crole != "":
+				why_own += "; I'm not sure we hanged the right person, and I still think that reading may be right"
 			why_pub = why_own
 
 		_put_item(items_by_id, {
@@ -1293,6 +1297,13 @@ static func _trust_in(who: String, listener: Dictionary) -> float:
 		return clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
 	var trusts: Dictionary = listener.get("npc_trust", {})
 	return clampf(float(trusts.get(who, 0.5)), 0.0, 1.0) if trusts.has(who) else 1.0
+
+
+static func _was_hanged(view: Dictionary, id: String) -> bool:
+	for day_ids in view.get("timeline", {}).get("executions", {}).values():
+		if id in day_ids:
+			return true
+	return false
 
 
 ## A short gist of a reading about someone other than the accused ("cleared Fenwick",

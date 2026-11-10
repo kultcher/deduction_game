@@ -216,6 +216,9 @@ class Roles:
 		"phase_probs_low": [0.15, 0.3, 0.7],
 		"high_score_threshold": 1.0,
 		"noise": 1.0,
+		# Cover in a crowd (Nov 9): this many others at the Breathstealer's place adds the bonus.
+		"crowd_size": 3,
+		"crowd_bonus": 0.3,
 	}
 
 	const REVENANT = {
