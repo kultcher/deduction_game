@@ -119,9 +119,11 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 	var witness_mark: String = "solid" if firsthand else ("dotted" if is_rumour else "hollow")
 	match k:
 		"sighting", "conversation":
+			# A conversation is drawn as a small node bridging the two people's own sightings
+			# (ui/board_view.gd), not as two more full dots (Nov 10).
 			for who in card.get("subject", []):
 				out.append({"who": who, "block": card.get("block", ""), "loc": card.get("loc", ""), "time": t,
-					"mark": witness_mark})
+					"mark": "convo" if k == "conversation" and not is_rumour else witness_mark})
 		"alibi":
 			# Someone says they were home: a square, not a sighting's circle.
 			var who2: String = card.get("subject", [""])[0]

@@ -28,6 +28,9 @@ var _dragging = false
 var _drag_moved = false
 var _restore_fraction: float = 0.5
 var _flash = 0.0
+## Fullscreen (Nov 10): the sheet takes the whole window, above the board's menus and filters.
+var fullscreen: bool = false
+var _fs_restore: float = 0.5
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -68,6 +71,7 @@ func set_game(game) -> void:
 		editor.cards_dropped.connect(_drop_cards)
 		editor.contents_changed.connect(func(): changed.emit())
 		editor.trace_solver_requested.connect(func(sel): trace_solver_requested.emit(sel))
+		editor.fullscreen_toggled.connect(func(): set_fullscreen(not fullscreen))
 		sheet.add_child(editor)
 		sheet.move_child(editor, 0)
 	else:
@@ -92,6 +96,36 @@ func set_fraction(value: float, snap: bool = false) -> void:
 	_layout()
 	changed.emit()
 
+func set_fullscreen(on: bool) -> void:
+	if on == fullscreen:
+		return
+	fullscreen = on
+	if on:
+		_fs_restore = fraction if not _collapsed else 0.5
+		top_level = true
+		z_index = 50
+		_fit_window()
+		if not get_viewport().size_changed.is_connected(_fit_window):
+			get_viewport().size_changed.connect(_fit_window)
+		_collapsed = false
+		fraction = 1.0
+	else:
+		if get_viewport().size_changed.is_connected(_fit_window):
+			get_viewport().size_changed.disconnect(_fit_window)
+		top_level = false
+		z_index = 0
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		fraction = _fs_restore
+	if editor != null:
+		editor.set_fullscreen_label(on)
+	_layout()
+	changed.emit()
+
+func _fit_window() -> void:
+	if fullscreen:
+		global_position = Vector2.ZERO
+		size = get_viewport_rect().size
+
 func is_collapsed() -> bool:
 	return _collapsed
 
@@ -100,6 +134,7 @@ func open(value: float = 0.5) -> void:
 		set_fraction(value)
 
 func collapse() -> void:
+	set_fullscreen(false)
 	set_fraction(COLLAPSED)
 
 ## Screen-space width the sheet covers (the board stays usable to its left).

@@ -435,6 +435,8 @@ func _context(id: String) -> void:
 	if board.nodes[id].kind == "premise":
 		context_menu.add_item("Remove premise (keep its evidence)", 3)
 	var edges: Array = board.links.filter(func(e): return e.from == id or e.to == id)
+	if edges.size() > 1:
+		context_menu.add_item("Unlink all (%d)" % edges.size(), 4)
 	for i in range(edges.size()):
 		var other: String = edges[i].to if edges[i].from == id else edges[i].from
 		context_menu.add_item("Unlink: " + board.title(other), 10 + i)
@@ -463,6 +465,11 @@ func _context_action(action: int) -> void:
 		_begin_link(context_id)
 	elif action == 2:
 		board.unmerge(context_id)
+		_session_changed()
+	elif action == 4:
+		# Unlink this card from every card it's linked to (Nov 10).
+		for edge in board.links.filter(func(e): return e.from == context_id or e.to == context_id):
+			board.unlink(edge.from, edge.to)
 		_session_changed()
 	elif action == 3:
 		board.remove_premise(context_id)
