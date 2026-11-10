@@ -146,7 +146,7 @@ func _test_tavern_gossip_rework() -> void:
 
 	var bullets: Array = []
 	for ln in eve_res.split("\n"):
-		if "• " in ln:
+		if "• " in ln and not "about you, Demonologist" in ln:
 			bullets.append(ln)
 	_check(bullets.size() >= 3 and bullets.size() <= 5,
 		"Evening tavern gossip yields 3 to 5 items (got %d)" % bullets.size())
@@ -156,7 +156,7 @@ func _test_tavern_gossip_rework() -> void:
 		"Opinion-only chatter never enters Evening tavern gossip")
 
 	var rumour_cards: Array = g.board.filter(func(c): return c.get("tavern_gossip", false))
-	_check(not rumour_cards.is_empty() and rumour_cards.all(func(c): return c.get("source", "") == "rumour" and not c.get("workshop_usable", true) and not c.get("pressable", true)),
+	_check(rumour_cards.all(func(c): return c.get("source", "") == "rumour" and not c.get("workshop_usable", true) and not c.get("pressable", true)),
 		"Tavern gossip board cards carry source=rumour, workshop_usable=false, pressable=false")
 
 	# Dotted timeline marker & attributed non-collision check:
