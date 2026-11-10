@@ -33,6 +33,14 @@
 ## cases against claimed walkers, and names the Demon from P(Demon), not P(evil).
 ## --pre-m4 restores the earlier policy, for A/Bs.
 ##
+## Silent-bot cells (belief-model direction, Phase 0): which of the bot's actions carry its
+## edge? Both keep the default bot otherwise.
+## --no-present: the bot still files cases, so its nominations rest on them (M2a), but never
+##   presents one: no case at the meeting, no 'convince', no 'tell'. Asking someone about a
+##   trace ('present <trace>' while talking) stays: it gathers information, not a case.
+## --present-and-vote: the bot presents and votes as usual but keeps no vigils, wards or
+##   scene searches (and offers or accepts no protection it would then have to keep).
+##
 ## Suspicion scale: at the end of each day (entering night, or the game's end) every
 ## living good NPC's suspicion is summarised against the truth: their top suspicion,
 ## the Demon's and minions' suspicion and rank, their good-nomination threshold, and
@@ -78,6 +86,8 @@ var new_talk_counts = {}
 var g
 var transcript = false
 var passive = false
+var no_present = false       # --no-present (Phase 0 silent-bot cell)
+var present_and_vote = false # --present-and-vote (Phase 0 silent-bot cell)
 var trace_enabled = true
 var no_workshop_cases = false
 var no_hub = false
@@ -119,6 +129,8 @@ func _init() -> void:
 	dynamic_scripts = args.has("dynamic")
 	force_demon = str(args.get("force-demon", ""))
 	m4 = not args.has("pre-m4")
+	no_present = args.has("no-present")
+	present_and_vote = args.has("present-and-vote")
 	var jsonl = null
 	if args.has("results-jsonl"):
 		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
@@ -153,7 +165,7 @@ func _init() -> void:
 		var t0: int = Time.get_ticks_msec()
 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
 		if jsonl != null:
-			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": "passive" if passive else ("bot" if m4 else "bot_pre_m4"),
+			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": _mode_name(),
 				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
 				"commands": last_commands, "guard": last_guard, "stuck": r["metrics"].get("guard_exhausted", false),
 				"wall_s": (Time.get_ticks_msec() - t0) / 1000.0})
@@ -582,7 +594,46 @@ static func new_action_kind(game, command: String) -> String:
 		if command.begins_with("vigil ") and command.trim_prefix("vigil ") in game.offer.get("vigil", {}).values(): return "keep_vigil"
 	return ""
 
+func _mode_name() -> String:
+	if passive: return "passive"
+	if no_present: return "no_present"
+	if present_and_vote: return "present_vote"
+	return "bot" if m4 else "bot_pre_m4"
+
+## The silent-bot cells' filter on a decided command: a presenting move (no-present) or a
+## vigil, ward, search or protection offer (present-and-vote) is dropped. "" means pick
+## again (the talk options mark themselves used, so the next pick is the bot's next choice);
+## otherwise the quiet move to make instead.
+func _silence(cmd: String) -> String:
+	if no_present:
+		if g.state == "meeting" and cmd.begins_with("present "): return "done" if g.town_quiet else "wait"
+		if g.state == "talk" and (cmd.begins_with("convince ") or cmd.begins_with("tell ")):
+			# The bot's own fallback question when it has nothing to tell.
+			var others: Array = g.w.living().filter(func(m): return m != g.talk_with)
+			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id if not others.is_empty() else "bye"
+	if present_and_vote:
+		match g.state:
+			"night":
+				if cmd.begins_with("vigil ") or cmd.begins_with("ward "): return "sleep"
+			"day":
+				if cmd == "search": return "wait"
+			"talk":
+				if cmd in ["offer vigil", "offer ward"]: return ""
+				if cmd == "yes" and not g.pending_request.is_empty() and g.pending_request.kind != "confidence": return "no"
+			"approach":
+				if cmd == "yes" and g.approach.get("agenda", "") == "protect": return "no"
+	return cmd
+
 func _decide() -> String:
+	if passive or not (no_present or present_and_vote):
+		return _decide_inner()
+	for i in 4:
+		var cmd: String = _silence(_decide_inner())
+		if cmd != "":
+			return cmd
+	return "bye" if g.state == "talk" else "wait"
+
+func _decide_inner() -> String:
 	var w = g.w
 	if passive:
 		match g.state:

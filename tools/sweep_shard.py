@@ -111,6 +111,10 @@ class Worker:
                 cmd.append("--passive")
             elif self.a.mode == "bot_pre_m4":
                 cmd.append("--pre-m4")  # the bot policy before meeting plan M4, for A/Bs
+            elif self.a.mode == "no_present":
+                cmd.append("--no-present")  # Phase 0 silent-bot cell: never presents a case
+            elif self.a.mode == "present_vote":
+                cmd.append("--present-and-vote")  # Phase 0: no vigils, wards or searches
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
                                     errors="replace")
             current = None
@@ -192,7 +196,7 @@ def main():
     ap.add_argument("--godot", required=True)
     ap.add_argument("--project", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ap.add_argument("--npcs", type=int, required=True)
-    ap.add_argument("--mode", choices=["passive", "bot", "bot_pre_m4"], required=True)
+    ap.add_argument("--mode", choices=["passive", "bot", "bot_pre_m4", "no_present", "present_vote"], required=True)
     ap.add_argument("--insight", type=float, default=1.0)
     ap.add_argument("--seeds", required=True, help="first:last (last exclusive)")
     ap.add_argument("--procs", type=int, default=4)
