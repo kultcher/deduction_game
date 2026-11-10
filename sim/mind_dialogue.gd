@@ -1174,6 +1174,13 @@ const OPINION_BONDED = {
 	"opinion_rival_suspect": "%s and I have never got on, so weigh this as you will, but I have my doubts about them.",
 }
 
+## Asked about someone who has died: they say so, and offer no opinion of them (Nov 10). The
+## haunt roll still follows, framed in the past tense (game_conversation._maybe_tell_haunts).
+static func answer_about_dead(w, n, t) -> Dictionary:
+	on_question(w, n)
+	return {"lines": [say_voiced(n, "ask_about_dead", "%s is gone now, God rest them." % t.name, {"subject": t.name})], "facts": []}
+
+
 static func answer_opinion(w, n, t) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []

@@ -364,6 +364,9 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 					elif t == n:
 						g._narr("%s gives you a flat look." % n.name)
 						return
+					elif not t.alive:
+						r = Mind.MindDialogue.answer_about_dead(g.w, n, t)
+						_maybe_tell_haunts(g, n, t, r)
 					else:
 						r = Mind.answer_opinion(g.w, n, t)
 						_maybe_tell_haunts(g, n, t, r)
@@ -729,12 +732,14 @@ static func _settle_offers(g) -> void:
 ## Asked about someone, a talker may add where that person tends to be off work: one or
 ## both of their haunts, more likely with Gossip and trust in you.
 static func _maybe_tell_haunts(g, n, t, r: Dictionary) -> void:
-	if not t.alive or n.silenced:
+	if n.silenced:
 		return
 	var unknown: Array = t.haunts.filter(func(x): return not (x in g.known_haunts.get(t.id, [])))
 	if unknown.is_empty():
 		return
-	var p = clampf(Tuning.Dialogue.SHARE_HAUNTS_BASE + Tuning.Dialogue.SHARE_HAUNTS_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_HAUNTS_TRUST_SCALE * (n.trust - 0.5), 0.0, Tuning.Dialogue.SHARE_HAUNTS_CAP)
+	# Nothing known of their haunts yet: more likely to come up (Nov 10).
+	var none_known: float = Tuning.Dialogue.SHARE_HAUNTS_NONE_KNOWN_BONUS if g.known_haunts.get(t.id, []).is_empty() else 0.0
+	var p = clampf(Tuning.Dialogue.SHARE_HAUNTS_BASE + Tuning.Dialogue.SHARE_HAUNTS_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_HAUNTS_TRUST_SCALE * (n.trust - 0.5) + none_known, 0.0, Tuning.Dialogue.SHARE_HAUNTS_CAP)
 	var roll = g.w.rng.randf()
 	g.w.observe_decision(n, "share_haunts", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE), "none": 1.0 - p}}, t.id)
 	if roll >= p:
@@ -743,7 +748,10 @@ static func _maybe_tell_haunts(g, n, t, r: Dictionary) -> void:
 	var names: Array = tell.map(func(x): return g.w.loc_name(x))
 	g.known_haunts[t.id] = g.known_haunts.get(t.id, []) + tell
 	var places_s: String = " or ".join(PackedStringArray(names))
-	r["lines"].append(Mind.say_voiced(n, "tell_haunt", "When %s isn't working, you'll often find them at %s." % [t.name, places_s], {"subject": t.name, "places": places_s}))
+	if t.alive:
+		r["lines"].append(Mind.say_voiced(n, "tell_haunt", "When %s isn't working, you'll often find them at %s." % [t.name, places_s], {"subject": t.name, "places": places_s}))
+	else:
+		r["lines"].append(Mind.say_voiced(n, "tell_haunt_dead", "I don't know if this will help your investigation, but %s used to spend off-work time at %s." % [t.name, places_s], {"subject": t.name, "places": places_s}))
 	for loc_id in tell:
 		g.add_profile_receipt({"kind": "haunt", "subject": [t.id], "source": n.id, "loc": loc_id, "locs": [loc_id],
 			"block": g.w.loc_block(loc_id), "day": g.w.day, "phase": g._phase_now(), "class": "circumstantial",
