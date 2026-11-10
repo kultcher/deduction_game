@@ -1449,7 +1449,10 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
 		"alibi":
 			if card.subject == person:
-				if not card.get("quoted", false):
+				# A person's own word on their night. The good tell the truth, so it stays
+				# hard for them (and for the listener, who is good in its own worlds); an
+				# evil subject may be covering a night out, priced like a relayed alibi.
+				if not card.get("quoted", false) and (alignment == "good" or card.get("source", "") != person):
 					return 1.0 if not out else 0.0
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":
