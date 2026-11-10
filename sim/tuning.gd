@@ -13,6 +13,9 @@ extends RefCounted
 
 # ---------------------------------------------------------------- 1. World Setup, Movement & Night Traces
 class Setup:
+	## The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret
+	## only shows when they relay what they've heard.
+	const MUDDLER_GOSSIP_FLOOR = 0.7
 	## Case sizes: townsfolk (one carries the secret), minions, demon.
 	const SETUPS = {
 		7: {"town": 5, "minions": 1, "secrets": 1},
@@ -33,7 +36,8 @@ class Setup:
 	const GRAVEDIGGER_MARKED_EVIL_CHANCE = 0.3
 
 	## Schedule & relationship generation
-	const EXTRA_WORK_SHIFT_CHANCE = 0.3
+	const EXTRA_WORK_SHIFT_CHANCE = 0.0  # Nov 10: everyone works a single shift (was 0.3)
+	const LEGACY_EXTRA_SHIFT_DRAW = 0.3  # the old roll, kept only so setup draws stay aligned
 	const FRIEND_PAIR_CUTOFF = 0.2
 	const RIVAL_PAIR_CUTOFF = 0.32
 
@@ -110,7 +114,7 @@ class Roles:
 	const HIDE_FROM_DEMON_CLAIM_D2 = -0.3
 	const HIDE_FROM_DEMON_CLAIM_D3 = -0.1
 	const WARDEN_HIDE_CLAIM_FLOOR = -0.35
-	const ONGOING_INFO_EARLY_CLAIM = -0.45
+	const ONGOING_INFO_EARLY_CLAIM = -0.4  # Nov 10: was -0.45 (case 12926's day-1 wall)
 	const ONGOING_INFO_CLAIM_D2 = -0.2
 	const ONE_SHOT_GIFT_CLAIM = 0.3
 
@@ -222,6 +226,9 @@ class Roles:
 		"phase_probs_low": [0.15, 0.3, 0.7],
 		"high_score_threshold": 1.0,
 		"noise": 1.0,
+		# Cover in a crowd (Nov 9): this many others at the Breathstealer's place adds the bonus.
+		"crowd_size": 3,
+		"crowd_bonus": 0.3,
 	}
 
 	const REVENANT = {
@@ -730,6 +737,8 @@ class Dialogue:
 	const SHARE_HAUNTS_TRUST_SCALE = 0.5
 	const SHARE_HAUNTS_CAP = 0.9
 	const SHARE_HAUNTS_ALL_SHARE = 0.4
+	## Added to the haunt roll when you know none of that person's haunts yet (Nov 10).
+	const SHARE_HAUNTS_NONE_KNOWN_BONUS = 0.2
 	const SHARE_TRAIT_BASE = 0.1
 	const SHARE_TRAIT_GOSSIP_SCALE = 0.35
 	const SHARE_TRAIT_TRUST_SCALE = 0.3

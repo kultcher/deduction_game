@@ -50,7 +50,11 @@ func breath_target(w, bs, evil) -> String:
 			best = n.id
 	w.observe_ranked(bs, "silence_ranking", observed, best, Tuning.Roles.BREATHSTEALER.noise)
 	var p: float = Tuning.Roles.BREATHSTEALER.phase_probs_high[w.phase] if best_s > Tuning.Roles.BREATHSTEALER.high_score_threshold else Tuning.Roles.BREATHSTEALER.phase_probs_low[w.phase]
-	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s}, best):
+	# A crowd is cover: with enough others in the same place, anyone could have done it.
+	var crowd: int = w.living().filter(func(m): return m.id != bs.id and m.loc == bs.loc).size()
+	if crowd >= Tuning.Roles.BREATHSTEALER.crowd_size:
+		p = minf(1.0, p + Tuning.Roles.BREATHSTEALER.crowd_bonus)
+	if not w.decision_roll(bs, "silence_this_phase", p, {"best_target_score": best_s, "crowd": crowd}, best):
 		w.dlog.think(bs.id, "breath_choice", "Breathstealer holds off this phase (best %s, %.2f)." % [best, best_s], {"scores": scores})
 		return ""
 	w.dlog.think(bs.id, "breath_choice", "Breathstealer silences %s (score %.2f)." % [best, best_s], {"scores": scores})

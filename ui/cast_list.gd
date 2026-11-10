@@ -9,6 +9,9 @@ signal person_clicked(id)
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 const PortraitBadge = preload("res://ui/portrait_badge.gd")
+const PlaceIcons = preload("res://ui/place_icons.gd")
+const PLACE_SIDE = 20.0
+const PLACE_GAP = 3.0
 
 const ROW_H = 70.0
 const GAP = 2.0
@@ -75,7 +78,11 @@ func _draw() -> void:
 		var slots_x = pr.end.x - 20 - slot_count * (slot + 4)
 		var text_w = maxf(0, slots_x - tx - (8 if slot_count > 0 else 0))
 		draw_circle(Vector2(tx + 4, pr.position.y + 21), 4, C.npc_color(n.id))
-		var name_w = maxf(0, text_w - 14)
+		# Their places (workplace, then haunts as you learn them), right of the name.
+		var places_w: float = 3 * PLACE_SIDE + 2 * PLACE_GAP
+		var places_x: float = tx + text_w - places_w
+		PlaceIcons.draw_slots(self, _font, Vector2(places_x, pr.position.y + 9), PLACE_SIDE, PLACE_GAP, PlaceIcons.slots(g, n), UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"), not n.alive)
+		var name_w = maxf(0, text_w - 14 - places_w - 6)
 		draw_string(_font, Vector2(tx + 14, pr.position.y + 26), _fit_text(n.name + ("" if n.alive else "  +"), name_w, 17), HORIZONTAL_ALIGNMENT_LEFT, name_w, 17, ink if (n.alive or sel) else UITheme.color("ink_soft"))
 		draw_string(_font, Vector2(tx, pr.end.y - 12), _fit_text(_sub_line(n), text_w, 13), HORIZONTAL_ALIGNMENT_LEFT, text_w, 13, UITheme.color("paper_dim") if sel else UITheme.color("ink_soft"))
 		var cy = pr.position.y + (pr.size.y - slot) / 2.0
@@ -183,4 +190,4 @@ func _get_tooltip(at: Vector2) -> String:
 		var relayed = _relayed_claim(n)
 		if not relayed.is_empty():
 			claim = " · ~ hearsay via %s: claims %s" % [", ".join(PackedStringArray(relayed.via.map(func(who): return g.w.by_id[who].name))), C.role_name(relayed.role)]
-	return "%s the %s. %s%s%s" % [n.name, n.occupation, _sub_line(n), claim, (" · your guess: %s?" % (C.role_name(gs) if C.ROLES.has(gs) else gs)) if gs != "?" else ""]
+	return "%s the %s. %s%s%s\n%s" % [n.name, n.occupation, _sub_line(n), claim, (" · your guess: %s?" % (C.role_name(gs) if C.ROLES.has(gs) else gs)) if gs != "?" else "", PlaceIcons.tooltip(g, n)]

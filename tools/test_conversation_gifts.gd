@@ -199,7 +199,7 @@ func private_gift_terms():
 					if role == "warden": hide_pen = minf(hide_pen, -0.35)
 					openness += hide_pen
 				if role in ["seer", "hearthwitch", "nightwatch", "lamplighter", "medium", "psychologist", "dowser"]:
-					openness += (-0.45 if day <= 1 else (-0.20 if day == 2 else 0.0))
+					openness += (-0.40 if day <= 1 else (-0.20 if day == 2 else 0.0))
 				elif role in C.START_ROLES: openness += 0.3
 				var expected = 4 if openness > 0.75 else (3 if openness > 0.45 else (2 if openness > 0.15 else 1))
 				check(Mind._target_tier(g.w, n) == expected, "private tier applies only the approved gift terms under public-roll conditions")
@@ -773,7 +773,7 @@ func _test_knob1_tapered_role_reluctance_and_day_slope() -> void:
 	var w = g.w
 	var dummy = w.living_good()[0]
 
-	# Ongoing info taper: -0.45 (D1) -> -0.20 (D2) -> absent/0.0 (D3+)
+	# Ongoing info taper: -0.40 (D1) -> -0.20 (D2) -> absent/0.0 (D3+)
 	var seer_def = C.role_def("seer")
 	w.day = 1
 	var p_d1: Dictionary = {}
@@ -785,10 +785,10 @@ func _test_knob1_tapered_role_reluctance_and_day_slope() -> void:
 	var p_d3: Dictionary = {}
 	seer_def.score_public_claim(w, dummy, p_d3)
 	_check(
-		is_equal_approx(float(p_d1.get("gift_keeps_giving", 0.0)), -0.45)
+		is_equal_approx(float(p_d1.get("gift_keeps_giving", 0.0)), -0.40)
 		and is_equal_approx(float(p_d2.get("gift_keeps_giving", 0.0)), -0.20)
 		and not p_d3.has("gift_keeps_giving"),
-		"Ongoing info reluctance tapers cleanly (-0.45 D1, -0.20 D2, 0.0 D3)"
+		"Ongoing info reluctance tapers cleanly (-0.40 D1, -0.20 D2, 0.0 D3)"
 	)
 
 	# Non-Warden utility taper (Veteran): -0.50 (D1) -> -0.30 (D2) -> -0.10 (D3+)

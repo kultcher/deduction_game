@@ -123,8 +123,9 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 				out.append({"who": who, "block": card.get("block", ""), "loc": card.get("loc", ""), "time": t,
 					"mark": witness_mark})
 		"alibi":
+			# Someone says they were home: a square, not a sighting's circle.
 			var who2: String = card.get("subject", [""])[0]
-			out.append({"who": who2, "block": card.get("block", ""), "loc": "home_" + who2, "time": t, "mark": witness_mark, "home": true})
+			out.append({"who": who2, "block": card.get("block", ""), "loc": "home_" + who2, "time": t, "mark": "dotted" if is_rumour else "home", "home": true})
 		"vigil":
 			out.append({"who": "", "block": card.get("block", ""), "loc": "", "time": t, "mark": "solid"})
 		"trace", "dropped", "totem", "ward", "scorched_sigil":
@@ -133,11 +134,11 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 			var d: Dictionary = card.get("data", {})
 			if card.get("role", "") == "nightwatch" and d.has("block"):
 				for who3 in d.get("seen", []):
-					out.append({"who": who3, "block": d["block"], "loc": "", "time": t, "mark": "ability"})
+					out.append({"who": who3, "block": d["block"], "loc": "", "time": t, "mark": "dotted" if is_rumour else "ability"})
 			elif card.get("role", "") == "dowser" and d.has("block"):
-				# The Dowser names who stood on that block with them.
-				for who4 in d.get("group", []) + [src]:
-					out.append({"who": who4, "block": d["block"], "loc": "", "time": t, "mark": "ability"})
+				# One node for the reading, on the Dowser (their icon and "evil / scanned");
+				# the tooltip names the group. Not a dot per person: those read as a crowd.
+				out.append({"who": src if src != "rumour" else "", "block": d["block"], "loc": "", "time": t, "mark": "dotted" if is_rumour else "dowser"})
 	return out
 
 ## The rows a card appears on in a view (row ids: person ids, or block ids in Places
