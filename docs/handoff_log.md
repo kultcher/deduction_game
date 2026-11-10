@@ -27,6 +27,29 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-10 afternoon, Claude-Lantern: why breakdown, what challenges and the view did (`claude/why-challenge-view`)
+
+Base: main `07cbbe6`. Debug and logging only: no belief, vote or RNG changes; golden
+should be identical. Next actor: Michael (review), then whoever uses it for Phase 1 checks.
+
+- **Three new blocks in the listener breakdown** (`game/workshop_why.gd`; the Workshop's
+  recorded breakdowns, the `workshop_why` dev-log row and `explain_case --why`):
+  - **Each challenge the case attached:** how the listener graded it (agreement, the
+    multiplier on the reading), and the subject's and the challenged reader's chance of
+    being evil with the challenge removed.
+  - **Citing:** each cited reading whose reliability changed because the case's own copy
+    counts, and the subject with those readings heard as before.
+  - **Change of view:** which cards left and entered what they read, the subject with the
+    old view kept, and up to four people the case didn't name who moved by 5 points or
+    more, each with their old-view value.
+- **Cost:** one more union evaluation per challenge, one for citing, one for the view.
+- **12926, day 4, "Kiran is evil"**, replayed at `75b4c8e`: the view swap moved people the
+  case didn't name far more than its subject. Edda: Isolde 12% -> 80%, Nisha 89% -> 23%,
+  Fenwick 87% -> 44%, all back to their old values with her old view kept. Fenwick: Lian
+  96% -> 52%. Three of four listeners agreed with the "lying" challenge (0.15 to 0.74);
+  for Hollis it took Kiran from 78% to 45%.
+- Tests: `tools/test_workshop_why.gd` (new `_extras`).
+
 ## 2026-11-10 morning, Claude-Lantern: the "why" breakdown (`claude/workshop-why`)
 
 A new session, at Michael's request (Nov 10, 00:05): a debug and logging readout of why an

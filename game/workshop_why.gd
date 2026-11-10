@@ -72,7 +72,7 @@ static func mind_of(real):
 ## WorkshopOwnership runs it (premise shaping included). mutate: applied to the
 ## doubt-adjusted copy before it is judged. Returns the proposal, or {} if it can't be
 ## prepared. Statics the game reads after its own evaluations are put back.
-static func _union(n, input: Dictionary, presentations: Dictionary, outside: Dictionary, doubt: Dictionary, focus: Array, mutate: Callable = Callable(), read_everything: bool = false) -> Dictionary:
+static func _union(n, input: Dictionary, presentations: Dictionary, outside: Dictionary, doubt: Dictionary, focus: Array, mutate: Callable = Callable(), read_everything: bool = false, sink: Dictionary = {}) -> Dictionary:
 	var state: Dictionary = n.workshop_state
 	var withdrawn: Dictionary = state.get("withdrawn", {})
 	var kept_ctx: Dictionary = Shared.last_reason_ctx
@@ -88,6 +88,7 @@ static func _union(n, input: Dictionary, presentations: Dictionary, outside: Dic
 		Reasoner.reuse_preparations = false
 	var proposal: Dictionary = {}
 	var plan: Dictionary = Shared.prepare(input, presentations, n.ledger, withdrawn, focus)
+	sink["plan"] = plan
 	if plan.get("ready", false) and not plan.get("empty", false):
 		var shaping: Dictionary = Shared.premise_shaping(plan, presentations, withdrawn, float(plan.prepared.listener.get("insight", 0.5)))
 		var shaping_eval: Dictionary = {}
@@ -112,6 +113,27 @@ static func _union(n, input: Dictionary, presentations: Dictionary, outside: Dic
 	Reasoner.unlimited_cards = kept_unlimited
 	Reasoner.reuse_preparations = kept_reuse
 	return proposal
+
+## How far the listener trusts a reading (the value CaseEval.reading_error looks up), or
+## -1 when it isn't a reading they hold a reliability for.
+static func _reliability(listener: Dictionary, card: Dictionary) -> float:
+	var rel: Dictionary = listener.get("reading_reliability", {})
+	for k in [card.get("accuracy_origin", ""), Solver.semantic_key(card), card.get("fact_id", ""), card.get("id", "")]:
+		if k != "" and rel.has(k):
+			return float(rel[k])
+	return -1.0
+
+static func _scale_reliability(prepared: Dictionary, card: Dictionary, ratio: float) -> void:
+	var rel: Dictionary = prepared.listener.get("reading_reliability", {})
+	var done := {}  # a report's fact_id is usually its id: scale each entry once
+	for k in [card.get("accuracy_origin", ""), Solver.semantic_key(card), card.get("fact_id", ""), card.get("id", "")]:
+		if k != "" and rel.has(k) and not done.has(k):
+			done[k] = true
+			rel[k] = clampf(float(rel[k]) * ratio, 0.0, 1.0)
+
+static func _post(proposal: Dictionary, id: String) -> float:
+	var e: Dictionary = _effect(proposal, id)
+	return float(e.get("posterior", e.get("prior", 0.0)))
 
 ## Call just before a case is presented to `real`: what the "without this case" side of
 ## the breakdown needs that the presentation overwrites (what their attention was on, and
@@ -182,7 +204,9 @@ static func presentation(g, real, card: Dictionary, venue: String = "meeting", w
 	# The applied evaluation is cached with the plan; the rest are counterfactuals.
 	var applied: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {})
 	var e_with: Dictionary = _effect(applied, target)
-	var e_wo: Dictionary = _effect(_union(n, plan.input, rest, outside, doubt, focus_was), target)
+	var wo_sink: Dictionary = {}
+	var p_wo: Dictionary = _union(n, plan.input, rest, outside, doubt, focus_was, Callable(), false, wo_sink)
+	var e_wo: Dictionary = _effect(p_wo, target)
 	var e_wo_all: Dictionary = _effect(_union(n, plan.input, rest, outside, doubt, focus_was, strip), target)
 	var e_wo_all_full: Dictionary = e_wo_all
 	var e_heard: Dictionary = e_with
@@ -240,6 +264,88 @@ static func presentation(g, real, card: Dictionary, venue: String = "meeting", w
 		"circumstantial": float(state.get("circumstantial_applied", {}).get(target, 0.0))}
 	if target != "" and g.w.by_id.has(target) and target != n.id:
 		out["action"] = _action(g, n, target)
+	var has_effect: bool = target != "" and target != n.id and not e_with.is_empty()
+	# What each challenge the case attached did: how the listener graded it, and where the
+	# subject and the challenged reader would stand had the case not made it.
+	var challenge_ids: Array = []
+	for argument in snapshot.get("arguments", []):
+		for id in argument.get("workshop_case", {}).get("reading_challenges", {}):
+			if id not in challenge_ids:
+				challenge_ids.append(id)
+	var challenges: Array = []
+	for graded in applied.get("reading_challenges", []):
+		var cid: String = str(graded.get("card", ""))
+		if cid not in challenge_ids or not has_effect:
+			continue
+		var drop := func(prepared: Dictionary) -> void:
+			prepared.case.reading_challenges.erase(cid)
+		var p_no: Dictionary = _union(n, plan.input, presentations, outside, doubt, focus_now, drop)
+		var src: String = str(graded.get("source", ""))
+		challenges.append({"card": cid, "source": src, "mode": str(graded.get("mode", "")),
+			"agreement": float(graded.get("agreement", 0.0)), "multiplier": float(graded.get("multiplier", 1.0)),
+			"supported": bool(graded.get("supported", false)), "note": str(graded.get("graded", {}).get("note", graded.get("note", ""))),
+			"target_with": _post(applied, target), "target_without": _post(p_no, target),
+			"raw_move": sign * (raw.call(e_with) - raw.call(_effect(p_no, target))),
+			"source_with": _post(applied, src) if src != "" and src != n.id else -1.0,
+			"source_without": _post(p_no, src) if src != "" and src != n.id else -1.0})
+	out["challenges"] = challenges
+	# Citing a card can change how far they trust it (the case's own copy counts as a way
+	# of holding it): each cited reading's reliability before and with the case, and where
+	# the subject would stand with every cited reading heard as it was before.
+	var trust_changes: Array = []
+	var plan_wo: Dictionary = wo_sink.get("plan", {})
+	if plan_wo.get("ready", false) and not plan_wo.get("empty", false):
+		for id in case_ids:
+			var c_now: Dictionary = Solver.card_by_id(plan.prepared.view, id)
+			var c_was: Dictionary = Solver.card_by_id(plan_wo.prepared.view, id)
+			if c_now.is_empty() or c_was.is_empty() or c_now.get("kind", "") != "report":
+				continue
+			var r_now: float = _reliability(plan.prepared.listener, c_now)
+			var r_was: float = _reliability(plan_wo.prepared.listener, c_was)
+			if r_now >= 0.0 and r_was >= 0.0 and absf(r_now - r_was) >= 0.005:
+				trust_changes.append({"id": id, "was": r_was, "now": r_now})
+	var trust: Dictionary = {"cards": trust_changes}
+	if not trust_changes.is_empty() and has_effect:
+		var as_before := func(prepared: Dictionary) -> void:
+			for t in trust_changes:
+				_scale_reliability(prepared, Solver.card_by_id(prepared.view, t.id), float(t.was) / maxf(float(t.now), 1e-6))
+		var p_tb: Dictionary = _union(n, plan.input, presentations, outside, doubt, focus_now, as_before)
+		trust["target_with"] = _post(applied, target)
+		trust["target_as_before"] = _post(p_tb, target)
+		trust["raw_move"] = sign * (raw.call(e_with) - raw.call(_effect(p_tb, target)))
+	out["trust"] = trust
+	# What the change of view did: which held cards the presentation pushed out of what
+	# they read and which it pulled in, where the subject would stand had their view stayed
+	# put, and who else moved (people the case didn't name).
+	var view_change: Dictionary = {}
+	if bounded and not Reasoner.unlimited_cards and was.has("focus") and has_effect:
+		var read_was: Array = p_wo.get("reasoning", {}).get("considered", [])
+		var read_now: Array = applied.get("reasoning", {}).get("considered", [])
+		var p_old: Dictionary = _union(n, plan.input, presentations, outside, doubt, focus_was)
+		var others: Array = []
+		# "Not named in the case": leave out everyone the case's cards mention or come from.
+		var named := {}
+		for cid in case_ids:
+			var cc: Dictionary = Solver.card_by_id(plan.prepared.view, cid)
+			if cc.is_empty():
+				continue
+			for p in Reasoner._mentions(cc):
+				named[p] = true
+			if str(cc.get("source", "")) not in ["", "player", "evidence", "town"]:
+				named[str(cc.source)] = true
+		for id in applied.get("effects", {}):
+			if id == target or id == n.id or named.has(id) or not p_wo.get("effects", {}).has(id):
+				continue
+			var o_was: float = _post(p_wo, id)
+			var o_now: float = _post(applied, id)
+			if absf(o_now - o_was) >= 0.05:
+				others.append({"id": id, "was": o_was, "now": o_now, "old_view": _post(p_old, id)})
+		others.sort_custom(func(x, y): return absf(float(x.now) - float(x.was)) > absf(float(y.now) - float(y.was)))
+		view_change = {"left": read_was.filter(func(id): return id not in read_now and id not in case_ids),
+			"entered": read_now.filter(func(id): return id not in read_was and id not in case_ids),
+			"target_was": float(e_wo.get("posterior", e_with.get("prior", 0.0))), "target_now": _post(applied, target), "target_old_view": _post(p_old, target),
+			"raw_move": sign * (raw.call(e_with) - raw.call(_effect(p_old, target))), "others": others}
+	out["view_change"] = view_change
 	# The evidence half, as this listener weighs the presented cards.
 	var adjusted: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full)
 	var own: Array = adjusted.listener.knowledge.get("own_reports", []).filter(func(id): return id not in scoped.case.cards)
@@ -322,6 +428,7 @@ static func describe(g, b: Dictionary, view: Dictionary) -> String:
 			lines.append("  Held but out of view this time: %d cards%s%s" % [b.unread.size(),
 				" (" + ", ".join(PackedStringArray(on_board)) + ")" if not on_board.is_empty() else "",
 				"; %d of them the Demonologist hasn't seen" % private_n if private_n > 0 else ""])
+		lines.append_array(_describe_extras(g, b, t_name))
 		if float(e.headline_signal) >= 0.005:
 			lines.append("  (A headline reading also pulls a less sharp listener toward its face value: signal %.2f.)" % float(e.headline_signal))
 	if b.has("action"):
@@ -333,6 +440,50 @@ static func describe(g, b: Dictionary, view: Dictionary) -> String:
 	lines.append("")
 	lines.append(Why.describe(view, b.evidence, _numbers(g)))
 	return "\n".join(lines)
+
+## "#32, #118 and 2 the Demonologist hasn't seen", or "nothing".
+static func _tags(ids: Array, nums: Dictionary) -> String:
+	var parts: PackedStringArray = []
+	for id in ids:
+		if nums.has(id):
+			parts.append("#%d" % int(nums[id]))
+	var private_n: int = ids.size() - parts.size()
+	if private_n > 0:
+		parts.append("%d the Demonologist hasn't seen" % private_n)
+	return ", ".join(parts) if not parts.is_empty() else "nothing"
+
+## The lines for what the case's challenges, the citing itself and the change of view did.
+static func _describe_extras(g, b: Dictionary, t_name: String) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	var nums: Dictionary = _numbers(g)
+	var tag := func(id) -> String: return "#%d" % int(nums[id]) if nums.has(id) else "(a card the Demonologist hasn't seen)"
+	var who := func(id) -> String: return g.w.by_id[id].name if g.w.by_id.has(id) else str(id)
+	var pct := func(v) -> String: return "%.0f%%" % (100.0 * float(v))
+	for ch in b.get("challenges", []):
+		var took: String = "rejected" if float(ch.agreement) <= 0.0 and is_equal_approx(float(ch.multiplier), 1.0) else "they agree at %.2f" % float(ch.agreement)
+		lines.append("  Challenge on %s (%s's reading), called \"%s\": %s; the reading now counts at x%.2f." % [tag.call(ch.card), who.call(ch.source), ch.mode, took, float(ch.multiplier)])
+		lines.append("    Without this challenge: %s %s (with it %s)%s." % [t_name, pct.call(ch.target_without), pct.call(ch.target_with),
+			"; %s %s (with it %s)" % [who.call(ch.source), pct.call(ch.source_without), pct.call(ch.source_with)] if float(ch.source_with) >= 0.0 and who.call(ch.source) != t_name else ""])
+		if ch.note != "":
+			lines.append("    \"%s\"" % ch.note)
+	var trust: Dictionary = b.get("trust", {})
+	if not trust.get("cards", []).is_empty():
+		var parts: PackedStringArray = []
+		for t in trust.cards:
+			parts.append("%s %.2f -> %.2f" % [tag.call(t.id), float(t.was), float(t.now)])
+		lines.append("  Citing changed how far they trust: %s." % ", ".join(parts))
+		if trust.has("target_as_before"):
+			lines.append("    Heard as they were before: %s %s (with the change %s)." % [t_name, pct.call(trust.target_as_before), pct.call(trust.target_with)])
+	var vc: Dictionary = b.get("view_change", {})
+	if not vc.is_empty():
+		if vc.left.is_empty() and vc.entered.is_empty():
+			lines.append("  Change of view: none (the same cards read before and after).")
+		else:
+			lines.append("  Change of view: left %s; entered %s." % [_tags(vc.left, nums), _tags(vc.entered, nums)])
+		lines.append("    With their old view kept: %s %s (%s before the case, %s now)." % [t_name, pct.call(vc.target_old_view), pct.call(vc.target_was), pct.call(vc.target_now)])
+		for o in vc.others.slice(0, 4):
+			lines.append("    Not named in the case: %s %s -> %s (with the old view %s)." % [who.call(o.id), pct.call(o.was), pct.call(o.now), pct.call(o.old_view)])
+	return lines
 
 ## Record one breakdown per listener after a real presentation (`g.workshop_why` on).
 ## Goes to g.workshop_whys (the Workshop's Debug menu shows them), the dev log and the
@@ -350,7 +501,8 @@ static func record(g, real, card: Dictionary, venue: String, was: Dictionary = {
 		"cards": b.evidence.cards.map(func(r): return {"id": r.id, "source": r.source, "role": r.role, "kind": r.kind, "status": r.status,
 			"held": r.get("held", false), "world_share": r.get("world_share", null), "q_used": r.get("q_used", null), "q_fixed": r.get("q_fixed", false),
 			"reliability": r.get("reliability", null), "adds": r.get("adds", null)}),
-		"alternatives": b.evidence.alternatives, "elapsed_ms": b.elapsed_ms}
+		"alternatives": b.evidence.alternatives, "challenges": b.get("challenges", []), "trust": b.get("trust", {}),
+		"view_change": b.get("view_change", {}), "elapsed_ms": b.elapsed_ms}
 	var loss: Dictionary = b.biggest_loss
 	var reason: String = "Why %s moved this far: %s%s" % [real.name,
 		"biggest loss: %s (-%.2f)" % [loss.label, float(loss.loss)] if not loss.is_empty() else "no stage lost anything",
