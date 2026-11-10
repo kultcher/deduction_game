@@ -5,6 +5,7 @@ extends RefCounted
 
 const C = preload("res://sim/content.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
+const VoteShape = preload("res://tools/vote_shape.gd")
 
 const SCHEMA = "sweep_v1"
 
@@ -164,6 +165,8 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 	rec["meetings_without_execution"] = no_exec_meetings
 	rec["nominations_by_day"] = noms_by_day
 	rec["kills_by_night"] = kills_by_night
+	# ---- vote shape (belief-model guardrail; tools/vote_shape.gd)
+	rec.merge(VoteShape.build(w))
 	# ---- night-walkers
 	var gw_exec := 0
 	var gw_exec_secret := 0
