@@ -194,7 +194,9 @@ func _test_nightwatch_against_third_party_alibi_both_ways() -> void:
 	# (belief-model fix 3), "the alibi-giver lied" is a third explanation, so blaming the
 	# report raises the watcher less (0.120, from 0.225). Trust in the subject doesn't scale
 	# it: in a world where the subject is evil, they lie however trusted they are.
-	_check(report_false_trust_a.w > 0.1 and report_false_trust_a.w > report_false_trust_a.a,
-		"the other world is open too: doubting the report raises the watcher (%.3f)" % report_false_trust_a.w)
+	# The alibi-giver can now stay the likelier liar even when the report is blamed, so the
+	# watcher no longer has to end above them.
+	_check(report_false_trust_a.w > 0.1,
+		"the other world is open too: doubting the report raises the watcher (%.3f; alibi-giver %.3f)" % [report_false_trust_a.w, report_false_trust_a.a])
 	_check(report_false_trust_a.w > report_false_trust_w.w,
 		"and the watcher falls further when the listener trusts the alibi-giver more (%.3f > %.3f)" % [report_false_trust_a.w, report_false_trust_w.w])
