@@ -24,6 +24,7 @@ func _init() -> void:
 	_card_statuses()
 	_presentation()
 	_already_held()
+	_extras()
 	_vote_bar()
 	_recording()
 	_neutral_when_on()
@@ -258,6 +259,50 @@ func _already_held() -> void:
 		by[s.stage] = float(s.move)
 	print("already held: face %+.3f, attention %+.3f, new %+.3f" % [by.face, by.attention, by["new"]])
 	check(by.face > by["new"] + 0.02, "as news it would have moved them; as a repeat it moves them less (%.3f vs %.3f)" % [by.face, by["new"]])
+
+## What a challenge, the citing and a change of view did, each against its own rerun.
+func _extras() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var n = p[0]
+	Mind.refresh_beliefs(g.w, n, " (baseline)")
+	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
+	var other = _read(g, p[5], "dowser", 1, {"group": [p[3].id, p[4].id, p[6].id], "count": 0})
+	var first: int = Live.file(g, _value(g, "evil", p[3], [dowser, other]), 0)
+	g._evaluate_deduction(n, g.board[first - 1], 1.0, false, "meeting")
+	var value: Dictionary = _value(g, "evil", p[5], [dowser, other])
+	var other_id: String = preload("res://workshop/live_evidence.gd").normalize_card(g.board[other - 1]).id
+	value.reading_challenges[other_id] = {"mode": "lying", "supports": []}
+	var second: int = Live.file(g, value, 0)
+	check(second > 0, "a case with a challenge files (%s)" % g.last_error)
+	var was: Dictionary = WorkshopWhy.before(n)
+	g._evaluate_deduction(n, g.board[second - 1], 1.0, false, "meeting")
+	var state_before: Dictionary = _state(g)
+	var b: Dictionary = WorkshopWhy.presentation(g, n, g.board[second - 1], "meeting", was)
+	check(_state(g) == state_before, "the extra reruns change nothing either")
+	check(b.get("ready", false), "the breakdown is ready (%s)" % str(b.get("issues", [])))
+	if not b.get("ready", false):
+		return
+	print(b.text)
+	check(b.challenges.size() == 1 and b.challenges[0].card == other_id and b.challenges[0].mode == "lying" and b.challenges[0].source == p[5].id,
+		"the case's one challenge is listed (%s)" % str(b.challenges.map(func(c): return c.mode)))
+	if b.challenges.size() == 1:
+		var ch: Dictionary = b.challenges[0]
+		check(is_equal_approx(ch.target_with, b.effect.posterior), "its 'with' side is the applied belief")
+		check(ch.target_without >= 0.0 and ch.target_without <= 1.0 and ch.multiplier >= 0.0 and ch.multiplier <= 1.0, "its 'without' side and multiplier are in range")
+		check(b.text.contains("Challenge on #%d" % other) and b.text.contains("Without this challenge"), "and the readout prints it")
+	check(b.trust.has("cards"), "trust changes are reported (%d)" % b.trust.cards.size())
+	for t in b.trust.cards:
+		check(float(t.was) != float(t.now) and b.text.contains("Citing changed"), "a changed reliability is printed (%.2f -> %.2f)" % [t.was, t.now])
+	check(b.has("view_change"), "the view change is reported")
+	if not b.view_change.is_empty():
+		var vc: Dictionary = b.view_change
+		check(is_equal_approx(vc.target_now, b.effect.posterior) and is_equal_approx(vc.target_was, b.effect.posterior_without), "its before and after are the chain's")
+		check(vc.left.all(func(id): return id not in vc.entered), "no card both left and entered")
+		check(b.text.contains("Change of view") and b.text.contains("With their old view kept"), "and the readout prints it")
+	# No challenge, no before(): neither section claims anything.
+	var plain: Dictionary = WorkshopWhy.presentation(g, n, g.board[first - 1], "meeting")
+	check(plain.get("ready", false) and plain.challenges.is_empty() and plain.view_change.is_empty(), "a case without a challenge or a recorded view lists neither")
 
 ## The vote bar in the readout is the one a real vote uses.
 func _vote_bar() -> void:

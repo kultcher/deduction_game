@@ -102,6 +102,19 @@ could add, with one idealisation dropped per line:
 | After resistance | the requested change | the scale's floor and ceiling |
 | Applied | what the presentation did | |
 
+Under the chain, three blocks say what else the presentation did:
+
+- **Challenge on #N:** each challenge the case attached, how far the listener agrees, the
+  multiplier it puts on the reading, and where the subject (and the challenged reader)
+  would stand without it.
+- **Citing changed how far they trust:** readings whose reliability moved because the
+  case's own copy counts as a way of holding them, and the subject with those readings
+  heard as before.
+- **Change of view:** the held cards that left and entered what they read, the subject
+  with their old view kept, and people the case didn't name who moved by 5 points or more.
+
+Each is one more rerun with that single thing undone, so they don't add up to the total.
+
 Then the **action bars**: where a vote and a nomination on the subject stand now, with the
 same parts `MindMeeting._vote_impl` adds up (no statement from the player).
 
