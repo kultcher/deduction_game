@@ -239,3 +239,22 @@ good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
   - The per-person daytime sighting cards are still on the board. Folding them into the
     day log is a possible UI follow-up.
 
+### Hexer pass (Nov 10, with Michael)
+- **Out in the evening.** On an evening it hasn't hexed, it goes out to a public place with
+  good regulars instead of staying home. Its preferred target's workplace and haunts come
+  first (`free_location`).
+- **Seeking its target.** In a free phase, when its preferred target (the biggest public
+  threat) is working at a public place, it goes there 35% of the time
+  (`HEXER.seek_target_chance`).
+  - The hex still falls on a random good regular of the place, as before.
+  - The solver gives the victim's workplace a 25% share of a free, unobserved phase during
+    the victim's shift (`Workshop.HEX_SEEK_SHARE`).
+- **Hexing when watched.** The hex is decided at the end of each day phase, once the
+  Demonologist's place is known (`world.end_day_phase` → `hex_decision`).
+  - If the Demonologist was there and fewer than three others were (`cover_needed`), the
+    chance drops by 0.3 (`watched_penalty`).
+  - This never applies in the evening: by then it hasn't hexed that day.
+- **Unchanged:** single-regular hexes, and the own-workplace penalty (0.25).
+- **Bot check:** 16 forced-Hexer autoplay games hexed on 64 of 67 days (was about 1 in 2
+  on days spent at its own work).
+
