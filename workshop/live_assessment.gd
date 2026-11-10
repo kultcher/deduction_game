@@ -9,6 +9,7 @@ const C = preload("res://sim/content.gd")
 const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar", "monitor", "confessor"]
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
+const LiveActivity = preload("res://workshop/live_activity.gd")
 const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent"]
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
@@ -131,7 +132,8 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 	for card in cards:
 		if card.kind == "attack":
 			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]):
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]) \
+			or (LiveActivity.day_demon_share(view) > 0.0 and LiveActivity.has_day_evidence(cards)):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
 		view.world_options["identities"] = true

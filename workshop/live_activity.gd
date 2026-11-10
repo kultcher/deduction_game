@@ -462,7 +462,9 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if not available(view):
 		return []
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
-	if observations.is_empty():
+	# With a Hexer possible, daytime evidence alone (a Whereabouts day log, morning and
+	# afternoon reports) still bears on who hexed whom, so it doesn't need a night card.
+	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
 	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {})]
@@ -532,6 +534,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		result[0]["day_demon_share"] = share
 		result[0]["hex_kills"] = hex_kills(view, cards, ids) if hex_factor_enabled else []
 		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
+		result[0]["hex_successions"] = hex_successions(view, ids, result[0]["hex_kills"])
 	return result
 
 
@@ -632,6 +635,39 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 		out.append({"night": night, "victim": victim, "places": places, "alive_mask": alive_mask, "reg_masks": reg_masks, "shares": shares})
 	return out
 
+
+## Executions that could be a Scion succession for the Hexer factor: in such a world the
+## kills before the execution were the executed demon's hexes, not the successor's, so C#
+## scores those against the executed person (HexFactor's succession branch). Mirrors the
+## movement splits' gate (_scion_succession_splits_cs) on crowd size, but needs only a hex
+## kill before the execution rather than a movement card.
+static func hex_successions(view: Dictionary, ids: Array, kills: Array) -> Array:
+	var out: Array = []
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	if execs.is_empty() or kills.is_empty():
+		return out
+	var deaths: Dictionary = view.get("timeline", {}).get("deaths", {})
+	var ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
+	for day_str in execs:
+		var exec_day: int = int(day_str)
+		if not kills.any(func(k): return int(k.night) < exec_day):
+			continue
+		var alive_before: int = 0
+		for p in view.people:
+			if ticks.get(p.id, 2147483647) >= exec_day * 4 + 2:
+				alive_before += 1
+		if alive_before < 5:
+			continue
+		var alive_mask: int = 0
+		for i in range(ids.size()):
+			if exec_day < int(deaths.get(ids[i], 2147483647)):
+				alive_mask |= 1 << i
+		for exec_id in execs[day_str]:
+			var idx: int = ids.find(exec_id)
+			if idx >= 0:
+				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask})
+	return out
+
 static func _append_scene_packed(n: int, st: Dictionary, meta_ints: PackedInt32Array, meta_doubles: PackedFloat64Array) -> void:
 	var two_c: bool = bool(st.get("two_cited", false))
 	var cg: Array = st.get("cross_good", [])
@@ -668,7 +704,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
 	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", [])])
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", [])])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -740,10 +776,18 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		for hk in hks:
 			meta_ints.append(hk.places.size())
 			meta_ints.append(int(hk.alive_mask))
+			meta_ints.append(int(hk.get("night", 0)))
 			for pi in range(hk.places.size()):
 				meta_ints.append(int(hk.reg_masks[pi]))
 				for v in hk.shares[pi]:
 					meta_doubles.append(float(v))
+		# Then the possible successions: [S, (executed, exec day, alive mask) x S].
+		var succ: Array = factor.get("hex_successions", [])
+		meta_ints.append(succ.size())
+		for sc in succ:
+			meta_ints.append(int(sc.executed_idx))
+			meta_ints.append(int(sc.exec_day))
+			meta_ints.append(int(sc.alive_demon_mask))
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.register_factor", pack_u)
@@ -896,6 +940,11 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 ## The share of the script's possible demons that never walk at night (the day-killer,
 ## docs/demon_types_plan.md). 0 on every script the game deals today, which leaves every
 ## movement likelihood exactly as before.
+## Daytime presence evidence the Hexer factor reads (DayPresence): the watch record and
+## morning/afternoon location reports.
+static func has_day_evidence(cards: Array) -> bool:
+	return cards.any(func(c): return c.get("kind", "") in ["watch_log", "location"])
+
 static func day_demon_share(view: Dictionary) -> float:
 	var demons: Array = view.get("script_demons", [])
 	if demons.is_empty():

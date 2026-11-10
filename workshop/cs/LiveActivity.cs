@@ -182,11 +182,22 @@ internal static class LiveActivityKernel
         /// that day. Empty unless DayDemonShare &gt; 0. See HexFactor.</summary>
         public HexKill[] HexKills = Array.Empty<HexKill>();
         public double HexFloor;
+        /// <summary>Executions that could be a Scion succession: in such a world the kills
+        /// before ExecDay are scored against the executed demon (see ScoreDayType).</summary>
+        public HexSuccession[] HexSuccessions = Array.Empty<HexSuccession>();
+    }
+
+    internal sealed class HexSuccession
+    {
+        public int ExecutedIdx;
+        public int ExecDay;
+        public int AliveDemonMask;
     }
 
     internal sealed class HexKill
     {
         public int AliveMask;        // living at that night
+        public int Night;            // the night of the kill
         public int[] RegMasks = Array.Empty<int>();       // per place: its regulars (known work and haunts)
         public double[][] Shares = Array.Empty<double[]>(); // per place: P(person i hexed it that day)
     }
@@ -1575,6 +1586,7 @@ internal static class LiveActivityKernel
                 var hk = new HexKill();
                 int places = metaInts[iPos++];
                 hk.AliveMask = metaInts[iPos++];
+                hk.Night = metaInts[iPos++];
                 hk.RegMasks = new int[places];
                 hk.Shares = new double[places][];
                 for (int p = 0; p < places; p++)
@@ -1586,6 +1598,21 @@ internal static class LiveActivityKernel
                     hk.Shares[p] = sh;
                 }
                 factor.HexKills[i] = hk;
+            }
+            // Then the possible successions: [S, (executed, exec day, alive mask) x S].
+            if (iPos < metaInts.Length)
+            {
+                int sc = metaInts[iPos++];
+                factor.HexSuccessions = new HexSuccession[sc];
+                for (int i = 0; i < sc; i++)
+                {
+                    factor.HexSuccessions[i] = new HexSuccession
+                    {
+                        ExecutedIdx = metaInts[iPos++],
+                        ExecDay = metaInts[iPos++],
+                        AliveDemonMask = metaInts[iPos++],
+                    };
+                }
             }
         }
 
@@ -1662,9 +1689,61 @@ internal static class LiveActivityKernel
         // demon and as a Hexer (out at night like a minion, times the chance its hexes drew
         // these victims), then mix: (1-s)*walk + s*day*hex.
         double walk = ScoreTyped(world, factor, false);
-        double day = ScoreTyped(world, factor, true);
-        return (1.0 - share) * walk + share * day * HexFactor(world, factor);
+        return (1.0 - share) * walk + share * ScoreDayType(world, factor);
     }
+
+    /// <summary>
+    /// The Hexer world: out at night like a minion, times HexFactor. A Scion succession is
+    /// mixed branch by branch, 0.5 * direct * hex(direct) + 0.5 * (pre x post) * hex(split),
+    /// where in the split branch the kills before the execution are the executed demon's
+    /// hexes. Either side may be absent: no movement split keeps direct movement in the
+    /// split branch, no hex succession keeps the direct hexes.
+    /// </summary>
+    private static double ScoreDayType(WorldEntry world, CompiledMovementFactor factor)
+    {
+        int dIdx = world.DemonOrMinusOne;
+        int evil = world.Evil;
+        double direct = DirectScore(world, factor, true);
+        double hexDirect = HexFactor(world, factor, -1, 0);
+        double moveSplit = direct;
+        bool haveMove = false;
+        int execIdx = -1;
+        if (dIdx >= 0)
+        {
+            foreach (var split in factor.ScionSplits)
+            {
+                if (SuccessionApplies(split.ExecutedIdx, split.AliveDemonMask, dIdx, evil))
+                {
+                    moveSplit = SplitScore(world, factor, split, true);
+                    haveMove = true;
+                    execIdx = split.ExecutedIdx;
+                    break;
+                }
+            }
+        }
+        double hexSplit = hexDirect;
+        bool haveHex = false;
+        if (dIdx >= 0)
+        {
+            foreach (var sc in factor.HexSuccessions)
+            {
+                // Same executed person as the movement split when there is one.
+                if ((execIdx < 0 || sc.ExecutedIdx == execIdx) && SuccessionApplies(sc.ExecutedIdx, sc.AliveDemonMask, dIdx, evil))
+                {
+                    hexSplit = HexFactor(world, factor, sc.ExecutedIdx, sc.ExecDay);
+                    haveHex = true;
+                    break;
+                }
+            }
+        }
+        if (!haveMove && !haveHex)
+            return direct * hexDirect;
+        return 0.5 * direct * hexDirect + 0.5 * moveSplit * hexSplit;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool SuccessionApplies(int execIdx, int aliveDemonMask, int dIdx, int evil) =>
+        execIdx != dIdx && (evil & (1 << execIdx)) != 0 && (aliveDemonMask & (1 << dIdx)) != 0;
 
     /// <summary>
     /// For a Hexer world: the product over kills of how likely the hex drew this victim,
@@ -1672,15 +1751,21 @@ internal static class LiveActivityKernel
     /// sum over the victim's places L of P(the demon hexed L that day) * goodAlive / goodRegulars(L),
     /// plus HexFloor for a regular place nobody knows of (an unlearned haunt).
     /// </summary>
-    internal static double HexFactor(WorldEntry world, CompiledMovementFactor factor)
+    internal static double HexFactor(WorldEntry world, CompiledMovementFactor factor) =>
+        HexFactor(world, factor, -1, 0);
+
+    /// <summary>With priorIdx &gt;= 0, kills on nights before priorUntil are scored as priorIdx's
+    /// hexes (a Scion succession: the executed demon struck those).</summary>
+    internal static double HexFactor(WorldEntry world, CompiledMovementFactor factor, int priorIdx, int priorUntil)
     {
-        int dIdx = world.DemonOrMinusOne;
-        if (dIdx < 0 || factor.HexKills.Length == 0)
+        int curIdx = world.DemonOrMinusOne;
+        if (curIdx < 0 || factor.HexKills.Length == 0)
             return 1.0;
         int evil = world.Evil;
         double m = 1.0;
         foreach (var hk in factor.HexKills)
         {
+            int dIdx = priorIdx >= 0 && hk.Night < priorUntil ? priorIdx : curIdx;
             int goodAlive = System.Numerics.BitOperations.PopCount((uint)(hk.AliveMask & ~evil));
             double s = 0.0;
             for (int p = 0; p < hk.RegMasks.Length; p++)
@@ -1699,13 +1784,25 @@ internal static class LiveActivityKernel
     {
         int dIdx = world.DemonOrMinusOne;
         int evil = world.Evil;
-        int convIdx = world.ConvertedOrMinusOne;
+        double direct = DirectScore(world, factor, dayType);
+        var splits = factor.ScionSplits;
+        for (int k = 0; k < splits.Length; k++)
+        {
+            var split = splits[k];
+            if (dIdx >= 0 && SuccessionApplies(split.ExecutedIdx, split.AliveDemonMask, dIdx, evil))
+            {
+                return 0.5 * direct + 0.5 * SplitScore(world, factor, split, dayType);
+            }
+        }
+        return direct;
+    }
 
-        double direct = BaseScore(
+    private static double DirectScore(WorldEntry world, CompiledMovementFactor factor, bool dayType) =>
+        BaseScore(
             factor.PeopleCount,
-            evil,
-            convIdx,
-            dIdx,
+            world.Evil,
+            world.ConvertedOrMinusOne,
+            world.DemonOrMinusOne,
             factor.HasConvertedProfiles,
             factor.ProfGood,
             factor.ProfMinion,
@@ -1715,26 +1812,21 @@ internal static class LiveActivityKernel
             factor.TracePasserEps,
             factor.TraceUnknownWeight);
 
-        var splits = factor.ScionSplits;
-        for (int k = 0; k < splits.Length; k++)
-        {
-            var split = splits[k];
-            int execIdx = split.ExecutedIdx;
-            if (dIdx >= 0 && execIdx != dIdx && (evil & (1 << execIdx)) != 0
-                && (split.AliveDemonMask & (1 << dIdx)) != 0)
-            {
-                double preS = BaseScore(
-                    factor.PeopleCount, evil, convIdx, execIdx, false,
-                    split.PreGood, split.PreMinion, dayType ? split.PreMinion : split.PreDemon, Array.Empty<double>(),
-                    split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
-                double postS = BaseScore(
-                    factor.PeopleCount, evil, convIdx, dIdx, false,
-                    split.PostGood, split.PostMinion, dayType ? split.PostMinion : split.PostDemon, Array.Empty<double>(),
-                    split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
-                return 0.5 * direct + 0.5 * (preS * postS);
-            }
-        }
-        return direct;
+    /// <summary>The succession branch's movement: before the execution scored with the
+    /// executed person as demon, after it with the successor.</summary>
+    private static double SplitScore(WorldEntry world, CompiledMovementFactor factor, ScionSplitData split, bool dayType)
+    {
+        int evil = world.Evil;
+        int convIdx = world.ConvertedOrMinusOne;
+        double preS = BaseScore(
+            factor.PeopleCount, evil, convIdx, split.ExecutedIdx, false,
+            split.PreGood, split.PreMinion, dayType ? split.PreMinion : split.PreDemon, Array.Empty<double>(),
+            split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+        double postS = BaseScore(
+            factor.PeopleCount, evil, convIdx, world.DemonOrMinusOne, false,
+            split.PostGood, split.PostMinion, dayType ? split.PostMinion : split.PostDemon, Array.Empty<double>(),
+            split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+        return preS * postS;
     }
 
     private static double BaseScore(

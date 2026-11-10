@@ -257,3 +257,16 @@ good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
 - **Unchanged:** single-regular hexes, and the own-workplace penalty (0.25).
 - **Bot check:** 16 forced-Hexer autoplay games (seeds 8100–8115) hexed on 60 of 65 days.
 
+- **Codex review fixes (#111).**
+  - *Daytime evidence alone.* A Whereabouts argument citing only a day log or morning and
+    afternoon reports now reaches the Hexer factor. `live_assessment` turns on the movement
+    model for `watch_log` and `location` cards when a Hexer is possible. The factor no longer
+    needs a night card (`LiveActivity.has_day_evidence`).
+  - *Scion succession.* In a world where the executed person was the demon and a Scion rose,
+    the kills before the execution are scored against the executed demon. The other kills
+    are scored against the successor.
+    - The mixture is branch by branch:
+      `0.5·direct·hex(direct) + 0.5·(pre×post)·hex(split)` (`ScoreDayType`).
+    - Successions come from `LiveActivity.hex_successions`, with the same crowd gate as the
+      movement splits. They need only a hex kill before the execution.
+  - `test_demon_types` now has 41 checks.
