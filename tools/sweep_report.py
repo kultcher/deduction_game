@@ -217,6 +217,27 @@ def main():
         summary["cells"][cell_label(k)] = {"n": n, "good_wins": w, "win_rate": p, "ci": [lo, hi]}
     out.append("")
 
+    # Vote shape (belief-model guardrail). Records from before tools/vote_shape.gd lack the
+    # fields; such cells are skipped.
+    shaped = [k for k in cells if any("votes" in r for r in by_cell[k])]
+    if shaped:
+        out.append("### Vote shape\n")
+        out.append("Unanimous: every NPC voter but the nominee voted yes. Evil nominations: by someone evil at case start; carried = put on the block.\n")
+        out.append("| Cell | Votes/game | Unanimous | Only the nominator | Evil noms/game | Evil noms carried | Evil noms on good targets carried | ...hanged |")
+        out.append("|---|---|---|---|---|---|---|---|")
+        for k in shaped:
+            g = [r for r in by_cell[k] if "votes" in r]
+            tot = lambda f: sum(r.get(f, 0) for r in g)
+            votes, en, eng = tot("votes"), tot("evil_nominations"), tot("evil_nominations_good_target")
+            frac = lambda a, b: pct(a / b) if b else "–"
+            out.append("| %s | %.2f | %s | %s | %.2f | %s | %s | %s |" % (
+                cell_label(k), votes / len(g), frac(tot("votes_unanimous"), votes), frac(tot("votes_only_nominator"), votes),
+                en / len(g), frac(tot("evil_nominations_carried"), en), frac(tot("evil_nominations_good_target_carried"), eng),
+                frac(tot("evil_nominations_good_target_executed"), eng)))
+            summary["cells"][cell_label(k)]["vote_shape"] = {f: tot(f) for f in ["votes", "votes_unanimous", "votes_only_nominator", "evil_nominations",
+                "evil_nominations_carried", "evil_nominations_executed", "evil_nominations_good_target", "evil_nominations_good_target_carried", "evil_nominations_good_target_executed"]}
+        out.append("")
+
     out.append("### End reasons and solvability\n")
     for k in cells:
         g = by_cell[k]

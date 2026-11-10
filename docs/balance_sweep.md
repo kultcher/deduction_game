@@ -83,6 +83,13 @@ One JSON object per game. Flat fields:
 - **Pace:** `exec_good_by_day`, `exec_evil_by_day`, `first_evil_exec_day` (−1 if none),
   `meetings_with_activity`, `meetings_without_execution`, `nominations_by_day`,
   `kills_by_night`.
+- **Vote shape** (`tools/vote_shape.gd`, the belief-model guardrail): `votes`,
+  `votes_unanimous` (every NPC voter but the nominee voted yes), `votes_only_nominator`
+  (the nominator's was the only yes, the player's included), `evil_nominations` (by
+  someone evil at case start), `evil_nominations_carried` (put on the block),
+  `evil_nominations_executed`, and the same three for good targets
+  (`evil_nominations_good_target`, `…_carried`, `…_executed`). The report adds a
+  "Vote shape" table per cell.
 - **Night-walkers:** `good_gift_walkers_executed` (a good night-walking gift hanged),
   `good_secret_walkers_executed` (Lovers or Sleepwalker hanged).
 - **Information:** `impaired_readings` (good readings that were false: poison,
