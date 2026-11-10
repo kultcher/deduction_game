@@ -212,7 +212,11 @@ class Roles:
 	## stands, by phase, before threat and crowd; the evening floor so it isn't trapped by
 	## its own schedule.
 	const HEXER = {"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08,
-		"own_work_penalty": 0.25, "evening_floor": 0.85}
+		"own_work_penalty": 0.25, "evening_floor": 0.85,
+		# Nov 10: in a free phase it may go where its preferred target is working; hexing with
+		# the Demonologist watching and fewer than three others there for cover is less likely
+		# (never in the evening of a day it hasn't hexed yet).
+		"seek_target_chance": 0.35, "watched_penalty": 0.3, "cover_needed": 3}
 	const BREATHSTEALER = {
 		"phase_probs_high": [0.3, 0.5, 1.0],
 		"phase_probs_low": [0.15, 0.3, 0.7],
@@ -840,6 +844,9 @@ class Workshop:
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4
+	## The share of a free phase a Hexer gives to seeking its target at the target's work
+	## (sim HEXER.seek_target_chance, Nov 10), as the solver models it.
+	const HEX_SEEK_SHARE = 0.25
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0

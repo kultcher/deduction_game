@@ -88,6 +88,7 @@ var sleepwalk_claims: Array = [] # who has said "I've been known to sleepwalk" (
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""
+var phase_player_loc = ""   # where the Demonologist spent the phase now ending (the Hexer's wariness)
 
 var game_over = false
 var winner = ""
@@ -658,6 +659,8 @@ func start_phase() -> void:
 			n.loc = n.work
 		else:
 			n.loc = _choose_idle_location(n)
+			if n.role == "daykiller" and n.is_evil():
+				n.loc = C.role_def("daykiller").free_location(self, n, n.loc, Evil)
 	_pre_pair()
 	Social.tavern_whispers(self)
 	for n in living():
@@ -824,6 +827,10 @@ func finish_evening_conversations(talked_id: String = "") -> void:
 
 ## Advance to the next day phase. Returns false at the end of Evening.
 func end_day_phase(talked_id: String = "") -> bool:
+	var hexer = living_with_role("daykiller")
+	if hexer != null:
+		C.role_def("daykiller").hex_decision(self, hexer, Evil)
+	phase_player_loc = ""
 	if phase == C.EVENING and _evening_chats_done_day == day:
 		pass
 	else:

@@ -552,9 +552,11 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 	var wsum: float = w[0] + w[1] + w[2]
 	var work: Dictionary = {}
 	var haunts: Dictionary = {}
+	var shifts: Dictionary = {}   # id -> work phases (public)
 	for p in view.get("people", []):
 		if str(p.get("work", "")) != "":
 			work[p.id] = str(p.work)
+		shifts[p.id] = p.get("work_phases", []).map(func(x): return int(x))
 	for c in cards:
 		if c.get("kind", "") != "context":
 			continue
@@ -609,8 +611,19 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 				var at_l: float = 0.0
 				var public_mass: float = 0.0
 				for p in range(3):
+					# A Hexer may seek out a target at work in its own free time (sim HEXER
+					# seek_target_chance): when the victim worked here this phase and this
+					# person was free and not seen elsewhere, some of their time goes here.
+					var seek: float = 0.0
+					if l == work.get(victim, "") and p in shifts.get(victim, []) and not (p in shifts.get(ids[i], [])):
+						var best_p: float = 0.0
+						for pl2 in DayPresence.PLACES:
+							best_p = maxf(best_p, DayPresence.at(table, ids[i], night, p, pl2))
+						if best_p < 0.999:
+							seek = Tuning.Workshop.HEX_SEEK_SHARE
 					for pl in DayPresence.PLACES:
 						var a: float = DayPresence.at(table, ids[i], night, p, pl) * (Tuning.Workshop.HEX_OWN_WORK_WEIGHT if pl == own else 1.0)
+						a = (1.0 - seek) * a + (seek if pl == l else 0.0)
 						public_mass += w[p] / wsum * a
 						if pl == l:
 							at_l += w[p] / wsum * a

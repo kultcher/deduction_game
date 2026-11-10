@@ -184,5 +184,44 @@ func _run() -> void:
 	gg.set_guess(b_id, "daykiller", 2)
 	_check(CaseMetrics.demon_guesses(gg.guesses) == [b_id], "a Hexer guess replaces a Demon guess on someone else")
 	_check(CaseMetrics.demon_guesses({"x": {"guess": "daykiller"}, "y": {"guess": "seer"}}) == ["x"], "a Hexer guess is a demon guess")
+	# The Hexer's day (Nov 10): out in the evening if it hasn't hexed; wary when watched.
+	var hg = Game.new()
+	hg.detailed_logging = false
+	var hsc = load("res://sim/script_def.gd").default_script()
+	hsc.demons = ["demon", "daykiller"]
+	hsc.forced = hsc.forced + ["daykiller"]
+	hg.new_case(54875, 7, hsc)
+	var hw = hg.w
+	var dk = hw.demon()
+	var Hex = C.role_def("daykiller")
+	var EvilM = load("res://sim/evil.gd")
+	_check(dk.role == "daykiller", "the forced Hexer is dealt")
+	hw.day = 2
+	hw.phase = C.EVENING
+	dk.hex_day = 1
+	var out_loc: String = Hex.free_location(hw, dk, "home", EvilM)
+	_check(out_loc in Hex.PUBLIC and not Hex.regulars(hw, out_loc).is_empty(), "an evening without a hex: it goes out to a public place with regulars (%s)" % out_loc)
+	dk.hex_day = 2
+	_check(Hex.free_location(hw, dk, "home", EvilM) == "home", "once it has hexed, its evening is its own")
+	var rates: Array = []
+	for watched in [false, true]:
+		var hits: int = 0
+		hw.phase = C.AFTERNOON
+		var place: String = ""
+		for l in Hex.PUBLIC:
+			if not Hex.regulars(hw, l).is_empty() and l != dk.work:
+				place = l
+				break
+		for n in hw.npcs:
+			n.loc = "home"
+		dk.loc = place
+		for i in range(300):
+			dk.hex_day = 1
+			hw.phase_player_loc = place if watched else ""
+			Hex.hex_decision(hw, dk, EvilM)
+			if dk.hex_day == 2:
+				hits += 1
+		rates.append(hits)
+	_check(rates[1] < rates[0] - 40, "watched with no cover, it hexes less often (%d vs %d of 300)" % [rates[1], rates[0]])
 	print("%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
