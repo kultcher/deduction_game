@@ -8,6 +8,7 @@ signal layout_changed
 signal cards_dropped(numbers: Array)     # board cards dragged onto the Workshop
 signal removal_requested(id: String)     # a card dragged out past the left edge
 signal field_requested(id: String, field: String)  # a field on a card was clicked
+signal group_removal_requested(ids: Array)   # Delete with a box selection (Nov 10)
 const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -23,6 +24,11 @@ var drag = ""
 var panning = false
 var last_mouse = Vector2.ZERO
 var drag_out = false   # the dragged card is past the left edge: release removes it
+## Box selection (Nov 10): Shift-drag on empty canvas draws a box; the cards inside move
+## together when one is dragged, and Delete removes them. No group linking.
+var group: Array = []
+var box_from = null     # screen point where the box started, or null
+var box_to: Vector2 = Vector2.ZERO
 var fields: Dictionary = {}   # id -> [{rect, field}] clickable fields, in screen space
 var tips: Array = []          # [{rect, text}] tooltips for drawn badges and fields
 var answer_buttons: Dictionary = {}   # id -> screen rect of the card's Details/Assume button
@@ -186,6 +192,13 @@ func _draw() -> void:
 		draw_string(font, Vector2(lrect.position.x + 6.0, lrect.position.y + lfs + 1.0), lbl["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, lfs, lbl["color"])
 	if linking != "" and hit.has(linking):
 		draw_line(hit[linking].get_center(), get_local_mouse_position(), Color("f3d484"), 2, true)
+	for gid in group:
+		if hit.has(gid):
+			draw_rect(hit[gid].grow(5.0), Color("7fc4ff"), false, 2.0)
+	if box_from != null:
+		var br := Rect2(box_from, Vector2.ZERO).expand(box_to)
+		draw_rect(br, Color(0.5, 0.77, 1.0, 0.12))
+		draw_rect(br, Color("7fc4ff"), false, 1.5)
 	if drag_out:
 		draw_rect(Rect2(Vector2.ZERO, Vector2(10, size.y)), Color(0.85, 0.3, 0.25, 0.9))
 		draw_string(font, Vector2(18, 30), "Release to remove from the Workshop", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 0.75, 0.7))
@@ -398,6 +411,17 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 			accept_event()
 			return
+		if not event.pressed and box_from != null and event.button_index == MOUSE_BUTTON_LEFT:
+			var br := Rect2(box_from, Vector2.ZERO).expand(event.position)
+			group = []
+			for gid in hit:
+				var nk: String = str(model.nodes[gid].get("kind", ""))
+				if br.intersects(hit[gid]) and nk != "":
+					group.append(gid)
+			box_from = null
+			queue_redraw()
+			accept_event()
+			return
 		if not event.pressed:
 			var removing: String = drag if drag_out and event.button_index == MOUSE_BUTTON_LEFT else ""
 			if drag != "" or panning:
@@ -417,6 +441,13 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
+		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "" and event.shift_pressed:
+			box_from = event.position
+			box_to = event.position
+			accept_event()
+			return
+		if event.button_index == MOUSE_BUTTON_LEFT and not (chosen in group):
+			group = []
 		if event.button_index == MOUSE_BUTTON_RIGHT and chosen != "":
 			context_requested.emit(chosen)
 		elif event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and chosen == ""):
@@ -439,17 +470,31 @@ func _gui_input(event: InputEvent) -> void:
 				drag = chosen
 		accept_event()
 	elif event is InputEventMouseMotion:
-		if panning:
+		if box_from != null:
+			box_to = event.position
+		elif panning:
 			pan += event.position - last_mouse
 		elif drag != "":
-			var node: Dictionary = model.nodes[drag]
-			var next = Vector2(node.at[0], node.at[1]) + (event.position - last_mouse) / zoom
-			node.at = [next.x, next.y]
-			drag_out = event.position.x < 0.0
+			var movers: Array = group if drag in group else [drag]
+			for mid in movers:
+				if not model.nodes.has(mid):
+					continue
+				var node: Dictionary = model.nodes[mid]
+				var next = Vector2(node.at[0], node.at[1]) + (event.position - last_mouse) / zoom
+				node.at = [next.x, next.y]
+			drag_out = event.position.x < 0.0 and movers.size() == 1
 		last_mouse = event.position
 		queue_redraw()
 	elif event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		linking = ""
+		group = []
+		box_from = null
+		queue_redraw()
+	elif event is InputEventKey and event.pressed and event.keycode in [KEY_DELETE, KEY_BACKSPACE] and not group.is_empty():
+		var ids_g: Array = group.duplicate()
+		group = []
+		group_removal_requested.emit(ids_g)
+		accept_event()
 		queue_redraw()
 
 func fit_case(all_evidence: bool = false) -> void:

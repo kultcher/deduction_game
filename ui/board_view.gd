@@ -261,12 +261,43 @@ func _draw() -> void:
 		if not row_y.has(row) or not col_x.has(col):
 			continue
 		var idxs: Array = by_cell[key]
-		for k in range(idxs.size()):
-			var it: Dictionary = lay["items"][idxs[k]]
-			if lay["view"] == "places":
-				_draw_dot(it, row, col, k)
-			else:
-				_draw_card_item(it, row, col, k)
+		if lay["view"] == "places":
+			# Conversations bridge the dots they're about; everything else takes a slot.
+			var slot: int = 0
+			var drawn: Dictionary = {}   # who -> dot centre (world), first dot per person
+			var convos: Array = []
+			for k in range(idxs.size()):
+				var it: Dictionary = lay["items"][idxs[k]]
+				if it["mark"] == "convo":
+					convos.append(it)
+					continue
+				_draw_dot(it, row, col, slot)
+				if it["who"] != "" and not drawn.has(it["who"]):
+					drawn[it["who"]] = _dot_center(row, col, slot)
+				slot += 1
+			var done: Dictionary = {}
+			var stacked: Dictionary = {}   # anchor -> count: several reports of one talk fan out
+			for it2 in convos:
+				if done.has(it2["card"]):
+					continue
+				done[it2["card"]] = true
+				var subj: Array = g.board[it2["card"] - 1].get("subject", [])
+				var anchors: Array = subj.filter(func(p): return drawn.has(p)).map(func(p): return drawn[p])
+				var at: Vector2
+				if anchors.size() >= 2:
+					at = (anchors[0] + anchors[1]) / 2.0 - Vector2(0, DOT * 0.5)
+				elif anchors.size() == 1:
+					at = anchors[0] + Vector2(DOT * 0.42, -DOT * 0.42)
+				else:
+					at = _dot_center(row, col, slot)
+					slot += 1
+				var ak: String = "%d,%d" % [int(at.x), int(at.y)]
+				var nth: int = int(stacked.get(ak, 0))
+				stacked[ak] = nth + 1
+				_draw_convo(it2, at + Vector2(DOT * 0.56 * nth, 0))
+		else:
+			for k in range(idxs.size()):
+				_draw_card_item(lay["items"][idxs[k]], row, col, k)
 	# Deductions pinned to this view.
 	for n in lay.get("pinned", []):
 		_draw_pinned(n)
@@ -386,6 +417,32 @@ func _icon_for(card: Dictionary, it: Dictionary):
 	if role != "" and C.ROLES.has(role):
 		return UITheme.tex("ui/roles/" + role, 0.1)
 	return null
+
+func _dot_center(row: String, col: String, k: int) -> Vector2:
+	var per_line = maxi(1, int((COL_W - 8.0) / (DOT + 6.0)))
+	return Vector2(col_x[col] + 4.0 + (k % per_line) * (DOT + 6.0) + DOT / 2.0 + 2.0, row_y[row] + ROW_PAD / 2.0 + (k / per_line) * (DOT + 18.0) + DOT / 2.0)
+
+## A conversation you saw or were told of: a small node between the two people's dots
+## (world position `at`), pointing at the conversation card.
+func _draw_convo(it: Dictionary, at: Vector2) -> void:
+	var c = to_screen(at)
+	var rad = DOT * 0.26 * zoom
+	var hit = Rect2(c - Vector2(rad, rad), Vector2(rad, rad) * 2.0)
+	if not hit.intersects(Rect2(Vector2.ZERO, size)):
+		return
+	var n: int = it["card"]
+	var fade = UITheme.card_color(g.board[n - 1])
+	_items.append({"rect": hit, "n": n})
+	var firsthand: bool = g.board[n - 1].get("source", "") in ["player", "evidence", ""]
+	draw_circle(c + Vector2(1.0, 1.5) * zoom, rad, Color(0, 0, 0, 0.4) * fade)
+	draw_circle(c, rad, (UITheme.color("paper") if firsthand else UITheme.color("bg")) * fade)
+	draw_arc(c, rad, 0, TAU, 20, UITheme.color("string") * fade, maxf(1.5, 2.5 * zoom))
+	# Two speech dots: people talking.
+	var dr: float = maxf(1.2, rad * 0.18)
+	draw_circle(c + Vector2(-rad * 0.32, 0), dr, UITheme.color("ink") * fade)
+	draw_circle(c + Vector2(rad * 0.32, 0), dr, UITheme.color("ink") * fade)
+	if n == state.selected_card or n == _hover:
+		draw_arc(c, rad + 3 * zoom, 0, TAU, 20, UITheme.color("string") if n == state.selected_card else UITheme.color("accent"), 2.0)
 
 func _draw_dot(it: Dictionary, row: String, col: String, k: int) -> void:
 	var per_line = maxi(1, int((COL_W - 8.0) / (DOT + 6.0)))
