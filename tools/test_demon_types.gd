@@ -166,6 +166,41 @@ func _run() -> void:
 	fm_far.hex_kills[0].shares = [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
 	_check(LiveActivity.score(w0, fm_far) < LiveActivity.score(w0, fm), "a demon nowhere near the victim's places is a weaker Hexer world")
 
+	# A Scion succession (Codex P2, #111): person 0 was the Hexer, executed on day 2; person 1
+	# rose. The night-1 kill was 0's hex, so in the succession branch it scores against 0.
+	var ws: Dictionary = {"evil": 0b0011, "demon": 1}
+	var fs: Dictionary = fm.duplicate(true)
+	fs["hex_successions"] = [{"exec_day": 2, "executed_idx": 0, "alive_demon_mask": 0b1110}]
+	var hex_for = func(d: int) -> float:
+		var m: float = 0.15
+		for p in range(2):
+			var regs: int = 0
+			for j in range(4):
+				if (int(hk[0].reg_masks[p]) >> j) & 1 and not (0b0011 >> j) & 1:
+					regs += 1
+			m += float(hk[0].shares[p][d]) * 2 / regs
+		return m
+	var direct_day: float = LiveActivity.score(ws, fd)
+	var expect_s: float = 0.5 * LiveActivity.score(ws, fw) + 0.5 * (0.5 * direct_day * hex_for.call(1) + 0.5 * direct_day * hex_for.call(0))
+	_check(_close(LiveActivity.score(ws, fs), expect_s), "a succession scores earlier hexes against the executed demon in its branch (%.5f)" % expect_s)
+	_check(LiveActivity.score(ws, fs) > LiveActivity.score(ws, fm), "a successor away from an earlier victim's places no longer sinks the succession world")
+	var fs_late: Dictionary = fm.duplicate(true)
+	fs_late["hex_successions"] = [{"exec_day": 1, "executed_idx": 0, "alive_demon_mask": 0b1110}]
+	_check(_close(LiveActivity.score(ws, fs_late), LiveActivity.score(ws, fm)), "kills after the execution stay the successor's")
+	_check(_close(LiveActivity.score(w0, fs), LiveActivity.score(w0, fm)), "worlds where the executed person isn't evil ignore the succession")
+	var hv: Dictionary = _view(["demon", "daykiller"])
+	hv.timeline["executions"] = {"2": ["a"]}
+	var succ: Array = LiveActivity.hex_successions(hv, ["a", "b", "c", "d", "e", "f", "g"], [{"night": 1}, {"night": 2}])
+	_check(succ.size() == 1 and succ[0].executed_idx == 0 and succ[0].exec_day == 2, "an execution after a hex kill is a possible succession")
+	_check(LiveActivity.hex_successions(hv, ["a", "b", "c", "d", "e", "f", "g"], [{"night": 2}]).is_empty(), "with no earlier kill there's nothing to split")
+
+	# Daytime evidence alone (Codex P2, #111): a Whereabouts day log reaches the Hexer factor.
+	var day_log: Dictionary = {"id": "wl1", "fact_id": "wl1", "kind": "watch_log", "source": "player", "subject": "", "subjects": [],
+		"night": -1, "data": {"watches": [{"day": 1, "phase": "morning", "block": "square", "at": {}}]}, "role": "", "observed_at": {"day": 1, "phase": "afternoon"}}
+	_check(not LiveActivity.factors(_view(["demon", "daykiller"]), [day_log], {}).is_empty(), "a day log alone gives a movement factor with a Hexer possible")
+	_check(LiveActivity.factors(_view(["demon"]), [day_log], {}).is_empty(), "and none without one")
+	_check(LiveActivity.has_day_evidence([day_log]) and not LiveActivity.has_day_evidence([_sighting("s9", "a", 1, "square")]), "day evidence is the day log and daytime reports")
+
 	# The bridge hands the script's demons to the solver.
 	var g = Game.new()
 	g.detailed_logging = false
@@ -184,5 +219,44 @@ func _run() -> void:
 	gg.set_guess(b_id, "daykiller", 2)
 	_check(CaseMetrics.demon_guesses(gg.guesses) == [b_id], "a Hexer guess replaces a Demon guess on someone else")
 	_check(CaseMetrics.demon_guesses({"x": {"guess": "daykiller"}, "y": {"guess": "seer"}}) == ["x"], "a Hexer guess is a demon guess")
+	# The Hexer's day (Nov 10): out in the evening if it hasn't hexed; wary when watched.
+	var hg = Game.new()
+	hg.detailed_logging = false
+	var hsc = load("res://sim/script_def.gd").default_script()
+	hsc.demons = ["demon", "daykiller"]
+	hsc.forced = hsc.forced + ["daykiller"]
+	hg.new_case(54875, 7, hsc)
+	var hw = hg.w
+	var dk = hw.demon()
+	var Hex = C.role_def("daykiller")
+	var EvilM = load("res://sim/evil.gd")
+	_check(dk.role == "daykiller", "the forced Hexer is dealt")
+	hw.day = 2
+	hw.phase = C.EVENING
+	dk.hex_day = 1
+	var out_loc: String = Hex.free_location(hw, dk, "home", EvilM)
+	_check(out_loc in Hex.PUBLIC and not Hex.regulars(hw, out_loc).is_empty(), "an evening without a hex: it goes out to a public place with regulars (%s)" % out_loc)
+	dk.hex_day = 2
+	_check(Hex.free_location(hw, dk, "home", EvilM) == "home", "once it has hexed, its evening is its own")
+	var rates: Array = []
+	for watched in [false, true]:
+		var hits: int = 0
+		hw.phase = C.AFTERNOON
+		var place: String = ""
+		for l in Hex.PUBLIC:
+			if not Hex.regulars(hw, l).is_empty() and l != dk.work:
+				place = l
+				break
+		for n in hw.npcs:
+			n.loc = "home"
+		dk.loc = place
+		for i in range(300):
+			dk.hex_day = 1
+			hw.phase_player_loc = place if watched else ""
+			Hex.hex_decision(hw, dk, EvilM)
+			if dk.hex_day == 2:
+				hits += 1
+		rates.append(hits)
+	_check(rates[1] < rates[0] - 40, "watched with no cover, it hexes less often (%d vs %d of 300)" % [rates[1], rates[0]])
 	print("%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)

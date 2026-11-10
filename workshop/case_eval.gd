@@ -1353,7 +1353,7 @@ static func _people(view: Dictionary, cc: Dictionary, base: PackedFloat64Array, 
 	return out
 
 static func _rivals(view: Dictionary, people: Dictionary, conclusion: Dictionary, limit: int = 3) -> Array:
-	var ids: Array = people.keys().filter(func(id): return id != conclusion.get("target", ""))
+	var ids: Array = people.keys().filter(func(id): return id != conclusion.get("target", conclusion.get("a", "")))
 	ids.sort_custom(func(x, y): return people[x].posterior > people[y].posterior)
 	return ids.slice(0, limit).map(func(id): return {"id": id, "posterior": people[id].posterior, "shift": people[id].posterior - people[id].prior})
 

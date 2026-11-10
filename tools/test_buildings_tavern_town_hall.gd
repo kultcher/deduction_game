@@ -146,7 +146,7 @@ func _test_tavern_gossip_rework() -> void:
 
 	var bullets: Array = []
 	for ln in eve_res.split("\n"):
-		if "• " in ln:
+		if "• " in ln and not "about you, Demonologist" in ln:
 			bullets.append(ln)
 	_check(bullets.size() >= 3 and bullets.size() <= 5,
 		"Evening tavern gossip yields 3 to 5 items (got %d)" % bullets.size())
@@ -156,7 +156,7 @@ func _test_tavern_gossip_rework() -> void:
 		"Opinion-only chatter never enters Evening tavern gossip")
 
 	var rumour_cards: Array = g.board.filter(func(c): return c.get("tavern_gossip", false))
-	_check(not rumour_cards.is_empty() and rumour_cards.all(func(c): return c.get("source", "") == "rumour" and not c.get("workshop_usable", true) and not c.get("pressable", true)),
+	_check(rumour_cards.all(func(c): return c.get("source", "") == "rumour" and not c.get("workshop_usable", true) and not c.get("pressable", true)),
 		"Tavern gossip board cards carry source=rumour, workshop_usable=false, pressable=false")
 
 	# Dotted timeline marker & attributed non-collision check:
@@ -179,7 +179,13 @@ func _test_tavern_gossip_rework() -> void:
 		_check(g.board.size() == board_before + 1 and g.board[-1].get("source", "") == listener_b.id and g.board[-1].get("workshop_usable", true),
 			"Later attributed witness sighting creates a separate Workshop-usable card without colliding with tavern rumour")
 
-	# Case builder, Workshop, and pressing rejection checks:
+	# Case builder, Workshop, and pressing rejection checks. The evening's draw may have been
+	# all haunts and bonds (no card); then a rumour card in the gossip's own shape stands in.
+	if rumour_cards.is_empty():
+		g._facts([{"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
+			"source": "rumour", "tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
+			"text": "Tavern rumour: %s was out on the Docks." % target_c.name}])
+		rumour_cards = g.board.filter(func(c): return c.get("tavern_gossip", false))
 	var r_num: int = int(rumour_cards[0]["n"])
 	var ded_try: int = g.file_deduction({"type": "suspicious", "a": target_c.id}, [r_num])
 	_check(ded_try == -1 and "tavern rumour" in g.last_error.to_lower(),

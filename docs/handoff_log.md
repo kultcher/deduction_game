@@ -27,6 +27,80 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-10 afternoon, Claude-Lantern: why breakdown, what challenges and the view did (`claude/why-challenge-view`)
+
+Base: main `07cbbe6`. Debug and logging only: no belief, vote or RNG changes; golden
+should be identical. Next actor: Michael (review), then whoever uses it for Phase 1 checks.
+
+- **Three new blocks in the listener breakdown** (`game/workshop_why.gd`; the Workshop's
+  recorded breakdowns, the `workshop_why` dev-log row and `explain_case --why`):
+  - **Each challenge the case attached:** how the listener graded it (agreement, the
+    multiplier on the reading), and the subject's and the challenged reader's chance of
+    being evil with the challenge removed.
+  - **Citing:** each cited reading whose reliability changed because the case's own copy
+    counts, and the subject with those readings heard as before.
+  - **Change of view:** which cards left and entered what they read, the subject with the
+    old view kept, and up to four people the case didn't name who moved by 5 points or
+    more, each with their old-view value.
+- **Cost:** one more union evaluation per challenge, one for citing, one for the view.
+- **12926, day 4, "Kiran is evil"**, replayed at `75b4c8e`: the view swap moved people the
+  case didn't name far more than its subject. Edda: Isolde 12% -> 80%, Nisha 89% -> 23%,
+  Fenwick 87% -> 44%, all back to their old values with her old view kept. Fenwick: Lian
+  96% -> 52%. Three of four listeners agreed with the "lying" challenge (0.15 to 0.74);
+  for Hollis it took Kiran from 78% to 45%.
+- Tests: `tools/test_workshop_why.gd` (new `_extras`).
+
+## 2026-11-10 morning, Claude-Lantern: the "why" breakdown (`claude/workshop-why`)
+
+A new session, at Michael's request (Nov 10, 00:05): a debug and logging readout of why an
+argument moved a listener as far as it did. No dialogue hookup, no behaviour change.
+
+- **Base:** main at `b40fab1` (#111 merged; Bailiff's #115-#117 are on main).
+- **Status:** see the PR for the suite and golden results.
+- **New:** `workshop/case_why.gd` (the evidence half: the premise chain, the surviving
+  alternatives, and per card its status, world share, the model's `q` and leave-one-out),
+  `game/workshop_why.gd` (the belief half for a real listener: the suspicion chain from
+  "settled outright" to "applied", the biggest loss, the vote bar), `tools/test_workshop_why.gd`.
+- **Where it shows:** the Workshop's Debug menu (three new items), `g.workshop_why`
+  (off by default; when on, each presentation logs a `workshop_why` entry per listener),
+  and `tools/explain_case.gd --why`. Described in `docs/DECISION_INSPECTOR.md`.
+- **Touched outside the new files:** `game/game.gd` (two vars), `game/game_presentation.gd`
+  (the recording hook in `_evaluate_deduction_inner`, behind the flag),
+  `ui/live_case_workshop.gd` (the menu items), `tools/explain_case.gd` (`--why`),
+  `tools/ci_fast_suites.txt`.
+- **It reads the model through underscore functions** (`Shared._doubt_adjusted`,
+  `Shared._evaluate_adjusted`, `Jury._eval_listener`, `Jury._card_trust`,
+  `CaseEval._odds`) and re-states the vote need and nomination bar from `_vote_impl` and
+  `_good_nomination_impl`. `test_workshop_why` pins both: the applied step must match what
+  the presentation did, and the vote margin must match a real vote's.
+- **Things the readout showed** (for Tally and Quill; nothing here is changed). Playtest
+  12926 replayed on its own commit (`75b4c8e`), plus bot games on main:
+  - **Re-presenting cards the town already holds can lower suspicion of the subject, by
+    two routes** (corrected Nov 10 afternoon; this entry first blamed attention for all of
+    it). 12926, day 4, "Kiran is evil" (three cards, all already public, with a "lying"
+    challenge on Kiran's own reading):
+    - Hollis 0.45 -> 0.25: he accepted the challenge. Accepting sets the reading aside, so
+      its clash with his own confessions stopped counting against Kiran. Without the
+      challenge he rises. Not attention: reading every card he still falls.
+    - Dorian 0.17 -> 0.05: he rejected the challenge. The focused pass swapped five cards
+      at the edge of his 12-card view; with his old view kept, nothing moves.
+    - Not yet attributed to either route: day 2, "Lian is evil" (four of six listeners
+      fell by 0.10 to 0.30) and seed 900, day 2 (Jory 0.56 -> 0.27).
+    - Discussion and direction: project doc `claude/belief-model-direction-2026-11-10.md`.
+  - **"Nothing fresh" lets the voiced stance part from the belief.** With no new card the
+    reply keeps the scoped stance (`_present`: `fresh.is_empty()`), so Dorian said the case
+    "changes how I see Kiran" while his suspicion of Kiran fell, and then voted no.
+  - **The test juror hears every card at full weight; listeners don't.** The preview's
+    strength is the ceiling, not a forecast.
+  - **World share against `q`:** a Clerk pair held in 93% of the worlds where the Clerk
+    is honest, against the fixed `q` of 0.5 (the evidence catalog's finding 2, now
+    measured per card).
+- **Next:** Michael reads a breakdown on a real playtest log (`explain_case --why`, on the
+  log's own commit). Wiring the biggest loss and the strongest alternative into dialogue is
+  a later step.
+
+---
+
 ## 2026-11-10 early, Claude-Quill: evidence catalog, measured pass (`claude/evidence-measured`, stacked on #111 and #114)
 
 Base: `claude/day-killer` (`75b4c8e`), as Michael asked, since it changes movement. Adds
@@ -51,17 +125,6 @@ a wiped listener through the game's own belief refresh. No game code changed. Fi
 Also removed `tools/_probe_d.gd`, a stray timing probe of mine that came in with recency
 (`9a09894`), here and on #114.
 
-## 2026-11-09 night, Claude-Quill: evidence catalog, first pass (`claude/evidence-catalog`, from main `407069d`)
-
-Docs only. `docs/evidence_catalog.md` lists every kind of evidence (each gift's reading,
-role and gift statements, whereabouts, crime scenes, public behaviour, profile context,
-player premises, distorters) and, for each, how the solver reads it, how strong it is,
-what it needs and what it interacts with. Code pointers are in
-`docs/evidence_catalog_code.md`. **Strengths are judged from the code, not measured**;
-Michael asked for this pass first, and a measured pass from tests comes next. Six findings
-at the end of the catalog to check, including: poison isn't a world state; the role-table
-readings (Seer, Clerk, Archivist, Gravedigger, Executor, Registrar, Monitor) use a fixed
-`q` of 0.5; and the Lamplighter's `q` (CaseEval says unchecked, the movement code uses it).
 ## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
 
 - **Status:** green.
@@ -102,6 +165,17 @@ readings (Seer, Clerk, Archivist, Gravedigger, Executor, Registrar, Monitor) use
 - **Next:** Michael playtests a forced Hexer. Then tune the hex odds and the floor.
 
 ---
+## 2026-11-09 night, Claude-Quill: evidence catalog, first pass (`claude/evidence-catalog`, from main `407069d`)
+
+Docs only. `docs/evidence_catalog.md` lists every kind of evidence (each gift's reading,
+role and gift statements, whereabouts, crime scenes, public behaviour, profile context,
+player premises, distorters) and, for each, how the solver reads it, how strong it is,
+what it needs and what it interacts with. Code pointers are in
+`docs/evidence_catalog_code.md`. **Strengths are judged from the code, not measured**;
+Michael asked for this pass first, and a measured pass from tests comes next. Six findings
+at the end of the catalog to check, including: poison isn't a world state; the role-table
+readings (Seer, Clerk, Archivist, Gravedigger, Executor, Registrar, Monitor) use a fixed
+`q` of 0.5; and the Lamplighter's `q` (CaseEval says unchecked, the movement code uses it).
 
 ## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
 

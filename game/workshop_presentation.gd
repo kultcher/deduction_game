@@ -202,13 +202,18 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			Mind.ledger_hear(g.w, n, eid, [], maxf(0.0, agreement), Mind.support_ref(card), meta)
 	var voiced_stance: String = assessment.stance
 	var already_aligned: bool = false
+	var fell: bool = false  # the case moved their belief away from the claim
 	if not repeated and text == assessment.response and stance_subject != "" and g.w.by_id.has(stance_subject):
 		var after_susp: float = n.suspicion.get(stance_subject, 0.1)
 		already_aligned = stance_before <= 0.15 if headline.conclusion.type in ["good", "marked"] else stance_before >= 0.48
 		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text, fresh.is_empty())
 		if headline.conclusion.type in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
 			var b_stance: String = belief_stance(headline.conclusion.type, stance_before, after_susp)
-			voiced_stance = assessment.stance if (b_stance == "reject" and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
+			# Nothing new (or already convinced) keeps an accepting reply, but only if their belief
+			# didn't move away: a case that lowered their suspicion isn't voiced as agreement
+			# (Dorian, playtest 12926 day 4: "it changes how I see Kiran", then a no vote).
+			fell = belief_toward(headline.conclusion.type, stance_before, after_susp) <= -STANCE_MOVE.partial
+			voiced_stance = assessment.stance if (b_stance == "reject" and not fell and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
 	if not state.has("rewarded_facts"):
 		state.rewarded_facts = {}
 	for id in snapshot.selected:
@@ -327,7 +332,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	elif repeated_same_audience:
 		spoken_line = Presentations.render_repeat(n, venue != "private", base_canonical, tic_mem)
 	else:
-		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned, fresh.is_empty(), base_canonical, tic_mem)
+		spoken_line = Presentations.render_workshop_reply(g.w, n, root.conclusion, targets, assessment, plan.prepared.view, snapshot, voiced_stance, already_aligned and not fell, fresh.is_empty() and not fell, base_canonical, tic_mem)
 		if hub_voiced_tail != "":
 			spoken_line["text"] = str(spoken_line["text"]) + Mind.Dialogue.apply_tics(n.id, hub_voiced_tail, tic_mem)
 	var descriptor_special: String = text if trapped_out else base_canonical
@@ -455,8 +460,12 @@ static func _filing_rise(g, n, listener_key: String, key: String, target_id: Str
 	var without_e: Dictionary = Shared.evaluate(without, n.suspicion, doubt, doubt).get("effects", {}).get(target_id, {})
 	return float(with_e.get("requested", 0.0)) - float(without_e.get("requested", 0.0))
 
+## How far the belief moved toward the claim (negative: away from it).
+static func belief_toward(kind: String, before: float, after: float) -> float:
+	return (before - after) if kind in ["good", "marked"] else (after - before)
+
 static func belief_stance(kind: String, before: float, after: float) -> String:
-	var toward: float = (before - after) if kind in ["good", "marked"] else (after - before)
+	var toward: float = belief_toward(kind, before, after)
 	if toward >= STANCE_MOVE.accept:
 		return "accept"
 	return "partial" if toward >= STANCE_MOVE.partial else "reject"
@@ -486,7 +495,7 @@ static func _belief_stance_text(g, n, kind: String, subject: String, before: flo
 			lead = "it moves me a little on %s." % name
 		_:
 			var already: bool = before <= 0.15 if kind in ["good", "marked"] else before >= 0.48
-			if nothing_new:
+			if nothing_new and belief_toward(kind, before, after) > -STANCE_MOVE.partial:
 				lead = "I'd already taken that into account."
 			elif already:
 				lead = "I'd already come to that about %s." % name

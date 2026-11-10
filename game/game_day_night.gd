@@ -524,6 +524,7 @@ static func _learn_haunt(g, n, l: String, source: String, text: String, via: Str
 
 
 static func _end_phase(g, talked_id: String) -> void:
+	g.w.phase_player_loc = g.loc
 	g.moved = false
 	g.free_move_used = false
 	g.loc = ""

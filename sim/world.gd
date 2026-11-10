@@ -88,6 +88,7 @@ var sleepwalk_claims: Array = [] # who has said "I've been known to sleepwalk" (
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""
+var phase_player_loc = ""   # where the Demonologist spent the phase now ending (the Hexer's wariness)
 
 var game_over = false
 var winner = ""
@@ -427,10 +428,13 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		n.occupation = occ["title"]
 		n.work = occ["work"]
 		n.work_phases = occ["shifts"].duplicate()
-		if chance(Tuning.Setup.EXTRA_WORK_SHIFT_CHANCE):
+		# One shift each (Nov 10). The old extra-shift roll still draws, so the rest of the
+		# setup (homes, haunts, roles) deals exactly as before; the shift is just not added.
+		if chance(Tuning.Setup.LEGACY_EXTRA_SHIFT_DRAW):
 			var extra = pick([0, 1, 2].filter(func(p): return not (p in n.work_phases)))
-			n.work_phases.append(extra)
-			n.work_phases.sort()
+			if Tuning.Setup.EXTRA_WORK_SHIFT_CHANCE > 0.0:
+				n.work_phases.append(extra)
+				n.work_phases.sort()
 		n.home_block = homes[i]
 		# Habits: two favourite spots for idle hours (not their workplace).
 		n.haunts = shuffled(["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"].filter(func(x): return x != n.work)).slice(0, 2)
@@ -558,6 +562,10 @@ func _assign_secret_mod() -> void:
 			return
 	var a = goods[0]
 	a.secret_mod = k
+	if k == "muddler":
+		# A Muddler only matters if they pass things on (Case 12926: a private Muddler muddled
+		# nothing), so they're at least a fair gossip.
+		a.traits["gossip"] = maxf(float(a.traits.get("gossip", 0.0)), Tuning.Setup.MUDDLER_GOSSIP_FLOOR)
 	if k == "lovers":
 		var b = goods[1]
 		b.secret_mod = "lovers"
@@ -658,6 +666,8 @@ func start_phase() -> void:
 			n.loc = n.work
 		else:
 			n.loc = _choose_idle_location(n)
+			if n.role == "daykiller" and n.is_evil():
+				n.loc = C.role_def("daykiller").free_location(self, n, n.loc, Evil)
 	_pre_pair()
 	Social.tavern_whispers(self)
 	for n in living():
@@ -824,6 +834,10 @@ func finish_evening_conversations(talked_id: String = "") -> void:
 
 ## Advance to the next day phase. Returns false at the end of Evening.
 func end_day_phase(talked_id: String = "") -> bool:
+	var hexer = living_with_role("daykiller")
+	if hexer != null:
+		C.role_def("daykiller").hex_decision(self, hexer, Evil)
+	phase_player_loc = ""
 	if phase == C.EVENING and _evening_chats_done_day == day:
 		pass
 	else:

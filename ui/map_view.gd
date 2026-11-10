@@ -12,6 +12,7 @@ extends Control
 signal clicked(kind, id)
 
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const UITheme = preload("res://ui/theme.gd")
 
 # Layout in a virtual 1000 x 700 space. The Square sits in the middle, joined to the
@@ -303,6 +304,7 @@ func _draw() -> void:
 			mid += Vector2(18, -10)
 			_draw_art(lamp, _r(Rect2(mid - Vector2(10, 48), Vector2(20, 48))), "contain", Color(1, 1, 1) if not night else Color(1, 0.95, 0.75))
 	var unseen_badges: Array = []
+	var action_markers: Array = []
 	# Blocks.
 	for b in BLOCK_RECTS:
 		var R: Rect2 = _r(_block_rect(b))
@@ -336,6 +338,9 @@ func _draw() -> void:
 				sign_r = _sign(font, sign_txt, Vector2(drawn.get_center().x, drawn.end.y - 4), _fs(11), here_l, false)
 			elif here_l:
 				draw_rect(drawn.grow(2), UITheme.color("accent"), false, 2.0)
+			var marker: String = _action_marker(l)
+			if marker != "":
+				action_markers.append({"art": marker, "at": Vector2(drawn.get_center().x, drawn.position.y + drawn.size.y * 0.25), "loc": l})
 			# Someone's there you can't see yet: a count, not a name.
 			var unseen = g.unseen_at_ui(l) if g.state in ["day", "talk", "approach"] else 0
 			if unseen > 0:
@@ -390,6 +395,9 @@ func _draw() -> void:
 	if zoom_block != "": _label_obstacles.append(Rect2(0, 0, 150, 46))
 	# People.
 	_draw_people(font)
+	# Building actions open now (tavern gossip, Town Hall records), over the building.
+	for mk in action_markers:
+		_draw_action_marker(font, mk)
 	# Draw unseen (+N) location badges above standees so they are never tucked behind sprites.
 	for bdg in unseen_badges:
 		var bc: Vector2 = bdg["center"]
@@ -415,6 +423,37 @@ func _draw() -> void:
 		var tr = Rect2(Vector2(8, size.y - 32), Vector2(minf(size.x - 16, tw), 26))
 		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 3, 4), tr)
 		draw_string(font, tr.position + Vector2(9, 18), t2, HORIZONTAL_ALIGNMENT_LEFT, tr.size.x - 12, 16, UITheme.color("ink"))
+
+## A building's action marker while it's open: tavern gossip in the evening, the Town Hall's
+## records in the morning and afternoon while reads are left. "" when none.
+func _action_marker(l: String) -> String:
+	if g == null or g.state != "day" or g.w.game_over:
+		return ""
+	if l == "tavern" and g.w.phase == C.EVENING:
+		return "ui/map_markers/tavern_gossip"
+	if l == "town_hall" and g.w.phase in [C.MORNING, C.AFTERNOON] and g.w.town_hall_uses_left > 0:
+		return "ui/map_markers/town_hall_records"
+	return ""
+
+func _draw_action_marker(font, mk: Dictionary) -> void:
+	var t = UITheme.tex(mk.art, 0.25)
+	if t == null:
+		return
+	var h: float = maxf(40.0, 64.0 * _scale)
+	var wdt: float = h * t.get_width() / t.get_height()
+	var r := Rect2(mk.at - Vector2(wdt / 2.0, h), Vector2(wdt, h))
+	# A soft shadow so it reads over the building art.
+	draw_circle(Vector2(r.get_center().x, r.end.y - 2), wdt * 0.22, Color(0, 0, 0, 0.25))
+	draw_texture_rect(t, r, false)
+	var tip: String = "Tavern gossip: listen to the town's talk this evening" if mk.loc == "tavern" else "Town Hall records: %d of %d reads left" % [g.w.town_hall_uses_left, Tuning.Setup.TOWN_HALL_USES_PER_CASE]
+	_hits.push_front({"rect": r, "kind": "location", "id": mk.loc, "label": tip, "hint": "click to go there" if not g.moved else ""})
+	if mk.loc == "town_hall":
+		var txt: String = "%d/%d" % [g.w.town_hall_uses_left, Tuning.Setup.TOWN_HALL_USES_PER_CASE]
+		var fs: int = maxi(13, _fs(15))
+		var tw: float = font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 10
+		var pill := Rect2(Vector2(r.end.x - tw * 0.4, r.position.y - 2), Vector2(tw, fs + 6))
+		draw_style_box(UITheme.flat(UITheme.color("paper"), UITheme.color("border"), 1, 8, 0), pill)
+		draw_string(font, pill.position + Vector2(5, fs + 1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.color("ink"))
 
 ## The selected person's places: home and workplace in their colour, the haunts you've been
 ## told about in a fainter version of it.

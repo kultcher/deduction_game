@@ -33,6 +33,14 @@
 ## cases against claimed walkers, and names the Demon from P(Demon), not P(evil).
 ## --pre-m4 restores the earlier policy, for A/Bs.
 ##
+## Silent-bot cells (belief-model direction, Phase 0): which of the bot's actions carry its
+## edge? Both keep the default bot otherwise.
+## --no-present: the bot still files cases, so its nominations rest on them (M2a), but never
+##   presents one: no case at the meeting, no 'convince', no 'tell'. Asking someone about a
+##   trace ('present <trace>' while talking) stays: it gathers information, not a case.
+## --present-and-vote: the bot presents and votes as usual but keeps no vigils, wards or
+##   scene searches (and offers or accepts no protection it would then have to keep).
+##
 ## Suspicion scale: at the end of each day (entering night, or the game's end) every
 ## living good NPC's suspicion is summarised against the truth: their top suspicion,
 ## the Demon's and minions' suspicion and rank, their good-nomination threshold, and
@@ -53,6 +61,7 @@ const MindPodium = preload("res://sim/mind_podium.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 const SweepRecord = preload("res://tools/sweep_record.gd")
+const VoteShape = preload("res://tools/vote_shape.gd")
 
 ## Analyst decision thresholds on the juror's posterior P(evil) (bot policy, not game tuning).
 const TELL_P = 0.55
@@ -77,6 +86,9 @@ var new_talk_counts = {}
 var g
 var transcript = false
 var passive = false
+var no_present = false       # --no-present (Phase 0 silent-bot cell)
+var present_and_vote = false # --present-and-vote (Phase 0 silent-bot cell)
+var _no_present_filed_day: int = -1
 var trace_enabled = true
 var no_workshop_cases = false
 var no_hub = false
@@ -118,6 +130,8 @@ func _init() -> void:
 	dynamic_scripts = args.has("dynamic")
 	force_demon = str(args.get("force-demon", ""))
 	m4 = not args.has("pre-m4")
+	no_present = args.has("no-present")
+	present_and_vote = args.has("present-and-vote")
 	var jsonl = null
 	if args.has("results-jsonl"):
 		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
@@ -140,6 +154,7 @@ func _init() -> void:
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
 		"workshop_cases", "hub_cases"]
 	keys.append_array(NEW_ACTIONS)
+	keys.append_array(VoteShape.KEYS)
 	var stats = {"good": 0, "evil": 0}
 	var case_results: Array = []
 	var scale_cases: Array = []
@@ -151,7 +166,7 @@ func _init() -> void:
 		var t0: int = Time.get_ticks_msec()
 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
 		if jsonl != null:
-			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": "passive" if passive else ("bot" if m4 else "bot_pre_m4"),
+			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": _mode_name(),
 				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
 				"commands": last_commands, "guard": last_guard, "stuck": r["metrics"].get("guard_exhausted", false),
 				"wall_s": (Time.get_ticks_msec() - t0) / 1000.0})
@@ -175,6 +190,9 @@ func _init() -> void:
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case (workshop %.1f, hub %.1f), NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["workshop_cases"] / gf, stats["hub_cases"] / gf, stats["arguments"] / gf])
+	print("  vote shape: %d votes, unanimous but the nominee %d, only the nominator %d; evil nominations %d (carried %d, hanged %d), on good targets %d (carried %d, hanged %d)" %
+		[stats["votes"], stats["votes_unanimous"], stats["votes_only_nominator"], stats["evil_nominations"], stats["evil_nominations_carried"], stats["evil_nominations_executed"],
+		stats["evil_nominations_good_target"], stats["evil_nominations_good_target_carried"], stats["evil_nominations_good_target_executed"]])
 	print("  New talk actions: " + ", ".join(PackedStringArray(NEW_ACTIONS.map(func(key): return "%s=%d" % [key, stats[key]]))))
 	var summary = Metrics.aggregate(case_results)
 	print("  identification: demon %d, minion %d, both %d; identified but lost %d; eligible recorded theories %d/%d" %
@@ -216,6 +234,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	_belief_cache = {}
 	_demon_key = ""
 	_demon_guess = ""
+	_no_present_filed_day = -1
 	talk_policy_used = {}
 	new_talk_counts = {}
 	for key in NEW_ACTIONS: new_talk_counts[key] = 0
@@ -260,6 +279,7 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0,
 		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed}
 	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
+	r.merge(VoteShape.build(g.w))
 	for e in w.executions:
 		if w.by_id[e["id"]].is_evil():
 			r["exec_evil"] += 1
@@ -576,7 +596,46 @@ static func new_action_kind(game, command: String) -> String:
 		if command.begins_with("vigil ") and command.trim_prefix("vigil ") in game.offer.get("vigil", {}).values(): return "keep_vigil"
 	return ""
 
+func _mode_name() -> String:
+	if passive: return "passive"
+	if no_present: return "no_present"
+	if present_and_vote: return "present_vote"
+	return "bot" if m4 else "bot_pre_m4"
+
+## The silent-bot cells' filter on a decided command: a presenting move (no-present) or a
+## vigil, ward, search or protection offer (present-and-vote) is dropped. "" means pick
+## again (the talk options mark themselves used, so the next pick is the bot's next choice);
+## otherwise the quiet move to make instead.
+func _silence(cmd: String) -> String:
+	if no_present:
+		if g.state == "meeting" and cmd.begins_with("present "): return "done" if g.town_quiet else "wait"
+		if g.state == "talk" and (cmd.begins_with("convince ") or cmd.begins_with("tell ")):
+			# The bot's own fallback question when it has nothing to tell.
+			var others: Array = g.w.living().filter(func(m): return m != g.talk_with)
+			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id if not others.is_empty() else "bye"
+	if present_and_vote:
+		match g.state:
+			"night":
+				if cmd.begins_with("vigil ") or cmd.begins_with("ward "): return "sleep"
+			"day":
+				if cmd == "search": return "wait"
+			"talk":
+				if cmd in ["offer vigil", "offer ward"]: return ""
+				if cmd == "yes" and not g.pending_request.is_empty() and g.pending_request.kind != "confidence": return "no"
+			"approach":
+				if cmd == "yes" and g.approach.get("agenda", "") == "protect": return "no"
+	return cmd
+
 func _decide() -> String:
+	if passive or not (no_present or present_and_vote):
+		return _decide_inner()
+	for i in 4:
+		var cmd: String = _silence(_decide_inner())
+		if cmd != "":
+			return cmd
+	return "bye" if g.state == "talk" else "wait"
+
+func _decide_inner() -> String:
 	var w = g.w
 	if passive:
 		match g.state:
@@ -654,9 +713,11 @@ func _decide() -> String:
 			var others: Array = w.living().filter(func(m): return m != n)
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":
-			if not g.presented_today:
+			if not g.presented_today and not (no_present and _no_present_filed_day == w.day):
 				var ded = _find_or_file_deduction()
-				if ded > 0:
+				if no_present:
+					_no_present_filed_day = w.day   # filed (it backs a nomination, M2a) but not presented
+				elif ded > 0:
 					return "present %d" % ded
 			var ts = _top_suspect()
 			var nominate_p: float = M4_NOMINATE_P if m4 else NOMINATE_P

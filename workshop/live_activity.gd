@@ -290,7 +290,7 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 
 		var inc_str: String
 		if kind_code == 5:
-			inc_str = "alibi:" + str(card.get("subject", ""))
+			inc_str = _alibi_incident(card)
 		elif kind_code == 3:
 			inc_str = "trace:%s:%d" % [str(data.get("scene", "")), int(data.get("slot", 0))]
 		else:
@@ -462,7 +462,9 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if not available(view):
 		return []
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
-	if observations.is_empty():
+	# With a Hexer possible, daytime evidence alone (a Whereabouts day log, morning and
+	# afternoon reports) still bears on who hexed whom, so it doesn't need a night card.
+	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
 	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {})]
@@ -532,6 +534,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		result[0]["day_demon_share"] = share
 		result[0]["hex_kills"] = hex_kills(view, cards, ids) if hex_factor_enabled else []
 		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
+		result[0]["hex_successions"] = hex_successions(view, ids, result[0]["hex_kills"])
 	return result
 
 
@@ -552,9 +555,11 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 	var wsum: float = w[0] + w[1] + w[2]
 	var work: Dictionary = {}
 	var haunts: Dictionary = {}
+	var shifts: Dictionary = {}   # id -> work phases (public)
 	for p in view.get("people", []):
 		if str(p.get("work", "")) != "":
 			work[p.id] = str(p.work)
+		shifts[p.id] = p.get("work_phases", []).map(func(x): return int(x))
 	for c in cards:
 		if c.get("kind", "") != "context":
 			continue
@@ -609,14 +614,58 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 				var at_l: float = 0.0
 				var public_mass: float = 0.0
 				for p in range(3):
+					# A Hexer may seek out a target at work in its own free time (sim HEXER
+					# seek_target_chance): when the victim worked here this phase and this
+					# person was free and not seen elsewhere, some of their time goes here.
+					var seek: float = 0.0
+					if l == work.get(victim, "") and p in shifts.get(victim, []) and not (p in shifts.get(ids[i], [])):
+						var best_p: float = 0.0
+						for pl2 in DayPresence.PLACES:
+							best_p = maxf(best_p, DayPresence.at(table, ids[i], night, p, pl2))
+						if best_p < 0.999:
+							seek = Tuning.Workshop.HEX_SEEK_SHARE
 					for pl in DayPresence.PLACES:
 						var a: float = DayPresence.at(table, ids[i], night, p, pl) * (Tuning.Workshop.HEX_OWN_WORK_WEIGHT if pl == own else 1.0)
+						a = (1.0 - seek) * a + (seek if pl == l else 0.0)
 						public_mass += w[p] / wsum * a
 						if pl == l:
 							at_l += w[p] / wsum * a
 				row.append(at_l / public_mass if public_mass > 0.0 else 0.0)
 			shares.append(row)
 		out.append({"night": night, "victim": victim, "places": places, "alive_mask": alive_mask, "reg_masks": reg_masks, "shares": shares})
+	return out
+
+
+## Executions that could be a Scion succession for the Hexer factor: in such a world the
+## kills before the execution were the executed demon's hexes, not the successor's, so C#
+## scores those against the executed person (HexFactor's succession branch). Mirrors the
+## movement splits' gate (_scion_succession_splits_cs) on crowd size, but needs only a hex
+## kill before the execution rather than a movement card.
+static func hex_successions(view: Dictionary, ids: Array, kills: Array) -> Array:
+	var out: Array = []
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	if execs.is_empty() or kills.is_empty():
+		return out
+	var deaths: Dictionary = view.get("timeline", {}).get("deaths", {})
+	var ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
+	for day_str in execs:
+		var exec_day: int = int(day_str)
+		if not kills.any(func(k): return int(k.night) < exec_day):
+			continue
+		var alive_before: int = 0
+		for p in view.people:
+			if ticks.get(p.id, 2147483647) >= exec_day * 4 + 2:
+				alive_before += 1
+		if alive_before < 5:
+			continue
+		var alive_mask: int = 0
+		for i in range(ids.size()):
+			if exec_day < int(deaths.get(ids[i], 2147483647)):
+				alive_mask |= 1 << i
+		for exec_id in execs[day_str]:
+			var idx: int = ids.find(exec_id)
+			if idx >= 0:
+				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask})
 	return out
 
 static func _append_scene_packed(n: int, st: Dictionary, meta_ints: PackedInt32Array, meta_doubles: PackedFloat64Array) -> void:
@@ -655,7 +704,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
 	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", [])])
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", [])])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -727,10 +776,18 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		for hk in hks:
 			meta_ints.append(hk.places.size())
 			meta_ints.append(int(hk.alive_mask))
+			meta_ints.append(int(hk.get("night", 0)))
 			for pi in range(hk.places.size()):
 				meta_ints.append(int(hk.reg_masks[pi]))
 				for v in hk.shares[pi]:
 					meta_doubles.append(float(v))
+		# Then the possible successions: [S, (executed, exec day, alive mask) x S].
+		var succ: Array = factor.get("hex_successions", [])
+		meta_ints.append(succ.size())
+		for sc in succ:
+			meta_ints.append(int(sc.executed_idx))
+			meta_ints.append(int(sc.exec_day))
+			meta_ints.append(int(sc.alive_demon_mask))
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.register_factor", pack_u)
@@ -840,7 +897,7 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 		for card in relevant_cards:
 			if card.night != night:
 				continue
-			var incident: String = "alibi:" + card.subject if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
+			var incident: String = _alibi_incident(card) if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
 			if incident in incidents:
 				continue
 			incidents.append(incident)
@@ -883,6 +940,11 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 ## The share of the script's possible demons that never walk at night (the day-killer,
 ## docs/demon_types_plan.md). 0 on every script the game deals today, which leaves every
 ## movement likelihood exactly as before.
+## Daytime presence evidence the Hexer factor reads (DayPresence): the watch record and
+## morning/afternoon location reports.
+static func has_day_evidence(cards: Array) -> bool:
+	return cards.any(func(c): return c.get("kind", "") in ["watch_log", "location"])
+
 static func day_demon_share(view: Dictionary) -> float:
 	var demons: Array = view.get("script_demons", [])
 	if demons.is_empty():
@@ -1095,7 +1157,7 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 	for c in relevant(cards):
 		if c.get("night", -1) != night or c.kind == "trace" or (c.get("quoted", false) and c.kind != "alibi"):
 			continue
-		var inc: String = "alibi:" + c.subject if c.kind == "alibi" else c.id
+		var inc: String = _alibi_incident(c) if c.kind == "alibi" else c.id
 		if inc not in seen_inc:
 			seen_inc.append(inc)
 			night_obs.append(c)
@@ -1368,6 +1430,13 @@ static func _evaluate_trace_for_person_impl(view: Dictionary, cards: Array, trac
 		return {"state": "unknown", "weight": unk_w, "missing": "bonds or day-%d overlap unresolved" % night, "reason": ""}
 	return {"state": "unknown", "weight": 1.0, "missing": "", "reason": ""}
 
+## Copies of one alibi count once. A person's own alibi and a witness's for them are
+## separate incidents: the own one is lie-aware in evil worlds, the witness's stays hard,
+## so keeping only whichever came first would change beliefs with card order (#124 review).
+static func _alibi_incident(card: Dictionary) -> String:
+	var subject: String = str(card.get("subject", ""))
+	return "alibi:" + subject + (":self" if str(card.get("source", "")) == subject else "")
+
 static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
 	if card.get("quoted", false) and card.kind != "alibi":
 		return 1.0
@@ -1387,7 +1456,10 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
 		"alibi":
 			if card.subject == person:
-				if not card.get("quoted", false):
+				# A person's own word on their night. The good tell the truth, so it stays
+				# hard for them (and for the listener, who is good in its own worlds); an
+				# evil subject may be covering a night out, priced like a relayed alibi.
+				if not card.get("quoted", false) and (alignment == "good" or card.get("source", "") != person):
 					return 1.0 if not out else 0.0
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":

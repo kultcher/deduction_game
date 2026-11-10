@@ -573,8 +573,22 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	var ch_listener: Dictionary = prep.listener.duplicate(true)
 	ch_listener["player_credibility"] = 0.65
 	var ch_res: Dictionary = Challenges.assess(prep.view, ch_case, ch_listener, prep.view.cards)
-	_check(ch_res.results.size() == 1 and ch_res.results[0].supported and ch_res.results[0].agreement >= 0.60 and ch_res.sources.has(isolde.id),
-		"Reading challenge 'lying' with complete Vigil crosses 0.60 agreement and penalizes source (%s)" % str(ch_res.results))
+	_check(ch_res.results.size() == 1 and ch_res.results[0].supported and ch_res.results[0].agreement >= 0.60 and ch_res.sources.is_empty() and ch_res.reports.is_empty(),
+		"Reading challenge 'lying' with complete Vigil crosses 0.60 agreement and leaves the reading at full reliability, so the clash counts against the reader (%s)" % str(ch_res.results))
+	# Belief-model Phase 1: a lie counts against the reader; an honest-error challenge doesn't.
+	var mis_case: Dictionary = ch_case.duplicate(true)
+	mis_case.reading_challenges[id_nw].mode = "misled"
+	var mis_res: Dictionary = Challenges.assess(prep.view, mis_case, ch_listener, prep.view.cards)
+	var lie_l: Dictionary = prep.listener.duplicate(true)
+	lie_l["challenge_reports"] = ch_res.reports
+	lie_l["challenge_sources"] = ch_res.sources
+	var mis_l: Dictionary = prep.listener.duplicate(true)
+	mis_l["challenge_reports"] = mis_res.reports
+	mis_l["challenge_sources"] = mis_res.sources
+	var ev_lie: Dictionary = Eval.evaluate(prep.view, prep.case, lie_l)
+	var ev_mis: Dictionary = Eval.evaluate(prep.view, prep.case, mis_l)
+	_check(not mis_res.reports.is_empty() and absf(ev_lie.posterior - ev.posterior) < 1e-9 and absf(ev_mis.posterior - ev.posterior) > 1e-6,
+		"An accepted lie leaves the case at its full strength (%.3f); calling the reading misled discounts it and changes the case (%.3f)" % [ev_lie.posterior, ev_mis.posterior])
 	_check(not ("not convinced the reader deliberately lied" in str(ch_res.results[0].get("note", ""))),
 		"Self-presence conflict note explains impairment cannot account for absent feet")
 

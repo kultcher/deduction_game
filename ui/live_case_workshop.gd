@@ -6,6 +6,7 @@ signal cards_dropped(numbers: Array)
 signal contents_changed
 signal trace_solver_requested(selected_by_night: Dictionary)
 signal location_solver_requested(question: Dictionary)
+signal fullscreen_toggled
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
 var g
@@ -17,13 +18,14 @@ var debug_menu: MenuButton
 var filed_row: HFlowContainer
 var undo_button: Button
 var _undo: Dictionary = {}
+var fullscreen_btn: Button
 var _numbers_key = []
 var _numbers: Array = []
 var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
 var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
-enum DebugItem { PREVIEW, SUPPORT, WITHDRAW }
+enum DebugItem { PREVIEW, SUPPORT, WITHDRAW, WHY, WHY_RECORD, WHY_SHOW }
 var files: Dictionary = {}
 var execute: Callable
 var progress_window: Window
@@ -123,6 +125,10 @@ func _ready() -> void:
 	dp.add_item("Preview effectiveness (test juror)", DebugItem.PREVIEW)
 	dp.add_item("Review evaluator support", DebugItem.SUPPORT)
 	dp.add_item("Withdraw endorsement…", DebugItem.WITHDRAW)
+	dp.add_separator()
+	dp.add_item("Why this strength? (test juror, per card)", DebugItem.WHY)
+	dp.add_check_item("Record why each listener moved, when I present (adds a pause)", DebugItem.WHY_RECORD)
+	dp.add_item("Show recorded listener breakdowns", DebugItem.WHY_SHOW)
 	dp.id_pressed.connect(_debug_action)
 	title_row.add_child(debug_menu)
 	var tools = HFlowContainer.new()
@@ -147,6 +153,9 @@ func _ready() -> void:
 	var loc_solver_btn = _button(tools, "Whereabouts", func(): location_solver_requested.emit({}))
 	loc_solver_btn.name = "OpenLocationSolver"
 	loc_solver_btn.tooltip_text = "Opens the Whereabouts panel to cross-reference who was where on a day and commit one Whereabouts card citing your record of that day."
+	fullscreen_btn = _button(tools, "Fullscreen", func(): fullscreen_toggled.emit())
+	fullscreen_btn.name = "WorkshopFullscreen"
+	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Shift-drag on empty canvas to box-select cards; drag one to move them all, Delete to remove them."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))
@@ -165,6 +174,7 @@ func _ready() -> void:
 	canvas.layout_changed.connect(_store)
 	canvas.cards_dropped.connect(func(numbers): cards_dropped.emit(numbers))
 	canvas.removal_requested.connect(remove_node)
+	canvas.group_removal_requested.connect(remove_nodes)
 	canvas.field_requested.connect(_field_popup)
 	canvas.detail_label = _detail_label
 	canvas.tooltip_text = "Case Workshop"
@@ -411,6 +421,9 @@ func _sync() -> void:
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
 	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Speak on nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
 	debug_menu.visible = g.debug_overlay
+	var why_i: int = debug_menu.get_popup().get_item_index(DebugItem.WHY_RECORD)
+	if why_i >= 0:
+		debug_menu.get_popup().set_item_checked(why_i, g.workshop_why)
 	_refresh_filed()
 	_store()
 
@@ -713,6 +726,32 @@ func _debug_action(id: int) -> void:
 			_support_details()
 		DebugItem.WITHDRAW:
 			_withdraw_window()
+		DebugItem.WHY:
+			_why_test_juror()
+		DebugItem.WHY_RECORD:
+			g.workshop_why = not g.workshop_why
+			var dp: PopupMenu = debug_menu.get_popup()
+			dp.set_item_checked(dp.get_item_index(DebugItem.WHY_RECORD), g.workshop_why)
+		DebugItem.WHY_SHOW:
+			_why_recorded()
+
+## Debug readout (game/workshop_why.gd): what the selected premise's cards are worth to
+## the test juror, where the probability goes instead, and each card's status and share.
+func _why_test_juror() -> void:
+	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():
+		status.text = "Select a premise to explain."
+		return
+	result_output.text = "Working out why…"
+	preview_window.popup_centered_clamped()
+	await get_tree().process_frame
+	var why: Dictionary = preload("res://game/workshop_why.gd").test_juror(g, board.compile(board.selected))
+	result_output.text = str(why.get("text", ""))
+
+func _why_recorded() -> void:
+	var texts: Array = g.workshop_whys.map(func(b): return str(b.get("text", "")))
+	result_output.text = "\n\n————————————————\n\n".join(PackedStringArray(texts)) if not texts.is_empty() \
+		else "No listener breakdowns recorded. Tick \"Record why each listener moved\" in this menu, then present a case."
+	preview_window.popup_centered_clamped()
 
 ## Filed cases, newest last: click one to select its premise on the canvas.
 func _refresh_filed() -> void:
@@ -737,9 +776,37 @@ func _refresh_filed() -> void:
 func remove_node(id: String) -> void:
 	if board == null or not board.nodes.has(id):
 		return
-	var node: Dictionary = board.nodes[id]
 	var title_text: String = board.title(id)
 	_undo = {"canvas": board.export_data(), "root": case_root, "files": files.duplicate(true)}
+	_remove_one(id)
+	if not board.nodes.has(case_root):
+		case_root = board.selected
+	undo_button.disabled = false
+	_session_changed()
+	status.text = "Removed %s from the Workshop. The original stays on the case board." % title_text
+
+## Remove a box selection in one step of undo (Nov 10).
+func remove_nodes(ids: Array) -> void:
+	if board == null:
+		return
+	var present: Array = ids.filter(func(i): return board.nodes.has(i))
+	if present.is_empty():
+		return
+	if present.size() == 1:
+		remove_node(present[0])
+		return
+	_undo = {"canvas": board.export_data(), "root": case_root, "files": files.duplicate(true)}
+	for i in present:
+		if board.nodes.has(i):
+			_remove_one(i)
+	if not board.nodes.has(case_root):
+		case_root = board.selected
+	undo_button.disabled = false
+	_session_changed()
+	status.text = "Removed %d cards from the Workshop. The originals stay on the case board." % present.size()
+
+func _remove_one(id: String) -> void:
+	var node: Dictionary = board.nodes[id]
 	match node.kind:
 		"evidence":
 			board.remove_evidence(id)
@@ -758,11 +825,10 @@ func remove_node(id: String) -> void:
 		"premise":
 			board.remove_premise(id)
 			files.erase(id)
-	if not board.nodes.has(case_root):
-		case_root = board.selected
-	undo_button.disabled = false
-	_session_changed()
-	status.text = "Removed %s from the Workshop. The original stays on the case board." % title_text
+
+func set_fullscreen_label(on: bool) -> void:
+	if fullscreen_btn != null:
+		fullscreen_btn.text = "Exit fullscreen" if on else "Fullscreen"
 
 func _undo_remove() -> void:
 	if _undo.is_empty():
@@ -784,10 +850,17 @@ func _extend_context(id: String) -> void:
 	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "circumstantial", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
+	if id in canvas.group and canvas.group.size() > 1:
+		context_menu.add_item("Remove selected (%d)" % canvas.group.size(), 205)
 
 func _context_action(action: int) -> void:
 	if action == 204:
 		remove_node(context_id)
+		return
+	if action == 205:
+		var ids_g: Array = canvas.group.duplicate()
+		canvas.group = []
+		remove_nodes(ids_g)
 		return
 	super(action)
 

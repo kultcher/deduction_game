@@ -237,6 +237,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if g.workshop_compare else {}
+	var why_was: Dictionary = preload("res://game/workshop_why.gd").before(n) if g.workshop_why else {}
 	var result: Dictionary = PresentationReply.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
 	if result.get("blocked", false):
 		return result
@@ -261,6 +262,10 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 			g.workshop_comparisons.pop_front()
 		g.w.dlog.trace_event("workshop_comparison", n.id, ded.conclusion.get("a", ""), {"comparison": comparison, "input": snapshot},
 			"Read-only proposal beside the actual named presentation model; the comparison itself applies no effects.")
+	if g.workshop_why and (result.get("workshop", false) or n.is_evil()) and not result.get("repeated", false):
+		# Read-only: why this listener moved as far as they did (docs/DECISION_INSPECTOR.md).
+		# An evil listener's entry is its good cover's, when the cover was shown the case.
+		preload("res://game/workshop_why.gd").record(g, n, ded, venue, why_was)
 	if ded.has("workshop_case"):
 		var capability: Dictionary = _canvas_status(g, ded.workshop_case)
 		var issues: Array = capability.issues.duplicate()

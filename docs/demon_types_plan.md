@@ -239,3 +239,34 @@ good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
   - The per-person daytime sighting cards are still on the board. Folding them into the
     day log is a possible UI follow-up.
 
+### Hexer pass (Nov 10, with Michael)
+- **Out in the evening.** On an evening it hasn't hexed, it goes out to a public place with
+  good regulars instead of staying home. Its preferred target's workplace and haunts come
+  first (`free_location`).
+- **Seeking its target.** In a free phase, when its preferred target (the biggest public
+  threat) is working at a public place, it goes there 35% of the time
+  (`HEXER.seek_target_chance`).
+  - The hex still falls on a random good regular of the place, as before.
+  - The solver gives the victim's workplace a 25% share of a free, unobserved phase during
+    the victim's shift (`Workshop.HEX_SEEK_SHARE`).
+- **Hexing when watched.** The hex is decided at the end of each day phase, once the
+  Demonologist's place is known (`world.end_day_phase` → `hex_decision`).
+  - If the Demonologist was there and fewer than three others were (`cover_needed`), the
+    chance drops by 0.3 (`watched_penalty`).
+  - This never applies in the evening: by then it hasn't hexed that day.
+- **Unchanged:** single-regular hexes, and the own-workplace penalty (0.25).
+- **Bot check:** 16 forced-Hexer autoplay games (seeds 8100–8115) hexed on 60 of 65 days.
+
+- **Codex review fixes (#111).**
+  - *Daytime evidence alone.* A Whereabouts argument citing only a day log or morning and
+    afternoon reports now reaches the Hexer factor. `live_assessment` turns on the movement
+    model for `watch_log` and `location` cards when a Hexer is possible. The factor no longer
+    needs a night card (`LiveActivity.has_day_evidence`).
+  - *Scion succession.* In a world where the executed person was the demon and a Scion rose,
+    the kills before the execution are scored against the executed demon. The other kills
+    are scored against the successor.
+    - The mixture is branch by branch:
+      `0.5·direct·hex(direct) + 0.5·(pre×post)·hex(split)` (`ScoreDayType`).
+    - Successions come from `LiveActivity.hex_successions`, with the same crowd gate as the
+      movement splits. They need only a hex kill before the execution.
+  - `test_demon_types` now has 41 checks.
