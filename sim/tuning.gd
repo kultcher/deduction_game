@@ -37,6 +37,7 @@ class Setup:
 
 	## Schedule & relationship generation
 	const EXTRA_WORK_SHIFT_CHANCE = 0.0  # Nov 10: everyone works a single shift (was 0.3)
+	const LEGACY_EXTRA_SHIFT_DRAW = 0.3  # the old roll, kept only so setup draws stay aligned
 	const FRIEND_PAIR_CUTOFF = 0.2
 	const RIVAL_PAIR_CUTOFF = 0.32
 

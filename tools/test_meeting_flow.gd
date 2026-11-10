@@ -425,9 +425,9 @@ func _martyr_reluctance() -> void:
 	m.workshop_state = {}
 	m.role = "martyr"
 	m.martyr_target = t.id
-	m.suspicion[t.id] = 0.7
 	m.pressure = 0.0
 	w.begin_meeting()
+	m.suspicion[t.id] = 0.7  # after the meeting's refresh, which recomputes it
 	var yes_as_martyr = Mind.vote(w, m, t.id, "player", false, "", 0)
 	m.martyr_target = ""
 	var yes_plain = Mind.vote(w, m, t.id, "player", false, "", 0)
@@ -930,7 +930,7 @@ func _test_case_98933_polish_fixes() -> void:
 	# tools/test_legacy_purge_phase2a.gd ("case_against surfaces Hollis's private
 	# Gravedigger reading against Odette via leave-one-out").
 	var odette_req: float = float(hollis.workshop_state.get("requested", {}).get(odette.id, 0.0))
-	_check(odette_req <= 0.0 or (not reasons.is_empty() and reasons[0]["kind"] == "private" and reasons[0]["entry"] == gd_entry),
+	_check(odette_req <= 0.0 or reasons.any(func(rr): return rr["kind"] == "private" and rr["entry"] == gd_entry),
 		"case_against cites Hollis's private Gravedigger reading whenever the shared model suspects Odette (%s)" % str(reasons))
 
 	# 3) Authoring validation block (citing 'gift' without walking-role claim card) leaves legacy_fallbacks at 0.
