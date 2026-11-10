@@ -141,6 +141,17 @@ argument moved a listener as far as it did. No dialogue hookup, no behaviour cha
 - **Next:** Michael playtests a forced Hexer. Then tune the hex odds and the floor.
 
 ---
+## 2026-11-09 night, Claude-Quill: evidence catalog, first pass (`claude/evidence-catalog`, from main `407069d`)
+
+Docs only. `docs/evidence_catalog.md` lists every kind of evidence (each gift's reading,
+role and gift statements, whereabouts, crime scenes, public behaviour, profile context,
+player premises, distorters) and, for each, how the solver reads it, how strong it is,
+what it needs and what it interacts with. Code pointers are in
+`docs/evidence_catalog_code.md`. **Strengths are judged from the code, not measured**;
+Michael asked for this pass first, and a measured pass from tests comes next. Six findings
+at the end of the catalog to check, including: poison isn't a world state; the role-table
+readings (Seer, Clerk, Archivist, Gravedigger, Executor, Registrar, Monitor) use a fixed
+`q` of 0.5; and the Lamplighter's `q` (CaseEval says unchecked, the movement code uses it).
 
 ## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
 

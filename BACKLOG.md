@@ -140,6 +140,19 @@ towns.
 
 ### NPC behaviour
 
+- **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
+  (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
+  It drops to +1.0 after day 1 for first-night gifts. Only the Seer (+1.0 more) and the
+  Registrar (+0.75 more) have their own bonus. To review role by role:
+  - one-shot gifts that keep the full score after their information is spent: the
+    Chronicler after night 3, the Executor after its assigned person dies;
+  - the Augur, a Demon-identifier like the Seer, has no bonus;
+  - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
+    handled separately.
+
+  Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
+  gifts actually threaten evil. [open]
+
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
   on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
   and the player took it as a lead. A 0.2 floor on good NPCs' accusations was tried and
