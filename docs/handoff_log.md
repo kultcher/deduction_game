@@ -101,6 +101,30 @@ argument moved a listener as far as it did. No dialogue hookup, no behaviour cha
 
 ---
 
+## 2026-11-10 early, Claude-Quill: evidence catalog, measured pass (`claude/evidence-measured`, stacked on #111 and #114)
+
+Base: `claude/day-killer` (`75b4c8e`), as Michael asked, since it changes movement. Adds
+`tools/measure_evidence.gd` (harness) and `tools/measure_evidence_summary.py`, and
+`docs/evidence_catalog_measured.md` (tables and findings). Also a measured column in the
+catalog's summary, and catalog entries C8, D7, D8 for the day-killer branch. Real evidence
+from 250 + 100 passive towns (more for sightings and finds, plus Hexer-forced runs), measured on
+a wiped listener through the game's own belief refresh. No game code changed. Findings to triage:
+- **A sighting loses to the subject's home alibi:** held together, the sighting is dropped
+  (teller at 0.5) or both are dropped (teller at 0.8). A Poisoner sighted at +0.256 goes back
+  to 0 with her false alibi. Looks like a bug.
+- **A false home alibi clears an evil person by 0.14–0.18,** more when the alibi-giver is
+  trusted less.
+- **Clerk, Registrar, Monitor, Executor and Martyr readings barely move the people they
+  name** (under 0.01); their effect is all on the reader. Matches the old 37291 note.
+- **A Minion seen out at night loses suspicion** (−0.11 / −0.07): an unknown good person is
+  about as likely to be out as a Minion (the unclaimed walking-gift prior).
+- **The Seer is weak because 42% of its "yes" readings are false** (Red Herring, Marked).
+  That's a design question.
+- **Traces alone move nobody;** with everyone's work and haunts, about +0.03.
+
+Also removed `tools/_probe_d.gd`, a stray timing probe of mine that came in with recency
+(`9a09894`), here and on #114.
+
 ## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
 
 - **Status:** green.
