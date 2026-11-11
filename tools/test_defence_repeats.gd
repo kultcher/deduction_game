@@ -50,6 +50,8 @@ func _reveal(size: int) -> void:
 	d.role = "lamplighter"
 	d.claimed_role = "lamplighter"
 	d.claim_public = true
+	# They really were out that night (a sighting of a night at home is a frame: tools/test_framed_defence.gd).
+	d.history[w.time_key(1, 3)] = "night:docks"
 	listener.npc_trust[d.id] = 0.95
 	accuser.beliefs = [{"kind": "saw", "who": d.id, "loc": "", "block": "docks", "day": 1, "phase": 3, "how": "window", "detail": "street"}]
 	Mind.refresh_beliefs(w, accuser, " (first outing)")
