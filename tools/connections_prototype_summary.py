@@ -148,7 +148,7 @@ def main():
         clean = sum(1 for r in caches if r["counts"]["record"] + r["counts"]["hearing"] + r["counts"]["trust"] + r["counts"]["new"] == 0)
         print("     %d refreshes compared with the listener's previous one that day; %d (%.0f%%) invalidated nothing; refreshes where the public record changed: %d" % (
             len(caches), clean, 100 * clean / len(caches), sum(1 for r in caches if r["counts"]["record"] > 0)))
-        drift = [r["worst_drift"] for r in caches if r["counts"]["kept"] > 0]
+        drift = [r["worst_drift"] for r in caches if r["counts"]["kept"] > 0] or [0.0]
         print("     drift of items the cache would have kept (log-odds): median %.3f, 90th %.3f, worst %.3f" % (q(drift) + (max(drift),)))
         # cost counting invalidations: the joint pass plus two judgements per invalidated or new item
         by_listener_day = {(name, r["listener"], r["day"]): r for name, d in logs.items() for r in d["records"] if r["kind"] == "dawn"}

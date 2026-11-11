@@ -27,6 +27,30 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-11 early, Claude-Lantern: connections prototype, the Nov 10 late decisions (`claude/connections-prototype`, PR #129)
+
+Base: main `edc01cf` (merged in, no force push). **Tools only; golden untouched.** Next
+actor: Bailiff (review), then Michael. Results are in the project doc
+`claude/belief-model-direction-2026-11-10.md`, "Results: prototype rerun".
+
+- `tools/connections_prototype.gd`:
+  - stored cases fade (each day a case keeps `--fade` of its weight; 0.5, 0.7 and 0.85 are
+    reported, 0.5 is the main rate) instead of a cap of two; `--cap N` restores the cap;
+  - a cited trace touches everyone it matches (it moves them 0.1 log-odds or more when read
+    with the profile cards);
+  - each refresh is compared with the listener's previous one that day: what a cache of
+    solo values and core tests would have had to redo, and how far the rest drifted;
+  - threshold 0.3 added to the reported set; `--movement-seed` lets a Night Watch's or
+    Lamplighter's own readings seed its core;
+  - `--explain listener:person:day`.
+- `tools/connections_prototype_summary.py`: rewritten for the above (`--theta`, `--fade`).
+- **All seven criteria pass at 0.4 with fade 0.5** on 12926 (at `75b4c8e`), 900 and 902
+  (regenerated on `edc01cf`, since main's gameplay changed). Criterion 5 passes cached and
+  fails when the redone items are counted.
+- **A correction:** the Hexer factor does not lower Kiran (on and off give identical
+  results). The gap I blamed on it is inside the game's belief refresh and isn't pinned
+  down.
+
 ## 2026-11-10 evening, Claude-Lantern: connections prototype, offline (`claude/connections-prototype`)
 
 Base: main `7404873`. **Tools only: no code path the game runs, golden untouched.** Next

@@ -785,7 +785,16 @@ func _other_fades(st: Dictionary, cases: Array, day: int, core: Dictionary) -> D
 ## they moved anyway is the cache's error.
 func _cache_check(st: Dictionary, items: Array, values: Dictionary, day: int, solo_ms: float, solo_calls: int) -> void:
 	var l: Dictionary = st.listener
-	var record_sig: int = JSON.stringify([st.view.get("timeline", {}), st.view.get("day", 0)]).hash()
+	# The public record: who has died, and every public event that isn't itself a card
+	# someone told (those arrive as cards and are counted there).
+	var timeline: Dictionary = st.view.get("timeline", {})
+	var public_events: Array = timeline.get("events", []).filter(func(e): return str(e.get("kind", "")) not in ["reading", "claim", "sighting", "alibi", "statement"])
+	# Deaths, executions and attacks are the record proper; nominations, accusations and
+	# votes are the meeting's talk, tracked apart to see whether solo values depend on them.
+	var hard: Array = public_events.filter(func(e): return str(e.get("kind", "")) in ["demon_death", "demon_attack", "execution", "silenced", "death"])
+	var record_sig: int = JSON.stringify([timeline.get("deaths", {}), hard]).hash()
+	var talk_sig: int = JSON.stringify(public_events.filter(func(e): return e not in hard)).hash()
+	var prior_sig: int = JSON.stringify(l.get("suspicion", {})).hash()
 	var now: Dictionary = {}
 	for it in items:
 		var cards: Array = []
@@ -802,6 +811,8 @@ func _cache_check(st: Dictionary, items: Array, values: Dictionary, day: int, so
 	var prev: Dictionary = cache_seen.get(st.id, {})
 	if prev.get("day", -99) == day:
 		var counts := {"items": items.size(), "new": 0, "record": 0, "hearing": 0, "trust": 0, "kept": 0, "kept_drifted": 0}
+		var talk_changed: bool = prev.get("talk", 0) != talk_sig
+		var prior_changed: bool = prev.get("prior", 0) != prior_sig
 		var worst := 0.0
 		var record_changed: bool = prev.record != record_sig
 		for key in now:
@@ -824,8 +835,8 @@ func _cache_check(st: Dictionary, items: Array, values: Dictionary, day: int, so
 				if drift > CACHE_TOLERANCE:
 					counts.kept_drifted += 1
 		records.append({"kind": "cache", "seq": now_seq, "day": day, "listener": st.id, "counts": counts, "worst_drift": worst,
-			"judgement_ms": solo_ms / maxf(1.0, float(solo_calls)), "since_seq": int(prev.seq)})
-	cache_seen[st.id] = {"day": day, "seq": now_seq, "record": record_sig, "items": now}
+			"judgement_ms": solo_ms / maxf(1.0, float(solo_calls)), "since_seq": int(prev.seq), "talk_changed": talk_changed, "suspicion_changed": prior_changed})
+	cache_seen[st.id] = {"day": day, "seq": now_seq, "record": record_sig, "talk": talk_sig, "prior": prior_sig, "items": now}
 
 static func _members_of(b: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
