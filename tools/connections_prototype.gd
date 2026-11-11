@@ -9,6 +9,11 @@
 ##
 ##   godot --headless --path . --script res://tools/connections_prototype.gd -- <log.jsonl>
 ##         [--out results.json] [--declare auto|none|walker] [--listener a,b] [--quiet] [--check]
+##         [--explain listener:person:day]
+##
+## --explain: at that listener's dawn, which cards carry the read-everything belief about
+## that person (what it loses without each, and the smallest build-up that reaches it), and
+## which of them the prototype judges together.
 ##
 ## The judge is today's shared evaluator (CaseEval over the possible worlds) run on a chosen
 ## set of cards: for one listener and one set it gives everyone's chance of being evil and of
@@ -67,6 +72,8 @@ const TRACE_KINDS = ["trace", "dropped"]
 
 var quiet := false
 var check := false
+## --explain listener:person:day entries.
+var explain: Array = []
 var declare := "auto"
 var only_listeners: Array = []
 var records: Array = []
@@ -96,6 +103,8 @@ func _init():
 				quiet = true
 			"--check":
 				check = true
+			"--explain":
+				explain.append(str(args[i + 1]).split(":")); i += 1
 		i += 1
 	var events: Array = Replay.load_events(args[0])
 	_run(events)
@@ -636,6 +645,57 @@ func _today(g, n, read_everything: bool) -> Dictionary:
 	Reasoner.reuse_preparations = kept[4]
 	return {"pe": pe, "ms": ms, "read": read}
 
+## Which cards carry the read-everything belief about one person, and what the prototype
+## does with them.
+func _explain(g, st: Dictionary, person: String) -> void:
+	var items: Array = _items(st)
+	var b: Dictionary = _beliefs(st, _cases_for(st.id), int(g.w.day), false)
+	var core: Array = b.thetas["0.4"].core
+	var seed: Array = _seed(st, items)
+	var all_ids: Array = st.held
+	var full: float = float(_judge(st, all_ids).pe[person])
+	var base: float = float(_judge(st, []).pe[person])
+	var describe := func(it: Dictionary) -> String:
+		var parts: PackedStringArray = []
+		for id in it.ids.slice(0, 3):
+			var c: Dictionary = st.by_id[id]
+			parts.append("%s%s by %s%s: %s" % [c.kind, ("/" + str(c.role)) if c.has("role") else "", c.get("source", "?"),
+				(" (night %d)" % int(c.night)) if c.has("night") else "", str(c.get("text", c.get("data", ""))).substr(0, 110)])
+		var where: String = "seed" if it.key in seed else ("core" if it.key in core else ("movement" if it.kind == "movement" else "alone"))
+		return "[%s] %s%s" % [where, " || ".join(parts), (" (+%d more)" % (it.ids.size() - 3)) if it.ids.size() > 3 else ""]
+	print("\nEXPLAIN %s on %s, day %d: no cards %.0f%%, every held card judged together %.0f%%, prototype %.0f%%" % [st.id, person, int(g.w.day), 100.0 * base, 100.0 * full, 100.0 * float(b.thetas["0.4"].pe[person])])
+	var rows: Array = []
+	for it in items:
+		var rest: Array = all_ids.filter(func(id): return id not in it.ids)
+		var solo: float = float(_judge(st, _union(it.ids, it.ctx)).pe[person])
+		rows.append({"it": it, "without": float(_judge(st, rest).pe[person]), "solo": solo})
+	rows.sort_custom(func(x, y): return absf(x.without - full) > absf(y.without - full))
+	print("  Without each (largest change first):")
+	for r in rows.slice(0, 8):
+		print("    %.0f%% without, %.0f%% alone  %s" % [100.0 * r.without, 100.0 * r.solo, describe.call(r.it)])
+	# The smallest build-up: add whichever item moves the belief furthest toward the full
+	# answer, until it is within 5 points.
+	var chosen: Array = []
+	var ids: Array = []
+	var now: float = base
+	print("  Build-up toward %.0f%%:" % (100.0 * full))
+	while absf(now - full) > 0.05 and chosen.size() < 8:
+		var best: Dictionary = {}
+		var best_p: float = now
+		for it in items:
+			if it.key in chosen:
+				continue
+			var p: float = float(_judge(st, _union(_union(ids, it.ids), it.ctx)).pe[person])
+			if best.is_empty() or absf(p - full) < absf(best_p - full):
+				best = it
+				best_p = p
+		if best.is_empty():
+			break
+		chosen.append(best.key)
+		ids = _union(_union(ids, best.ids), best.ctx)
+		now = best_p
+		print("    -> %.0f%%  + %s" % [100.0 * now, describe.call(best)])
+
 ## --check: does the judge on a set see only that set? Each card is judged once with the
 ## whole view behind it and once with every other card removed from the view.
 func _self_check(st: Dictionary) -> void:
@@ -692,6 +752,9 @@ func _dawn(g, seq: int) -> void:
 			continue
 		if check and int(g.w.day) >= 3:
 			_self_check(st)
+		for ex in explain:
+			if ex.size() == 3 and ex[0] == n.id and int(ex[2]) == int(g.w.day) and st.others.has(ex[1]):
+				_explain(g, st, ex[1])
 		var b: Dictionary = _beliefs(st, _cases_for(n.id), int(g.w.day))
 		var again: Dictionary = _beliefs(st, _cases_for(n.id), int(g.w.day))
 		var bare: Dictionary = _beliefs(st, [], int(g.w.day), false, _members_of(b)) if not _cases_for(n.id).is_empty() else b
