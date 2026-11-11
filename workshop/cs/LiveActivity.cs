@@ -993,9 +993,7 @@ internal static class LiveActivityKernel
             {
                 if (cardInts[off + 3] == personIdx)
                 {
-                    // A person's own word on their night: hard for the good (and the listener,
-                    // good in its own worlds); an evil subject may be covering a night out.
-                    if (!quoted && (currentAlign == AlignGood || cardInts[off + 2] != personIdx))
+                    if (!quoted)
                     {
                         return !isOut ? 1.0 : 0.0;
                     }

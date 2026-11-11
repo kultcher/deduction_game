@@ -44,18 +44,7 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 10): `baseline_a03bf72`
-
-`tools/golden/baseline_a03bf72/` is the capture from `claude/own-alibi-lie-aware` (#124,
-Quill). A person's own home alibi is lie-aware when the world makes them evil (belief-model
-plan, Phase 1 fix 3).
-- **Divergence from `baseline_73b103a`:** 42 at record 23 (refresh #14, Nisha, day 2),
-  54875 at record 1, and 98933 at record 9 (refresh #3, Agnes, day 1). 692 and 900 are
-  identical.
-- **Record counts:** 42 108 (was 90), 54875 321, 692 251, 900 143, 98933 285.
-- **Stability:** two captures were identical.
-
-### Previous baseline (Nov 10): `baseline_73b103a`
+### Current baseline (Nov 10): `baseline_73b103a`
 
 `tools/golden/baseline_73b103a/` is the capture from `claude/challenge-reliability`. An
 accepted "lying" challenge no longer discounts the reading's reliability (belief-model plan,
