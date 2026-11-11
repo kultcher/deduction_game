@@ -1,130 +1,202 @@
 """Summarise tools/connections_prototype.gd results against the Phase 4 acceptance criteria.
 
-  python3 tools/connections_prototype_summary.py results_a.json [results_b.json ...] [--watch LISTENER:PERSON]
+  python3 tools/connections_prototype_summary.py results_a.json [results_b.json ...]
+          [--theta 0.4] [--fade main|0.7|0.85] [--watch LISTENER:PERSON] [--label TEXT]
 
-Each file is one --out of connections_prototype.gd. --watch follows one listener's belief
-about one person through the dawns and presentations (criterion 2; default hollis:kiran).
-Prints, per log: untouched people per presentation (criterion 1) and the target's change
-(3), the watched listener (2), vote shapes (4), refresh cost (5), stability (6), the
-largest joint set (7), and separation by day. Reads the JSON only.
+Each file is one --out of connections_prototype.gd; several files are pooled. --theta picks
+the core threshold and --fade the stored-case fade rate ("main" is the run's first rate).
+--watch follows one listener's belief about one person (criterion 2; default hollis:kiran).
+
+Prints: untouched people per presentation (criterion 1) and the target's change (3), the
+watched listener (2), vote shapes (4), refresh cost cached and counting cache
+invalidations (5), stability (6), the largest joint set (7), core sizes, seedless
+listeners, and separation by day against the truth. Reads the JSON only.
 """
-import json,sys,os,statistics as st
-args=[a for a in sys.argv[1:] if not a.startswith('--')]
-WATCH=('hollis','kiran')
-if '--watch' in sys.argv:
-    WATCH=tuple(sys.argv[sys.argv.index('--watch')+1].split(':')); args=[a for a in args if ':' not in a or os.path.exists(a)]
-logs={os.path.basename(a).replace('.json',''):json.load(open(a)) for a in args}
-TH=['0.2','0.4','0.8']
-def pct(x): return '%.0f%%'%(100*x)
-print('== sanity: judge on all held vs today read-everything (max abs diff per listener-dawn)')
-for name,d in logs.items():
-    diffs=[]
-    for r in d['records']:
-        if r['kind']=='dawn':
-            ev=r['everything']; ja=r['judge_all']
-            m=max([abs(ev[p]-ja[p]) for p in ja if p in ev] or [0])
-            diffs.append(m)
-    print(name, 'n',len(diffs),'median %.3f max %.3f'%(st.median(diffs),max(diffs)))
-print('\n== C1 untouched people, per presentation: first presentation per case/listener and repeat')
-for lname,d in logs.items():
-    if not any(r['kind']=='present' for r in d['records']): continue
-    print('log',lname)
-    seen={}
-    C1={}
-    for r in d['records']:
-        if r['kind']!='present': continue
-        key=(r['case'],r['listener']); rep=key in seen; seen[key]=1
-        row=[]
-        for t in TH:
-            a=r['without'][t]['pe']
-            for lab,b in (('capped',r['with'][t]['pe']),('none dropped',r['with_none_dropped'][t]['pe'])):
-                un=[p for p in a if p not in r['touched'][t]]
-                mv=max([abs(b[p]-a[p]) for p in un] or [0]); who=max(un,key=lambda p:abs(b[p]-a[p])) if un else '-'
-                row.append('%s %s: tgt %s->%s untouched max %.1f (%s, %d untouched)'%(t,lab,pct(a[r['target']]),pct(b[r['target']]),100*mv,who,len(un)))
-                if not rep: C1.setdefault((t,lab),[]).append((100*mv,r['label'],r['listener'],who, 100*(b[r['target']]-a[r['target']])))
-        print(r['label'],r['listener'],'REPEAT' if rep else 'first','new',r['new_cards'],'changed',r['cited_changed'],'held',r['held_cards'],'/',r['cards'],'w %.2f'%r['weight'],'twice_same',r['twice_same'])
-        for x in row: print('   ',x)
-        print('    dropped',r['dropped'],'cases@0.4', [(c['label'],round(c['max_shift'],2),c['merged']) for c in r['with']['0.4']['cases']])
-    print('\n-- C1 summary (first presentations): max untouched move, and count over 3 points')
-    for k,v in sorted(C1.items()):
-        print(k, 'n',len(v),'max %.1f'%max(x[0] for x in v), 'over 3:',sum(1 for x in v if x[0]>3), 'worst',max(v)[:4])
-    print('-- C3 target change by case (0.4 capped / none dropped)')
-    for lab in ('capped','none dropped'):
-        for x in C1[('0.4',lab)]: print('  ',lab,x[1],x[2],'%+.1f'%x[4], 'untouched max %.1f (%s)'%(x[0],x[3]))
-    print('\n== C2 the watched listener')
-    for r in d['records']:
-        if r['kind']=='present' and r['listener']==WATCH[0]:
-            print('  at',r['label'],'seq',r['seq'],{t:(pct(r['without'][t]['pe'][WATCH[1]]),pct(r['with'][t]['pe'][WATCH[1]]), len(r['with'][t]['core'])) for t in TH})
-    for r in d['records']:
-        if r['kind']=='dawn' and r['listener']==WATCH[0]:
-            kc=[cid for cid,desc in r['cards'].items() if WATCH[1] in desc and desc.startswith('report')]
-            line='day %d held %d seed %d'%(r['day'],r['proto']['held'],r['proto']['seed'])
-            for t in TH:
-                core=r['proto']['thetas'][t]['core']
-                line+=' | th %s: their reading in core %s, core %s, P(watched) %s (no cases %s)'%(t, any(k in core for k in kc), len(core), pct(r['proto']['thetas'][t]['pe'].get(WATCH[1],0)), pct(r['proto_no_cases'][t]['pe'].get(WATCH[1],0)))
-            line+=' | today %s everything %s'%(pct(r['today'].get(WATCH[1],0)),pct(r['everything'].get(WATCH[1],0)))
-            print(line, '| holds their reading:', bool(kc))
-            if r['day']>=4: print('    core@0.4:', [r['cards'].get(k,k) for k in r['proto']['thetas']['0.4']['core']])
-print('\n== C4 vote shapes')
-for name,d in logs.items():
-    tot={'today':[0,0,0],'logcheck':0,'n':0}
-    for t in TH: tot[t]=[0,0,0]
-    flips={t:0 for t in TH}; nv=0; stale=0
-    for r in d['records']:
-        if r['kind']!='vote': continue
-        tot['n']+=1
-        yes=set(r['yes']); order=[v for v in r['order']]
-        voters=[v for v in order if v!=r['nominee']]
-        def shape(y):
-            una = all(v in y for v in voters)
-            only = (y=={r['by']}) or (len(y)==1 and r['by'] in y)
-            carried = (r['by'] in r['evil']) and len(y)>=r['threshold'] and r['threshold']>0
-            return [una,only,carried]
-        s0=shape(yes)
-        for i in range(3): tot['today'][i]+=s0[i]
-        for t in TH:
-            y=set(yes)
-            for v in r['voters']:
-                nv+= (t=='0.4')
-                if v['p_today']<0: continue
-                tot_p=v['total']+v['scale']*(v['proto'][t]-v['p_today'])
-                want= tot_p>=v['need']
-                if (v['total']>=v['need'])!=(v['voter'] in yes) and t=='0.4': tot['logcheck']+=1
-                if abs(v['logged_suspicion']-v['suspicion_now'])>0.02 and t=='0.4': stale+=1
-                if want: y.add(v['voter'])
-                else: y.discard(v['voter'])
-                if want!=(v['voter'] in yes): flips[t]+=1
-            s=shape(y)
-            for i in range(3): tot[t][i]+=s[i]
-    print(name,'votes',tot['n'],'good voters recomputed',nv,'| today [unanimous, nominator-only, evil-carried]',tot['today'], {t:tot[t] for t in TH},'flipped good votes',flips,'log rule mismatches',tot['logcheck'],'stale susp',stale)
-print('\n== C5 cost per listener refresh (ms)')
-for name,d in logs.items():
-    rows=[r for r in d['records'] if r['kind']=='dawn']
-    q=lambda xs:(st.median(xs), sorted(xs)[int(0.9*(len(xs)-1))])
-    print(name,'n',len(rows),'today med/p90 %.0f/%.0f'%q([r['today_ms'] for r in rows]),'| proto cold %.0f/%.0f'%q([r['cold_ms'] for r in rows]),'| proto joint pass %.0f/%.0f'%q([r['cold_joint_ms'] for r in rows]),'| judgements cold %.0f/%.0f'%q([r['cold_calls'] for r in rows]), '| day>=3 today %.0f/%.0f cold %.0f/%.0f joint %.0f/%.0f'%(q([r['today_ms'] for r in rows if r['day']>=3])+q([r['cold_ms'] for r in rows if r['day']>=3])+q([r['cold_joint_ms'] for r in rows if r['day']>=3])))
-print('\n== C6 stable')
-for name,d in logs.items():
-    print(name,'dawn recompute identical', all(r['stable'] for r in d['records'] if r['kind']=='dawn'), 'case twice identical', all(r['twice_same'] for r in d['records'] if r['kind']=='present'))
-print('\n== C7 largest joint set / held, day>=3')
-for name,d in logs.items():
-    for t in TH:
-        sh=[r['proto']['thetas'][t]['largest']/max(1,r['proto']['held']) for r in d['records'] if r['kind']=='dawn' and r['day']>=3]
-        if sh: print(name,t,'n',len(sh),'median %.0f%% max %.0f%%'%(100*st.median(sh),100*max(sh)), 'core cards median', st.median([r['proto']['thetas'][t]['core_cards'] for r in d['records'] if r['kind']=='dawn' and r['day']>=3]), 'seed0', sum(1 for r in d['records'] if r['kind']=='dawn' and r['day']>=3 and r['proto']['seed']==0), 'declared', d['records'][0]['proto']['declared'])
-print('\n== reported: separation (mean P on evil - mean P on good) and gaps by day')
-for name,d in logs.items():
-    truth=d['records'][-1]['truth']
-    days=sorted(set(r['day'] for r in d['records'] if r['kind']=='dawn'))
-    for day in days:
-        rows=[r for r in d['records'] if r['kind']=='dawn' and r['day']==day]
-        def sep(pe, keys=None):
-            e=[v for p,v in pe.items() if truth[p]['evil'] and (keys is None or p in keys)]; g_=[v for p,v in pe.items() if not truth[p]['evil'] and (keys is None or p in keys)]
-            return (sum(e)/len(e)-sum(g_)/len(g_)) if e and g_ else 0
-        out={}
-        out['today']=st.mean([sep(r['today'],r['proto']['thetas']['0.4']['pe']) for r in rows if r['today']])
-        out['all']=st.mean([sep(r['everything'],r['proto']['thetas']['0.4']['pe']) for r in rows if r['everything']])
-        for t in TH: out[t]=st.mean([sep(r['proto']['thetas'][t]['pe']) for r in rows])
-        gap_t=st.mean([st.mean([abs(r['proto']['thetas']['0.4']['pe'][p]-r['today'][p]) for p in r['today'] if p in r['proto']['thetas']['0.4']['pe']]) for r in rows if r['today']])
-        gap_a=st.mean([st.mean([abs(r['proto']['thetas']['0.4']['pe'][p]-r['everything'][p]) for p in r['everything'] if p in r['proto']['thetas']['0.4']['pe']]) for r in rows if r['everything']])
-        print(name,'day',day,'n',len(rows),'sep today %.2f all %.2f proto %.2f/%.2f/%.2f'%(out['today'],out['all'],out['0.2'],out['0.4'],out['0.8']),'| mean gap proto@0.4 vs today %.2f vs read-all %.2f'%(gap_t,gap_a), '| held med',st.median([r['proto']['held'] for r in rows]),'read med',st.median([r['today_read'] for r in rows]))
-    ints=[x for r in d['records'] if r['kind']=='dawn' for x in r['proto']['interactions']]
-    if ints: print(name,'candidate interactions n',len(ints),'share >=0.2 %.0f%% >=0.4 %.0f%% >=0.8 %.0f%%'%tuple(100*sum(1 for x in ints if x>=t)/len(ints) for t in (0.2,0.4,0.8)))
+import json, os, statistics as st, sys
+
+
+def arg(name, default):
+    return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else default
+
+
+def q(xs):
+    xs = sorted(xs)
+    return (st.median(xs), xs[int(0.9 * (len(xs) - 1))]) if xs else (float("nan"), float("nan"))
+
+
+def pct(x):
+    return "%.0f%%" % (100 * x)
+
+
+def beliefs(rec, theta, fade, key="proto", fkey="fades"):
+    """The per-person chances for this record at a threshold and fade rate."""
+    if fade == "main":
+        src = rec[key]
+        src = src.get("thetas", src)
+    else:
+        src = rec[fkey][fade]
+    return src[theta]
+
+
+def sep(pe, truth, keys):
+    e = [v for p, v in pe.items() if p in keys and truth[p]["evil"]]
+    g = [v for p, v in pe.items() if p in keys and not truth[p]["evil"]]
+    return (sum(e) / len(e) - sum(g) / len(g)) if e and g else None
+
+
+def main():
+    skip = set()
+    for flag in ("--theta", "--fade", "--watch", "--label"):
+        if flag in sys.argv:
+            skip.add(sys.argv.index(flag) + 1)
+    files = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith("--") and i not in skip]
+    theta = arg("--theta", "0.4")
+    fade = arg("--fade", "main")
+    watch = tuple(arg("--watch", "hollis:kiran").split(":"))
+    logs = {os.path.basename(f).replace(".json", ""): json.load(open(f)) for f in files}
+    first = next(iter(logs.values()))
+    print("== %s | %d logs | threshold %s | fade %s (run's rates %s) | cap %s | movement seed %s" % (
+        arg("--label", ""), len(logs), theta, fade, first.get("fades"), first.get("cap"), first.get("movement_seed")))
+
+    # ---- criteria 1 and 3: presentations (first presentation of each case to each listener)
+    seen = set()
+    c1 = []
+    for name, d in logs.items():
+        for r in d["records"]:
+            if r["kind"] != "present" or (name, r["case"], r["listener"]) in seen:
+                continue
+            seen.add((name, r["case"], r["listener"]))
+            a = beliefs(r, theta, fade, "without", "fades_without")["pe"]
+            b = beliefs(r, theta, fade, "with", "fades_with")["pe"]
+            un = [p for p in a if p not in r["touched"][theta]]
+            mv = max([abs(b[p] - a[p]) for p in un] or [0])
+            who = max(un, key=lambda p: abs(b[p] - a[p])) if un else "-"
+            c1.append((100 * mv, r["label"], r["listener"], who, 100 * (b[r["target"]] - a[r["target"]]), r.get("trace_matched", []),
+                       100 * a[r["target"]], 100 * b[r["target"]], r["twice_same"]))
+    if c1:
+        print("C1 untouched people: %d listener-presentations, largest move %.1f points, over 3 points: %d" % (
+            len(c1), max(x[0] for x in c1), sum(1 for x in c1 if x[0] > 3)))
+        for x in sorted(c1, reverse=True)[:4]:
+            print("     %.1f points: %s, %s on %s (trace matches: %s)" % (x[0], x[1], x[2], x[3], ",".join(x[5]) or "none"))
+        print("C3 target's change per presentation:")
+        for x in c1:
+            print("     %-18s %-8s %.0f%% -> %.0f%% (%+.1f)" % (x[1], x[2], x[6], x[7], x[4]))
+        print("C6 a case presented twice is identical: %s" % all(x[8] for x in c1))
+
+    # ---- criterion 2: the watched listener
+    for name, d in logs.items():
+        rows = [r for r in d["records"] if r["kind"] in ("dawn", "present") and r["listener"] == watch[0]]
+        if not rows:
+            continue
+        print("C2 %s on %s (%s):" % (watch[0], watch[1], name))
+        for r in rows:
+            if r["kind"] == "dawn":
+                th = beliefs(r, theta, fade)
+                mine = [cid for cid, desc in r["cards"].items() if desc.startswith("report") and ("by %s " % watch[1]) in desc]
+                print("     dawn day %d: %s (no stored cases %s; today %s; connects everything %s); their reading held %s, in core %s; core %d" % (
+                    r["day"], pct(th["pe"].get(watch[1], 0)), pct(r["proto_no_cases"][theta]["pe"].get(watch[1], 0)), pct(r["today"].get(watch[1], 0)),
+                    pct(r["everything"].get(watch[1], 0)), bool(mine), any(k in th["core"] for k in mine), len(th["core"])))
+            else:
+                a = beliefs(r, theta, fade, "without", "fades_without")
+                b = beliefs(r, theta, fade, "with", "fades_with")
+                print("     %s (seq %d): %s -> %s; core %d" % (r["label"], r["seq"], pct(a["pe"][watch[1]]), pct(b["pe"][watch[1]]), len(b["core"])))
+
+    # ---- criterion 4: votes
+    tot = {"today": [0, 0, 0], "proto": [0, 0, 0]}
+    votes = flips = voters = outcomes = 0
+    detail = []
+    for d in logs.values():
+        for r in d["records"]:
+            if r["kind"] != "vote":
+                continue
+            votes += 1
+            yes = set(r["yes"])
+            y = set(yes)
+            for v in r["voters"]:
+                if v["p_today"] < 0:
+                    continue
+                voters += 1
+                p = v["proto"][theta] if fade == "main" else v["fades"][fade][theta]
+                want = v["total"] + v["scale"] * (p - v["p_today"]) >= v["need"]
+                flips += want != (v["voter"] in yes)
+                (y.add if want else y.discard)(v["voter"])
+            others = [v for v in r["order"] if v != r["nominee"]]
+
+            def shape(yy):
+                return [all(v in yy for v in others), len(yy) == 1 and r["by"] in yy, (r["by"] in r["evil"]) and len(yy) >= r["threshold"] > 0]
+            for i in range(3):
+                tot["today"][i] += shape(yes)[i]
+                tot["proto"][i] += shape(y)[i]
+            if (len(y) >= r["threshold"]) != (len(yes) >= r["threshold"]):
+                outcomes += 1
+                detail.append("%s nominee %d->%d of %d" % ("evil" if r["nominee_evil"] else "good", len(yes), len(y), r["threshold"]))
+    print("C4 votes %d: [unanimous but the nominee, only the nominator, evil nomination carried] today %s prototype %s; good votes flipped %d of %d; outcomes changed %d %s" % (
+        votes, tot["today"], tot["proto"], flips, voters, outcomes, detail))
+
+    # ---- criterion 5: cost, cached, and counting what the cache would have had to redo
+    dawns = [r for d in logs.values() for r in d["records"] if r["kind"] == "dawn"]
+    late = [r for r in dawns if r["day"] >= 3]
+    print("C5 refresh ms, median / 90th: all days today %.0f / %.0f, cached %.0f / %.0f, nothing cached %.0f / %.0f | from day 3 today %.0f / %.0f, cached %.0f / %.0f, nothing cached %.0f / %.0f" % (
+        q([r["today_ms"] for r in dawns]) + q([r["cold_joint_ms"] for r in dawns]) + q([r["cold_ms"] for r in dawns])
+        + q([r["today_ms"] for r in late]) + q([r["cold_joint_ms"] for r in late]) + q([r["cold_ms"] for r in late])))
+    caches = [r for d in logs.values() for r in d["records"] if r["kind"] == "cache" and r["since_seq"] != r["seq"]]
+    if caches:
+        items = sum(r["counts"]["items"] for r in caches)
+        for key in ("new", "record", "hearing", "trust", "kept", "kept_drifted"):
+            n = sum(r["counts"][key] for r in caches)
+            print("     cache, %-12s %5d of %d items (%.1f%%)" % (key, n, items, 100 * n / max(1, items)))
+        clean = sum(1 for r in caches if r["counts"]["record"] + r["counts"]["hearing"] + r["counts"]["trust"] + r["counts"]["new"] == 0)
+        print("     %d refreshes compared with the listener's previous one that day; %d (%.0f%%) invalidated nothing; refreshes where the public record changed: %d" % (
+            len(caches), clean, 100 * clean / len(caches), sum(1 for r in caches if r["counts"]["record"] > 0)))
+        drift = [r["worst_drift"] for r in caches if r["counts"]["kept"] > 0]
+        print("     drift of items the cache would have kept (log-odds): median %.3f, 90th %.3f, worst %.3f" % (q(drift) + (max(drift),)))
+        # cost counting invalidations: the joint pass plus two judgements per invalidated or new item
+        by_listener_day = {(name, r["listener"], r["day"]): r for name, d in logs.items() for r in d["records"] if r["kind"] == "dawn"}
+        costs, todays = [], []
+        for name, d in logs.items():
+            for r in d["records"]:
+                if r["kind"] != "cache" or r["since_seq"] == r["seq"]:
+                    continue
+                dawn = by_listener_day.get((name, r["listener"], r["day"]))
+                if not dawn:
+                    continue
+                redo = r["counts"]["record"] + r["counts"]["hearing"] + r["counts"]["trust"] + r["counts"]["new"]
+                costs.append(dawn["cold_joint_ms"] + 2 * redo * r["judgement_ms"])
+                todays.append(dawn["today_ms"])
+        print("     refresh cost counting those, median / 90th: %.0f / %.0f ms (today on the same listener-days %.0f / %.0f)" % (q(costs) + q(todays)))
+
+    # ---- criterion 6 and 7, cores, seeds
+    print("C6 recomputing at a dawn is identical: %s" % all(r["stable"] for r in dawns))
+    share = [beliefs(r, theta, fade)["largest"] / max(1, r["proto"]["held"]) for r in late]
+    if share:
+        print("C7 largest joint set / held from day 3: median %.0f%%, largest %.0f%% (%d listener-dawns)" % (100 * st.median(share), 100 * max(share), len(share)))
+        members = [len(beliefs(r, theta, fade)["core"]) for r in late]
+        print("   cores from day 3: joined items median %s, most %d; listener-dawns with at least one %d of %d; seedless %d of %d (%.0f%%)" % (
+            st.median(members), max(members), sum(1 for m in members if m > 0), len(members),
+            sum(1 for r in late if r["proto"]["seed"] == 0), len(late), 100 * sum(1 for r in late if r["proto"]["seed"] == 0) / len(late)))
+        live = [len(beliefs(r, theta, fade)["cases"]) for r in late]
+        print("   stored cases still counting per listener from day 3: median %s, most %d" % (st.median(live), max(live)))
+
+    # ---- separation against the truth
+    agg = {}
+    for d in logs.values():
+        truth = d["records"][-1]["truth"]
+        for r in d["records"]:
+            if r["kind"] != "dawn" or r["day"] < 2 or not r["everything"] or not r["today"]:
+                continue
+            pe = beliefs(r, theta, fade)["pe"]
+            keys = set(pe) & set(r["everything"]) & set(r["today"])
+            for m, x in (("today", r["today"]), ("prototype", pe), ("everything", r["everything"])):
+                s = sep(x, truth, keys)
+                top = max(keys, key=lambda k: x[k])
+                agg.setdefault((min(r["day"], 4), m), []).append((s, truth[top]["evil"]))
+    for day in (2, 3, 4):
+        if (day, "today") not in agg:
+            continue
+        print("separation day %s (%d listener-dawns): %s" % (day if day < 4 else "4+", len(agg[(day, "today")]), " | ".join(
+            "%s %.2f, top suspect evil %d%%" % (m, st.mean(s for s, _ in agg[(day, m)] if s is not None), 100 * sum(t for _, t in agg[(day, m)]) / len(agg[(day, m)]))
+            for m in ("today", "prototype", "everything"))))
+
+
+if __name__ == "__main__":
+    main()

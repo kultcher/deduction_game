@@ -9,7 +9,7 @@
 ##
 ##   godot --headless --path . --script res://tools/connections_prototype.gd -- <log.jsonl>
 ##         [--out results.json] [--declare auto|none|walker] [--listener a,b] [--quiet] [--check]
-##         [--explain listener:person:day]
+##         [--explain listener:person:day] [--fade 0.5,0.7,0.85] [--cap N] [--movement-seed]
 ##
 ## --explain: at that listener's dawn, which cards carry the read-everything belief about
 ## that person (what it loses without each, and the smallest build-up that reaches it), and
@@ -33,7 +33,14 @@
 ##                 the first moment of each day; a newly held card is tested on arrival.
 ##   stored cases  a presented case (the player's, or an NPC nominator's cited cards) is a
 ##                 connection: judged together, merged with the core when they share a card,
-##                 and scaled by trust in the presenter. Two per listener, newest first.
+##                 and scaled by trust in the presenter. An old case fades: each day it keeps
+##                 --fade of its weight (several rates are reported; the first is the main
+##                 one). A revision replaces its earlier version. --cap N restores the old
+##                 "at most N" rule.
+##   caching       solo values and core tests are meant to be cached. Each refresh is
+##                 compared with the listener's previous one that day: which items a trust
+##                 change, a hearing-weight change or the public record would have
+##                 invalidated, and how far the others drifted anyway.
 ##   combining     baseline + solo values + the core's interaction + each case's scaled
 ##                 interaction, then one common shift so the chances sum to the baseline's
 ##                 (the evil count; 1 for the Demon).
@@ -60,16 +67,30 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const Mind = preload("res://sim/mind.gd")
 
-const THETAS = [0.2, 0.4, 0.8]
+const THETAS = [0.2, 0.3, 0.4, 0.8]
 const CLIP = 0.01
 const DEMON_CLIP = 0.002
 const FIXED = 0.005
-const CASE_CAP = 2
+## A stored case whose weight has faded below this no longer counts.
+const CASE_FLOOR = 0.05
+## A trace "matches" a person when, read with the profile cards, it moves them this far.
+const TRACE_MATCH = 0.1
+## A cached value counts as changed beyond this (log-odds).
+const CACHE_TOLERANCE = 0.02
 const CONTEXT_KINDS = ["claim", "secret_claim", "context"]
 const NIGHT_KINDS = ["sighting", "alibi", "coverage", "evening"]
 const NIGHT_ROLES = ["lamplighter", "nightwatch"]
 const TRACE_KINDS = ["trace", "dropped"]
 
+## Each day a stored case keeps this share of its weight; the first is the main rate.
+var fades: Array = [0.5, 0.7, 0.85]
+## 0: no cap on stored cases (they fade). N: the old rule, at most N per listener.
+var cap := 0
+## A Night Watch's or Lamplighter's own readings seed its core (with the unit they sit in).
+var movement_seed := false
+## Per listener: the last refresh's per-item values and what they depended on.
+var cache_seen: Dictionary = {}
+var now_seq := 0
 var quiet := false
 var check := false
 ## --explain listener:person:day entries.
@@ -101,6 +122,12 @@ func _init():
 				only_listeners = Array(str(args[i + 1]).split(",")); i += 1
 			"--quiet":
 				quiet = true
+			"--fade":
+				fades = Array(str(args[i + 1]).split(",")).map(func(x): return float(x)); i += 1
+			"--cap":
+				cap = int(args[i + 1]); i += 1
+			"--movement-seed":
+				movement_seed = true
 			"--check":
 				check = true
 			"--explain":
@@ -110,7 +137,7 @@ func _init():
 	_run(events)
 	if out_path != "":
 		var f = FileAccess.open(out_path, FileAccess.WRITE)
-		f.store_string(JSON.stringify({"log": args[0], "thetas": THETAS, "declare": declare, "records": records}))
+		f.store_string(JSON.stringify({"log": args[0], "thetas": THETAS, "declare": declare, "fades": fades, "cap": cap, "movement_seed": movement_seed, "records": records}))
 		f.close()
 		print("wrote %d records to %s (%d judge calls)" % [records.size(), out_path, judge_calls])
 	quit()
@@ -135,6 +162,7 @@ func _run(events: Array) -> void:
 			pending.append(e)
 			continue
 		# State here is just before command e; `pending` is what e will produce.
+		now_seq = int(e.seq)
 		for hook in after_hooks:
 			hook.call(g)
 		after_hooks = []
@@ -157,7 +185,8 @@ func _run(events: Array) -> void:
 			var nominator: String = str(x.actor)
 			var nominee: String = str(x.get("target", ""))
 			var seq_n: int = int(x.seq)
-			after_hooks.append(func(g2): _store_all(g2, {"presenter": nominator, "target": nominee, "type": "evil", "cards": cited.duplicate(), "challenges": {}, "seq": seq_n, "label": "%s nominates %s" % [nominator, nominee]}))
+			var day_n: int = int(g.w.day)
+			after_hooks.append(func(g2): _store_all(g2, {"presenter": nominator, "target": nominee, "type": "evil", "cards": cited.duplicate(), "challenges": {}, "seq": seq_n, "day": day_n, "label": "%s nominates %s" % [nominator, nominee]}))
 		# The player's public presentation of a filed case.
 		var cmd: String = str(e.data.cmd)
 		var number := _presented(cmd, filed)
@@ -417,13 +446,18 @@ func _items(st: Dictionary) -> Array:
 			items.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
 	return items
 
+## The item keys that seed the listener's core: its own readings. With --movement-seed, a
+## Night Watch's or Lamplighter's own readings seed it too, together with the unit (or the
+## movement connection) they sit in.
 func _seed(st: Dictionary, items: Array) -> Array:
 	var out: Array = []
 	for it in items:
 		if it.kind == "card":
 			var c: Dictionary = st.by_id[it.ids[0]]
 			if c.kind == "report" and str(c.get("source", "")) == st.id:
-				out.append(c.id)
+				out.append(it.key)
+		elif movement_seed and it.ids.any(func(id): return st.by_id[id].kind == "report" and str(st.by_id[id].get("source", "")) == st.id and str(st.by_id[id].get("role", "")) in NIGHT_ROLES):
+			out.append(it.key)
 	return out
 
 # ---------------------------------------------------------------- beliefs
@@ -433,18 +467,24 @@ func _seed(st: Dictionary, items: Array) -> Array:
 ## a new day or when its own readings change; otherwise it only grows, by cards that are
 ## new to it). fixed: use exactly these members per threshold instead (for comparing two
 ## versions of one moment on the same core).
-func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fixed: Dictionary = {}) -> Dictionary:
+func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fixed: Dictionary = {}, fade: float = -1.0) -> Dictionary:
+	if fade < 0.0:
+		fade = float(fades[0])
 	var t0: int = Time.get_ticks_usec()
 	var calls0: int = judge_calls
 	var items: Array = _items(st)
 	var base: Dictionary = _judge(st, [])
 	var values: Dictionary = {}
 	var solo_sum: Dictionary = _zero(st)
+	var by_key: Dictionary = {}
 	for it in items:
+		by_key[it.key] = it
 		values[it.key] = _value(st, it.ids, it.ctx)
 		_add(solo_sum, values[it.key])
-	var seed: Array = _seed(st, items)
-	var seed_keys: Array = seed.duplicate()
+	var seed_keys: Array = _seed(st, items)
+	var seed: Array = []
+	for key in seed_keys:
+		seed = _union(_union(seed, by_key[key].ids), by_key[key].ctx)
 	var seed_lean: Dictionary = _lean(st, seed) if not seed.is_empty() else _zero(st)
 	# Interaction of each candidate with the seed (independent of order).
 	var interaction: Dictionary = {}
@@ -457,14 +497,13 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 			_add(joint, _lean(st, _union(it.ids, it.ctx)), -1.0)
 			interaction[it.key] = _max_e(joint)
 	var t_solo: int = Time.get_ticks_usec()
-	var by_key: Dictionary = {}
-	for it in items:
-		by_key[it.key] = it
+	if remember:
+		_cache_check(st, items, values, day, (t_solo - t0) / 1000.0, judge_calls - calls0)
 	var item_of: Dictionary = {}
 	for it in items:
 		for id in it.ids:
 			item_of[id] = it.key
-	var out: Dictionary = {"held": st.held.size(), "items": items.size(), "seed": seed.size(), "declared": st.declared, "thetas": {},
+	var out: Dictionary = {"held": st.held.size(), "items": items.size(), "seed": seed_keys.size(), "declared": st.declared, "fade": fade, "thetas": {},
 		"interactions": interaction.values()}
 	for theta in THETAS:
 		var mem: Dictionary = _core_memory(st.id, theta) if remember else {"day": -99, "members": {}, "known": {}, "seed": []}
@@ -500,7 +539,6 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		if not core_keys.is_empty():
 			_add(total, merged_i)
 			largest = _size(merged_keys, by_key)
-		var loose: Array = []
 		for cs in cases:
 			var keys: Array = []
 			var extra_ids: Array = []
@@ -515,7 +553,9 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 					keys.append(key)
 			if keys.size() + extra_ids.size() < 1:
 				continue
-			var w: float = _presenter_trust(st, cs.presenter)
+			var w: float = _presenter_trust(st, cs.presenter) * pow(fade, maxi(0, day - int(cs.get("day", day))))
+			if w < CASE_FLOOR:
+				continue
 			var touches_core: bool = not merged_keys.is_empty() and keys.any(func(k): return k in merged_keys)
 			var entry: Dictionary = {"label": cs.label, "weight": w, "merged": touches_core, "cards": keys.size() + extra_ids.size()}
 			if touches_core:
@@ -723,13 +763,69 @@ func _cases_for(id: String) -> Array:
 	return stores.get(id, [])
 
 ## The store rule: a case from the same presenter with the same premise replaces the
-## earlier one; at most `cap` are kept, newest last.
-static func _stored_with(list: Array, cs: Dictionary, cap: int = CASE_CAP) -> Array:
+## earlier one. Nothing is pushed out (old cases fade) unless --cap is set.
+func _stored_with(list: Array, cs: Dictionary) -> Array:
 	var out: Array = list.filter(func(x): return not (x.presenter == cs.presenter and x.target == cs.target and x.type == cs.type))
 	out.append(cs)
-	while out.size() > cap:
+	while cap > 0 and out.size() > cap:
 		out.pop_front()
 	return out
+
+## The other fade rates' beliefs for the same moment, on the same core.
+func _other_fades(st: Dictionary, cases: Array, day: int, core: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for rate in fades.slice(1):
+		out[str(rate)] = _beliefs(st, cases, day, false, core, float(rate)).thetas
+	return out
+
+## What a cached refresh would have had to redo. Compares this refresh's per-item values
+## with the listener's previous refresh the same day: an item is invalidated when the public
+## record changed, or a card in it (its hearing weight included), the listener's trust in
+## one of its tellers, or a reading's reliability did. The rest should be unchanged; how far
+## they moved anyway is the cache's error.
+func _cache_check(st: Dictionary, items: Array, values: Dictionary, day: int, solo_ms: float, solo_calls: int) -> void:
+	var l: Dictionary = st.listener
+	var record_sig: int = JSON.stringify([st.view.get("timeline", {}), st.view.get("day", 0)]).hash()
+	var now: Dictionary = {}
+	for it in items:
+		var cards: Array = []
+		var trust: Array = []
+		var rel: Array = []
+		for id in _union(it.ids, it.ctx):
+			var c: Dictionary = st.by_id[id]
+			cards.append(JSON.stringify(c).hash())
+			trust.append(float(l.get("npc_trust", {}).get(str(c.get("source", "")), -1.0)))
+			for k in [c.get("accuracy_origin", ""), Solver.semantic_key(c), c.get("fact_id", ""), c.get("id", "")]:
+				if k != "" and l.get("reading_reliability", {}).has(k):
+					rel.append(snappedf(float(l.reading_reliability[k]), 0.0001))
+		now[it.key] = {"cards": cards, "trust": trust, "rel": rel, "value": values[it.key]}
+	var prev: Dictionary = cache_seen.get(st.id, {})
+	if prev.get("day", -99) == day:
+		var counts := {"items": items.size(), "new": 0, "record": 0, "hearing": 0, "trust": 0, "kept": 0, "kept_drifted": 0}
+		var worst := 0.0
+		var record_changed: bool = prev.record != record_sig
+		for key in now:
+			if not prev.items.has(key):
+				counts.new += 1
+				continue
+			var was: Dictionary = prev.items[key]
+			if record_changed:
+				counts.record += 1
+			elif was.cards != now[key].cards:
+				counts.hearing += 1
+			elif was.trust != now[key].trust or was.rel != now[key].rel:
+				counts.trust += 1
+			else:
+				counts.kept += 1
+				var drift := 0.0
+				for p in now[key].value:
+					drift = maxf(drift, absf(float(now[key].value[p].e) - float(was.value[p].e)))
+				worst = maxf(worst, drift)
+				if drift > CACHE_TOLERANCE:
+					counts.kept_drifted += 1
+		records.append({"kind": "cache", "seq": now_seq, "day": day, "listener": st.id, "counts": counts, "worst_drift": worst,
+			"judgement_ms": solo_ms / maxf(1.0, float(solo_calls)), "since_seq": int(prev.seq)})
+	cache_seen[st.id] = {"day": day, "seq": now_seq, "record": record_sig, "items": now}
 
 static func _members_of(b: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
@@ -758,6 +854,7 @@ func _dawn(g, seq: int) -> void:
 		var b: Dictionary = _beliefs(st, _cases_for(n.id), int(g.w.day))
 		var again: Dictionary = _beliefs(st, _cases_for(n.id), int(g.w.day))
 		var bare: Dictionary = _beliefs(st, [], int(g.w.day), false, _members_of(b)) if not _cases_for(n.id).is_empty() else b
+		var other: Dictionary = _other_fades(st, _cases_for(n.id), int(g.w.day), _members_of(b))
 		var stable: bool = JSON.stringify(b.thetas) == JSON.stringify(again.thetas)
 		# A fresh state object: the cost of a refresh with nothing cached.
 		var fresh: Dictionary = _make_state(n.id, st.view, st.template.merged({"cards": st.held}, true), st.listener)
@@ -769,7 +866,7 @@ func _dawn(g, seq: int) -> void:
 		for id in st.held:
 			var c: Dictionary = st.by_id[id]
 			named[id] = "%s/%s by %s (day %s)" % [c.kind, c.get("role", ""), c.get("source", ""), str(c.get("observed_at", {}).get("day", "?"))]
-		records.append({"kind": "dawn", "seq": seq, "day": int(g.w.day), "listener": n.id, "proto": b, "proto_no_cases": bare.thetas, "stable": stable,
+		records.append({"kind": "dawn", "seq": seq, "day": int(g.w.day), "listener": n.id, "proto": b, "fades": other, "proto_no_cases": bare.thetas, "stable": stable,
 			"cold_ms": cold.ms, "cold_joint_ms": cold.ms_joint, "cold_calls": cold.judge_calls,
 			"judge_all": _judge(st, st.held).pe, "today": bounded.pe, "today_ms": bounded.ms, "today_read": bounded.read, "everything": everything.pe, "everything_ms": everything.ms, "cards": named})
 		if not quiet:
@@ -795,9 +892,14 @@ func _vote(g, tally: Dictionary, pending: Array, seq: int) -> void:
 			p_today = float(_today(g, n, false).pe.get(nominee, -1.0))
 		var scale: float = 0.45 * (1.35 if st.listener.get("per_card_source_trust", false) else 1.0)
 		var row: Dictionary = {"voter": n.id, "need": float(x.data.need), "total": float(x.data.total), "logged_suspicion": float(x.data.get("suspicion", 0.0)),
-			"suspicion_now": Mind.susp(n, nominee), "p_today": p_today, "scale": scale, "proto": {}}
+			"suspicion_now": Mind.susp(n, nominee), "p_today": p_today, "scale": scale, "proto": {}, "fades": {}}
 		for theta in THETAS:
 			row.proto[str(theta)] = float(b.thetas[str(theta)].pe[nominee])
+		var other: Dictionary = _other_fades(st, _cases_for(n.id), int(g.w.day), _members_of(b))
+		for rate in other:
+			row.fades[rate] = {}
+			for theta in THETAS:
+				row.fades[rate][str(theta)] = float(other[rate][str(theta)].pe[nominee])
 		voters.append(row)
 	var evil: Array = g.w.npcs.filter(func(n): return n.is_evil()).map(func(n): return n.id)
 	records.append({"kind": "vote", "seq": seq, "day": int(g.w.day), "nominee": nominee, "by": str(tally.data.get("by", "")), "yes": tally.data.get("yes", []), "no": tally.data.get("no", []),
@@ -832,7 +934,7 @@ func _snapshot_cards(g) -> Dictionary:
 func _present(g, number: int, case_data: Dictionary, before: Dictionary, seq: int) -> void:
 	var target: String = str(case_data.conclusion.get("target", case_data.conclusion.get("a", "")))
 	var cs: Dictionary = {"presenter": "player", "target": target, "type": str(case_data.conclusion.get("type", "evil")), "cards": case_data.cards.duplicate(),
-		"challenges": case_data.get("reading_challenges", {}), "seq": seq, "label": "#%d %s %s" % [number, target, str(case_data.conclusion.get("type", ""))]}
+		"challenges": case_data.get("reading_challenges", {}), "seq": seq, "day": int(g.w.day), "label": "#%d %s %s" % [number, target, str(case_data.conclusion.get("type", ""))]}
 	var modes: Array = []
 	for id in cs.challenges:
 		modes.append(str(cs.challenges[id].get("mode", "")))
@@ -881,14 +983,22 @@ func _present(g, number: int, case_data: Dictionary, before: Dictionary, seq: in
 		var with_b: Dictionary = _beliefs(st, with_cases, day, true)
 		var core: Dictionary = _members_of(with_b)
 		var without: Dictionary = _beliefs(st0, earlier, day, false, core)
-		# The same, had the new case not pushed the oldest stored one out.
-		var kept_all: Dictionary = _beliefs(st, _stored_with(_cases_for(n.id), cs, 99), day, false, core)
 		var twice: Dictionary = _beliefs(st, _stored_with(with_cases, cs), day, false, core)
+		var other_with: Dictionary = _other_fades(st, with_cases, day, core)
+		var other_without: Dictionary = _other_fades(st0, earlier, day, core)
+		# Everyone a cited trace matches: read with the profile cards, it moves them.
+		var matched: Array = []
+		for it in _items(st):
+			if it.ids.any(func(id): return id in cs.cards and st.by_id[id].kind in TRACE_KINDS):
+				var v: Dictionary = _value(st, it.ids.filter(func(id): return id in cs.cards and st.by_id[id].kind in TRACE_KINDS) if it.kind == "movement" else it.ids, it.ctx)
+				for p in v:
+					if absf(float(v[p].e)) >= TRACE_MATCH and p not in matched:
+						matched.append(p)
 		# People the case touches: its target, anyone named in or telling its cards, and
 		# anyone named in a core card it joined.
 		var touched: Dictionary = {}
 		for theta in THETAS:
-			var names: Array = [target] + _names(st, cs.cards.filter(func(id): return st.by_id.has(id)))
+			var names: Array = _union([target] + _names(st, cs.cards.filter(func(id): return st.by_id.has(id))), matched)
 			var th: Dictionary = with_b.thetas[str(theta)]
 			if th.cases.any(func(x): return x.label == cs.label and x.merged):
 				var core_ids: Array = []
@@ -901,7 +1011,7 @@ func _present(g, number: int, case_data: Dictionary, before: Dictionary, seq: in
 			touched[str(theta)] = names
 		records.append({"kind": "present", "seq": seq, "day": day, "case": number, "label": cs.label, "target": target, "listener": n.id, "challenge_modes": modes,
 			"cards": cs.cards.size(), "held_cards": cs.cards.filter(func(id): return id in st.held).size(), "new_cards": new_cards.size(), "new_kinds": _where(st, new_cards), "cited_changed": cited_changed.size(),
-			"without": without.thetas, "with": with_b.thetas, "with_none_dropped": kept_all.thetas,
+			"without": without.thetas, "with": with_b.thetas, "fades_with": other_with, "fades_without": other_without, "trace_matched": matched,
 			"dropped": earlier.filter(func(x): return x not in with_cases).map(func(x): return x.label), "twice_same": JSON.stringify(twice.thetas) == JSON.stringify(with_b.thetas), "touched": touched,
 			"weight": _presenter_trust(st, "player")})
 		if not quiet:
