@@ -522,6 +522,10 @@ func _measure_player(g) -> void:
 		if f.evidence == "trace":
 			with_profile.append({"evidence": "trace_with_profiles", "nums": f.nums + profile_nums, "target": f.target, "scene": f.scene})
 	finds.append_array(with_profile)
+	# The profile cards alone, cited against the Demon, so a trace's interaction with them
+	# (both - trace - profiles) can be read off.
+	if finds.any(func(f): return f.evidence == "trace"):
+		finds.append({"evidence": "profiles_alone", "nums": profile_nums, "target": w.demon_id})
 	for f in finds:
 		var target: String = f.target
 		var l = _listener_for(g, [target])
