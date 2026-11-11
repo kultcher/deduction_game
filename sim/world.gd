@@ -41,6 +41,9 @@ var minion_ids: Array = []
 var bluffs: Array = []
 ## What may be in play (sim/script_def.gd). Set before setup(); null deals the Default script.
 var case_script = null
+var declared_demon_type = ""        # the player's demon-type declaration: "walker", "hexer" or "" (game/demon_declaration.gd)
+var declaration_day = -1
+var declaration_changes = 0
 var evil_plan = {}
 
 ## Dynamic locations (crime scenes). id -> {name, block, victim, day, trace_block, trace_true, why, searched}
@@ -401,6 +404,11 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		# Only a non-default script is logged, so Default cases stay trace-identical.
 		dlog.add("case_script", "world", "", {"name": case_script.name, "fingerprint": case_script.fingerprint(),
 			"script": case_script.to_dict()})
+	# A script that deals one kind of Demon starts declared (game/demon_declaration.gd).
+	var kinds: Dictionary = {}
+	for d in (case_script.demons if not case_script.demons.is_empty() else ["demon"]):
+		kinds["hexer" if C.is_day_demon(str(d)) else "walker"] = true
+	declared_demon_type = kinds.keys()[0] if kinds.size() == 1 else ""
 
 	var cast = shuffled(C.CAST).slice(0, npc_count)
 	var occs = shuffled(C.OCCUPATIONS.keys()).slice(0, npc_count)

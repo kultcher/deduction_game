@@ -123,6 +123,7 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"world_options": {"modifiers": snapshot.rules.modifier_options.duplicate()}, "scope": result.scope,
 		"script_minions": snapshot.rules.get("minions", []).duplicate(),
 		"script_demons": snapshot.rules.get("demons", ["demon"]).duplicate(),
+		"declared_demon_type": str(snapshot.rules.get("declared_demon", "")),
 		"timeline": History.from_events(snapshot.public_events),
 		"watched": snapshot.get("watched", []).duplicate(true),
 		# The haunts a regular knows (WorkshopBridge.known_haunts); the Demonologist's view has none.

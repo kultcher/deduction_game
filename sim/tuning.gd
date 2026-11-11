@@ -304,6 +304,10 @@ class Trust:
 	const CRED_WEIGHT_FORMAL = 1.0
 	const CRED_WEIGHT_STATEMENT = 0.35
 	const CRED_WEIGHT_BARE_NOMINATION = 1.0
+	## Changing the demon-type declaration (game/demon_declaration.gd): a straight cut to every
+	## NPC's credibility, kept in their track-record target. About one failed case among two
+	## claims: CRED_STEP * CRED_SPAN * 0.5.
+	const CRED_DECLARATION_CHANGE = 0.1
 	const DISTRUST_EXPLAIN_THRESHOLD = 0.35
 
 	## Overnight secret-keeping recovery

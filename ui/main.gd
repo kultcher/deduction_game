@@ -7,6 +7,7 @@ extends Control
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
+const Declaration = preload("res://game/demon_declaration.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
@@ -1123,6 +1124,14 @@ func _refresh_actions() -> void:
 			if not g.presented_today:
 				_button(actions, "Present a deduction to everyone…", func(): _card_picker("Present a deduction to the meeting",
 					func(c): return c["kind"] == "deduction", func(num, _x): _run("present %d" % num), false))
+			if Declaration.blocked(w) == "":
+				# The demon-type declaration: its own action, once a day (game/demon_declaration.gd).
+				for kind in Declaration.TYPES:
+					if kind == w.declared_demon_type:
+						continue
+					var verb: String = "Correct yourself" if w.declared_demon_type != "" else "Declare"
+					var b = _button(actions, "%s: it's %s" % [verb, Declaration.LABEL[kind]], func(): _run("declare " + kind))
+					b.tooltip_text = "The whole town weighs the evidence as if this were true. Once a day; changing your mind costs credibility with everyone."
 			var nom = _button(actions, "Nominate…", func(): pass)
 			nom.disabled = "player" in w.meeting.get("nominators", [])
 			if nom.disabled:
