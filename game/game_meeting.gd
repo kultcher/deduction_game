@@ -10,6 +10,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
 const Credibility = preload("res://game/credibility.gd")
+const Declaration = preload("res://game/demon_declaration.gd")
 const CardModel = preload("res://game/card_model.gd")
 const Deduction = preload("res://sim/deduction.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
@@ -78,6 +79,9 @@ static func _meeting_opened(g) -> void:
 	g._prompt("Before voting, record or update your private demon guess in a profile or with 'guess <name> demon'. A case can end at this meeting; guessing is optional and costs no time.")
 	g._prompt("Nominations are open (%d votes needed of %d). 'present <deduction#>' to take the floor (once), 'nominate <name>', or 'wait' to let the town speak." %
 		[g.w.vote_threshold(), g.w.voter_count()])
+	if Declaration.blocked(g.w) == "":
+		var now: String = "The town takes it as %s. " % Declaration.LABEL[g.w.declared_demon_type] if g.w.declared_demon_type != "" else ""
+		g._prompt("%s'declare walker' or 'declare hexer' tells the town which kind of Demon it faces (once a day; changing your mind costs credibility)." % now)
 
 
 static func _meeting_command(g, verb: String, rest: String) -> void:
@@ -86,6 +90,10 @@ static func _meeting_command(g, verb: String, rest: String) -> void:
 			g._present_deduction(rest)
 		"nominate", "nom":
 			_player_nomination(g, rest)
+		"declare":
+			var err: String = Declaration.declare(g, rest)
+			if err != "":
+				g._err(err)
 		"wait":
 			if not _next_npc_nomination(g):
 				g.town_quiet = true
@@ -101,7 +109,7 @@ static func _meeting_command(g, verb: String, rest: String) -> void:
 				return
 			_close_meeting(g)
 		_:
-			g._err("At the meeting: present <deduction#> (once) | nominate <name> | wait | done")
+			g._err("At the meeting: present <deduction#> (once) | nominate <name> | declare walker|hexer | wait | done")
 
 
 ## The player's nomination (meeting plan M2a). 'nominate <name>' rests on the on-deck case
