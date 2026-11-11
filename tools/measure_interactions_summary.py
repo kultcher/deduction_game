@@ -11,6 +11,7 @@ Premises: per variant, the mean step on the target's and the first teller's P(ev
 the case's own verdict, and the suspicion step, against holding the cards unpresented.
 """
 import json
+import os
 import math
 import statistics
 import sys
@@ -85,6 +86,8 @@ def main(paths):
             print("%s: %d presented, mean effect %.2f, mean multiplier %.2f, backfires %d" % (k, len(cs), statistics.mean(c["effect"] for c in cs), statistics.mean(c["multiplier"] for c in cs), sum(c["backfire"] for c in cs)))
 
     if chal:
+        if os.environ.get("ALIVE_ONLY"):
+            chal = [r for r in chal if r.get("accused_alive", True)]
         challenges(chal)
 
 

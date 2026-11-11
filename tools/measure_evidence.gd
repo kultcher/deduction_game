@@ -49,6 +49,7 @@ var no_hexer: bool = false
 var force_roles: Array = []
 var force_bluffs: Array = []
 var construct_bluffs: bool = false
+var keep_state: bool = false # --keep-state: the listener keeps what it already holds and believes
 var script_roles: Array = []
 var last_case: Dictionary = {}
 
@@ -76,6 +77,10 @@ func _init() -> void:
 			what = args[i + 1]
 		elif args[i] == "--no-hexer":
 			no_hexer = true
+		elif args[i] == "--clash-rule" and i + 1 < args.size():
+			preload("res://workshop/reading_challenges.gd").clash_rule = args[i + 1]
+		elif args[i] == "--keep-state":
+			keep_state = true
 		elif args[i] == "--construct-bluffs":
 			construct_bluffs = true
 		elif args[i] == "--force-bluffs" and i + 1 < args.size():
@@ -539,7 +544,8 @@ func _measure_player(g) -> void:
 ## it (the shared model's posterior, tools/belief_views.gd). {} if the refresh had issues.
 func _beliefs(g, n, trust_in: Dictionary, injects: Array) -> Dictionary:
 	var saved: Dictionary = _save(n)
-	_wipe(g, n)
+	if not keep_state:
+		_wipe(g, n)
 	for id in trust_in:
 		n.npc_trust[id] = trust_in[id]
 	for f in injects:
@@ -949,14 +955,16 @@ func _accusing(g) -> Array:
 func _constructed_bluffs(g) -> Array:
 	var w = g.w
 	var out: Array = []
-	# Dead goods first, so living ones are left to listen (an Archivist pair can name the dead).
-	var goods: Array = w.npcs.filter(func(m): return not m.is_evil() and not m.alive) + w.npcs.filter(func(m): return not m.is_evil() and m.alive)
+	# Living goods first, keeping one back to listen. The dead come last: a Demon victim is
+	# publicly good, so a bluff naming one is plainly false without any challenge.
+	var alive_goods: Array = w.npcs.filter(func(m): return not m.is_evil() and m.alive)
+	var goods: Array = alive_goods.slice(0, maxi(0, alive_goods.size() - 1)) + w.npcs.filter(func(m): return not m.is_evil() and not m.alive)
 	var minion_role: String = str(w.case_script.minions[0]) if w.get("case_script") != null and not w.case_script.minions.is_empty() else "poisoner"
 	var k: int = 0
 	for e in w.npcs.filter(func(m): return m.is_evil() and m.alive):
-		if goods.size() < 3:
+		if goods.size() < 2:
 			break
-		if k + 1 >= goods.size() - 1:
+		if k + 1 >= goods.size():
 			k = 0
 		var a = goods[k % goods.size()]
 		var b = goods[(k + 1) % goods.size()]
@@ -1087,7 +1095,7 @@ func _measure_challenges(g) -> void:
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
 					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
-					"grounds_true": confs.all(func(e): return bool(e["true"])), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
 					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}
