@@ -7,6 +7,13 @@ static var cache: Dictionary = {}
 static var fraction_cache: Dictionary = {}
 static var _index_cache: Dictionary = {}
 const MODES = ["misled", "lying", "unlikely", "impaired", "delusional"]
+## How a clash between the grounds and the reading is settled (belief model, challenge
+## sides). "contest": the clash shows one side is wrong, not which, so the reading is
+## discounted by how much more credible its grounds are than its teller, and a challenge
+## citing less credible grounds than the reading backfires. "legacy": the grounds are
+## taken as true (strength = their credibility alone). "graded": the clash only gates; the
+## graded world-model test decides. Dev switch for tools/measure_evidence.gd; "contest" in play.
+static var clash_rule: String = "contest"
 const CaseEval = preload("res://workshop/case_eval.gd")
 
 static func valid(view: Dictionary, id: String, value) -> bool:
@@ -75,6 +82,25 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				self_presence_conflict = alone.movement_ok and not duty_together.movement_ok
 			for ground in grounds:
 				strength = minf(strength, quality(listener, ground.source))
+		# A clash says one side is wrong, not which. Before: the grounds were taken as true,
+		# so a challenge landed whichever side lied, on trust in the grounds alone.
+		var contest_lost: bool = false
+		if conflict and clash_rule != "legacy":
+			var q_r: float = quality(listener, report.source)
+			# P(reading is the broken side | clash) - P(grounds are), with each side reliable
+			# at its teller's quality: (q_g - q_r) / (1 - q_r q_g).
+			var share: float = (strength - q_r) / maxf(1.0 - q_r * strength, 1e-6)
+			if clash_rule == "posterior" and share > 0.0:
+				# The grounds are the more credible side: discount by the chance the reading is
+				# the broken one, (1 - q_r) / (1 - q_r q_g), not by the margin.
+				share = (1.0 - q_r) / maxf(1.0 - q_r * strength, 1e-6)
+			if clash_rule == "graded" or share <= 0.0:
+				contest_lost = clash_rule in ["contest", "posterior"] and share < 0.0
+				conflict = false
+				self_presence_conflict = false
+				strength = 0.0
+			else:
+				strength = share
 		var supported = (fraction == 0.0 and has_reference) or conflict or (challenge.mode == "unlikely" and fraction < 0.05 and has_reference)
 		var accuracy_agreement = 0.0
 		var multiplier = 1.0
@@ -177,6 +203,10 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			elif challenge.mode in ["misled", "unlikely", "delusional"]:
 				cause_agreement = maxf(cause_agreement, g_agree)
 			backfire = graded.backfire
+		# Citing less credible grounds against a more credible reading backfires.
+		if contest_lost and not supported:
+			backfire = true
+			note = "Those grounds carry less weight with me than the report they contradict."
 		# A lie is evidence against the reader, and the world model already counts it: in a
 		# world where the reader is good and healthy the reading must hold, so the clash
 		# with the grounds weighs against that world. Discounting the reading's reliability
