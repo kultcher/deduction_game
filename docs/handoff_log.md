@@ -27,6 +27,21 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-11 early, Claude-Quill: challenge sides, diagnosis and a proposed fix (`claude/challenge-contest`)
+
+From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, under "Challenge sides".
+
+- `ReadingChallenges.clash_rule`, set to "contest" in play: in a clash, the floor's strength is (q_grounds − q_reader) / (1 − q_reader × q_grounds). At zero or below, the clash supports nothing, and below zero it backfires. "legacy", "posterior" and "graded" stay as dev switches for the harness. Lying is unchanged (fix 2).
+- Harness:
+  - `--construct-bluffs`: evil tells false Archivist and Seer readings;
+  - `--script-roles`, `--force-bluffs`;
+  - a trust grid in `--what challenges`;
+  - `--keep-state`, `--natural-trust`, `--clash-rule`;
+  - profiles alone in `--what player`.
+- Full suite 138/138. Golden is identical on all five seeds, because passive games raise no challenges.
+
+---
+
 ## 2026-11-10 evening, Claude-Quill: belief-model Phase 0 gap, fix 3, Phase 3 table (PRs #124, #125)
 
 From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, in its Results section.
