@@ -27,6 +27,17 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-10 evening, Claude-Quill: belief-model Phase 0 gap, fix 3, Phase 3 table (PRs #124, #125)
+
+From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, in its Results section.
+
+- **#125** (tools only, stacked on #118): `tools/read_everything_gap.gd`; `tools/measure_evidence.gd --what interactions|premises`, `--declare`, `--no-hexer`; `tools/measure_interactions_summary.py`. Dev hooks, empty in play: `Reasoner.always_keep_kinds` and `LiveActivity.declared_demon_type`.
+- **#124** (draft): own home alibi is lie-aware for an evil subject, in both kernels. Full suite 136/137. `test_workshop_vote_and_alibi`'s "doubting the report raises the watcher" now gives 0.120 against a bar of 0.2. It's held for Michael, and the threshold is unchanged. Golden moves on seeds 42, 54875 and 98933; Bailiff sets the re-baseline.
+- A playtest log replays only at its own build: 12926 at `75b4c8e`. Use a worktree.
+- Later (after Phase 1 merged): #125 rebased on main; `--what crosschecks|challenges` and `--force-roles` added. Table rerun on `7404873`; the 0.4 core threshold is confirmed. Results are in the doc.
+
+---
+
 ## 2026-11-10 afternoon, Claude-Lantern: why breakdown, what challenges and the view did (`claude/why-challenge-view`)
 
 Base: main `07cbbe6`. Debug and logging only: no belief, vote or RNG changes; golden
@@ -49,16 +60,6 @@ should be identical. Next actor: Michael (review), then whoever uses it for Phas
   96% -> 52%. Three of four listeners agreed with the "lying" challenge (0.15 to 0.74);
   for Hollis it took Kiran from 78% to 45%.
 - Tests: `tools/test_workshop_why.gd` (new `_extras`).
-
-## 2026-11-10 evening, Claude-Quill: belief-model Phase 0 gap, fix 3, Phase 3 table (PRs #124, #125)
-
-From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, in its Results section.
-
-- **#125** (tools only, stacked on #118): `tools/read_everything_gap.gd`; `tools/measure_evidence.gd --what interactions|premises`, `--declare`, `--no-hexer`; `tools/measure_interactions_summary.py`. Dev hooks, empty in play: `Reasoner.always_keep_kinds` and `LiveActivity.declared_demon_type`.
-- **#124** (draft): own home alibi is lie-aware for an evil subject, in both kernels. Full suite 136/137. `test_workshop_vote_and_alibi`'s "doubting the report raises the watcher" now gives 0.120 against a bar of 0.2. It's held for Michael, and the threshold is unchanged. Golden moves on seeds 42, 54875 and 98933; Bailiff sets the re-baseline.
-- A playtest log replays only at its own build: 12926 at `75b4c8e`. Use a worktree.
-
----
 
 ## 2026-11-10 morning, Claude-Lantern: the "why" breakdown (`claude/workshop-why`)
 
