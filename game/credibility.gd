@@ -12,6 +12,7 @@ const Bridge = preload("res://game/workshop_bridge.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
+const Declaration = preload("res://game/demon_declaration.gd")
 
 const EVIL_LEANING = ["evil", "demon", "minion", "suspicious"]
 const GOOD_LEANING = ["good"]
@@ -76,7 +77,7 @@ static func dawn(g) -> void:
 		var agreement = _agreement(g, mind)
 		if agreement == null:
 			continue
-		var target: float = 0.5 + Tuning.Trust.CRED_SPAN * float(agreement)
+		var target: float = 0.5 + Tuning.Trust.CRED_SPAN * float(agreement) - Declaration.dawn_offset(g.w)
 		var value: float = clampf(mind.credibility + (target - mind.credibility) * Tuning.Trust.CRED_STEP, Tuning.Trust.CRED_MIN, Tuning.Trust.CRED_MAX)
 		var old_cred: float = mind.credibility
 		g.w.dlog.trace_event("value_change", n.id, "player", {"quantity": "credibility",
