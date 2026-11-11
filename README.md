@@ -49,6 +49,8 @@ with the mouse; the typed prompt still works as a fallback.
   expression as they talk.
 - **The meeting circle:** at the town meeting the map gives way to a ring of standees on
   the Square, with the nominee in the centre and a hand that sweeps round counting votes.
+  Speakers come forward on the courtroom stage, and each line waits for **Continue** (an
+  **Auto-advance** toggle under the stage moves on by itself). The log follows the stage.
 - **The log** colours every name and speech line in the speaker's ink; card numbers open
   the card on the board.
 - **The profile** shows occupation, claim, trait bars and **Your guesses** (a role and a
@@ -147,8 +149,8 @@ You get one action per phase. `help` lists every command in the current build.
 |---|---|
 | Any time | `look`, `map`, `cast`, `profile <name>`, `board [filter]`, `timeline [filter]`, `theory`, `roles` (or `script`), `tools`, `help`, `log`, `fallbacks` (dev: anything the shared model couldn't read) |
 | Day phase | `go <place / block / person>`, optionally one more `go` within the same block, then one action: `talk <name>`, `search`, `gossip` (the tavern, evening only), `records` (the Town Hall, morning or afternoon, 3 a case), `wait` |
-| Talking (3 questions) | `ask gift`, `ask are <gift>`, `ask night`, `ask seen <today / morning / afternoon / evening / yesterday [phase]>`, `ask about <name or gift>`, `ask why`, `ask check / guard / watch / register <name or block>` (ask a gift-holder who told you their gift to use it tonight), `present <card#> [for/against <name>]`, `offer ward` / `offer vigil` (free), `apologise`, `bye` |
-| Approached | `accept` (talk now; uses the phase) or `decline` (any other action also declines) |
+| Talking (3 questions) | `ask gift`, `ask are <gift>`, `ask night`, `ask seen <today / morning / afternoon / evening / yesterday [phase]>` (not the phase you're in: you can see that yourself), `ask about <name or gift>`, `ask why`, `ask check / guard / watch / register <name or block>` (ask a gift-holder who told you their gift to use it tonight), `present <card#> [for/against <name>]`, `offer ward` / `offer vigil` (free), `apologise`, `bye` |
+| Approached | `accept` (talk now; uses the phase) or `decline`; for a protection request, `yes` or `no`. Nothing else moves on until you answer |
 | Town meeting | `present <case#>` (once: everyone hears it), `nominate <name> [#case / raw]` (once; rests on your latest filed case against them unless you pick another or go `raw`), `wait` (let the town nominate), `done` (close the meeting, once a `wait` finds no more nominations) |
 | On a nomination | `press role`, `press night [N]`, `press card <#>` or `press skip` (one public question, before the town speaks), `hear` (let the town speak), then `accuse [card#]` or `defend [card#]` (one statement), `clemency` (once per case), `vote yes` / `vote no` (the town speaks first if it hasn't) |
 | Night | `vigil <block>`, `ward <name>` (once per case), `sleep` |
@@ -169,8 +171,8 @@ add the Augur, Chronicler, Confessor, Executor, Magistrate, Monitor and Registra
 
 - **Poisoner:** each night one person's gift fails or lies until the next night.
 - **Breathstealer:** once a day silences someone on its block from that evening's meeting
-  to the next; the silenced can't claim, testify, nominate or talk with you (they still
-  vote).
+  to the next; the silenced can't claim, testify, nominate or answer you (they still
+  vote, and a card you show them still moves their beliefs).
 - **Revenant:** hides a totem somewhere. Hanged with a totem hidden, it turns a good
   yes-voter evil. `search` at the totem's location burns it.
 - **Scion:** becomes the demon if the demon is executed while five or more are alive.
@@ -188,7 +190,9 @@ live, work and idle, their traits and bonds) goes into their profile, from where
 join a case. People at work or deep in conversation are visible from anywhere; anyone else only
 once you pick their block. `go <person>` takes you to them if you know where they are,
 otherwise to their block; people at home can be visited. People in conversation can't be
-talked to. Asking someone about a person may reveal that person's haunts.
+talked to. Asking someone about a person may reveal that person's haunts. So can searching one of
+the eight town places (it names one of its regulars, once per place per game), and seeing someone idle
+at one of their haunts on two different days (three for the tavern).
 
 **Talking.** A conversation has three questions. `ask gift` answers at one of four levels
 depending on the NPC's Privacy, their trust in you, pressure and the day: deny or refuse, a
@@ -311,6 +315,7 @@ ui/main.gd        town screen, title bar, actions and log (ui/main.tscn)
 ui/new_case_screen.gd, script_editor.gd   the New Case screen and the script editor
 ui/map_view.gd    painted map            ui/meeting_view.gd  meeting circle
 ui/day_conversation_view.gd  conversations with VN portraits
+ui/soundtrack.gd  background music (autoload `Soundtrack`; silent in headless runs)
 ui/live_case_workshop.gd, workshop_drawer.gd  the Case Workshop board
 ui/case_view.gd   full-screen case board, with board_view.gd, case_state.gd,
                   deduction_tray.gd, card_list.gd, board_panel.gd, board_icons.gd
