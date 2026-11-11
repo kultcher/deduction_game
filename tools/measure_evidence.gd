@@ -47,6 +47,9 @@ const FLAT = 0.25
 var rows: Array = []
 var no_hexer: bool = false
 var force_roles: Array = []
+var force_bluffs: Array = []
+var construct_bluffs: bool = false
+var script_roles: Array = []
 var last_case: Dictionary = {}
 
 func _init() -> void:
@@ -73,6 +76,12 @@ func _init() -> void:
 			what = args[i + 1]
 		elif args[i] == "--no-hexer":
 			no_hexer = true
+		elif args[i] == "--construct-bluffs":
+			construct_bluffs = true
+		elif args[i] == "--force-bluffs" and i + 1 < args.size():
+			force_bluffs = Array(args[i + 1].split(","))
+		elif args[i] == "--script-roles" and i + 1 < args.size():
+			script_roles = Array(args[i + 1].split(","))
 		elif args[i] == "--force-roles" and i + 1 < args.size():
 			force_roles = Array(args[i + 1].split(","))
 		elif args[i] == "--declare" and i + 1 < args.size():
@@ -130,7 +139,30 @@ func _play(sd: int, size: int, dynamic: bool = true, force_demon: String = ""):
 				case_script.minions.append(r)
 			if not r in case_script.forced:
 				case_script.forced.append(r)
+	if not script_roles.is_empty():
+		# On the script (claimable), not necessarily dealt.
+		if case_script == null:
+			case_script = ScriptDef.default_script()
+		for r in script_roles:
+			if C.ROLES[r].align == "good" and not r in case_script.town:
+				case_script.town.append(r)
+	if not force_bluffs.is_empty():
+		# The bluffed gifts must be on the script for a claim of them to be believable.
+		if case_script == null:
+			case_script = ScriptDef.default_script()
+		for r in force_bluffs:
+			if not r in case_script.town:
+				case_script.town.append(r)
 	g.new_case(sd, size, case_script)
+	if not force_bluffs.is_empty():
+		# Evil bluffs these gifts, the Demon first. A seed that dealt one of them to a
+		# townsperson is skipped (the bluff would be a counter-claim).
+		if g.w.npcs.any(func(m): return not m.is_evil() and m.role in force_bluffs):
+			return null
+		var team: Array = g.w.evil_team()
+		team.sort_custom(func(a, b): return a.id == g.w.demon_id and b.id != g.w.demon_id)
+		for i in range(team.size()):
+			g.w.evil_plan.bluffs[team[i].id] = force_bluffs[i % force_bluffs.size()]
 	var guard: int = 0
 	while g.state != "over" and g.w.day < STOP_DAY and guard < 300:
 		guard += 1
@@ -881,7 +913,11 @@ func _confession(g, target: String, night: int, good: bool) -> Dictionary:
 ## otherwise anyone good outside `exclude`. Returns [npc, claimed role].
 func _confessor_teller(g, exclude: Array) -> Array:
 	for m in g.w.npcs:
-		if m.alive and m.role == "confessor" and not m.is_evil() and m.id not in exclude:
+		if m.role == "confessor" and not m.is_evil() and m.id not in exclude:
+			return [m, "confessor"]
+	# Otherwise a good NPC outside `exclude`, the dead first (leave the living to listen).
+	for m in g.w.npcs:
+		if not m.alive and not m.is_evil() and m.id not in exclude:
 			return [m, "confessor"]
 	var c = _listener_for(g, exclude)
 	return [c, "confessor"] if c != null else []
@@ -898,7 +934,42 @@ func _accusing(g) -> Array:
 			"dowser":
 				if int(d.get("count", 0)) >= 1:
 					out.append({"s": r.s, "e": r.e, "accused": Array(d.get("group", []))})
+			"seer":
+				if bool(d.get("yes", false)):
+					out.append({"s": r.s, "e": r.e, "accused": Array(d.get("pair", []))})
+	if construct_bluffs:
+		out = out.filter(func(x): return not x.s.is_evil())
+		var cb: Array = _constructed_bluffs(g)
+		out.append_array(cb)
 	return out.filter(func(x): return x.accused.size() >= 2 and x.accused.all(func(p): return g.w.by_id.has(p)))
+
+## --construct-bluffs: each living evil NPC tells a false accusation about two good people,
+## an Archivist pair (first night) and a Seer "yes" (night 1), so a challenge grounded in
+## true Confessor readings has a sample shaped like the honest-reading one.
+func _constructed_bluffs(g) -> Array:
+	var w = g.w
+	var out: Array = []
+	# Dead goods first, so living ones are left to listen (an Archivist pair can name the dead).
+	var goods: Array = w.npcs.filter(func(m): return not m.is_evil() and not m.alive) + w.npcs.filter(func(m): return not m.is_evil() and m.alive)
+	var minion_role: String = str(w.case_script.minions[0]) if w.get("case_script") != null and not w.case_script.minions.is_empty() else "poisoner"
+	var k: int = 0
+	for e in w.npcs.filter(func(m): return m.is_evil() and m.alive):
+		if goods.size() < 3:
+			break
+		if k + 1 >= goods.size() - 1:
+			k = 0
+		var a = goods[k % goods.size()]
+		var b = goods[(k + 1) % goods.size()]
+		k += 2
+		var arch: Dictionary = {"role": "archivist", "data": {"pair": [a.id, b.id], "role": minion_role}, "day": 0, "true": false, "fake": true, "shared": true,
+			"text": "One of %s and %s is the %s." % [a.name, b.name, C.ROLES[minion_role].name]}
+		var seer: Dictionary = {"role": "seer", "data": {"pair": [a.id, b.id], "yes": true}, "day": 1, "true": false, "fake": true, "shared": true,
+			"text": "The Demon is %s or %s." % [a.name, b.name]}
+		# The fresh listener holds only the claims the harness gives it, so a townsperson
+		# really holding the gift doesn't make this a counter-claim in its view.
+		out.append({"s": e, "e": arch, "accused": [a.id, b.id]})
+		out.append({"s": e, "e": seer, "accused": [a.id, b.id]})
+	return out
 
 func _measure_crosschecks(g) -> void:
 	var w = g.w
@@ -979,9 +1050,11 @@ func _measure_challenges(g) -> void:
 		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")]
 		var held_all: Array = claims + [_heard(w, x.s, x.e)] + confs.map(func(e): return _heard(w, c, e))
 		var accused0: String = x.accused[0]
-		for t in TRUSTS:
-			# Trust t in the grounds' teller (a challenge's grounds need witness quality 0.4+).
-			var trust_in: Dictionary = {x.s.id: 0.5, c.id: t}
+		for tp in [[0.4, 0.4], [0.4, 0.8], [0.8, 0.4], [0.8, 0.8]]:
+			# Trust in the reading's teller and in the grounds' teller (grounds need
+			# witness quality 0.4+, about trust 0.35 with no suspicion).
+			var t: float = tp[1]
+			var trust_in: Dictionary = {x.s.id: tp[0], c.id: tp[1]}
 			var variants: Array = [
 				["none", claims, {}],
 				["held", held_all, {}],
@@ -1013,7 +1086,7 @@ func _measure_challenges(g) -> void:
 				if id == l.id or not w.by_id.has(id):
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
-					"evidence": "challenges", "listener": l.id, "trust": t, "reading": _reading_desc(x.s, x.e), "accused": x.accused,
+					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
 					"grounds_true": confs.all(func(e): return bool(e["true"])), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),

@@ -89,26 +89,24 @@ def main(paths):
 
 
 def challenges(rows):
-    """Constructed contradictions: per mode, and by whether the challenged reading is
-    the false one (grounds true), what the challenge result was and what it did to the
-    teller and the accused, against the same case presented without the challenge."""
+    """Constructed contradictions: per mode, by whether the challenged reading is the false
+    one (grounds true) and by trust in the reading's teller / the grounds' teller, the
+    challenge result and its step on the teller against the unchallenged case."""
     modes = [("lying", "evil_teller+lying", "evil_teller"), ("misled", "good_accused+misled", "good_accused"), ("impaired", "good_accused+impaired", "good_accused")]
-    print("\nchallenge  reading  trust  n   supported  multiplier  agreement  effect  backfire | teller: verdict / susp step vs unchallenged | accused: verdict / susp")
+    mean = lambda xs: statistics.mean(xs) if xs else float("nan")
+    print("\nchallenge  grounds  reader/grounds trust  n   supported  multiplier  agreement  backfire | teller verdict vs unchallenged")
     for mode, var, ctrl in modes:
-        for false_reading in (True, False):
-            for t in (0.4, 0.8):
-                rs = [r for r in rows if r["grounds_true"] == false_reading and r["trust"] == t]
-                tel = [r for r in rs if r["role_in_case"] == "teller" and var in r["challenge"]]
-                acc = [r for r in rs if r["role_in_case"] == "accused" and var in r.get("case_p_evil", {}) and ctrl in r.get("case_p_evil", {})]
-                if not tel:
-                    continue
-                c = [r["challenge"][var] for r in tel]
-                mean = lambda xs: statistics.mean(xs) if xs else float("nan")
-                dv = lambda rr: mean([lo(r["case_p_evil"][var]) - lo(r["case_p_evil"][ctrl]) for r in rr if r["case_p_evil"].get(var, -1) >= 0 and r["case_p_evil"].get(ctrl, -1) >= 0])
-                ds = lambda rr: mean([r["susp_step"].get(var, 0) - r["susp_step"].get(ctrl, 0) for r in rr])
-                print("%-9s  %-7s  %.1f  %3d   %5.0f%%     %.2f       %.2f      %.2f     %3.0f%%   | %+.2f / %+.3f | %+.2f / %+.3f" % (mode, "false" if false_reading else "true", t, len(c),
-                    100 * mean([x.get("supported", 0) for x in c]), mean([x["multiplier"] for x in c]), mean([x.get("agreement", 0) for x in c]), mean([x["effect"] for x in c]),
-                    100 * mean([x["backfire"] for x in c]), dv(tel), ds(tel), dv(acc), ds(acc)))
+        for true_grounds in (True, False):
+            for tr in (0.4, 0.8):
+                for tg in (0.4, 0.8):
+                    rs = [r for r in rows if r["grounds_true"] == true_grounds and r.get("trust_reader", 0.5) == tr and r.get("trust_grounds", r["trust"]) == tg and r["role_in_case"] == "teller" and var in r["challenge"]]
+                    if not rs:
+                        continue
+                    c = [r["challenge"][var] for r in rs]
+                    dv = mean([lo(r["case_p_evil"][var]) - lo(r["case_p_evil"][ctrl]) for r in rs if r["case_p_evil"].get(var, -1) >= 0 and r["case_p_evil"].get(ctrl, -1) >= 0])
+                    print("%-9s  %-7s  %.1f / %.1f             %3d   %5.0f%%     %.2f       %.2f      %3.0f%%   | %+.2f" % (mode, "true" if true_grounds else "false", tr, tg, len(c),
+                        100 * mean([x.get("supported", 0) for x in c]), mean([x["multiplier"] for x in c]), mean([x.get("agreement", 0) for x in c]),
+                        100 * mean([x["backfire"] for x in c]), dv))
 
 
 if __name__ == "__main__":
