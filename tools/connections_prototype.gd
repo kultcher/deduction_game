@@ -535,6 +535,7 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		var sets: Array = []
 		var largest: int = 0
 		var merged_keys: Array = core_keys.duplicate()
+		var merged_extra: Array = []   # movement cards cited by cases already merged into the core
 		var merged_i: Dictionary = _interaction(st, merged_keys, by_key, values)
 		if not core_keys.is_empty():
 			_add(total, merged_i)
@@ -560,13 +561,15 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 			var entry: Dictionary = {"label": cs.label, "weight": w, "merged": touches_core, "cards": keys.size() + extra_ids.size()}
 			if touches_core:
 				var next_keys: Array = _union(merged_keys, keys)
-				var next_i: Dictionary = _interaction(st, next_keys, by_key, values, extra_ids)
+				var next_extra: Array = _union(merged_extra, extra_ids)
+				var next_i: Dictionary = _interaction(st, next_keys, by_key, values, next_extra)
 				var delta: Dictionary = next_i.duplicate(true)
 				_add(delta, merged_i, -1.0)
 				_add(total, delta, w)
 				merged_keys = next_keys
+				merged_extra = next_extra
 				merged_i = next_i
-				largest = maxi(largest, _size(merged_keys, by_key) + extra_ids.size())
+				largest = maxi(largest, _size(merged_keys, by_key) + merged_extra.size())
 				entry["max_shift"] = w * _max_e(delta)
 			else:
 				var alone: Dictionary = _interaction(st, keys, by_key, values, extra_ids)
@@ -955,7 +958,9 @@ func _present(g, number: int, case_data: Dictionary, before: Dictionary, seq: in
 		var st: Dictionary = _state(g, n)
 		if not st.ready or not st.others.has(target):
 			continue
-		var earlier: Array = _cases_for(n.id).filter(func(x): return not (x.presenter == "player" and x.target == cs.target and x.type == cs.type))
+		# The listener's store as it stood before this presentation, including any earlier
+		# version of this case: replacement applies only to the "with" side.
+		var earlier: Array = _cases_for(n.id).duplicate()
 		var with_cases: Array = _stored_with(_cases_for(n.id), cs)
 		# The same moment without the case: its cards as they were held before (cards only
 		# the case brought are not held), everything else identical.
