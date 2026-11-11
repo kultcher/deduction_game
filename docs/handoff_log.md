@@ -27,6 +27,34 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-10 evening, Claude-Lantern: connections prototype, offline (`claude/connections-prototype`)
+
+Base: main `7404873`. **Tools only: no code path the game runs, golden untouched.** Next
+actor: Michael and Bailiff (two criteria fail; nothing was tuned).
+
+- `tools/connections_prototype.gd <log> [--out results.json]`: replays a dev log and
+  computes what each good listener would believe under the connections design (Phase 4
+  spec and the Nov 10 evening decisions in the project doc
+  `claude/belief-model-direction-2026-11-10.md`): solo values, structural units, a core
+  from the listener's own readings (thresholds 0.2, 0.4 and 0.8), stored cases (cap 2)
+  and normalisation. It evaluates each dawn, each vote and each public presentation.
+  `--check` confirms the judge on a set sees only that set.
+- `tools/connections_prototype_summary.py results.json ...`: the seven acceptance
+  criteria from those results.
+- Run on 12926 (at its own build `75b4c8e`, by copying the tool into that worktree) and
+  passive seeds 900 (7 NPCs) and 902 (10 NPCs) generated on `7404873`.
+- **Results at 0.4:** criteria 2, 3, 4, 6 and 7 pass; 1 and 5 fail.
+  - 1 (people a case didn't touch): fails. A third case pushes the oldest stored case out
+    (cap 2), and that moves people up to 38 points. With nothing dropped, reading-only
+    cases stay within 2.5 points; a case with traces reaches 8, since a trace is read
+    against every profile card.
+  - 5 (cost): fails with nothing cached (about 5x today's refresh from day 3 in 12926);
+    under today's when solo values and core tests are cached.
+- Build decisions not in the spec, for review: the core is also rebuilt when the
+  listener's own readings change; non-"lying" challenges and NPC defences' reading
+  challenges are not modelled; the "Hexer declared" run of 12926 wasn't done (no mix
+  switch at `75b4c8e`).
+
 ## 2026-11-10 afternoon, Claude-Lantern: why breakdown, what challenges and the view did (`claude/why-challenge-view`)
 
 Base: main `07cbbe6`. Debug and logging only: no belief, vote or RNG changes; golden
