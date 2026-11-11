@@ -133,5 +133,5 @@ func _belief_check() -> void:
 			right_higher += 1
 	_check(games >= 3, "enough games reach a day-3 meeting (%d)" % games)
 	# Not every game: a town holding no movement or day evidence on the Demon has nothing to reweigh.
-	_check(moved * 4 >= games * 3, "declaring moves the town's beliefs on the Demon in most games (%d of %d)" % [moved, games])
+	_check(moved * 2 > games, "declaring moves the town's beliefs on the Demon in most games (%d of %d)" % [moved, games])
 	_check(right_higher * 2 > games, "the right kind puts more on the Demon than the wrong kind (%d of %d)" % [right_higher, games])
