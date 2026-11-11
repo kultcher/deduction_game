@@ -579,6 +579,7 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 			if l in DayPresence.PLACES and l not in known:
 				known.append(l)
 		haunts[subj] = known
+	var excluded: Dictionary = DayPresence.exclusions(view, cards)
 	var out: Array = []
 	var seen: Dictionary = {}
 	for e in events:
@@ -620,9 +621,11 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 					var seek: float = 0.0
 					if l == work.get(victim, "") and p in shifts.get(victim, []) and not (p in shifts.get(ids[i], [])):
 						var best_p: float = 0.0
-						for pl2 in DayPresence.PLACES:
+						for pl2 in DayPresence.PLACES + ["home"]:
 							best_p = maxf(best_p, DayPresence.at(table, ids[i], night, p, pl2))
-						if best_p < 0.999:
+						# Not if the watch record puts them off that block then (#125 review).
+						var ruled_out: bool = excluded.has("%s:%d:%d:%s" % [ids[i], night, p, C.loc_block(l)])
+						if best_p < 0.999 and not ruled_out:
 							seek = Tuning.Workshop.HEX_SEEK_SHARE
 					for pl in DayPresence.PLACES:
 						var a: float = DayPresence.at(table, ids[i], night, p, pl) * (Tuning.Workshop.HEX_OWN_WORK_WEIGHT if pl == own else 1.0)

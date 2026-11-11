@@ -377,6 +377,8 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["orig_kind"] = e.kind
 		if e.content.get("loc", "") in C.LOCATIONS:
 			card["loc"] = e.content.loc
+		elif str(e.content.get("loc", "")).begins_with("home"):
+			card["at_home"] = true  # seen in a house, not in public (DayPresence's HOME slot)
 		return card
 	if e.kind in ["sighting", "alibi"] and not e.subjects.is_empty() and e.subjects.all(func(id): return id in ids):
 		if e.observed_at.phase == "night" or (e.kind == "sighting" and e.observed_at.phase == "evening" and block in C.BLOCKS):
