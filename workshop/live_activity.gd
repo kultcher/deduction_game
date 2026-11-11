@@ -621,7 +621,7 @@ static func hex_kills(view: Dictionary, cards: Array, ids: Array) -> Array:
 					var seek: float = 0.0
 					if l == work.get(victim, "") and p in shifts.get(victim, []) and not (p in shifts.get(ids[i], [])):
 						var best_p: float = 0.0
-						for pl2 in DayPresence.PLACES:
+						for pl2 in DayPresence.PLACES + ["home"]:
 							best_p = maxf(best_p, DayPresence.at(table, ids[i], night, p, pl2))
 						# Not if the watch record puts them off that block then (#125 review).
 						var ruled_out: bool = excluded.has("%s:%d:%d:%s" % [ids[i], night, p, C.loc_block(l)])

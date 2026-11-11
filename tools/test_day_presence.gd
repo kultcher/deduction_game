@@ -125,6 +125,11 @@ func _test_evidence() -> void:
 	var share_free: float = float(hk_free[0].shares[0][1]) if not hk_free.is_empty() else -1.0
 	var share_watched: float = float(hk_watched[0].shares[0][1]) if not hk_watched.is_empty() else -1.0
 	_check(share_free > 0.0 and share_watched >= 0.0 and share_watched < 0.5 * share_free, "a suspect watched off the victim's work block that morning gets no seek share there (%.3f to %.3f)" % [share_free, share_watched])
+	var hv_h: Dictionary = hv.duplicate(true)
+	var seen_home: Array = [{"id": "h1", "kind": "location", "source": "player", "subjects": ["s"], "day": 1, "block": "hill", "at_home": true, "observed_at": {"day": 1, "phase": "morning"}}]
+	var hk_home: Array = LA.hex_kills(hv_h, seen_home, ["v", "s", "x"])
+	var share_home: float = float(hk_home[0].shares[0][1]) if not hk_home.is_empty() else -1.0
+	_check(share_home >= 0.0 and share_home < 0.5 * share_free, "a suspect the player saw at home that morning gets no seek share either (%.3f)" % share_home)
 	# The dead are nowhere.
 	var dead_view: Dictionary = _view(ids, 2, [{"kind": "demon_death", "subjects": ["c"], "at": {"day": 1, "phase": "night"}, "by": ""}])
 	_check(DayPresence.on_block(DayPresence.build(dead_view, cards), "c", 2, 0, "square") == 0.0, "someone killed in the night is nowhere the next day")
