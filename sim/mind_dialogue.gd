@@ -873,9 +873,16 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		else:
 			var prior_account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
 			var prior_kind: String = prior_account.get("kind", "")
-			var bold: bool = (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Dialogue.LIE_BOLD_CONF_SLOPE,
+			var Podium = load("res://sim/mind_podium.gd")
+			var owned: bool = Podium.admitted_before(n, nd)
+			var bold: bool = false if owned else (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Dialogue.LIE_BOLD_CONF_SLOPE,
 				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * Tuning.Dialogue.LIE_BOLD_PRIVACY_SLOPE}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
-			if bold:
+			if owned:
+				# They already owned being out that night: the same plain account, not a lie.
+				Podium._plain_account(w, n, nd, block, lines, facts)
+				vantage = block
+				how = "street"
+			elif bold:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
 				if not n.is_evil() and not (nd in n.lied_nights):
 					n.lied_nights.append(nd)

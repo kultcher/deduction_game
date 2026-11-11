@@ -94,5 +94,32 @@ func _run() -> void:
 				framed += 1
 	_check(told_seen >= 4, "asking about the dead still shares a recent sighting of them (%d)" % told_seen)
 	_check(framed == told_seen, "framed like the haunts, with the voice's lead line (%d of %d)" % [framed, told_seen])
+	# Owning a true sighting, then pressed again: the same plain account, never a home lie (#130 review).
+	var Podium = load("res://sim/mind_podium.gd")
+	var held: int = 0
+	var tried: int = 0
+	for seed in range(700, 716):
+		var g = Game.new()
+		g.detailed_logging = false
+		g.new_case(seed, 7)
+		g.w.day = 2
+		var d = null
+		for m in g.w.npcs:
+			if not m.is_evil() and not m.secret.is_empty() and not C.ROLES[m.role].get("night_walk", false):
+				d = m
+				break
+		if d == null:
+			continue
+		d.history[g.w.time_key(1, C.NIGHT)] = "night:" + ("market" if d.home_block != "market" else "docks")
+		d.traits["privacy"] = 1.0
+		var first: Dictionary = Podium.press_night(g.w, d, 1, false, true)
+		if first.get("outcome", "") != "admitted":
+			continue
+		tried += 1
+		var again: Dictionary = Podium.press_night(g.w, d, 1, true, false)
+		var priv: Dictionary = load("res://sim/mind.gd").answer_night(g.w, d, 1)
+		if again.get("outcome", "") == "admitted" and not (1 in d.lied_nights) and not priv.get("facts", [{}])[0].get("home", false):
+			held += 1
+	_check(tried >= 2 and held == tried, "an owned outing stays owned when pressed again, at the podium and in private (%d of %d)" % [held, tried])
 	print("%d checks, %d failed" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)

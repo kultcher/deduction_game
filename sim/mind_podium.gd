@@ -141,6 +141,11 @@ static func _refused(w, d, grounds: bool) -> void:
 ## `admitted`: the defender has just owned that they were out (a true sighting of them), so
 ## the account never falls back to "I was home" (Codex P2 on #115); refusing to say why
 ## stays open.
+## They already owned being out that night (a plain account): keep to it (#130 review).
+static func admitted_before(d, nd: int) -> bool:
+	var prior: Dictionary = d.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
+	return prior.get("kind", "") == "alibi" and not prior.get("home", true) and prior.get("source", "") == d.id
+
 ## Out that night, owned, but the reason kept back.
 static func _plain_account(w, d, nd: int, block: String, lines: Array, facts: Array) -> void:
 	w.dlog.think(d.id, "admit_out", "Owned the sighting: says they were out on %s on night %d, keeps the reason." % [block, nd])
@@ -191,7 +196,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 			vantage = duty_out["vantage"]
 			how = duty_out["how"]
 			outcome = "gift_outing"
-		elif outing == "withhold" and admitted:
+		elif outing == "withhold" and (admitted or admitted_before(d, nd)):
 			_plain_account(w, d, nd, block, lines, facts)
 			outcome = "admitted"
 		elif outing == "withhold":
@@ -228,7 +233,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				vantage = block
 				how = "street"
 				outcome = "confess"
-		if outcome == "" and admitted:
+		if outcome == "" and (admitted or admitted_before(d, nd)):
 			# They've just owned a true sighting: a plain account, never a stonewall, and
 			# no grudge against the Demonologist for "pressing" (any nominator can get here).
 			_plain_account(w, d, nd, block, lines, facts)
