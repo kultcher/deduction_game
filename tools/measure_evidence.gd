@@ -40,6 +40,7 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Psych = preload("res://sim/roles/psychologist.gd")
+const RC = preload("res://workshop/reading_challenges.gd")
 
 const TRUSTS = [0.4, 0.8]
 const STOP_DAY = 3
@@ -49,6 +50,7 @@ var no_hexer: bool = false
 var force_roles: Array = []
 var force_bluffs: Array = []
 var construct_bluffs: bool = false
+var natural_trust: bool = false
 var keep_state: bool = false # --keep-state: the listener keeps what it already holds and believes
 var script_roles: Array = []
 var last_case: Dictionary = {}
@@ -79,6 +81,8 @@ func _init() -> void:
 			no_hexer = true
 		elif args[i] == "--clash-rule" and i + 1 < args.size():
 			preload("res://workshop/reading_challenges.gd").clash_rule = args[i + 1]
+		elif args[i] == "--natural-trust":
+			natural_trust = true
 		elif args[i] == "--keep-state":
 			keep_state = true
 		elif args[i] == "--construct-bluffs":
@@ -1062,11 +1066,12 @@ func _measure_challenges(g) -> void:
 		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")]
 		var held_all: Array = claims + [_heard(w, x.s, x.e)] + confs.map(func(e): return _heard(w, c, e))
 		var accused0: String = x.accused[0]
-		for tp in [[0.4, 0.4], [0.4, 0.8], [0.8, 0.4], [0.8, 0.8]]:
+		for tp in ([[-1.0, -1.0]] if natural_trust else [[0.4, 0.4], [0.4, 0.8], [0.8, 0.4], [0.8, 0.8]]):
 			# Trust in the reading's teller and in the grounds' teller (grounds need
-			# witness quality 0.4+, about trust 0.35 with no suspicion).
-			var t: float = tp[1]
-			var trust_in: Dictionary = {x.s.id: tp[0], c.id: tp[1]}
+			# witness quality 0.4+, about trust 0.35 with no suspicion). --natural-trust:
+			# the listener's own trust (with --keep-state, what it has come to think).
+			var t: float = tp[1] if tp[1] >= 0.0 else 0.6
+			var trust_in: Dictionary = {} if natural_trust else {x.s.id: tp[0], c.id: tp[1]}
 			var variants: Array = [
 				["none", claims, {}],
 				["held", held_all, {}],
@@ -1099,7 +1104,7 @@ func _measure_challenges(g) -> void:
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
 					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
-					"grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"q_reader": RC.quality(l, x.s.id), "q_grounds": RC.quality(l, c.id), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
 					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}
