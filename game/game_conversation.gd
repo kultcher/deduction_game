@@ -367,6 +367,9 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 					elif not t.alive:
 						r = Mind.MindDialogue.answer_about_dead(g.w, n, t)
 						_maybe_tell_haunts(g, n, t, r)
+						# What they saw of the dead lately is still worth telling, framed like the
+						# haunts ("if it helps your investigation...").
+						RecentSightings.append_to(g.w, n, t, r, g.board, "tell_sighting_dead")
 					else:
 						r = Mind.answer_opinion(g.w, n, t)
 						_maybe_tell_haunts(g, n, t, r)

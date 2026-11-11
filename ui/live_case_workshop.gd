@@ -238,6 +238,13 @@ func refresh() -> void:
 		answer_window.hide()
 		preview_window.hide()
 		answer_id = ""
+		# Nothing from the previous case's board carries over: its undo snapshot and the
+		# box selection hold node ids the new board may reuse.
+		_undo = {}
+		if undo_button != null:
+			undo_button.disabled = true
+		if canvas.get("group") != null:
+			canvas.group = []
 		# The public library stays current for receipt lookup and answer controls;
 		# only explicitly transferred cards get a copy on the live canvas.
 		var empty_view = next_view.duplicate()

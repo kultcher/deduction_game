@@ -326,6 +326,10 @@ func _make_panel(key: String, title: String, initial_size: Vector2):
 func set_panel_open(key: String, on: bool) -> void:
 	var panel = panels[key]
 	if on:
+		# A full-screen Workshop sheet sits above the board's canvas (later in the tree,
+		# z 50), so a panel opened from it would open underneath. Leave full screen first.
+		if workshop != null and workshop.get("fullscreen"):
+			workshop.set_fullscreen(false)
 		if not _panels_placed:
 			_layout_panels()
 			_panels_placed = true

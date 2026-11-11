@@ -453,6 +453,7 @@ static func circumstantial_summary(g, value: Dictionary) -> Dictionary:
 	var input = snapshot(g, value)
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input["watched"] = []  # a listener's view: no raw watch record (see GhostJuror.live)
 	input.listener = {"id": "ghost", "name": "Hub check", "trust": 0.5, "confidence": 0.5,
 		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
 	var prepared = Assess.prepare(input)

@@ -141,6 +141,14 @@ static func _refused(w, d, grounds: bool) -> void:
 ## `admitted`: the defender has just owned that they were out (a true sighting of them), so
 ## the account never falls back to "I was home" (Codex P2 on #115); refusing to say why
 ## stays open.
+## Out that night, owned, but the reason kept back.
+static func _plain_account(w, d, nd: int, block: String, lines: Array, facts: Array) -> void:
+	w.dlog.think(d.id, "admit_out", "Owned the sighting: says they were out on %s on night %d, keeps the reason." % [block, nd])
+	lines.append(_say(d, "admitted_plain_account", "I was out %s, on %s. I'll not pretend otherwise, though the why is my own." % [C.spoken_when(nd, w.day), C.block_name(block)],
+		{"when": C.spoken_when(nd, w.day), "block": C.block_name(block)}))
+	facts.append({"kind": "alibi", "subject": [d.id], "home": false, "day": nd, "phase": C.NIGHT, "source": d.id, "block": block, "public": true,
+		"text": "%s says they were out on %s %s." % [d.name, C.block_name(block), C.spoken_when(nd, w.day)]})
+
 static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
@@ -183,6 +191,9 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 			vantage = duty_out["vantage"]
 			how = duty_out["how"]
 			outcome = "gift_outing"
+		elif outing == "withhold" and admitted:
+			_plain_account(w, d, nd, block, lines, facts)
+			outcome = "admitted"
 		elif outing == "withhold":
 			w.dlog.think(d.id, "stonewall", "Pressed at the podium: keeps the night's errand (%s gift) to themself for now." % C.role_name(d.role))
 			lines.append(_say(d, "podium_whereabouts_refusal", "Where I spend my nights is my own affair, and I'll not answer for %s here." % C.spoken_when(nd, w.day),
@@ -217,6 +228,11 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				vantage = block
 				how = "street"
 				outcome = "confess"
+		if outcome == "" and admitted:
+			# They've just owned a true sighting: a plain account, never a stonewall, and
+			# no grudge against the Demonologist for "pressing" (any nominator can get here).
+			_plain_account(w, d, nd, block, lines, facts)
+			outcome = "admitted"
 		if outcome == "":
 			var prior: String = d.dialogue_memory.get("night_accounts", {}).get(str(nd), {}).get("kind", "")
 			var bold: bool = false if admitted else (prior == "alibi") if prior in ["alibi", "refusal"] else _mind().decide(w, d, "podium_lie_or_stonewall",
