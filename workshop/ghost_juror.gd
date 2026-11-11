@@ -23,6 +23,9 @@ static var _live_cache: Dictionary = {}
 static func live(snapshot: Dictionary) -> Dictionary:
 	var input = snapshot.duplicate(true)
 	input.private_evidence = []
+	# The test juror is a listener, not the Demonologist: it hears the day log only
+	# through watch_log cards cited in the case, never the raw watch record.
+	input["watched"] = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	var ghost = profile(input.people)
 	input.listener = {"id": ghost.id, "name": ghost.name, "trust": ghost.trust, "confidence": ghost.confidence,

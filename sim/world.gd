@@ -666,8 +666,8 @@ func start_phase() -> void:
 			n.loc = n.work
 		else:
 			n.loc = _choose_idle_location(n)
-			if n.role == "daykiller" and n.is_evil():
-				n.loc = C.role_def("daykiller").free_location(self, n, n.loc, Evil)
+			if C.is_day_demon(n.role) and n.is_evil():
+				n.loc = C.role_def(n.role).free_location(self, n, n.loc, Evil)
 	_pre_pair()
 	Social.tavern_whispers(self)
 	for n in living():
@@ -834,9 +834,10 @@ func finish_evening_conversations(talked_id: String = "") -> void:
 
 ## Advance to the next day phase. Returns false at the end of Evening.
 func end_day_phase(talked_id: String = "") -> bool:
-	var hexer = living_with_role("daykiller")
-	if hexer != null:
-		C.role_def("daykiller").hex_decision(self, hexer, Evil)
+	for r in C.DAY_DEMONS:
+		var hexer = living_with_role(r)
+		if hexer != null:
+			C.role_def(r).hex_decision(self, hexer, Evil)
 	phase_player_loc = ""
 	if phase == C.EVENING and _evening_chats_done_day == day:
 		pass
@@ -1235,9 +1236,9 @@ func resolve_night() -> void:
 	var kill_t = ""
 	# A Hexer (day-killing demon) kills from today's hex, without walking, unless an active
 	# Brute hunts in its place.
-	var hexer_kills: bool = demon().role == "daykiller" and not brute_active
+	var hexer_kills: bool = C.is_day_demon(demon().role) and not brute_active
 	if not first and demon().alive:
-		kill_t = C.role_def("daykiller").night_victim(self, demon()) if hexer_kills else Evil.choose_kill_target(self)
+		kill_t = C.role_def(demon().role).night_victim(self, demon()) if hexer_kills else Evil.choose_kill_target(self)
 	var poisoner = living_with_role("poisoner")
 	var poison_t = ""
 	if poisoner != null:
@@ -1441,7 +1442,7 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 	if kill_t != "":
 		if brute_active and brute != null:
 			_walk(brute, by_id[kill_t].home_block, "hunting %s (as Brute)" % by_id[kill_t].name)
-		elif demon().role != "daykiller":
+		elif not C.is_day_demon(demon().role):
 			_walk(demon(), by_id[kill_t].home_block, "hunting %s" % by_id[kill_t].name)
 		# (A Hexer kills from where it sleeps: no walk, never seen in the streets.)
 	if poison_t != "":
@@ -1953,7 +1954,7 @@ func _morning_executor_gifts() -> void:
 		Mind.update_from_own_info(self)
 
 func _day_gifts() -> void:
-	for role_id in ["dowser", "augur", "breathstealer", "revenant", "daykiller"]:
+	for role_id in ["dowser", "augur", "breathstealer", "revenant"] + C.DAY_DEMONS:
 		var holder = living_with_role(role_id)
 		if holder != null:
 			C.role_def(role_id).run_day_gift(self, holder, Mind, Evil)

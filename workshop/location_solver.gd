@@ -93,7 +93,9 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 	var victim: String = str(q.get("victim", ""))
 	var pl: Dictionary = places(view, q, all_cards)
 	var table: Dictionary = DayPresence.build(view, all_cards)
-	var deaths: Dictionary = view.get("timeline", {}).get("deaths", {})
+	# Death ticks (day * 4 + phase): a Demon victim of the night before the day is gone by
+	# its morning, while someone hanged that day was still about until the meeting.
+	var death_ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
 	var phase_watch: Dictionary = {}
 	for wt in DayPresence.watches(view, all_cards):
 		if int(wt.get("day", -1)) == day:
@@ -105,7 +107,7 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 		var pid: String = str(p.id)
 		if pid == victim:
 			continue
-		if deaths.has(pid) and int(deaths[pid]) < day:
+		if death_ticks.has(pid) and int(death_ticks[pid]) < day * 4:
 			continue  # dead before the day in question
 		var cells: Array = []
 		var best: float = 0.0

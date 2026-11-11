@@ -38,7 +38,7 @@ func on_survive_attack(w, v) -> void:
 	var killer = w.night_killer()
 	var path: Array = killer.night_path  # the Brute's path when it hunts
 	var from: String = path[path.size() - 2] if path.size() >= 2 else v.home_block
-	if killer.role == "daykiller" and path.is_empty():
+	if content().is_day_demon(killer.role) and path.is_empty():
 		from = killer.home_block  # a Hexer has no route: the hint points at where it sleeps
 	w._add_info(v, {
 		"data": {"attacked": w.day, "block": from},

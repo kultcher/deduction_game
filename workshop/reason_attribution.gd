@@ -912,7 +912,7 @@ static func _augment_joint_leave_one_out(
 				why_own = ("%s's %s report contradicts their account" % [sname, C.role_name(crole)]) if has_pid_claim and crole != "" else "the reports considered together point toward them"
 			# Leaning on the word of someone the town hanged: say so (Case 12926: Edda and
 			# Nisha cited Lian's Registrar report the day after Lian was hanged).
-			if csrc != "player" and _was_hanged(view, csrc) and crole != "":
+			if csrc != "player" and _was_hanged(view, csrc) and crole != "" and why_own != "the reports considered together point toward them":
 				why_own += "; I'm not sure we hanged the right person, and I still think that reading may be right"
 			why_pub = why_own
 
