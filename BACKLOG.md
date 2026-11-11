@@ -509,7 +509,9 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Scripts, follow-ups** (script builder plan, Nov 4):
   - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
-    solver's demon-type mix); the day-killer itself isn't dealt yet (`docs/demon_types_plan.md`).
+    solver's demon-type mix); steps 2 and 3 (daytime presence and the Hexer, experimental)
+    merged with #111, and the player's demon-type declaration with #131
+    (`docs/demon_types_plan.md`).
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
     roster outgrows one script.
   - **Remember the last script** between runs (session-only now).

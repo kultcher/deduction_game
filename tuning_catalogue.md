@@ -127,7 +127,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HONESTY_CAP` | `0.5` |  | `game/game_screens.gd` |
 | `NIGHT_DOUBT_CAP` | `0.9` |  | (unused) |
 | `RIVAL_CLAIM_EFF` | `0.6` | retired legacy claim-collision weight (shared model owns claims) | (unused) |
-| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` |  | `sim/mind.gd`, `sim/mind_meeting.gd` |
+| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` |  | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
 | `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind.gd` |
 | `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind.gd` |
 | `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind.gd` |
@@ -156,12 +156,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CREDIBILITY_START` | `0.5` | Credibility (Oct 30): how much the player's word counts, from their track record. target = 0.5 + CRED_SPAN * mean agreement; moves CRED_STEP of the way each dawn. | `sim/npc.gd` |
 | `CRED_SPAN` | `0.4` |  | `game/credibility.gd` |
 | `CRED_STEP` | `0.5` |  | `game/credibility.gd` |
-| `CRED_MIN` | `0.1` |  | `game/credibility.gd` |
-| `CRED_MAX` | `0.9` |  | `game/credibility.gd` |
+| `CRED_MIN` | `0.1` |  | `game/credibility.gd`, `game/demon_declaration.gd` |
+| `CRED_MAX` | `0.9` |  | `game/credibility.gd`, `game/demon_declaration.gd` |
 | `CRED_CORROBORATION_MIN` | `0.06` | Minimum independent posterior movement from baseline prior before an NPC scores a recorded player claim at Dawn (unless public alignment proof already exists). | `game/credibility.gd` |
 | `CRED_WEIGHT_FORMAL` | `1.0` | Track-record weights: formal deductions/nominations vs bare meeting statements. | `game/credibility.gd`, `game/game_meeting.gd`, `game/game_presentation.gd`, `game/workshop_presentation.gd` |
 | `CRED_WEIGHT_STATEMENT` | `0.35` |  | `game/game_meeting.gd` |
 | `CRED_WEIGHT_BARE_NOMINATION` | `1.0` |  | `game/game_meeting.gd` |
+| `CRED_DECLARATION_CHANGE` | `0.1` | Changing the demon-type declaration (game/demon_declaration.gd): a straight cut to every NPC's credibility, kept in their track-record target. About one failed case among two claims: CRED_STEP * CRED_SPAN * 0.5. | `game/demon_declaration.gd` |
 | `DISTRUST_EXPLAIN_THRESHOLD` | `0.35` |  | `sim/mind.gd` |
 | `SECRET_KEPT_BASE` | `0.03` | Overnight secret-keeping recovery | `sim/mind.gd` |
 | `SECRET_KEPT_PRIVACY_SCALE` | `0.04` |  | `sim/mind.gd` |
@@ -236,8 +237,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `IDLE_CHAT_WEIGHT` | `0.18` | was 0.30 (meeting plan M1: more leads, less weather) | `sim/social.gd` |
 | `DAY_RUMOR_WEIGHT` | `0.45` |  | `sim/social.gd` |
 | `UNEASE_SUSP_MIN` | `0.34` |  | `sim/social.gd` |
-| `HEARSAY_TRUST_SCALE` | `0.75` |  | `sim/social.gd` |
-| `HEARSAY_WEIGHT_CAP` | `0.55` |  | `sim/social.gd` |
+| `HEARSAY_TRUST_SCALE` | `0.75` |  | `sim/social.gd`, `tools/measure_evidence.gd` |
+| `HEARSAY_WEIGHT_CAP` | `0.55` |  | `sim/social.gd`, `tools/measure_evidence.gd` |
 | `SHARE_TRUST_BUMP` | `0.02` | superseded Oct 30 by GOSSIP_BOND | (unused) |
 | `SHARE_READING_OPENNESS_SCALE` | `1.2` |  | `sim/social.gd` |
 | `SHARE_READING_BOND_FLOOR` | `0.3` |  | `sim/social.gd` |
@@ -412,11 +413,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_LYING_RELIEF` | `-0.05` |  | `sim/mind_meeting.gd` |
 | `DEFENCE_MISLED_RELIEF` | `-0.06` |  | `sim/mind_meeting.gd` |
 | `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_meeting.gd` |
-| `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_DAY_SLOPE` | `0.05` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_FLOOR` | `0.40` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_DAY_SLOPE` | `0.05` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_OWN_CLEAR_RELIEF` | `0.2` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_COOLOFF_SELF` | `0.28` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
 | `NOMINATION_COOLOFF_ROOM` | `0.10` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
@@ -429,11 +430,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_VOTE_LANDSLIDE_PIVOT` | `0.20` |  | `sim/mind_meeting.gd` |
 | `EVIL_VOTE_NONPIVOTAL_TEAMMATE` | `0.55` |  | `sim/mind_meeting.gd` |
 | `EVIL_VOTE_SCION_COVER_MULT` | `0.70` |  | `sim/mind_meeting.gd` |
-| `VOTE_BASE_NEED` | `0.52` | Voting threshold & player ballot leverage | `sim/mind_meeting.gd` |
-| `VOTE_CONFIDENCE_SCALE` | `0.12` |  | `sim/mind_meeting.gd` |
-| `VOTE_DAY1_PENALTY` | `0.1` |  | `sim/mind_meeting.gd` |
-| `VOTE_PARANOIA_WEIGHT` | `0.20` |  | `sim/mind_meeting.gd` |
-| `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `sim/mind_meeting.gd`, `sim/social.gd` |
+| `VOTE_BASE_NEED` | `0.52` | Voting threshold & player ballot leverage | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
+| `VOTE_CONFIDENCE_SCALE` | `0.12` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
+| `VOTE_DAY1_PENALTY` | `0.1` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
+| `VOTE_PARANOIA_WEIGHT` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
+| `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd` |
 | `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_meeting.gd` |
 | `PLAYER_DEFEND_SLOPE` | `-0.25` |  | `sim/mind_meeting.gd` |
@@ -624,8 +625,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEADLINE_ARCHIVIST` | `1.0` | "one of A/B holds <evil role>": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `HEADLINE_DOWSER` | `1.0` | "c of these n read as evil": each c/n | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `HEADLINE_REPEAT_BUMP` | `0.15` | Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline. | `workshop/jury.gd` |
-| `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
+| `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `game/workshop_why.gd`, `workshop/jury.gd`, `workshop/reason_attribution.gd` |
+| `JURY_ALIGNMENT_COEFF` | `0.45` |  | `game/workshop_why.gd`, `workshop/jury.gd` |
 | `JURY_CHALLENGE_LYING_MIN_AGR` | `0.6` |  | `workshop/jury.gd`, `workshop/reading_challenges.gd` |
 | `JURY_CHALLENGE_LYING_SCALE` | `0.12` |  | `workshop/jury.gd` |
 | `SOURCE_REL_BASE` | `0.50` | Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]). | `workshop/shared_ledger.gd` |
@@ -639,7 +640,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WITNESS_QUALITY_MIN` | `0.05` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `WITNESS_QUALITY_MAX` | `0.95` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `CHALLENGE_GROUND_MIN_QUALITY` | `0.4` |  | `workshop/reading_challenges.gd` |
-| `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | `workshop/reading_challenges.gd` |
+| `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | (unused) |
 | `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |

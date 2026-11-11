@@ -14,7 +14,7 @@ repos/kultcher/deduction_game/actions/workflows/balance-sweep.yml/dispatches -f 
 |---|---|---|
 | `seed_start` | 100000 | First case seed. Every cell uses the same seeds, so a seed pairs across modes. |
 | `games_per_cell` | 2000 | Games per cell. |
-| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode": "passive"\|"bot", "insight"}`. |
+| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches). |
 | `costs` | measured | Seconds per game per core, by `<npcs>_<mode>`. Only sizes the shards. |
 | `target_hours` | 3 | Planned hours per shard job (the hard cap is 6). |
 | `max_shards` | 200 | Safety bound on the number of jobs. |
@@ -62,7 +62,7 @@ python3 tools/sweep_report.py /tmp/sweep/results_*.jsonl --md report.md --json s
 
 One JSON object per game. Flat fields:
 
-- **Identity:** `seed`, `npcs`, `mode` (`passive` / `bot`), `insight`, `backend`, `sha`,
+- **Identity:** `seed`, `npcs`, `mode` (one of the cell modes above), `insight`, `backend`, `sha`,
   `dynamic`, `script_fingerprint`, `script` (the full script).
 - **Deal:** `town_roles`, `minion_roles` (as dealt: a risen Scion is still `scion`),
   `demon_roles`, `secret`, `secret_holders`, `night_walkers_dealt` (including the Demon),

@@ -598,8 +598,10 @@ player's case; it doesn't search for theories.**
   social; votes are public procedure, never guilt by association.
 - **Source doubt** (`workshop/source_doubt.gd`): caught lies and impossible claims in the
   listener's view (a unique gift clash, a false sighting of the listener, a Gravedigger
-  report about a cursed Revenant) and accepted challenges ("misled on night N", "lying")
-  lower how much a source's readings count, per night or for every night. Poison belongs
+  report about a cursed Revenant) and accepted honest-error challenges ("misled on night
+  N", impaired, unlikely) lower how much a source's readings count, per night or for every
+  night. An accepted "lying" challenge doesn't: the reading keeps full reliability, so its
+  clash with the grounds counts against the reader in the worlds where they're good (#123). Poison belongs
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
 - **Bounded attention:** Insight sets how much of what a listener holds they actually
@@ -958,6 +960,13 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
    bide their time.
 2. **Floor:** the player may present one prepared case to everyone (once per meeting),
    judged by the shared model for each listener.
+   - **Demon-type declaration** (`game/demon_declaration.gd`, #131): on a script that deals
+     both a walking Demon and a Hexer, `declare walker` or `declare hexer` (once a day)
+     tells the town which kind it faces. NPCs don't judge it: every view weighs the
+     evidence as if it were true (`LiveActivity.day_demon_share`). The first declaration is
+     free; each change costs every living NPC 0.1 credibility
+     (`Trust.CRED_DECLARATION_CHANGE`) and stays in their dawn track-record target. A
+     one-kind script starts declared.
 3. **Nominations, one at a time.** BotC limits: each person nominates at most once and is
    nominated at most once per day. The player may `nominate`, or `wait` to let the town
    nominate; `done` closes the meeting once a `wait` finds nothing. A failed vote cools
