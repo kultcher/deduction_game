@@ -90,8 +90,12 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			# P(reading is the broken side | clash) - P(grounds are), with each side reliable
 			# at its teller's quality: (q_g - q_r) / (1 - q_r q_g).
 			var share: float = (strength - q_r) / maxf(1.0 - q_r * strength, 1e-6)
+			if clash_rule == "posterior" and share > 0.0:
+				# The grounds are the more credible side: discount by the chance the reading is
+				# the broken one, (1 - q_r) / (1 - q_r q_g), not by the margin.
+				share = (1.0 - q_r) / maxf(1.0 - q_r * strength, 1e-6)
 			if clash_rule == "graded" or share <= 0.0:
-				contest_lost = clash_rule == "contest" and share < 0.0
+				contest_lost = clash_rule in ["contest", "posterior"] and share < 0.0
 				conflict = false
 				self_presence_conflict = false
 				strength = 0.0

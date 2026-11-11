@@ -1104,7 +1104,7 @@ func _measure_challenges(g) -> void:
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
 					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
-					"q_reader": RC.quality(l, x.s.id), "q_grounds": RC.quality(l, c.id), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"q_reader": _quality(l, x.s.id), "q_grounds": _quality(l, c.id), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
 					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}
@@ -1138,3 +1138,7 @@ func _present(g, n, filed: int) -> void:
 			"backfire": bool(res_c.get("backfire", false))}
 	for id in n.suspicion:
 		last_case.susp_step[id] = float(n.suspicion[id]) - float(s0.get(id, n.suspicion[id]))
+
+## ReadingChallenges.quality for an NPC listener (its witness quality of a teller).
+func _quality(l, source: String) -> float:
+	return RC.quality({"id": l.id, "npc_trust": l.npc_trust, "suspicion": l.suspicion, "trust": l.trust}, source)
