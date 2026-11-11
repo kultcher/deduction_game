@@ -99,15 +99,19 @@ def challenges(rows):
     mean = lambda xs: statistics.mean(xs) if xs else float("nan")
     print("\nchallenge  grounds  reader/grounds trust  n   supported  multiplier  agreement  backfire | teller verdict vs unchallenged")
     for mode, var, ctrl in modes:
+        # Group by the trust settings actually present: the 0.4 / 0.8 grid, -1 / -1 for a
+        # --natural-trust run, and older files (no trust_reader) under 0.5 / their trust.
+        cells = sorted({(r.get("trust_reader", 0.5), r.get("trust_grounds", r["trust"])) for r in rows})
         for true_grounds in (True, False):
-            for tr in (0.4, 0.8):
-                for tg in (0.4, 0.8):
+            for tr, tg in cells:
+                if True:
                     rs = [r for r in rows if r["grounds_true"] == true_grounds and r.get("trust_reader", 0.5) == tr and r.get("trust_grounds", r["trust"]) == tg and r["role_in_case"] == "teller" and var in r["challenge"]]
                     if not rs:
                         continue
                     c = [r["challenge"][var] for r in rs]
                     dv = mean([lo(r["case_p_evil"][var]) - lo(r["case_p_evil"][ctrl]) for r in rs if r["case_p_evil"].get(var, -1) >= 0 and r["case_p_evil"].get(ctrl, -1) >= 0])
-                    print("%-9s  %-7s  %.1f / %.1f             %3d   %5.0f%%     %.2f       %.2f      %3.0f%%   | %+.2f" % (mode, "true" if true_grounds else "false", tr, tg, len(c),
+                    trust = "natural  " if tr < 0 else "%.1f / %.1f" % (tr, tg)
+                    print("%-9s  %-7s  %-9s             %3d   %5.0f%%     %.2f       %.2f      %3.0f%%   | %+.2f" % (mode, "true" if true_grounds else "false", trust, len(c),
                         100 * mean([x.get("supported", 0) for x in c]), mean([x["multiplier"] for x in c]), mean([x.get("agreement", 0) for x in c]),
                         100 * mean([x["backfire"] for x in c]), dv))
 

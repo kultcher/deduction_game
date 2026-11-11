@@ -550,7 +550,9 @@ func _measure_player(g) -> void:
 
 ## Every person's P(evil) and P(Demon) for a fresh listener holding only what `injects` give
 ## it (the shared model's posterior, tools/belief_views.gd). {} if the refresh had issues.
-func _beliefs(g, n, trust_in: Dictionary, injects: Array) -> Dictionary:
+## `quality_of`: sources whose witness quality to report, measured in the experiment's state
+## (injected trust, wiped suspicion) before the listener is restored.
+func _beliefs(g, n, trust_in: Dictionary, injects: Array, quality_of: Array = []) -> Dictionary:
 	var saved: Dictionary = _save(n)
 	if not keep_state:
 		_wipe(g, n)
@@ -561,13 +563,19 @@ func _beliefs(g, n, trust_in: Dictionary, injects: Array) -> Dictionary:
 	Caches.clear_all()
 	var v: Dictionary = Views.mind(g, n, 1)
 	var issues: Array = n.workshop_state.get("issues", [])
+	var q: Dictionary = {}
+	for id in quality_of:
+		q[id] = _quality(n, id)
 	_restore(n, saved)
 	Caches.clear_all()
 	if not issues.is_empty() or v.get("p_evil", {}).is_empty():
 		return {}
 	# With no gift or movement card in play the worlds carry no Demon identity: P(Demon) is
 	# then not modelled (null), not zero.
-	return {"e": v.p_evil, "d": v.demon if not v.demon.is_empty() else null}
+	var out: Dictionary = {"e": v.p_evil, "d": v.demon if not v.demon.is_empty() else null}
+	if not quality_of.is_empty():
+		out["q"] = q
+	return out
 
 ## Four conditions (context only, +A, +B, +A+B), one row per person. Context cards are held
 ## in all four. Returns the largest |interaction| in log-odds (joint - A - B + none) on P(evil).
@@ -1093,7 +1101,7 @@ func _measure_challenges(g) -> void:
 						if filed > 0:
 							_present(g, n, filed))
 				last_case = {}
-				var r: Dictionary = _beliefs(g, l, trust_in, injects)
+				var r: Dictionary = _beliefs(g, l, trust_in, injects, [x.s.id, c.id])
 				if not r.is_empty():
 					r.merge(last_case, true)
 					res[v[0]] = r
@@ -1104,7 +1112,7 @@ func _measure_challenges(g) -> void:
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
 					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
-					"q_reader": _quality(l, x.s.id), "q_grounds": _quality(l, c.id), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"q_reader": float(res.none.q[x.s.id]), "q_grounds": float(res.none.q[c.id]), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
 					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}
