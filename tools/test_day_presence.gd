@@ -103,6 +103,28 @@ func _test_evidence() -> void:
 	_check(after > before and after < 1.0, "an NPC's sighting raises the chance without settling it (%.3f to %.3f)" % [before, after])
 	var mine: Array = cards + [{"id": "t2", "kind": "location", "source": "player", "subjects": ["b"], "day": 2, "block": "square", "loc": "well", "observed_at": {"day": 2, "phase": "morning"}}]
 	_check(DayPresence.at(DayPresence.build(_view(ids, 2), mine), "b", 2, 0, "well") == 1.0, "the player's own sighting settles it")
+	# Seen at home (a visit to their house), not out in public (#118 review).
+	var at_home: Array = cards + [{"id": "t3", "kind": "location", "source": "player", "subjects": ["b"], "day": 2, "block": "hill", "at_home": true, "observed_at": {"day": 2, "phase": "morning"}}]
+	var th: Dictionary = DayPresence.build(_view(ids, 2), at_home)
+	_check(DayPresence.at(th, "b", 2, 0, "home") == 1.0 and DayPresence.on_block(th, "b", 2, 0, "hill") == 0.0, "the player seeing someone at home puts them home, not out on their block")
+	var told_home: Array = cards + [{"id": "t4", "kind": "location", "source": "c", "subjects": ["b"], "day": 2, "block": "hill", "at_home": true, "observed_at": {"day": 2, "phase": "morning"}}]
+	_check(DayPresence.at(DayPresence.build(_view(ids, 2), told_home), "b", 2, 0, "home") > DayPresence.at(t, "b", 2, 0, "home"), "an NPC's word that they were home raises the home chance")
+	# Who a watch ruled off the block.
+	var ex: Dictionary = DayPresence.exclusions(_view(ids, 2, [], watched), cards)
+	_check(ex.has("a:1:1:market") and ex.has("b:1:1:market") and not ex.has("c:1:1:market"), "exclusions: everyone not listed on the watched block")
+	# The Hexer's seek share never goes to a place a watch ruled them off (#125 review).
+	var LA = load("res://workshop/live_activity.gd")
+	var hv: Dictionary = _view(["v", "s", "x"], 2, [{"kind": "demon_death", "subjects": ["v"], "at": {"day": 1, "phase": "night"}, "by": ""}])
+	hv.people[0]["work"] = "smithy"
+	hv.people[0]["work_phases"] = [0]
+	hv["script_demons"] = ["demon", "daykiller"]
+	var hk_free: Array = LA.hex_kills(hv, [], ["v", "s", "x"])
+	var hv_w: Dictionary = hv.duplicate(true)
+	hv_w["watched"] = [{"day": 1, "phase": "morning", "block": C.loc_block("smithy"), "at": {"smithy": ["v"]}}]
+	var hk_watched: Array = LA.hex_kills(hv_w, [], ["v", "s", "x"])
+	var share_free: float = float(hk_free[0].shares[0][1]) if not hk_free.is_empty() else -1.0
+	var share_watched: float = float(hk_watched[0].shares[0][1]) if not hk_watched.is_empty() else -1.0
+	_check(share_free > 0.0 and share_watched >= 0.0 and share_watched < 0.5 * share_free, "a suspect watched off the victim's work block that morning gets no seek share there (%.3f to %.3f)" % [share_free, share_watched])
 	# The dead are nowhere.
 	var dead_view: Dictionary = _view(ids, 2, [{"kind": "demon_death", "subjects": ["c"], "at": {"day": 1, "phase": "night"}, "by": ""}])
 	_check(DayPresence.on_block(DayPresence.build(dead_view, cards), "c", 2, 0, "square") == 0.0, "someone killed in the night is nowhere the next day")
