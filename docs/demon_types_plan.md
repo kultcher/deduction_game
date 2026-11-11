@@ -1,7 +1,7 @@
 # Demon types: the day-killer
 
-Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 merged (#105). Step 2 built on
-`claude/day-presence`, held until the day-killer (step 3) is tested. Step 3 not started.
+Nov 8, 2026 · Michael and Claude-Bailiff. Status: step 1 merged (#105). Steps 2 and 3
+(first pass) merged to main together with #111 (Nov 10).
 
 ## The idea
 
@@ -93,7 +93,7 @@ the type wouldn't build up over several nights.
   The golden capture is identical to the baseline.
 - **Test:** `tools/test_demon_types.gd` (22 checks, including a hand-built Scion split).
 
-### Step 2: daytime presence (built, branch `claude/day-presence`, held until step 3 is tested)
+### Step 2: daytime presence (built, merged with #111 on Nov 10)
 
 **The watch record.** When the player spends a day phase somewhere, they see everyone at
 every public place on that block (the place itself plus "Nearby"). The game now keeps that
@@ -138,7 +138,7 @@ Breathstealer.
 - **Tests:** `tools/test_day_presence.gd`; `test_workshop_circumstantial_hub` updated (being
   near a silencing is Stage 1 now).
 
-### Step 3: the day-killer itself (first pass built, `claude/day-killer`, held with step 2)
+### Step 3: the day-killer itself (first pass built, merged with #111 on Nov 10)
 
 **Built (Nov 9):**
 - **The role:** `daykiller`, display name **Hexer** (a working name), in `C.ROLES`, with

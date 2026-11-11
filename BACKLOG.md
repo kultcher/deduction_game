@@ -102,6 +102,9 @@ towns.
   Measure with the bot A/B; check this doesn't let moderately supported wrong
   nominations through. [decided: direction; numbers open]
 
+  Built Nov 6 as premises steps 1–3 (PRs #92, #93, #95; `docs/premises_plan.md`). The
+  acceptance A/B is still to come.
+
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later
   breath-stolen should add a little suspicion, enough to reward noticing it, without the
   player linking every location card. Options: (a) a flat circumstantial amount for
@@ -505,8 +508,8 @@ Candidates for a unified retuning proposal, not approved changes.
   yet. Each needs a hint package and solver support before it goes live. [open]
 
 - **Scripts, follow-ups** (script builder plan, Nov 4):
-  - **Multiple demon types:** code across the sim checks `role == "demon"`; a second
-    demon type needs an `is_demon` helper and solver support.
+  - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
+    solver's demon-type mix); the day-killer itself isn't dealt yet (`docs/demon_types_plan.md`).
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
     roster outgrows one script.
   - **Remember the last script** between runs (session-only now).
@@ -551,7 +554,7 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Larger towns (12–15):** only after the core loop works at 7/10. [watch]
 
-- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on PR #96,
+- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on main (PR #96, Nov 9),
   `docs/premises_plan.md` "Recency as built", including NPCs' spoken reasons and how evil steers the topic; diverting attention waits on the saturation call]
 
 - **Dead NPCs:** no ghost votes for now; keep the door open (a final-day Séance vote).
@@ -584,7 +587,7 @@ Workshop and the shared model can't express yet.
   time. (96773: Bartholomew was nearby for each.) Built on `claude/day-presence` (demon
   types step 2), held with the day-killer: a joint CaseEval factor over the presence
   table, replacing the hub's one-day incident. The Breathstealer decision (does silence
-  prove the victim good?) is still open and separate. [built, unmerged]
+  prove the victim good?) is still open and separate. [built, merged with #111 on Nov 10]
 
 - **Night companions of the proven evil:** out on the same block on the same nights as
   someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1

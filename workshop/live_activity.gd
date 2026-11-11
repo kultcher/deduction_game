@@ -948,7 +948,16 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 static func has_day_evidence(cards: Array) -> bool:
 	return cards.any(func(c): return c.get("kind", "") in ["watch_log", "location"])
 
+## Developer experiment (tools/measure_evidence.gd --declare): stands in for the planned
+## demon-type declaration (Project doc belief-model-direction, Phase 2), which sets the
+## town's mix: "walker" = no day demon, "hexer" = day demon only. Empty in play.
+static var declared_demon_type: String = ""
+
 static func day_demon_share(view: Dictionary) -> float:
+	if declared_demon_type == "walker":
+		return 0.0
+	if declared_demon_type == "hexer":
+		return 1.0
 	var demons: Array = view.get("script_demons", [])
 	if demons.is_empty():
 		return 0.0
