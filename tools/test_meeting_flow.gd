@@ -518,6 +518,8 @@ func _defence_moves() -> void:
 	d.claimed_role = ""
 	d.claim_public = false
 	d.info_log = []
+	# Really out that night (a sighting of a night at home is a frame: tools/test_framed_defence.gd).
+	d.history[w.time_key(1, C.NIGHT)] = "night:docks"
 	for m in [a, l1, l2]:
 		m.info_log = []
 		m.known_claims = {}

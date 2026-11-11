@@ -289,6 +289,8 @@ func _test_defend_self_shared_attribution_and_visibility() -> void:
 	defender.claim_public = false
 	defender.secret = {}
 	defender.home_block = "square"
+	# Really out that night (a sighting of a night at home is a frame: tools/test_framed_defence.gd).
+	defender.history[w.time_key(1, C.NIGHT)] = "night:docks"
 	victim.home_block = "docks"
 	victim.alive = false
 	victim.death_day = 1
