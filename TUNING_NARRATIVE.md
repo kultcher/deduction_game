@@ -290,7 +290,7 @@ When you ask about their gift, the NPC computes an **openness** score:
 > + 0.1 × (days since Day 1) − 0.72 + a daily jitter of ±0.1 + gift-specific terms
 
 The jitter is fixed per NPC per day, so asking again the same day can't fish for a better
-roll. Gift terms make recurring readers cagey early (−0.45 on Day 1, −0.2 on Day 2 for
+roll. Gift terms make recurring readers cagey early (−0.4 on Day 1, −0.2 on Day 2 for
 gifts that keep reporting), gifts the Demon would hunt cagier still (−0.5 on Day 1,
 easing to −0.1 by Day 3), and start-knowledge gifts more open (+0.3).
 

@@ -197,7 +197,7 @@ static func _apply_evidence(view: Dictionary, cards: Array, out: Dictionary) -> 
 			continue
 		var p: int = phase_index(c.get("observed_at", {}).get("phase", ""))
 		var key: String = "%d:%d" % [int(c.get("day", c.get("observed_at", {}).get("day", -1))), p]
-		var li: int = PLACES.find(str(c.get("loc", "")))
+		var li: int = HOME if c.get("at_home", false) else PLACES.find(str(c.get("loc", "")))
 		var blk: String = str(c.get("block", ""))
 		for pid in c.get("subjects", [c.get("subject", "")]):
 			if not out.has(pid) or not out[pid].has(key):
@@ -276,6 +276,25 @@ static func at(table: Dictionary, pid: String, day: int, phase: int, loc: String
 	var dist: PackedFloat64Array = table.get(pid, {}).get("%d:%d" % [day, phase], PackedFloat64Array())
 	var i: int = place_index(loc)
 	return dist[i] if i >= 0 and i < dist.size() else 0.0
+
+
+## Watched blocks a person wasn't seen on: "pid:day:phase:block" -> true. A watch lists
+## everyone at the block's public places, so anyone not listed wasn't at any of them.
+static func exclusions(view: Dictionary, cards: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for wtch in watches(view, cards):
+		var p: int = phase_index(wtch.get("phase", ""))
+		var blk: String = str(wtch.get("block", ""))
+		if p < 0 or blk not in C.BLOCKS:
+			continue
+		var listed: Dictionary = {}
+		for l in wtch.get("at", {}):
+			for pid in wtch.at[l]:
+				listed[str(pid)] = true
+		for person in view.get("people", []):
+			if not listed.has(person.id):
+				out["%s:%d:%d:%s" % [person.id, int(wtch.get("day", -1)), p, blk]] = true
+	return out
 
 
 ## Out in public on a block (homes don't count).

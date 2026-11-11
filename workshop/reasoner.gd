@@ -13,6 +13,9 @@ static var preparations: Dictionary = {}
 static var reuse_preparations = true
 
 static var unlimited_cards = false # developer experiment (autoplay --no-attention): every listener reads every card
+## Developer experiment (tools/read_everything_gap.gd): card kinds a bounded listener
+## always reads, on top of its budget ("report" = gift readings, "report:dowser" = one gift). Empty in play.
+static var always_keep_kinds: Array = []
 
 static func profile(insight: float) -> Dictionary:
 	var result: Dictionary
@@ -109,6 +112,10 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		for id in personal:
 			if cards.any(func(c): return c.id == id) and id not in keep:
 				keep.append(id)
+	if not always_keep_kinds.is_empty():
+		for c in cards:
+			if (str(c.get("kind", "")) in always_keep_kinds or "%s:%s" % [c.get("kind", ""), c.get("role", "")] in always_keep_kinds) and c.id not in keep:
+				keep.append(c.id)
 	# The player's word on a secret (premises step 2) is a claim they made to this listener,
 	# like a presented card: always in view, outside the budget.
 	for c in cards:

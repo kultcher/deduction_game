@@ -6,7 +6,8 @@ const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 
-static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> void:
+## `lead_key`: a voiced line said before the sightings, if any are told (for the dead).
+static func append_to(w, speaker, target, reply: Dictionary, board: Array, lead_key: String = "") -> void:
 	if speaker.silenced or (speaker.is_evil() and Evil.is_teammate(w, speaker, target.id)):
 		return
 	var limit = Mind._gossip_share(w, speaker, "share_person_sightings")
@@ -49,6 +50,10 @@ static func append_to(w, speaker, target, reply: Dictionary, board: Array) -> vo
 				"text": "%s saw %s on %s, day %d %s." % [speaker.name, target.name, C.block_name(b["block"]), b["day"], C.PHASES[b["phase"]]]})
 		if frames.size() >= limit:
 			break
+	if groups.is_empty():
+		return
+	if lead_key != "":
+		reply.lines.append(Mind.say_voiced(speaker, lead_key, "I don't know if this will help your investigation, but here's where I last saw %s:" % target.name, {"subject": target.name}))
 	reply.lines.append_array(Mind._observation_lines(speaker, groups, "player", "answer", true))
 
 static func _night_candidates(w, speaker, target, board: Array) -> Array:

@@ -54,6 +54,16 @@ actor: Michael and Bailiff (two criteria fail; nothing was tuned).
   listener's own readings change; non-"lying" challenges and NPC defences' reading
   challenges are not modelled; the "Hexer declared" run of 12926 wasn't done (no mix
   switch at `75b4c8e`).
+## 2026-11-10 evening, Claude-Quill: belief-model Phase 0 gap, fix 3, Phase 3 table (PRs #124, #125)
+
+From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, in its Results section.
+
+- **#125** (tools only, stacked on #118): `tools/read_everything_gap.gd`; `tools/measure_evidence.gd --what interactions|premises`, `--declare`, `--no-hexer`; `tools/measure_interactions_summary.py`. Dev hooks, empty in play: `Reasoner.always_keep_kinds` and `LiveActivity.declared_demon_type`.
+- **#124** (draft): own home alibi is lie-aware for an evil subject, in both kernels. Full suite 136/137. `test_workshop_vote_and_alibi`'s "doubting the report raises the watcher" now gives 0.120 against a bar of 0.2. It's held for Michael, and the threshold is unchanged. Golden moves on seeds 42, 54875 and 98933; Bailiff sets the re-baseline.
+- A playtest log replays only at its own build: 12926 at `75b4c8e`. Use a worktree.
+- Later (after Phase 1 merged): #125 rebased on main; `--what crosschecks|challenges` and `--force-roles` added. Table rerun on `7404873`; the 0.4 core threshold is confirmed. Results are in the doc.
+
+---
 
 ## 2026-11-10 afternoon, Claude-Lantern: why breakdown, what challenges and the view did (`claude/why-challenge-view`)
 
@@ -129,6 +139,30 @@ argument moved a listener as far as it did. No dialogue hookup, no behaviour cha
 
 ---
 
+## 2026-11-10 early, Claude-Quill: evidence catalog, measured pass (`claude/evidence-measured`, stacked on #111 and #114)
+
+Base: `claude/day-killer` (`75b4c8e`), as Michael asked, since it changes movement. Adds
+`tools/measure_evidence.gd` (harness) and `tools/measure_evidence_summary.py`, and
+`docs/evidence_catalog_measured.md` (tables and findings). Also a measured column in the
+catalog's summary, and catalog entries C8, D7, D8 for the day-killer branch. Real evidence
+from 250 + 100 passive towns (more for sightings and finds, plus Hexer-forced runs), measured on
+a wiped listener through the game's own belief refresh. No game code changed. Findings to triage:
+- **A sighting loses to the subject's home alibi:** held together, the sighting is dropped
+  (teller at 0.5) or both are dropped (teller at 0.8). A Poisoner sighted at +0.256 goes back
+  to 0 with her false alibi. Looks like a bug.
+- **A false home alibi clears an evil person by 0.14–0.18,** more when the alibi-giver is
+  trusted less.
+- **Clerk, Registrar, Monitor, Executor and Martyr readings barely move the people they
+  name** (under 0.01); their effect is all on the reader. Matches the old 37291 note.
+- **A Minion seen out at night loses suspicion** (−0.11 / −0.07): an unknown good person is
+  about as likely to be out as a Minion (the unclaimed walking-gift prior).
+- **The Seer is weak because 42% of its "yes" readings are false** (Red Herring, Marked).
+  That's a design question.
+- **Traces alone move nobody;** with everyone's work and haunts, about +0.03.
+
+Also removed `tools/_probe_d.gd`, a stray timing probe of mine that came in with recency
+(`9a09894`), here and on #114.
+
 ## 2026-11-09 afternoon, Claude-Bailiff: haunts as regular knowledge, day log, Whereabouts solver (`claude/day-killer`, #111)
 
 - **Status:** green.
@@ -169,6 +203,17 @@ argument moved a listener as far as it did. No dialogue hookup, no behaviour cha
 - **Next:** Michael playtests a forced Hexer. Then tune the hex odds and the floor.
 
 ---
+## 2026-11-09 night, Claude-Quill: evidence catalog, first pass (`claude/evidence-catalog`, from main `407069d`)
+
+Docs only. `docs/evidence_catalog.md` lists every kind of evidence (each gift's reading,
+role and gift statements, whereabouts, crime scenes, public behaviour, profile context,
+player premises, distorters) and, for each, how the solver reads it, how strong it is,
+what it needs and what it interacts with. Code pointers are in
+`docs/evidence_catalog_code.md`. **Strengths are judged from the code, not measured**;
+Michael asked for this pass first, and a measured pass from tests comes next. Six findings
+at the end of the catalog to check, including: poison isn't a world state; the role-table
+readings (Seer, Clerk, Archivist, Gravedigger, Executor, Registrar, Monitor) use a fixed
+`q` of 0.5; and the Lamplighter's `q` (CaseEval says unchecked, the movement code uses it).
 
 ## 2026-11-09 early, Claude-Bailiff: review fixes (`claude/review-fixes`)
 
