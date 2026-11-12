@@ -79,6 +79,7 @@ func _init() -> void:
 	mine.source = "player"
 	var f_mine: Array = Activity.factors(view, [own, mine], {})
 	check(f_mine.is_empty() or not f_mine[0].has("contests"), "a sighting with no in-town sighter (the player's) is never contested")
+	_converted_checks()
 	print("Sighter contest: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -90,3 +91,40 @@ func _view() -> Dictionary:
 	return {"people": people, "cards": [], "evil_count": 2, "alignment_epoch": "Original alignment", "live_activity": true,
 		"timeline": History.from_events([{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1}}]),
 		"world_options": {"roles": true, "identities": true, "modifiers": []}}
+
+
+## The Revenant's curse converts a good yes-voter (here c) from day 2's evening. In a world
+## where c is the converted one, c is evil only for what they told while converted
+## (Chronology.statement_time), so only those sightings may be invented.
+func _converted_checks() -> void:
+	for cursed_told in [true, false]:
+		var view: Dictionary = _view()
+		view.timeline = History.from_events([{"kind": "demon_death", "subjects": ["g"], "at": {"day": 3}}])
+		view["chronology"] = {"epochs": {"Original alignment": 0}, "curse": {"from": 10, "until": 1000, "executed": "f",
+			"yes_voters": ["c"], "alive": ["a", "b", "c", "d", "e", "g"]}}
+		var ids: Array = view.people.map(func(p): return p.id)
+		var told: Dictionary = {"day": 3, "phase": "night"} if cursed_told else {"day": 1, "phase": "night"}
+		var night: int = 3 if cursed_told else 1
+		var own: Dictionary = {"id": "own", "fact_id": "own", "kind": "alibi", "source": "a", "subject": "a", "subjects": ["a"], "night": night, "block": "hill",
+			"data": {}, "role": "", "observed_at": {"day": night, "phase": "night"}}
+		var seen: Dictionary = {"id": "s1", "fact_id": "s1", "kind": "sighting", "source": "c", "subject": "a", "subjects": ["a"], "night": night, "block": "square",
+			"data": {}, "role": "", "hearing_weight": 1.0, "observed_at": told}
+		var cards: Array = [own, seen]
+		var f: Array = Activity.factors(view, cards, {})
+		var label: String = "told while converted" if cursed_told else "told before the curse"
+		check(not f.is_empty() and f[0].has("contests"), "curse, %s: a contest exists" % label)
+		if f.is_empty() or not f[0].has("contests"):
+			continue
+		var conv: Array = f[0].contests[0].get("converted", [])
+		check((conv.size() == 1 and not conv[0].is_empty()) == cursed_told, "curse, %s: a converted-sighter alternative exists only for cursed testimony" % label)
+		var ia: int = ids.find("a")
+		var ic: int = ids.find("c")
+		var ie: int = ids.find("e")
+		var i_f: int = ids.find("f")
+		var w_conv: Dictionary = {"evil": (1 << i_f) | (1 << ie), "demon": ie, "converted": ic}
+		var w_a: Dictionary = {"evil": (1 << ia) | (1 << i_f), "demon": ia}
+		var r: float = Activity.score(w_conv, f[0]) / Activity.score(w_a, f[0])
+		if cursed_told:
+			check(r > 0.01, "curse, %s: the converted sighter can explain the clash (%.4f of the subject-Demon world)" % [label, r])
+		else:
+			check(r < 1e-6, "curse, %s: testimony from their good days stays honest (%.8f)" % [label, r])

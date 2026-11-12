@@ -202,6 +202,12 @@ internal static class LiveActivityKernel
         /// <summary>Per non-empty subset m of Sighters (index m - 1): good, minion, demon, converted.</summary>
         public double[][] Alt = Array.Empty<double[]>();
         public double[] C = Array.Empty<double>();
+        /// <summary>Per sighter j: null, or (when j told some of these sightings while
+        /// converted by the curse) per subset m containing j, indexed m - 1, the profile with
+        /// the other sighters' sightings removed and only j's cursed ones. Used in a world
+        /// where j is the converted person and not originally evil.</summary>
+        public double[][][] ConvAlt = Array.Empty<double[][]>();
+        public double[][] ConvC = Array.Empty<double[]>();
     }
 
     internal sealed class HexSuccession
@@ -1640,8 +1646,9 @@ internal static class LiveActivityKernel
 
     /// <summary>
     /// Attaches the sighting contests to a registered factor.
-    /// ints: [P, then per contest: person, k, sighter x k]. doubles: [truth, then per contest,
-    /// per subset m = 1 .. 2^k - 1: good, minion, demon, converted, C].
+    /// ints: [P, then per contest: person, k, sighter x k, then per sighter a converted flag].
+    /// doubles: [truth, then per contest, per subset m = 1 .. 2^k - 1: good, minion, demon,
+    /// converted, C; then per flagged sighter j, per subset m containing j: the same five].
     /// </summary>
     public static void AttachContests(int factorHandle, int[] ints, double[] doubles)
     {
@@ -1665,6 +1672,22 @@ internal static class LiveActivityKernel
             {
                 ct.Alt[m] = SliceDoubles(doubles, ref dPos, 4);
                 ct.C[m] = doubles[dPos++];
+            }
+            ct.ConvAlt = new double[k][][];
+            ct.ConvC = new double[k][];
+            for (int j = 0; j < k; j++)
+            {
+                if (ints[iPos++] == 0)
+                    continue;
+                ct.ConvAlt[j] = new double[subsets][];
+                ct.ConvC[j] = new double[subsets];
+                for (int m = 1; m <= subsets; m++)
+                {
+                    if ((m & (1 << j)) == 0)
+                        continue;
+                    ct.ConvAlt[j][m - 1] = SliceDoubles(doubles, ref dPos, 4);
+                    ct.ConvC[j][m - 1] = doubles[dPos++];
+                }
             }
             factor.Contests[person] = ct;
         }
@@ -1929,13 +1952,21 @@ internal static class LiveActivityKernel
             {
                 var ct = contests[i];
                 int m = 0;
+                int convJ = -1;   // a sighter converted by the curse in this world
                 for (int j = 0; j < ct.Sighters.Length; j++)
                 {
                     int s = ct.Sighters[j];
                     if ((evilMask & (1 << s)) != 0 || demonIdx == s)
                         m |= 1 << j;
+                    else if (convIdx == s && ct.ConvAlt[j] != null)
+                        convJ = j;
                 }
-                if (m != 0)
+                if (convJ >= 0)
+                {
+                    int mc = m | (1 << convJ);
+                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.ConvC[convJ][mc - 1] * ct.ConvAlt[convJ][mc - 1][align];
+                }
+                else if (m != 0)
                     pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.C[m - 1] * ct.Alt[m - 1][align];
             }
             result *= Math.Max(pVal, GdFloor1e30) / Math.Max(profGood[i], GdFloor1e30);
