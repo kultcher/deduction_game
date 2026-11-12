@@ -24,6 +24,13 @@ const MIN_LR_GAIN = 1.03
 ## A case is presented only if the juror rates it at least this strong (as the old bot).
 const MIN_CASE_LR = 1.45
 const HUB_CASE_LR = 1.55
+## Cross-check cases (belief-model plan, Phase 5): a pair whose joint strength beats the
+## two cards alone by this much in log-odds (the connections core threshold) seeds a case.
+const CROSS_MIN = 0.4
+## Most cross-check pairs weighed per case.
+const MAX_CROSS_PAIRS = 24
+## Group readings a partner can complete by clearing another member.
+const GROUP_ROLES = ["dowser", "archivist", "seer", "clerk", "registrar", "chronicler", "rumormonger"]
 const PROFILE_FACETS = ["home_work", "haunts", "bonds"]
 const WALK_CLAIMS = ["lamplighter", "nightwatch", "medium", "warden", "sexton"]
 
@@ -32,8 +39,9 @@ const WALK_CLAIMS = ["lamplighter", "nightwatch", "medium", "warden", "sexton"]
 ## aside (they clash with what it already accepted, or the model can't read them), and
 ## which it never noticed (insight). Also counts juror evaluations, for timing.
 static func new_state(insight: float) -> Dictionary:
+	# (crosscheck: Phase 5 cross-check pairs; off with autoplay --no-crosscheck.)
 	return {"insight": clampf(insight, 0.0, 1.0), "accepted": [], "rejected": {}, "missed": {}, "seen": {},
-		"evals": 0, "eval_ms": 0, "cache_key": "", "posterior": {}}
+		"evals": 0, "eval_ms": 0, "cache_key": "", "posterior": {}, "crosscheck": true}
 
 
 ## Posterior P(evil) per living-or-dead person id from everything the juror accepts on
@@ -156,7 +164,19 @@ static func build_case(g, state: Dictionary, target_id: String, posterior: Dicti
 	var chosen: Array = []
 	var cur_lr: float = 1.0
 	var best: Dictionary = {}
+	# Phase 5: seed with the strongest cross-check pair, whose partner card needn't name the
+	# target (a reading clearing another member of a group the target is in; that night's
+	# Lamplighter count beside a sighting of them). The greedy pass below never finds those,
+	# since it only weighs cards that bear on the target.
+	var cross: Dictionary = {}
+	if state.get("crosscheck", true):
+		cross = _best_cross_pair(g, view, by_id, state, target_id, singles)
+		if not cross.is_empty():
+			chosen = cross.ids.duplicate()
+			cur_lr = float(cross.lr)
 	for pair in singles:
+		if pair[0] in chosen:
+			continue
 		if chosen.size() >= MAX_CASE_CARDS:
 			break
 		var trial_ids: Array = chosen + [pair[0]]
@@ -167,7 +187,7 @@ static func build_case(g, state: Dictionary, target_id: String, posterior: Dicti
 			cur_lr = trial.lr
 			best = trial
 	if chosen.is_empty() or cur_lr < MIN_CASE_LR:
-		return {"card": 0, "used_hub": false}
+		return {"card": 0, "used_hub": false, "cross": false}
 	# Rebuild the chosen case as a canvas the game can file (with an optional hub).
 	var model = CanvasModel.new(view)
 	var root: String = model.selected
@@ -202,7 +222,100 @@ static func build_case(g, state: Dictionary, target_id: String, posterior: Dicti
 		return {"card": 0, "used_hub": false}
 	filed_sigs[sig] = filed
 	last_by_target[target_id] = filed
-	return {"card": filed, "used_hub": attached_hub and not final_compiled.get("circumstantial", []).is_empty()}
+	return {"card": filed, "used_hub": attached_hub and not final_compiled.get("circumstantial", []).is_empty(),
+		"cross": not cross.is_empty() and cross.ids.all(func(id): return id in final_compiled.cards)}
+
+
+## The strongest cross-check pair for a case that `target_id` is evil: an accepted card
+## that bears on them (an anchor) and an accepted partner that doesn't, whose joint strength
+## beats the two alone by CROSS_MIN in log-odds. Partners: for a group reading naming the
+## target, any reading naming another member of the group; for a night sighting of the
+## target, that night's Lamplighter count. {} if none qualifies.
+static func _best_cross_pair(g, view: Dictionary, by_id: Dictionary, state: Dictionary, target_id: String, singles: Array) -> Dictionary:
+	var solo: Dictionary = {}
+	for s in singles:
+		solo[s[0]] = float(s[1])
+	var pairs: Array = []
+	for a in solo.keys():
+		var ca: Dictionary = by_id[a]
+		var d: Dictionary = ca.get("data", {}) if ca.get("data") is Dictionary else {}
+		var group: Array = d.get("group", d.get("pair", []))
+		if ca.get("kind", "") == "report" and target_id in group and group.size() >= 2:
+			for p in state.accepted:
+				if p == a or solo.has(p) or not by_id.has(p) or by_id[p].get("kind", "") != "report":
+					continue
+				if group.any(func(y): return y != target_id and _bears_on(view, by_id[p], y, false)):
+					pairs.append([a, p])
+		if ca.get("kind", "") == "sighting" and int(ca.get("night", -1)) >= 0:
+			for p in state.accepted:
+				var cp: Dictionary = by_id.get(p, {})
+				if p != a and not solo.has(p) and cp.get("kind", "") == "report" and str(cp.get("role", "")) == "lamplighter" and int(cp.get("night", -2)) == int(ca.night):
+					pairs.append([a, p])
+	var best: Dictionary = {}
+	var best_lr: float = 0.0
+	var top_single: float = solo.values().max() if not solo.is_empty() else 1.0
+	for pr in pairs.slice(0, MAX_CROSS_PAIRS):
+		var alone: Dictionary = evaluate(g, view, [pr[1]], {}, target_id, state)
+		var joint: Dictionary = evaluate(g, view, pr, {}, target_id, state)
+		if not (alone.get("ready", false) and joint.get("ready", false)) or joint.get("impossible", true):
+			continue
+		var lr_a: float = maxf(solo[pr[0]], 1e-9)
+		var lr_p: float = maxf(float(alone.get("lr", 1.0)), 1e-9)
+		var lr_j: float = maxf(float(joint.lr), 1e-9)
+		var interaction: float = log(lr_j) - log(lr_a) - log(lr_p)
+		if interaction >= CROSS_MIN and lr_j > top_single and lr_j > best_lr:
+			best_lr = lr_j
+			best = {"ids": pr, "lr": lr_j, "interaction": interaction}
+	return best
+
+
+## Bayes factor of a Hexer over a walking Demon on everything the juror accepts: each
+## possible world's unnormalised weight (prior x readings x movement x tests) summed with the
+## town's mix set to Hexer, over the same sum set to walker. 1 when it can't be read.
+## Used by the bot's demon-type declaration (Phase 5; game/demon_declaration.gd).
+static func demon_type_odds(g, state: Dictionary) -> float:
+	if state.accepted.is_empty():
+		return 1.0
+	var view: Dictionary = WorkshopCanvas.view(g)
+	var model = CanvasModel.new(view)
+	var root: String = model.selected
+	model.nodes[root].conclusion = {"type": "evil", "target": _any_person(view), "at": view.alignment_epoch}
+	for cid in state.accepted:
+		var node: String = "e:" + str(cid)
+		if model.nodes.has(node) and not model.nodes[node].has("merged"):
+			model.connect_cards(node, root)
+	var profiles: Dictionary = _profile_people(view)
+	for pid in profiles:
+		model.connect_cards(model.add_profile_info(pid, profiles[pid]), root)
+	var compiled: Dictionary = model.compile(root)
+	if compiled.get("cards", []).is_empty():
+		return 1.0
+	var input = WorkshopCanvas.snapshot(g, compiled)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input.listener = {"id": "ghost", "name": "Analyst", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return 1.0
+	var sums: Dictionary = {}
+	for kind in ["walker", "hexer"]:
+		var v: Dictionary = prepared.view.duplicate()
+		v["declared_demon_type"] = kind
+		CaseEval.captured = []
+		CaseEval.capture_worlds = true
+		CaseEval.evaluate(v, prepared.case)
+		CaseEval.capture_worlds = false
+		state.evals += 1
+		var s: float = 0.0
+		if not CaseEval.captured.is_empty():
+			for x in CaseEval.captured[0].worlds:
+				s += float(x)
+		CaseEval.captured = []
+		sums[kind] = s
+	if sums.walker <= 0.0 or sums.hexer <= 0.0:
+		return 1.0 if sums.walker <= 0.0 and sums.hexer <= 0.0 else (1e6 if sums.walker <= 0.0 else 1e-6)
+	return sums.hexer / sums.walker
 
 
 ## The hub selector reads a signed lean (-1 cleared .. +1 damned, 0 = no shift). Map each
