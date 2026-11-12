@@ -457,6 +457,8 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 
 ## Diagnostics: turn the Hexer factor off to measure what it adds (tools only).
 static var hex_factor_enabled: bool = true
+## Diagnostics: turn the sighter contests off (_sighting_contests; tests and tools only).
+static var sighter_contests_enabled: bool = true
 
 static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if not available(view):
@@ -467,7 +469,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {})]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {}), sighter_contests_enabled]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
@@ -522,7 +524,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 			p_dict["converted"] = raw_prof[b + 3]
 		profiles[i] = p_dict
 
-	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles)
+	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles) if sighter_contests_enabled else []
 	var scene_tables: Array = _build_scene_tables_cs(view, ids, env, checked, packed_checked)
 	var scion_splits: Array = _scion_succession_splits_cs(view, ids, env, checked)
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
