@@ -295,18 +295,20 @@ static func demon_type_odds(g, state: Dictionary) -> float:
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Analyst", "trust": 0.5, "confidence": 0.5,
 		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
-	var prepared = Assess.prepare(input)
-	if not prepared.ready:
-		return 1.0
+	# The movement factor is built in Assess.prepare from the snapshot's rules, so the
+	# town's mix is set there (as the game's bridge does), once per kind.
 	var sums: Dictionary = {}
 	for kind in ["walker", "hexer"]:
-		var v: Dictionary = prepared.view.duplicate()
-		v["declared_demon_type"] = kind
+		var inp: Dictionary = input.duplicate(true)
+		inp.rules["declared_demon"] = kind
+		var prepared = Assess.prepare(inp)
+		state.evals += 1
+		if not prepared.ready:
+			return 1.0
 		CaseEval.captured = []
 		CaseEval.capture_worlds = true
-		CaseEval.evaluate(v, prepared.case)
+		CaseEval.evaluate(prepared.view, prepared.case)
 		CaseEval.capture_worlds = false
-		state.evals += 1
 		var s: float = 0.0
 		if not CaseEval.captured.is_empty():
 			for x in CaseEval.captured[0].worlds:
