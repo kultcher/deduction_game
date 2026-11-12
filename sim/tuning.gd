@@ -872,6 +872,11 @@ class Workshop:
 	const EVIL_SIGHTER_TRUTH = 0.15
 	## The most sighters per person whose word is weighed this way (2^k profiles each).
 	const SIGHTER_CONTEST_MAX = 2
+	## With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure:
+	## they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of
+	## them on a night they spent at home counts against the sighter, but not as certain proof
+	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
+	const SLEEPWALK_SELF_DOUBT = 0.1
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4

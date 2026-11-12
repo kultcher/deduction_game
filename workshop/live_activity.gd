@@ -562,8 +562,16 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	for c in checked:
 		if c.get("quoted", false):
 			continue
+		# Who might have made it up: the sighter, and for a relayed sighting (a Medium's word
+		# from the dead) the relayer too, since an evil relayer can invent what the dead saw.
+		var tellers: Array = []
 		var si: int = ids.find(str(c.get("source", "")))
-		if si < 0:
+		if si >= 0:
+			tellers.append(si)
+		var ri: int = ids.find(str(c.get("relay_source", ""))) if c.has("relay_source") else -1
+		if ri >= 0 and ri != si:
+			tellers.append(ri)
+		if tellers.is_empty():
 			continue
 		var named: Array = []
 		if c.kind == "sighting":
@@ -572,13 +580,16 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			named = c.data.get("seen", [])
 		for who in named:
 			var pi: int = ids.find(str(who))
-			if pi < 0 or pi == si:
+			if pi < 0:
 				continue
-			if not by_person.has(pi):
-				by_person[pi] = {}
-			by_person[pi][si] = int(by_person[pi].get(si, 0)) + 1
-			if _told_cursed(curse, c):
-				cursed_by["%d:%d" % [pi, si]] = true
+			for ti in tellers:
+				if pi == ti:
+					continue
+				if not by_person.has(pi):
+					by_person[pi] = {}
+				by_person[pi][ti] = int(by_person[pi].get(ti, 0)) + 1
+				if _told_cursed(curse, c):
+					cursed_by["%d:%d" % [pi, ti]] = true
 	if by_person.is_empty():
 		return []
 	var has_curse: bool = env.has_curse
@@ -595,8 +606,9 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			var cursed_id: String = ids[cursed] if cursed >= 0 else ""
 			var minus: Array = cards.filter(func(c):
 				var src: String = str(c.get("source", ""))
+				var rel: String = str(c.get("relay_source", "~"))
 				var movement: bool = c.kind == "sighting" or (c.kind == "report" and str(c.get("role", "")) == "nightwatch")
-				return not (movement and (src in full_ids or (src == cursed_id and _told_cursed(curse, c)))))
+				return not (movement and (src in full_ids or rel in full_ids or ((src == cursed_id or rel == cursed_id) and _told_cursed(curse, c)))))
 			# Forced outings re-inferred from what's left.
 			var mv: Dictionary = _routes_cs(view, minus, {}, {}, false)
 			for night in mv.nights:

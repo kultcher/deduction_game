@@ -819,8 +819,15 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 			fatal = true
 		var says_out: bool = (card.kind == "sighting" and self_id in card.get("subjects", [card.subject])) or (card.kind == "report" and card.role == "nightwatch" and self_id in card.data.seen)
 		if says_out and not was_out:
+			# Kept in the weighing (not rejected): the listener's own knowledge that they were
+			# home makes it evidence about whoever told it, a lie or a failed gift
+			# (LiveActivity._sighting_contests). Dropping it threw that evidence away.
+			# A Medium's relay is still set aside: role fits read a held relay as proof its
+			# relayer is a healthy good Medium (RoleConstraints), so keeping it would clear an
+			# evil relayer who invented it (seed 100020: the Scion Hollis).
 			objections.append("%s conflicts with my firsthand knowledge that I was home on night %s; the report may be wrong." % [card.id, night])
-			rejected.append(card.id)
+			if card.has("relay_source"):
+				rejected.append(card.id)
 		if card.kind == "alibi" and card.subject == self_id and was_out:
 			objections.append("%s says I was home, but I know I went out on night %s." % [card.id, night])
 			rejected.append(card.id)
