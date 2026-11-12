@@ -1161,6 +1161,8 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		var free: PackedFloat64Array = neutral
 		if not (walked.own_role == "" and walked.own_outings.is_empty() and walked.get("public_roles", {}).is_empty()):
 			free = _personal_fits(view, cc, cards, walked, neutral, neutral_key, bare)
+		if free == fits:
+			return fits   # nothing the home nights rule out (avoids rounding noise)
 		var mixed := PackedFloat64Array()
 		mixed.resize(nc)
 		for c in range(nc):
