@@ -44,13 +44,14 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 11): `baseline_8efc6e4`
+### Current baseline (Nov 11): `baseline_f40ca05`
 
-`tools/golden/baseline_8efc6e4/` is the capture from `claude/gravedigger-bluff`. An evil
+`tools/golden/baseline_f40ca05/` is the capture from `claude/gravedigger-bluff`. An evil
 Gravedigger's report on a hanged good person reads the town's certainty from the hanging vote
 and calls them a Minion more often the surer the town was (one extra evil decision roll).
 - **Divergence from `baseline_bd1b404`:** 900 at record 91 (refresh #73, Isolde's cover mind,
-  day 2 night); the other four seeds are identical.
+  day 2 night); the other four seeds are identical. Counting the player's no vote in the
+  town's certainty (Codex's review) moved only 900 again, from record 97.
 - **Record counts:** 900 138 (was 143); the rest unchanged.
 - **Stability:** two captures were identical.
 
