@@ -1,10 +1,10 @@
 ## A good NPC's sighting of themselves on a night they know they spent at home is evidence
 ## about whoever told it (Project doc belief-model-direction, Nov 12; Reasoner.direct_checks).
-##   - A plain sighting is kept in the weighing, not rejected; a Medium's relay and a Night
-##     Watch list are still set aside (Reasoner.direct_checks says why).
+##   - A plain sighting or a Medium's relay is kept in the weighing, not rejected; a Night
+##     Watch list is still set aside (Reasoner.direct_checks says why).
 ##   - In real games: the framed NPC holds it against an evil sighter; a Sleepwalker seen by an
 ##     honest sighter stays well short of certain (Tuning.Workshop.SLEEPWALK_SELF_DOUBT); an
-##     evil Medium's invented relay doesn't clear them.
+##     evil Medium's invented relay counts against them (test_relay_bluff).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -35,7 +35,7 @@ func _init() -> void:
 	var res: Dictionary = Reasoner.direct_checks(view, case_data, knowledge)
 	check(not "seen" in res.rejected, "a sighting of me on a night I was home is kept")
 	check("nw" in res.rejected, "a Night Watch's list naming me on a night I was home is still set aside (SourceDoubt voids it)")
-	check("relayed" in res.rejected, "a Medium's relay naming me on that night is still set aside")
+	check(not "relayed" in res.rejected, "a Medium's relay naming me on that night is kept (its relayer may be the liar)")
 	check(res.objections.size() == 3, "all three still raise an objection for dialogue (%d)" % res.objections.size())
 	knowledge.own_outings["1"] = true
 	check(Reasoner.direct_checks(view, case_data, knowledge).objections.is_empty(), "no objection when I really was out")

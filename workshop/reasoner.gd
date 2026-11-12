@@ -822,16 +822,15 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 			# Kept in the weighing (not rejected): the listener's own knowledge that they were
 			# home makes it evidence about whoever told it, a lie or a failed gift
 			# (LiveActivity._sighting_contests). Dropping it threw that evidence away.
-			# Two kinds are still set aside:
-			# - a Medium's relay: role fits read a held relay as proof its relayer is a healthy
-			#   good Medium (RoleConstraints), so keeping it would clear an evil relayer who
-			#   invented it (seed 100020: the Scion Hollis);
+			# A Medium's relay is kept too: its relayer may be the liar (RoleConstraints lets an
+			# evil relayer's relay be a bluff in play; LiveActivity._sighting_contests weighs
+			# them). Still set aside:
 			# - a Night Watch list: each name on it is scored as an independent slip, so a list
 			#   that wrongly names me would still read as a credible watch, clearing the watch
 			#   and casting the rest of the list as out (test_workshop_consequences).
 			#   SourceDoubt voids that night's list and doubts the watch instead.
 			objections.append("%s conflicts with my firsthand knowledge that I was home on night %s; the report may be wrong." % [card.id, night])
-			if card.has("relay_source") or card.kind == "report":
+			if card.kind == "report":
 				rejected.append(card.id)
 		if card.kind == "alibi" and card.subject == self_id and was_out:
 			objections.append("%s says I was home, but I know I went out on night %s." % [card.id, night])
