@@ -72,8 +72,9 @@ static func belief(g, state: Dictionary, rng: RandomNumberGenerator) -> Dictiona
 		else:
 			state.rejected[cid] = "impossible" if trial.get("ready", false) else "unreadable"
 	# Profile receipts aren't in `accepted`, and `profiles` names only facets: key on the
-	# facets' receipt ids too, so a newly learned haunt or home re-reads the board.
-	var key: String = JSON.stringify([state.accepted, profiles, _profile_receipts(view, profiles)])
+	# facets' receipt ids too, so a newly learned haunt or home re-reads the board. The
+	# declared demon type changes the movement model, so it's in the key as well.
+	var key: String = JSON.stringify([state.accepted, profiles, _profile_receipts(view, profiles), str(g.w.declared_demon_type)])
 	if key == state.cache_key:
 		return state.posterior
 	var out: Dictionary = {}

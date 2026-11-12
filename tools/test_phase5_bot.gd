@@ -5,11 +5,13 @@
 ##     Hexer:walker Bayes factor came out exactly 1 (and in-game declarations could keep
 ##     stale movement scores).
 ##   - Analyst.demon_type_odds reads a real Bayes factor on two-kind games.
+##   - The bot's own belief cache keys on the declaration, so declaring re-reads its picture.
 extends SceneTree
 
 const T = preload("res://tools/test_demon_declaration.gd")
 const Analyst = preload("res://tools/analyst.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
+const GM = preload("res://game/game_meeting.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -27,6 +29,7 @@ func _init() -> void:
 	var read := 0
 	var games := 0
 	var leaning_right := 0
+	var reread := 0
 	for force in ["demon", "daykiller"]:
 		for s in [30, 31, 32, 33]:
 			var g = t._to_meeting(s, force)
@@ -46,8 +49,15 @@ func _init() -> void:
 			if (bf > 1.0) == (truth == "hexer"):
 				leaning_right += 1
 			check(is_equal_approx(bf, again), "%s seed %d: the odds are repeatable (cache hits agree)" % [truth, s])
+			# A declaration re-reads the bot's picture (Codex, #137): its belief cache keys on it.
+			var before: Dictionary = Analyst.belief(g, st, RandomNumberGenerator.new()).duplicate()
+			GM._meeting_command(g, "declare", truth)
+			var after: Dictionary = Analyst.belief(g, st, RandomNumberGenerator.new())
+			if before.keys().any(func(k): return not is_equal_approx(float(before[k]), float(after.get(k, 0.0)))):
+				reread += 1
 	check(games >= 4, "enough two-kind games reach a meeting with accepted cards (%d)" % games)
 	check(read == games, "every game gives a real Bayes factor, never the stale-cache 1.0 (%d of %d)" % [read, games])
+	check(reread == games, "a declaration changes the bot's posterior in every game (%d of %d)" % [reread, games])
 	print("  odds lean the true way in %d of %d games" % [leaning_right, games])
 	print("Phase 5 bot: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

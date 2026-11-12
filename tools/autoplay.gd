@@ -544,7 +544,8 @@ func _out(s: String) -> void:
 ## board (tools/analyst.gd). Recomputed only when the visible evidence changes.
 func _scores() -> Dictionary:
 	var w = g.w
-	var key: String = "%d:%d:%d:%d:%d:%d" % [g.board.size(), g.profile_receipts.size(), w.day, w.phase, w.executions.size(), w.living().size()]
+	# The declared demon type changes the movement model, so a declaration re-reads too (Codex, #137).
+	var key: String = "%d:%d:%d:%d:%d:%d:%s" % [g.board.size(), g.profile_receipts.size(), w.day, w.phase, w.executions.size(), w.living().size(), w.declared_demon_type]
 	if key != _belief_key:
 		_belief_key = key
 		_belief_cache = Analyst.belief(g, analyst, rng)
