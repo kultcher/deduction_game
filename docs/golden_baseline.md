@@ -44,15 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 11): `baseline_5df40aa`
+### Current baseline (Nov 11): `baseline_bd1b404`
 
-`tools/golden/baseline_5df40aa/` is the capture from `claude/sighter-contest`. A sighting (or a
+`tools/golden/baseline_bd1b404/` is the capture from `claude/sighter-contest`. A sighting (or a
 Night Watch's "I saw X pass by") counts at `EVIL_SIGHTER_TRUTH` (0.15) of the time in a world
 where its sighter is evil, and otherwise as an invented sighting (belief-model plan, Nov 11).
+A sighter converted by the Revenant's curse is doubted only for what they told while converted.
 - **Divergence from `baseline_a03bf72`:** every seed. 42 at record 31 (refresh #20, Nisha,
   day 2), 54875 at record 9 (refresh #6, Isolde, day 1), 692 at record 12 (refresh #7, Agnes,
   day 1), 900 at record 12 (refresh #8, Kiran, day 1), and 98933 at record 123 (refresh #105,
-  Merrin, day 2).
+  Merrin, day 2). Adding the converted-sighter rule moved only 54875, from record 242 (day 3).
 - **Record counts:** 42 101 (was 108), 54875 302 (321), 692 249 (251), 900 143, 98933 346 (285).
 - **Stability:** two captures were identical.
 
