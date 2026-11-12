@@ -55,7 +55,7 @@ def cell_key(r):
 
 def cell_label(k):
     npcs, mode, ins = k
-    return "%d NPCs, %s" % (npcs, mode if mode == "passive" else "%s insight %.1f" % ({"bot_pre_m4": "bot (pre-M4)", "no_present": "bot, no presenting", "present_vote": "bot, present and vote"}.get(mode, "bot"), ins))
+    return "%d NPCs, %s" % (npcs, mode if mode == "passive" else "%s insight %.1f" % ({"bot_pre_m4": "bot (pre-M4)", "no_present": "bot, no presenting", "present_vote": "bot, present and vote", "bot_nocross": "bot, no cross-checks", "bot_nodeclare": "bot, no declaring"}.get(mode, mode), ins))
 
 
 def good_win(r):

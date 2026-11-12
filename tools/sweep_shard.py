@@ -107,14 +107,21 @@ class Worker:
                    "--seed", str(seed), "--games", str(games), "--npcs", str(self.a.npcs), "--no-trace",
                    "--dynamic", "--results-jsonl", self.results, "--sha", self.a.sha,
                    "--log-dir", self.log_root, "--insight", str(self.a.insight)]
-            if self.a.mode == "passive":
+            base, flags = split_mode(self.a.mode)
+            if base == "passive":
                 cmd.append("--passive")
-            elif self.a.mode == "bot_pre_m4":
+            elif base == "bot_pre_m4":
                 cmd.append("--pre-m4")  # the bot policy before meeting plan M4, for A/Bs
-            elif self.a.mode == "no_present":
+            elif base == "no_present":
                 cmd.append("--no-present")  # Phase 0 silent-bot cell: never presents a case
-            elif self.a.mode == "present_vote":
+            elif base == "present_vote":
                 cmd.append("--present-and-vote")  # Phase 0: no vigils, wards or searches
+            if "nocross" in flags:
+                cmd.append("--no-crosscheck")  # Phase 5: no cross-check case seeding
+            if "nodeclare" in flags:
+                cmd.append("--no-declare")  # Phase 5: never declares the demon type
+            if self.a.force_demon:
+                cmd += ["--force-demon", self.a.force_demon]
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
                                     errors="replace")
             current = None
@@ -191,12 +198,31 @@ class Worker:
         shutil.rmtree(self.log_root, ignore_errors=True)
 
 
+BASE_MODES = ["passive", "bot", "bot_pre_m4", "no_present", "present_vote"]
+MODE_FLAGS = ["nocross", "nodeclare"]
+
+
+def split_mode(mode):
+    """A cell mode is a base mode plus optional Phase 5 suffixes, as autoplay names them:
+    bot_nocross, bot_nodeclare, bot_nocross_nodeclare."""
+    flags = []
+    for f in reversed(MODE_FLAGS):
+        if mode.endswith("_" + f):
+            flags.insert(0, f)
+            mode = mode[: -len(f) - 1]
+    if mode not in BASE_MODES or (flags and mode == "passive"):
+        raise SystemExit("bad mode %r" % mode)
+    return mode, flags
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--godot", required=True)
     ap.add_argument("--project", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ap.add_argument("--npcs", type=int, required=True)
-    ap.add_argument("--mode", choices=["passive", "bot", "bot_pre_m4", "no_present", "present_vote"], required=True)
+    ap.add_argument("--mode", required=True, help="passive, bot, bot_pre_m4, no_present or present_vote, "
+                    "optionally with _nocross / _nodeclare (Phase 5)")
+    ap.add_argument("--force-demon", default="", help="deal this demon type (autoplay --force-demon), e.g. daykiller")
     ap.add_argument("--insight", type=float, default=1.0)
     ap.add_argument("--seeds", required=True, help="first:last (last exclusive)")
     ap.add_argument("--procs", type=int, default=4)
@@ -205,6 +231,7 @@ def main():
     ap.add_argument("--game-timeout", type=float, default=1800.0)
     ap.add_argument("--echo", action="store_true")
     a = ap.parse_args()
+    split_mode(a.mode)
     first, last = [int(x) for x in a.seeds.split(":")]
     os.makedirs(a.out, exist_ok=True)
     n = last - first
