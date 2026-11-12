@@ -11,7 +11,7 @@ on:
         description: "Games per cell"
         default: "2000"
       cells:
-        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote", "insight": 1.0}'
+        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare), "insight": 1.0, "force_demon": "daykiller" (optional)}'
         default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
       costs:
         description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
@@ -57,8 +57,12 @@ jobs:
           shards = []
           for c in cells:
               mode = str(c["mode"]); npcs = int(c["npcs"]); ins = float(c.get("insight", 1.0))
-              if mode not in ("passive", "bot", "bot_pre_m4", "no_present", "present_vote") or npcs not in (7, 10):
-                  raise SystemExit("bad cell %r: mode must be passive, bot, bot_pre_m4, no_present or present_vote, npcs 7 or 10" % (c,))
+              base = mode
+              for f in ("_nodeclare", "_nocross"):
+                  if base.endswith(f): base = base[: -len(f)]
+              if base not in ("passive", "bot", "bot_pre_m4", "no_present", "present_vote") or npcs not in (7, 10):
+                  raise SystemExit("bad cell %r: mode must be passive, bot, bot_pre_m4, no_present or present_vote (bot modes may end _nocross / _nodeclare), npcs 7 or 10" % (c,))
+              force = str(c.get("force_demon", ""))
               cost = float(costs.get("%d_%s" % (npcs, mode), costs.get("%d_bot" % npcs, 220)))
               per = max(4, int(budget // cost))
               k = max(1, math.ceil(games / per))
@@ -66,8 +70,8 @@ jobs:
               for i in range(k):
                   a = seed0 + i * size; b = min(seed0 + games, a + size)
                   if a < b:
-                      name = "%d_%s_%s_%d" % (npcs, mode, ("%g" % ins), a)
-                      shards.append({"name": name, "npcs": npcs, "mode": mode, "insight": ins, "first": a, "last": b})
+                      name = "%d_%s_%s%s_%d" % (npcs, mode, ("%g" % ins), ("_" + force if force else ""), a)
+                      shards.append({"name": name, "npcs": npcs, "mode": mode, "insight": ins, "force_demon": force, "first": a, "last": b})
           if len(shards) > int(os.environ["MAX_SHARDS"]):
               raise SystemExit("%d shards exceed max_shards; raise target_hours or lower games" % len(shards))
           print("%d shards" % len(shards))
@@ -107,9 +111,13 @@ jobs:
           INSIGHT: ${{ matrix.insight }}
           FIRST: ${{ matrix.first }}
           LAST: ${{ matrix.last }}
+          FORCE_DEMON: ${{ matrix.force_demon }}
         run: |
+          # Only pass --force-demon when a cell asks for it, so refs from before the flag still run.
+          FORCE_ARGS=()
+          if [ -n "$FORCE_DEMON" ]; then FORCE_ARGS=(--force-demon "$FORCE_DEMON"); fi
           python3 tools/sweep_shard.py --godot "$GODOT_BIN" \
-            --npcs "$NPCS" --mode "$MODE" --insight "$INSIGHT" \
+            --npcs "$NPCS" --mode "$MODE" --insight "$INSIGHT" "${FORCE_ARGS[@]}" \
             --seeds "$FIRST:$LAST" --procs 4 --out "$RUNNER_TEMP/out" \
             --sha "$(git rev-parse HEAD)"
       - name: Upload results
