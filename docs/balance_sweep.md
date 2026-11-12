@@ -71,7 +71,8 @@ One JSON object per game. Flat fields:
 - **Outcome:** `winner`, `reason`, `days`, `outcome`, `loss_hint`, and the autoplay
   counters `exec_good`, `exec_evil`, `kills`, `lies`, `nominations`, `clemency`, `pairs`,
   `shares`, `evil_shares`, `approaches`, `deductions`, `arguments`, `workshop_cases`,
-  `hub_cases`.
+  `hub_cases`, `cross_cases`, `declarations`, `declarations_right` (the last three from the
+  Phase 5 bot, #137).
 - **From `case_summary`:** `demon_evidence_on_board`, `demon_evidence_reachable`
   (booleans), `nights`, `executions` (one row each), `demon_identified`,
   `both_identified`, `identified_but_lost`, `good_initial`, `good_surviving`,
@@ -121,6 +122,9 @@ A lost game has only identity fields plus `failed` (`crash` / `timeout` / `start
   times and the slowest seeds. Stuck games are left out of every rate.
 
 Caveats: bot win rates describe today's bot, not a skilled human (the M4 policy is the
-default; `--pre-m4` keeps the earlier one). Passive results mostly measure
+default; `--pre-m4` keeps the earlier one). Since #137 the `bot` and `no_present` cells
+also seed cases with cross-check pairs and declare the demon type; `autoplay.gd
+--no-crosscheck` / `--no-declare` give the earlier bot, but no sweep cell mode passes them
+yet. Passive results mostly measure
 NPC meeting behaviour. Dynamic scripts aren't the Default script, so these numbers don't
 compare directly with older Default-script sweeps.

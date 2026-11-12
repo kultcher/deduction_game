@@ -164,6 +164,12 @@ it means the game must teach its own way of thinking and make evidence very read
   not absolutely against being the killer. Scattered sightings corroborate a walking-gift
   claim; previews and replies name both relationships ("Seen elsewhere", "Scattered
   sightings"). The live Demon never actually detours (BACKLOG).
+- **Sighter contests** (#135): in a world where a sighter is evil, their sighting (or a
+  Night Watch's "I saw X pass by") counts only `Workshop.EVIL_SIGHTER_TRUTH` (0.15) of the
+  time and otherwise as an invented one, as likely on average as an honest one, so a
+  sighter's word against a person's own alibi is decided by priors. A sighter converted by
+  the Revenant's curse is doubted only for what they told while converted. At most
+  `SIGHTER_CONTEST_MAX` (2) sighters a person, the most-cited first.
 - **Vigils see destinations:** a player vigil on a block sees walkers arriving there, or
   doing the full Lamplighter tour, not people passing through. The Night Watch still sees
   all traffic.
@@ -911,6 +917,9 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   scapegoat and frames every night once five or fewer remain; a lone evil Seer bluffer
   never puts itself in its own pair. Each gift has its own bluff rule
   (`generate_bluff_reading`), built around the scapegoat and the team.
+- An evil Gravedigger reporting on a hanged good person calls them a Minion more often the
+  surer the town was, read from the hanging vote's yes share (the player's vote counts);
+  otherwise it confirms their claim, or guesses a good role (#136; `Evil.GRAVEDIGGER_FRAME_*`).
 - Evil bluffing a walking gift says their gift took them out when asked where they were;
   its invented sightings follow the window/route rule.
 
@@ -983,7 +992,8 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
      a relay.
    - **The defence** (`MindMeeting.defend_self`): one or two moves from the case against
      them: *reveal* a walking gift to excuse sightings; *confess* a secret (good only); the
-     sleepwalk excuse; against a reading, *red herring* (named in two+ shared Seer yeses),
+     sleepwalk excuse; a good defender sighted only on nights they spent at home (framed)
+     gives their account of that night instead (#134); against a reading, *red herring* (named in two+ shared Seer yeses),
      *pair_other*, *lying* (if confident) or *misled*; else a plea. Reveals, confessions
      and reading challenges enter listeners' ledgers as undoable claims and challenges;
      pleas and rival suggestions are speech. **Block safety:** while someone else is
