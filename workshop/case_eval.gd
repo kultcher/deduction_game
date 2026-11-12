@@ -1147,13 +1147,37 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
+	var fits: PackedFloat64Array = _personal_fits(view, cc, cards, personal, neutral, neutral_key, bare)
+	# "Am I the Sleepwalker?" With the secret on the script, a good listener's own nights at
+	# home are a little unsure: with chance SLEEPWALK_SELF_DOUBT they walked without knowing
+	# it, and their home nights say nothing. Being the Sleepwalker is one hidden fact for the
+	# whole case, so the two readings mix whole (Tuning.Workshop.SLEEPWALK_SELF_DOUBT).
+	var home_nights: Array = personal.own_outings.keys().filter(func(k): return not bool(personal.own_outings[k]))
+	if not home_nights.is_empty() and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
+		var d: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT
+		var walked: Dictionary = personal.duplicate(true)
+		for k in home_nights:
+			walked.own_outings.erase(k)
+		var free: PackedFloat64Array = neutral
+		if not (walked.own_role == "" and walked.own_outings.is_empty() and walked.get("public_roles", {}).is_empty()):
+			free = _personal_fits(view, cc, cards, walked, neutral, neutral_key, bare)
+		if free == fits:
+			return fits   # nothing the home nights rule out (avoids rounding noise)
+		var mixed := PackedFloat64Array()
+		mixed.resize(nc)
+		for c in range(nc):
+			mixed[c] = (1.0 - d) * fits[c] + d * free[c]
+		return mixed
+	return fits
+
+static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, personal: Dictionary, neutral: PackedFloat64Array, neutral_key: int, bare: bool) -> PackedFloat64Array:
 	var key = hash([cc.key, personal, Domain.live(view), bare])
 	if not _fits_cache.has(key):
 		if _fits_cache.size() > 256:
 			_fits_cache.clear()
 			_fits_cache[neutral_key] = neutral
 		var open: Array = []
-		for c in range(nc):
+		for c in range(cc.team.size()):
 			if neutral[c] > 0.0:
 				open.append(c)
 		_fits_cache[key] = _fits_over(view, cc, cards, personal, open)

@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 11): `baseline_f40ca05`
+### Current baseline (Nov 12): `baseline_300fe18`
+
+`tools/golden/baseline_300fe18/` is the capture from `claude/self-sighting-clash`. A good NPC's
+plain sighting of themselves on a night they know they spent at home is kept in the weighing
+(it was rejected), so it counts against the sighter; with the Sleepwalker on the script the
+listener's own home nights carry a 10% doubt. Night Watch lists and Medium relays are still
+set aside.
+- **Divergence from `baseline_f40ca05`:** 42 at record 31 (refresh #20, Nisha, day 2 evening:
+  Agnes +0.05); the other four seeds are identical. The outcome of 42 is unchanged.
+- **Record counts:** unchanged.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 11): `baseline_f40ca05`
 
 `tools/golden/baseline_f40ca05/` is the capture from `claude/gravedigger-bluff`. An evil
 Gravedigger's report on a hanged good person reads the town's certainty from the hanging vote
