@@ -73,7 +73,8 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 	rec["reason"] = w.end_reason
 	rec["days"] = w.day
 	for k in ["exec_good", "exec_evil", "kills", "lies", "nominations", "clemency", "pairs", "shares",
-			"evil_shares", "approaches", "deductions", "arguments", "workshop_cases", "hub_cases"]:
+			"evil_shares", "approaches", "deductions", "arguments", "workshop_cases", "hub_cases", "cross_cases",
+			"declarations", "declarations_right"]:
 		rec[k] = r.get(k, 0)
 	# ---- from case_summary
 	rec["demon_evidence_on_board"] = not summary.get("demon_evidence_on_board", []).is_empty()

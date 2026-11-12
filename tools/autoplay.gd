@@ -4,6 +4,11 @@
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
 ##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
+##         [--no-crosscheck] [--no-declare]
+##
+## Phase 5 (belief-model plan): the bot seeds cases with cross-check pairs (Analyst
+## build_case) and declares the demon type on two-kind scripts (_declaration_command).
+## --no-crosscheck and --no-declare give the earlier bot, for paired sweep cells.
 ##
 ## --force-demon ID deals that demon type (the Demon stays on the script too, so the
 ## solver weighs both): e.g. --force-demon daykiller for the Hexer.
@@ -60,6 +65,7 @@ const Analyst = preload("res://tools/analyst.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
+const Declaration = preload("res://game/demon_declaration.gd")
 const SweepRecord = preload("res://tools/sweep_record.gd")
 const VoteShape = preload("res://tools/vote_shape.gd")
 
@@ -73,6 +79,10 @@ const CLEMENCY_P = 0.06
 const CASE_P = 0.4
 # M4 (meeting plan slice M4; --pre-m4 restores the old values and rules).
 const M4_NOMINATE_P = 0.7      # half the bot's wrongful hangs were its own nominations
+## Phase 5 demon-type declaration: declare once the board favours one kind by this Bayes
+## factor (Analyst.demon_type_odds); change a declaration (it costs credibility) only at this.
+const DECLARE_BF = 3.0
+const DECLARE_CHANGE_BF = 10.0
 const M4_BLOCK_MARGIN = 0.1    # don't nominate unless they're this far above the one on the block
 const PRESS_INTEREST_P = 0.35  # press a nominee it suspects at least this much (always its own)
 const VIGIL_SAFE_P = 0.35      # a trusted claimant: below this P(evil)
@@ -100,6 +110,11 @@ var filed_workshop_sigs = {}
 var last_workshop_case_by_target = {}
 var workshop_cases_filed: int = 0
 var hub_cases_filed: int = 0
+var cross_cases_filed: int = 0   # Phase 5: cases seeded by a cross-check pair
+var declarations: Array = []     # Phase 5: [day, kind, right?] per declaration
+var no_crosscheck = false        # --no-crosscheck: the pre-Phase-5 case builder
+var no_declare = false           # --no-declare: never declare the demon type
+var _declare_tried_day: int = -1
 var rng = RandomNumberGenerator.new()
 var insight: float = 1.0
 var analyst = {}
@@ -132,6 +147,8 @@ func _init() -> void:
 	m4 = not args.has("pre-m4")
 	no_present = args.has("no-present")
 	present_and_vote = args.has("present-and-vote")
+	no_crosscheck = args.has("no-crosscheck")
+	no_declare = args.has("no-declare")
 	var jsonl = null
 	if args.has("results-jsonl"):
 		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
@@ -152,7 +169,7 @@ func _init() -> void:
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
-		"workshop_cases", "hub_cases"]
+		"workshop_cases", "hub_cases", "cross_cases", "declarations", "declarations_right"]
 	keys.append_array(NEW_ACTIONS)
 	keys.append_array(VoteShape.KEYS)
 	var stats = {"good": 0, "evil": 0}
@@ -190,6 +207,7 @@ func _init() -> void:
 			[stats["shares"] / gf, stats["evil_shares"] / gf, stats["approaches"] / gf])
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case (workshop %.1f, hub %.1f), NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["workshop_cases"] / gf, stats["hub_cases"] / gf, stats["arguments"] / gf])
+	print("  Phase 5: cross-check cases %d; demon-type declarations %d (%d right)" % [stats["cross_cases"], stats["declarations"], stats["declarations_right"]])
 	print("  vote shape: %d votes, unanimous but the nominee %d, only the nominator %d; evil nominations %d (carried %d, hanged %d), on good targets %d (carried %d, hanged %d)" %
 		[stats["votes"], stats["votes_unanimous"], stats["votes_only_nominator"], stats["evil_nominations"], stats["evil_nominations_carried"], stats["evil_nominations_executed"],
 		stats["evil_nominations_good_target"], stats["evil_nominations_good_target_carried"], stats["evil_nominations_good_target_executed"]])
@@ -228,7 +246,11 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	last_workshop_case_by_target = {}
 	workshop_cases_filed = 0
 	hub_cases_filed = 0
+	cross_cases_filed = 0
+	declarations = []
+	_declare_tried_day = -1
 	analyst = Analyst.new_state(insight)
+	analyst["crosscheck"] = not no_crosscheck
 	analyst["exclusion_cards"] = m4
 	_belief_key = ""
 	_belief_cache = {}
@@ -277,7 +299,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	var r = {"winner": w.winner if w.winner != "" else "evil", "days": w.day, "reason": w.end_reason,
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0,
-		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed}
+		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed, "cross_cases": cross_cases_filed,
+		"declarations": declarations.size(), "declarations_right": declarations.filter(func(d): return d[2]).size()}
 	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
 	r.merge(VoteShape.build(g.w))
 	for e in w.executions:
@@ -331,6 +354,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"]["legacy_fallback_points"] = points
 	r["metrics"]["workshop_cases"] = workshop_cases_filed
 	r["metrics"]["hub_cases"] = hub_cases_filed
+	r["metrics"]["cross_cases"] = cross_cases_filed
+	r["metrics"]["declarations"] = declarations
 	r["metrics"]["analyst"] = {"insight": insight, "juror_evals": analyst.get("evals", 0), "juror_ms": analyst.get("eval_ms", 0),
 		"accepted": analyst.get("accepted", []).size(), "set_aside": analyst.get("rejected", {}).size(), "missed": analyst.get("missed", {}).size()}
 	return r
@@ -519,7 +544,8 @@ func _out(s: String) -> void:
 ## board (tools/analyst.gd). Recomputed only when the visible evidence changes.
 func _scores() -> Dictionary:
 	var w = g.w
-	var key: String = "%d:%d:%d:%d:%d:%d" % [g.board.size(), g.profile_receipts.size(), w.day, w.phase, w.executions.size(), w.living().size()]
+	# The declared demon type changes the movement model, so a declaration re-reads too (Codex, #137).
+	var key: String = "%d:%d:%d:%d:%d:%d:%s" % [g.board.size(), g.profile_receipts.size(), w.day, w.phase, w.executions.size(), w.living().size(), w.declared_demon_type]
 	if key != _belief_key:
 		_belief_key = key
 		_belief_cache = Analyst.belief(g, analyst, rng)
@@ -598,9 +624,13 @@ static func new_action_kind(game, command: String) -> String:
 
 func _mode_name() -> String:
 	if passive: return "passive"
-	if no_present: return "no_present"
-	if present_and_vote: return "present_vote"
-	return "bot" if m4 else "bot_pre_m4"
+	var base: String = "bot" if m4 else "bot_pre_m4"
+	if no_present: base = "no_present"
+	elif present_and_vote: base = "present_vote"
+	# Phase 5 switches, so sweep cells stay apart.
+	if no_crosscheck: base += "_nocross"
+	if no_declare: base += "_nodeclare"
+	return base
 
 ## The silent-bot cells' filter on a decided command: a presenting move (no-present) or a
 ## vigil, ward, search or protection offer (present-and-vote) is dropped. "" means pick
@@ -713,6 +743,9 @@ func _decide_inner() -> String:
 			var others: Array = w.living().filter(func(m): return m != n)
 			return "ask about " + others[rng.randi_range(0, others.size() - 1)].id
 		"meeting":
+			var decl: String = _declaration_command()
+			if decl != "":
+				return decl
 			if not g.presented_today and not (no_present and _no_present_filed_day == w.day):
 				var ded = _find_or_file_deduction()
 				if no_present:
@@ -837,6 +870,26 @@ static func _parse(argv: PackedStringArray) -> Dictionary:
 		i += 1
 	return out
 
+## Phase 5: declare the demon type (game/demon_declaration.gd) on a script that deals both
+## kinds, once the board favours one by DECLARE_BF, and change it only at DECLARE_CHANGE_BF.
+## Records whether each declaration was right, from the truth, for the summary only.
+func _declaration_command() -> String:
+	if no_declare or passive or _declare_tried_day == g.w.day or Declaration.blocked(g.w) != "":
+		return ""
+	_declare_tried_day = g.w.day   # one attempt a day, so a refused command can't loop
+	var bf: float = Analyst.demon_type_odds(g, analyst)
+	var now: String = g.w.declared_demon_type
+	var want: String = ""
+	var bar: float = DECLARE_BF if now == "" else DECLARE_CHANGE_BF
+	if bf >= bar:
+		want = "hexer"
+	elif bf <= 1.0 / bar:
+		want = "walker"
+	if want == "" or want == now:
+		return ""
+	declarations.append([g.w.day, want, Declaration.type_of(g.w.by_id[g.w.demon_id].role) == want])
+	return "declare " + want
+
 ## Build a Workshop case against the analyst's top suspects (the top two, if the first
 ## won't hold) and return its card number; else the latest filed case, or 0.
 func _find_or_file_deduction() -> int:
@@ -851,6 +904,8 @@ func _find_or_file_deduction() -> int:
 			workshop_cases_filed += 1
 			if built.get("used_hub", false):
 				hub_cases_filed += 1
+			if built.get("cross", false):
+				cross_cases_filed += 1
 			return int(built.card)
 	return _latest_deduction()
 
