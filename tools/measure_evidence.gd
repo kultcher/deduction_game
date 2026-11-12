@@ -1146,7 +1146,7 @@ func _present(g, n, filed: int) -> void:
 			"agreement": float(res_c.get("agreement", 0.0)), "accuracy_agreement": float(res_c.get("accuracy_agreement", 0.0)),
 			"effect": float(res_c.get("graded", {}).get("effect", 0.0)), "cause": float(res_c.get("graded", {}).get("cause", 0.0)),
 			"g_q": float(res_c.get("graded", {}).get("q", -1.0)), "g_f": float(res_c.get("graded", {}).get("f", -1.0)), "g_r": float(res_c.get("graded", {}).get("r", -1.0)),
-			"g_wrong": float(res_c.get("graded", {}).get("wrong", -1.0)), "g_evil_share": float(res_c.get("graded", {}).get("evil_share", -1.0)), "g_e0": float(res_c.get("graded", {}).get("e0", -1.0)), "g_e1": float(res_c.get("graded", {}).get("e1", -1.0)), "graded_ran": not res_c.get("graded", {}).is_empty(),
+			"g_wrong": float(res_c.get("graded", {}).get("wrong", -1.0)), "g_evil_share": float(res_c.get("graded", {}).get("evil_share", -1.0)), "graded_ran": not res_c.get("graded", {}).is_empty(),
 			"backfire": bool(res_c.get("backfire", false))}
 	for id in n.suspicion:
 		last_case.susp_step[id] = float(n.suspicion[id]) - float(s0.get(id, n.suspicion[id]))
