@@ -32,13 +32,13 @@ Ground rules (from Nov 3, until Michael changes them):
 From Bailiff via Michael (Phase 6). The spec is in the Project doc `claude/belief-model-direction-2026-11-10.md`, under "Phase 6 spec"; Michael accepted its four recommendations. Base: main `559a201`.
 
 - **The switch:** `Tuning.Workshop.CONNECTIONS`, off. `Connections.enabled` starts from it; `autoplay.gd --connections` and `golden_capture.gd --connections` set it for a run. Autoplay's mode name gains `_connections`, so sweep records of the two settings never merge.
-- **`workshop/connections.gd` (new):** the judge on a chosen set of held cards, and step 1 of the model: every held card counts at the value it has alone. In log-odds, a chance is the baseline (the judge on no cards: standing suspicion plus the public record) plus every card's own lean. No pairings, core, stored cases, normalising or caching yet.
+- **`workshop/connections.gd` (new):** the judge on a chosen set of held cards, and step 1 of the model: every held card counts at the value it has alone. In log-odds, a chance is the baseline (the judge on no cards: standing suspicion plus the public record) plus every card's own lean. Then one common shift, so the chances still sum to the evil count (normalising is in this step, as Bailiff agreed). No pairings, core, stored cases or caching yet.
 - **One call site:** `Jury._consequences_eval`, on the refresh path. With the switch on, the model's chances replace the single pass's; the "before" side stays today's, so the public record still counts in the shift. Headline reading is off with the switch on (Michael, Nov 12). Attention is still worked out, for what an NPC can cite.
 - **Off is untouched:** golden is identical to `baseline_6a22cac` at `--tol 0`.
 - **The prototype tool** (`tools/connections_prototype.gd`) now calls the module for its judge and log-odds. Its output on seeds 900 and 902 is identical before and after.
 - **In game against offline:** on the same listener states (seeds 900 and 902, 22 listener-dawns, 3,771 card-person values) the game's values and the tool's agree to within 0.00001.
 - **Test:** `test_connections` (in the fast list).
-- **Known:** with the switch on, a refresh makes one judgement a card, so a 10-NPC game runs about four times slower until the caching step. Chances aren't normalised yet, so the switch isn't ready for play.
+- **Known:** with the switch on, a refresh makes one judgement a card, so a 10-NPC game runs about four times slower until the caching step. A night's cards aren't read together yet, so the switch isn't ready for play.
 - Also adds the missing `tools/test_relay_bluff.gd.uid`.
 
 Next: the built-in pairings (step 2).

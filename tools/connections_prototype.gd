@@ -631,18 +631,7 @@ func _normalise(st: Dictionary, base: Dictionary, total: Dictionary) -> Dictiona
 		for p in free:
 			target += float(b[p])
 			scores[p] = _logit(float(b[p]), clip) + float(total[p][track])
-		var lo := -30.0
-		var hi := 30.0
-		for step in range(60):
-			var mid: float = (lo + hi) / 2.0
-			var s := 0.0
-			for p in free:
-				s += 1.0 / (1.0 + exp(-(scores[p] + mid)))
-			if s > target:
-				hi = mid
-			else:
-				lo = mid
-		var shift: float = (lo + hi) / 2.0
+		var shift: float = Connections.common_shift(free.map(func(p): return scores[p]), target)
 		var res: Dictionary = pe if track == "e" else pd
 		if track == "d" and not st.has_demon:
 			continue

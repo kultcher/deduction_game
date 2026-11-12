@@ -5,7 +5,8 @@
 ## The idea: the limit on an NPC moves from which cards it reads to which cards it weighs
 ## together. Every card it holds counts, at the value it has alone; cards are only weighed
 ## together where a connection says so (built-in pairings, the NPC's own core, stored
-## cases). Those connections arrive in later steps; this file starts with the single values.
+## cases). Those connections arrive in later steps; this file starts with the single values
+## and the normalising.
 ##
 ##   judge       today's shared evaluator (CaseEval over the possible worlds) run on a chosen
 ##               set of the held cards: everyone's chance of being evil given just that set
@@ -14,6 +15,9 @@
 ##   baseline    the judge on no cards: the prior plus the public record (deaths, executions),
 ##               which is in every run
 ##   lean        how far a set moves a person from the baseline, in log-odds, so leans add
+##   normalising one common shift afterwards, so the chances of being evil still sum to what
+##               the baseline's do (the script's evil count): "A for sure, then B or C",
+##               never four people at 70% in a two-evil town
 ##
 ## Pure: the prepared view, case and listener in; chances and a breakdown out. It reads no
 ## game state and keeps no memory yet (caching is a later step).
@@ -74,17 +78,33 @@ static func chance(log_odds: float) -> float:
 	return 1.0 / (1.0 + exp(-log_odds))
 
 
+## The one shift, in log-odds, that makes the chances behind `scores` sum to `target`.
+static func common_shift(scores: Array, target: float) -> float:
+	var lo := -30.0
+	var hi := 30.0
+	for step in range(60):
+		var mid: float = (lo + hi) / 2.0
+		var s := 0.0
+		for score in scores:
+			s += 1.0 / (1.0 + exp(-(float(score) + mid)))
+		if s > target:
+			hi = mid
+		else:
+			lo = mid
+	return (lo + hi) / 2.0
+
+
 ## One belief refresh under connections: everyone's chance of being evil from the cards in
 ## `held` (ids, the listener's held cards with the ones it rejects from its own knowledge
 ## already taken out). `listener` is the evaluator's listener (Jury._eval_listener) with no
 ## challenges applied.
-## Returns {"prior", "baseline", "posterior": {id: chance}, "impossible": bool,
-## "items": [{"key", "cards", "lean": {id: log-odds}}], "judgements": int}.
+## Returns {"prior", "baseline", "posterior": {id: chance}, "shift": log-odds,
+## "impossible": bool, "items": [{"key", "cards", "lean": {id: log-odds}}], "judgements": int}.
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array) -> Dictionary:
 	var self_id: String = str(listener.get("id", ""))
 	var others: Array = Solver.person_ids(view).filter(func(p): return p != self_id)
 	if others.is_empty():
-		return {"prior": {}, "baseline": {}, "posterior": {}, "impossible": false, "items": [], "judgements": 0}
+		return {"prior": {}, "baseline": {}, "posterior": {}, "shift": 0.0, "impossible": false, "items": [], "judgements": 0}
 	var bare: Dictionary = template(case_data, others[0])
 	var base: Dictionary = judge(view, bare, listener, [])
 	var judgements: int = 1
@@ -97,7 +117,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 		total[p] = 0.0
 	if base.get("impossible", false):
 		# Nothing fits what the listener already knows: no card can be read against it.
-		return {"prior": prior, "baseline": baseline, "posterior": prior.duplicate(), "impossible": true, "items": [], "judgements": judgements}
+		return {"prior": prior, "baseline": baseline, "posterior": prior.duplicate(), "shift": 0.0, "impossible": true, "items": [], "judgements": judgements}
 	var items: Array = []
 	var ids: Array = held.duplicate()
 	ids.sort()
@@ -116,11 +136,20 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 				entry.lean[p] = moved
 				total[p] += moved
 		items.append(entry)
+	# Normalise: the people still in question keep the sum the baseline gave them.
+	var free: Array = others.filter(func(p): return baseline[p] > FIXED and baseline[p] < 1.0 - FIXED)
+	var target := 0.0
+	var scores: Array = []
+	for p in free:
+		target += baseline[p]
+		scores.append(logit(baseline[p]) + total[p])
+	var shift: float = common_shift(scores, target) if not free.is_empty() else 0.0
 	var posterior: Dictionary = {}
 	for p in others:
-		var settled: bool = baseline[p] <= FIXED or baseline[p] >= 1.0 - FIXED
-		posterior[p] = baseline[p] if settled else chance(logit(baseline[p]) + total[p])
-	return {"prior": prior, "baseline": baseline, "posterior": posterior, "impossible": false, "items": items, "judgements": judgements}
+		posterior[p] = baseline[p]
+	for i in range(free.size()):
+		posterior[free[i]] = chance(float(scores[i]) + shift)
+	return {"prior": prior, "baseline": baseline, "posterior": posterior, "shift": shift, "impossible": false, "items": items, "judgements": judgements}
 
 
 ## Today's evaluation with everyone's chances replaced by the connections result, so the
@@ -146,4 +175,4 @@ static func summary(result: Dictionary) -> Dictionary:
 				size = float(it.lean[p])
 				top = p
 		items.append({"key": it.key, "cards": it.cards.size(), "on": top, "lean": snappedf(size, 0.001)})
-	return {"items": items, "judgements": int(result.get("judgements", 0))}
+	return {"items": items, "judgements": int(result.get("judgements", 0)), "shift": snappedf(float(result.get("shift", 0.0)), 0.001)}
