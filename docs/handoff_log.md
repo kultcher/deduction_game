@@ -27,6 +27,18 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-12 evening, Claude-Quill: graded test for role-checked gifts (PR #142)
+
+From Bailiff via Michael, who approved the proposal. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, under "Challenge sides".
+
+- **Cause:** for the gifts in `CaseEval.ROLE_CONTENT_FIXED` (Archivist, Clerk, Registrar, Night Watch and the rest), the graded test's holds mask was all ones, because the report table doesn't check them. So `q = f = 1`, and the test never saw a clash.
+- **Fix:** `Solver.reading_holds_table` now also asks `Roles.fits_table` for those gifts (`ReadingChallenges.graded_rule` is "roles"). The Seer keeps its own holds table and its Red Herring rule.
+- **Measured:** a lying challenge on true grounds lands 20% → 45% (7 NPCs) and 20% → 40% (10 NPCs). False grounds land no more often.
+- **Tests:** full suite 145/145. Golden is identical.
+- **Harness:** `--graded-rule`, plus the graded test's internals on each row.
+
+---
+
 ## 2026-11-11 early, Claude-Quill: challenge sides, diagnosis and a proposed fix (`claude/challenge-contest`)
 
 From Bailiff via Michael. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, under "Challenge sides".
