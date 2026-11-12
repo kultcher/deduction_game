@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 11): `baseline_bd1b404`
+### Current baseline (Nov 11): `baseline_f40ca05`
+
+`tools/golden/baseline_f40ca05/` is the capture from `claude/gravedigger-bluff`. An evil
+Gravedigger's report on a hanged good person reads the town's certainty from the hanging vote
+and calls them a Minion more often the surer the town was (one extra evil decision roll).
+- **Divergence from `baseline_bd1b404`:** 900 at record 91 (refresh #73, Isolde's cover mind,
+  day 2 night); the other four seeds are identical. Counting the player's no vote in the
+  town's certainty (Codex's review) moved only 900 again, from record 97.
+- **Record counts:** 900 138 (was 143); the rest unchanged.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 11): `baseline_bd1b404`
 
 `tools/golden/baseline_bd1b404/` is the capture from `claude/sighter-contest`. A sighting (or a
 Night Watch's "I saw X pass by") counts at `EVIL_SIGHTER_TRUTH` (0.15) of the time in a world
@@ -57,7 +68,7 @@ A sighter converted by the Revenant's curse is doubted only for what they told w
 - **Record counts:** 42 101 (was 108), 54875 302 (321), 692 249 (251), 900 143, 98933 346 (285).
 - **Stability:** two captures were identical.
 
-### Previous baseline (Nov 10): `baseline_a03bf72`
+### Older baseline (Nov 10): `baseline_a03bf72`
 
 `tools/golden/baseline_a03bf72/` is the capture from `claude/own-alibi-lie-aware` (#124,
 Quill). A person's own home alibi is lie-aware when the world makes them evil (belief-model

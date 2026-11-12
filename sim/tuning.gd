@@ -803,6 +803,16 @@ class Evil:
 	const FAKE_GOSSIP_PROB = 0.6
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4
+	## An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion,
+	## or confirm their claim. It reads what the town believed from the hanging vote's yes share:
+	## the frame is safe when the town was sure (it keeps the frame and "finds" a Minion), a
+	## gamble when it was split, and confirming a claim the town disbelieved outs the Gravedigger
+	## (playtest 30987: Hollis vouched for the hanged Dorian and was hanged next).
+	## Chance = (FRAME_BASE + FRAME_CONF * confidence) + FRAME_SURE * town certainty, where
+	## certainty runs 0 at a bare-majority vote to 1 at unanimity.
+	const GRAVEDIGGER_FRAME_BASE = 0.05
+	const GRAVEDIGGER_FRAME_CONF = 0.2
+	const GRAVEDIGGER_FRAME_SURE = 0.75
 	const EVIL_VOTE_TIE_CONF_SCALE = 0.5
 	const EVIL_VOTE_NATURAL_BASE = 0.35
 	const EVIL_VOTE_NATURAL_CONF_SCALE = 0.2
