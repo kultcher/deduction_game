@@ -42,6 +42,21 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	return entry
 
 
+## How sure the town was that `id` was evil, from the vote that hanged them: 0 at a bare
+## majority of the votes cast, 1 at unanimity. Votes are public, so evil can read them.
+static func town_certainty(w, id: String) -> float:
+	for i in range(w.executions.size() - 1, -1, -1):
+		var ex: Dictionary = w.executions[i]
+		if str(ex.get("id", "")) != id:
+			continue
+		var yes: int = ex.get("yes", []).size() + (1 if ex.get("player_yes", false) else 0)
+		var no: int = ex.get("no", []).filter(func(v): return v != id).size()
+		if yes + no <= 0:
+			return 0.5
+		return clampf((float(yes) / float(yes + no) - 0.5) * 2.0, 0.0, 1.0)
+	return 0.5
+
+
 func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: Array) -> Dictionary:
 	if w.executed_today == "":
 		return {}
@@ -52,12 +67,21 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: 
 	if ex.is_evil():
 		role = plan["bluffs"][ex.id]
 		why = "covers executed teammate as their bluff %s" % role
-	elif ex.claimed_role != "" and ex.claimed_role != "none":
-		role = ex.claimed_role
-		why = "confirms executed good NPC's own claim (safe)"
 	else:
-		role = w.pick(w.case_script.town)
-		why = "guesses a good role for executed NPC"
+		# What the town believed of them, from the vote that hanged them (public).
+		var sure: float = town_certainty(w, ex.id)
+		var conf: float = _n.traits.get("confidence", 0.5)
+		var p_frame: float = clampf(Tuning.Evil.GRAVEDIGGER_FRAME_BASE + Tuning.Evil.GRAVEDIGGER_FRAME_CONF * conf + Tuning.Evil.GRAVEDIGGER_FRAME_SURE * sure, 0.0, 1.0)
+		var minions: Array = w.case_script.minions
+		if not minions.is_empty() and w.decision_roll(_n, "gravedigger_frame", p_frame, {"town_certainty": sure, "confidence": conf}, ex.id):
+			role = w.pick(minions)
+			why = "frames executed good NPC as a Minion (town certainty %.2f)" % sure
+		elif ex.claimed_role != "" and ex.claimed_role != "none":
+			role = ex.claimed_role
+			why = "confirms executed good NPC's own claim (town certainty %.2f)" % sure
+		else:
+			role = w.pick(w.case_script.town)
+			why = "guesses a good role for executed NPC"
 	var entry: Dictionary = {
 		"data": {"executed": ex.id, "role": role},
 		"text": "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)],
