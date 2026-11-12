@@ -28,6 +28,12 @@ import time
 ERROR_RE = re.compile(r"(SCRIPT ERROR|^ERROR:|USER ERROR|Parse Error|Invalid call|Invalid access)")
 
 
+def record_mode(a):
+    """The mode a sweep record carries: autoplay's _mode_name, forced demon type included,
+    so runner-written failure records fall in the same cell as the games (Codex, #138)."""
+    return a.mode + ("_force_" + a.force_demon if getattr(a, "force_demon", "") else "")
+
+
 def cell_name(a):
     # The forced demon type is in the name, so a local run never reuses another setting's records.
     force = ("_force_" + a.force_demon) if getattr(a, "force_demon", "") else ""
@@ -174,7 +180,7 @@ class Worker:
                             with open(self.results, "a", encoding="utf-8") as fa:
                                 fa.write("\n")
                 with open(self.results, "a", encoding="utf-8") as fh:
-                    fh.write(json.dumps({"schema": "sweep_v1", "seed": current, "npcs": self.a.npcs, "mode": self.a.mode,
+                    fh.write(json.dumps({"schema": "sweep_v1", "seed": current, "npcs": self.a.npcs, "mode": record_mode(self.a),
                                          "insight": self.a.insight, "sha": self.a.sha, "dynamic": True,
                                          "failed": "timeout" if killed["flag"] else "crash", "complete": False}) + "\n")
                 for path in self._log_files(current):
@@ -192,7 +198,7 @@ class Worker:
                     self._note_error(seed, "startup", ["exit %s" % proc.returncode])
                     with open(self.results, "a", encoding="utf-8") as fh:
                         for s_left in missing:
-                            fh.write(json.dumps({"schema": "sweep_v1", "seed": s_left, "npcs": self.a.npcs, "mode": self.a.mode,
+                            fh.write(json.dumps({"schema": "sweep_v1", "seed": s_left, "npcs": self.a.npcs, "mode": record_mode(self.a),
                                                  "insight": self.a.insight, "sha": self.a.sha, "dynamic": True,
                                                  "failed": "startup", "complete": False}) + "\n")
                     break
