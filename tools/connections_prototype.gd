@@ -66,11 +66,14 @@ const Solver = preload("res://workshop/solver.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const Mind = preload("res://sim/mind.gd")
+## The in-game model (Phase 6). The tool's judge and its log-odds go through it, so the
+## offline numbers and the game's can't drift apart.
+const Connections = preload("res://workshop/connections.gd")
 
 const THETAS = [0.2, 0.3, 0.4, 0.8]
-const CLIP = 0.01
+const CLIP = Connections.CLIP
 const DEMON_CLIP = 0.002
-const FIXED = 0.005
+const FIXED = Connections.FIXED
 ## A stored case whose weight has faded below this no longer counts.
 const CASE_FLOOR = 0.05
 ## A trace "matches" a person when, read with the profile cards, it moves them this far.
@@ -251,15 +254,9 @@ func _state(g, n) -> Dictionary:
 	return st
 
 func _make_state(id: String, view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
-	var template: Dictionary = case_data.duplicate(true)
-	for key in ["lines", "derived", "arguments", "circumstantial", "temporal_positions", "disputes", "test_factors", "conflict_scope"]:
-		template[key] = []
-	for key in ["positions", "answers", "reasons", "citations", "faults", "challenges", "reading_challenges"]:
-		template[key] = {}
-	template.cards = []
 	var people: Array = Solver.person_ids(view)
 	var others: Array = people.filter(func(p): return p != id)
-	template.conclusion = {"type": "evil", "target": others[0], "at": case_data.conclusion.get("at", "Original alignment")}
+	var template: Dictionary = Connections.template(case_data, others[0])
 	var by_id: Dictionary = {}
 	for c in view.cards:
 		by_id[c.id] = c
@@ -279,8 +276,6 @@ func _judge(st: Dictionary, ids: Array) -> Dictionary:
 	if st.memo.has(key):
 		return st.memo[key]
 	judge_calls += 1
-	var c: Dictionary = st.template.duplicate(true)
-	c.cards = sorted
 	var was_capture: bool = CaseEval.capture_worlds
 	var kept: Array = CaseEval.captured
 	var was_hex: bool = LiveActivity.hex_factor_enabled
@@ -288,7 +283,7 @@ func _judge(st: Dictionary, ids: Array) -> Dictionary:
 		LiveActivity.hex_factor_enabled = false
 	CaseEval.capture_worlds = true
 	CaseEval.captured = []
-	var ev: Dictionary = CaseEval.evaluate(st.view, c, st.listener)
+	var ev: Dictionary = Connections.judge(st.view, st.template, st.listener, sorted)
 	var worlds := PackedFloat64Array()
 	if not CaseEval.captured.is_empty():
 		worlds = CaseEval.captured[-1].worlds
@@ -323,8 +318,7 @@ func _judge(st: Dictionary, ids: Array) -> Dictionary:
 	return out
 
 static func _logit(p: float, clip: float) -> float:
-	var q: float = clampf(p, clip, 1.0 - clip)
-	return log(q / (1.0 - q))
+	return Connections.logit(p, clip)
 
 ## lean(S): per person, {"e": evil log-odds shift, "d": Demon log-odds shift} from baseline.
 func _lean(st: Dictionary, ids: Array) -> Dictionary:

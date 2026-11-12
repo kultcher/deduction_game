@@ -18,6 +18,7 @@ const Protection = preload("res://workshop/live_protection.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 ## Which engine judges cases (docs/CASE_REASONING.md): "case_eval" (likelihood-weighted
 ## worlds, one pass for every person) or "legacy" (model v5's credibility-state mixture
@@ -109,8 +110,11 @@ static func _refresh_impl(view: Dictionary, case_data: Dictionary, listener: Dic
 	listener.ledger[case_data.id] = {"effects": effects.duplicate(true)}
 	listener.theories = consequences.theories
 	Profiler.close(span)
-	return {"effects": effects, "reasons": consequences.get("reasons", {}), "reason_inputs": consequences.get("reason_inputs", []), "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
+	var result: Dictionary = {"effects": effects, "reasons": consequences.get("reasons", {}), "reason_inputs": consequences.get("reason_inputs", []), "reasoning": consequences.reasoning, "reading_challenges": consequences.reading_challenges,
 		"effect_rule": consequences.rule}
+	if consequences.has("connections"):
+		result["connections"] = consequences.connections
+	return result
 
 static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
 	var before: Dictionary = listener.suspicion.duplicate(true)
@@ -926,6 +930,13 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	var ev: Dictionary = _case_eval(view, scoped, eval_listener)
+	# The connections model (workshop/connections.gd; off by default): on a belief refresh
+	# every held card counts at the value it has alone, whatever attention picked, and the
+	# chances it gives replace this pass's. Attention still decides what can be cited.
+	var connections: Dictionary = {}
+	if refresh and Connections.enabled:
+		connections = Connections.refresh(view, value, _eval_listener(baseline, baseline.knowledge.get("own_reports", [])), held.map(func(c): return c.id))
+		ev = Connections.overlay(ev, connections)
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
 	# evidence says about everyone else: each person gets their own direct check.
@@ -981,6 +992,10 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# the full model weighs. It only ever raises, and fades out with Insight.
 		var headline_signal: float = _headline(view, held, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
 		var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
+		if not connections.is_empty():
+			# Insight is out of the first connections version, and a card read alone is
+			# already taken close to its word (Michael, Nov 12).
+			dull = 0.0
 		# Only a strong evil reading about this person blends in: with no headline the model's
 		# own effect (including any clearing) stands unchanged.
 		# The pull grows with the headline's strength (Nov 6): a faint ping can't undo a
@@ -1088,11 +1103,15 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var refresh_reasons: Dictionary = {}
 	var reason_inputs: Array = [view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects] if refresh else []
 	Profiler.close(span)
-	return {"effects": effects, "reasons": refresh_reasons, "reason_inputs": reason_inputs, "claims": claims, "theories": theories, "considered": attention.considered,
+	var out: Dictionary = {"effects": effects, "reasons": refresh_reasons, "reason_inputs": reason_inputs, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
 		"reasoning": {"status": "belief_refresh", "impossible": ev.impossible, "profile": attention.profile, "considered": attention.considered.duplicate(),
 			"ignored": attention.ignored.duplicate(), "ignored_lines": attention.ignored_lines.duplicate(), "private_checks": attention.private_checks.duplicate(true)},
 		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
+	if not connections.is_empty():
+		out["connections"] = connections
+		out.rule = "Connections: every held card counts at the value it has alone."
+	return out
 
 ## One claim (the headline or an intermediate) judged on the attended evidence it cites.
 static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dictionary, attention: Dictionary, baseline: Dictionary, eval_listener: Dictionary) -> Dictionary:

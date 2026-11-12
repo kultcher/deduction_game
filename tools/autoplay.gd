@@ -4,7 +4,10 @@
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
 ##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
-##         [--no-crosscheck] [--no-declare]
+##         [--no-crosscheck] [--no-declare] [--connections]
+##
+## --connections turns the connections belief model on for the run (workshop/connections.gd;
+## off in play). Its sweep records carry "_connections" in the mode name.
 ##
 ## Phase 5 (belief-model plan): the bot seeds cases with cross-check pairs (Analyst
 ## build_case) and declares the demon type on two-kind scripts (_declaration_command).
@@ -114,6 +117,7 @@ var cross_cases_filed: int = 0   # Phase 5: cases seeded by a cross-check pair
 var declarations: Array = []     # Phase 5: [day, kind, right?] per declaration
 var no_crosscheck = false        # --no-crosscheck: the pre-Phase-5 case builder
 var no_declare = false           # --no-declare: never declare the demon type
+var connections = false          # --connections: NPC beliefs from the connections model (workshop/connections.gd)
 var _declare_tried_day: int = -1
 var rng = RandomNumberGenerator.new()
 var insight: float = 1.0
@@ -149,6 +153,8 @@ func _init() -> void:
 	present_and_vote = args.has("present-and-vote")
 	no_crosscheck = args.has("no-crosscheck")
 	no_declare = args.has("no-declare")
+	connections = args.has("connections")
+	preload("res://workshop/connections.gd").enabled = connections or Tuning.Workshop.CONNECTIONS
 	var jsonl = null
 	if args.has("results-jsonl"):
 		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
@@ -626,6 +632,8 @@ func _mode_name() -> String:
 	# A forced demon type is part of the cell too, so sweep records of a forced cell never
 	# merge with the same mode and seed dealt normally (Codex, #138).
 	var forced: String = "_force_" + force_demon if force_demon != "" else ""
+	# The connections switch is part of the cell, so on and off records never merge.
+	if connections: forced += "_connections"
 	if passive: return "passive" + forced
 	var base: String = "bot" if m4 else "bot_pre_m4"
 	if no_present: base = "no_present"
