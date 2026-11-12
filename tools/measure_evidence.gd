@@ -43,13 +43,14 @@ const Psych = preload("res://sim/roles/psychologist.gd")
 const RC = preload("res://workshop/reading_challenges.gd")
 
 const TRUSTS = [0.4, 0.8]
-const STOP_DAY = 3
+var STOP_DAY: int = 3 # --day N: measure at the start of day N (default 3)
 const FLAT = 0.25
 var rows: Array = []
 var no_hexer: bool = false
 var force_roles: Array = []
 var force_bluffs: Array = []
 var construct_bluffs: bool = false
+var construct_mistakes: bool = false # --construct-mistakes: good tellers' false readings (a failed gift or a misleading registration)
 var natural_trust: bool = false
 var keep_state: bool = false # --keep-state: the listener keeps what it already holds and believes
 var script_roles: Array = []
@@ -87,6 +88,10 @@ func _init() -> void:
 			natural_trust = true
 		elif args[i] == "--keep-state":
 			keep_state = true
+		elif args[i] == "--day" and i + 1 < args.size():
+			STOP_DAY = int(args[i + 1])
+		elif args[i] == "--construct-mistakes":
+			construct_mistakes = true
 		elif args[i] == "--construct-bluffs":
 			construct_bluffs = true
 		elif args[i] == "--force-bluffs" and i + 1 < args.size():
@@ -965,6 +970,9 @@ func _accusing(g) -> Array:
 		out = out.filter(func(x): return not x.s.is_evil())
 		var cb: Array = _constructed_bluffs(g)
 		out.append_array(cb)
+	if construct_mistakes:
+		out = out.filter(func(x): return not x.s.is_evil() or x.e.get("fake", false))
+		out.append_array(_constructed_mistakes(g))
 	return out.filter(func(x): return x.accused.size() >= 2 and x.accused.all(func(p): return g.w.by_id.has(p)))
 
 ## --construct-bluffs: each living evil NPC tells a false accusation about two good people,
@@ -995,6 +1003,35 @@ func _constructed_bluffs(g) -> Array:
 		# really holding the gift doesn't make this a counter-claim in its view.
 		out.append({"s": e, "e": arch, "accused": [a.id, b.id]})
 		out.append({"s": e, "e": seer, "accused": [a.id, b.id]})
+	return out
+
+## --construct-mistakes: up to two good NPCs each tell a false accusation about two other
+## good people, an Archivist pair and a Seer "yes": honest mistakes, as from a failed gift
+## (a Poisoner on the script) or a misleading registration. Against true Confessor clears,
+## "failed gift" or "misled" is the right explanation and "lying" the wrong one.
+func _constructed_mistakes(g) -> Array:
+	var w = g.w
+	var out: Array = []
+	var alive_goods: Array = w.npcs.filter(func(m): return not m.is_evil() and m.alive)
+	var dead_goods: Array = w.npcs.filter(func(m): return not m.is_evil() and not m.alive)
+	if alive_goods.size() < 2:
+		return out
+	var minion_role: String = str(w.case_script.minions[0]) if w.get("case_script") != null and not w.case_script.minions.is_empty() else "poisoner"
+	# The teller is a living good; the last living good is kept back to listen. The accused
+	# are other goods, living first (a dead one may be publicly cleared already).
+	for ti in range(mini(2, alive_goods.size() - 1)):
+		var t = alive_goods[ti]
+		var pool: Array = alive_goods.slice(0, alive_goods.size() - 1).filter(func(m): return m.id != t.id) + dead_goods
+		if pool.size() < 2:
+			continue
+		var a = pool[0]
+		var b = pool[1]
+		var arch: Dictionary = {"role": "archivist", "data": {"pair": [a.id, b.id], "role": minion_role}, "day": 0, "true": false, "mistake": true, "shared": true,
+			"text": "One of %s and %s is the %s." % [a.name, b.name, C.ROLES[minion_role].name]}
+		var seer: Dictionary = {"role": "seer", "data": {"pair": [a.id, b.id], "yes": true}, "day": 1, "true": false, "mistake": true, "shared": true,
+			"text": "The Demon is %s or %s." % [a.name, b.name]}
+		out.append({"s": t, "e": arch, "accused": [a.id, b.id]})
+		out.append({"s": t, "e": seer, "accused": [a.id, b.id]})
 	return out
 
 func _measure_crosschecks(g) -> void:
