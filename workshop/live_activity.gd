@@ -6,6 +6,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const History = preload("res://workshop/live_history.gd")
 const DayPresence = preload("res://workshop/day_presence.gd")
+const Chronology = preload("res://workshop/chronology.gd")
 static var cache = {}
 static var route_cache = {}
 const DEMON_DETOUR = Tuning.Workshop.DEMON_DETOUR
@@ -457,6 +458,8 @@ static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 
 ## Diagnostics: turn the Hexer factor off to measure what it adds (tools only).
 static var hex_factor_enabled: bool = true
+## Diagnostics: turn the sighter contests off (_sighting_contests; tests and tools only).
+static var sighter_contests_enabled: bool = true
 
 static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if not available(view):
@@ -467,7 +470,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {})]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {}), sighter_contests_enabled]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
@@ -522,12 +525,16 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 			p_dict["converted"] = raw_prof[b + 3]
 		profiles[i] = p_dict
 
+	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles) if sighter_contests_enabled else []
 	var scene_tables: Array = _build_scene_tables_cs(view, ids, env, checked, packed_checked)
 	var scion_splits: Array = _scion_succession_splits_cs(view, ids, env, checked)
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
 		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
 	result[0]["relationships"] = relationships(view, cards)
+	if not contests.is_empty():
+		result[0]["contests"] = contests
+		result[0]["contest_truth"] = Tuning.Workshop.EVIL_SIGHTER_TRUTH
 	if share > 0.0:
 		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
 		# pre x post product over the one shared type (see ScoreWorldCore).
@@ -536,6 +543,122 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
 		result[0]["hex_successions"] = hex_successions(view, ids, result[0]["hex_kills"])
 	return result
+
+
+## The sighters whose word about a person depends on the sighter's alignment: anyone in the
+## town who told a sighting of them (or a Night Watch report seeing them). In a world where
+## the sighter is evil the sighting may be invented, so the kernel (BaseScore) mixes the
+## person's usual profile with their profile without those sightings, scaled by C: the
+## honest sightings' prior-weighted mean likelihood ratio, so an invented sighting is as
+## likely as an honest one on average and the priors decide. Without this, a sighting
+## against a person's own home alibi convicted the alibi-giver alone (Tally, Nov 11: evil's
+## fake sightings of good stay-at-homes). At most SIGHTER_CONTEST_MAX sighters a person,
+## the most-cited first. The Scion's split branches keep their usual profiles.
+static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, cards: Array, checked: Array, profiles: Array) -> Array:
+	var n: int = ids.size()
+	var curse: Dictionary = view.get("chronology", {}).get("curse", {})
+	var by_person: Dictionary = {}   # person idx -> {sighter idx: count}
+	var cursed_by: Dictionary = {}   # "person:sighter" -> they told some of these while converted
+	for c in checked:
+		if c.get("quoted", false):
+			continue
+		var si: int = ids.find(str(c.get("source", "")))
+		if si < 0:
+			continue
+		var named: Array = []
+		if c.kind == "sighting":
+			named = c.get("subjects", [c.get("subject", "")])
+		elif c.kind == "report" and str(c.get("role", "")) == "nightwatch" and c.get("data") is Dictionary:
+			named = c.data.get("seen", [])
+		for who in named:
+			var pi: int = ids.find(str(who))
+			if pi < 0 or pi == si:
+				continue
+			if not by_person.has(pi):
+				by_person[pi] = {}
+			by_person[pi][si] = int(by_person[pi].get(si, 0)) + 1
+			if _told_cursed(curse, c):
+				cursed_by["%d:%d" % [pi, si]] = true
+	if by_person.is_empty():
+		return []
+	var has_curse: bool = env.has_curse
+	var stride: int = 4 if has_curse else 3
+	var bridge = SolverBackend._bridge()
+	var alt_cache: Dictionary = {}   # [full sighters, cursed-only sighter] -> raw profiles
+	var evil_n: float = float(view.get("evil_count", 1))
+	var weights: Array = [maxf(0.0, 1.0 - evil_n / float(n)), maxf(0.0, evil_n - 1.0) / float(n), 1.0 / float(n)]
+	# The profile without `full`'s sightings and the ones `cursed` told while converted.
+	var alt_of: Callable = func(pi: int, full: Array, cursed: int) -> Dictionary:
+		var key: String = str([full, cursed])
+		if not alt_cache.has(key):
+			var full_ids: Array = full.map(func(x): return ids[x])
+			var cursed_id: String = ids[cursed] if cursed >= 0 else ""
+			var minus: Array = cards.filter(func(c):
+				var src: String = str(c.get("source", ""))
+				var movement: bool = c.kind == "sighting" or (c.kind == "report" and str(c.get("role", "")) == "nightwatch")
+				return not (movement and (src in full_ids or (src == cursed_id and _told_cursed(curse, c)))))
+			# Forced outings re-inferred from what's left.
+			var mv: Dictionary = _routes_cs(view, minus, {}, {}, false)
+			for night in mv.nights:
+				for person in mv.nights[night].forced_out:
+					minus.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
+			var packed: Dictionary = _pack_activity_cards(ids, env.homes, minus, {}, {})
+			alt_cache[key] = bridge.LiveAllProfiles(
+				has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
+				DEMON_DETOUR, packed.ints, packed.doubles)
+		var raw: PackedFloat64Array = alt_cache[key]
+		var b: int = pi * stride
+		var alt: Array = [raw[b], raw[b + 1], raw[b + 2], raw[b + 3] if has_curse else 0.0]
+		var with_: Array = [float(profiles[pi].good), float(profiles[pi].minion), float(profiles[pi].demon)]
+		var c: float = 0.0
+		for a in range(3):
+			c += weights[a] * (with_[a] / alt[a] if alt[a] > 1e-30 else 1.0)
+		return {"alt": alt, "c": c}
+	var out: Array = []
+	var persons: Array = by_person.keys()
+	persons.sort()
+	for pi in persons:
+		var counts: Dictionary = by_person[pi]
+		var sighters: Array = counts.keys()
+		sighters.sort_custom(func(a, b): return counts[a] > counts[b] or (counts[a] == counts[b] and a < b))
+		sighters = sighters.slice(0, Tuning.Workshop.SIGHTER_CONTEST_MAX)
+		var k: int = sighters.size()
+		var subsets: Array = []
+		for m in range(1, 1 << k):
+			var full: Array = []
+			for j in range(k):
+				if m & (1 << j):
+					full.append(sighters[j])
+			full.sort()
+			subsets.append(alt_of.call(pi, full, -1))
+		# A sighter the curse converted is evil only for what they told while converted
+		# (Chronology.statement_time against the curse window): in a world where they are the
+		# converted person, only those sightings are removed.
+		var conv: Array = []
+		for j in range(k):
+			if not cursed_by.has("%d:%d" % [pi, sighters[j]]):
+				conv.append([])
+				continue
+			var per: Array = []
+			for m in range(1, 1 << k):
+				if not (m & (1 << j)):
+					continue
+				var full: Array = []
+				for jj in range(k):
+					if jj != j and m & (1 << jj):
+						full.append(sighters[jj])
+				full.sort()
+				per.append(alt_of.call(pi, full, sighters[j]))
+			conv.append(per)
+		out.append({"person": pi, "sighters": sighters, "subsets": subsets, "converted": conv})
+	return out
+
+
+static func _told_cursed(curse: Dictionary, card: Dictionary) -> bool:
+	if curse.is_empty():
+		return false
+	var time: int = Chronology.tick(Chronology.statement_time(card))
+	return time >= int(curse.get("from", 0)) and time < int(curse.get("until", 0))
 
 
 ## The Hexer's side of each demon kill or attack (docs/demon_types_plan.md, step 3): the
@@ -706,8 +829,8 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_factor_handles.clear()
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", [])]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", [])])
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", [])]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", [])])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -795,6 +918,26 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.register_factor", pack_u)
 	var h: int = int(bridge.LiveRegisterMovementFactor(meta_ints, meta_doubles))
+	var contests: Array = factor.get("contests", [])
+	if not contests.is_empty():
+		var c_ints := PackedInt32Array([contests.size()])
+		var c_doubles := PackedFloat64Array([float(factor.get("contest_truth", 1.0))])
+		for ct in contests:
+			c_ints.append(int(ct.person))
+			c_ints.append(ct.sighters.size())
+			for s in ct.sighters:
+				c_ints.append(int(s))
+			for sub in ct.subsets:
+				for v in sub.alt:
+					c_doubles.append(float(v))
+				c_doubles.append(float(sub.c))
+			for per in ct.get("converted", []):
+				c_ints.append(0 if per.is_empty() else 1)
+				for sub in per:
+					for v in sub.alt:
+						c_doubles.append(float(v))
+					c_doubles.append(float(sub.c))
+		bridge.LiveAttachContests(h, c_ints, c_doubles)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}

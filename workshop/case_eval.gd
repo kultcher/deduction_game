@@ -689,6 +689,11 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(view.regular_haunts)  # traces and presence read the listener's regular knowledge
 	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
 		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
+	# The town's demon mix (the demon-type declaration, game/demon_declaration.gd) changes the
+	# movement factor: without it in the key, a declaration kept the old movement scores.
+	var share: float = Movement.Live.day_demon_share(view)
+	if share > 0.0 or view.has("declared_demon_type"):
+		key_input.append(share)
 	var key = hash(key_input)
 	if _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]

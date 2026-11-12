@@ -1541,6 +1541,28 @@ static func _reading_known_to_defender(d, src_id: String, rd: Dictionary, disclo
 		return true
 	return receipts.values().any(func(r): return not r.get("content", {}).get("anonymous", false))
 
+## The night a good defender was framed on: every sighting against them names a night
+## they (honestly) spent at home. -1 if evil, if any sighting is of a real outing, or if
+## no sighting names a night. Anyone recorded as out is not framed (a Sleepwalker's walk
+## can't be told from a gift's duty here, so they keep today's defence).
+static func framed_night_of(w, d, out_items: Array) -> int:
+	if d.is_evil():
+		return -1
+	var best: int = -1
+	var best_contrib: float = -INF
+	for x in out_items:
+		var p: PackedStringArray = str(x.get("eid", "")).split(":")
+		if p.size() < 5 or p[0] != "sighting":
+			continue
+		var nd: int = int(p[3])
+		var where: String = str(d.history.get(w.time_key(nd, C.NIGHT), "home:"))
+		if where.begins_with("night:"):
+			return -1
+		if float(x.get("contrib", 0.0)) > best_contrib:
+			best_contrib = float(x.get("contrib", 0.0))
+			best = nd
+	return best
+
 static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> Array:
 	var out: Array = []
 	var seen_eids: Dictionary = {}
@@ -1608,11 +1630,14 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var out_weight = 0.0
 	for x in out_items:
 		out_weight += x["contrib"]
+	# A good defender sighted on a night they spent at home (a frame) has no outing to
+	# explain: they give their account of that night (2c), not "I was out because..."
+	var framed_night: int = framed_night_of(w, d, out_items)
 	var move_strengths = {}
 	var move_scales = {}
 	var defence_scopes = {}
 	# 1. A gift that walks at night explains being seen out.
-	if not out_items.is_empty() and C.ROLES.get(role, {}).get("night_walk", false):
+	if not out_items.is_empty() and framed_night < 0 and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
 		var safety: float = block_safety(w, d)
 		if safety > 0.0:
@@ -1628,7 +1653,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_scales["reveal"] = 1.0
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
-	if moves.is_empty() and not out_items.is_empty() and not d.is_evil() and not d.secret.is_empty():
+	if moves.is_empty() and not out_items.is_empty() and framed_night < 0 and not d.is_evil() and not d.secret.is_empty():
 		var confess_parts = {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}
 		var confess_safety: float = block_safety(w, d)
 		if confess_safety > 0.0:
@@ -1655,11 +1680,15 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_strengths["sleepwalk"] = 1.0
 			move_scales["sleepwalk"] = 1.0
 			defence_scopes["sleepwalk"] = {"type": "secret_claim", "owner": d.id, "kind": "sleepwalker"}
-	# 2c. The case hangs on a night sighting their gift or a confession hasn't explained:
-	# they give their account of that night, before the town (the podium press's answer).
-	if moves.is_empty() and str(hinge.get("channel", "")) == "movement_out" and str(hinge.get("eid", "")).begins_with("sighting:"):
-		var hp: PackedStringArray = str(hinge.eid).split(":")
-		var hnd: int = int(hp[3]) if hp.size() >= 4 else -1
+	# 2c. The case hangs on a night sighting their gift or a confession hasn't explained,
+	# or they were framed with one: they give their account of that night, before the town
+	# (the podium press's answer).
+	var hinge_night: bool = str(hinge.get("channel", "")) == "movement_out" and str(hinge.get("eid", "")).begins_with("sighting:")
+	if moves.is_empty() and (hinge_night or framed_night >= 0):
+		var hnd: int = framed_night
+		if hinge_night:
+			var hp: PackedStringArray = str(hinge.eid).split(":")
+			hnd = int(hp[3]) if hp.size() >= 4 else -1
 		if hnd >= 0 and hnd < w.day:
 			lines.append(say_voiced(d, "defence_case_hinge_night", "Your case rests on where I was %s. Then hear it from me." % C.spoken_when(hnd, w.day), {"when": C.spoken_when(hnd, w.day)}))
 			var acct: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, hnd, true)

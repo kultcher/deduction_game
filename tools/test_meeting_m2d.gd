@@ -131,6 +131,9 @@ func _test_case_hinge() -> void:
 		d.role = "clerk"
 		d.secret = {}
 		d.secret_mod = ""
+		# Really out that night, unexplained (a sighting of a night at home is a frame, which
+		# gets the night account on any nomination: tools/test_framed_defence.gd).
+		d.history[g.w.time_key(1, C.NIGHT)] = "night:" + d.home_block
 		g.w.open_nomination("player", d.id)
 		if case_backed:
 			g.w.meeting["pending"]["case_card"] = 1

@@ -803,6 +803,16 @@ class Evil:
 	const FAKE_GOSSIP_PROB = 0.6
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4
+	## An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion,
+	## or confirm their claim. It reads what the town believed from the hanging vote's yes share:
+	## the frame is safe when the town was sure (it keeps the frame and "finds" a Minion), a
+	## gamble when it was split, and confirming a claim the town disbelieved outs the Gravedigger
+	## (playtest 30987: Hollis vouched for the hanged Dorian and was hanged next).
+	## Chance = (FRAME_BASE + FRAME_CONF * confidence) + FRAME_SURE * town certainty, where
+	## certainty runs 0 at a bare-majority vote to 1 at unanimity.
+	const GRAVEDIGGER_FRAME_BASE = 0.05
+	const GRAVEDIGGER_FRAME_CONF = 0.2
+	const GRAVEDIGGER_FRAME_SURE = 0.75
 	const EVIL_VOTE_TIE_CONF_SCALE = 0.5
 	const EVIL_VOTE_NATURAL_BASE = 0.35
 	const EVIL_VOTE_NATURAL_CONF_SCALE = 0.2
@@ -854,6 +864,14 @@ class Workshop:
 	## A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown
 	## haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1.
 	const HEX_UNKNOWN_FLOOR = 0.15
+	## A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil
+	## may be invented. It still counts this share of the time, since evil tells the truth
+	## when it suits them; otherwise it counts as an invented sighting, as likely as an honest
+	## one on average, so a sighter's word against a subject's alibi is decided by priors
+	## (LiveActivity._sighting_contests; Project doc belief-model-direction, Nov 11).
+	const EVIL_SIGHTER_TRUTH = 0.15
+	## The most sighters per person whose word is weighed this way (2^k profiles each).
+	const SIGHTER_CONTEST_MAX = 2
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4

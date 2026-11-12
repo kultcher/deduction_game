@@ -482,6 +482,9 @@ public partial class SolverBridge : RefCounted
     public static int LiveRegisterMovementFactor(int[] metaInts, double[] metaDoubles) =>
         LiveActivityKernel.RegisterCompiledFactor(metaInts, metaDoubles);
 
+    public static void LiveAttachContests(int factorHandle, int[] ints, double[] doubles) =>
+        LiveActivityKernel.AttachContests(factorHandle, ints, doubles);
+
     public static double LiveScoreWorld(long packedWorld, int factorHandle) =>
         LiveActivityKernel.ScoreWorld(packedWorld, factorHandle);
 

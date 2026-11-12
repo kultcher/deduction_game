@@ -185,6 +185,29 @@ internal static class LiveActivityKernel
         /// <summary>Executions that could be a Scion succession: in such a world the kills
         /// before ExecDay are scored against the executed demon (see ScoreDayType).</summary>
         public HexSuccession[] HexSuccessions = Array.Empty<HexSuccession>();
+        /// <summary>Sightings that could be invented (AttachContests): per person, null or the
+        /// sighters whose word about them is weighed by their alignment in each world.</summary>
+        public SightingContest[] Contests = Array.Empty<SightingContest>();
+        public double ContestTruth;
+    }
+
+    /// <summary>A person's evidence with some sighters' sightings of them removed. In a world
+    /// where any of those sighters is evil, their sightings may be invented: the person's
+    /// profile is Truth * the usual profile + (1 - Truth) * C * the profile without them.
+    /// C is the honest sightings' prior-weighted mean likelihood ratio, so an invented
+    /// sighting is as likely as an honest one on average and the priors decide.</summary>
+    internal sealed class SightingContest
+    {
+        public int[] Sighters = Array.Empty<int>();
+        /// <summary>Per non-empty subset m of Sighters (index m - 1): good, minion, demon, converted.</summary>
+        public double[][] Alt = Array.Empty<double[]>();
+        public double[] C = Array.Empty<double>();
+        /// <summary>Per sighter j: null, or (when j told some of these sightings while
+        /// converted by the curse) per subset m containing j, indexed m - 1, the profile with
+        /// the other sighters' sightings removed and only j's cursed ones. Used in a world
+        /// where j is the converted person and not originally evil.</summary>
+        public double[][][] ConvAlt = Array.Empty<double[][]>();
+        public double[][] ConvC = Array.Empty<double[]>();
     }
 
     internal sealed class HexSuccession
@@ -1621,6 +1644,55 @@ internal static class LiveActivityKernel
         return SolverContext.RegisterMovementFactor(factor);
     }
 
+    /// <summary>
+    /// Attaches the sighting contests to a registered factor.
+    /// ints: [P, then per contest: person, k, sighter x k, then per sighter a converted flag].
+    /// doubles: [truth, then per contest, per subset m = 1 .. 2^k - 1: good, minion, demon,
+    /// converted, C; then per flagged sighter j, per subset m containing j: the same five].
+    /// </summary>
+    public static void AttachContests(int factorHandle, int[] ints, double[] doubles)
+    {
+        var factor = SolverContext.GetMovementFactor(factorHandle);
+        int iPos = 0;
+        int dPos = 0;
+        int count = ints[iPos++];
+        factor.ContestTruth = doubles[dPos++];
+        factor.Contests = new SightingContest[factor.PeopleCount];
+        for (int c = 0; c < count; c++)
+        {
+            int person = ints[iPos++];
+            int k = ints[iPos++];
+            var ct = new SightingContest { Sighters = new int[k] };
+            for (int j = 0; j < k; j++)
+                ct.Sighters[j] = ints[iPos++];
+            int subsets = (1 << k) - 1;
+            ct.Alt = new double[subsets][];
+            ct.C = new double[subsets];
+            for (int m = 0; m < subsets; m++)
+            {
+                ct.Alt[m] = SliceDoubles(doubles, ref dPos, 4);
+                ct.C[m] = doubles[dPos++];
+            }
+            ct.ConvAlt = new double[k][][];
+            ct.ConvC = new double[k][];
+            for (int j = 0; j < k; j++)
+            {
+                if (ints[iPos++] == 0)
+                    continue;
+                ct.ConvAlt[j] = new double[subsets][];
+                ct.ConvC[j] = new double[subsets];
+                for (int m = 1; m <= subsets; m++)
+                {
+                    if ((m & (1 << j)) == 0)
+                        continue;
+                    ct.ConvAlt[j][m - 1] = SliceDoubles(doubles, ref dPos, 4);
+                    ct.ConvC[j][m - 1] = doubles[dPos++];
+                }
+            }
+            factor.Contests[person] = ct;
+        }
+    }
+
     private static double[] SliceDoubles(double[] src, ref int pos, int count)
     {
         if (count <= 0)
@@ -1812,7 +1884,10 @@ internal static class LiveActivityKernel
             factor.ProfConverted,
             factor.SceneTables,
             factor.TracePasserEps,
-            factor.TraceUnknownWeight);
+            factor.TraceUnknownWeight,
+            factor.Contests,
+            factor.ContestTruth,
+            dayType);
 
     /// <summary>The succession branch's movement: before the execution scored with the
     /// executed person as demon, after it with the successor.</summary>
@@ -1843,27 +1918,56 @@ internal static class LiveActivityKernel
         double[] profConverted,
         SceneTableData[] sceneTables,
         double eps,
-        double unkWeight)
+        double unkWeight,
+        SightingContest[] contests = null,
+        double contestTruth = 1.0,
+        bool dayType = false)
     {
         double result = 1.0;
         for (int i = 0; i < nPeople; i++)
         {
             double pVal;
+            int align;   // 0 good, 1 minion, 2 demon, 3 converted: the contest's Alt column
             if (convIdx == i && hasConvertedProfiles)
             {
                 pVal = profConverted[i];
+                align = 3;
             }
             else if (demonIdx == i)
             {
                 pVal = profDemon[i];
+                align = dayType ? 1 : 2;
             }
             else if ((evilMask & (1 << i)) != 0)
             {
                 pVal = profMinion[i];
+                align = 1;
             }
             else
             {
                 pVal = profGood[i];
+                align = 0;
+            }
+            if (contests != null && i < contests.Length && contests[i] != null)
+            {
+                var ct = contests[i];
+                int m = 0;
+                int convJ = -1;   // a sighter converted by the curse in this world
+                for (int j = 0; j < ct.Sighters.Length; j++)
+                {
+                    int s = ct.Sighters[j];
+                    if ((evilMask & (1 << s)) != 0 || demonIdx == s)
+                        m |= 1 << j;
+                    else if (convIdx == s && ct.ConvAlt[j] != null)
+                        convJ = j;
+                }
+                if (convJ >= 0)
+                {
+                    int mc = m | (1 << convJ);
+                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.ConvC[convJ][mc - 1] * ct.ConvAlt[convJ][mc - 1][align];
+                }
+                else if (m != 0)
+                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.C[m - 1] * ct.Alt[m - 1][align];
             }
             result *= Math.Max(pVal, GdFloor1e30) / Math.Max(profGood[i], GdFloor1e30);
         }

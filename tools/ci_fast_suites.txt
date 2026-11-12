@@ -48,3 +48,6 @@ test_location_solver
 test_day_presence
 test_workshop_why
 test_vote_shape
+test_framed_defence
+test_sighter_contest
+test_gravedigger_bluff
