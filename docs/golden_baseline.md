@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 10): `baseline_a03bf72`
+### Current baseline (Nov 11): `baseline_5df40aa`
+
+`tools/golden/baseline_5df40aa/` is the capture from `claude/sighter-contest`. A sighting (or a
+Night Watch's "I saw X pass by") counts at `EVIL_SIGHTER_TRUTH` (0.15) of the time in a world
+where its sighter is evil, and otherwise as an invented sighting (belief-model plan, Nov 11).
+- **Divergence from `baseline_a03bf72`:** every seed. 42 at record 31 (refresh #20, Nisha,
+  day 2), 54875 at record 9 (refresh #6, Isolde, day 1), 692 at record 12 (refresh #7, Agnes,
+  day 1), 900 at record 12 (refresh #8, Kiran, day 1), and 98933 at record 123 (refresh #105,
+  Merrin, day 2).
+- **Record counts:** 42 101 (was 108), 54875 302 (321), 692 249 (251), 900 143, 98933 346 (285).
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 10): `baseline_a03bf72`
 
 `tools/golden/baseline_a03bf72/` is the capture from `claude/own-alibi-lie-aware` (#124,
 Quill). A person's own home alibi is lie-aware when the world makes them evil (belief-model
@@ -55,7 +67,7 @@ plan, Phase 1 fix 3).
 - **Record counts:** 42 108 (was 90), 54875 321, 692 251, 900 143, 98933 285.
 - **Stability:** two captures were identical.
 
-### Previous baseline (Nov 10): `baseline_73b103a`
+### Older baseline (Nov 10): `baseline_73b103a`
 
 `tools/golden/baseline_73b103a/` is the capture from `claude/challenge-reliability`. An
 accepted "lying" challenge no longer discounts the reading's reliability (belief-model plan,
