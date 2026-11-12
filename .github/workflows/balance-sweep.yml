@@ -113,8 +113,11 @@ jobs:
           LAST: ${{ matrix.last }}
           FORCE_DEMON: ${{ matrix.force_demon }}
         run: |
+          # Only pass --force-demon when a cell asks for it, so refs from before the flag still run.
+          FORCE_ARGS=()
+          if [ -n "$FORCE_DEMON" ]; then FORCE_ARGS=(--force-demon "$FORCE_DEMON"); fi
           python3 tools/sweep_shard.py --godot "$GODOT_BIN" \
-            --npcs "$NPCS" --mode "$MODE" --insight "$INSIGHT" --force-demon "$FORCE_DEMON" \
+            --npcs "$NPCS" --mode "$MODE" --insight "$INSIGHT" "${FORCE_ARGS[@]}" \
             --seeds "$FIRST:$LAST" --procs 4 --out "$RUNNER_TEMP/out" \
             --sha "$(git rev-parse HEAD)"
       - name: Upload results
