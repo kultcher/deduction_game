@@ -29,7 +29,9 @@ ERROR_RE = re.compile(r"(SCRIPT ERROR|^ERROR:|USER ERROR|Parse Error|Invalid cal
 
 
 def cell_name(a):
-    return "%d_%s_%s" % (a.npcs, a.mode, ("%.2f" % a.insight).rstrip("0").rstrip("."))
+    # The forced demon type is in the name, so a local run never reuses another setting's records.
+    force = ("_force_" + a.force_demon) if getattr(a, "force_demon", "") else ""
+    return "%d_%s_%s%s" % (a.npcs, a.mode, ("%.2f" % a.insight).rstrip("0").rstrip("."), force)
 
 
 class Worker:

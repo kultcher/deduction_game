@@ -623,14 +623,17 @@ static func new_action_kind(game, command: String) -> String:
 	return ""
 
 func _mode_name() -> String:
-	if passive: return "passive"
+	# A forced demon type is part of the cell too, so sweep records of a forced cell never
+	# merge with the same mode and seed dealt normally (Codex, #138).
+	var forced: String = "_force_" + force_demon if force_demon != "" else ""
+	if passive: return "passive" + forced
 	var base: String = "bot" if m4 else "bot_pre_m4"
 	if no_present: base = "no_present"
 	elif present_and_vote: base = "present_vote"
 	# Phase 5 switches, so sweep cells stay apart.
 	if no_crosscheck: base += "_nocross"
 	if no_declare: base += "_nodeclare"
-	return base
+	return base + forced
 
 ## The silent-bot cells' filter on a decided command: a presenting move (no-present) or a
 ## vigil, ward, search or protection offer (present-and-vote) is dropped. "" means pick

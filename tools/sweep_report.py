@@ -50,12 +50,20 @@ def mean(xs):
 
 
 def cell_key(r):
-    return (r["npcs"], r["mode"], float(r.get("insight", 1.0)) if r["mode"] != "passive" else 1.0)
+    # A forced demon type is in the record's mode ("bot_force_daykiller"), so it keeps the
+    # cell apart in grouping, deduplication and pairing.
+    return (r["npcs"], r["mode"], float(r.get("insight", 1.0)) if not r["mode"].startswith("passive") else 1.0)
 
 
 def cell_label(k):
     npcs, mode, ins = k
-    return "%d NPCs, %s" % (npcs, mode if mode == "passive" else "%s insight %.1f" % ({"bot_pre_m4": "bot (pre-M4)", "no_present": "bot, no presenting", "present_vote": "bot, present and vote", "bot_nocross": "bot, no cross-checks", "bot_nodeclare": "bot, no declaring"}.get(mode, mode), ins))
+    forced = ""
+    if "_force_" in mode:
+        mode, d = mode.split("_force_", 1)
+        forced = ", %s forced" % d
+    names = {"bot_pre_m4": "bot (pre-M4)", "no_present": "bot, no presenting", "present_vote": "bot, present and vote",
+             "bot_nocross": "bot, no cross-checks", "bot_nodeclare": "bot, no declaring"}
+    return "%d NPCs, %s%s" % (npcs, mode if mode == "passive" else "%s insight %.1f" % (names.get(mode, mode), ins), forced)
 
 
 def good_win(r):
@@ -341,10 +349,12 @@ def main():
     out.append("| Size | Bot cell | Paired games | Bot wins, passive loses | Passive wins, bot loses | Both win | Both lose |")
     out.append("|---|---|---|---|---|---|---|")
     for npcs in sorted({k[0] for k in cells}):
-        passive = {r["seed"]: r for r in by_cell.get((npcs, "passive", 1.0), [])}
         for k in cells:
-            if k[0] != npcs or k[1] == "passive":
+            if k[0] != npcs or k[1].startswith("passive"):
                 continue
+            # A forced cell's twin is the passive cell with the same forced demon type.
+            forced = ("_force_" + k[1].split("_force_", 1)[1]) if "_force_" in k[1] else ""
+            passive = {r["seed"]: r for r in by_cell.get((npcs, "passive" + forced, 1.0), [])}
             flips = [0, 0, 0, 0]
             for r in by_cell[k]:
                 p = passive.get(r["seed"])
