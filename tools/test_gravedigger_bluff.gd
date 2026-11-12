@@ -54,7 +54,13 @@ func _init() -> void:
 	var n_votes: int = voters.size()
 	var half: int = int(n_votes / 2)
 	check(is_equal_approx(Gravedigger.town_certainty(w, "nobody"), 0.5), "no hanging vote on record: certainty 0.5")
-	var sure: Dictionary = run.call(n_votes, 0, 0.5)
+	# The player's no counts against the town's certainty (Codex, #136): 3 NPC yes, 1 NPC no and
+	# the player's no is 3-2, certainty 0.2, not 3-1.
+	w.executions = [{"day": w.day, "id": hanged.id, "yes": voters.slice(0, 3), "no": voters.slice(3, 4) + [hanged.id], "player_yes": false}]
+	check(is_equal_approx(Gravedigger.town_certainty(w, hanged.id), 0.2), "the player's no vote counts (%.2f)" % Gravedigger.town_certainty(w, hanged.id))
+	w.executions[0]["player_yes"] = true
+	check(is_equal_approx(Gravedigger.town_certainty(w, hanged.id), 0.6), "the player's yes vote counts (%.2f)" % Gravedigger.town_certainty(w, hanged.id))
+	var sure: Dictionary = run.call(n_votes, 0, 0.5, true)
 	# A bare majority: half the NPC voters plus the player yes, the other half no.
 	var split: Dictionary = run.call(half, n_votes - half, 0.5, true)
 	print("  unanimous: framed %.2f, confirmed %.2f; bare majority (%d-%d): framed %.2f, confirmed %.2f" % [sure.framed, sure.confirmed, half + 1, n_votes - half, split.framed, split.confirmed])

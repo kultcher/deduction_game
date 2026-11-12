@@ -49,8 +49,10 @@ static func town_certainty(w, id: String) -> float:
 		var ex: Dictionary = w.executions[i]
 		if str(ex.get("id", "")) != id:
 			continue
-		var yes: int = ex.get("yes", []).size() + (1 if ex.get("player_yes", false) else 0)
-		var no: int = ex.get("no", []).filter(func(v): return v != id).size()
+		# The player always votes (World.vote_pending): player_yes false is a no.
+		var player_yes: bool = bool(ex.get("player_yes", false))
+		var yes: int = ex.get("yes", []).size() + (1 if player_yes else 0)
+		var no: int = ex.get("no", []).filter(func(v): return v != id).size() + (0 if player_yes else 1)
 		if yes + no <= 0:
 			return 0.5
 		return clampf((float(yes) / float(yes + no) - 0.5) * 2.0, 0.0, 1.0)
