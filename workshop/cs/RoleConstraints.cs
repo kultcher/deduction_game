@@ -334,6 +334,13 @@ internal static class RoleConstraintsKernel
                     continue;
                 }
                 int medium = cardInts[off + 6];
+                // In play (bluffs), an evil relayer may have invented the relay: it is their
+                // bluff, so a world with them evil isn't ruled out and the relay's checks don't
+                // apply (seed 100020: the Scion Hollis bluffing Medium). Puzzles keep it hard.
+                if (bluffs && medium >= 0 && (world.Evil & (1 << medium)) != 0)
+                {
+                    continue;
+                }
                 bool relayHealthy = medium >= 0 && (world.EffectiveModifier != WorldEntry.ModDelusional || (world.Holders & (1 << medium)) == 0);
                 if (medium < 0 || (world.Evil & (1 << medium)) != 0 || !relayHealthy || (flags & FlagRelayAliveAtNight) == 0)
                 {
@@ -552,6 +559,17 @@ internal static class RoleConstraintsKernel
             if (source < 0)
             {
                 return 0.0;
+            }
+
+            // A relayed reading in a live world where its relayer is evil: invented, so it
+            // says nothing about the dead source's role or reading.
+            if (live && (flags & FlagHasRelaySource) != 0)
+            {
+                int relayer = cardInts[off + 6];
+                if (relayer >= 0 && (evil & (1 << relayer)) != 0)
+                {
+                    continue;
+                }
             }
 
             bool sourceEvil = (evil & (1 << source)) != 0;
@@ -875,6 +893,11 @@ internal static class RoleConstraintsKernel
             }
             if (sourceEvil)
             {
+                // In play an evil relayer is bluffing Medium, like any claim (6a).
+                if (live)
+                {
+                    continue;
+                }
                 return 0.0;
             }
             if (!AssignRole(assignRoles, assignMasks, ref assignCount, RoleMedium, 1 << source))
