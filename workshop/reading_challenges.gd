@@ -14,6 +14,13 @@ const MODES = ["misled", "lying", "unlikely", "impaired", "delusional"]
 ## taken as true (strength = their credibility alone). "graded": the clash only gates; the
 ## graded world-model test decides. Dev switch for tools/measure_evidence.gd; "contest" in play.
 static var clash_rule: String = "contest"
+## How the graded test reads a reading whose content the report table can't check (the
+## role-content and movement-checked gifts in CaseEval.ROLE_CONTENT_FIXED, but not the
+## Seer, which has its own holds table). "table": as before; their holds mask is all ones,
+## so q = f = 1 and the test can never see the rest contradict them. "rise": the rest of the
+## evidence is weighed with and without the reading, and the reading looks wrong by how far
+## adding it raises the chance its source is evil. Dev switch for tools/measure_evidence.gd.
+static var graded_rule: String = "table"
 const CaseEval = preload("res://workshop/case_eval.gd")
 
 static func valid(view: Dictionary, id: String, value) -> bool:
@@ -270,6 +277,26 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 	var wrong: float = wrong_prior * q / maxf(wrong_prior * q + r * f, 1e-12)
 	var rise: float = wrong - wrong_prior
 	var effect: float = clampf(rise / r, 0.0, 1.0)
+	var unchecked: bool = ids.size() == 1 and str(reports[0].get("role", "")) in CaseEval.ROLE_CONTENT_FIXED and str(reports[0].get("role", "")) != "seer"
+	var e0: float = -1.0
+	var e1: float = -1.0
+	if unchecked and graded_rule == "rise" and has_source:
+		# The holds mask can't see this content. Ask instead how far the reading, added to
+		# the rest, raises the chance its source is evil: a reading the rest contradicts
+		# pulls its source down with it (role constraints, movement model), one that fits
+		# doesn't. Both sides keep their own weights: the rest at its tellers' trust, the
+		# source at the listener's prior on them.
+		var ev0_q: Dictionary = Solver.empty_case()
+		ev0_q.cards = rest.duplicate()
+		ev0_q.conclusion = {"type": "evil", "target": source, "at": epoch}
+		var ev1_q: Dictionary = Solver.empty_case()
+		ev1_q.cards = rest + ids
+		ev1_q.conclusion = {"type": "evil", "target": source, "at": epoch}
+		e0 = clampf(float(CaseEval.evaluate(view, ev0_q, listener).get("posterior", 0.0)), 0.0, 1.0)
+		e1 = clampf(float(CaseEval.evaluate(view, ev1_q, listener).get("posterior", 0.0)), 0.0, 1.0)
+		wrong = maxf(wrong_prior, e1)
+		rise = maxf(0.0, e1 - e0)
+		effect = clampf(rise / maxf(1.0 - e0, 1e-6), 0.0, 1.0)
 	# The cause: how much of the reading being wrong the named explanation carries. It only
 	# ever scales the effect, so with no effect it isn't weighed (most bare defences: the
 	# rest of the evidence doesn't make the reading look wrong).
@@ -305,9 +332,12 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 	# Backfire: the rest of the evidence moves the content a quarter of the way toward
 	# certainly holding (the mirror of the wrong-premise threshold).
 	var backfire: bool = CaseEval.shift(q, f) >= Tuning.Workshop.CHALLENGE_BACKFIRE_SHIFT
+	if e0 >= 0.0:
+		# The mirror: adding the reading makes its source look more trustworthy.
+		backfire = e0 > 0.0 and (e0 - e1) / e0 >= Tuning.Workshop.CHALLENGE_BACKFIRE_SHIFT
 	if backfire:
 		note = "The rest of what I know backs that reading up; doubting it doesn't hold."
-	return {"r": r, "q": q, "f": f, "wrong": wrong, "wrong_prior": wrong_prior, "rise": rise, "effect": effect, "cause": cause, "evil_share": evil_share, "backfire": backfire, "note": note}
+	return {"e0": e0, "e1": e1, "r": r, "q": q, "f": f, "wrong": wrong, "wrong_prior": wrong_prior, "rise": rise, "effect": effect, "cause": cause, "evil_share": evil_share, "backfire": backfire, "note": note}
 
 ## Whether a Poisoner can be in play (the minion lineup, premises step 3): the case's script
 ## has one, and no public fact rules it out. Unknown scripts allow it.
