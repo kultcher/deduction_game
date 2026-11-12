@@ -854,6 +854,14 @@ class Workshop:
 	## A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown
 	## haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1.
 	const HEX_UNKNOWN_FLOOR = 0.15
+	## A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil
+	## may be invented. It still counts this share of the time, since evil tells the truth
+	## when it suits them; otherwise it counts as an invented sighting, as likely as an honest
+	## one on average, so a sighter's word against a subject's alibi is decided by priors
+	## (LiveActivity._sighting_contests; Project doc belief-model-direction, Nov 11).
+	const EVIL_SIGHTER_TRUTH = 0.15
+	## The most sighters per person whose word is weighed this way (2^k profiles each).
+	const SIGHTER_CONTEST_MAX = 2
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4
