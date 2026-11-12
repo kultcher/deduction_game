@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 12): `baseline_300fe18`
+### Current baseline (Nov 12): `baseline_6a22cac`
+
+`tools/golden/baseline_6a22cac/` is the capture from `claude/relay-bluff`. In play a held Medium
+relay no longer proves its relayer is a good Medium (RoleConstraints): a world with the relayer
+evil stays possible and the relay is their bluff. A relayed self-sighting is kept, as plain
+ones are since #139.
+- **Divergence from `baseline_300fe18`:** 42 at record 76 (refresh #57, Kiran, day 3
+  evening) and 98933 at record 285 (refresh #251, Nisha, day 3 evening); the other three
+  seeds are identical. Both outcomes are unchanged.
+- **Record counts:** 98933 334 (was 346); the rest unchanged.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 12): `baseline_300fe18`
 
 `tools/golden/baseline_300fe18/` is the capture from `claude/self-sighting-clash`. A good NPC's
 plain sighting of themselves on a night they know they spent at home is kept in the weighing
