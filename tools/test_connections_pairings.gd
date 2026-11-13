@@ -99,8 +99,21 @@ func _grouping() -> void:
 	check(n2.get("ids", []) == ["s2"] and n2.get("ctx", []) == ["secret_e"], "another night is its own item, with a named person's confessed secret as context")
 	var tr: Dictionary = _item(none, "trace:tr")
 	check(tr.get("kind", "") == "unit" and tr.get("ctx", []) == ["home_a"], "a trace is read with the profile cards")
-	var aug: Dictionary = _item(none, "augur:2:f")
+	var aug: Dictionary = _item(none, "augur:2")
 	check(aug.get("ids", []) == ["aug", "loc2"], "an Augur reading takes that day's sightings, and no other day's (%s)" % str(aug.get("ids", [])))
+	# Two readings of one day share its sightings, whatever the card order; work schedules are
+	# context, and are enough on their own (Codex, #144).
+	var by2: Dictionary = by_id.duplicate()
+	by2["aug_b"] = {"id": "aug_b", "kind": "report", "role": "augur", "source": "g", "observed_at": {"day": 2, "phase": "afternoon"}, "data": {}}
+	by2["aug4"] = {"id": "aug4", "kind": "report", "role": "augur", "source": "f", "observed_at": {"day": 4, "phase": "afternoon"}, "data": {}}
+	by2["work_c"] = {"id": "work_c", "kind": "context", "context_kind": "work", "subject": "c", "data": {"work_phases": [1], "loc": ""}}
+	for order in [held + ["aug_b", "aug4", "work_c"], ["aug_b", "aug4", "work_c"] + held]:
+		var two: Array = Connections.items(by2, order, people, "none")
+		var day2: Dictionary = _item(two, "augur:2")
+		check(_once(two, order), "two Augur readings: every held card in exactly one item")
+		check("aug" in day2.get("ids", []) and "aug_b" in day2.get("ids", []) and "loc2" in day2.get("ids", []), "both of day 2's Augur readings are read with its sightings (%s)" % str(day2.get("ids", [])))
+		check("work_c" in day2.get("ctx", []), "known work schedules are the Augur item's context")
+		check(_item(two, "augur:4").get("ids", []) == ["aug4"] and "work_c" in _item(two, "augur:4").get("ctx", []), "a day with work schedules but no sightings still makes an Augur item")
 	var psy: Dictionary = _item(none, "psychologist:psy")
 	check(psy.get("ids", []) == ["psy", "st1"], "a Psychologist reading takes its statements that aren't already in a night, and no claim (%s)" % str(psy.get("ids", [])))
 	for id in ["read", "claim_a", "claim_f", "secret_e", "home_a", "loc3", "log"]:

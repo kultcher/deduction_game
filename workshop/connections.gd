@@ -209,18 +209,34 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 			if by_id[id].kind in TRACE_KINDS and not placed.has(id):
 				placed[id] = true
 				out.append({"key": "trace:" + id, "ids": [id], "ctx": context.filter(func(c): return by_id[c].kind == "context"), "kind": "unit"})
-	# An Augur reading with that day's sightings.
+	# A day's Augur readings with that day's sightings, as one item: every reading of the day
+	# (an honest one and an evil bluff, say) is read against the same day evidence, so no
+	# reading loses it to card order (Codex, #144). Known work schedules are day evidence too
+	# (Solver.augur_day_spec reads them), so they're context, and a day with work schedules
+	# but no sightings still makes an item.
+	var augur_days: Dictionary = {}
 	for id in held:
 		var c: Dictionary = by_id[id]
 		if c.kind == "report" and str(c.get("role", "")) == "augur" and not placed.has(id):
 			var day: int = int(c.get("observed_at", {}).get("day", -9))
-			var same: Array = held.filter(func(x): return by_id[x].kind == "location" and int(by_id[x].get("day", -1)) == day and not placed.has(x))
-			if same.is_empty():
-				continue
-			var ids: Array = [id] + same
-			for x in ids:
-				placed[x] = true
-			out.append({"key": "augur:%d:%s" % [day, c.source], "ids": ids, "ctx": explain.call(ids, ["claim"]), "kind": "unit"})
+			if not augur_days.has(day):
+				augur_days[day] = []
+			augur_days[day].append(id)
+	var work_ctx: Array = context.filter(func(x): return by_id[x].kind == "context" and str(by_id[x].get("context_kind", "")) == "work")
+	var augur_keys: Array = augur_days.keys()
+	augur_keys.sort()
+	for day in augur_keys:
+		var same: Array = held.filter(func(x): return by_id[x].kind == "location" and int(by_id[x].get("day", -1)) == day and not placed.has(x))
+		if same.is_empty() and work_ctx.is_empty():
+			continue
+		var ids: Array = augur_days[day] + same
+		for x in ids:
+			placed[x] = true
+		var ctx: Array = explain.call(ids, ["claim"])
+		for x in work_ctx:
+			if not x in ctx:
+				ctx.append(x)
+		out.append({"key": "augur:%d" % day, "ids": ids, "ctx": ctx, "kind": "unit"})
 	# A Psychologist reading with its statements (those not already in a movement pairing).
 	for id in held:
 		var c: Dictionary = by_id[id]
