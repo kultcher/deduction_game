@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-13, Claude-Lantern: the connections model in game, step 3, the core (`claude/connections-core`)
+## 2026-11-13, Claude-Lantern: the connections model in game, step 3, the core (PR #145, `claude/connections-core`)
 
 From Michael (Phase 6, step 3). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec" section 4. Results: the same doc, "Results: Phase 6 step 3". Base: main `437e29e` (steps 1 and 2 merged as #141 and #144).
 
@@ -42,7 +42,9 @@ From Michael (Phase 6, step 3). Spec: Project doc `claude/belief-model-direction
 - **Firsthand proofs stay proved.** If the firsthand cards alone put someone within 0.5% of 0 or 1, that person keeps that chance, and the others share what is left of the evil count (`Connections.combine`).
 - **`Connections.seed_wrong_sightings`** (tests and tools only; on in play) turns the wrong-sighting seed off, to measure it.
 - **The prototype tool** takes its seed, test and membership rule from the module. `--legacy-seed [--movement-seed]` keeps the first prototype's seed: with it the tool's output on seeds 900, 902, 910 and 911 is identical to the tool before this change. `--no-wrong-sightings` and `--no-proofs` switch off the two new rules.
-- **In game against the tool** on the same listener states, at every dawn and vote: seeds, members and chances agree (numbers in the PR).
+- **In game against the tool** on the same listener states, at every dawn and vote (14 logs, 482 listener-moments): seeds, members and chances agree.
+- **The wrong-sighting seed, measured:** rare in passive play (3 of 469 listener-dawns, no chance moved by more than 2 points). On seed 100034 it takes Odette on the evil sighter Constance from 0.52 to 0.66, which is today's figure; a real Sleepwalker's suspicion of an honest sighter goes 0.15 to 0.18 (seed 100031).
+- **Cost with the switch on:** golden seed 692 takes 411 ms a refresh, against 293 at step 2 and 92 today. Caching is the last step.
 - **Tests:** `test_connections_core` (in the fast list); `test_connections` and `test_connections_pairings` updated for the core's term. The fast list passes (53 of 53).
 - **Not in this step:** stored cases (step 4) and caching. A dawn refresh now makes about one more judgement per item than step 2, to test it against the seed.
 
