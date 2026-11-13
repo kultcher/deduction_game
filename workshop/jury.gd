@@ -954,7 +954,10 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# A refresh has no headline search; its effects all report the refresh itself.
 		var status: String = headline.reasoning.status if not headline.is_empty() else "belief_refresh"
 		var person_ev: Dictionary = ev
-		if persistence:
+		# The connections model doesn't read through a working theory yet, so a committed
+		# (persistence) listener keeps its result instead of the old joint model on the
+		# attended cards (Codex, #141). Only Workshop listeners use persistence; NPCs don't.
+		if persistence and connections.is_empty():
 			# A committed listener keeps a working theory per person and reads the
 			# evidence through it (Theory bias), as the headline does.
 			# Shallow copy: only the conclusion differs per person, and nothing below writes
