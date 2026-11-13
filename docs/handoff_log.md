@@ -27,6 +27,44 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-13 later, Claude-Lantern: the connections model in game, step 4, stored cases (`claude/connections-cases`)
+
+From Michael (Phase 6, step 4). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec", stored cases. Base: main `eece565` (steps 1 to 3 merged). Behind the switch, which is off: golden is identical to `baseline_6a22cac`.
+
+- **What a stored case is** (`Connections.cases`): a case someone put to the listener. Its cards are judged together, and it adds what they say together beyond their own values, times its weight.
+  - **Weight** (`Connections.case_weight`): trust in the presenter (the player's credibility, or the listener's trust in the NPC), × 0.5 for each day since (`Tuning.Workshop.CONNECTIONS_CASE_FADE`), × 0.5 under a "suspicious" premise, and nothing under 0.05 (`CONNECTIONS_CASE_FLOOR`).
+  - **With the core:** a case sharing a card or pairing with the core is judged with it as one set, older cases first. The core's own part counts in full; what the case adds on top is weighted. A card cited from an always-on connection never merges.
+- **The player's presentations.** The presentation store is the case store: `Shared.prepare` turns each presentation it is given into a case (its endorsed cards, premise, challenges, and the day from the snapshot's `now`) on `listener.connections.cases`, only when the listener carries `connections` (the switch on). So a with-and-without evaluation that passes different presentations weighs different cases.
+- **NPC nominators' cited cards** (new store, `workshop_state.connections.nominations`): `Mind.remember_nomination` keeps the cards `recall_cited` brought back, for every living listener but the nominator. The same nominator's later case about the same person replaces it; one too old to count is dropped. Nothing is kept with the switch off.
+- **Challenges act inside their own case** (`Connections.lean_challenged`): `ReadingChallenges.assess` runs on the case's set alone, and an accepted "misled" or "failed gift" discounts the reading there and nowhere else. "Lying" changes no reliability. The two floors a challenge puts under people (`Jury._consequences_eval`) come from the case's own assessment, scaled by the case's weight.
+  - **Open, for Michael:** an NPC defender's challenge isn't in any stored case. It keeps today's floor and does nothing else.
+- **Presenting a case again on a later day restores its weight.** `WorkshopPresentation._present` no longer waves that repeat off, and a public repeat is assessed again when the case has faded for anyone (`WorkshopPresentation.faded`). The spoken reply is today's code and may still say "my assessment is unchanged".
+- **Spillover damping is off with the switch on** (`Shared.premise_shaping` returns nothing for a listener that carries `connections`).
+- **A correction to the prototype's arithmetic:** when the core holds the movement connection and a case cites a movement card, that card's own value was taken off twice. `Connections.interaction` counts it where it sits. With that one change switched off, the tool's output is identical to before; with it, 4 of 93 dawn rows and 27 of 158 vote rows move (all listeners whose core holds the movement connection).
+- **The prototype tool** takes which cases count, their order and weight from the module (`Connections.case_plan`). It still reads only public presentations and nominations from a log, and doesn't weigh challenges.
+- **An error in steps 1 to 3, fixed here (switch on only).** The model's baseline is a judgement on no cards. In play a case with no cards reads every day card on the view for "who was near each silencing" (`DayPresence.breath_factor`), while a judgement with one card or more reads only its own. So in a game with a silencing, every item's value carried the difference, once per item. `DayPresence.bare_reads_view` (on in play) is switched off for the model's judgements, and `CaseEval`'s compile key covers it. Golden with the switch off is unaffected.
+  - Found on seed 962: a presentation of "Kiran is evil" took Greta on Kiran from 0.91 to 0.55 (now 0.93 to 0.93). The no-card baseline had Kiran at 0.612 and every other judgement started from 0.579, a 0.14 log-odds offset on each of 24 items.
+  - Six of the 22 passive games have a silencing (902, 911, 923, 924, 927, 928). In those, 51% of chances were within 5 points of today's before the fix and 63% are now; the other 16 games are unchanged to the last digit. Step 3's figures over all 22 move a little: within 5 points 55% to 59%, over 20 points 17% to 15%, separation at 10 NPCs 0.45 to 0.47. One of the 16 Hexer logs has a silencing (955); step 2's Hexer figures aren't re-run.
+  - `test_connections_core` holds it: the no-card judgement is the same with and without a day card on the view, play still reads it, and the two don't share a compiled case.
+- **In game against the tool** on the same listener states (15 logs, 586 listener-moments, 1,934 stored cases of which 516 are the player's): the same cases count, in the same order, and chances agree to 0.000004. The bot never challenges, so challenges inside a case are covered by the suite only.
+- **A presentation, with and without** (six bot games played with the switch off, 18 cases, 72 listener-presentations):
+  - The target's chance, on average: 0.54 before, 0.68 once the cards the case brought are held, 0.70 with the case weighed. So most of what a presentation does is bring cards (57 of 72 brought one). The case's own part raises its target by more than a point in 29, lowers it in 1, and leaves it within a point in 42.
+  - No presentation lowers its target by more than 2 points (two do by 1 to 2, from a brought alibi's own value). Before the baseline fix 10 of 34 did, by up to 36.
+  - People the case didn't name move more than 3 points in 18 of 72. In all 18 the brought cards do it by themselves (a new night card is read with its whole night or the movement connection, and a target that becomes near certain takes an evil place from everyone else). The case's own part does it in 2, both one case in seed 963.
+  - Presenting the same case twice changes nothing (72 of 72).
+- **Open, for Michael: under a Walker reading a case of night cards counts their meeting twice.** The movement connection already weighs every night card together, in full. A case citing two or more of them adds what those cards say together again, at its weight. In the six bot games (all walker-only scripts) that is 25 of 72 listener-presentations, and the case's own part on its target is over 0.5 log-odds in 9 of them (largest 2.2). This is the prototype's arithmetic, unchanged.
+- **Cost with the switch on:** golden seed 692 takes 424 ms a refresh (411 at step 3; 93 today). Caching is next.
+- **Tests:** `test_connections_cases` (in the fast list, 54 of 54). Golden with the switch off is identical to `baseline_6a22cac` on all five seeds; a capture with the switch on runs with no script error.
+
+**For Bailiff, three things in main's behaviour with the switch off** (the first two found tracing seed 929; Michael asked me to leave them with you; details in the Project doc's open items):
+1. **A relayer can be cut from the sighter contest by the two-sighter cap** (`LiveActivity._sighting_contests`, `SIGHTER_CONTEST_MAX`). Sighters are ranked by how many sightings of the person they told, then by town order. An evil Medium who invented one relayed sighting ranked below a Night Watch with two reports and the dead source, so the invention counted as the dead person's honest word.
+2. **An evil Medium's relay about the first victim names night 0** (the bluff says the dead saw the scapegoat out "on their last night"). The movement model's Demon never leaves home on night 0, so the frame lowers suspicion of its target.
+3. **A case with no cards can be answered from an older compile** (found here, not from the trace). With a silencing on the record it reads the view's day cards (`DayPresence.breath_factor`), but `CaseEval`'s compile key doesn't include the view's cards. On seed 962 the same inputs gave Kiran 0.612 with every cache cleared and 0.579 from a warm one. Not changed; it could move golden.
+
+Next: caching (step 6), then the seven criteria end to end.
+
+---
+
 ## 2026-11-13, Claude-Lantern: the connections model in game, step 3, the core (PR #145, `claude/connections-core`)
 
 From Michael (Phase 6, step 3). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec" section 4. Results: the same doc, "Results: Phase 6 step 3". Base: main `437e29e` (steps 1 and 2 merged as #141 and #144).

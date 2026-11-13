@@ -27,6 +27,8 @@ const Reasoner = preload("res://workshop/reasoner.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Caches = preload("res://workshop/caches.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
+const DayPresence = preload("res://workshop/day_presence.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -49,6 +51,7 @@ func _init() -> void:
 	_states(900, 7, 3, 99)
 	_states(902, 10, 3, 3)
 	_wrong_sighting()
+	_baseline_has_no_cards()
 	_in_game(900, 7, 3)
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.force_row = ""
@@ -361,6 +364,53 @@ func _wrong_sighting() -> void:
 
 
 # ------------------------------------------------------------ in the game
+
+## The model's baseline is a judgement on no cards at all. In play a case with no cards reads
+## every day card on the view for "who was near each silencing" (DayPresence.bare_reads_view);
+## if the model's baseline did too, each item's value would carry the day cards' pull.
+func _baseline_has_no_cards() -> void:
+	Connections.enabled = false
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(54875, 7)
+	var victim = g.w.living_good()[0]
+	var near = g.w.npcs.filter(func(n): return n.id != victim.id)[0]
+	g.w.public_event("silenced", [victim.id], "town")
+	var listener = g.w.living().filter(func(n): return not n.is_evil() and n.id != victim.id and n.id != near.id)[0]
+	var st: Dictionary = _inputs(g, listener)
+	check(st.ready, "baseline: the listener's state is ready")
+	if not st.ready:
+		return
+	var view: Dictionary = st.view.duplicate(true)
+	view["script_minions"] = ["breathstealer"]
+	var seen: Dictionary = view.duplicate(true)
+	seen.cards.append({"id": "seen-near", "kind": "location", "source": "player", "subjects": [victim.id, near.id], "day": 1,
+		"loc": "tavern", "block": "square", "observed_at": {"day": 1, "phase": "evening"}})
+	check(not DayPresence.breath_factor(view, []).is_empty(), "baseline: the silencing builds its presence factor")
+	var chance := func(ev: Dictionary) -> Dictionary:
+		var out: Dictionary = {}
+		for p in ev.people:
+			out[p] = float(ev.people[p].posterior)
+		return out
+	var template: Dictionary = Connections.template(st.case, near.id)
+	var bare: Dictionary = Connections.case_for(template, [])
+	Caches.clear_all()
+	var play_plain: Dictionary = chance.call(CaseEval.evaluate(view, bare, st.listener))
+	Caches.clear_all()
+	var play_seen: Dictionary = chance.call(CaseEval.evaluate(seen, bare, st.listener))
+	check(not _same(play_plain, play_seen), "baseline: in play, a case with no cards still reads the view's day cards (%s %.4f to %.4f)" % [near.id, play_plain[near.id], play_seen[near.id]])
+	Caches.clear_all()
+	var model_seen: Dictionary = chance.call(Connections.judge(seen, template, st.listener, []))
+	check(DayPresence.bare_reads_view, "baseline: the switch is left on after the model's judgement")
+	Caches.clear_all()
+	var model_plain: Dictionary = chance.call(Connections.judge(view, template, st.listener, []))
+	check(_same(model_seen, model_plain), "baseline: the model's no-card judgement reads no day card (%s %.4f either way)" % [near.id, model_seen[near.id]])
+	# One compile cache serves both: the model's baseline must not be handed back to play.
+	Caches.clear_all()
+	Connections.judge(seen, template, st.listener, [])
+	check(_same(chance.call(CaseEval.evaluate(seen, bare, st.listener)), play_seen), "baseline: the model's baseline isn't reused for a judgement in play")
+	Caches.clear_all()
+
 
 func _refresh(g, n) -> Dictionary:
 	var was_defer: bool = g.w.defer_beliefs

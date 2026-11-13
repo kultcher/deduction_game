@@ -14,6 +14,7 @@ const Recency = preload("res://sim/recency.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
@@ -38,6 +39,19 @@ static func readiness(g, n, card: Dictionary, targets: Array, direction: String,
 	proposals[_key(card, targets, direction, snapshot)] = snapshot
 	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, withdrawn, snapshot.selected)
 	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union"}
+
+## The connections model (off by default): has this case, already put to the town, faded
+## for anyone since? A stored case loses half its weight a day, and presenting it again
+## restores it, so then it is assessed again instead of being waved off as already known.
+static func faded(g, card: Dictionary) -> bool:
+	if not Connections.enabled or card.get("kind", "") != "deduction":
+		return false
+	for n in g.w.living():
+		var mind = n.shadow if n.is_evil() and n.shadow != null else n
+		var stored: Dictionary = mind.workshop_state.get("presentations", {}).get(str(card.get("n", 0)), {})
+		if not stored.is_empty() and int(stored.get("now", {}).get("day", g.w.day)) != int(g.w.day):
+			return true
+	return false
 
 static func _key(card: Dictionary, targets: Array, direction: String, snapshot: Dictionary) -> String:
 	var ids: Array = snapshot.selected.duplicate()
@@ -76,7 +90,10 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var repeat_key = listener_key + "|" + signature
 	var cached_repeat: Dictionary = g._workshop_repeats.get(repeat_key, {})
 	var existing: Dictionary = state.get("presentations", {}).get(_key(card, targets, direction, snapshot), {})
-	if state.get("active", false) and not existing.is_empty() and cached_repeat.get("input", "") == _discussion_inputs(n, snapshot) and not (existing.venue == "private" and venue != "private"):
+	# The connections model (off by default): a stored case fades by the day, and presenting
+	# it again on a later day restores its weight, so that repeat is assessed, not waved off.
+	var restores: bool = Connections.enabled and not existing.is_empty() and int(existing.get("now", {}).get("day", g.w.day)) != int(g.w.day)
+	if state.get("active", false) and not existing.is_empty() and not restores and cached_repeat.get("input", "") == _discussion_inputs(n, snapshot) and not (existing.venue == "private" and venue != "private"):
 		Profiler.count("repeat_no_assessment")
 		var result: Dictionary = cached_repeat.result.duplicate(true)
 		var text = "I heard you say that at the meeting. My assessment is unchanged." if existing.venue != "private" else "You've heard this from me already. My assessment is unchanged."

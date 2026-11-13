@@ -46,7 +46,11 @@
 ##                 and scaled by trust in the presenter. An old case fades: each day it keeps
 ##                 --fade of its weight (several rates are reported; the first is the main
 ##                 one). A revision replaces its earlier version. --cap N restores the old
-##                 "at most N" rule.
+##                 "at most N" rule. Which cases count, in what order and at what weight is
+##                 the game's rule (Connections.case_plan). The tool reads the player's
+##                 public presentations and NPC nominators' cited cards from the log; it
+##                 doesn't see private presentations, and it doesn't weigh the challenges
+##                 inside a case (the game does both).
 ##   caching       solo values and core tests are meant to be cached. Each refresh is
 ##                 compared with the listener's previous one that day: which items a trust
 ##                 change, a hearing-weight change or the public record would have
@@ -512,25 +516,15 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		if not core_keys.is_empty():
 			_add(total, merged_i)
 			largest = _size(merged_keys, by_key)
-		for cs in cases:
-			var keys: Array = []
-			var extra_ids: Array = []
-			for id in cs.cards:
-				if not item_of.has(id):
-					continue
-				var key: String = item_of[id]
-				if by_key[key].kind in ALWAYS_ON:
-					if id not in extra_ids:
-						extra_ids.append(id)
-				elif key not in keys:
-					keys.append(key)
-			if keys.size() + extra_ids.size() < 1:
-				continue
-			var w: float = _presenter_trust(st, cs.presenter) * pow(fade, maxi(0, day - int(cs.get("day", day))))
-			if w < CASE_FLOOR:
-				continue
+		# Which stored cases count, in what order and at what weight, is the game's rule
+		# (Connections.case_plan). Challenges inside a case are the game's alone: this tool
+		# doesn't weigh them.
+		for cs in Connections.case_plan(cases.map(func(x): return x.merged({"key": x.label, "suspicious": str(x.get("type", "")) == "suspicious"})), items, st.listener, day, fade):
+			var keys: Array = cs.keys
+			var extra_ids: Array = cs.extra
+			var w: float = cs.weight
 			var touches_core: bool = not merged_keys.is_empty() and keys.any(func(k): return k in merged_keys)
-			var entry: Dictionary = {"label": cs.label, "weight": w, "merged": touches_core, "cards": keys.size() + extra_ids.size()}
+			var entry: Dictionary = {"label": cs.key, "weight": w, "merged": touches_core, "cards": keys.size() + extra_ids.size()}
 			if touches_core:
 				var next_keys: Array = _union(merged_keys, keys)
 				var next_extra: Array = _union(merged_extra, extra_ids)
@@ -577,23 +571,19 @@ static func _size(keys: Array, by_key: Dictionary) -> int:
 func _interaction(st: Dictionary, keys: Array, by_key: Dictionary, values: Dictionary, extra: Array = []) -> Dictionary:
 	if keys.size() + extra.size() < 2:
 		return _zero(st)
-	var ids: Array = extra.duplicate()
-	var ctx: Array = []
-	for k in keys:
-		ids = _union(ids, by_key[k].ids)
-		ctx = _union(ctx, by_key[k].ctx)
-	var joint: Dictionary = _value(st, ids, ctx)
+	var set_: Dictionary = Connections.pool(keys.map(func(k): return by_key[k]))
+	# A cited card that already sits in one of the items (a core holding the movement
+	# connection) is counted there, not again as a single card (Connections.interaction).
+	var single: Array = extra.filter(func(id): return id not in set_.ids)
+	var joint: Dictionary = _value(st, _union(single, set_.ids), set_.ctx)
 	for k in keys:
 		_add(joint, values[k], -1.0)
-	for id in extra:
+	for id in single:
 		_add(joint, _lean(st, [id]), -1.0)
 	return joint
 
 func _presenter_trust(st: Dictionary, presenter: String) -> float:
-	var l: Dictionary = st.listener
-	if presenter == "player":
-		return clampf(float(l.get("player_credibility", l.get("trust", 0.5))), 0.0, 1.0)
-	return clampf(float(l.get("npc_trust", {}).get(presenter, 0.5)), 0.0, 1.0)
+	return Connections.presenter_trust(st.listener, presenter)
 
 ## One common shift per track so the chances sum to the baseline's own sum.
 ## proved: the people the listener's firsthand cards settle (their chance of being evil);

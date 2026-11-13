@@ -150,10 +150,14 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
 		"source_doubt": n.workshop_state.get("source_doubt", {}).duplicate(true),
 		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
-	# The connections model (off by default): the day, and what this mind's core held at its
-	# last refresh, so the core is rebuilt at dawn and otherwise only tests newly held cards.
+	# The connections model (off by default): the day, what this mind's core held at its
+	# last refresh (so the core is rebuilt at dawn and otherwise only tests newly held
+	# cards), and the cards NPC nominators cited to it (stored cases; Shared.prepare adds
+	# the player's presentations).
 	if Connections.enabled:
-		input.listener["connections"] = {"day": int(now.get("day", -1)), "core": n.workshop_state.get("connections", {}).get("core", {}).duplicate(true)}
+		var remembered: Dictionary = n.workshop_state.get("connections", {})
+		input.listener["connections"] = {"day": int(now.get("day", -1)), "core": remembered.get("core", {}).duplicate(true),
+			"nominations": remembered.get("nominations", []).duplicate(true)}
 	input.listener["disowned_reports"] = []
 	for entry in n.ledger.values():
 		if entry.get("meta", {}).get("kind", "") not in ["reading", "arg", "tell"]:

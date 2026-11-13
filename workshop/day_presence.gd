@@ -336,6 +336,14 @@ static func at_any(table: Dictionary, pid: String, day: int, locs: Array, phases
 ## per-phase chance of acting (the mean of its low and high odds). The per-world factor is
 ## the mean of A_m over the world's minions (each equally likely to hold the role), mixed with
 ## DEFAULT_ERR. Returns {} when nobody was silenced or no Breathstealer can be in play.
+## A case with no cards reads the whole view's cards for the presence table (in play, always).
+## The connections model (workshop/connections.gd) switches this off for its judgements: its
+## baseline is "no cards at all", and with the fallback a no-card judgement would read every
+## day card on the view while each one-card judgement read only its own, so every item's
+## value carried the difference. CaseEval's compile key covers the switch.
+static var bare_reads_view: bool = true
+
+
 static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 	var minions: Array = view.get("script_minions", [])
 	if not minions.is_empty() and "breathstealer" not in minions:
@@ -351,7 +359,7 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 				silencings.append({"day": int(e.at.day), "victim": str(v)})
 	if silencings.is_empty():
 		return {}
-	var all_cards: Array = cards if not cards.is_empty() else view.get("cards", [])
+	var all_cards: Array = cards if not cards.is_empty() or not bare_reads_view else view.get("cards", [])
 	var table: Dictionary = build(view, all_cards)
 	var ids: Array = view.get("people", []).map(func(p): return p.id)
 	var bs: Dictionary = Tuning.Roles.BREATHSTEALER

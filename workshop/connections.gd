@@ -5,8 +5,7 @@
 ## The idea: the limit on an NPC moves from which cards it reads to which cards it weighs
 ## together. Every card it holds counts, at the value it has alone; cards are only weighed
 ## together where a connection says so (built-in pairings, the NPC's own core, stored
-## cases). Stored cases arrive in a later step; this file has the single values, the
-## built-in pairings, the core and the normalising.
+## cases).
 ##
 ##   judge       today's shared evaluator (CaseEval over the possible worlds) run on a chosen
 ##               set of the held cards: everyone's chance of being evil given just that set
@@ -37,6 +36,19 @@
 ##               What the firsthand cards prove by themselves (someone at 0 or 1) stays
 ##               proved: no other card moves that person.
 ##
+##   stored case a case someone put to the listener: the player's presentation, or the
+##               cards an NPC nominator cited. Its cards are judged together and it adds
+##               what they say together beyond their own values, times its weight: the
+##               listener's trust in the presenter, halved for each day since (CASE_FADE),
+##               halved again under a "suspicious" premise, and nothing below CASE_FLOOR.
+##               A case that shares a card or pairing with the core is judged with the core
+##               as one set (older cases first); the core's own part counts in full and
+##               what the case adds on top is weighted. A card it cites from an always-on
+##               connection adds only what that card does next to the case's other cards.
+##               A reading challenge in a case acts inside that case's set only: the
+##               challenged reading's own value is untouched, and the floor a "lying"
+##               challenge puts under its teller is scaled by the case's weight.
+##
 ## The built-in pairings (items):
 ##   a night      that night's sightings, home alibis, Night Watch reports and Lamplighter
 ##                counts, with the named people's claims and confessed secrets as context
@@ -65,6 +77,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Solver = preload("res://workshop/solver.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
+const DayPresence = preload("res://workshop/day_presence.gd")
 
 ## The switch. It starts from the Tuning value; tests, autoplay and sweeps set it for a run
 ## (`--connections`), so paired cells come from one build.
@@ -81,6 +94,12 @@ static var seed_wrong_sightings: bool = true
 
 ## An item joins the core at this much interaction with the seed (log-odds, any one person).
 const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
+
+## A stored case keeps CASE_FADE of its weight a day, and stops counting below CASE_FLOOR.
+const CASE_FADE: float = Tuning.Workshop.CONNECTIONS_CASE_FADE
+const CASE_FLOOR: float = Tuning.Workshop.CONNECTIONS_CASE_FLOOR
+
+const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 
 ## A chance is held inside [CLIP, 1 - CLIP] before it becomes log-odds.
 const CLIP: float = Tuning.Workshop.CONNECTIONS_CLIP
@@ -128,9 +147,12 @@ static func case_for(template_case: Dictionary, ids: Array) -> Dictionary:
 ## asks for it; see the header).
 static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var was: bool = LiveActivity.hex_factor_enabled
+	var bare: bool = DayPresence.bare_reads_view
 	LiveActivity.hex_factor_enabled = hex
+	DayPresence.bare_reads_view = false  # the baseline is no cards at all (day_presence.gd)
 	var ev: Dictionary = CaseEval.evaluate(view, case_for(template_case, ids), listener)
 	LiveActivity.hex_factor_enabled = was
+	DayPresence.bare_reads_view = bare
 	return ev
 
 
@@ -517,19 +539,22 @@ static func value(run: Dictionary, item: Dictionary) -> Dictionary:
 ## `held` (ids, the listener's held cards with the ones it rejects from its own knowledge
 ## already taken out). `listener` is the evaluator's listener (Jury._eval_listener) with no
 ## challenges applied.
-## core_state: {"day": int, "core": the core's memory from this listener's last refresh}
-## (the listener's `connections`), or {} to build the core afresh.
+## core_state: {"day": int, "core": the core's memory from this listener's last refresh,
+## "cases": the stored cases (see case_plan)} (the listener's `connections`), or {} to
+## build the core afresh with no stored case. With stored cases the listener also needs
+## `trust` (and `player_credibility` if it has one): a case weighs what its presenter does.
 ## Returns {"prior", "baseline", "posterior": {id: chance}, "shift": log-odds, "row",
 ## "impossible": bool, "items": [{"key", "kind", "cards", "ctx", "lean": {id: log-odds}}],
 ## "core": see core() (without its memory), "core_memory": what to keep for the next
-## refresh, "judgements": int}.
+## refresh, "cases": see cases(), "judgements": int}.
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array, core_state: Dictionary = {}) -> Dictionary:
 	var run: Dictionary = begin(view, case_data, listener)
 	var others: Array = run.others
 	var baseline: Dictionary = run.baseline
 	if others.is_empty() or run.impossible:
 		return {"prior": run.prior, "baseline": baseline, "posterior": run.prior.duplicate(), "shift": 0.0, "row": run.row,
-			"impossible": run.impossible, "items": [], "core": _no_core([], []), "core_memory": core_state.get("core", {}), "judgements": run.judgements}
+			"impossible": run.impossible, "items": [], "core": _no_core([], []), "core_memory": core_state.get("core", {}),
+			"cases": {"lean": {}, "entries": [], "floors": [], "challenged": challenged_ids(core_state.get("cases", []))}, "judgements": run.judgements}
 	var by_id: Dictionary = {}
 	for c in view.cards:
 		by_id[c.id] = c
@@ -557,9 +582,14 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	own.erase("memory")
 	for p in own.lean:
 		total[p] += float(own.lean[p])
+	# Stored cases: what each says together beyond its cards' own values, at its weight.
+	run["by_id"] = by_id
+	var told: Dictionary = cases(run, item_list, values, own, core_state.get("cases", []), int(core_state.get("day", -1)))
+	for p in told.lean:
+		total[p] += float(told.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
-		"items": entries, "core": own, "core_memory": memory, "judgements": run.judgements}
+		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
 
 
 ## Everyone's chance from the baseline and the summed leans: one common shift, so the people
@@ -583,6 +613,227 @@ static func combine(others: Array, baseline: Dictionary, total: Dictionary, prov
 	for i in range(free.size()):
 		posterior[free[i]] = chance(float(scores[i]) + shift)
 	return {"posterior": posterior, "shift": shift}
+
+
+# ------------------------------------------------------------------ stored cases
+
+## How far the listener takes a presenter's word: its trust in the Demonologist (the
+## player's credibility, where the listener keeps one), or in the NPC.
+static func presenter_trust(listener: Dictionary, presenter: String) -> float:
+	if presenter == "player":
+		return clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
+	return clampf(float(listener.get("npc_trust", {}).get(presenter, 0.5)), 0.0, 1.0)
+
+
+## A stored case's weight on `day`: trust in its presenter, times `fade` for each day since
+## it was presented, halved (Tuning.Workshop.SUSPICIOUS_HEARING) under a "suspicious"
+## premise. Presenting it again restores it: the store keeps the latest day.
+static func case_weight(listener: Dictionary, cs: Dictionary, day: int, fade: float = CASE_FADE) -> float:
+	var w: float = presenter_trust(listener, str(cs.get("presenter", ""))) * pow(fade, maxi(0, day - int(cs.get("day", day))))
+	if cs.get("suspicious", false):
+		w *= Tuning.Workshop.SUSPICIOUS_HEARING
+	return w
+
+
+## The store rule for an NPC nominator's cases (the player's presentations keep their own
+## store): a case from the same presenter with the same premise and target replaces the
+## earlier one, and one too old to count at any trust is dropped.
+## cs: {"key", "presenter", "target", "type", "cards": [ids], "day"}.
+static func stored_with(list: Array, cs: Dictionary, day: int) -> Array:
+	var out: Array = []
+	for x in list:
+		var replaced: bool = x.presenter == cs.presenter and x.get("target", "") == cs.get("target", "") and x.get("type", "") == cs.get("type", "")
+		if not replaced and pow(CASE_FADE, maxi(0, day - int(x.get("day", day)))) >= CASE_FLOOR:
+			out.append(x)
+	out.append(cs)
+	return out
+
+
+## The stored cases that count now, oldest first, and what each brings to be judged
+## together: the items its held cards sit in (`keys`), and the single cards it cites from
+## an always-on connection (`extra`), which never merge.
+## case_list: [{"key", "presenter", "day", "cards": [ids], "suspicious": bool,
+## "challenges": {reading id: challenge}, "type", "target"}].
+## Returns [{"key", "presenter", "day", "weight", "keys", "extra", "challenges"}].
+static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, day: int, fade: float = CASE_FADE) -> Array:
+	var item_of: Dictionary = {}
+	var kind_of: Dictionary = {}
+	for it in item_list:
+		kind_of[it.key] = it.kind
+		if it.kind == "day":
+			continue  # its cards belong to their night or Augur day; it only adds the Hexer factor
+		for id in it.ids:
+			item_of[id] = it.key
+	var order: Array = range(case_list.size())
+	order.sort_custom(func(a, b): return int(case_list[a].get("day", 0)) < int(case_list[b].get("day", 0)) or (int(case_list[a].get("day", 0)) == int(case_list[b].get("day", 0)) and a < b))
+	var out: Array = []
+	for i in order:
+		var cs: Dictionary = case_list[i]
+		var keys: Array = []
+		var extra: Array = []
+		for id in cs.get("cards", []):
+			if not item_of.has(id):
+				continue  # a card the listener doesn't hold (or rejects) isn't weighed
+			var key: String = item_of[id]
+			if kind_of[key] in ALWAYS_ON:
+				if id not in extra:
+					extra.append(id)
+			elif key not in keys:
+				keys.append(key)
+		if keys.is_empty() and extra.is_empty():
+			continue
+		var w: float = case_weight(listener, cs, day, fade)
+		if w < CASE_FLOOR:
+			continue
+		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w,
+			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {})})
+	return out
+
+
+## Every reading some stored case challenges, counted or not: with the model on, those
+## challenges act through their case alone.
+static func challenged_ids(case_list: Array) -> Array:
+	var out: Array = []
+	for cs in case_list:
+		for id in cs.get("challenges", {}):
+			if id not in out:
+				out.append(id)
+	return out
+
+
+## What a set says when judged together with some of its readings challenged: the
+## challenges are assessed on this set alone (their grounds must be in it), and an accepted
+## "misled" or "failed gift" discounts the reading here and nowhere else. A "lying"
+## challenge changes no reliability; its result still feeds the floor under its teller.
+## Returns {"lean", "chance", "impossible", "results": the challenges' assessments}.
+static func lean_challenged(run: Dictionary, ids: Array, challenges: Dictionary) -> Dictionary:
+	var named: Dictionary = {}
+	for id in challenges:
+		if id in ids:
+			named[id] = challenges[id]
+	if named.is_empty():
+		var plain: Dictionary = lean(run, ids).duplicate()
+		plain["results"] = []
+		return plain
+	var sorted: Array = ids.duplicate()
+	sorted.sort()
+	var assessed: Dictionary = ReadingChallenges.assess(run.view, {"reading_challenges": named}, run.listener, sorted.map(func(id): return run.by_id[id]))
+	if assessed.reports.is_empty() and assessed.sources.is_empty():
+		var same: Dictionary = lean(run, ids).duplicate()
+		same["results"] = assessed.results
+		return same
+	var key: String = ",".join(PackedStringArray(sorted)) + "|challenged:" + str(hash([assessed.reports, assessed.sources]))
+	if not run.memo.has(key):
+		var listener: Dictionary = run.listener.duplicate()
+		listener["challenge_reports"] = assessed.reports
+		listener["challenge_sources"] = assessed.sources
+		var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
+		var ev: Dictionary = judge(run.view, run.bare, listener, sorted)
+		run.judgements += 1
+		if ev.get("impossible", false):
+			out.impossible = true
+		else:
+			for p in run.others:
+				out.chance[p] = float(ev.people.get(p, {}).get("posterior", run.baseline[p]))
+				out.lean[p] = logit(out.chance[p]) - logit(run.baseline[p])
+		run.memo[key] = out
+	var found: Dictionary = run.memo[key].duplicate()
+	found["results"] = assessed.results
+	return found
+
+
+## A joint set's interaction: what its items (and the single cards cited from an always-on
+## connection) say together, less what each says by itself.
+## Returns {"lean": {id: log-odds} for everyone, "impossible", "results", "cards": int}.
+static func interaction(run: Dictionary, by_key: Dictionary, values: Dictionary, keys: Array, extra: Array = [], challenges: Dictionary = {}) -> Dictionary:
+	var set_: Dictionary = pool(keys.map(func(k): return by_key[k]))
+	# A cited card that already sits in one of the items (a core that holds the movement
+	# connection) is counted there, not again as a single card.
+	extra = extra.filter(func(id): return id not in set_.ids)
+	var ids: Array = _union(extra, set_.ids)
+	var zero: Dictionary = {}
+	for p in run.others:
+		zero[p] = 0.0
+	if keys.size() + extra.size() < 2 and challenges.is_empty():
+		return {"lean": zero, "impossible": false, "results": [], "cards": ids.size()}
+	var outside: Array = set_.ctx.filter(func(c): return c not in ids)
+	var together: Dictionary = lean_challenged(run, _union(ids, outside), challenges)
+	var context: Dictionary = lean(run, outside)
+	if together.impossible or context.impossible:
+		return {"lean": zero, "impossible": true, "results": together.get("results", []), "cards": ids.size()}
+	var out: Dictionary = {}
+	for p in run.others:
+		var x: float = float(together.lean.get(p, 0.0)) - float(context.lean.get(p, 0.0))
+		for k in keys:
+			x -= float(values[k].lean.get(p, 0.0))
+		out[p] = x
+	for id in extra:
+		var alone: Dictionary = lean(run, [id])
+		for p in run.others:
+			out[p] -= float(alone.lean.get(p, 0.0))
+	return {"lean": out, "impossible": false, "results": together.results, "cards": ids.size()}
+
+
+## What the stored cases add (see the header).
+## own: this refresh's core (core()). case_list, day: the listener's stored cases and today.
+## Returns {"lean": {id: log-odds added}, "entries": [{"key", "presenter", "day", "weight",
+## "merged": judged with the core, "cards": how many were judged together, "lean": what
+## this case added}], "floors": [a challenge's assessment with its case's "weight" and
+## "case"], "challenged": challenged_ids(case_list)}.
+static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Dictionary, case_list: Array, day: int) -> Dictionary:
+	var out: Dictionary = {"lean": {}, "entries": [], "floors": [], "challenged": challenged_ids(case_list)}
+	if case_list.is_empty():
+		return out
+	var by_key: Dictionary = {}
+	for it in item_list:
+		by_key[it.key] = it
+	# The set the core judges together grows as cases that touch it merge in.
+	var merged_keys: Array = [] if own.get("impossible", false) else own.get("seed", []) + own.get("members", [])
+	var merged_extra: Array = []
+	var merged_challenges: Dictionary = {}
+	var merged: Dictionary = {}
+	for p in run.others:
+		merged[p] = float(own.get("lean", {}).get(p, 0.0)) if not merged_keys.is_empty() else 0.0
+	var total: Dictionary = {}
+	for cs in case_plan(case_list, item_list, run.listener, day):
+		var touches: bool = not merged_keys.is_empty() and cs.keys.any(func(k): return k in merged_keys)
+		var entry: Dictionary = {"key": cs.key, "presenter": cs.presenter, "day": cs.day, "weight": cs.weight, "merged": touches, "cards": 0, "lean": {}}
+		var joint: Dictionary
+		var added: Dictionary = {}
+		if touches:
+			var next_keys: Array = _union(merged_keys, cs.keys)
+			var next_extra: Array = _union(merged_extra, cs.extra)
+			var next_challenges: Dictionary = merged_challenges.merged(cs.challenges)
+			joint = interaction(run, by_key, values, next_keys, next_extra, next_challenges)
+			if not joint.impossible:
+				for p in run.others:
+					added[p] = float(joint.lean[p]) - float(merged[p])
+				merged_keys = next_keys
+				merged_extra = next_extra
+				merged_challenges = next_challenges
+				merged = joint.lean
+		else:
+			joint = interaction(run, by_key, values, cs.keys, cs.extra, cs.challenges)
+			if not joint.impossible:
+				added = joint.lean
+		entry.cards = int(joint.cards)
+		if joint.impossible:
+			# No world allows these cards together: the case says nothing as a whole.
+			entry["impossible"] = true
+		for p in added:
+			var x: float = cs.weight * float(added[p])
+			if not is_zero_approx(x):
+				entry.lean[p] = x
+				total[p] = float(total.get(p, 0.0)) + x
+		for result in joint.results:
+			if cs.challenges.has(result.card):
+				var floor_entry: Dictionary = result.duplicate()
+				floor_entry["weight"] = cs.weight
+				floor_entry["case"] = cs.key
+				out.floors.append(floor_entry)
+		out.entries.append(entry)
+	out.lean = total
+	return out
 
 
 ## Today's evaluation with everyone's chances replaced by the connections result, so the
@@ -621,4 +872,16 @@ static func summary(result: Dictionary) -> Dictionary:
 			"rebuilt": bool(own.rebuilt), "proved": own.proved.keys()}
 		if own.impossible:
 			short.core["impossible"] = true
+	var told: Array = []
+	for entry in result.get("cases", {}).get("entries", []):
+		var top_c: String = ""
+		var size_c: float = 0.0
+		for p in entry.lean:
+			if absf(float(entry.lean[p])) > absf(size_c):
+				size_c = float(entry.lean[p])
+				top_c = p
+		told.append({"key": entry.key, "presenter": entry.presenter, "day": int(entry.day), "weight": snappedf(float(entry.weight), 0.001), "merged": bool(entry.merged),
+			"cards": int(entry.cards), "on": top_c, "lean": snappedf(size_c, 0.001)})
+	if not told.is_empty():
+		short["cases"] = told
 	return short

@@ -98,13 +98,20 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			_add(facts, owners, entry.meta.workshop_card, "defence:" + eid)
 		if entry.get("meta", {}).get("kind") in ["role_claim", "role_counter"] and entry.meta.get("how") != "own" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "claim:" + eid)
+	# The connections model (workshop/connections.gd; off by default): each presentation is a
+	# stored case, with its own cards, premise, challenges and the day it was presented.
+	var stored_cases: Array = []
+	var with_cases: bool = input.get("listener", {}).has("connections")
 	for key in presentations:
 		if withdrawn.has(key) or withdrawn.has(str(key)):
 			continue
 		var presented: Dictionary = presentations[key]
+		var own_challenges: Dictionary = {}
 		for argument in presented.arguments:
 			for id in argument.get("workshop_case", {}).get("reading_challenges", {}):
 				var challenge: Dictionary = argument.workshop_case.reading_challenges[id]
+				if with_cases and not own_challenges.has(id):
+					own_challenges[id] = challenge.duplicate(true)
 				if reading_challenges.has(id) and reading_challenges[id].mode != challenge.mode:
 					issues.append("Conflicting reading challenges need separate alternatives.")
 				else:
@@ -133,12 +140,23 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			if issue.code in ["missing_card", "cyclic_argument", "argument_depth"]:
 				issues.append("Incomplete endorsement: " + issue.code)
 		var endorsed = endorsed_facts(presented, presented.root)
+		var own_cards: Array = []
 		for receipt in presented.evidence:
 			if receipt.id in presented.selected:
 				if receipt.id in endorsed:
 					_add(facts, owners, receipt, "case:" + str(key))
+					own_cards.append(receipt.id)
 				else:
 					quotations[receipt.id] = receipt.duplicate(true)
+		if with_cases:
+			var premise: Array = premise_targets(str(key), presented)
+			# A "suspicious" premise hedges, so the whole case counts at half weight (today
+			# it halves the cards only it brought: premise_shaping).
+			stored_cases.append({"key": "case:" + str(key), "presenter": "player", "day": int(presented.get("now", {}).get("day", -1)),
+				"cards": own_cards, "type": _root_type(presented), "target": str(premise[0]) if not premise.is_empty() else "",
+				"suspicious": _root_type(presented) == "suspicious" and not str(key).begins_with("direct:"), "challenges": own_challenges})
+	if with_cases:
+		input.listener.connections["cases"] = input.listener.connections.get("nominations", []).duplicate(true) + stored_cases
 	for entry in ledger.values():
 		var meta: Dictionary = entry.get("meta", {})
 		if meta.get("kind") != "defence" or meta.get("scope", {}).get("type") != "challenge":
@@ -575,6 +593,11 @@ static func _add_player_words(prepared: Dictionary, presentations: Dictionary, w
 ## own a shaped card; dropping them gives the "without" plan.
 static func premise_shaping(plan: Dictionary, presentations: Dictionary, withdrawn: Dictionary, insight: float) -> Dictionary:
 	if not plan.get("ready", false) or presentations.is_empty():
+		return {}
+	# The connections model weighs each presentation as a case of its own cards, so people
+	# it didn't touch don't move and nothing needs damping; a "suspicious" premise halves
+	# the case there (workshop/connections.gd).
+	if plan.get("prepared", {}).get("listener", {}).has("connections"):
 		return {}
 	var named_by: Dictionary = {}  # "case:<key>" -> alignment targets ([] for a non-shaping premise)
 	for key in presentations:

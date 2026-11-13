@@ -14,6 +14,7 @@ const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Recency = preload("res://sim/recency.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 static var _mind_script
 
@@ -1402,7 +1403,7 @@ static func _reason_cards(raw: Dictionary) -> Array:
 ## listener. `whys` are the reasons actually spoken (matched against n's case against t);
 ## `extra` are cards cited outright (a relayed reading). A hinted, unshared reason cites
 ## nothing. Attention only: nobody's weight on a card changes.
-static func recall_cited(w, n, t_id: String, whys: Array, extra: Array = []) -> void:
+static func recall_cited(w, n, t_id: String, whys: Array, extra: Array = []) -> Array:
 	var ids: Array = extra.duplicate()
 	var spoken: Array = whys.filter(func(x): return str(x) != "")
 	if not spoken.is_empty():
@@ -1412,11 +1413,29 @@ static func recall_cited(w, n, t_id: String, whys: Array, extra: Array = []) -> 
 					if id not in ids:
 						ids.append(id)
 	if ids.is_empty():
-		return
+		return ids
 	for l in w.living():
 		var mind = l.shadow if l.is_evil() and l.shadow != null else l
 		Recency.refresh_cards(w, mind, ids)
 	w.dlog.think(n.id, "recall_cited", "Bringing %d card(s) back to the town's mind about %s." % [ids.size(), t_id], {"cards": ids})
+	return ids
+
+## The connections model (workshop/connections.gd; off by default): the cards a nominator
+## cites are a case put to everyone who hears the nomination. Each listener keeps it, and
+## weighs those cards together at its trust in the nominator, fading by the day. Nothing
+## is kept with the model off.
+static func remember_nomination(w, n, t_id: String, ids: Array) -> void:
+	if not Connections.enabled or ids.is_empty():
+		return
+	var case_data: Dictionary = {"key": "nomination:%s:%s" % [n.id, t_id], "presenter": n.id, "target": t_id, "type": "evil", "cards": ids.duplicate(), "day": int(w.day)}
+	for l in w.living():
+		if l.id == n.id:
+			continue
+		var mind = l.shadow if l.is_evil() and l.shadow != null else l
+		if not mind.workshop_state.has("connections"):
+			mind.workshop_state["connections"] = {}
+		var memory: Dictionary = mind.workshop_state.connections
+		memory["nominations"] = Connections.stored_with(memory.get("nominations", []), case_data.duplicate(true), int(w.day))
 
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var mind = n
@@ -1506,7 +1525,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			lines.append(say_voiced(n, "nomination_held_reason", "And I have another reason I'm not ready to share yet."))
 			facts.append({"kind": "accusation", "subject": [t.id], "source": n.id, "hint": true,
 				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
-	recall_cited(w, n, t.id, cited_whys, cited_cards)
+	remember_nomination(w, n, t.id, recall_cited(w, n, t.id, cited_whys, cited_cards))
 	return {"lines": lines, "facts": facts}
 
 # ---------------------------------------------------------------- the defence
