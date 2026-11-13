@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-13 evening, Claude-Lantern: the Why report under connections, and what a refresh costs (`claude/connections-why`)
+## 2026-11-13 evening, Claude-Lantern: the Why report under connections, and what a refresh costs (PR #148, `claude/connections-why`)
 
 - **Base:** main `c889b3c`. **Status:** PR open, for Bailiff to check and merge. **Next actor:** Bailiff, then Michael (caching, step 6, is his call to start).
 - **From:** Bailiff's note on Michael's first playtest with the switch on (case 44542, 10 NPCs, day 1). Michael asked for the logging and profiling parts only; the "same cards under a second premise" question (item 3) is untouched.
@@ -58,11 +58,11 @@ Ground rules (from Nov 3, until Michael changes them):
 | `nominate odette #40` | 2.2 s | 5.4 s | 19 | 307 (2.8 s) | 307 (2.8 s) |
 | `press role` | 0.2 s | 1.9 s | 9 | 163 (1.5 s) | 147 (1.4 s) |
 
-- A refresh makes about 17 judgements, nearly all of them one card's own value, at 8 to 12 ms each. The time is setup for each set of cards, as step 1 found (`CaseEval`'s compile cache holds 32 and is emptied within one refresh).
+- A refresh makes about 17 judgements, nearly all of them one card's own value, at 9 to 11 ms each. The time is setup for each set of cards, as step 1 found (`CaseEval`'s compile cache holds 32 and is emptied within one refresh).
 - "Repeats" are judgements the same listener had already made that day with an identical answer. A cache kept per listener would skip them: all of the nomination's, nine in ten of `press role`'s, two thirds of the presentation's.
 - What a cache can't skip is a set seen for the first time. `gossip` is that case: 212 new sets (2.6 s), 76 of them core tests (1.2 s).
 - The nomination runs 19 refreshes: one per listener for the presented case, then one each when the nomination case is stored (#146's follow-up, 71c0482).
-- Outside the judgements, a refresh with the switch on carries about 35 ms of its own against today's 27 to 31 ms.
+- Outside the judgements, a refresh with the switch on carries 35 to 40 ms of its own against today's 27 to 31 ms.
 
 - **Tests:** `test_connections_why` (new, in the fast list): the report's "after" chance is the refresh's posterior and the parts add up to it; the weight's parts; switch off unchanged; the log flag; kept masks give the same answer; capture and the profiler change nothing.
 - **Docs:** `docs/DECISION_INSPECTOR.md` ("With the connections model on", and the replay tool's `--time` and `--profile`).
