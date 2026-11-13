@@ -2,8 +2,9 @@
 ## belief-model-direction, "Phase 6 spec"): the switch and the single-card values.
 ##
 ## - The switch is off by default, and with it off a refresh carries no trace of the model.
-## - With it on, every card a listener holds counts, including the ones its attention left
-##   out; the ones it rejects from its own knowledge don't.
+## - With it on, every card a listener holds counts once, alone or in a built-in pairing
+##   (test_connections_pairings), including the ones its attention left out; the ones it
+##   rejects from its own knowledge don't.
 ## - Each chance is the baseline (the standing view and the public record) plus every
 ##   card's own lean, in log-odds, then one common shift so the chances still sum to the
 ##   baseline's (the evil count). The "before" side stays today's.
@@ -119,12 +120,21 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 			if id not in rejected and id not in held:
 				held.append(id)
 		held.sort()
-		var keys: Array = c.items.map(func(it): return it.key)
+		# Every held card sits in exactly one item (a plain card or a built-in pairing).
+		var keys: Array = []
+		var twice := false
+		for it in c.items:
+			if it.kind == "day":
+				continue  # the Hexer's day connection re-reads cards that sit elsewhere
+			for id in it.cards:
+				if id in keys:
+					twice = true
+				keys.append(id)
 		keys.sort()
 		held_total += held.size()
-		check(keys == held, "%s %s: every held card is an item, and no rejected one (%d cards, %d rejected)" % [tag, n.id, held.size(), rejected.size()])
+		check(keys == held and not twice, "%s %s: every held card is in exactly one item, and no rejected one (%d cards, %d items, %d rejected)" % [tag, n.id, held.size(), c.items.size(), rejected.size()])
 		left_out_counted += reasoning.ignored.filter(func(id): return id in keys).size()
-		check(c.judgements == held.size() + 1, "%s %s: one judgement a card, plus the baseline" % [tag, n.id])
+		check(c.judgements <= 2 * c.items.size() + 1, "%s %s: at most two judgements an item, plus the baseline (%d)" % [tag, n.id, c.judgements])
 		# Each chance is the standing view plus every card's own lean.
 		var sums_ok := true
 		var sum_base := 0.0

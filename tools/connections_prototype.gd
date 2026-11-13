@@ -8,7 +8,7 @@
 ## writes to a mind. The game's own beliefs, votes and replies are untouched.
 ##
 ##   godot --headless --path . --script res://tools/connections_prototype.gd -- <log.jsonl>
-##         [--out results.json] [--declare auto|none|walker] [--listener a,b] [--quiet] [--check]
+##         [--out results.json] [--declare auto|none|walker|hexer] [--listener a,b] [--quiet] [--check]
 ##         [--explain listener:person:day] [--fade 0.5,0.7,0.85] [--cap N] [--movement-seed]
 ##
 ## --explain: at that listener's dawn, which cards carry the read-everything belief about
@@ -44,9 +44,13 @@
 ##   combining     baseline + solo values + the core's interaction + each case's scaled
 ##                 interaction, then one common shift so the chances sum to the baseline's
 ##                 (the evil count; 1 for the Demon).
-##   movement      a single-demon script counts as declared: every movement card forms one
-##                 always-on connection that never merges. A two-demon script with no
-##                 declaration is limited to the per-night units, with the Hexer factor off.
+##   movement      how it is read follows the town's demon mix (Connections.row). Walker
+##                 (declared, or a walker-only script): every movement card forms one
+##                 always-on connection that never merges. No declaration on a two-kind
+##                 script: the per-night units, with the Hexer factor off. Hexer: the
+##                 per-night units, plus the Hexer's day evidence as one always-on day
+##                 connection. --declare walker|hexer stands in for a declaration; none
+##                 forces the per-night reading.
 ##
 ## Moments evaluated: the first command of each day ("dawn", every living good NPC), each
 ## vote (every good voter, on the nominee) and each public presentation of a filed case
@@ -80,10 +84,12 @@ const CASE_FLOOR = 0.05
 const TRACE_MATCH = 0.1
 ## A cached value counts as changed beyond this (log-odds).
 const CACHE_TOLERANCE = 0.02
-const CONTEXT_KINDS = ["claim", "secret_claim", "context"]
-const NIGHT_KINDS = ["sighting", "alibi", "coverage", "evening"]
-const NIGHT_ROLES = ["lamplighter", "nightwatch"]
-const TRACE_KINDS = ["trace", "dropped"]
+const CONTEXT_KINDS = Connections.CONTEXT_KINDS
+const NIGHT_KINDS = Connections.NIGHT_KINDS
+const NIGHT_ROLES = Connections.NIGHT_ROLES
+const TRACE_KINDS = Connections.TRACE_KINDS
+## Item kinds that are always on and never merge: the movement and day connections.
+const ALWAYS_ON = Connections.ALWAYS_ON
 
 ## Each day a stored case keeps this share of its weight; the first is the main rate.
 var fades: Array = [0.5, 0.7, 0.85]
@@ -110,7 +116,7 @@ var judge_calls := 0
 func _init():
 	var args = OS.get_cmdline_user_args()
 	if args.is_empty():
-		print("usage: connections_prototype.gd <log.jsonl> [--out results.json] [--declare auto|none|walker] [--listener a,b] [--quiet]")
+		print("usage: connections_prototype.gd <log.jsonl> [--out results.json] [--declare auto|none|walker|hexer] [--listener a,b] [--quiet]")
 		quit(1)
 		return
 	var out_path := ""
@@ -261,35 +267,35 @@ func _make_state(id: String, view: Dictionary, case_data: Dictionary, listener: 
 	for c in view.cards:
 		by_id[c.id] = c
 	var held: Array = case_data.cards.filter(func(c): return by_id.has(c))
-	var declared: String = declare
-	if declared == "auto":
-		declared = "walker" if view.get("script_demons", ["demon"]).size() <= 1 else "none"
+	# How movement is read (Connections.row): the view's own demon mix, unless --declare
+	# stands in for a declaration. Then the tool's copy of the view carries it, so its
+	# judgements use that mix; the replayed game itself is untouched.
+	if declare in ["walker", "hexer"]:
+		view = view.duplicate()
+		view["declared_demon_type"] = declare
+	var declared: String = Connections.row(view) if declare != "none" else "none"
 	return {"ready": true, "id": id, "view": view, "template": template, "listener": listener, "by_id": by_id, "held": held,
 		"people": people, "others": others, "memo": {}, "declared": declared, "universe": Solver.universe(view),
 		"has_demon": not Solver.universe(view).is_empty() and Solver.universe(view)[0].has("demon")}
 
 ## The judge on a set of held cards: everyone's chance of being evil and the Demon.
-func _judge(st: Dictionary, ids: Array) -> Dictionary:
+func _judge(st: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var sorted: Array = ids.duplicate()
 	sorted.sort()
-	var key: String = ",".join(PackedStringArray(sorted))
+	var key: String = ("hex|" if hex else "") + ",".join(PackedStringArray(sorted))
 	if st.memo.has(key):
 		return st.memo[key]
 	judge_calls += 1
 	var was_capture: bool = CaseEval.capture_worlds
 	var kept: Array = CaseEval.captured
-	var was_hex: bool = LiveActivity.hex_factor_enabled
-	if st.declared == "none":
-		LiveActivity.hex_factor_enabled = false
 	CaseEval.capture_worlds = true
 	CaseEval.captured = []
-	var ev: Dictionary = Connections.judge(st.view, st.template, st.listener, sorted)
+	var ev: Dictionary = Connections.judge(st.view, st.template, st.listener, sorted, hex)
 	var worlds := PackedFloat64Array()
 	if not CaseEval.captured.is_empty():
 		worlds = CaseEval.captured[-1].worlds
 	CaseEval.capture_worlds = was_capture
 	CaseEval.captured = kept
-	LiveActivity.hex_factor_enabled = was_hex
 	var pe: Dictionary = {}
 	var pd: Dictionary = {}
 	for p in st.others:
@@ -321,9 +327,9 @@ static func _logit(p: float, clip: float) -> float:
 	return Connections.logit(p, clip)
 
 ## lean(S): per person, {"e": evil log-odds shift, "d": Demon log-odds shift} from baseline.
-func _lean(st: Dictionary, ids: Array) -> Dictionary:
+func _lean(st: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var base: Dictionary = _judge(st, [])
-	var j: Dictionary = _judge(st, ids)
+	var j: Dictionary = _judge(st, ids, hex)
 	var out: Dictionary = {}
 	for p in st.others:
 		out[p] = {"e": _logit(j.pe[p], CLIP) - _logit(base.pe[p], CLIP), "d": _logit(j.pd[p], DEMON_CLIP) - _logit(base.pd[p], DEMON_CLIP)}
@@ -354,6 +360,16 @@ func _value(st: Dictionary, ids: Array, ctx: Array) -> Dictionary:
 		_add(v, _lean(st, outside), -1.0)
 	return v
 
+## An item's value. The day connection (a Hexer declaration) is what the Hexer factor adds
+## on the day cards: the same set judged with the factor on and off (Connections.value).
+func _item_value(st: Dictionary, it: Dictionary) -> Dictionary:
+	if it.kind != "day":
+		return _value(st, it.ids, it.ctx)
+	var full: Array = _union(it.ids, it.ctx)
+	var v: Dictionary = _lean(st, full, true)
+	_add(v, _lean(st, full, false), -1.0)
+	return v
+
 static func _union(a: Array, b: Array) -> Array:
 	var out: Array = a.duplicate()
 	for x in b:
@@ -364,81 +380,13 @@ static func _union(a: Array, b: Array) -> Array:
 # ---------------------------------------------------------------- items
 
 static func _names(st: Dictionary, ids: Array) -> Array:
-	var out: Array = []
-	for id in ids:
-		var text: String = JSON.stringify(st.by_id[id])
-		for p in st.people:
-			if p not in out and text.contains("\"%s\"" % p):
-				out.append(p)
-	return out
+	return Connections._names(st.by_id, ids, st.people)
 
-## Every held card, grouped into the things that count once: plain cards and units.
-## Each item: {"key", "ids", "ctx", "kind"}; kind is card, unit or movement.
+## Every held card, grouped into the things that count once: plain cards, built-in pairings
+## and the always-on connections (Connections.items; the game uses the same grouping).
+## Each item: {"key", "ids", "ctx", "kind"}; kind is card, unit, movement or day.
 func _items(st: Dictionary) -> Array:
-	var by_id: Dictionary = st.by_id
-	var held: Array = st.held
-	var placed: Dictionary = {}
-	var items: Array = []
-	var context: Array = held.filter(func(id): return by_id[id].kind in CONTEXT_KINDS)
-	var explain := func(ids: Array, kinds: Array) -> Array:
-		var who: Array = _names(st, ids)
-		return context.filter(func(c): return by_id[c].kind in kinds and (by_id[c].kind == "context" or str(by_id[c].get("subject", by_id[c].get("source", ""))) in who or str(by_id[c].get("source", "")) in who))
-	var is_night := func(c: Dictionary) -> bool:
-		return (c.kind in NIGHT_KINDS or (c.kind == "report" and str(c.get("role", "")) in NIGHT_ROLES)) and int(c.get("night", -1)) >= 0
-	if st.declared == "walker":
-		# Declared: the full movement model. One always-on connection that never merges.
-		var mv: Array = held.filter(func(id): return is_night.call(by_id[id]) or by_id[id].kind in TRACE_KINDS)
-		if not mv.is_empty():
-			for id in mv:
-				placed[id] = true
-			items.append({"key": "movement", "ids": mv, "ctx": explain.call(mv, CONTEXT_KINDS), "kind": "movement"})
-	else:
-		var nights: Dictionary = {}
-		for id in held:
-			if is_night.call(by_id[id]):
-				var k: int = int(by_id[id].night)
-				if not nights.has(k):
-					nights[k] = []
-				nights[k].append(id)
-		var night_keys: Array = nights.keys()
-		night_keys.sort()
-		for k in night_keys:
-			for id in nights[k]:
-				placed[id] = true
-			items.append({"key": "night:%d" % k, "ids": nights[k], "ctx": explain.call(nights[k], ["claim", "secret_claim"]), "kind": "unit"})
-		for id in held:
-			if by_id[id].kind in TRACE_KINDS and not placed.has(id):
-				placed[id] = true
-				items.append({"key": "trace:" + id, "ids": [id], "ctx": context.filter(func(c): return by_id[c].kind == "context"), "kind": "unit"})
-	# An Augur reading with that day's sightings.
-	for id in held:
-		var c: Dictionary = by_id[id]
-		if c.kind == "report" and str(c.get("role", "")) == "augur" and not placed.has(id):
-			var day: int = int(c.get("observed_at", {}).get("day", -9))
-			var same: Array = held.filter(func(x): return by_id[x].kind == "location" and int(by_id[x].get("day", -1)) == day and not placed.has(x))
-			if same.is_empty():
-				continue
-			var ids: Array = [id] + same
-			for x in ids:
-				placed[x] = true
-			items.append({"key": "augur:%d:%s" % [day, c.source], "ids": ids, "ctx": explain.call(ids, ["claim"]), "kind": "unit"})
-	# A Psychologist reading with its statements (those not already in a movement unit).
-	for id in held:
-		var c: Dictionary = by_id[id]
-		if c.kind == "report" and str(c.get("role", "")) == "psychologist" and not placed.has(id):
-			var ids: Array = [id]
-			for s in c.get("data", {}).get("statements", []):
-				var sid: String = str(s.get("fact_id", ""))
-				if sid in held and not placed.has(sid) and by_id[sid].kind not in CONTEXT_KINDS:
-					ids.append(sid)
-			if ids.size() > 1:
-				for x in ids:
-					placed[x] = true
-				items.append({"key": "psychologist:" + id, "ids": ids, "ctx": [], "kind": "unit"})
-	for id in held:
-		if not placed.has(id):
-			items.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
-	return items
+	return Connections.items(st.by_id, st.held, st.people, st.declared)
 
 ## The item keys that seed the listener's core: its own readings. With --movement-seed, a
 ## Night Watch's or Lamplighter's own readings seed it too, together with the unit (or the
@@ -473,7 +421,7 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 	var by_key: Dictionary = {}
 	for it in items:
 		by_key[it.key] = it
-		values[it.key] = _value(st, it.ids, it.ctx)
+		values[it.key] = _item_value(st, it)
 		_add(solo_sum, values[it.key])
 	var seed_keys: Array = _seed(st, items)
 	var seed: Array = []
@@ -484,7 +432,7 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 	var interaction: Dictionary = {}
 	if not seed.is_empty():
 		for it in items:
-			if it.kind == "movement" or it.key in seed_keys:
+			if it.kind in ALWAYS_ON or it.key in seed_keys:
 				continue
 			var joint: Dictionary = _lean(st, _union(_union(seed, it.ids), it.ctx))
 			_add(joint, seed_lean, -1.0)
@@ -495,6 +443,8 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		_cache_check(st, items, values, day, (t_solo - t0) / 1000.0, judge_calls - calls0)
 	var item_of: Dictionary = {}
 	for it in items:
+		if it.kind == "day":
+			continue  # its cards belong to their night or Augur day; it only adds the Hexer factor
 		for id in it.ids:
 			item_of[id] = it.key
 	var out: Dictionary = {"held": st.held.size(), "items": items.size(), "seed": seed_keys.size(), "declared": st.declared, "fade": fade, "thetas": {},
@@ -541,7 +491,7 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 				if not item_of.has(id):
 					continue
 				var key: String = item_of[id]
-				if by_key[key].kind == "movement":
+				if by_key[key].kind in ALWAYS_ON:
 					if id not in extra_ids:
 						extra_ids.append(id)
 				elif key not in keys:
@@ -572,7 +522,7 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 				entry["max_shift"] = w * _max_e(alone)
 			sets.append(entry)
 		for it in items:
-			if it.kind == "movement":
+			if it.kind in ALWAYS_ON:
 				largest = maxi(largest, it.ids.size())
 		var probs: Dictionary = _normalise(st, base, total)
 		out.thetas[str(theta)] = {"pe": probs.pe, "pd": probs.pd, "core": members.keys(), "core_cards": _size(core_keys, by_key), "largest": largest, "cases": sets}
@@ -687,7 +637,7 @@ func _explain(g, st: Dictionary, person: String) -> void:
 			var c: Dictionary = st.by_id[id]
 			parts.append("%s%s by %s%s: %s" % [c.kind, ("/" + str(c.role)) if c.has("role") else "", c.get("source", "?"),
 				(" (night %d)" % int(c.night)) if c.has("night") else "", str(c.get("text", c.get("data", ""))).substr(0, 110)])
-		var where: String = "seed" if it.key in seed else ("core" if it.key in core else ("movement" if it.kind == "movement" else "alone"))
+		var where: String = "seed" if it.key in seed else ("core" if it.key in core else (it.kind if it.kind in ALWAYS_ON else "alone"))
 		return "[%s] %s%s" % [where, " || ".join(parts), (" (+%d more)" % (it.ids.size() - 3)) if it.ids.size() > 3 else ""]
 	print("\nEXPLAIN %s on %s, day %d: no cards %.0f%%, every held card judged together %.0f%%, prototype %.0f%%" % [st.id, person, int(g.w.day), 100.0 * base, 100.0 * full, 100.0 * float(b.thetas["0.4"].pe[person])])
 	var rows: Array = []
