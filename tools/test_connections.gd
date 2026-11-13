@@ -6,8 +6,9 @@
 ##   (test_connections_pairings), including the ones its attention left out; the ones it
 ##   rejects from its own knowledge don't.
 ## - Each chance is the baseline (the standing view and the public record) plus every
-##   card's own lean, in log-odds, then one common shift so the chances still sum to the
-##   baseline's (the evil count). The "before" side stays today's.
+##   card's own lean and what the core adds (test_connections_core), in log-odds, then one
+##   common shift so the chances still sum to the baseline's (the evil count). The "before"
+##   side stays today's.
 ## - Headline reading (a low-Insight listener taking a strong reading at its word) is off.
 ## - Turning the switch back off gives today's refresh again, exactly.
 extends SceneTree
@@ -134,8 +135,8 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 		held_total += held.size()
 		check(keys == held and not twice, "%s %s: every held card is in exactly one item, and no rejected one (%d cards, %d items, %d rejected)" % [tag, n.id, held.size(), c.items.size(), rejected.size()])
 		left_out_counted += reasoning.ignored.filter(func(id): return id in keys).size()
-		check(c.judgements <= 2 * c.items.size() + 1, "%s %s: at most two judgements an item, plus the baseline (%d)" % [tag, n.id, c.judgements])
-		# Each chance is the standing view plus every card's own lean.
+		check(c.judgements <= 3 * c.items.size() + 6, "%s %s: at most two judgements an item and one more to test it against the core, plus the baseline and the core's own (%d for %d items)" % [tag, n.id, c.judgements, c.items.size()])
+		# Each chance is the standing view plus every card's own lean and the core's.
 		var sums_ok := true
 		var sum_base := 0.0
 		var sum_post := 0.0
@@ -143,11 +144,13 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 		var effect_ok := true
 		var plain_ok := true
 		for id in c.posterior:
-			var total: float = 0.0
+			var total: float = float(c.core.lean.get(id, 0.0))
 			for it in c.items:
 				total += float(it.lean.get(id, 0.0))
 			var settled: bool = c.baseline[id] <= Connections.FIXED or c.baseline[id] >= 1.0 - Connections.FIXED
 			var want: float = c.baseline[id] if settled else Connections.chance(Connections.logit(c.baseline[id]) + total + float(c.shift))
+			if c.core.proved.has(id):
+				want = float(c.core.proved[id])
 			sum_base += float(c.baseline[id])
 			sum_post += float(c.posterior[id])
 			if absf(want - float(c.posterior[id])) > 1e-9:
@@ -167,7 +170,7 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 			# (The public curse pins its executed Revenant, whose chance is 1 before and after.)
 			if float(e.prior) < 0.999 and absf(float(e.alignment_signal) - Tuning.Workshop.JURY_ALIGNMENT_COEFF * CaseEval.shift(float(e.prior), float(e.posterior))) > 1e-9:
 				plain_ok = false
-		check(sums_ok, "%s %s: each chance is the baseline plus every card's lean, plus the common shift" % [tag, n.id])
+		check(sums_ok, "%s %s: each chance is the baseline plus every card's lean and the core's, plus the common shift" % [tag, n.id])
 		check(absf(sum_post - sum_base) < 1e-6, "%s %s: the chances still sum to the baseline's (%.4f; the town has %d evil)" % [tag, n.id, sum_post, int(g.w.by_id.values().filter(func(x): return x.is_evil()).size())])
 		check(prior_ok, "%s %s: the before side is today's standing view" % [tag, n.id])
 		check(effect_ok, "%s %s: the refresh's effects carry the model's chances" % [tag, n.id])

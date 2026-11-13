@@ -935,7 +935,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# chances it gives replace this pass's. Attention still decides what can be cited.
 	var connections: Dictionary = {}
 	if refresh and Connections.enabled:
-		connections = Connections.refresh(view, value, _eval_listener(baseline, baseline.knowledge.get("own_reports", [])), held.map(func(c): return c.id))
+		connections = Connections.refresh(view, value, _eval_listener(baseline, baseline.knowledge.get("own_reports", [])), held.map(func(c): return c.id), baseline.get("connections", {}))
 		ev = Connections.overlay(ev, connections)
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
@@ -1113,7 +1113,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
 	if not connections.is_empty():
 		out["connections"] = connections
-		out.rule = "Connections: every held card counts at the value it has alone."
+		out.rule = "Connections: every held card counts at the value it has alone; the listener's own knowledge is weighed together with what bears on it."
 	return out
 
 ## One claim (the headline or an intermediate) judged on the attended evidence it cites.

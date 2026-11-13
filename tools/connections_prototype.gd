@@ -9,7 +9,8 @@
 ##
 ##   godot --headless --path . --script res://tools/connections_prototype.gd -- <log.jsonl>
 ##         [--out results.json] [--declare auto|none|walker|hexer] [--listener a,b] [--quiet] [--check]
-##         [--explain listener:person:day] [--fade 0.5,0.7,0.85] [--cap N] [--movement-seed]
+##         [--explain listener:person:day] [--fade 0.5,0.7,0.85] [--cap N]
+##         [--no-wrong-sightings] [--no-proofs] [--legacy-seed [--movement-seed]]
 ##
 ## --explain: at that listener's dawn, which cards carry the read-everything belief about
 ## that person (what it loses without each, and the smallest build-up that reaches it), and
@@ -28,9 +29,18 @@
 ##                 sightings; a Psychologist reading with its statements; a trace with
 ##                 profile context. A unit's context (claims, confessed secrets, profile
 ##                 cards) explains it without joining sets together.
-##   core          the listener's own readings (the seed) judged together with every card or
+##   core          the listener's own knowledge (the seed) judged together with every card or
 ##                 unit whose interaction with the seed reaches the threshold. Rebuilt on
 ##                 the first moment of each day; a newly held card is tested on arrival.
+##                 The seed, the test and the membership rule are the game's
+##                 (Connections.firsthand, seed_keys, candidates, membership); here they run
+##                 at several thresholds at once. The seed is every item holding one of the
+##                 listener's own readings, or a sighting of it on a night it knows it was
+##                 home (--no-wrong-sightings leaves those out). What the firsthand cards
+##                 prove by themselves stays proved (--no-proofs: softened to the clip, as
+##                 the first prototype did). --legacy-seed is the first prototype's seed:
+##                 own readings that sit alone, plus with --movement-seed the night or
+##                 movement connection holding an own Night Watch or Lamplighter report.
 ##   stored cases  a presented case (the player's, or an NPC nominator's cited cards) is a
 ##                 connection: judged together, merged with the core when they share a card,
 ##                 and scaled by trust in the presenter. An old case fades: each day it keeps
@@ -95,8 +105,12 @@ const ALWAYS_ON = Connections.ALWAYS_ON
 var fades: Array = [0.5, 0.7, 0.85]
 ## 0: no cap on stored cases (they fade). N: the old rule, at most N per listener.
 var cap := 0
-## A Night Watch's or Lamplighter's own readings seed its core (with the unit they sit in).
+## --legacy-seed: the first prototype's seed (see the header). With it, --movement-seed: a
+## Night Watch's or Lamplighter's own readings seed its core (with the unit they sit in).
+var legacy_seed := false
 var movement_seed := false
+## --no-proofs: what the firsthand cards prove alone can still be argued away.
+var proofs := true
 ## Per listener: the last refresh's per-item values and what they depended on.
 var cache_seen: Dictionary = {}
 var now_seq := 0
@@ -137,6 +151,12 @@ func _init():
 				cap = int(args[i + 1]); i += 1
 			"--movement-seed":
 				movement_seed = true
+			"--legacy-seed":
+				legacy_seed = true
+			"--no-wrong-sightings":
+				Connections.seed_wrong_sightings = false
+			"--no-proofs":
+				proofs = false
 			"--check":
 				check = true
 			"--explain":
@@ -146,7 +166,8 @@ func _init():
 	_run(events)
 	if out_path != "":
 		var f = FileAccess.open(out_path, FileAccess.WRITE)
-		f.store_string(JSON.stringify({"log": args[0], "thetas": THETAS, "declare": declare, "fades": fades, "cap": cap, "movement_seed": movement_seed, "records": records}))
+		f.store_string(JSON.stringify({"log": args[0], "thetas": THETAS, "declare": declare, "fades": fades, "cap": cap, "movement_seed": movement_seed, "legacy_seed": legacy_seed,
+			"wrong_sightings": Connections.seed_wrong_sightings, "proofs": proofs, "records": records}))
 		f.close()
 		print("wrote %d records to %s (%d judge calls)" % [records.size(), out_path, judge_calls])
 	quit()
@@ -391,10 +412,11 @@ static func _names(st: Dictionary, ids: Array) -> Array:
 func _items(st: Dictionary) -> Array:
 	return Connections.items(st.by_id, st.held, st.people, st.declared)
 
-## The item keys that seed the listener's core: its own readings. With --movement-seed, a
-## Night Watch's or Lamplighter's own readings seed it too, together with the unit (or the
-## movement connection) they sit in.
+## The item keys that seed the listener's core: every item holding a card it knows
+## firsthand (Connections.seed_keys; the game's rule). --legacy-seed: the first prototype's.
 func _seed(st: Dictionary, items: Array) -> Array:
+	if not legacy_seed:
+		return Connections.seed_keys(items, Connections.firsthand(st.by_id, st.held, st.listener))
 	var out: Array = []
 	for it in items:
 		if it.kind == "card":
@@ -427,20 +449,28 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		values[it.key] = _item_value(st, it)
 		_add(solo_sum, values[it.key])
 	var seed_keys: Array = _seed(st, items)
-	var seed: Array = []
-	for key in seed_keys:
-		seed = _union(_union(seed, by_key[key].ids), by_key[key].ctx)
-	var seed_lean: Dictionary = _lean(st, seed) if not seed.is_empty() else _zero(st)
-	# Interaction of each candidate with the seed (independent of order).
+	var firsthand: Array = seed_keys.duplicate() if legacy_seed else Connections.firsthand(st.by_id, st.held, st.listener)
+	var seed: Dictionary = Connections.pool(seed_keys.map(func(k): return by_key[k]))
+	var seed_value: Dictionary = _value(st, seed.ids, seed.ctx) if not seed.ids.is_empty() else _zero(st)
+	# Interaction of each candidate with the seed (independent of order): what the two say
+	# together, less what each says apart (Connections.core).
 	var interaction: Dictionary = {}
-	if not seed.is_empty():
+	if not seed.ids.is_empty():
 		for it in items:
 			if it.kind in ALWAYS_ON or it.key in seed_keys:
 				continue
-			var joint: Dictionary = _lean(st, _union(_union(seed, it.ids), it.ctx))
-			_add(joint, seed_lean, -1.0)
-			_add(joint, _lean(st, _union(it.ids, it.ctx)), -1.0)
+			var joint: Dictionary = _value(st, _union(seed.ids, it.ids), _union(seed.ctx, it.ctx))
+			_add(joint, seed_value, -1.0)
+			_add(joint, values[it.key], -1.0)
 			interaction[it.key] = _max_e(joint)
+	# What the firsthand cards prove by themselves stays proved (Connections.core).
+	var proved: Dictionary = {}
+	if proofs and not legacy_seed and not seed_keys.is_empty():
+		var own: Dictionary = _judge(st, firsthand)
+		for p in st.others:
+			var settled: bool = float(base.pe[p]) <= FIXED or float(base.pe[p]) >= 1.0 - FIXED
+			if not settled and (float(own.pe[p]) <= FIXED or float(own.pe[p]) >= 1.0 - FIXED):
+				proved[p] = float(own.pe[p])
 	var t_solo: int = Time.get_ticks_usec()
 	if remember:
 		_cache_check(st, items, values, day, (t_solo - t0) / 1000.0, judge_calls - calls0)
@@ -450,32 +480,27 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 			continue  # its cards belong to their night or Augur day; it only adds the Hexer factor
 		for id in it.ids:
 			item_of[id] = it.key
-	var out: Dictionary = {"held": st.held.size(), "items": items.size(), "seed": seed_keys.size(), "declared": st.declared, "fade": fade, "thetas": {},
-		"interactions": interaction.values()}
+	var out: Dictionary = {"held": st.held.size(), "items": items.size(), "seed": seed_keys.size(), "seed_keys": seed_keys, "firsthand": firsthand,
+		"proved": proved, "declared": st.declared, "fade": fade, "thetas": {}, "interactions": interaction.values(), "interaction": interaction}
 	for theta in THETAS:
-		var mem: Dictionary = _core_memory(st.id, theta) if remember else {"day": -99, "members": {}, "known": {}, "seed": []}
+		var mem: Dictionary = _core_memory(st.id, theta) if remember else {}
 		var members: Dictionary = {}
 		if fixed.has(str(theta)):
 			for key in fixed[str(theta)]:
 				if by_key.has(key) and key not in seed_keys:
 					members[key] = true
-		elif mem.day != day or mem.get("seed", []) != seed_keys:
-			for key in interaction:
-				if interaction[key] >= theta:
-					members[key] = true
 		else:
-			# Within a day membership only grows: a newly held card is tested on arrival.
-			for key in mem.members:
-				if by_key.has(key):
-					members[key] = true
-			for key in interaction:
-				if not members.has(key) and interaction[key] >= theta and by_key[key].ids.any(func(id): return not mem.known.has(id)):
-					members[key] = true
+			# The game's rule: rebuilt on a new day or a changed seed; otherwise the members
+			# stay and only an item with a newly held card is tested.
+			var plan: Dictionary = Connections.candidates(items, seed_keys, firsthand, mem, day)
+			var tested: Dictionary = {}
+			for key in plan.test:
+				if interaction.has(key):
+					tested[key] = interaction[key]
+			for key in Connections.membership(items, plan.kept, tested, theta):
+				members[key] = true
 		if remember:
-			var known: Dictionary = {}
-			for id in st.held:
-				known[id] = true
-			cores[st.id][theta] = {"day": day, "members": members.duplicate(), "known": known, "seed": seed_keys.duplicate()}
+			cores[st.id][theta] = Connections.core_memory(day, seed_keys, firsthand, members.keys(), st.held)
 		# The joint sets: the core, then each stored case (merged where they share a card).
 		var total: Dictionary = solo_sum.duplicate(true)
 		var core_keys: Array = seed_keys + members.keys()
@@ -527,7 +552,7 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		for it in items:
 			if it.kind in ALWAYS_ON:
 				largest = maxi(largest, it.ids.size())
-		var probs: Dictionary = _normalise(st, base, total)
+		var probs: Dictionary = _normalise(st, base, total, proved)
 		out.thetas[str(theta)] = {"pe": probs.pe, "pd": probs.pd, "core": members.keys(), "core_cards": _size(core_keys, by_key), "largest": largest, "cases": sets}
 	out["ms"] = (Time.get_ticks_usec() - t0) / 1000.0
 	out["ms_joint"] = (Time.get_ticks_usec() - t_solo) / 1000.0
@@ -538,7 +563,7 @@ func _core_memory(id: String, theta: float) -> Dictionary:
 	if not cores.has(id):
 		cores[id] = {}
 	if not cores[id].has(theta):
-		cores[id][theta] = {"day": -99, "members": {}, "known": {}, "seed": []}
+		cores[id][theta] = {}
 	return cores[id][theta]
 
 static func _size(keys: Array, by_key: Dictionary) -> int:
@@ -571,25 +596,30 @@ func _presenter_trust(st: Dictionary, presenter: String) -> float:
 	return clampf(float(l.get("npc_trust", {}).get(presenter, 0.5)), 0.0, 1.0)
 
 ## One common shift per track so the chances sum to the baseline's own sum.
-func _normalise(st: Dictionary, base: Dictionary, total: Dictionary) -> Dictionary:
+## proved: the people the listener's firsthand cards settle (their chance of being evil);
+## they keep it, and the others share what is left of the sum (Connections.refresh).
+func _normalise(st: Dictionary, base: Dictionary, total: Dictionary, proved: Dictionary = {}) -> Dictionary:
 	var pe: Dictionary = {}
 	var pd: Dictionary = {}
 	for track in ["e", "d"]:
 		var b: Dictionary = base.pe if track == "e" else base.pd
 		var clip: float = CLIP if track == "e" else DEMON_CLIP
 		var fix: float = FIXED if track == "e" else DEMON_CLIP * 0.5
-		var free: Array = st.others.filter(func(p): return float(b[p]) > fix and float(b[p]) < 1.0 - fix)
+		var pinned: Dictionary = proved if track == "e" else {}
+		var open: Array = st.others.filter(func(p): return float(b[p]) > fix and float(b[p]) < 1.0 - fix)
+		var free: Array = open.filter(func(p): return not pinned.has(p))
 		var target := 0.0
 		var scores: Dictionary = {}
+		for p in open:
+			target += float(b[p]) - float(pinned.get(p, 0.0))
 		for p in free:
-			target += float(b[p])
 			scores[p] = _logit(float(b[p]), clip) + float(total[p][track])
-		var shift: float = Connections.common_shift(free.map(func(p): return scores[p]), target)
+		var shift: float = Connections.common_shift(free.map(func(p): return scores[p]), maxf(target, 0.0))
 		var res: Dictionary = pe if track == "e" else pd
 		if track == "d" and not st.has_demon:
 			continue
 		for p in st.others:
-			res[p] = (1.0 / (1.0 + exp(-(scores[p] + shift)))) if p in free else float(b[p])
+			res[p] = (1.0 / (1.0 + exp(-(scores[p] + shift)))) if p in free else float(pinned.get(p, b[p]))
 	# The worlds carry a Demon identity only when some card needs one.
 	for p in pd:
 		pd[p] = minf(pd[p], pe[p])

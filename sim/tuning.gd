@@ -887,6 +887,10 @@ class Workshop:
 	## A person the listener's standing view already puts this close to 0 or 1 is settled
 	## (the public record, the listener's own knowledge): cards don't move them.
 	const CONNECTIONS_FIXED = 0.005
+	## The core (an NPC's own readings and what it weighs together with them): a card or
+	## pairing joins when it is worth this much more, in log-odds for any one person, next
+	## to the NPC's own readings than apart from them.
+	const CONNECTIONS_CORE_JOIN = 0.4
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4
