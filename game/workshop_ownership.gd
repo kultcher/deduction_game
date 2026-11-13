@@ -7,6 +7,7 @@ const Profiler = preload("res://workshop/profiler.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 ## One shared belief refresh: prepare the plan ("before"), then re-prepare with its source
 ## doubt if that changed and apply it ("after"). One call since meeting plan M2's cleanup.
@@ -97,6 +98,10 @@ static func _refresh(g, n, phase: String) -> void:
 		# Premises pass step 1: remembered presentations shape their own cards' effect.
 		var shaping: Dictionary = Shared.premise_shaping(plan, state.get("presentations", {}), state.get("withdrawn", {}), float(plan.prepared.listener.get("insight", 0.5)))
 		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, shaping]
+		if Connections.enabled:
+			# A result of the other model must not be reused if the switch is flipped mid-run
+			# (tests and tools do that). With the switch off the inputs are as they always were.
+			inputs.append("connections")
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
@@ -199,11 +204,15 @@ static func _refresh(g, n, phase: String) -> void:
 		state.reasons_pending = true
 		g._workshop_reason_ctx[key] = {"rctx": reason_ctx, "chubs": chubs, "view": plan.prepared.view}
 		state.active = true
-		g.w.dlog.trace_event("workshop_ownership", n.id, "", {"owned": state.owned, "facts": state.facts,
+		var owned_trace: Dictionary = {"owned": state.owned, "facts": state.facts,
 			"owners": state.owners, "requested": state.requested, "applied": state.applied,
 			"reasoning": state.reasoning, "reasoning_mode": plan.prepared.listener.reasoning_mode,
 			"confidence_mode": plan.prepared.listener.confidence_mode,
-			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}
+		# The connections model (off by default): what each held card added, for the why tool.
+		if proposal.has("connections"):
+			owned_trace["connections"] = Connections.summary(proposal.connections)
+		g.w.dlog.trace_event("workshop_ownership", n.id, "", owned_trace, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
 
 ## Attribute this mind's reasons from its latest refresh, once (purge 2a, deferred).
 static func reasons_for(g, n) -> void:
