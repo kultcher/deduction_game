@@ -14,6 +14,16 @@ const MODES = ["misled", "lying", "unlikely", "impaired", "delusional"]
 ## taken as true (strength = their credibility alone). "graded": the clash only gates; the
 ## graded world-model test decides. Dev switch for tools/measure_evidence.gd; "contest" in play.
 static var clash_rule: String = "contest"
+## How the graded test reads a reading whose content the report table can't check (the
+## role-content and movement-checked gifts in CaseEval.ROLE_CONTENT_FIXED, but not the
+## Seer, which has its own holds table). "roles": its holds mask also asks the role
+## constraints whether the reading's content holds in each world, whoever told it (the
+## reader's honesty is weighed separately, as r). "roles_source": the same, but the reader
+## must also be good with their claimed role, which counts the reader twice (the first
+## #142 build; harness only). "table": the report table alone, which holds everywhere for
+## these gifts, so q = f = 1 and the test can never see the rest contradict them. Dev
+## switch for tools/measure_evidence.gd; "roles" in play.
+static var graded_rule: String = "roles"
 const CaseEval = preload("res://workshop/case_eval.gd")
 
 static func valid(view: Dictionary, id: String, value) -> bool:

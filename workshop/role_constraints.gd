@@ -255,6 +255,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 			flags |= (1 << 1)
 		if has_relay:
 			flags |= (1 << 2)
+		if bool(card.get("content_only", false)):
+			flags |= (1 << 16) # RoleConstraints.FlagContentOnly
 
 		var src_str: String = str(card.get("source", ""))
 		var src_idx: int = ids.find(src_str)

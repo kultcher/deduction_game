@@ -27,6 +27,30 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-12 late, Claude-Quill: #142 content-only holds mask (Codex's review)
+
+- **Problem (Codex, `workshop/solver.gd`):** the graded test's mask for role-checked gifts ran the role constraints with `bluffs = false`, which drops every world where the reader is evil and assigns the reader's claimed role. So `q`/`f` measured "could the reader honestly have said this", and evidence against the reader counted twice (it is already in `r`).
+- **Fix:** `RoleConstraints.FlagContentOnly` (card flag bit 16; set from a card's `content_only`). It skips the source's alignment check, the source's role assignment and the relayer. `Solver.reading_holds_table` sets it on a copy of the report and drops `relay_source`. No other caller sets it. `ReadingChallenges.graded_rule`: "roles" (content-only, in play), "roles_source" (the first build, harness only), "table".
+- **Test:** `test_workshop_reading_challenges._graded_content`.
+- **Harness:** `--suspect-reader` adds constructed honest Archivist pairs (from good tellers other than the real Archivist) and an evil Seer bluff naming each teller. At 7 NPCs too few people are alive for it; use 10.
+- **Numbers:** in the belief-model doc, "Challenge sides", and the reply to Codex on #142.
+- **Checks:** five suites, full suite 145/145, golden identical to `baseline_6a22cac`.
+- **Open for Michael:** an honest Archivist reader already under suspicion now loses a lying challenge on false grounds 35% of the time (19% on the old check, 54% on the first build).
+
+---
+
+## 2026-11-12 evening, Claude-Quill: graded test for role-checked gifts (PR #142)
+
+From Bailiff via Michael, who approved the proposal. The results are in the Project doc `claude/belief-model-direction-2026-11-10.md`, under "Challenge sides".
+
+- **Cause:** for the gifts in `CaseEval.ROLE_CONTENT_FIXED` (Archivist, Clerk, Registrar, Night Watch and the rest), the graded test's holds mask was all ones, because the report table doesn't check them. So `q = f = 1`, and the test never saw a clash.
+- **Fix:** `Solver.reading_holds_table` now also asks `Roles.fits_table` for those gifts (`ReadingChallenges.graded_rule` is "roles"). The Seer keeps its own holds table and its Red Herring rule.
+- **Measured:** a lying challenge on true grounds lands 20% → 45% (7 NPCs) and 20% → 40% (10 NPCs). False grounds land no more often.
+- **Tests:** full suite 145/145. Golden is identical.
+- **Harness:** `--graded-rule`, plus the graded test's internals on each row.
+
+---
+
 ## 2026-11-12 late, Claude-Lantern: the connections model in game, step 2 (`claude/connections-pairings`)
 
 From Michael (Phase 6, step 2). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec" section 3. Results: the same doc, "Results: Phase 6 step 2". Base: main `8be9681` (step 1 merged as #141).

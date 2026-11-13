@@ -1704,7 +1704,7 @@ static var question_cache: Dictionary = {}
 static func reading_holds_table(view: Dictionary, report: Dictionary, at = null) -> PackedByteArray:
 	var worlds: Array = universe(view)
 	var epoch = view.get("alignment_epoch", "") if at == null else at
-	var input = [_universe_key(view), view.people, view.get("timeline", {}), view.get("live_activity", false), "holds", report, epoch]
+	var input = [_universe_key(view), view.people, view.get("timeline", {}), view.get("live_activity", false), "holds", report, epoch, preload("res://workshop/reading_challenges.gd").graded_rule]
 	var key = hash(input)
 	if question_cache.has(key) and question_cache[key].input == input:
 		return question_cache[key].table
@@ -1720,6 +1720,21 @@ static func reading_holds_table(view: Dictionary, report: Dictionary, at = null)
 			out[i] = 1 if in_pair == yes else 0
 	else:
 		out = report_table(view, report, [], [], [], true)
+		# Role-content gifts are checked in the role constraints, not the report table, so
+		# the table alone holds everywhere (ReadingChallenges.graded_rule "roles").
+		# Content only: whether what the reading says holds in each world, whoever told it.
+		# The graded test weighs the reader's honesty separately (r), so the source's
+		# alignment, claimed role and relayer stay out of the mask (Codex, #142).
+		var rule: String = preload("res://workshop/reading_challenges.gd").graded_rule
+		if rule in ["roles", "roles_source"] and str(report.get("role", "")) in preload("res://workshop/case_eval.gd").ROLE_CONTENT_FIXED:
+			var content: Dictionary = report.duplicate(true)
+			if rule == "roles":
+				content["content_only"] = true
+				content.erase("relay_source")
+			var fits: PackedByteArray = Roles.fits_table(view, worlds, [content], {}, {}, false, SolverBackend.get_universe_handle(_universe_key(view), worlds))
+			for i in range(mini(out.size(), fits.size())):
+				if fits[i] == 0:
+					out[i] = 0
 	if question_cache.size() >= 128:
 		question_cache.clear()
 	question_cache[key] = {"input": input.duplicate(true), "table": out}

@@ -56,6 +56,9 @@ internal static class RoleConstraintsKernel
     public const int FlagExecutorDeadOk = 1 << 13;
     public const int FlagExecutorRoleRead = 1 << 14;
     public const int FlagExecutorAssigned = 1 << 15;
+    /// The card's content alone (ReadingChallenges' graded test): the source's alignment,
+    /// the source's claimed role and any relayer are not checked.
+    public const int FlagContentOnly = 1 << 16;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
     public const int PoolGood = 0;
@@ -561,9 +564,11 @@ internal static class RoleConstraintsKernel
                 return 0.0;
             }
 
+            bool contentOnly = (flags & FlagContentOnly) != 0;
+
             // A relayed reading in a live world where its relayer is evil: invented, so it
             // says nothing about the dead source's role or reading.
-            if (live && (flags & FlagHasRelaySource) != 0)
+            if (!contentOnly && live && (flags & FlagHasRelaySource) != 0)
             {
                 int relayer = cardInts[off + 6];
                 if (relayer >= 0 && (evil & (1 << relayer)) != 0)
@@ -580,7 +585,7 @@ internal static class RoleConstraintsKernel
                     || (worldConverted == source && hasCurse && stmtTick >= curseFrom && stmtTick < curseUntil);
             }
 
-            if (sourceEvil)
+            if (sourceEvil && !contentOnly)
             {
                 if (live && (flags & FlagInferred) == 0)
                 {
@@ -590,7 +595,7 @@ internal static class RoleConstraintsKernel
             }
 
             int roleId = cardInts[off + 5];
-            if (!AssignRole(assignRoles, assignMasks, ref assignCount, roleId, 1 << source))
+            if (!contentOnly && !AssignRole(assignRoles, assignMasks, ref assignCount, roleId, 1 << source))
             {
                 return 0.0;
             }
@@ -640,7 +645,9 @@ internal static class RoleConstraintsKernel
 
                 int readRoleId = cardInts[off + 18];
                 bool evilRole = (flags & FlagReadRoleEvil) != 0;
-                if ((flags & FlagMarkedRegisters) != 0 && evilRole && world.Marked >= 0 && (groupMask & (1 << world.Marked)) != 0)
+                // A Marked target registering evil lets an honest reader get this result, but it doesn't make
+                // it true: the content-only mask (graded challenges) skips the exception (Codex, #142).
+                if (!contentOnly && (flags & FlagMarkedRegisters) != 0 && evilRole && world.Marked >= 0 && (groupMask & (1 << world.Marked)) != 0)
                 {
                     continue;
                 }
@@ -716,7 +723,7 @@ internal static class RoleConstraintsKernel
                     }
                     int exRoleId = cardInts[off + 18];
                     bool exEvilRole = (flags & FlagReadRoleEvil) != 0;
-                    if (exEvilRole && world.Marked >= 0 && world.Marked == eTarget)
+                    if (!contentOnly && exEvilRole && world.Marked >= 0 && world.Marked == eTarget)
                     {
                         continue;
                     }
@@ -832,7 +839,7 @@ internal static class RoleConstraintsKernel
                 if ((flags & FlagMartyrEvil) != 0)
                 {
                     int target = cardInts[off + 16];
-                    if (target < 0 || ((evil & (1 << target)) == 0 && world.Marked != target))
+                    if (target < 0 || ((evil & (1 << target)) == 0 && (contentOnly || world.Marked != target)))
                     {
                         return 0.0;
                     }

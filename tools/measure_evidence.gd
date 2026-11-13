@@ -43,13 +43,15 @@ const Psych = preload("res://sim/roles/psychologist.gd")
 const RC = preload("res://workshop/reading_challenges.gd")
 
 const TRUSTS = [0.4, 0.8]
-const STOP_DAY = 3
+var STOP_DAY: int = 3 # --day N: measure at the start of day N (default 3)
 const FLAT = 0.25
 var rows: Array = []
 var no_hexer: bool = false
 var force_roles: Array = []
 var force_bluffs: Array = []
 var construct_bluffs: bool = false
+var construct_mistakes: bool = false # --construct-mistakes: good tellers' false readings (a failed gift or a misleading registration)
+var suspect_reader: bool = false # --suspect-reader: the listener also holds an evil Seer bluff naming the reading's teller ("yes" on them and a bystander)
 var natural_trust: bool = false
 var keep_state: bool = false # --keep-state: the listener keeps what it already holds and believes
 var script_roles: Array = []
@@ -79,12 +81,20 @@ func _init() -> void:
 			what = args[i + 1]
 		elif args[i] == "--no-hexer":
 			no_hexer = true
+		elif args[i] == "--graded-rule" and i + 1 < args.size():
+			preload("res://workshop/reading_challenges.gd").graded_rule = args[i + 1]
 		elif args[i] == "--clash-rule" and i + 1 < args.size():
 			preload("res://workshop/reading_challenges.gd").clash_rule = args[i + 1]
 		elif args[i] == "--natural-trust":
 			natural_trust = true
 		elif args[i] == "--keep-state":
 			keep_state = true
+		elif args[i] == "--day" and i + 1 < args.size():
+			STOP_DAY = int(args[i + 1])
+		elif args[i] == "--construct-mistakes":
+			construct_mistakes = true
+		elif args[i] == "--suspect-reader":
+			suspect_reader = true
 		elif args[i] == "--construct-bluffs":
 			construct_bluffs = true
 		elif args[i] == "--force-bluffs" and i + 1 < args.size():
@@ -610,7 +620,7 @@ func _lo(p: float) -> float:
 	return log(q / (1.0 - q))
 
 func _reading_desc(s, e: Dictionary) -> Dictionary:
-	return {"kind": "reading", "role": str(e.get("role", "")), "teller": s.id, "teller_evil": s.is_evil(), "true": bool(e.get("true", true)),
+	return {"kind": "reading", "role": str(e.get("role", "")), "teller": s.id, "teller_evil": s.is_evil(), "true": bool(e.get("true", true)), "constructed_honest": bool(e.get("constructed_honest", false)),
 		"day": int(e.get("day", -1)), "data": e.get("data", {}), "named": _named(e)}
 
 func _heard(w, s, e: Dictionary) -> Callable:
@@ -963,6 +973,11 @@ func _accusing(g) -> Array:
 		out = out.filter(func(x): return not x.s.is_evil())
 		var cb: Array = _constructed_bluffs(g)
 		out.append_array(cb)
+	if construct_mistakes:
+		out = out.filter(func(x): return not x.s.is_evil() or x.e.get("fake", false))
+		out.append_array(_constructed_mistakes(g))
+	if suspect_reader:
+		out.append_array(_constructed_honest(g))
 	return out.filter(func(x): return x.accused.size() >= 2 and x.accused.all(func(p): return g.w.by_id.has(p)))
 
 ## --construct-bluffs: each living evil NPC tells a false accusation about two good people,
@@ -993,6 +1008,53 @@ func _constructed_bluffs(g) -> Array:
 		# really holding the gift doesn't make this a counter-claim in its view.
 		out.append({"s": e, "e": arch, "accused": [a.id, b.id]})
 		out.append({"s": e, "e": seer, "accused": [a.id, b.id]})
+	return out
+
+## --construct-mistakes: up to two good NPCs each tell a false accusation about two other
+## good people, an Archivist pair and a Seer "yes": honest mistakes, as from a failed gift
+## (a Poisoner on the script) or a misleading registration. Against true Confessor clears,
+## "failed gift" or "misled" is the right explanation and "lying" the wrong one.
+## --suspect-reader: honest Archivist pairs (a Minion and a good person) from living good
+## tellers other than the real Archivist, so the reader isn't already proven good.
+func _constructed_honest(g) -> Array:
+	var w = g.w
+	var out: Array = []
+	var minions: Array = w.npcs.filter(func(m): return m.is_evil() and m.id != w.demon_id)
+	if minions.is_empty():
+		return out
+	var m = minions[0]
+	var alive_goods: Array = w.npcs.filter(func(x): return not x.is_evil() and x.alive and x.role != "archivist")
+	for ti in range(mini(2, alive_goods.size() - 2)):
+		var t = alive_goods[ti]
+		var others: Array = alive_goods.filter(func(x): return x.id != t.id)
+		var b = others[others.size() - 1 - ti]
+		out.append({"s": t, "e": {"role": "archivist", "data": {"pair": [m.id, b.id], "role": m.role}, "day": 0, "true": true, "constructed_honest": true, "shared": true,
+			"text": "One of %s and %s is the %s." % [m.name, b.name, C.ROLES[m.role].name]}, "accused": [m.id, b.id]})
+	return out
+
+func _constructed_mistakes(g) -> Array:
+	var w = g.w
+	var out: Array = []
+	var alive_goods: Array = w.npcs.filter(func(m): return not m.is_evil() and m.alive)
+	var dead_goods: Array = w.npcs.filter(func(m): return not m.is_evil() and not m.alive)
+	if alive_goods.size() < 2:
+		return out
+	var minion_role: String = str(w.case_script.minions[0]) if w.get("case_script") != null and not w.case_script.minions.is_empty() else "poisoner"
+	# The teller is a living good; the last living good is kept back to listen. The accused
+	# are other goods, living first (a dead one may be publicly cleared already).
+	for ti in range(mini(2, alive_goods.size() - 1)):
+		var t = alive_goods[ti]
+		var pool: Array = alive_goods.slice(0, alive_goods.size() - 1).filter(func(m): return m.id != t.id) + dead_goods
+		if pool.size() < 2:
+			continue
+		var a = pool[0]
+		var b = pool[1]
+		var arch: Dictionary = {"role": "archivist", "data": {"pair": [a.id, b.id], "role": minion_role}, "day": 0, "true": false, "mistake": true, "shared": true,
+			"text": "One of %s and %s is the %s." % [a.name, b.name, C.ROLES[minion_role].name]}
+		var seer: Dictionary = {"role": "seer", "data": {"pair": [a.id, b.id], "yes": true}, "day": 1, "true": false, "mistake": true, "shared": true,
+			"text": "The Demon is %s or %s." % [a.name, b.name]}
+		out.append({"s": t, "e": arch, "accused": [a.id, b.id]})
+		out.append({"s": t, "e": seer, "accused": [a.id, b.id]})
 	return out
 
 func _measure_crosschecks(g) -> void:
@@ -1064,14 +1126,29 @@ func _measure_challenges(g) -> void:
 		var confs: Array = []
 		for i in range(x.accused.size()):
 			confs.append(_confession(g, x.accused[i], night0 + i, true))
-		var l = _listener_for(g, [x.s.id, c.id] + x.accused)
+		# --suspect-reader: an evil NPC bluffing Seer says "yes" on the teller and a good
+		# bystander, so the reader is under suspicion from other evidence.
+		var suspicion: Array = []
+		var exclude: Array = [x.s.id, c.id] + x.accused
+		if suspect_reader:
+			var bluffer: Array = w.npcs.filter(func(m): return m.is_evil() and m.alive and m.id not in exclude)
+			var bystander: Array = w.npcs.filter(func(m): return not m.is_evil() and m.id not in exclude)
+			if bluffer.is_empty() or bystander.size() < 2:
+				continue
+			var sb = bluffer[0]
+			var by = bystander[0]
+			exclude += [sb.id, by.id]
+			var sy: Dictionary = {"role": "seer", "data": {"pair": [x.s.id, by.id], "yes": true}, "day": 1, "true": false, "fake": true, "shared": true,
+				"text": "The Demon is %s or %s." % [x.s.name, by.name]}
+			suspicion = [_claimed(w, sb.id, "seer"), _heard(w, sb, sy)]
+		var l = _listener_for(g, exclude)
 		if l == null:
 			continue
 		var na: int = _board_reading(g, x.s, x.e)
 		var nums: Array = [na]
 		for e in confs:
 			nums.append(_board_reading(g, c, e))
-		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")]
+		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")] + suspicion
 		var held_all: Array = claims + [_heard(w, x.s, x.e)] + confs.map(func(e): return _heard(w, c, e))
 		var accused0: String = x.accused[0]
 		for tp in ([[-1.0, -1.0]] if natural_trust else [[0.4, 0.4], [0.4, 0.8], [0.8, 0.4], [0.8, 0.8]]):
@@ -1112,7 +1189,7 @@ func _measure_challenges(g) -> void:
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
 					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
-					"q_reader": float(res.none.q[x.s.id]), "q_grounds": float(res.none.q[c.id]), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"q_reader": float(res.none.q[x.s.id]), "q_grounds": float(res.none.q[c.id]), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions, "suspect_reader": suspect_reader,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
 					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}
@@ -1143,6 +1220,8 @@ func _present(g, n, filed: int) -> void:
 		last_case.challenge = {"mode": res_c.get("mode", ""), "supported": bool(res_c.get("supported", false)), "multiplier": float(res_c.get("multiplier", 1.0)),
 			"agreement": float(res_c.get("agreement", 0.0)), "accuracy_agreement": float(res_c.get("accuracy_agreement", 0.0)),
 			"effect": float(res_c.get("graded", {}).get("effect", 0.0)), "cause": float(res_c.get("graded", {}).get("cause", 0.0)),
+			"g_q": float(res_c.get("graded", {}).get("q", -1.0)), "g_f": float(res_c.get("graded", {}).get("f", -1.0)), "g_r": float(res_c.get("graded", {}).get("r", -1.0)),
+			"g_wrong": float(res_c.get("graded", {}).get("wrong", -1.0)), "g_evil_share": float(res_c.get("graded", {}).get("evil_share", -1.0)), "graded_ran": not res_c.get("graded", {}).is_empty(),
 			"backfire": bool(res_c.get("backfire", false))}
 	for id in n.suspicion:
 		last_case.susp_step[id] = float(n.suspicion[id]) - float(s0.get(id, n.suspicion[id]))
