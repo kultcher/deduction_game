@@ -1436,6 +1436,10 @@ static func remember_nomination(w, n, t_id: String, ids: Array) -> void:
 			mind.workshop_state["connections"] = {}
 		var memory: Dictionary = mind.workshop_state.connections
 		memory["nominations"] = Connections.stored_with(memory.get("nominations", []), case_data.duplicate(true), int(w.day))
+		# The listener weighs the case from its next refresh: queued during meeting testimony
+		# (flushed before supporters and the vote), so a silenced nominee's missing defence
+		# can't leave the vote on beliefs from before the case (Codex's review of #146).
+		refresh_beliefs(w, l, " (heard %s's case against %s)" % [n.id, t_id])
 
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	var mind = n

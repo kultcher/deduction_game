@@ -474,6 +474,18 @@ func _challenged_factors() -> void:
 			moved = true
 	check(same, "a challenged reading inside a case is judged with the case's reading_challenges, as today")
 	print("NOTE: on this fixture the Augur crossing %s once its reading is challenged" % ("changes the judgement" if moved else "doesn't move anyone"))
+	# Codex's second finding: storing a nomination case queues each listener's refresh, so a
+	# silenced nominee (no defence to refresh anyone) can't leave the vote on old beliefs.
+	g.w.defer_beliefs = true
+	g.w.pending_beliefs = []
+	preload("res://sim/mind_meeting.gd").remember_nomination(g.w, p[1], p[3].id, [aug_id])
+	var queued: Array = g.w.pending_beliefs.map(func(e): return e[0].id)
+	var want_ids: Array = g.w.living().filter(func(l): return l.id != p[1].id).map(func(l): return l.id)
+	queued.sort()
+	want_ids.sort()
+	check(queued == want_ids, "storing a nomination case queues a refresh for every listener but the nominator (%d of %d)" % [queued.size(), want_ids.size()])
+	g.w.defer_beliefs = false
+	g.w.pending_beliefs = []
 	Connections.enabled = false
 
 
