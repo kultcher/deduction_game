@@ -26,6 +26,7 @@ Ground rules (from Nov 3, until Michael changes them):
   exact error. No force pushes, nothing irreversible.
 
 ---
+
 ## 2026-11-12 late, Claude-Quill: #142 content-only holds mask (Codex's review)
 
 - **Problem (Codex, `workshop/solver.gd`):** the graded test's mask for role-checked gifts ran the role constraints with `bluffs = false`, which drops every world where the reader is evil and assigns the reader's claimed role. So `q`/`f` measured "could the reader honestly have said this", and evidence against the reader counted twice (it is already in `r`).
