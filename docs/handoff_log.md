@@ -51,6 +51,24 @@ From Bailiff via Michael, who approved the proposal. The results are in the Proj
 
 ---
 
+## 2026-11-12 late, Claude-Lantern: the connections model in game, step 2 (`claude/connections-pairings`)
+
+From Michael (Phase 6, step 2). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec" section 3. Results: the same doc, "Results: Phase 6 step 2". Base: main `8be9681` (step 1 merged as #141).
+
+- **Built-in pairings** (`Connections.items`): a night's movement cards, an Augur reading with that day's sightings, a Psychologist reading with its statements, and a trace with the profile cards each count as one item. Claims, confessed secrets and profile cards are context: an item's value is lean(its cards + context) − lean(context).
+- **The declaration decides how movement is read** (`Connections.row`, from the town's demon mix):
+  - none: each night by itself;
+  - walker: one always-on movement connection (today's reading);
+  - hexer: each night by itself, plus the Hexer's day evidence as one always-on day connection.
+- **The Hexer factor is read in one place.** Every judgement the model makes runs with `LiveActivity.hex_factor_enabled` off, except the day connection, whose value is the same day cards judged with the factor on minus off. Otherwise every night would count the day evidence again.
+- **`CaseEval` compile key:** "hex_off" is appended when the mix has a Hexer and the factor is off, so a compile made without the factor is never reused with it. In play the factor is on and the key is unchanged. Golden is identical to `baseline_6a22cac` with the switch off.
+- **The prototype tool** takes its grouping from the module, gains `--declare hexer`, and now leaves out the cards a listener rejects from its own knowledge. The game already did; comparing the two on the same states found it (three of 16 Hexer-forced logs differed by up to 1.9 log-odds on one night, and agree now).
+- **`Connections.force_row`** (tests and tools only) reads movement as a given row whatever the mix is.
+- **Tests:** `test_connections_pairings` (in the fast list); `test_connections` updated. The fast list passes (52 of 52).
+- **Not in this step:** the core and stored cases. So a clash that needs the listener's own reading next to a night isn't made yet (step 3).
+
+Next: the core (step 3), including the night a listener was wrongly sighted seeding it.
+
 ## 2026-11-12 evening, Claude-Lantern: the connections model in game, step 1 (`claude/connections-solo`)
 
 From Bailiff via Michael (Phase 6). The spec is in the Project doc `claude/belief-model-direction-2026-11-10.md`, under "Phase 6 spec"; Michael accepted its four recommendations. Base: main `559a201`.

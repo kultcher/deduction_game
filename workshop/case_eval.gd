@@ -694,6 +694,12 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	var share: float = Movement.Live.day_demon_share(view)
 	if share > 0.0 or view.has("declared_demon_type"):
 		key_input.append(share)
+	if share > 0.0 and not Movement.Live.hex_factor_enabled:
+		# The Hexer factor can be switched off for a judgement (diagnostics, and the
+		# connections model, which reads the day evidence in one place): movement scores
+		# compiled without it must not be reused with it on. In play it is on, and the key
+		# is as it always was.
+		key_input.append("hex_off")
 	var key = hash(key_input)
 	if _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]

@@ -52,3 +52,4 @@ test_framed_defence
 test_sighter_contest
 test_gravedigger_bluff
 test_connections
+test_connections_pairings
