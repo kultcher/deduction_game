@@ -158,7 +158,7 @@ static func _player_nomination(g, rest: String, progress: Callable = Callable())
 		g.w.meeting["pending"]["case_facts"] = Array(card.get("supports", [])).filter(func(x): return int(x) >= 1 and int(x) <= g.board.size()).map(func(x): return g.board[int(x) - 1])
 		g._break_confidences([card.n] + Array(card.get("supports", [])))
 		g._secrets_used(card)
-		if repeat:
+		if repeat and not preload("res://game/workshop_presentation.gd").faded(g, card):
 			note_already_public(g, true, false)
 		else:
 			g.public_presentations[int(card.n)] = true

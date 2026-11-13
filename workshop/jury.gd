@@ -935,7 +935,13 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# chances it gives replace this pass's. Attention still decides what can be cited.
 	var connections: Dictionary = {}
 	if refresh and Connections.enabled:
-		connections = Connections.refresh(view, value, _eval_listener(baseline, baseline.knowledge.get("own_reports", [])), held.map(func(c): return c.id), baseline.get("connections", {}))
+		# A stored case weighs what its presenter does, so the model's listener also carries
+		# the listener's trust in the Demonologist.
+		var weigher: Dictionary = _eval_listener(baseline, baseline.knowledge.get("own_reports", []))
+		weigher["trust"] = baseline.get("trust", 0.5)
+		if baseline.has("player_credibility"):
+			weigher["player_credibility"] = baseline.player_credibility
+		connections = Connections.refresh(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}))
 		ev = Connections.overlay(ev, connections)
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
@@ -1017,12 +1023,27 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if absf(protection_signal) > absf(net_weight):
 			net_weight = protection_signal
 		for challenge in challenged.results:
+			# The connections model: a challenge a stored case makes acts through that case
+			# alone, below. One made outside any case (an NPC's defence) keeps today's floor.
+			if not connections.is_empty() and challenge.card in connections.cases.challenged:
+				continue
 			if challenge.mode == "lying" and challenge.source == id and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
 				net_weight = maxf(net_weight, Tuning.Workshop.JURY_CHALLENGE_LYING_SCALE * challenge.agreement)
 			# Premises step 3: an accepted failed-gift challenge points at the Poisoner candidates.
 			var cands: Dictionary = challenge.get("candidates", {})
 			if challenge.mode == "impaired" and cands.has(id) and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
 				net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement / float(cands.size()))
+		if not connections.is_empty():
+			# The same two floors for a stored case's challenges, as assessed inside the case
+			# and scaled by its weight, so they fade with it.
+			for challenge in connections.cases.floors:
+				if float(challenge.agreement) < Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+					continue
+				if challenge.mode == "lying" and challenge.source == id:
+					net_weight = maxf(net_weight, Tuning.Workshop.JURY_CHALLENGE_LYING_SCALE * challenge.agreement * float(challenge.weight))
+				var case_cands: Dictionary = challenge.get("candidates", {})
+				if challenge.mode == "impaired" and case_cands.has(id):
+					net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
 		var own_check: Dictionary = attention.case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"
@@ -1113,7 +1134,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		"rule": "One CaseEval pass over the attended evidence gives every person's change; intermediate claims add no evidence."}
 	if not connections.is_empty():
 		out["connections"] = connections
-		out.rule = "Connections: every held card counts at the value it has alone; the listener's own knowledge is weighed together with what bears on it."
+		out.rule = "Connections: every held card counts at the value it has alone; the listener's own knowledge is weighed together with what bears on it, and a case someone presented with its own cards, at trust in the presenter."
 	return out
 
 ## One claim (the headline or an intermediate) judged on the attended evidence it cites.

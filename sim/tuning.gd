@@ -891,6 +891,11 @@ class Workshop:
 	## pairing joins when it is worth this much more, in log-odds for any one person, next
 	## to the NPC's own readings than apart from them.
 	const CONNECTIONS_CORE_JOIN = 0.4
+	## Stored cases (the player's presentations, an NPC nominator's cited cards): a case
+	## keeps this share of its weight for each day since it was presented, and stops
+	## counting below the floor. Its weight starts at the listener's trust in the presenter.
+	const CONNECTIONS_CASE_FADE = 0.5
+	const CONNECTIONS_CASE_FLOOR = 0.05
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4
