@@ -266,7 +266,10 @@ func _make_state(id: String, view: Dictionary, case_data: Dictionary, listener: 
 	var by_id: Dictionary = {}
 	for c in view.cards:
 		by_id[c.id] = c
-	var held: Array = case_data.cards.filter(func(c): return by_id.has(c))
+	# As in the game's refresh, the cards the listener rejects from its own knowledge (a
+	# Night Watch list that wrongly names it, say) are left out of the weighing.
+	var rejected: Array = Reasoner.direct_checks(view, case_data, listener.get("knowledge", {})).get("rejected", [])
+	var held: Array = case_data.cards.filter(func(c): return by_id.has(c) and c not in rejected)
 	# How movement is read (Connections.row): the view's own demon mix, unless --declare
 	# stands in for a declaration. Then the tool's copy of the view carries it, so its
 	# judgements use that mix; the replayed game itself is untouched.
