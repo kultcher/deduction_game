@@ -45,6 +45,7 @@ func _init() -> void:
 	_presented()
 	_fading_and_repeat()
 	_challenges()
+	_challenged_factors()
 	_nominations(900, 7, 3)
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	print("Connections cases: %d checks, %d failures" % [checks, fails])
@@ -424,6 +425,55 @@ func _challenges() -> void:
 			"the floor under the reader is scaled by the case's weight (at least %.3f)" % floor_value)
 	else:
 		print("NOTE: the lying challenge's agreement is %.2f, under the floor's bar; the floor isn't exercised here" % (float(lr[0].agreement) if lr.size() == 1 else -1.0))
+	Connections.enabled = false
+
+
+## Codex's review of #146: inside a stored case, a challenged reading is also on the judged
+## case's reading_challenges, as it is today, so CaseEval leaves it out of the Augur
+## crossing and the Psychologist corroboration.
+func _challenged_factors() -> void:
+	Connections.enabled = true
+	var g = _game()
+	var n = g.w.npcs[0]
+	var p: Array = g.w.npcs
+	var aug: int = g.add_card({"kind": "info", "source": p[2].id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true},
+		"text": "%s augur day 1: crossed the Demon" % p[2].id})
+	_texts[aug] = g.board[aug - 1].text
+	var seen: int = g.add_card({"kind": "sighting", "subject": [p[3].id], "day": 1, "phase": 1, "source": p[4].id, "block": p[2].home_block,
+		"text": "%s saw %s near %s's home on day 1." % [p[4].name, p[3].name, p[2].name]})
+	_texts[seen] = g.board[seen - 1].text
+	var filed: int = _file(g, "evil", p[3].id, [aug, seen])
+	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
+	var view: Dictionary = plan.get("prepared", {}).get("view", {})
+	var listener: Dictionary = plan.get("prepared", {}).get("listener", {})
+	var aug_id: String = _card_id(g, n, aug)
+	var ids: Array = view.get("cards", []).filter(func(c): return c.id == aug_id or c.get("kind", "") == "location").map(func(c): return c.id)
+	if aug_id == "" or ids.size() < 2:
+		check(false, "the Augur fixture has its reading and a day card (%s, %d cards)" % [aug_id, ids.size()])
+		Connections.enabled = false
+		return
+	var run: Dictionary = Connections.begin(view, {}, listener)
+	var by_id: Dictionary = {}
+	for c in view.cards:
+		by_id[c.id] = c
+	run["by_id"] = by_id
+	var challenges: Dictionary = {aug_id: {"mode": "lying", "supports": []}}
+	var got: Dictionary = Connections.lean_challenged(run, ids, challenges)
+	var marked: Dictionary = run.bare.duplicate(true)
+	marked["reading_challenges"] = challenges.duplicate(true)
+	var want: Dictionary = Connections.judge(view, marked, listener, ids)
+	var plain: Dictionary = Connections.judge(view, run.bare, listener, ids)
+	var same := true
+	var moved := false
+	for q in run.others:
+		var w_: float = float(want.people.get(q, {}).get("posterior", run.baseline[q]))
+		if absf(float(got.chance.get(q, -1.0)) - w_) > 1e-9:
+			same = false
+		if absf(w_ - float(plain.people.get(q, {}).get("posterior", run.baseline[q]))) > 1e-6:
+			moved = true
+	check(same, "a challenged reading inside a case is judged with the case's reading_challenges, as today")
+	print("NOTE: on this fixture the Augur crossing %s once its reading is challenged" % ("changes the judgement" if moved else "doesn't move anyone"))
 	Connections.enabled = false
 
 
