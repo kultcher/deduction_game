@@ -21,6 +21,8 @@
 ##                     status, world share and what the premise loses without it
 ##                     (game/workshop_why.gd). Read-only.
 ## --json OUT          also write every assessment as JSONL
+## --connections       replay with the connections belief model on (logs record it from
+##                     Nov 13 and turn it on by themselves); --why then explains its result
 ##
 ## Belief mode (no --card): --belief PERSON --at SEQ. Replays to SEQ and, for each good
 ## mind, removes each thing it has heard (each ledger entry: a reading, claim, defence,
@@ -57,6 +59,8 @@ func _init():
 		match args[i]:
 			"--card":
 				card_n = int(args[i + 1]); i += 1
+			"--connections":
+				preload("res://workshop/connections.gd").enabled = true
 			"--at":
 				at = int(args[i + 1]); i += 1
 			"--drop":
@@ -133,7 +137,7 @@ func _init():
 			if not n.alive or n.is_evil() or (not only.is_empty() and not n.id in only):
 				continue
 			var before: float = Mind.susp(n, target)
-			var why_was: Dictionary = WorkshopWhy.before(n) if why else {}
+			var why_was: Dictionary = WorkshopWhy.before(n, g) if why else {}
 			var r: Dictionary = g.w.workshop_present.call(n, card, [], "deduction", "meeting", false)
 			var after: float = Mind.susp(n, target)
 			var a: Dictionary = r.get("assessment", {})

@@ -11,6 +11,7 @@ const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Social = preload("res://sim/social.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
@@ -396,8 +397,13 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		"engine": Engine.get_version_info(), "build": build_id, "tuning": tuning_id,
 		"shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 		"coverage": "milestone_2_state_and_structured_decisions"})
-	dlog.add("case_start", "world", "", {"seed": seed_in, "npcs": npc_count, "build": build_id,
-		"tuning": tuning_id, "shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT})
+	var start: Dictionary = {"seed": seed_in, "npcs": npc_count, "build": build_id,
+		"tuning": tuning_id, "shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT}
+	# The connections belief model changes every belief, so a log played with it on says so
+	# (the replay tools turn it on from this). Off: the record is as it always was.
+	if Connections.enabled:
+		start["connections"] = true
+	dlog.add("case_start", "world", "", start)
 	if case_script == null:
 		case_script = ScriptDef.default_script()
 	elif not case_script.is_default():
