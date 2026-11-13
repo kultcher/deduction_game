@@ -136,6 +136,24 @@ towns.
   player had adopted a different world.) A revised case must not score below the version
   it replaces. Private guesses stay private. [open]
 
+- **Recovering from a wrong "lying" call.** (Nov 12, Michael; Quill's honest-mistake
+  sample, belief-model doc) A "lying" challenge on a poisoned or misregistered good
+  teller lands about as often as on a real bluffer, which is intended: the player can push
+  the town that way, rightly or not. The way back, read from the code and not yet
+  measured: revising the original case to "misled" or "failed gift" replaces it for each
+  listener who hears the revision. A separate case challenging the same reading the other
+  way is blocked for anyone holding the old one ("Conflicting reading challenges need
+  separate alternatives"). Nothing says "X was poisoned"; it can only be argued through
+  evidence about the Poisoner.
+  1. Test it: a lying challenge on a poisoned good Archivist, then the revised case, then
+     a case pointing at the Poisoner. How far do the teller's suspicion and the player's
+     credibility come back?
+  2. Signposting, or a shortcut: tell the player that revising is the way to take back a
+     challenge (for example in the block message), or offer "I was wrong, they were
+     poisoned" as one action. Pairs with the revisions item above.
+
+  [decided: test later; signposting open]
+
 - **Quiet-night evidence argued by the player.** Support a player-argued link between
   protection, a suspected attack and movement, without exposing hidden attacks. (61251:
   a successful ward on Fenwick suppressed the apparent value of the sightings.) See the
