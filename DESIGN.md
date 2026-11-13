@@ -169,7 +169,12 @@ it means the game must teach its own way of thinking and make evidence very read
   time and otherwise as an invented one, as likely on average as an honest one, so a
   sighter's word against a person's own alibi is decided by priors. A sighter converted by
   the Revenant's curse is doubted only for what they told while converted. At most
-  `SIGHTER_CONTEST_MAX` (2) sighters a person, the most-cited first.
+  `SIGHTER_CONTEST_MAX` (2) sighters a person, the most-cited first. For a Medium's
+  relayed sighting the relayer is weighed as a possible inventor too (#140).
+- **Self-sightings** (#139): a good NPC's sighting of themselves on a night they know they
+  spent at home is kept in the weighing, so it counts against the sighter. With the
+  Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`
+  (0.1) doubt. A Night Watch list that wrongly names them is still set aside.
 - **Vigils see destinations:** a player vigil on a block sees walkers arriving there, or
   doing the full Lamplighter tour, not people passing through. The Night Watch still sees
   all traffic.
@@ -341,7 +346,9 @@ evidence (below).
 
 The shared judge reads a Medium's report as a relay of the dead person's original
 evidence: dated to the original night and source, never an independent second origin. Its
-reliability depends on doubt about both the Medium and the dead source.
+reliability depends on doubt about both the Medium and the dead source. In play a held
+relay doesn't prove its relayer a good Medium: a world with the relayer evil stays
+possible, and the relay is then their bluff (#140).
 
 **Real Medium** (`World._medium_item`), in order: if poisoned or Delusional, a false
 sighting; the first unshared reading from any information gift; an unreported night

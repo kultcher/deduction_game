@@ -14,7 +14,7 @@ repos/kultcher/deduction_game/actions/workflows/balance-sweep.yml/dispatches -f 
 |---|---|---|
 | `seed_start` | 100000 | First case seed. Every cell uses the same seeds, so a seed pairs across modes. |
 | `games_per_cell` | 2000 | Games per cell. |
-| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches). |
+| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches); any mode but `passive` may end `_nocross` (`--no-crosscheck`) and/or `_nodeclare` (`--no-declare`). An optional `"force_demon"` (for example `"daykiller"`) passes `--force-demon` and keeps the cell's records apart. |
 | `costs` | measured | Seconds per game per core, by `<npcs>_<mode>`. Only sizes the shards. |
 | `target_hours` | 3 | Planned hours per shard job (the hard cap is 6). |
 | `max_shards` | 200 | Safety bound on the number of jobs. |
@@ -124,7 +124,7 @@ A lost game has only identity fields plus `failed` (`crash` / `timeout` / `start
 Caveats: bot win rates describe today's bot, not a skilled human (the M4 policy is the
 default; `--pre-m4` keeps the earlier one). Since #137 the `bot` and `no_present` cells
 also seed cases with cross-check pairs and declare the demon type; `autoplay.gd
---no-crosscheck` / `--no-declare` give the earlier bot, but no sweep cell mode passes them
-yet. Passive results mostly measure
+--no-crosscheck` / `--no-declare` give the earlier bot, and the cell mode suffixes
+`_nocross` / `_nodeclare` pass them (#138). Passive results mostly measure
 NPC meeting behaviour. Dynamic scripts aren't the Default script, so these numbers don't
 compare directly with older Default-script sweeps.
