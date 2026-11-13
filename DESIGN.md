@@ -164,6 +164,12 @@ it means the game must teach its own way of thinking and make evidence very read
   not absolutely against being the killer. Scattered sightings corroborate a walking-gift
   claim; previews and replies name both relationships ("Seen elsewhere", "Scattered
   sightings"). The live Demon never actually detours (BACKLOG).
+- **Sighter contests** (#135): in a world where a sighter is evil, their sighting (or a
+  Night Watch's "I saw X pass by") counts only `Workshop.EVIL_SIGHTER_TRUTH` (0.15) of the
+  time and otherwise as an invented one, as likely on average as an honest one, so a
+  sighter's word against a person's own alibi is decided by priors. A sighter converted by
+  the Revenant's curse is doubted only for what they told while converted. At most
+  `SIGHTER_CONTEST_MAX` (2) sighters a person, the most-cited first.
 - **Vigils see destinations:** a player vigil on a block sees walkers arriving there, or
   doing the full Lamplighter tour, not people passing through. The Night Watch still sees
   all traffic.
@@ -598,8 +604,10 @@ player's case; it doesn't search for theories.**
   social; votes are public procedure, never guilt by association.
 - **Source doubt** (`workshop/source_doubt.gd`): caught lies and impossible claims in the
   listener's view (a unique gift clash, a false sighting of the listener, a Gravedigger
-  report about a cursed Revenant) and accepted challenges ("misled on night N", "lying")
-  lower how much a source's readings count, per night or for every night. Poison belongs
+  report about a cursed Revenant) and accepted honest-error challenges ("misled on night
+  N", impaired, unlikely) lower how much a source's readings count, per night or for every
+  night. An accepted "lying" challenge doesn't: the reading keeps full reliability, so its
+  clash with the grounds counts against the reader in the worlds where they're good (#123). Poison belongs
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
 - **Bounded attention:** Insight sets how much of what a listener holds they actually
@@ -909,6 +917,9 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   scapegoat and frames every night once five or fewer remain; a lone evil Seer bluffer
   never puts itself in its own pair. Each gift has its own bluff rule
   (`generate_bluff_reading`), built around the scapegoat and the team.
+- An evil Gravedigger reporting on a hanged good person calls them a Minion more often the
+  surer the town was, read from the hanging vote's yes share (the player's vote counts);
+  otherwise it confirms their claim, or guesses a good role (#136; `Evil.GRAVEDIGGER_FRAME_*`).
 - Evil bluffing a walking gift says their gift took them out when asked where they were;
   its invented sightings follow the window/route rule.
 
@@ -958,6 +969,13 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
    bide their time.
 2. **Floor:** the player may present one prepared case to everyone (once per meeting),
    judged by the shared model for each listener.
+   - **Demon-type declaration** (`game/demon_declaration.gd`, #131): on a script that deals
+     both a walking Demon and a Hexer, `declare walker` or `declare hexer` (once a day)
+     tells the town which kind it faces. NPCs don't judge it: every view weighs the
+     evidence as if it were true (`LiveActivity.day_demon_share`). The first declaration is
+     free; each change costs every living NPC 0.1 credibility
+     (`Trust.CRED_DECLARATION_CHANGE`) and stays in their dawn track-record target. A
+     one-kind script starts declared.
 3. **Nominations, one at a time.** BotC limits: each person nominates at most once and is
    nominated at most once per day. The player may `nominate`, or `wait` to let the town
    nominate; `done` closes the meeting once a `wait` finds nothing. A failed vote cools
@@ -974,7 +992,8 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
      a relay.
    - **The defence** (`MindMeeting.defend_self`): one or two moves from the case against
      them: *reveal* a walking gift to excuse sightings; *confess* a secret (good only); the
-     sleepwalk excuse; against a reading, *red herring* (named in two+ shared Seer yeses),
+     sleepwalk excuse; a good defender sighted only on nights they spent at home (framed)
+     gives their account of that night instead (#134); against a reading, *red herring* (named in two+ shared Seer yeses),
      *pair_other*, *lying* (if confident) or *misled*; else a plea. Reveals, confessions
      and reading challenges enter listeners' ledgers as undoable claims and challenges;
      pleas and rival suggestions are speech. **Block safety:** while someone else is

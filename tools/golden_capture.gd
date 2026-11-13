@@ -5,7 +5,7 @@
 ## refresh hook only reads, and logging stays at the default (untraced) level.
 ##
 ##   godot --headless --path . --script res://tools/golden_capture.gd -- \
-##       --out /abs/dir [--seeds 900:7,42:7,54875:10] [--day 4]
+##       --out /abs/dir [--seeds 900:7,42:7,54875:10] [--day 4] [--connections]
 ##
 ## Output per seed: <out>/seed_<seed>_<npcs>.jsonl. Record kinds:
 ##   {"k": "meta", ...}      seed, size, day limit, engine version
@@ -43,6 +43,10 @@ func _init() -> void:
 		for part in args[args.find("--seeds") + 1].split(","):
 			var bits = part.split(":")
 			seeds.append([int(bits[0]), int(bits[1])])
+	# --connections records the game with the connections model on (workshop/connections.gd),
+	# for its own baseline. Without it the model is off, as in play.
+	if "--connections" in args:
+		preload("res://workshop/connections.gd").enabled = true
 	if out == "":
 		push_error("golden_capture: --out <absolute dir> is required")
 		quit(2)

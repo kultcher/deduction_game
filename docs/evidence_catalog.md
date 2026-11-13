@@ -306,7 +306,7 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 - **Becomes useful with:** nothing more is needed. It resolves the executed and the claims around them.
 - **Corroborates / Contradicts:** every claim and reading about the executed. It checks the claimed role directly.
 - **Unlocks:** a role read that contradicts the executed person's claim confirms they bluffed. A good read of the claimed role means the town hanged an innocent and their accusers become suspect.
-- **Faking:** `q` is the fixed 0.5. An evil Gravedigger can call an executed teammate good, but the claim is checkable against Executor and Martyr evidence and counter-claims.
+- **Faking:** `q` is the fixed 0.5. An evil Gravedigger can call an executed teammate good, but the claim is checkable against Executor and Martyr evidence and counter-claims. On a hanged good person it calls them a Minion more often the surer the hanging vote was (#136).
 - **Gaps:** shares the fixed `q` issue with the Seer.
 
 ### A12. Executor (assigned person's role on death)

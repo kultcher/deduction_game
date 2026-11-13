@@ -846,6 +846,13 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		facts.insert(0, duty_out["fact"])
 		vantage = duty_out["vantage"]
 		how = duty_out["how"]
+	elif _honest_outing(w, n, nd) == "withhold" and load("res://sim/mind_podium.gd").admitted_before(n, nd):
+		# Not ready to tell why, but they already owned being out that night (at the podium,
+		# or to you before): the same plain account, not a refusal that would also overwrite
+		# the owned account in night_accounts (Steward, Nov 11 report A1).
+		load("res://sim/mind_podium.gd")._plain_account(w, n, nd, block, lines, facts)
+		vantage = block
+		how = "street"
 	elif _honest_outing(w, n, nd) == "withhold":
 		# Honest but not ready to tell (the bell still holds): a refusal, never a lie.
 		w.dlog.think(n.id, "stonewall", "Keeps the night's errand (%s gift) to themself for now." % C.role_name(n.role))
