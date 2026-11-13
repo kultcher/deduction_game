@@ -4,6 +4,8 @@ const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const Editor = preload("res://ui/live_case_workshop.gd")
+const Bridge = preload("res://game/workshop_bridge.gd")
+const Solver = preload("res://workshop/solver.gd")
 var checks = 0
 var fails = 0
 
@@ -21,6 +23,7 @@ func _run() -> void:
 	_readings()
 	_ownership()
 	_restore()
+	_graded_content()
 	await _ui()
 	print("Reading challenge checks: %d; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
@@ -118,6 +121,37 @@ func _readings() -> void:
 			extremes += 1
 	check(ordinary > 750 and extremes > 0, "impaired Surveyor strongly favors ordinary counts but retains rare tails")
 	check(valid_draws, "all impaired draws exclude the true result")
+
+## The graded test's holds mask for a role-checked gift (an Archivist pair) asks only
+## whether the content holds: worlds where the reader is evil still count when one of the
+## pair is a Minion (Codex on #142; the reader's honesty is weighed separately).
+func _graded_content() -> void:
+	var g = Game.new()
+	g.new_case(44814, 10)
+	g.w.dlog.detailed = false
+	var goods: Array = g.w.npcs.filter(func(m): return not m.is_evil())
+	var t = goods[0]
+	var a = goods[1]
+	var b = goods[2]
+	var card: Dictionary = Bridge._reading(t.id, {"role": "archivist", "data": {"pair": [a.id, b.id], "role": "poisoner"}, "day": 0, "text": "Regression Archivist pair."})
+	var view: Dictionary = Live.Assess.prepare(g.workshop_snapshot([g.add_card(card)], goods[3].id)).view
+	var report: Dictionary = view.cards.filter(func(c): return c.get("role", "") == "archivist")[0]
+	var worlds: Array = Solver.universe(view)
+	var holds: PackedByteArray = Solver.reading_holds_table(view, report)
+	var ti: int = Solver.person_index(view, t.id)
+	var evil_reader := 0
+	var evil_reader_holds := 0
+	var wrong := 0
+	for i in range(worlds.size()):
+		var w: Dictionary = worlds[i]
+		var minion_in_pair: bool = [a.id, b.id].any(func(p): return Solver.position_holds(view, w, p, "minion"))
+		if holds[i] == 1 and not minion_in_pair:
+			wrong += 1
+		if (w.evil & (1 << ti)) != 0 and minion_in_pair:
+			evil_reader += 1
+			evil_reader_holds += holds[i]
+	check(wrong == 0, "graded holds mask: an Archivist pair never holds without a Minion in the pair")
+	check(evil_reader > 0 and evil_reader_holds == evil_reader, "graded holds mask is content-only: it holds where the reader is evil too (%d of %d)" % [evil_reader_holds, evil_reader])
 
 func _ui() -> void:
 	var g = Game.new()

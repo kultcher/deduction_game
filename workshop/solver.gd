@@ -1722,8 +1722,16 @@ static func reading_holds_table(view: Dictionary, report: Dictionary, at = null)
 		out = report_table(view, report, [], [], [], true)
 		# Role-content gifts are checked in the role constraints, not the report table, so
 		# the table alone holds everywhere (ReadingChallenges.graded_rule "roles").
-		if preload("res://workshop/reading_challenges.gd").graded_rule == "roles" and str(report.get("role", "")) in preload("res://workshop/case_eval.gd").ROLE_CONTENT_FIXED:
-			var fits: PackedByteArray = Roles.fits_table(view, worlds, [report], {}, {}, false, SolverBackend.get_universe_handle(_universe_key(view), worlds))
+		# Content only: whether what the reading says holds in each world, whoever told it.
+		# The graded test weighs the reader's honesty separately (r), so the source's
+		# alignment, claimed role and relayer stay out of the mask (Codex, #142).
+		var rule: String = preload("res://workshop/reading_challenges.gd").graded_rule
+		if rule in ["roles", "roles_source"] and str(report.get("role", "")) in preload("res://workshop/case_eval.gd").ROLE_CONTENT_FIXED:
+			var content: Dictionary = report.duplicate(true)
+			if rule == "roles":
+				content["content_only"] = true
+				content.erase("relay_source")
+			var fits: PackedByteArray = Roles.fits_table(view, worlds, [content], {}, {}, false, SolverBackend.get_universe_handle(_universe_key(view), worlds))
 			for i in range(mini(out.size(), fits.size())):
 				if fits[i] == 0:
 					out[i] = 0

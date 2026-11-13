@@ -51,6 +51,7 @@ var force_roles: Array = []
 var force_bluffs: Array = []
 var construct_bluffs: bool = false
 var construct_mistakes: bool = false # --construct-mistakes: good tellers' false readings (a failed gift or a misleading registration)
+var suspect_reader: bool = false # --suspect-reader: the listener also holds an evil Seer bluff naming the reading's teller ("yes" on them and a bystander)
 var natural_trust: bool = false
 var keep_state: bool = false # --keep-state: the listener keeps what it already holds and believes
 var script_roles: Array = []
@@ -92,6 +93,8 @@ func _init() -> void:
 			STOP_DAY = int(args[i + 1])
 		elif args[i] == "--construct-mistakes":
 			construct_mistakes = true
+		elif args[i] == "--suspect-reader":
+			suspect_reader = true
 		elif args[i] == "--construct-bluffs":
 			construct_bluffs = true
 		elif args[i] == "--force-bluffs" and i + 1 < args.size():
@@ -1103,14 +1106,29 @@ func _measure_challenges(g) -> void:
 		var confs: Array = []
 		for i in range(x.accused.size()):
 			confs.append(_confession(g, x.accused[i], night0 + i, true))
-		var l = _listener_for(g, [x.s.id, c.id] + x.accused)
+		# --suspect-reader: an evil NPC bluffing Seer says "yes" on the teller and a good
+		# bystander, so the reader is under suspicion from other evidence.
+		var suspicion: Array = []
+		var exclude: Array = [x.s.id, c.id] + x.accused
+		if suspect_reader:
+			var bluffer: Array = w.npcs.filter(func(m): return m.is_evil() and m.alive and m.id not in exclude)
+			var bystander: Array = w.npcs.filter(func(m): return not m.is_evil() and m.id not in exclude)
+			if bluffer.is_empty() or bystander.size() < 2:
+				continue
+			var sb = bluffer[0]
+			var by = bystander[0]
+			exclude += [sb.id, by.id]
+			var sy: Dictionary = {"role": "seer", "data": {"pair": [x.s.id, by.id], "yes": true}, "day": 1, "true": false, "fake": true, "shared": true,
+				"text": "The Demon is %s or %s." % [x.s.name, by.name]}
+			suspicion = [_claimed(w, sb.id, "seer"), _heard(w, sb, sy)]
+		var l = _listener_for(g, exclude)
 		if l == null:
 			continue
 		var na: int = _board_reading(g, x.s, x.e)
 		var nums: Array = [na]
 		for e in confs:
 			nums.append(_board_reading(g, c, e))
-		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")]
+		var claims: Array = [_claimed(w, x.s.id, str(x.e.role)), _claimed(w, c.id, "confessor")] + suspicion
 		var held_all: Array = claims + [_heard(w, x.s, x.e)] + confs.map(func(e): return _heard(w, c, e))
 		var accused0: String = x.accused[0]
 		for tp in ([[-1.0, -1.0]] if natural_trust else [[0.4, 0.4], [0.4, 0.8], [0.8, 0.4], [0.8, 0.8]]):
@@ -1151,7 +1169,7 @@ func _measure_challenges(g) -> void:
 					continue
 				var row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "demon_type": w.by_id[w.demon_id].role,
 					"evidence": "challenges", "listener": l.id, "trust": t, "trust_reader": tp[0], "trust_grounds": tp[1], "reading": _reading_desc(x.s, x.e), "accused": x.accused,
-					"q_reader": float(res.none.q[x.s.id]), "q_grounds": float(res.none.q[c.id]), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions,
+					"q_reader": float(res.none.q[x.s.id]), "q_grounds": float(res.none.q[c.id]), "grounds_true": confs.all(func(e): return bool(e["true"])), "accused_alive": x.accused.all(func(p): return w.by_id[p].alive), "confessor_teller": c.id, "poisoner_on_script": "poisoner" in w.case_script.minions, "suspect_reader": suspect_reader,
 					"person": id, "person_evil": w.by_id[id].is_evil(), "person_demon": id == w.demon_id,
 					"role_in_case": "teller" if id == x.s.id else ("accused" if id in x.accused else ("confessor" if id == c.id else "")),
 					"p_evil": {}, "case_p_evil": {}, "susp_step": {}, "challenge": {}}

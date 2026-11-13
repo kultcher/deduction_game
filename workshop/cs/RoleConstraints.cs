@@ -56,6 +56,9 @@ internal static class RoleConstraintsKernel
     public const int FlagExecutorDeadOk = 1 << 13;
     public const int FlagExecutorRoleRead = 1 << 14;
     public const int FlagExecutorAssigned = 1 << 15;
+    /// The card's content alone (ReadingChallenges' graded test): the source's alignment,
+    /// the source's claimed role and any relayer are not checked.
+    public const int FlagContentOnly = 1 << 16;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
     public const int PoolGood = 0;
@@ -561,9 +564,11 @@ internal static class RoleConstraintsKernel
                 return 0.0;
             }
 
+            bool contentOnly = (flags & FlagContentOnly) != 0;
+
             // A relayed reading in a live world where its relayer is evil: invented, so it
             // says nothing about the dead source's role or reading.
-            if (live && (flags & FlagHasRelaySource) != 0)
+            if (!contentOnly && live && (flags & FlagHasRelaySource) != 0)
             {
                 int relayer = cardInts[off + 6];
                 if (relayer >= 0 && (evil & (1 << relayer)) != 0)
@@ -580,7 +585,7 @@ internal static class RoleConstraintsKernel
                     || (worldConverted == source && hasCurse && stmtTick >= curseFrom && stmtTick < curseUntil);
             }
 
-            if (sourceEvil)
+            if (sourceEvil && !contentOnly)
             {
                 if (live && (flags & FlagInferred) == 0)
                 {
@@ -590,7 +595,7 @@ internal static class RoleConstraintsKernel
             }
 
             int roleId = cardInts[off + 5];
-            if (!AssignRole(assignRoles, assignMasks, ref assignCount, roleId, 1 << source))
+            if (!contentOnly && !AssignRole(assignRoles, assignMasks, ref assignCount, roleId, 1 << source))
             {
                 return 0.0;
             }
