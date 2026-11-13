@@ -620,7 +620,7 @@ func _lo(p: float) -> float:
 	return log(q / (1.0 - q))
 
 func _reading_desc(s, e: Dictionary) -> Dictionary:
-	return {"kind": "reading", "role": str(e.get("role", "")), "teller": s.id, "teller_evil": s.is_evil(), "true": bool(e.get("true", true)),
+	return {"kind": "reading", "role": str(e.get("role", "")), "teller": s.id, "teller_evil": s.is_evil(), "true": bool(e.get("true", true)), "constructed_honest": bool(e.get("constructed_honest", false)),
 		"day": int(e.get("day", -1)), "data": e.get("data", {}), "named": _named(e)}
 
 func _heard(w, s, e: Dictionary) -> Callable:
@@ -976,6 +976,8 @@ func _accusing(g) -> Array:
 	if construct_mistakes:
 		out = out.filter(func(x): return not x.s.is_evil() or x.e.get("fake", false))
 		out.append_array(_constructed_mistakes(g))
+	if suspect_reader:
+		out.append_array(_constructed_honest(g))
 	return out.filter(func(x): return x.accused.size() >= 2 and x.accused.all(func(p): return g.w.by_id.has(p)))
 
 ## --construct-bluffs: each living evil NPC tells a false accusation about two good people,
@@ -1012,6 +1014,24 @@ func _constructed_bluffs(g) -> Array:
 ## good people, an Archivist pair and a Seer "yes": honest mistakes, as from a failed gift
 ## (a Poisoner on the script) or a misleading registration. Against true Confessor clears,
 ## "failed gift" or "misled" is the right explanation and "lying" the wrong one.
+## --suspect-reader: honest Archivist pairs (a Minion and a good person) from living good
+## tellers other than the real Archivist, so the reader isn't already proven good.
+func _constructed_honest(g) -> Array:
+	var w = g.w
+	var out: Array = []
+	var minions: Array = w.npcs.filter(func(m): return m.is_evil() and m.id != w.demon_id)
+	if minions.is_empty():
+		return out
+	var m = minions[0]
+	var alive_goods: Array = w.npcs.filter(func(x): return not x.is_evil() and x.alive and x.role != "archivist")
+	for ti in range(mini(2, alive_goods.size() - 2)):
+		var t = alive_goods[ti]
+		var others: Array = alive_goods.filter(func(x): return x.id != t.id)
+		var b = others[others.size() - 1 - ti]
+		out.append({"s": t, "e": {"role": "archivist", "data": {"pair": [m.id, b.id], "role": m.role}, "day": 0, "true": true, "constructed_honest": true, "shared": true,
+			"text": "One of %s and %s is the %s." % [m.name, b.name, C.ROLES[m.role].name]}, "accused": [m.id, b.id]})
+	return out
+
 func _constructed_mistakes(g) -> Array:
 	var w = g.w
 	var out: Array = []
