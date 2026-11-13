@@ -29,6 +29,7 @@ func _check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_test_public_sexton_tolls()
 	_test_refusal_reconsidered()
+	_test_owned_night_private()
 	_test_late_relay_public()
 	_test_toll_kept_quiet()
 	print("Codex fixes: %d checks, %d failures" % [_checks, _fails])
@@ -87,6 +88,31 @@ func _test_public_sexton_tolls() -> void:
 	var res: Dictionary = MindPodium.press_night(w, sx, 1, true)
 	_check(res.get("outcome", "") == "duty" and int(w.evil_plan.get("bell_believed", -1)) == 1,
 		"pressed at the podium, their account of the toll tells evil the bell rang (%s)" % res.get("outcome", ""))
+
+
+## A good gift-holder not ready to say why they were out, who already owned the night (at the
+## podium), gives the same plain account when asked privately, not "my nights are my own
+## affair" (Steward, Nov 11 report A1). The refusal also overwrote the owned account.
+func _test_owned_night_private() -> void:
+	var gs = _sexton_game(56792)
+	var w = gs[0].w
+	var sx = gs[1]
+	sx.claimed_role = ""
+	sx.claim_public = false
+	w.day = 2
+	w.phase = C.MORNING
+	var block: String = sx.history[w.time_key(1, C.NIGHT)].substr(6)
+	# The honest-outing decision held at "withhold" for this day.
+	sx.dialogue_memory["honest_outing"] = {"1:2": {"v": "withhold", "p": 1.0, "nom": true}}
+	var before: Dictionary = MindDialogue.answer_night(w, sx, 1)
+	_check(before.facts.any(func(f): return f.kind == "refusal"), "not yet owned: they still keep the night to themself")
+	# Owned at the podium: "I was out on ..., the why is my own."
+	sx.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi", "home": false, "source": sx.id, "day": 1, "block": block}}
+	var res: Dictionary = MindDialogue.answer_night(w, sx, 1)
+	var text: String = " ".join(PackedStringArray(res.lines.map(func(l): return str(l.get("text", "")))))
+	_check(not res.facts.any(func(f): return f.kind == "refusal"), "owned: no refusal in private (%s)" % text)
+	_check(res.facts.any(func(f): return f.kind == "alibi" and not f.get("home", true) and f.get("block", "") == block), "owned: the same plain account, out on that block")
+	_check(load("res://sim/mind_podium.gd").admitted_before(sx, 1), "the owned account is kept, so the podium can't stonewall next time")
 
 
 func _test_refusal_reconsidered() -> void:
