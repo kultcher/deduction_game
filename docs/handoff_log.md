@@ -27,6 +27,31 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-13, Claude-Lantern: the connections model in game, step 3, the core (PR #145, `claude/connections-core`)
+
+From Michael (Phase 6, step 3). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec" section 4. Results: the same doc, "Results: Phase 6 step 3". Base: main `437e29e` (steps 1 and 2 merged as #141 and #144).
+
+- **The core** (`Connections.core`). The seed is every item holding a card the listener knows firsthand (`Connections.firsthand`): its own readings, and a sighting of it on a night it knows it spent at home. Every other card or pairing is tested against the seed only and joins at 0.4 (`Tuning.Workshop.CONNECTIONS_CORE_JOIN`): what the two say together, less what each says apart, for any one person. The core then adds what its members say together beyond their own values. Always-on connections are never tested.
+  - A night seeds the core when it holds the listener's own Night Watch or Lamplighter report (decided Nov 11) or a wrong sighting of it (Michael, Nov 12). Under a Walker reading the movement connection does instead. The Hexer's day connection never does.
+  - **Wider than the prototype's seed:** a pairing holding one of the listener's own readings (its own Augur day or Psychologist reading) is a seed too. The prototype only seeded own readings that sat alone.
+  - The test leaves out what a pairing's context says alone. With a seed that has no context (the prototype's) it is the prototype's test exactly.
+- **Memory** (`n.workshop_state.connections.core`: day, seed, firsthand cards, members, the cards held). The core is rebuilt on a new day and when the firsthand cards change. Otherwise its members stay, and only an item with a newly held card is tested. So a presentation can't edit the core; a card it brings is tested like any newly heard card.
+  - `Bridge._listener` hands the day and the memory to the listener (`listener.connections`) only when the switch is on. `LiveAssessment._listener` passes it through. `Jury._consequences_eval` gives it to `Connections.refresh`.
+  - Only the applied refresh writes it (`Ownership._refresh`), the way theory memory is committed; replies, the why tool and previews read it and leave it alone. The cached input carries the committed memory, so a refresh with nothing new is still a cache hit.
+  - With the switch off none of this exists: no `connections` key on a listener or in `workshop_state`. Golden is identical to `baseline_6a22cac`.
+- **Firsthand proofs stay proved.** If the firsthand cards alone put someone within 0.5% of 0 or 1, that person keeps that chance, and the others share what is left of the evil count (`Connections.combine`).
+- **`Connections.seed_wrong_sightings`** (tests and tools only; on in play) turns the wrong-sighting seed off, to measure it.
+- **The prototype tool** takes its seed, test and membership rule from the module. `--legacy-seed [--movement-seed]` keeps the first prototype's seed: with it the tool's output on seeds 900, 902, 910 and 911 is identical to the tool before this change. `--no-wrong-sightings` and `--no-proofs` switch off the two new rules.
+- **In game against the tool** on the same listener states, at every dawn and vote (14 logs, 482 listener-moments): seeds, members and chances agree.
+- **The wrong-sighting seed, measured:** rare in passive play (3 of 469 listener-dawns, no chance moved by more than 2 points). On seed 100034 it takes Odette on the evil sighter Constance from 0.52 to 0.66, which is today's figure; a real Sleepwalker's suspicion of an honest sighter goes 0.15 to 0.18 (seed 100031).
+- **Cost with the switch on:** golden seed 692 takes 411 ms a refresh, against 293 at step 2 and 92 today. Caching is the last step.
+- **Tests:** `test_connections_core` (in the fast list); `test_connections` and `test_connections_pairings` updated for the core's term. The fast list passes (53 of 53).
+- **Not in this step:** stored cases (step 4) and caching. A dawn refresh now makes about one more judgement per item than step 2, to test it against the seed.
+
+Next: stored cases (step 4).
+
+---
+
 ## 2026-11-12 late, Claude-Quill: #142 content-only holds mask (Codex's review)
 
 - **Problem (Codex, `workshop/solver.gd`):** the graded test's mask for role-checked gifts ran the role constraints with `bluffs = false`, which drops every world where the reader is evil and assigns the reader's claimed role. So `q`/`f` measured "could the reader honestly have said this", and evidence against the reader counted twice (it is already in `r`).

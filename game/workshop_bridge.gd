@@ -6,6 +6,7 @@ const ScriptDef = preload("res://sim/script_def.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 ## The roles the solver considers possibly in play: every known role, except experimental
 ## ones that aren't on this case's script (they are never dealt otherwise, and an extra
@@ -149,6 +150,10 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
 		"source_doubt": n.workshop_state.get("source_doubt", {}).duplicate(true),
 		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
+	# The connections model (off by default): the day, and what this mind's core held at its
+	# last refresh, so the core is rebuilt at dawn and otherwise only tests newly held cards.
+	if Connections.enabled:
+		input.listener["connections"] = {"day": int(now.get("day", -1)), "core": n.workshop_state.get("connections", {}).get("core", {}).duplicate(true)}
 	input.listener["disowned_reports"] = []
 	for entry in n.ledger.values():
 		if entry.get("meta", {}).get("kind", "") not in ["reading", "arg", "tell"]:

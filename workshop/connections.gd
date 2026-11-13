@@ -5,8 +5,8 @@
 ## The idea: the limit on an NPC moves from which cards it reads to which cards it weighs
 ## together. Every card it holds counts, at the value it has alone; cards are only weighed
 ## together where a connection says so (built-in pairings, the NPC's own core, stored
-## cases). The core and stored cases arrive in later steps; this file has the single values,
-## the built-in pairings and the normalising.
+## cases). Stored cases arrive in a later step; this file has the single values, the
+## built-in pairings, the core and the normalising.
 ##
 ##   judge       today's shared evaluator (CaseEval over the possible worlds) run on a chosen
 ##               set of the held cards: everyone's chance of being evil given just that set
@@ -23,6 +23,19 @@
 ##   normalising one common shift afterwards, so the chances of being evil still sum to what
 ##               the baseline's do (the script's evil count): "A for sure, then B or C",
 ##               never four people at 70% in a two-evil town
+##
+##   firsthand   what the listener knows for itself among the cards it holds: its own
+##               readings, and a sighting of it on a night it knows it spent at home
+##   core        the items holding a firsthand card (the seed), judged together with every
+##               other item worth more next to the seed than apart from it. Each candidate
+##               is tested against the seed only, never against what already joined, so the
+##               order can't matter and the core can't snowball. The core adds what its
+##               members say together beyond their own values.
+##               It is rebuilt on a new day and when the firsthand cards change; otherwise
+##               its members stay, and only an item with a newly held card is tested. The
+##               caller keeps that memory (`core_state`) and stores what comes back.
+##               What the firsthand cards prove by themselves (someone at 0 or 1) stays
+##               proved: no other card moves that person.
 ##
 ## The built-in pairings (items):
 ##   a night      that night's sightings, home alibis, Night Watch reports and Lamplighter
@@ -43,8 +56,9 @@
 ## the day connection's value is what the factor adds on the day cards (on minus off).
 ## Otherwise each night's pairing would count the same day evidence again.
 ##
-## Pure: the prepared view, case and listener in; chances and a breakdown out. It reads no
-## game state and keeps no memory yet (caching is a later step).
+## Pure: the prepared view, case, listener and the core's memory in; chances, a breakdown
+## and the core's new memory out. It reads no game state and keeps nothing itself (the
+## game stores the memory in the NPC's workshop_state.connections; caching is a later step).
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
@@ -59,6 +73,14 @@ static var enabled: bool = Tuning.Workshop.CONNECTIONS
 ## Tests and tools only: read movement as this row ("none", "walker" or "hexer") whatever
 ## the town's demon mix is. It changes the grouping, not the mix the judge uses. Empty in play.
 static var force_row: String = ""
+
+## Tests and tools only: whether a sighting of the listener on a night it knows it spent at
+## home is firsthand knowledge (it seeds the core). On in play; a tool turns it off to
+## measure what it changes.
+static var seed_wrong_sightings: bool = true
+
+## An item joins the core at this much interaction with the seed (log-odds, any one person).
+const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
 
 ## A chance is held inside [CLIP, 1 - CLIP] before it becomes log-odds.
 const CLIP: float = Tuning.Workshop.CONNECTIONS_CLIP
@@ -289,7 +311,7 @@ static func lean(run: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var key: String = ("hex|" if hex else "") + ",".join(PackedStringArray(sorted))
 	if run.memo.has(key):
 		return run.memo[key]
-	var out: Dictionary = {"lean": {}, "impossible": false}
+	var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
 	if not sorted.is_empty():
 		var ev: Dictionary = judge(run.view, run.bare, run.listener, sorted, hex)
 		run.judgements += 1
@@ -298,8 +320,172 @@ static func lean(run: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 			out.impossible = true
 		else:
 			for p in run.others:
-				out.lean[p] = logit(float(ev.people.get(p, {}).get("posterior", run.baseline[p]))) - logit(run.baseline[p])
+				out.chance[p] = float(ev.people.get(p, {}).get("posterior", run.baseline[p]))
+				out.lean[p] = logit(out.chance[p]) - logit(run.baseline[p])
 	run.memo[key] = out
+	return out
+
+
+## What a set of cards says given its context: lean(set + context) - lean(context).
+## Returns {"lean": {id: log-odds} for everyone, "impossible": bool}.
+static func set_value(run: Dictionary, ids: Array, ctx: Array) -> Dictionary:
+	var outside: Array = ctx.filter(func(c): return c not in ids)
+	var a: Dictionary = lean(run, _union(ids, outside))
+	var b: Dictionary = lean(run, outside)
+	if a.impossible or b.impossible:
+		return {"lean": {}, "impossible": true}
+	var out: Dictionary = {}
+	for p in run.others:
+		out[p] = float(a.lean.get(p, 0.0)) - float(b.lean.get(p, 0.0))
+	return {"lean": out, "impossible": false}
+
+
+## Several items as one set: {"ids": every card in them, "ctx": every context card}.
+static func pool(item_list: Array) -> Dictionary:
+	var ids: Array = []
+	var ctx: Array = []
+	for it in item_list:
+		ids = _union(ids, it.ids)
+		ctx = _union(ctx, it.get("ctx", []))
+	return {"ids": ids, "ctx": ctx}
+
+
+## The held cards the listener knows firsthand (sorted ids): its own readings, and
+## (seed_wrong_sightings) a sighting of it on a night it knows it spent at home. That
+## sighting is knowledge about its teller: "he says he saw me out, and I wasn't".
+static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> Array:
+	var self_id: String = str(listener.get("id", ""))
+	var outings: Dictionary = listener.get("knowledge", {}).get("own_outings", {})
+	var out: Array = []
+	for id in held:
+		var c: Dictionary = by_id[id]
+		if c.kind == "report" and str(c.get("source", "")) == self_id:
+			out.append(id)
+		elif seed_wrong_sightings and c.kind == "sighting" and self_id in c.get("subjects", [c.get("subject", "")]):
+			var night: String = str(c.get("night", -1))
+			if outings.has(night) and not bool(outings[night]):
+				out.append(id)
+	out.sort()
+	return out
+
+
+## The keys of the items that seed the core: every item holding a firsthand card. A night
+## (or, under a Walker reading, the movement connection) seeds it this way when it holds
+## the listener's own Night Watch or Lamplighter report, or a wrong sighting of it. The
+## Hexer's day connection never does: it only re-reads cards that sit elsewhere.
+static func seed_keys(item_list: Array, firsthand_ids: Array) -> Array:
+	var out: Array = []
+	for it in item_list:
+		if it.kind != "day" and it.ids.any(func(id): return id in firsthand_ids):
+			out.append(it.key)
+	return out
+
+
+## Which items to test against the seed now: every candidate when the core is rebuilt (a
+## new day, a changed seed, or no memory), otherwise only those with a newly held card.
+## Always-on connections and the seed itself are never candidates.
+## memory: {"day", "seed", "firsthand", "members", "known"} or {}.
+## Returns {"rebuilt": bool, "test": [keys], "kept": [keys]}.
+static func candidates(item_list: Array, seeds: Array, firsthand_ids: Array, memory: Dictionary, day: int) -> Dictionary:
+	var rebuilt: bool = memory.is_empty() or int(memory.get("day", -99)) != day \
+		or memory.get("seed", []) != seeds or memory.get("firsthand", []) != firsthand_ids
+	var known: Dictionary = memory.get("known", {})
+	var before: Array = memory.get("members", [])
+	var test: Array = []
+	var kept: Array = []
+	for it in item_list:
+		if it.kind in ALWAYS_ON or it.key in seeds:
+			continue
+		if rebuilt:
+			test.append(it.key)
+		elif it.key in before:
+			kept.append(it.key)
+		elif it.ids.any(func(id): return not known.has(id)):
+			test.append(it.key)
+	return {"rebuilt": rebuilt, "test": test, "kept": kept}
+
+
+## The core's members after a round of tests (item order), and the memory to keep.
+## tested: {key: interaction with the seed}. kept: members that stay untested.
+static func membership(item_list: Array, kept: Array, tested: Dictionary, threshold: float = CORE_JOIN) -> Array:
+	var out: Array = []
+	for it in item_list:
+		if it.key in kept or float(tested.get(it.key, -1.0)) >= threshold:
+			out.append(it.key)
+	return out
+
+
+static func core_memory(day: int, seeds: Array, firsthand_ids: Array, members: Array, held: Array) -> Dictionary:
+	var known: Dictionary = {}
+	for id in held:
+		known[id] = true
+	return {"day": day, "seed": seeds.duplicate(), "firsthand": firsthand_ids.duplicate(), "members": members.duplicate(), "known": known}
+
+
+static func _no_core(seeds: Array, firsthand_ids: Array) -> Dictionary:
+	return {"seed": seeds, "firsthand": firsthand_ids, "members": [], "tested": {}, "clash": [], "lean": {}, "proved": {},
+		"cards": 0, "rebuilt": true, "impossible": false}
+
+
+## The listener's core on this refresh (see the header).
+## values: {item key: value(run, item)}. core_state: {"day": int, "core": memory} or {}.
+## Returns {"seed", "firsthand", "members": [keys], "tested": {key: interaction},
+## "clash": [keys no world allows beside the seed], "lean": {id: log-odds the core adds},
+## "proved": {id: chance}, "cards": int, "rebuilt": bool, "impossible": bool, "memory"}.
+static func core(run: Dictionary, by_id: Dictionary, item_list: Array, values: Dictionary, held: Array, core_state: Dictionary) -> Dictionary:
+	var day: int = int(core_state.get("day", -1))
+	var memory: Dictionary = core_state.get("core", {})
+	var first: Array = firsthand(by_id, held, run.listener)
+	var seeds: Array = seed_keys(item_list, first)
+	var out: Dictionary = _no_core(seeds, first)
+	out["memory"] = core_memory(day, seeds, first, [], held)
+	if seeds.is_empty():
+		return out
+	var by_key: Dictionary = {}
+	for it in item_list:
+		by_key[it.key] = it
+	# What the firsthand cards prove by themselves stays proved.
+	var own: Dictionary = lean(run, first)
+	if not own.impossible:
+		for p in run.others:
+			var settled: bool = run.baseline[p] <= FIXED or run.baseline[p] >= 1.0 - FIXED
+			if not settled and (own.chance[p] <= FIXED or own.chance[p] >= 1.0 - FIXED):
+				out.proved[p] = own.chance[p]
+	var seed_set: Dictionary = pool(seeds.map(func(k): return by_key[k]))
+	var seed_value: Dictionary = set_value(run, seed_set.ids, seed_set.ctx)
+	if seed_value.impossible:
+		# Its own knowledge doesn't fit together: nothing can be weighed against it.
+		out.impossible = true
+		return out
+	var plan: Dictionary = candidates(item_list, seeds, first, memory, day)
+	out.rebuilt = plan.rebuilt
+	for key in plan.test:
+		var it: Dictionary = by_key[key]
+		var joint: Dictionary = set_value(run, _union(seed_set.ids, it.ids), _union(seed_set.ctx, it.ctx))
+		if joint.impossible or values[key].impossible:
+			out.clash.append(key)
+			continue
+		var most := 0.0
+		for p in run.others:
+			most = maxf(most, absf(float(joint.lean[p]) - float(seed_value.lean[p]) - float(values[key].lean.get(p, 0.0))))
+		out.tested[key] = most
+	out.members = membership(item_list, plan.kept, out.tested)
+	out.memory = core_memory(day, seeds, first, out.members, held)
+	var keys: Array = seeds + out.members
+	var all: Dictionary = pool(keys.map(func(k): return by_key[k]))
+	out.cards = all.ids.size()
+	if keys.size() < 2:
+		return out
+	var together: Dictionary = set_value(run, all.ids, all.ctx)
+	if together.impossible:
+		out.impossible = true
+		return out
+	for p in run.others:
+		var beyond: float = float(together.lean[p])
+		for k in keys:
+			beyond -= float(values[k].lean.get(p, 0.0))
+		if not is_zero_approx(beyond):
+			out.lean[p] = beyond
 	return out
 
 
@@ -331,16 +517,19 @@ static func value(run: Dictionary, item: Dictionary) -> Dictionary:
 ## `held` (ids, the listener's held cards with the ones it rejects from its own knowledge
 ## already taken out). `listener` is the evaluator's listener (Jury._eval_listener) with no
 ## challenges applied.
+## core_state: {"day": int, "core": the core's memory from this listener's last refresh}
+## (the listener's `connections`), or {} to build the core afresh.
 ## Returns {"prior", "baseline", "posterior": {id: chance}, "shift": log-odds, "row",
 ## "impossible": bool, "items": [{"key", "kind", "cards", "ctx", "lean": {id: log-odds}}],
-## "judgements": int}.
-static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array) -> Dictionary:
+## "core": see core() (without its memory), "core_memory": what to keep for the next
+## refresh, "judgements": int}.
+static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array, core_state: Dictionary = {}) -> Dictionary:
 	var run: Dictionary = begin(view, case_data, listener)
 	var others: Array = run.others
 	var baseline: Dictionary = run.baseline
 	if others.is_empty() or run.impossible:
 		return {"prior": run.prior, "baseline": baseline, "posterior": run.prior.duplicate(), "shift": 0.0, "row": run.row,
-			"impossible": run.impossible, "items": [], "judgements": run.judgements}
+			"impossible": run.impossible, "items": [], "core": _no_core([], []), "core_memory": core_state.get("core", {}), "judgements": run.judgements}
 	var by_id: Dictionary = {}
 	for c in view.cards:
 		by_id[c.id] = c
@@ -350,29 +539,50 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	for p in others:
 		total[p] = 0.0
 	var entries: Array = []
-	for it in items(by_id, ids, run.people, run.row):
+	var item_list: Array = items(by_id, ids, run.people, run.row)
+	var values: Dictionary = {}
+	for it in item_list:
 		var v: Dictionary = value(run, it)
+		values[it.key] = v
 		var entry: Dictionary = {"key": it.key, "kind": it.kind, "cards": it.ids, "ctx": it.ctx, "lean": v.lean}
 		if v.impossible:
 			entry["impossible"] = true
 		for p in v.lean:
 			total[p] += float(v.lean[p])
 		entries.append(entry)
-	# Normalise: the people still in question keep the sum the baseline gave them.
-	var free: Array = others.filter(func(p): return baseline[p] > FIXED and baseline[p] < 1.0 - FIXED)
+	# The core: what the listener's own knowledge and the cards tied to it say together,
+	# beyond their own values.
+	var own: Dictionary = core(run, by_id, item_list, values, ids, core_state)
+	var memory: Dictionary = own.memory
+	own.erase("memory")
+	for p in own.lean:
+		total[p] += float(own.lean[p])
+	var settled: Dictionary = combine(others, baseline, total, own.proved)
+	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
+		"items": entries, "core": own, "core_memory": memory, "judgements": run.judgements}
+
+
+## Everyone's chance from the baseline and the summed leans: one common shift, so the people
+## still in question keep the sum the baseline gave them (the evil count) less whatever the
+## listener's own knowledge has proved. People the baseline settles stay where they are, and
+## proved people keep their proved chance.
+## Returns {"posterior": {id: chance}, "shift": log-odds}.
+static func combine(others: Array, baseline: Dictionary, total: Dictionary, proved: Dictionary = {}) -> Dictionary:
+	var open: Array = others.filter(func(p): return baseline[p] > FIXED and baseline[p] < 1.0 - FIXED)
+	var free: Array = open.filter(func(p): return not proved.has(p))
 	var target := 0.0
+	for p in open:
+		target += float(baseline[p]) - float(proved.get(p, 0.0))
 	var scores: Array = []
 	for p in free:
-		target += baseline[p]
-		scores.append(logit(baseline[p]) + total[p])
-	var shift: float = common_shift(scores, target) if not free.is_empty() else 0.0
+		scores.append(logit(baseline[p]) + float(total.get(p, 0.0)))
+	var shift: float = common_shift(scores, maxf(target, 0.0)) if not free.is_empty() else 0.0
 	var posterior: Dictionary = {}
 	for p in others:
-		posterior[p] = baseline[p]
+		posterior[p] = float(proved[p]) if p in open and proved.has(p) else float(baseline[p])
 	for i in range(free.size()):
 		posterior[free[i]] = chance(float(scores[i]) + shift)
-	return {"prior": run.prior, "baseline": baseline, "posterior": posterior, "shift": shift, "row": run.row, "impossible": false,
-		"items": entries, "judgements": run.judgements}
+	return {"posterior": posterior, "shift": shift}
 
 
 ## Today's evaluation with everyone's chances replaced by the connections result, so the
@@ -398,4 +608,17 @@ static func summary(result: Dictionary) -> Dictionary:
 				size = float(it.lean[p])
 				top = p
 		out.append({"key": it.key, "kind": it.get("kind", "card"), "cards": it.cards.size(), "on": top, "lean": snappedf(size, 0.001)})
-	return {"items": out, "row": str(result.get("row", "")), "judgements": int(result.get("judgements", 0)), "shift": snappedf(float(result.get("shift", 0.0)), 0.001)}
+	var short: Dictionary = {"items": out, "row": str(result.get("row", "")), "judgements": int(result.get("judgements", 0)), "shift": snappedf(float(result.get("shift", 0.0)), 0.001)}
+	var own: Dictionary = result.get("core", {})
+	if not own.get("seed", []).is_empty():
+		var top: String = ""
+		var size: float = 0.0
+		for p in own.lean:
+			if absf(float(own.lean[p])) > absf(size):
+				size = float(own.lean[p])
+				top = p
+		short["core"] = {"seed": own.seed, "members": own.members, "cards": int(own.cards), "on": top, "lean": snappedf(size, 0.001),
+			"rebuilt": bool(own.rebuilt), "proved": own.proved.keys()}
+		if own.impossible:
+			short.core["impossible"] = true
+	return short

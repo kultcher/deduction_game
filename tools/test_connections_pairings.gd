@@ -165,11 +165,13 @@ func _proposal(g, n) -> Dictionary:
 
 func _adds_up(c: Dictionary) -> bool:
 	for id in c.posterior:
-		var total: float = 0.0
+		var total: float = float(c.core.lean.get(id, 0.0))
 		for it in c.items:
 			total += float(it.lean.get(id, 0.0))
 		var settled: bool = c.baseline[id] <= Connections.FIXED or c.baseline[id] >= 1.0 - Connections.FIXED
 		var want: float = c.baseline[id] if settled else Connections.chance(Connections.logit(c.baseline[id]) + total + float(c.shift))
+		if c.core.proved.has(id):
+			want = float(c.core.proved[id])
 		if absf(want - float(c.posterior[id])) > 1e-9:
 			return false
 	return true
@@ -228,7 +230,7 @@ func _rows_in_game() -> void:
 				"walker":
 					check(night_units == 0 and int(by_kind.get("day", 0)) == 0 and (int(by_kind.get("movement", 0)) == 1) == has_night, "%s: one movement connection, and no night alone" % tag)
 					movement += int(by_kind.get("movement", 0))
-			check(_adds_up(c), "%s: each chance is the baseline plus every item's lean, plus the common shift" % tag)
+			check(_adds_up(c), "%s: each chance is the baseline plus every item's lean and the core's, plus the common shift" % tag)
 	LiveActivity.declared_demon_type = ""
 	Connections.enabled = false
 	check(LiveActivity.hex_factor_enabled, "the Hexer factor is left on after the model's judgements")

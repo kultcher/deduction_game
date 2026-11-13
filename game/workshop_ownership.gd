@@ -148,6 +148,14 @@ static func _refresh(g, n, phase: String) -> void:
 		# union merely because the first pass filled in its own memory.
 		var committed_inputs: Array = inputs.duplicate(true)
 		committed_inputs[0].listener.theories = state.theories.duplicate(true)
+		# The connections model's core memory is committed the same way: only by this applied
+		# refresh (replies and previews read it and leave it alone), and the cached input
+		# carries it, so the refresh after next isn't redone over the memory this one filled in.
+		if proposal.has("connections") and committed_inputs[0].listener.has("connections"):
+			if not state.has("connections"):
+				state["connections"] = {}
+			state.connections["core"] = proposal.connections.get("core_memory", {}).duplicate(true)
+			committed_inputs[0].listener.connections.core = state.connections.core.duplicate(true)
 		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
 		state.requested = {}
 		state.applied = {}
