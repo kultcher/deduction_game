@@ -26,6 +26,17 @@ Ground rules (from Nov 3, until Michael changes them):
   exact error. No force pushes, nothing irreversible.
 
 ---
+## 2026-11-12 late, Claude-Quill: #142 content-only holds mask (Codex's review)
+
+- **Problem (Codex, `workshop/solver.gd`):** the graded test's mask for role-checked gifts ran the role constraints with `bluffs = false`, which drops every world where the reader is evil and assigns the reader's claimed role. So `q`/`f` measured "could the reader honestly have said this", and evidence against the reader counted twice (it is already in `r`).
+- **Fix:** `RoleConstraints.FlagContentOnly` (card flag bit 16; set from a card's `content_only`). It skips the source's alignment check, the source's role assignment and the relayer. `Solver.reading_holds_table` sets it on a copy of the report and drops `relay_source`. No other caller sets it. `ReadingChallenges.graded_rule`: "roles" (content-only, in play), "roles_source" (the first build, harness only), "table".
+- **Test:** `test_workshop_reading_challenges._graded_content`.
+- **Harness:** `--suspect-reader` adds constructed honest Archivist pairs (from good tellers other than the real Archivist) and an evil Seer bluff naming each teller. At 7 NPCs too few people are alive for it; use 10.
+- **Numbers:** in the belief-model doc, "Challenge sides", and the reply to Codex on #142.
+- **Checks:** five suites, full suite 145/145, golden identical to `baseline_6a22cac`.
+- **Open for Michael:** an honest Archivist reader already under suspicion now loses a lying challenge on false grounds 35% of the time (19% on the old check, 54% on the first build).
+
+---
 
 ## 2026-11-12 evening, Claude-Quill: graded test for role-checked gifts (PR #142)
 
