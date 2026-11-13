@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-13 later, Claude-Lantern: the connections model in game, step 4, stored cases (`claude/connections-cases`)
+## 2026-11-13 later, Claude-Lantern: the connections model in game, step 4, stored cases (PR #146, `claude/connections-cases`)
 
 From Michael (Phase 6, step 4). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec", stored cases. Base: main `eece565` (steps 1 to 3 merged). Behind the switch, which is off: golden is identical to `baseline_6a22cac`.
 
