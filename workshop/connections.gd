@@ -718,17 +718,21 @@ static func lean_challenged(run: Dictionary, ids: Array, challenges: Dictionary)
 	var sorted: Array = ids.duplicate()
 	sorted.sort()
 	var assessed: Dictionary = ReadingChallenges.assess(run.view, {"reading_challenges": named}, run.listener, sorted.map(func(id): return run.by_id[id]))
-	if assessed.reports.is_empty() and assessed.sources.is_empty():
-		var same: Dictionary = lean(run, ids).duplicate()
-		same["results"] = assessed.results
-		return same
-	var key: String = ",".join(PackedStringArray(sorted)) + "|challenged:" + str(hash([assessed.reports, assessed.sources]))
+	# The case's challenges also go on the judged case itself, as they do today: CaseEval
+	# leaves a challenged reading out of the Augur crossing and the Psychologist
+	# corroboration (case_data.reading_challenges), whatever the challenge's verdict.
+	var names: Array = named.keys()
+	names.sort()
+	var key: String = ",".join(PackedStringArray(sorted)) + "|challenged:" + ",".join(PackedStringArray(names)) + "|" + str(hash([assessed.reports, assessed.sources]))
 	if not run.memo.has(key):
 		var listener: Dictionary = run.listener.duplicate()
-		listener["challenge_reports"] = assessed.reports
-		listener["challenge_sources"] = assessed.sources
+		if not (assessed.reports.is_empty() and assessed.sources.is_empty()):
+			listener["challenge_reports"] = assessed.reports
+			listener["challenge_sources"] = assessed.sources
+		var template: Dictionary = run.bare.duplicate(true)
+		template["reading_challenges"] = named.duplicate(true)
 		var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
-		var ev: Dictionary = judge(run.view, run.bare, listener, sorted)
+		var ev: Dictionary = judge(run.view, template, listener, sorted)
 		run.judgements += 1
 		if ev.get("impossible", false):
 			out.impossible = true
