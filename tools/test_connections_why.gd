@@ -45,9 +45,34 @@ func _init() -> void:
 	_log_flag()
 	_masks()
 	_profiling()
+	_pinned_parts()
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	print("Connections why: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
+
+
+## Codex's review of #148: a person proved by the listener's own knowledge has a chance set
+## outright (Connections.combine), so the parts get a "settled outright" row that makes them
+## add up to it; for anyone else that row is zero.
+func _pinned_parts() -> void:
+	var Why = preload("res://game/workshop_why.gd")
+	var res := {"baseline": {"a": 0.3, "b": 0.3}, "posterior": {"a": 0.003, "b": 0.41}, "shift": 0.2,
+		"items": [{"cards": ["x"], "lean": {"a": 1.2, "b": 0.1}}, {"cards": ["y"], "lean": {"a": -0.4, "b": 0.3}}],
+		"core": {"lean": {"a": 0.5}, "proved": {"a": 0.003}},
+		"cases": {"entries": [{"key": "case:1", "lean": {"a": 0.4, "b": -0.2}}]}}
+	for who in ["a", "b"]:
+		var parts: Dictionary = Why._parts(res, {}, who, "case:1", ["x"])
+		var total: float = 0.0
+		var fixed: float = 0.0
+		for row in parts.rows:
+			total += float(row.after)
+			if row.stage == "fixed":
+				fixed = float(row.after)
+		if who == "a":
+			check(parts.pinned != "" and absf(total - Connections.logit(0.003)) < 1e-9 and fixed < -1.0,
+				"a proved person's parts add up to the proved chance, through a settled-outright part (%+.2f)" % fixed)
+		else:
+			check(parts.pinned == "" and is_zero_approx(fixed), "anyone else has no settled-outright part")
 
 
 # ------------------------------------------------------------ fixtures (as test_connections_cases)

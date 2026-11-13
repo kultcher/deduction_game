@@ -480,10 +480,19 @@ static func _parts(res: Dictionary, old: Dictionary, p: String, case_key: String
 		var other: Array = []
 		for e in r.get("cases", {}).get("entries", []):
 			(this_case if str(e.key) == case_key else other).append(e.lean)
-		return {"start": Connections.logit(base), "case_cards": _sum(with_case, p), "other_cards": _sum(plain, p),
+		var out: Dictionary = {"start": Connections.logit(base), "case_cards": _sum(with_case, p), "other_cards": _sum(plain, p),
 			"core": float(r.get("core", {}).get("lean", {}).get(p, 0.0)), "case": _sum(this_case, p), "other_cases": _sum(other, p),
 			"other_keys": r.get("cases", {}).get("entries", []).filter(func(e): return str(e.key) != case_key).map(func(e): return str(e.key)), "shift": float(r.get("shift", 0.0)) if pinned == "" else 0.0, "pinned": pinned,
-			"chance": float(r.posterior[p])}
+			"chance": float(r.posterior[p]), "fixed": 0.0}
+		# A pinned person's chance is set outright (Connections.combine: the proof, or the
+		# public record), whatever the parts say. Show that as its own part, so the parts
+		# still add up to the chance and none of them seems to move them (Codex, #148).
+		if pinned != "":
+			var parts_sum: float = 0.0
+			for k in ["start", "case_cards", "other_cards", "core", "case", "other_cases"]:
+				parts_sum += float(out[k])
+			out.fixed = Connections.logit(out.chance) - parts_sum
+		return out
 	var now: Dictionary = side.call(res)
 	var then: Dictionary = side.call(old)
 	if now.is_empty():
@@ -495,7 +504,8 @@ static func _parts(res: Dictionary, old: Dictionary, p: String, case_key: String
 			["core", "Their own knowledge weighed with what bears on it (the core)"],
 			["case", "This case's cards weighed together, at its weight"],
 			["other_cases", "Other cases put to them"],
-			["shift", "Keeping the number of evil people right (the same shift for everyone)"]]:
+			["shift", "Keeping the number of evil people right (the same shift for everyone)"],
+			["fixed", "Settled outright, so the parts above don't move them (proof or the public record)"]]:
 		rows.append({"stage": row[0], "label": row[1], "before": then.get(row[0], null), "after": float(now[row[0]])})
 	return {"rows": rows, "pinned": str(now.pinned), "before": then.get("chance", null), "after": float(now.chance), "other_cases": now.other_keys}
 
