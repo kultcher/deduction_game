@@ -5,6 +5,7 @@ extends RefCounted
 const Game = preload("res://game/game.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 static func load_events(path: String) -> Array:
 	var events: Array = []
@@ -26,6 +27,11 @@ static func new_game(events: Array):
 		print("NOTE: this log was played on commit %s; this checkout is %s. To replay it exactly: git worktree add ../replay_%s %s" % [logged.substr(0, 12), here.substr(0, 12), logged.substr(0, 7), logged.substr(0, 12)])
 	elif logged == "" or logged == "dev":
 		print("NOTE: this log doesn't record its commit (logs before Nov 6); if the replay diverges, replay it on the commit it was played on.")
+	# A log played with the connections belief model on says so (sim/world.gd, case_start);
+	# a tool's --connections does the same for logs from before it was recorded.
+	if setup.data.get("connections", false) and not Connections.enabled:
+		Connections.enabled = true
+		print("NOTE: this log was played with the connections model on; it is on for this replay.")
 	var script = null
 	for e in events:
 		if e.type == "case_script":
@@ -40,6 +46,7 @@ static func new_game(events: Array):
 ##   before_command(g, e)  called before each player command
 ##   on_diverge(e, step, out)  the first command whose output lacks the logged text
 ##   on_filed(e, n)  after each Workshop filing
+##   after_command(g, e, msec)  after each player command, with how long it took
 ## Returns {"g", "steps", "diverged"}.
 static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {}) -> Dictionary:
 	var g = new_game(events)
@@ -51,8 +58,11 @@ static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {
 		if is_command(e):
 			if hooks.has("before_command"):
 				hooks.before_command.call(g, e)
+			var began: int = Time.get_ticks_msec()
 			var out: String = g.command(str(e.data.cmd))
 			step += 1
+			if hooks.has("after_command"):
+				hooks.after_command.call(g, e, Time.get_ticks_msec() - began)
 			var want: String = str(e.data.get("output", "")).strip_edges()
 			# The UI splits some output (meeting testimony) into separate log records, so a
 			# replay output that contains the logged text still matches.

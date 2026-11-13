@@ -78,6 +78,7 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const Solver = preload("res://workshop/solver.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const DayPresence = preload("res://workshop/day_presence.gd")
+const Profiler = preload("res://workshop/profiler.gd")
 
 ## The switch. It starts from the Tuning value; tests, autoplay and sweeps set it for a run
 ## (`--connections`), so paired cells come from one build.
@@ -91,6 +92,12 @@ static var force_row: String = ""
 ## home is firsthand knowledge (it seeds the core). On in play; a tool turns it off to
 ## measure what it changes.
 static var seed_wrong_sightings: bool = true
+## Developer capture (off): one record per judgement a refresh makes, for measuring what a
+## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
+## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
+## caller turns it on, reads `captured` and turns it off.
+static var capture: bool = false
+static var captured: Array = []
 
 ## An item joins the core at this much interaction with the seed (log-odds, any one person).
 const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
@@ -315,14 +322,25 @@ static func begin(view: Dictionary, case_data: Dictionary, listener: Dictionary)
 	if others.is_empty():
 		return run
 	run["bare"] = template(case_data, others[0])
+	var started: int = Time.get_ticks_usec() if capture else 0
 	var base: Dictionary = judge(view, run.bare, listener, [])
 	run.judgements += 1
+	if capture:
+		_captured(run, "", 0, started, base.get("people", {}))
 	for p in others:
 		run.prior[p] = float(base.people.get(p, {}).get("prior", 0.0))
 		run.baseline[p] = float(base.people.get(p, {}).get("posterior", 0.0))
 	# Nothing fits what the listener already knows: no card can be read against it.
 	run.impossible = bool(base.get("impossible", false))
 	return run
+
+
+static func _captured(run: Dictionary, key: String, cards: int, started: int, people: Dictionary) -> void:
+	var chances: Array = []
+	for p in run.others:
+		chances.append(snappedf(float(people.get(p, {}).get("posterior", -1.0)), 1e-9))
+	captured.append({"listener": str(run.listener.get("id", "")), "section": str(run.get("section", "baseline")), "key": key, "cards": cards,
+		"usec": Time.get_ticks_usec() - started, "result": hash(chances)})
 
 
 ## lean(ids): how far the set moves each person from the baseline.
@@ -335,8 +353,11 @@ static func lean(run: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 		return run.memo[key]
 	var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
 	if not sorted.is_empty():
+		var started: int = Time.get_ticks_usec() if capture else 0
 		var ev: Dictionary = judge(run.view, run.bare, run.listener, sorted, hex)
 		run.judgements += 1
+		if capture:
+			_captured(run, key, sorted.size(), started, ev.get("people", {}))
 		if ev.get("impossible", false):
 			# A set no world allows says nothing about anyone.
 			out.impossible = true
@@ -548,10 +569,16 @@ static func value(run: Dictionary, item: Dictionary) -> Dictionary:
 ## "core": see core() (without its memory), "core_memory": what to keep for the next
 ## refresh, "cases": see cases(), "judgements": int}.
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array, core_state: Dictionary = {}) -> Dictionary:
+	# Profiling (opt-in, workshop/profiler.gd): one span for the model, one for each part.
+	var span: int = Profiler.open("connections")
+	var part: int = Profiler.open("baseline")
 	var run: Dictionary = begin(view, case_data, listener)
+	Profiler.close(part)
 	var others: Array = run.others
 	var baseline: Dictionary = run.baseline
 	if others.is_empty() or run.impossible:
+		Profiler.count("connections_judgements", int(run.judgements))
+		Profiler.close(span)
 		return {"prior": run.prior, "baseline": baseline, "posterior": run.prior.duplicate(), "shift": 0.0, "row": run.row,
 			"impossible": run.impossible, "items": [], "core": _no_core([], []), "core_memory": core_state.get("core", {}),
 			"cases": {"lean": {}, "entries": [], "floors": [], "challenged": challenged_ids(core_state.get("cases", []))}, "judgements": run.judgements}
@@ -566,6 +593,8 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var entries: Array = []
 	var item_list: Array = items(by_id, ids, run.people, run.row)
 	var values: Dictionary = {}
+	part = Profiler.open("items")
+	run["section"] = "items"
 	for it in item_list:
 		var v: Dictionary = value(run, it)
 		values[it.key] = v
@@ -575,19 +604,28 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 		for p in v.lean:
 			total[p] += float(v.lean[p])
 		entries.append(entry)
+	Profiler.close(part)
 	# The core: what the listener's own knowledge and the cards tied to it say together,
 	# beyond their own values.
+	part = Profiler.open("core")
+	run["section"] = "core"
 	var own: Dictionary = core(run, by_id, item_list, values, ids, core_state)
+	Profiler.close(part)
 	var memory: Dictionary = own.memory
 	own.erase("memory")
 	for p in own.lean:
 		total[p] += float(own.lean[p])
 	# Stored cases: what each says together beyond its cards' own values, at its weight.
 	run["by_id"] = by_id
+	part = Profiler.open("cases")
+	run["section"] = "cases"
 	var told: Dictionary = cases(run, item_list, values, own, core_state.get("cases", []), int(core_state.get("day", -1)))
+	Profiler.close(part)
 	for p in told.lean:
 		total[p] += float(told.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
+	Profiler.count("connections_judgements", int(run.judgements))
+	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
 		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
 
@@ -732,8 +770,11 @@ static func lean_challenged(run: Dictionary, ids: Array, challenges: Dictionary)
 		var template: Dictionary = run.bare.duplicate(true)
 		template["reading_challenges"] = named.duplicate(true)
 		var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
+		var started: int = Time.get_ticks_usec() if capture else 0
 		var ev: Dictionary = judge(run.view, template, listener, sorted)
 		run.judgements += 1
+		if capture:
+			_captured(run, key, sorted.size(), started, ev.get("people", {}))
 		if ev.get("impossible", false):
 			out.impossible = true
 		else:

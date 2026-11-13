@@ -27,6 +27,46 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-13 evening, Claude-Lantern: the Why report under connections, and what a refresh costs (PR #148, `claude/connections-why`)
+
+- **Base:** main `c889b3c`. **Status:** PR open, for Bailiff to check and merge. **Next actor:** Bailiff, then Michael (caching, step 6, is his call to start).
+- **From:** Bailiff's note on Michael's first playtest with the switch on (case 44542, 10 NPCs, day 1). Michael asked for the logging and profiling parts only; the "same cards under a second premise" question (item 3) is untouched.
+- **Golden:** identical to `baseline_6a22cac` with the switch off (5 seeds, `--tol 0`). Fast list 55 of 55. A capture with the switch on runs with no script error.
+
+**1. The Why report (`game/workshop_why.gd`)**
+
+- With the switch on, `WorkshopWhy.presentation` returns a different report (`_connections_report`, `model: "connections"`). It is read from the breakdown the applied refresh stored and the one before it; nothing is re-run. None of today's stages are in it (attention, change of view, already held, headline).
+- `WorkshopWhy.before(n, g)` now takes the game, so it can keep the listener's last connections result and stored suspicion. `game_presentation.gd` and `explain_case.gd` pass it.
+- It follows the premise's subject and whoever the case's own part moved most (up to three people). Per person, before and after, in log-odds: where they start, this case's cards each alone, every other card, the core, this case weighed together, other stored cases, the common shift. Those add up to the chance.
+- Also: the case's weight in its parts (trust, fading, the "suspicious" halving), whether it was weighed with the core, each of its cards alone (pairings named), the core's seed and members, suspicion as stored and as the game reads it, the action bars, and the premise chain (unchanged).
+- **On Michael's game it now says what Bailiff's replay found:** Greta on "Fenwick is good", chance 32% to 18%, suspicion +0.07 to -0.18, the case weighed together -0.68 at weight 0.50. On #40 ("Odette is suspicious", the same four cards) it says the chance on Odette stayed at 34% and that, weighed together, the cards fell on Fenwick (-0.34 at weight 0.25).
+- **Cost:** 19 reports took 14.7 s; they take 2.5 s. The model's part is about 3 ms a listener. The rest is the premise chain, whose per-world checks are now kept between listeners (`CaseWhy._masks`, cleared with the other caches): the first listener of a case pays about 0.4 s at 10 NPCs, the others about 0.09 s. That change also speeds the report with the switch off; its text is unchanged (`test_workshop_why` passes as it was).
+- The dev log's `workshop_why` record has a different shape with the switch on (`model`, `parts`, `case`, `cards`, `core`). Nothing in the repo reads the old shape from a log.
+
+**2. Logging and profiling**
+
+- `case_start` says `"connections": true` when the game is played with the switch on, and the replay tools turn it on from that. Off, the record is as it was. `replay_log.gd` and `explain_case.gd` take `--connections` for logs from before this (Michael's log is one).
+- `replay_log.gd --time` prints each command's time; `--profile` adds the profiler's spans and counters. The model's refresh has spans of its own (`connections/baseline`, `items`, `core`, `cases`) and a `connections_judgements` counter.
+- `Connections.capture` (off) records every judgement: listener, part, the set judged, time, a hash of the answer.
+
+**3. Where the time goes in case 44542 (this machine; Bailiff measured 4.3, 7.5 and 2.6 s)**
+
+| Command | Switch off | Switch on | Belief refreshes | Judgements (time) | Of those, repeats with the same answer |
+|---|---|---|---|---|---|
+| `gossip` | 0.8 s | 3.9 s | 17 | 268 (3.1 s) | 45 (0.4 s) |
+| `present 39` | 2.0 s | 3.3 s | 10 | 168 (1.6 s) | 118 (1.1 s) |
+| `nominate odette #40` | 2.2 s | 5.4 s | 19 | 307 (2.8 s) | 307 (2.8 s) |
+| `press role` | 0.2 s | 1.9 s | 9 | 163 (1.5 s) | 147 (1.4 s) |
+
+- A refresh makes about 17 judgements, nearly all of them one card's own value, at 9 to 11 ms each. The time is setup for each set of cards, as step 1 found (`CaseEval`'s compile cache holds 32 and is emptied within one refresh).
+- "Repeats" are judgements the same listener had already made that day with an identical answer. A cache kept per listener would skip them: all of the nomination's, nine in ten of `press role`'s, two thirds of the presentation's.
+- What a cache can't skip is a set seen for the first time. `gossip` is that case: 212 new sets (2.6 s), 76 of them core tests (1.2 s).
+- The nomination runs 19 refreshes: one per listener for the presented case, then one each when the nomination case is stored (#146's follow-up, 71c0482).
+- Outside the judgements, a refresh with the switch on carries 35 to 40 ms of its own against today's 27 to 31 ms.
+
+- **Tests:** `test_connections_why` (new, in the fast list): the report's "after" chance is the refresh's posterior and the parts add up to it; the weight's parts; switch off unchanged; the log flag; kept masks give the same answer; capture and the profiler change nothing.
+- **Docs:** `docs/DECISION_INSPECTOR.md` ("With the connections model on", and the replay tool's `--time` and `--profile`).
+
 ## 2026-11-13 later, Claude-Lantern: the connections model in game, step 4, stored cases (PR #146, `claude/connections-cases`)
 
 From Michael (Phase 6, step 4). Spec: Project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec", stored cases. Base: main `eece565` (steps 1 to 3 merged). Behind the switch, which is off: golden is identical to `baseline_6a22cac`.

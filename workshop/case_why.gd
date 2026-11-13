@@ -36,6 +36,10 @@ const NEGLIGIBLE_RATIO = 1.03
 const SLIGHT_RATIO = 1.10
 ## Reliability at or below this: the listener gives the card no weight.
 const NO_WEIGHT = 0.02
+## Per-world facts about a case that don't depend on how a listener hears it (see _masks).
+## A presentation asks every listener about the same case in a row, so the last few are kept.
+static var _mask_cache: Dictionary = {}
+const MASK_CACHE_MAX = 64
 const ACCUSING = ["evil", "suspicious", "demon", "minion", "lied"]
 const CLEARING = ["good", "notdemon", "truthful"]
 
@@ -152,6 +156,52 @@ static func teller_ok(view: Dictionary, world: Dictionary, card: Dictionary, lis
 		return true
 	return (int(world.get("evil", 0)) >> idx) & 1 == 0
 
+## For each world of the universe: does the premise hold there (`premise`), can each card's
+## teller be taken at their word (`by_card_ok`, one mask per card), and can all of them
+## (`all_ok`)? The premise's own subject is left out of "every teller is honest": a case
+## built on their statements argues about exactly that.
+## The first two read the worlds, the premise and what a card is, never how the listener
+## hears it, so each mask is kept and reused while those are the same (_mask).
+static func _masks(view: Dictionary, conclusion: Dictionary, cards: Array, universe: Array, listener_id: String) -> Dictionary:
+	var subject: String = _premise_person(conclusion)
+	# What the masks read of the view: who is in it and the worlds (the universe's key),
+	# and the public record of deaths (whether a reader was alive to read).
+	var about: String = "%d:%d" % [hash([Solver._universe_key(view), view.get("timeline", {})]), universe.size()]
+	var premise: PackedByteArray = _mask("%s:premise:%d" % [about, hash(conclusion)], universe,
+		func(world: Dictionary) -> bool: return conclusion.get("type", "") != "conflict" and Solver.holds(view, world, conclusion))
+	var by_card_ok: Array = []
+	for card in cards:
+		# What teller_ok and Solver.source_valid read of a card. A listener takes their own
+		# word for anything but a reading, so their own such card has a mask of its own.
+		var sig: Array = [card.id, card.get("kind", ""), card.get("source", ""), card.get("role", ""), card.get("observed_at", {}),
+			card.get("reported_at", null), card.get("testimony_only", false)]
+		var mine: bool = card.get("kind", "") != "report" and str(card.get("source", "")) == listener_id
+		by_card_ok.append(_mask("%s:card:%d:%s" % [about, hash(sig), listener_id if mine else ""], universe,
+			func(world: Dictionary) -> bool: return teller_ok(view, world, card, listener_id)))
+	var all_ok := PackedByteArray()
+	all_ok.resize(universe.size())
+	all_ok.fill(1)
+	for j in range(cards.size()):
+		if str(cards[j].get("source", "")) == subject:
+			continue
+		var ok: PackedByteArray = by_card_ok[j]
+		for i in range(universe.size()):
+			if ok[i] == 0:
+				all_ok[i] = 0
+	return {"premise": premise, "all_ok": all_ok, "by_card_ok": by_card_ok}
+
+static func _mask(key: String, universe: Array, holds_in: Callable) -> PackedByteArray:
+	if _mask_cache.has(key):
+		return _mask_cache[key]
+	var mask := PackedByteArray()
+	mask.resize(universe.size())
+	for i in range(universe.size()):
+		mask[i] = 1 if holds_in.call(universe[i]) else 0
+	if _mask_cache.size() >= MASK_CACHE_MAX:
+		_mask_cache.clear()
+	_mask_cache[key] = mask
+	return mask
+
 static func _premise_person(conclusion: Dictionary) -> String:
 	return str(conclusion.get("target", conclusion.get("a", "")))
 
@@ -186,31 +236,14 @@ static func evidence(view: Dictionary, case_data: Dictionary, listener: Dictiona
 	var fv: Array = face_value(view, listener, cards)
 	var face: Dictionary = run(fv[0], case_data, fv[1], true)
 	var universe: Array = Solver.universe(view)
-	var premise := PackedByteArray()
-	premise.resize(universe.size())
-	var all_ok := PackedByteArray()
-	all_ok.resize(universe.size())
-	var by_card_ok: Array = []
-	for card in cards:
-		var ok := PackedByteArray()
-		ok.resize(universe.size())
-		by_card_ok.append(ok)
-	# The premise's own subject is left out of "every teller is honest": a case built on
-	# their statements argues about exactly that.
 	var subject: String = _premise_person(conclusion)
 	var others: String = ""
 	if cards.any(func(c): return str(c.get("source", "")) == subject and subject != ""):
 		others = " but %s" % Solver.person_name(view, subject)
-	for i in range(universe.size()):
-		var world: Dictionary = universe[i]
-		premise[i] = 1 if (conclusion.get("type", "") != "conflict" and Solver.holds(view, world, conclusion)) else 0
-		var every: bool = true
-		for j in range(cards.size()):
-			var fine: bool = teller_ok(view, world, cards[j], listener_id)
-			by_card_ok[j][i] = 1 if fine else 0
-			if str(cards[j].get("source", "")) != subject:
-				every = every and fine
-		all_ok[i] = 1 if every else 0
+	var masks: Dictionary = _masks(view, conclusion, cards, universe, listener_id)
+	var premise: PackedByteArray = masks.premise
+	var all_ok: PackedByteArray = masks.all_ok
+	var by_card_ok: Array = masks.by_card_ok
 	# If, further, every teller were honest and healthy: the face-value weights restricted
 	# to the worlds where they all are.
 	var honest_yes: float = 0.0

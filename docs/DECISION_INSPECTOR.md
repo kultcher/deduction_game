@@ -161,6 +161,59 @@ evaluations plus a few CaseEval runs per card: about 0.15 s per listener early i
 case, 0.5 s on day 2 at 10 NPCs and up to 2 s late in a 10-NPC case (so recording adds a
 real pause at a late meeting).
 
+### With the connections model on
+
+With `Connections.enabled` (workshop/connections.gd) none of the steps above exist: belief
+isn't limited by attention, and what a case adds is what its cards say together. The same
+menu items, `g.workshop_why` and `explain_case.gd --why` then give a different report
+(`WorkshopWhy._connections_report`; tests in `tools/test_connections_why.gd`). It follows
+the premise's subject and whoever the case's own part moved most (up to three people), and
+shows:
+
+- **In short:** the chance before and after, the suspicion before and after as stored
+  (it can go below zero; the game reads that as 0), and the largest part of the change.
+- **The case's cards weighed together:** who that moved, the weight it counted at (trust in
+  the presenter, x0.5 a day since it was presented, x0.5 for a "suspicious" premise), how
+  many cards were weighed together, and whether that was with the listener's core. If the
+  case as a whole added nothing, why (a single card, no held cards, too faded).
+- **Part by part, per person,** before and after, in log-odds: where they start; this
+  case's cards each counted by itself; every other card; the core; this case weighed
+  together; other stored cases (by case number, or "X's nomination of Y"); and the common
+  shift that keeps the evil count. The parts add up to the chance.
+- **The case's cards, each counted by itself:** a card, or the built-in pairing it sits in
+  (a night, an Augur day, a Psychologist reading with its statements, a trace with
+  profiles, the movement or day connection). `[new to them: the case brought it]` marks a
+  card they didn't hold. "(was ...)" shows a card whose own value changed when it was cited.
+- **The core:** what it starts from, what joined it, what it adds, and whether this case
+  was weighed with it.
+- **Suspicion and the action bars,** as before, and the **premise chain** (unchanged: the
+  case's cards read together by this listener alone).
+
+"Before" is the breakdown the listener's last refresh stored (`WorkshopWhy.before(n, g)`
+keeps it); "after" is the one the presentation's own refresh stored. Nothing is re-run, so
+the model's part of the report costs a few milliseconds. The premise chain is the cost: its
+per-world checks (does the premise hold, can each teller be taken at their word) are kept
+between listeners (`CaseWhy._masks`), so the first listener of a case pays about 0.4 s at
+10 NPCs and the rest about 0.08 s each.
+
+A log played with the model on says so in `case_start` (`"connections": true`), and
+`replay_log.gd` and `explain_case.gd` turn it on from that. For an older log, pass
+`--connections`.
+
+### What a command cost: `tools/replay_log.gd --time` and `--profile`
+
+`--time` prints how long each replayed command took (those over 100 ms) and the total.
+`--profile` adds, under each, the Workshop profiler's spans by their own time and its
+counters. With the connections model on the refresh shows as
+`.../consequences/connections/{baseline,items,core,cases}`, and `connections_judgements`
+counts the judgements made. `Connections.capture` (a developer switch, off) records each
+judgement (listener, part, the set judged, time, a hash of the answer), for measuring what a
+cache would save.
+
+```text
+godot --headless --path . --script res://tools/replay_log.gd -- logs/case_44542.jsonl --connections --profile
+```
+
 ## Coverage and maintenance
 
 Coverage includes weighted decision checks, gift tiers and withholding gates, protection/confidence requests, pressed nerves, whereabouts slips, opinions, gossip selection, traits/haunts/relationships, approaches and peer-conversation selection, public accusation/nomination/vote calculations, evil cover overrides, and Seer/Night Watch/Warden plus evil target decisions. Actual ability results, setup assignments and incidental flavour/world-generation randomness are outside this inspector's remit. It does not replay alternative decisions.

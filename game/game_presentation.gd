@@ -237,7 +237,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if g.workshop_compare else {}
-	var why_was: Dictionary = preload("res://game/workshop_why.gd").before(n) if g.workshop_why else {}
+	var why_was: Dictionary = preload("res://game/workshop_why.gd").before(n, g) if g.workshop_why else {}
 	var result: Dictionary = PresentationReply.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
 	if result.get("blocked", false):
 		return result
