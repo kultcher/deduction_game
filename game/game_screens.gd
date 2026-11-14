@@ -106,6 +106,12 @@ static func _card_conversations(g) -> void:
 		done[m.id] = true
 		facts.append({"kind": "conversation", "subject": [n.id, m.id], "block": g.w.loc_block(n.loc), "loc": n.loc, "day": g.w.day, "phase": g.w.phase,
 			"source": "player", "text": "You saw %s and %s talking at %s, day %d %s." % [n.name, m.name, g.w.loc_name(n.loc), g.w.day, g.w.phase_name()]})
+		# Each of them also gets their own sighting card: "who talked to whom" is its own
+		# (circumstantial) evidence, "who was where" is the location (playtest triage 1.7).
+		# Same fact id as a sighting from visiting the spot, so the two merge.
+		for x in [n, m]:
+			facts.append({"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(x.loc), "loc": x.loc, "day": g.w.day, "phase": g.w.phase,
+				"source": "player", "text": "You saw %s at %s, day %d %s." % [x.name, g.w.loc_name(x.loc), g.w.day, g.w.phase_name()]})
 	if not facts.is_empty():
 		g._facts(facts)
 

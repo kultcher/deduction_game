@@ -44,7 +44,17 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 13): `baseline_4a1a075`
+### Current baseline (Nov 13): `baseline_b281427`
+
+`tools/golden/baseline_b281427/` is the capture from `claude/talk-sightings` (triage 1.7). A
+conversation the player sees now also gives each talker their own sighting card (merged with
+any sighting already held for them there). Player board only.
+- **Divergence from `baseline_4a1a075`:** board length and card tags in every seed (42 at
+  record 21, 54875, 692 and 900 at record 1, 98933 at record 4). Nothing outside `board` and
+  `reply` changed in any record; record counts and outcomes are unchanged.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 13): `baseline_4a1a075`
 
 `tools/golden/baseline_4a1a075/` is the capture from `claude/playtest-fixes` (playtest triage
 sections 1 and 2). Two kinds of change:
