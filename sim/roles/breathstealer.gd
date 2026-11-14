@@ -44,8 +44,11 @@ func free_location(w, bs, idle: String, evil) -> String:
 	if target != null and w.phase in target.work_phases and target.work in PUBLIC:
 		if w.decision_roll(bs, "breath_seek_target", Tuning.Roles.BREATHSTEALER.seek_target_chance, {"target": target.id}, target.work):
 			return target.work
+	# Only people it may silence today count: not yesterday's, not anyone silenced already.
 	var good_on: Dictionary = {}
 	for m in w.living_good():
+		if m.id == bs.breath_last or m.silenced or m.silence_pending >= 0:
+			continue
 		if w.phase in m.work_phases and m.work in PUBLIC:  # (placed later in this loop, so read the schedule)
 			var blk: String = w.loc_block(m.work)
 			good_on[blk] = int(good_on.get(blk, 0)) + 1

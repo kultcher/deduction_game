@@ -225,8 +225,8 @@ class Roles:
 		# Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (seek_target_chance
 		# toward its preferred target's workplace; out to a busy public place otherwise), and it
 		# takes its shot in the evening whatever the target's threat.
-		"phase_probs_high": [0.35, 0.6, 1.0],
-		"phase_probs_low": [0.25, 0.45, 1.0],
+		"phase_probs_high": [0.4, 0.7, 1.0],
+		"phase_probs_low": [0.3, 0.55, 1.0],
 		"seek_target_chance": 0.6,
 		"high_score_threshold": 1.0,
 		"noise": 1.0,
