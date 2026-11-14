@@ -50,7 +50,7 @@ func _test_surveyor_wording() -> void:
 	var on_block: Array = ReasonAttribution._report_why_pair(view, card, "a", "x")
 	var off_block: Array = ReasonAttribution._report_why_pair(view, card, "b", "x")
 	_check("and they live there" in str(on_block[1]), "a Surveyor reason about someone on the block still says they live there")
-	_check(not "they live there" in str(off_block[1]) and "taken with the other reports" in str(off_block[1]), "off the block, it says the reading weighs through the other reports (%s)" % off_block[1])
+	_check(not "they live there" in str(off_block[1]) and "the evil has to be somewhere else" in str(off_block[1]), "off a one-sided block, it says the evil is elsewhere (%s)" % off_block[1])
 	var bad: Dictionary = {"source": "b", "role": "archivist", "data": {"role": "scion", "pair": ["a", "s"]}}
 	var own: Array = ReasonAttribution._report_why_pair(view, bad, "b", "x")
 	_check("as I know them" in str(own[1]) and not "what we know" in str(own[1]), "an impossible report 'doesn't fit the facts as I know them' (%s)" % own[1])

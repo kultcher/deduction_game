@@ -296,7 +296,7 @@ func _test_2_6_scion_revenant_scoring_and_grimoire() -> void:
 	g.w.turn_evil(cursed_good, "Revenant curse")
 	var grim: String = g._grimoire()
 	_check("Scion (promoted to Demon)" in grim, "Grimoire labels promoted Scion clearly")
-	_check("Warden (cursed by Revenant)" in grim and not ("bluffed Warden" in grim), "Grimoire labels Revenant-cursed Good villager without 'bluffed Warden'")
+	_check("turned evil by the Revenant on day" in grim and not ("bluffed Warden" in grim), "Grimoire labels Revenant-cursed Good villager without 'bluffed Warden'")
 
 
 func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
