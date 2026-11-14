@@ -94,6 +94,13 @@ const DEMON_CLIP = 0.002
 const FIXED = Connections.FIXED
 ## A stored case whose weight has faded below this no longer counts.
 const CASE_FLOOR = 0.05
+## A fade "rate" that asks for the game's buy-in fade (Connections.buy_in_rate; the first
+## of `fades`, so the tool's main numbers are the game's): a case keeps between CASE_FADE
+## and CASE_FADE_BOUGHT of its weight a day, the more the further its cards, standing
+## alone, move this listener. The other `fades` are flat rates, for comparison.
+const BUYIN = -2.0
+const BUYIN_SLOW = [Connections.CASE_FADE, Connections.CASE_FADE_BOUGHT]
+const BUYIN_FULL = Connections.CASE_BUYIN_FULL
 ## A trace "matches" a person when, read with the profile cards, it moves them this far.
 const TRACE_MATCH = 0.1
 ## A cached value counts as changed beyond this (log-odds).
@@ -106,7 +113,7 @@ const TRACE_KINDS = Connections.TRACE_KINDS
 const ALWAYS_ON = Connections.ALWAYS_ON
 
 ## Each day a stored case keeps this share of its weight; the first is the main rate.
-var fades: Array = [0.5, 0.7, 0.85]
+var fades: Array = [BUYIN, 0.5, 0.7]
 ## 0: no cap on stored cases (they fade). N: the old rule, at most N per listener.
 var cap := 0
 ## --legacy-seed: the first prototype's seed (see the header). With it, --movement-seed: a
@@ -439,7 +446,7 @@ func _seed(st: Dictionary, items: Array) -> Array:
 ## new to it). fixed: use exactly these members per threshold instead (for comparing two
 ## versions of one moment on the same core).
 func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fixed: Dictionary = {}, fade: float = -1.0) -> Dictionary:
-	if fade < 0.0:
+	if fade < 0.0 and not is_equal_approx(fade, BUYIN):
 		fade = float(fades[0])
 	var t0: int = Time.get_ticks_usec()
 	var calls0: int = judge_calls
@@ -510,38 +517,31 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		var core_keys: Array = seed_keys + members.keys()
 		var sets: Array = []
 		var largest: int = 0
-		var merged_keys: Array = core_keys.duplicate()
-		var merged_extra: Array = []   # movement cards cited by cases already merged into the core
-		var merged_i: Dictionary = _interaction(st, merged_keys, by_key, values)
+		var core_i: Dictionary = _interaction(st, core_keys, by_key, values)
 		if not core_keys.is_empty():
-			_add(total, merged_i)
-			largest = _size(merged_keys, by_key)
-		# Which stored cases count, in what order and at what weight, is the game's rule
-		# (Connections.case_plan). Challenges inside a case are the game's alone: this tool
-		# doesn't weigh them.
-		for cs in Connections.case_plan(cases.map(func(x): return x.merged({"key": x.label, "suspicious": str(x.get("type", "")) == "suspicious"})), items, st.listener, day, fade):
-			var keys: Array = cs.keys
-			var extra_ids: Array = cs.extra
+			_add(total, core_i)
+			largest = _size(core_keys, by_key)
+		# Which stored cases count, in what order, at what weight and as which joint sets
+		# is the game's rule (Connections.case_plan, case_step). Challenges inside a case
+		# are the game's alone: this tool doesn't weigh them.
+		var state: Dictionary = Connections.case_state(core_keys)
+		var buyin: bool = is_equal_approx(fade, BUYIN)
+		for cs in Connections.case_plan(cases.map(func(x): return x.merged({"key": x.label, "suspicious": str(x.get("type", "")) == "suspicious"})), items, st.listener, day, Connections.CASE_FADE if buyin else fade,
+				(func(c): return lerpf(BUYIN_SLOW[0], BUYIN_SLOW[1], clampf(float(c["weight"]) * _alone_move(st, c, by_key, values) / BUYIN_FULL, 0.0, 1.0))) if buyin else Callable()):
+			var step: Dictionary = Connections.case_step(state, cs)
 			var w: float = cs.weight
-			var touches_core: bool = not merged_keys.is_empty() and keys.any(func(k): return k in merged_keys)
-			var entry: Dictionary = {"label": cs.key, "weight": w, "merged": touches_core, "cards": keys.size() + extra_ids.size()}
-			if touches_core:
-				var next_keys: Array = _union(merged_keys, keys)
-				var next_extra: Array = _union(merged_extra, extra_ids)
-				var next_i: Dictionary = _interaction(st, next_keys, by_key, values, next_extra)
-				var delta: Dictionary = next_i.duplicate(true)
-				_add(delta, merged_i, -1.0)
-				_add(total, delta, w)
-				merged_keys = next_keys
-				merged_extra = next_extra
-				merged_i = next_i
-				largest = maxi(largest, _size(merged_keys, by_key) + merged_extra.size())
-				entry["max_shift"] = w * _max_e(delta)
-			else:
-				var alone: Dictionary = _interaction(st, keys, by_key, values, extra_ids)
-				_add(total, alone, w)
-				largest = maxi(largest, _size(keys, by_key) + extra_ids.size())
-				entry["max_shift"] = w * _max_e(alone)
+			var entry: Dictionary = {"label": cs.key, "weight": w, "merged": step.merged, "cards": cs.keys.size() + cs.extra.size(), "shared": step.shared, "replaces": cs.replaces}
+			var delta: Dictionary = _zero(st)
+			for term in step.terms:
+				_add(delta, _interaction(st, term[1], by_key, values, term[2]), float(term[0]))
+			entry["rate"] = cs.rate
+			_add(total, delta, w)
+			state = step.next
+			largest = maxi(largest, _size(step.terms[0][1], by_key) + step.terms[0][2].size())
+			entry["max_shift"] = w * _max_e(delta)
+			entry["lean"] = {}
+			for p in st.others:
+				entry.lean[p] = w * float(delta[p]["e"])
 			sets.append(entry)
 		for it in items:
 			if it.kind in ALWAYS_ON:
@@ -568,18 +568,31 @@ static func _size(keys: Array, by_key: Dictionary) -> int:
 
 ## A joint set's interaction: its value judged together minus the sum of its members' own
 ## values. extra: single cards cited out of the movement connection.
+## The largest move a case's cards make together on anyone, standing alone (buy-in).
+func _alone_move(st: Dictionary, c: Dictionary, by_key: Dictionary, values: Dictionary) -> float:
+	var d: Dictionary = _zero(st)
+	_add(d, _interaction(st, c["keys"], by_key, values, c["extra"]))
+	return _max_e(d)
+
+
 func _interaction(st: Dictionary, keys: Array, by_key: Dictionary, values: Dictionary, extra: Array = []) -> Dictionary:
-	if keys.size() + extra.size() < 2:
-		return _zero(st)
 	var set_: Dictionary = Connections.pool(keys.map(func(k): return by_key[k]))
 	# A cited card that already sits in one of the items (a core holding the movement
-	# connection) is counted there, not again as a single card (Connections.interaction).
-	var single: Array = extra.filter(func(id): return id not in set_.ids)
-	var joint: Dictionary = _value(st, _union(single, set_.ids), set_.ctx)
+	# connection) is counted there (Connections.interaction).
+	var cited: Array = extra.filter(func(id): return id not in set_.ids)
+	if keys.size() + ((0 if cited.is_empty() else 1) if Connections.held_together_rule else cited.size()) < 2:
+		return _zero(st)
+	var joint: Dictionary = _value(st, _union(cited, set_.ids), set_.ctx)
 	for k in keys:
 		_add(joint, values[k], -1.0)
-	for id in single:
-		_add(joint, _lean(st, [id]), -1.0)
+	# The always-on connection already weighs the cited cards together: a case adds what
+	# they say next to its other cards, not their meeting each other.
+	if Connections.held_together_rule:
+		if not cited.is_empty():
+			_add(joint, _lean(st, cited), -1.0)
+	else:
+		for id in cited:
+			_add(joint, _lean(st, [id]), -1.0)
 	return joint
 
 func _presenter_trust(st: Dictionary, presenter: String) -> float:

@@ -27,6 +27,169 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (PR #153, `claude/connections-buyin`, stacked on #151)
+
+- **Base:** `claude/connections-cache` (#151, itself on #150). **Status:** PR open, for Bailiff, after those two. **Next actor:** Bailiff; Michael for the one question below.
+- **From:** the triage doc, 4.3. Michael picked buy-in over a flat 0.7 (Nov 13 evening). Switch on only.
+- **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds). Fast list 56 of 56.
+
+**The rule (`workshop/connections.gd`: `buy_in_rate`, `case_plan`)**
+
+- A stored case from an earlier day keeps between 0.5 and 0.9 of its weight a day (`CONNECTIONS_CASE_FADE`, `CONNECTIONS_CASE_FADE_BOUGHT`), by how far it moves that listener: the largest move its cards make together on anyone, standing alone, at the weight it had the day it was presented, against 0.7 log-odds (`CONNECTIONS_CASE_BUYIN_FULL`). At or over 0.7 it fades slowest.
+- Nothing is stored. The rate is read again at each refresh, so it follows what the listener holds now. It costs one judgement per older case, and the cache keeps it.
+- **Different from what was measured in #150:** there the move was what the case added after the reuse rule, so a repeat of the same cards faded at a half. Now it is the case's own cards standing alone, so a repeat fades like the original. On 44542 the result is the same (below).
+- The rate is set before the "at least as much" test for replacing a case, so that test compares the weights as they stand today.
+- `stored_with` (NPC nominators' cases) keeps a case while it could still count at the slowest fade: 28 days, against 4.
+- `Connections.buy_in` (on in play) turns it off for measuring. The arithmetic tests on chosen numbers run with it off.
+- The Why report shows the rate a case keeps a day.
+- **The prototype tool follows the game:** its first fade is now buy-in through the same rule (`fades = [buy-in, 0.5, 0.7]`).
+
+**44542, in the game** (chance Fenwick is evil; "Fenwick is good" was presented on day 1)
+
+| Listener | Evening of day 1 | Dawn of day 2, before (0.5 a day) | Dawn of day 2, now |
+|---|---|---|---|
+| Greta | 18% | 24% | 20% |
+| Hollis | 13% | 19% | 15% |
+| Jory | 19% | 33% | 27% |
+| Kiran | 22% | 37% | 31% |
+
+- The case keeps 0.86–0.9 a day for these four. What is left of the overnight rise is other cards arriving.
+- By the vigil on day 3: Greta 39% (43% before), Jory 41% (46%), Kiran 12% (15%).
+
+**For Michael:** it applies to NPC nominators' cases as well as the player's, since both are stored cases. If NPC cases should keep the flat 0.5, it is one condition.
+
+- **Tests:** `test_connections_cases` (106 checks; the rate on chosen numbers, a day on in a game), `test_connections_why`.
+
+## 2026-11-14 early, Claude-Lantern: kept judgements, step 6 (PR #151, `claude/connections-cache`, stacked on #150)
+
+- **Base:** `claude/connections-case-rules` (#150) with main `9cded67` merged in. **Status:** PR open, for Bailiff, after #150. **Next actor:** Bailiff.
+- **From:** the triage doc, 4.1. Switch on only.
+- **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds). Fast list 56 of 56.
+
+**What it does (`workshop/connections.gd`: `judge`, `judge_key`, `_kept`)**
+
+- Each listener keeps the answers to the judgements it has made. `judge` hands a kept answer back when everything that judgement reads is the same, and makes it otherwise.
+- **The key is what a judgement reads, not the whole input.** A whole-input key almost never hit: the view's card list, trust figures and attention's bookkeeping change at every step without touching the answer. The key is:
+  - the view without its cards, and the timeline without the meeting's talk (nominations, votes, accusations, readings) unless a judged card is a Magistrate's, the one gift that reads it;
+  - the judged cards, and the listener's own-report cards;
+  - the case template;
+  - the listener, with reading reliability for the judged cards only, without `presented_reports`, `attention_reports`, `trust` and `player_credibility` (the last two only weigh stored cases, outside the judgement);
+  - the Hexer switch and the set.
+- **Why that is safe:** the judge reads view cards only through `Solver.selected` and `card_by_id` on the listener's ids; `TraceSolver` and `Circumstantial` are not on its path; only `Solver._magistrate_nomination_ok` reads meeting events. And it is checked, not assumed: `Connections.cache_verify` makes every kept answer be judged again and compared.
+- Kept answers are slim (`impossible`, and each person's prior and posterior), up to 6,000, cleared with the other caches (`Caches.clear_all`). A caller that wants the worlds (`CaseEval.capture_worlds`, the prototype tool) always gets a real judgement.
+- `Connections.cache_enabled` turns it off for measuring. The profiler counts `connections_kept`.
+
+**Beliefs are the same**
+
+- 12 bot and passive games replayed with `cache_verify`: 28,644 kept answers judged again, 0 different.
+- Both playtest logs replayed with the cache on and off: the same suspicions for every NPC and the same dev log (915 and 1,283 records).
+- The suite plays two passive games three ways (off, on, checked) and compares suspicions and the dev log.
+
+**Timing, cache off → on** (this machine, 2 cores, one job at a time; switch on in both)
+
+| | Off | On |
+|---|---|---|
+| 44542 replayed whole | 193 s | 96 s |
+| 97626 replayed whole | 282 s | 144 s |
+| 44542 `present 39` (day 1) | 4.0 s | 2.7 s |
+| 44542 `nominate odette #40` (day 1) | 6.5 s | 3.2 s |
+| 44542 `press role` (day 1) | 2.3 s | 1.6 s |
+| 44542 `present 89` (day 2) | 7.8 s | 3.7 s |
+| 44542 `nominate odette #89` (day 2) | 5.3 s | 1.8 s |
+| 97626 `nominate dorian #92` (day 2) | 13.6 s | 6.9 s |
+| 97626 `present 145` (day 3) | 11.4 s | 7.1 s |
+| 97626 `nominate jory #145` (day 3) | 10.1 s | 5.0 s |
+| 44542 `gossip` (day 1) | 4.8 s | 4.4 s |
+| 44542 `ward hollis` (the night into day 2) | 14.9 s | 10.9 s |
+| 97626 `vigil square` (a night) | 18.2 s | 11.8 s |
+
+- 70% and 73% of judgements in the two games are kept ones.
+- Golden seed 692 with the switch on: 239 ms a refresh (382 on #150 without the cache; 93 with the switch off).
+- I did not reproduce Bailiff's 26 s and 34 s for day 3–4 of 44542; that replay ran alongside another job.
+
+**What is left: the spec's cost bar is not met.**
+
+- The cache halves a game, but a late presentation is still 4–7 s and a night 11–21 s. What remains is first-time sets: a new card, a new day, a death or a change of trust in a teller makes that listener's judgements new, and dawn changes all of them for everyone.
+- A first-time judgement costs 9–25 ms, spread over building the worlds (2.4 ms), compiling the set (2.7) and the sum (2.9) for a single card. No one part dominates, so there was no quick win; raising `CaseEval`'s compile cache from 32 to 4,096 barely helped.
+- **Next options, not built:** (1) judge single cards for all listeners at once from one world table per day, since most of a refresh is one card's own value; (2) spread dawn's refreshes over the night screen; (3) skip the core test for items whose cards and seed did not change since yesterday except for the day number.
+- Also seen: `trust_reward/jury/headline` takes 0.8 s in a nomination. It is today's code still running under connections, where the headline reading is off.
+
+- **Tests:** `test_connections_cache` (32 checks, 66 s; in the fast list).
+
+## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (PR #150, `claude/connections-case-rules`)
+
+- **Base:** main `9cded67` (merged in after #149). **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the fade (4.3).
+- **From:** the triage doc, 4.2 and 4.4 (Michael's decisions, Nov 13). Switch on only. 4.3 (the fade) is measured here, not built: it waits for his pick.
+- **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds), after merging main. Fast list 55 of 55.
+
+**The rules (`workshop/connections.gd`: `case_plan`, `case_step`, `interaction`)**
+
+- **4.2, per presenter.** A case that cites every card of an earlier one from the same presenter, and counts at least as much, takes its place: the earlier one stops counting, and the set counts once at the later case's weight. A weaker one (a "suspicious" premise on cards already argued firmly) leaves the earlier case in place and adds only what is new, so the cards keep the larger of the two weights (Michael, Nov 13 evening). It goes by the cited cards; the premise is not compared. Otherwise a case adds nothing for what an earlier one already put together; only what involves a card new from that presenter counts. It applies to NPC nominators as well as the player.
+  - Nothing is removed from the presentation store. The rule is applied when the cases are weighed, so today's model (switch off) is untouched.
+  - One shared card takes nothing off: what it says next to a new card is new.
+- **4.4.** Cards a case cites from the movement connection add only what they say next to the case's other cards. Their meeting each other is already counted, in full, by the movement connection. A case made only of such cards adds nothing as a whole.
+  - **The Hexer's day connection needed nothing.** A case never included it: every judgement runs with the Hexer factor off, and the day connection is the only place that factor is read (step 2).
+- `case_step` holds the rules as joint sets to weigh, so the game and `tools/connections_prototype.gd` share them.
+- `Connections.reuse_rule` and `held_together_rule` (on in play) switch each rule off for measuring. A kept refresh doesn't know a switch moved; clear `g._workshop_evaluations` after flipping one.
+- **The Why report** says when a case took another's place, when it was replaced, and how many of its cards an earlier case already held.
+
+**What they change**
+
+- **44542, day 1.** #40 "Odette is suspicious" cites the same four cards as #39 "Fenwick is good", so it replaces it:
+
+  | Listener | The cases' part on Fenwick, before | With the rule | Chance Fenwick is evil, before | With the rule |
+  |---|---|---|---|---|
+  | Greta | -1.02 | -0.34 | 14% | 24% |
+  | Kiran | -1.02 | -0.34 | 17% | 28% |
+  | Hollis | -1.10 | -0.37 | 10% | 18% |
+  | Nisha | -1.29 | -0.43 | 11% | 22% |
+  | Jory | -1.16 | -0.39 | 14% | 25% |
+
+  That table is the first version, where the later case always took the earlier one's place: the half-weight #40 took back half of what #39 did. **Michael's call (Nov 13 evening): the cards keep the larger of the two weights.** With that built, #40 leaves Fenwick where #39 put him: Greta 18%, Hollis 13%, Jory 19%, Kiran 22%.
+- **A "suspicious" case presses its subject again (switch on).** Step 4 left this out without saying so: the pressure read a number only today's model fills in, so it was always zero with the switch on. Now a "suspicious" entry carries `withheld`, what its held-back half would add standing alone (whatever an earlier case holds of its cards), and `WorkshopPresentation._connections_rise` turns that into the rise in the target's chance. The rest is as before: the average over the listeners, × 1.0 at a meeting or 0.5 in private, once per filing. In 44542, #40 gives Odette +0.005: those cards say almost nothing about her.
+- **Six bot games (72 listener-presentations, walker-only scripts):**
+  - 4.2 changes no chance by more than 1 point. The bot rarely re-presents the same cards.
+  - 4.4 changes the target's chance by more than 1 point in 9 of 72, the largest by 12. The case's own part on its target is over 0.5 log-odds in 8, against 14 before.
+
+**4.3, the fade, measured only**
+
+- **Buy-in version tried:** a case keeps between 0.5 and 0.9 of its weight a day, the more the further it moves that listener (its largest move on anyone, at trust, against 0.7 log-odds). Nothing is stored; it is re-judged each refresh.
+- **Bot games, from a presentation to the next dawn (43 pairs):** against 0.5 a day, the target's chance differs by 0.3 points on average under 0.7 a day (largest 2.3) and 0.3 under buy-in (largest 4.4). The bot's cases mostly leave their target near certain, so the fade has little to move.
+
+**Both playtest logs, replayed whole with the switch on** (8 cases, 67 listener-presentations; the replays reach the logs' vote tallies)
+
+- Measured on the first version (a later case always replaces), before main's #149 was merged in. After #149 the 97626 log no longer replays faithfully (passive play moved), so its figures were not redone; 44542 was, and the final rule's figures are marked.
+- **What was replaced:** in 44542, #89 replaces #39 and #40 (under the final rule #40 no longer replaces #39); in 97626, #145 "Jory is evil" replaces #31 "Jory is suspicious".
+- **Per presentation,** the mean over its listeners of the target's chance, and of all the player's cases' part on the target (log-odds):
+
+  | Case | Target's chance: before, 4.2 only, 4.4 only, both | Cases' part on the target: before → both |
+  |---|---|---|
+  | 44542 #39 Fenwick is good (day 1) | 20.5%, the same under each | -0.62 → -0.62 |
+  | 44542 #40 Odette is suspicious (day 1), final rule | 51.6%, 51.1%, 51.6%, 51.1% | +0.12 → +0.10 |
+  | 44542 #89 Odette is evil (day 2) | 53.1%, the same under each | +0.10 → +0.10 |
+  | 44542 #131 Jory is suspicious (day 3) | 78.8%, 78.8%, 76.2%, 76.2% | +0.17 → -0.03 |
+  | 97626 #31 Jory is suspicious (day 1) | 53.4%, the same under each | 0 → 0 |
+  | 97626 #92 Dorian is a Minion (day 2) | 6.7%, the same under each | +0.09 → +0.09 |
+  | 97626 #145 Jory is evil (day 3) | 93.8%, 93.8%, 92.8%, 92.8% | +0.55 → +0.38 |
+  | 97626 #175 Kiran is evil (day 4) | 96.4%, 94.6%, 96.3%, 94.6% | +1.29 → +0.99 |
+
+- **The rules move a case's target little.** The large moves were on Fenwick, from stacking: before the rules #40 took him from 18% to 14% for Greta by counting the same four cards a second time.
+
+**4.3 on 44542 under the final rule, and the pick**
+
+- Chance Fenwick is evil, after "Fenwick is good" and at the next two dawns, by fade:
+
+  | Listener | After #39 and #40 (day 1) | Dawn of day 2: 0.5 / 0.7 / buy-in | Dawn of day 3: 0.5 / 0.7 / buy-in |
+  |---|---|---|---|
+  | Greta | 18% | 24 / 22 / 20% | 43 / 40 / 39% |
+  | Hollis | 13% | 19 / 17 / 15% | (dead) |
+  | Jory | 19% | 33 / 30 / 27% | 46 / 43 / 41% |
+  | Kiran | 22% | 37 / 34 / 31% | 15 / 13 / 12% |
+
+- 0.7 a day takes back 2–3 points of the overnight rise, and buy-in 4–6. The rest of the rise is not the fade: other cards arrive overnight (Isolde's Archivist reading names Fenwick as one of two Scion candidates).
+- For these listeners the buy-in rate is 0.86–0.9 a day; for a case that moved a listener little it stays 0.5.
+- **Pick: buy-in.** It is what Michael described (a conclusion the listener bought lasts; one it didn't fades as now), it does about twice what 0.7 does where it matters, and it stores nothing: the rate is re-read from the case's own move at each refresh. 0.7 flat is the simpler fallback. Not built: it waits for his word.
+
 ## 2026-11-13 late, Claude-Bailiff: seen talking gives each talker a sighting (`claude/talk-sightings`)
 
 Triage 1.7 (Michael): a conversation the player sees gives three cards, each talker's own

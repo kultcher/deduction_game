@@ -113,6 +113,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var key = str(card.n) if direction == "deduction" else "direct:%s:%s:%s" % [origin, direction, ",".join(PackedStringArray(target_ids))]
 	var previous: Dictionary = state.get("presentations", {}).duplicate(true)
 	var proposals: Dictionary = previous.duplicate(true)
+	# Re-presenting moves the case to the end: the stored cases' order is the order they were
+	# last presented, and the connections model's replacement rule reads it (Codex on #150).
+	proposals.erase(key)
 	proposals[key] = snapshot
 	# Recency: the presented cards are back on this listener's mind, and a case argued at a
 	# meeting puts its subject on the town's topic (sim/recency.gd). Settled before the
@@ -423,7 +426,9 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 	# holds. With another one there, measure this filing's own share: the full union
 	# against the union without it (Codex review of PR #93).
 	var others: Array = _other_suspicious(n, key)
-	if not others.is_empty():
+	if Connections.enabled:
+		rise = _connections_rise(g, listener_key, key, target_id)
+	elif not others.is_empty():
 		rise = maxf(0.0, _filing_rise(g, n, listener_key, key, target_id))
 	var ids: Array = snapshot.selected.duplicate()
 	ids.sort()
@@ -447,6 +452,36 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 		target.pressure = maxf(0.0, target.pressure + delta)
 		g.w.dlog.trace_event("value_change", target_id, n.id, {"quantity": "pressure", "delta": delta, "rise": rise, "filing": filing, "venue": venue},
 			"A suspicious case presses its subject to explain (premises step 2)")
+
+## The same rise under the connections model (workshop/connections.gd), where a "suspicious"
+## case counts at half weight: how far the target's chance would go up if the held-back
+## half counted too. Read from the applied refresh; nothing is judged again.
+static func _connections_rise(g, listener_key: String, key: String, target_id: String) -> float:
+	var res: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("connections", {})
+	if not res.get("posterior", {}).has(target_id):
+		return 0.0
+	for entry in res.get("cases", {}).get("entries", []):
+		if str(entry.key) == "case:" + key:
+			var chance: float = float(res.posterior[target_id])
+			if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
+				return 0.0
+			return maxf(0.0, held_back_chance(res.posterior, entry.get("withheld", {}), target_id) - chance)
+	return 0.0
+
+## The target's chance with a case's held-back leans added for everyone, renormalised as
+## Connections.combine does: one common shift over the people still in question keeps their
+## chances summing as before (the evil count); settled people stay put (Codex on #153).
+static func held_back_chance(posterior: Dictionary, withheld: Dictionary, target_id: String) -> float:
+	var open: Array = posterior.keys().filter(func(p): return float(posterior[p]) > Connections.FIXED and float(posterior[p]) < 1.0 - Connections.FIXED)
+	if target_id not in open:
+		return float(posterior.get(target_id, 0.0))
+	var total: float = 0.0
+	var scores: Array = []
+	for p in open:
+		total += float(posterior[p])
+		scores.append(Connections.logit(float(posterior[p])) + float(withheld.get(p, 0.0)))
+	var shift: float = Connections.common_shift(scores, total)
+	return Connections.chance(scores[open.find(target_id)] + shift)
 
 ## The listener's other remembered (not withdrawn) suspicious filings, besides `key`.
 static func _other_suspicious(n, key: String) -> Array:

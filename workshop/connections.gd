@@ -43,8 +43,12 @@
 ##               halved again under a "suspicious" premise, and nothing below CASE_FLOOR.
 ##               A case that shares a card or pairing with the core is judged with the core
 ##               as one set (older cases first); the core's own part counts in full and
-##               what the case adds on top is weighted. A card it cites from an always-on
-##               connection adds only what that card does next to the case's other cards.
+##               what the case adds on top is weighted. Cards it cites from an always-on
+##               connection add only what they say next to the case's other cards: that
+##               connection already weighs them together, in full.
+##               A presenter's cases don't stack on their own cards (Michael, Nov 13): one
+##               that cites every card of an earlier one takes its place, and otherwise a
+##               case adds nothing for what an earlier one already put together.
 ##               A reading challenge in a case acts inside that case's set only: the
 ##               challenged reading's own value is untouched, and the floor a "lying"
 ##               challenge puts under its teller is scaled by the case's weight.
@@ -92,6 +96,16 @@ static var force_row: String = ""
 ## home is firsthand knowledge (it seeds the core). On in play; a tool turns it off to
 ## measure what it changes.
 static var seed_wrong_sightings: bool = true
+## Measurement switches (on in play), for showing what each rule changes on a replay:
+## - reuse_rule: a presenter's case that reuses its own cards doesn't stack (case_plan's
+##   replacement, case_step's shared part).
+## - held_together_rule: a case adds nothing for cards an always-on connection already
+##   weighs together (interaction).
+static var reuse_rule: bool = true
+static var held_together_rule: bool = true
+## Buy-in fading (buy_in_rate). Off, every case keeps CASE_FADE a day (for measuring, and
+## for arithmetic tests on chosen numbers).
+static var buy_in: bool = true
 ## Developer capture (off): one record per judgement a refresh makes, for measuring what a
 ## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
 ## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
@@ -102,9 +116,13 @@ static var captured: Array = []
 ## An item joins the core at this much interaction with the seed (log-odds, any one person).
 const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
 
-## A stored case keeps CASE_FADE of its weight a day, and stops counting below CASE_FLOOR.
+## A stored case keeps CASE_FADE of its weight a day (more if the listener bought it:
+## buy_in_rate), and stops counting below CASE_FLOOR.
 const CASE_FADE: float = Tuning.Workshop.CONNECTIONS_CASE_FADE
 const CASE_FLOOR: float = Tuning.Workshop.CONNECTIONS_CASE_FLOOR
+## A case the listener bought fades slower: up to CASE_FADE_BOUGHT a day (buy_in_rate).
+const CASE_FADE_BOUGHT: float = Tuning.Workshop.CONNECTIONS_CASE_FADE_BOUGHT
+const CASE_BUYIN_FULL: float = Tuning.Workshop.CONNECTIONS_CASE_BUYIN_FULL
 
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 
@@ -152,7 +170,107 @@ static func case_for(template_case: Dictionary, ids: Array) -> Dictionary:
 
 ## The judge on a set of held cards. `hex`: with the Hexer factor (only the day connection
 ## asks for it; see the header).
+## Kept judgements (step 6). A judgement is a pure function of what it reads, so one made
+## before on the same inputs is handed back instead of being made again. Its key
+## (judge_key) is what the judge reads, and no more than that, so that a new card or a
+## remark at the meeting doesn't throw away what it has nothing to do with:
+## - the view apart from its cards and its record of public events;
+## - the cards judged and the listener's own readings. The judge is handed its cards; the
+##   only cards it looks up in the view are those two (Solver.selected, and the listener's
+##   own reports by id), so a card outside the set changes nothing;
+## - the public record: deaths, executions and the events of KINDS not in SOFT_EVENTS. The
+##   meeting's own talk (nominations, votes, accusations) is read by one gift only, the
+##   Magistrate's; a judgement that involves a Magistrate reading keys on all of it;
+## - the bare case; the Hexer switch;
+## - the listener as the judge sees it (Jury._eval_listener), with only the reliabilities
+##   of the cards above, and without attention's bookkeeping or the two trust figures
+##   that only weigh stored cases.
+## Beliefs are the same with the cache on and off. `cache_verify` (a developer switch)
+## makes every kept answer be judged again and compared (cache_stats.wrong counts any
+## difference); tools/test_connections_cache.gd plays games that way.
+## Kept per listener; a listener's store is emptied when it passes KEPT_MAX.
+static var cache_enabled: bool = true
+static var cache_verify: bool = false
+static var cache_stats: Dictionary = {"hits": 0, "misses": 0, "wrong": 0}
+static var _kept: Dictionary = {}
+const KEPT_MAX: int = 6000
+const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusation", "reading", "clear"]
+const SOFT_READERS: Array = ["magistrate"]
+
+
+static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool) -> String:
+	var own: Array = listener.get("knowledge", {}).get("own_reports", [])
+	var cards: Array = []
+	var names: Array = []
+	var soft: bool = false
+	for c in view.get("cards", []):
+		var judged: bool = c.id in ids or c.id in own
+		if judged:
+			cards.append(c)
+			soft = soft or str(c.get("role", "")) in SOFT_READERS
+			for name in [c.get("accuracy_origin", ""), Solver.semantic_key(c), c.get("fact_id", ""), c.id]:
+				if name != "" and name not in names:
+					names.append(name)
+	var around: Dictionary = view.duplicate(false)
+	around.erase("cards")
+	var timeline: Dictionary = around.get("timeline", {})
+	if not soft and timeline.has("events"):
+		timeline = timeline.duplicate(false)
+		timeline["events"] = timeline.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
+		around["timeline"] = timeline
+	var who: Dictionary = listener.duplicate(false)
+	who.erase("trust")
+	who.erase("player_credibility")
+	var heard: Dictionary = {}
+	var all_heard: Dictionary = listener.get("reading_reliability", {})
+	for name in names:
+		if all_heard.has(name):
+			heard[name] = all_heard[name]
+	who["reading_reliability"] = heard
+	# Attention's bookkeeping (which reports a presentation put in front of the listener)
+	# is the union model's; no judgement reads it (as Solver._query_knowledge).
+	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
+	known.erase("presented_reports")
+	known.erase("attention_reports")
+	who["knowledge"] = known
+	return "%d:%d:%d:%d|%s|%s" % [hash(around), hash(cards), hash(template_case), hash(who), "hex" if hex else "", ",".join(PackedStringArray(ids))]
+
+
 static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
+	# A caller that wants the worlds themselves (CaseEval.capture_worlds) needs the real run.
+	if not cache_enabled or CaseEval.capture_worlds:
+		return _judge(view, template_case, listener, ids, hex)
+	var who: String = str(listener.get("id", ""))
+	var key: String = judge_key(view, template_case, listener, ids, hex)
+	var store: Dictionary = _kept.get(who, {})
+	if store.has(key):
+		cache_stats.hits += 1
+		if cache_verify:
+			var fresh: Dictionary = _slim(_judge(view, template_case, listener, ids, hex))
+			if fresh != store[key]:
+				cache_stats.wrong += 1
+				if cache_stats.wrong <= 5:
+					push_warning("Connections: a kept judgement differs from a fresh one (%s, %s)" % [who, str(ids)])
+		return store[key]
+	cache_stats.misses += 1
+	var slim: Dictionary = _slim(_judge(view, template_case, listener, ids, hex))
+	if store.size() >= KEPT_MAX:
+		store = {}
+	store[key] = slim
+	_kept[who] = store
+	return slim
+
+
+## What the model reads of a judgement: each person's chance before and after, and whether
+## anything fits at all.
+static func _slim(ev: Dictionary) -> Dictionary:
+	var slim: Dictionary = {"impossible": bool(ev.get("impossible", false)), "people": {}}
+	for p in ev.get("people", {}):
+		slim.people[p] = {"prior": float(ev.people[p].get("prior", 0.0)), "posterior": float(ev.people[p].get("posterior", 0.0))}
+	return slim
+
+
+static func _judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var was: bool = LiveActivity.hex_factor_enabled
 	var bare: bool = DayPresence.bare_reads_view
 	LiveActivity.hex_factor_enabled = hex
@@ -571,6 +689,7 @@ static func value(run: Dictionary, item: Dictionary) -> Dictionary:
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array, core_state: Dictionary = {}) -> Dictionary:
 	# Profiling (opt-in, workshop/profiler.gd): one span for the model, one for each part.
 	var span: int = Profiler.open("connections")
+	var kept_before: int = int(cache_stats.hits)
 	var part: int = Profiler.open("baseline")
 	var run: Dictionary = begin(view, case_data, listener)
 	Profiler.close(part)
@@ -578,6 +697,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var baseline: Dictionary = run.baseline
 	if others.is_empty() or run.impossible:
 		Profiler.count("connections_judgements", int(run.judgements))
+		Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 		Profiler.close(span)
 		return {"prior": run.prior, "baseline": baseline, "posterior": run.prior.duplicate(), "shift": 0.0, "row": run.row,
 			"impossible": run.impossible, "items": [], "core": _no_core([], []), "core_memory": core_state.get("core", {}),
@@ -625,6 +745,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 		total[p] += float(told.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
 	Profiler.count("connections_judgements", int(run.judgements))
+	Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
 		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
@@ -673,6 +794,15 @@ static func case_weight(listener: Dictionary, cs: Dictionary, day: int, fade: fl
 	return w
 
 
+## The weight a "suspicious" premise holds back from a case (the half it isn't heard at), 0
+## for any other premise. What the case would add at this weight is what presses its
+## subject to explain (game/workshop_presentation.gd).
+static func case_withheld(listener: Dictionary, cs: Dictionary, day: int, fade: float = CASE_FADE) -> float:
+	if not cs.get("suspicious", false):
+		return 0.0
+	return presenter_trust(listener, str(cs.get("presenter", ""))) * pow(fade, maxi(0, day - int(cs.get("day", day)))) * (1.0 - Tuning.Workshop.SUSPICIOUS_HEARING)
+
+
 ## The store rule for an NPC nominator's cases (the player's presentations keep their own
 ## store): a case from the same presenter with the same premise and target replaces the
 ## earlier one, and one too old to count at any trust is dropped.
@@ -681,7 +811,7 @@ static func stored_with(list: Array, cs: Dictionary, day: int) -> Array:
 	var out: Array = []
 	for x in list:
 		var replaced: bool = x.presenter == cs.presenter and x.get("target", "") == cs.get("target", "") and x.get("type", "") == cs.get("type", "")
-		if not replaced and pow(CASE_FADE, maxi(0, day - int(x.get("day", day)))) >= CASE_FLOOR:
+		if not replaced and pow(CASE_FADE_BOUGHT, maxi(0, day - int(x.get("day", day)))) >= CASE_FLOOR:
 			out.append(x)
 	out.append(cs)
 	return out
@@ -692,8 +822,14 @@ static func stored_with(list: Array, cs: Dictionary, day: int) -> Array:
 ## an always-on connection (`extra`), which never merge.
 ## case_list: [{"key", "presenter", "day", "cards": [ids], "suspicious": bool,
 ## "challenges": {reading id: challenge}, "type", "target"}].
-## Returns [{"key", "presenter", "day", "weight", "keys", "extra", "challenges"}].
-static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, day: int, fade: float = CASE_FADE) -> Array:
+## A case is left out when a later case from the same presenter cites every card it cites:
+## the later one has taken its place (its key is listed in the later one's "replaces"),
+## and the set counts once, at the later case's weight.
+## Returns [{"key", "presenter", "day", "weight", "keys", "extra", "challenges", "replaces"}].
+## rate_of: when given, called with {"keys", "extra", "challenges", "weight": the case's
+## weight the day it was presented} for a case from an earlier day, and returns the share
+## of its weight it keeps a day (buy-in; cases() passes it). Without it, `fade` for all.
+static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, day: int, fade: float = CASE_FADE, rate_of: Callable = Callable()) -> Array:
 	var item_of: Dictionary = {}
 	var kind_of: Dictionary = {}
 	for it in item_list:
@@ -720,12 +856,33 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 				keys.append(key)
 		if keys.is_empty() and extra.is_empty():
 			continue
-		var w: float = case_weight(listener, cs, day, fade)
+		var rate: float = fade
+		if rate_of.is_valid() and int(cs.get("day", day)) < day:
+			rate = float(rate_of.call({"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "weight": case_weight(listener, cs, day, 1.0)}))
+		var w: float = case_weight(listener, cs, day, rate)
 		if w < CASE_FLOOR:
 			continue
-		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w,
-			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {})})
-	return out
+		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
+			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
+			"suspicious": bool(cs.get("suspicious", false)), "withheld": case_withheld(listener, cs, day, fade)})
+	# Oldest first, so a later entry is a later case.
+	var kept: Array = []
+	for i in range(out.size()):
+		var by: int = -1
+		for j in range(i + 1, out.size() if reuse_rule else 0):
+			# Only a case that counts at least as much takes the earlier one's place. A weaker
+			# one (a "suspicious" premise on cards already argued firmly, say) leaves it where it
+			# is and adds only what is new (case_step), so the cards keep the larger weight.
+			if out[j].presenter == out[i].presenter and out[j].weight >= out[i].weight and out[i].cited.all(func(id): return id in out[j].cited):
+				by = j
+		if by < 0:
+			kept.append(out[i])
+		else:
+			out[by].replaces.append(out[i].key)
+			out[by].replaces.append_array(out[i].replaces)
+	for entry in kept:
+		entry.erase("cited")
+	return kept
 
 
 ## Every reading some stored case challenges, counted or not: with the model on, those
@@ -787,44 +944,117 @@ static func lean_challenged(run: Dictionary, ids: Array, challenges: Dictionary)
 	return found
 
 
-## A joint set's interaction: what its items (and the single cards cited from an always-on
-## connection) say together, less what each says by itself.
+## A joint set's interaction: what its items and the cards cited from an always-on
+## connection say together, less what each item says by itself and what the cited cards
+## say together. The always-on connection already weighs its cards together, in full, so a
+## case adds nothing for their meeting each other: only for their meeting the rest.
 ## Returns {"lean": {id: log-odds} for everyone, "impossible", "results", "cards": int}.
 static func interaction(run: Dictionary, by_key: Dictionary, values: Dictionary, keys: Array, extra: Array = [], challenges: Dictionary = {}) -> Dictionary:
 	var set_: Dictionary = pool(keys.map(func(k): return by_key[k]))
 	# A cited card that already sits in one of the items (a core that holds the movement
-	# connection) is counted there, not again as a single card.
+	# connection) is counted there.
 	extra = extra.filter(func(id): return id not in set_.ids)
 	var ids: Array = _union(extra, set_.ids)
 	var zero: Dictionary = {}
 	for p in run.others:
 		zero[p] = 0.0
-	if keys.size() + extra.size() < 2 and challenges.is_empty():
+	# A case of only always-on cards adds nothing for their meeting, but its challenges are
+	# still assessed (their discount and the floor under a teller; Codex on #151).
+	if keys.size() + ((0 if extra.is_empty() else 1) if held_together_rule else extra.size()) < 2 and challenges.is_empty():
 		return {"lean": zero, "impossible": false, "results": [], "cards": ids.size()}
 	var outside: Array = set_.ctx.filter(func(c): return c not in ids)
 	var together: Dictionary = lean_challenged(run, _union(ids, outside), challenges)
 	var context: Dictionary = lean(run, outside)
-	if together.impossible or context.impossible:
+	var cited: Dictionary = {"lean": zero.duplicate(), "impossible": false}
+	if held_together_rule:
+		if not extra.is_empty():
+			cited = lean(run, extra)
+	else:
+		# Before the rule: each cited card's own value, so their meeting counted again.
+		for id in extra:
+			var alone: Dictionary = lean(run, [id])
+			cited.impossible = cited.impossible or alone.impossible
+			for p in run.others:
+				cited.lean[p] += float(alone.lean.get(p, 0.0))
+	if together.impossible or context.impossible or cited.impossible:
 		return {"lean": zero, "impossible": true, "results": together.get("results", []), "cards": ids.size()}
 	var out: Dictionary = {}
 	for p in run.others:
-		var x: float = float(together.lean.get(p, 0.0)) - float(context.lean.get(p, 0.0))
+		var x: float = float(together.lean.get(p, 0.0)) - float(context.lean.get(p, 0.0)) - float(cited.lean.get(p, 0.0))
 		for k in keys:
 			x -= float(values[k].lean.get(p, 0.0))
 		out[p] = x
-	for id in extra:
-		var alone: Dictionary = lean(run, [id])
-		for p in run.others:
-			out[p] -= float(alone.lean.get(p, 0.0))
 	return {"lean": out, "impossible": false, "results": together.results, "cards": ids.size()}
 
 
-## What the stored cases add (see the header).
+## The rules for what one stored case adds, as joint sets to weigh: the case adds
+## (its weight times) the sum of sign x interaction(keys, extra, challenges) over `terms`.
+## - A case that shares an item with the set the core judges together is judged with it,
+##   and the set grows by the case.
+## - A case adds nothing for what an earlier counted case from the same presenter already
+##   put together: the interaction of the items both cite is taken off, so only what
+##   involves an item new from this presenter counts.
+## state: {"keys", "extra", "challenges": the core's growing set, "seen": {presenter:
+## {"keys", "extra"}}} (case_state). Returns {"merged", "shared": how many of its items an
+## earlier case of the presenter's held, "terms": [[sign, keys, extra, challenges]],
+## "next": the state once this case has counted}.
+static func case_step(state: Dictionary, cs: Dictionary) -> Dictionary:
+	var seen: Dictionary = state.seen.get(cs.presenter, {"keys": [], "extra": []})
+	var shared_keys: Array = cs.keys.filter(func(k): return reuse_rule and k in seen["keys"])
+	var shared_extra: Array = cs.extra.filter(func(id): return reuse_rule and id in seen["extra"])
+	var touches: bool = not state["keys"].is_empty() and cs.keys.any(func(k): return k in state["keys"])
+	var next: Dictionary = state.duplicate()
+	next["seen"] = state.seen.duplicate()
+	next.seen[cs.presenter] = {"keys": _union(seen["keys"], cs.keys), "extra": _union(seen["extra"], cs.extra)}
+	var terms: Array = []
+	if touches:
+		next["keys"] = _union(state["keys"], cs.keys)
+		next["extra"] = _union(state["extra"], cs.extra)
+		next["challenges"] = state.challenges.merged(cs.challenges)
+		terms.append([1.0, next["keys"], next["extra"], next.challenges])
+		terms.append([-1.0, state["keys"], state["extra"], state.challenges])
+		# What an earlier case of the presenter's put together outside the core is taken off
+		# on its own: the core's items meeting those shared ones were never weighed (Codex on
+		# #150). Shared items already in the core are counted in the core's term.
+		var outside_keys: Array = shared_keys.filter(func(k): return k not in state["keys"])
+		var outside_extra: Array = shared_extra.filter(func(id): return id not in state["extra"])
+		if not (outside_keys.is_empty() and outside_extra.is_empty()):
+			terms.append([-1.0, outside_keys, outside_extra, cs.challenges])
+	else:
+		terms.append([1.0, cs.keys, cs.extra, cs.challenges])
+		if not (shared_keys.is_empty() and shared_extra.is_empty()):
+			terms.append([-1.0, shared_keys, shared_extra, cs.challenges])
+	return {"merged": touches, "shared": shared_keys.size() + shared_extra.size(), "terms": terms, "next": next}
+
+static func case_state(core_keys: Array) -> Dictionary:
+	return {"keys": core_keys.duplicate(), "extra": [], "challenges": {}, "seen": {}}
+
+
+## The share of its weight a case from an earlier day keeps a day (buy-in): CASE_FADE for
+## one that moves this listener little, up to CASE_FADE_BOUGHT for one that moves it by
+## CASE_BUYIN_FULL or more. The move is the largest its cards make together on anyone,
+## standing alone, at the weight it had the day it was presented. Nothing is stored: it is
+## read again at each refresh, so it follows what the listener holds now.
+## c: {"keys", "extra", "challenges", "weight"}.
+static func buy_in_rate(run: Dictionary, by_key: Dictionary, values: Dictionary, c: Dictionary) -> float:
+	var alone: Dictionary = interaction(run, by_key, values, c["keys"], c["extra"], c["challenges"])
+	if alone.impossible:
+		return CASE_FADE
+	var move: float = 0.0
+	for p in alone.lean:
+		move = maxf(move, absf(float(alone.lean[p])))
+	return lerpf(CASE_FADE, CASE_FADE_BOUGHT, clampf(float(c["weight"]) * move / CASE_BUYIN_FULL, 0.0, 1.0))
+
+
+## What the stored cases add (see the header; case_plan and case_step hold the rules).
 ## own: this refresh's core (core()). case_list, day: the listener's stored cases and today.
 ## Returns {"lean": {id: log-odds added}, "entries": [{"key", "presenter", "day", "weight",
-## "merged": judged with the core, "cards": how many were judged together, "lean": what
-## this case added}], "floors": [a challenge's assessment with its case's "weight" and
-## "case"], "challenged": challenged_ids(case_list)}.
+## "merged": judged with the core, "cards": how many were judged together, "shared": how
+## many of its items an earlier case of the presenter's already held, "replaces": the keys
+## of the earlier cases it took the place of, "lean": what this case added, "withheld": for
+## a "suspicious" case, what its held-back half would add standing alone}], "floors": [a
+## challenge's assessment with its case's "weight" and "case"], "challenged":
+## challenged_ids(case_list)}.
 static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Dictionary, case_list: Array, day: int) -> Dictionary:
 	var out: Dictionary = {"lean": {}, "entries": [], "floors": [], "challenged": challenged_ids(case_list)}
 	if case_list.is_empty():
@@ -833,44 +1063,47 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 	for it in item_list:
 		by_key[it.key] = it
 	# The set the core judges together grows as cases that touch it merge in.
-	var merged_keys: Array = [] if own.get("impossible", false) else own.get("seed", []) + own.get("members", [])
-	var merged_extra: Array = []
-	var merged_challenges: Dictionary = {}
-	var merged: Dictionary = {}
-	for p in run.others:
-		merged[p] = float(own.get("lean", {}).get(p, 0.0)) if not merged_keys.is_empty() else 0.0
+	var state: Dictionary = case_state([] if own.get("impossible", false) else own.get("seed", []) + own.get("members", []))
 	var total: Dictionary = {}
-	for cs in case_plan(case_list, item_list, run.listener, day):
-		var touches: bool = not merged_keys.is_empty() and cs.keys.any(func(k): return k in merged_keys)
-		var entry: Dictionary = {"key": cs.key, "presenter": cs.presenter, "day": cs.day, "weight": cs.weight, "merged": touches, "cards": 0, "lean": {}}
-		var joint: Dictionary
+	for cs in case_plan(case_list, item_list, run.listener, day, CASE_FADE, (func(c): return buy_in_rate(run, by_key, values, c)) if buy_in else Callable()):
+		var step: Dictionary = case_step(state, cs)
+		var entry: Dictionary = {"key": cs.key, "presenter": cs.presenter, "day": cs.day, "weight": cs.weight, "rate": cs.rate, "merged": step.merged, "cards": 0,
+			"shared": step.shared, "replaces": cs.replaces, "lean": {}}
 		var added: Dictionary = {}
-		if touches:
-			var next_keys: Array = _union(merged_keys, cs.keys)
-			var next_extra: Array = _union(merged_extra, cs.extra)
-			var next_challenges: Dictionary = merged_challenges.merged(cs.challenges)
-			joint = interaction(run, by_key, values, next_keys, next_extra, next_challenges)
-			if not joint.impossible:
-				for p in run.others:
-					added[p] = float(joint.lean[p]) - float(merged[p])
-				merged_keys = next_keys
-				merged_extra = next_extra
-				merged_challenges = next_challenges
-				merged = joint.lean
-		else:
-			joint = interaction(run, by_key, values, cs.keys, cs.extra, cs.challenges)
-			if not joint.impossible:
-				added = joint.lean
-		entry.cards = int(joint.cards)
-		if joint.impossible:
+		var impossible: bool = false
+		var results: Array = []
+		for i in range(step.terms.size()):
+			var term: Array = step.terms[i]
+			var joint: Dictionary = interaction(run, by_key, values, term[1], term[2], term[3])
+			if i == 0:
+				entry.cards = int(joint.cards)
+				results = joint.results
+			if joint.impossible:
+				impossible = true
+				break
+			for p in run.others:
+				added[p] = float(added.get(p, 0.0)) + float(term[0]) * float(joint.lean[p])
+		if impossible:
 			# No world allows these cards together: the case says nothing as a whole.
 			entry["impossible"] = true
-		for p in added:
-			var x: float = cs.weight * float(added[p])
-			if not is_zero_approx(x):
-				entry.lean[p] = x
-				total[p] = float(total.get(p, 0.0)) + x
-		for result in joint.results:
+		else:
+			state = step.next
+			for p in added:
+				var x: float = cs.weight * float(added[p])
+				if not is_zero_approx(x):
+					entry.lean[p] = x
+					total[p] = float(total.get(p, 0.0)) + x
+		if float(cs.withheld) > 0.0 and not impossible:
+			# What a "suspicious" case would add with its held-back half, standing alone,
+			# whatever an earlier case already holds of its cards.
+			var alone: Dictionary = interaction(run, by_key, values, cs.keys, cs.extra, cs.challenges)
+			if not alone.impossible:
+				entry["withheld"] = {}
+				for p in run.others:
+					var x: float = float(cs.withheld) * float(alone.lean[p])
+					if not is_zero_approx(x):
+						entry.withheld[p] = x
+		for result in results:
 			if cs.challenges.has(result.card):
 				var floor_entry: Dictionary = result.duplicate()
 				floor_entry["weight"] = cs.weight

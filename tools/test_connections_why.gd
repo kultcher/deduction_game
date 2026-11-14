@@ -214,8 +214,8 @@ func _report() -> void:
 	for r in b.cards:
 		alone += float(r.lean[t])
 	check(is_equal_approx(float(cards_row[0].after), alone) and not is_equal_approx(float(cards_row[0].before), alone), "their own values are the \"each counted by itself\" row (%+.3f -> %+.3f)" % [float(cards_row[0].before), alone])
-	check(parts.other_cases == ["case:%d" % s.first] and b.text.contains("Other cases put to them (#%d)" % s.first) == (absf(float(parts.rows.filter(func(r): return r.stage == "other_cases")[0].after)) >= WorkshopWhy.SMALL),
-		"the earlier case is counted under \"other cases\", by its number")
+	check(parts.other_cases.is_empty() and cs.replaces == ["case:%d" % s.first] and b.text.contains("It takes the place of #%d" % s.first),
+		"the earlier case, whose only card this one cites, is replaced by it, and the report says so")
 	# Suspicion, as stored and as read.
 	check(is_equal_approx(float(b.suspicion.stored), float(n.suspicion[t])) and is_equal_approx(float(b.suspicion.stored_was), stored_before) and is_equal_approx(float(b.suspicion.now), Mind.susp(n, t)),
 		"suspicion is shown as stored, before and after (%+.3f -> %+.3f), and as the game reads it" % [stored_before, float(n.suspicion[t])])
@@ -250,8 +250,8 @@ func _hedged_and_faded() -> void:
 	g.w.day += 1
 	Mind.refresh_beliefs(g.w, n, " (next day)")
 	var later: Dictionary = WorkshopWhy.presentation(g, n, g.board[s.filed - 1], "meeting")
-	check(later.get("model", "") == "connections" and int(later["case"].days) == 1 and is_equal_approx(float(later["case"].fade), Connections.CASE_FADE)
-		and is_equal_approx(float(later["case"].weight), float(later["case"].trust) * Connections.CASE_FADE * Tuning.Workshop.SUSPICIOUS_HEARING),
+	check(later.get("model", "") == "connections" and int(later["case"].days) == 1 and is_equal_approx(float(later["case"].fade), float(later["case"].rate)) and float(later["case"].rate) >= Connections.CASE_FADE and float(later["case"].rate) <= Connections.CASE_FADE_BOUGHT
+		and is_equal_approx(float(later["case"].weight), float(later["case"].trust) * float(later["case"].rate) * Tuning.Workshop.SUSPICIOUS_HEARING),
 		"a day on, the weight shows the fading too (%.3f)" % float(later["case"].weight))
 	check(not later.had_before and later.parts[s.target].before == null and later.text.contains("No earlier refresh was recorded"), "with no \"before\" taken, only the \"after\" side is shown")
 	Connections.enabled = false

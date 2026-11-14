@@ -56,3 +56,4 @@ test_connections_pairings
 test_connections_core
 test_connections_cases
 test_connections_why
+test_connections_cache

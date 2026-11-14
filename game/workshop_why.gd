@@ -542,7 +542,7 @@ static func _connections_report(g, real, n, card: Dictionary, venue: String, was
 	# The case's own part: its weight, and who it moved.
 	var today: int = int(memory.get("day", g.w.day))
 	var days: int = maxi(0, today - int(cs.get("day", today)))
-	var fade: float = pow(Connections.CASE_FADE, days)
+	var fade: float = pow(float(entry.get("rate", Connections.CASE_FADE)), days)
 	var hedge: float = Tuning.Workshop.SUSPICIOUS_HEARING if cs.get("suspicious", false) else 1.0
 	var weight: float = float(entry.get("weight", Connections.case_weight(plan.prepared.listener, cs, today))) if not cs.is_empty() else 0.0
 	var moved: Array = entry.get("lean", {}).keys()
@@ -552,20 +552,26 @@ static func _connections_report(g, real, n, card: Dictionary, venue: String, was
 		for id in it.cards:
 			if id in case_ids and id not in held_ids:
 				held_ids.append(id)
+	var replaced_by: Array = res.get("cases", {}).get("entries", []).filter(func(e): return case_key in e.get("replaces", []))
 	var not_counted: String = ""
 	if cs.is_empty():
 		not_counted = "it isn't in what they remember being put to them"
 	elif held_ids.is_empty():
 		not_counted = "they hold none of its cards"
+	elif entry.is_empty() and not replaced_by.is_empty():
+		not_counted = "a later case of yours (%s) cites every card of this one and has taken its place" % _case_name(g, str(replaced_by[0].key))
 	elif entry.is_empty():
 		not_counted = "its weight (%.2f) is under %.2f" % [weight, Connections.CASE_FLOOR] if weight < Connections.CASE_FLOOR else "none of its cards are theirs to weigh"
 	elif entry.get("impossible", false):
 		not_counted = "no world allows its cards together, so as a whole it says nothing"
+	elif entry.lean.is_empty() and int(entry.get("shared", 0)) >= 2:
+		not_counted = "an earlier case of yours already put these cards together, so they add nothing again"
 	elif entry.lean.is_empty():
-		not_counted = "it has one card (or one pairing) to weigh, so there is nothing to weigh together"
+		not_counted = "there is nothing new to weigh together (one card or pairing, or cards the movement connection already weighs together)"
 	out["case"] = {"key": case_key, "counted": not_counted == "", "not_counted": not_counted, "weight": weight,
-		"trust": weight / (fade * hedge) if fade * hedge > 0.0 else 0.0, "fade": fade, "days": days, "suspicious": bool(cs.get("suspicious", false)),
+		"trust": weight / (fade * hedge) if fade * hedge > 0.0 else 0.0, "fade": fade, "rate": float(entry.get("rate", Connections.CASE_FADE)), "days": days, "suspicious": bool(cs.get("suspicious", false)),
 		"merged": bool(entry.get("merged", false)), "together": int(entry.get("cards", 0)), "lean": entry.get("lean", {}).duplicate(),
+		"shared": int(entry.get("shared", 0)), "replaces": entry.get("replaces", []).duplicate(),
 		"moved": moved.slice(0, 4).map(func(p): return {"id": p, "lean": float(entry.lean[p])}),
 		"challenges": res.get("cases", {}).get("floors", []).filter(func(f): return str(f.get("case", "")) == case_key).duplicate(true)}
 
@@ -703,12 +709,16 @@ static func describe_connections(g, b: Dictionary, view: Dictionary) -> String:
 				moved.append("%s %+.2f" % [_who(g, m.id), float(m.lean)])
 		lines.append("The case's cards weighed together added: %s." % (", ".join(moved) if not moved.is_empty() else "nothing to speak of"))
 		var w: PackedStringArray = ["trust in you %.2f" % float(cs.trust)]
-		w.append("x%.2f for %d day%s since it was presented" % [float(cs.fade), int(cs.days), "" if int(cs.days) == 1 else "s"] if int(cs.days) > 0 else "presented today, so no fading")
+		w.append("x%.2f for %d day%s since it was presented (it keeps %.2f a day; more the further it moved them)" % [float(cs.fade), int(cs.days), "" if int(cs.days) == 1 else "s", float(cs.get("rate", Connections.CASE_FADE))] if int(cs.days) > 0 else "presented today, so no fading")
 		if cs.suspicious:
 			w.append("x%.2f for a \"suspicious\" premise" % Tuning.Workshop.SUSPICIOUS_HEARING)
 		lines.append("  Counted at weight %.2f (%s). At full weight it would be %s." % [float(cs.weight), "; ".join(w),
 			", ".join(PackedStringArray(cs.moved.slice(0, 2).map(func(m): return "%s %+.2f" % [_who(g, m.id), float(m.lean) / maxf(float(cs.weight), 1e-6)])))])
 		lines.append("  %s weighed together%s." % ["1 card was" if int(cs.together) == 1 else "%d cards were" % int(cs.together), ", along with %s's core (the case shares a card with it)" % b.name if cs.merged else ""])
+	if cs.counted and not cs.replaces.is_empty():
+		lines.append("  It takes the place of %s, whose cards it all cites: that set now counts once, here." % ", ".join(PackedStringArray(cs.replaces.map(func(k): return _case_name(g, str(k))))))
+	if cs.counted and int(cs.shared) >= 2:
+		lines.append("  %d of its cards (or pairings) were already together in an earlier case of yours; their meeting each other isn't counted again." % int(cs.shared))
 	for ch in cs.challenges:
 		lines.append("  Challenge on %s (%s's reading), called \"%s\": they agree at %.2f%s." % [_card_tag(g, _view_card(view, str(ch.get("card", ""))), _numbers(g)), _who(g, str(ch.get("source", ""))),
 			str(ch.get("mode", "")), float(ch.get("agreement", 0.0)), "; the reading counts at x%.2f inside this case" % float(ch.multiplier) if ch.has("multiplier") and not is_equal_approx(float(ch.multiplier), 1.0) else ""])

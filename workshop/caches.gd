@@ -9,6 +9,7 @@ extends RefCounted
 
 const CaseEval = preload("res://workshop/case_eval.gd")
 const CaseWhy = preload("res://workshop/case_why.gd")
+const Connections = preload("res://workshop/connections.gd")
 const ChannelLikelihood = preload("res://workshop/channel_likelihood.gd")
 const ChannelSumProduct = preload("res://workshop/channel_sum_product.gd")
 const Chronology = preload("res://workshop/chronology.gd")
@@ -38,6 +39,7 @@ static func clear_all() -> void:
 	CaseEval._own_cache.clear()
 	CaseEval._fits_cache.clear()
 	CaseWhy._mask_cache.clear()
+	Connections._kept.clear()
 	ChannelLikelihood.cache.clear()
 	ChannelSumProduct._program_entries.clear()
 	ChannelSumProduct._circuit_entries.clear()
