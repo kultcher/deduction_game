@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (`claude/connections-buyin`, stacked on #151)
+## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (PR #153, `claude/connections-buyin`, stacked on #151)
 
 - **Base:** `claude/connections-cache` (#151, itself on #150). **Status:** PR open, for Bailiff, after those two. **Next actor:** Bailiff; Michael for the one question below.
 - **From:** the triage doc, 4.3. Michael picked buy-in over a flat 0.7 (Nov 13 evening). Switch on only.
