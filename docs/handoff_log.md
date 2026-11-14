@@ -29,9 +29,9 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (PR #150, `claude/connections-case-rules`)
 
-- **Base:** main `848df5d`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the two questions below.
+- **Base:** main `9cded67` (merged in after #149). **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the two questions below (the replacement's weight, and the fade).
 - **From:** the triage doc, 4.2 and 4.4 (Michael's decisions, Nov 13). Switch on only. 4.3 (the fade) is measured here, not built: it waits for his pick.
-- **Golden:** identical to `baseline_6a22cac` with the switch off (5 seeds). Fast list 55 of 55.
+- **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds), after merging main. Fast list 55 of 55.
 
 **The rules (`workshop/connections.gd`: `case_plan`, `case_step`, `interaction`)**
 
@@ -46,7 +46,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 **What they change**
 
-- **44542, day 1** (my copy of the log ends there). #40 "Odette is suspicious" cites the same four cards as #39 "Fenwick is good", so it replaces it:
+- **44542, day 1.** #40 "Odette is suspicious" cites the same four cards as #39 "Fenwick is good", so it replaces it:
 
   | Listener | The cases' part on Fenwick, before | With the rule | Chance Fenwick is evil, before | With the rule |
   |---|---|---|---|---|
@@ -65,7 +65,38 @@ Ground rules (from Nov 3, until Michael changes them):
 
 - **Buy-in version tried:** a case keeps between 0.5 and 0.9 of its weight a day, the more the further it moves that listener (its largest move on anyone, at trust, against 0.7 log-odds). Nothing is stored; it is re-judged each refresh.
 - **Bot games, from a presentation to the next dawn (43 pairs):** against 0.5 a day, the target's chance differs by 0.3 points on average under 0.7 a day (largest 2.3) and 0.3 under buy-in (largest 4.4). The bot's cases mostly leave their target near certain, so the fade has little to move.
-- **Not measured:** the overnight rebound in 44542 ("Fenwick is good" at dawn of day 2). It needs the full log, and 97626.
+
+**Both playtest logs, replayed whole with the switch on** (added Nov 14; 8 cases, 67 listener-presentations; the replays reach the logs' vote tallies)
+
+- **What was replaced:** in 44542, #40 replaces #39 and #89 replaces both; in 97626, #145 "Jory is evil" replaces #31 "Jory is suspicious".
+- **Per presentation,** the mean over its listeners of the target's chance, and of all the player's cases' part on the target (log-odds):
+
+  | Case | Target's chance: before, 4.2 only, 4.4 only, both | Cases' part on the target: before → both |
+  |---|---|---|
+  | 44542 #39 Fenwick is good (day 1) | 20.5%, the same under each | -0.62 → -0.62 |
+  | 44542 #40 Odette is suspicious (day 1) | 51.6%, 49.8%, 51.6%, 49.8% | +0.12 → +0.05 |
+  | 44542 #89 Odette is evil (day 2) | 53.1%, the same under each | +0.10 → +0.10 |
+  | 44542 #131 Jory is suspicious (day 3) | 78.8%, 78.8%, 76.2%, 76.2% | +0.17 → -0.03 |
+  | 97626 #31 Jory is suspicious (day 1) | 53.4%, the same under each | 0 → 0 |
+  | 97626 #92 Dorian is a Minion (day 2) | 6.7%, the same under each | +0.09 → +0.09 |
+  | 97626 #145 Jory is evil (day 3) | 93.8%, 93.8%, 92.8%, 92.8% | +0.55 → +0.38 |
+  | 97626 #175 Kiran is evil (day 4) | 96.4%, 94.6%, 96.3%, 94.6% | +1.29 → +0.99 |
+
+- **How often a listener's chance moves by over 1 point:** 4.2 alone, the target in 8 of 67 (largest 8.8) and anyone in 21 (largest 11.7); 4.4 alone, the target in 7 (largest 5.5); both, the target in 15 (largest 8.9) and anyone in 30.
+- **The large moves are on Fenwick, not on a case's target.** Chance Fenwick is evil, per listener:
+
+  | Listener | After #39 | After #40, before the rules | After #40, with them | Dawn of day 2, before (0.5 / 0.7 / buy-in) | Dawn of day 2, with the rules (0.5 / 0.7 / buy-in) |
+  |---|---|---|---|---|---|
+  | Greta | 18% | 14% | 24% | 21 / 18 / 16% | 27 / 26 / 26% |
+  | Hollis | 13% | 10% | 18% | 16 / 14 / 12% | 22 / 21 / 21% |
+  | Jory | 19% | 14% | 25% | 29 / 25 / 23% | 37 / 35 / 35% |
+  | Kiran | 22% | 17% | 28% | 33 / 28 / 25% | 42 / 40 / 40% |
+
+**4.3 on the two logs, and the pick**
+
+- **From a presentation to the next dawn (55 pairs), against 0.5 a day:** with the rules in, 0.7 a day differs by 0.3 points on average (largest 1.8) and buy-in by 0.4 (largest 2.6). For the 13 pairs where the case's own part is over 0.2 log-odds, 0.9 and 1.0 points. Before the rules it was 1.5 (largest 4.7) and 2.4 (largest 7.8).
+- **Why so little:** the rebound on Fenwick now happens on day 1, when the half-weight #40 takes #39's place (18% → 24% for Greta), and the fade then works on a set that is already at a quarter weight. #89 on day 2 brings it back to full.
+- **Pick: 0.7 a day, flat.** It goes the way Michael asked, it is one number, and buy-in gives about the same result for a second mechanism. Neither answers the Fenwick rebound under the new rules; the replacement's weight does (the question above). Not built: it waits for his word.
 
 - **Tests:** `test_connections_cases` (the rules on chosen numbers, and in a game); `test_connections_why`.
 
