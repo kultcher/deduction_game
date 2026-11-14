@@ -113,6 +113,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var key = str(card.n) if direction == "deduction" else "direct:%s:%s:%s" % [origin, direction, ",".join(PackedStringArray(target_ids))]
 	var previous: Dictionary = state.get("presentations", {}).duplicate(true)
 	var proposals: Dictionary = previous.duplicate(true)
+	# Re-presenting moves the case to the end: the stored cases' order is the order they were
+	# last presented, and the connections model's replacement rule reads it (Codex on #150).
+	proposals.erase(key)
 	proposals[key] = snapshot
 	# Recency: the presented cards are back on this listener's mind, and a case argued at a
 	# meeting puts its subject on the town's topic (sim/recency.gd). Settled before the

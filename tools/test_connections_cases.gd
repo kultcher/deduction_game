@@ -45,8 +45,10 @@ func _init() -> void:
 	Connections.buy_in = true
 	_presented()
 	_reuse_in_game()
+	_represent_order()
 	_fading_and_repeat()
 	_challenges()
+	_movement_challenge()
 	_challenged_factors()
 	_nominations(900, 7, 3)
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
@@ -174,6 +176,13 @@ func _reuse(item_list: Array, values: Dictionary, leans: Dictionary) -> void:
 	var merged: Dictionary = Connections.cases(_fake_run(more), item_list, values, core, [
 		{"key": "m1", "presenter": "n", "day": 2, "cards": ["a", "b"]}, {"key": "m2", "presenter": "n", "day": 3, "cards": ["b", "c"]}], 3)
 	check(merged.entries[1].merged and is_equal_approx(merged.entries[1].lean.x, 0.8 * (1.3 - 1.1)), "with the core, a later case still adds what it brings on top of the grown set (%+.3f)" % merged.entries[1].lean.x)
+	# An earlier case that stayed apart from the core, then a later one that joins it: the
+	# core's cards meeting the shared ones were never weighed, so they count (Codex on #150).
+	var lone_core: Dictionary = {"seed": ["own"], "members": [], "lean": {}, "impossible": false}
+	var apart_then: Dictionary = Connections.cases(_fake_run(more.merged({"b,c,m1": 1.2, "b,c,own": 1.5})), item_list, values, lone_core, [
+		{"key": "e1", "presenter": "n", "day": 3, "cards": ["b", "c", "m1"]}, {"key": "e2", "presenter": "n", "day": 3, "cards": ["own", "b", "c"]}], 3)
+	check(not apart_then.entries[0].merged and apart_then.entries[1].merged and is_equal_approx(float(apart_then.entries[1].lean.get("x", 0.0)), 0.8 * ((1.5 - 1.0 + 0.3 - 0.1) - 0.6)),
+		"a case joining the core after an earlier one apart from it adds the core's cards meeting the shared ones (%+.3f)" % apart_then.entries[1].lean.get("x", 0.0))
 
 
 ## A stand-in for a refresh's working state: every judgement the cases ask for is already
@@ -429,6 +438,26 @@ func _reuse_in_game() -> void:
 	Connections.enabled = false
 
 
+## Re-presenting a case moves it after the cases presented since, so the latest presentation
+## is the one that takes the others' place (Codex on #150).
+func _represent_order() -> void:
+	var s: Dictionary = _seer_case("evil", true)
+	var g = s.g
+	var n = s.n
+	g.w.day += 1
+	var other: int = _file(g, "evil", s.p[4].id, [s.seer, s.dowser])
+	g._evaluate_deduction(n, g.board[other - 1], 1.0, false)
+	var mid: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
+	check(mid.size() == 1 and mid[0].key == "case:%d" % other, "the next day, a firm case on the same cards takes the first one's place (%s)" % str(mid.map(func(e): return e.key)))
+	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false)
+	var keys: Array = n.workshop_state.presentations.keys()
+	var now: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
+	check(keys.back() == str(s.filed), "presenting the first case again moves it last (%s)" % str(keys))
+	check(now.size() == 1 and now[0].key == "case:%d" % s.filed and "case:%d" % other in now[0].replaces, "and it takes the other's place, not the other way round (%s)" % str(now.map(func(e): return e.key)))
+	g.w.day -= 1
+	Connections.enabled = false
+
+
 func _fading_and_repeat() -> void:
 	var s: Dictionary = _seer_case("evil", true)
 	var g = s.g
@@ -482,6 +511,30 @@ func _challenge_case(mode: String, listener_role: String = "warden") -> Dictiona
 	var filed: int = _file(g, "evil", target, [seer, d1, d2, seen], seer if mode != "" else 0, mode, [d1, d2] if mode != "" else [])
 	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
 	return {"g": g, "n": n, "p": p, "seer": _card_id(g, n, seer), "c": _proposal(g, n).get("connections", {}), "filed": filed}
+
+
+## Under a Walker reading, a case made only of movement cards adds nothing for their
+## meeting, but its challenge is still assessed and puts its floor in (Codex on #151).
+func _movement_challenge() -> void:
+	Connections.enabled = true
+	Connections.force_row = "walker"
+	var g = _game()
+	var n = g.w.npcs[0]
+	var p: Array = g.w.npcs
+	var watch: int = g.add_card({"kind": "info", "source": p[2].id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": p[1].home_block, "seen": [p[1].id]},
+		"text": "%s nightwatch day 1 on %s: %s" % [p[2].id, p[1].home_block, p[1].id]})
+	_texts[watch] = g.board[watch - 1].text
+	var seen: int = g.add_card({"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[3].home_block,
+		"text": "%s saw %s out by %s's on night 1." % [p[6].name, p[1].name, p[3].name]})
+	_texts[seen] = g.board[seen - 1].text
+	var filed: int = _file(g, "good", p[1].id, [watch, seen], watch, "impaired", [seen])
+	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	var c: Dictionary = _proposal(g, n).get("connections", {})
+	var entries: Array = c.get("cases", {}).get("entries", [])
+	check(c.get("row", "") == "walker" and entries.size() == 1, "a case of movement cards under Walker is stored (%s, %d)" % [str(c.get("row", "")), entries.size()])
+	check(c.get("cases", {}).get("floors", []).size() == 1, "and its challenge on the Night Watch reading is assessed (%d floors)" % c.get("cases", {}).get("floors", []).size())
+	Connections.force_row = ""
+	Connections.enabled = false
 
 
 func _challenges() -> void:

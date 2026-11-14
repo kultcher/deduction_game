@@ -958,7 +958,9 @@ static func interaction(run: Dictionary, by_key: Dictionary, values: Dictionary,
 	var zero: Dictionary = {}
 	for p in run.others:
 		zero[p] = 0.0
-	if keys.size() + ((0 if extra.is_empty() else 1) if held_together_rule else extra.size()) < 2 and (challenges.is_empty() or (keys.is_empty() and held_together_rule)):
+	# A case of only always-on cards adds nothing for their meeting, but its challenges are
+	# still assessed (their discount and the floor under a teller; Codex on #151).
+	if keys.size() + ((0 if extra.is_empty() else 1) if held_together_rule else extra.size()) < 2 and challenges.is_empty():
 		return {"lean": zero, "impossible": false, "results": [], "cards": ids.size()}
 	var outside: Array = set_.ctx.filter(func(c): return c not in ids)
 	var together: Dictionary = lean_challenged(run, _union(ids, outside), challenges)
@@ -1010,7 +1012,14 @@ static func case_step(state: Dictionary, cs: Dictionary) -> Dictionary:
 		next["extra"] = _union(state["extra"], cs.extra)
 		next["challenges"] = state.challenges.merged(cs.challenges)
 		terms.append([1.0, next["keys"], next["extra"], next.challenges])
-		terms.append([-1.0, _union(state["keys"], shared_keys), _union(state["extra"], shared_extra), state.challenges])
+		terms.append([-1.0, state["keys"], state["extra"], state.challenges])
+		# What an earlier case of the presenter's put together outside the core is taken off
+		# on its own: the core's items meeting those shared ones were never weighed (Codex on
+		# #150). Shared items already in the core are counted in the core's term.
+		var outside_keys: Array = shared_keys.filter(func(k): return k not in state["keys"])
+		var outside_extra: Array = shared_extra.filter(func(id): return id not in state["extra"])
+		if not (outside_keys.is_empty() and outside_extra.is_empty()):
+			terms.append([-1.0, outside_keys, outside_extra, cs.challenges])
 	else:
 		terms.append([1.0, cs.keys, cs.extra, cs.challenges])
 		if not (shared_keys.is_empty() and shared_extra.is_empty()):
