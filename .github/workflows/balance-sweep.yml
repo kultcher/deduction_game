@@ -11,7 +11,7 @@ on:
         description: "Games per cell"
         default: "2000"
       cells:
-        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare), "insight": 1.0, "force_demon": "daykiller" (optional)}'
+        description: 'JSON list of cells: {"npcs": 7|10, "mode": "passive"|"bot"|"bot_pre_m4"|"no_present"|"present_vote" (bot modes may end _nocross / _nodeclare; any mode may end _connections), "insight": 1.0, "force_demon": "daykiller" (optional)}'
         default: '[{"npcs":7,"mode":"passive"},{"npcs":10,"mode":"passive"},{"npcs":7,"mode":"bot","insight":1.0},{"npcs":10,"mode":"bot","insight":1.0}]'
       costs:
         description: 'Seconds per game per core on a runner, by "<npcs>_<mode>" (sizes the shards)'
@@ -58,10 +58,10 @@ jobs:
           for c in cells:
               mode = str(c["mode"]); npcs = int(c["npcs"]); ins = float(c.get("insight", 1.0))
               base = mode
-              for f in ("_nodeclare", "_nocross"):
+              for f in ("_connections", "_nodeclare", "_nocross"):
                   if base.endswith(f): base = base[: -len(f)]
               if base not in ("passive", "bot", "bot_pre_m4", "no_present", "present_vote") or npcs not in (7, 10):
-                  raise SystemExit("bad cell %r: mode must be passive, bot, bot_pre_m4, no_present or present_vote (bot modes may end _nocross / _nodeclare), npcs 7 or 10" % (c,))
+                  raise SystemExit("bad cell %r: mode must be passive, bot, bot_pre_m4, no_present or present_vote (bot modes may end _nocross / _nodeclare; any mode may end _connections), npcs 7 or 10" % (c,))
               force = str(c.get("force_demon", ""))
               cost = float(costs.get("%d_%s" % (npcs, mode), costs.get("%d_bot" % npcs, 220)))
               per = max(4, int(budget // cost))
