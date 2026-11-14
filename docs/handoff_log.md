@@ -27,6 +27,35 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14, Claude-Lantern: the Workshop's "No new info" note (PR #154, `claude/no-new-info`)
+
+- **Base:** main `5ac25ab`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff; Michael for the wording.
+- **From:** the triage doc, 5.2, and Michael's five rulings of Nov 14. Switch on only: with it off nothing is computed or shown.
+- **Golden:** identical to `baseline_b281427` with the switch off (5 seeds). Fast list 57 of 57.
+
+**What it is (`WorkshopCanvas.town_note`; shown by `ui/live_case_workshop.gd` and `ui/workshop_canvas_view.gd`)**
+
+- When the Test juror runs on a premise, the note is worked out beside it. It shows on the strength chip ("Moderate · No new info") and in full in the chip's tooltip. The chip's strength is unchanged.
+- It is the game's own stored-case arithmetic (`Connections.cases`) run for a neutral listener who holds only this case's cards and the cards of the player's public cases, with the player's public cases as the stored cases and the draft as today's. No NPC's knowledge is read.
+- **No watch record (ruling 4):** the view is built with `watched` empty. The Test juror's own chip still uses it, as before.
+
+| Note | When | Text (wording is Michael's to settle) |
+|---|---|---|
+| none | Any card in the case is one the town hasn't heard (ruling 1) | |
+| "No new info" | Every card is public, and the most the cards add together for anyone is under 0.2 log-odds at full weight | "No new info: the town already counts these cards, and together they add little." |
+| "No new info" | An earlier public case of yours today holds all of these cards | "No new info: you've already put these cards to the town (case #N)." |
+| "No new belief" | The same, under a "suspicious" premise whose held-back half leans on its subject (ruling 3) | "Adds no new belief (you've put these cards to the town in case #N), but still presses X." |
+| "Refresh" | An earlier public case on an earlier day holds exactly these cards, and this one would take its place (ruling 2) | "Refreshes your day-D argument (case #N): the town weighs it at full strength again." |
+| "No new info" | The neutral listener's chance for the subject, on the public record alone, is within 0.5% of 0 or 1 | "No new info: the public record already settles X." |
+
+- **"Public" for a card:** said at a meeting, cited by the player at a meeting, or in a case the player put to the town (`GameMeeting.already_public`, plus the cards of `g.public_presentations`).
+- **`g.public_presentations` now holds the day** a case was last put to the town (it held `true`). Every reader only asks whether the number is there.
+- **Not covered:** a bigger case on a later day that takes an earlier one's place gets no note even if its extra cards add little. A "suspicious" repeat says "still presses" whenever the held-back half leans on the subject at all, however little (#40 in 44542 pressed Odette by +0.005). The "settled" note has no test: the fixture has no settled person.
+- **Cost:** 50–140 ms a premise on a replay of 44542, on top of the juror's own pass, after the pause in editing.
+- **Not checked against the playtests' own case numbers:** after #149 and #152 neither log replays faithfully on main, so the replay only showed the notes come out sensibly (a refresh on day 2 for day 1's cards; "still presses" for the "suspicious" repeat).
+
+- **Tests:** `test_town_note` (18 checks; in the fast list).
+
 ## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (PR #153, `claude/connections-buyin`, stacked on #151)
 
 - **Base:** `claude/connections-cache` (#151, itself on #150). **Status:** PR open, for Bailiff, after those two. **Next actor:** Bailiff; Michael for the one question below.
