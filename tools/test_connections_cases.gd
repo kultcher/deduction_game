@@ -42,6 +42,7 @@ func _init() -> void:
 	_weights()
 	_plan()
 	_arithmetic()
+	Connections.buy_in = true
 	_presented()
 	_reuse_in_game()
 	_fading_and_repeat()
@@ -75,7 +76,9 @@ func _weights() -> void:
 	store = Connections.stored_with(store, {"key": "n4", "presenter": "x", "target": "t", "type": "evil", "cards": ["a", "d"], "day": 3}, 3)
 	check(store.map(func(c): return c.key) == ["n2", "n3", "n4"], "the same presenter's new case about the same person replaces its earlier one")
 	store = Connections.stored_with(store, {"key": "n5", "presenter": "z", "target": "t", "type": "evil", "cards": ["e"], "day": 7}, 7)
-	check(store.map(func(c): return c.key) == ["n4", "n5"], "a case too old to count at any trust is dropped (%s)" % str(store.map(func(c): return c.key)))
+	check(store.map(func(c): return c.key) == ["n2", "n3", "n4", "n5"], "a case a listener may have bought is kept while it could still count")
+	store = Connections.stored_with(store.filter(func(c): return c.key != "n5"), {"key": "n5", "presenter": "z", "target": "t", "type": "evil", "cards": ["e"], "day": 32}, 32)
+	check(store.map(func(c): return c.key) == ["n5"], "a case too old to count at any trust is dropped (%s)" % str(store.map(func(c): return c.key)))
 	check(Connections.challenged_ids([{"challenges": {"r1": {}}}, {"challenges": {"r1": {}, "r2": {}}}, {}]) == ["r1", "r2"], "the readings stored cases challenge")
 
 
@@ -110,6 +113,30 @@ func _plan() -> void:
 ## A presenter's cases that reuse its own cards (Michael, Nov 13): one that cites every card
 ## of an earlier one takes its place; otherwise it adds nothing for what the earlier one
 ## already put together.
+## Buy-in: a case from an earlier day keeps more of its weight the further its cards,
+## standing alone, move this listener.
+func _buy_in(item_list: Array, values: Dictionary, leans: Dictionary) -> void:
+	var none: Dictionary = {"seed": [], "members": [], "lean": {}, "impossible": false}
+	# b and c together say +0.6 beyond their own values; the presenter is trusted at 0.8.
+	var rate: float = lerpf(0.5, 0.9, 0.8 * 0.6 / 0.7)
+	var bought: Dictionary = Connections.cases(_fake_run(leans), item_list, values, none, [{"key": "k", "presenter": "n", "day": 2, "cards": ["b", "c"]}], 3)
+	check(is_equal_approx(bought.entries[0].rate, rate) and is_equal_approx(bought.lean.x, 0.8 * rate * 0.6), "a case that moves the listener keeps more than half its weight a day (%.3f)" % bought.entries[0].rate)
+	var two: Dictionary = Connections.cases(_fake_run(leans), item_list, values, none, [{"key": "k", "presenter": "n", "day": 1, "cards": ["b", "c"]}], 3)
+	check(is_equal_approx(two.lean.x, 0.8 * rate * rate * 0.6), "and that share again for each further day")
+	var full: Dictionary = Connections.cases(_fake_run(leans.merged({"b,c": 1.8}, true)), item_list, values, none, [{"key": "k", "presenter": "n", "day": 2, "cards": ["b", "c"]}], 3)
+	check(is_equal_approx(full.entries[0].rate, Connections.CASE_FADE_BOUGHT), "a move of %.1f or more gives the slowest fade (%.2f)" % [Connections.CASE_BUYIN_FULL, full.entries[0].rate])
+	var little: Dictionary = Connections.cases(_fake_run(leans.merged({"b,c": -0.2}, true)), item_list, values, none, [{"key": "k", "presenter": "n", "day": 2, "cards": ["b", "c"]}], 3)
+	check(is_equal_approx(little.entries[0].rate, Connections.CASE_FADE), "a case whose cards add nothing together fades at a half, as before")
+	var hedged: Dictionary = Connections.cases(_fake_run(leans), item_list, values, none, [{"key": "k", "presenter": "n", "day": 2, "cards": ["b", "c"], "suspicious": true}], 3)
+	check(is_equal_approx(hedged.entries[0].rate, lerpf(0.5, 0.9, 0.4 * 0.6 / 0.7)), "a \"suspicious\" case is bought at its half weight (%.3f)" % hedged.entries[0].rate)
+	var today: Dictionary = Connections.cases(_fake_run(leans), item_list, values, none, [{"key": "k", "presenter": "n", "day": 3, "cards": ["b", "c"]}], 3)
+	check(is_equal_approx(today.lean.x, 0.8 * 0.6), "a case presented today hasn't faded")
+	Connections.buy_in = false
+	var flat: Dictionary = Connections.cases(_fake_run(leans), item_list, values, none, [{"key": "k", "presenter": "n", "day": 2, "cards": ["b", "c"]}], 3)
+	check(is_equal_approx(flat.lean.x, 0.8 * 0.5 * 0.6), "with buy-in off (the measurement switch) every case keeps half")
+	Connections.buy_in = true
+
+
 func _reuse(item_list: Array, values: Dictionary, leans: Dictionary) -> void:
 	var none: Dictionary = {"seed": [], "members": [], "lean": {}, "impossible": false}
 	var more: Dictionary = leans.merged({"a,b": 0.5, "a,b,c": 1.4})   # a,b: +0.6 beyond; a,b,c: +1.4 beyond 0.2 - 0.3 + 0.1; b,c: +0.6 beyond
@@ -162,6 +189,7 @@ func _fake_run(leans: Dictionary) -> Dictionary:
 
 
 func _arithmetic() -> void:
+	Connections.buy_in = false  # chosen numbers: every case keeps half a day
 	var item_list: Array = _items().filter(func(it): return it.key in ["movement", "own", "a", "b", "c"])
 	var values: Dictionary = {"movement": {"lean": {"x": 0.9}, "impossible": false}, "own": {"lean": {"x": 1.0}, "impossible": false},
 		"a": {"lean": {"x": 0.2}, "impossible": false}, "b": {"lean": {"x": -0.3}, "impossible": false}, "c": {"lean": {"x": 0.1}, "impossible": false}}
@@ -202,6 +230,9 @@ func _arithmetic() -> void:
 	var night_and: Dictionary = Connections.cases(_fake_run(leans.merged({"m1,m2": 1.6, "c,m1,m2": 2.4})), item_list, values, core, [{"key": "k8", "presenter": "n", "day": 3, "cards": ["m1", "m2", "c"]}], 3)
 	check(is_equal_approx(night_and.lean.x, 0.8 * (2.4 - 1.6 - 0.1)), "with another card it adds what the night cards, as the movement connection reads them, say next to that card (%+.3f)" % night_and.lean.x)
 	_reuse(item_list, values, leans)
+	Connections.buy_in = true
+	_buy_in(item_list, values, leans)
+	Connections.buy_in = false
 	# Nothing stored, a single card, an impossible set.
 	check(Connections.cases(_fake_run(leans), item_list, values, core, [], 3).entries.is_empty(), "no stored case, nothing added")
 	var single: Dictionary = Connections.cases(_fake_run(leans), item_list, values, core, [{"key": "k5", "presenter": "n", "day": 3, "cards": ["c"]}], 3)
@@ -413,17 +444,18 @@ func _fading_and_repeat() -> void:
 	check(WorkshopPresentation.faded(g, g.board[s.filed - 1]), "a day later it has faded, so putting it to the town again is assessed")
 	Mind.refresh_beliefs(g.w, n, " (next day)")
 	var later: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
-	check(later.size() == 1 and later[0].day == first[0].day and later[0].weight < first[0].weight and absf(later[0].weight / maxf(0.001, Connections.presenter_trust(g._workshop_plans[n.id + ":good"].prepared.listener, "player")) - 0.5) < 1e-6,
-		"a day later the case counts at half its presenter's trust (%.3f)" % (later[0].weight if later.size() == 1 else -1.0))
+	check(later.size() == 1 and later[0].day == first[0].day and later[0].weight < first[0].weight and later[0].rate >= Connections.CASE_FADE and later[0].rate <= Connections.CASE_FADE_BOUGHT
+		and absf(later[0].weight / maxf(0.001, Connections.presenter_trust(g._workshop_plans[n.id + ":good"].prepared.listener, "player")) - later[0].rate) < 1e-6,
+		"a day later the case counts at its presenter's trust times what it kept (%.3f, keeping %.2f a day)" % [later[0].weight if later.size() == 1 else -1.0, later[0].rate if later.size() == 1 else -1.0])
 	var restored: Dictionary = g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false)
 	var back: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
 	check(not restored.is_empty() and back.size() == 1 and back[0].day == int(g.w.day) and is_equal_approx(back[0].weight, Connections.presenter_trust(g._workshop_plans[n.id + ":good"].prepared.listener, "player")),
 		"presenting it again on a later day restores its weight, and no more (%.3f)" % (back[0].weight if back.size() == 1 else -1.0))
 	check(n.workshop_state.presentations.size() == 1, "it is still one stored case")
-	g.w.day += 5
-	Mind.refresh_beliefs(g.w, n, " (five days on)")
+	g.w.day += 30
+	Mind.refresh_beliefs(g.w, n, " (a month on)")
 	var gone: Dictionary = _proposal(g, n).get("connections", {})
-	check(gone.cases.entries.is_empty() and gone.cases.lean.is_empty(), "five days on it no longer counts")
+	check(gone.cases.entries.is_empty() and gone.cases.lean.is_empty(), "long after, it no longer counts")
 	check(gone.items.any(func(it): return _card_id(g, n, s.seer) in it.cards), "but the cards it brought are still held at their own value")
 	Connections.enabled = false
 	# With the model off a later-day repeat is what it always was.
@@ -489,9 +521,10 @@ func _challenges() -> void:
 	failed.g.w.day += 1
 	Mind.refresh_beliefs(failed.g.w, failed.n, " (next day)")
 	var next: Dictionary = _proposal(failed.g, failed.n).get("connections", {})
-	check(next.cases.floors.size() == 1 and absf(float(next.cases.floors[0].weight) - 0.5 * float(fr[0].weight)) < 0.02, "a day later it weighs half as much (%.3f against %.3f)" % [float(next.cases.floors[0].weight) if next.cases.floors.size() == 1 else -1.0, float(fr[0].weight)])
-	failed.g.w.day += 5
-	Mind.refresh_beliefs(failed.g.w, failed.n, " (five days on)")
+	var next_rate: float = float(next.cases.entries[0].rate) if next.cases.entries.size() == 1 else -1.0
+	check(next.cases.floors.size() == 1 and next_rate >= Connections.CASE_FADE and next_rate <= Connections.CASE_FADE_BOUGHT and absf(float(next.cases.floors[0].weight) - next_rate * float(fr[0].weight)) < 0.02, "a day later it weighs what the case kept (%.3f against %.3f)" % [float(next.cases.floors[0].weight) if next.cases.floors.size() == 1 else -1.0, float(fr[0].weight)])
+	failed.g.w.day += 30
+	Mind.refresh_beliefs(failed.g.w, failed.n, " (a month on)")
 	var last: Dictionary = _proposal(failed.g, failed.n).get("connections", {})
 	check(last.cases.floors.is_empty() and last.cases.challenged == [failed.seer], "once the case no longer counts, neither does its challenge, in or out of the case")
 	# A lie: no reliability changes; the floor under the teller is the case's.

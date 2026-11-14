@@ -27,6 +27,39 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (`claude/connections-buyin`, stacked on #151)
+
+- **Base:** `claude/connections-cache` (#151, itself on #150). **Status:** PR open, for Bailiff, after those two. **Next actor:** Bailiff; Michael for the one question below.
+- **From:** the triage doc, 4.3. Michael picked buy-in over a flat 0.7 (Nov 13 evening). Switch on only.
+- **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds). Fast list 56 of 56.
+
+**The rule (`workshop/connections.gd`: `buy_in_rate`, `case_plan`)**
+
+- A stored case from an earlier day keeps between 0.5 and 0.9 of its weight a day (`CONNECTIONS_CASE_FADE`, `CONNECTIONS_CASE_FADE_BOUGHT`), by how far it moves that listener: the largest move its cards make together on anyone, standing alone, at the weight it had the day it was presented, against 0.7 log-odds (`CONNECTIONS_CASE_BUYIN_FULL`). At or over 0.7 it fades slowest.
+- Nothing is stored. The rate is read again at each refresh, so it follows what the listener holds now. It costs one judgement per older case, and the cache keeps it.
+- **Different from what was measured in #150:** there the move was what the case added after the reuse rule, so a repeat of the same cards faded at a half. Now it is the case's own cards standing alone, so a repeat fades like the original. On 44542 the result is the same (below).
+- The rate is set before the "at least as much" test for replacing a case, so that test compares the weights as they stand today.
+- `stored_with` (NPC nominators' cases) keeps a case while it could still count at the slowest fade: 28 days, against 4.
+- `Connections.buy_in` (on in play) turns it off for measuring. The arithmetic tests on chosen numbers run with it off.
+- The Why report shows the rate a case keeps a day.
+- **The prototype tool follows the game:** its first fade is now buy-in through the same rule (`fades = [buy-in, 0.5, 0.7]`).
+
+**44542, in the game** (chance Fenwick is evil; "Fenwick is good" was presented on day 1)
+
+| Listener | Evening of day 1 | Dawn of day 2, before (0.5 a day) | Dawn of day 2, now |
+|---|---|---|---|
+| Greta | 18% | 24% | 20% |
+| Hollis | 13% | 19% | 15% |
+| Jory | 19% | 33% | 27% |
+| Kiran | 22% | 37% | 31% |
+
+- The case keeps 0.86–0.9 a day for these four. What is left of the overnight rise is other cards arriving.
+- By the vigil on day 3: Greta 39% (43% before), Jory 41% (46%), Kiran 12% (15%).
+
+**For Michael:** it applies to NPC nominators' cases as well as the player's, since both are stored cases. If NPC cases should keep the flat 0.5, it is one condition.
+
+- **Tests:** `test_connections_cases` (106 checks; the rate on chosen numbers, a day on in a game), `test_connections_why`.
+
 ## 2026-11-14 early, Claude-Lantern: kept judgements, step 6 (PR #151, `claude/connections-cache`, stacked on #150)
 
 - **Base:** `claude/connections-case-rules` (#150) with main `9cded67` merged in. **Status:** PR open, for Bailiff, after #150. **Next actor:** Bailiff.

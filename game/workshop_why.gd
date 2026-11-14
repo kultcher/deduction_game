@@ -542,7 +542,7 @@ static func _connections_report(g, real, n, card: Dictionary, venue: String, was
 	# The case's own part: its weight, and who it moved.
 	var today: int = int(memory.get("day", g.w.day))
 	var days: int = maxi(0, today - int(cs.get("day", today)))
-	var fade: float = pow(Connections.CASE_FADE, days)
+	var fade: float = pow(float(entry.get("rate", Connections.CASE_FADE)), days)
 	var hedge: float = Tuning.Workshop.SUSPICIOUS_HEARING if cs.get("suspicious", false) else 1.0
 	var weight: float = float(entry.get("weight", Connections.case_weight(plan.prepared.listener, cs, today))) if not cs.is_empty() else 0.0
 	var moved: Array = entry.get("lean", {}).keys()
@@ -569,7 +569,7 @@ static func _connections_report(g, real, n, card: Dictionary, venue: String, was
 	elif entry.lean.is_empty():
 		not_counted = "there is nothing new to weigh together (one card or pairing, or cards the movement connection already weighs together)"
 	out["case"] = {"key": case_key, "counted": not_counted == "", "not_counted": not_counted, "weight": weight,
-		"trust": weight / (fade * hedge) if fade * hedge > 0.0 else 0.0, "fade": fade, "days": days, "suspicious": bool(cs.get("suspicious", false)),
+		"trust": weight / (fade * hedge) if fade * hedge > 0.0 else 0.0, "fade": fade, "rate": float(entry.get("rate", Connections.CASE_FADE)), "days": days, "suspicious": bool(cs.get("suspicious", false)),
 		"merged": bool(entry.get("merged", false)), "together": int(entry.get("cards", 0)), "lean": entry.get("lean", {}).duplicate(),
 		"shared": int(entry.get("shared", 0)), "replaces": entry.get("replaces", []).duplicate(),
 		"moved": moved.slice(0, 4).map(func(p): return {"id": p, "lean": float(entry.lean[p])}),
@@ -709,7 +709,7 @@ static func describe_connections(g, b: Dictionary, view: Dictionary) -> String:
 				moved.append("%s %+.2f" % [_who(g, m.id), float(m.lean)])
 		lines.append("The case's cards weighed together added: %s." % (", ".join(moved) if not moved.is_empty() else "nothing to speak of"))
 		var w: PackedStringArray = ["trust in you %.2f" % float(cs.trust)]
-		w.append("x%.2f for %d day%s since it was presented" % [float(cs.fade), int(cs.days), "" if int(cs.days) == 1 else "s"] if int(cs.days) > 0 else "presented today, so no fading")
+		w.append("x%.2f for %d day%s since it was presented (it keeps %.2f a day; more the further it moved them)" % [float(cs.fade), int(cs.days), "" if int(cs.days) == 1 else "s", float(cs.get("rate", Connections.CASE_FADE))] if int(cs.days) > 0 else "presented today, so no fading")
 		if cs.suspicious:
 			w.append("x%.2f for a \"suspicious\" premise" % Tuning.Workshop.SUSPICIOUS_HEARING)
 		lines.append("  Counted at weight %.2f (%s). At full weight it would be %s." % [float(cs.weight), "; ".join(w),

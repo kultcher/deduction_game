@@ -896,6 +896,12 @@ class Workshop:
 	## counting below the floor. Its weight starts at the listener's trust in the presenter.
 	const CONNECTIONS_CASE_FADE = 0.5
 	const CONNECTIONS_CASE_FLOOR = 0.05
+	## Buy-in (Michael, Nov 13): a case a listener bought fades slower. It keeps between
+	## CASE_FADE and CASE_FADE_BOUGHT of its weight a day, by how far it moves that listener:
+	## the largest move its cards make together on anyone, at the listener's trust in the
+	## presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade).
+	const CONNECTIONS_CASE_FADE_BOUGHT = 0.9
+	const CONNECTIONS_CASE_BUYIN_FULL = 0.7
 	## Time a person spends at their own workplace, as a place they might have hexed: the
 	## Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday).
 	const HEX_OWN_WORK_WEIGHT = 0.4

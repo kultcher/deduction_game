@@ -250,8 +250,8 @@ func _hedged_and_faded() -> void:
 	g.w.day += 1
 	Mind.refresh_beliefs(g.w, n, " (next day)")
 	var later: Dictionary = WorkshopWhy.presentation(g, n, g.board[s.filed - 1], "meeting")
-	check(later.get("model", "") == "connections" and int(later["case"].days) == 1 and is_equal_approx(float(later["case"].fade), Connections.CASE_FADE)
-		and is_equal_approx(float(later["case"].weight), float(later["case"].trust) * Connections.CASE_FADE * Tuning.Workshop.SUSPICIOUS_HEARING),
+	check(later.get("model", "") == "connections" and int(later["case"].days) == 1 and is_equal_approx(float(later["case"].fade), float(later["case"].rate)) and float(later["case"].rate) >= Connections.CASE_FADE and float(later["case"].rate) <= Connections.CASE_FADE_BOUGHT
+		and is_equal_approx(float(later["case"].weight), float(later["case"].trust) * float(later["case"].rate) * Tuning.Workshop.SUSPICIOUS_HEARING),
 		"a day on, the weight shows the fading too (%.3f)" % float(later["case"].weight))
 	check(not later.had_before and later.parts[s.target].before == null and later.text.contains("No earlier refresh was recorded"), "with no \"before\" taken, only the \"after\" side is shown")
 	Connections.enabled = false

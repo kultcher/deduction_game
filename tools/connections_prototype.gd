@@ -94,13 +94,13 @@ const DEMON_CLIP = 0.002
 const FIXED = Connections.FIXED
 ## A stored case whose weight has faded below this no longer counts.
 const CASE_FLOOR = 0.05
-## A fade "rate" that asks for the buy-in fade instead (measurement only, Nov 13): a case
-## keeps between BUYIN_SLOW[0] and BUYIN_SLOW[1] of its weight a day, the more the further
-## it moves this listener (the largest move it makes on anyone, at trust, against BUYIN_FULL
-## log-odds). Nothing is stored: it is re-judged each refresh like the case itself.
+## A fade "rate" that asks for the game's buy-in fade (Connections.buy_in_rate; the first
+## of `fades`, so the tool's main numbers are the game's): a case keeps between CASE_FADE
+## and CASE_FADE_BOUGHT of its weight a day, the more the further its cards, standing
+## alone, move this listener. The other `fades` are flat rates, for comparison.
 const BUYIN = -2.0
-const BUYIN_SLOW = [0.5, 0.9]
-const BUYIN_FULL = 0.7
+const BUYIN_SLOW = [Connections.CASE_FADE, Connections.CASE_FADE_BOUGHT]
+const BUYIN_FULL = Connections.CASE_BUYIN_FULL
 ## A trace "matches" a person when, read with the profile cards, it moves them this far.
 const TRACE_MATCH = 0.1
 ## A cached value counts as changed beyond this (log-odds).
@@ -113,7 +113,7 @@ const TRACE_KINDS = Connections.TRACE_KINDS
 const ALWAYS_ON = Connections.ALWAYS_ON
 
 ## Each day a stored case keeps this share of its weight; the first is the main rate.
-var fades: Array = [0.5, 0.7, 0.85]
+var fades: Array = [BUYIN, 0.5, 0.7]
 ## 0: no cap on stored cases (they fade). N: the old rule, at most N per listener.
 var cap := 0
 ## --legacy-seed: the first prototype's seed (see the header). With it, --movement-seed: a
@@ -526,20 +526,15 @@ func _beliefs(st: Dictionary, cases: Array, day: int, remember: bool = true, fix
 		# are the game's alone: this tool doesn't weigh them.
 		var state: Dictionary = Connections.case_state(core_keys)
 		var buyin: bool = is_equal_approx(fade, BUYIN)
-		for cs in Connections.case_plan(cases.map(func(x): return x.merged({"key": x.label, "suspicious": str(x.get("type", "")) == "suspicious"})), items, st.listener, day, 1.0 if buyin else fade):
+		for cs in Connections.case_plan(cases.map(func(x): return x.merged({"key": x.label, "suspicious": str(x.get("type", "")) == "suspicious"})), items, st.listener, day, Connections.CASE_FADE if buyin else fade,
+				(func(c): return lerpf(BUYIN_SLOW[0], BUYIN_SLOW[1], clampf(float(c["weight"]) * _alone_move(st, c, by_key, values) / BUYIN_FULL, 0.0, 1.0))) if buyin else Callable()):
 			var step: Dictionary = Connections.case_step(state, cs)
 			var w: float = cs.weight
 			var entry: Dictionary = {"label": cs.key, "weight": w, "merged": step.merged, "cards": cs.keys.size() + cs.extra.size(), "shared": step.shared, "replaces": cs.replaces}
 			var delta: Dictionary = _zero(st)
 			for term in step.terms:
 				_add(delta, _interaction(st, term[1], by_key, values, term[2]), float(term[0]))
-			if buyin:
-				var rate: float = lerpf(BUYIN_SLOW[0], BUYIN_SLOW[1], clampf(w * _max_e(delta) / BUYIN_FULL, 0.0, 1.0))
-				w *= pow(rate, maxi(0, day - int(cs.day)))
-				entry["rate"] = rate
-				entry["weight"] = w
-				if w < CASE_FLOOR:
-					w = 0.0
+			entry["rate"] = cs.rate
 			_add(total, delta, w)
 			state = step.next
 			largest = maxi(largest, _size(step.terms[0][1], by_key) + step.terms[0][2].size())
@@ -573,6 +568,13 @@ static func _size(keys: Array, by_key: Dictionary) -> int:
 
 ## A joint set's interaction: its value judged together minus the sum of its members' own
 ## values. extra: single cards cited out of the movement connection.
+## The largest move a case's cards make together on anyone, standing alone (buy-in).
+func _alone_move(st: Dictionary, c: Dictionary, by_key: Dictionary, values: Dictionary) -> float:
+	var d: Dictionary = _zero(st)
+	_add(d, _interaction(st, c["keys"], by_key, values, c["extra"]))
+	return _max_e(d)
+
+
 func _interaction(st: Dictionary, keys: Array, by_key: Dictionary, values: Dictionary, extra: Array = []) -> Dictionary:
 	var set_: Dictionary = Connections.pool(keys.map(func(k): return by_key[k]))
 	# A cited card that already sits in one of the items (a core holding the movement

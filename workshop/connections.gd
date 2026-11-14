@@ -103,6 +103,9 @@ static var seed_wrong_sightings: bool = true
 ##   weighs together (interaction).
 static var reuse_rule: bool = true
 static var held_together_rule: bool = true
+## Buy-in fading (buy_in_rate). Off, every case keeps CASE_FADE a day (for measuring, and
+## for arithmetic tests on chosen numbers).
+static var buy_in: bool = true
 ## Developer capture (off): one record per judgement a refresh makes, for measuring what a
 ## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
 ## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
@@ -113,9 +116,13 @@ static var captured: Array = []
 ## An item joins the core at this much interaction with the seed (log-odds, any one person).
 const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
 
-## A stored case keeps CASE_FADE of its weight a day, and stops counting below CASE_FLOOR.
+## A stored case keeps CASE_FADE of its weight a day (more if the listener bought it:
+## buy_in_rate), and stops counting below CASE_FLOOR.
 const CASE_FADE: float = Tuning.Workshop.CONNECTIONS_CASE_FADE
 const CASE_FLOOR: float = Tuning.Workshop.CONNECTIONS_CASE_FLOOR
+## A case the listener bought fades slower: up to CASE_FADE_BOUGHT a day (buy_in_rate).
+const CASE_FADE_BOUGHT: float = Tuning.Workshop.CONNECTIONS_CASE_FADE_BOUGHT
+const CASE_BUYIN_FULL: float = Tuning.Workshop.CONNECTIONS_CASE_BUYIN_FULL
 
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 
@@ -804,7 +811,7 @@ static func stored_with(list: Array, cs: Dictionary, day: int) -> Array:
 	var out: Array = []
 	for x in list:
 		var replaced: bool = x.presenter == cs.presenter and x.get("target", "") == cs.get("target", "") and x.get("type", "") == cs.get("type", "")
-		if not replaced and pow(CASE_FADE, maxi(0, day - int(x.get("day", day)))) >= CASE_FLOOR:
+		if not replaced and pow(CASE_FADE_BOUGHT, maxi(0, day - int(x.get("day", day)))) >= CASE_FLOOR:
 			out.append(x)
 	out.append(cs)
 	return out
@@ -819,7 +826,10 @@ static func stored_with(list: Array, cs: Dictionary, day: int) -> Array:
 ## the later one has taken its place (its key is listed in the later one's "replaces"),
 ## and the set counts once, at the later case's weight.
 ## Returns [{"key", "presenter", "day", "weight", "keys", "extra", "challenges", "replaces"}].
-static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, day: int, fade: float = CASE_FADE) -> Array:
+## rate_of: when given, called with {"keys", "extra", "challenges", "weight": the case's
+## weight the day it was presented} for a case from an earlier day, and returns the share
+## of its weight it keeps a day (buy-in; cases() passes it). Without it, `fade` for all.
+static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, day: int, fade: float = CASE_FADE, rate_of: Callable = Callable()) -> Array:
 	var item_of: Dictionary = {}
 	var kind_of: Dictionary = {}
 	for it in item_list:
@@ -846,10 +856,13 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 				keys.append(key)
 		if keys.is_empty() and extra.is_empty():
 			continue
-		var w: float = case_weight(listener, cs, day, fade)
+		var rate: float = fade
+		if rate_of.is_valid() and int(cs.get("day", day)) < day:
+			rate = float(rate_of.call({"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "weight": case_weight(listener, cs, day, 1.0)}))
+		var w: float = case_weight(listener, cs, day, rate)
 		if w < CASE_FLOOR:
 			continue
-		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w,
+		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
 			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
 			"suspicious": bool(cs.get("suspicious", false)), "withheld": case_withheld(listener, cs, day, fade)})
 	# Oldest first, so a later entry is a later case.
@@ -1008,6 +1021,22 @@ static func case_state(core_keys: Array) -> Dictionary:
 	return {"keys": core_keys.duplicate(), "extra": [], "challenges": {}, "seen": {}}
 
 
+## The share of its weight a case from an earlier day keeps a day (buy-in): CASE_FADE for
+## one that moves this listener little, up to CASE_FADE_BOUGHT for one that moves it by
+## CASE_BUYIN_FULL or more. The move is the largest its cards make together on anyone,
+## standing alone, at the weight it had the day it was presented. Nothing is stored: it is
+## read again at each refresh, so it follows what the listener holds now.
+## c: {"keys", "extra", "challenges", "weight"}.
+static func buy_in_rate(run: Dictionary, by_key: Dictionary, values: Dictionary, c: Dictionary) -> float:
+	var alone: Dictionary = interaction(run, by_key, values, c["keys"], c["extra"], c["challenges"])
+	if alone.impossible:
+		return CASE_FADE
+	var move: float = 0.0
+	for p in alone.lean:
+		move = maxf(move, absf(float(alone.lean[p])))
+	return lerpf(CASE_FADE, CASE_FADE_BOUGHT, clampf(float(c["weight"]) * move / CASE_BUYIN_FULL, 0.0, 1.0))
+
+
 ## What the stored cases add (see the header; case_plan and case_step hold the rules).
 ## own: this refresh's core (core()). case_list, day: the listener's stored cases and today.
 ## Returns {"lean": {id: log-odds added}, "entries": [{"key", "presenter", "day", "weight",
@@ -1027,9 +1056,9 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 	# The set the core judges together grows as cases that touch it merge in.
 	var state: Dictionary = case_state([] if own.get("impossible", false) else own.get("seed", []) + own.get("members", []))
 	var total: Dictionary = {}
-	for cs in case_plan(case_list, item_list, run.listener, day):
+	for cs in case_plan(case_list, item_list, run.listener, day, CASE_FADE, (func(c): return buy_in_rate(run, by_key, values, c)) if buy_in else Callable()):
 		var step: Dictionary = case_step(state, cs)
-		var entry: Dictionary = {"key": cs.key, "presenter": cs.presenter, "day": cs.day, "weight": cs.weight, "merged": step.merged, "cards": 0,
+		var entry: Dictionary = {"key": cs.key, "presenter": cs.presenter, "day": cs.day, "weight": cs.weight, "rate": cs.rate, "merged": step.merged, "cards": 0,
 			"shared": step.shared, "replaces": cs.replaces, "lean": {}}
 		var added: Dictionary = {}
 		var impossible: bool = false
