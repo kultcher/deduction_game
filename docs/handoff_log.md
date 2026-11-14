@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (`claude/suspicious-pressure`, stacked on #154)
+## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (PR #155, `claude/suspicious-pressure`, stacked on #154)
 
 - **Base:** `claude/no-new-info` (#154). **Status:** PR open, for Bailiff, after #154. **Next actor:** Bailiff; Michael for the scale.
 - **From:** Michael, Nov 14: "suspicious" is the early-game tool and should have a solid chance of making someone who is holding back reveal something; aim for about 0.3 pressure from one basic incriminating reading. The held-back half was only ever a way to scale with the case, and can go.
