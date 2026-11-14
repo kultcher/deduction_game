@@ -1589,6 +1589,7 @@ static func framed_night_of(w, d, out_items: Array) -> int:
 static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> Array:
 	var out: Array = []
 	var seen_eids: Dictionary = {}
+	var case_eids: Dictionary = {}
 	var d_mind = d.shadow if d.is_evil() and d.shadow != null else d
 	if accuser != null:
 		for it in case_against(w, accuser, d.id, 6):
@@ -1615,16 +1616,23 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 			for en in sn2.info_log:
 				if en.get("role", "") == f.get("role", "") and int(en.get("day", -1)) == int(f.get("day", -2)):
 					var eid2: String = info_eid(src_id, en)
+					case_eids[eid2] = true
 					if not seen_eids.has(eid2):
 						var r_score: Dictionary = ReasonAttribution.score_reading_entry_in_world(w, src_id, en, d.id)
 						out.append({"eid": eid2, "why": "their reading pointed at me", "contrib": float(r_score["contrib"]), "kind": "public", "strength": float(r_score["strength"]), "entry": en, "channel": "report"})
 						seen_eids[eid2] = true
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
 			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
+			case_eids[s_eid] = true
 			if not seen_eids.has(s_eid):
 				var s_score: Dictionary = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
 				out.append({"eid": s_eid, "why": "seen out at night", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "movement_out"})
 				seen_eids[s_eid] = true
+	# Mark what the player's case actually cites, so the defence's "your case rests on"
+	# names one of those, not the heaviest thing anyone holds against them (97626).
+	for it in out:
+		if case_eids.has(str(it.get("eid", ""))):
+			it["in_case"] = true
 	return out
 
 static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = []) -> Dictionary:
@@ -1647,7 +1655,9 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var hinge: Dictionary = {}
 	if case_backed and not items.is_empty():
 		items.sort_custom(func(a, b): return float(a.get("contrib", 0.0)) > float(b.get("contrib", 0.0)))
-		hinge = items[0]
+		var cited: Array = items.filter(func(x): return x.get("in_case", false))
+		if not cited.is_empty():
+			hinge = cited[0]
 	var role: String = w.evil_plan["bluffs"].get(d.id, "") if d.is_evil() else d.role
 	var out_items: Array = items.filter(func(x): return x.get("channel", "") in ["movement_out", "alibi_contradiction"] or "out" in x["why"] or "night" in x["why"])
 	var out_weight = 0.0

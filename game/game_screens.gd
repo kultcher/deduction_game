@@ -275,8 +275,13 @@ static func _grimoire(g) -> String:
 		var role_label: String = C.role_name(n.role)
 		if n.id == g.w.scion_rose:
 			role_label = "Scion (promoted to Demon)"
-		elif n.turned:
-			role_label = "%s (cursed by Revenant)" % C.role_name(n.role)
+		if n.turned or g.w.dlog.entries.any(func(e): return e["type"] == "turned" and e["target"] == n.id):
+			# Show who the Revenant turned, even once the curse lifted (playtest triage 1.5).
+			var tday: int = n.turned_day
+			for e in g.w.dlog.entries:
+				if e["type"] == "turned" and e["target"] == n.id:
+					tday = int(e["day"])
+			extra.append("turned evil by the Revenant on day %d%s" % [tday, "" if n.turned else ", freed when the totem burned"])
 		if n.is_evil() and not n.turned and g.w.evil_plan.get("bluffs", {}).has(n.id):
 			extra.append("bluffed %s" % C.role_name(g.w.evil_plan["bluffs"][n.id]))
 		if n.id == g.w.evil_plan.get("scapegoat", ""):

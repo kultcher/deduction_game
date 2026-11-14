@@ -37,6 +37,9 @@ var presenting = false
 ## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
 ## modifiers), not premises. Filed cases with the old types still evaluate.
 const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent"]
+## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
+## (playtest triage 1.6). The Demon can't change hands through the curse.
+const EPOCH_TYPES = ["evil", "suspicious", "good"]
 const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
@@ -59,7 +62,7 @@ func _identity_hint() -> String:
 
 func _premise_details(node: Dictionary) -> void:
 	var conclusion: Dictionary = node.get("conclusion", {})
-	if not conclusion.is_empty() and board.view.get("chronology", {}).has("curse"):
+	if not conclusion.is_empty() and board.view.get("chronology", {}).has("curse") and conclusion.get("type") in EPOCH_TYPES:
 		var epochs: Array = board.view.chronology.epochs.keys()
 		var epoch = _option(case_box, epochs)
 		epoch.select(epochs.find(conclusion.at))
@@ -938,7 +941,7 @@ func set_premise_field(id: String, field: String, value) -> void:
 		node.conclusion = {}
 	elif field == "type":
 		var target: String = node.conclusion.get("target", board._default_target())
-		node.conclusion = {"type": value, "target": target, "at": node.conclusion.get("at", board.view.alignment_epoch)}
+		node.conclusion = {"type": value, "target": target, "at": node.conclusion.get("at", board.view.alignment_epoch) if value in EPOCH_TYPES else board.view.alignment_epoch}
 		_default_detail(node)
 		case_root = id
 	elif field == "person":
@@ -995,7 +998,7 @@ func _detail_label(node: Dictionary) -> Dictionary:
 			return {"field": "report", "text": report.text if not report.is_empty() else "Choose the reading", "missing": report.is_empty(),
 				"icon": WorkshopSkin.tex("ui/roles/" + report.role, 0.06) if not report.is_empty() and report.has("role") else null,
 				"tip": "The reading this premise questions. Link that reading and your grounds to the premise. Lying and impairment are different explanations."}
-	if board.view.get("chronology", {}).has("curse"):
+	if board.view.get("chronology", {}).has("curse") and conclusion.type in EPOCH_TYPES:
 		return {"field": "epoch", "text": "When: " + str(conclusion.at), "tip": "Which time this premise is about (before, during or after the curse)."}
 	return {}
 
