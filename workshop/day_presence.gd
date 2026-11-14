@@ -23,6 +23,9 @@ const PLACES: Array = ["tavern", "well", "smithy", "bakery", "wharf", "mill", "c
 const HOME: int = 8
 const SLOTS: int = 9
 const TRUST: float = Tuning.Workshop.PRESENCE_TESTIMONY_TRUST
+## How likely a hunting Breathstealer with a free phase is on its victim's block (Nov 14;
+## sim BREATHSTEALER.seek_target_chance and its going out to where good people work).
+const HUNT_REACH: float = Tuning.Workshop.BREATH_HUNT_REACH
 
 ## The sim's idle odds by phase (World._choose_idle_location): fixed places first, and the
 ## rest goes to "social" picks (a haunt with IDLE_HAUNT_CHANCE, else any of the 8 places).
@@ -54,6 +57,14 @@ static func place_block(i: int) -> String:
 ## {pid: {"d:p": PackedFloat64Array(SLOTS)}} for days 1..view.day and phases 0..2. A dead
 ## person's slots are all zero.
 static func build(view: Dictionary, cards: Array) -> Dictionary:
+	var out: Dictionary = build_prior(view, cards)
+	_apply_evidence(view, cards, out)
+	return out
+
+
+## The table before any sighting or watch: schedules and haunts only (build's first step).
+## hunt_block reads how far the evidence moved a free person from it.
+static func build_prior(view: Dictionary, cards: Array) -> Dictionary:
 	var ids: Array = view.get("people", []).map(func(p): return p.id)
 	var last_day: int = int(view.get("day", 1))
 	var work: Dictionary = {}
@@ -95,7 +106,6 @@ static func build(view: Dictionary, cards: Array) -> Dictionary:
 				if History.observer_alive(view, pid, stamp):
 					dist = _prior(pid, p, work, haunts, busy)
 				out[pid]["%d:%d" % [d, p]] = dist
-	_apply_evidence(view, cards, out)
 	return out
 
 
@@ -326,13 +336,64 @@ static func at_any(table: Dictionary, pid: String, day: int, locs: Array, phases
 	return 1.0 - miss
 
 
+## The chance a Breathstealer `m` was out on the victim's block in a phase, if `m` is the
+## Breathstealer (Nov 14: it hunts). Tied to a place that phase (on shift, or seen there for
+## certain), it is wherever that is. Free, it goes after a target, so it could be on any block
+## its record doesn't rule out, with HUNT_REACH; where the victim was comes from the table.
+## `prior` (build_prior): with it, reported whereabouts move a free person's reach by how far
+## they moved their chance of being on that block (an NPC's sighting near the victim raises
+## it, one elsewhere lowers it; Codex on #157). Without it, any block not ruled out counts.
+static func hunt_block(table: Dictionary, m: String, victim: String, day: int, phase: int, prior: Dictionary = {}) -> float:
+	var key: String = "%d:%d" % [day, phase]
+	var dist: PackedFloat64Array = table.get(m, {}).get(key, PackedFloat64Array())
+	if dist.size() < SLOTS or _total(dist) <= 0.0:
+		return 0.0
+	var top: float = 0.0
+	for x in dist:
+		top = maxf(top, x)
+	if top >= 0.999:
+		return same_block(table, m, victim, day, phase)
+	var before: PackedFloat64Array = prior.get(m, {}).get(key, PackedFloat64Array())
+	# How much the evidence changed their chance of each block (and of home), against the
+	# schedule-only prior: a likelihood up to a constant, which cancels below.
+	var blocks: Array = C.BLOCKS.keys()
+	var like: Dictionary = {}
+	for blk in blocks + ["home"]:
+		var now_on: float = 0.0
+		var was_on: float = 0.0
+		for i in range(SLOTS):
+			if (blk == "home" and i == HOME) or (blk != "home" and i < HOME and place_block(i) == blk):
+				now_on += dist[i]
+				if before.size() >= SLOTS:
+					was_on += before[i]
+		like[blk] = (now_on / was_on) if was_on > 1e-9 else (1.0 if now_on > 1e-9 else 0.0)
+	# The hunter's own prior: HUNT_REACH on the victim's block, the rest spread over the other
+	# blocks and home; then the evidence (Codex on #157: ruling one block out mustn't make the
+	# others certain).
+	var s: float = 0.0
+	for blk in blocks:
+		var pv: float = on_block(table, victim, day, phase, blk)
+		if pv <= 0.0:
+			continue
+		var rest: float = (1.0 - HUNT_REACH) / float(blocks.size())
+		var other: float = 0.0
+		for o in blocks + ["home"]:
+			if o != blk:
+				other += rest * float(like[o])
+		var here: float = HUNT_REACH * float(like[blk])
+		if here + other > 0.0:
+			s += pv * here / (here + other)
+	return s
+
+
 # --- Breathstealer by presence ---
 
 ## The Breathstealer silences someone out on its own block, in one of the day phases
 ## (sim/roles/breathstealer.gd), so for each silencing the silencer was out on the victim's
 ## block in the same phase. For each person m, A_m = product over silencings of
 ##     sum over phases p of  P(not yet, before p) * h_p * c_p,
-## where c_p = P(m and the victim out on the same block in p) and h_p is the sim's
+## where c_p = P(m, as the hunting Breathstealer, was out on the victim's block in p)
+## (hunt_block: free phases reach any block not ruled out) and h_p is the sim's
 ## per-phase chance of acting (the mean of its low and high odds). The per-world factor is
 ## the mean of A_m over the world's minions (each equally likely to hold the role), mixed with
 ## DEFAULT_ERR. Returns {} when nobody was silenced or no Breathstealer can be in play.
@@ -361,6 +422,7 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 		return {}
 	var all_cards: Array = cards if not cards.is_empty() or not bare_reads_view else view.get("cards", [])
 	var table: Dictionary = build(view, all_cards)
+	var prior: Dictionary = build_prior(view, all_cards)
 	var ids: Array = view.get("people", []).map(func(p): return p.id)
 	var bs: Dictionary = Tuning.Roles.BREATHSTEALER
 	var h: Array = []
@@ -380,7 +442,7 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 			var not_yet: float = 1.0
 			var like: float = 0.0
 			for p in range(3):
-				var c: float = same_block(table, m, s.victim, s.day, p)
+				var c: float = hunt_block(table, m, s.victim, s.day, p, prior)
 				like += not_yet * float(h[p]) * c
 				not_yet *= 1.0 - float(h[p]) * c
 			a *= like

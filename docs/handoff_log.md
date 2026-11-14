@@ -27,6 +27,29 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14 early, Claude-Bailiff: the Breathstealer hunts (`claude/breathstealer-hunt`)
+
+Triage 3.7 and 5.7 (Michael, Nov 13–14): it should silence on about 90% of days, and the
+town's presence reasoning should match how it moves.
+
+- **Sim** (`sim/roles/breathstealer.gd`, `World.start_phase`): in a free phase, until it
+  has silenced today, it goes to its preferred target's workplace (`seek_target_chance`
+  0.6), else where good people it may silence are working, else the tavern in the evening.
+  Odds: low [0.3, 0.55, 1.0], high [0.4, 0.7, 1.0].
+- **Model** (`DayPresence.hunt_block`, `Tuning.Workshop.BREATH_HUNT_REACH` 0.7): a
+  candidate tied to a place that phase is there; free, it reaches any block its record
+  doesn't rule out. Working or seen elsewhere is an alibi.
+- **Measured** (passive, Bailiff's probe): silenced on 92% of days not suppressed by the
+  Sexton (67/73 and 56/61 at 10 NPCs, 18/19 at 7), against about 63% on main. On 44542 as
+  played, Fenwick's baseline after Isolde's silencing: the player's view 0.71 → 0.58
+  (juror on "Fenwick is good" ×0.95 → ×1.65); an NPC's view 0.44 → 0.41 (Edda 0.38).
+- **Golden:** identical (no golden seed deals a Breathstealer). Two seed fixtures moved:
+  the Seer request check now retries its roll; test_relay_bluff's genuine-Medium case is
+  seed 100042.
+- **The location panel** (Michael, Nov 14: in this PR): its silence view uses `hunt_block`
+  too, so someone free could have reached the victim and someone working elsewhere is ruled
+  out. Test in `test_location_solver`. Tally sweeps the PR overnight.
+
 ## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (PR #153, `claude/connections-buyin`, stacked on #151)
 
 - **Base:** `claude/connections-cache` (#151, itself on #150). **Status:** PR open, for Bailiff, after those two. **Next actor:** Bailiff; Michael for the one question below.

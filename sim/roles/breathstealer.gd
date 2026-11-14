@@ -13,6 +13,65 @@ func _init() -> void:
 	shape = "NONE"
 
 
+const PUBLIC: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+
+
+## Whom it most wants silenced: the biggest public threat it may silence today.
+static func preferred_target(w, bs, evil):
+	var best = null
+	var best_s: float = -1.0
+	for n in w.living_good():
+		if n.id == bs.breath_last or n.silenced or n.silence_pending >= 0:
+			continue
+		var s: float = evil.intel_threat(bs, n.id) + evil.public_hostility(w, n)
+		var parts: Dictionary = evil._public_threat(w, n)
+		for k in parts:
+			s += float(parts[k])
+		if s > best_s:
+			best_s = s
+			best = n
+	return best
+
+
+## Where it spends a free phase (world.start_phase; `idle` is its ordinary choice). It hunts
+## (Nov 14): it may go where its preferred target is working, and otherwise, until it has
+## silenced today, it goes out to the public place on whose block the most good people are,
+## rather than home or somewhere empty.
+func free_location(w, bs, idle: String, evil) -> String:
+	if not bs.alive or not bs.is_evil() or bs.breath_day == w.day or w.day < 1 or w.is_minion_suppressed():
+		return idle
+	var target = preferred_target(w, bs, evil)
+	if target != null and w.phase in target.work_phases and target.work in PUBLIC:
+		if w.decision_roll(bs, "breath_seek_target", Tuning.Roles.BREATHSTEALER.seek_target_chance, {"target": target.id}, target.work):
+			return target.work
+	# Only people it may silence today count: not yesterday's, not anyone silenced already.
+	var good_on: Dictionary = {}
+	for m in w.living_good():
+		if m.id == bs.breath_last or m.silenced or m.silence_pending >= 0:
+			continue
+		if w.phase in m.work_phases and m.work in PUBLIC:  # (placed later in this loop, so read the schedule)
+			var blk: String = w.loc_block(m.work)
+			good_on[blk] = int(good_on.get(blk, 0)) + 1
+	var here: int = int(good_on.get(w.loc_block(idle), 0)) if idle in PUBLIC else 0
+	if here > 0:
+		return idle
+	var best: String = ""
+	var best_n: int = 0
+	for l in PUBLIC:
+		var n: int = int(good_on.get(w.loc_block(l), 0))
+		if n > best_n:
+			best_n = n
+			best = l
+	if best != "":
+		w.dlog.think(bs.id, "breath_go_out", "Hunting: goes to %s, where good people are working." % content().loc_name(best))
+		return best
+	if w.phase == content().EVENING and not idle in PUBLIC:
+		# Few work evenings; the idle crowd is at the tavern (World._choose_idle_location).
+		w.dlog.think(bs.id, "breath_go_out", "Hunting: goes to the tavern for the evening crowd.")
+		return "tavern"
+	return idle
+
+
 ## The Breathstealer picks whom to silence, among the good on its block (not the same
 ## person twice running). Likelier as the day goes on; the most dangerous voice first.
 func breath_target(w, bs, evil) -> String:
