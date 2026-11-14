@@ -27,6 +27,70 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (PR #155, `claude/suspicious-pressure`, stacked on #154)
+
+- **Base:** `claude/no-new-info` (#154). **Status:** PR open, for Bailiff, after #154. **Next actor:** Bailiff; Michael for the scale.
+- **From:** Michael, Nov 14: "suspicious" is the early-game tool and should have a solid chance of making someone who is holding back reveal something; aim for about 0.3 pressure from one basic incriminating reading. The held-back half was only ever a way to scale with the case, and can go.
+- **Switch on only.** With the switch off the held-back rule of premises step 2 is unchanged. Golden identical to `baseline_b281427` (5 seeds); fast list 57 of 57.
+
+**Why it changed**
+
+- Under connections the only thing "suspicious" holds back is what the cards add together. A single card counts in full alone, so a lone reading pressed by exactly 0, and 44542's four-card "Odette is suspicious" by 0.005.
+- For scale: a press in conversation is +0.35, a nomination +0.4, one disclosure tier is about 0.65 at average composure, a hidden gift-holder's lock at a meeting breaks at 0.7, and pressure loses 40% a night.
+
+**The rule (`Connections.points`, `WorkshopPresentation._connections_rise`, `connections_pressure`)**
+
+- A "suspicious" entry carries `points`: what its cards say about everyone read by themselves, own values and what they add together. It doesn't depend on the case's weight or on what an earlier case holds.
+- A listener's rise is the subject's chance now against their chance with `points` taken away, renormalised as before (`held_back_chance`).
+- Pressure at a meeting = 4 × the average rise over the listeners, up to 0.5 (`SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE`, `_CAP`); half that in private; once per filing, as before.
+- `withheld` and `case_withheld` are gone.
+
+**Measured** (six fresh 10-NPC games, a hand-made reading from someone with no claim, presented as "X is suspicious")
+
+| Case | Average rise | Pressure at a meeting |
+|---|---|---|
+| Dowser "1 evil of these 2" | 6–8 points | 0.26–0.32 |
+| Seer "yes" on a pair | 3 points | 0.12–0.14 |
+| Dowser "1 evil of these 3" | 0–2 points | 0.01–0.07 |
+| Dowser "1 of 2" and a second Dowser clearing the other | 4–8 points | 0.18–0.33 |
+
+- These tellers have no claim on the board, so listeners doubt the reading; a reading from a claimed gift-holder will press harder, and the cap is there for that.
+- With a nomination (+0.4) a basic case puts its subject at about 0.7: one tier, and the point where a hidden gift-holder's lock breaks. Michael knows.
+- Not measured: an Archivist reading (my hand-made one didn't register in the fixture), and the playtests' own cases (the logs no longer replay faithfully on main).
+
+**The Workshop note (#154):** "Adds no new belief, but still presses X" now shows only when the neutral listener's version of this pressure is 0.15 or more (`NOTE_PRESSES`; Michael, Nov 14); under that it is plain "No new info".
+
+- **Tests:** `test_connections_cases` (114 checks), `test_town_note`.
+
+## 2026-11-14, Claude-Lantern: the Workshop's "No new info" note (PR #154, `claude/no-new-info`)
+
+- **Base:** main `5ac25ab`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff; Michael for the wording.
+- **From:** the triage doc, 5.2, and Michael's five rulings of Nov 14. Switch on only: with it off nothing is computed or shown.
+- **Golden:** identical to `baseline_b281427` with the switch off (5 seeds). Fast list 57 of 57.
+
+**What it is (`WorkshopCanvas.town_note`; shown by `ui/live_case_workshop.gd` and `ui/workshop_canvas_view.gd`)**
+
+- When the Test juror runs on a premise, the note is worked out beside it. It shows on the strength chip ("Moderate · No new info") and in full in the chip's tooltip. The chip's strength is unchanged.
+- It is the game's own stored-case arithmetic (`Connections.cases`) run for a neutral listener who holds only this case's cards and the cards of the player's public cases, with the player's public cases as the stored cases and the draft as today's. No NPC's knowledge is read.
+- **No watch record (ruling 4):** the view is built with `watched` empty. The Test juror's own chip still uses it, as before.
+
+| Note | When | Text (wording is Michael's to settle) |
+|---|---|---|
+| none | Any card in the case is one the town hasn't heard (ruling 1) | |
+| "No new info" | Every card is public, and the most the cards add together for anyone is under 0.2 log-odds at full weight | "No new info: the town already counts these cards, and together they add little." |
+| "No new info" | An earlier public case of yours today holds all of these cards | "No new info: you've already put these cards to the town (case #N)." |
+| "No new belief" | The same, under a "suspicious" premise whose held-back half leans on its subject (ruling 3) | "Adds no new belief (you've put these cards to the town in case #N), but still presses X." |
+| "Refresh" | An earlier public case on an earlier day holds exactly these cards, and this one would take its place (ruling 2) | "Refreshes your day-D argument (case #N): the town weighs it at full strength again." |
+| "No new info" | The neutral listener's chance for the subject, on the public record alone, is within 0.5% of 0 or 1 | "No new info: the public record already settles X." |
+
+- **"Public" for a card:** said at a meeting, cited by the player at a meeting, or in a case the player put to the town (`GameMeeting.already_public`, plus the cards of `g.public_presentations`).
+- **`g.public_presentations` now holds the day** a case was last put to the town (it held `true`). Every reader only asks whether the number is there.
+- **Not covered:** a bigger case on a later day that takes an earlier one's place gets no note even if its extra cards add little. A "suspicious" repeat says "still presses" whenever the held-back half leans on the subject at all, however little (#40 in 44542 pressed Odette by +0.005). The "settled" note has no test: the fixture has no settled person.
+- **Cost:** 50–140 ms a premise on a replay of 44542, on top of the juror's own pass, after the pause in editing.
+- **Not checked against the playtests' own case numbers:** after #149 and #152 neither log replays faithfully on main, so the replay only showed the notes come out sensibly (a refresh on day 2 for day 1's cards; "still presses" for the "suspicious" repeat).
+
+- **Tests:** `test_town_note` (18 checks; in the fast list).
+
 ## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (PR #153, `claude/connections-buyin`, stacked on #151)
 
 - **Base:** `claude/connections-cache` (#151, itself on #150). **Status:** PR open, for Bailiff, after those two. **Next actor:** Bailiff; Michael for the one question below.

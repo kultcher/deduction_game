@@ -161,7 +161,7 @@ static func _player_nomination(g, rest: String, progress: Callable = Callable())
 		if repeat and not preload("res://game/workshop_presentation.gd").faded(g, card):
 			note_already_public(g, true, false)
 		else:
-			g.public_presentations[int(card.n)] = true
+			g.public_presentations[int(card.n)] = int(g.w.day)
 			for v in g.w.living():
 				if v != n:
 					if progress.is_valid():
@@ -295,7 +295,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 				if was_public:
 					note_already_public(g, card.get("kind", "") == "deduction", true)
 				if card.get("kind", "") == "deduction":
-					g.public_presentations[int(card.n)] = true
+					g.public_presentations[int(card.n)] = int(g.w.day)
 				else:
 					g.public_citations[int(card.n)] = true
 			var stmt_weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL if not card.is_empty() else Tuning.Trust.CRED_WEIGHT_STATEMENT
