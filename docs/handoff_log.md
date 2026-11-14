@@ -27,6 +27,48 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (`claude/connections-case-rules`)
+
+- **Base:** main `848df5d`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the two questions below.
+- **From:** the triage doc, 4.2 and 4.4 (Michael's decisions, Nov 13). Switch on only. 4.3 (the fade) is measured here, not built: it waits for his pick.
+- **Golden:** identical to `baseline_6a22cac` with the switch off (5 seeds). Fast list 55 of 55.
+
+**The rules (`workshop/connections.gd`: `case_plan`, `case_step`, `interaction`)**
+
+- **4.2, per presenter.** A case that cites every card of an earlier one from the same presenter takes its place: the earlier one stops counting, and the set counts once at the later case's weight. Otherwise a case adds nothing for what an earlier one already put together; only what involves a card new from that presenter counts. It applies to NPC nominators as well as the player.
+  - Nothing is removed from the presentation store. The rule is applied when the cases are weighed, so today's model (switch off) is untouched.
+  - One shared card takes nothing off: what it says next to a new card is new.
+- **4.4.** Cards a case cites from the movement connection add only what they say next to the case's other cards. Their meeting each other is already counted, in full, by the movement connection. A case made only of such cards adds nothing as a whole.
+  - **The Hexer's day connection needed nothing.** A case never included it: every judgement runs with the Hexer factor off, and the day connection is the only place that factor is read (step 2).
+- `case_step` holds the rules as joint sets to weigh, so the game and `tools/connections_prototype.gd` share them.
+- `Connections.reuse_rule` and `held_together_rule` (on in play) switch each rule off for measuring. A kept refresh doesn't know a switch moved; clear `g._workshop_evaluations` after flipping one.
+- **The Why report** says when a case took another's place, when it was replaced, and how many of its cards an earlier case already held.
+
+**What they change**
+
+- **44542, day 1** (my copy of the log ends there). #40 "Odette is suspicious" cites the same four cards as #39 "Fenwick is good", so it replaces it:
+
+  | Listener | The cases' part on Fenwick, before | With the rule | Chance Fenwick is evil, before | With the rule |
+  |---|---|---|---|---|
+  | Greta | -1.02 | -0.34 | 14% | 24% |
+  | Kiran | -1.02 | -0.34 | 17% | 28% |
+  | Hollis | -1.10 | -0.37 | 10% | 18% |
+  | Nisha | -1.29 | -0.43 | 11% | 22% |
+  | Jory | -1.16 | -0.39 | 14% | 25% |
+
+  **For Michael:** #39 alone gave about -0.68 (Greta at 18%). So with the rule as written, presenting #40 takes back half of what #39 did, because #40 is "suspicious" and counts at half weight. If a replacement should never weaken the set, the fix is one line: the set counts at the larger of the two weights.
+- **Six bot games (72 listener-presentations, walker-only scripts):**
+  - 4.2 changes no chance by more than 1 point. The bot rarely re-presents the same cards.
+  - 4.4 changes the target's chance by more than 1 point in 9 of 72, the largest by 12. The case's own part on its target is over 0.5 log-odds in 8, against 14 before.
+
+**4.3, the fade, measured only**
+
+- **Buy-in version tried:** a case keeps between 0.5 and 0.9 of its weight a day, the more the further it moves that listener (its largest move on anyone, at trust, against 0.7 log-odds). Nothing is stored; it is re-judged each refresh.
+- **Bot games, from a presentation to the next dawn (43 pairs):** against 0.5 a day, the target's chance differs by 0.3 points on average under 0.7 a day (largest 2.3) and 0.3 under buy-in (largest 4.4). The bot's cases mostly leave their target near certain, so the fade has little to move.
+- **Not measured:** the overnight rebound in 44542 ("Fenwick is good" at dawn of day 2). It needs the full log, and 97626.
+
+- **Tests:** `test_connections_cases` (the rules on chosen numbers, and in a game); `test_connections_why`.
+
 ## 2026-11-13 evening, Claude-Lantern: the Why report under connections, and what a refresh costs (PR #148, `claude/connections-why`)
 
 - **Base:** main `c889b3c`. **Status:** PR open, for Bailiff to check and merge. **Next actor:** Bailiff, then Michael (caching, step 6, is his call to start).

@@ -214,8 +214,8 @@ func _report() -> void:
 	for r in b.cards:
 		alone += float(r.lean[t])
 	check(is_equal_approx(float(cards_row[0].after), alone) and not is_equal_approx(float(cards_row[0].before), alone), "their own values are the \"each counted by itself\" row (%+.3f -> %+.3f)" % [float(cards_row[0].before), alone])
-	check(parts.other_cases == ["case:%d" % s.first] and b.text.contains("Other cases put to them (#%d)" % s.first) == (absf(float(parts.rows.filter(func(r): return r.stage == "other_cases")[0].after)) >= WorkshopWhy.SMALL),
-		"the earlier case is counted under \"other cases\", by its number")
+	check(parts.other_cases.is_empty() and cs.replaces == ["case:%d" % s.first] and b.text.contains("It takes the place of #%d" % s.first),
+		"the earlier case, whose only card this one cites, is replaced by it, and the report says so")
 	# Suspicion, as stored and as read.
 	check(is_equal_approx(float(b.suspicion.stored), float(n.suspicion[t])) and is_equal_approx(float(b.suspicion.stored_was), stored_before) and is_equal_approx(float(b.suspicion.now), Mind.susp(n, t)),
 		"suspicion is shown as stored, before and after (%+.3f -> %+.3f), and as the game reads it" % [stored_before, float(n.suspicion[t])])
