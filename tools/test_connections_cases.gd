@@ -421,7 +421,12 @@ func _reuse_in_game() -> void:
 	var held_back: float = float(now[1].get("withheld", {}).get(target, 0.0)) if now.size() == 2 else 0.0
 	var chance: float = float(res.posterior[target])
 	var rise: float = WorkshopPresentation._connections_rise(g, n.id + ":good", str(again), target)
-	check(is_equal_approx(rise, maxf(0.0, 1.0 / (1.0 + exp(-(Connections.logit(chance) + held_back))) - chance)), "its pressure is the rise its held-back half would give its subject (held back %+.3f, rise %.3f)" % [held_back, rise])
+	check(is_equal_approx(rise, maxf(0.0, WorkshopPresentation.held_back_chance(res.posterior, now[1].get("withheld", {}), target) - chance)), "its pressure is the rise its held-back half would give its subject, renormalised (held back %+.3f, rise %.3f)" % [held_back, rise])
+	# The held-back half renormalised across everyone: an equal lean on all of them moves no one.
+	var flat: Dictionary = {}
+	for p in res.posterior:
+		flat[p] = 0.7
+	check(absf(WorkshopPresentation.held_back_chance(res.posterior, flat, target) - chance) < 1e-6, "an equal held-back lean on everyone raises no one (Codex on #153)")
 	check(is_zero_approx(WorkshopPresentation._connections_rise(g, n.id + ":good", str(s.filed), target)), "a firm case holds nothing back")
 	# The other way round: a firm case on the same cards the next day takes both places.
 	g.w.day += 1

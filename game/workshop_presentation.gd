@@ -463,11 +463,25 @@ static func _connections_rise(g, listener_key: String, key: String, target_id: S
 	for entry in res.get("cases", {}).get("entries", []):
 		if str(entry.key) == "case:" + key:
 			var chance: float = float(res.posterior[target_id])
-			var held_back: float = float(entry.get("withheld", {}).get(target_id, 0.0))
 			if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
 				return 0.0
-			return maxf(0.0, 1.0 / (1.0 + exp(-(Connections.logit(chance) + held_back))) - chance)
+			return maxf(0.0, held_back_chance(res.posterior, entry.get("withheld", {}), target_id) - chance)
 	return 0.0
+
+## The target's chance with a case's held-back leans added for everyone, renormalised as
+## Connections.combine does: one common shift over the people still in question keeps their
+## chances summing as before (the evil count); settled people stay put (Codex on #153).
+static func held_back_chance(posterior: Dictionary, withheld: Dictionary, target_id: String) -> float:
+	var open: Array = posterior.keys().filter(func(p): return float(posterior[p]) > Connections.FIXED and float(posterior[p]) < 1.0 - Connections.FIXED)
+	if target_id not in open:
+		return float(posterior.get(target_id, 0.0))
+	var total: float = 0.0
+	var scores: Array = []
+	for p in open:
+		total += float(posterior[p])
+		scores.append(Connections.logit(float(posterior[p])) + float(withheld.get(p, 0.0)))
+	var shift: float = Connections.common_shift(scores, total)
+	return Connections.chance(scores[open.find(target_id)] + shift)
 
 ## The listener's other remembered (not withdrawn) suspicious filings, besides `key`.
 static func _other_suspicious(n, key: String) -> Array:
