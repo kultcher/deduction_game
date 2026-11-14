@@ -1259,9 +1259,12 @@ func resolve_night() -> void:
 		poison_t = Evil.choose_poison_target(self, kill_t)
 	var warden = living_with_role("warden")
 	var warden_t = ""
-	# No guard on night 0: there's no kill to stop yet (Michael, Nov 13; triage 7.1).
-	if warden and not warden.is_evil() and not first:
+	if warden and not warden.is_evil():
 		warden_t = Mind.warden_target(self, warden)
+		# No guard on night 0: there's no kill to stop yet (Michael, Nov 13; triage 7.1).
+		# The pick still runs so the random stream doesn't shift.
+		if first:
+			warden_t = ""
 	var watch = living_with_role("nightwatch")
 	var watch_block = ""
 	if watch and not watch.is_evil():
