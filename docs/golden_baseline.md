@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 12): `baseline_6a22cac`
+### Current baseline (Nov 13): `baseline_4a1a075`
+
+`tools/golden/baseline_4a1a075/` is the capture from `claude/playtest-fixes` (playtest triage
+sections 1 and 2). Two kinds of change:
+- **Play:** a Lover no longer passes on their partner's secret, which names them too. In 98933
+  Merrin's only gossip was Hollis's "slips out to meet Merrin", so on day 1 afternoon
+  Bartholomew approaches instead of Merrin.
+- **Text only:** reading-based reason lines say why (`ReasonAttribution` joint lines, the
+  off-block Surveyor line), the defence hinge lines, Hollis's and Nisha's "premises" wording.
+- **Divergence from `baseline_6a22cac`:** 98933 at record 4 (the approach); 42 at record 40,
+  54875 at 186, 692 at 52 and 900 at 62, all reason or speech text. Record counts and
+  outcomes are unchanged.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 12): `baseline_6a22cac`
 
 `tools/golden/baseline_6a22cac/` is the capture from `claude/relay-bluff`. In play a held Medium
 relay no longer proves its relayer is a good Medium (RoleConstraints): a world with the relayer
@@ -56,7 +70,7 @@ ones are since #139.
 - **Record counts:** 98933 334 (was 346); the rest unchanged.
 - **Stability:** two captures were identical.
 
-### Previous baseline (Nov 12): `baseline_300fe18`
+### Older baseline (Nov 12): `baseline_300fe18`
 
 `tools/golden/baseline_300fe18/` is the capture from `claude/self-sighting-clash`. A good NPC's
 plain sighting of themselves on a night they know they spent at home is kept in the weighing

@@ -653,7 +653,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		facts.append({"kind": "hint", "subject": [n.id], "source": n.id, "private": true, "package": pk,
 			"roles": C.HINT_PACKAGES[pk]["roles"],
 			"text": "%s hinted at %s (%s)." % [n.name, C.HINT_PACKAGES[pk]["name"],
-				" / ".join(PackedStringArray(C.HINT_PACKAGES[pk]["roles"].map(func(r): return C.role_name(r))))]})
+				C.package_roles_text(pk, w.case_script)]})
 		n.max_tier = 2
 		return {"lines": lines, "facts": facts}
 	# Tier 3+: names the gift.
@@ -1339,7 +1339,7 @@ static func _second_hand_gift_note(w, n, t, lines: Array, facts: Array) -> void:
 		facts.append({"kind": "hint", "subject": [t.id], "source": t.id, "via": n.id, "private": true, "package": pk,
 			"roles": C.HINT_PACKAGES[pk]["roles"].duplicate(),
 			"text": "Via %s: %s hinted at %s (%s)." % [n.name, t.name, C.HINT_PACKAGES[pk]["name"],
-				" / ".join(PackedStringArray(C.HINT_PACKAGES[pk]["roles"].map(func(r): return C.role_name(r))))]})
+				C.package_roles_text(pk, w.case_script)]})
 		return
 
 # ---------------------------------------------------------------- Mind delegates

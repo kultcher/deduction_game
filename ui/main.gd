@@ -805,7 +805,14 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 			conversation_view.set_location(g.loc)
 		conversation_view.consume(g.last_events)
 	elif previous_state == "talk":
-		conversation_view.consume(g.last_events)
+		# The talk's last answer ends the phase: what follows the next phase's header (an
+		# approach, say) belongs to the new phase, not this conversation (playtest triage 1.8).
+		var talk_events: Array = []
+		for ev in g.last_events:
+			if ev.get("k") == "header":
+				break
+			talk_events.append(ev)
+		conversation_view.consume(talk_events)
 		var verb = cmd.strip_edges().get_slice(" ", 0).to_lower()
 		if not verb in ["bye", "leave", "done"]:
 			conversation_finished = true

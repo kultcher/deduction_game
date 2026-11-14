@@ -268,7 +268,8 @@ static func _pick_item(w, s, l):
 					break
 		cands.append([gos * Tuning.Social.SHARE_RELAY_GOSSIP_SCALE + relay_scene, r])
 	for owner in s.known_secrets:
-		if owner == l.id or owner == s.id or l.known_secrets.has(owner):
+		# Not a secret that names the teller (see _gossip_items).
+		if owner == l.id or owner == s.id or l.known_secrets.has(owner) or str(w.by_id[owner].secret.get("with", "")) == s.id:
 			continue
 		cands.append([gos * Tuning.Social.SHARE_RELAY_SECRET_GOSSIP_SCALE * (Tuning.Social.SHARE_RELAY_SECRET_COMPOSURE_BASE - trait_of(s, "composure")), {"kind": "secret", "about": owner, "from": owner, "key": "secret:" + owner, "relay": true}])
 	if cands.is_empty():
@@ -562,7 +563,9 @@ static func tavern_whispers(w) -> void:
 # ---------------------------------------------------------------- approaches
 
 ## Pick an NPC who wants a word with the player at the start of a phase, or null.
-static func approach_candidate(w):
+## `skip_id`: whoever you talked with last phase doesn't come straight back to you (playtest
+## triage 1.8). Their noise draw still happens so the RNG stream doesn't shift.
+static func approach_candidate(w, skip_id: String = ""):
 	if not w.decision_roll(null, "approach_this_phase", Tuning.Social.APPROACH_PHASE_CHANCE):
 		return null
 	var best = null
@@ -606,6 +609,9 @@ static func approach_candidate(w):
 		var noise_draw = w.rng.randf()
 		var noise: float = noise_draw * Tuning.Social.APPROACH_NOISE
 		s += noise
+		if n.id == skip_id:
+			s = 0.0
+			a = "just talked"
 		w.observe_decision(n, "approach_score", s >= Tuning.Social.APPROACH_SCORE_THRESHOLD, {"inputs": {"gossip": gos, "privacy": trait_of(n, "privacy"), "trust": n.trust, "composure": trait_of(n, "composure")}, "score": s, "threshold": Tuning.Social.APPROACH_SCORE_THRESHOLD, "comparison": ">=", "draw": noise_draw, "noise": noise, "noise_min": 0.0, "noise_max": Tuning.Social.APPROACH_NOISE, "agenda": a, "note": "Threshold chance excludes competing NPCs; highest score chooses the approach"})
 		if s > best_s:
 			best_s = s
@@ -669,7 +675,10 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 static func _gossip_items(w, n) -> Array:
 	var out: Array = []
 	for owner in n.known_secrets:
-		if owner != n.id and w.by_id[owner].alive and not n.told_to.has("player|secret:" + owner):
+		# A secret that names the teller (a Lover's "slips out to meet <teller>") isn't
+		# gossip: passing it on would out the teller too (playtest 97626, Agnes on Nisha).
+		if owner != n.id and w.by_id[owner].alive and not n.told_to.has("player|secret:" + owner) \
+				and str(w.by_id[owner].secret.get("with", "")) != n.id:
 			out.append(["secret", owner])
 	for i in range(n.hearsay.size() - 1, -1, -1):
 		var h: Dictionary = n.hearsay[i]
@@ -750,7 +759,7 @@ static func gossip_item(w, n) -> Dictionary:
 				"facts": [{"kind": "hint", "subject": [src.id], "source": src.id, "via": n.id, "private": true, "package": hp,
 					"roles": C.HINT_PACKAGES[hp]["roles"].duplicate(),
 					"text": "Via %s: %s hinted at %s (%s)." % [n.name, src.name, C.HINT_PACKAGES[hp]["name"],
-						" / ".join(PackedStringArray(C.HINT_PACKAGES[hp]["roles"].map(func(r): return C.role_name(r))))]}]}
+						C.package_roles_text(hp, w.case_script)]}]}
 		if h["kind"] == "sighting":
 			var mh_s: Dictionary = Muddler.maybe_muddle_item(w, n, h)
 			var who = w.by_id[mh_s["about"]]

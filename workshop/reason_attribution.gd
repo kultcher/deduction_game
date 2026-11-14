@@ -894,22 +894,44 @@ static func _augment_joint_leave_one_out(
 		# What the reading says, when it's about someone else (Case 12926: a Confessor's
 		# reading that cleared the man Nisha accused read as a bare "contradicts their account").
 		var gist: String = _reading_gist(view, cand, pid, csrc)
+		# Say why, not just "contradicts" (playtest triage 2.1): a reading that names them
+		# is set against their claimed gift; one about others only leaves them among the
+		# likelier; a Warden's watch is a night they had to account for.
+		var direct: bool = pid in _mentions(cand)
+		var pid_role: String = ""
+		for o in attended:
+			if not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) == "claim" and str(o.get("role", "")) != "":
+				pid_role = C.role_name(str(o.role))
+		var against: String = ("that doesn't fit their claim to be the %s" % pid_role) if pid_role != "" else "that doesn't fit their account"
+		var guarded: String = ""
+		if crole == "warden" and cand.get("data", {}) is Dictionary:
+			guarded = str(cand.data.get("target", ""))
 		if csrc == self_id:
 			found_own_joint = true
-			if gist != "":
-				why_own = ("my reading %s, and that doesn't square with their account" % gist) if has_pid_claim else ("my reading %s, and with the other reports that points at them" % gist)
+			if guarded != "" and guarded != pid and has_pid_claim:
+				why_own = "I guarded %s that night, and their account of that night doesn't fit it" % Solver.person_name(view, guarded)
+			elif direct:
+				why_own = ("my reading points at them, and " + against) if has_pid_claim else "my own reading, taken with the other reports, points at them"
+			elif gist != "":
+				why_own = "my reading %s, which leaves them among the likeliest of the rest" % gist
 			else:
-				why_own = "my own reading contradicts their account" if has_pid_claim else "my own reading, taken with the other reports, points at them"
-			if gist != "" and crole != "" and has_pid_claim:
-				why_pub = "the %s reading %s, and that doesn't square with their account" % [C.role_name(crole), gist]
+				why_own = "my reading, taken with the other reports, leaves them among the likeliest"
+			if crole != "" and direct and has_pid_claim:
+				why_pub = "the %s reading points at them, and %s" % [C.role_name(crole), against]
+			elif crole != "" and gist != "":
+				why_pub = "the %s reading %s, which leaves them among the likeliest of the rest" % [C.role_name(crole), gist]
 			else:
-				why_pub = ("the %s report contradicts their account" % C.role_name(crole)) if has_pid_claim and crole != "" else "the reports considered together point toward them"
+				why_pub = "the reports considered together point toward them"
 		else:
 			var sname: String = Solver.person_name(view, csrc) if csrc != "player" else "the Demonologist"
-			if gist != "" and crole != "":
-				why_own = ("%s's %s reading %s, and that doesn't square with their account" % [sname, C.role_name(crole), gist]) if has_pid_claim else ("%s's %s reading %s, and with the other reports that points at them" % [sname, C.role_name(crole), gist])
+			if crole != "" and direct and self_id in _mentions(cand):
+				why_own = "%s's %s reading names me and them, and I know I'm good, so it points at them" % [sname, C.role_name(crole)]
+			elif crole != "" and direct and has_pid_claim:
+				why_own = "%s's %s reading points at them, and %s" % [sname, C.role_name(crole), against]
+			elif crole != "" and gist != "":
+				why_own = "%s's %s reading %s, which leaves them among the likeliest of the rest" % [sname, C.role_name(crole), gist]
 			else:
-				why_own = ("%s's %s report contradicts their account" % [sname, C.role_name(crole)]) if has_pid_claim and crole != "" else "the reports considered together point toward them"
+				why_own = "the reports considered together point toward them"
 			# Leaning on the word of someone the town hanged: say so (Case 12926: Edda and
 			# Nisha cited Lian's Registrar report the day after Lian was hanged).
 			if csrc != "player" and _was_hanged(view, csrc) and crole != "" and why_own != "the reports considered together point toward them":
@@ -1134,6 +1156,13 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 				var s_blk: String = C.block_name(str(data.get("block", "square")))
 				var s_what: String = "everyone living on %s is on the same side" % s_blk if bool(data.get("same", false)) else "the people living on %s aren't all on one side" % s_blk
 				var lives_there: bool = view.get("people", []).any(func(p): return p.get("id", "") == pid and p.get("home", "") == str(data.get("block", "")))
+				if not lives_there and bool(data.get("same", false)):
+					# Someone off a one-sided block: most likely all good there, so the evil is
+					# elsewhere and they're among those left (playtest triage 2.1).
+					return [
+						"%s reading says %s, most likely all good, so the evil has to be somewhere else, and they're one of the few left" % [own_poss, s_what],
+						"%s reading says %s, most likely all good, so the evil has to be somewhere else, and they're one of the few left" % [third_poss, s_what],
+					]
 				if not lives_there:
 					# Someone off the block: the reading weighs on them through the other reports
 					# it clashes with (an Archivist pair on that block, say), not through their home.
