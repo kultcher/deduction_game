@@ -218,7 +218,13 @@ func _test_seer_hooks() -> void:
 
 	w.day = 1
 	seer.trust = 0.9
-	var req = Mind.consider_gift_request(w, seer, "seer", [a.id, b.id])
+	# Agreeing is a roll (likely at this trust): ask again if the first draw says no, so the
+	# check doesn't hang on the random stream's position.
+	var req: Dictionary = {}
+	for attempt in range(6):
+		req = Mind.consider_gift_request(w, seer, "seer", [a.id, b.id])
+		if req.get("agreed", false):
+			break
 	_check(req.get("agreed", false) and Mind.seer_picks(w, seer) == [a.id, b.id], "Seer RoleDef agrees to trusted player gift request and picks requested pair")
 	var reading: Dictionary = C.role_def("seer").generate_reading(w, seer, {}, Mind)
 	_check(reading.get("data", {}).get("pair", []) == [a.id, b.id] and reading.has("text"), "Seer RoleDef.generate_reading produces reading for picked pair")
