@@ -62,6 +62,10 @@ func free_location(w, bs, idle: String, evil) -> String:
 	if best != "":
 		w.dlog.think(bs.id, "breath_go_out", "Hunting: goes to %s, where good people are working." % content().loc_name(best))
 		return best
+	if w.phase == content().EVENING and not idle in PUBLIC:
+		# Few work evenings; the idle crowd is at the tavern (World._choose_idle_location).
+		w.dlog.think(bs.id, "breath_go_out", "Hunting: goes to the tavern for the evening crowd.")
+		return "tavern"
 	return idle
 
 
