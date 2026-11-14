@@ -354,19 +354,35 @@ static func hunt_block(table: Dictionary, m: String, victim: String, day: int, p
 	if top >= 0.999:
 		return same_block(table, m, victim, day, phase)
 	var before: PackedFloat64Array = prior.get(m, {}).get(key, PackedFloat64Array())
-	var s: float = 0.0
-	for blk in C.BLOCKS:
+	# How much the evidence changed their chance of each block (and of home), against the
+	# schedule-only prior: a likelihood up to a constant, which cancels below.
+	var blocks: Array = C.BLOCKS.keys()
+	var like: Dictionary = {}
+	for blk in blocks + ["home"]:
 		var now_on: float = 0.0
 		var was_on: float = 0.0
-		for i in range(HOME):
-			if place_block(i) == blk:
+		for i in range(SLOTS):
+			if (blk == "home" and i == HOME) or (blk != "home" and i < HOME and place_block(i) == blk):
 				now_on += dist[i]
 				if before.size() >= SLOTS:
 					was_on += before[i]
-		var reach: float = 0.0
-		if now_on > 1e-9:
-			reach = HUNT_REACH if was_on <= 1e-9 else clampf(HUNT_REACH * now_on / was_on, 0.0, 1.0)
-		s += reach * on_block(table, victim, day, phase, blk)
+		like[blk] = (now_on / was_on) if was_on > 1e-9 else (1.0 if now_on > 1e-9 else 0.0)
+	# The hunter's own prior: HUNT_REACH on the victim's block, the rest spread over the other
+	# blocks and home; then the evidence (Codex on #157: ruling one block out mustn't make the
+	# others certain).
+	var s: float = 0.0
+	for blk in blocks:
+		var pv: float = on_block(table, victim, day, phase, blk)
+		if pv <= 0.0:
+			continue
+		var rest: float = (1.0 - HUNT_REACH) / float(blocks.size())
+		var other: float = 0.0
+		for o in blocks + ["home"]:
+			if o != blk:
+				other += rest * float(like[o])
+		var here: float = HUNT_REACH * float(like[blk])
+		if here + other > 0.0:
+			s += pv * here / (here + other)
 	return s
 
 

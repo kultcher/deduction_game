@@ -209,6 +209,20 @@ func _test_hunt_block() -> void:
 	var r_near: float = DayPresence.hunt_block(told, "near", "v", 1, 0, prior)
 	var r_far: float = DayPresence.hunt_block(told, "far", "v", 1, 0, prior)
 	var r_free: float = DayPresence.hunt_block(told, "free", "v", 1, 0, prior)
+	# A watch that rules the suspect off one other block shifts the reach a little, never to
+	# certainty (Codex on #157).
+	var off_square: PackedFloat64Array = spread.duplicate()
+	for loc in ["tavern", "well"]:
+		off_square[DayPresence.PLACES.find(loc)] = 0.0
+	var tsum: float = 0.0
+	for x in off_square:
+		tsum += x
+	for i in off_square.size():
+		off_square[i] /= tsum
+	told["watched"] = {"1:0": off_square}
+	prior["watched"] = {"1:0": spread}
+	var r_watched: float = DayPresence.hunt_block(told, "watched", "v", 1, 0, prior)
+	_check(r_watched > DayPresence.HUNT_REACH and r_watched < 0.9, "ruled off another block, the reach rises a little and stays uncertain (%.2f)" % r_watched)
 	_check(is_equal_approx(r_free, DayPresence.HUNT_REACH) and r_near > r_free and r_far < r_free, "a reported sighting near the victim raises a free person's reach, one elsewhere lowers it (%.2f / %.2f / %.2f)" % [r_near, r_free, r_far])
 
 
