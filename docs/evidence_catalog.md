@@ -572,7 +572,7 @@ Not on any script. It counts evil among two living lane neighbours.
 ### D7. Silenced at the meeting
 - **System:**
   - a public factor on the silenced person (about 0.66× odds of evil: the Breathstealer silences threats);
-  - on the day-killer branch, a joint CaseEval factor ("Breathstealer by presence"). Each world's Minions are weighed by the chance they were on the victim's block in the same phase, across every silencing. It replaces the circumstantial hub's one-day proximity incident.
+  - on the day-killer branch, a joint CaseEval factor ("Breathstealer by presence"). Each world's Minions are weighed by the chance they were on the victim's block in the same phase, across every silencing: where they were when on shift or seen for certain, and in a free phase a hunting reach toward the victim's block (`BREATH_HUNT_REACH`, 0.7), moved by any reported whereabouts (`DayPresence.hunt_block`, #157). It replaces the circumstantial hub's one-day proximity incident.
 - **Strength:** weak toward good for the silenced person; the presence factor points at the Breathstealer as far as the day's whereabouts are known.
 - **Becomes useful with:** the day log of the victim's block (C8); NPC sightings that day (C1).
 

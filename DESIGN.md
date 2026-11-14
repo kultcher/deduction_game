@@ -295,7 +295,7 @@ Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept 
 | Minion | Ability |
 |---|---|
 | Poisoner | Each night poisons one person: their gift fails or lies until the next night. Out at night. With no Poisoner in play the demon is the only evil out at night. |
-| Breathstealer | Once a day (any day phase, likelier later), silences someone on the same block, wherever they are on it. It must be out, not at home. The silence takes hold at that evening's meeting and lasts until the next evening. The silenced can't claim, testify, accuse, nominate, defend, answer you or chat with NPCs; they can still vote. You can still call on them: asking costs
+| Breathstealer | Once a day (any day phase, likelier later), silences someone on the same block, wherever they are on it. It must be out, not at home. Until it has silenced that day it hunts in its free phases (#157): it may go to its preferred target's workplace, otherwise to a public place on the block where the most good people it may silence are working, or to the tavern in the evening. The silence takes hold at that evening's meeting and lasts until the next evening. The silenced can't claim, testify, accuse, nominate, defend, answer you or chat with NPCs; they can still vote. You can still call on them: asking costs
 nothing, and a card shown to them costs a question and moves their beliefs without a reply. Never the same person twice running. Picks the most dangerous voice. |
 | Brute (experimental: not dealt automatically until the solver models it) | While alive, hunts and kills in place of the demon, dropping two traces; the demon stays home. Registers as a minion, not the demon. |
 | Revenant | Hides a totem at a location it visits, on any day that began with no totem in play. If hanged with a totem hidden (and not poisoned), a random good yes-voter turns evil; the town is warned. `search` at the totem's location burns it (it's caked with the Revenant's home material, a lead). Found before the hanging: no curse. Found after: the turned soul is good again. Teammates often vote to let a Revenant with a totem hang. |
@@ -944,7 +944,8 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
 - **Poisoner sense:** skips gifts poisoning wouldn't stop tonight (judged from public
   claims); poisons a suspected Warden on nights the demon goes for someone prominent; can
   poison a claimed Veteran first so the kill lands.
-- **Breathstealer** silences the most dangerous voice on its block.
+- **Breathstealer** silences the most dangerous voice on its block, and in its free phases
+  goes looking for one (#157).
 - **On the block**, with no Scion fallback, the Demon backs any live counter-nomination
   (survival overrides cover) and may cast the vote that ties and clears its minion.
 
