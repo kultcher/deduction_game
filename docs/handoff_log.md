@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-14 early, Claude-Lantern: kept judgements, step 6 (`claude/connections-cache`, stacked on #150)
+## 2026-11-14 early, Claude-Lantern: kept judgements, step 6 (PR #151, `claude/connections-cache`, stacked on #150)
 
 - **Base:** `claude/connections-case-rules` (#150) with main `9cded67` merged in. **Status:** PR open, for Bailiff, after #150. **Next actor:** Bailiff.
 - **From:** the triage doc, 4.1. Switch on only.
