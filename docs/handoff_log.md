@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-14, Claude-Lantern: the Workshop's "No new info" note (`claude/no-new-info`)
+## 2026-11-14, Claude-Lantern: the Workshop's "No new info" note (PR #154, `claude/no-new-info`)
 
 - **Base:** main `5ac25ab`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff; Michael for the wording.
 - **From:** the triage doc, 5.2, and Michael's five rulings of Nov 14. Switch on only: with it off nothing is computed or shown.
