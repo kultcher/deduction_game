@@ -108,6 +108,14 @@ func _run() -> void:
 	var sr: Dictionary = LocationSolver.evaluate(sv, {"kind": "silence", "day": 1, "victim": "v"})
 	var free_row: Array = sr.rows.filter(func(r): return r.id == "free")
 	_check(sr.fits == ["co"] and sr.ruled_out == ["away"], "a silencing: the coworker fits, the worker elsewhere is ruled out (%s / %s)" % [str(sr.fits), str(sr.ruled_out)])
+	# An NPC's report puts a suspect, at work by day and free in the evening, on another block
+	# that evening: it doesn't make them fit (Codex on #157).
+	var sv2: Dictionary = sv.duplicate(true)
+	sv2.people[1].work_phases = [0, 1]
+	sv2.cards = [{"id": "rep", "kind": "evening", "source": "co", "subject": "away", "subjects": ["away"], "loc": "chapel", "block": "hill",
+		"day": 1, "observed_at": {"day": 1, "phase": "evening"}, "data": {}}]
+	var sr2: Dictionary = LocationSolver.evaluate(sv2, {"kind": "silence", "day": 1, "victim": "v"})
+	_check(not "away" in sr2.fits, "a report placing a suspect on another block doesn't make them fit (%s)" % str(sr2.fits))
 	_check(free_row.size() == 1 and free_row[0].p > 0.9, "someone free all day could have hunted the victim down (%.2f)" % (free_row[0].p if free_row.size() == 1 else -1.0))
 
 	# The workshop node cites the log in one card.
