@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (`claude/connections-case-rules`)
+## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (PR #150, `claude/connections-case-rules`)
 
 - **Base:** main `848df5d`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the two questions below.
 - **From:** the triage doc, 4.2 and 4.4 (Michael's decisions, Nov 13). Switch on only. 4.3 (the fade) is measured here, not built: it waits for his pick.
