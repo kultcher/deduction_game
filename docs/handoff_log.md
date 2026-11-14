@@ -190,6 +190,19 @@ Ground rules (from Nov 3, until Michael changes them):
 - For these listeners the buy-in rate is 0.86–0.9 a day; for a case that moved a listener little it stays 0.5.
 - **Pick: buy-in.** It is what Michael described (a conclusion the listener bought lasts; one it didn't fades as now), it does about twice what 0.7 does where it matters, and it stores nothing: the rate is re-read from the case's own move at each refresh. 0.7 flat is the simpler fallback. Not built: it waits for his word.
 
+## 2026-11-13 late, Claude-Bailiff: seen talking gives each talker a sighting (`claude/talk-sightings`)
+
+Triage 1.7 (Michael): a conversation the player sees gives three cards, each talker's own
+sighting and the talk. `GameScreens._card_conversations` adds the two sightings; they share
+the fact id of a sighting from visiting the spot, so they merge. This reverses the Oct 27
+backlog item "conversation sightings should also cover location sightings" (Michael, Nov 13).
+Test: `test_mechanics_sightings._talk_sightings`. 150/150 suites; golden re-baselined
+(`baseline_b281427`, board only).
+
+Held on `claude/warden-night0`: the Warden doesn't guard on night 0 (7.1). It breaks five
+seed-trajectory fixtures (test_self_sighting, test_relay_bluff, test_connections_core,
+test_connections_pairings; test_prior_mapping's seed already swapped), which need new seeds.
+
 ## 2026-11-13 night, Claude-Bailiff: playtest quick fixes and NPC wording (`claude/playtest-fixes`)
 
 From the Nov 13 triage (Project doc `claude/playtest-triage-2026-11-13.md`), sections 1 and 2.1-2.4.
