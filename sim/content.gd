@@ -585,6 +585,17 @@ static func role_name(r: String) -> String:
 		return rdef.display_name
 	return ROLES[r]["name"] if ROLES.has(r) else r
 
+## A hint family's roles as the player reads them: only the ones this case's script can
+## deal (playtest 97626: a night-sight hint listed the Hearthwitch on a script without it).
+## The fact's "roles" keep the whole family, which the Workshop checks the hint against.
+static func package_roles_text(pkg: String, case_script = null) -> String:
+	var roles: Array = HINT_PACKAGES[pkg]["roles"]
+	if case_script != null:
+		var on: Array = roles.filter(func(r): return r in case_script.town or r in case_script.minions or r in case_script.demons)
+		if not on.is_empty():
+			roles = on
+	return " / ".join(PackedStringArray(roles.map(func(r): return role_name(r))))
+
 static func package_of(r: String) -> String:
 	for p in HINT_PACKAGES:
 		if r in HINT_PACKAGES[p]["roles"]:

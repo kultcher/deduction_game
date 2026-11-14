@@ -13,12 +13,12 @@ const Dialogue = preload("res://sim/dialogue.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
 
 
-static func _maybe_approach(g) -> void:
+static func _maybe_approach(g, skip_id: String = "") -> void:
 	g.approached_id = ""
 	g.approached_loc = ""
 	if _maybe_divulge(g):
 		return
-	var c = Social.approach_candidate(g.w)
+	var c = Social.approach_candidate(g.w, skip_id)
 	if c == null:
 		return
 	var n = c["npc"]

@@ -27,6 +27,33 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-13 night, Claude-Bailiff: playtest quick fixes and NPC wording (`claude/playtest-fixes`)
+
+From the Nov 13 triage (Project doc `claude/playtest-triage-2026-11-13.md`), sections 1 and 2.1-2.4.
+
+### Changes
+
+- **1.1** `Social._gossip_items` and the NPC relay skip a secret whose `with` is the teller.
+- **1.2** `MindMeeting.defend_self` takes the hinge only from items the case cites (`in_case`).
+- **1.3** `C.package_roles_text` lists only roles on the case's script in role hints; the
+  facts keep the full package (`live_assessment` validates against it).
+- **1.4** The burned totem's "seek a new hiding place" only while the Revenant lives.
+- **1.5** The grimoire notes who the Revenant turned, and whether the totem freed them.
+- **1.6** The curse "When" field only on `evil` / `suspicious` / `good` premises
+  (`LiveCaseWorkshop.EPOCH_TYPES`). A Scion before/after option doesn't exist yet; backlog.
+- **1.8** `Social.approach_candidate(w, skip_id)`: last phase's talk partner can't approach
+  (their noise draw still happens). The finished talk's view stops at the next header.
+- **2.1** `ReasonAttribution` joint lines: direct readings are set against the claimed gift,
+  indirect ones "leave them among the likeliest", the Warden names whom they guarded, a pair
+  naming the listener uses self-knowledge; the off-block one-sided Surveyor line.
+- **2.2-2.4** Defence hinge wording; Hollis's and Nisha's "premises" lines.
+- **Not done:** 1.7 (waiting on Michael: which card was missing), 2.5-2.8.
+
+### Result
+
+- All suites pass (150/150 after updating two text checks).
+- Golden moved: new `baseline_4a1a075`, see `docs/golden_baseline.md`. Two captures identical.
+
 ## 2026-11-13 evening, Claude-Lantern: the Why report under connections, and what a refresh costs (PR #148, `claude/connections-why`)
 
 - **Base:** main `c889b3c`. **Status:** PR open, for Bailiff to check and merge. **Next actor:** Bailiff, then Michael (caching, step 6, is his call to start).

@@ -732,8 +732,8 @@ const OBSERVABLE_TRAITS = GameConversation.OBSERVABLE_TRAITS
 const TRAIT_WORDS = GameConversation.TRAIT_WORDS
 const MAX_BONDS_TOLD = GameConversation.MAX_BONDS_TOLD
 
-func _maybe_approach() -> void:
-	GameConversation._maybe_approach(self)
+func _maybe_approach(skip_id: String = "") -> void:
+	GameConversation._maybe_approach(self, skip_id)
 
 func _promised_to(n) -> bool:
 	return GameConversation._promised_to(self, n)

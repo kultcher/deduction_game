@@ -390,10 +390,12 @@ static func _search(g) -> void:
 	var tt: Dictionary = g.w.find_totem(l)
 	if not tt.is_empty():
 		var mat: String = C.BLOCKS[tt["material"]]["trace"]
-		g._narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it. The Revenant's spirit will seek a new hiding place." % [g.w.loc_name(l), mat])
-		g._headline("totem", "A Revenant's totem is burned", "Its spirit will seek a new hiding place.")
+		# Once the Revenant is dead there's no spirit left to move on (playtest triage 1.4).
+		var rv_alive: bool = g.w.by_id.has(tt.get("owner", "")) and g.w.by_id[tt["owner"]].alive
+		g._narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it.%s" % [g.w.loc_name(l), mat, " The Revenant's spirit will seek a new hiding place." if rv_alive else ""])
+		g._headline("totem", "A Revenant's totem is burned", "Its spirit will seek a new hiding place." if rv_alive else "Its maker is already dead.")
 		g._facts([{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": g.w.day, "phase": g.w.phase,
-			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s). The Revenant's spirit will seek a new hiding place." % [g.w.loc_name(l), g.w.day, mat, C.block_name(tt["material"])]}])
+			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s).%s" % [g.w.loc_name(l), g.w.day, mat, C.block_name(tt["material"]), " The Revenant's spirit will seek a new hiding place." if rv_alive else ""]}])
 		if tt.get("freed", "") != "":
 			g._narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
 			g._facts([{"kind": "curse_lifted", "subject": [], "source": "player", "day": g.w.day, "phase": g.w.phase,
@@ -533,7 +535,7 @@ static func _end_phase(g, talked_id: String) -> void:
 	g.approached_loc = ""
 	if g.w.end_day_phase(talked_id):
 		g._phase_header()
-		g._maybe_approach()
+		g._maybe_approach(talked_id)
 	else:
 		g._start_meeting()
 
