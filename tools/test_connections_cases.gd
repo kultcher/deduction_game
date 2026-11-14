@@ -118,6 +118,12 @@ func _reuse(item_list: Array, values: Dictionary, leans: Dictionary) -> void:
 	var again: Dictionary = Connections.cases(_fake_run(more), item_list, values, none, [first, {"key": "again", "presenter": "n", "day": 3, "cards": ["c", "b"], "type": "suspicious", "suspicious": true}], 3)
 	check(again.entries.map(func(e): return e.key) == ["again"] and again.entries[0].replaces == ["first"], "a case citing every card of the presenter's earlier case takes its place")
 	check(is_equal_approx(again.lean.x, 0.8 * 0.5 * 0.6), "the set counts once, at the later case's weight (%+.3f)" % again.lean.x)
+	check(is_equal_approx(again.entries[0].withheld.x, 0.8 * 0.5 * 0.6), "a \"suspicious\" case notes what its held-back half would add (%+.3f)" % again.entries[0].withheld.x)
+	# The same cards again the same day under "suspicious": weaker, so it takes no one's place.
+	var weak: Dictionary = Connections.cases(_fake_run(more), item_list, values, none, [{"key": "firm", "presenter": "n", "day": 3, "cards": ["b", "c"]}, {"key": "weak", "presenter": "n", "day": 3, "cards": ["c", "b"], "type": "suspicious", "suspicious": true}], 3)
+	check(weak.entries.map(func(e): return e.key) == ["firm", "weak"] and weak.entries[1].replaces.is_empty() and weak.entries[1].lean.is_empty(), "a weaker case on the same cards leaves the earlier one in place and adds nothing")
+	check(is_equal_approx(weak.lean.x, 0.8 * 0.6), "so the cards keep the larger of the two weights (%+.3f)" % weak.lean.x)
+	check(is_equal_approx(weak.entries[1].withheld.x, 0.8 * 0.5 * 0.6) and not weak.entries[0].has("withheld"), "and it still notes what its held-back half would add, standing alone")
 	# A bigger case that contains the earlier one.
 	var bigger: Dictionary = Connections.cases(_fake_run(more), item_list, values, none, [first, {"key": "bigger", "presenter": "n", "day": 3, "cards": ["a", "b", "c"]}], 3)
 	check(bigger.entries.map(func(e): return e.key) == ["bigger"] and is_equal_approx(bigger.lean.x, 0.8 * 1.4), "a bigger case that holds it carries the whole set at today's weight (%+.3f)" % bigger.lean.x)
@@ -365,14 +371,29 @@ func _reuse_in_game() -> void:
 	var again: int = _file(g, "suspicious", s.p[4].id, [s.seer, s.dowser])
 	g._evaluate_deduction(n, g.board[again - 1], 1.0, false)
 	var now: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
-	check(first.size() == 1 and now.size() == 1 and now[0].key == "case:%d" % again and now[0].replaces == ["case:%d" % s.filed],
-		"in a game, the same cards under a second premise take the first case's place (%s)" % str(now.map(func(e): return e.key)))
-	check(now.size() == 1 and is_equal_approx(now[0].weight, first[0].weight * Tuning.Workshop.SUSPICIOUS_HEARING), "and count once, at the second case's weight (%.2f, was %.2f)" % [now[0].weight if now.size() == 1 else -1.0, first[0].weight if first.size() == 1 else -1.0])
+	check(first.size() == 1 and now.size() == 2 and now[0].key == "case:%d" % s.filed and now[1].key == "case:%d" % again and now[1].replaces.is_empty(),
+		"in a game, the same cards under a \"suspicious\" premise leave the firmer first case in place (%s)" % str(now.map(func(e): return e.key)))
+	check(now.size() == 2 and is_equal_approx(now[0].weight, first[0].weight) and now[1].lean.is_empty(), "the cards keep the first case's weight, and the second adds nothing (%.2f)" % (now[0].weight if now.size() == 2 else -1.0))
 	check(n.workshop_state.presentations.size() == 2, "both presentations are still remembered; only the weighing changes")
+	# The pressure a "suspicious" case puts on its subject: the rise its held-back half would give.
+	var res: Dictionary = _proposal(g, n).get("connections", {})
+	var target: String = s.p[4].id
+	var held_back: float = float(now[1].get("withheld", {}).get(target, 0.0)) if now.size() == 2 else 0.0
+	var chance: float = float(res.posterior[target])
+	var rise: float = WorkshopPresentation._connections_rise(g, n.id + ":good", str(again), target)
+	check(is_equal_approx(rise, maxf(0.0, 1.0 / (1.0 + exp(-(Connections.logit(chance) + held_back))) - chance)), "its pressure is the rise its held-back half would give its subject (held back %+.3f, rise %.3f)" % [held_back, rise])
+	check(is_zero_approx(WorkshopPresentation._connections_rise(g, n.id + ":good", str(s.filed), target)), "a firm case holds nothing back")
+	# The other way round: a firm case on the same cards the next day takes both places.
+	g.w.day += 1
+	var firm: int = _file(g, "evil", s.p[4].id, [s.seer, s.dowser])
+	g._evaluate_deduction(n, g.board[firm - 1], 1.0, false)
+	var later: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
+	check(later.size() == 1 and later[0].key == "case:%d" % firm and later[0].replaces.size() == 2, "a later firm case on the same cards takes the place of both (%s)" % str(later.map(func(e): return e.key)))
+	g.w.day -= 1
 	Connections.reuse_rule = false
 	g._workshop_evaluations.clear()  # a kept refresh doesn't know the switch moved
 	Mind.refresh_beliefs(g.w, n, " (rule off)")
-	check(_proposal(g, n).connections.cases.entries.size() == 2, "with the rule off (the measurement switch) both count, as before")
+	check(_proposal(g, n).connections.cases.entries.size() == 3, "with the rule off (the measurement switch) all three count, as before")
 	Connections.reuse_rule = true
 	Connections.enabled = false
 

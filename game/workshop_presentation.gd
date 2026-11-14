@@ -423,7 +423,9 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 	# holds. With another one there, measure this filing's own share: the full union
 	# against the union without it (Codex review of PR #93).
 	var others: Array = _other_suspicious(n, key)
-	if not others.is_empty():
+	if Connections.enabled:
+		rise = _connections_rise(g, listener_key, key, target_id)
+	elif not others.is_empty():
 		rise = maxf(0.0, _filing_rise(g, n, listener_key, key, target_id))
 	var ids: Array = snapshot.selected.duplicate()
 	ids.sort()
@@ -447,6 +449,22 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 		target.pressure = maxf(0.0, target.pressure + delta)
 		g.w.dlog.trace_event("value_change", target_id, n.id, {"quantity": "pressure", "delta": delta, "rise": rise, "filing": filing, "venue": venue},
 			"A suspicious case presses its subject to explain (premises step 2)")
+
+## The same rise under the connections model (workshop/connections.gd), where a "suspicious"
+## case counts at half weight: how far the target's chance would go up if the held-back
+## half counted too. Read from the applied refresh; nothing is judged again.
+static func _connections_rise(g, listener_key: String, key: String, target_id: String) -> float:
+	var res: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("connections", {})
+	if not res.get("posterior", {}).has(target_id):
+		return 0.0
+	for entry in res.get("cases", {}).get("entries", []):
+		if str(entry.key) == "case:" + key:
+			var chance: float = float(res.posterior[target_id])
+			var held_back: float = float(entry.get("withheld", {}).get(target_id, 0.0))
+			if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
+				return 0.0
+			return maxf(0.0, 1.0 / (1.0 + exp(-(Connections.logit(chance) + held_back))) - chance)
+	return 0.0
 
 ## The listener's other remembered (not withdrawn) suspicious filings, besides `key`.
 static func _other_suspicious(n, key: String) -> Array:
