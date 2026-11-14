@@ -93,6 +93,7 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 	var victim: String = str(q.get("victim", ""))
 	var pl: Dictionary = places(view, q, all_cards)
 	var table: Dictionary = DayPresence.build(view, all_cards)
+	var prior: Dictionary = DayPresence.build_prior(view, all_cards) if kind == "silence" else {}
 	# Death ticks (day * 4 + phase): a Demon victim of the night before the day is gone by
 	# its morning, while someone hanged that day was still about until the meeting.
 	var death_ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
@@ -119,7 +120,7 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 			if kind == "silence":
 				# A hunting Breathstealer (Nov 14): free, it could have reached the victim; on
 				# shift or seen elsewhere, it couldn't (DayPresence.hunt_block).
-				prob = DayPresence.hunt_block(table, pid, victim, day, ph)
+				prob = DayPresence.hunt_block(table, pid, victim, day, ph, prior)
 			else:
 				for l in pl.locs:
 					prob += DayPresence.at(table, pid, day, ph, l)

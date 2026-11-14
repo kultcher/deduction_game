@@ -57,6 +57,14 @@ static func place_block(i: int) -> String:
 ## {pid: {"d:p": PackedFloat64Array(SLOTS)}} for days 1..view.day and phases 0..2. A dead
 ## person's slots are all zero.
 static func build(view: Dictionary, cards: Array) -> Dictionary:
+	var out: Dictionary = build_prior(view, cards)
+	_apply_evidence(view, cards, out)
+	return out
+
+
+## The table before any sighting or watch: schedules and haunts only (build's first step).
+## hunt_block reads how far the evidence moved a free person from it.
+static func build_prior(view: Dictionary, cards: Array) -> Dictionary:
 	var ids: Array = view.get("people", []).map(func(p): return p.id)
 	var last_day: int = int(view.get("day", 1))
 	var work: Dictionary = {}
@@ -98,7 +106,6 @@ static func build(view: Dictionary, cards: Array) -> Dictionary:
 				if History.observer_alive(view, pid, stamp):
 					dist = _prior(pid, p, work, haunts, busy)
 				out[pid]["%d:%d" % [d, p]] = dist
-	_apply_evidence(view, cards, out)
 	return out
 
 
@@ -333,7 +340,10 @@ static func at_any(table: Dictionary, pid: String, day: int, locs: Array, phases
 ## Breathstealer (Nov 14: it hunts). Tied to a place that phase (on shift, or seen there for
 ## certain), it is wherever that is. Free, it goes after a target, so it could be on any block
 ## its record doesn't rule out, with HUNT_REACH; where the victim was comes from the table.
-static func hunt_block(table: Dictionary, m: String, victim: String, day: int, phase: int) -> float:
+## `prior` (build_prior): with it, reported whereabouts move a free person's reach by how far
+## they moved their chance of being on that block (an NPC's sighting near the victim raises
+## it, one elsewhere lowers it; Codex on #157). Without it, any block not ruled out counts.
+static func hunt_block(table: Dictionary, m: String, victim: String, day: int, phase: int, prior: Dictionary = {}) -> float:
 	var key: String = "%d:%d" % [day, phase]
 	var dist: PackedFloat64Array = table.get(m, {}).get(key, PackedFloat64Array())
 	if dist.size() < SLOTS or _total(dist) <= 0.0:
@@ -343,15 +353,21 @@ static func hunt_block(table: Dictionary, m: String, victim: String, day: int, p
 		top = maxf(top, x)
 	if top >= 0.999:
 		return same_block(table, m, victim, day, phase)
+	var before: PackedFloat64Array = prior.get(m, {}).get(key, PackedFloat64Array())
 	var s: float = 0.0
 	for blk in C.BLOCKS:
-		var open: bool = false
+		var now_on: float = 0.0
+		var was_on: float = 0.0
 		for i in range(HOME):
-			if place_block(i) == blk and dist[i] > 1e-9:
-				open = true
-		if open:
-			s += on_block(table, victim, day, phase, blk)
-	return HUNT_REACH * s
+			if place_block(i) == blk:
+				now_on += dist[i]
+				if before.size() >= SLOTS:
+					was_on += before[i]
+		var reach: float = 0.0
+		if now_on > 1e-9:
+			reach = HUNT_REACH if was_on <= 1e-9 else clampf(HUNT_REACH * now_on / was_on, 0.0, 1.0)
+		s += reach * on_block(table, victim, day, phase, blk)
+	return s
 
 
 # --- Breathstealer by presence ---
@@ -390,6 +406,7 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 		return {}
 	var all_cards: Array = cards if not cards.is_empty() or not bare_reads_view else view.get("cards", [])
 	var table: Dictionary = build(view, all_cards)
+	var prior: Dictionary = build_prior(view, all_cards)
 	var ids: Array = view.get("people", []).map(func(p): return p.id)
 	var bs: Dictionary = Tuning.Roles.BREATHSTEALER
 	var h: Array = []
@@ -409,7 +426,7 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 			var not_yet: float = 1.0
 			var like: float = 0.0
 			for p in range(3):
-				var c: float = hunt_block(table, m, s.victim, s.day, p)
+				var c: float = hunt_block(table, m, s.victim, s.day, p, prior)
 				like += not_yet * float(h[p]) * c
 				not_yet *= 1.0 - float(h[p]) * c
 			a *= like

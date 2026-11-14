@@ -191,6 +191,25 @@ func _test_hunt_block() -> void:
 	_check(is_equal_approx(DayPresence.hunt_block(table, "free", "v", 1, 0), DayPresence.HUNT_REACH), "free: could have hunted the victim down (%.2f)" % DayPresence.hunt_block(table, "free", "v", 1, 0))
 	_check(is_zero_approx(DayPresence.hunt_block(table, "seen_off", "v", 1, 0)), "free but ruled off the victim's block: an alibi")
 	_check(DayPresence.hunt_block(table, "free", "v", 1, 0) > DayPresence.same_block(table, "free", "v", 1, 0), "a free person counts for more than an ordinary wander would give")
+	# An NPC's (soft) report moves a free person's reach (Codex on #157): seen at the bakery,
+	# up; seen at the wharf, down. The prior is the spread; the report reweights it.
+	var soft := func(loc: String) -> PackedFloat64Array:
+		var d: PackedFloat64Array = spread.duplicate()
+		for i in DayPresence.SLOTS:
+			var fits: bool = i < DayPresence.HOME and DayPresence.place_block(i) == DayPresence.place_block(DayPresence.PLACES.find(loc))
+			d[i] *= DayPresence.TRUST if fits else (1.0 - DayPresence.TRUST)
+		var t: float = 0.0
+		for x in d:
+			t += x
+		for i in d.size():
+			d[i] /= t
+		return d
+	var told: Dictionary = {"v": {"1:0": at.call("bakery")}, "near": {"1:0": soft.call("smithy")}, "far": {"1:0": soft.call("wharf")}, "free": {"1:0": spread}}
+	var prior: Dictionary = {"near": {"1:0": spread}, "far": {"1:0": spread}, "free": {"1:0": spread}}
+	var r_near: float = DayPresence.hunt_block(told, "near", "v", 1, 0, prior)
+	var r_far: float = DayPresence.hunt_block(told, "far", "v", 1, 0, prior)
+	var r_free: float = DayPresence.hunt_block(told, "free", "v", 1, 0, prior)
+	_check(is_equal_approx(r_free, DayPresence.HUNT_REACH) and r_near > r_free and r_far < r_free, "a reported sighting near the victim raises a free person's reach, one elsewhere lowers it (%.2f / %.2f / %.2f)" % [r_near, r_free, r_far])
 
 
 ## The C# kernel (CaseEval move kind 3) agrees with the GDScript reference, and the solver
