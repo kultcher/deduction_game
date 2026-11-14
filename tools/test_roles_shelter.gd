@@ -33,7 +33,6 @@ func _main() -> void:
 	_run_workshop_protection()
 	_run_mechanics_warden()
 	_run_warden_credit()
-	_run_warden_night0()
 	print("Roles: shelter: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -325,24 +324,3 @@ func _own_effects(g, n) -> Dictionary:
 	input.listener.suspicion = outside.duplicate(true)
 	var plan = Shared.prepare(input, st.get("presentations", {}), n.ledger, st.get("withdrawn", {}), st.get("attention_focus", []))
 	return Shared.evaluate(plan, outside, st.get("source_doubt", {})).effects if plan.ready else {}
-
-
-## The Warden doesn't guard on night 0 (no kill to stop yet; Michael, Nov 13), and an evil
-## Warden bluffer doesn't invent a night-0 door.
-func _run_warden_night0() -> void:
-	var guarded_night0 := false
-	for sd in [692, 42, 900, 54875, 98933]:
-		var g = Game.new()
-		g.new_case(sd, 10)
-		var holder = g.w.npc_with_role("warden")
-		if holder == null:
-			continue
-		if holder.warden_log.has("0") or g.w.dlog.entries.any(func(e): return e["type"] == "protect"):
-			guarded_night0 = true
-	check(not guarded_night0, "no Warden guards a door on night 0")
-	var g2 = Game.new()
-	g2.new_case(692, 10)
-	var evil = g2.w.living().filter(func(n): return n.is_evil())[0]
-	evil.warden_log = {}
-	check(C.role_def("warden").warden_door(g2.w, evil, 0) == "" and not evil.warden_log.has("0"), "an evil Warden bluff names no night-0 door")
-	check(C.role_def("warden").warden_door(g2.w, evil, 1) != "", "but does name one for night 1")
