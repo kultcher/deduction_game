@@ -222,8 +222,12 @@ class Roles:
 		# (never in the evening of a day it hasn't hexed yet).
 		"seek_target_chance": 0.35, "watched_penalty": 0.3, "cover_needed": 3}
 	const BREATHSTEALER = {
-		"phase_probs_high": [0.3, 0.5, 1.0],
-		"phase_probs_low": [0.15, 0.3, 0.7],
+		# Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (seek_target_chance
+		# toward its preferred target's workplace; out to a busy public place otherwise), and it
+		# takes its shot in the evening whatever the target's threat.
+		"phase_probs_high": [0.35, 0.6, 1.0],
+		"phase_probs_low": [0.25, 0.45, 1.0],
+		"seek_target_chance": 0.6,
 		"high_score_threshold": 1.0,
 		"noise": 1.0,
 		# Cover in a crowd (Nov 9): this many others at the Breathstealer's place adds the bonus.
@@ -908,6 +912,11 @@ class Workshop:
 	## The share of a free phase a Hexer gives to seeking its target at the target's work
 	## (sim HEXER.seek_target_chance, Nov 10), as the solver models it.
 	const HEX_SEEK_SHARE = 0.25
+	## A hunting Breathstealer in a free phase: the chance it is on its victim's block, for
+	## the presence reasoning (workshop/day_presence.gd hunt_block; Nov 14). It seeks its
+	## preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where
+	## good people are working.
+	const BREATH_HUNT_REACH = 0.7
 	const LR_WEAK = 1.5
 	const LR_MODERATE = 3.0
 	const LR_STRONG = 10.0

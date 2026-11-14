@@ -23,6 +23,9 @@ const PLACES: Array = ["tavern", "well", "smithy", "bakery", "wharf", "mill", "c
 const HOME: int = 8
 const SLOTS: int = 9
 const TRUST: float = Tuning.Workshop.PRESENCE_TESTIMONY_TRUST
+## How likely a hunting Breathstealer with a free phase is on its victim's block (Nov 14;
+## sim BREATHSTEALER.seek_target_chance and its going out to where good people work).
+const HUNT_REACH: float = Tuning.Workshop.BREATH_HUNT_REACH
 
 ## The sim's idle odds by phase (World._choose_idle_location): fixed places first, and the
 ## rest goes to "social" picks (a haunt with IDLE_HAUNT_CHANCE, else any of the 8 places).
@@ -326,13 +329,39 @@ static func at_any(table: Dictionary, pid: String, day: int, locs: Array, phases
 	return 1.0 - miss
 
 
+## The chance a Breathstealer `m` was out on the victim's block in a phase, if `m` is the
+## Breathstealer (Nov 14: it hunts). Tied to a place that phase (on shift, or seen there for
+## certain), it is wherever that is. Free, it goes after a target, so it could be on any block
+## its record doesn't rule out, with HUNT_REACH; where the victim was comes from the table.
+static func hunt_block(table: Dictionary, m: String, victim: String, day: int, phase: int) -> float:
+	var key: String = "%d:%d" % [day, phase]
+	var dist: PackedFloat64Array = table.get(m, {}).get(key, PackedFloat64Array())
+	if dist.size() < SLOTS or _total(dist) <= 0.0:
+		return 0.0
+	var top: float = 0.0
+	for x in dist:
+		top = maxf(top, x)
+	if top >= 0.999:
+		return same_block(table, m, victim, day, phase)
+	var s: float = 0.0
+	for blk in C.BLOCKS:
+		var open: bool = false
+		for i in range(HOME):
+			if place_block(i) == blk and dist[i] > 1e-9:
+				open = true
+		if open:
+			s += on_block(table, victim, day, phase, blk)
+	return HUNT_REACH * s
+
+
 # --- Breathstealer by presence ---
 
 ## The Breathstealer silences someone out on its own block, in one of the day phases
 ## (sim/roles/breathstealer.gd), so for each silencing the silencer was out on the victim's
 ## block in the same phase. For each person m, A_m = product over silencings of
 ##     sum over phases p of  P(not yet, before p) * h_p * c_p,
-## where c_p = P(m and the victim out on the same block in p) and h_p is the sim's
+## where c_p = P(m, as the hunting Breathstealer, was out on the victim's block in p)
+## (hunt_block: free phases reach any block not ruled out) and h_p is the sim's
 ## per-phase chance of acting (the mean of its low and high odds). The per-world factor is
 ## the mean of A_m over the world's minions (each equally likely to hold the role), mixed with
 ## DEFAULT_ERR. Returns {} when nobody was silenced or no Breathstealer can be in play.
@@ -380,7 +409,7 @@ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
 			var not_yet: float = 1.0
 			var like: float = 0.0
 			for p in range(3):
-				var c: float = same_block(table, m, s.victim, s.day, p)
+				var c: float = hunt_block(table, m, s.victim, s.day, p)
 				like += not_yet * float(h[p]) * c
 				not_yet *= 1.0 - float(h[p]) * c
 			a *= like
