@@ -355,7 +355,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 				if same_cards.is_empty():
 					return {}
 				return {"kind": "refresh", "adds": adds, "text": "Refreshes your day-%d argument (case #%d): the town weighs it at full strength again." % [latest.day, latest.number]}
-		if draft.suspicious and float(entry.get("withheld", {}).get(target, 0.0)) > 0.0:
+		if draft.suspicious and _would_press(run, entry, target):
 			return {"kind": "presses", "adds": adds, "text": "Adds no new belief (you've put these cards to the town in case #%d), but still presses %s." % [latest.number, name]}
 		return {"kind": "repeat", "adds": adds, "text": "No new info: you've already put these cards to the town (case #%d)." % latest.number}
 	if adds < little:
@@ -364,6 +364,21 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 			return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
 		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}
 	return {}
+
+## Would this "suspicious" entry press its subject noticeably (NOTE_PRESSES or more at a
+## meeting), going by the neutral listener? The game's own pressure rule on its numbers.
+const NOTE_PRESSES: float = 0.15
+static func _would_press(run: Dictionary, entry: Dictionary, target: String) -> bool:
+	var Connections = preload("res://workshop/connections.gd")
+	var Presentation = preload("res://game/workshop_presentation.gd")
+	var now: Dictionary = {}
+	for p in run.others:
+		now[p] = float(run.baseline[p])
+	# The neutral listener's chances with the case's cards: the public record plus what they say.
+	var with_cards: Dictionary = {}
+	for p in run.others:
+		with_cards[p] = Presentation.held_back_chance(now, entry.get("points", {}), p)
+	return Presentation.connections_pressure(maxf(0.0, float(with_cards.get(target, 0.0)) - float(now.get(target, 0.0)))) >= NOTE_PRESSES
 
 ## The test juror's notes beyond its strength chip: the clash headline and clashing
 ## cards when the case can't hold, and who it would mostly raise suspicion of.

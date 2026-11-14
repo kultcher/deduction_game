@@ -27,6 +27,41 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (`claude/suspicious-pressure`, stacked on #154)
+
+- **Base:** `claude/no-new-info` (#154). **Status:** PR open, for Bailiff, after #154. **Next actor:** Bailiff; Michael for the scale.
+- **From:** Michael, Nov 14: "suspicious" is the early-game tool and should have a solid chance of making someone who is holding back reveal something; aim for about 0.3 pressure from one basic incriminating reading. The held-back half was only ever a way to scale with the case, and can go.
+- **Switch on only.** With the switch off the held-back rule of premises step 2 is unchanged. Golden identical to `baseline_b281427` (5 seeds); fast list 57 of 57.
+
+**Why it changed**
+
+- Under connections the only thing "suspicious" holds back is what the cards add together. A single card counts in full alone, so a lone reading pressed by exactly 0, and 44542's four-card "Odette is suspicious" by 0.005.
+- For scale: a press in conversation is +0.35, a nomination +0.4, one disclosure tier is about 0.65 at average composure, a hidden gift-holder's lock at a meeting breaks at 0.7, and pressure loses 40% a night.
+
+**The rule (`Connections.points`, `WorkshopPresentation._connections_rise`, `connections_pressure`)**
+
+- A "suspicious" entry carries `points`: what its cards say about everyone read by themselves, own values and what they add together. It doesn't depend on the case's weight or on what an earlier case holds.
+- A listener's rise is the subject's chance now against their chance with `points` taken away, renormalised as before (`held_back_chance`).
+- Pressure at a meeting = 4 × the average rise over the listeners, up to 0.5 (`SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE`, `_CAP`); half that in private; once per filing, as before.
+- `withheld` and `case_withheld` are gone.
+
+**Measured** (six fresh 10-NPC games, a hand-made reading from someone with no claim, presented as "X is suspicious")
+
+| Case | Average rise | Pressure at a meeting |
+|---|---|---|
+| Dowser "1 evil of these 2" | 6–8 points | 0.26–0.32 |
+| Seer "yes" on a pair | 3 points | 0.12–0.14 |
+| Dowser "1 evil of these 3" | 0–2 points | 0.01–0.07 |
+| Dowser "1 of 2" and a second Dowser clearing the other | 4–8 points | 0.18–0.33 |
+
+- These tellers have no claim on the board, so listeners doubt the reading; a reading from a claimed gift-holder will press harder, and the cap is there for that.
+- With a nomination (+0.4) a basic case puts its subject at about 0.7: one tier, and the point where a hidden gift-holder's lock breaks. Michael knows.
+- Not measured: an Archivist reading (my hand-made one didn't register in the fixture), and the playtests' own cases (the logs no longer replay faithfully on main).
+
+**The Workshop note (#154):** "Adds no new belief, but still presses X" now shows only when the neutral listener's version of this pressure is 0.15 or more (`NOTE_PRESSES`; Michael, Nov 14); under that it is plain "No new info".
+
+- **Tests:** `test_connections_cases` (114 checks), `test_town_note`.
+
 ## 2026-11-14, Claude-Lantern: the Workshop's "No new info" note (PR #154, `claude/no-new-info`)
 
 - **Base:** main `5ac25ab`. **Status:** PR open, for Bailiff. **Next actor:** Bailiff; Michael for the wording.

@@ -1085,6 +1085,15 @@ class Workshop:
 	## premise's +0.1 / +0.2.
 	const SUSPICIOUS_HEARING = 0.5
 	const SUSPICIOUS_PRESSURE_PER_RISE = {"private": 0.5, "meeting": 1.0}
+	## The same pressure under the connections model (Michael, Nov 14). "Suspicious" is the
+	## early-game tool: one basic incriminating reading should press its subject by about
+	## 0.3 at a meeting (with a nomination's 0.4, about one disclosure tier). The rise is
+	## how far the case's cards, read by themselves, lift its subject for the average
+	## listener; times this, up to the cap, then the venue's share above. Measured Nov 14
+	## on fresh 10-NPC games: a lone Dowser "1 of these 2" lifts its subject 6 to 8 points,
+	## a lone Seer "yes" on a pair 3, a Dowser "1 of these 3" about 1.
+	const SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE = 4.0
+	const SUSPICIOUS_PRESSURE_CONNECTIONS_CAP = 0.5
 
 	## Bounded reasoning attention profiles (`workshop/reasoner.gd`)
 	## Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks
