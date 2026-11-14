@@ -44,6 +44,7 @@ func _run() -> void:
 	_test_prior_matches_sim()
 	_test_evidence()
 	_test_breath_factor()
+	_test_hunt_block()
 	_test_case_eval_kernel()
 	_test_game_records_watch()
 	_test_known_haunts()
@@ -166,6 +167,30 @@ func _test_breath_factor() -> void:
 	off["script_minions"] = ["poisoner"]
 	_check(DayPresence.breath_factor(off, cards).is_empty(), "no factor when the script has no Breathstealer")
 	_check(DayPresence.breath_factor(_view(ids, 3, [], watched), cards).is_empty(), "no factor without a silencing")
+
+
+## The hunting Breathstealer (Nov 14): tied to a place, it is there; free, it can reach any
+## block its record doesn't rule out, with HUNT_REACH.
+func _test_hunt_block() -> void:
+	var at := func(loc: String) -> PackedFloat64Array:
+		var d := PackedFloat64Array()
+		d.resize(DayPresence.SLOTS)
+		d[DayPresence.PLACES.find(loc)] = 1.0
+		return d
+	var spread := PackedFloat64Array()
+	spread.resize(DayPresence.SLOTS)
+	for i in DayPresence.SLOTS:
+		spread[i] = 1.0 / float(DayPresence.SLOTS)
+	var off_market: PackedFloat64Array = spread.duplicate()
+	for loc in ["smithy", "bakery"]:
+		off_market[DayPresence.PLACES.find(loc)] = 0.0
+	var table: Dictionary = {"v": {"1:0": at.call("bakery")}, "co": {"1:0": at.call("smithy")}, "away": {"1:0": at.call("wharf")},
+		"free": {"1:0": spread}, "seen_off": {"1:0": off_market}}
+	_check(is_equal_approx(DayPresence.hunt_block(table, "co", "v", 1, 0), 1.0), "working on the victim's block: there")
+	_check(is_zero_approx(DayPresence.hunt_block(table, "away", "v", 1, 0)), "working on another block: an alibi")
+	_check(is_equal_approx(DayPresence.hunt_block(table, "free", "v", 1, 0), DayPresence.HUNT_REACH), "free: could have hunted the victim down (%.2f)" % DayPresence.hunt_block(table, "free", "v", 1, 0))
+	_check(is_zero_approx(DayPresence.hunt_block(table, "seen_off", "v", 1, 0)), "free but ruled off the victim's block: an alibi")
+	_check(DayPresence.hunt_block(table, "free", "v", 1, 0) > DayPresence.same_block(table, "free", "v", 1, 0), "a free person counts for more than an ordinary wander would give")
 
 
 ## The C# kernel (CaseEval move kind 3) agrees with the GDScript reference, and the solver
