@@ -1723,7 +1723,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			var hp: PackedStringArray = str(hinge.eid).split(":")
 			hnd = int(hp[3]) if hp.size() >= 4 else -1
 		if hnd >= 0 and hnd < w.day:
-			lines.append(say_voiced(d, "defence_case_hinge_night", "Your case rests on where I was %s. Then hear it from me." % C.spoken_when(hnd, w.day), {"when": C.spoken_when(hnd, w.day)}))
+			lines.append(say_voiced(d, "defence_case_hinge_night", "Your case rests on where I was %s, so hear it from me." % C.spoken_when(hnd, w.day), {"when": C.spoken_when(hnd, w.day)}))
 			var acct: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, hnd, true)
 			lines.append_array(acct.get("lines", []))
 			facts.append_array(acct.get("facts", []))
@@ -1751,7 +1751,11 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			var dd: Dictionary = rd.get("data", {})
 			var pair: Array = dd.get("pair", [])
 			var src = w.by_id[src_id]
+			# The hinge line, and its index: a "Then X is lying" after it needs the denial
+			# spelled out, or the "Then" follows nothing (playtest triage 2.2).
+			var hinge_at: int = -1
 			if case_backed and str(hinge.get("eid", "")) == info_eid(src_id, rd):
+				hinge_at = lines.size()
 				lines.append(say_voiced(d, "defence_case_hinge_reading", "Your whole case rests on %s's reading." % src.name, {"source": src.name}))
 			var rdef_rd = C.role_def(rd.get("role", ""))
 			var custom_def: Dictionary = rdef_rd.try_reading_defence(w, d, src, src_id, rd, _mind(), WorkshopLedger) if rdef_rd != null else {}
@@ -1794,6 +1798,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 					defence_scopes["dispute_night"] = {"type": "plea"}
 			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
+				if hinge_at >= 0:
+					lines[hinge_at] = say_voiced(d, "defence_case_hinge_reading_wrong", "Your whole case rests on %s's reading, and that reading is wrong." % src.name, {"source": src.name})
 				if trait_of(d, "confidence") > 0.6:
 					var lie_key: String = "lying:" + src_id
 					if _said_by_other(w, d, lie_key) != "":
