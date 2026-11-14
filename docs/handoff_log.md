@@ -85,13 +85,13 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (PR #150, `claude/connections-case-rules`)
 
-- **Base:** main `9cded67` (merged in after #149). **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the two questions below (the replacement's weight, and the fade).
+- **Base:** main `9cded67` (merged in after #149). **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the fade (4.3).
 - **From:** the triage doc, 4.2 and 4.4 (Michael's decisions, Nov 13). Switch on only. 4.3 (the fade) is measured here, not built: it waits for his pick.
 - **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds), after merging main. Fast list 55 of 55.
 
 **The rules (`workshop/connections.gd`: `case_plan`, `case_step`, `interaction`)**
 
-- **4.2, per presenter.** A case that cites every card of an earlier one from the same presenter takes its place: the earlier one stops counting, and the set counts once at the later case's weight. Otherwise a case adds nothing for what an earlier one already put together; only what involves a card new from that presenter counts. It applies to NPC nominators as well as the player.
+- **4.2, per presenter.** A case that cites every card of an earlier one from the same presenter, and counts at least as much, takes its place: the earlier one stops counting, and the set counts once at the later case's weight. A weaker one (a "suspicious" premise on cards already argued firmly) leaves the earlier case in place and adds only what is new, so the cards keep the larger of the two weights (Michael, Nov 13 evening). It goes by the cited cards; the premise is not compared. Otherwise a case adds nothing for what an earlier one already put together; only what involves a card new from that presenter counts. It applies to NPC nominators as well as the player.
   - Nothing is removed from the presentation store. The rule is applied when the cases are weighed, so today's model (switch off) is untouched.
   - One shared card takes nothing off: what it says next to a new card is new.
 - **4.4.** Cards a case cites from the movement connection add only what they say next to the case's other cards. Their meeting each other is already counted, in full, by the movement connection. A case made only of such cards adds nothing as a whole.
@@ -112,7 +112,8 @@ Ground rules (from Nov 3, until Michael changes them):
   | Nisha | -1.29 | -0.43 | 11% | 22% |
   | Jory | -1.16 | -0.39 | 14% | 25% |
 
-  **For Michael:** #39 alone gave about -0.68 (Greta at 18%). So with the rule as written, presenting #40 takes back half of what #39 did, because #40 is "suspicious" and counts at half weight. If a replacement should never weaken the set, the fix is one line: the set counts at the larger of the two weights.
+  That table is the first version, where the later case always took the earlier one's place: the half-weight #40 took back half of what #39 did. **Michael's call (Nov 13 evening): the cards keep the larger of the two weights.** With that built, #40 leaves Fenwick where #39 put him: Greta 18%, Hollis 13%, Jory 19%, Kiran 22%.
+- **A "suspicious" case presses its subject again (switch on).** Step 4 left this out without saying so: the pressure read a number only today's model fills in, so it was always zero with the switch on. Now a "suspicious" entry carries `withheld`, what its held-back half would add standing alone (whatever an earlier case holds of its cards), and `WorkshopPresentation._connections_rise` turns that into the rise in the target's chance. The rest is as before: the average over the listeners, × 1.0 at a meeting or 0.5 in private, once per filing. In 44542, #40 gives Odette +0.005: those cards say almost nothing about her.
 - **Six bot games (72 listener-presentations, walker-only scripts):**
   - 4.2 changes no chance by more than 1 point. The bot rarely re-presents the same cards.
   - 4.4 changes the target's chance by more than 1 point in 9 of 72, the largest by 12. The case's own part on its target is over 0.5 log-odds in 8, against 14 before.
@@ -122,15 +123,16 @@ Ground rules (from Nov 3, until Michael changes them):
 - **Buy-in version tried:** a case keeps between 0.5 and 0.9 of its weight a day, the more the further it moves that listener (its largest move on anyone, at trust, against 0.7 log-odds). Nothing is stored; it is re-judged each refresh.
 - **Bot games, from a presentation to the next dawn (43 pairs):** against 0.5 a day, the target's chance differs by 0.3 points on average under 0.7 a day (largest 2.3) and 0.3 under buy-in (largest 4.4). The bot's cases mostly leave their target near certain, so the fade has little to move.
 
-**Both playtest logs, replayed whole with the switch on** (added Nov 14; 8 cases, 67 listener-presentations; the replays reach the logs' vote tallies)
+**Both playtest logs, replayed whole with the switch on** (8 cases, 67 listener-presentations; the replays reach the logs' vote tallies)
 
-- **What was replaced:** in 44542, #40 replaces #39 and #89 replaces both; in 97626, #145 "Jory is evil" replaces #31 "Jory is suspicious".
+- Measured on the first version (a later case always replaces), before main's #149 was merged in. After #149 the 97626 log no longer replays faithfully (passive play moved), so its figures were not redone; 44542 was, and the final rule's figures are marked.
+- **What was replaced:** in 44542, #89 replaces #39 and #40 (under the final rule #40 no longer replaces #39); in 97626, #145 "Jory is evil" replaces #31 "Jory is suspicious".
 - **Per presentation,** the mean over its listeners of the target's chance, and of all the player's cases' part on the target (log-odds):
 
   | Case | Target's chance: before, 4.2 only, 4.4 only, both | Cases' part on the target: before → both |
   |---|---|---|
   | 44542 #39 Fenwick is good (day 1) | 20.5%, the same under each | -0.62 → -0.62 |
-  | 44542 #40 Odette is suspicious (day 1) | 51.6%, 49.8%, 51.6%, 49.8% | +0.12 → +0.05 |
+  | 44542 #40 Odette is suspicious (day 1), final rule | 51.6%, 51.1%, 51.6%, 51.1% | +0.12 → +0.10 |
   | 44542 #89 Odette is evil (day 2) | 53.1%, the same under each | +0.10 → +0.10 |
   | 44542 #131 Jory is suspicious (day 3) | 78.8%, 78.8%, 76.2%, 76.2% | +0.17 → -0.03 |
   | 97626 #31 Jory is suspicious (day 1) | 53.4%, the same under each | 0 → 0 |
@@ -138,23 +140,22 @@ Ground rules (from Nov 3, until Michael changes them):
   | 97626 #145 Jory is evil (day 3) | 93.8%, 93.8%, 92.8%, 92.8% | +0.55 → +0.38 |
   | 97626 #175 Kiran is evil (day 4) | 96.4%, 94.6%, 96.3%, 94.6% | +1.29 → +0.99 |
 
-- **How often a listener's chance moves by over 1 point:** 4.2 alone, the target in 8 of 67 (largest 8.8) and anyone in 21 (largest 11.7); 4.4 alone, the target in 7 (largest 5.5); both, the target in 15 (largest 8.9) and anyone in 30.
-- **The large moves are on Fenwick, not on a case's target.** Chance Fenwick is evil, per listener:
+- **The rules move a case's target little.** The large moves were on Fenwick, from stacking: before the rules #40 took him from 18% to 14% for Greta by counting the same four cards a second time.
 
-  | Listener | After #39 | After #40, before the rules | After #40, with them | Dawn of day 2, before (0.5 / 0.7 / buy-in) | Dawn of day 2, with the rules (0.5 / 0.7 / buy-in) |
-  |---|---|---|---|---|---|
-  | Greta | 18% | 14% | 24% | 21 / 18 / 16% | 27 / 26 / 26% |
-  | Hollis | 13% | 10% | 18% | 16 / 14 / 12% | 22 / 21 / 21% |
-  | Jory | 19% | 14% | 25% | 29 / 25 / 23% | 37 / 35 / 35% |
-  | Kiran | 22% | 17% | 28% | 33 / 28 / 25% | 42 / 40 / 40% |
+**4.3 on 44542 under the final rule, and the pick**
 
-**4.3 on the two logs, and the pick**
+- Chance Fenwick is evil, after "Fenwick is good" and at the next two dawns, by fade:
 
-- **From a presentation to the next dawn (55 pairs), against 0.5 a day:** with the rules in, 0.7 a day differs by 0.3 points on average (largest 1.8) and buy-in by 0.4 (largest 2.6). For the 13 pairs where the case's own part is over 0.2 log-odds, 0.9 and 1.0 points. Before the rules it was 1.5 (largest 4.7) and 2.4 (largest 7.8).
-- **Why so little:** the rebound on Fenwick now happens on day 1, when the half-weight #40 takes #39's place (18% → 24% for Greta), and the fade then works on a set that is already at a quarter weight. #89 on day 2 brings it back to full.
-- **Pick: 0.7 a day, flat.** It goes the way Michael asked, it is one number, and buy-in gives about the same result for a second mechanism. Neither answers the Fenwick rebound under the new rules; the replacement's weight does (the question above). Not built: it waits for his word.
+  | Listener | After #39 and #40 (day 1) | Dawn of day 2: 0.5 / 0.7 / buy-in | Dawn of day 3: 0.5 / 0.7 / buy-in |
+  |---|---|---|---|
+  | Greta | 18% | 24 / 22 / 20% | 43 / 40 / 39% |
+  | Hollis | 13% | 19 / 17 / 15% | (dead) |
+  | Jory | 19% | 33 / 30 / 27% | 46 / 43 / 41% |
+  | Kiran | 22% | 37 / 34 / 31% | 15 / 13 / 12% |
 
-- **Tests:** `test_connections_cases` (the rules on chosen numbers, and in a game); `test_connections_why`.
+- 0.7 a day takes back 2–3 points of the overnight rise, and buy-in 4–6. The rest of the rise is not the fade: other cards arrive overnight (Isolde's Archivist reading names Fenwick as one of two Scion candidates).
+- For these listeners the buy-in rate is 0.86–0.9 a day; for a case that moved a listener little it stays 0.5.
+- **Pick: buy-in.** It is what Michael described (a conclusion the listener bought lasts; one it didn't fades as now), it does about twice what 0.7 does where it matters, and it stores nothing: the rate is re-read from the case's own move at each refresh. 0.7 flat is the simpler fallback. Not built: it waits for his word.
 
 ## 2026-11-13 night, Claude-Bailiff: playtest quick fixes and NPC wording (`claude/playtest-fixes`)
 
