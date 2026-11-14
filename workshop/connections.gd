@@ -163,7 +163,107 @@ static func case_for(template_case: Dictionary, ids: Array) -> Dictionary:
 
 ## The judge on a set of held cards. `hex`: with the Hexer factor (only the day connection
 ## asks for it; see the header).
+## Kept judgements (step 6). A judgement is a pure function of what it reads, so one made
+## before on the same inputs is handed back instead of being made again. Its key
+## (judge_key) is what the judge reads, and no more than that, so that a new card or a
+## remark at the meeting doesn't throw away what it has nothing to do with:
+## - the view apart from its cards and its record of public events;
+## - the cards judged and the listener's own readings. The judge is handed its cards; the
+##   only cards it looks up in the view are those two (Solver.selected, and the listener's
+##   own reports by id), so a card outside the set changes nothing;
+## - the public record: deaths, executions and the events of KINDS not in SOFT_EVENTS. The
+##   meeting's own talk (nominations, votes, accusations) is read by one gift only, the
+##   Magistrate's; a judgement that involves a Magistrate reading keys on all of it;
+## - the bare case; the Hexer switch;
+## - the listener as the judge sees it (Jury._eval_listener), with only the reliabilities
+##   of the cards above, and without attention's bookkeeping or the two trust figures
+##   that only weigh stored cases.
+## Beliefs are the same with the cache on and off. `cache_verify` (a developer switch)
+## makes every kept answer be judged again and compared (cache_stats.wrong counts any
+## difference); tools/test_connections_cache.gd plays games that way.
+## Kept per listener; a listener's store is emptied when it passes KEPT_MAX.
+static var cache_enabled: bool = true
+static var cache_verify: bool = false
+static var cache_stats: Dictionary = {"hits": 0, "misses": 0, "wrong": 0}
+static var _kept: Dictionary = {}
+const KEPT_MAX: int = 6000
+const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusation", "reading", "clear"]
+const SOFT_READERS: Array = ["magistrate"]
+
+
+static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool) -> String:
+	var own: Array = listener.get("knowledge", {}).get("own_reports", [])
+	var cards: Array = []
+	var names: Array = []
+	var soft: bool = false
+	for c in view.get("cards", []):
+		var judged: bool = c.id in ids or c.id in own
+		if judged:
+			cards.append(c)
+			soft = soft or str(c.get("role", "")) in SOFT_READERS
+			for name in [c.get("accuracy_origin", ""), Solver.semantic_key(c), c.get("fact_id", ""), c.id]:
+				if name != "" and name not in names:
+					names.append(name)
+	var around: Dictionary = view.duplicate(false)
+	around.erase("cards")
+	var timeline: Dictionary = around.get("timeline", {})
+	if not soft and timeline.has("events"):
+		timeline = timeline.duplicate(false)
+		timeline["events"] = timeline.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
+		around["timeline"] = timeline
+	var who: Dictionary = listener.duplicate(false)
+	who.erase("trust")
+	who.erase("player_credibility")
+	var heard: Dictionary = {}
+	var all_heard: Dictionary = listener.get("reading_reliability", {})
+	for name in names:
+		if all_heard.has(name):
+			heard[name] = all_heard[name]
+	who["reading_reliability"] = heard
+	# Attention's bookkeeping (which reports a presentation put in front of the listener)
+	# is the union model's; no judgement reads it (as Solver._query_knowledge).
+	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
+	known.erase("presented_reports")
+	known.erase("attention_reports")
+	who["knowledge"] = known
+	return "%d:%d:%d:%d|%s|%s" % [hash(around), hash(cards), hash(template_case), hash(who), "hex" if hex else "", ",".join(PackedStringArray(ids))]
+
+
 static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
+	# A caller that wants the worlds themselves (CaseEval.capture_worlds) needs the real run.
+	if not cache_enabled or CaseEval.capture_worlds:
+		return _judge(view, template_case, listener, ids, hex)
+	var who: String = str(listener.get("id", ""))
+	var key: String = judge_key(view, template_case, listener, ids, hex)
+	var store: Dictionary = _kept.get(who, {})
+	if store.has(key):
+		cache_stats.hits += 1
+		if cache_verify:
+			var fresh: Dictionary = _slim(_judge(view, template_case, listener, ids, hex))
+			if fresh != store[key]:
+				cache_stats.wrong += 1
+				if cache_stats.wrong <= 5:
+					push_warning("Connections: a kept judgement differs from a fresh one (%s, %s)" % [who, str(ids)])
+		return store[key]
+	cache_stats.misses += 1
+	var slim: Dictionary = _slim(_judge(view, template_case, listener, ids, hex))
+	if store.size() >= KEPT_MAX:
+		store = {}
+	store[key] = slim
+	_kept[who] = store
+	return slim
+
+
+## What the model reads of a judgement: each person's chance before and after, and whether
+## anything fits at all.
+static func _slim(ev: Dictionary) -> Dictionary:
+	var slim: Dictionary = {"impossible": bool(ev.get("impossible", false)), "people": {}}
+	for p in ev.get("people", {}):
+		slim.people[p] = {"prior": float(ev.people[p].get("prior", 0.0)), "posterior": float(ev.people[p].get("posterior", 0.0))}
+	return slim
+
+
+static func _judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var was: bool = LiveActivity.hex_factor_enabled
 	var bare: bool = DayPresence.bare_reads_view
 	LiveActivity.hex_factor_enabled = hex
@@ -582,6 +682,7 @@ static func value(run: Dictionary, item: Dictionary) -> Dictionary:
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array, core_state: Dictionary = {}) -> Dictionary:
 	# Profiling (opt-in, workshop/profiler.gd): one span for the model, one for each part.
 	var span: int = Profiler.open("connections")
+	var kept_before: int = int(cache_stats.hits)
 	var part: int = Profiler.open("baseline")
 	var run: Dictionary = begin(view, case_data, listener)
 	Profiler.close(part)
@@ -589,6 +690,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var baseline: Dictionary = run.baseline
 	if others.is_empty() or run.impossible:
 		Profiler.count("connections_judgements", int(run.judgements))
+		Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 		Profiler.close(span)
 		return {"prior": run.prior, "baseline": baseline, "posterior": run.prior.duplicate(), "shift": 0.0, "row": run.row,
 			"impossible": run.impossible, "items": [], "core": _no_core([], []), "core_memory": core_state.get("core", {}),
@@ -636,6 +738,7 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 		total[p] += float(told.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
 	Profiler.count("connections_judgements", int(run.judgements))
+	Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
 		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}

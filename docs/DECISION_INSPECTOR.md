@@ -206,7 +206,8 @@ A log played with the model on says so in `case_start` (`"connections": true`), 
 `--profile` adds, under each, the Workshop profiler's spans by their own time and its
 counters. With the connections model on the refresh shows as
 `.../consequences/connections/{baseline,items,core,cases}`, and `connections_judgements`
-counts the judgements made. `Connections.capture` (a developer switch, off) records each
+counts the judgements asked for; `connections_kept` counts those handed back from the
+kept store instead of being made (step 6). `Connections.capture` (a developer switch, off) records each
 judgement (listener, part, the set judged, time, a hash of the answer), for measuring what a
 cache would save.
 

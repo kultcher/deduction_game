@@ -27,6 +27,62 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-14 early, Claude-Lantern: kept judgements, step 6 (`claude/connections-cache`, stacked on #150)
+
+- **Base:** `claude/connections-case-rules` (#150) with main `9cded67` merged in. **Status:** PR open, for Bailiff, after #150. **Next actor:** Bailiff.
+- **From:** the triage doc, 4.1. Switch on only.
+- **Golden:** identical to `baseline_4a1a075` with the switch off (5 seeds). Fast list 56 of 56.
+
+**What it does (`workshop/connections.gd`: `judge`, `judge_key`, `_kept`)**
+
+- Each listener keeps the answers to the judgements it has made. `judge` hands a kept answer back when everything that judgement reads is the same, and makes it otherwise.
+- **The key is what a judgement reads, not the whole input.** A whole-input key almost never hit: the view's card list, trust figures and attention's bookkeeping change at every step without touching the answer. The key is:
+  - the view without its cards, and the timeline without the meeting's talk (nominations, votes, accusations, readings) unless a judged card is a Magistrate's, the one gift that reads it;
+  - the judged cards, and the listener's own-report cards;
+  - the case template;
+  - the listener, with reading reliability for the judged cards only, without `presented_reports`, `attention_reports`, `trust` and `player_credibility` (the last two only weigh stored cases, outside the judgement);
+  - the Hexer switch and the set.
+- **Why that is safe:** the judge reads view cards only through `Solver.selected` and `card_by_id` on the listener's ids; `TraceSolver` and `Circumstantial` are not on its path; only `Solver._magistrate_nomination_ok` reads meeting events. And it is checked, not assumed: `Connections.cache_verify` makes every kept answer be judged again and compared.
+- Kept answers are slim (`impossible`, and each person's prior and posterior), up to 6,000, cleared with the other caches (`Caches.clear_all`). A caller that wants the worlds (`CaseEval.capture_worlds`, the prototype tool) always gets a real judgement.
+- `Connections.cache_enabled` turns it off for measuring. The profiler counts `connections_kept`.
+
+**Beliefs are the same**
+
+- 12 bot and passive games replayed with `cache_verify`: 28,644 kept answers judged again, 0 different.
+- Both playtest logs replayed with the cache on and off: the same suspicions for every NPC and the same dev log (915 and 1,283 records).
+- The suite plays two passive games three ways (off, on, checked) and compares suspicions and the dev log.
+
+**Timing, cache off → on** (this machine, 2 cores, one job at a time; switch on in both)
+
+| | Off | On |
+|---|---|---|
+| 44542 replayed whole | 193 s | 96 s |
+| 97626 replayed whole | 282 s | 144 s |
+| 44542 `present 39` (day 1) | 4.0 s | 2.7 s |
+| 44542 `nominate odette #40` (day 1) | 6.5 s | 3.2 s |
+| 44542 `press role` (day 1) | 2.3 s | 1.6 s |
+| 44542 `present 89` (day 2) | 7.8 s | 3.7 s |
+| 44542 `nominate odette #89` (day 2) | 5.3 s | 1.8 s |
+| 97626 `nominate dorian #92` (day 2) | 13.6 s | 6.9 s |
+| 97626 `present 145` (day 3) | 11.4 s | 7.1 s |
+| 97626 `nominate jory #145` (day 3) | 10.1 s | 5.0 s |
+| 44542 `gossip` (day 1) | 4.8 s | 4.4 s |
+| 44542 `ward hollis` (the night into day 2) | 14.9 s | 10.9 s |
+| 97626 `vigil square` (a night) | 18.2 s | 11.8 s |
+
+- 70% and 73% of judgements in the two games are kept ones.
+- Golden seed 692 with the switch on: 239 ms a refresh (382 on #150 without the cache; 93 with the switch off).
+- I did not reproduce Bailiff's 26 s and 34 s for day 3–4 of 44542; that replay ran alongside another job.
+
+**What is left: the spec's cost bar is not met.**
+
+- The cache halves a game, but a late presentation is still 4–7 s and a night 11–21 s. What remains is first-time sets: a new card, a new day, a death or a change of trust in a teller makes that listener's judgements new, and dawn changes all of them for everyone.
+- A first-time judgement costs 9–25 ms, spread over building the worlds (2.4 ms), compiling the set (2.7) and the sum (2.9) for a single card. No one part dominates, so there was no quick win; raising `CaseEval`'s compile cache from 32 to 4,096 barely helped.
+- **Next options, not built:** (1) judge single cards for all listeners at once from one world table per day, since most of a refresh is one card's own value; (2) spread dawn's refreshes over the night screen; (3) skip the core test for items whose cards and seed did not change since yesterday except for the day number.
+- Also seen: `trust_reward/jury/headline` takes 0.8 s in a nomination. It is today's code still running under connections, where the headline reading is off.
+
+- **Tests:** `test_connections_cache` (32 checks, 66 s; in the fast list).
+
 ## 2026-11-13 night, Claude-Lantern: stored cases don't stack on reused cards (PR #150, `claude/connections-case-rules`)
 
 - **Base:** main `9cded67` (merged in after #149). **Status:** PR open, for Bailiff. **Next actor:** Bailiff to check and merge; Michael for the two questions below (the replacement's weight, and the fade).
