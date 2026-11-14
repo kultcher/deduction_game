@@ -58,9 +58,12 @@ def cell_key(r):
 def cell_label(k):
     npcs, mode, ins = k
     forced = ""
+    if mode.endswith("_connections"):
+        mode = mode[: -len("_connections")]
+        forced = ", connections on"
     if "_force_" in mode:
         mode, d = mode.split("_force_", 1)
-        forced = ", %s forced" % d
+        forced = ", %s forced%s" % (d, forced)
     names = {"bot_pre_m4": "bot (pre-M4)", "no_present": "bot, no presenting", "present_vote": "bot, present and vote",
              "bot_nocross": "bot, no cross-checks", "bot_nodeclare": "bot, no declaring"}
     return "%d NPCs, %s%s" % (npcs, mode if mode == "passive" else "%s insight %.1f" % (names.get(mode, mode), ins), forced)

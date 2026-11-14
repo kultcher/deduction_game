@@ -14,7 +14,7 @@ repos/kultcher/deduction_game/actions/workflows/balance-sweep.yml/dispatches -f 
 |---|---|---|
 | `seed_start` | 100000 | First case seed. Every cell uses the same seeds, so a seed pairs across modes. |
 | `games_per_cell` | 2000 | Games per cell. |
-| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches); any mode but `passive` may end `_nocross` (`--no-crosscheck`) and/or `_nodeclare` (`--no-declare`). An optional `"force_demon"` (for example `"daykiller"`) passes `--force-demon` and keeps the cell's records apart. |
+| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches); any mode but `passive` may end `_nocross` (`--no-crosscheck`) and/or `_nodeclare` (`--no-declare`), and any mode may then end `_connections` (`--connections`: the connections belief model on). An optional `"force_demon"` (for example `"daykiller"`) passes `--force-demon` and keeps the cell's records apart. |
 | `costs` | measured | Seconds per game per core, by `<npcs>_<mode>`. Only sizes the shards. |
 | `target_hours` | 3 | Planned hours per shard job (the hard cap is 6). |
 | `max_shards` | 200 | Safety bound on the number of jobs. |
@@ -91,6 +91,12 @@ One JSON object per game. Flat fields:
   `evil_nominations_executed`, and the same three for good targets
   (`evil_nominations_good_target`, `…_carried`, `…_executed`). The report adds a
   "Vote shape" table per cell.
+- **Breathstealer** (`tools/breath_stats.gd`): `breath_dealt`, `breath_days_alive` (days it
+  was alive at the start), `breath_days` (`breath` events: a breath stolen), `breath_failed`
+  (poisoned tries), `breath_silenced` / `breath_suppressed` (meetings where the silence held,
+  or the Sexton's bell lifted it), and `breath_rank_after` / `breath_rank_living`: after each
+  silencing that held, the Breathstealer's rank (1 = most suspected) by the good townsfolk's
+  mean suspicion at the next snapshot, and how many were living.
 - **Night-walkers:** `good_gift_walkers_executed` (a good night-walking gift hanged),
   `good_secret_walkers_executed` (Lovers or Sleepwalker hanged).
 - **Information:** `impaired_readings` (good readings that were false: poison,
