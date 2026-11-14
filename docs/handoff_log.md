@@ -46,8 +46,9 @@ town's presence reasoning should match how it moves.
 - **Golden:** identical (no golden seed deals a Breathstealer). Two seed fixtures moved:
   the Seer request check now retries its roll; test_relay_bluff's genuine-Medium case is
   seed 100042.
-- **Not done:** the location panel's silence view still uses the ordinary-wander reasoning
-  (Michael to say whether it goes in this PR). Tally sweeps it overnight.
+- **The location panel** (Michael, Nov 14: in this PR): its silence view uses `hunt_block`
+  too, so someone free could have reached the victim and someone working elsewhere is ruled
+  out. Test in `test_location_solver`. Tally sweeps the PR overnight.
 
 ## 2026-11-14 early, Claude-Lantern: a case the listener bought fades slower (PR #153, `claude/connections-buyin`, stacked on #151)
 

@@ -117,7 +117,9 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 			var cell: Dictionary = _cell(view, all_cards, phase_watch, p, day, ph)
 			var prob: float = 0.0
 			if kind == "silence":
-				prob = DayPresence.same_block(table, pid, victim, day, ph)
+				# A hunting Breathstealer (Nov 14): free, it could have reached the victim; on
+				# shift or seen elsewhere, it couldn't (DayPresence.hunt_block).
+				prob = DayPresence.hunt_block(table, pid, victim, day, ph)
 			else:
 				for l in pl.locs:
 					prob += DayPresence.at(table, pid, day, ph, l)

@@ -96,6 +96,19 @@ func _run() -> void:
 	_check(kr.ruled_out == ["a", "b"], "workers elsewhere all day are ruled out for a hex at the wharf")
 	hv.people[1].work = "wharf"
 	_check(LocationSolver.evaluate(hv, kq).fits == ["b"], "a coworker at the victim's workplace fits")
+	# A silencing: the victim works the wharf all day. A coworker fits; someone working
+	# elsewhere all day is ruled out; someone free could have hunted the victim down.
+	var sv: Dictionary = {"day": 1, "people": [
+		{"id": "co", "name": "Co", "home": "hill", "alive": true, "work": "mill", "work_phases": [0, 1, 2]},
+		{"id": "away", "name": "Away", "home": "hill", "alive": true, "work": "smithy", "work_phases": [0, 1, 2]},
+		{"id": "free", "name": "Free", "home": "hill", "alive": true, "work": "", "work_phases": []},
+		{"id": "v", "name": "V", "home": "docks", "alive": true, "work": "wharf", "work_phases": [0, 1, 2]}],
+		"cards": [], "timeline": {"events": [{"kind": "silenced", "subjects": ["v"], "at": {"day": 1, "phase": "evening"}}]},
+		"watched": []}
+	var sr: Dictionary = LocationSolver.evaluate(sv, {"kind": "silence", "day": 1, "victim": "v"})
+	var free_row: Array = sr.rows.filter(func(r): return r.id == "free")
+	_check(sr.fits == ["co"] and sr.ruled_out == ["away"], "a silencing: the coworker fits, the worker elsewhere is ruled out (%s / %s)" % [str(sr.fits), str(sr.ruled_out)])
+	_check(free_row.size() == 1 and free_row[0].p > 0.9, "someone free all day could have hunted the victim down (%.2f)" % (free_row[0].p if free_row.size() == 1 else -1.0))
 
 	# The workshop node cites the log in one card.
 	var board = CanvasModel.new(WorkshopCanvas.view(g))
