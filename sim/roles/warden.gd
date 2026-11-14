@@ -92,7 +92,7 @@ func public_sighting_allowed(w, n, b: Dictionary) -> bool:
 ## A bluff invents one on the block they were really on (or anyone, if they stayed in),
 ## once per night, so the story stays the same however often they're asked.
 func warden_door(w, n, nd: int) -> String:
-	if n.warden_log.has(str(nd)) or not n.is_evil():
+	if n.warden_log.has(str(nd)) or not n.is_evil() or nd < min_gift_day:
 		return n.warden_log.get(str(nd), "")
 	var hist: String = n.history.get(w.time_key(nd, 3), "home:" + n.home_block)
 	var was_out: bool = hist.begins_with("night:")
