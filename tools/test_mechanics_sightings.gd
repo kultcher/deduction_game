@@ -45,6 +45,7 @@ func _init() -> void:
 	var preview = Ghost.evaluate(view, value)
 	check(preview.ready and preview.proposal.response.contains("Seen elsewhere:") and preview.proposal.response.contains("Scattered sightings:"), "neutral preview and listener response use those same relationship notes")
 	_parked()
+	_talk_sightings()
 	print("Sighting mechanics: %d checks; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -68,3 +69,26 @@ func _parked() -> void:
 	var before: Dictionary = observer.workshop_state.requested.duplicate(true)
 	Mind.refresh_beliefs(g.w, observer, " (receipt-only sighting probe)")
 	check(observer.workshop_state.requested == before and observer.ledger[eid].effects.is_empty(), "recomputing sighting beliefs is stable with empty ledger effects")
+
+## Seeing two people talk gives three cards: each one's own sighting, and the talk
+## (playtest triage 1.7). Visiting the spot later adds nothing new.
+func _talk_sightings() -> void:
+	var g = Game.new()
+	g.new_case(692, 10)
+	g.w.dlog.detailed = false
+	var pair: Array = g.w.living().filter(func(n): return not n.at_home()).slice(0, 2)
+	var a = pair[0]
+	var b = pair[1]
+	for n in g.w.living():
+		n.busy_with = ""
+	b.loc = a.loc
+	a.busy_with = b.id
+	b.busy_with = a.id
+	var before: int = g.board.size()
+	g._card_conversations()
+	var sighted = func(n): return g.board.any(func(c): return c.kind == "sighting" and c.subject == [n.id] and c.loc == a.loc and int(c.day) == g.w.day and int(c.phase) == g.w.phase)
+	check(sighted.call(a) and sighted.call(b), "each talker has their own sighting card (a working one counts)")
+	check(g.board.slice(before).any(func(c): return c.kind == "conversation" and a.id in c.subject and b.id in c.subject), "the talk itself is a card")
+	var after: int = g.board.size()
+	g._card_conversations()
+	check(not g.board.slice(after).any(func(c): return c.kind == "sighting"), "seeing the same talk again adds no new sightings")
