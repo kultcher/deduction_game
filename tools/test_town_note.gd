@@ -149,4 +149,35 @@ func _notes() -> void:
 	check(_kind(g, _value(g, "good", p[4].id, [seer, dowser])) == "refresh", "so do the same cards under another firm premise")
 	check(p.any(func(q): return _kind(g, _value(g, "suspicious", q.id, [seer, dowser])) == "presses"), "a \"suspicious\" premise on them counts for less than what stands, so it only presses")
 	check(_kind(g, _value(g, "evil", p[3].id, [seer, dowser, other])) not in ["refresh", "repeat"], "a bigger case on a later day is neither a refresh nor a repeat")
+	_retired_and_challenged()
 	Connections.enabled = false
+
+
+## Codex on #154: a case you've revised in public no longer stands as an argument (the town
+## retracted it), and a reading challenge isn't in the stored-case arithmetic.
+func _retired_and_challenged() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
+	g.public_citations[seer] = true
+	g.public_citations[dowser] = true
+	var both: Dictionary = _value(g, "evil", p[3].id, [seer, dowser])
+	var one: Dictionary = _value(g, "evil", p[3].id, [seer])
+	var first: int = Live.file(g, both)
+	g.public_presentations[first] = int(g.w.day)
+	check(_kind(g, both) == "repeat", "(fixture) the case once presented is a repeat")
+	var revised: int = Live.file(g, one)
+	g.board[revised - 1]["revises"] = first
+	g.public_presentations[revised] = int(g.w.day)
+	check(_kind(g, both) != "repeat", "after a public revision to fewer cards, the old version is no argument of yours: no repeat (%s)" % _kind(g, both))
+	check(_kind(g, one) == "repeat", "the revision itself still counts")
+	var fresh = _game()
+	var q: Array = fresh.w.npcs
+	var s2: int = _read(fresh, q[2], "seer", 1, {"pair": [q[3].id, q[4].id], "yes": true})
+	fresh.public_citations[s2] = true
+	var plain: Dictionary = _value(fresh, "evil", q[3].id, [s2])
+	check(not Live.town_note(fresh, plain).is_empty(), "(fixture) one public card alone gets a note")
+	var challenged: Dictionary = plain.duplicate(true)
+	challenged["reading_challenges"] = {str(plain.cards[0]): {"mode": "misled", "supports": []}}
+	check(Live.town_note(fresh, challenged).is_empty(), "a case that challenges a reading gets no note")

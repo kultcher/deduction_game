@@ -262,6 +262,21 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	var Meeting = preload("res://game/game_meeting.gd")
 	if not Connections.enabled or value.get("cards", []).is_empty():
 		return {}
+	# A reading challenge changes how the town weighs a case (SharedLedger.prepare), and the
+	# stored-case arithmetic below doesn't carry it: no note rather than a wrong one.
+	if not value.get("reading_challenges", {}).is_empty():
+		return {}
+	# Earlier versions of a case you've revised in public: the town retracted them
+	# (GamePresentation.workshop_canvas_retire), so their cards are heard but their
+	# arguments no longer stand.
+	var retired: Dictionary = {}
+	for number in g.public_presentations:
+		if int(number) < 1 or int(number) > g.board.size():
+			continue
+		var ancestor: int = int(g.board[int(number) - 1].get("revises", 0))
+		while ancestor > 0 and ancestor <= g.board.size() and not retired.has(ancestor):
+			retired[ancestor] = true
+			ancestor = int(g.board[ancestor - 1].get("revises", 0))
 	# Your public cases, oldest first, as the town heard them.
 	var earlier: Array = []
 	var said: Dictionary = {}
@@ -280,10 +295,14 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		var kind: String = str(conclusion.get("type", filed.get("conclusion", {}).get("type", "")))
 		# public_presentations held `true` before it held the day.
 		var day: int = int(g.public_presentations[number]) if g.public_presentations[number] is int else int(g.w.day)
-		earlier.append({"key": "case:%d" % int(number), "number": int(number), "presenter": "player", "day": day, "cards": ids, "suspicious": kind == "suspicious",
-			"same": filed.get("workshop_case", {}) == value})
 		for id in ids:
 			said[id] = true
+		# A retired version, or one whose reading challenges this arithmetic can't carry,
+		# doesn't count as an argument of yours here (its cards are still heard).
+		if retired.has(int(number)) or not filed.get("workshop_case", {}).get("reading_challenges", {}).is_empty():
+			continue
+		earlier.append({"key": "case:%d" % int(number), "number": int(number), "presenter": "player", "day": day, "cards": ids, "suspicious": kind == "suspicious",
+			"same": filed.get("workshop_case", {}) == value})
 	earlier.sort_custom(func(a, b): return a.day < b.day or (a.day == b.day and a.number < b.number))
 	# Any card the town hasn't heard is news: no note.
 	var roots: Dictionary = supports(g, value)
