@@ -109,6 +109,6 @@ These are per game on one core of a GitHub runner. The worst 10-NPC bot game in 
 
 `mocks/<name>.patch` is each `mock/<name>` branch's commits (`git format-patch` from its
 merge base with main), so the branches can be deleted. They were measurement only and
-must never merge. To rerun one: check out the base commit named in the patch's run row
-above, `git am mocks/<name>.patch`, and sweep. Runs: inert-breathstealer 43757505923,
+must never merge. To rerun one: check out their base, `9b2ca88` (main after the
+hunt), `git am mocks/<name>.patch`, and sweep. Runs: inert-breathstealer 43757505923,
 silence-no-boost 43773681066, breath-remote 43791458383, breath-lasting 43791460944.
