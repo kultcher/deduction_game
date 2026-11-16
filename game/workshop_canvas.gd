@@ -257,6 +257,8 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 ## Returns {} or {"kind", "text", "adds": the most the case's own part moves anyone, in
 ## log-odds at full weight}. `little`: under this, the cards add little together.
 const NOTE_ADDS_LITTLE: float = 0.2
+## A refresh is only noted when it changes something (log-odds at full weight).
+const NOTE_REFRESH_MIN: float = 0.01
 static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Meeting = preload("res://game/game_meeting.gd")
@@ -363,50 +365,55 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	var draft: Dictionary = {"key": "draft", "presenter": "player", "day": today, "cards": argued.duplicate(), "suspicious": str(value.get("conclusion", {}).get("type", "")) == "suspicious"}
 	# The same filed case presented again takes its own earlier place (a revision).
 	var case_list: Array = earlier.filter(func(c): return not c.same) + [draft]
-	var again: Array = earlier.filter(func(c): return c.same)
-	var res: Dictionary = Connections.cases(run, item_list, values, {"seed": [], "members": [], "lean": {}, "impossible": false}, case_list, today)
+	var empty_core: Dictionary = {"seed": [], "members": [], "lean": {}, "impossible": false}
+	var res: Dictionary = Connections.cases(run, item_list, values, empty_core, case_list, today)
+	var before: Dictionary = Connections.cases(run, item_list, values, empty_core, earlier, today)
 	var entries: Array = res.entries.filter(func(e): return e.key == "draft")
 	var entry: Dictionary = entries[0] if not entries.is_empty() else {}
+	# What presenting it would change, by the arithmetic itself (Codex on #154): the stored
+	# cases' lean with the draft against without it, per person, at the draft's full weight.
+	# Faded, replaced, superseded and shared cases all come out of this, as they would for a
+	# listener.
 	var adds: float = 0.0
-	for p in entry.get("lean", {}):
-		adds = maxf(adds, absf(float(entry.lean[p])) / maxf(0.001, float(entry.weight)))
-	var by_key: Dictionary = {}
+	var people: Dictionary = {}
+	for p in res.lean:
+		people[p] = true
+	for p in before.lean:
+		people[p] = true
+	for p in people:
+		adds = maxf(adds, absf(float(res.lean.get(p, 0.0)) - float(before.lean.get(p, 0.0))) / maxf(0.001, float(entry.get("weight", 1.0))))
+	# Earlier arguments of yours that hold all of these cards and still count today.
+	var counting: Dictionary = {}
+	for e in before.entries:
+		if float(e.get("weight", 0.0)) > 0.0:
+			counting[str(e.key)] = true
+	var covering: Array = earlier.filter(func(c): return counting.has(c.key) and argued.all(func(id): return id in c.cards))
+	# The same cards on an earlier day, renewed at today's weight (even faded out entirely):
+	# a refresh, if it changes anything at all. A "suspicious" draft over a firm case
+	# counts for less: it doesn't renew it.
+	var renewed: Dictionary = {}
 	for c in earlier:
-		by_key[c.key] = c
-	# Earlier cases of yours that already hold all of these cards.
-	var covering: Array = again + earlier.filter(func(c): return not c.same and argued.all(func(id): return id in c.cards))
-	var same_cards: Array = covering.filter(func(c): return c.cards.all(func(id): return id in argued))
-	# A firm premise on cards you've only argued as "suspicious" counts for more (a suspicious
-	# case weighs half, Connections.case_weight) and takes the weaker case's place: not a repeat.
-	if not draft.suspicious and not covering.is_empty() and covering.all(func(c): return c.suspicious):
+		if c.day < today and c.cards.all(func(id): return id in argued) and argued.all(func(id): return id in c.cards) and not (draft.suspicious and not c.suspicious):
+			if renewed.is_empty() or c.day > renewed.day:
+				renewed = c
+	var latest_today: bool = covering.any(func(c): return c.day == today)
+	if not renewed.is_empty() and not latest_today and adds > NOTE_REFRESH_MIN:
+		return {"kind": "refresh", "adds": adds, "text": "Refreshes your day-%d argument (case #%d): the town weighs it at full strength again." % [renewed.day, renewed.number]}
+	if adds >= little:
 		return {}
 	if not covering.is_empty():
 		var latest: Dictionary = covering[-1]
 		for c in covering:
 			if c.day > latest.day:
 				latest = c
-		if latest.day < today:
-			# A later day: the same cards take the earlier case's place at today's weight
-			# (whether or not it has faded out entirely, below Connections.CASE_FLOOR); a
-			# case that replaces one with more cards brings news.
-			var renewed: Dictionary = {}
-			for c in same_cards:
-				if renewed.is_empty() or c.day > renewed.day:
-					renewed = c
-			# (A "suspicious" draft counts for less than a firm case it would renew: it only presses.)
-			if not renewed.is_empty() and not (draft.suspicious and not renewed.suspicious):
-				return {"kind": "refresh", "adds": adds, "text": "Refreshes your day-%d argument (case #%d): the town weighs it at full strength again." % [renewed.day, renewed.number]}
-			if not entry.get("replaces", []).is_empty():
-				return {}
 		if draft.suspicious and float(entry.get("withheld", {}).get(target, 0.0)) > 0.0:
 			return {"kind": "presses", "adds": adds, "text": "Adds no new belief (you've put these cards to the town in case #%d), but still presses %s." % [latest.number, name]}
 		return {"kind": "repeat", "adds": adds, "text": "No new info: you've already put these cards to the town (case #%d)." % latest.number}
-	if adds < little:
-		var shared_with: Array = earlier.filter(func(c): return not c.same and c.cards.any(func(id): return id in argued))
-		if int(entry.get("shared", 0)) >= 2 and not shared_with.is_empty():
-			return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
-		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}
-	return {}
+	var shared_with: Array = earlier.filter(func(c): return counting.has(c.key) and c.cards.any(func(id): return id in argued))
+	if int(entry.get("shared", 0)) >= 2 and not shared_with.is_empty():
+		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
+	return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}
+
 
 ## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
 static func _endorsed(value: Dictionary) -> Array:

@@ -154,6 +154,7 @@ func _notes() -> void:
 	_deleted_and_faded()
 	_conflict_quotes()
 	_conflict_draft()
+	_supersets()
 	Connections.enabled = false
 
 
@@ -219,7 +220,10 @@ func _profile_and_upgrade() -> void:
 	var firm: Dictionary = _value(h, "evil", q[3].id, [s2, d2])
 	var first: int = Live.file(h, sus)
 	h.public_presentations[first] = int(h.w.day)
-	check(_kind(h, firm) not in ["repeat", "presses"], "a firm premise on cards argued only as \"suspicious\" today isn't a repeat (%s)" % _kind(h, firm))
+	# (Its joint effect here is small, so at the default bar the doubling is still "little";
+	# with a bar below what the doubling adds, it isn't a repeat.)
+	var upgrade: Dictionary = Live.town_note(h, firm, 0.0001)
+	check(str(upgrade.get("kind", "")) not in ["repeat", "presses"], "a firm premise on cards argued only as \"suspicious\" today counts for more: not a repeat (%s)" % str(upgrade.get("kind", "")))
 	check(_kind(h, sus) in ["repeat", "presses"], "the same \"suspicious\" case again still is")
 
 
@@ -275,3 +279,35 @@ func _conflict_draft() -> void:
 	g.w.day += 1
 	var conflict: Dictionary = _value(g, "conflict", p[3].id, [seer, dowser])
 	check(Live.town_note(g, conflict).is_empty(), "a conflict draft on a firm case's cards gets no note, not a refresh (%s)" % _kind(g, conflict))
+
+
+## Codex on #154 (sixth pass), now that the note follows the arithmetic: a larger case that
+## still counts leaves a smaller one nothing to refresh; a larger one that has faded out
+## doesn't make a smaller one a repeat.
+func _supersets() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
+	var other: int = _read(g, p[6], "dowser", 1, {"group": [p[1].id], "count": 0})
+	for c in [seer, dowser, other]:
+		g.public_citations[c] = true
+	var two: Dictionary = _value(g, "evil", p[3].id, [seer, dowser])
+	var three: Dictionary = _value(g, "evil", p[3].id, [seer, dowser, other])
+	var a: int = Live.file(g, two)
+	g.public_presentations[a] = int(g.w.day)
+	var b: int = Live.file(g, three)
+	g.public_presentations[b] = int(g.w.day)
+	g.w.day += 1
+	check(_kind(g, two) != "refresh", "the smaller case again the next day, while the larger one still counts: no refresh (%s)" % _kind(g, two))
+	var h = _game()
+	var q: Array = h.w.npcs
+	var s2: int = _read(h, q[2], "seer", 1, {"pair": [q[3].id, q[4].id], "yes": true})
+	var d2: int = _read(h, q[5], "dowser", 1, {"group": [q[4].id], "count": 0})
+	var o2: int = _read(h, q[6], "dowser", 1, {"group": [q[1].id], "count": 0})
+	for c in [s2, d2, o2]:
+		h.public_citations[c] = true
+	var big: int = Live.file(h, _value(h, "evil", q[3].id, [s2, d2, o2]))
+	h.public_presentations[big] = int(h.w.day)
+	h.w.day += 40  # (a case the town bought fades slowly: 8 days on it still counts)
+	check(_kind(h, _value(h, "evil", q[3].id, [s2, d2])) != "repeat", "a smaller case long after the larger one faded out isn't a repeat (%s)" % _kind(h, _value(h, "evil", q[3].id, [s2, d2])))
