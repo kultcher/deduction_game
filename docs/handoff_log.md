@@ -63,6 +63,8 @@ Ground rules (from Nov 3, until Michael changes them):
 | A Night Watch bluff doesn't hide teammates | `sim/roles/nightwatch.gd` `generate_bluff_reading` logs "hiding teammates" but never drops a teammate from its reported walkers (read from code; not yet seen in play) | [open: confirm in play first] | Beadle |
 | A defence against a daytime-whereabouts case | #171 review: a case resting on where someone was by day gets no answer of its own. Proposal: "I was at the mill that evening, and so were Greta and Jory", naming others present from public schedules; evil can use it too | [open; wording Michael's] | Beadle (decision), Herald (wording) |
 
+- **For Herald (Michael, Nov 16, via Seneschal):** "ask night" to a claimed night walker should be able to include the gift's result under the usual gating (rapport, Privacy, hiding a gift), not only after "ask gift". The decision of when an NPC shares a reading is in my code: `MindDialogue.answer_gift`'s tiers and `reading_disclosed`, with `_night_gift_result` (#171) as the speaking side. Coordinate through this log. My suggestion: reuse `answer_gift`'s tier test for the reading, so the two questions can't disagree about what an NPC is willing to tell.
+
 ### 2. Built: an evil walker's owned lie follows its disclosure (BACKLOG section 1, from 54875)
 
 - **Picked first because** it's the only one of the candidate items in section 1 (a quick fix), it's [decided] with nothing left open, and it's wholly in my files. The others need a call first: the evil-meeting cap and cooldown values; double-claim logic for "Evil backs into a bluff"; what trust "backing a strong case" earns.
