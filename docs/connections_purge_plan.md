@@ -168,7 +168,7 @@ the Why report. Golden matching for those phases proves little; the suites prove
 | # | PR | Expected golden |
 |---|---|---|
 | 0 | This plan | n/a (docs) |
-| 1 | **Stop computing what connections throws away.** On a refresh, skip the attended joint judgement (`jury.gd:925-932` → `ev`) and the headline (`:1002-1012`). Take `impossible` from the connections result, which `overlay` already does. Keep `attention`, `challenged` and `eval_listener` for reason attribution and the four signals in section 2. Measure time on golden seed 692 and one nomination of 44542 before and after | **Identical.** Nothing that reads `ev` after the overlay uses more than `people` and `impossible`; to confirm |
+| 1 | **Handed to Argon (Nov 16).** Performance work on the model is Argon's now, and its speed patch already skips the dead CaseEval and `_headline` calls on a connections refresh (`jury.gd:925-932`, `:1002-1012`). What's left for the purge is to check that the skip keeps `attention`, `challenged` and `eval_listener` (reason attribution and the four signals in section 2 read them) and takes `impossible` from the connections result. I review that in Argon's PR rather than building it | Identical (Argon checks at `--tol 0` with `cache_verify`) |
 | 2 | **Move the tests off the earlier model** (section 4). `fixture_seeds` searches on connections. No game code changes | Identical (tests only) |
 | 3 | **Snapshot, then remove the switch.** First push a snapshot branch `archive/legacy-belief-final` at the last commit with `--legacy-model` (decision 2). Then: delete `Connections.enabled` and `Tuning.Workshop.CONNECTIONS`; make every gate in 1a unconditional; remove `--legacy-model`, the `_legacy` and `_connections` suffixes (accepting `--connections` as a no-op for a release so old commands don't fail), `golden_capture --connections`, `replay_log` and `explain_case --connections`; `log_replay` warns and stops on a log from before #160 instead of switching models | **Identical** (the default is already on) |
 | 4 | **Clean the connections suites** of switch-off checks and on/off comparisons | Identical (tests only) |
@@ -177,8 +177,11 @@ the Why report. Golden matching for those phases proves little; the suites prove
 | 7 | **The pre-CaseEval engine and the attention experiments** (1d), if Michael agrees: `Jury.engine`, `_assess_target`, `Consequences.assess`, `unlimited_cards`, `always_keep_kinds`, `read_everything_gap.gd`, `--no-attention` | Identical (tools only reach them) |
 | 8 | **The naming sweep** (section 6) | Identical (comments, labels, docs). If a dev-log or report label is renamed, the golden `step` records may carry it; check |
 
-Phases 1, 2 and 4 don't depend on each other and could go in parallel. Phase 3 needs 2. Phase
-5 needs 3. Phase 6 can come any time after 3, but it moves golden, so it goes alone.
+**Argon's speed patch lands first** (Seneschal, Nov 16). It edits `workshop/jury.gd`
+(`_consequences_eval`), `workshop/connections.gd` and `workshop/case_eval.gd`. No phase that
+edits those files starts until it has merged: that rules out 3, 5 and 6 (and 7, which edits
+`jury.gd`). Phases 2 and 4 are tests only and can start at once. Phase 3 needs 2. Phase 5
+needs 3. Phase 6 can come any time after 3, but it moves golden, so it goes alone.
 
 ## 6. The final sweep: names the purge leaves behind
 

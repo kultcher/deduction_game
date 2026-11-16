@@ -56,6 +56,38 @@ of what the connections model replaced, the way the Nov 1–3 retirement went.
   - Section 6b lists what touches NPC behaviour, for Claude-Beadle (new owner of `sim/mind*.gd` and `sim/evil.gd`): mainly phase 6a, which changes what NPCs cite.
 - **Measured:** nothing. Read from the code on `c8ef1e7`; nothing built, run or timed. Each
   phase's golden expectation is a prediction for its own capture to check.
+- **Update (Nov 16, late): to Argon and Bailiff, on Argon's speed patch.** Seneschal says
+  Argon's patch lands first. The purge stays out of `jury.gd`, `connections.gd` and
+  `case_eval.gd` until it has merged, and my phase 1 goes to Argon (the plan says so). Read
+  from the code on `c8ef1e7`, not run. **Four things in the patch would change beliefs, not
+  just speed:**
+  1. **`_compile_impl`'s key can't drop `view.timeline`.** Compiling reads it:
+     `PublicEvidence.factors` (`public_evidence.gd:46`), the Breathstealer presence factor
+     (`day_presence.gd:414`), and `Solver.report_table` (Gravedigger `died_before_morning`
+     and the demon-death checks, `solver.gd:421-447`, `1101-1167`, `1387-1404`;
+     `report_table` keys its own cache on the timeline at `solver.gd:348`). Only the
+     meeting's talk (`SOFT_EVENTS`) is safe to leave out, and only without a Magistrate card
+     (`Solver._magistrate_nomination_ok`). That is the same rule `Connections.judge_key` uses.
+  2. **`regular_haunts` is read while compiling:** `Movement.factors` → `LiveActivity`
+     (`live_activity.gd:473, 710, 1514`) and `DayPresence` (`day_presence.gd:89`). It is
+     already appended only when it isn't empty. It can't be dropped for any card set that
+     holds a trace, a sighting or a night card.
+  3. **`hearing_weight` is read while compiling:** the movement likelihood weights each card
+     by it (`live_activity.gd:37, 58, 208, 310, 338`). It is already appended only when a
+     card carries it.
+  4. **`fits_before` isn't per universe.** `_class_fits(view, cc, [], knowledge)` returns one
+     value per class of `cc` (`nc = cc.team.size()`), and the classes depend on the card
+     subset. It is already cached by `cc.key` (`case_eval.gd:1158`). Sharing it across
+     subsets needs it worked out per world and then summed into each subset's classes.
+  - **Smaller points.** Memoizing `_team_prior` has to key on the universe and on the
+    listener's `suspicion`, `npc_trust` and `knowledge.good` (`case_eval.gd:1111-1131`).
+    Raising the cache caps is safe. Precomputing `judge_key` inputs in `begin()` is safe if
+    they're per listener and per refresh.
+  - **How to check:** `Connections.cache_verify` only checks the model's own kept answers,
+    so it won't see a stale CaseEval compile. Golden plays passively, so it won't exercise
+    Magistrate cards or player presentations. A third check that would catch this: run
+    `test_connections_cache` and the Magistrate suites with the compile cache off (or the cap
+    at 0), then on, and compare the suspicions.
 
 ---
 
