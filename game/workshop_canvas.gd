@@ -123,9 +123,9 @@ static func supports(g, value: Dictionary) -> Dictionary:
 			numbers.append(matches[0].n)
 	return {"numbers": numbers, "issues": missing}
 
-static func snapshot(g, value: Dictionary, listener: String = "", venue: String = "private") -> Dictionary:
+static func snapshot(g, value: Dictionary, listener: String = "", venue: String = "private", extra_numbers: Array = []) -> Dictionary:
 	var roots = supports(g, value)
-	var input = Bridge.capture(g, roots.numbers, listener, venue)
+	var input = Bridge.capture(g, roots.numbers + extra_numbers.filter(func(x): return x not in roots.numbers), listener, venue)
 	input.root = -1
 	input.arguments = [{"board_number": -1, "supports": roots.numbers,
 		"conclusion": native_conclusion(g, value.conclusion), "workshop_case": value.duplicate(true)}]
@@ -223,7 +223,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 ## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
 ## One evaluation; the Workshop runs it after a pause in editing.
 static func test_juror(g, value: Dictionary) -> Dictionary:
-	var input = snapshot(g, value)
+	var input = snapshot(g, value, "", "private", public_claims_for(g, value))
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
@@ -237,6 +237,36 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	result["ready"] = true
 	result["issues"] = []
 	feedback(prepared.view, prepared.case, ev, result)
+	return result
+
+## The public gift claims of everyone the case's cards name (its tellers and the people
+## their readings are about), on the board but not in the case: the test juror hears them
+## as any listener would (triage 5.5: Nisha's Registrar reading alone was x1.3 because the
+## juror didn't know Kiran claimed Dowser). Board numbers.
+static func public_claims_for(g, value: Dictionary) -> Array:
+	var Meeting = preload("res://game/game_meeting.gd")
+	var roots: Dictionary = supports(g, value)
+	var named: Dictionary = {}
+	for number in roots.numbers:
+		var card: Dictionary = g.receipt_by_number(int(number))
+		for field in ["source", "subject"]:
+			var v = card.get(field, "")
+			for id in (v if v is Array else [v]):
+				named[str(id)] = true
+		var data = card.get("data", {})
+		if data is Dictionary:
+			for field in ["pair", "group", "target"]:
+				var dv = data.get(field, [])
+				for id in (dv if dv is Array else [dv]):
+					named[str(id)] = true
+	var result: Array = []
+	for card in g.board:
+		if card.get("kind", "") != "claim" or card.get("deleted", false) or int(card.get("n", 0)) in roots.numbers:
+			continue
+		var who = card.get("subject", [])
+		var subject: String = str(who[0] if who is Array and not who.is_empty() else who)
+		if named.has(subject) and subject == str(card.get("source", "")) and Meeting.already_public(g, card):
+			result.append(int(card.n))
 	return result
 
 ## The test juror's notes beyond its strength chip: the clash headline and clashing
