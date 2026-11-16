@@ -232,8 +232,12 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			# Nothing new (or already convinced) keeps an accepting reply, but only if their belief
 			# didn't move away: a case that lowered their suspicion isn't voiced as agreement
 			# (Dorian, playtest 12926 day 4: "it changes how I see Kiran", then a no vote).
-			fell = belief_toward(headline.conclusion.type, stance_before, after_susp) <= -STANCE_MOVE.partial
-			voiced_stance = assessment.stance if (b_stance == "reject" and not fell and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
+			var toward: float = belief_toward(headline.conclusion.type, stance_before, after_susp)
+			fell = toward <= -STANCE_MOVE.partial
+			# Agreement kept for nothing new only if their belief didn't slip at all (triage
+			# 2.6: Agnes said "I'm convinced" as her suspicion fell slightly).
+			var slipped: bool = toward < -STANCE_SLIP
+			voiced_stance = assessment.stance if (b_stance == "reject" and not fell and not slipped and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
 	if not state.has("rewarded_facts"):
 		state.rewarded_facts = {}
 	for id in snapshot.selected:
@@ -388,6 +392,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 ## they voice now comes from how far the refresh actually moved the subject; the scoped
 ## reply only supplies the reasons. Nothing here changes a belief, only the words.
 const STANCE_MOVE = Tuning.Workshop.STANCE_MOVE   # suspicion moved toward the claim
+const STANCE_SLIP = 0.005  # a fall this small is noise, not a change of mind
 const STANCE_RANK = {"reject": 0, "partial": 1, "accept": 2}
 ## Scoped openings that only state a stance (dropped when the belief says otherwise). Any
 ## other opening is a reason, and stays.
