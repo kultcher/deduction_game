@@ -878,7 +878,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			vantage = block
 			how = "street"
 			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
-				"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "",
+				"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "", "partner": str(n.secret.get("with", "")) if n.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]})
 		else:
 			var prior_account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
