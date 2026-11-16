@@ -22,7 +22,7 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_game_case(100059, 4, "merrin", "bart", func(p): return p >= 0.5, "the evil Bart's relays don't clear him for Merrin")
 	_game_case(100019, 5, "isolde", "fenwick", func(p): return p >= 0.5, "the evil Fenwick's relays don't clear him for Isolde")
-	_game_case(100039, 3, "nisha", "merrin", func(p): return p < 0.2, "the genuine Medium Merrin's relay still reads as good for Nisha")
+	_game_case(100042, 3, "lian", "odette", func(p): return p < 0.2, "the genuine Medium Odette's relay still reads as good for Lian")  # (100039 left Nov 14: the hunting Breathstealer changed its game)
 	_game_case(100020, 3, "constance", "hollis", func(p): return p >= 0.8, "Hollis's invented relay of Constance, seen out while she was home, counts against him")
 	print("Relay bluff: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

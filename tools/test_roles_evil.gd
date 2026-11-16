@@ -66,6 +66,7 @@ func _run_roster() -> void:
 	_test_totem_once_per_day()
 	_test_scion()
 	_test_breathstealer()
+	_test_breathstealer_hunts()
 	_test_spent_gift_kills()
 
 
@@ -290,6 +291,31 @@ func _test_breathstealer() -> void:
 	t.silence_day = 2
 	w.start_phase()
 	_check(not t.silenced, "the silence lifts the next evening")
+
+
+## The Breathstealer hunts in a free phase (Nov 14): to where good people it may silence are
+## working, not home; to the tavern on an evening with nobody working; nowhere once it has
+## silenced today.
+func _test_breathstealer_hunts() -> void:
+	var w = _game(9160).w
+	w.day = 2
+	w.phase = C.AFTERNOON
+	var bs = w.minions()[0]
+	bs.role = "breathstealer"
+	bs.breath_day = -1
+	bs.breath_last = ""
+	var rd = C.role_def("breathstealer")
+	var goods_on: Callable = func(l: String) -> int:
+		return w.living_good().filter(func(m): return w.phase in m.work_phases and m.work in rd.PUBLIC and w.loc_block(m.work) == w.loc_block(l)).size()
+	var to: String = rd.free_location(w, bs, "home", Evil)
+	_check(to in rd.PUBLIC and goods_on.call(to) > 0, "a free Breathstealer goes where good people are working (%s)" % to)
+	bs.breath_day = w.day
+	_check(rd.free_location(w, bs, "home", Evil) == "home", "once it has silenced today it keeps its ordinary day")
+	bs.breath_day = -1
+	w.phase = C.EVENING
+	for m in w.npcs:
+		m.work_phases = []
+	_check(rd.free_location(w, bs, "home", Evil) == "tavern", "an evening with nobody working: the tavern crowd")
 
 
 func _test_spent_gift_kills() -> void:

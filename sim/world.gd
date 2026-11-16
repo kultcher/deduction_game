@@ -680,7 +680,7 @@ func start_phase() -> void:
 			n.loc = n.work
 		else:
 			n.loc = _choose_idle_location(n)
-			if C.is_day_demon(n.role) and n.is_evil():
+			if n.is_evil() and (C.is_day_demon(n.role) or n.role == "breathstealer"):
 				n.loc = C.role_def(n.role).free_location(self, n, n.loc, Evil)
 	_pre_pair()
 	Social.tavern_whispers(self)

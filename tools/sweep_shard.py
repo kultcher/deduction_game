@@ -30,8 +30,14 @@ ERROR_RE = re.compile(r"(SCRIPT ERROR|^ERROR:|USER ERROR|Parse Error|Invalid cal
 
 def record_mode(a):
     """The mode a sweep record carries: autoplay's _mode_name, forced demon type included,
-    so runner-written failure records fall in the same cell as the games (Codex, #138)."""
-    return a.mode + ("_force_" + a.force_demon if getattr(a, "force_demon", "") else "")
+    so runner-written failure records fall in the same cell as the games (Codex, #138).
+    Autoplay puts _connections after the forced type."""
+    mode = a.mode
+    conn = mode.endswith("_connections")
+    if conn:
+        mode = mode[: -len("_connections")]
+    mode += "_force_" + a.force_demon if getattr(a, "force_demon", "") else ""
+    return mode + ("_connections" if conn else "")
 
 
 def cell_name(a):
@@ -126,6 +132,8 @@ class Worker:
                 cmd.append("--present-and-vote")  # Phase 0: no vigils, wards or searches
             if "nocross" in flags:
                 cmd.append("--no-crosscheck")  # Phase 5: no cross-check case seeding
+            if "connections" in flags:
+                cmd.append("--connections")  # the connections belief model on (off in play)
             if "nodeclare" in flags:
                 cmd.append("--no-declare")  # Phase 5: never declares the demon type
             if self.a.force_demon:
@@ -207,18 +215,19 @@ class Worker:
 
 
 BASE_MODES = ["passive", "bot", "bot_pre_m4", "no_present", "present_vote"]
-MODE_FLAGS = ["nocross", "nodeclare"]
+MODE_FLAGS = ["nocross", "nodeclare", "connections"]
 
 
 def split_mode(mode):
-    """A cell mode is a base mode plus optional Phase 5 suffixes, as autoplay names them:
-    bot_nocross, bot_nodeclare, bot_nocross_nodeclare."""
+    """A cell mode is a base mode plus optional suffixes, as autoplay names them:
+    bot_nocross, bot_nodeclare, bot_nocross_nodeclare (Phase 5), and _connections last
+    (the connections belief model on; passive may take it too)."""
     flags = []
     for f in reversed(MODE_FLAGS):
         if mode.endswith("_" + f):
             flags.insert(0, f)
             mode = mode[: -len(f) - 1]
-    if mode not in BASE_MODES or (flags and mode == "passive"):
+    if mode not in BASE_MODES or (mode == "passive" and [f for f in flags if f != "connections"]):
         raise SystemExit("bad mode %r" % mode)
     return mode, flags
 
@@ -229,7 +238,7 @@ def main():
     ap.add_argument("--project", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ap.add_argument("--npcs", type=int, required=True)
     ap.add_argument("--mode", required=True, help="passive, bot, bot_pre_m4, no_present or present_vote, "
-                    "optionally with _nocross / _nodeclare (Phase 5)")
+                    "optionally with _nocross / _nodeclare (Phase 5) and then _connections")
     ap.add_argument("--force-demon", default="", help="deal this demon type (autoplay --force-demon), e.g. daykiller")
     ap.add_argument("--insight", type=float, default=1.0)
     ap.add_argument("--seeds", required=True, help="first:last (last exclusive)")
