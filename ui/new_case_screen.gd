@@ -2,7 +2,7 @@
 ## Script (Default / Dynamic / Load… / Custom…) → Start. Remembers the last choice while the game runs.
 extends Control
 
-signal start_requested(count: int, script_def)
+signal start_requested(count: int, script_def, case_seed: int)
 signal cancelled
 
 const C = preload("res://sim/content.gd")
@@ -18,6 +18,11 @@ var count: int = 7
 var chosen = ScriptDef.default_script()
 ## Dynamic is a mode, not a fixed script: each time the screen opens it deals a fresh one.
 var dynamic_mode: bool = false
+## The seed the case will start with. The caller sets it before `open`. A dynamic script is
+## built from this same seed (as `autoplay.gd --dynamic` does), so one case number
+## reproduces the whole case. Reroll picks a new seed.
+var case_seed: int = 1
+var seed_spin: SpinBox
 var reroll_btn: Button
 ## Debug only: playtest marks skew dynamic scripts (ui/playtest_marks.gd).
 var debug: bool = false
@@ -67,6 +72,21 @@ func _init() -> void:
 		_refresh())
 	v.add_child(size_opt)
 
+	var seed_row = HBoxContainer.new()
+	seed_row.add_theme_constant_override("separation", 8)
+	seed_row.add_child(_label("Case number", 18, UITheme.color("ink")))
+	seed_spin = SpinBox.new()
+	seed_spin.min_value = 1
+	seed_spin.max_value = 999999
+	seed_spin.tooltip_text = "The same number, town size and script choice deal the same case."
+	seed_spin.value_changed.connect(func(val):
+		case_seed = int(val)
+		if dynamic_mode:
+			_roll_dynamic()
+		_refresh())
+	seed_row.add_child(seed_spin)
+	v.add_child(seed_row)
+
 	v.add_child(_label("Script", 18, UITheme.color("ink")))
 	script_opt = OptionButton.new()
 	script_opt.add_item("Default", Pick.DEFAULT)
@@ -80,8 +100,9 @@ func _init() -> void:
 	pick_row.add_child(script_opt)
 	reroll_btn = Button.new()
 	reroll_btn.text = "Reroll"
-	reroll_btn.tooltip_text = "Build another dynamic script."
+	reroll_btn.tooltip_text = "Deal another case: a new case number, and the dynamic script built from it."
 	reroll_btn.pressed.connect(func():
+		case_seed = fresh_seed()
 		_roll_dynamic()
 		_refresh())
 	pick_row.add_child(reroll_btn)
@@ -133,7 +154,7 @@ func _init() -> void:
 	start_btn.custom_minimum_size.x = 120
 	start_btn.pressed.connect(func():
 		hide()
-		start_requested.emit(count, chosen.duplicate_script()))
+		start_requested.emit(count, chosen.duplicate_script(), case_seed))
 	foot.add_child(start_btn)
 
 	editor = CaseScriptEditor.new()
@@ -190,9 +211,13 @@ func open(can_cancel: bool, debug_on: bool = false) -> void:
 	_refresh()
 
 
+## A new case number. Never 0: ScriptBuilder reads seed 0 as "pick one at random".
+static func fresh_seed() -> int:
+	return randi() % 99999 + 1
+
+
 func _roll_dynamic() -> void:
-	var sd: int = randi() % 1000000 + 1
-	var opts = {"seed": sd, "name": "Dynamic #%d" % sd}
+	var opts = {"seed": case_seed, "name": "Dynamic #%d" % case_seed}
 	if debug:
 		opts["favoured"] = marks_panel.ids("favoured")
 		opts["include"] = marks_panel.ids("include")
@@ -236,6 +261,7 @@ func _refresh() -> void:
 	var pick: int = Pick.DYNAMIC if dynamic_mode else (Pick.DEFAULT if chosen.is_default() else Pick.CUSTOM)
 	script_opt.select(script_opt.get_item_index(pick))
 	reroll_btn.visible = dynamic_mode
+	seed_spin.set_value_no_signal(case_seed)
 	marks_btn.get_parent().visible = debug
 	var ms: String = marks_panel.summary()
 	marks_label.text = ("Marks apply to dynamic scripts. " + ms) if ms != "" else "No playtest marks."

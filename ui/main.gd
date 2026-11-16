@@ -143,9 +143,9 @@ func _ready() -> void:
 	lbl.add_theme_color_override("font_color", UITheme.color("muted"))
 	top.add_child(lbl)
 	seed_box = SpinBox.new()
-	seed_box.min_value = 0
+	seed_box.min_value = 1
 	seed_box.max_value = 999999
-	seed_box.value = randi() % 100000
+	seed_box.value = NewCaseScreen.fresh_seed()
 	top.add_child(seed_box)
 	size_opt = OptionButton.new()
 	size_opt.add_item("7 townsfolk")
@@ -419,6 +419,7 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless" or "--quick-start" in OS.get_cmdline_user_args():
 		_new_case()
 	else:
+		new_case_screen.case_seed = int(seed_box.value)
 		new_case_screen.open(false, debug_check.button_pressed)
 
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
@@ -443,21 +444,24 @@ func _open_new_case_screen() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	new_case_screen.count = int(size_opt.get_item_metadata(size_opt.selected))
+	new_case_screen.case_seed = _next_case_seed()
 	new_case_screen.open(g != null and not g.w.game_over, debug_check.button_pressed)
 
-func _on_new_case_start(count: int, script_def) -> void:
+## The seed the next case starts with: the one typed in, or a fresh one if the box still
+## holds this case's. The New Case screen builds a dynamic script from it.
+func _next_case_seed() -> int:
+	return int(seed_box.value) if int(seed_box.value) != _case_seed else NewCaseScreen.fresh_seed()
+
+func _on_new_case_start(count: int, script_def, case_seed: int) -> void:
 	for i in range(size_opt.item_count):
 		if int(size_opt.get_item_metadata(i)) == count:
 			size_opt.select(i)
 	current_script = script_def
-	if g == null:
-		_new_case()
-	else:
-		_new_case_button()
+	seed_box.value = case_seed
+	_new_case()
 
 func _new_case_button() -> void:
-	if int(seed_box.value) == _case_seed:
-		seed_box.value = randi() % 100000
+	seed_box.value = _next_case_seed()
 	_new_case()
 
 func _new_case() -> void:

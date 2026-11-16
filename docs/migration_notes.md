@@ -174,7 +174,11 @@ The sweep tools don't have this problem: `autoplay.gd --dynamic` builds
 `ScriptBuilder.dynamic({"seed": s})` from the case seed itself. Replays from a dev log are
 also fine, since `case_start` setup records `script.to_dict()` (`sim/world.gd:412`).
 
-Fix options:
+**Fixed (Nov 16, option 1):** the New Case screen builds the dynamic script from the case
+number, and has a "Case number" box so a number can be entered at launch. Reroll picks a
+new case number. Checked in `tools/test_ui.gd`.
+
+Options considered:
 1. **Derive the dynamic script from the case seed** in the UI, as the sweep does. Then
    one number reproduces a whole case. The New Case screen's reroll button would then
    change the case seed rather than only the script.

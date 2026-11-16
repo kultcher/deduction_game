@@ -517,6 +517,31 @@ func _init() -> void:
 	scene.seed_box.value = 4242
 	scene._new_case_button()
 	_check(scene.g.w.seed_value == 4242, "a typed seed is kept by New case")
+	# A dynamic script is built from the case number, so one number reproduces the case
+	# (it used to roll its own seed, so re-entering a case number dealt different roles).
+	var prev_script = scene.current_script
+	var ncs = scene.new_case_screen
+	ncs.case_seed = 73398
+	ncs.dynamic_mode = true
+	ncs.open(true, false)
+	var dealt: Dictionary = ncs.chosen.to_dict()
+	ncs.hide()
+	ncs.open(true, false)
+	_check(ncs.chosen.to_dict() == dealt, "the New Case screen deals the same dynamic script for the same case number")
+	var built = preload("res://sim/script_builder.gd").dynamic({"seed": 73398, "name": "Dynamic #73398"})
+	_check(ncs.chosen.to_dict() == built.to_dict(), "…the same one autoplay --dynamic builds from that number")
+	_check(int(ncs.seed_spin.value) == 73398, "the screen shows the case number")
+	ncs.seed_spin.value = 5150
+	_check(ncs.case_seed == 5150 and ncs.chosen.to_dict() != dealt, "typing a case number on the screen re-deals the dynamic script")
+	ncs.reroll_btn.pressed.emit()
+	_check(int(ncs.seed_spin.value) == ncs.case_seed and ncs.chosen.name == "Dynamic #%d" % ncs.case_seed, "Reroll picks a new case number and builds from it")
+	ncs.case_seed = 73398
+	ncs._roll_dynamic()
+	ncs.start_btn.pressed.emit()
+	await process_frame
+	_check(scene.g.w.seed_value == 73398 and int(scene.seed_box.value) == 73398, "Start deals the case with the screen's number")
+	ncs.dynamic_mode = false
+	scene.current_script = prev_script
 	scene.size_opt.select(0)
 	await _approach_talk(scene)
 	scene.queue_free()
