@@ -38,6 +38,12 @@ handoff log and PRs are how they talk, not Michael relaying.
 - **Picking work:** when a lead finishes, it may start any `BACKLOG.md` item tagged
   `[decided]` in its domain, and says which in its handoff entry. `[open]` and
   `[tentative]` items wait for Michael.
+- **New backlog items are proposed, never added.** Don't edit `BACKLOG.md` to add an item,
+  even as `[open]`. Send the proposal to Seneschal (a short title, what you saw and where,
+  and a suggested tag and owner) and list it under "Proposed for the backlog" in your
+  handoff entry. Seneschal collects proposals and puts them to Michael, and whoever owns
+  the item adds the ones he accepts. Updating or closing an existing item you worked on
+  is fine.
 - **Performance belongs to Argon** (Gemini, through Antigravity in VS Code). It works on
   `argon/<topic>` branches, follows this file like any agent, signs handoff entries
   `Argon`, and Bailiff reviews and merges its PRs. Speed changes must be zero drift (golden
@@ -102,8 +108,9 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
   and after values and the reason in the PR, describe the effect in game terms (see
   "Report results plainly" below), regenerate `tuning_catalogue.md`, and re-baseline
   golden if it moves.
-- **Michael's:** new mechanics, new constants, design direction, adding backlog items, and
-  player-facing wording (offer a draft and a recommendation).
+- **Michael's:** new mechanics, new constants, design direction, new backlog items (propose
+  them through Seneschal; see "Picking work" above), and player-facing wording (offer a
+  draft and a recommendation).
 
 ## Working with Michael
 
