@@ -427,6 +427,13 @@ Candidates for a unified retuning proposal, not approved changes.
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
 
+- **A defence against a daytime-whereabouts case.** (26532, #171) A case resting on where
+  someone was by day gets no answer of its own; since #171 the defence frames itself on
+  the next reading or night it can answer. Proposal (Claude-Beadle): "I was at the mill
+  that evening, and so were Greta and Jory", naming others present, from public
+  schedules, as an attributed defence. Evil can use it too, honestly or with a logged lie.
+  Wording is Michael's. [open]
+
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
   false need not concede evil. Evil gets the same excuses, open to later corroboration;

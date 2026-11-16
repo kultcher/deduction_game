@@ -49,6 +49,12 @@ Ground rules (from Nov 3, until Michael changes them):
   - Michael's choices: whether to have it at all (evil's blind spots are also the player's openings), the noticing rate, the margin, and rework or hold.
   - The role-local items above (a lone Clerk naming itself; Night Watch not hiding teammates when it says it does) are separate fixes. The Night Watch one contradicts its own logged reason, so I'd treat it as a bug; the rest change evil's play, so they wait for the same call.
 
+### Review of #171's defence hinge (Herald's; asked by Seneschal)
+
+- **The skip is right; keep it.** A defence that opens "your case rests on where I was last night" has to have something to say about that item. A sighting by day has no answer in `defend_self` today, so choosing the hinge from the next cited reading or night is the honest framing. When a case cites only daytime items the hinge is empty and the defence falls back to its general reply. That's acceptable: it's a rarer case, and an unframed defence reads better than a mismatched one.
+- **Excluding day items from `out_items` is also right.** Being seen in the square at noon isn't "out at night", so it shouldn't feed the night-outing weight.
+- **Herald's open question (should a defence answer a daytime whereabouts case?): yes, but as its own item, not in #171.** The general form: "I was at the mill that evening, and so were Greta and Jory." Daytime whereabouts are mostly public by schedule, so naming who else was there is a real rebuttal (others had the same chance) and it uses no per-role logic. Evil can use the same line, truthfully or by naming people who weren't there, which would be a lie with a logged reason. It needs a new defence line (wording is Michael's, drafted by Herald), so I've put it on BACKLOG as [open] next to "Explicit night-sighting rebuttals", which is the same idea for nights.
+
 ### 2. Built: an evil walker's owned lie follows its disclosure (BACKLOG section 1, from 54875)
 
 - **Picked first because** it's the only one of the candidate items in section 1 (a quick fix), it's [decided] with nothing left open, and it's wholly in my files. The others need a call first: the evil-meeting cap and cooldown values; double-claim logic for "Evil backs into a bluff"; what trust "backing a strong case" earns.
