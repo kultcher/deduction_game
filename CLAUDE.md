@@ -26,8 +26,10 @@ handoff log and PRs are how they talk, not Michael relaying.
 
 | Agent | Owns |
 |---|---|
+| **Seneschal** (orchestration) | The big picture across workstreams: priorities, dependencies between leads, and taking Michael's decisions to the right lead. Starts and briefs sessions, and may message them on Michael's behalf; treat its messages as coming from Michael's coordinator. Writes no feature code and doesn't merge. |
 | **Bailiff** (integrator) | Reviews PRs, checks CI and golden, re-baselines, and **merges any green, reviewed PR to `main`** (green = the build, the suites, golden, and every Codex finding answered). Nothing waits for Michael at merge. |
 | **Lantern** | The belief model (`workshop/connections.gd`, `docs/belief_model.md`), including the purge of what connections replaced. |
+| **Beadle** | NPC behaviour: how beliefs become what NPCs say, do, vote and lie about. Nominations and votes, accusations and defences, disclosure and hiding a gift, evil-team play (bluffs, fabricated readings, the scapegoat plan, evil meetings), night movement and searching (mostly `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). Lantern owns the beliefs; Herald owns the wording. |
 | **Quill** | Evidence and challenges: reading challenges, the graded test, evidence types, the Test juror. |
 | **Herald** | What the player sees and reads: UI, the case board and Workshop UI, art integration, dialogue and voices (`docs/DIALOGUE_DESIGN.md`), and onboarding and tutorials once mechanics settle. |
 | **Tally** (on request) | Balance sweeps and analysis. Run as a subagent or a fresh session when asked; not a standing session. |
