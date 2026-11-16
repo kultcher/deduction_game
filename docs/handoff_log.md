@@ -30,6 +30,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   - **Quill:** why the Muddler never muddled; the grimoire recording a relay as the relayer's own lie; then the weak case against Isolde (needs `case_26532.jsonl` from Michael).
   - **Herald:** `ask night` not returning a gift's night result; a defence answering the wrong case.
   - **Beadle:** a fabricated reading that implicated its own teller; then `[decided]` behaviour items.
+- **Performance goes to Argon** (Michael, Nov 16), working through Antigravity on `argon/` branches. Its first patch is a zero-drift speed-up of connections refreshes in `workshop/jury.gd` (`_consequences_eval`), `workshop/connections.gd` (`judge_key`) and `workshop/case_eval.gd` (cache keys and caps, `_team_prior`, `fits_before`). **Merge order: Argon's patch before any of Lantern's purge code PRs**, since both touch `_consequences_eval`. Lantern's plan PR (docs only) can merge any time. Lantern stays off performance, and flags in this log any cache-key field Argon wants to trim that some path does read.
 - **Bailiff's two notes on #168:** my handoff entry there is now signed `Claude-Seneschal`, and `tools/test_case_viewer.py` now tests the fallback to the old logs folder (13 tests pass).
 
 ---

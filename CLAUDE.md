@@ -38,10 +38,14 @@ handoff log and PRs are how they talk, not Michael relaying.
 - **Picking work:** when a lead finishes, it may start any `BACKLOG.md` item tagged
   `[decided]` in its domain, and says which in its handoff entry. `[open]` and
   `[tentative]` items wait for Michael.
-- **Outside models:** if Gemini (Argon or Carbon) is brought in, mainly for performance,
-  it works through Antigravity in VS Code on its own branch, and Bailiff reviews it like
-  any PR. The older route still works as a backup: a zip of full files plus a manifest and
-  `base_commit` on Drive, which Bailiff unpacks on a branch from that commit.
+- **Performance belongs to Argon** (Gemini, through Antigravity in VS Code). It works on
+  `argon/<topic>` branches, follows this file like any agent, signs handoff entries
+  `Argon`, and Bailiff reviews and merges its PRs. Speed changes must be zero drift (golden
+  identical at `--tol 0`, `Connections.cache_verify` clean). Claude sessions stay off
+  performance work. Lantern reviews any Argon change that would alter what NPCs believe,
+  not just how fast. When Argon and a lead touch the same files, the handoff log says
+  which PR merges first. The older route still works as a backup: a zip of full files plus
+  a manifest and `base_commit` on Drive, which Bailiff unpacks on a branch from that commit.
 
 ## Commands
 
