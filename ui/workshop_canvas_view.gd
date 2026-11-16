@@ -25,8 +25,9 @@ var drag = ""
 var panning = false
 var last_mouse = Vector2.ZERO
 var drag_out = false   # the dragged card is past the left edge: release removes it
-## Box selection (Nov 10): Shift-drag on empty canvas draws a box; the cards inside move
-## together when one is dragged, and Delete removes them. No group linking.
+## Box selection (Nov 10; plain left-drag since triage 8.1, Nov 16): left-drag on empty
+## canvas draws a box; the cards inside move together when one is dragged, and Delete
+## removes them. No group linking. Right-drag (or middle-drag) on empty canvas pans.
 var group: Array = []
 var box_from = null     # screen point where the box started, or null
 var box_to: Vector2 = Vector2.ZERO
@@ -184,6 +185,8 @@ func _draw() -> void:
 			link_labels.append({"at": points[12], "text": "read together", "fs": 13, "color": color})
 		elif edge.kind == "contradicts":
 			link_labels.append({"at": points[12], "text": "contradicts", "fs": 13, "color": color})
+		elif edge.kind == "given":
+			link_labels.append({"at": points[12], "text": "given " + model.title(edge.from), "fs": 13, "color": color})
 	for id in hit:
 		_draw_card(id, hit[id])
 	for lbl in link_labels:
@@ -291,6 +294,10 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 			notes.append("Test juror: " + badge.get("text", "") + ("\n" + badge.reason if badge.get("reason", "") != "" else ""))
 			if badge.get("change", "") != "":
 				notes.append(badge.change)
+			if badge.get("town_note", "") != "":
+				# The one warning shown beside the strength itself (connections model only).
+				chip_text += " · " + {"refresh": "Refresh", "presses": "No new belief"}.get(badge.get("town_note_kind", ""), "No new info")
+				notes.append(badge.town_note)
 			if badge.get("raises_text", "") != "":
 				notes.append(badge.raises_text)
 			for who in badge.get("idle", []):
@@ -409,7 +416,8 @@ func _gui_input(event: InputEvent) -> void:
 	if model == null:
 		return
 	if event is InputEventMouseButton:
-		grab_focus()
+		if is_inside_tree():
+			grab_focus()
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
 			var world = (event.position - pan) / zoom
 			zoom = clampf(zoom * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1 / 1.1), 0.35, 1.5)
@@ -447,7 +455,7 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
-		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "" and event.shift_pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "":
 			box_from = event.position
 			box_to = event.position
 			accept_event()
@@ -456,7 +464,7 @@ func _gui_input(event: InputEvent) -> void:
 			group = []
 		if event.button_index == MOUSE_BUTTON_RIGHT and chosen != "":
 			context_requested.emit(chosen)
-		elif event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and chosen == ""):
+		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			panning = true
 		elif event.button_index == MOUSE_BUTTON_LEFT and chosen != "":
 			var was_linking: bool = linking != ""
@@ -721,6 +729,11 @@ func evidence_layout(id: String) -> Dictionary:
 		var a_day: int = int(card.get("observed_at", {}).get("day", 1))
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": ("Yes: crossed Demon in public (D%d)" % a_day) if a_yes else ("No public Demon crossing (D%d)" % a_day)})
 		y += 26.0
+		# Who you saw around the Augur that day (triage 5.10); the reading itself names nobody.
+		var a_seen: String = preload("res://game/workshop_canvas.gd").augur_sightings(model.view, card)
+		if a_seen != "":
+			els.append({"t": "label", "at": Vector2(16, y + 12), "text": "(" + a_seen + ")", "fs": 13, "tip": a_seen + "\nFrom your own sightings on the Augur's block that morning and afternoon."})
+			y += 22.0
 		details = true
 	elif (card.kind == "report" and role == "nightwatch") or (card.kind == "sighting" and card.get("night", -1) >= 0):
 		var seen: Array = card.data.get("seen", []) if role == "nightwatch" else card.get("subjects", [card.get("subject", "")])
@@ -1145,7 +1158,9 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 		"label":
 			if el.get("icon") != null:
 				draw_texture_rect(el.icon, Rect2(origin + (el.at - Vector2(26, 15)) * zoom, Vector2(20, 20) * zoom), false)
-			draw_string(font, origin + el.at * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - el.at.x - 10) * zoom, _fs(14), Color("5a4c38"))
+			draw_string(font, origin + el.at * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - el.at.x - 10) * zoom, _fs(int(el.get("fs", 14))), Color("5a4c38"))
+			if el.get("tip", "") != "":
+				tips.append({"rect": Rect2(origin + (el.at - Vector2(0, 14)) * zoom, Vector2(WIDTH - el.at.x - 10, 18) * zoom), "text": el.tip})
 		"chip":
 			var r = Rect2(origin + el.rect.position * zoom, el.rect.size * zoom)
 			var on: bool = el.get("on", false)

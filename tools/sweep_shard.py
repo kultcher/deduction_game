@@ -33,11 +33,12 @@ def record_mode(a):
     so runner-written failure records fall in the same cell as the games (Codex, #138).
     Autoplay puts _connections after the forced type."""
     mode = a.mode
-    conn = mode.endswith("_connections")
-    if conn:
-        mode = mode[: -len("_connections")]
+    tail = ""
+    for suffix in ("_connections", "_legacy"):
+        if mode.endswith(suffix):
+            mode, tail = mode[: -len(suffix)], suffix
     mode += "_force_" + a.force_demon if getattr(a, "force_demon", "") else ""
-    return mode + ("_connections" if conn else "")
+    return mode + tail
 
 
 def cell_name(a):
@@ -133,7 +134,9 @@ class Worker:
             if "nocross" in flags:
                 cmd.append("--no-crosscheck")  # Phase 5: no cross-check case seeding
             if "connections" in flags:
-                cmd.append("--connections")  # the connections belief model on (off in play)
+                cmd.append("--connections")  # the connections belief model on (the default since Nov 16)
+            if "legacy" in flags:
+                cmd.append("--legacy-model")  # the belief model before connections
             if "nodeclare" in flags:
                 cmd.append("--no-declare")  # Phase 5: never declares the demon type
             if self.a.force_demon:
@@ -215,19 +218,19 @@ class Worker:
 
 
 BASE_MODES = ["passive", "bot", "bot_pre_m4", "no_present", "present_vote"]
-MODE_FLAGS = ["nocross", "nodeclare", "connections"]
+MODE_FLAGS = ["nocross", "nodeclare", "connections", "legacy"]
 
 
 def split_mode(mode):
     """A cell mode is a base mode plus optional suffixes, as autoplay names them:
-    bot_nocross, bot_nodeclare, bot_nocross_nodeclare (Phase 5), and _connections last
-    (the connections belief model on; passive may take it too)."""
+    bot_nocross, bot_nodeclare, bot_nocross_nodeclare (Phase 5), and _connections or _legacy
+    last (the belief model, on or off; passive may take them too)."""
     flags = []
     for f in reversed(MODE_FLAGS):
         if mode.endswith("_" + f):
             flags.insert(0, f)
             mode = mode[: -len(f) - 1]
-    if mode not in BASE_MODES or (mode == "passive" and [f for f in flags if f != "connections"]):
+    if mode not in BASE_MODES or (mode == "passive" and [f for f in flags if f not in ("connections", "legacy")]):
         raise SystemExit("bad mode %r" % mode)
     return mode, flags
 

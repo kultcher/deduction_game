@@ -291,9 +291,13 @@ func _log_flag() -> void:
 	var events: Array = [{"type": "case_start", "seq": 1, "data": start_on}]
 	Replay.new_game(events)
 	check(Connections.enabled, "replaying such a log turns the model on")
-	Connections.enabled = false
+	Connections.enabled = true
 	Replay.new_game([{"type": "case_start", "seq": 1, "data": start_off}])
-	check(not Connections.enabled, "and a log without it leaves the switch alone")
+	check(not Connections.enabled, "and a log without it (the earlier model, or --legacy-model) replays with it off (Codex on #160)")
+	Replay.model_override = 1
+	Replay.new_game([{"type": "case_start", "seq": 1, "data": start_off}])
+	check(Connections.enabled, "unless a tool says otherwise (replay_log --connections)")
+	Replay.model_override = -1
 
 
 # ------------------------------------------------------------ the premise check's kept masks

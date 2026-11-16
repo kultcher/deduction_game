@@ -143,8 +143,10 @@ class Roles:
 	}
 
 	const DOWSER = {
-		"bluff_two_evil_prob": 0.35,
-		"bluff_crowd_one_prob": 0.25,
+		# A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; triage 6).
+		"bluff_two_evil_prob": 0.35,  # a crowd of 4+ with no evil in it: 2 rather than 1
+		"bluff_pad_prob": 0.75,       # a crowd of 4+: the truth + 1 rather than the truth
+		"ally_hot_heat": 0.35,        # an ally this hot (Evil.public_heat) isn't exposed in a pair
 	}
 
 	const HEARTHWITCH = {
@@ -730,6 +732,13 @@ class Dialogue:
 	const CONFESS_COMPOSURE_DAMP = 0.5
 	const LIE_BOLD_CONF_SLOPE = 1.5
 	const LIE_BOLD_PRIVACY_SLOPE = 0.6
+	# A good NPC hiding a night-walking gift usually declines rather than lies (triage 3.1,
+	# Michael Nov 13: lying stays possible so declining isn't a tell for good). At neutral
+	# confidence and privacy this makes a lie about 17% (sigmoid slope 4).
+	const HIDDEN_GIFT_DECLINE_BIAS = -0.4
+	# Someone already public with their gift tells the player their readings too (tier 4),
+	# unless they badly distrust them (triage 3.3, Michael Nov 13).
+	const PUBLIC_READINGS_MIN_TRUST = 0.3
 	const SLIP_COMPOSURE_SCALE = 0.25
 	const SLIP_PRESSURE_SCALE = 0.15
 	const DIRECT_NIGHT_SIGHTING_SHARE_PROB = 0.95
@@ -744,7 +753,9 @@ class Dialogue:
 	const SHARE_HAUNTS_GOSSIP_SCALE = 0.55
 	const SHARE_HAUNTS_TRUST_SCALE = 0.5
 	const SHARE_HAUNTS_CAP = 0.9
-	const SHARE_HAUNTS_ALL_SHARE = 0.4
+	# One haunt at a time now that everyone has them (triage 3.5, Michael Nov 13): was 0.4.
+	const SHARE_HAUNTS_ALL_SHARE = 0.0
+	const SHARE_RELATIONSHIPS_ALL_SHARE = 0.4  # (relationships kept the old share)
 	## Added to the haunt roll when you know none of that person's haunts yet (Nov 10).
 	const SHARE_HAUNTS_NONE_KNOWN_BONUS = 0.2
 	const SHARE_TRAIT_BASE = 0.1
@@ -823,7 +834,10 @@ class Evil:
 
 	## Demon kill target scoring
 	const KILL_INFO_CLAIM = 3.0
-	const KILL_SPENT_INFO_CLAIM = 1.0
+	# A first-night gift already public, its knowledge already out: no more worth killing than
+	# anyone else (triage 3.4, Michael: prefer a random target). Was 1.0 (and its shared
+	# readings still scored implicates_us).
+	const KILL_SPENT_INFO_CLAIM = 0.0
 	const KILL_IMPLICATES_US = 2.0
 	const KILL_HOSTILITY_SCALE = 0.8
 	const KILL_LIVES_ALONE = 0.7
@@ -883,9 +897,10 @@ class Workshop:
 	const SLEEPWALK_SELF_DOUBT = 0.1
 	## The connections belief model (workshop/connections.gd; Project doc
 	## belief-model-direction, "Phase 6 spec"): the limit on an NPC moves from which cards it
-	## reads to which cards it weighs together. Off: the game is unchanged. Tests, autoplay
-	## and sweeps turn it on for one run with --connections (Connections.enabled).
-	const CONNECTIONS = false
+	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
+	## connections model). Off: the earlier model, for comparisons (autoplay --legacy-model;
+	## tests that pin it set Connections.enabled themselves).
+	const CONNECTIONS = true
 	## Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds.
 	const CONNECTIONS_CLIP = 0.01
 	## A person the listener's standing view already puts this close to 0 or 1 is settled
@@ -1094,6 +1109,15 @@ class Workshop:
 	## premise's +0.1 / +0.2.
 	const SUSPICIOUS_HEARING = 0.5
 	const SUSPICIOUS_PRESSURE_PER_RISE = {"private": 0.5, "meeting": 1.0}
+	## The same pressure under the connections model (Michael, Nov 14). "Suspicious" is the
+	## early-game tool: one basic incriminating reading should press its subject by about
+	## 0.3 at a meeting (with a nomination's 0.4, about one disclosure tier). The rise is
+	## how far the case's cards, read by themselves, lift its subject for the average
+	## listener; times this, up to the cap, then the venue's share above. Measured Nov 14
+	## on fresh 10-NPC games: a lone Dowser "1 of these 2" lifts its subject 6 to 8 points,
+	## a lone Seer "yes" on a pair 3, a Dowser "1 of these 3" about 1.
+	const SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE = 4.0
+	const SUSPICIOUS_PRESSURE_CONNECTIONS_CAP = 0.5
 
 	## Bounded reasoning attention profiles (`workshop/reasoner.gd`)
 	## Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks

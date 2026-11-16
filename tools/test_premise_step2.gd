@@ -3,6 +3,8 @@
 ## is heard at half weight and pushes its target once; contradictions keep both cards; and
 ## a public role claim joins a case that cites it automatically.
 extends SceneTree
+
+const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -15,6 +17,8 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
+	# Premises pass step 2: the earlier model's half-weight suspicious premise and held-back press.
+	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_secret_word()
 	_secret_record()
 	_suspicious()

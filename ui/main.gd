@@ -46,6 +46,11 @@ var conversation_show_map = false
 var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
 var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
+## An NPC approach in the VN (triage 2.8/8.3, Nov 16): "intro" shows the interstitial with
+## no portrait over the phase change, "speaking" the approacher and your choices. The key
+## tells a new approach from the one already on screen.
+var approach_stage = ""
+var _approach_key = ""
 ## Crime-scene traces from the last search, shown one at a time in the conversation view.
 var inspect_pages: Array = []
 var inspect_index = 0
@@ -955,6 +960,7 @@ var _last_phase_key = ""
 var _day_pick: String = ""   # the person you clicked this phase (the profile panel's default doesn't count)
 
 func _refresh_all() -> void:
+	_sync_approach(not inspect_pages.is_empty())
 	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
 		_build_roles(roles_content.get_parent() == roles_dock)
 	# The map follows you: zoom to your block once you've moved; back out for a new phase.
@@ -975,7 +981,7 @@ func _refresh_all() -> void:
 	var last_words: bool = not meeting and meeting_view.stage_busy()   # the gallows, after the meeting closes
 	var reading: bool = not inspect_pages.is_empty()   # traces from the evening's search come before the meeting
 	map_stage.visible = conversation_finished or reading or (not meeting and not last_words) or meeting_show_map
-	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or reading
+	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or reading or (g.state == "approach" and approach_stage != "")
 	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished and not reading
 	input.editable = not conversation_finished and not _presenting()
 	if meeting:
@@ -1063,6 +1069,50 @@ func _on_map_clicked(kind: String, id: String) -> void:
 
 # ---------------------------------------------------------------- action panel
 
+## The approach's choices: in the VN's controls once the approacher is speaking.
+func _actions_approach(w) -> void:
+	match g.approach.get("agenda", ""):
+		"protect":
+			var pk: String = Mind.protection_kind(w, g.approach["npc"])
+			_button(actions, "Promise it: %s (free)" % ("your ward on their door (%s; promise does not spend it)" % _ward_remaining() if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
+			_button(actions, "Say no", func(): _run("no"))
+		"divulge":
+			_button(actions, "Keep talking (uses this phase)", func(): _run("accept"))
+			_button(actions, "Go on your way", func(): _run("decline"))
+		_:
+			_button(actions, "Hear them out (uses this phase)", func(): _run("accept"))
+			_button(actions, "Wave them off", func(): _run("decline"))
+
+## Keep the approach's VN in step with the game: a new approach starts at its interstitial;
+## leaving the approach (accepted, declined) clears it. It waits behind a finished
+## conversation or a reading.
+func _sync_approach(reading: bool) -> void:
+	if g.state != "approach" or not g.approach.has("npc"):
+		approach_stage = ""
+		_approach_key = ""
+		return
+	if conversation_finished or reading:
+		return
+	var n = g.approach["npc"]
+	# The game's identity too: a new case can open on the same approach (Codex, #162).
+	var key: String = "%d:%d:%d:%s:%s" % [g.get_instance_id(), g.w.day, g.w.phase, n.id, str(g.approach.get("agenda", ""))]
+	if key == _approach_key:
+		return
+	_approach_key = key
+	approach_stage = "intro"
+	conversation_view.set_location(n.loc)
+	conversation_view.show_item("", null, str(g.approach.get("intro", "%s wants a word." % n.name)))
+
+func _approach_continue() -> void:
+	if g.state != "approach" or not g.approach.has("npc"):
+		return
+	var n = g.approach["npc"]
+	approach_stage = "speaking"
+	conversation_view.begin(n.id, n.name)
+	conversation_view.set_location(n.loc)
+	conversation_view.consume(g.approach.get("events", []))
+	_refresh_all()
+
 func _refresh_actions() -> void:
 	conversation_view.set_action_hint("")
 	for ch in actions.get_children():
@@ -1097,18 +1147,16 @@ func _refresh_actions() -> void:
 		"day":
 			_actions_day(w)
 		"approach":
+			if approach_stage == "intro":
+				action_title.text = "Someone waves you down"
+				_button(conversation_view.controls, "Continue", _approach_continue)
+				return
 			action_title.text = ("%s wants a word." % g.approach["npc"].name) if g.approach.has("npc") else "Someone wants a word."
-			match g.approach.get("agenda", ""):
-				"protect":
-					var pk: String = Mind.protection_kind(w, g.approach["npc"])
-					_button(actions, "Promise it: %s (free)" % ("your ward on their door (%s; promise does not spend it)" % _ward_remaining() if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
-					_button(actions, "Say no", func(): _run("no"))
-				"divulge":
-					_button(actions, "Keep talking (uses this phase)", func(): _run("accept"))
-					_button(actions, "Go on your way", func(): _run("decline"))
-				_:
-					_button(actions, "Hear them out (uses this phase)", func(): _run("accept"))
-					_button(actions, "Wave them off", func(): _run("decline"))
+			var lower_actions = actions
+			if approach_stage == "speaking":
+				actions = conversation_view.controls
+			_actions_approach(w)
+			actions = lower_actions
 		"talk":
 			_button(actions, "Look at conversation" if conversation_show_map else "Look at the map", func():
 				conversation_show_map = not conversation_show_map

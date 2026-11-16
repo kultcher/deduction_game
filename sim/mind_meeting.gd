@@ -314,9 +314,12 @@ static func _public_claim_decision(w, n) -> String:
 	var opening: float = _testimony_openness(w, n)
 	if opening != 0.0:
 		parts["reactive" if opening > 0.0 else "crowd_fade"] = opening
-	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
-		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first"})
-		return ""  # promised to tell the Demonologist first once protected
+	# Promised to tell the Demonologist first once protected, or offered them a deal for it
+	# today (a vigil, a ward, or keeping it quiet): hold it back until that's settled
+	# (triage 3.2: Odette asked for a vigil, then claimed at that evening's meeting).
+	if (n.protect_lock or n.request_day == w.day) and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
+		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first" if n.protect_lock else "offered_player_a_deal_today"})
+		return ""
 	if w.living().size() <= 4:
 		parts["few_left"] = Tuning.Meeting.PUBLIC_CLAIM_FEW_LEFT
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
@@ -1696,7 +1699,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			d.secret_known = true
 			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
 			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
-				"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "",
+				"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "", "partner": str(d.secret.get("with", "")) if d.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
 			moves.append("secret")
 			move_strengths["secret"] = minf(Tuning.Meeting.DEFENCE_SECRET_CAP, out_weight)

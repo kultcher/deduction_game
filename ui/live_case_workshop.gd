@@ -42,6 +42,15 @@ const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion",
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
 const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
+## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
+## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
+const PREMISE_TYPE_HINTS = {
+	"evil": "Argue they're on the Demon's side. A firm claim: it counts in full if the town buys it, and can carry a vote.",
+	"suspicious": "Put pressure on someone without necessarily getting them hanged. It counts for half, but leans on them to explain themselves. You pick the direction and drive it: the town won't sort out \"one of these two\" for you.",
+	"good": "Argue they're on the town's side: clear them.",
+	"demon": "Argue they're the Demon itself.",
+	"minion": "Argue they're one of the Demon's Minions.",
+}
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
 const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": "Poisoned that night", "delusional": "They're Delusional"}
 
@@ -158,7 +167,7 @@ func _ready() -> void:
 	loc_solver_btn.tooltip_text = "Opens the Whereabouts panel to cross-reference who was where on a day and commit one Whereabouts card citing your record of that day."
 	fullscreen_btn = _button(tools, "Fullscreen", func(): fullscreen_toggled.emit())
 	fullscreen_btn.name = "WorkshopFullscreen"
-	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Shift-drag on empty canvas to box-select cards; drag one to move them all, Delete to remove them."
+	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Drag on empty canvas to box-select cards (drag one to move them all, Delete to remove them); right-drag to pan."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))
@@ -1062,6 +1071,8 @@ func _field_popup(id: String, field: String) -> void:
 			var types: Array = premise_types()
 			for i in range(types.size()):
 				field_menu.add_item(board.PREMISE_TEXT.get(types[i], types[i]), values.size())
+				if PREMISE_TYPE_HINTS.has(types[i]):
+					field_menu.set_item_tooltip(field_menu.item_count - 1, PREMISE_TYPE_HINTS[types[i]])
 				values.append(types[i])
 		"role":
 			for role in C.GOOD_ROLES:
@@ -1137,6 +1148,10 @@ func _run_test_juror() -> void:
 			continue
 		var badge: Dictionary = Live.test_juror(g, value)
 		if badge.get("ready", false):
+			var town: Dictionary = Live.town_note(g, value)
+			if not town.is_empty():
+				badge["town_note"] = town.text
+				badge["town_note_kind"] = town.kind
 			_explain_change(id, value, badge)
 			_idle_assumptions(node, value, badge)
 		badges[id] = badge

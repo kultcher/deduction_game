@@ -122,7 +122,8 @@ was on the victim's block in that phase. For each person m:
 
     A_m = product over silencings of  sum over phases p of  P(not yet before p) * h_p * c_p
 
-where c_p is the chance m and the victim were out on the same block in p, and h_p is the
+where c_p is the chance m and the victim were out on the same block in p (since #157, for a
+free phase, the hunting reach of `DayPresence.hunt_block`), and h_p is the
 sim's chance of acting that phase (the mean of its low and high odds). A victim can't be
 their own silencer. The per-world factor is the mean of A_m over the world's minions (each is
 equally likely to hold the role), mixed with `DEFAULT_ERR`. It's a CaseEval movement factor
@@ -222,7 +223,8 @@ good NPCs' P(demon) for the Hexer at day 4 with and without the hex factor.
   cards, so the budget applies.
 - **The solver:** `workshop/location_solver.gd` answers one question:
   - a demon death: who was at the victim's places that day;
-  - a silencing: who was out on the victim's block;
+  - a silencing: who was out on the victim's block (since #157, anyone free could have
+    reached it; on shift or seen elsewhere rules them out);
   - a place on a day.
 
   For each person and phase it shows what's known (seen, reported by someone, at work, off

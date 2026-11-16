@@ -232,8 +232,12 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			# Nothing new (or already convinced) keeps an accepting reply, but only if their belief
 			# didn't move away: a case that lowered their suspicion isn't voiced as agreement
 			# (Dorian, playtest 12926 day 4: "it changes how I see Kiran", then a no vote).
-			fell = belief_toward(headline.conclusion.type, stance_before, after_susp) <= -STANCE_MOVE.partial
-			voiced_stance = assessment.stance if (b_stance == "reject" and not fell and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
+			var toward: float = belief_toward(headline.conclusion.type, stance_before, after_susp)
+			fell = toward <= -STANCE_MOVE.partial
+			# Agreement kept for nothing new only if their belief didn't slip at all (triage
+			# 2.6: Agnes said "I'm convinced" as her suspicion fell slightly).
+			var slipped: bool = toward < -STANCE_SLIP
+			voiced_stance = assessment.stance if (b_stance == "reject" and not fell and not slipped and (fresh.is_empty() or already_aligned) and assessment.stance == "accept") else b_stance
 	if not state.has("rewarded_facts"):
 		state.rewarded_facts = {}
 	for id in snapshot.selected:
@@ -388,6 +392,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 ## they voice now comes from how far the refresh actually moved the subject; the scoped
 ## reply only supplies the reasons. Nothing here changes a belief, only the words.
 const STANCE_MOVE = Tuning.Workshop.STANCE_MOVE   # suspicion moved toward the claim
+const STANCE_SLIP = 0.005  # a fall this small is noise, not a change of mind
 const STANCE_RANK = {"reject": 0, "partial": 1, "accept": 2}
 ## Scoped openings that only state a stance (dropped when the belief says otherwise). Any
 ## other opening is a reason, and stays.
@@ -444,6 +449,8 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 	entry.count += 1
 	var scale: float = float(Tuning.Workshop.SUSPICIOUS_PRESSURE_PER_RISE.get("private" if venue == "private" else "meeting", 1.0))
 	var due: float = scale * entry.sum / float(entry.count)
+	if Connections.enabled:
+		due = scale * connections_pressure(entry.sum / float(entry.count))
 	var delta: float = due - float(entry.applied)
 	entry.applied = due
 	book[filing] = entry
@@ -453,9 +460,15 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 		g.w.dlog.trace_event("value_change", target_id, n.id, {"quantity": "pressure", "delta": delta, "rise": rise, "filing": filing, "venue": venue},
 			"A suspicious case presses its subject to explain (premises step 2)")
 
-## The same rise under the connections model (workshop/connections.gd), where a "suspicious"
-## case counts at half weight: how far the target's chance would go up if the held-back
-## half counted too. Read from the applied refresh; nothing is judged again.
+## The pressure (at a meeting) for an average rise, under the connections model.
+static func connections_pressure(average_rise: float) -> float:
+	return minf(Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_CAP, Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE * maxf(0.0, average_rise))
+
+## The rise under the connections model (workshop/connections.gd): how far the case's
+## cards, alone and together, lift its subject for this listener. It is their chance now
+## against their chance with what those cards say taken away (the entry's "points").
+## It doesn't depend on the case's weight, so the same cards under "suspicious" press
+## whether or not an earlier case already argued them. Read from the applied refresh.
 static func _connections_rise(g, listener_key: String, key: String, target_id: String) -> float:
 	var res: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("connections", {})
 	if not res.get("posterior", {}).has(target_id):
@@ -465,10 +478,13 @@ static func _connections_rise(g, listener_key: String, key: String, target_id: S
 			var chance: float = float(res.posterior[target_id])
 			if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
 				return 0.0
-			return maxf(0.0, held_back_chance(res.posterior, entry.get("withheld", {}), target_id) - chance)
+			var without: Dictionary = {}
+			for p in entry.get("points", {}):
+				without[p] = -float(entry.points[p])
+			return maxf(0.0, chance - held_back_chance(res.posterior, without, target_id))
 	return 0.0
 
-## The target's chance with a case's held-back leans added for everyone, renormalised as
+## The target's chance with leans added for everyone (`withheld`), renormalised as
 ## Connections.combine does: one common shift over the people still in question keeps their
 ## chances summing as before (the evil count); settled people stay put (Codex on #153).
 static func held_back_chance(posterior: Dictionary, withheld: Dictionary, target_id: String) -> float:

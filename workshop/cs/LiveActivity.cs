@@ -806,7 +806,8 @@ internal static class LiveActivityKernel
         {
             ProfDemon => night > 0 ? 1.0 : 0.0,
             ProfMinion => 0.25,
-            ProfGift => 1.0,
+            // The Warden has no guard on night 0 (triage 7.1), so a night-0 outing isn't its gift.
+            ProfGift => roleCode == MoveRoleWarden && night < 1 ? 0.0 : 1.0,
             ProfSecret => 0.55,
             _ => 0.05
         };

@@ -7,6 +7,8 @@
 ##     evil Medium's invented relay counts against them (test_relay_bluff).
 extends SceneTree
 
+const Seeds = preload("res://tools/fixture_seeds.gd")
+
 const Game = preload("res://game/game.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -40,33 +42,25 @@ func _init() -> void:
 	knowledge.own_outings["1"] = true
 	check(Reasoner.direct_checks(view, case_data, knowledge).objections.is_empty(), "no objection when I really was out")
 
-	# Real games (passive play to a meeting), each a case found in the Nov 12 survey.
-	_game_case(100034, 2, "odette", "constance", func(p): return p >= 0.6, "framed Odette holds Constance's fake sighting against her")
-	_game_case(100031, 2, "edda", "constance", func(p): return p < 0.5, "the Sleepwalker Edda, seen by the honest Constance, is far from sure she lied")
-	_game_case(100020, 3, "constance", "hollis", func(p): return p >= 0.8, "the evil Medium Hollis's invented relay doesn't clear him for Constance")
+	# Real games (passive play to a meeting), each a kind of case found in the Nov 12 survey
+	# (then seeds 100034, 100031 and 100020); searched for, so play changes don't break them
+	# (tools/fixture_seeds.gd).
+	_found_case(Seeds.framed_sighting(2, false, "street"), "subject", "sighter", func(p): return p >= 0.6, "a framed person holds the planter's fake sighting against them")
+	_found_case(Seeds.sleepwalker_sighting(2), "subject", "sighter", func(p): return p < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied")  # (a plain liar caught this way reads near 0.9)
+	_found_case(Seeds.relay(3, func(t): return t.is_evil(), true), "listener", "teller", func(p): return p >= 0.8, "an evil relayer's invented relay of the listener doesn't clear them")
 	print("Self-sighting: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 
-func _game_case(seed_v: int, day: int, listener: String, teller: String, ok: Callable, label: String) -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, 7)
-	var guard := 0
-	while g.state != "over" and guard < 400 and not (g.state == "meeting" and g.w.day >= day):
-		guard += 1
-		match g.state:
-			"approach": g.command("decline")
-			"day": g.command("wait")
-			"meeting": g.command("done" if g.town_quiet else "wait")
-			"talk": g.command("bye")
-			"nomination": g.command("vote no")
-			"night": g.command("sleep")
-			_: break
-	var n = g.w.by_id.get(listener)
-	if g.state != "meeting" or n == null or not n.alive:
-		check(false, "%s (seed %d did not reach the day-%d meeting with %s alive)" % [label, seed_v, day, listener])
+func _found_case(found: Dictionary, listener_key: String, teller_key: String, ok: Callable, label: String) -> void:
+	if found.is_empty():
+		check(false, "%s (no seed in %d..%d has the case)" % [label, Seeds.SEEDS_FROM, Seeds.SEEDS_FROM + Seeds.SEEDS_COUNT - 1])
 		return
+	var g = found.g
+	var listener: String = str(found[listener_key])
+	var teller: String = str(found[teller_key])
+	label += " (seed %d: %s on %s)" % [int(found.seed), listener, teller]
+	var n = g.w.by_id.get(listener)
 	var key: String = n.id + ":good"
 	g._workshop_evaluations.erase(key)
 	var was_defer: bool = g.w.defer_beliefs

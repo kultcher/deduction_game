@@ -543,8 +543,10 @@ static func protection_line(n, kind: String) -> Dictionary:
 ## for protection instead. One request a day; {} when they don't ask. Hearing and answering
 ## it is free; "decline" carries what they'd have said instead.
 static func _protection_request(w, n, refusal: Dictionary) -> Dictionary:
-	if n.request_day == w.day or n.claim_public or n.protect_lock or n.trust < Tuning.Dialogue.PROTECTION_REQ_MIN_TRUST:
-		w.observe_decision(n, "protection_request", false, {"gate": "request already made today, claim public, promised protection, or trust < 0.45", "inputs": {"trust": n.trust, "request_day": n.request_day, "day": w.day, "claim_public": n.claim_public, "protect_lock": n.protect_lock}})
+	# Nothing to trade once the player knows what they are (triage 3.2: Edda gave her role,
+	# then asked for a vigil in exchange for it).
+	if n.request_day == w.day or n.claim_public or n.protect_lock or n.max_tier >= 3 or n.trust < Tuning.Dialogue.PROTECTION_REQ_MIN_TRUST:
+		w.observe_decision(n, "protection_request", false, {"gate": "request already made today, claim public, promised protection, role already told, or trust < 0.45", "inputs": {"trust": n.trust, "request_day": n.request_day, "day": w.day, "claim_public": n.claim_public, "protect_lock": n.protect_lock}})
 		return {}
 	var kind: String = protection_kind(w, n)
 	if kind == "":
@@ -603,13 +605,14 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	var evil: bool = n.is_evil()
 	var role: String = w.evil_plan["bluffs"][n.id] if evil else n.role
 	var target = maxi(_target_tier(w, n, trace_id), force_tier)
-	if n.claim_public:
-		target = maxi(target, 3)
+	# Public with their gift already: their readings too, unless they badly distrust you.
+	var public_floor: int = (4 if n.trust >= Tuning.Dialogue.PUBLIC_READINGS_MIN_TRUST else 3) if n.claim_public else 0
+	target = maxi(target, public_floor)
 	var tier = maxi(target, n.max_tier)
 	var withholding = target < n.max_tier
 	w.dlog.decision(n.id, "gift_disclosure", "gate", tier, {"target_tier": target,
 		"effective_tier": tier, "prior_tier": n.max_tier, "force_tier": force_tier,
-		"public_floor": 3 if n.claim_public else 0, "withhold_new_readings": withholding}, "", trace_id)
+		"public_floor": public_floor, "withhold_new_readings": withholding}, "", trace_id)
 	if tier <= 1:
 		# Denying any gift is off (C.ALLOW_NO_GIFT_DENIAL): evil almost never says it, so it
 		# read as a near-certain good, at the price of the gift. Refusing to say remains.
@@ -875,15 +878,18 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 			vantage = block
 			how = "street"
 			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
-				"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "",
+				"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "", "partner": str(n.secret.get("with", "")) if n.secret.get("kind", "") == "lover" else "",
 				"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]})
 		else:
 			var prior_account: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
 			var prior_kind: String = prior_account.get("kind", "")
 			var Podium = load("res://sim/mind_podium.gd")
 			var owned: bool = Podium.admitted_before(n, nd)
-			var bold: bool = false if owned else (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", {"confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Dialogue.LIE_BOLD_CONF_SLOPE,
-				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * Tuning.Dialogue.LIE_BOLD_PRIVACY_SLOPE}, "Hiding (%s): lie outright rather than stonewall?" % hiding)
+			var lie_parts: Dictionary = {"confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Dialogue.LIE_BOLD_CONF_SLOPE,
+				"privacy_stonewalls": -(trait_of(n, "privacy") - 0.5) * Tuning.Dialogue.LIE_BOLD_PRIVACY_SLOPE}
+			if hiding.begins_with("hidden "):
+				lie_parts["gift_declines"] = Tuning.Dialogue.HIDDEN_GIFT_DECLINE_BIAS
+			var bold: bool = false if owned else (prior_kind == "alibi") if prior_kind in ["alibi", "refusal"] else decide(w, n, "lie_or_stonewall", lie_parts, "Hiding (%s): lie outright rather than stonewall?" % hiding)
 			if owned:
 				# They already owned being out that night: the same plain account, not a lie.
 				Podium._plain_account(w, n, nd, block, lines, facts)

@@ -365,10 +365,20 @@ func remove_contradiction(id: String) -> void:
 func connect_cards(from: String, to: String) -> String:
 	if not nodes.has(from) or not nodes.has(to) or from == to or nodes[from].has("merged") or nodes[to].has("merged"):
 		return "Choose two different visible cards."
+	var given: bool = false
 	if nodes[from].kind == "premise" and nodes[to].kind != "premise":
-		var swap = from
-		from = to
-		to = swap
+		# Premise -> card on a card that already argues another premise: "this card's line
+		# runs through that premise" (triage 5.1, Michael Nov 13, the cheap version). The
+		# premise and its evidence go into the root's evidence with the card, and the link
+		# is drawn "given <premise>". On a card that argues nothing yet, the drag means the
+		# card supports the premise, as before.
+		var card_id: String = to
+		var premise_id: String = from
+		given = links.any(func(edge): return edge.from == card_id and edge.kind in ["supports", "given"] and nodes.has(edge.to) and nodes[edge.to].kind == "premise" and edge.to != premise_id)
+		if not given:
+			var swap = from
+			from = to
+			to = swap
 	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "contradiction", "modifier"]:
 		var swap_c = from
 		from = to
@@ -399,6 +409,8 @@ func connect_cards(from: String, to: String) -> String:
 		relation = "read_together"
 	if _gift_link(a, b):
 		relation = "explains_outing"
+	if given:
+		relation = "given"
 	links.append({"from": from, "to": to, "kind": relation})
 	version += 1
 	return ""
@@ -531,11 +543,14 @@ func _merge(a: String, b: String, dispute: Dictionary) -> void:
 		var destination: String = id if edge.to in [a, b] else edge.to
 		if source == destination:
 			continue
-		if nodes.get(source, {}).get("kind", "") == "premise" and nodes.get(destination, {}).get("kind", "") != "premise":
+		# A "given" link (premise -> card, triage 5.1) keeps its direction and kind onto the
+		# merged card; any other premise -> card edge is read as the card supporting it.
+		var given: bool = edge.get("kind", "") == "given"
+		if not given and nodes.get(source, {}).get("kind", "") == "premise" and nodes.get(destination, {}).get("kind", "") != "premise":
 			var swap = source
 			source = destination
 			destination = swap
-		var kind: String = "supports" if (source == id or destination == id) and (nodes.get(source, {}).get("kind", "") == "premise" or nodes.get(destination, {}).get("kind", "") == "premise") else edge.kind
+		var kind: String = "given" if given else ("supports" if (source == id or destination == id) and (nodes.get(source, {}).get("kind", "") == "premise" or nodes.get(destination, {}).get("kind", "") == "premise") else edge.kind)
 		if not _reaches(destination, source) and not links.any(func(e): return e.from == source and e.to == destination):
 			links.append({"from": source, "to": destination, "kind": kind})
 			if source == id and nodes.get(destination, {}).get("kind", "") == "premise" and linked_premise == "":
@@ -677,7 +692,16 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		else:
 			direct.append_array(ancestors(edge.from))
 	if not direct.is_empty():
-		result.lines.append({"id": "direct", "label": "Direct supporting evidence", "relation": "supports", "cards": _evidence(direct), "positions": {}, "answers": {}})
+		var direct_line: Dictionary = {"id": "direct", "label": "Direct supporting evidence", "relation": "supports", "cards": _evidence(direct), "positions": {}, "answers": {}}
+		# A premise a card's line runs through ("given", triage 5.1) carries its assumptions
+		# with that line, as a premise linked straight to the root does (Codex on #159).
+		var given_sets: Array = []
+		for id in direct:
+			if nodes.has(id) and nodes[id].kind == "premise" and not nodes[id].positions.is_empty() and nodes[id].conclusion.get("at", result.conclusion.at) == result.conclusion.at:
+				given_sets.append(nodes[id].positions.duplicate(true))
+		if not given_sets.is_empty():
+			direct_line["assumption_sets"] = given_sets
+		result.lines.append(direct_line)
 	result.cards = _evidence(all)
 	for id in all:
 		var node: Dictionary = nodes[id]
@@ -957,10 +981,10 @@ func restore(value, session) -> String:
 			if n.children[0] == n.children[1] or not n.children.all(func(child): return candidate.nodes.has(child) and candidate.nodes[child].kind == "evidence" and candidate.nodes[child].get("merged") == id) or n.children.map(func(child): return candidate.nodes[child].card).any(func(card): return card not in n.dispute.reports):
 				return "Invalid contradiction roots."
 			for edge in n.prior_links:
-				if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing"] or (edge.from not in n.children and edge.to not in n.children) or edge.from == edge.to:
+				if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "given"] or (edge.from not in n.children and edge.to not in n.children) or edge.from == edge.to:
 					return "Invalid original contradiction links."
 	for edge in value.links:
-		if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "contradicts"] or candidate.nodes[edge.from].has("merged") or candidate.nodes[edge.to].has("merged") or candidate._reaches(edge.to, edge.from):
+		if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "contradicts", "given"] or candidate.nodes[edge.from].has("merged") or candidate.nodes[edge.to].has("merged") or candidate._reaches(edge.to, edge.from):
 			return "Invalid or circular canvas link."
 		if edge.kind == "contradicts":
 			var cd = edge.get("dispute")
@@ -969,6 +993,8 @@ func restore(value, session) -> String:
 		if edge.kind == "explains_outing":
 			if not candidate._gift_link(candidate.nodes[edge.from], candidate.nodes[edge.to]):
 				return "Invalid gift explanation."
+		if edge.kind == "given" and (candidate.nodes[edge.from].kind != "premise" or candidate.nodes[edge.to].kind == "premise"):
+			return "Invalid given link."  # premise -> card only (triage 5.1)
 		candidate.links.append(edge.duplicate(true))
 	if not candidate.nodes.has(candidate.selected):
 		return "Invalid selected card."

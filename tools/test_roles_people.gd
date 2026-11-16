@@ -99,6 +99,7 @@ func _run_chunk5_monitor_confessor() -> void:
 	_test_confessor_visit_before_demon_kill()
 	_test_confessor_poisoned_delusional_misread()
 	_test_confessor_night_duty_alibi_and_bluff()
+	_test_medium_duty_needs_a_hearth()
 
 
 # ---- test_roster
@@ -758,3 +759,22 @@ func _test_confessor_night_duty_alibi_and_bluff() -> void:
 	w.day = 1
 	var bluff_entry = rdef.generate_bluff_reading(w, bluffer, {}, "sg", mate_npc, [])
 	_check(bluff_entry.has("entry"), "Bluffing Confessor generates bluff reading")
+
+
+## Triage 3.8: a real Medium tells the gift's duty only for a night with a hearth to sit at.
+## Out on the first kill night, when no one had died, "as my gift asks" gave them away.
+func _test_medium_duty_needs_a_hearth() -> void:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(11123, 7)
+	var w = g.w
+	var med = w.living_good()[0]
+	_give_role(w, med, "medium")
+	med.claimed_role = "medium"
+	med.claim_public = true
+	med.info_log = []
+	var rdef = C.role_def("medium")
+	_check(not rdef.uses_night_duty_alibi(w, med, 1, true), "a real Medium out on a night with no hearth doesn't claim the duty")
+	var dead = w.living_good()[1]
+	med.info_log.append({"day": 1, "role": "medium", "data": {"dead": dead.id}, "text": "test reading", "shared": false, "true": true})
+	_check(rdef.uses_night_duty_alibi(w, med, 1, true), "with a reading at a hearth that night, it does")

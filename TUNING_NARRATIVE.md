@@ -339,7 +339,10 @@ them, their fear is halved.
 
 Asked where they were at night:
 - An NPC with a known walking gift names its duty (the watch kept, the door guarded, the
-  hearth visited). Evil bluffing a walking gift does the same from its bluff.
+  hearth visited). Evil bluffing a walking gift does the same from its bluff. A real Medium
+  names the hearth only for a night when there was a dead person's hearth to visit.
+- A good NPC hiding a night-walking gift leans toward declining over lying
+  (`HIDDEN_GIFT_DECLINE_BIAS` -0.4: about a 17% lie at neutral Confidence and Privacy).
 - A good NPC out for a secret either confesses, lies or stonewalls. Confessing gets likelier
   with rapport (around 0.6 and up), pressure and low Privacy; Confidence decides lying
   boldly versus stonewalling. The Sleepwalker honestly says "home".
@@ -542,7 +545,8 @@ evil about half the time after its first frame.
 
 ### The night
 
-**The kill** scores each candidate: +3 for a public info claim (+1 if the gift is spent),
+**The kill** scores each candidate: +3 for a public info claim (0 once a first-night gift is spent, and its shared readings
+no longer count as implicating evil),
 +2 for readings implicating evil, hostility, +0.7 for living alone, +1.5 from temperament
 (vengeful toward the distrusted, cunning toward the scapegoat's block, hungry at random),
 −4 to keep the scapegoat alive while more than four live, −1.5 for someone spared by

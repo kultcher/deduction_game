@@ -16,7 +16,7 @@ const RecentSightings = preload("res://game/recent_sightings.gd")
 static func _maybe_approach(g, skip_id: String = "") -> void:
 	g.approached_id = ""
 	g.approached_loc = ""
-	if _maybe_divulge(g):
+	if _maybe_divulge(g, skip_id):
 		return
 	var c = Social.approach_candidate(g.w, skip_id)
 	if c == null:
@@ -29,14 +29,34 @@ static func _maybe_approach(g, skip_id: String = "") -> void:
 	g.approached_loc = n.loc
 	g.state = "approach"
 	g.w.dlog.add("approach", n.id, "player", {"agenda": c["agenda"]})
-	g._narr("%s the %s approaches you at %s." % [n.name, n.occupation, g.w.loc_name(n.loc)])
+	g.approach["intro"] = approach_intro(g, n, skip_id, "As you cross past %s, %s the %s waves you down." % [g.w.loc_name(n.loc), n.name, n.occupation])
+	g._narr(g.approach["intro"])
+	var from: int = g.events.size()
 	g._line(Mind.say_voiced(n, "approach_word", "Demonologist, a word?"))
 	g._line(Social.approach_teaser(g.w, n, c["agenda"]))
+	g.approach["events"] = g.events.slice(from)
 	if c["agenda"] == "protect":
 		n.request_day = g.w.day
 		g._prompt("'yes' (promise it; free) or 'no'.")
 	else:
 		g._prompt("'accept' (talk now; it uses this phase's action) or 'decline'.")
+
+
+## The approach's interstitial (triage 2.8/8.3, Nov 16): the VN shows it with no portrait,
+## covering the phase change, before the approacher speaks. After a conversation it opens
+## with parting from that person as the new phase begins; in the morning (or with nobody to
+## part from) it opens with the time of day, or not at all.
+const PHASE_TURN = ["", "the afternoon sun reaches its zenith", "the light begins to fail"]
+
+static func approach_intro(g, n, previous_id: String, waves: String) -> String:
+	var phase: int = int(g.w.phase)
+	var turn: String = PHASE_TURN[phase] if phase >= 0 and phase < PHASE_TURN.size() else ""
+	var prev = g.w.by_id.get(previous_id) if previous_id != "" else null
+	if turn == "":
+		return waves
+	if prev != null and prev != n:
+		return "You part ways with %s as %s. %s" % [prev.name, turn, waves]
+	return "%s. %s" % [turn[0].to_upper() + turn.substr(1), waves]
 
 
 ## Have you already promised them your ward or a vigil tonight?
@@ -46,7 +66,7 @@ static func _promised_to(g, n) -> bool:
 
 ## Someone you kept your word to finds you, as they said they would: they tell you their gift
 ## (and readings, if they'd usually share them) for free. Talking on is optional.
-static func _maybe_divulge(g) -> bool:
+static func _maybe_divulge(g, skip_id: String = "") -> bool:
 	for id in g.divulge_due.duplicate():
 		var n = g.w.by_id[id]
 		if not n.alive:
@@ -62,11 +82,14 @@ static func _maybe_divulge(g) -> bool:
 		g.approached_loc = n.loc
 		g.state = "approach"
 		g.w.dlog.add("approach", n.id, "player", {"agenda": "divulge"})
-		g._narr("%s the %s finds you at %s, as they promised." % [n.name, n.occupation, g.w.loc_name(n.loc)])
+		g.approach["intro"] = approach_intro(g, n, skip_id, "%s the %s finds you at %s, as they promised." % [n.name, n.occupation, g.w.loc_name(n.loc)])
+		g._narr(g.approach["intro"])
+		var from: int = g.events.size()
 		g._line(Mind.say_voiced(n, "protect_kept_word", "You kept your word. Now I'll keep mine."))
 		n.pressed_today = 0  # They initiated this free disclosure, not another interrogation.
 		var r: Dictionary = Mind.keep_request(g.w, n, 4 if n.trust >= 0.6 else 3)
 		g._lines(r["lines"])
+		g.approach["events"] = g.events.slice(from)
 		g._facts(r["facts"])
 		g._prompt("(That cost you nothing.) 'accept' to keep talking (uses this phase's action) or 'decline'.")
 		return true
@@ -855,7 +878,7 @@ static func _maybe_tell_relationships(g, n, t, r: Dictionary) -> void:
 		return
 	var p = clampf(Tuning.Dialogue.SHARE_HAUNTS_BASE + Tuning.Dialogue.SHARE_HAUNTS_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_HAUNTS_TRUST_SCALE * (n.trust - 0.5), 0.0, Tuning.Dialogue.SHARE_HAUNTS_CAP)
 	var roll = g.w.rng.randf()
-	g.w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE), "none": 1.0 - p}}, t.id)
+	g.w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE), "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
 	# Filtered after the roll so the decision draws are unchanged. Ties to the dead belong to
@@ -867,7 +890,7 @@ static func _maybe_tell_relationships(g, n, t, r: Dictionary) -> void:
 	if unknown.is_empty():
 		return
 	unknown.sort_custom(func(a, b): return (n.id in a.bond.people) and not (n.id in b.bond.people))
-	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE else [unknown[0]]
+	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE else [unknown[0]]
 	var used_keys: Array = []
 	for entry in tell:
 		var bond: Dictionary = entry.bond
