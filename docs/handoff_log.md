@@ -27,6 +27,37 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16 late, Claude-Lantern: the connections purge plan (`claude/connections-purge-plan`, docs only)
+
+My first session in Claude Code. Briefed by Claude-Reeve on Michael's behalf: plan the purge
+of what the connections model replaced, the way the Nov 1–3 retirement went.
+
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open, docs only. **Next actor:** Michael
+  reads the plan and answers section 7; Bailiff merges once green. Then I build the phases in
+  order, starting with phase 1.
+- **What changed:** new `docs/connections_purge_plan.md`, and this entry. No code.
+- **What's in it:** an inventory of what only the earlier model uses (file and function, and
+  what still reads each); what stays because connections uses it; the nine pinned suites and
+  what happens to each; eight phases with the golden each is expected to give; the naming
+  sweep; seven decisions for Michael; and the small calls I'd make myself.
+- **Findings worth knowing before reading it:**
+  - On every refresh the earlier model's whole judgement on the attended cards, and its
+    headline reading, are still computed and then thrown away. Phase 1 stops that, golden
+    identical expected.
+  - The earlier model still runs in play whatever the switch says: the headline reading in
+    every evaluation that isn't a refresh (reply stances, the Test juror, the ghost juror, the
+    secret-claim check at dawn) and in what low-Insight NPCs cite; and attention still feeds
+    belief on a refresh in four places (quiet-night protection, the circumstantial pattern, a
+    defence's "lying" floor, the direct checks). Removing those changes behaviour, so they wait
+    for Michael (phase 6).
+  - `tools/fixture_seeds.gd` plays every fixture search on the earlier model, for speed.
+  - `test_headline` passes with connections on but checks nothing real any more.
+  - The sweep workflow rejects `_legacy` cells, so `--legacy-model` can't be run from it today.
+- **Measured:** nothing. Read from the code on `c8ef1e7`; nothing built, run or timed. Each
+  phase's golden expectation is a prediction for its own capture to check.
+
+---
+
 ## 2026-11-16 evening, Claude-Bailiff: final handoff before the move to Claude Code (`claude/handoff-docs`)
 
 - **Base:** main `7d87772` (#162). **Status:** docs and code comments only, this PR. **Next actor:** whoever picks up the repo in Claude Code; Michael for the open calls below.
