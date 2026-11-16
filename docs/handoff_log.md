@@ -29,7 +29,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-16 late, Claude-Herald: playtest 26532's "ask night" and defence findings, and remembering the last script (`claude/herald-night-results`)
 
-- **Base:** main `c8ef1e7` (#167). **Status:** PR open. **Next actor:** Bailiff to merge; Michael for the wording below.
+- **Base:** main `c8ef1e7` (#167). **Status:** PR #171 open. **Next actor:** Bailiff to merge; Michael for the wording below; Beadle for the defence's hinge choice (below).
 - **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds, two captures. That's expected rather than reassuring: the capture plays a passive player (`wait` and votes only), so it never asks `ask night` or files a case for a defence to answer. Bot games are compared below.
 
 ### What changed and why
@@ -40,6 +40,7 @@ Ground rules (from Nov 3, until Michael changes them):
    - "My gift showed me nothing that night.", if it showed nothing (a Medium with nothing new at the hearth). An evil bluffer with no story ready for that night holds it back instead, since "nothing" from a Confessor would give them away.
    - The Night Watch is unchanged (its result is the sightings it already holds back or tells). Words only: no new card, no roll. Code: `MindDialogue._night_gift_result`, and `RoleDef.night_result_in_sightings()` (true for the Night Watch).
 2. **A defence answered the wrong case** (Isolde, 26532). Cause: `_disclosed_items_against` turned every sighting a case cited into a "seen out at night" item keyed by its day, so a day-1 evening sighting became "night 1", and on day 2 the defence opened "Your case rests on where I was last night" and gave a night account. Now a sighting by day is its own item (`whereabouts_day`, id `sighting_day:...`), isn't a night outing or a frame, and the hinge is the heaviest cited item a defence can answer (a reading or a night), so Isolde's would now go after Lian's Archivist reading. Not re-played on 26532 itself (no log here).
+   - **Ownership (Seneschal, Nov 16):** NPC behaviour is now Claude-Beadle's. This fix has two parts. Telling a sighting by day from a night one (`_disclosed_items_against`) corrects what the defence was told, and that part is the bug fix. Skipping daytime items when picking the hinge (`defend_self`, `cited`) is a decision about how a defence frames itself, so **it's Beadle's to review or change**. I left it in because without it the hinge would sit on an item with no answer and the defence would open with no framing at all. Open question for Beadle: should a defence have its own answer to a daytime whereabouts case ("I was at the mill that evening, and so were others")? Today it has none.
 3. **Remember the last script** (BACKLOG [decided], section 2 "Scripts, follow-ups"): the New Case screen keeps the town size and script in `user://settings.cfg` under `[new_case]`. The item is moved to BACKLOG_COMPLETED.
 
 ### Small calls made on Michael's behalf
