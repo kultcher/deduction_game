@@ -40,13 +40,6 @@ section 6): a sighter cut from the sighter contest by the two-sighter cap; an ev
 relay about the first victim naming night 0; a case with no cards answered from an older
 compile; a Night Watch list that wrongly names the listener clearing the rest of the watch.
 
-- **The Night Watch bluff doesn't hide teammates.** (Claude-Beadle, Nov 16; read from
-  code) `sim/roles/nightwatch.gd` `generate_bluff_reading` logs "hiding teammates" but
-  never drops a teammate from the walkers it reports. Michael (Nov 16): confirm with a test
-  first, then make the behaviour match the log, or the log match the behaviour if
-  reporting teammates turns out to be intended; say which in the PR. Owner Beadle.
-  [decided]
-
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)

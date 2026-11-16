@@ -27,6 +27,16 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16 late, Claude-Beadle: the Night Watch bluff does hide teammates (`claude/beadle-nightwatch-teammates`, stacked on #175)
+
+- **Base:** `claude/beadle-evil-owned-lie` (#175); merge after it. **Status:** PR open. **Next actor:** Bailiff.
+- **Result: confirmed, no gap. The log matches the behaviour; nothing changes in play.** My #175 audit said the Night Watch bluff logs "hiding teammates" but never drops one. It doesn't need to: the walkers it reports come from its intel, and walker intel only ever names good people. `Evil.gather_night_intel` skips evil sightings, and `Evil.intel_from_share` records a told sighting of a teammate as a threat on the teller instead. The audit read the role file alone and missed that.
+- **Test:** new `tools/test_nightwatch_bluff_teammates.gd`. It checks both intel paths, then the bluff with a teammate and a good walker on the watched block, then a scan of 20 passive 7-NPC games to day 3 (17 reached it; 6 Night Watch fabrications, no teammate named). Not on the fast list: the scan plays games, about 2 minutes.
+- **Code:** a comment in `sim/roles/nightwatch.gd` saying where the hiding happens. Golden: comment and test only, so it can't move.
+- **BACKLOG:** the item moves to BACKLOG_COMPLETED as settled, with this finding. Correction to my #175 entry: the "Night Watch bluff doesn't hide teammates" gap listed under part 1 isn't real.
+
+---
+
 ## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
 
 - **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
