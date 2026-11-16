@@ -150,6 +150,7 @@ func _notes() -> void:
 	check(p.any(func(q): return _kind(g, _value(g, "suspicious", q.id, [seer, dowser])) == "presses"), "a \"suspicious\" premise on them counts for less than what stands, so it only presses")
 	check(_kind(g, _value(g, "evil", p[3].id, [seer, dowser, other])) not in ["refresh", "repeat"], "a bigger case on a later day is neither a refresh nor a repeat")
 	_retired_and_challenged()
+	_profile_and_upgrade()
 	Connections.enabled = false
 
 
@@ -181,3 +182,39 @@ func _retired_and_challenged() -> void:
 	var challenged: Dictionary = plain.duplicate(true)
 	challenged["reading_challenges"] = {str(plain.cards[0]): {"mode": "misled", "supports": []}}
 	check(Live.town_note(fresh, challenged).is_empty(), "a case that challenges a reading gets no note")
+
+
+## Codex on #154 (second pass): a case citing a Townsfolk Profile node (its receipts have
+## negative numbers) can still be a repeat; and a firm premise on cards you've only argued
+## as "suspicious" counts for more, so it isn't a repeat.
+func _profile_and_upgrade() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	g.public_citations[seer] = true
+	var view: Dictionary = Live.view(g)
+	var model = CanvasModel.new(view)
+	model.contradiction_links = true
+	model.marked_answers = false
+	var premise: String = model.add_premise(p[3].id, "evil", Vector2(400, 40))
+	model.connect_cards(_node(model, view, seer), premise)
+	var prof: String = model.add_profile_info(p[3].id, ["home_work"])
+	model.connect_cards(prof, premise)
+	var with_profile: Dictionary = model.compile(premise)
+	var roots: Dictionary = Live.supports(g, with_profile)
+	check(roots.numbers.any(func(x): return int(x) < 0), "(fixture) the case cites a profile receipt (%s)" % str(roots.numbers))
+	var filed: int = Live.file(g, with_profile)
+	g.public_presentations[filed] = int(g.w.day)
+	check(_kind(g, with_profile) == "repeat", "a case with a Townsfolk Profile node, presented again the same day: a repeat (%s)" % _kind(g, with_profile))
+	var h = _game()
+	var q: Array = h.w.npcs
+	var s2: int = _read(h, q[2], "seer", 1, {"pair": [q[3].id, q[4].id], "yes": true})
+	var d2: int = _read(h, q[5], "dowser", 1, {"group": [q[4].id], "count": 0})
+	h.public_citations[s2] = true
+	h.public_citations[d2] = true
+	var sus: Dictionary = _value(h, "suspicious", q[3].id, [s2, d2])
+	var firm: Dictionary = _value(h, "evil", q[3].id, [s2, d2])
+	var first: int = Live.file(h, sus)
+	h.public_presentations[first] = int(h.w.day)
+	check(_kind(h, firm) not in ["repeat", "presses"], "a firm premise on cards argued only as \"suspicious\" today isn't a repeat (%s)" % _kind(h, firm))
+	check(_kind(h, sus) in ["repeat", "presses"], "the same \"suspicious\" case again still is")

@@ -289,8 +289,9 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		var ids: Array = Array(filed.get("workshop_case", {}).get("cards", [])).duplicate()
 		if ids.is_empty():
 			for support in filed.get("supports", []):
-				if int(support) >= 1 and int(support) <= g.board.size() and g.board[int(support) - 1].get("kind", "") != "deduction":
-					ids.append(Evidence.normalize_card(g.board[int(support) - 1]).id)
+				var root: Dictionary = g.receipt_by_number(int(support))  # board cards and profile receipts
+				if not root.is_empty() and root.get("kind", "") != "deduction":
+					ids.append(Evidence.normalize_card(root).id)
 		var conclusion: Dictionary = filed.get("workshop_case", {}).get("conclusion", {})
 		var kind: String = str(conclusion.get("type", filed.get("conclusion", {}).get("type", "")))
 		# public_presentations held `true` before it held the day.
@@ -309,7 +310,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	if not roots.issues.is_empty():
 		return {}
 	for number in roots.numbers:
-		var card: Dictionary = g.board[int(number) - 1] if int(number) >= 1 and int(number) <= g.board.size() else {}
+		var card: Dictionary = g.receipt_by_number(int(number))  # board cards and profile receipts
 		if card.is_empty() or not (Meeting.already_public(g, card) or said.has(Evidence.normalize_card(card).id)):
 			return {}
 	# The neutral listener's view: this case's cards and your public cases', no watch record.
@@ -362,6 +363,10 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	# Earlier cases of yours that already hold all of these cards.
 	var covering: Array = again + earlier.filter(func(c): return not c.same and value.cards.all(func(id): return id in c.cards))
 	var same_cards: Array = covering.filter(func(c): return c.cards.all(func(id): return id in value.cards))
+	# A firm premise on cards you've only argued as "suspicious" counts for more (a suspicious
+	# case weighs half, Connections.case_weight) and takes the weaker case's place: not a repeat.
+	if not draft.suspicious and not covering.is_empty() and covering.all(func(c): return c.suspicious):
+		return {}
 	if not covering.is_empty():
 		var latest: Dictionary = covering[-1]
 		for c in covering:
