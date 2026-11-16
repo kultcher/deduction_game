@@ -163,7 +163,7 @@ towns.
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
   (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
-  It drops to +1.0 after day 1 for first-night gifts. Only the Seer (+1.0 more) and the
+  It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
   Registrar (+0.75 more) have their own bonus. To review role by role:
   - one-shot gifts that keep the full score after their information is spent: the
     Chronicler after night 3, the Executor after its assigned person dies;

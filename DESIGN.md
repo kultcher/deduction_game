@@ -261,7 +261,7 @@ rather than particular gifts. Every role and secret has an icon
 | Sexton | Once per case, from night 1, may toll the church bell at the start of night and walk through every block. For that night and the next day the bell suppresses minion abilities: the Poisoner's poison, the Breathstealer's silencing, the Brute's hunt, the Revenant's totem and curse, the Scion's rise. The toll is not public: the Sexton keeps it quiet while the bell holds (refusing, never lying, when asked where they were) unless pressed hard, and is open about it from the morning after it wears off. Evil plays the bell only once a Sexton has told the town of it (no Scion fallback; a Revenant isn't worth hanging). A poisoned Sexton walks and tolls for nothing. |
 | Surveyor | Starts knowing whether all the residents of one random block (not their own, with at least two residents) share the same alignment. Marked registers as evil 50% of the time. |
 | Veteran | The first attack fails; they learn the last block the attacker came through (their own if the demon lives there). A second attack kills. |
-| Warden | Each night guards one other person's door against the demon. Stands at the door, so can be seen, framed and hunted. After a quiet night they may believe they made a save (see below). |
+| Warden | Each night from the first kill night (not night 0, when there is no kill to stop) guards one other person's door against the demon. Stands at the door, so can be seen, framed and hunted. After a quiet night they may believe they made a save (see below). |
 
 Players may ask a gift-holder who has told them their gift to use it a particular way
 tonight (a Seer to look at someone, a Warden to guard, a Night Watch to watch a block, a
@@ -454,7 +454,7 @@ friction or protection). It has **3 questions**. The menu:
   afternoon / morning. Daytime answers start with where they were and are truthful
   (daytime whereabouts are open to anyone's eyes). People you can already see are left
   out. Night answers go through the night account (Lying, below).
-- **Ask about others…**: "Opinion on…" a person (may add their haunts and recent
+- **Ask about others…**: "Opinion on…" a person (may add one of their haunts and recent
   sightings of them, and second-hand gift talk they've heard), or "Heard of a…" gift (who
   claims it, publicly or in private if they'll pass it on; small chance the holder owns
   up).
@@ -800,9 +800,12 @@ One question, four tiers, from Privacy, rapport, pressure and the day:
   on days 1–2; start-knowledge gifts lean more open.
 - **Fear as cover:** refusals sometimes say "If I say what I am, I'll be dead by morning",
   likelier as deaths mount and for the skittish (same odds for evil bluffers). The fearful
-  may instead ask for your ward or vigil in exchange for their gift.
+  may instead ask for your ward or vigil in exchange for their gift, but not once they've
+  told you their role; having offered that deal, they hold back a public claim that day
+  unless nominated, pressed hard or four or fewer are alive.
 - **Public claims** have their own roll at each meeting (Privacy, day, pressure, gift
-  kind; strongly up with four or fewer alive). Going public shares every unshared reading.
+  kind; strongly up with four or fewer alive). Going public shares every unshared reading,
+  and from then on they tell you their readings too unless they badly distrust you.
 
 ### Lying and night accounts
 
@@ -813,12 +816,15 @@ Reasons NPCs lie, always recorded (`think`, topic `lie`):
 2. **Personal secrets:** a good NPC out at night for a secret lies about where they were
    (or confesses, or stonewalls: Privacy, rapport and pressure decide whether they
    confess; Confidence whether they lie or stonewall).
-3. **Caution:** a good NPC with a high-value gift may hide it.
+3. **Caution:** a good NPC with a high-value gift may hide it. Asked where they were, one
+   hiding a night-walking gift usually declines rather than lies (lying stays possible, so
+   declining isn't a tell for good).
 4. **Poisoned / Delusional / Sleepwalker:** not lies; honest reports of false information.
 
 Asked where they were, an NPC with a disclosed walking gift names its duty (the watch
 kept, the door guarded, the hearth visited); evil bluffing a walking gift does the same
-from its bluff. A good NPC shown a sound "you lied" about their own statement knows it's
+from its bluff. A real Medium names the hearth only for a night when there was a dead person's hearth to visit.
+A good NPC shown a sound "you lied" about their own statement knows it's
 true: open or pressed ones own up, the rest stonewall. A good walker pressed with a
 sighting, or disclosing a walking gift later, owns the earlier lie ("So yes: I was out…").
 Seen out at night, the real Sleepwalker (under pressure) and evil bluffers can say "I've
@@ -923,7 +929,10 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
 - **Bluffs** cover every information gift. A Seer bluff never gives a "no" that covers the
   scapegoat and frames every night once five or fewer remain; a lone evil Seer bluffer
   never puts itself in its own pair. Each gift has its own bluff rule
-  (`generate_bluff_reading`), built around the scapegoat and the team.
+  (`generate_bluff_reading`), built around the scapegoat and the team. A Dowser bluff keeps
+  its count near the truth: in a pair, 1 only to frame the scapegoat (and not when that
+  would expose an ally the town already suspects), otherwise 0; in three, 1 when the truth
+  is 2 or to frame, otherwise 0; in four or more, usually the truth + 1, sometimes the truth.
 - An evil Gravedigger reporting on a hanged good person calls them a Minion more often the
   surer the town was, read from the hanging vote's yes share (the player's vote counts);
   otherwise it confirms their claim, or guesses a good role (#136; `Evil.GRAVEDIGGER_FRAME_*`).
@@ -936,8 +945,9 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   hostility), opportunity (lives alone), temperament, minus penalties (preserve the
   scapegoat while more than 4 live; spared by Clemency; previous failures; a door the
   player promised to ward or a block they promised to watch). Noise only matters between
-  close candidates. A claimed start-knowledge gift spent after night 0 is worth less than
-  one that keeps reporting. 3% of nights the demon skips its top three.
+  close candidates. A claimed start-knowledge gift spent after night 0 scores nothing for
+  its claim, and readings it has already shared no longer count as implicating evil
+  (killing it unsays nothing). 3% of nights the demon skips its top three.
 - **After a failed kill** with no visible cause (Warden, Veteran), the demon avoids that
   person and shies from high-profile targets for a couple of nights; anyone it glimpsed
   at the door becomes a likely Warden.
