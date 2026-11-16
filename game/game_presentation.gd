@@ -487,7 +487,7 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 		g._ev({"k": "note", "text": "The town has heard this case before. Putting it to them again brings it back to mind."})
 	elif g.public_presentations.has(num):
 		g._ev({"k": "note", "text": "This case is already public knowledge: presenting it again doesn't sway the town further, but it stands on its own merits."})
-	g.public_presentations[num] = true
+	g.public_presentations[num] = int(g.w.day)
 	g.w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)

@@ -239,6 +239,242 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	feedback(prepared.view, prepared.case, ev, result)
 	return result
 
+## What presenting this case to the town would add, under the connections model
+## (workshop/connections.gd; nothing with the switch off). The strength chip says whether
+## the argument is sound; this says when a sound argument would still move the town
+## little, from public information and your own public cases only:
+##   "none"     the case's cards are all public already, and weighed together they add
+##              little (a single card, or cards that say nothing more together);
+##   "repeat"   you put these cards to the town today already;
+##   "presses"  the same, under a "suspicious" premise: no new belief, but it still
+##              presses its subject;
+##   "refresh"  you put them to the town on an earlier day: this brings that back;
+##   "settled"  the public record already settles its subject.
+## A case that brings any card the town hasn't heard never gets a note. It is judged
+## by a neutral listener who holds only the cards of this case and of your public cases,
+## without your watch record (the town doesn't have it), by the game's own rules for
+## stored cases (Connections.cases).
+## Returns {} or {"kind", "text", "adds": the most the case's own part moves anyone, in
+## log-odds at full weight}. `little`: under this, the cards add little together.
+const NOTE_ADDS_LITTLE: float = 0.2
+## A refresh is only noted when it changes something (log-odds at full weight).
+const NOTE_REFRESH_MIN: float = 0.01
+static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	var Meeting = preload("res://game/game_meeting.gd")
+	if not Connections.enabled or value.get("cards", []).is_empty():
+		return {}
+	# A reading challenge changes how the town weighs a case (SharedLedger.prepare), and the
+	# stored-case arithmetic below doesn't carry it: no note rather than a wrong one.
+	if not value.get("reading_challenges", {}).is_empty():
+		return {}
+	# Earlier versions of a case you've revised in public: the town retracted them
+	# (GamePresentation.workshop_canvas_retire), so their cards are heard but their
+	# arguments no longer stand.
+	var retired: Dictionary = {}
+	for number in g.public_presentations:
+		if int(number) < 1 or int(number) > g.board.size():
+			continue
+		var ancestor: int = int(g.board[int(number) - 1].get("revises", 0))
+		while ancestor > 0 and ancestor <= g.board.size() and not retired.has(ancestor):
+			retired[ancestor] = true
+			ancestor = int(g.board[ancestor - 1].get("revises", 0))
+	# Your public cases, oldest first, as the town heard them.
+	var earlier: Array = []
+	var said: Dictionary = {}
+	for number in g.public_presentations:
+		if int(number) < 1 or int(number) > g.board.size():
+			continue
+		var filed: Dictionary = g.board[int(number) - 1]
+		# A case deleted from your board still stands with the town (GameBoard.delete_deduction
+		# retracts nothing).
+		if filed.get("kind", "") != "deduction":
+			continue
+		var ids: Array = Array(filed.get("workshop_case", {}).get("cards", [])).duplicate()
+		if ids.is_empty():
+			for support in filed.get("supports", []):
+				var root: Dictionary = g.receipt_by_number(int(support))  # board cards and profile receipts
+				if not root.is_empty() and root.get("kind", "") != "deduction":
+					ids.append(Evidence.normalize_card(root).id)
+		var conclusion: Dictionary = filed.get("workshop_case", {}).get("conclusion", {})
+		var kind: String = str(conclusion.get("type", filed.get("conclusion", {}).get("type", "")))
+		# public_presentations held `true` before it held the day.
+		var day: int = int(g.public_presentations[number]) if g.public_presentations[number] is int else int(g.w.day)
+		for id in ids:
+			said[id] = true
+		# A retired version, or one whose reading challenges this arithmetic can't carry,
+		# doesn't count as an argument of yours here (its cards are still heard).
+		if retired.has(int(number)) or not filed.get("workshop_case", {}).get("reading_challenges", {}).is_empty():
+			continue
+		# Only the cards it argues for count as its argument: a "conflict" case argues for none,
+		# and a quoted-only line's cards are heard but not endorsed (SharedLedger.endorsed_facts).
+		if filed.has("workshop_case"):
+			ids = _endorsed(filed.workshop_case)
+		if ids.is_empty():
+			continue
+		earlier.append({"key": "case:%d" % int(number), "number": int(number), "presenter": "player", "day": day, "cards": ids, "suspicious": kind == "suspicious",
+			"same": filed.get("workshop_case", {}) == value})
+	earlier.sort_custom(func(a, b): return a.day < b.day or (a.day == b.day and a.number < b.number))
+	# Any card the town hasn't heard is news: no note.
+	var roots: Dictionary = supports(g, value)
+	if not roots.issues.is_empty():
+		return {}
+	for number in roots.numbers:
+		var card: Dictionary = g.receipt_by_number(int(number))  # board cards and profile receipts
+		if card.is_empty() or not (Meeting.already_public(g, card) or said.has(Evidence.normalize_card(card).id)):
+			return {}
+	# The neutral listener's view: this case's cards and your public cases', no watch record.
+	var all: Dictionary = value.duplicate(true)
+	for id in said:
+		if id not in all.cards:
+			all.cards.append(id)
+	var input = snapshot(g, all)
+	input.private_evidence = []
+	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
+	input["watched"] = []
+	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+	var prepared = Assess.prepare(input)
+	if not prepared.ready:
+		return {}
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var Solver = preload("res://workshop/solver.gd")
+	var view: Dictionary = prepared.view
+	var target: String = str(value.get("conclusion", {}).get("target", ""))
+	var run: Dictionary = Connections.begin(view, prepared.case, CaseEval.neutral_listener(view))
+	if run.impossible or target not in run.others:
+		return {}
+	var name: String = Solver.person_name(view, target)
+	if float(run.baseline[target]) <= Connections.FIXED or float(run.baseline[target]) >= 1.0 - Connections.FIXED:
+		return {"kind": "settled", "adds": 0.0, "text": "No new info: the public record already settles %s." % name}
+	var by_id: Dictionary = {}
+	for c in view.cards:
+		by_id[c.id] = c
+	run["by_id"] = by_id
+	var held: Array = prepared.case.cards.filter(func(id): return by_id.has(id))
+	var item_list: Array = Connections.items(by_id, held, run.people, run.row)
+	var values: Dictionary = {}
+	for it in item_list:
+		values[it.key] = Connections.value(run, it)
+	var today: int = int(g.w.day)
+	# The draft's argument is the cards it argues for, as an earlier case's is: a "conflict"
+	# draft argues for none (no note), and quoted-only lines are heard, not endorsed.
+	var argued: Array = _endorsed(value)
+	if argued.is_empty():
+		return {}
+	var draft: Dictionary = {"key": "draft", "presenter": "player", "day": today, "cards": argued.duplicate(), "suspicious": str(value.get("conclusion", {}).get("type", "")) == "suspicious"}
+	# The same filed case presented again takes its own earlier place (a revision).
+	var case_list: Array = earlier.filter(func(c): return not c.same) + [draft]
+	var empty_core: Dictionary = {"seed": [], "members": [], "lean": {}, "impossible": false}
+	var res: Dictionary = Connections.cases(run, item_list, values, empty_core, case_list, today)
+	var before: Dictionary = Connections.cases(run, item_list, values, empty_core, earlier, today)
+	var entries: Array = res.entries.filter(func(e): return e.key == "draft")
+	var entry: Dictionary = entries[0] if not entries.is_empty() else {}
+	# What presenting it would change, by the arithmetic itself (Codex on #154): the stored
+	# cases' lean with the draft against without it, per person, at the draft's full weight.
+	# Faded, replaced, superseded and shared cases all come out of this, as they would for a
+	# listener.
+	var adds: float = 0.0
+	var people: Dictionary = {}
+	for p in res.lean:
+		people[p] = true
+	for p in before.lean:
+		people[p] = true
+	for p in people:
+		adds = maxf(adds, absf(float(res.lean.get(p, 0.0)) - float(before.lean.get(p, 0.0))) / maxf(0.001, float(entry.get("weight", 1.0))))
+	# Earlier arguments of yours that hold all of these cards and still count today.
+	var counting: Dictionary = {}
+	for e in before.entries:
+		if float(e.get("weight", 0.0)) > 0.0:
+			counting[str(e.key)] = true
+	var covering: Array = earlier.filter(func(c): return counting.has(c.key) and argued.all(func(id): return id in c.cards))
+	# The same cards on an earlier day, renewed at today's weight (even faded out entirely):
+	# a refresh, if it changes anything at all. A "suspicious" draft over a firm case
+	# counts for less: it doesn't renew it.
+	var renewed: Dictionary = {}
+	for c in earlier:
+		if c.day < today and c.cards.all(func(id): return id in argued) and argued.all(func(id): return id in c.cards) and not (draft.suspicious and not c.suspicious):
+			if renewed.is_empty() or c.day > renewed.day:
+				renewed = c
+	var latest_today: bool = covering.any(func(c): return c.day == today)
+	if not renewed.is_empty() and not latest_today and adds > NOTE_REFRESH_MIN:
+		return {"kind": "refresh", "adds": adds, "text": "Refreshes your day-%d argument (case #%d): the town weighs it at full strength again." % [renewed.day, renewed.number]}
+	if adds >= little:
+		return {}
+	if not covering.is_empty():
+		var latest: Dictionary = covering[-1]
+		for c in covering:
+			if c.day > latest.day:
+				latest = c
+		if draft.suspicious and _would_press(run, entry, target, _neutral_posterior(run, values, before)) and not _pressure_spent(g, target, roots.numbers):
+			return {"kind": "presses", "adds": adds, "text": "Adds no new belief (you've put these cards to the town in case #%d), but still presses %s." % [latest.number, name]}
+		return {"kind": "repeat", "adds": adds, "text": "No new info: you've already put these cards to the town (case #%d)." % latest.number}
+	var shared_with: Array = earlier.filter(func(c): return counting.has(c.key) and c.cards.any(func(id): return id in argued))
+	if int(entry.get("shared", 0)) >= 2 and not shared_with.is_empty():
+		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
+	return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}
+
+
+## Would this "suspicious" entry press its subject noticeably (NOTE_PRESSES or more at a
+## meeting), going by the neutral listener? The game's own pressure rule on its numbers.
+const NOTE_PRESSES: float = 0.15
+static func _would_press(run: Dictionary, entry: Dictionary, target: String, now: Dictionary) -> bool:
+	var Presentation = preload("res://game/workshop_presentation.gd")
+	# The game's own rise (WorkshopPresentation._connections_rise): the subject's chance as the
+	# neutral listener holds it now (`now`: every heard card and your standing cases, not the
+	# no-card baseline; Codex on #155) against their chance with the case's points taken away.
+	var Connections = preload("res://workshop/connections.gd")
+	var chance: float = float(now.get(target, 0.0))
+	if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
+		return false
+	var without: Dictionary = {}
+	var points: Dictionary = entry.get("points", {})
+	for p in points:
+		without[p] = -float(points[p])
+	var rise: float = float(now.get(target, 0.0)) - Presentation.held_back_chance(now, without, target)
+	return Presentation.connections_pressure(maxf(0.0, rise)) >= NOTE_PRESSES
+
+## The neutral listener's chances as a refresh would give them: the baseline plus every heard
+## card's lean and your standing cases' (it holds no knowledge of its own, so no core).
+static func _neutral_posterior(run: Dictionary, values: Dictionary, standing: Dictionary) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	var total: Dictionary = {}
+	for p in run.others:
+		total[p] = float(standing.get("lean", {}).get(p, 0.0))
+	for key in values:
+		for p in values[key].get("lean", {}):
+			if total.has(p):
+				total[p] += float(values[key].lean[p])
+	return Connections.combine(run.others, run.baseline, total).posterior
+
+## Has this "suspicious" filing (its target and cards) already pressed? Pressure comes once
+## per filing, from its first hearing, and only in that venue (WorkshopPresentation.
+## _suspicious_pressure): once anyone has heard it, in private or at a meeting, presenting it
+## at the meeting presses no one more (Codex on #155).
+static func _pressure_spent(g, target: String, numbers: Array) -> bool:
+	var ids: Array = numbers.duplicate()
+	ids.sort()
+	var filing: String = target + "|" + ",".join(PackedStringArray(ids))
+	var entry: Dictionary = g.w.suspicious_pressure.get(filing, {})
+	return int(entry.get("count", 0)) > 0
+
+## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
+static func _endorsed(value: Dictionary) -> Array:
+	if str(value.get("conclusion", {}).get("type", "")) == "conflict":
+		return []
+	var assigned: Array = []
+	var endorsed: Array = []
+	for line in value.get("lines", []):
+		assigned.append_array(line.get("cards", []))
+		if line.get("relation", "supports") == "supports":
+			for id in line.get("cards", []):
+				if id not in endorsed:
+					endorsed.append(id)
+	for id in value.get("cards", []):
+		if id not in assigned and id not in endorsed:
+			endorsed.append(id)
+	return endorsed
+
 ## The test juror's notes beyond its strength chip: the clash headline and clashing
 ## cards when the case can't hold, and who it would mostly raise suspicion of.
 static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, result: Dictionary) -> void:

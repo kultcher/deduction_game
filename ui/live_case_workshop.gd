@@ -1137,6 +1137,10 @@ func _run_test_juror() -> void:
 			continue
 		var badge: Dictionary = Live.test_juror(g, value)
 		if badge.get("ready", false):
+			var town: Dictionary = Live.town_note(g, value)
+			if not town.is_empty():
+				badge["town_note"] = town.text
+				badge["town_note_kind"] = town.kind
 			_explain_change(id, value, badge)
 			_idle_assumptions(node, value, badge)
 		badges[id] = badge

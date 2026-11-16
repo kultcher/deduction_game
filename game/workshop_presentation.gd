@@ -444,6 +444,8 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 	entry.count += 1
 	var scale: float = float(Tuning.Workshop.SUSPICIOUS_PRESSURE_PER_RISE.get("private" if venue == "private" else "meeting", 1.0))
 	var due: float = scale * entry.sum / float(entry.count)
+	if Connections.enabled:
+		due = scale * connections_pressure(entry.sum / float(entry.count))
 	var delta: float = due - float(entry.applied)
 	entry.applied = due
 	book[filing] = entry
@@ -453,9 +455,15 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 		g.w.dlog.trace_event("value_change", target_id, n.id, {"quantity": "pressure", "delta": delta, "rise": rise, "filing": filing, "venue": venue},
 			"A suspicious case presses its subject to explain (premises step 2)")
 
-## The same rise under the connections model (workshop/connections.gd), where a "suspicious"
-## case counts at half weight: how far the target's chance would go up if the held-back
-## half counted too. Read from the applied refresh; nothing is judged again.
+## The pressure (at a meeting) for an average rise, under the connections model.
+static func connections_pressure(average_rise: float) -> float:
+	return minf(Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_CAP, Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE * maxf(0.0, average_rise))
+
+## The rise under the connections model (workshop/connections.gd): how far the case's
+## cards, alone and together, lift its subject for this listener. It is their chance now
+## against their chance with what those cards say taken away (the entry's "points").
+## It doesn't depend on the case's weight, so the same cards under "suspicious" press
+## whether or not an earlier case already argued them. Read from the applied refresh.
 static func _connections_rise(g, listener_key: String, key: String, target_id: String) -> float:
 	var res: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("connections", {})
 	if not res.get("posterior", {}).has(target_id):
@@ -465,10 +473,13 @@ static func _connections_rise(g, listener_key: String, key: String, target_id: S
 			var chance: float = float(res.posterior[target_id])
 			if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
 				return 0.0
-			return maxf(0.0, held_back_chance(res.posterior, entry.get("withheld", {}), target_id) - chance)
+			var without: Dictionary = {}
+			for p in entry.get("points", {}):
+				without[p] = -float(entry.points[p])
+			return maxf(0.0, chance - held_back_chance(res.posterior, without, target_id))
 	return 0.0
 
-## The target's chance with a case's held-back leans added for everyone, renormalised as
+## The target's chance with leans added for everyone (`withheld`), renormalised as
 ## Connections.combine does: one common shift over the people still in question keeps their
 ## chances summing as before (the evil count); settled people stay put (Codex on #153).
 static func held_back_chance(posterior: Dictionary, withheld: Dictionary, target_id: String) -> float:
