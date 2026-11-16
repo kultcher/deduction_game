@@ -59,11 +59,20 @@ func _init() -> void:
 	model.connect_cards(node, premise)
 	var value: Dictionary = model.compile(premise)
 	check(value.get("cards", []).size() == 1, "(fixture) the case holds the one reading")
-	var heard: Array = Live.public_claims_for(g, value)
-	check(public_claim in heard, "the public claim of someone the reading names is heard (%s)" % str(heard))
-	check(private_claim not in heard, "a private claim isn't")
-	check(other_claim not in heard, "nor the claim of someone the case doesn't name")
+	var heard_claims: Array = Live.public_claims_for(g, value)
+	check(public_claim in heard_claims, "the public claim of someone the reading names is heard (%s)" % str(heard_claims))
+	check(private_claim not in heard_claims, "a private claim isn't")
+	check(other_claim not in heard_claims, "nor the claim of someone the case doesn't name")
 	var r: Dictionary = Live.test_juror(g, value)
 	check(r.get("ready", false), "the juror still runs (%s)" % str(r.get("issues", [])))
+	# And it weighs them: the reading's teller and its subject both publicly claim the Seer,
+	# so one of them is lying, and the reading itself names the subject.
+	g.state = "meeting"
+	g.add_card({"kind": "claim", "subject": [p[2].id], "source": p[2].id, "role": "seer", "day": 1, "phase": 3, "text": "%s claims to be the Seer." % p[2].name})
+	g.add_card({"kind": "claim", "subject": [p[3].id], "source": p[3].id, "role": "seer", "day": 2, "phase": 3, "text": "%s claims to be the Seer too." % p[3].name})
+	g.state = was
+	var heard: Dictionary = Live.test_juror(g, value)
+	var deaf: Dictionary = Live.test_juror(g, value, false)
+	check(heard.get("ready", false) and deaf.get("ready", false) and float(heard.lr) > float(deaf.lr), "the claims change the juror's verdict: x%.2f with them, x%.2f without" % [float(heard.get("lr", 0.0)), float(deaf.get("lr", 0.0))])
 	print("Juror claims: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

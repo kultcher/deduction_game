@@ -222,8 +222,9 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 ## The test juror: public facts and default trust, no private knowledge. Says how well
 ## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
 ## One evaluation; the Workshop runs it after a pause in editing.
-static func test_juror(g, value: Dictionary) -> Dictionary:
-	var input = snapshot(g, value, "", "private", public_claims_for(g, value))
+static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
+	var claims: Array = public_claims_for(g, value) if hear_claims else []
+	var input = snapshot(g, value, "", "private", claims)
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
@@ -232,11 +233,23 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
 	var CaseEval = preload("res://workshop/case_eval.gd")
-	var ev: Dictionary = CaseEval.evaluate(prepared.view, prepared.case)
+	# The public claims it hears are weighed with the case's cards (CaseEval reads the case's
+	# cards), without changing the case itself.
+	var judged: Dictionary = prepared.case
+	if not claims.is_empty():
+		judged = prepared.case.duplicate(true)
+		var in_view: Dictionary = {}
+		for c in prepared.view.cards:
+			in_view[c.id] = true
+		for number in claims:
+			var id: String = Evidence.normalize_card(g.board[int(number) - 1]).id
+			if in_view.has(id) and id not in judged.cards:
+				judged.cards.append(id)
+	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
-	feedback(prepared.view, prepared.case, ev, result)
+	feedback(prepared.view, judged, ev, result)
 	return result
 
 ## The public gift claims of everyone the case's cards name (its tellers and the people
