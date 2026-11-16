@@ -146,6 +146,134 @@ Most are now in the code comments, my entries below or the Project doc. The reas
 - GDScript traps I hit: `Dictionary.merged(d)` needs `, true` to overwrite; a multi-line lambda with a continuation line fails to parse; a parent's no-argument `_init` runs automatically in a subclass; `Replay.replay(events, -1, hooks)` stops at once, pass a large number.
 - Never edit a checkout that a background Godot run is reading; I kept a second worktree for long runs.
 
+---
+
+## 2026-11-16, Claude-Quill: final handoff (reading challenges, the graded test, the challenge harness)
+
+- **Base:** main `f568543`. **Status:** nothing in flight. Everything I built is merged; this entry is the only change on `claude/quill-final-handoff`. **Next actor:** whoever picks up reading challenges, now in Claude Code. Bailiff merges.
+- **Why this entry exists:** the work is moving to Claude Code, and the Nov 12 chat (Michael, relaying Bailiff) holds decisions and results that are only in a Project doc (`claude/belief-model-direction-2026-11-10.md`, which a repo-only successor can't read) or nowhere. Everything a successor needs is below.
+
+### What I was working on, and where it stands
+
+1. **PR #142, the graded test for role-checked gifts** (`claude/challenge-graded`). **Merged Nov 13** as `437e29e`, at head `75a3903`. Nothing left open on it.
+   - **The problem.** "Challenges that are right but rarely land": a lying challenge on true grounds landed 20–35%.
+   - **The cause.** For the gifts in `CaseEval.ROLE_CONTENT_FIXED` (Archivist, Clerk, Executor, Gravedigger, Registrar, Monitor, Martyr, Night Watch, Warden, Veteran), `Solver.reading_holds_table` read only the report table. That table never checks them, so the mask was all ones, `q = f = 1`, and the graded test could never see a contradiction.
+   - **First build (`roles_source`).** It also asked `Roles.fits_table`. Codex caught that this ran with `bluffs = false`, which drops every world where the reader is evil and gives the reader their claimed role. So the mask measured "could the reader honestly have said this", and evidence against the reader counted twice (it is already in `r`).
+   - **Shipped (`roles`, content-only).** `RoleConstraints.FlagContentOnly` (card flag bit 16, set from a card's `content_only`) skips the source's alignment check, the source's role assignment and the relayer. Only `reading_holds_table` sets it, on a copy of the report with `relay_source` dropped.
+   - **Fix by another session after my handoff (`75a3903`, Codex).** In content-only mode the kernel also skips its three Marked-registers-as-evil exceptions (role-in-group readings such as the Gravedigger's, Executor role reads, the Martyr's evil read). Otherwise a false reading of a Marked good person would hold.
+   - **Tests.** `test_workshop_reading_challenges`: `_graded_content`, plus the Marked case.
+   - **Switches.** `ReadingChallenges.graded_rule` is "roles" in play. "roles_source" and "table" are harness-only switches. `clash_rule` is "contest" in play, with "legacy" and "graded" for the harness.
+2. **Earlier, all merged:**
+   - #124, the own home alibi made lie-aware;
+   - #125, the Phase 3 harness and interaction table;
+   - #132, the "contest" clash rule;
+   - the Phase 5 pair ranking.
+
+   Each has its own entry below.
+3. **Harness additions** (`tools/measure_evidence.gd --what challenges`, all on main):
+   - `--construct-bluffs`: evil tellers bluff an Archivist pair or a Seer "yes" naming two good people, against true Confessor clears.
+   - `--construct-mistakes`: a *good* teller says the same false readings, standing in for a poisoned or misregistered gift.
+   - `--suspect-reader`: constructed honest Archivist pairs (a Minion plus a good person) from good tellers other than the real Archivist. An evil NPC's Seer "yes" names each teller and a bystander.
+   - `--graded-rule`, and `--day N` (the default is 3; mistakes need 2, so enough of the accused are alive).
+   - Each challenge row records the graded internals: `g_q`, `g_f`, `g_r`, `g_wrong`, `g_evil_share`, `graded_ran`.
+
+   The command I used:
+
+   ```
+   measure_evidence.gd -- --what challenges --force-roles confessor,poisoner --script-roles archivist,seer,dowser --construct-bluffs [...] --seeds 1:24 --size 7 --keep-state --natural-trust
+   ```
+
+   - **Listener settings:** "natural" listeners keep their game state and trust (`--keep-state --natural-trust`). "Fresh" listeners drop both flags, which runs a 0.4/0.8 trust grid on each side, so 4 rows per case.
+   - **Seeds:** 1:24 at 7 NPCs and 1:8 at 10.
+   - **Counting:** keep teller rows only (`role_in_case == "teller"`) with `accused_alive`.
+   - **"Lands":** for lying, agreement ≥ 0.6. For misled and failed gift ("impaired"), multiplier ≤ 0.9. A Seer "misled" never discounts by design, so in the mistakes sample count it by agreement ≥ 0.6.
+   - **Runtime:** a 24-seed cell is about 1 hour on one core, and 10-NPC seeds take about 2 minutes each. The session's 2-hour background limit can kill a queue of three cells.
+
+### Results (connections was **off** when these ran; it's on by default since `e6e0925` (Michael, Nov 16; golden `baseline_a713ca5`). `ReadingChallenges.assess` doesn't go through the connections path, but natural listeners' trust and suspicion do, so re-measure before tuning on these)
+
+Lying challenge lands on true grounds (evil bluffs); old check → first build → shipped:
+
+| Listeners | True grounds | False grounds |
+|---|---|---|
+| Natural, 7 NPCs | 20% → 45% → **40%** | 12%, unchanged |
+| Natural, 10 NPCs | 20% → 40% → **27%** | 33%, unchanged (3 cases) |
+| Fresh, 7 NPCs | 5% → 10% → 8% | 0% |
+| Fresh, 10 NPCs | 13% → 15% → 15% | 8% |
+
+- **By gift:** bluffed Archivist readings at natural 7 NPCs went 0% → 50% → 40%. Seer and Dowser didn't move: the Seer always had its own holds table.
+- **Unchanged under the fix:** misled, failed gift and backfire, except fresh 7 NPCs, where misled and failed gift on false grounds went 25% → 31% (2 of 32 rows).
+- **Not fixed, small sample:** at 10 NPCs, false grounds land 33% (natural) and 75% (fresh) for misled and failed gift. That's 3 cases; get more seeds before tuning on it.
+- **Suspected honest reader** (`--suspect-reader`, natural, 10 NPCs, 19 seeds; 7 NPCs leaves too few alive). The reader was at P(evil) 0.39 before the challenge; the challenge sits on false Confessor clears. Lying lands:
+
+  | Lying lands | Old check | First build | Shipped |
+  |---|---|---|---|
+  | Honest reader under suspicion (n 26) | 19% | 54% | 35% |
+  | Evil bluffs on true grounds (n 58) | 31% | 53% | 45% |
+  | Other honest readings (n 12) | 0% | 0% | 0% |
+
+  - **The first build couldn't tell the two apart** (54% against 53%). The shipped mask brings back a 10-point gap.
+  - **The 35% against 19% that remains isn't a double count.** It's the test now seeing the clash with the grounds (false, here), which the old check couldn't see at all.
+- **Honest mistakes** (`--construct-mistakes --day 2`, measured on the **first build**, not re-run on the shipped one).
+  - **Misled and failed gift still rarely land when they're the right explanation:** 3–12%, or 30% for failed gift at natural 10 NPCs, mostly the Seer's.
+  - **Lying lands 57% on an honestly mistaken good teller**, against 50% on a real bluffer (natural, 7 NPCs). At 10 NPCs the order flips (21% against 34%), so the gap isn't consistent.
+  - **Why:** to the listener the two cases are the same cards. The test splits the blame by the chance the teller is evil, which is the same for both, so no challenge rule can separate them. It would take evidence that does, such as the teller's history or signs of the poisoning itself.
+  - **Construction caveat:** the mistakes aren't real poisonings, so the worlds carry none of a Poisoner's evidence.
+
+### Michael's decisions in the Nov 12 chat (not in the repo until now)
+
+- **A "lying" challenge on a good but poisoned or misregistered teller landing about as often as on a real liar is intended.** Michael: "Yep, that fits and is more or less the behavior we want. It gives the player a bit of agency, if they think the person is lying, then they can push the town toward them being evil, even if it's not true." So don't "fix" the 57% honest-mistake figure, or tune lying to land less on good tellers. The comparison is Blood on the Clocktower, where a poisoned good player gets treated as a liar.
+- **Recovery from a wrong "lying" call only needs to exist; the concern is signposting.** Michael: "As long as a path exists, it's fine for now, but the bigger concern would just be signposting or possibly offering the player a shortcut toward the same result." He chose to hold off on measuring the recovery and asked for a backlog note. That's BACKLOG.md "Recovering from a wrong 'lying' call", tagged [decided: test later; signposting open]. Read from the code, not measured:
+  - **Revising the original case works.** Switch its challenge to "Failed gift (poisoned)" (mode `impaired`) or "Misled reading", then present the revision. It supersedes the old case for each listener who hears it (`game_presentation.gd`).
+  - **A separate case challenging the same reading the other way is blocked** for anyone holding the old one: "Conflicting reading challenges need separate alternatives" (`shared_ledger.gd`).
+  - **There's no in-character withdrawal.** "Withdraw for selected listener" is a debug control.
+  - **Credibility tracks only the latest direction per target,** so a corrected misread costs nothing once revised. Michael didn't say whether some cost should stick.
+- **Undecided.** I asked Michael whether the suspected-honest-reader rise (19% → 35%) is acceptable. Bailiff merged #142 without an answer recorded here. Given the first decision above it's probably fine, but it's his call.
+- **Earlier the same day, Michael approved** the graded-test proposal ("Sure, sounds good, go ahead and put up the PR") and the honest-mistake sample.
+
+### Stale or wrong in the docs, and what's true now
+
+- **`docs/evidence_catalog_measured.md`, findings 1 and 2** ("a sighting loses to the subject's own home alibi", "trusting the alibi-giver less clears them more"; "looks like a bug; not changed here"). Stale. #124 made an evil subject's own home alibi lie-aware (0.7 if out, 0.9 if home; good subjects, the listener and witnesses stay hard). #135 then made the clash weigh the sighter too (`EVIL_SIGHTER_TRUTH`). A sighting against an own alibi now counts against whoever's story fails. The catalog was measured at `75b4c8e`, before both.
+- **The challenge modes are listed as three** ("unlikely, misled or lying") in DESIGN.md (the Workshop section), README.md and TUNING_NARRATIVE.md. The code has five (`ReadingChallenges.MODES`): misled, lying, unlikely, impaired and delusional. The UI offers "Failed gift (poisoned)" (`impaired`), and an inconsistency cause "They're Delusional". "Unlikely" applies to Surveyor counts only.
+- **DESIGN.md doesn't describe how a clash is settled.** What's true:
+  - **Contest (#132):** share = (q_grounds − q_reader) / (1 − q_reader·q_grounds), the chance the reading is the broken side minus the chance the grounds are. At zero or below, the clash supports nothing; below zero the challenge backfires and costs the presentation trust.
+  - **Graded test:**
+    - q and f are the share of worlds where the content holds, before and after the rest of the evidence;
+    - r = (1 − the source's prior evil)(1 − error);
+    - wrong = (1 − r)q / ((1 − r)q + r f);
+    - lying takes the evil share of "wrong", and misled or impaired take the rest.
+  - **The holds mask:** content-only via `FlagContentOnly` for `ROLE_CONTENT_FIXED` gifts; the Seer uses its own table.
+  - **Red Herring rule:** a Seer "misled" challenge never discounts the reading (multiplier 1, agreement 0.8 × strength), on purpose. A Red Herring or a Marked registration misleads an honest gift without breaking it.
+
+  The Source doubt paragraph is right that an accepted "lying" challenge keeps full reliability (#123). Under connections (on by default) a challenge acts only inside its own case, and the lying floor (`JURY_CHALLENGE_LYING_SCALE`, still used) is scaled by the case's weight.
+- **tuning_catalogue.md:** `CHALLENGE_SOURCE_PENALTY_SCALE` (0.3) is marked "(unused)", and that's true: it's dead in `sim/tuning.gd` and safe to delete.
+- **BACKLOG.md "Misled versus reading-lie strength"** [open] predates contest and the graded test. Any comparison now needs the shipped rule, and connections on.
+- **The repo's earlier Quill entries point to the Project doc for numbers.** The key numbers are now in this entry.
+- **The Project doc `claude/belief-model-direction-2026-11-10.md`** (outside the repo) still says #142 is "back with Bailiff" and lists "lying on a mistaken teller" as open for Michael. Both are settled, as above. Bailiff or Lantern keep it; tell them if you don't edit it.
+
+### Open questions, abandoned approaches, hunches
+
+- **Re-measure the honest-mistake sample on the shipped mask.** The 57% lying figure was taken with the double count. Bailiff suspected that "the lying share rises wherever the teller looks evil, whatever the reading's truth", which is the double count. It may come down, though Michael's decision above means nothing needs to change either way.
+- **Not traced:** in the mistake sample, backfire for fresh listeners at 7 NPCs rose 17% → 37% under the first build. Check it on the shipped mask.
+- **A real poisoning, not a constructed one.** Build the mistake sample from games where the Poisoner actually hit an Archivist: `--force-roles` plus a seed scan for a poisoned night, then the reading that night. A real poisoning leaves evidence (the Poisoner's night, the reading's night), and the graded test might then credit "failed gift". That would be the first real test of misled and failed gift.
+- **Abandoned: listeners who keep their state, for the suspected-reader case.** An evil Seer bluff on a naturally honest Archivist didn't raise suspicion: those readers sit at about 2% evil, effectively proven good by their own checkable reading. Hence the constructed pairs from good tellers who aren't the real Archivist, which also creates a double claim, part of the suspicion. Fresh listeners had the same problem for Archivist readers (2–4%). The bluff did raise Seer readers (0.50 → 0.65), but the Seer isn't affected by the mask.
+- **Abandoned: the "posterior" clash rule** (#132's comparison). It discounts by (1 − q_reader)/(1 − q_reader·q_grounds) when the grounds are more credible. False grounds landed nearly as often as true ones, and only contest put true above false in every mode.
+- **Abandoned: a "rise" prototype** for the graded test (e0/e1 in `reading_challenges.gd`), removed before #142. The content-only mask made it unnecessary.
+- **Hunch, not followed up:** fresh listeners gain little in every table because, with no history, trust is flat, so `r` and the grounds' quality carry no information. Under connections the case weight scales the challenge further. A fresh-listener re-measure with connections on might show challenges landing even less.
+- **The harness uses readings told directly, not relayed.** Medium relays (#140) and the relay branch of `FlagContentOnly` (dropping `relay_source`) are covered by code only, not by a measurement.
+
+### Michael's conventions and preferences (as I've seen them)
+
+- **Ask before undoing settled behaviour.** If a change would undo or overwrite behaviour he explicitly set, flag it and hold, or ask first. Measurements, harness flags and backlog notes he wants done, not asked about.
+- **Proposal and numbers first.** For anything that changes play, send the proposal with the numbers, then build only after he agrees. He usually answers in a line ("Sure, sounds good, go ahead and put up the PR"). Tools-only changes can just go in.
+- **Leave balance sweeps to Claude-Tally,** overnight. Don't wait hours on a sweep before merging; the logging and profiling tools find big shifts later.
+- **Don't frame "the town gets it right" as the goal.** Sometimes good needs to be dumb so the player can lead them. Report what changed, not whether good won more. Player agency (the player can push the town, even wrongly) is a value he holds.
+- **Blood on the Clocktower is the reference** for social behaviour: poisoned players read as liars, and the Sleepwalker's self-doubt sits a bit above the true chance.
+- **Roles.** Michael decides. Bailiff merges, re-baselines golden and relays tasks. Lantern owns the connections model. Tally runs sweeps. Steward raises playtest-triage questions. Codex reviews PRs: reply on the review comment with the fix commit and the numbers, then `@codex review`.
+- **Git.** No force pushes. Golden identical at `--tol 0` unless the PR is meant to move it, and then Bailiff re-baselines. Every PR runs the five challenge, premise and alibi suites (`test_premise_step1`, `test_premise_step2`, `test_premise_step3`, `test_workshop_reading_challenges`, `test_workshop_vote_and_alibi`) and the full suite (`run_gd_tests.py --include-slow`). A handoff entry here, newest first, after the first `---`.
+- **Writing.** Plain words, short bullets and tables. State n, the sample and the definition of "lands" with every number. Say what isn't measured. Re-read any shared doc before editing, since others edit it at the same time.
+
+---
+
 ## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (PR #155, `claude/suspicious-pressure`, stacked on #154)
 
 - **Base:** `claude/no-new-info` (#154). **Status:** PR open, for Bailiff, after #154. **Next actor:** Bailiff; Michael for the scale.
