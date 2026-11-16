@@ -30,7 +30,7 @@ Ground rules (from Nov 3, until Michael changes them):
 ## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
 
 - **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
-- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite run on the branch (result in the PR). **Next actor:** Bailiff to merge; Michael for the proposal in part 1 and the proposed backlog items.
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite run on the branch (result in the PR). **Next actor:** Bailiff to merge; Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
 - **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
 
 ### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
@@ -55,7 +55,7 @@ Ground rules (from Nov 3, until Michael changes them):
 - **Excluding day items from `out_items` is also right.** Being seen in the square at noon isn't "out at night", so it shouldn't feed the night-outing weight.
 - **Herald's open question (should a defence answer a daytime whereabouts case?): yes, but as its own item, not in #171.** The general form: "I was at the mill that evening, and so were Greta and Jory." Daytime whereabouts are mostly public by schedule, so naming who else was there is a real rebuttal (others had the same chance) and it uses no per-role logic. Evil can use the same line, truthfully or by naming people who weren't there, which would be a lie with a logged reason. It needs a new defence line (wording is Michael's, drafted by Herald), so it's proposed below rather than built; it's the daytime counterpart of BACKLOG's "Explicit night-sighting rebuttals".
 
-### Proposed for the backlog (Michael to accept; not added to BACKLOG.md, per #172)
+### Proposed for the backlog: all three accepted (Michael via Seneschal, Nov 16) as [decided], owner Beadle, now on BACKLOG.md
 
 | Title | What I saw, where | Tag | Owner |
 |---|---|---|---|
