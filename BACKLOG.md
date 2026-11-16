@@ -432,7 +432,8 @@ Candidates for a unified retuning proposal, not approved changes.
   on the next reading or night it can answer. Michael (Nov 16): build an answer that names
   others present, from public schedules ("I was at the mill that evening, and so were
   Greta and Jory"); evil can use it too, honestly or with a logged lie. Herald writes the
-  wording from Claude-Beadle's draft lines; Michael settles them. Constraint (Michael, Nov
+  wording; Michael approved Herald's drafts (Nov 16), and Herald commits the voice lines
+  with the build. Constraint (Michael, Nov
   16): `defend_self` runs only at a nomination today, and some voice lines assume a meeting
   (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
   such as a private press, those lines must not appear there; use the generic fallback.

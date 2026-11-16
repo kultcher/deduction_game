@@ -30,7 +30,7 @@ Ground rules (from Nov 3, until Michael changes them):
 ## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
 
 - **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
-- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite run on the branch (result in the PR). **Next actor:** Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite 155/156 on the branch, the one failure (`test_conversation_gifts`) fixed and re-run green (below). **Next actor:** Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
 - **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
 
 ### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
@@ -75,8 +75,8 @@ Ground rules (from Nov 3, until Michael changes them):
 - **Why:** a caught-out reveal and the owned-lie line were only ever good behaviour, so either was a tell for good. Now both alignments do it.
 - **Not changed:** the podium (public) path. A good walker's podium reveal doesn't own earlier private lies either; evil's podium "So yes, I was out on X" would need the bluffed duty's block (a Night Watch bluff's watch block can differ from where it really was), which wants its own look.
 - **Code:** `MindDialogue._bluff_outing` and `bluff_duty_covers` (the bluffed role's own duty check, asked as if already claimed); `answer_gift`'s owned-lie block no longer excludes evil; evil now records `lied_nights` when it lies "home" (private and podium).
-- **Tests:** new `tools/test_evil_owned_lie.gd` (added to the fast list): Warden, Lamplighter and Confessor bluffs back in and own; Night Watch owns only the watched night; a Seer bluff owns nothing; the good walker is unchanged. `test_meeting_flow`'s press check expected evil walking bluffs to keep a wording-only press; it now expects the reveal for those.
-- **Measured:** suites `test_evil_owned_lie`, `test_meeting_flow`, `test_playtest_13910_dialogue` pass; golden as above. No autoplay or sweep run (the bot doesn't press NPCs with sightings in private, so the change doesn't reach it).
+- **Tests:** new `tools/test_evil_owned_lie.gd` (added to the fast list): Warden, Lamplighter and Confessor bluffs back in and own; Night Watch owns only the watched night; a Seer bluff owns nothing; the good walker is unchanged. `test_meeting_flow`'s press check expected evil walking bluffs to keep a wording-only press; it now expects the reveal for those. `test_conversation_gifts`' refusal fixture used a Minion with a Lamplighter bluff, which now backs into the bluff instead of refusing; it now pins a Seer bluff, since it tests refusals.
+- **Measured:** full suite on the branch, 155/156, then `test_conversation_gifts` fixed and passing with `test_evil_owned_lie` and `test_meeting_flow`; golden as above. No autoplay or sweep run (the bot doesn't press NPCs with sightings in private, so the change doesn't reach it).
 
 ---
 
