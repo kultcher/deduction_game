@@ -30,7 +30,7 @@ Ground rules (from Nov 3, until Michael changes them):
 ## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
 
 - **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
-- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite 155/156 on the branch, the one failure (`test_conversation_gifts`) fixed and re-run green (below). **Next actor:** Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
+- **Base:** main `c8ef1e7` (#167). **Status:** PR #175 open; full suite 155/156 on the branch, the one failure (`test_conversation_gifts`) fixed and re-run green (below). **Next actor:** Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
 - **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
 
 ### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
