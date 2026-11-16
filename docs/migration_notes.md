@@ -29,7 +29,7 @@ Claude Code can't read claude.ai Project files, but the repo cites these (the be
 doc 7 times, including the header of `workshop/connections.gd`). Copy them into `docs/`
 during the migration:
 
-- `claude/belief-model-direction-2026-11-10.md` (the connections spec and its results)
+- ~~`claude/belief-model-direction-2026-11-10.md`~~ copied to `docs/belief_model_direction.md` (Nov 16 version; the Project copy may be newer)
 - `claude/playtest-triage-2026-11-13.md`
 - `claude/premises-plan.md` (check it against `docs/premises_plan.md`)
 - `claude/legacy-migration-plan.md` (probably superseded by
