@@ -2,6 +2,8 @@
 ## what a case's cards are worth and why a listener moved as far as they did. It must
 ## report the solver's own numbers, and it must change nothing.
 extends SceneTree
+
+const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -20,6 +22,8 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
+	# The earlier model's Why report (its chain and challenge fields); the connections Why is test_connections_why.
+	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_evidence()
 	_card_statuses()
 	_presentation()
