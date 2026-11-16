@@ -111,7 +111,7 @@ func _run() -> void:
 	deleted.remove_premise(disposable)
 	check(Model.new(board.view).restore(JSON.parse_string(JSON.stringify(deleted.export_data())), s) == "", "removing a premise also cleans merged originals' retained link references")
 	_merged_gift_links(s)
-	_given_link(board.view)
+	_given_link(board.view, s)
 	await _ui()
 	print("Workshop canvas: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -229,7 +229,7 @@ func _merged_gift_links(session) -> void:
 ## Triage 5.1 (the cheap version): premise -> card on a card that already argues another
 ## premise keeps its direction as "given <premise>": the premise and its evidence join the
 ## root's evidence. On a card that argues nothing yet, the drag still means it supports.
-func _given_link(view: Dictionary) -> void:
+func _given_link(view: Dictionary, session) -> void:
 	var m = Model.new(view)
 	var root: String = m.add_premise("hollis", "evil", Vector2.ZERO)
 	var aside: String = m.add_premise("constance", "good", Vector2(0, 200))
@@ -243,3 +243,5 @@ func _given_link(view: Dictionary) -> void:
 	var fresh: String = m.add_premise("nisha", "evil", Vector2(0, 400))
 	check(m.connect_cards(fresh, "e:rumor") == "" and m.links.any(func(e): return e.from == "e:rumor" and e.to == fresh and e.kind == "supports"), "premise -> a card that argues nothing yet: the card supports the premise, as before")
 	check(m.connect_cards(aside, "e:dowse") != "", "premise -> one of its own cards would be circular")
+	var reopened = Model.new(view)
+	check(reopened.restore(JSON.parse_string(JSON.stringify(m.export_data())), session) == "" and reopened.links.any(func(e): return e.kind == "given"), "a saved canvas with a given link reopens with it (Codex on #159)")

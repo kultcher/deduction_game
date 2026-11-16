@@ -969,10 +969,10 @@ func restore(value, session) -> String:
 			if n.children[0] == n.children[1] or not n.children.all(func(child): return candidate.nodes.has(child) and candidate.nodes[child].kind == "evidence" and candidate.nodes[child].get("merged") == id) or n.children.map(func(child): return candidate.nodes[child].card).any(func(card): return card not in n.dispute.reports):
 				return "Invalid contradiction roots."
 			for edge in n.prior_links:
-				if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing"] or (edge.from not in n.children and edge.to not in n.children) or edge.from == edge.to:
+				if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "given"] or (edge.from not in n.children and edge.to not in n.children) or edge.from == edge.to:
 					return "Invalid original contradiction links."
 	for edge in value.links:
-		if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "contradicts"] or candidate.nodes[edge.from].has("merged") or candidate.nodes[edge.to].has("merged") or candidate._reaches(edge.to, edge.from):
+		if not edge is Dictionary or not candidate.nodes.has(edge.get("from")) or not candidate.nodes.has(edge.get("to")) or edge.get("kind") not in ["supports", "read_together", "explains_outing", "contradicts", "given"] or candidate.nodes[edge.from].has("merged") or candidate.nodes[edge.to].has("merged") or candidate._reaches(edge.to, edge.from):
 			return "Invalid or circular canvas link."
 		if edge.kind == "contradicts":
 			var cd = edge.get("dispute")
@@ -981,6 +981,8 @@ func restore(value, session) -> String:
 		if edge.kind == "explains_outing":
 			if not candidate._gift_link(candidate.nodes[edge.from], candidate.nodes[edge.to]):
 				return "Invalid gift explanation."
+		if edge.kind == "given" and (candidate.nodes[edge.from].kind != "premise" or candidate.nodes[edge.to].kind == "premise"):
+			return "Invalid given link."  # premise -> card only (triage 5.1)
 		candidate.links.append(edge.duplicate(true))
 	if not candidate.nodes.has(candidate.selected):
 		return "Invalid selected card."
