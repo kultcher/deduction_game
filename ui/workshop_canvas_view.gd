@@ -291,6 +291,10 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 			notes.append("Test juror: " + badge.get("text", "") + ("\n" + badge.reason if badge.get("reason", "") != "" else ""))
 			if badge.get("change", "") != "":
 				notes.append(badge.change)
+			if badge.get("town_note", "") != "":
+				# The one warning shown beside the strength itself (connections model only).
+				chip_text += " · " + {"refresh": "Refresh", "presses": "No new belief"}.get(badge.get("town_note_kind", ""), "No new info")
+				notes.append(badge.town_note)
 			if badge.get("raises_text", "") != "":
 				notes.append(badge.raises_text)
 			for who in badge.get("idle", []):
