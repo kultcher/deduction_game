@@ -304,6 +304,12 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		# doesn't count as an argument of yours here (its cards are still heard).
 		if retired.has(int(number)) or not filed.get("workshop_case", {}).get("reading_challenges", {}).is_empty():
 			continue
+		# Only the cards it argues for count as its argument: a "conflict" case argues for none,
+		# and a quoted-only line's cards are heard but not endorsed (SharedLedger.endorsed_facts).
+		if filed.has("workshop_case"):
+			ids = _endorsed(filed.workshop_case)
+		if ids.is_empty():
+			continue
 		earlier.append({"key": "case:%d" % int(number), "number": int(number), "presenter": "player", "day": day, "cards": ids, "suspicious": kind == "suspicious",
 			"same": filed.get("workshop_case", {}) == value})
 	earlier.sort_custom(func(a, b): return a.day < b.day or (a.day == b.day and a.number < b.number))
@@ -396,6 +402,23 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 			return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
 		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}
 	return {}
+
+## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
+static func _endorsed(value: Dictionary) -> Array:
+	if str(value.get("conclusion", {}).get("type", "")) == "conflict":
+		return []
+	var assigned: Array = []
+	var endorsed: Array = []
+	for line in value.get("lines", []):
+		assigned.append_array(line.get("cards", []))
+		if line.get("relation", "supports") == "supports":
+			for id in line.get("cards", []):
+				if id not in endorsed:
+					endorsed.append(id)
+	for id in value.get("cards", []):
+		if id not in assigned and id not in endorsed:
+			endorsed.append(id)
+	return endorsed
 
 ## The test juror's notes beyond its strength chip: the clash headline and clashing
 ## cards when the case can't hold, and who it would mostly raise suspicion of.
