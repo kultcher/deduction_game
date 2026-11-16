@@ -193,8 +193,11 @@ func public_sighting_allowed(w, n, b: Dictionary) -> bool:
 	return bluff_hearth(w, n, b.day) == b.block
 
 
+## A real Medium tells the duty only for a night their gift took them out, a night with a
+## hearth to sit at (triage 3.8: "out because I'm the Medium" on the first kill night, when
+## no one had died yet, gave them away). A bluffer only with a fake reading for that night.
 func uses_night_duty_alibi(w, n, nd: int, was_out: bool) -> bool:
-	return (n.claim_public or n.max_tier >= 3) and ((n.role == "medium" and was_out) or n.is_evil()) and not (n.is_evil() and bluff_hearth(w, n, nd) == "")
+	return (n.claim_public or n.max_tier >= 3) and ((n.role == "medium" and was_out and hearth_dead(w, n, nd) != null) or n.is_evil()) and not (n.is_evil() and bluff_hearth(w, n, nd) == "")
 
 
 func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_name_fn: Callable) -> Dictionary:
