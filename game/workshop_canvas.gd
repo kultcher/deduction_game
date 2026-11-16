@@ -355,7 +355,12 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	for it in item_list:
 		values[it.key] = Connections.value(run, it)
 	var today: int = int(g.w.day)
-	var draft: Dictionary = {"key": "draft", "presenter": "player", "day": today, "cards": value.cards.duplicate(), "suspicious": str(value.get("conclusion", {}).get("type", "")) == "suspicious"}
+	# The draft's argument is the cards it argues for, as an earlier case's is: a "conflict"
+	# draft argues for none (no note), and quoted-only lines are heard, not endorsed.
+	var argued: Array = _endorsed(value)
+	if argued.is_empty():
+		return {}
+	var draft: Dictionary = {"key": "draft", "presenter": "player", "day": today, "cards": argued.duplicate(), "suspicious": str(value.get("conclusion", {}).get("type", "")) == "suspicious"}
 	# The same filed case presented again takes its own earlier place (a revision).
 	var case_list: Array = earlier.filter(func(c): return not c.same) + [draft]
 	var again: Array = earlier.filter(func(c): return c.same)
@@ -369,8 +374,8 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	for c in earlier:
 		by_key[c.key] = c
 	# Earlier cases of yours that already hold all of these cards.
-	var covering: Array = again + earlier.filter(func(c): return not c.same and value.cards.all(func(id): return id in c.cards))
-	var same_cards: Array = covering.filter(func(c): return c.cards.all(func(id): return id in value.cards))
+	var covering: Array = again + earlier.filter(func(c): return not c.same and argued.all(func(id): return id in c.cards))
+	var same_cards: Array = covering.filter(func(c): return c.cards.all(func(id): return id in argued))
 	# A firm premise on cards you've only argued as "suspicious" counts for more (a suspicious
 	# case weighs half, Connections.case_weight) and takes the weaker case's place: not a repeat.
 	if not draft.suspicious and not covering.is_empty() and covering.all(func(c): return c.suspicious):
@@ -397,7 +402,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 			return {"kind": "presses", "adds": adds, "text": "Adds no new belief (you've put these cards to the town in case #%d), but still presses %s." % [latest.number, name]}
 		return {"kind": "repeat", "adds": adds, "text": "No new info: you've already put these cards to the town (case #%d)." % latest.number}
 	if adds < little:
-		var shared_with: Array = earlier.filter(func(c): return not c.same and c.cards.any(func(id): return id in value.cards))
+		var shared_with: Array = earlier.filter(func(c): return not c.same and c.cards.any(func(id): return id in argued))
 		if int(entry.get("shared", 0)) >= 2 and not shared_with.is_empty():
 			return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
 		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}

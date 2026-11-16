@@ -153,6 +153,7 @@ func _notes() -> void:
 	_profile_and_upgrade()
 	_deleted_and_faded()
 	_conflict_quotes()
+	_conflict_draft()
 	Connections.enabled = false
 
 
@@ -257,3 +258,20 @@ func _conflict_quotes() -> void:
 	var filed: int = Live.file(g, conflict)
 	g.public_presentations[filed] = int(g.w.day)
 	check(_kind(g, firm) not in ["repeat", "presses"], "a firm case on cards a public conflict case only quoted isn't a repeat (%s)" % _kind(g, firm))
+
+
+## Codex on #154 (fifth pass): a "conflict" draft argues for none of its cards, so it can't
+## refresh (or repeat) a firm case on them.
+func _conflict_draft() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
+	g.public_citations[seer] = true
+	g.public_citations[dowser] = true
+	var firm: Dictionary = _value(g, "evil", p[3].id, [seer, dowser])
+	var filed: int = Live.file(g, firm)
+	g.public_presentations[filed] = int(g.w.day)
+	g.w.day += 1
+	var conflict: Dictionary = _value(g, "conflict", p[3].id, [seer, dowser])
+	check(Live.town_note(g, conflict).is_empty(), "a conflict draft on a firm case's cards gets no note, not a refresh (%s)" % _kind(g, conflict))
