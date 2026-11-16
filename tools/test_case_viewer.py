@@ -113,12 +113,12 @@ class ViewerTests(unittest.TestCase):
     def test_default_log_folder(self):
         with patch.dict("os.environ", {"APPDATA": "C:/Users/kultc/AppData/Roaming"}):
             self.assertEqual(default_log_dir(), Path("C:/Users/kultc/AppData/Roaming") /
-                             "Godot/app_userdata/Demonologist (text prototype)/logs")
+                             "Godot/app_userdata/Demonologist/logs")
 
     def test_native_load_session_and_failure_preservation(self):
         requested = []
         choices = iter([FIXTURE, None, FIXTURE.with_name("missing.jsonl")])
-        directory = Path("C:/Users/kultc/AppData/Roaming/Godot/app_userdata/Demonologist (text prototype)/logs")
+        directory = Path("C:/Users/kultc/AppData/Roaming/Godot/app_userdata/Demonologist/logs")
 
         def chooser(start):
             requested.append(start)

@@ -1,6 +1,6 @@
 # Working title: Demonologist (single-player social deduction)
 
-Status (Nov 16, 2026): playable Godot prototype with a painted town screen, a case board,
+Status (Nov 16, 2026): a playable Godot game with a painted town screen, a case board,
 a red-string Case Workshop judged by a shared possible-worlds model (its solver kernel in
 C#), case scripts with an editor and dynamic scripts, two demon types, and a deep NPC
 social simulation whose beliefs come from the **connections model** (on in play since Nov
