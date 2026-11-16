@@ -543,11 +543,14 @@ func _merge(a: String, b: String, dispute: Dictionary) -> void:
 		var destination: String = id if edge.to in [a, b] else edge.to
 		if source == destination:
 			continue
-		if nodes.get(source, {}).get("kind", "") == "premise" and nodes.get(destination, {}).get("kind", "") != "premise":
+		# A "given" link (premise -> card, triage 5.1) keeps its direction and kind onto the
+		# merged card; any other premise -> card edge is read as the card supporting it.
+		var given: bool = edge.get("kind", "") == "given"
+		if not given and nodes.get(source, {}).get("kind", "") == "premise" and nodes.get(destination, {}).get("kind", "") != "premise":
 			var swap = source
 			source = destination
 			destination = swap
-		var kind: String = "supports" if (source == id or destination == id) and (nodes.get(source, {}).get("kind", "") == "premise" or nodes.get(destination, {}).get("kind", "") == "premise") else edge.kind
+		var kind: String = "given" if given else ("supports" if (source == id or destination == id) and (nodes.get(source, {}).get("kind", "") == "premise" or nodes.get(destination, {}).get("kind", "") == "premise") else edge.kind)
 		if not _reaches(destination, source) and not links.any(func(e): return e.from == source and e.to == destination):
 			links.append({"from": source, "to": destination, "kind": kind})
 			if source == id and nodes.get(destination, {}).get("kind", "") == "premise" and linked_premise == "":

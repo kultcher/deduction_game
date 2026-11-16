@@ -223,6 +223,23 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 ## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
 ## One evaluation; the Workshop runs it after a pause in editing.
 static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
+	var juror: Dictionary = juror_case(g, value, hear_claims)
+	if not juror.ready:
+		return {"ready": false, "issues": juror.issues}
+	var prepared = juror.prepared
+	var judged: Dictionary = juror.case
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
+	var result: Dictionary = CaseEval.strength_from(ev)
+	result["ready"] = true
+	result["issues"] = []
+	feedback(prepared.view, judged, ev, result)
+	return result
+
+## What the test juror judges (shared with its "why" readout, game/workshop_why.gd):
+## {"ready", "issues", "prepared", "case"}. The public claims it hears are weighed with the
+## case's cards (CaseEval reads the case's cards), on a copy; the case itself is unchanged.
+static func juror_case(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
 	var claims: Array = public_claims_for(g, value) if hear_claims else []
 	var input = snapshot(g, value, "", "private", claims)
 	input.private_evidence = []
@@ -232,9 +249,6 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
-	var CaseEval = preload("res://workshop/case_eval.gd")
-	# The public claims it hears are weighed with the case's cards (CaseEval reads the case's
-	# cards), without changing the case itself.
 	var judged: Dictionary = prepared.case
 	if not claims.is_empty():
 		judged = prepared.case.duplicate(true)
@@ -245,12 +259,7 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 			var id: String = Evidence.normalize_card(g.board[int(number) - 1]).id
 			if in_view.has(id) and id not in judged.cards:
 				judged.cards.append(id)
-	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
-	var result: Dictionary = CaseEval.strength_from(ev)
-	result["ready"] = true
-	result["issues"] = []
-	feedback(prepared.view, judged, ev, result)
-	return result
+	return {"ready": true, "issues": [], "prepared": prepared, "case": judged}
 
 ## The public gift claims of everyone the case's cards name (its tellers and the people
 ## their readings are about), on the board but not in the case: the test juror hears them

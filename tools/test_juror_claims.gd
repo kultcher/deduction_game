@@ -73,6 +73,9 @@ func _init() -> void:
 	g.state = was
 	var heard: Dictionary = Live.test_juror(g, value)
 	var deaf: Dictionary = Live.test_juror(g, value, false)
+	var why: Dictionary = preload("res://game/workshop_why.gd").test_juror(g, value)
+	var why_cards: Array = why.get("cards", why.get("evidence", []))
+	check(why.get("ready", false) and str(why.get("text", "")).length() > 0 and Live.juror_case(g, value).case.cards.size() > value.cards.size(), "the \"why\" readout explains the same claim-aware case the badge judges (Codex on #159)")
 	check(heard.get("ready", false) and deaf.get("ready", false) and float(heard.lr) > float(deaf.lr), "the claims change the juror's verdict: x%.2f with them, x%.2f without" % [float(heard.get("lr", 0.0)), float(deaf.get("lr", 0.0))])
 	print("Juror claims: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

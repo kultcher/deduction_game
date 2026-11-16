@@ -46,15 +46,12 @@ const KEEP = 24
 ## The Workshop's test juror, explained: the same neutral listener and inputs as
 ## WorkshopCanvas.test_juror, with the evidence breakdown and its text.
 static func test_juror(g, value: Dictionary) -> Dictionary:
-	var input = Canvas.snapshot(g, value)
-	input.private_evidence = []
-	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
-	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
-	var prepared = Assess.prepare(input)
-	if not prepared.ready:
-		return {"ready": false, "issues": prepared.issues.duplicate(), "text": "This case can't be judged yet:\n• " + "\n• ".join(PackedStringArray(prepared.issues))}
-	var b: Dictionary = Why.evidence(prepared.view, prepared.case)
+	# The same case the badge judges, public claims it hears included (WorkshopCanvas.juror_case).
+	var juror: Dictionary = Canvas.juror_case(g, value)
+	if not juror.ready:
+		return {"ready": false, "issues": juror.issues.duplicate(), "text": "This case can't be judged yet:\n• " + "\n• ".join(PackedStringArray(juror.issues))}
+	var prepared = juror.prepared
+	var b: Dictionary = Why.evidence(prepared.view, juror.case)
 	b["ready"] = true
 	b["listener"] = "test juror"
 	b["text"] = "Test juror: public facts and default trust. It hears every card at full weight; a real listener discounts what they're told (tick \"Record why each listener moved\" and present to see theirs).\n" + Why.describe(prepared.view, b, _numbers(g))
