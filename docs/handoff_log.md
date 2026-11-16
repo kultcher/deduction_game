@@ -27,6 +27,44 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16 night, Claude-Quill: playtest 26532, the Muddler and the relayed lie (`claude/relay-lie-attribution`)
+
+- **Base:** main `c8ef1e7`. **Status:** PR open, golden identical to `baseline_bb6f01c` at `--tol 0`. **Next actor:** Bailiff (merge); Michael for the Muddler question below and for the case log (`case_26532.jsonl`) that task 2 needs.
+- **Which [decided] item next:** "Martyr non-substitution must keep its alternative explanations" (BACKLOG section 2), after the Isolde case (task 2), which waits on the log.
+
+### The grimoire listed a relay as the relayer's own lie: fixed
+
+- **Cause.** A relay is a copy of the listener's hearsay item, and that item keeps the original teller's `lie` flag. `Social._deliver` logged any item with that flag as the *speaker's* lie ("Evil: tells Hollis their Clerk reading… (heard from Edda)", `think`/`lie`) and marked the share `[LIE]` in `grimoire talk`. The original speaker wasn't lost: the line still says "heard from Edda". The lie was pinned on the wrong person.
+- **Fix.** A relay counts as the relayer's lie only if the relayer is evil (passing on a teammate's fabrication knowingly). A good relayer's share is no longer a lie; it carries `relayed_lie: true` in the log for analysis. The hearsay item still records that the content was false at its source.
+- **Effect in play: none.** Nothing that decides behaviour reads the flag on a good NPC's relay (the daily planter's count only counts evil speakers), so golden is identical. What changes: `grimoire lies` and `grimoire talk` no longer charge good relayers, and the "lies" counts in autoplay and case metrics drop by the good relays of lies.
+- **Test:** `tools/test_relay_lie_attribution.gd` (new; 7 checks, 3 of them fail on main). Also ran `test_mechanics_sharing`, `test_roles_secrets`, `test_npc_chatter`, `test_evil_play`, `test_social_credibility`, `test_peer_role_gossip`: all pass.
+- **Wording, for Michael:** `grimoire talk` now shows a good relayer's share of a lie with no mark. If you want the reveal to show it, a draft: "[passing on Edda's lie]". Not built.
+
+### The Muddler never muddled: the gift works, but there's almost nothing to muddle
+
+Measured on 40 passive games, seeds 1–40, 10 NPCs, the default script with the Muddler forced (`sc.forced = ["muddler"]`), played to the end or day 6, earlier belief model (as in the playtest). Probe script not committed.
+
+| | Earlier model, 40 games |
+|---|---|
+| Games where the Muddler passed on any reading or night sighting | 5 of 40 |
+| Readings or sightings the Muddler passed on (private and at meetings) | 7 tellings of 6 items |
+| …items garbled | 3 of 6 (the roll is 65% per item; 3 of 6 is within chance) |
+| Games where any garbled relay reached anyone | 3 of 40 |
+| Private readings or sightings the Muddler heard from others | 32 |
+| Everything the Muddler told anyone | 216 shares |
+| Relays of any kind by anyone in town | 60 (1.5 a game) |
+
+- **So:** when a Muddler relays a reading or a night sighting, it does get garbled about as often as designed. But a Muddler relays one in about 1 game in 8, so in most games a Muddler muddles nothing. 26532 was a typical game, not a broken one. The Muddler's other 209 shares are their own sightings, alibis, opinions, claims and hints, which the gift doesn't touch by design ("someone else's reading or night sighting").
+- **Why relays are rare** (read from the code, not measured): a peer relay is drawn only from the teller's last 4 hearsay items (`Social._pick_item`, `s.hearsay.slice(-4)`), and public meeting receipts, day sightings, opinions and claims fill that window. Readings from the dead are scanned in full, which is why most relays are those.
+- **Not measured:** relays to the player in active play (`gossip_item`, `answer_about_role` both muddle), and the connections model (running; added below when it finishes).
+- **Options, for Michael (each a mechanic change, so not built):**
+  1. Let the Muddler muddle more kinds: their passing-on of public statements, or of day sightings and alibis.
+  2. Let the Muddler's own night sightings be muddled when they tell them (closer to "a muddled person" than "a muddled relay").
+  3. Widen the relay window for everyone (more gossip travels town-wide; touches balance well beyond the Muddler).
+  My recommendation is 1 with day sightings and alibis added: it keeps the Muddler a relayer, gives them material in most games, and leaves everyone else's gossip alone.
+
+---
+
 ## 2026-11-16 evening, Claude-Bailiff: final handoff before the move to Claude Code (`claude/handoff-docs`)
 
 - **Base:** main `7d87772` (#162). **Status:** docs and code comments only, this PR. **Next actor:** whoever picks up the repo in Claude Code; Michael for the open calls below.
