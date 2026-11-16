@@ -161,7 +161,7 @@ evaluations plus a few CaseEval runs per card: about 0.15 s per listener early i
 case, 0.5 s on day 2 at 10 NPCs and up to 2 s late in a 10-NPC case (so recording adds a
 real pause at a late meeting).
 
-### With the connections model on
+### With the connections model on (the default in play since Nov 16)
 
 With `Connections.enabled` (workshop/connections.gd) none of the steps above exist: belief
 isn't limited by attention, and what a case adds is what its cards say together. The same
@@ -197,8 +197,9 @@ between listeners (`CaseWhy._masks`), so the first listener of a case pays about
 10 NPCs and the rest about 0.08 s each.
 
 A log played with the model on says so in `case_start` (`"connections": true`), and
-`replay_log.gd` and `explain_case.gd` turn it on from that. For an older log, pass
-`--connections`.
+`replay_log.gd` and `explain_case.gd` replay with the model the log recorded: a log without
+the field replays with it off (the earlier model). For a log from before the field was
+recorded that was played with it on, pass `--connections`.
 
 ### What a command cost: `tools/replay_log.gd --time` and `--profile`
 

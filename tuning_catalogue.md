@@ -93,7 +93,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
 | `SEER` | `{ "public_threat_bonus": 1.0, "red_herring_defence_eff": -0.12, "focus_base":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
 | `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world.gd`, `workshop/live_assessment.gd` |
-| `DOWSER` | `{ "bluff_two_evil_prob": 0.35, "bluff_crowd_one_prob": 0.25, }` |  | `sim/roles/dowser.gd` |
+| `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
 | `ARCHIVIST` | `{ }` |  | (unused) |
@@ -494,6 +494,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CONFESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
 | `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
+| `HIDDEN_GIFT_DECLINE_BIAS` | `-0.4` |  | `sim/mind_dialogue.gd` |
+| `PUBLIC_READINGS_MIN_TRUST` | `0.3` |  | `sim/mind_dialogue.gd` |
 | `SLIP_COMPOSURE_SCALE` | `0.25` |  | `sim/mind_dialogue.gd` |
 | `SLIP_PRESSURE_SCALE` | `0.15` |  | `sim/mind_dialogue.gd` |
 | `DIRECT_NIGHT_SIGHTING_SHARE_PROB` | `0.95` |  | `sim/mind_dialogue.gd` |
@@ -506,7 +508,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_HAUNTS_GOSSIP_SCALE` | `0.55` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_TRUST_SCALE` | `0.5` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_CAP` | `0.9` |  | `game/game_conversation.gd` |
-| `SHARE_HAUNTS_ALL_SHARE` | `0.4` |  | `game/game_conversation.gd` |
+| `SHARE_HAUNTS_ALL_SHARE` | `0.0` |  | `game/game_conversation.gd` |
+| `SHARE_RELATIONSHIPS_ALL_SHARE` | `0.4` | (relationships kept the old share) | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_NONE_KNOWN_BONUS` | `0.2` | Added to the haunt roll when you know none of that person's haunts yet (Nov 10). | `game/game_conversation.gd` |
 | `SHARE_TRAIT_BASE` | `0.1` |  | `game/game_conversation.gd` |
 | `SHARE_TRAIT_GOSSIP_SCALE` | `0.35` |  | `game/game_conversation.gd` |
@@ -576,7 +579,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_VOTE_NATURAL_BASE` | `0.35` |  | `sim/evil.gd` |
 | `EVIL_VOTE_NATURAL_CONF_SCALE` | `0.2` |  | `sim/evil.gd` |
 | `KILL_INFO_CLAIM` | `3.0` | Demon kill target scoring | `sim/evil.gd` |
-| `KILL_SPENT_INFO_CLAIM` | `1.0` |  | `sim/evil.gd` |
+| `KILL_SPENT_INFO_CLAIM` | `0.0` |  | `sim/evil.gd` |
 | `KILL_IMPLICATES_US` | `2.0` |  | `sim/evil.gd` |
 | `KILL_HOSTILITY_SCALE` | `0.8` |  | `sim/evil.gd` |
 | `KILL_LIVES_ALONE` | `0.7` |  | `sim/evil.gd` |
@@ -618,7 +621,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; Project doc belief-model-direction, Nov 11). | `workshop/live_activity.gd` |
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
 | `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `workshop/case_eval.gd` |
-| `CONNECTIONS` | `false` | The connections belief model (workshop/connections.gd; Project doc belief-model-direction, "Phase 6 spec"): the limit on an NPC moves from which cards it reads to which cards it weighs together. Off: the game is unchanged. Tests, autoplay and sweeps turn it on for one run with --connections (Connections.enabled). | `tools/autoplay.gd`, `workshop/connections.gd` |
+| `CONNECTIONS` | `true` | The connections belief model (workshop/connections.gd; Project doc belief-model-direction, "Phase 6 spec"): the limit on an NPC moves from which cards it reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the connections model). Off: the earlier model, for comparisons (autoplay --legacy-model; tests that pin it set Connections.enabled themselves). | `tools/autoplay.gd`, `workshop/connections.gd` |
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |
 | `CONNECTIONS_FIXED` | `0.005` | A person the listener's standing view already puts this close to 0 or 1 is settled (the public record, the listener's own knowledge): cards don't move them. | `workshop/connections.gd` |
 | `CONNECTIONS_CORE_JOIN` | `0.4` | The core (an NPC's own readings and what it weighs together with them): a card or pairing joins when it is worth this much more, in log-odds for any one person, next to the NPC's own readings than apart from them. | `workshop/connections.gd` |
@@ -723,6 +726,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
 | `SUSPICIOUS_HEARING` | `0.5` | Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises brought count at this share for everyone (both directions), and the rest of their full effect on the target becomes pressure, once per filing: the average listener's full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict premise's +0.1 / +0.2. | `game/workshop_why.gd`, `workshop/connections.gd`, `workshop/shared_ledger.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` |  | `game/workshop_presentation.gd` |
+| `SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE` | `4.0` | The same pressure under the connections model (Michael, Nov 14). "Suspicious" is the early-game tool: one basic incriminating reading should press its subject by about 0.3 at a meeting (with a nomination's 0.4, about one disclosure tier). The rise is how far the case's cards, read by themselves, lift its subject for the average listener; times this, up to the cap, then the venue's share above. Measured Nov 14 on fresh 10-NPC games: a lone Dowser "1 of these 2" lifts its subject 6 to 8 points, a lone Seer "yes" on a pair 3, a Dowser "1 of these 3" about 1. | `game/workshop_presentation.gd` |
+| `SUSPICIOUS_PRESSURE_CONNECTIONS_CAP` | `0.5` |  | `game/workshop_presentation.gd` |
 | `SALIENCE_BASE` | `1.0` | Bounded reasoning attention profiles (`workshop/reasoner.gd`) Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks being a gift reading; trust in the source is a tiebreak. | `workshop/reasoner.gd` |
 | `SALIENCE_TRUST` | `0.1` |  | `workshop/reasoner.gd` |
 | `SALIENCE_GIFT` | `2.0` |  | `workshop/reasoner.gd` |
