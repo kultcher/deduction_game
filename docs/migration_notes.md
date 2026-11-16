@@ -23,6 +23,18 @@ and the doc reconciliation once the chats' exit handoffs are in.
    proving the core loop. DESIGN.md's "keep the 7-person town until the core loop
    reliably works" open question is stale.
 
+## Project docs to bring into the repo
+
+Claude Code can't read claude.ai Project files, but the repo cites these (the belief-model
+doc 7 times, including the header of `workshop/connections.gd`). Copy them into `docs/`
+during the migration:
+
+- `claude/belief-model-direction-2026-11-10.md` (the connections spec and its results)
+- `claude/playtest-triage-2026-11-13.md`
+- `claude/premises-plan.md` (check it against `docs/premises_plan.md`)
+- `claude/legacy-migration-plan.md` (probably superseded by
+  `docs/archive/legacy_retirement_plan.md`)
+
 ## Legacy leftovers audit (Nov 16)
 
 A static pass over `game/`, `sim/`, `ui/` and `workshop/`: files, functions and `sim/tuning.gd`
