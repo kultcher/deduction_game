@@ -580,6 +580,7 @@ static func augur_sightings(view: Dictionary, card: Dictionary) -> String:
 			continue
 		placed = true
 		var counted: Dictionary = {}
+		var phase_unknowns: int = 0
 		for c in at:
 			if str(c.get("block", "")) != blocks[0]:
 				continue
@@ -590,7 +591,10 @@ static func augur_sightings(view: Dictionary, card: Dictionary) -> String:
 			var place: String = str(c.get("loc", ""))
 			if not counted.has(place):
 				counted[place] = true
-				unknowns += int(c.get("crowd_unseen", 0))
+				phase_unknowns += int(c.get("crowd_unseen", 0))
+		# The same unseen people may be there both phases: the larger phase is the lower bound
+		# (Codex, #162).
+		unknowns = maxi(unknowns, phase_unknowns)
 	if not placed:
 		return ""
 	var text: String = "Sightings: " + (", ".join(PackedStringArray(names)) if not names.is_empty() else "nobody")

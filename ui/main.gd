@@ -1094,7 +1094,8 @@ func _sync_approach(reading: bool) -> void:
 	if conversation_finished or reading:
 		return
 	var n = g.approach["npc"]
-	var key: String = "%d:%d:%s:%s" % [g.w.day, g.w.phase, n.id, str(g.approach.get("agenda", ""))]
+	# The game's identity too: a new case can open on the same approach (Codex, #162).
+	var key: String = "%d:%d:%d:%s:%s" % [g.get_instance_id(), g.w.day, g.w.phase, n.id, str(g.approach.get("agenda", ""))]
 	if key == _approach_key:
 		return
 	_approach_key = key

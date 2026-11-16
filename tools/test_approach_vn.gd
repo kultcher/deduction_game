@@ -63,5 +63,20 @@ func _run() -> void:
 	scene._run("decline")
 	await process_frame
 	_check(g.state == "day" and scene.approach_stage == "" and not view.visible, "declining closes the VN")
+	# A new case opening on the same approach starts at its interstitial again (Codex, #162).
+	g.state = "approach"
+	g.approach = {"npc": n, "agenda": "gossip", "intro": after, "events": []}
+	scene._refresh_all()
+	scene._approach_continue()
+	scene._new_case()
+	await process_frame
+	var g2 = scene.g
+	var n2 = g2.w.by_id[n.id]
+	g2.w.phase = g.w.phase
+	g2.w.day = g.w.day
+	g2.state = "approach"
+	g2.approach = {"npc": n2, "agenda": "gossip", "intro": "A new case.", "events": []}
+	scene._refresh_all()
+	_check(scene.approach_stage == "intro" and view.lines == ["A new case."], "a new case's approach starts at its own interstitial (%s)" % scene.approach_stage)
 	print("Approach VN: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

@@ -22,6 +22,7 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_crowd()
 	_augur()
+	_augur_two_phases()
 	_lovers()
 	_canvas_drag()
 	print("Triage Nov 16: %d checks, %d failures" % [checks, fails])
@@ -103,6 +104,27 @@ func _augur() -> void:
 		if str(c.get("role", "")) == "augur":
 			lc = c
 	check(Live.augur_sightings(lv, lc) == "", "with no sighting of the Augur that day, there's no hint")
+
+
+## The same unseen people may be there morning and afternoon: the count is the larger
+## phase's, not the sum (Codex, #162).
+func _augur_two_phases() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var augur = p[2]
+	g.w.day = 2
+	g.board.clear()
+	g._fact_keys.clear()
+	g.add_card({"kind": "info", "source": augur.id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true}, "text": "%s augur day 1: crossed the demon" % augur.id})
+	for ph in [0, 1]:
+		g.add_card({"kind": "sighting", "subject": [augur.id], "source": "player", "block": "docks", "loc": "wharf", "day": 1, "phase": ph, "crowd_unseen": 2, "text": "You saw the Augur (+2 people there), phase %d." % ph})
+	var view: Dictionary = Live.view(g)
+	var card: Dictionary = {}
+	for c in view.cards:
+		if str(c.get("role", "")) == "augur":
+			card = c
+	var hint: String = Live.augur_sightings(view, card)
+	check(hint.ends_with("+at least 2 unknowns"), "two phases with two unseen each: at least 2, not 4 (%s)" % hint)
 
 
 ## 5.9: a Lovers confession names the other, and proves both halves.
