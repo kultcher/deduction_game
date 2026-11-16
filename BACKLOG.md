@@ -40,11 +40,6 @@ section 6): a sighter cut from the sighter contest by the two-sighter cap; an ev
 relay about the first victim naming night 0; a case with no cards answered from an older
 compile; a Night Watch list that wrongly names the listener clearing the rest of the watch.
 
-- **A Night Watch bluff doesn't hide teammates.** (Claude-Beadle audit, Nov 16) Its log
-  says "hiding teammates", but `sim/roles/nightwatch.gd` `generate_bluff_reading` never
-  drops a teammate from the walkers it reports. Check whether `intel` ever holds a
-  teammate walker, then filter or fix the log text. [open: confirm in play first]
-
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
@@ -263,19 +258,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
 
-- **Evil fabrications don't check what's already public.** (26532) Isolde, bluffing
-  Magistrate, said "Greta and Lian shared an alignment"; with Lian's public Archivist
-  reading ("Greta or Isolde is the Breathstealer") and Lian's death, that cleared Greta and
-  made Isolde's guilt follow. No bluff rule reads other people's public readings, and
-  nothing checks a fabrication before it's shared. Proposal (Claude-Beadle, Nov 16;
-  handoff log): before sharing, evil judges the fabrication beside the public cards with
-  the neutral listener; if it lifts the teller's or a teammate's chance of being evil by
-  more than a margin (draft 0.10), a roll scaled by Insight (draft 0.3 + 0.6 × Insight)
-  decides whether the liar notices; noticed, it reworks the reading once or holds it that
-  day. Related role-local gaps: a lone Clerk or Rumormonger bluff names itself in its own
-  pair; the Magistrate bluff says "different" for two evil; the Surveyor bluff often says
-  "not the same" with a teammate in the scapegoat's quarter. [open; Michael to decide]
-
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
   seen out at night, and nobody has claimed Night Watch). This opens double claims (the
@@ -426,13 +408,6 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-
-- **A defence against a daytime-whereabouts case.** (26532, #171) A case resting on where
-  someone was by day gets no answer of its own; since #171 the defence frames itself on
-  the next reading or night it can answer. Proposal (Claude-Beadle): "I was at the mill
-  that evening, and so were Greta and Jory", naming others present, from public
-  schedules, as an attributed defence. Evil can use it too, honestly or with a logged lie.
-  Wording is Michael's. [open]
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was

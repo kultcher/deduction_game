@@ -30,7 +30,7 @@ Ground rules (from Nov 3, until Michael changes them):
 ## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
 
 - **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
-- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite run on the branch (result in the PR). **Next actor:** Bailiff to merge; Michael for the proposal in part 1.
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite run on the branch (result in the PR). **Next actor:** Bailiff to merge; Michael for the proposal in part 1 and the proposed backlog items.
 - **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
 
 ### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
@@ -53,7 +53,15 @@ Ground rules (from Nov 3, until Michael changes them):
 
 - **The skip is right; keep it.** A defence that opens "your case rests on where I was last night" has to have something to say about that item. A sighting by day has no answer in `defend_self` today, so choosing the hinge from the next cited reading or night is the honest framing. When a case cites only daytime items the hinge is empty and the defence falls back to its general reply. That's acceptable: it's a rarer case, and an unframed defence reads better than a mismatched one.
 - **Excluding day items from `out_items` is also right.** Being seen in the square at noon isn't "out at night", so it shouldn't feed the night-outing weight.
-- **Herald's open question (should a defence answer a daytime whereabouts case?): yes, but as its own item, not in #171.** The general form: "I was at the mill that evening, and so were Greta and Jory." Daytime whereabouts are mostly public by schedule, so naming who else was there is a real rebuttal (others had the same chance) and it uses no per-role logic. Evil can use the same line, truthfully or by naming people who weren't there, which would be a lie with a logged reason. It needs a new defence line (wording is Michael's, drafted by Herald), so I've put it on BACKLOG as [open] next to "Explicit night-sighting rebuttals", which is the same idea for nights.
+- **Herald's open question (should a defence answer a daytime whereabouts case?): yes, but as its own item, not in #171.** The general form: "I was at the mill that evening, and so were Greta and Jory." Daytime whereabouts are mostly public by schedule, so naming who else was there is a real rebuttal (others had the same chance) and it uses no per-role logic. Evil can use the same line, truthfully or by naming people who weren't there, which would be a lie with a logged reason. It needs a new defence line (wording is Michael's, drafted by Herald), so it's proposed below rather than built; it's the daytime counterpart of BACKLOG's "Explicit night-sighting rebuttals".
+
+### Proposed for the backlog (Michael to accept; not added to BACKLOG.md, per #172)
+
+| Title | What I saw, where | Tag | Owner |
+|---|---|---|---|
+| Evil fabrications don't check what's already public | 26532: Isolde's Magistrate bluff cleared Greta and, with Lian's public Archivist reading, convicted herself. No bluff rule reads others' public readings (part 1 above, with the proposed rule) | [open; Michael to decide] | Beadle |
+| A Night Watch bluff doesn't hide teammates | `sim/roles/nightwatch.gd` `generate_bluff_reading` logs "hiding teammates" but never drops a teammate from its reported walkers (read from code; not yet seen in play) | [open: confirm in play first] | Beadle |
+| A defence against a daytime-whereabouts case | #171 review: a case resting on where someone was by day gets no answer of its own. Proposal: "I was at the mill that evening, and so were Greta and Jory", naming others present from public schedules; evil can use it too | [open; wording Michael's] | Beadle (decision), Herald (wording) |
 
 ### 2. Built: an evil walker's owned lie follows its disclosure (BACKLOG section 1, from 54875)
 
