@@ -284,7 +284,9 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		if int(number) < 1 or int(number) > g.board.size():
 			continue
 		var filed: Dictionary = g.board[int(number) - 1]
-		if filed.get("kind", "") != "deduction" or filed.get("deleted", false):
+		# A case deleted from your board still stands with the town (GameBoard.delete_deduction
+		# retracts nothing).
+		if filed.get("kind", "") != "deduction":
 			continue
 		var ids: Array = Array(filed.get("workshop_case", {}).get("cards", [])).duplicate()
 		if ids.is_empty():
@@ -373,12 +375,18 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 			if c.day > latest.day:
 				latest = c
 		if latest.day < today:
-			# A later day: it would take the earlier case's place at today's weight, if it
-			# counts at least as much; if it brings more cards, that is news.
-			if not entry.get("replaces", []).is_empty() or not again.is_empty():
-				if same_cards.is_empty():
-					return {}
-				return {"kind": "refresh", "adds": adds, "text": "Refreshes your day-%d argument (case #%d): the town weighs it at full strength again." % [latest.day, latest.number]}
+			# A later day: the same cards take the earlier case's place at today's weight
+			# (whether or not it has faded out entirely, below Connections.CASE_FLOOR); a
+			# case that replaces one with more cards brings news.
+			var renewed: Dictionary = {}
+			for c in same_cards:
+				if renewed.is_empty() or c.day > renewed.day:
+					renewed = c
+			# (A "suspicious" draft counts for less than a firm case it would renew: it only presses.)
+			if not renewed.is_empty() and not (draft.suspicious and not renewed.suspicious):
+				return {"kind": "refresh", "adds": adds, "text": "Refreshes your day-%d argument (case #%d): the town weighs it at full strength again." % [renewed.day, renewed.number]}
+			if not entry.get("replaces", []).is_empty():
+				return {}
 		if draft.suspicious and float(entry.get("withheld", {}).get(target, 0.0)) > 0.0:
 			return {"kind": "presses", "adds": adds, "text": "Adds no new belief (you've put these cards to the town in case #%d), but still presses %s." % [latest.number, name]}
 		return {"kind": "repeat", "adds": adds, "text": "No new info: you've already put these cards to the town (case #%d)." % latest.number}

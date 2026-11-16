@@ -151,6 +151,7 @@ func _notes() -> void:
 	check(_kind(g, _value(g, "evil", p[3].id, [seer, dowser, other])) not in ["refresh", "repeat"], "a bigger case on a later day is neither a refresh nor a repeat")
 	_retired_and_challenged()
 	_profile_and_upgrade()
+	_deleted_and_faded()
 	Connections.enabled = false
 
 
@@ -218,3 +219,23 @@ func _profile_and_upgrade() -> void:
 	h.public_presentations[first] = int(h.w.day)
 	check(_kind(h, firm) not in ["repeat", "presses"], "a firm premise on cards argued only as \"suspicious\" today isn't a repeat (%s)" % _kind(h, firm))
 	check(_kind(h, sus) in ["repeat", "presses"], "the same \"suspicious\" case again still is")
+
+
+## Codex on #154 (third pass): a case deleted from your board still stands with the town;
+## an argument that has faded out entirely is refreshed by the same cards, not repeated.
+func _deleted_and_faded() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
+	g.public_citations[seer] = true
+	g.public_citations[dowser] = true
+	var both: Dictionary = _value(g, "evil", p[3].id, [seer, dowser])
+	var filed: int = Live.file(g, both)
+	g.public_presentations[filed] = int(g.w.day)
+	g.delete_deduction(filed)
+	check(g.board[filed - 1].get("deleted", false), "(fixture) the case is deleted from the board")
+	check(_kind(g, both) == "repeat", "a deleted case you presented still makes the same draft a repeat (%s)" % _kind(g, both))
+	g.w.day += 8
+	var other: Dictionary = _value(g, "good", p[4].id, [seer, dowser])
+	check(_kind(g, other) == "refresh", "long after, when the argument has faded out, the same cards under another premise refresh it (%s)" % _kind(g, other))
