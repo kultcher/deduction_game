@@ -156,6 +156,7 @@ func _notes() -> void:
 	_conflict_draft()
 	_supersets()
 	_spent_pressure()
+	_press_from_posterior()
 	Connections.enabled = false
 
 
@@ -344,3 +345,12 @@ func _spent_pressure() -> void:
 	check(_kind(g, value) == "repeat", "once a meeting has heard the filing, it presses no one again: a plain repeat (%s)" % _kind(g, value))
 	g.w.suspicious_pressure[target + "|" + ",".join(PackedStringArray(ids))] = {"sum": 0.1, "count": 1, "applied": 0.1, "venue": "private", "heard": [p[1].id]}
 	check(_kind(g, value) == "repeat", "so does a private first hearing: a meeting gets no pressure after it (%s)" % _kind(g, value))
+
+
+## Codex on #155: the "still presses" preview starts from what the neutral listener holds now,
+## not the no-card baseline; a subject the other cards already settle can't be pressed.
+func _press_from_posterior() -> void:
+	var points: Dictionary = {"t": 1.5}
+	check(Live._would_press({}, {"points": points}, "t", {"t": 0.3, "a": 0.3, "b": 0.3}), "a subject in question is pressed by points that point at them")
+	check(not Live._would_press({}, {"points": points}, "t", {"t": 0.999, "a": 0.3, "b": 0.3}), "one the other cards already settle isn't")
+	check(not Live._would_press({}, {"points": {"t": 0.01}}, "t", {"t": 0.3, "a": 0.3, "b": 0.3}), "nor by points too small to press")
