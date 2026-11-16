@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 16): `baseline_a713ca5`
+### Current baseline (Nov 16, later): `baseline_bb6f01c`
+
+`tools/golden/baseline_bb6f01c/` is the capture from `claude/triage-nov16` (#162): the
+approach interstitial (2.8/8.3), the "+N people there" note on far sightings (8.2), and a
+Lovers confession proving the partner (5.9).
+- **Divergence from `baseline_a713ca5`:** text only on 42, 54875, 692 and 98933 (the
+  sighting note on the board, the approach passage in replies); outcomes unchanged.
+- **900 changes outcome:** Greta and Jory are the Lovers. Greta's confession now proves Jory
+  too, so neither is hanged: Constance is hanged day 2 and play reaches day 4 (was: Greta
+  and Jory hanged, evil wins day 3).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 16): `baseline_a713ca5`
 
 `tools/golden/baseline_a713ca5/` is the capture from `claude/triage-behaviour` (#160): the
 connections belief model on by default (`Tuning.Workshop.CONNECTIONS`), plus the playtest
