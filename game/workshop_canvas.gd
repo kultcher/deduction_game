@@ -234,6 +234,11 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	result["ready"] = true
 	result["issues"] = []
 	feedback(prepared.view, judged, ev, result)
+	var aside: Array = juror.get("set_aside", [])
+	if not aside.is_empty():
+		var note: String = "Judged as if your challenge holds: %s set aside." % ("1 reading" if aside.size() == 1 else "%d readings" % aside.size())
+		result["reason"] = (str(result.get("reason", "")) + " " + note).strip_edges()
+		result["set_aside"] = aside
 	return result
 
 ## What the test juror judges (shared with its "why" readout, game/workshop_why.gd):
@@ -259,7 +264,22 @@ static func juror_case(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 			var id: String = Evidence.normalize_card(g.board[int(number) - 1]).id
 			if in_view.has(id) and id not in judged.cards:
 				judged.cards.append(id)
-	return {"ready": true, "issues": [], "prepared": prepared, "case": judged}
+	# Challenges apply (triage 5.4; the cheap version): CaseEval doesn't weigh a challenge, so
+	# the juror judges the case as if each holds, with the challenged readings set aside. A
+	# poisoned or misled reading says nothing; a lie would say the opposite, which this
+	# doesn't model. Answers stay theory, not evidence.
+	var set_aside: Array = []
+	var challenges: Dictionary = value.get("reading_challenges", {})
+	if not challenges.is_empty():
+		var kept: Array = judged.cards.filter(func(id): return not challenges.has(id))
+		if not kept.is_empty() and kept.size() < judged.cards.size():
+			judged = judged.duplicate(true)
+			set_aside = judged.cards.filter(func(id): return challenges.has(id))
+			judged.cards = kept
+			judged.reading_challenges = {}
+			for line in judged.get("lines", []):
+				line.cards = line.get("cards", []).filter(func(id): return not challenges.has(id))
+	return {"ready": true, "issues": [], "prepared": prepared, "case": judged, "set_aside": set_aside}
 
 ## The public gift claims of everyone the case's cards name (its tellers and the people
 ## their readings are about), on the board but not in the case: the test juror hears them

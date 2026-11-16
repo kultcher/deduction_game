@@ -81,5 +81,29 @@ func _init() -> void:
 	var why_cards: Array = why.get("cards", why.get("evidence", []))
 	check(why.get("ready", false) and str(why.get("text", "")).length() > 0 and Live.juror_case(g, value).case.cards.size() > value.cards.size(), "the \"why\" readout explains the same claim-aware case the badge judges (Codex on #159)")
 	check(heard.get("ready", false) and deaf.get("ready", false) and float(heard.lr) > float(deaf.lr), "the claims change the juror's verdict: x%.2f with them, x%.2f without" % [float(heard.get("lr", 0.0)), float(deaf.get("lr", 0.0))])
+	# Triage 5.4: a challenge applies. Judged as if it holds, the challenged reading is set aside.
+	var dowser: int = g.add_card({"kind": "info", "source": p[5].id, "role": "dowser", "day": 1, "phase": 1,
+		"data": {"group": [p[4].id], "count": 0}, "text": "%s dowser day 1: no evil in %s" % [p[5].id, p[4].id]})
+	var view2: Dictionary = Live.view(g)
+	var m2 = CanvasModel.new(view2)
+	m2.contradiction_links = true
+	m2.marked_answers = false
+	var prem2: String = m2.add_premise(p[3].id, "evil", Vector2(400, 40))
+	for number in [reading, dowser]:
+		var want: String = g.board[number - 1].text
+		for id in m2.nodes:
+			if m2.nodes[id].kind == "evidence" and Solver.card_by_id(view2, m2.nodes[id].card).get("text", "") == want:
+				m2.connect_cards(id, prem2)
+	var both: Dictionary = m2.compile(prem2)
+	var seer_id: String = ""
+	for id in both.cards:
+		if Solver.card_by_id(view2, id).get("role", "") == "seer":
+			seer_id = id
+	var challenged: Dictionary = both.duplicate(true)
+	challenged["reading_challenges"] = {seer_id: {"mode": "impaired", "supports": []}}
+	var plain_r: Dictionary = Live.test_juror(g, both, false)
+	var chal_r: Dictionary = Live.test_juror(g, challenged, false)
+	check(seer_id != "" and chal_r.get("set_aside", []) == [seer_id], "a challenged reading is set aside (%s)" % str(chal_r.get("set_aside", [])))
+	check(float(chal_r.get("lr", 0.0)) != float(plain_r.get("lr", 0.0)) and "challenge holds" in str(chal_r.get("reason", "")), "and the verdict changes, saying so (x%.2f against x%.2f; %s)" % [float(chal_r.get("lr", 0.0)), float(plain_r.get("lr", 0.0)), str(chal_r.get("reason", ""))])
 	print("Juror claims: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
