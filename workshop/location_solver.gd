@@ -93,6 +93,7 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 	var victim: String = str(q.get("victim", ""))
 	var pl: Dictionary = places(view, q, all_cards)
 	var table: Dictionary = DayPresence.build(view, all_cards)
+	var prior: Dictionary = DayPresence.build_prior(view, all_cards) if kind == "silence" else {}
 	# Death ticks (day * 4 + phase): a Demon victim of the night before the day is gone by
 	# its morning, while someone hanged that day was still about until the meeting.
 	var death_ticks: Dictionary = view.get("timeline", {}).get("death_ticks", {})
@@ -117,7 +118,9 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 			var cell: Dictionary = _cell(view, all_cards, phase_watch, p, day, ph)
 			var prob: float = 0.0
 			if kind == "silence":
-				prob = DayPresence.same_block(table, pid, victim, day, ph)
+				# A hunting Breathstealer (Nov 14): free, it could have reached the victim; on
+				# shift or seen elsewhere, it couldn't (DayPresence.hunt_block).
+				prob = DayPresence.hunt_block(table, pid, victim, day, ph, prior)
 			else:
 				for l in pl.locs:
 					prob += DayPresence.at(table, pid, day, ph, l)
@@ -136,7 +139,7 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 		if best >= CERTAIN:
 			verdict = "fits"
 			reason = "%s: %s" % [PHASES[best_cell].capitalize(), cells[best_cell].text]
-		elif best_cell >= 0 and cells[best_cell].state == "reported" and best >= 0.5:
+		elif best_cell >= 0 and cells[best_cell].state == "reported" and best >= 0.5 and _report_near(table, cells[best_cell], kind, victim, day, best_cell):
 			verdict = "fits"
 			reason = "%s: %s" % [PHASES[best_cell].capitalize(), cells[best_cell].text]
 		elif p_any <= 1e-9:
@@ -163,6 +166,18 @@ static func evaluate(view: Dictionary, q: Dictionary, cards: Array = []) -> Dict
 		"unknown_haunts": int(pl.unknown_haunts), "watched_phases": phase_watch.keys(),
 		"rows": rows, "fits": groups.fits, "unknown": groups.unknown, "ruled_out": groups.ruled_out,
 		"log_ids": log_ids, "report_ids": report_ids}
+
+
+## For a silencing, a reported sighting only makes someone fit when it puts them on a block
+## the victim could have been on that phase: the hunting reach alone mustn't (Codex on #157).
+static func _report_near(table: Dictionary, cell: Dictionary, kind: String, victim: String, day: int, ph: int) -> bool:
+	if kind != "silence":
+		return true
+	var blk: String = str(cell.get("block", ""))
+	var l: String = str(cell.get("loc", ""))
+	if blk == "" and C.LOCATIONS.has(l):
+		blk = str(C.LOCATIONS[l].block)
+	return blk != "" and DayPresence.on_block(table, victim, day, ph, blk) > 0.0
 
 
 ## The day's latest log among the cards (the one holding the most watches).
