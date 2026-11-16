@@ -897,9 +897,10 @@ class Workshop:
 	const SLEEPWALK_SELF_DOUBT = 0.1
 	## The connections belief model (workshop/connections.gd; Project doc
 	## belief-model-direction, "Phase 6 spec"): the limit on an NPC moves from which cards it
-	## reads to which cards it weighs together. Off: the game is unchanged. Tests, autoplay
-	## and sweeps turn it on for one run with --connections (Connections.enabled).
-	const CONNECTIONS = false
+	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
+	## connections model). Off: the earlier model, for comparisons (autoplay --legacy-model;
+	## tests that pin it set Connections.enabled themselves).
+	const CONNECTIONS = true
 	## Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds.
 	const CONNECTIONS_CLIP = 0.01
 	## A person the listener's standing view already puts this close to 0 or 1 is settled
