@@ -147,12 +147,12 @@ func _reuse(item_list: Array, values: Dictionary, leans: Dictionary) -> void:
 	var again: Dictionary = Connections.cases(_fake_run(more), item_list, values, none, [first, {"key": "again", "presenter": "n", "day": 3, "cards": ["c", "b"], "type": "suspicious", "suspicious": true}], 3)
 	check(again.entries.map(func(e): return e.key) == ["again"] and again.entries[0].replaces == ["first"], "a case citing every card of the presenter's earlier case takes its place")
 	check(is_equal_approx(again.lean.x, 0.8 * 0.5 * 0.6), "the set counts once, at the later case's weight (%+.3f)" % again.lean.x)
-	check(is_equal_approx(again.entries[0].withheld.x, 0.8 * 0.5 * 0.6), "a \"suspicious\" case notes what its held-back half would add (%+.3f)" % again.entries[0].withheld.x)
+	check(is_equal_approx(again.entries[0].points.x, -0.3 + 0.1 + 0.6), "a \"suspicious\" case notes what its cards say read by themselves, own values and all (%+.3f)" % again.entries[0].points.x)
 	# The same cards again the same day under "suspicious": weaker, so it takes no one's place.
 	var weak: Dictionary = Connections.cases(_fake_run(more), item_list, values, none, [{"key": "firm", "presenter": "n", "day": 3, "cards": ["b", "c"]}, {"key": "weak", "presenter": "n", "day": 3, "cards": ["c", "b"], "type": "suspicious", "suspicious": true}], 3)
 	check(weak.entries.map(func(e): return e.key) == ["firm", "weak"] and weak.entries[1].replaces.is_empty() and weak.entries[1].lean.is_empty(), "a weaker case on the same cards leaves the earlier one in place and adds nothing")
 	check(is_equal_approx(weak.lean.x, 0.8 * 0.6), "so the cards keep the larger of the two weights (%+.3f)" % weak.lean.x)
-	check(is_equal_approx(weak.entries[1].withheld.x, 0.8 * 0.5 * 0.6) and not weak.entries[0].has("withheld"), "and it still notes what its held-back half would add, standing alone")
+	check(is_equal_approx(weak.entries[1].points.x, -0.3 + 0.1 + 0.6) and not weak.entries[0].has("points"), "and it still notes what its cards say, whatever the earlier case holds")
 	# A bigger case that contains the earlier one.
 	var bigger: Dictionary = Connections.cases(_fake_run(more), item_list, values, none, [first, {"key": "bigger", "presenter": "n", "day": 3, "cards": ["a", "b", "c"]}], 3)
 	check(bigger.entries.map(func(e): return e.key) == ["bigger"] and is_equal_approx(bigger.lean.x, 0.8 * 1.4), "a bigger case that holds it carries the whole set at today's weight (%+.3f)" % bigger.lean.x)
@@ -415,19 +415,24 @@ func _reuse_in_game() -> void:
 		"in a game, the same cards under a \"suspicious\" premise leave the firmer first case in place (%s)" % str(now.map(func(e): return e.key)))
 	check(now.size() == 2 and is_equal_approx(now[0].weight, first[0].weight) and now[1].lean.is_empty(), "the cards keep the first case's weight, and the second adds nothing (%.2f)" % (now[0].weight if now.size() == 2 else -1.0))
 	check(n.workshop_state.presentations.size() == 2, "both presentations are still remembered; only the weighing changes")
-	# The pressure a "suspicious" case puts on its subject: the rise its held-back half would give.
+	# The pressure a "suspicious" case puts on its subject: how far its cards lift them.
 	var res: Dictionary = _proposal(g, n).get("connections", {})
 	var target: String = s.p[4].id
-	var held_back: float = float(now[1].get("withheld", {}).get(target, 0.0)) if now.size() == 2 else 0.0
+	var says: Dictionary = now[1].get("points", {}) if now.size() == 2 else {}
+	var without: Dictionary = {}
+	for q in says:
+		without[q] = -float(says[q])
 	var chance: float = float(res.posterior[target])
 	var rise: float = WorkshopPresentation._connections_rise(g, n.id + ":good", str(again), target)
-	check(is_equal_approx(rise, maxf(0.0, WorkshopPresentation.held_back_chance(res.posterior, now[1].get("withheld", {}), target) - chance)), "its pressure is the rise its held-back half would give its subject, renormalised (held back %+.3f, rise %.3f)" % [held_back, rise])
+	check(not says.is_empty() and is_equal_approx(rise, maxf(0.0, chance - WorkshopPresentation.held_back_chance(res.posterior, without, target))), "its rise is how far its cards lift its subject: their chance now against their chance without what the cards say, renormalised (rise %.3f)" % rise)
+	check(is_equal_approx(WorkshopPresentation.connections_pressure(0.05), 0.05 * Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE) and is_equal_approx(WorkshopPresentation.connections_pressure(0.9), Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_CAP) and is_zero_approx(WorkshopPresentation.connections_pressure(-0.2)),
+		"the pressure is the average rise times the scale, up to the cap, never below zero")
 	# The held-back half renormalised across everyone: an equal lean on all of them moves no one.
 	var flat: Dictionary = {}
 	for p in res.posterior:
 		flat[p] = 0.7
 	check(absf(WorkshopPresentation.held_back_chance(res.posterior, flat, target) - chance) < 1e-6, "an equal held-back lean on everyone raises no one (Codex on #153)")
-	check(is_zero_approx(WorkshopPresentation._connections_rise(g, n.id + ":good", str(s.filed), target)), "a firm case holds nothing back")
+	check(is_zero_approx(WorkshopPresentation._connections_rise(g, n.id + ":good", str(s.filed), target)), "a firm case presses no one")
 	# The other way round: a firm case on the same cards the next day takes both places.
 	g.w.day += 1
 	var firm: int = _file(g, "evil", s.p[4].id, [s.seer, s.dowser])

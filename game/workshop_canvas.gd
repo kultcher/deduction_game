@@ -406,7 +406,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		for c in covering:
 			if c.day > latest.day:
 				latest = c
-		if draft.suspicious and float(entry.get("withheld", {}).get(target, 0.0)) > 0.0:
+		if draft.suspicious and _would_press(run, entry, target, _neutral_posterior(run, values, before)) and not _pressure_spent(g, target, roots.numbers):
 			return {"kind": "presses", "adds": adds, "text": "Adds no new belief (you've put these cards to the town in case #%d), but still presses %s." % [latest.number, name]}
 		return {"kind": "repeat", "adds": adds, "text": "No new info: you've already put these cards to the town (case #%d)." % latest.number}
 	var shared_with: Array = earlier.filter(func(c): return counting.has(c.key) and c.cards.any(func(id): return id in argued))
@@ -414,6 +414,49 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and what they add together you've mostly argued in case #%d." % shared_with[-1].number}
 	return {"kind": "none", "adds": adds, "text": "No new info: the town already counts these cards, and together they add little."}
 
+
+## Would this "suspicious" entry press its subject noticeably (NOTE_PRESSES or more at a
+## meeting), going by the neutral listener? The game's own pressure rule on its numbers.
+const NOTE_PRESSES: float = 0.15
+static func _would_press(run: Dictionary, entry: Dictionary, target: String, now: Dictionary) -> bool:
+	var Presentation = preload("res://game/workshop_presentation.gd")
+	# The game's own rise (WorkshopPresentation._connections_rise): the subject's chance as the
+	# neutral listener holds it now (`now`: every heard card and your standing cases, not the
+	# no-card baseline; Codex on #155) against their chance with the case's points taken away.
+	var Connections = preload("res://workshop/connections.gd")
+	var chance: float = float(now.get(target, 0.0))
+	if chance <= Connections.FIXED or chance >= 1.0 - Connections.FIXED:
+		return false
+	var without: Dictionary = {}
+	var points: Dictionary = entry.get("points", {})
+	for p in points:
+		without[p] = -float(points[p])
+	var rise: float = float(now.get(target, 0.0)) - Presentation.held_back_chance(now, without, target)
+	return Presentation.connections_pressure(maxf(0.0, rise)) >= NOTE_PRESSES
+
+## The neutral listener's chances as a refresh would give them: the baseline plus every heard
+## card's lean and your standing cases' (it holds no knowledge of its own, so no core).
+static func _neutral_posterior(run: Dictionary, values: Dictionary, standing: Dictionary) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	var total: Dictionary = {}
+	for p in run.others:
+		total[p] = float(standing.get("lean", {}).get(p, 0.0))
+	for key in values:
+		for p in values[key].get("lean", {}):
+			if total.has(p):
+				total[p] += float(values[key].lean[p])
+	return Connections.combine(run.others, run.baseline, total).posterior
+
+## Has this "suspicious" filing (its target and cards) already pressed? Pressure comes once
+## per filing, from its first hearing, and only in that venue (WorkshopPresentation.
+## _suspicious_pressure): once anyone has heard it, in private or at a meeting, presenting it
+## at the meeting presses no one more (Codex on #155).
+static func _pressure_spent(g, target: String, numbers: Array) -> bool:
+	var ids: Array = numbers.duplicate()
+	ids.sort()
+	var filing: String = target + "|" + ",".join(PackedStringArray(ids))
+	var entry: Dictionary = g.w.suspicious_pressure.get(filing, {})
+	return int(entry.get("count", 0)) > 0
 
 ## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
 static func _endorsed(value: Dictionary) -> Array:
