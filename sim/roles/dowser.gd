@@ -61,6 +61,12 @@ func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 
 ## A bluff changes the count, while keeping the same public-area eligibility and complete
 ## local crowd as a real Dowser. Target requests cannot manufacture a remote crowd.
+## The count stays near the truth, with the crowd's size setting the room (triage 6,
+## Michael's guidelines of Nov 13), so covering an ally is no longer a too-clean 0:
+##   2 people: 0 or 1 by need: frame the scapegoat, unless that would expose an ally the
+##             town already suspects; otherwise 0;
+##   3 people: a true 2 reads 1; otherwise 1 to frame the scapegoat, else 0;
+##   4 or more: usually the truth + 1 (+ 1 or 2 when the truth is 0), sometimes the truth.
 func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
 	if w.day < min_gift_day or n.dowsed_day == w.day or n.at_home():
 		return {}
@@ -71,16 +77,27 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	if others.size() < 2:
 		return {}
 	var ids: Array = others.map(func(m): return m.id)
+	var tune: Dictionary = Tuning.Roles.DOWSER
+	var truth: int = others.filter(func(m): return m.is_evil()).size()
+	var frame: bool = s in ids
+	var Evil = load("res://sim/evil.gd")
+	var ally_hot: bool = others.any(func(m): return m.is_evil() and Evil.public_heat(w, m) >= float(tune.ally_hot_heat))
 	var count: int = 0
-	if not others.any(func(m): return m.is_evil()):
-		if s in ids:
-			count = 2 if (others.size() >= 4 and w.chance(Tuning.Roles.DOWSER.bluff_two_evil_prob)) else 1
-		elif others.size() >= 4 and w.chance(Tuning.Roles.DOWSER.bluff_crowd_one_prob):
-			count = 1
+	if others.size() == 2:
+		count = 1 if frame and not ally_hot else 0
+	elif others.size() == 3:
+		count = 1 if truth >= 2 or frame else 0
+	elif w.chance(tune.bluff_pad_prob):
+		count = truth + 1
+		if truth == 0 and w.chance(tune.bluff_two_evil_prob):
+			count = 2
+	else:
+		count = truth
+	count = mini(count, others.size())
 	n.dowsed_day = w.day
 	return {
 		"entry": {"data": {"group": ids, "count": count, "block": blk}, "text": "on %s I sensed %d evil among %s" % [content().block_name(blk), count, w._names(ids)]},
-		"why": "fabricates count for the complete public crowd on %s" % blk,
+		"why": "fabricates count for the complete public crowd on %s (truth %d)" % [blk, truth],
 	}
 
 
