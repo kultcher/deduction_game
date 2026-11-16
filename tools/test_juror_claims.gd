@@ -63,6 +63,10 @@ func _init() -> void:
 	check(public_claim in heard_claims, "the public claim of someone the reading names is heard (%s)" % str(heard_claims))
 	check(private_claim not in heard_claims, "a private claim isn't")
 	check(other_claim not in heard_claims, "nor the claim of someone the case doesn't name")
+	# Names nested in a reading's data count too (a Psychologist's statements; Codex on #159).
+	var named_deep: Dictionary = {}
+	Live._collect_people(g, {"statements": [{"speaker": p[5].id, "subject": [p[6].id]}]}, named_deep)
+	check(named_deep.has(p[5].id) and named_deep.has(p[6].id), "people named inside nested statements are found (%s)" % str(named_deep.keys()))
 	var r: Dictionary = Live.test_juror(g, value)
 	check(r.get("ready", false), "the juror still runs (%s)" % str(r.get("issues", [])))
 	# And it weighs them: the reading's teller and its subject both publicly claim the Seer,

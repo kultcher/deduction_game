@@ -255,5 +255,15 @@ func _given_link(view: Dictionary, session) -> void:
 	var merged: Array = mg.nodes.keys().filter(func(k): return mg.nodes[k].kind == "contradiction")
 	check(merged.size() == 1 and mg.links.any(func(e): return e.from == maside and e.to == merged[0] and e.kind == "given"), "merging the alibi into a contradiction keeps the given link onto it")
 	check("survey" in mg.compile(mroot).cards, "and the given premise's evidence stays in the root's (%s)" % str(mg.compile(mroot).cards))
+	# A given premise's assumptions go with the line it runs through (Codex on #159).
+	var ma = Model.new(view)
+	var aroot: String = ma.add_premise("hollis", "evil", Vector2.ZERO)
+	var aaside: String = ma.add_premise("constance", "good", Vector2(0, 200))
+	ma.nodes[aaside].positions = {"nisha": "good"}
+	ma.connect_cards("e:survey", aroot)
+	ma.connect_cards("e:dowse", aaside)
+	ma.connect_cards(aaside, "e:survey")
+	var direct_lines: Array = ma.compile(aroot).lines.filter(func(l): return l.id == "direct")
+	check(direct_lines.size() == 1 and direct_lines[0].get("assumption_sets", []) == [{"nisha": "good"}], "a given premise's assumptions go with the line it runs through (%s)" % str(direct_lines))
 	var reopened = Model.new(view)
 	check(reopened.restore(JSON.parse_string(JSON.stringify(m.export_data())), session) == "" and reopened.links.any(func(e): return e.kind == "given"), "a saved canvas with a given link reopens with it (Codex on #159)")

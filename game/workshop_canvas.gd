@@ -275,12 +275,9 @@ static func public_claims_for(g, value: Dictionary) -> Array:
 			var v = card.get(field, "")
 			for id in (v if v is Array else [v]):
 				named[str(id)] = true
-		var data = card.get("data", {})
-		if data is Dictionary:
-			for field in ["pair", "group", "target"]:
-				var dv = data.get(field, [])
-				for id in (dv if dv is Array else [dv]):
-					named[str(id)] = true
+		# Everyone the reading's data names, however nested (a Psychologist's statements
+		# carry their speakers and subjects inside; Codex on #159).
+		_collect_people(g, card.get("data", {}), named)
 	var result: Array = []
 	for card in g.board:
 		if card.get("kind", "") != "claim" or card.get("deleted", false) or int(card.get("n", 0)) in roots.numbers:
@@ -483,6 +480,18 @@ static func _endorsed(value: Dictionary) -> Array:
 		if id not in assigned and id not in endorsed:
 			endorsed.append(id)
 	return endorsed
+
+## Every person id anywhere in `v` (strings, arrays, dictionaries), into `named`.
+static func _collect_people(g, v, named: Dictionary) -> void:
+	if v is String:
+		if g.w.by_id.has(v):
+			named[v] = true
+	elif v is Array:
+		for x in v:
+			_collect_people(g, x, named)
+	elif v is Dictionary:
+		for k in v:
+			_collect_people(g, v[k], named)
 
 ## The test juror's notes beyond its strength chip: the clash headline and clashing
 ## cards when the case can't hold, and who it would mostly raise suspicion of.

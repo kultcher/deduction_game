@@ -692,7 +692,16 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 		else:
 			direct.append_array(ancestors(edge.from))
 	if not direct.is_empty():
-		result.lines.append({"id": "direct", "label": "Direct supporting evidence", "relation": "supports", "cards": _evidence(direct), "positions": {}, "answers": {}})
+		var direct_line: Dictionary = {"id": "direct", "label": "Direct supporting evidence", "relation": "supports", "cards": _evidence(direct), "positions": {}, "answers": {}}
+		# A premise a card's line runs through ("given", triage 5.1) carries its assumptions
+		# with that line, as a premise linked straight to the root does (Codex on #159).
+		var given_sets: Array = []
+		for id in direct:
+			if nodes.has(id) and nodes[id].kind == "premise" and not nodes[id].positions.is_empty() and nodes[id].conclusion.get("at", result.conclusion.at) == result.conclusion.at:
+				given_sets.append(nodes[id].positions.duplicate(true))
+		if not given_sets.is_empty():
+			direct_line["assumption_sets"] = given_sets
+		result.lines.append(direct_line)
 	result.cards = _evidence(all)
 	for id in all:
 		var node: Dictionary = nodes[id]
