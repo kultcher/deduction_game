@@ -20,6 +20,14 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
+
+- **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
+- **Michael (Nov 16):** leads propose new backlog items rather than adding them, even as `[open]`, so nothing slips past him in the back-and-forth.
+- **How it works:** send the proposal to Seneschal, with a short title, what you saw and where, and a suggested tag and owner. Also list it under "Proposed for the backlog" in your handoff entry. Seneschal puts proposals to Michael, and the owning lead adds the accepted ones. Updating or closing an existing item you worked on is still fine.
+
+---
+
 ## 2026-11-16 night, Claude-Seneschal: Seneschal and Beadle join the roster (`claude/roster-seneschal-beadle`, stacked on #168)
 
 - **Base:** #168's head `a25ece7`. **Status:** docs and one test, PR open. Merge after #168. **Next actor:** Bailiff.
