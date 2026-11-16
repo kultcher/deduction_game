@@ -272,7 +272,10 @@ static func juror_case(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var challenges: Dictionary = value.get("reading_challenges", {})
 	if not challenges.is_empty():
 		var kept: Array = judged.cards.filter(func(id): return not challenges.has(id))
-		if not kept.is_empty() and kept.size() < judged.cards.size():
+		if kept.is_empty():
+			# Every card challenged: nothing left to judge (Codex on #159).
+			return {"ready": false, "issues": ["Judged as if your challenges hold, nothing is left in this case to weigh."]}
+		if kept.size() < judged.cards.size():
 			judged = judged.duplicate(true)
 			set_aside = judged.cards.filter(func(id): return challenges.has(id))
 			judged.cards = kept

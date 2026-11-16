@@ -105,5 +105,11 @@ func _init() -> void:
 	var chal_r: Dictionary = Live.test_juror(g, challenged, false)
 	check(seer_id != "" and chal_r.get("set_aside", []) == [seer_id], "a challenged reading is set aside (%s)" % str(chal_r.get("set_aside", [])))
 	check(float(chal_r.get("lr", 0.0)) != float(plain_r.get("lr", 0.0)) and "challenge holds" in str(chal_r.get("reason", "")), "and the verdict changes, saying so (x%.2f against x%.2f; %s)" % [float(chal_r.get("lr", 0.0)), float(plain_r.get("lr", 0.0)), str(chal_r.get("reason", ""))])
+	var only: Dictionary = both.duplicate(true)
+	only.cards = [seer_id]
+	only.lines = []
+	only["reading_challenges"] = {seer_id: {"mode": "impaired", "supports": []}}
+	var none_left: Dictionary = Live.test_juror(g, only, false)
+	check(not none_left.get("ready", true) and "nothing is left" in str(none_left.get("issues", [])), "a case whose every card is challenged has nothing left to judge (%s)" % str(none_left.get("issues", [])))
 	print("Juror claims: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
