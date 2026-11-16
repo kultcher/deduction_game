@@ -289,6 +289,8 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["night"] = -1 # Confessing an explanation does not prove an outing.
 		card["applies"] = {"from": night if e.observed_at.phase == "night" else 0, "through": night if e.observed_at.phase == "night" else snapshot.now.day}
 		card["data"] = {"secret_kind": e.content.secret_kind}
+		if str(e.content.get("partner", "")) in ids:
+			card.data["partner"] = str(e.content.partner)  # a Lovers confession names the other (triage 5.9)
 		return card
 	if e.kind in ["home", "work", "haunt", "trait"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):
@@ -376,6 +378,8 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["night"] = night if card.kind == "evening" else -1
 		card["day"] = night
 		card["orig_kind"] = e.kind
+		if int(e.content.get("crowd_unseen", 0)) > 0:
+			card["crowd_unseen"] = int(e.content.crowd_unseen)  # more there, unseen (triage 8.2)
 		if e.content.get("loc", "") in C.LOCATIONS:
 			card["loc"] = e.content.loc
 		elif str(e.content.get("loc", "")).begins_with("home"):

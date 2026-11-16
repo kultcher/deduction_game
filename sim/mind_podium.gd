@@ -228,7 +228,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				var me: String = d.secret.get("me", d.secret.get("text", ""))
 				lines.append(_say(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % me, {"secret": me}))
 				facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "block": block, "day": nd, "phase": C.NIGHT, "source": d.id,
-					"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "", "public": true,
+					"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "", "partner": str(d.secret.get("with", "")) if d.secret.get("kind", "") == "lover" else "", "public": true,
 					"text": "%s confessed before the town they were out on %s %s: %s %s." % [d.name, C.block_name(block), C.spoken_when(nd, w.day), d.name, d.secret.get("text", "")]})
 				vantage = block
 				how = "street"

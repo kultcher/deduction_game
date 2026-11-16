@@ -736,6 +736,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		reports.append(card)
 		tables.append(table)
 		valids.append(_valid_table(view, card))
+	for need in Solver.lovers_needs(view, cards):
+		for i in range(n):
+			if not Solver.lovers_ok(universe[i], int(need)):
+				dead[i] = 1
 	var premise = _premise_mask(view, conclusion)
 	var live: bool = Domain.live(view)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()

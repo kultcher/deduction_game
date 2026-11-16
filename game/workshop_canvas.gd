@@ -559,6 +559,49 @@ static func _collect_people(g, v, named: Dictionary) -> void:
 		for k in v:
 			_collect_people(g, v[k], named)
 
+## What you saw around an Augur reading (triage 5.10): the reading names nobody, so its
+## hint lists who your own sightings put on the Augur's block that morning and afternoon,
+## where your sightings place the Augur, and how many more you couldn't make out at those
+## places ("crowd_unseen"). "Sightings: Edda, Kiran +at least 2 unknowns", or "" if you
+## never saw where the Augur was that day.
+static func augur_sightings(view: Dictionary, card: Dictionary) -> String:
+	var Solver = preload("res://workshop/solver.gd")
+	var augur: String = str(card.get("source", ""))
+	var day: int = int(card.get("observed_at", {}).get("day", -1))
+	# (Daytime sightings are "location" cards in the case view.)
+	var mine: Array = view.get("cards", []).filter(func(c): return str(c.get("kind", "")) in ["location", "sighting"] and str(c.get("source", "")) == "player" and int(c.get("observed_at", {}).get("day", -2)) == day)
+	var names: Array = []
+	var unknowns: int = 0
+	var placed: bool = false
+	for phase in ["morning", "afternoon"]:
+		var at: Array = mine.filter(func(c): return str(c.observed_at.get("phase", "")) == phase)
+		var blocks: Array = at.filter(func(c): return augur in c.get("subjects", [])).map(func(c): return str(c.get("block", "")))
+		if blocks.is_empty() or blocks[0] == "":
+			continue
+		placed = true
+		var counted: Dictionary = {}
+		var phase_unknowns: int = 0
+		for c in at:
+			if str(c.get("block", "")) != blocks[0]:
+				continue
+			for who in c.get("subjects", []):
+				var nm: String = Solver.person_name(view, str(who))
+				if str(who) != augur and nm not in names:
+					names.append(nm)
+			var place: String = str(c.get("loc", ""))
+			if not counted.has(place):
+				counted[place] = true
+				phase_unknowns += int(c.get("crowd_unseen", 0))
+		# The same unseen people may be there both phases: the larger phase is the lower bound
+		# (Codex, #162).
+		unknowns = maxi(unknowns, phase_unknowns)
+	if not placed:
+		return ""
+	var text: String = "Sightings: " + (", ".join(PackedStringArray(names)) if not names.is_empty() else "nobody")
+	if unknowns > 0:
+		text += " +at least %d unknown%s" % [unknowns, "" if unknowns == 1 else "s"]
+	return text
+
 ## The test juror's notes beyond its strength chip: the clash headline and clashing
 ## cards when the case can't hold, and who it would mostly raise suspicion of.
 static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, result: Dictionary) -> void:

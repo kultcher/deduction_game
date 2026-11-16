@@ -90,9 +90,20 @@ static func _card_workers(g) -> void:
 		var fact = {"kind": "sighting", "subject": [n.id], "block": g.w.loc_block(n.loc), "loc": n.loc,
 			"day": g.w.day, "phase": g.w.phase, "source": "player", "work_sighting": true,
 			"text": "You saw %s working at %s, day %d %s." % [n.name, g.w.loc_name(n.loc), g.w.day, g.w.phase_name()]}
+		_mark_crowd(g, fact)
 		if not g._fact_keys.has(Mind.fact_id(fact)):
 			facts.append(fact)
 	g._facts(facts)
+
+
+## A sighting from afar (a worker, a conversation) also notes how many more people were at
+## that place whom you couldn't make out, as the town view shows them ("2 more at the
+## Bakery"): "crowd_unseen", and "+N people there" on the card (triage 8.2).
+static func _mark_crowd(g, fact: Dictionary) -> void:
+	var more: int = g.unseen_at(str(fact.get("loc", "")))
+	if more > 0:
+		fact["crowd_unseen"] = more
+		fact["text"] = str(fact.text).trim_suffix(".") + " (+%d %s there)." % [more, "person" if more == 1 else "people"]
 
 
 ## Conversations visible on the town view become cards (who was talking with whom, where).
@@ -110,8 +121,10 @@ static func _card_conversations(g) -> void:
 		# (circumstantial) evidence, "who was where" is the location (playtest triage 1.7).
 		# Same fact id as a sighting from visiting the spot, so the two merge.
 		for x in [n, m]:
-			facts.append({"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(x.loc), "loc": x.loc, "day": g.w.day, "phase": g.w.phase,
-				"source": "player", "text": "You saw %s at %s, day %d %s." % [x.name, g.w.loc_name(x.loc), g.w.day, g.w.phase_name()]})
+			var seen_talking: Dictionary = {"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(x.loc), "loc": x.loc, "day": g.w.day, "phase": g.w.phase,
+				"source": "player", "text": "You saw %s at %s, day %d %s." % [x.name, g.w.loc_name(x.loc), g.w.day, g.w.phase_name()]}
+			_mark_crowd(g, seen_talking)
+			facts.append(seen_talking)
 	if not facts.is_empty():
 		g._facts(facts)
 
