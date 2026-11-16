@@ -231,6 +231,14 @@ func pressed_nights():
 				if not evil: n.role = "clerk"
 				else: g.w.evil_plan.bluffs[n.id] = mode
 				g.w.rng.seed = seed_value
+			# An evil walking bluff not yet named, caught out on a night its duty would cover,
+			# backs into the bluff and owns the outing, as a good walker does (Claude-Beadle,
+			# Nov 16; BACKLOG "An evil walker's owned lie doesn't follow its disclosure").
+			if evil and load("res://sim/mind_dialogue.gd")._bluff_outing(b.w, nb, 1):
+				var revealed = Mind.press(b.w, nb, card)
+				check(nb.max_tier >= 3 and revealed.facts.any(func(f): return f.kind == "claim" and f.role == mode)
+					and not revealed.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "a caught evil %s bluff backs into the bluff, no home account" % mode)
+				continue
 			var before = before_press_night(a.w, na, card)
 			var after = Mind.press(b.w, nb, card)
 			# Oct 26 (Claude): pressed with a sighting, the Sleepwalker (and evil whose bluff

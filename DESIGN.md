@@ -900,6 +900,8 @@ from its bluff. A real Medium names the hearth only for a night when there was a
 A good NPC shown a sound "you lied" about their own statement knows it's
 true: open or pressed ones own up, the rest stonewall. A good walker pressed with a
 sighting, or disclosing a walking gift later, owns the earlier lie ("So yes: I was out…").
+Evil with a planned walking bluff does the same in private, for the nights its bluffed duty
+accounts for, so neither the reveal nor the owned lie is a tell.
 Seen out at night, the real Sleepwalker (under pressure) and evil bluffers can say "I've
 been known to sleepwalk"; two claimants prove a liar.
 

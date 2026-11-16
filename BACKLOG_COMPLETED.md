@@ -3,6 +3,20 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 16, 2026 (Claude-Beadle, `claude/beadle-evil-owned-lie`)
+
+- **An evil walker's owned lie doesn't follow its disclosure.** (54875) A good walker who
+  discloses after being caught out by a sighting now owns the earlier "home" story. An
+  evil walker bluffing a walking gift should do the same when it discloses after the same
+  kind of press. [decided]
+
+  > **Built Nov 16 (Claude-Beadle):** in private, an evil member with a planned walking
+  > bluff, caught out by a sighting of a night its bluffed duty would account for, names
+  > the bluff; naming a walking bluff owns the earlier "home" or refusal with the good
+  > walker's lines, for the nights the duty covers only (a Night Watch bluff: nights with a
+  > watch report). The podium path is unchanged for both alignments. Test:
+  > `tools/test_evil_owned_lie.gd`. Golden identical.
+
 ## Moved Nov 8, 2026 (Michael's review)
 
 ### Settled

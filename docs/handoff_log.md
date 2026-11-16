@@ -27,6 +27,43 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
+
+- **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open; full suite run on the branch (result in the PR). **Next actor:** Bailiff to merge; Michael for the proposal in part 1.
+- **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
+
+### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
+
+- **Where evil fabricates:** `Evil._make_fake_info_for_phase` (`sim/evil.gd`), each night (day gifts by day), calls the bluffed role's `generate_bluff_reading` and stores the result in the member's `info_log` marked `fake`. It's then shared unchanged: at the meeting (`MindMeeting` share loop, `sim/mind_meeting.gd` ~645), in town chats (`sim/social.gd` ~116) and to the player.
+- **No check exists.** Nothing, at generation or at sharing, compares a fabrication with other people's public readings. Six bluff rules read something public (Magistrate the day's nominations, Dowser public heat, Gravedigger the hanging vote and claim, Registrar public claims, Medium the dead's claim and stances, Psychologist heard statements); none reads anyone else's readings, public clears or the shared judge.
+- **26532, the Magistrate rule:** Isolde's report named Greta and Lian, both good and (since the rule says "different" whenever the scapegoat is in the pair) neither the scapegoat. That falls to the rule's last branch, `same = w.chance(0.6)` (`sim/roles/magistrate.gd`), a coin with no regard to the team. "Same" happened to be true. With Lian's public Archivist reading ("Greta or Isolde is the Breathstealer") and Lian dying to the Demon, it cleared Greta and left Isolde. I don't have the 26532 log, so the branch is inferred from the reported reading, not replayed.
+- **Related gaps found in the same audit (read from code, not seen in play):**
+  - Clerk and Rumormonger bluffs vouch for "a teammate"; a lone evil member has itself as its teammate, so it names itself in its own pair.
+  - The Night Watch bluff logs "hiding teammates" but no code drops teammates from the reported walkers (`sim/roles/nightwatch.gd`). Unchecked whether `intel` ever holds a teammate walker.
+  - The Magistrate bluff says "different" when both are evil (on purpose: "distances teammates after a bus nomination"), which tells the town one of the two is evil.
+  - The Surveyor bluff says "not the same" 65% of the time even with a teammate in the scapegoat's quarter; the Monitor bluff's random role can be an evil one.
+- **Proposal (a new rule, so Michael's call):** one general check, not one per role. When an evil member is about to share a fabrication, it asks how the town would read it beside what's already public: the shared judge's neutral listener on the public cards (as the Workshop's town note does), with and without the fabrication. If it lifts the town's chance that the teller or a teammate is evil by more than a margin, the liar may notice. Noticing is a roll scaled by Insight, so a careless liar still slips and the player can still catch it (26532 was exactly such a catch). Noticed: it reworks the reading once with that person left out, or holds it that day. Every such choice is logged (`think`, topic `lie`).
+  - Draft numbers: margin 0.10; noticing 0.3 + 0.6 × Insight.
+  - Cost: one judgement per shared fabrication, about 10–25 ms at 10 NPCs (Lantern's first-time figure). It would move golden.
+  - Michael's choices: whether to have it at all (evil's blind spots are also the player's openings), the noticing rate, the margin, and rework or hold.
+  - The role-local items above (a lone Clerk naming itself; Night Watch not hiding teammates when it says it does) are separate fixes. The Night Watch one contradicts its own logged reason, so I'd treat it as a bug; the rest change evil's play, so they wait for the same call.
+
+### 2. Built: an evil walker's owned lie follows its disclosure (BACKLOG section 1, from 54875)
+
+- **Picked first because** it's the only one of the candidate items in section 1 (a quick fix), it's [decided] with nothing left open, and it's wholly in my files. The others need a call first: the evil-meeting cap and cooldown values; double-claim logic for "Evil backs into a bluff"; what trust "backing a strong case" earns.
+- **What changes in play.** Before: an evil member planning a walking bluff (Warden, Lamplighter, Confessor, Medium, Night Watch), out on its own work and caught out by a sighting in private, kept saying "home" or refused. When it did later name the bluff, the duty story it told for that night silently replaced the "home" it had said. Now, like a good walker:
+  - pressed with a sighting of a night its bluffed duty would account for, it names the bluff;
+  - on naming a walking bluff, it owns the earlier story with the same lines a good walker uses ("So yes: I was out on the first night, whatever I told you…").
+  - It owns only nights the bluff's duty covers (a Night Watch bluff only nights it made a watch report for). Other nights keep the story told. A non-walking bluff owns nothing.
+- **Why:** a caught-out reveal and the owned-lie line were only ever good behaviour, so either was a tell for good. Now both alignments do it.
+- **Not changed:** the podium (public) path. A good walker's podium reveal doesn't own earlier private lies either; evil's podium "So yes, I was out on X" would need the bluffed duty's block (a Night Watch bluff's watch block can differ from where it really was), which wants its own look.
+- **Code:** `MindDialogue._bluff_outing` and `bluff_duty_covers` (the bluffed role's own duty check, asked as if already claimed); `answer_gift`'s owned-lie block no longer excludes evil; evil now records `lied_nights` when it lies "home" (private and podium).
+- **Tests:** new `tools/test_evil_owned_lie.gd` (added to the fast list): Warden, Lamplighter and Confessor bluffs back in and own; Night Watch owns only the watched night; a Seer bluff owns nothing; the good walker is unchanged. `test_meeting_flow`'s press check expected evil walking bluffs to keep a wording-only press; it now expects the reveal for those.
+- **Measured:** suites `test_evil_owned_lie`, `test_meeting_flow`, `test_playtest_13910_dialogue` pass; golden as above. No autoplay or sweep run (the bot doesn't press NPCs with sightings in private, so the change doesn't reach it).
+
+---
+
 ## 2026-11-16 evening, Claude-Bailiff: final handoff before the move to Claude Code (`claude/handoff-docs`)
 
 - **Base:** main `7d87772` (#162). **Status:** docs and code comments only, this PR. **Next actor:** whoever picks up the repo in Claude Code; Michael for the open calls below.
