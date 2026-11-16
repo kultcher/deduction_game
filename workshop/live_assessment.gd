@@ -376,6 +376,8 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["night"] = night if card.kind == "evening" else -1
 		card["day"] = night
 		card["orig_kind"] = e.kind
+		if int(e.content.get("crowd_unseen", 0)) > 0:
+			card["crowd_unseen"] = int(e.content.crowd_unseen)  # more there, unseen (triage 8.2)
 		if e.content.get("loc", "") in C.LOCATIONS:
 			card["loc"] = e.content.loc
 		elif str(e.content.get("loc", "")).begins_with("home"):

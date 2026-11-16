@@ -727,6 +727,11 @@ func evidence_layout(id: String) -> Dictionary:
 		var a_day: int = int(card.get("observed_at", {}).get("day", 1))
 		els.append({"t": "label", "at": Vector2(16, y + 14), "text": ("Yes: crossed Demon in public (D%d)" % a_day) if a_yes else ("No public Demon crossing (D%d)" % a_day)})
 		y += 26.0
+		# Who you saw around the Augur that day (triage 5.10); the reading itself names nobody.
+		var a_seen: String = preload("res://game/workshop_canvas.gd").augur_sightings(model.view, card)
+		if a_seen != "":
+			els.append({"t": "label", "at": Vector2(16, y + 12), "text": "(" + a_seen + ")", "fs": 13, "tip": a_seen + "\nFrom your own sightings on the Augur's block that morning and afternoon."})
+			y += 22.0
 		details = true
 	elif (card.kind == "report" and role == "nightwatch") or (card.kind == "sighting" and card.get("night", -1) >= 0):
 		var seen: Array = card.data.get("seen", []) if role == "nightwatch" else card.get("subjects", [card.get("subject", "")])
@@ -1151,7 +1156,9 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 		"label":
 			if el.get("icon") != null:
 				draw_texture_rect(el.icon, Rect2(origin + (el.at - Vector2(26, 15)) * zoom, Vector2(20, 20) * zoom), false)
-			draw_string(font, origin + el.at * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - el.at.x - 10) * zoom, _fs(14), Color("5a4c38"))
+			draw_string(font, origin + el.at * zoom, el.text, HORIZONTAL_ALIGNMENT_LEFT, (WIDTH - el.at.x - 10) * zoom, _fs(int(el.get("fs", 14))), Color("5a4c38"))
+			if el.get("tip", "") != "":
+				tips.append({"rect": Rect2(origin + (el.at - Vector2(0, 14)) * zoom, Vector2(WIDTH - el.at.x - 10, 18) * zoom), "text": el.tip})
 		"chip":
 			var r = Rect2(origin + el.rect.position * zoom, el.rect.size * zoom)
 			var on: bool = el.get("on", false)
