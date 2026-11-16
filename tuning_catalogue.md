@@ -106,7 +106,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
 | `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
-| `BREATHSTEALER` | `{ "phase_probs_high": [0.3, 0.5, 1.0], "phase_probs_low": [0.15, 0.3, 0.7], "...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
+| `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
 | `REVENANT` | `{ "place_totem_probs": [0.45, 0.6, 1.0], "curse_voter_eff": 0.15, "evil_vote_...` |  | `sim/roles/revenant.gd` |
 | `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/world.gd` |
 | `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world.gd` |
@@ -622,8 +622,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |
 | `CONNECTIONS_FIXED` | `0.005` | A person the listener's standing view already puts this close to 0 or 1 is settled (the public record, the listener's own knowledge): cards don't move them. | `workshop/connections.gd` |
 | `CONNECTIONS_CORE_JOIN` | `0.4` | The core (an NPC's own readings and what it weighs together with them): a card or pairing joins when it is worth this much more, in log-odds for any one person, next to the NPC's own readings than apart from them. | `workshop/connections.gd` |
+| `CONNECTIONS_CASE_FADE` | `0.5` | Stored cases (the player's presentations, an NPC nominator's cited cards): a case keeps this share of its weight for each day since it was presented, and stops counting below the floor. Its weight starts at the listener's trust in the presenter. | `workshop/connections.gd` |
+| `CONNECTIONS_CASE_FLOOR` | `0.05` |  | `workshop/connections.gd` |
+| `CONNECTIONS_CASE_FADE_BOUGHT` | `0.9` | Buy-in (Michael, Nov 13): a case a listener bought fades slower. It keeps between CASE_FADE and CASE_FADE_BOUGHT of its weight a day, by how far it moves that listener: the largest move its cards make together on anyone, at the listener's trust in the presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade). | `workshop/connections.gd` |
+| `CONNECTIONS_CASE_BUYIN_FULL` | `0.7` |  | `workshop/connections.gd` |
 | `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity.gd` |
 | `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity.gd` |
+| `BREATH_HUNT_REACH` | `0.7` | A hunting Breathstealer in a free phase: the chance it is on its victim's block, for the presence reasoning (workshop/day_presence.gd hunt_block; Nov 14). It seeks its preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where good people are working. | `workshop/day_presence.gd` |
 | `LR_WEAK` | `1.5` |  | `workshop/case_eval.gd` |
 | `LR_MODERATE` | `3.0` |  | `workshop/case_eval.gd` |
 | `LR_STRONG` | `10.0` |  | `workshop/case_eval.gd` |
@@ -716,7 +721,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PREMISE_SPILLOVER_MAX` | `0.8` |  | `workshop/shared_ledger.gd` |
 | `PREMISE_SHAPING_TYPES` | `["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrol...` | Premise types whose target is an alignment question. Marked, secret, misled and conflict premises name no alignment target, so their cards spill over in full. | `workshop/shared_ledger.gd` |
 | `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
-| `SUSPICIOUS_HEARING` | `0.5` | Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises brought count at this share for everyone (both directions), and the rest of their full effect on the target becomes pressure, once per filing: the average listener's full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict premise's +0.1 / +0.2. | `workshop/shared_ledger.gd` |
+| `SUSPICIOUS_HEARING` | `0.5` | Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises brought count at this share for everyone (both directions), and the rest of their full effect on the target becomes pressure, once per filing: the average listener's full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict premise's +0.1 / +0.2. | `game/workshop_why.gd`, `workshop/connections.gd`, `workshop/shared_ledger.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` |  | `game/workshop_presentation.gd` |
 | `SALIENCE_BASE` | `1.0` | Bounded reasoning attention profiles (`workshop/reasoner.gd`) Attention salience (Reasoner._salience; premises pass step 0b). Naming the target outranks being a gift reading; trust in the source is a tiebreak. | `workshop/reasoner.gd` |
 | `SALIENCE_TRUST` | `0.1` |  | `workshop/reasoner.gd` |
