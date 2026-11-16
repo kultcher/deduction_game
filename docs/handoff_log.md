@@ -27,6 +27,125 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16, Claude-Lantern: final handoff, this work moves to Claude Code (`claude/lantern-handoff`, docs only)
+
+Written for a successor who has the repo and none of my conversation with Michael. It is long on purpose. Where I say "I measured", the scripts lived in a session scratch folder that is gone; the method is described so it can be redone.
+
+- **Base:** main `f568543` (#161 merged). **Status:** nothing of mine is in flight. Every PR of mine is merged: #141, #144, #145, #146, #148, #150, #151, #153, #154, #155. This PR adds this entry only.
+- **Next actor:** whoever picks up the connections model. The next piece of work I had lined up is the cost of first-time judgements (below).
+- **What I did not do:** #159 (triage, the player's Workshop), #160 (triage behaviour batch, connections on by default, `baseline_a713ca5`) and the open #162 are other sessions' work. I know them only from `git log` and `docs/maintenance/2026-11-16.md`. The maintenance report attributes that window to "Claude-Lantern"; the work after #155 was not this session.
+
+### Where the connections model stands
+
+- `Tuning.Workshop.CONNECTIONS` is **true** on main since #160 (it was off for all of my PRs; every one of them was "golden identical with the switch off"). The earlier attention model is still in the code and still tested (`test_workshop_why` and `test_workshop_live_cognition` are pinned to it), but play uses connections.
+- The module is `workshop/connections.gd`. One call site, `Jury._consequences_eval`. Memory in `n.workshop_state.connections`. The Project doc `claude/belief-model-direction-2026-11-10.md` has the design, the Phase 6 spec and a results section per PR; my entries below this one have the detail per PR.
+- Build order as it ended: steps 1–4 (#141–#146), the Why report and profiling (#148), stored-case rules (#150), kept judgements (#151), buy-in fade (#153), the Workshop note (#154), "suspicious" pressure (#155). There was never a "step 5" PR: Insight is out for v1.
+- **Not done, in the spec:** the end-to-end pass (the seven prototype criteria through the module on fresh passive seeds and a new human log, then Tally's paired cells). The Nov 16 maintenance report says no sweep has run on main since connections went on and #160 changed behaviour, so current win rates are unknown.
+
+### The work I would do next: first-time judgements
+
+- **The spec's cost bar is not met** ("at or below today's refresh on the same states"). #151 halves a game (44542 replayed whole 193 → 96 s, 97626 282 → 144 s on a 2-core box), but a late presentation was still 4–7 s and a night 11–21 s. Michael called presenting "not unplayable but will need significant cutting down", and caching "the priority for playability".
+- **What is left is sets judged for the first time:** a new card, a new day, a death, or a change of trust in a teller makes that listener's judgements new, and dawn makes all of them new for everyone. A cache cannot help; the judgement has to get cheaper or be moved.
+- **A first-time judgement is 9–25 ms at 10 NPCs,** spread over building the worlds (about 2.4 ms), compiling the set (2.7) and the sum (2.9) for a single card. No part dominates.
+- **Options I listed and did not build:**
+  1. Judge single cards for all listeners at once from one world table per day. Most of a refresh is one card's own value, and the world table depends on the listener only through its firsthand knowledge and trust.
+  2. Spread dawn's refreshes over the night screen so the pause isn't felt.
+  3. Skip the core test for items whose cards and seed did not change since yesterday except for the day number.
+- **Tried and dropped:** raising `CaseEval`'s compile cache from 32 to 4,096 entries barely helped (its caches are small, compile 32, `_own_cache` 64, `_fits_cache` 256, and keyed on the whole timeline, so they miss for the same reason my first cache did).
+- **Seen in a profile, not followed up:** `trust_reward/jury/headline` takes about 0.8 s in a nomination. It is the earlier model's headline reading still being computed while connections is on, where the headline is off. Probably removable; I did not check what else reads it.
+- **Hunch:** buy-in (#153) keeps NPC nominators' cases alive far longer (up to 28 days against 4), and each older case costs one extra judgement per refresh for its rate. With up to nine live cases per listener this may show in late-game cost. Not measured.
+- **How I measured:** `tools/replay_log.gd <log> --connections --time --profile`, and a scratch script that replayed a log through `tools/log_replay.gd` with an `after_command` hook, toggling `Connections.cache_enabled` and hashing every NPC's suspicions at the end. Timings on that box were noisy; run one job at a time.
+
+### A hazard in the cache (#151) that a successor must know
+
+- `Connections.judge_key` is built from **what a judgement reads**, not from its whole input. It leaves out the view's card list (except the judged cards and the listener's own-report cards), the meeting's talk in the timeline (`SOFT_EVENTS`), attention's bookkeeping, `trust` and `player_credibility`.
+- That is sound only because of how the judge path reads today: view cards only through `Solver.selected` and `card_by_id` on the listener's ids; `TraceSolver` and `Circumstantial` are not on the path; and the only reader of nomination or meeting events is `Solver._magistrate_nomination_ok`, which is why a Magistrate's card puts the talk back in the key (`SOFT_READERS`).
+- **If anyone adds a gift or a rule that reads the meeting's talk, other cards on the view, or trust inside a judgement, the key must grow or beliefs will silently go stale.** The check is `Connections.cache_verify = true`: every kept answer is judged again and `cache_stats.wrong` counts differences. `tools/test_connections_cache.gd` does this on two passive games; I ran it over 12 bot and passive games (28,644 kept answers, 0 wrong). Run it again after any change to `workshop/solver.gd` or `workshop/case_eval.gd`.
+- The first version keyed on the whole input and almost never hit. I found the churning fields by printing a hash per component: `reading_reliability`, `view.cards`, `view.timeline`, `knowledge.presented_reports` / `attention_reports`, then `player_credibility` and context cards.
+
+### Decisions Michael made in this conversation
+
+Most are now in the code comments, my entries below or the Project doc. The reasoning is mostly only here.
+
+1. **Stacking (triage 4.2) goes by cards, not by the case or its premise.** He asked whether replacement was card by card or tied to the premise card, and what happens if he keeps the source cards and only changes the dropdown from "Fenwick is good" to "Odette is evil". Answer as built: the new case replaces the old one when it cites every source card of the old one; the premise is not compared, because an NPC weighs a case's cards together and the result lands wherever the cards point.
+2. **The cards keep the larger of the two weights.** My first build let the newer case always take the older one's place at its own weight, so a half-weight "suspicious" on the same cards halved what they did (44542: Greta on Fenwick 18% after #39, 24% after #40). Michael: "it's a bit of an annoying special case, but can we have the cards use the higher of the two values but still calculate ... what the pressure bump would be". Built as: a case only replaces an earlier one when it counts at least as much; a weaker one leaves it and adds only what is new.
+3. **Buy-in over a flat 0.7 for the fade (4.3).** I measured both on 44542 and recommended buy-in; he said "Buy-in sounds good." He had originally said "a slower fade is probably the move, or scaled based on how much they bought it if that wouldn't be difficult".
+4. **NPC nominators' cases keep buy-in too** ("Keep NPC nominators' cases as buy-in"). I had offered a flat 0.5 for them. This quietly supersedes the standing decision "NPC nominators' cases: no faster fade or cap yet" in the Project doc: they now fade slower than before, not faster.
+5. **He does not want work held for merges.** Asked whether to go on or wait for Bailiff to merge #151, he was happy for me to stack: #151 on #150, #153 on #151, #155 on #154. Say in the PR body what it is stacked on.
+6. **The "No new info" note (5.2): five rulings,** relayed by Bailiff on Nov 14 and built in #154: (1) reason (a) counts only public cards, and a case with any card the town hasn't heard never gets the note; (2) the same argument on a later day is a refresh, with its own note, not the warning; (3) "suspicious" on cards already argued firmly is "Adds no new belief, but still presses them"; (4) work it out without the player's watch record, because Bailiff found the juror's view far sharper than any NPC's with it (44542: Fenwick's baseline 0.33 → 0.71 with it, 0.44 without); (5) hide it with the switch off.
+7. **The note's wording is not settled.** He said "that no new info pitch works, we can settle the wording later". The strings in `WorkshopCanvas.town_note` and the chip tags in `ui/workshop_canvas_view.gd` ("No new info", "No new belief", "Refresh") are my placeholders.
+8. **"Suspicious" pressure.** His words: "the whole 'basing it on what was withheld' was meant to just be a way to scale it with the effectiveness of the case, so don't need to be married to that at all." And: "The role of 'suspicious' is mostly early game, day 1 or 2, before a ton of information is available and before the player can likely make a strong case. It should have a solid chance of forcing the NPC to reveal something if they were holding back. Since often this'll accompany a nomination, and the .65 figure is roughly moving up a tier, let's aim for like a .3 from a basic piece of incriminating evidence."
+   - Built in #155: 4 × the average rise the case's cards give its subject, capped at 0.5 at a meeting, half in private.
+   - **The minimum for a meaningful "suspicious" case is 0.15** ("0.15 sounds right"). It is `NOTE_PRESSES` in `game/workshop_canvas.gd`: under it the Workshop says plain "No new info" for a repeat. It is only used for the note; the pressure itself has no floor.
+   - **I told him one consequence and he did not answer it directly:** a nomination adds 0.4, so a basic "suspicious" case plus a nomination puts the subject at about 0.7 on day 1, which is exactly where a hidden gift-holder's lock on their secret breaks at a meeting (`protect_lock`, 0.7). My #155 entry says "Michael knows"; more exactly, he was told and went ahead without commenting. Worth raising again if hidden gift-holders turn out to fold every day 1.
+   - **Switch-off pressure was left alone on purpose,** because the held-back rule of premises step 2 was an explicit earlier decision and he had only released it for connections. With connections now the default that path is legacy.
+9. **Earlier in the conversation:** on Bailiff's first note from playtest 44542 he said "Don't worry about issue 3 there, for now let's just focus on the logging and profiling elements", which is why #148 touched nothing about stacking.
+
+### What I know is stale or wrong in the docs
+
+- **`DESIGN.md` does not mention the connections model at all,** and its belief section still describes the earlier one as current: "Bounded attention: Insight sets how much of what a listener holds they actually weigh" (around line 620), "Insight-scaled spillover" (around 649), and the Insight row "weighs only part of what they hold; swayed by headlines" (around 671). True now, with connections on: every card counts alone at its own value for whoever holds it; the limit is which cards are weighed together (built-in pairings, the listener's core, stored cases); attention only picks what an NPC cites and explains; there is no spillover damping and no headline reading; Insight does not affect belief.
+- **`README.md` and `BACKLOG.md` do not mention it either.** The cost work above is not on the backlog.
+- **`docs/DECISION_INSPECTOR.md`, "With the connections model on":** it says a case's weight is "trust in the presenter, x0.5 a day since it was presented". Since #153 it is between 0.5 and 0.9 a day by buy-in, and the Why report prints the rate. It also does not say that a case can be replaced by a later one or add nothing for shared cards (#150); the report does say so.
+- **`docs/premises_plan.md`, "Suspicious = half-weight hearing plus pressure"** (around line 343) and the `SUSPICIOUS_HEARING` row in `tuning_catalogue.md` describe the earlier model. Under connections "suspicious" halves the stored case's weight, single cards still count in full, and pressure comes from `SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE` / `_CAP`.
+- **My own entries below:**
+  - #153's "For Michael: it applies to NPC nominators' cases" is decided: keep it.
+  - #154's "still presses shows whenever the held-back half leans on the subject at all" is superseded by #155 (0.15, and no held-back half).
+  - #150's description of `withheld` and `case_withheld` is superseded by #155 (`points`).
+  - #151 and #150 quote `baseline_4a1a075`; the baseline is now `baseline_a713ca5`.
+- **The two playtest logs no longer replay faithfully on main.** `case_44542` and `case_97626` were played on build `c889b3c`. After #149 and #152 changed NPC behaviour, a replay on main diverges (different card numbers, different days). Every per-case number of mine for those games was taken before those merges or on 44542 only. To study those games again, check out a commit from before #149 (for example `848df5d` plus the branch under test), not main. The logs were in `logs/pt/` on my machine, which is gitignored; Michael has them.
+- **This log's own header** still describes "Claude (checks, tests, Git) and Argon (main coding)". In this stretch the builders were Lantern and Bailiff, with Tally for sweeps and Steward for maintenance.
+- **The Project doc** `claude/belief-model-direction-2026-11-10.md`: I last wrote it on Nov 14 with #154 and #155 "open" and main at `5ac25ab`. Unless someone has updated it since, its status line, build-order table and "Owners" are two days stale (both are merged; connections is on by default; the baseline moved).
+
+### Open questions and things I did not follow up
+
+- **A reading from a claimed gift-holder under "suspicious".** I calibrated the pressure scale on hand-made readings from tellers with no claim on the board, whom listeners doubt (Dowser "1 of these 2": rise 6–8 points → 0.26–0.32; Seer "yes" on a pair: 0.12–0.14; Dowser "1 of these 3": 0.01–0.07). A claimed teller will lift the subject more and may sit at the 0.5 cap every time. Not measured.
+- **An Archivist reading.** Michael asked for it by name. My hand-made card (`{"pair": [...], "role": <a script minion>}`, role `archivist`) produced no effect on its target at all in a fresh game, with the switch on or off, and I never found out why (the role not on that script, or a field the evidence normaliser wanted). Under the old held-back rule a single card pressed by zero whatever it was; under #155 I have no number.
+- **Two cards were not stronger than one.** A Dowser "1 of 2" plus a second Dowser clearing the other person pressed about the same as the first card alone (0.18–0.33). I put it down to the second teller also being unclaimed. Not checked.
+- **The note for a bigger case.** A case on a later day that replaces an earlier one and adds cards gets no note even if the added cards add little. A fix would compare the draft's joint value with the replaced case's.
+- **The "settled" note has no test.** The fixture has no settled person.
+- **The chip may be too wide.** "Moderate · No new info" is drawn right-aligned in the premise header; I never saw it on screen.
+- **The Test juror's chip still uses the player's watch record.** Ruling 4 was about the note only. Bailiff's finding (0.33 → 0.71) suggests the chip overstates what the town will believe. Not raised with Michael as its own question.
+- **The Workshop's "still presses" uses a neutral listener on the public record,** not the real listeners, so it can disagree with the pressure the game then applies. By design (no NPC knowledge), but worth knowing when a playtest looks inconsistent.
+- **What is left of the Fenwick rebound.** After the rules and buy-in, "Fenwick is good" still loses ground overnight (Greta 18% → 20%, Jory 19% → 27%, Kiran 22% → 31% at dawn of day 2). I attributed the rest to other cards arriving (Isolde's Archivist reading names Fenwick as a Scion candidate) from the day-2 presentation raising him again, but did not take the overnight change apart card by card.
+- **Still open from earlier steps** (in the Project doc's open items): the Hexer's day connection leans slightly away from the true Hexer in passive games; whole reversals against the earlier model other than Greta on Odette (seed 929 day 4, traced) are untraced, including day 3 of the same game going the other way; criterion 1 (people a case didn't touch move ≤ 3 points) fails in 18 of 72 bot-game presentations because brought cards, not the case, move others.
+- **Challenges inside a stored case are tested by the suite only.** The bot never challenges, so no game log exercises them.
+- **Windows:** the maintenance report says three golden seeds differ from the Linux baseline in the last decimals under connections. I never ran on Windows. My guess is float summation order in the common shift or in the kept-answer path; not looked at.
+
+### Approaches I dropped, and why
+
+| Tried | Why it went |
+|---|---|
+| A cache keyed on the whole judge input | Almost never hit: bookkeeping fields change at every step without changing the answer |
+| A bigger `CaseEval` compile cache | Barely helped; the cost is spread, and its key includes the whole timeline |
+| A later case always replacing an earlier one at its own weight | A half-weight "suspicious" repeat weakened cards already argued firmly |
+| Buy-in measured from what a case added after the reuse rule | A repeat of the same cards added nothing, so it faded at a half while the original faded slowly. Now the case's own cards standing alone |
+| Pressure from the held-back half | Under connections only the joint part is held back, so a single reading pressed by exactly 0 and a four-card case by 0.005 |
+| A debug hack in `workshop/connections.gd` (`last_args`, prints) | Scratch only; reverted each time. If you see such a thing in a diff it is not meant to be there |
+
+### How Michael works, as far as I learned it
+
+- **He is the designer and does not read code.** Answers go in plain language, bottom line first, short, with a table when numbers are compared. He often asks "remind me how X is calculated now"; answer from the code, not from memory (I found the pressure gap that way).
+- **He thinks in concrete games.** "Greta on Fenwick, 18% → 24%" lands; a formula does not. Use the playtests' own people and case numbers.
+- **Results are neutral.** Do not frame "the good team being correct" as the aim. "Sometimes good needs to be dumb so the player can lead them." Say what changes, not that it is better.
+- **NPCs model a person's uncertainty,** and must not become sheep: the player's theories should hit harder, but NPCs keep their own ideas.
+- **Measure, report, then build.** For anything that changes play he wants the numbers and a pick first ("Report the numbers and your pick before building it in"; "Propose the threshold and wording, then build it"). Once he has picked, just build it.
+- **Flag and hold** anything that would undo or overwrite behaviour he set explicitly earlier, or ask. That is why #155 left the switch-off pressure rule alone.
+- **Ask about:** design direction, thresholds that change how the game feels, wording the player sees, anything irreversible. **Just do:** the build once he has chosen, tests, docs, measuring, stacking PRs, bringing main in. He decides fast and in one line; one clear question with a recommendation works better than a list of options.
+- **Balance sweeps are Tally's.** Do not run them yourself; ask for a cell.
+- **He works late and leaves instructions for the night** ("I'm out for the night, so once the measurements are back go ahead and build this"). Leave a report he can read cold.
+- **Bailiff relays prompts from him** as numbered rulings, and merges. Bailiff also runs Codex over each PR and fixes its findings at merge, so main can differ from your branch in small ways: read the merge.
+- **His email is private.** Use it only to identify his own work; never send it to an outside service without asking.
+
+### Conventions I worked to
+
+- Branch and PR; never push to main; no force pushes; Bailiff merges. Small PRs. Each PR: golden identical where it claims to be (or re-baselined in the same PR), its own suite, a handoff-log entry signed with your name (newest first), and a short section under "Phase 6 results" in the Project doc, with the detail in the PR.
+- The Project doc is edited by several sessions: read it again immediately before writing it back, and splice rather than rewrite.
+- Commands: `python3 tools/run_gd_tests.py --godot <exe> <suites>` (the fast list is `tools/ci_fast_suites.txt`); golden `godot --headless --path . --script res://tools/golden_capture.gd -- --out DIR` then `python3 tools/golden_diff.py tools/golden/<baseline> DIR --tol 0` (the baseline is named in `.github/workflows/ci.yml`); a new `.gd` file needs `godot --headless --path . --import` once so its `.uid` is tracked.
+- Measuring switches on the module, all on in play: `Connections.reuse_rule`, `held_together_rule`, `buy_in`, `cache_enabled`; `cache_verify` off. A refresh kept in `g._workshop_evaluations` does not know a switch moved: clear it before re-measuring.
+- `tools/connections_prototype.gd` is a harness over the module so offline and in-game numbers cannot drift; its first fade is the game's buy-in. It has no `--connections` flag of its own.
+- GDScript traps I hit: `Dictionary.merged(d)` needs `, true` to overwrite; a multi-line lambda with a continuation line fails to parse; a parent's no-argument `_init` runs automatically in a subclass; `Replay.replay(events, -1, hooks)` stops at once, pass a large number.
+- Never edit a checkout that a background Godot run is reading; I kept a second worktree for long runs.
+
 ## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (PR #155, `claude/suspicious-pressure`, stacked on #154)
 
 - **Base:** `claude/no-new-info` (#154). **Status:** PR open, for Bailiff, after #154. **Next actor:** Bailiff; Michael for the scale.
