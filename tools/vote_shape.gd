@@ -1,5 +1,5 @@
 ## The shape of a finished game's votes, for the belief-model guardrail
-## (claude/belief-model-direction-2026-11-10.md, Phase 0): is the town herdable?
+## (docs/belief_model.md, Phase 0): is the town herdable?
 ## Reads `nomination` and `vote_tally` log entries and `w.executions` only: no RNG, no decisions.
 ##
 ## - unanimous: every NPC voter except the nominee voted yes.

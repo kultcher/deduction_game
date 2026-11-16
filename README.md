@@ -4,7 +4,8 @@ A single-player social deduction game inspired by Blood on the Clocktower. You a
 Demonologist summoned to a small town where a demon has taken a host. Minions serve it (one
 of the Poisoner, Breathstealer, Revenant and Scion in a 7-person town, two in a 10-person
 town), and one innocent townsperson carries a secret (Delusional, Marked, Secret Lovers or
-Sleepwalker) that muddies their gift or puts them out at night. Over six days (seven
+Sleepwalker; custom scripts add the Muddler) that muddies their gift or puts them out at
+night. Over six days (seven
 townsfolk) or eight (ten) you question townsfolk, search crime scenes, listen to gossip and
 sway the town's votes, until the demon's host hangs or the town falls.
 
@@ -14,6 +15,9 @@ that also runs headless. The point is to test whether the deduction is fun.
 [DESIGN.md](DESIGN.md) describes how every system works and why; [BACKLOG.md](BACKLOG.md)
 is the to-do list; [TUNING_NARRATIVE.md](TUNING_NARRATIVE.md) explains in plain language
 how the social and evidence systems interact, and `sim/tuning.gd` holds every number.
+[docs/belief_model.md](docs/belief_model.md) is how NPCs form beliefs (the connections
+model), and [docs/handoff_log.md](docs/handoff_log.md) is the running record between the
+agents working on the code: read its newest entry before starting work.
 This README covers running and playing.
 
 ## Running it
@@ -46,7 +50,8 @@ with the mouse; the typed prompt still works as a fallback.
   **Nominate…** (on a filed case or on your word), present, wait, close; on a vote, accuse
   or defend (optionally citing a card), clemency, vote; at night, vigil, ward, sleep.
 - **Conversations** open in a visual-novel view: the speaker's portrait changes
-  expression as they talk.
+  expression as they talk. An NPC approaching you plays there too: a passage over the
+  phase change, **Continue**, then their opening lines with your choices.
 - **The meeting circle:** at the town meeting the map gives way to a ring of standees on
   the Square, with the nominee in the centre and a hand that sweeps round counting votes.
   Speakers come forward on the courtroom stage, and each line waits for **Continue** (an
@@ -66,8 +71,9 @@ with the mouse; the typed prompt still works as a fallback.
   handle; **More > Case Workshop** opens it). Double-click or drag board cards onto it;
   drag them back out to remove them. Build a case there: a premise (click its fields to
   choose who and what), linked evidence cards with their answers clicked on the card,
-  challenges (misled, lying, unlikely), and a test-juror strength label, then **File case**
-  to get a presentable card. See [Building a case](#how-to-play) below.
+  challenges (misled, lying, unlikely), and a test-juror strength label (with a "No new
+  info" note when the town already has what the case says), then **File case** to get a
+  presentable card. Left-drag on empty canvas to box-select cards, right-drag to pan. See [Building a case](#how-to-play) below.
 - **Debug** shows what NPCs privately make of things (each card's influence on those who've
   heard it; how the town credits and suspects each person). Turning it on mid-case leaves
   your identification unscored.
@@ -88,7 +94,8 @@ Options: `--seed N`, `--npcs 7|10` (town size, default 7), `--log-dir DIR` (defa
 `logs/`), `--debug` (unlocks `grimoire` mid-game), `--echo-log` (prints every dev-log
 entry as it happens). Headless runs use the Default script.
 
-**Autoplay bot** (for testing and balance):
+**Autoplay bot** (for testing and balance; NPCs use the connections model, and
+`--legacy-model` runs the earlier one for comparison):
 
 ```sh
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 50
@@ -178,6 +185,11 @@ add the Augur, Chronicler, Confessor, Executor, Magistrate, Monitor and Registra
 - **Scion:** becomes the demon if the demon is executed while five or more are alive.
 - **Brute** (experimental, not dealt automatically): hunts and kills in the demon's place
   while alive; the demon stays home.
+
+Two kinds of Demon: the **Demon** walks to its victim's home at night; the **Hexer**
+(experimental, custom scripts) never walks, but hexes a public place by day, and one of
+its good regulars dies that night. On a script with both, `declare walker` /
+`declare hexer` at a meeting tells the town which to look for.
 
 Evil knows each other and bluffs good gifts not in play. Full rules: DESIGN
 [Roles: the script](DESIGN.md#roles-the-script).
@@ -294,9 +306,11 @@ sim/presentation_reply.gd  replies to speech the Workshop doesn't judge; evil's 
 sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd, dialogue_presentations.gd
                   dialogue composer: words decided statements in a character's voice
 sim/devlog.gd     developer trace (JSONL + text, and the .trace.jsonl sidecar)
-workshop/         the shared case judge: case_eval.gd (possible worlds), jury.gd and
+workshop/         the shared case judge: case_eval.gd (possible worlds), connections.gd
+                  (how each NPC combines what it holds), jury.gd and
                   shared_ledger.gd (per-listener runs), role_constraints.gd,
-                  live_activity.gd (night movement), live_assessment.gd (card adapters),
+                  live_activity.gd (night movement), day_presence.gd (who was where
+                  by day: the Hexer, the Breathstealer), live_assessment.gd (card adapters),
                   source_doubt.gd, reason_attribution.gd (reasons NPCs cite),
                   circumstantial.gd (the hub), chronology.gd (curse epochs),
                   canvas_model.gd (the board's case model), solver_backend.gd
@@ -305,6 +319,7 @@ game/game.gd      command interpreter and state container; emits structured even
 game/game_conversation.gd, game_meeting.gd, game_day_night.gd, game_screens.gd,
    game_board.gd, game_presentation.gd
                   the interpreter's domain logic, behind one-line forwarders on Game
+game/demon_declaration.gd  the walker / Hexer declaration
 game/workshop_*.gd, credibility.gd
                   bridge between the game and the judge: presentations, belief
                   ownership, the filed canvas; your credibility with each NPC
@@ -333,6 +348,9 @@ tools/case_viewer.py   case history viewer (docs/case_viewer.md)
 tools/trace.py    dev-log filter         tools/slice_sheets.py  art sheet slicer
 tools/test_*.gd   headless tests     tools/run_gd_tests.py  the test runner
 tools/replay_54875.gd, profile_c0.gd  speed replay and solver profile
+tools/replay_log.gd, explain_case.gd  replay a dev log (--why, --time, --profile)
+tools/connections_prototype.gd  the connections model over a replayed log
+tools/fixture_seeds.gd   seed search for test fixtures
 ```
 
 The simulation is deterministic for a given seed and never touches presentation, so it

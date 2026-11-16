@@ -27,6 +27,100 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16 evening, Claude-Bailiff: final handoff before the move to Claude Code (`claude/handoff-docs`)
+
+- **Base:** main `7d87772` (#162). **Status:** docs and code comments only, this PR. **Next actor:** whoever picks up the repo in Claude Code; Michael for the open calls below.
+- **Why this entry:** Michael is moving development from the claude.ai cloud chat ("Bailiff - Main") to Claude Code. A successor has the repo but none of that conversation, and none of the claude.ai Project docs. This entry is what only that conversation knew. Read it top to bottom once.
+- **Golden:** `baseline_bb6f01c` (CI `BASELINE`), unchanged by this PR.
+
+### Where things stand
+
+- **The connections belief model is on in play** (`Tuning.Workshop.CONNECTIONS = true`, #160). Design, spec and results: `docs/belief_model.md` (ported from the Project today). The earlier model is `autoplay.gd --legacy-model` and the sweep's `_legacy` cells, for comparisons only.
+- **The Nov 13 playtest triage is closed.** Everything decided is built (#149–#162); the leftovers are BACKLOG section 5, the connections model's own open items are section 6. The full record, with every small call made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`.
+- **Michael's next step is live testing** on this baseline, then a playtest and Early Access. What the live tests turn up comes first.
+- **Docs ported from the Project today** (the Project copies can go): `docs/belief_model.md`; `docs/archive/playtest_triage_2026-11-13.md`; in `docs/archive/project-docs/`, the belief-model archive, the why breakdown, the role shortlist, the sweep archive, the Nov 9 and Nov 14 sweep reports, the Nov 15 Breathstealer mocks, and Michael's two early note docs. Code comments that pointed at the Project's belief-model doc now point at `docs/belief_model.md`. Several older docs still name Project docs (`claude/premises-ab-2026-11-07.md` and others); their copies are in `docs/archive/project-docs/` under the same names.
+- **Remote branches to clean up (Michael's job; agents never delete remote branches):** `mock/inert-breathstealer`, `mock/silence-no-boost`, `mock/breath-remote`, `mock/breath-lasting` (Nov 15 experiments, never for main), the merged `claude/*` branches, and the `sweep-results/run-*` branches. The `sweep-archive` branch holds the files of the first ten runs (to Nov 9); every later run, including Tally's Nov 14 runs and the Nov 15 mocks, is only on its `sweep-results/run-<id>` branch, so copy those into `sweep-archive` before deleting them.
+
+### Decisions made in the chat and not written down elsewhere (with the reasoning)
+
+1. **Commit to the connections model** (Michael, Nov 16). Asked whether anything blocked it after Tally's Nov 14 cells, Bailiff's read was no: on against off was level at 7 NPCs (bot −2.0, z −1.3; passive −0.8) and +5.7 at 10-NPC bot on 300 seeds (z +1.9), vote shapes showed no herding, and the costs (passive games about 3× slower, 10-NPC bot about 35%) are worth paying for a model where the player's cases matter. Michael's reason for wanting it: the old model connected everything for the NPCs, so presenting was worth about nothing (Phase 0). Now recorded in `docs/belief_model.md`, "After the build".
+2. **This push: Bailiff builds everything, no sweeps** (Michael, Nov 16: "don't worry about who it was tentatively assigned to, and don't worry about sweeps"). The triage's suggested owners (Steward, Quill, the UI agent) were ignored on purpose. Sweeps are Tally's, overnight, and not a gate for merging (also in project memory: "leave balance sweeps to Tally").
+3. **Small calls are delegated** (Michael, Nov 16: "if any minor decision points up, I trust your judgment, so just make a note of them and implement whichever way you'd have suggested"). Convention: list them under "Small calls made on Michael's behalf" in the PR body and in the doc that tracks the item. The calls made under it are in the triage archive (#159–#162).
+4. **The approach scene** (triage 2.8/8.3; Michael's spec, built in #162). Small calls: with nobody to part from in the afternoon or evening the passage opens with the time of day ("The afternoon sun reaches its zenith."); evening reads "the light begins to fail"; a promised approach reads "Y finds you at the mill, as they promised."
+5. **A Lovers confession proves both halves** (triage 5.9, #162). Reasoning: evil never fakes a Lovers confession (no code path does), so a confession is reliable, and it names the partner. `Solver.lovers_needs` filters worlds in `Solver._solve` and marks the rest dead in `CaseEval._compile_impl`, so the Test juror reads it too. **Landmine:** if evil is ever given a fake Lovers confession (BACKLOG, "Lovers as an excuse"), this proof must go. It moved golden seed 900 (Greta and Jory, the Lovers, are no longer both hanged).
+6. **The Augur hint** (triage 5.10, Michael's wording): "(Sightings: A, B +at least N unknowns)". Small calls: "Sightings: nobody" when you placed the Augur but saw nobody else; no hint when you never placed it that day; the unknowns are the larger phase's count, not the sum (Codex's catch: the same people may be there both phases).
+7. **Triage 4.6 traced, no change** (Bailiff, Nov 16). Not reproduced on main: the Hexer's day evidence is weak (+0.02 log-odds on the true Hexer over 75 listener-kills), not biased. Details in `docs/belief_model.md`, "After the build".
+8. **2.7 struck** (Michael, Nov 16): Lian's quoted line isn't in the code, so it may have changed already.
+9. **4.5, 5.8 and section 6 held** (Michael, Nov 16): "bigger in scope, so we can hold off on those until we've more fully mapped them out". Don't start them without a design pass with Michael.
+10. **The Breathstealer: no decision yet.** Michael's questions on Nov 15 and what came back are in `docs/archive/project-docs/inert-breathstealer-sweep-2026-11-15.md` and BACKLOG section 4. His reactions: he'd expected the "silenced, so likely good" factor (×0.66 on the odds) to do little, and lasting silences to "at least move the needle"; neither held (the factor is 40–45% of the gap at 10 NPCs; lasting silences barely help evil).
+
+### Open questions
+
+- **What should the Breathstealer's silence do?** It's a net gift to good. Measured levers so far: the trail (about 3 points to good at 10-NPC bot), the "silenced so good" boost (about 5), the rest about 2; an inert Minion is 10 points better for evil.
+- **Did the Demon and the Breathstealer "double up" on targets?** Michael asked on Nov 15. Whatever was said in the chat isn't recorded in the repo; `tools/breath_stats.gd` and the sweep records' `breath_*` fields are where to check.
+- **The declaration's default ("walker by default"?) and the bot's Hexer call** (54% right; every miss is "walker"): on hold until Michael has playtested two-kind scripts. Dynamic scripts deal one kind, so a two-kind game has to be built in the script editor.
+- **Is the 10-NPC connections gain real?** +5.7 on 300 seeds (z +1.9). A full 1,000-seed cell would settle it.
+- **Honest mistakes against lies in challenges:** no rule separates them (BACKLOG section 6). Michael's call whether to pursue evidence that does.
+- **The four golden-moving bugs** in BACKLOG section 1/6 (sighter cap, night-0 relay frame, no-card compile key, Night Watch list naming the listener): known, not fixed, each needs its own re-baseline.
+
+### Abandoned approaches, and why
+
+- **A per-person floor for the Hexer factor** (Nov 16): an unlearned haunt credited by each candidate's time at places not known as the victim's. Scored 0.00 against the flat floor's +0.02, so not kept. The probe was `tools/_probe_hex.gd` (not committed).
+- **The Nov 15 Breathstealer mocks** (`mock/*` branches): inert, no boost, remote with no trail, lasting silences. Measurement only; none is a proposal.
+- **From the belief-model work** (details in the archive): a cap of two stored cases (a third pushed the oldest out and moved bystanders, so cases fade instead); per-teller bundles (evil's stories cohere, so a bundle doesn't catch a liar); Insight in the belief (out for v1, may return as the core threshold); a three-card core test (would have caught one more lie, never proposed); #142's first graded test (counted the reader's alignment twice; replaced by the content-only mask).
+- **Older, still relevant:** a 0.2 floor on good NPCs' accusations (Nov 5: it silenced day-1 meetings); the vigil deterrent (Oct 18).
+
+### Hunches not followed up
+
+- **The silenced keep their vote, and what they knew has usually spread already.** That's my best guess for why silence costs good so little. The remote and lasting versions weren't run in passive cells, where a lost voice may matter more.
+- **The Hexer's day evidence needs the player.** In passive games nobody sees the Hexer at the hexed place (its presence share there 0.23 against 0.19 for others). Player day logs (vigils by day, the Whereabouts tools) are what would make it count; untested in a human game.
+- **The bot misses Hexers** because the walker story wins wherever evil's planted sightings or Minions' real outings fit a route. Unchecked: replay the wrong calls without evil's sightings. Cheap lever if it matters: a higher bar for "walker", or wait until day 4.
+- **Cost:** a lighter C# path for single-card values (no world grouping for one card) looked possible in Lantern's profile; never sized.
+- **Replaying old playtests:** 44542 and 97626 no longer replay faithfully after #149 and #152 (passive play moved), so measurements on them are from before. A new human log on the current baseline is worth more than any re-analysis of the old ones.
+- **A relayer cut by the sighter cap** (seed 929) may matter more under connections than it did before, since a night's cards are read together. Untested.
+
+### How Michael works (conventions picked up)
+
+**Communication**
+- Plain, simplified summaries. Lead with the result, then a short table or a few bullets. No jargon he hasn't used; explain a mechanism in one sentence before its numbers.
+- He refers to items by triage or backlog number ("5.10"), playtests by seed ("44542"), PRs by number, agents by name.
+- **Don't frame "the good team being right" as the goal.** Sometimes good needs to be wrong so the player can lead it. Say what changes, not whether it's good.
+- **Flag and hold any change that would undo behaviour he set explicitly,** or ask first.
+- He decides wording that players see. Offer a draft and a recommendation; he often accepts the recommendation.
+- When he asks a question, answer it; don't start building unless he asked for that. When he asks for a batch of work, do all of it and report once, with the small calls listed.
+- Don't overclaim. Twice in the chat I said something was finished or confirmed when it wasn't (checks still running; a "real Medium" that wasn't confirmed against the log), and he notices. Say what was measured, on what, and what wasn't.
+
+**Design principles he holds**
+- General mechanics over per-role special cases ("a reading naming one of two people", not "the Clerk").
+- NPCs model a person's uncertainty, not a perfect reasoner. Only a listener's own readings should be strong alone; the game is combining and cross-checking.
+- NPCs mustn't become sheep: votes shouldn't collapse to "unanimous but the nominee". The town should be able to win alone but need the player as quarterback.
+- Balance target: a skilled player names the Demon 85–90% of the time and wins 70–75%. He's not worried about good getting stronger for now: evil gets stronger later.
+- "Claim" means any stated information, not only a role claim. He plays real Blood on the Clocktower and uses its terms (script, Grimoire, Storyteller).
+- Dialogue: refined words are fine, modern ones (data, variable, constraint) aren't; nights are spoken as ordinals ("the second night").
+
+**Process (mostly from the ground rules above, as practised)**
+- Michael says he's bad at Git, so agents do all of it. Remote branch deletes are his.
+- Branches: `claude/<topic>` for work, `mock/<topic>` for experiments that never merge, `maintenance/<date>` (Steward's daily maintenance PRs, #158, #161), `sweep-results/run-<id>` (Tally's sweep output).
+- One PR per batch. CI (fast suites on PRs, full suite on main, golden diff) and Codex's review must both be clean before merging. Codex reviews automatically when a PR opens; reply to each finding on its thread, resolve it, and comment `@codex review` to re-request. Its findings have been real bugs nearly every time.
+- **Golden:** a PR that moves golden re-baselines in the same PR: capture twice (the two must be identical), commit `tools/golden/baseline_<sha7>/`, update `BASELINE` in `.github/workflows/ci.yml` and the "Current baseline" section of `docs/golden_baseline.md` (what diverged and every seed's outcome). Golden-moving PRs merge one at a time.
+- Commits end with the session's attribution trailers; sign handoff entries `Claude-<Name>`; one entry per PR, newest first.
+- Never commit `tools/_probe*` scripts. Don't edit files in a worktree while a suite runs in it.
+- Checks before merging, in this cloud setup: `dotnet build`, `godot --headless --path . --import`, `python3 tools/run_gd_tests.py --godot <Godot 4.7.2 .NET> --timeout 2400` (155 suites, about 40 minutes), and two `tools/golden_capture.gd` captures diffed with `tools/golden_diff.py --tol 0 --ignore engine`.
+- Tests that need a particular deal find a seed with `tools/fixture_seeds.gd` instead of hard-coding one; tests of the earlier model's mechanics pin it (`Connections.enabled = false`).
+- New suites go in `tools/test_*.gd`; add them to `tools/ci_fast_suites.txt` when they're quick and cover the shared model, the solver or the roles.
+
+**Who's who** (sessions don't share memory): Claude-Bailiff (checks, Git, merges, golden; this conversation), Claude-Lantern (the connections model), Claude-Quill (challenges, evidence catalog, premises), Claude-Tally (sweeps, overnight, GitHub Actions `balance-sweep.yml`), Claude-Steward (daily maintenance), Gemini Argon (earlier main coder, patches on Drive), Codex (PR review). Michael also runs designs past other models (GPT, Gemini) and brings their feedback.
+
+### Recommendations for the docs (Michael to decide; nothing moved)
+
+- **Archive** (`docs/archive/`): `docs/orchestration_plan.md` (the Nov 3–8 work zones; superseded by BACKLOG); `docs/premises_plan.md` (steps 0–3 built, step 4 deferred; the connections model supersedes its belief parts; keep its "Recency as built" findable from BACKLOG); `docs/meeting_flow_plan.md` once its unbuilt items (rebuttals, outing yourself, NPC pushback, vote talk) are copied into BACKLOG, which currently points at it; `docs/maintenance/` reports older than a week; and the handoff log's entries before Nov 10 (into `docs/archive/handoff_log_to_2026-11-09.md`, keeping this header), since the log is 3,000 lines.
+- **Keep, but mark as pre-connections:** `docs/evidence_catalog*.md` (measured on the earlier model) and `docs/demon_types_plan.md` (built; DESIGN now carries the Hexer).
+- **Keep as is:** `docs/golden_baseline.md`, `docs/balance_sweep.md`, `docs/DECISION_INSPECTOR.md`, `docs/case_viewer.md`, `docs/DIALOGUE_DESIGN.md`, `docs/text_formatting.md`, `docs/cast_expression_guide.md`, `docs/oracle_sweep_plan.md` (a plan never built), `role_exploration.md`, `tuning_catalogue.md` (regenerate with `tools/tuning_index.py` after touching `sim/tuning.gd` comments), the three backlogs.
+- **The Project:** every `claude/*` doc now has a repo copy, or is an older mirror of a repo doc (`design-doc`, `backlog`, `backlog-polish`, `tuning-narrative`, `dialogue-design`, `orchestration-plan`, `demon-types-plan`, the evidence catalogs, all superseded by the repo versions). The Project can be emptied, or kept as a read-only record.
+- **A `CLAUDE.md`** at the repo root would help Claude Code sessions: the check commands, the golden procedure, the branch and trailer conventions, and "read the newest handoff entry first". Not written here, since it's Michael's call what goes in it.
+
+---
+
 ## 2026-11-14, Claude-Lantern: a "suspicious" case presses by what its cards point at (PR #155, `claude/suspicious-pressure`, stacked on #154)
 
 - **Base:** `claude/no-new-info` (#154). **Status:** PR open, for Bailiff, after #154. **Next actor:** Bailiff; Michael for the scale.

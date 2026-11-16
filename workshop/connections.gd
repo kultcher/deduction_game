@@ -1,6 +1,7 @@
-## The connections belief model (Phase 6; Project doc
-## `claude/belief-model-direction-2026-11-10.md`, "Phase 6 spec"). Behind a switch that is
-## off by default: with it off nothing here runs, and the game behaves exactly as before.
+## The connections belief model (Phase 6;
+## `docs/belief_model.md`, "Phase 6 spec"). Behind a switch that is
+## on by default since Nov 16 (`Tuning.Workshop.CONNECTIONS`): with it off nothing here runs,
+## and the game uses the earlier model.
 ##
 ## The idea: the limit on an NPC moves from which cards it reads to which cards it weighs
 ## together. Every card it holds counts, at the value it has alone; cards are only weighed

@@ -1,4 +1,4 @@
-## Phase 5 of the belief-model plan (Project doc belief-model-direction): the bot reads the
+## Phase 5 of the belief-model plan (docs/belief_model.md): the bot reads the
 ## demon type from what it accepts, and the Workshop's compile cache keys on the town's mix.
 ##   - CaseEval's compile cache keys on the demon-type declaration: before the fix a second
 ##     evaluation under the other kind reused the first kind's movement scores, so every

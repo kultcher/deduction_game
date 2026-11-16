@@ -1,5 +1,5 @@
-## A sighter's word is weighed by the sighter's alignment in each world (Project doc
-## belief-model-direction, Nov 11; LiveActivity._sighting_contests). The frame: c says they
+## A sighter's word is weighed by the sighter's alignment in each world (see
+## docs/belief_model.md, Nov 11; LiveActivity._sighting_contests). The frame: c says they
 ## saw a out on the night of the kill, and a says they stayed home.
 ##   - Before: a good a can't be both home and seen out, so every world with a good a scored
 ##     0 and the clash convicted a alone, however likely c was to be the liar.

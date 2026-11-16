@@ -1,5 +1,5 @@
-## The connections belief model, step 4 (workshop/connections.gd; Project doc
-## belief-model-direction, "Phase 6 spec", stored cases).
+## The connections belief model, step 4 (workshop/connections.gd;
+## docs/belief_model.md, "Phase 6 spec", stored cases).
 ##
 ## - A stored case is a case someone put to the listener: the player's presentation, or
 ##   the cards an NPC nominator cited. Its cards are judged together, and it adds what they

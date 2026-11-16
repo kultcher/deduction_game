@@ -1,5 +1,5 @@
-## A held Medium relay doesn't prove its relayer is a good Medium (Project doc
-## belief-model-direction, Nov 12; RoleConstraints, bluffs). In play an evil relayer may have
+## A held Medium relay doesn't prove its relayer is a good Medium (see
+## docs/belief_model.md, Nov 12; RoleConstraints, bluffs). In play an evil relayer may have
 ## invented the relay, so a world with them evil stays possible and the relay is their bluff.
 ## Before this, a relay cleared an evil Medium bluffer outright (43 of 47 listener readings
 ## under 2% in a 60-game survey).
