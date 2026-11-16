@@ -86,8 +86,12 @@ of what the connections model replaced, the way the Nov 1–3 retirement went.
   - **How to check:** `Connections.cache_verify` only checks the model's own kept answers,
     so it won't see a stale CaseEval compile. Golden plays passively, so it won't exercise
     Magistrate cards or player presentations. A third check that would catch this: run
-    `test_connections_cache` and the Magistrate suites with the compile cache off (or the cap
-    at 0), then on, and compare the suspicions.
+    `test_connections_cache` and the Magistrate suites twice, then compare the suspicions.
+    In the uncached run, bypass the cache *read* by calling `CaseEval._compiled.clear()`
+    before each compile, or by adding a bypass flag that skips the lookup at
+    `case_eval.gd:708`. In the cached run, compile normally. A small cap doesn't do this:
+    `_compile_impl` returns a hit before it checks the size, and the cap is a fixed `> 32`
+    (Codex on #169).
 
 ---
 
