@@ -27,6 +27,46 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
+## 2026-11-16 late, Claude-Herald: playtest 26532's "ask night" and defence findings, and remembering the last script (`claude/herald-night-results`)
+
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open. **Next actor:** Bailiff to merge; Michael for the wording below.
+- **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds, two captures. That's expected rather than reassuring: the capture plays a passive player (`wait` and votes only), so it never asks `ask night` or files a case for a defence to answer. Bot games are compared below.
+
+### What changed and why
+
+1. **`ask night` now says what the gift showed that night** (playtest 26532). Nothing on BACKLOG.md or in this log owned it ("already slated" had no entry), so I built it. After a gift-holder tells their night's errand (Confessor, Lamplighter, Medium, or an evil bluff of one), they also say one of:
+   - the result again, if you've already heard it ("Last night, I heard Edda's confession: their heart was pure and their spirit good.");
+   - "What my gift showed me that night, I'll keep to myself for now.", if you haven't. `ask night` never discloses a new reading: that stays behind `ask gift`'s gate;
+   - "My gift showed me nothing that night.", if it showed nothing (a Medium with nothing new at the hearth). An evil bluffer with no story ready for that night holds it back instead, since "nothing" from a Confessor would give them away.
+   - The Night Watch is unchanged (its result is the sightings it already holds back or tells). Words only: no new card, no roll. Code: `MindDialogue._night_gift_result`, and `RoleDef.night_result_in_sightings()` (true for the Night Watch).
+2. **A defence answered the wrong case** (Isolde, 26532). Cause: `_disclosed_items_against` turned every sighting a case cited into a "seen out at night" item keyed by its day, so a day-1 evening sighting became "night 1", and on day 2 the defence opened "Your case rests on where I was last night" and gave a night account. Now a sighting by day is its own item (`whereabouts_day`, id `sighting_day:...`), isn't a night outing or a frame, and the hinge is the heaviest cited item a defence can answer (a reading or a night), so Isolde's would now go after Lian's Archivist reading. Not re-played on 26532 itself (no log here).
+3. **Remember the last script** (BACKLOG [decided], section 2 "Scripts, follow-ups"): the New Case screen keeps the town size and script in `user://settings.cfg` under `[new_case]`. The item is moved to BACKLOG_COMPLETED.
+
+### Small calls made on Michael's behalf
+
+- Dynamic is remembered as the mode, not the dealt script, so each case number still deals its own (keeps the Nov 16 seed fix). A custom or loaded script is kept whole; if it no longer reads (a role gone), the screen falls back to Default.
+- The case number is not remembered: each launch still gets a fresh one.
+- Headless runs neither read nor write the settings, so tests and tools never depend on an earlier run.
+- `ask night` repeats a told result rather than only saying "as I told you", so the answer stands alone.
+
+### For Michael: wording (drafts, all fallbacks; no voice has its own yet)
+
+- `night_gift_result_withheld`: "What my gift showed me that night, I'll keep to myself for now." Recommendation: keep it. It mirrors `ask gift`'s "What it's shown me, I'll keep to myself for now." so the player can see it's the same holding back.
+- `night_gift_result_none`: "My gift showed me nothing that night."
+
+### Tests and what I measured
+
+- New `tools/test_ask_night_results.gd` (34 checks, 7 and 10 NPCs): 16 fail on main, all pass with the change. New `tools/test_new_case_memory.gd` (9 checks). Both added to `ci_fast_suites.txt`.
+- Passed: the conversation, defence, meeting, dialogue and role suites (`test_conversation_nights`, `_gifts`, `test_framed_defence`, `test_mechanics_defences`, `test_defence_repeats`, `test_meeting_reasons`, `test_dialogue`, `test_roles_registry`, `test_codex_fixes`, `test_meeting_flow`), `test_ui`, and the CI fast list. Not run: the full ~155-suite run (CI on main does that).
+- **Bot games, main against this branch** (`autoplay.gd --seed 1 --games 6 --npcs 10`, connections on): the same winner, days and every sweep-record field in all 6 (only wall time differs). The new `ask night` line fired (Agnes, an evil Lamplighter bluff, repeated her told count). Seed 3 shows small belief shifts at one vote: Fenwick (evil) answered the player's 13-report case with "I was out because I'm the <gift>", and that move's relief is sized by the night outings against him, which used to include the case's sightings by day. It now relieves him a little less (Agnes on Fenwick 0.37 → 0.38 at the day-2 vote); the vote still failed 4 of 10.
+
+### Picked next, from BACKLOG [decided] in my domain
+
+- **"A whereabouts contradiction gets an irrelevant gift refusal"** (78148, Kiran) is next: it's the press-side twin of the defence fix here.
+- **"Conversation sightings should also cover location sightings"** is tagged [watch] since #152; it needs a check that duplicates still happen before anything is built.
+
+---
+
 ## 2026-11-16 evening, Claude-Bailiff: final handoff before the move to Claude Code (`claude/handoff-docs`)
 
 - **Base:** main `7d87772` (#162). **Status:** docs and code comments only, this PR. **Next actor:** whoever picks up the repo in Claude Code; Michael for the open calls below.

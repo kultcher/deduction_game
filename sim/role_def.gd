@@ -433,6 +433,12 @@ func night_duty_alibi(_w, _n, _nd: int, _was_out: bool, _block: String, _mind, _
 
 
 ## If non-empty, withholds night sightings in `Mind.answer_night` with the returned spoken line (e.g. undisclosed Night Watch report).
+## True when the gift's night result is the night's sightings themselves (the Night
+## Watch), so "ask night" tells it through those rather than as a reading.
+func night_result_in_sightings() -> bool:
+	return false
+
+
 func withholds_night_sightings(_n, _nd: int, _mind) -> String:
 	return ""
 

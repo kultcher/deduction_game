@@ -144,9 +144,14 @@ No wrongful executions, 5/7 innocents alive.
   Magistrate result ("Greta and Lian shared an alignment") made her own guilt follow from
   Lian's public Archivist reading.
 - **Defence mismatch:** Isolde answered "Your case rests on where I was last night" to a
-  case about day-1 whereabouts.
-- **`ask night` doesn't return night-action results** (Confessor, Lamplighter). Already
-  slated.
+  case about day-1 whereabouts. **Fixed (Nov 16, Herald):** a sighting by day that a case
+  cites was read as a night sighting of the same number (day 1 evening → "night 1", spoken
+  "last night" on day 2). It's now its own kind of item, and the hinge is the heaviest
+  cited item a defence can answer (a reading or a night).
+- **`ask night` doesn't return night-action results** (Confessor, Lamplighter). Not on the
+  backlog or in the handoff log under any owner. **Built (Nov 16, Herald):** after the
+  night's errand, the gift's result for that night is said again if told before, held back
+  in words if not, or "nothing" if it showed nothing.
 - **A good NPC hiding a gift lied "home all night"** (Hollis, the Lamplighter). Same
   pattern as the Jory open item in `docs/belief_model.md`.
 - **Seed reproducibility:** restarting case 73398 after a crash dealt different roles and
