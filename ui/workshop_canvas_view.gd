@@ -184,6 +184,8 @@ func _draw() -> void:
 			link_labels.append({"at": points[12], "text": "read together", "fs": 13, "color": color})
 		elif edge.kind == "contradicts":
 			link_labels.append({"at": points[12], "text": "contradicts", "fs": 13, "color": color})
+		elif edge.kind == "given":
+			link_labels.append({"at": points[12], "text": "given " + model.title(edge.from), "fs": 13, "color": color})
 	for id in hit:
 		_draw_card(id, hit[id])
 	for lbl in link_labels:

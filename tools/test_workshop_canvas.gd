@@ -111,6 +111,7 @@ func _run() -> void:
 	deleted.remove_premise(disposable)
 	check(Model.new(board.view).restore(JSON.parse_string(JSON.stringify(deleted.export_data())), s) == "", "removing a premise also cleans merged originals' retained link references")
 	_merged_gift_links(s)
+	_given_link(board.view)
 	await _ui()
 	print("Workshop canvas: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -223,3 +224,22 @@ func _merged_gift_links(session) -> void:
 			check(restored.compile(premise).citations.get("constance:1") == "gift_claim", "unmerge retains gift links made before or after the merge")
 			restored.unlink("e:gift_claim", "e:vigil1")
 			check(not restored.compile(premise).citations.has("constance:1"), "unlinking the restored gift edge retracts its explanation")
+
+
+## Triage 5.1 (the cheap version): premise -> card on a card that already argues another
+## premise keeps its direction as "given <premise>": the premise and its evidence join the
+## root's evidence. On a card that argues nothing yet, the drag still means it supports.
+func _given_link(view: Dictionary) -> void:
+	var m = Model.new(view)
+	var root: String = m.add_premise("hollis", "evil", Vector2.ZERO)
+	var aside: String = m.add_premise("constance", "good", Vector2(0, 200))
+	m.connect_cards("e:survey", root)
+	m.connect_cards("e:dowse", aside)
+	check(m.connect_cards(aside, "e:survey") == "", "premise -> a card that argues another premise links")
+	var edge: Array = m.links.filter(func(e): return e.from == aside and e.to == "e:survey")
+	check(edge.size() == 1 and edge[0].kind == "given", "and keeps its direction, as \"given\" (%s)" % str(edge))
+	var compiled: Dictionary = m.compile(root)
+	check("survey" in compiled.cards and "dowse" in compiled.cards, "the premise's evidence joins the root's (%s)" % str(compiled.cards))
+	var fresh: String = m.add_premise("nisha", "evil", Vector2(0, 400))
+	check(m.connect_cards(fresh, "e:rumor") == "" and m.links.any(func(e): return e.from == "e:rumor" and e.to == fresh and e.kind == "supports"), "premise -> a card that argues nothing yet: the card supports the premise, as before")
+	check(m.connect_cards(aside, "e:dowse") != "", "premise -> one of its own cards would be circular")

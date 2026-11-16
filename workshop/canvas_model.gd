@@ -365,10 +365,20 @@ func remove_contradiction(id: String) -> void:
 func connect_cards(from: String, to: String) -> String:
 	if not nodes.has(from) or not nodes.has(to) or from == to or nodes[from].has("merged") or nodes[to].has("merged"):
 		return "Choose two different visible cards."
+	var given: bool = false
 	if nodes[from].kind == "premise" and nodes[to].kind != "premise":
-		var swap = from
-		from = to
-		to = swap
+		# Premise -> card on a card that already argues another premise: "this card's line
+		# runs through that premise" (triage 5.1, Michael Nov 13, the cheap version). The
+		# premise and its evidence go into the root's evidence with the card, and the link
+		# is drawn "given <premise>". On a card that argues nothing yet, the drag means the
+		# card supports the premise, as before.
+		var card_id: String = to
+		var premise_id: String = from
+		given = links.any(func(edge): return edge.from == card_id and edge.kind in ["supports", "given"] and nodes.has(edge.to) and nodes[edge.to].kind == "premise" and edge.to != premise_id)
+		if not given:
+			var swap = from
+			from = to
+			to = swap
 	elif nodes[from].kind == "circumstantial" and nodes[to].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "contradiction", "modifier"]:
 		var swap_c = from
 		from = to
@@ -399,6 +409,8 @@ func connect_cards(from: String, to: String) -> String:
 		relation = "read_together"
 	if _gift_link(a, b):
 		relation = "explains_outing"
+	if given:
+		relation = "given"
 	links.append({"from": from, "to": to, "kind": relation})
 	version += 1
 	return ""
