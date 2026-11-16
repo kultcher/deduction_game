@@ -119,3 +119,64 @@ Some of these are probably UI hooks for later. Others (`ui/main.gd` `_open_theor
 **Method caveat:** these are name matches, so a call through a string (`call("name")`, a
 signal wired in a `.tscn`, `has_method`) would show as dead. Grep for the string before
 deleting anything.
+
+## Playtest 26532 (Nov 16, Claude playing, Michael driving; connections switch off)
+
+Won on day 4: Edda (Demon) and Isolde (Breathstealer) hanged, then Nisha (Scion, promoted).
+No wrongful executions, 5/7 innocents alive.
+
+- **None of the Muddler's gossip was muddled.** Hollis was the Muddler, and every relay he
+  passed on came through intact.
+- **The case against Isolde as the Breathstealer didn't land as well as it should have.**
+  The chain was complete: Lian was killed, so his Archivist reading "Greta or Isolde" was
+  true; Merrin was silenced on day 1; Greta never shared her block (#78, Merrin alone at
+  the mill that evening); Isolde did. The filed case still got 4/10 on day 2. She hanged on
+  day 3 once Dorian's Dowser reading and the town's mood caught up.
+- **The town didn't connect Merrin's two "cannot remember" Confessor visits to Nisha.**
+  Both visits were on the Market, and on night 2 Nisha was the only living Market resident
+  besides Merrin. The day-3 Nisha nomination failed 3/9. It passed on day 4 only after a
+  vigil caught her at the kill and the mill traces matched.
+- **Vigils look very strong.** "Arrived" means the target was on that block, so a vigil
+  on the right block catches the demon outright. The night-3 vigil ended the case. This
+  bears on DESIGN.md's "Is unlimited Vigil too strong?"
+- **Breaking ward promises cost little that showed.** Two were broken, and Fenwick came
+  to the player with gossip a day later.
+- **Grimoire bug:** Greta (good) relaying Edda's fake Clerk reading is logged as Greta's
+  own lie ("Evil: tells Hollis their Clerk reading… (heard from Edda)" and [LIE] in
+  `grimoire talk`), so her lie count reads 1.
+- **Evil fabrication didn't check whether it implicated the liar.** Isolde's fake
+  Magistrate result ("Greta and Lian shared an alignment") made her own guilt follow from
+  Lian's public Archivist reading.
+- **Defence mismatch:** Isolde answered "Your case rests on where I was last night" to a
+  case about day-1 whereabouts.
+- **`ask night` doesn't return night-action results** (Confessor, Lamplighter). Already
+  slated.
+- **A good NPC hiding a gift lied "home all night"** (Hollis, the Lamplighter). Same
+  pattern as the Jory open item in `docs/belief_model_direction.md`.
+- **Seed reproducibility:** restarting case 73398 after a crash dealt different roles and
+  a different first morning. See the seed section below once it's investigated.
+
+### Seed reproducibility: the cause (Nov 16)
+
+Not a determinism bug in the simulation. **In the game UI, a dynamic script and the case
+are seeded separately:**
+
+- The case seed (the title-bar box, `ui/main.gd` `_new_case`) seeds the world:
+  schedules, homes, the night-0 RNG and so on.
+- The **dynamic script** is rolled on the New Case screen from its own random seed
+  (`ui/new_case_screen.gd` `_roll_dynamic`: `sd = randi() % 1000000 + 1`). That decides
+  which gifts, minions and secret are on the script, and so who is dealt what.
+- So typing case 73398 again with a freshly rolled dynamic script gives the same
+  population and seed but a different roster. The deal differs, the town draws diverge,
+  and so does the first morning.
+
+The sweep tools don't have this problem: `autoplay.gd --dynamic` builds
+`ScriptBuilder.dynamic({"seed": s})` from the case seed itself. Replays from a dev log are
+also fine, since `case_start` setup records `script.to_dict()` (`sim/world.gd:412`).
+
+Fix options:
+1. **Derive the dynamic script from the case seed** in the UI, as the sweep does. Then
+   one number reproduces a whole case. The New Case screen's reroll button would then
+   change the case seed rather than only the script.
+2. Keep them separate but show the script's seed ("Dynamic #NNN") with the case seed,
+   and let a seed entry restore both.
