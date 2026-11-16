@@ -1,0 +1,235 @@
+From 88d22cbfc182cea9b292168bcb64bea984da9015 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 15:20:14 -0500
+Subject: [PATCH 1/3] MOCK, not for main: an ability-less Breathstealer, and
+ sweeps that play only its deals
+
+For a paired sweep against run 43575857218 (9b2ca88): the Breathstealer is dealt and
+played as usual but never silences or hunts; autoplay skips non-Breathstealer deals
+(identical to the base run) with a "skipped" record, which the collect step drops.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HbG76j4nGBcu8ZaA1UKmdr
+---
+ .github/workflows/balance-sweep.yml | 2 +-
+ sim/roles/breathstealer.gd          | 8 ++++++++
+ tools/autoplay.gd                   | 9 +++++++++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/.github/workflows/balance-sweep.yml b/.github/workflows/balance-sweep.yml
+index 8b83b59..31d29cc 100644
+--- a/.github/workflows/balance-sweep.yml
++++ b/.github/workflows/balance-sweep.yml
+@@ -146,7 +146,7 @@ jobs:
+       - name: Merge and report
+         run: |
+           mkdir -p report
+-          find parts -name 'results_*.jsonl' -print0 | xargs -0 -r cat > report/sweep_merged.jsonl
++          find parts -name 'results_*.jsonl' -print0 | xargs -0 -r cat | grep -v '"skipped":true' > report/sweep_merged.jsonl
+           find parts -name 'errors_*.jsonl' -print0 | xargs -0 -r cat > report/sweep_errors.jsonl
+           wc -l report/sweep_merged.jsonl report/sweep_errors.jsonl
+           python3 tools/sweep_report.py report/sweep_merged.jsonl --md report/sweep_report.md \
+diff --git a/sim/roles/breathstealer.gd b/sim/roles/breathstealer.gd
+index 1c69078..00da84a 100644
+--- a/sim/roles/breathstealer.gd
++++ b/sim/roles/breathstealer.gd
+@@ -13,6 +13,10 @@ func _init() -> void:
+ 	shape = "NONE"
+ 
+ 
++## MOCK (mock/inert-breathstealer, not for main): an ability-less Minion. Dealt and played as
++## a Breathstealer (team knowledge, bluffs, votes) but it never silences and never hunts.
++const INERT := true
++
+ const PUBLIC: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+ 
+ 
+@@ -38,6 +42,8 @@ static func preferred_target(w, bs, evil):
+ ## silenced today, it goes out to the public place on whose block the most good people are,
+ ## rather than home or somewhere empty.
+ func free_location(w, bs, idle: String, evil) -> String:
++	if INERT:
++		return idle
+ 	if not bs.alive or not bs.is_evil() or bs.breath_day == w.day or w.day < 1 or w.is_minion_suppressed():
+ 		return idle
+ 	var target = preferred_target(w, bs, evil)
+@@ -121,6 +127,8 @@ func breath_target(w, bs, evil) -> String:
+ 
+ 
+ func run_day_gift(w, bs, _mind, evil) -> void:
++	if INERT:
++		return
+ 	if not bs.is_evil() or bs.breath_day == w.day:
+ 		return
+ 	if w.is_minion_suppressed():
+diff --git a/tools/autoplay.gd b/tools/autoplay.gd
+index d9eae20..afc592a 100644
+--- a/tools/autoplay.gd
++++ b/tools/autoplay.gd
+@@ -188,6 +188,13 @@ func _init() -> void:
+ 		print("SWEEP_BEGIN %d" % seed_v)
+ 		var t0: int = Time.get_ticks_msec()
+ 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
++		if r.get("skipped", false):
++			# MOCK (mock/inert-breathstealer): only Breathstealer deals are played.
++			if jsonl != null:
++				jsonl.store_line(JSON.stringify({"schema": "sweep_v1", "seed": seed_v, "skipped": true}))
++				jsonl.flush()
++			print("SWEEP_END %d" % seed_v)
++			continue
+ 		if jsonl != null:
+ 			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": _mode_name(),
+ 				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
+@@ -274,6 +281,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
+ 			case_script.demons.append(force_demon)
+ 		case_script.forced = case_script.forced.filter(func(r): return not r in case_script.demons) + [force_demon]
+ 	_out(g.new_case(seed_v, npc_count, case_script))
++	if g.w.npc_with_role("breathstealer") == null:
++		return {"skipped": true}  # MOCK: only Breathstealer deals
+ 	if echo:
+ 		g.w.dlog.echo = true
+ 	var guard = 0
+-- 
+2.43.0
+
+
+From 59b34792ce136d66ae7122a91070d36c3546ba8d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 21:15:48 -0500
+Subject: [PATCH 2/3] MOCK, not for main: Breathstealer modes "remote" and
+ "lasting" (this branch: remote)
+
+remote: each day it silences its preferred target wherever they are (chosen in the
+night), with no hunting; the town's presence reasoning and the circumstantial
+silencing links are off, so a silence leaves no trail. lasting (mock/breath-lasting):
+as on main, but no silence ends while an evil Breathstealer lives.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HbG76j4nGBcu8ZaA1UKmdr
+---
+ sim/roles/breathstealer.gd | 15 ++++++++++++---
+ sim/world.gd               |  2 +-
+ workshop/circumstantial.gd |  4 ++--
+ workshop/day_presence.gd   |  2 ++
+ 4 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/sim/roles/breathstealer.gd b/sim/roles/breathstealer.gd
+index 00da84a..bf8d182 100644
+--- a/sim/roles/breathstealer.gd
++++ b/sim/roles/breathstealer.gd
+@@ -15,7 +15,10 @@ func _init() -> void:
+ 
+ ## MOCK (mock/inert-breathstealer, not for main): an ability-less Minion. Dealt and played as
+ ## a Breathstealer (team knowledge, bluffs, votes) but it never silences and never hunts.
+-const INERT := true
++const INERT := false
++## MOCK modes: "" (as on main), "remote" (picks anyone each night, no block, no hunting, no
++## presence trail), "lasting" (as on main, but every silence lasts until it dies).
++const MODE := "remote"
+ 
+ const PUBLIC: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+ 
+@@ -42,7 +45,7 @@ static func preferred_target(w, bs, evil):
+ ## silenced today, it goes out to the public place on whose block the most good people are,
+ ## rather than home or somewhere empty.
+ func free_location(w, bs, idle: String, evil) -> String:
+-	if INERT:
++	if INERT or MODE == "remote":
+ 		return idle
+ 	if not bs.alive or not bs.is_evil() or bs.breath_day == w.day or w.day < 1 or w.is_minion_suppressed():
+ 		return idle
+@@ -133,7 +136,13 @@ func run_day_gift(w, bs, _mind, evil) -> void:
+ 		return
+ 	if w.is_minion_suppressed():
+ 		return  # the Sexton's bell: no silencing until the next night
+-	var tgt: String = breath_target(w, bs, evil)
++	var tgt: String = ""
++	if MODE == "remote":
++		# Chosen in the night, anyone, whatever the block; it takes hold at the evening meeting.
++		var pick = preferred_target(w, bs, evil)
++		tgt = pick.id if pick != null else ""
++	else:
++		tgt = breath_target(w, bs, evil)
+ 	if tgt == "":
+ 		return
+ 	bs.breath_day = w.day
+diff --git a/sim/world.gd b/sim/world.gd
+index 1f654fa..20ee711 100644
+--- a/sim/world.gd
++++ b/sim/world.gd
+@@ -670,7 +670,7 @@ func start_phase() -> void:
+ 	if phase == C.EVENING:
+ 		# A silence lasts until the next evening.
+ 		for n in living():
+-			if n.silenced and n.silence_day < day:
++			if n.silenced and n.silence_day < day and not (preload("res://sim/roles/breathstealer.gd").MODE == "lasting" and npcs.any(func(m): return m.alive and m.role == "breathstealer" and m.is_evil())):
+ 				n.silenced = false
+ 				dlog.add("silence_ends", "world", n.id, {}, "%s can speak again." % n.name)
+ 	for n in living():
+diff --git a/workshop/circumstantial.gd b/workshop/circumstantial.gd
+index 7bfb611..fc3efe3 100644
+--- a/workshop/circumstantial.gd
++++ b/workshop/circumstantial.gd
+@@ -154,7 +154,7 @@ static func extract_hub_incidents(
+ 			target_relevant[cid] = true
+ 
+ 		# 1. Silenced card itself pairs with a qualifying public proximity card on that day.
+-		if kind == "context" and ctx == "silenced":
++		if kind == "context" and ctx == "silenced" and preload("res://sim/roles/breathstealer.gd").MODE != "remote":
+ 			var s_day: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+ 			var s_victim: String = str(c.get("subject", ""))
+ 			if s_victim != "" and s_victim != target and hub_cards.any(func(o):
+@@ -182,7 +182,7 @@ static func extract_hub_incidents(
+ 				# Being near a silencing is no longer an incident here: Breathstealer by presence
+ 				# (workshop/day_presence.gd breath_factor) weighs it jointly across every
+ 				# silencing in CaseEval, so the card only stays relevant to the target.
+-				for sv in silenced_map.get(day_num, []):
++				for sv in (silenced_map.get(day_num, []) if preload("res://sim/roles/breathstealer.gd").MODE != "remote" else []):
+ 					if sv == target:
+ 						continue
+ 					var direct_pair: bool = sv in subjs
+diff --git a/workshop/day_presence.gd b/workshop/day_presence.gd
+index 74cbfe1..3829cce 100644
+--- a/workshop/day_presence.gd
++++ b/workshop/day_presence.gd
+@@ -406,6 +406,8 @@ static var bare_reads_view: bool = true
+ 
+ 
+ static func breath_factor(view: Dictionary, cards: Array = []) -> Dictionary:
++	if preload("res://sim/roles/breathstealer.gd").MODE == "remote":
++		return {}  # MOCK: a silence leaves no trail
+ 	var minions: Array = view.get("script_minions", [])
+ 	if not minions.is_empty() and "breathstealer" not in minions:
+ 		return {}
+-- 
+2.43.0
+
+
+From 435fb077b163eef64894a02b67e42fc56f3d83eb Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 21:19:25 -0500
+Subject: [PATCH 3/3] MOCK, not for main: this branch runs Breathstealer MODE
+ lasting
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HbG76j4nGBcu8ZaA1UKmdr
+---
+ sim/roles/breathstealer.gd | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/sim/roles/breathstealer.gd b/sim/roles/breathstealer.gd
+index bf8d182..265b302 100644
+--- a/sim/roles/breathstealer.gd
++++ b/sim/roles/breathstealer.gd
+@@ -18,7 +18,7 @@ func _init() -> void:
+ const INERT := false
+ ## MOCK modes: "" (as on main), "remote" (picks anyone each night, no block, no hunting, no
+ ## presence trail), "lasting" (as on main, but every silence lasts until it dies).
+-const MODE := "remote"
++const MODE := "lasting"
+ 
+ const PUBLIC: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+ 
+-- 
+2.43.0
+

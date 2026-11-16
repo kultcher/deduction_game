@@ -1,0 +1,154 @@
+From 88d22cbfc182cea9b292168bcb64bea984da9015 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 15:20:14 -0500
+Subject: [PATCH 1/2] MOCK, not for main: an ability-less Breathstealer, and
+ sweeps that play only its deals
+
+For a paired sweep against run 43575857218 (9b2ca88): the Breathstealer is dealt and
+played as usual but never silences or hunts; autoplay skips non-Breathstealer deals
+(identical to the base run) with a "skipped" record, which the collect step drops.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HbG76j4nGBcu8ZaA1UKmdr
+---
+ .github/workflows/balance-sweep.yml | 2 +-
+ sim/roles/breathstealer.gd          | 8 ++++++++
+ tools/autoplay.gd                   | 9 +++++++++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/.github/workflows/balance-sweep.yml b/.github/workflows/balance-sweep.yml
+index 8b83b59..31d29cc 100644
+--- a/.github/workflows/balance-sweep.yml
++++ b/.github/workflows/balance-sweep.yml
+@@ -146,7 +146,7 @@ jobs:
+       - name: Merge and report
+         run: |
+           mkdir -p report
+-          find parts -name 'results_*.jsonl' -print0 | xargs -0 -r cat > report/sweep_merged.jsonl
++          find parts -name 'results_*.jsonl' -print0 | xargs -0 -r cat | grep -v '"skipped":true' > report/sweep_merged.jsonl
+           find parts -name 'errors_*.jsonl' -print0 | xargs -0 -r cat > report/sweep_errors.jsonl
+           wc -l report/sweep_merged.jsonl report/sweep_errors.jsonl
+           python3 tools/sweep_report.py report/sweep_merged.jsonl --md report/sweep_report.md \
+diff --git a/sim/roles/breathstealer.gd b/sim/roles/breathstealer.gd
+index 1c69078..00da84a 100644
+--- a/sim/roles/breathstealer.gd
++++ b/sim/roles/breathstealer.gd
+@@ -13,6 +13,10 @@ func _init() -> void:
+ 	shape = "NONE"
+ 
+ 
++## MOCK (mock/inert-breathstealer, not for main): an ability-less Minion. Dealt and played as
++## a Breathstealer (team knowledge, bluffs, votes) but it never silences and never hunts.
++const INERT := true
++
+ const PUBLIC: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+ 
+ 
+@@ -38,6 +42,8 @@ static func preferred_target(w, bs, evil):
+ ## silenced today, it goes out to the public place on whose block the most good people are,
+ ## rather than home or somewhere empty.
+ func free_location(w, bs, idle: String, evil) -> String:
++	if INERT:
++		return idle
+ 	if not bs.alive or not bs.is_evil() or bs.breath_day == w.day or w.day < 1 or w.is_minion_suppressed():
+ 		return idle
+ 	var target = preferred_target(w, bs, evil)
+@@ -121,6 +127,8 @@ func breath_target(w, bs, evil) -> String:
+ 
+ 
+ func run_day_gift(w, bs, _mind, evil) -> void:
++	if INERT:
++		return
+ 	if not bs.is_evil() or bs.breath_day == w.day:
+ 		return
+ 	if w.is_minion_suppressed():
+diff --git a/tools/autoplay.gd b/tools/autoplay.gd
+index d9eae20..afc592a 100644
+--- a/tools/autoplay.gd
++++ b/tools/autoplay.gd
+@@ -188,6 +188,13 @@ func _init() -> void:
+ 		print("SWEEP_BEGIN %d" % seed_v)
+ 		var t0: int = Time.get_ticks_msec()
+ 		var r = _play(seed_v, int(args.get("npcs", "7")), log_dir, args.has("echo-log"))
++		if r.get("skipped", false):
++			# MOCK (mock/inert-breathstealer): only Breathstealer deals are played.
++			if jsonl != null:
++				jsonl.store_line(JSON.stringify({"schema": "sweep_v1", "seed": seed_v, "skipped": true}))
++				jsonl.flush()
++			print("SWEEP_END %d" % seed_v)
++			continue
+ 		if jsonl != null:
+ 			var rec: Dictionary = SweepRecord.build(g, {"seed": seed_v, "mode": _mode_name(),
+ 				"insight": insight, "sha": str(args.get("sha", "")), "dynamic": dynamic_scripts, "metrics": r["metrics"], "r": r,
+@@ -274,6 +281,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
+ 			case_script.demons.append(force_demon)
+ 		case_script.forced = case_script.forced.filter(func(r): return not r in case_script.demons) + [force_demon]
+ 	_out(g.new_case(seed_v, npc_count, case_script))
++	if g.w.npc_with_role("breathstealer") == null:
++		return {"skipped": true}  # MOCK: only Breathstealer deals
+ 	if echo:
+ 		g.w.dlog.echo = true
+ 	var guard = 0
+-- 
+2.43.0
+
+
+From d83e90f8db1456c406530ed953f89cc4a4ca0779 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 15 Nov 2026 18:13:55 -0500
+Subject: [PATCH 2/2] MOCK, not for main: silencing as on main, but it says
+ nothing about the silenced person
+
+Off mock/inert-breathstealer with the ability back on. The public silencing factor
+(PublicEvidence, odds x0.66 of evil) is set to 1, and silenced people stay in the
+circumstantial reference pool. Only Breathstealer deals are played.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HbG76j4nGBcu8ZaA1UKmdr
+---
+ sim/roles/breathstealer.gd  | 2 +-
+ workshop/circumstantial.gd  | 2 +-
+ workshop/public_evidence.gd | 1 +
+ 3 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/sim/roles/breathstealer.gd b/sim/roles/breathstealer.gd
+index 00da84a..224ede9 100644
+--- a/sim/roles/breathstealer.gd
++++ b/sim/roles/breathstealer.gd
+@@ -15,7 +15,7 @@ func _init() -> void:
+ 
+ ## MOCK (mock/inert-breathstealer, not for main): an ability-less Minion. Dealt and played as
+ ## a Breathstealer (team knowledge, bluffs, votes) but it never silences and never hunts.
+-const INERT := true
++const INERT := false
+ 
+ const PUBLIC: Array = ["tavern", "well", "chapel", "bakery", "wharf", "smithy", "mill", "graveyard"]
+ 
+diff --git a/workshop/circumstantial.gd b/workshop/circumstantial.gd
+index 7bfb611..0c894cc 100644
+--- a/workshop/circumstantial.gd
++++ b/workshop/circumstantial.gd
+@@ -33,7 +33,7 @@ static func _passive_survivor_floor(view: Dictionary, stage1_requested: Dictiona
+ 		var pid: String = str(p.get("id", ""))
+ 		if pid == "" or pid == listener_id or not p.get("alive", true):
+ 			continue
+-		if pid in known_good or pid in victims or silenced_ids.has(pid):
++		if pid in known_good or pid in victims:  # MOCK: silenced people stay in the reference pool
+ 			continue
+ 		var v: float = float(stage1_requested.get(pid, 0.0))
+ 		all_vals.append(v)
+diff --git a/workshop/public_evidence.gd b/workshop/public_evidence.gd
+index e3db5ef..a2a17b5 100644
+--- a/workshop/public_evidence.gd
++++ b/workshop/public_evidence.gd
+@@ -57,6 +57,7 @@ static func factors(view: Dictionary) -> Array:
+ 	var prior = 0.3
+ 	var posterior = prior * (1.0 - 0.12 / 0.45)
+ 	var ratio = (posterior / (1.0 - posterior)) / (prior / (1.0 - prior))
++	ratio = 1.0  # MOCK (mock/silence-no-boost): a silencing says nothing about the silenced person
+ 	var seen = {}
+ 	for event in events:
+ 		var day: int = event.get("at", {}).get("day", -1)
+-- 
+2.43.0
+

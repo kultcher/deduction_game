@@ -104,3 +104,11 @@ These are per game on one core of a GitHub runner. The worst 10-NPC bot game in 
 - **7-NPC bot drop:** from `9a1b215` to `0743a76` it fell about 5 points on shared seeds (z −3.0). This came from #90, #91 or #94 and wasn't investigated. It's flat at 58.5–59.3% since.
 - **Steady role effects across runs:** at 7 NPCs, Breathstealer games favour good by about 14 points and the Delusional secret favours evil by about 15.
 - **Speed:** premises step 3 (`226d566`) roughly doubled the bot's time and made passive play 4–6× slower. #99 and #100 brought it back (`dc2418c`).
+
+## The Nov 15 mock branches, as patches
+
+`mocks/<name>.patch` is each `mock/<name>` branch's commits (`git format-patch` from its
+merge base with main), so the branches can be deleted. They were measurement only and
+must never merge. To rerun one: check out the base commit named in the patch's run row
+above, `git am mocks/<name>.patch`, and sweep. Runs: inert-breathstealer 43757505923,
+silence-no-boost 43773681066, breath-remote 43791458383, breath-lasting 43791460944.
