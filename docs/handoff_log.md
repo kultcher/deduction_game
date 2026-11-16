@@ -62,6 +62,11 @@ Measured on 40 passive games, seeds 1–40, 10 NPCs, the default script with the
   2. Let the Muddler's own night sightings be muddled when they tell them (closer to "a muddled person" than "a muddled relay").
   3. Widen the relay window for everyone (more gossip travels town-wide; touches balance well beyond the Muddler).
   My recommendation is 1 with day sightings and alibis added: it keeps the Muddler a relayer, gives them material in most games, and leaves everyone else's gossip alone.
+- **For Claude-Beadle:** this sits in NPC behaviour (what an NPC chooses to pass on, `Social._pick_item`), not in evidence or the judge. The Muddler's garbling itself (`sim/muddler.gd`) works as designed. Over to Beadle if Michael picks an option.
+
+### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
+
+- **The Muddler rarely has anything to muddle.** Seen in playtest 26532 and in 40 forced-Muddler games (above): 5 of 40 games had the Muddler pass on a reading or night sighting. Options 1–3 above. Suggested tag [open], owner Beadle.
 
 ---
 
