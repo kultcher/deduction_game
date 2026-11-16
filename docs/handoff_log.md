@@ -4,9 +4,10 @@ Shared notes between the Claude Code agents. Newest entry first. Each entry: who
 commit, status, next actor, and anything the next agent must know before starting. Sessions
 don't share memory: this log and the PRs are how they talk.
 
-Who's who and the ground rules are in `CLAUDE.md` (from Nov 16): Bailiff integrates and
-merges, Lantern owns the belief model, Quill evidence and challenges, Herald UI, dialogue
-and onboarding; Tally runs sweeps on request, and Steward runs scheduled maintenance. Sign
+Who's who and the ground rules are in `CLAUDE.md` (from Nov 16): Seneschal orchestrates,
+Bailiff integrates and merges, Lantern owns the belief model, Beadle NPC behaviour, Quill
+evidence and challenges, Herald UI, dialogue and onboarding; Tally runs sweeps on request,
+and Steward runs scheduled maintenance. Sign
 each entry `Claude-<Name>`. Entries before Nov 16 also mention Argon (Gemini, patches on
 Drive), Tally and Steward as chat sessions.
 
@@ -19,7 +20,22 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-16 night, Claude (migration session): the agent roster, merging and autonomy rules (`claude/lucid-ptolemy-c9d27r`)
+## 2026-11-16 night, Claude-Seneschal: Seneschal and Beadle join the roster (`claude/roster-seneschal-beadle`, stacked on #168)
+
+- **Base:** #168's head `a25ece7`. **Status:** docs and one test, PR open. Merge after #168. **Next actor:** Bailiff.
+- **Seneschal** is the orchestration session (formerly the migration session). It holds the big picture, starts and briefs the leads, and passes on Michael's decisions. It writes no feature code and doesn't merge.
+- **Beadle** is a new lead for NPC behaviour: how beliefs become what NPCs say, do, vote and lie about, including evil play. Michael split it from Lantern, who keeps the belief model.
+- **Sessions started on Nov 16,** each briefed on its first tasks:
+  - **Lantern:** a plan for the connections purge, `docs/connections_purge_plan.md`. It goes to Michael before any code is deleted.
+  - **Quill:** why the Muddler never muddled; the grimoire recording a relay as the relayer's own lie; then the weak case against Isolde (needs `case_26532.jsonl` from Michael).
+  - **Herald:** `ask night` not returning a gift's night result; a defence answering the wrong case.
+  - **Beadle:** a fabricated reading that implicated its own teller; then `[decided]` behaviour items.
+- **Performance goes to Argon** (Michael, Nov 16), working through Antigravity on `argon/` branches. Its first patch is a zero-drift speed-up of connections refreshes in `workshop/jury.gd` (`_consequences_eval`), `workshop/connections.gd` (`judge_key`) and `workshop/case_eval.gd` (cache keys and caps, `_team_prior`, `fits_before`). **Merge order: Argon's patch before any of Lantern's purge code PRs**, since both touch `_consequences_eval`. Lantern's plan PR (docs only) can merge any time. Lantern stays off performance, and flags in this log any cache-key field Argon wants to trim that some path does read.
+- **Bailiff's two notes on #168:** my handoff entry there is now signed `Claude-Seneschal`, and `tools/test_case_viewer.py` now tests the fallback to the old logs folder (13 tests pass).
+
+---
+
+## 2026-11-16 night, Claude-Seneschal (then the migration session): the agent roster, merging and autonomy rules (`claude/lucid-ptolemy-c9d27r`)
 
 - **Base:** main `c8ef1e7` (#167, Bailiff's `CLAUDE.md`). **Status:** docs only, PR open. **Next actor:** Bailiff (review and merge), then each lead starts in its own session.
 - **From:** a structured talk with Michael on how work runs in Claude Code. Everything decided is now in `CLAUDE.md`. In short:

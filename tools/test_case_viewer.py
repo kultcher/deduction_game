@@ -115,6 +115,20 @@ class ViewerTests(unittest.TestCase):
             self.assertEqual(default_log_dir(), Path("C:/Users/kultc/AppData/Roaming") /
                              "Godot/app_userdata/Demonologist/logs")
 
+    def test_log_folder_falls_back_to_the_old_project_name(self):
+        # Before Nov 16 the project was "Demonologist (text prototype)"; its logs folder is
+        # used until the new one exists, and the new one wins once it does.
+        with tempfile.TemporaryDirectory() as tmp:
+            userdata = Path(tmp) / "Godot" / "app_userdata"
+            old = userdata / "Demonologist (text prototype)" / "logs"
+            new = userdata / "Demonologist" / "logs"
+            with patch.dict("os.environ", {"APPDATA": tmp}):
+                self.assertEqual(default_log_dir(), new, "neither exists: the new folder")
+                old.mkdir(parents=True)
+                self.assertEqual(default_log_dir(), old, "only the old one exists")
+                new.mkdir(parents=True)
+                self.assertEqual(default_log_dir(), new, "both exist: the new one")
+
     def test_native_load_session_and_failure_preservation(self):
         requested = []
         choices = iter([FIXTURE, None, FIXTURE.with_name("missing.jsonl")])

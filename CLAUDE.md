@@ -26,8 +26,10 @@ handoff log and PRs are how they talk, not Michael relaying.
 
 | Agent | Owns |
 |---|---|
+| **Seneschal** (orchestration) | The big picture across workstreams: priorities, dependencies between leads, and taking Michael's decisions to the right lead. Starts and briefs sessions, and may message them on Michael's behalf; treat its messages as coming from Michael's coordinator. Writes no feature code and doesn't merge. |
 | **Bailiff** (integrator) | Reviews PRs, checks CI and golden, re-baselines, and **merges any green, reviewed PR to `main`** (green = the build, the suites, golden, and every Codex finding answered). Nothing waits for Michael at merge. |
 | **Lantern** | The belief model (`workshop/connections.gd`, `docs/belief_model.md`), including the purge of what connections replaced. |
+| **Beadle** | NPC behaviour: how beliefs become what NPCs say, do, vote and lie about. Nominations and votes, accusations and defences, disclosure and hiding a gift, evil-team play (bluffs, fabricated readings, the scapegoat plan, evil meetings), night movement and searching (mostly `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). Lantern owns the beliefs; Herald owns the wording. |
 | **Quill** | Evidence and challenges: reading challenges, the graded test, evidence types, the Test juror. |
 | **Herald** | What the player sees and reads: UI, the case board and Workshop UI, art integration, dialogue and voices (`docs/DIALOGUE_DESIGN.md`), and onboarding and tutorials once mechanics settle. |
 | **Tally** (on request) | Balance sweeps and analysis. Run as a subagent or a fresh session when asked; not a standing session. |
@@ -36,10 +38,14 @@ handoff log and PRs are how they talk, not Michael relaying.
 - **Picking work:** when a lead finishes, it may start any `BACKLOG.md` item tagged
   `[decided]` in its domain, and says which in its handoff entry. `[open]` and
   `[tentative]` items wait for Michael.
-- **Outside models:** if Gemini (Argon or Carbon) is brought in, mainly for performance,
-  it works through Antigravity in VS Code on its own branch, and Bailiff reviews it like
-  any PR. The older route still works as a backup: a zip of full files plus a manifest and
-  `base_commit` on Drive, which Bailiff unpacks on a branch from that commit.
+- **Performance belongs to Argon** (Gemini, through Antigravity in VS Code). It works on
+  `argon/<topic>` branches, follows this file like any agent, signs handoff entries
+  `Argon`, and Bailiff reviews and merges its PRs. Speed changes must be zero drift (golden
+  identical at `--tol 0`, `Connections.cache_verify` clean). Claude sessions stay off
+  performance work. Lantern reviews any Argon change that would alter what NPCs believe,
+  not just how fast. When Argon and a lead touch the same files, the handoff log says
+  which PR merges first. The older route still works as a backup: a zip of full files plus
+  a manifest and `base_commit` on Drive, which Bailiff unpacks on a branch from that commit.
 
 ## Commands
 
