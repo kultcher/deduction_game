@@ -25,8 +25,9 @@ var drag = ""
 var panning = false
 var last_mouse = Vector2.ZERO
 var drag_out = false   # the dragged card is past the left edge: release removes it
-## Box selection (Nov 10): Shift-drag on empty canvas draws a box; the cards inside move
-## together when one is dragged, and Delete removes them. No group linking.
+## Box selection (Nov 10; plain left-drag since triage 8.1, Nov 16): left-drag on empty
+## canvas draws a box; the cards inside move together when one is dragged, and Delete
+## removes them. No group linking. Right-drag (or middle-drag) on empty canvas pans.
 var group: Array = []
 var box_from = null     # screen point where the box started, or null
 var box_to: Vector2 = Vector2.ZERO
@@ -415,7 +416,8 @@ func _gui_input(event: InputEvent) -> void:
 	if model == null:
 		return
 	if event is InputEventMouseButton:
-		grab_focus()
+		if is_inside_tree():
+			grab_focus()
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and event.pressed:
 			var world = (event.position - pan) / zoom
 			zoom = clampf(zoom * (1.1 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1 / 1.1), 0.35, 1.5)
@@ -453,7 +455,7 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
-		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "" and event.shift_pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "":
 			box_from = event.position
 			box_to = event.position
 			accept_event()
@@ -462,7 +464,7 @@ func _gui_input(event: InputEvent) -> void:
 			group = []
 		if event.button_index == MOUSE_BUTTON_RIGHT and chosen != "":
 			context_requested.emit(chosen)
-		elif event.button_index == MOUSE_BUTTON_MIDDLE or (event.button_index == MOUSE_BUTTON_LEFT and chosen == ""):
+		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			panning = true
 		elif event.button_index == MOUSE_BUTTON_LEFT and chosen != "":
 			var was_linking: bool = linking != ""

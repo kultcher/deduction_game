@@ -167,7 +167,7 @@ func _ready() -> void:
 	loc_solver_btn.tooltip_text = "Opens the Whereabouts panel to cross-reference who was where on a day and commit one Whereabouts card citing your record of that day."
 	fullscreen_btn = _button(tools, "Fullscreen", func(): fullscreen_toggled.emit())
 	fullscreen_btn.name = "WorkshopFullscreen"
-	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Shift-drag on empty canvas to box-select cards; drag one to move them all, Delete to remove them."
+	fullscreen_btn.tooltip_text = "Give the Workshop the whole window (and back). Drag on empty canvas to box-select cards (drag one to move them all, Delete to remove them); right-drag to pan."
 
 	_button(tools, "Fit case", func(): canvas.fit_case())
 	_button(tools, "All cards", func(): canvas.fit_case(true))

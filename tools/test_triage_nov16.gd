@@ -1,5 +1,6 @@
 ## Playtest triage items from Nov 16: a far sighting's crowd count (8.2), the Augur's
-## sightings hint (5.10), a Lovers confession proving the partner (5.9).
+## sightings hint (5.10), a Lovers confession proving the partner (5.9), the canvas's
+## left-drag box and right-drag pan (8.1).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -22,6 +23,7 @@ func _init() -> void:
 	_crowd()
 	_augur()
 	_lovers()
+	_canvas_drag()
 	print("Triage Nov 16: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -143,3 +145,39 @@ func _lovers() -> void:
 	var other_id: String = cases.keys().filter(func(k): return k != partner.id)[0]
 	check(on_partner.get("ready", false) and str(on_partner.get("category", "")) == "strong" and float(on_partner.get("lr", 0.0)) > 1000.0, "the confession proves the partner holds the Lovers secret (%s)" % str(on_partner))
 	check(cases[other_id].get("ready", false) and float(cases[other_id].get("lr", 1.0)) < float(on_partner.get("lr", 0.0)), "and says nothing of the kind about anyone else (x%.2f against x%.2f)" % [float(cases[other_id].get("lr", 0.0)), float(on_partner.get("lr", 0.0))])
+
+
+## 8.1: on empty canvas, a left-drag draws a selection box and a right-drag pans.
+func _canvas_drag() -> void:
+	var CanvasModel = preload("res://workshop/canvas_model.gd")
+	var CanvasView = preload("res://ui/workshop_canvas_view.gd")
+	var g = _game()
+	var m = CanvasModel.new(Live.view(g))
+	var prem: String = m.add_premise(g.w.npcs[0].id, "evil", Vector2.ZERO)
+	var v = CanvasView.new()
+	root.add_child(v)
+	v.model = m
+	v.hit = {prem: Rect2(100, 100, 50, 50)}
+	var press = func(button: int, at: Vector2, down: bool):
+		var e := InputEventMouseButton.new()
+		e.button_index = button
+		e.position = at
+		e.pressed = down
+		v._gui_input(e)
+	var move = func(at: Vector2):
+		var e := InputEventMouseMotion.new()
+		e.position = at
+		v._gui_input(e)
+	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), true)
+	move.call(Vector2(200, 200))
+	press.call(MOUSE_BUTTON_LEFT, Vector2(200, 200), false)
+	check(v.group == [prem], "a plain left-drag on empty canvas box-selects the card inside (%s)" % str(v.group))
+	var before: Vector2 = v.pan
+	press.call(MOUSE_BUTTON_RIGHT, Vector2(300, 300), true)
+	move.call(Vector2(340, 320))
+	press.call(MOUSE_BUTTON_RIGHT, Vector2(340, 320), false)
+	check(v.pan == before + Vector2(40, 20), "a right-drag on empty canvas pans (%s -> %s)" % [str(before), str(v.pan)])
+	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), true)
+	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), false)
+	check(v.group.is_empty() and v.pan == before + Vector2(40, 20), "a left click on empty canvas clears the box and doesn't pan")
+	v.queue_free()
