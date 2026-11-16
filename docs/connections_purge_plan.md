@@ -1,8 +1,8 @@
 # Purging what the connections model replaced: inventory and plan
 
 Nov 16, 2026 · Claude-Lantern · read against main `c8ef1e7` (#167). **Status:** Michael
-answered decisions 1–6 on Nov 16 (relayed by Claude-Seneschal; see "Michael's decisions"
-in section 7). Decision 7 is open. No code has been changed yet.
+answered all seven decisions on Nov 16 (relayed by Claude-Seneschal; see "Michael's
+decisions" in section 7). No code has been changed yet.
 
 The model is `docs/archive/legacy_retirement_plan.md` (the Nov 1–3 retirement): an
 inventory, phases that are one PR each, and the switch removed before the code behind it.
@@ -175,8 +175,8 @@ the Why report. Golden matching for those phases proves little; the suites prove
 | 4 | **Clean the connections suites** of switch-off checks and on/off comparisons | Identical (tests only) |
 | 5 | **Delete the earlier model's refresh-only code** (1b): spillover and card shaping, the earlier "suspicious" pressure, the earlier Why report's branch of `workshop_why.gd` (`case_why.gd` stays), and their constants (`PREMISE_SPILLOVER_MIN/MAX`). Regenerate `tuning_catalogue.md`. Spillover damping is recorded in `BACKLOG.md` section 6 as [tentative] (decision 5) | **Identical.** All of it is unreachable after phase 3 |
 | 6 | **6a (approved Nov 16): remove the headline reading everywhere** (`_headline*`, `HEADLINE_*`, reason attribution's route). **6b (measure first):** report how often each of the four signals in section 2 changes an NPC's view when it reads the held cards instead of the attended ones, in game terms, to Seneschal for Michael; build only once he answers. Two PRs, merged one at a time | **Moves.** 6a changes what NPCs cite and possibly reply stances; 6b changes suspicion wherever a protection, pattern, defence floor or direct check depended on attention. Re-baseline in each PR, with each seed's outcome in `docs/golden_baseline.md` |
-| 7 | **The pre-CaseEval engine and the attention experiments** (1d), if Michael agrees: `Jury.engine`, `_assess_target`, `Consequences.assess`, `unlimited_cards`, `always_keep_kinds`, `read_everything_gap.gd`, `--no-attention` | Identical (tools only reach them) |
-| 8 | **The naming sweep** (section 6) | Identical (comments, labels, docs). If a dev-log or report label is renamed, the golden `step` records may carry it; check |
+| 7 | **The pre-CaseEval engine and the attention experiments** (1d), approved Nov 16: `Jury.engine`, `_assess_target`, `Consequences.assess`, `unlimited_cards`, `always_keep_kinds`, `read_everything_gap.gd`, `--no-attention` | Identical (tools only reach them) |
+| 8 | **The naming sweep** (section 6), plus audit B's belief-related leftovers (decision 7) | Identical (comments, labels, docs). If a dev-log or report label is renamed, the golden `step` records may carry it; check |
 
 **Argon's speed patch lands first** (Seneschal, Nov 16). It edits `workshop/jury.gd`
 (`_consequences_eval`), `workshop/connections.gd` and `workshop/case_eval.gd`. No phase that
@@ -240,7 +240,10 @@ merge.
    [tentative] so it can be revisited; the code survives on `archive/legacy-belief-final`.
    Added to `BACKLOG.md` section 6 on Nov 16.
 6. **The Insight wording:** I draft it in phase 8; the wording is Michael's to settle.
-7. **Older leftovers (phase 7 and audit B):** not decided yet; Seneschal is asking.
+7. **Older leftovers: Lantern does both.** Phase 7 (the pre-CaseEval engine and the
+   attention experiments) goes ahead, and audit B's belief-related leftovers are folded into
+   phase 8: the mislabelled `legacy_fallback` reporting, `legacy_evidence`,
+   `fallback_count`, and the Workshop canvas's `"mode": "legacy"`.
 8. **Section 8's small calls** are mine as listed.
 
 ### The questions as put to him

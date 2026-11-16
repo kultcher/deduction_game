@@ -43,7 +43,9 @@ Ground rules (from Nov 3, until Michael changes them):
   5. Delete spillover damping, the half-weight "suspicious" hearing and the earlier Why
      report; spillover damping goes on the backlog as [tentative].
   6. I draft the Insight wording in phase 8; the wording is his.
-  7. Not decided yet.
+  7. I do both: phase 7 (the pre-CaseEval engine and the attention experiments), and audit
+     B's belief-related leftovers folded into phase 8 (`legacy_fallback`, `legacy_evidence`,
+     `fallback_count`, the canvas's `"mode": "legacy"`). Section 7 is fully decided.
   - Section 8's small calls are mine.
 - **Proposed for the backlog:** none. The spillover item was accepted by Michael directly.
 - **Measured:** nothing (docs only).
