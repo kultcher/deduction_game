@@ -46,7 +46,8 @@ func _seed(seed_v: int) -> int:
 		var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
 		if plan.is_empty() or str(plan.prepared.listener.get("reasoning_mode", "")) != "bounded":
 			continue
-		var reports: Array = plan.prepared.view.cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("source", "")) != n.id)
+		# Readings a challenge can name (ReadingChallenges.valid): not a relay or testimony.
+		var reports: Array = plan.prepared.view.cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("source", "")) != n.id and not c.has("relay_source") and not c.get("testimony_only", false))
 		if reports.is_empty() or plan.prepared.view.cards.size() < 6:
 			continue
 		var before: int = n.workshop_state.get("reasoning", {}).get("considered", []).size()

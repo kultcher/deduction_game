@@ -15,6 +15,8 @@
 ##   the applied refresh, and isn't there at all while the switch is off.
 extends SceneTree
 
+const Seeds = preload("res://tools/fixture_seeds.gd")
+
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -338,17 +340,19 @@ func _wrong_sighting() -> void:
 	Connections.enabled = false
 	LiveActivity.cache.clear()
 	Caches.clear_all()
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(100034, 7)
-	_play(g, 2)
-	var n = g.w.by_id.get("odette")
-	if n == null or not n.alive:
-		check(false, "seed 100034 reaches day 2 with Odette alive")
+	# A planter's fake sighting of a good person, held by them (was seed 100034, Constance's
+	# of Odette; searched for so play changes don't break it, tools/fixture_seeds.gd).
+	var found: Dictionary = Seeds.framed_sighting(2, false, "street")
+	if found.is_empty():
+		check(false, "a seed has a framed sighting held by its subject")
 		return
+	var g = found.g
+	var n = g.w.by_id.get(found.subject)
 	var st: Dictionary = _inputs(g, n)
-	var wrong: Array = st.held.filter(func(id): return st.by_id[id].kind == "sighting" and "odette" in st.by_id[id].get("subjects", [st.by_id[id].get("subject", "")]))
-	check(wrong.size() == 1 and str(st.by_id[wrong[0]].get("source", "")) == "constance", "Odette holds Constance's sighting of her")
+	var wrong: Array = st.held.filter(func(id): return st.by_id[id].kind == "sighting" and n.id in st.by_id[id].get("subjects", [st.by_id[id].get("subject", "")]) and str(st.by_id[id].get("source", "")) == found.sighter)
+	check(wrong.size() >= 1, "(seed %d) %s holds %s's sighting of them" % [int(found.seed), n.id, found.sighter])
+	if wrong.is_empty():
+		return
 	for row in ["none", "walker"]:
 		Connections.force_row = row
 		var on: Dictionary = Connections.refresh(st.view, st.case, st.listener, st.held, {})
@@ -358,8 +362,8 @@ func _wrong_sighting() -> void:
 		var holder: String = "movement" if row == "walker" else "night:%d" % int(st.by_id[wrong[0]].night)
 		check(wrong[0] in on.core.firsthand and holder in on.core.seed, "%s reading: the sighting is firsthand knowledge, and %s seeds her core" % [row, holder])
 		check(wrong[0] not in off.core.firsthand and holder not in off.core.seed, "%s reading, option off: it doesn't" % row)
-		print("NOTE: seed 100034, %s reading: Odette on Constance %.2f with the wrong sighting in her core's seed, %.2f without (core members %d and %d)" % [row,
-			float(on.posterior.constance), float(off.posterior.constance), on.core.members.size(), off.core.members.size()])
+		print("NOTE: the framed subject on its sighter, %s reading: %.2f with the wrong sighting in her core's seed, %.2f without (core members %d and %d)" % [row,
+			float(on.posterior.get(found.sighter, -1.0)), float(off.posterior.get(found.sighter, -1.0)), on.core.members.size(), off.core.members.size()])
 	Connections.force_row = ""
 
 
