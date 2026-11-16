@@ -1,5 +1,5 @@
-## The connections belief model, step 2 (workshop/connections.gd; Project doc
-## belief-model-direction, "Phase 6 spec" section 3): the built-in pairings and how the
+## The connections belief model, step 2 (workshop/connections.gd;
+## docs/belief_model.md, "Phase 6 spec" section 3): the built-in pairings and how the
 ## demon-type declaration reads movement.
 ##
 ## - Cards that mean little alone are grouped with their partner: a night's movement cards,

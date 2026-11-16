@@ -1,5 +1,5 @@
-## The connections belief model, step 1 (workshop/connections.gd; Project doc
-## belief-model-direction, "Phase 6 spec"): the switch and the single-card values.
+## The connections belief model, step 1 (workshop/connections.gd;
+## docs/belief_model.md, "Phase 6 spec"): the switch and the single-card values.
 ##
 ## - The switch is off by default, and with it off a refresh carries no trace of the model.
 ## - With it on, every card a listener holds counts once, alone or in a built-in pairing

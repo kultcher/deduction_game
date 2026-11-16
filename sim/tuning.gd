@@ -886,7 +886,7 @@ class Workshop:
 	## may be invented. It still counts this share of the time, since evil tells the truth
 	## when it suits them; otherwise it counts as an invented sighting, as likely as an honest
 	## one on average, so a sighter's word against a subject's alibi is decided by priors
-	## (LiveActivity._sighting_contests; Project doc belief-model-direction, Nov 11).
+	## (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11).
 	const EVIL_SIGHTER_TRUTH = 0.15
 	## The most sighters per person whose word is weighed this way (2^k profiles each).
 	const SIGHTER_CONTEST_MAX = 2
@@ -895,8 +895,8 @@ class Workshop:
 	## them on a night they spent at home counts against the sighter, but not as certain proof
 	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
 	const SLEEPWALK_SELF_DOUBT = 0.1
-	## The connections belief model (workshop/connections.gd; Project doc
-	## belief-model-direction, "Phase 6 spec"): the limit on an NPC moves from which cards it
+	## The connections belief model (workshop/connections.gd;
+	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
 	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
 	## connections model). Off: the earlier model, for comparisons (autoplay --legacy-model;
 	## tests that pin it set Connections.enabled themselves).

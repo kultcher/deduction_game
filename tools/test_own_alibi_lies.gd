@@ -1,4 +1,4 @@
-## Belief model Phase 1 fix 3 (Project doc claude/belief-model-direction-2026-11-10.md):
+## Belief model Phase 1 fix 3 (docs/belief_model.md):
 ## a person's own word on their night is lie-aware when they are evil. Before, an
 ## unquoted "I was home" from its own subject was a hard constraint in every alignment,
 ## so an evil subject's false alibi ruled out every night-out route: it cleared the

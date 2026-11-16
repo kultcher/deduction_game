@@ -1,5 +1,5 @@
 ## A good NPC's sighting of themselves on a night they know they spent at home is evidence
-## about whoever told it (Project doc belief-model-direction, Nov 12; Reasoner.direct_checks).
+## about whoever told it (docs/belief_model.md, Nov 12; Reasoner.direct_checks).
 ##   - A plain sighting or a Medium's relay is kept in the weighing, not rejected; a Night
 ##     Watch list is still set aside (Reasoner.direct_checks says why).
 ##   - In real games: the framed NPC holds it against an evil sighter; a Sleepwalker seen by an

@@ -1,5 +1,5 @@
 ## Offline prototype of the "connections" belief design (Phase 4 of the belief-model
-## direction; project doc `claude/belief-model-direction-2026-11-10.md`, "Phase 4 spec" and
+## direction; `docs/belief_model.md`, "Phase 4 spec" and
 ## "Decisions, Nov 10 evening").
 ##
 ## It replays a dev log and, at chosen moments, computes what each good listener WOULD
