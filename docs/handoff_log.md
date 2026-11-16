@@ -37,7 +37,7 @@ of what the connections model replaced, the way the Nov 1–3 retirement went.
   order, starting with phase 1.
 - **What changed:** new `docs/connections_purge_plan.md`, and this entry. No code.
 - **What's in it:** an inventory of what only the earlier model uses (file and function, and
-  what still reads each); what stays because connections uses it; the nine pinned suites and
+  what still reads each); what stays because connections uses it; the seven pinned suites and
   what happens to each; eight phases with the golden each is expected to give; the naming
   sweep; seven decisions for Michael; and the small calls I'd make myself.
 - **Findings worth knowing before reading it:**

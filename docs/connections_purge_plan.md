@@ -14,7 +14,7 @@ phase's own capture at `--tol 0`.
 
 - The connections model has been on since #160. The earlier model runs only when something
   sets `Connections.enabled = false`: `autoplay --legacy-model`, the replay tools on a log
-  from before #160, nine test suites, and the fixture-seed search.
+  from before #160, seven pinned test suites (plus switch-off sections in the connections suites), and the fixture-seed search.
 - **Most of what connections replaced is already dead in play** but still computed: the
   refresh still runs the earlier model's whole joint judgement on the attended cards and
   its headline reading, then throws both away. Removing those is safe and should save time.
