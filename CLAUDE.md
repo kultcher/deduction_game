@@ -7,13 +7,39 @@ developer; agents do the coding, testing and all of Git.
 ## Read first
 
 1. The newest entries in `docs/handoff_log.md` (newest first). The Nov 16 final handoffs
-   from Bailiff, Lantern and Quill carry what the earlier chat sessions knew.
+   from Bailiff, Lantern and Quill carry what the earlier chat sessions knew. The log is
+   over 3,000 lines: read the top few entries (the first ~300 lines), then search for your
+   topic or agent name (`grep -n "^## " docs/handoff_log.md` lists every entry). Don't
+   load the whole file.
 2. `docs/migration_notes.md`: Michael's direction for the Claude Code move, and an audit of
    leftovers from earlier purges.
 3. `BACKLOG.md` for what's next, `DESIGN.md` for how each system works and why,
    `docs/belief_model.md` for how NPCs form beliefs (the connections model),
    `TUNING_NARRATIVE.md` for how the systems push on each other. `README.md` has the code
    map and the dev-log format. The numbers all live in `sim/tuning.gd`.
+
+## Sessions and who owns what
+
+Each standing session is a Claude Code session with a domain. Michael names its role in
+the first message. Sign handoff entries `Claude-<Name>`. Sessions don't share memory: the
+handoff log and PRs are how they talk, not Michael relaying.
+
+| Agent | Owns |
+|---|---|
+| **Bailiff** (integrator) | Reviews PRs, checks CI and golden, re-baselines, and **merges any green, reviewed PR to `main`** (green = the build, the suites, golden, and every Codex finding answered). Nothing waits for Michael at merge. |
+| **Lantern** | The belief model (`workshop/connections.gd`, `docs/belief_model.md`), including the purge of what connections replaced. |
+| **Quill** | Evidence and challenges: reading challenges, the graded test, evidence types, the Test juror. |
+| **Herald** | What the player sees and reads: UI, the case board and Workshop UI, art integration, dialogue and voices (`docs/DIALOGUE_DESIGN.md`), and onboarding and tutorials once mechanics settle. |
+| **Tally** (on request) | Balance sweeps and analysis. Run as a subagent or a fresh session when asked; not a standing session. |
+| **Steward** (scheduled) | Maintenance: a scheduled task, Monday and Thursday early morning (US Eastern). A STANDARD pass Monday, DEEP Thursday, following `docs/maintenance/README.md`. Opens a PR with `docs/maintenance/<date>.md` and any doc-only fixes; code findings go in the report for the owning lead. |
+
+- **Picking work:** when a lead finishes, it may start any `BACKLOG.md` item tagged
+  `[decided]` in its domain, and says which in its handoff entry. `[open]` and
+  `[tentative]` items wait for Michael.
+- **Outside models:** if Gemini (Argon or Carbon) is brought in, mainly for performance,
+  it works through Antigravity in VS Code on its own branch, and Bailiff reviews it like
+  any PR. The older route still works as a backup: a zip of full files plus a manifest and
+  `base_commit` on Drive, which Bailiff unpacks on a branch from that commit.
 
 ## Commands
 
@@ -34,7 +60,13 @@ python3 tools/tuning_index.py                                     # after editin
 itself with `$GODOT --headless --path . --script res://tools/<suite>.gd`. Some suites print
 failures and still exit 0, so use the runner, which checks the text.
 
+The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
+(`GODOT=godot`) and the .NET 8 SDK.
+
 ## Rules
+
+- **Before opening a PR:** run the suites that cover what you changed, plus a golden capture
+  if game logic changed. CI then runs the rest. A full local run isn't required.
 
 - **`main` moves only when green:** the build, the suites, Codex's review, and a golden
   capture identical at `--tol 0` to `BASELINE` in `.github/workflows/ci.yml`.
@@ -58,11 +90,24 @@ failures and still exit 0, so use the runner, which checks the text.
   that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`.
 - **Two failed attempts at the same problem:** stop and tell Michael, with the exact error.
 
+## What you may decide, and what waits for Michael
+
+- **Yours:** changing the values of existing constants in `sim/tuning.gd`. Put the before
+  and after values and the reason in the PR, describe the effect in game terms (see
+  "Report results plainly" below), regenerate `tuning_catalogue.md`, and re-baseline
+  golden if it moves.
+- **Michael's:** new mechanics, new constants, design direction, adding backlog items, and
+  player-facing wording (offer a draft and a recommendation).
+
 ## Working with Michael
 
 - **Report results plainly:** lead with the result, then a short table or a few bullets.
-  Say what you measured, on what, and what you didn't. Don't call anything finished or
-  confirmed before it is.
+  Say what you measured, on what (how many games or listeners, which seeds), and what you
+  didn't. Don't call anything finished or confirmed before it is.
+- **Describe effects in game terms, not code values.** "Townsfolk hold back a hidden gift
+  about a fifth less often" or "a basic Dowser case now gets someone to reveal in roughly
+  1 game in 3" says what changed. "+0.25 to pressure" or "the 0.4 threshold" doesn't.
+  Give the raw number only alongside the effect, when it helps.
 - **Don't frame "the good team was right" as the goal.** Sometimes good needs to be wrong
   so the player can lead it. Say what changed, not whether it's good.
 - **Flag and hold any change that would undo behaviour he set explicitly,** or ask first.
@@ -77,6 +122,17 @@ failures and still exit 0, so use the runner, which checks the text.
 
 ## Design guardrails
 
+DESIGN.md's pillars: information arrives over time; chaos in information, not in outcome
+(a loss is explainable in hindsight); every lie has a reason; choices cost time, failures
+don't; the player builds the case, and NPCs must not out-deduce the player; the grimoire
+reveal at the end is part of the payoff.
+
+- **NPCs simulate a human mind, not an accurate solver.** Imperfect reasoning, incomplete
+  recall, tunnel vision and wrong beliefs held for understandable reasons are the point.
+  Uncertainty is generally good, as long as the case stays solvable and NPCs react to it
+  semi-realistically. Don't optimise for good's win rate, or for NPC beliefs matching the
+  true probabilities. A change that makes NPCs more accurate isn't better for that reason
+  alone.
 - General mechanics over per-role special cases.
 - NPCs model a person's uncertainty, not a perfect reasoner; only a listener's own
   readings are strong alone. NPCs mustn't become sheep (no "unanimous but the nominee"
@@ -87,3 +143,6 @@ failures and still exit 0, so use the runner, which checks the text.
 - Dialogue: refined words are fine, modern ones (data, variable, constraint) aren't;
   nights are spoken as ordinals ("the second night").
 - The 10-NPC town is the default; the 7-NPC town is for tutorials and early games.
+- The core loop is settled and fun. The work now is refinement and expansion. Onboarding
+  and tutorials come after mechanics settle, so they aren't redone.
+- C# is the only solver; there is no GDScript fallback.

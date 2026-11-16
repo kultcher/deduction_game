@@ -1,29 +1,35 @@
 # Agent handoff log
 
-Shared notes between Claude (checks, tests, Git) and Argon (main coding). Newest entry
-first. Each entry: who, when, base commit, status, next actor, and anything the other
-agent must know before starting.
+Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
+commit, status, next actor, and anything the next agent must know before starting. Sessions
+don't share memory: this log and the PRs are how they talk.
 
-Who's who (from Nov 4 evening): sign each entry with your name. **Argon** (Gemini, main
-coding, patches on Drive); **Claude-Bailiff** (checks, tests, Git, meeting overhaul);
-**Claude-Quill** (dynamic scripts, integrating patch_013); the balance-sweep Claude (name
-to come). Sessions don't share memory: this log is how we talk.
+Who's who and the ground rules are in `CLAUDE.md` (from Nov 16): Bailiff integrates and
+merges, Lantern owns the belief model, Quill evidence and challenges, Herald UI, dialogue
+and onboarding; Tally runs sweeps on request, and Steward runs scheduled maintenance. Sign
+each entry `Claude-<Name>`. Entries before Nov 16 also mention Argon (Gemini, patches on
+Drive), Tally and Steward as chat sessions.
+
+Reading it: the file is long. Read the top few entries, then search for your topic or
+agent (`grep -n "^## " docs/handoff_log.md`). Don't load the whole file.
 
 Explaining a playtest (why the town voted, read a case or believed something): replay the
 log with `tools/replay_log.gd --why` and `tools/explain_case.gd` before reading code or
 guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry below.
 
-Ground rules (from Nov 3, until Michael changes them):
+---
 
-- Argon delivers work as a zip on Drive (full files plus a manifest) and names the
-  `base_commit` it was built on. Claude unpacks it on a branch from that commit, so later
-  fixes are merged, never overwritten.
-- `main` only moves when everything is green: `dotnet build`, the selected suites, and
-  (from C1 on) a golden capture identical to the current baseline (`BASELINE` in
-  `.github/workflows/ci.yml`; `docs/golden_baseline.md`) at `--tol 0`.
-  Otherwise the work stays on its branch and the entry says why.
-- Two failed attempts at the same problem: stop, mark `BLOCKED_NEEDS_MICHAEL`, write the
-  exact error. No force pushes, nothing irreversible.
+## 2026-11-16 night, Claude (migration session): the agent roster, merging and autonomy rules (`claude/lucid-ptolemy-c9d27r`)
+
+- **Base:** main `c8ef1e7` (#167, Bailiff's `CLAUDE.md`). **Status:** docs only, PR open. **Next actor:** Bailiff (review and merge), then each lead starts in its own session.
+- **From:** a structured talk with Michael on how work runs in Claude Code. Everything decided is now in `CLAUDE.md`. In short:
+  - **Standing sessions:** Bailiff (integrator; **merges green, reviewed PRs without waiting for Michael**), Lantern (belief model and the connections purge), Quill (evidence and challenges), and **Herald, new** (UI, dialogue and voices, art integration, and onboarding later).
+  - **On demand:** Tally (sweeps). **Scheduled:** Steward, Monday STANDARD and Thursday DEEP, early morning Eastern, following the new `docs/maintenance/README.md`.
+  - **Picking work:** a lead may start any `[decided]` backlog item in its domain. `[open]` and `[tentative]` wait for Michael.
+  - **Tuning:** agents may change values of existing constants. New mechanics, new constants, design direction, backlog additions and player-facing wording stay Michael's.
+  - **Testing:** run the suites for what you changed (plus golden if game logic changed) before a PR; CI runs the rest.
+  - **Two points Michael added:** NPCs simulate a human mind, not an accurate solver, so don't optimise win rate or belief accuracy. And describe effects in game terms ("about a fifth less often"), not code values ("+0.25 pressure").
+- **This log's header** now points to `CLAUDE.md` for who's who and the rules, and says how to read the file without loading all of it.
 
 ---
 
