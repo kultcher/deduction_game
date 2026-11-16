@@ -1348,8 +1348,9 @@ scoring, tutorials, procedural and larger towns.
   on day 3.)
 - How many clues per day feel right (1 vs 2 player actions per phase)?
 - Persuasion economy beyond trust (how pressure sours NPCs).
-- Keep the 7-person town until the core loop reliably works: form a hypothesis, choose an
-  investigation that tests it, revise, make a consequential argument.
+- ~~Keep the 7-person town until the core loop reliably works.~~ Settled (Michael, Nov 16):
+  the core loop works; the 10-person town is the default, the 7-person town is for
+  tutorials and early games (`docs/migration_notes.md`).
 - Does the Lamplighter's every-block route make the gift too easy to confirm, now that
   nobody else passes through a block?
 
