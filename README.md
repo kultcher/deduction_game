@@ -1,4 +1,4 @@
-# Demonologist — prototype
+# Demonologist
 
 A single-player social deduction game inspired by Blood on the Clocktower. You are a
 Demonologist summoned to a small town where a demon has taken a host. Minions serve it (one
@@ -9,9 +9,9 @@ night. Over six days (seven
 townsfolk) or eight (ten) you question townsfolk, search crime scenes, listen to gossip and
 sway the town's votes, until the demon's host hangs or the town falls.
 
-This is a proof of concept built in Godot 4 (GDScript, with the case judge's numerical
-kernel in C#), with a painted town screen and case board over a deterministic simulation
-that also runs headless. The point is to test whether the deduction is fun.
+It's built in Godot 4 (GDScript, with the case judge's numerical kernel in C#), with a
+painted town screen and case board over a deterministic simulation that also runs headless.
+The core loop is settled; this is the foundation the game is being built on toward release.
 [DESIGN.md](DESIGN.md) describes how every system works and why; [BACKLOG.md](BACKLOG.md)
 is the to-do list; [TUNING_NARRATIVE.md](TUNING_NARRATIVE.md) explains in plain language
 how the social and evidence systems interact, and `sim/tuning.gd` holds every number.

@@ -30,6 +30,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   - **Testing:** run the suites for what you changed (plus golden if game logic changed) before a PR; CI runs the rest.
   - **Two points Michael added:** NPCs simulate a human mind, not an accurate solver, so don't optimise win rate or belief accuracy. And describe effects in game terms ("about a fifth less often"), not code values ("+0.25 pressure").
 - **This log's header** now points to `CLAUDE.md` for who's who and the rules, and says how to read the file without loading all of it.
+- **No longer called a prototype** (Michael): the project is now named `Demonologist` in `project.godot`, and the README and DESIGN status lines are reworded. **This moves the user data folder** from `app_userdata/Demonologist (text prototype)/` to `app_userdata/Demonologist/`. Logs, saved scripts, settings and playtest marks stay in the old folder until copied. `tools/case_viewer.py` falls back to the old logs folder while the new one doesn't exist.
 
 ---
 
