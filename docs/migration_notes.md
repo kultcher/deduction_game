@@ -23,17 +23,12 @@ and the doc reconciliation once the chats' exit handoffs are in.
    proving the core loop. DESIGN.md's "keep the 7-person town until the core loop
    reliably works" open question is stale.
 
-## Project docs to bring into the repo
+## Project docs: moved into the repo (Nov 16, Bailiff)
 
-Claude Code can't read claude.ai Project files, but the repo cites these (the belief-model
-doc 7 times, including the header of `workshop/connections.gd`). Copy them into `docs/`
-during the migration:
-
-- ~~`claude/belief-model-direction-2026-11-10.md`~~ copied to `docs/belief_model_direction.md` (Nov 16 version; the Project copy may be newer)
-- `claude/playtest-triage-2026-11-13.md`
-- `claude/premises-plan.md` (check it against `docs/premises_plan.md`)
-- `claude/legacy-migration-plan.md` (probably superseded by
-  `docs/archive/legacy_retirement_plan.md`)
+Done in Bailiff's `claude/handoff-docs`. The live belief-model doc is `docs/belief_model.md`,
+the rest is under `docs/archive/project-docs/` (its README maps each one), and the Nov 13
+triage is `docs/archive/playtest_triage_2026-11-13.md`. Code no longer cites Project docs.
+Only dated entries in the handoff log and archive still name them, as history.
 
 ## Legacy leftovers audit (Nov 16)
 
@@ -95,7 +90,8 @@ The behaviour is gone, but its names and plumbing remain:
   fold into the next planned re-baseline.
 - `USE_FLAVOR_SECRETS = false` (benched flavour secrets): `world.gd:462` and the content
   behind it. Decide whether this is parked or dead.
-- `CONNECTIONS = false`: the current migration. Leave it alone.
+- `CONNECTIONS`: on by default since #160 (Nov 16). The earlier model stays reachable with
+  `--legacy-model`; its purge is the planned migration.
 - **21 constants that nothing reads**, including `MISLEADING_TRACE_CHANCE` and
   `RIVAL_CLAIM_EFF` (both labelled retired), `SHARE_TRUST_BUMP` ("superseded Oct 30"),
   `PARANOIA_DRIFT_RATE` ("unused since Oct 30"), the 10 `SHARE_ROLE_HINT_*` /
@@ -152,7 +148,7 @@ No wrongful executions, 5/7 innocents alive.
 - **`ask night` doesn't return night-action results** (Confessor, Lamplighter). Already
   slated.
 - **A good NPC hiding a gift lied "home all night"** (Hollis, the Lamplighter). Same
-  pattern as the Jory open item in `docs/belief_model_direction.md`.
+  pattern as the Jory open item in `docs/belief_model.md`.
 - **Seed reproducibility:** restarting case 73398 after a crash dealt different roles and
   a different first morning. See the seed section below once it's investigated.
 

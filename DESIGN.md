@@ -1,9 +1,11 @@
 # Working title: Demonologist (single-player social deduction)
 
-Status (Nov 4, 2026): playable Godot prototype with a painted town screen, a case board,
+Status (Nov 16, 2026): playable Godot prototype with a painted town screen, a case board,
 a red-string Case Workshop judged by a shared possible-worlds model (its solver kernel in
-C#), case scripts with an editor, and a deep NPC social simulation; text CLI and an
-analyst autoplay bot alongside. This document describes **how the game works now** and
+C#), case scripts with an editor and dynamic scripts, two demon types, and a deep NPC
+social simulation whose beliefs come from the **connections model** (on in play since Nov
+16; `docs/belief_model.md`); text CLI and an analyst autoplay bot alongside. Getting ready
+for a playtest, then Early Access. This document describes **how the game works now** and
 **which directions are decided**. It is organised by system, not by date; dated build
 notes are condensed into [History](#history-and-measurements) at the end.
 
@@ -18,6 +20,11 @@ agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning re
 - `TUNING_NARRATIVE.md`: a plain-English account of how the social and evidence systems
   interact. `tuning_catalogue.md`: the code-level companion (where each number lives).
   The numbers themselves live in `sim/tuning.gd`.
+- `docs/belief_model.md`: the connections belief model (design, in-game spec, results).
+- `docs/demon_types_plan.md`: the walking Demon and the Hexer, and the declaration.
+- `docs/evidence_catalog.md` (and its `_code` and `_measured` companions): what every
+  card says to the judge, and how strongly it measured.
+- `docs/balance_sweep.md`: the overnight sweep tooling and record schema.
 - `docs/meeting_flow_plan.md`: the meeting trial, slice by slice (M0–M4).
 - `docs/orchestration_plan.md`: work zones and their status.
 - `docs/golden_baseline.md`: the golden capture that guards against behaviour drift.
@@ -26,7 +33,9 @@ agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning re
 - `docs/text_formatting.md`: the shared text system.
 - `role_exploration.md`: role ideas, On Deck gifts, relationships, exploratory places.
 - `docs/archive/`: finished plans (the legacy retirement, the C# solver migration, the
-  evidence rework, the social trust pass, the shadow self, the dialogue prototype).
+  evidence rework, the social trust pass, the shadow self, the dialogue prototype), the
+  Nov 13 playtest triage, and the claude.ai Project docs (`docs/archive/project-docs/`:
+  sweep reports, the role shortlist, the belief-model archive).
 
 ---
 
@@ -138,8 +147,11 @@ it means the game must teach its own way of thinking and make evidence very read
   idlers may pair off, partners weighted by trust and news. Each NPC has at most one NPC
   conversation a day.
 - **Firsthand records.** Each day phase records people visibly working at their workplace
-  as firsthand sighting cards. Conversations you see, people you see nearby, and quiet
-  nights also become cards.
+  as firsthand sighting cards. Conversations you see (each talker gets a sighting card
+  too, #152), people you see nearby, and quiet nights also become cards. A sighting of
+  someone working or talking at a place you can't see into notes how many more people
+  were there that you couldn't make out ("(+2
+  people there)", #162).
 - Positions the player witnessed are **confirmed** (solid markers); hearsay is
   **tentative** (hollow markers, with source); tavern rumours are **dotted**.
   Observations aren't joined into an implied route.
@@ -224,8 +236,10 @@ rather than particular gifts. Every role and secret has an icon
 - The **Default** script is the 15 starter gifts, 4 secrets, 4 minions and the Demon. The
   **script editor** (`ui/script_editor.gd`) adds and removes roles, forces roles in play
   (for debugging and custom games), filters by tag, fills to size and saves to
-  `user://scripts/*.json`. **Dynamic scripts** built at random from the full roster are on
-  the `claude/dynamic-script` branch.
+  `user://scripts/*.json`. **Dynamic scripts** (`ScriptBuilder.dynamic`, the New Case
+  screen's dynamic mode, and every balance sweep) are built at random from the ready
+  roster, seeded by the case seed. They deal one demon type; a script with both kinds has
+  to be built in the editor.
 - **Constraints are soft:** the editor and New Case screen warn when a script doesn't cover
   the suggested tags (first-night info, ongoing info, evil ID, demon ID, role ID,
   protection, night walkers). Only a script that can't be dealt at all is blocked.
@@ -233,15 +247,17 @@ rather than particular gifts. Every role and secret has an icon
   Clerk, Surveyor, Rumormonger) and at least one identifier (Seer, Dowser, Gravedigger,
   Augur, Registrar). It retries up to 200 draws and is best effort when a script can't
   meet it.
-- One demon per game; a script lists demon types by difficulty (only the default Demon
-  exists so far).
+- One demon per game. A script lists demon types (up to 4): the default **Demon** (walks
+  at night to kill) and the experimental **Hexer** (`daykiller`, kills by day). A script
+  with more than one is "Advanced" (`ScriptDef.mode`), and the player may declare which
+  kind the town faces (The town meeting).
 
-### Good gifts (20)
+### Good gifts (22)
 
 | Gift | Ability |
 |---|---|
 | Archivist | Starts knowing that one of two people is a particular minion. |
-| Augur | Each evening from day 1, learns whether they crossed paths with the Demon in public on the same block that morning or afternoon. Marked may register as the Demon (50%). |
+| Augur | Each evening from day 1, learns whether they crossed paths with the Demon in public on the same block that morning or afternoon. Marked may register as the Demon (50%). The reading names nobody; its card adds who your own sightings put on the Augur's block that phase ("Sightings: A, B +at least N unknowns"; #162). |
 | Chronicler | On night 3, learns three other people (living or dead): at case start, one was an ordinary townsperson, one carried a secret, one was a minion. Never holds a solo secret. |
 | Clerk | Starts knowing that one of two people holds a particular gift. |
 | Confessor | Each night (not the first), visits one living person in secret and learns whether their spirit is good. Evil and Marked souls return no memory of the visit. Is out at night. |
@@ -290,6 +306,15 @@ Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept 
 - **Demon:** kills each night from night 1. Rolls a **temperament** per case that only
   touches kill choice: *vengeful* (+1.5 on anyone it trusts below 0.4), *cunning* (+1.5 on
   the scapegoat's block), *hungry* (random 0–2.0 per person per night).
+- **Hexer** (experimental; `sim/roles/daykiller.gd`, #111): a Demon that never walks at
+  night. Once a day it hexes a public place it stands in (likelier as the day goes on, at
+  busy places with threats, less at its own workplace or with you watching and too few
+  others about); that night a random good regular of the place (who works or idles there)
+  is drawn, ignoring wards, and attacked at home, where wards and the Warden apply as
+  usual. In free phases it may seek its preferred target's workplace,
+  and on an evening it hasn't hexed it goes out. The kill still leaves a trace. The town
+  reads it through day presence (who could have been at the victim's places that day,
+  `LiveActivity.hex_kills`).
 - **Minions:**
 
 | Minion | Ability |
@@ -310,7 +335,7 @@ nothing, and a card shown to them costs a question and moves their beliefs witho
 ### Secrets (modifiers)
 
 One per case, laid on a good townsfolk on top of their gift (the Lovers affect two but
-count as one):
+count as one). The Default script uses the first four:
 
 | Secret | Effect |
 |---|---|
@@ -318,6 +343,10 @@ count as one):
 | Marked | Gifts that read them may see them as evil or the demon: Dowser, Surveyor, Martyr and the Seer 50%, the Augur 50%, the Registrar 50% when a minion is on its slate; a Gravedigger or Executor sees a random evil role 30% of the time. |
 | Secret Lovers | Meet at a random block each night (both out), trust each other, know each other's secret, hide it like any secret (may confess). When one dies, the other withdraws: Privacy to the maximum, Gossip to the minimum, Composure up. |
 | Sleepwalker | Leaves home on about half of nights to a random block without knowing it: honestly says they were home, sees nothing while out. |
+| Muddler (custom scripts) | Often muddles one detail when passing on someone else's reading or night sighting. They don't know. |
+
+A Lovers confession names the partner, and the judge treats it as proof that both hold
+the secret: evil never fakes one (#162, `Solver.lovers_needs`).
 
 Lovers and the Sleepwalker are never dealt to holders of a night-walking gift, so a
 claimed walker's own duty never has to explain a second reason to be out.
@@ -367,12 +396,13 @@ about half the time. Both name the hearth ("Communing with the dead at Dorian's 
 ### Roster directions
 
 - **Roster expansion** **[open]**: On Deck gifts (Tracker, Clairvoyant, Beckon,
-  Tallyman, Bellringer…); minions (Framer/Forger with evidence planting, Blackmailer,
-  Hexer, Informant); Debtor secret. Each needs a hint package and solver support before
-  it goes live.
+  Tallyman, Bellringer…); minions (Framer/Forger with evidence planting, Blackmailer, a
+  two-curse Minion, Informant); Debtor secret. Each needs a hint package and solver support
+  before it goes live. Lantern's Clocktower shortlist (ideas only):
+  `docs/archive/project-docs/role-shortlist-2026-11-11.md`.
 - **Script follow-ups** **[decided]**: the off-script tell (a claim to an off-script role
-  is a lie, in NPC reasoning and the solver); multiple demon types; builder rules
-  ("jinxes"); remembering the last script.
+  is a lie, in NPC reasoning and the solver); builder rules ("jinxes"); remembering the
+  last script. Multiple demon types are built (the Hexer).
 - **Relationships** (Bonded, Unrequited, Feuding, Hater) and Lovers relationship mods.
   **[open]**
 - **Revenant seeks execution** (draws suspicion on purpose), and **NPCs search for
@@ -381,7 +411,8 @@ about half the time. Both name the hearth ("Communing with the dead at Dorian's 
   innocence. Options: (a) it may silence a suspected teammate as cover; (b) silence goes
   quiet (unannounced; the victim stonewalls with a small tell; evil can feign it); (c)
   both; plus a good secret that inflicts the same silence, and an optional silence that
-  may skip days. **[open]**
+  may skip days. **[open]** Measured Nov 14–15: Breathstealer deals favour good by 18–32
+  points, and a Minion with no ability does better for evil than it does (BACKLOG).
 - **Demon types** with bestiary entries; exorcism / true-name alternate win. **[open]**
 
 ---
@@ -410,7 +441,12 @@ scouting tool). Then one action:
 **Approaches:** at the start of some phases an NPC asks to talk (news, a frame or probe,
 a busybody's gossip, or a fearful NPC asking for your protection in exchange for their
 gift). Accepting costs the phase; declining is free. The approach waits for your answer:
-no other action is taken until you accept or decline. Someone who came to tell you news,
+no other action is taken until you accept or decline. It plays in the conversation view
+(#162): first a passage with no portrait covers the phase change ("You part ways with
+Edda as the afternoon sun reaches its zenith. As you cross past the mill, Dorian waves you
+down."; in the morning only the second sentence), held on Continue; then the approacher
+speaks, with your choices under them. Someone you just talked with doesn't approach you in
+the next phase. Someone who came to tell you news,
 a frame or their gift shares every sighting they remember in that conversation.
 
 ### Night
@@ -576,11 +612,25 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   contradiction card that offers the challenges.
 - **Challenges** on a card: unlikely, misled or lying. A gift reading against an alibi
   offers both explanations ("the alibi is false" / "the report is false").
+- **Premise → card links** mean "this card's line runs through that premise", and the
+  canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.
 - **Strength while building:** doesn't support / weakly / moderately / strongly, from a
   neutral test juror (public facts, default trust). Feedback names a clashing card, the
   card that weakened the case and who it brings in, collateral ("this mostly raises
-  suspicion of X"), idle assumptions and where each assumption came from.
+  suspicion of X"), idle assumptions and where each assumption came from. The juror
+  judges as if the case's challenges hold (challenged readings set aside, and it says so)
+  and weighs the public claims of everyone the case names (#159).
+- **"No new info"** (#154, `WorkshopCanvas.town_note`): beside the strength chip, a note
+  when the case would add little for the town: every card is already public and together
+  they add little, an earlier public case of yours today already holds them, or the public
+  record settles the subject. A same-day repeat says so; a later-day repeat says "Refreshes
+  your day-D argument"; a "suspicious" repeat on firmly argued cards says "Adds no new
+  belief, but still presses X" (from 0.15 pressure). Computed for a neutral listener on
+  the stored-case rules, without your watch record.
+- **Canvas controls:** left-drag on empty canvas draws a selection box (the cards inside
+  move together; Delete removes them); right-drag or middle-drag pans; the wheel zooms;
+  right-click a card for its menu (#162, triage 8.1).
 
 `present` uses it privately or at the meeting. A presentation containing evidence the
 model can't read is **blocked with the reason**. A bare belief with no evidence is social
@@ -617,13 +667,34 @@ player's case; it doesn't search for theories.**
   clash with the grounds counts against the reader in the worlds where they're good (#123). Poison belongs
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
-- **Bounded attention:** Insight sets how much of what a listener holds they actually
-  weigh. Presented cards are always read, and the listener's own readings are pinned
-  beside them. The rest is ranked by salience: naming the premise's target (when judging a
-  case), naming someone the presented cards name, being a gift reading, trust. The belief
-  update has no premise target, so an argument's framing never moves beliefs on its own
-  (premises plan, step 0b revised). A duller listener also takes a strong evil reading
-  partly at its word ("one of Kiran or Fenwick is the Demon") on top of the full model.
+- **The connections model** (`workshop/connections.gd`; on in play since Nov 16; full
+  design and spec in `docs/belief_model.md`). The limit on an NPC is on *which cards it
+  weighs together*, not which cards it reads:
+  - **Every card counts alone,** at its single-card value. Claims, confessed secrets and
+    profile cards are context: they explain other cards without joining sets together.
+  - **Built-in pairings** are always read together: a night's sightings, alibis, Night
+    Watch reports and Lamplighter counts; an Augur day with that day's sightings; a
+    Psychologist reading with its statements; a trace with profile cards.
+  - **The core:** each NPC weighs its firsthand knowledge (its own readings, the night
+    holding its own watch or lamp reports, a night it was wrongly sighted) together with
+    whatever is worth at least 0.4 log-odds more next to it than apart
+    (`Workshop.CONNECTIONS_CORE_JOIN`). Each candidate is tested against the seed only.
+    Rebuilt at dawn; a newly heard card is tested when it arrives. What the seed proves
+    alone stays proved.
+  - **Stored cases:** a presented case (the player's, or an NPC nominator's cited cards)
+    is a connection weighed jointly, scaled by trust in the presenter, fading 0.5–0.9 a
+    day by how far it moved that listener (buy-in, #153), dropped below 0.05. A case that
+    holds every card of an older one of yours takes its place; otherwise shared cards add
+    nothing again (#150). A challenge acts only inside its case. Presenting again restores
+    the weight.
+  - **The declaration** decides how movement is read: before one, each night alone;
+    Walker, all nights as one movement connection; Hexer, each night alone plus the
+    Hexer's day connection.
+  - **Combining:** each card once, each connection only its interaction, then one common
+    shift so P(evil) sums to the evil count.
+  - **Attention** (Insight's card budget, recency) now only picks what an NPC cites and
+    explains, never what it believes. The headline nudge is off. The earlier model, where
+    attention bounded belief, runs with `autoplay.gd --legacy-model`.
 - **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the
   listener trusts the source of the evidence, then by **directional Confidence**: the
   `1.4 − 0.8 × Confidence` factor applies only to moves against the listener's lean (their
@@ -645,10 +716,12 @@ player's case; it doesn't search for theories.**
 
 ### Decided and open directions (cases)
 
-- **The premise should matter** **[decided: direction; numbers open]**: listeners update
-  mainly on the argued target, with Insight-scaled spillover; a clearly wrong premise
-  costs a little trust; the preview hints when the evidence points elsewhere. Today the
-  refresh ignores the premise.
+- **The premise should matter** **[watch]**: premises steps 1–3 are built (Nov 6), and
+  under the connections model people a case doesn't touch don't move by construction.
+  The premise type changes what's asked, not how cards are weighed; presented cards are
+  heard at the case's agreement (Michael, Nov 13: keep it), so a weaker framing of the
+  same facts lands weaker. "Suspicious" is the early-game pressure tool: one basic
+  incriminating reading presses about 0.3 at a meeting (#155).
 - **Observable actions as evidence (Stage 1B)** **[decided: the split; details open]**:
   votes, nominations and defences as per-world likelihood factors measured from bot runs.
 - The running list of patterns the Workshop can't express yet is in BACKLOG ("Workshop
@@ -668,7 +741,7 @@ then constant (low / mid / high tiers at 0.34 / 0.67):
 | **Privacy** (about self: role, relationships, whereabouts) | shares who they are even at low trust; claims early | withholds as long as possible; reveals under pressure; stonewalls rather than lies |
 | **Gossip** (about others) | keeps out of others' business | volunteers what they've seen and heard |
 | **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | defends its lean against contrary evidence; lies boldly when pushed; nominates and votes readily |
-| **Insight** | weighs only part of what they hold; swayed by headlines | weighs everything; swayed only by what the evidence supports |
+| **Insight** | cites and explains only part of what they hold (with `--legacy-model`: also believes from only part, swayed by headlines) | cites from everything they hold |
 | **Composure** | attitude cues obvious; strongly affected by pressure and paranoia | almost no cues; resists pressure and paranoia |
 
 Privacy decides **whether** an NPC discloses; Confidence decides **what they do when
@@ -1171,6 +1244,9 @@ world I theorised correct?", and the grimoire reveal is part of the payoff.
     target.
 - Nov 5 sweep, analyst bot at insight 1.0: names the Demon 72%, wins 53–55%, wins
   67–72% once it has named the Demon.
+- Nov 14 sweep (1,000 paired seeds a cell, the earlier model): bot 65.8% (7 NPCs) and
+  62.7% (10); passive 41.8% and 41.5%. With connections on: 63.8% and 41.0% at 7 NPCs,
+  69.7% at 10-NPC bot on 300 seeds.
 
 ## Dev logging (required)
 
@@ -1185,7 +1261,8 @@ state changes for the case history viewer (`tools/case_viewer.py`,
 
 - **The judge is exact, the judging is personal.** The shared model enumerates every
   world consistent with the setup, but each listener weighs the evidence through their
-  own prior, trust, attention, own readings and Confidence. NPCs judge the player's case;
+  own prior, trust, own readings and Confidence, and combines only what the connections
+  model connects for them. NPCs judge the player's case;
   they don't search for theories, so they must not out-deduce the player.
 - **Explainable:** every judgement can be traced (`workshop_*` entries in the trace
   sidecar, `suspicion` entries in the dev log, the decision inspector for rolls).
@@ -1230,7 +1307,12 @@ state changes for the case history viewer (`tools/case_viewer.py`,
   at the podium; `--pre-m4` keeps the earlier policy for A/Bs.
 - **Tests:** `python3 tools/run_gd_tests.py --godot <exe>` runs every suite and checks
   failure text (some scripts exit 0 on failure); `tools/ci_fast_suites.txt` is the PR
-  list.
+  list. Suites that need a particular deal (a Lovers pair, a Breathstealer) find a seed by
+  search (`tools/fixture_seeds.gd`, seeds 100000–100059) rather than hard-coding one, so a
+  behaviour change doesn't break them. Suites that check the earlier model's mechanics pin
+  it (`Connections.enabled = false`).
+- **The earlier belief model** runs with `autoplay.gd --legacy-model` (sweep cells
+  `_legacy`), for comparisons only.
 - **Speed:** `tools/replay_54875.gd` (opening timings and a profile), a late-game probe
   (seed 42, Days 3–4) and `tools/profile_c0.gd` (solver stage timers).
 
@@ -1238,23 +1320,27 @@ state changes for the case history viewer (`tools/case_viewer.py`,
 
 ## Roadmap
 
-A suggested reading of BACKLOG, not a settled plan:
+A suggested reading of BACKLOG as of Nov 16, not a settled plan. Michael's near-term aim is
+a playtest, then Early Access on Steam.
 
-1. **Measure:** the overnight balance sweep on dynamic scripts (win rates by role, demon
-   and minion type, solvability, pace), then a paired baseline before more tuning.
-2. **Meeting plan M4:** the sweep. Supporters, the player's turn and resistance lines, the
-   VN courtroom and the bot policy are built.
-3. **The premise matters.**
-4. **The balance pass:** decisive night sightings and the vigil, evil sometimes telling
-   the truth, the agreement-to-vote gap, Privacy and the first day.
-5. **Speed:** re-measure under the C# backend.
-6. Medium features marked [decided]: evil backs into bluffs, backing a strong case builds
-   trust, Revenant seeks execution, NPCs find evidence, bot coverage; the script
-   follow-ups (off-script tell, more demon types).
+1. **Live testing on the new baseline** (`baseline_bb6f01c`, connections on). What it
+   turns up comes first.
+2. **Speed:** the connections model's cost (late presentations 4–7 s, nights 11–21 s);
+   a cheaper first-time judgement (BACKLOG, "Late-game meeting and presenting cost").
+3. **The Breathstealer:** it measures as a net gift to good (BACKLOG section 4); decide
+   what silence should do.
+4. **The connections model's known bugs** that move golden (BACKLOG section 6), each with
+   its re-baseline.
+5. **Bluffers:** frame memory and the "too clean" pass (BACKLOG section 5).
+6. **The Hexer:** the declaration's default and the bot's Hexer call, after playtests.
+7. Medium features marked [decided]: evil backs into bluffs, backing a strong case builds
+   trust, Revenant seeks execution, NPCs find evidence, bot coverage.
+8. **Roles before launch:** Michael wants more; the shortlist is in
+   `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Changes that alter the
+   solver's worlds were held until the connections work landed, which it now has.
 
-Larger open areas: evidence chains, the Breathstealer decision, relationships, roster
-expansion (new evidence types must be costed against the judge), the player toolbox, the
-director, scoring, procedural and larger towns.
+Larger open areas: evidence chains, relationships, the player toolbox, the director,
+scoring, tutorials, procedural and larger towns.
 
 ## Open questions
 
@@ -1342,6 +1428,32 @@ Registrar), the Surveyor rework and the public-only Dowser; meeting plan M1 (pee
 gossip) and M2a (player nominations on a case, reactive testimony, crowd fading, block
 safety); Nov 4 playtest fixes (evil aware of your promises, Scion-aware cover).
 
+**Nov 5–9:** the overnight balance sweep and its tooling (`docs/balance_sweep.md`;
+every run since is in `docs/archive/project-docs/sweep-archive.md`); the meeting plan's
+M2c–M4 (supporters, the player's turn, resistance lines, the courtroom stage, the bot
+policy); premises steps 0–3 (#81–#95; no outcome change in the A/B); attention-level
+recency (#96); the background soundtrack and the bespoke papercraft map; demon types
+steps 1–3 (the Hexer and day presence, #105–#111); the evidence catalog.
+
+**Nov 10–13: the belief-model rethink** (`docs/belief_model.md`). The why breakdown
+(#119, #121) showed presenting public cards could lower suspicion of the subject, and
+Tally's silent-bot cells showed presenting cases worth about nothing to winning. Fixes
+valid under any design: an accepted "lying" challenge keeps the clash (#123), a person's
+own home alibi is lie-aware (#124), the spoken stance follows the belief's direction
+(#126), challenge contests (#132), sighter contests (#135, which took back #124's drop),
+evil's Gravedigger bluff (#136), self-sightings (#139), Medium relays (#140), the graded
+test (#142). The demon-type declaration (#131) and the bot's cross-check cases (#137).
+Lantern's offline prototype (#129), then the connections model in game behind a switch
+(#141, #144, #145, #146, #148).
+
+**Nov 13–16:** playtests 44542 and 97626 (Michael's first with the switch on) and the
+triage (`docs/archive/playtest_triage_2026-11-13.md`), all of it built in #149–#162:
+stored-case rules, caching and the buy-in fade (#150–#153); "No new info" and
+"suspicious" pressure (#154, #155); the Breathstealer hunts (#157); the player-side
+Workshop fixes (#159); the NPC behaviour batch and the switch turned on by default
+(#160, Nov 16); the approach scene, the Lovers partner proof, the Augur's sightings hint
+and the canvas drag (#162).
+
 **Bot baselines over time** (legacy rules, active vs passive where measured):
 
 | Change | 7 townsfolk | 10 townsfolk |
@@ -1369,7 +1481,16 @@ points; `docs/handoff_log.md` Nov 3):
 | Analyst bot | 7/12 | 6/12 |
 
 Passive runs moved a lot with each later change (M1, chunk 2/3 roles, M2a's reactive
-testimony); the overnight sweep is meant to settle them.
+testimony). From Nov 5 the overnight sweep measures 1,000 paired seeds a cell:
+
+| Sweep (commit) | 7 bot | 7 passive | 10 bot | 10 passive |
+|---|---|---|---|---|
+| Nov 5 (`a0d9641`) | 55.0% | 34.0% | 52.6% | 40.1% |
+| Nov 9, after recency (`dc2418c`) | 59.3% | 35.9% | 55.2% | 39.0% |
+| Nov 14, after the hunt (`9b2ca88`) | 65.8% | 41.8% | 62.7% | 41.5% |
+| Nov 14, connections on (`9b2ca88`) | 63.8% | 41.0% | 69.7% (300 seeds) | |
+
+The full table, with every run, is `docs/archive/project-docs/sweep-archive.md`.
 
 Other measured effects worth keeping:
 - **Death-tied night suspicion** (10 townsfolk): Lamplighters hanged 57% → 43%, Veterans

@@ -1,5 +1,5 @@
-## The connections belief model, step 3 (workshop/connections.gd; Project doc
-## belief-model-direction, "Phase 6 spec" section 4): the core.
+## The connections belief model, step 3 (workshop/connections.gd;
+## docs/belief_model.md, "Phase 6 spec" section 4): the core.
 ##
 ## - The seed is every item holding a card the listener knows firsthand: its own readings,
 ##   and a sighting of it on a night it knows it spent at home. A night (or the movement

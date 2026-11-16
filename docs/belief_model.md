@@ -1,10 +1,21 @@
-# Belief model direction: connections, not attention
+# The belief model: connections, not attention
 
 Nov 10, 2026 · Claude-Lantern, Claude-Quill and Claude-Bailiff, with Michael · consolidated by Bailiff, Nov 13
 
-**Status (Nov 13):** Phases 0–5 are done, and Phase 6 (the connections model in the game, behind a switch that is off) is being built. Steps 1–4 are merged (#141, #144, #145, #146), so the switch is ready for Michael's playtests, and the Why report explains it (#148). The stored-case rules (#150), caching (step 6, #151) and the buy-in fade (#153) are merged (Nov 14), and the Workshop's "No new info" note (#154) and the new "suspicious" pressure (#155, stacked on it) are open for Bailiff. Main is `5ac25ab`, and the golden baseline is `baseline_b281427`. Each phase goes to Michael before anything in it changes play.
+**Status (Nov 16):** built and on in play. Phases 0–6 are done: the connections model is
+`workshop/connections.gd`, switched by `Tuning.Workshop.CONNECTIONS`, which is `true` since
+#160 (Michael, Nov 16: "commit to the connections model"; golden `baseline_a713ca5`, then
+`baseline_bb6f01c` with #162). The earlier model stays available for comparisons:
+`autoplay.gd --legacy-model` (sweep cells get the `_legacy` suffix), and tests that check its
+mechanics pin it by setting `Connections.enabled` themselves.
 
-**How to use this doc:** it holds the agreed design, the live Phase 6 spec, results that later work builds on, standing decisions and open items. Every earlier table, the Phase 4 prototype spec and the dated decision logs are kept word for word in `claude/belief-model-archive.md`. Put new results under "Phase 6 results" and keep them short; detail goes in the PR.
+**Where this came from:** the claude.ai Project doc `belief-model-direction-2026-11-10`,
+moved into the repo on Nov 16 (Bailiff). Every earlier table, the Phase 4 prototype spec and
+the dated decision logs are in `docs/archive/project-docs/belief-model-archive.md`. The
+open items now live in BACKLOG.md, section 6; the handoff log has each step's PR notes.
+
+**Reading it:** the spec and results were written while the switch was off, so "today" and
+"today's model" below mean the earlier model, now `--legacy-model`.
 
 ## The problem
 
@@ -56,13 +67,13 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
 
 Nov 12 · read against main `9e69144`. Michael answered its four questions as recommended (Nov 12); the answers are folded in below.
 
-- **Switch off:** nothing changes, and golden stays identical at every PR.
+- **Switch off** (now `--legacy-model`): the earlier model. During the build golden stayed identical at every PR with the switch off; since #160 golden is captured with it on.
 - **Switch on:** one number changes, the chance an NPC gives each person of being evil at a belief refresh. Everything after it is today's code: suspicion, votes, nominations, who to hang first, trust.
 - **Attention stops limiting belief.** The Insight card limit still decides what an NPC cites and explains.
 
 ### The switch
 
-`Tuning.Workshop.CONNECTIONS`, off. `--connections` on autoplay, golden capture and sweeps sets a runtime variable, so Tally can run paired cells from one build. The model's memory exists only with the switch on.
+`Tuning.Workshop.CONNECTIONS`, on since Nov 16 (#160). `autoplay.gd --legacy-model` (and the sweep's `_legacy` cells) turns it off for a run; `--connections` is still accepted and names the mode. Golden capture always runs the default. The model's memory exists only with the switch on.
 
 ### Single cards and pairings
 
@@ -143,9 +154,10 @@ Small PRs; Bailiff merges. Every PR: golden identical with the switch off, its o
 | 4b | Stored-case rules: reused cards don't stack, the movement connection isn't counted twice, "suspicious" pressure | **Merged, #150** |
 | 6 | Caching: identical beliefs with the cache on and off; timing against today | **Merged, #151.** Halves a game; the cost bar is not met |
 | 4c | Buy-in fade (triage 4.3) | **Merged, #153** |
-| 5.2 | The Workshop's "No new info" note | **Open, #154** |
-| | "Suspicious" pressure from what the cards point at | **Open, #155, stacked on #154** |
-| End to end | The seven prototype criteria through the module on fresh passive seeds (and a new human log if there is one), then Tally's paired cells | Last |
+| 5.2 | The Workshop's "No new info" note | **Merged, #154** |
+| | "Suspicious" pressure from what the cards point at | **Merged, #155** |
+| Default | `CONNECTIONS = true`, seed fixtures found by search, legacy-mechanics tests pinned | **Merged, #160 (Nov 16)** |
+| End to end | The seven prototype criteria through the module on fresh passive seeds, and a new human log | **Not done.** Tally's Nov 14 cells stand in for the paired part (below) |
 
 ## Phase 6 results
 
@@ -267,7 +279,7 @@ From playtest 44542 (Michael's first with the switch on). Logging and profiling 
   - A repeat is a judgement the same listener already made that day with an identical answer. A per-listener cache would skip those: all of the nomination's, nine in ten of `press role`'s, two thirds of the presentation's.
   - A cache can't skip a set seen for the first time. `gossip` has 212 of those (2.6 s), 76 of them core tests (1.2 s). That part needs a cheaper judgement, not a cache.
 
-### Stored-case rules (#150, open; Lantern, Nov 13–14)
+### Stored-case rules (#150, merged; Lantern, Nov 13–14)
 
 Triage 4.2 and 4.4, with two calls Michael made that evening. Switch on only; golden identical to `baseline_4a1a075` with it off.
 
@@ -278,7 +290,7 @@ Triage 4.2 and 4.4, with two calls Michael made that evening. Switch on only; go
 - **The fade (4.3), measured, not built.** Chance Fenwick is evil at dawn of day 2 under 0.5 / 0.7 / buy-in: Greta 24 / 22 / 20%, Hollis 19 / 17 / 15%, Jory 33 / 30 / 27%, Kiran 37 / 34 / 31%. 0.7 takes back 2–3 points of the overnight rise and buy-in 4–6; the rest is other cards arriving overnight. Buy-in: a case keeps 0.5–0.9 of its weight a day, the more the further it moved that listener. Michael picked buy-in (Nov 13 evening); built in #153.
 - **97626 no longer replays faithfully after #149** (passive play moved), so its figures are from before that merge.
 
-### Caching, step 6 (#151, open, stacked on #150; Lantern, Nov 14)
+### Caching, step 6 (#151, merged; Lantern, Nov 14)
 
 - **Each listener keeps the judgements it has made,** keyed on what a judgement reads (the judged cards, the listener's firsthand knowledge and trust in people, deaths, the day), not on the whole input.
 - **Beliefs are identical:** 28,644 kept answers judged again across 12 games, none different; both playtest logs give the same suspicions and dev log with the cache on and off.
@@ -297,14 +309,14 @@ Triage 4.2 and 4.4, with two calls Michael made that evening. Switch on only; go
 
 - **The cost bar is not met.** What remains is sets judged for the first time: new cards, and everything at dawn. A first-time judgement is 9–25 ms with no single dominant part. Options, not built: single cards judged for all listeners from one world table a day; dawn's refreshes spread over the night screen; skipping core tests whose cards and seed didn't change.
 
-### Buy-in fade (#153, open, stacked on #151; Lantern, Nov 14)
+### Buy-in fade (#153, merged; Lantern, Nov 14)
 
 - **The rule** is in the spec above ("Weight"). Nothing is stored: the rate is read again at each refresh.
 - **One difference from what #150 measured:** the move is the case's own cards standing alone, not what it added after the reuse rule, so a repeat of the same cards fades like the original.
 - **44542, in the game.** Chance Fenwick is evil at dawn of day 2, 0.5 a day → buy-in: Greta 24 → 20%, Hollis 19 → 15%, Jory 33 → 27%, Kiran 37 → 31% (18, 13, 19 and 22% the evening before). The case keeps 0.86–0.9 a day for these four.
 - **It applies to NPC nominators' cases too** (Michael, Nov 14: keep it so). A case can now count for up to 28 days, against 4.
 
-### The Workshop's "No new info" note (#154, open; Lantern, Nov 14)
+### The Workshop's "No new info" note (#154, merged; Lantern, Nov 14)
 
 Triage 5.2 with Michael's five rulings of Nov 14. Switch on only; nothing is computed or shown with it off.
 
@@ -318,7 +330,7 @@ Triage 5.2 with Michael's five rulings of Nov 14. Switch on only; nothing is com
 - **Limits:** a bigger case on a later day gets no note even if its extra cards add little; "still presses" shows only from 0.15 pressure (#155); the "settled" note is untested.
 - **Not checked against the playtests' own case numbers:** neither log replays faithfully on main after #149 and #152. Wording is Michael's to settle.
 
-### "Suspicious" pressure (#155, open, stacked on #154; Lantern, Nov 14)
+### "Suspicious" pressure (#155, merged; Lantern, Nov 14)
 
 Michael: "suspicious" is the early-game tool and should have a solid chance of making someone who is holding back reveal something; about 0.3 from one basic incriminating reading. Switch on only; the switch-off rule is unchanged.
 
@@ -374,49 +386,29 @@ Full tables are in the archive.
 
 ## Standing decisions not covered above
 
-- **Playtesting with the switch on (Nov 13):** set `CONNECTIONS = true` in `sim/tuning.gd` (class `Workshop`) for the build. The game has no launch flag for it; only the tools take `--connections`. Expect slower belief updates (about 4.5× today's) until caching. From #148 a log played this way says so, and the replay tools turn the switch on from the log.
+- **Playtesting:** the switch is on in every build since #160. Logs record whether it was on (`case_start`, from #148), and the replay tools follow the log.
 
 - **The declaration's default ("walker by default"?) and the bot's Hexer call** are on hold until the connections build and Michael's playtests (Nov 12). No change to the bot's thresholds until then.
 - **The no-present sweep cell may declare the demon type** (Nov 12).
 - **NPC nominators' cases:** no faster fade or cap yet. Revisit if up to nine live cases per listener shows up as a problem in play (Nov 11).
 - **For playtesting two-kind games:** dynamic scripts deal one kind by default, so put both the Demon and the Hexer on the script (script editor, Demons).
 
+## After the build (Nov 14–16)
+
+- **Tally's paired cells, Nov 14** (`docs/archive/project-docs/balance-sweep-report-2026-11-14.md`):
+  connections on against off was level at 7 NPCs (bot −2.0, z −1.3; passive −0.8, z −0.5)
+  and +5.7 at 10-NPC bot on 300 seeds (z +1.9). No sign of herding in the vote shapes.
+  Passive games took about 3× longer; 10-NPC bot games about 35% longer.
+- **Committed as the default** (Michael, Nov 16), on those cells and the absence of any
+  major issue. #160 flipped the switch and re-baselined golden.
+- **Triage 4.6, the day connection leaning away from the true Hexer** (Bailiff, Nov 16):
+  not reproduced on main `f568543`. Over 8 passive Hexer games (75 listener-kills) the
+  Hexer factor's own arithmetic gives the true Hexer +0.02 log-odds on average: weak, not
+  biased (+0.09 when the hexed place is one the listener knows as the victim's, −0.06 when
+  it's an unlearned haunt). A per-person floor for unlearned haunts scored 0.00, so it
+  wasn't kept. The limit is that nobody sees the Hexer at the hexed place in passive play
+  (its presence share there 0.23 against 0.19 for others).
+
 ## Open items
 
-| Item | Owner | Status |
-|---|---|---|
-| A Night Watch list that wrongly names the listener | Bailiff | Open. Each name is scored as an independent slip, so keeping the list cleared the watch (−0.36). `SourceDoubt` still voids that night's list. Fix: a list that's wrong about the listener is suspect as a whole |
-| Honest mistakes vs lies in challenges | Michael | Open. Misled and failed gift land 3–12% on honest mistakes; a rule can't separate them. It would need evidence that does, such as the teller's history or signs of poisoning. Measured on #142's first build only |
-| The day connection leans away from the true Hexer | Lantern | Not traced (step 2). Passive games only; may differ with a player gathering day logs |
-| Whole reversals against today's beliefs (Greta on Odette 0.88 → 0.04, seed 929) | Lantern | **That one traced (step 3 results):** today's attention left out the two cards that clear Odette. Others not traced. Day 3 of the same game goes the other way (connections 0.83, today 0.49, all cards together 0.13); not traced |
-| A relayer cut from the sighter contest by the two-sighter cap | Bailiff | **New (Lantern, Nov 13), main's behaviour with the switch off.** Sighters of a person are ranked by how many sightings they told, then by town order, and only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran, an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest word. With the cap raised to 4 as a test, "today's 28 cards plus the relay" gives Odette 83% and Kiran 91%, against 4% and 71%. With all cards the answer barely moves (Odette 1%), since Agnes's true sighting stands either way. Not changed; it would move golden |
-| An evil Medium's relay about the first victim names night 0 | Bailiff | **New (Lantern, Nov 13).** The bluff says the dead saw the scapegoat out "on their last night". For the first victim that is night 0, when the model's Demon never walks, so the frame lowers suspicion of its target (alone: Odette 37% → 31% evil, 12% → 6% the Demon). Not changed |
-| A case with no cards can be answered from an older compile | Bailiff | **New (Lantern, Nov 13), main's behaviour with the switch off.** With a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key doesn't include them. On seed 962 the same inputs gave Kiran 0.612 with every cache cleared and 0.579 from a warm one. Not changed; it could move golden |
-| Under Walker, a case of night cards counts their meeting twice | Michael | **Decided and built, #150:** a case adds nothing for cards the movement connection already holds. (Step 4.) The movement connection already weighs every night card together in full; a case citing two or more adds what they say together again, at its weight. 25 of 72 listener-presentations in the bot games; over 0.5 log-odds on the target in 9. It is the prototype's arithmetic. Options: leave it (a presented theory hits harder), or have a case add nothing for cards the movement connection already holds |
-| An NPC defender's challenge isn't in any stored case | Michael | **New (step 4).** It keeps today's floor and does nothing else. Option: store the defence as a case of its own |
-| **Playtest 44542 (Nov 13), saved for later** | Michael | From Michael's first switch-on playtest (10 NPCs, build `c889b3c`). Bailiff replayed the log with the switch on and read the breakdowns |
-| … Cases that reuse the same cards stack | Michael | **Decided and built, #150** (results above): replace when the new case holds every card and counts at least as much; otherwise nothing for the shared cards. Each stored case adds its connection separately, so the same cards under a new premise count again. In 44542 the Fenwick-Surveyor combination (Agnes's claim, Fenwick's claim and reading, Edda's Clerk reading) sat in three live cases on day 2 (#39, #40, #89). On Fenwick, Kiran's case leans were −0.39, −0.19 and −0.89 log-odds. Options: a case adds nothing for cards already in a stored case from the same presenter; the newer replaces the older; or both count |
-| … The Why report doesn't describe the connections model | Lantern | **Fixed, #148 (merged Nov 13).** With the switch on it now reads the stored breakdown (results above): Greta on Fenwick shows 32% → 18%, suspicion +0.07 → −0.18. The 19 reports take 2.5 s, against 14.7 s |
-| … The canvas reverses a premise → card link without saying so | Michael | `CanvasModel.connect_cards` swaps a premise → card link into card → premise. So "Fenwick is good → Archivist reading → Odette is evil" leaves only the Archivist reading under "Odette is evil" (Test juror ×1.1, doesn't support), while premise → premise plus card → premise gives ×2.7 (weak). Options: refuse the link and say why, or treat it as a condition ("given Fenwick is good, this reading points at Odette") |
-| … What the strength badge means under connections | Michael | **Decided (keep the badge, one "No new info" note) and built, #154 (results above).** The badge is the Test juror's likelihood ratio on the premise (×1.5 weak, ×3 moderate, ×10 strong): "is the argument sound". What moves NPCs under connections is the case's interaction beyond single values, scaled by credibility, so a strong badge can add nothing and a weak one can land well ("Fenwick is good": weak-ish, moved most listeners about 0.25 suspicion). Proposal: keep the badge as the soundness check and add a "what this adds for the town" indicator. Settle with the agreement-sets-hearing-weight link (presented cards are heard at the case's agreement) |
-| … The Test juror ignores answers and challenges | Michael | Answers ("Hollis is the Delusional one", "Isolde is the Seer's red herring") are scored as theory fit, never as evidence, and the juror doesn't apply challenges, grounded or not. On "Isolde is not the demon" (Agnes's Delusional reading + Hollis's Seer yes), six variants with and without answers and challenges all came out ×0.41 (argues against). The badge then can't show what a challenge would do |
-| … Linking a teller's claim | Michael | A reading's teller's claim card has to be linked by hand for the juror to count it; under connections the claim is context automatically. Proposal: link it automatically. **Also in 97626:** Nisha's Registrar reading "Kiran holds none of Night Watch, Clerk, Dowser" alone is ×1.26 (doesn't support), because the juror doesn't know Kiran claimed Dowser; next to his Dowser reading (which carries the claim) it multiplies the case by about ×11 |
-| … Playtest 97626: why Kiran's Dowser reading alone is "strong" | — | **Explained (Bailiff, Nov 13).** "0 evil among Jory, Odette, Edda, Nisha, Agnes" is itself unlikely to be true: with three evil among the other nine, an honest zero for a five-person group happens about 5% of the time (4 of 84 evil teams). So the reading points at a lying or broken Dowser. Alone it is ×11.7 on day 2 and ×27.5 by day 4, as the public record grows. Agnes's Surveyor claim plus the Town Hall "Surveyor or Dowser, not both" adds about ×3.8 on top (912 against 242), less than it reads, because it is a 50/50 between Agnes and Kiran until the Dowser reading tips it. Related: the backlog's "Dowser clearing strength" |
-| … An either/or premise | Michael | Michael's strongest argument was "one of Odette and Kiran is evil", but a nomination needs one name. Options: "suspicious" as the lower-bar vehicle, or an either/or premise judged as written that lets you nominate either name |
-| … A sound conclusion fades overnight | Michael | **Decided (buy-in) and built, #153 (results above).** Michael (Nov 13): a slower fade is probably the move, or a fade scaled by how much the listener bought the case, if that isn't hard. In 44542, "Fenwick is good" lost half its weight at dawn of day 2, and suspicion of Fenwick rebounded from about −0.18 to about +0.10 for Greta, Hollis, Jory and Kiran with nothing against it. (Isolde's Archivist reading, which names Fenwick as one of two Scion candidates, pushed the same way.) A slower fade (0.7) barely changed outcomes in the prototype |
-| … A good NPC hiding a gift lies about being home | Michael | Jory, the good Warden, told the player privately "Home all last night" (log: "Hiding (hidden Warden gift): lie outright rather than stonewall? yes (p=0.65)"). The player presented it with Greta's true Night Watch sighting, the night pairing read it as a lie, and the town hanged him 7–2 (suspicion of Jory, e.g. Nisha −0.36 → 0.43; the case's own connection was only 0.15–0.3 log-odds). Existing behaviour, made more decisive by connections. Option: a hiding gift-holder declines ("I'd rather not say") instead of inventing "home" |
-| … The Test juror's verdict on a case drops at a silencing | Bailiff | "Fenwick is good" (#39, same cards) is moderate ×4.4 through day 2, ×3.25 after Hollis's death at dawn of day 3, and ×0.95 (doesn't support) from the day 3 meeting, when Isolde is silenced. Nothing in the case changed, and its prior stays 0.70. Likely the silencing quirk from step 4 (a case with no cards reads every day card for "who was near each silencing"; a case with cards reads only its own), fixed for the connections baseline but not for the juror. To check |
-| The spoken reply to a later-day repeat | — | Polish. Re-presenting a faded case restores its weight, but the reply is today's code and may say the assessment is unchanged |
-| Cost with redone items counted | Lantern | **The cache is built (results above) and halves a game, but the bar is not met:** late presentations are 4–7 s and nights 11–21 s. Step 6. The prototype missed the strict bar, and step 4 is at 424 ms against today's 93 ms on seed 692 uncached. **Profiled on 44542 (#148):** repeats a per-listener cache would skip are 1.1 of 3.3 s (`present`), 2.8 of 5.4 s (`nominate`) and 1.4 of 1.9 s (`press role`). First-time sets (`gossip`, 2.6 of 3.9 s) need a cheaper judgement as well |
-| Declaration default and the bot's Hexer call | Michael, Bailiff | On hold (above) |
-| Sleepwalker self-doubt scaled by confidence | — | Backlog; 10% flat for now |
-| A reason citing a pairing the model didn't weigh | — | Polish, after end to end |
-| Adjudicating a muddled card | — | Later |
-| Brute kills scored as hexes on custom scripts | — | Later |
-
-## Owners
-
-- **Lantern:** Phase 6. Steps 1–4 are merged (#141, #144, #145, #146); the Why report and profiling are merged (#148); the stored-case rules (#150), caching (#151) and the buy-in fade (#153) are merged; the Workshop's "No new info" note (#154) and the "suspicious" pressure (#155) are open; next is a cheaper first-time judgement.
-- **Bailiff:** checks, golden and merges (#145, #146, #148 and Steward's maintenance #147 merged Nov 13); the Night Watch list fix when it's scheduled.
-- **Quill:** the challenge work is done (#132, #142). Next is whatever step 4's in-case challenges need.
-- **Tally:** paired cells once Phase 6 runs end to end.
+Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.

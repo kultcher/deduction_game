@@ -1,4 +1,4 @@
-## The read-everything gap (docs: Project claude/belief-model-direction-2026-11-10.md, Phase 0).
+## The read-everything gap (docs/belief_model.md, Phase 0).
 ## For real listener states, compares each good mind's P(evil) and P(Demon) under its
 ## bounded view against the same mind reading every held card (Reasoner.unlimited_cards),
 ## and attributes the largest gap to card kinds: each kind the bounded view left unread is

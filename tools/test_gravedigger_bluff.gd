@@ -1,5 +1,5 @@
 ## An evil Gravedigger's report on a hanged good person follows what the town believed
-## (Project doc belief-model-direction, Nov 11; playtest 30987: the evil Hollis vouched for
+## (docs/belief_model.md, Nov 11; playtest 30987: the evil Hollis vouched for
 ## the hanged Dorian, whom the town thought evil, and was hanged next).
 ##   - a near-unanimous hanging: usually "they were a Minion" (keeps the frame);
 ##   - a bare majority: usually confirm their claim, sometimes gamble on a frame;

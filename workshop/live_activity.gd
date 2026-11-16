@@ -1103,7 +1103,7 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 static func has_day_evidence(cards: Array) -> bool:
 	return cards.any(func(c): return c.get("kind", "") in ["watch_log", "location"])
 
-## The demon-type declaration (game/demon_declaration.gd; Project doc belief-model-direction,
+## The demon-type declaration (game/demon_declaration.gd; docs/belief_model.md,
 ## Phase 2) sets the town's mix: "walker" = no day demon, "hexer" = day demon only. It reaches
 ## the view as `declared_demon_type`; this static stands in for it in developer experiments
 ## (tools/measure_evidence.gd --declare), where it overrides the view's. Empty in play.

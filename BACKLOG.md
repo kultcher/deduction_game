@@ -6,6 +6,13 @@ presentation-only work (flavour, wording, visual flair) lives in
 [BACKLOG_POLISH.md](BACKLOG_POLISH.md); exploratory mechanics (new roles, places, ideas
 still being shaped) live in role_exploration.md.
 
+**State of play (Nov 16):** the connections belief model is on in play
+(`Tuning.Workshop.CONNECTIONS`; design and spec in [docs/belief_model.md](docs/belief_model.md)).
+The Nov 13 playtest triage is closed: what's left of it is in
+[section 5](#5-from-the-nov-13-playtest-triage-moved-nov-16), and the connections build's
+own open items are in [section 6](#6-the-connections-model-open-items). The full triage
+record is `docs/archive/playtest_triage_2026-11-13.md`.
+
 Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not chosen yet;
 **[watch]** = no change, keep an eye on it; **[tentative]** = proposal for later design or
 tuning review; **[knob]** = not planned, a balancing tool to reach for only if needed.
@@ -28,6 +35,11 @@ towns.
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
+Four known bugs move golden when fixed, so each needs a re-baseline in its PR (details in
+section 6): a sighter cut from the sighter contest by the two-sighter cap; an evil Medium's
+relay about the first victim naming night 0; a case with no cards answered from an older
+compile; a Night Watch list that wrongly names the listener clearing the rest of the watch.
+
 - **An evil walker's owned lie doesn't follow its disclosure.** (54875) A good walker who
   discloses after being caught out by a sighting now owns the earlier "home" story. An
   evil walker bluffing a walking gift should do the same when it discloses after the same
@@ -42,6 +54,10 @@ towns.
   day/phase shouldn't create redundant solo sighting cards. Suppress only the same
   player's same-person, same-location, same-phase duplicate; keep the talk relationship,
   independent witnesses and provenance. [decided]
+
+  Nov 13 (#152, triage 1.7) went the other way for seen talks: a talk you see now gives
+  three cards, each talker's own sighting and the talk. Check whether a same-phase visit
+  still makes duplicates before building this. [watch]
 
 - **A whereabouts contradiction gets an irrelevant gift refusal.** (78148, Kiran)
   Presenting "Kiran is suspicious" from alibi/vigil evidence produced "Whether I have a
@@ -102,8 +118,12 @@ towns.
   Measure with the bot A/B; check this doesn't let moderately supported wrong
   nominations through. [decided: direction; numbers open]
 
-  Built Nov 6 as premises steps 1–3 (PRs #92, #93, #95; `docs/premises_plan.md`). The
-  acceptance A/B is still to come.
+  Built Nov 6 as premises steps 1–3 (PRs #92, #93, #95; `docs/premises_plan.md`). Tally's
+  A/B (Nov 7) found no outcome change. Under the connections model (in play since Nov 16)
+  the premise type changes what's asked, not how cards are weighed, and people a case
+  doesn't touch don't move by construction. Presented cards are still heard at the case's
+  agreement (Michael, Nov 13, triage 5.3: keep it), so a weaker framing of the same facts
+  lands weaker. [watch]
 
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later
   breath-stolen should add a little suspicion, enough to reward noticing it, without the
@@ -112,6 +132,10 @@ towns.
   were there (a deliberate exception to "NPCs only know what they can see"); (b) a
   presentable "town comings and goings" card sharing the player's sightings of the day at
   once. [decided: add; option open]
+
+  Since Nov 10 the judge weighs "who was near each silencing" itself
+  (`DayPresence.breath_factor`), and since #157 (Nov 14) it assumes a Breathstealer that
+  hunts. Check what's still missing for the player before choosing an option.
 
 - **Say what a card is offered for.** (54875) Collateral from a sighting card lands on
   everyone it places. Let the player say what a card is offered for ("about Constance's
@@ -203,7 +227,9 @@ towns.
 
 - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
   pairing with a good person only works if real Lovers sometimes leave each other out to
-  dry. [open]
+  dry. **If evil ever fakes a Lovers confession**, `Solver.lovers_needs` (and its use in
+  `Solver._solve` and `CaseEval._compile_impl`) must stop treating a confession as proof.
+  [open]
 
 - **Follow-up after a false alibi is established.** The good NPC's first response can
   concede "Fine, I was out. Doesn't mean I was doing anything wrong." Later: pressure
@@ -219,7 +245,11 @@ towns.
   amounts open]
 
 - **Secret awareness and bluffing.** Lovers' confessions carry a usable secret type and
-  can explain night movement. Decide whether holders know they're Marked, how one asks
+  can explain night movement. Since #162 (triage 5.9) a Lovers confession also names the
+  partner, and the solver treats it as proof of both, because evil never fakes one
+  (`Solver.lovers_needs`). Triage 5.8 belongs here too: presenting a card about someone's
+  secret to that person got Lian to disclose her gift. Michael: to an individual, present
+  either a case or a card with a defined interaction. Decide whether holders know they're Marked, how one asks
   about it, and how evil can claim it too. Keep these as attributed claims, not alignment
   confirmations. (61251/25923) [open]
 
@@ -415,10 +445,15 @@ Candidates for a unified retuning proposal, not approved changes.
 ### Performance
 
 - **Late-game meeting and presenting cost.** Budget (user's machine): meeting entry and
-  presenting about 2 s or less, nominations under 1 s. The meeting streams speaker by
-  speaker and the solver kernel now runs in C#, which changed every earlier measurement.
-  Re-measure on the 54875 replay and a late-game probe (seed 42, Days 3–4), then decide
-  whether vote rounds, presenting and dawn still need work. A background thread would
+  presenting about 2 s or less, nominations under 1 s. The connections model costs more
+  per refresh than the earlier one, and its per-listener cache (#151) only halves it.
+  Lantern's profile of playtests 44542 and 97626 (Nov 14): late presentations 4–7 s,
+  nights 11–21 s. What remains is sets judged for the first time (new cards, and
+  everything at dawn), at 9–25 ms each with no single dominant part. Ideas, not built:
+  judge single cards for all listeners from one world table a day; spread dawn's refreshes
+  over the night screen; skip core tests whose cards and seed didn't change.
+  `tools/replay_log.gd --time` and `--profile` show what each command cost. A background
+  thread would
   need a thread-safety pass over the solver's static caches first. Port
   `workshop/reason_attribution.gd` to C# (slice C4) only if profiling shows attribution
   above about 150 ms in late meetings. [open]
@@ -512,15 +547,28 @@ Candidates for a unified retuning proposal, not approved changes.
   silence (a vow, a sore throat), and an optional silence that may skip days. (96773,
   Oct 19) [open]
 
+  **Measured Nov 14–15** (Tally's sweep and Bailiff's mocks;
+  `docs/archive/project-docs/inert-breathstealer-sweep-2026-11-15.md`): Breathstealer deals
+  favour good by 18–32 points over other deals, and the hunt (#157, silencing on about 90%
+  of days) didn't change that. A Minion with no ability at all does 10–19 points *better*
+  for evil than the Breathstealer. At 10 NPCs the "silenced, so likely good" factor
+  (`PublicEvidence.factors`, ×0.66 on the odds) is about 40–45% of that gap; at 7 almost
+  none. A remote Breathstealer that leaves no trail is hanged as rarely as an inert one but
+  still loses about as often as the hunting one; silences that last until it dies barely
+  help evil. Hunch: a silenced person keeps their vote and has usually spread what they
+  knew already, so taking a voice costs good little. Not run: the remote and lasting
+  versions in passive cells. No decision yet.
+
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
   Lovers' relationship mods, including the Lovers downside (when one dies, the other
   withdraws visibly). [open; Lovers downside decided]
 
-- **Roster expansion.** Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
+- **Roster expansion.** Lantern's shortlist from the Clocktower passes (ideas only):
+  `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
   Registrar, Psychologist, Monitor, Confessor, Sexton and the Brute. Still to come: On Deck
   gifts (Tracker, Clairvoyant, Beckon, Tallyman, Bellringer, Bellwether…), minions
-  (Framer/Forger with evidence planting, Blackmailer, Hexer with two cursed townsfolk at
-  once, Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
+  (Framer/Forger with evidence planting, Blackmailer, a two-curse Minion (once
+  called the Hexer; that name now belongs to the day-killing Demon), Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
   Mesmerize, a daytime "rouse"). Bellwether, the Sower and Dusk Compulsion come from the
   Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
   yet. Each needs a hint package and solver support before it goes live. [open]
@@ -529,16 +577,21 @@ Candidates for a unified retuning proposal, not approved changes.
   - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
     solver's demon-type mix); steps 2 and 3 (daytime presence and the Hexer, experimental)
     merged with #111, and the player's demon-type declaration with #131
-    (`docs/demon_types_plan.md`).
+    (`docs/demon_types_plan.md`). The Hexer stays experimental. On hold until Michael's
+    playtests: the declaration's default and the bot's Hexer call (it calls a Hexer right
+    only 54% of the time; every miss is "walker").
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
     roster outgrows one script.
   - **Remember the last script** between runs (session-only now).
 
   [decided]
 
-- **A demon that kills during the day** (user concept, Oct 23). Protection evidence must
-  then be re-weighed: a quiet night no longer means the night attack was stopped, and
-  night evidence generally loses weight while this demon may be in play. [open]
+- **A demon that kills during the day** (user concept, Oct 23). Built as the Hexer
+  (`sim/roles/daykiller.gd`, experimental; #111, Nov 10), with the player's declaration
+  (#131). Its day evidence is weak in passive play: triage 4.6 (Nov 16) found no lean
+  away from the true Hexer on current main, but nobody sees the Hexer at the hexed place
+  either, so the day connection barely tells it apart. Player day logs are what would
+  strengthen it. [watch]
 
 - **The demon lures a victim elsewhere** (user idea, Oct 23): once per case, or under a
   condition, the kill happens somewhere other than the victim's cottage. "Found dead at
@@ -574,8 +627,10 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Larger towns (12–15):** only after the core loop works at 7/10. [watch]
 
-- **NPC memory and recency bias.** (Random ideas) [in progress: attention-level recency on main (PR #96, Nov 9),
-  `docs/premises_plan.md` "Recency as built", including NPCs' spoken reasons and how evil steers the topic; diverting attention waits on the saturation call]
+- **NPC memory and recency bias.** (Random ideas) Attention-level recency is on main (PR
+  #96, Nov 9; `docs/premises_plan.md` "Recency as built"). Under the connections model
+  attention and recency pick only what an NPC cites and explains, not what it believes.
+  [open]
 
 - **Dead NPCs:** no ghost votes for now; keep the door open (a final-day Séance vote).
   [watch]
@@ -603,11 +658,9 @@ Workshop and the shared model can't express yet.
   the reader's home (the Poisoner's visit); a totem found and the people who live where
   its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
 
-- **Breathstealer by presence:** over several silencings, the one person present each
-  time. (96773: Bartholomew was nearby for each.) Built on `claude/day-presence` (demon
-  types step 2), held with the day-killer: a joint CaseEval factor over the presence
-  table, replacing the hub's one-day incident. The Breathstealer decision (does silence
-  prove the victim good?) is still open and separate. [built, merged with #111 on Nov 10]
+- **Breathstealer by presence:** built (#111, Nov 10; a joint factor over the presence
+  table), and since #157 (Nov 14) it assumes the Breathstealer hunts. The Breathstealer
+  decision (does silence prove the victim good?) is still open, in section 4.
 
 - **Night companions of the proven evil:** out on the same block on the same nights as
   someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1
@@ -628,6 +681,92 @@ Workshop and the shared model can't express yet.
 
 - **Protection + quiet night + sighting** (54875): a kept ward or a Warden claim, a quiet
   night and a sighting near the guarded door, argued as one chain.
+
+## 5. From the Nov 13 playtest triage (moved Nov 16)
+
+Everything decided in the triage was built in #149–#162; the record, with the small calls
+made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These were left:
+
+- **An NPC defender's challenge isn't stored as a case** (triage 4.5; step 4). With the
+  connections model, a defender's challenge keeps today's small floor under the challenged
+  teller and does nothing else, so NPC defences barely move belief. Storing the defence as
+  a case of its own (the defender's cited cards and challenge, weighted by trust in the
+  defender, fading) would make the meeting symmetric: defences start to work for good and
+  evil alike, and a trusted evil defender can blunt a true reading. Separately, NPC
+  defences should cite exonerating evidence the way accusers cite incriminating evidence;
+  that may be a dialogue-level change. Needs a paired sweep cell before deciding.
+  **[deferred, Michael, Nov 13: promising, after the connections build]**
+- **Presenting a card to one NPC** (triage 5.8): see "Secret awareness and bluffing" in
+  section 2. **[design]**
+- **A bluffer's frame memory** (triage section 6). The scapegoat is one team-wide choice
+  (`evil_plan.scapegoat`), reconsidered each morning with a bonus for keeping it. A
+  bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
+  readings can drift away from the frame. Proposal: a bluffer's later readings stay
+  consistent with the people its earlier ones implicated, unless the team has switched
+  scapegoat and the old reading no longer matters. **[open]**
+- **One pass over every bluffer** for the "too clean when an ally is involved" tell that
+  gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
+  guidelines: within about 1 of the truth, the group size setting the room). For
+  comparison, the Surveyor frames the scapegoat's block 60% of the time, clears a
+  teammate's block half the rest, or picks at random; the Seer never gives a "no" that
+  covers the scapegoat. **[open]**
+- **The Demon "before/after" premise for the Scion transfer** (triage 1.6). The alignment
+  part was done in #149: the curse "When" field shows only on is evil / suspicious /
+  good. The Scion part is new work: a premise time option that means "before / after
+  the Scion rose". **[decided: direction]**
+- **The Test juror reporting a condition separately** (triage 5.1, the full version). #159
+  built the cheap version: a premise → card link means "this card's line runs through that
+  premise", labelled "given <premise>". The full version would have the juror say "if
+  Fenwick is good, this is strong; Fenwick is good is moderate", which needs new juror
+  machinery. **[later]**
+- **The "No new info" note's limits** (triage 5.2, #154): a bigger case on a later day
+  that replaces an earlier one gets no note even if its extra cards add little; "Adds no
+  new belief, but still presses X" shows only from 0.15 pressure; the "settled" note has
+  no test (the fixture has no settled person). **[watch]**
+- **Lian's stonewall after "let me tell you in my own words"** (triage 2.7): struck by
+  Michael on Nov 16. The line isn't in the code as quoted, so it may have changed already;
+  revisit if it turns up again.
+
+## 6. The connections model: open items
+
+From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
+
+- **A Night Watch list that wrongly names the listener.** Each name is scored as an
+  independent slip, so keeping the list cleared the rest of the watch (−0.36).
+  `SourceDoubt` still voids that night's list. Fix: a list that's wrong about the listener
+  is suspect as a whole. Moves golden. **[decided: fix]**
+- **A relayer cut from the sighter contest by the two-sighter cap** (Lantern, Nov 13).
+  Sighters of a person are ranked by how many sightings they told, then by town order, and
+  only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
+  an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
+  word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
+  barely with all cards. Moves golden. **[open]**
+- **An evil Medium's relay about the first victim names night 0** (Lantern, Nov 13). The
+  bluff says the dead saw the scapegoat out "on their last night"; for the first victim
+  that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
+  its target. Moves golden. **[open]**
+- **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
+  a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
+  doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[open]**
+- **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
+  the time on honest mistakes; to a listener an honest mistake and a lie are the same
+  cards, so no rule separates them. It would need evidence that does (the teller's
+  history, signs of poisoning). **[open; Michael]**
+- **Whole reversals against the earlier model's beliefs.** Greta on Odette (seed 929,
+  0.88 → 0.04) is traced: the earlier model's attention left out the two cards that clear
+  Odette. The others, and day 3 of the same game going the other way, aren't. **[watch]**
+- **Cost:** see "Late-game meeting and presenting cost" in section 2. **[open]**
+- **The spoken reply to a later-day repeat.** Re-presenting a faded case restores its
+  weight, but the reply may still say the assessment is unchanged. **[polish]**
+- **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
+  connections model what is believed, so a reason can name cards the belief didn't combine.
+  **[polish]**
+- **Sleepwalker self-doubt scaled by confidence** (10% flat for now,
+  `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
+- **Adjudicating a muddled card** (the Muddler secret). **[later]**
+- **Brute kills scored as hexes on custom scripts.** **[later]**
+- **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
+  listener shows up as a problem in play (Nov 11). **[watch]**
 
 ## Closed
 

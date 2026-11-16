@@ -1,4 +1,4 @@
-## The demon-type declaration (Project doc belief-model-direction, Phase 2): the player tells
+## The demon-type declaration (docs/belief_model.md, Phase 2): the player tells
 ## the town which kind of Demon it faces, "walker" (walks at night to kill) or "hexer" (marks
 ## by day, kills without walking). It's the Demonologist's expertise, so NPCs don't judge it:
 ## the whole town weighs evidence as if it were true (LiveActivity.day_demon_share).
