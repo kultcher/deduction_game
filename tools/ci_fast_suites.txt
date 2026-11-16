@@ -58,3 +58,4 @@ test_connections_cases
 test_connections_why
 test_connections_cache
 test_juror_claims
+test_town_note
