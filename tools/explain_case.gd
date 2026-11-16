@@ -61,6 +61,7 @@ func _init():
 				card_n = int(args[i + 1]); i += 1
 			"--connections":
 				preload("res://workshop/connections.gd").enabled = true
+				Replay.model_override = 1
 			"--at":
 				at = int(args[i + 1]); i += 1
 			"--drop":

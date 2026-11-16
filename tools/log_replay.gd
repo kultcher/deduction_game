@@ -7,6 +7,9 @@ const Canvas = preload("res://game/workshop_canvas.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Connections = preload("res://workshop/connections.gd")
 
+## A tool's explicit belief-model choice for the replay: -1 the log's own, 0 off, 1 on.
+static var model_override: int = -1
+
 static func load_events(path: String) -> Array:
 	var events: Array = []
 	for l in FileAccess.get_file_as_string(path).split("\n"):
@@ -27,11 +30,16 @@ static func new_game(events: Array):
 		print("NOTE: this log was played on commit %s; this checkout is %s. To replay it exactly: git worktree add ../replay_%s %s" % [logged.substr(0, 12), here.substr(0, 12), logged.substr(0, 7), logged.substr(0, 12)])
 	elif logged == "" or logged == "dev":
 		print("NOTE: this log doesn't record its commit (logs before Nov 6); if the replay diverges, replay it on the commit it was played on.")
-	# A log played with the connections belief model on says so (sim/world.gd, case_start);
-	# a tool's --connections does the same for logs from before it was recorded.
-	if setup.data.get("connections", false) and not Connections.enabled:
-		Connections.enabled = true
-		print("NOTE: this log was played with the connections model on; it is on for this replay.")
+	# A log played with the connections belief model on says so (sim/world.gd, case_start), and
+	# one without the field was played with it off (the earlier model, or --legacy-model since
+	# it went on by default, Nov 16): the replay uses the recorded model (Codex on #160). A
+	# tool's explicit choice (`model_override`: replay_log --connections, for logs from before
+	# the field was recorded) wins.
+	var recorded: bool = bool(setup.data.get("connections", false))
+	var use: bool = recorded if model_override < 0 else model_override == 1
+	if use != Connections.enabled:
+		Connections.enabled = use
+		print("NOTE: this log was played with the connections model %s; it is %s for this replay." % ["on" if recorded else "off", "on" if use else "off"])
 	var script = null
 	for e in events:
 		if e.type == "case_script":

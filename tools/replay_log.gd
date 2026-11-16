@@ -41,6 +41,7 @@ func _init():
 				why = true
 			"--connections":
 				Connections.enabled = true
+				Replay.model_override = 1
 			"--time":
 				timed = true
 			"--profile":
