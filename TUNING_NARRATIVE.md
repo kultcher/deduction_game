@@ -4,9 +4,13 @@ A plain-English account of how Demonologist's social and evidence systems work a
 on each other. It replaces the October 20 narrative, which described the legacy belief
 system (templates, ledger effects, honesty discounts) retired between Nov 1 and Nov 3.
 
-**Checked against** `main` at `e54c2fd` (Nov 4, 2026). The numbers come from
-`sim/tuning.gd`, where every tuning value lives; [tuning_catalogue.md](tuning_catalogue.md)
-says where each one is used in code. When the two disagree, `sim/tuning.gd` is right.
+**Checked against** `main` at `e54c2fd` (Nov 4, 2026), with the belief model (sections 4
+and 6) rewritten on Nov 16 for the connections model, which is on in play from that day,
+and the Nov 13–16 behaviour changes folded in where they touch this text (the
+Breathstealer's hunt, the Hexer, the approach scene, the Dowser bluff, the kill score).
+Other numbers weren't re-checked line by line. They come from `sim/tuning.gd`, where every
+tuning value lives; [tuning_catalogue.md](tuning_catalogue.md) says where each one is used
+in code. When the two disagree, `sim/tuning.gd` is right.
 
 **Reading the numbers.** Throughout, **low / mid / high** for a trait means **0.2 / 0.5 /
 0.8**. Suspicion, rapport and trust are internal scales, not probabilities: a suspicion of
@@ -25,8 +29,9 @@ baseline:
 - **Gossip** governs passing on information about others: sightings, opinions, rumours.
 - **Confidence** decides how hard they defend a hunch, how readily they nominate and vote,
   and whether they lie boldly or stonewall when cornered.
-- **Insight** decides how much of what they hold they actually think about, and how far a
-  strong-sounding headline sways them.
+- **Insight** decides how much of what they hold they cite and explain when they give
+  reasons. (In the earlier belief model it also limited what they believed; see
+  section 4.)
 - **Composure** hides their feelings and nerves, and damps pressure, fear and the dread of
   mounting deaths.
 
@@ -149,8 +154,42 @@ about relationships: a friend at trust 0.75 starts at about 0.7× the neutral od
 at 0.25 about 1.4×. So the same evidence lands a little softer on friends and harder on
 rivals, which is human, and it's the main way relationships colour reasoning.
 
-Out of this comes a **posterior** for every person: how likely they are evil, given
-everything this NPC holds.
+Out of this comes a chance for every person of being evil. Which cards are judged
+together to get it is the connections model's job (next).
+
+### Weighing together: the connections model
+
+Since Nov 16 an NPC doesn't run the judge once over everything it holds. It works out its
+chances in pieces (`workshop/connections.gd`; the full design is `docs/belief_model.md`):
+
+- **Every card counts alone,** at the value it has by itself. Nothing an NPC holds is ever
+  out of view. Claims, confessed secrets and profile cards are context: they explain other
+  cards without tying them together.
+- **Some cards are always read with a partner,** because that's how they're read: a
+  night's sightings, alibis, Night Watch reports and Lamplighter counts together; an Augur
+  reading with that day's sightings; a Psychologist reading with its two statements; a
+  trace with the profile cards.
+- **Its own knowledge is the core.** Its own readings (and the night holding its own watch
+  or lamp round, or a night someone wrongly claimed to see it out) are weighed together
+  with any card that is worth at least 0.4 log-odds more next to them than apart. That's
+  how an NPC catches a lie against what it knows firsthand, the day it hears it. The core
+  is rebuilt each dawn, and what its own readings prove alone stays proved.
+- **Arguments it has heard are stored cases.** Each presented case (yours, or the cards an
+  NPC nominator cited) is weighed as a set, scaled by the listener's trust in whoever made
+  it. It fades each day: by half if it barely moved them, by only a tenth if it moved them
+  a lot (0.7 log-odds or more), and stops counting under 0.05. Presenting it again brings
+  it back to full. A case that holds every card of an older one of yours replaces it;
+  otherwise cards already in one of your stored cases add nothing the second time.
+- **Adding up:** each card counts once and each set adds only what its cards say together
+  beyond their single values. Then one shift for everyone so the chances add up to the
+  number of evil in the town: "Agnes for sure, then Bart or Constance", never four people
+  at 70% in a town with two evil.
+- **The declaration** (section 8) changes how movement is read: with none, each night
+  alone; "walker", all nights as one story; "Hexer", each night alone plus the Hexer's day
+  evidence.
+
+So a town connects little by itself: most of what the player adds is putting cards
+together for them. NPCs still read every card, and their own readings still bite.
 
 ### From posterior to suspicion
 
@@ -164,24 +203,23 @@ The change in suspicion is the shift from prior to posterior, scaled down and pe
    middling trust, up to 1.5× at full trust. Records (a death, a trace, the Town Hall)
    come through at the full 1.5×.
 4. **Directional Confidence** (below).
-5. **A headline nudge for the less sharp** (below).
+
+(The earlier model also had a headline nudge for the less sharp; it's off under
+connections.)
 
 A refresh with no new evidence changes nothing, and two NPCs accusing each other can't
 spiral: everything is recomputed from the receipts each time, not added on top.
 
-### Insight: how much they think about
+### Insight: how much they cite
 
-Insight sets an **attention budget**. A low-Insight NPC (below 0.34) weighs at most 4
-cards and tests 3 rival explanations; a middling one 8 cards and 9 rivals; a sharp one
-(0.67 and up) 12 cards, 27 rivals, and checks the whole picture. Cards outside the budget
-don't count for that NPC.
+Insight sets an **attention budget** for reasons: a low-Insight NPC (below 0.34) cites
+from at most 4 cards, a middling one 8, a sharp one 12. Under the connections model this
+decides only what an NPC can explain and cite, not what it believes.
 
-Duller NPCs also **take strong readings at their word**. "One of Kiran or Fenwick is the
-Demon" sounds like a coin flip between two people; the full model may say "or the red
-herring, or a poisoned Seer". A listener at Insight 0 moves all the way to the headline
-reading when it's stronger than the model's verdict; at Insight 0.5, halfway; at 1, not at
-all. This only ever raises suspicion, never lowers it. It's why a fake Seer "yes" hits a
-gullible town hard.
+In the earlier model (`--legacy-model`) the budget also limited belief: cards outside it
+didn't count for that NPC, and duller NPCs took strong readings at their word ("one of
+Kiran or Fenwick is the Demon", when the full model would add "or the red herring, or a
+poisoned Seer"). That's why a fake Seer "yes" used to hit a gullible town hard.
 
 ### Confidence: defending a hunch
 
@@ -255,20 +293,29 @@ Tavern rumours can't be used: they have no source to weigh.
 
 ### What presenting does
 
-Presenting hands the case's cards to the listener as receipts, then the listener's beliefs
-are refreshed over **everything they now hold**, not just the case. Separately, a **scoped
+Presenting hands the case's cards to the listener (a card they didn't hold becomes theirs,
+at the case's agreement, so a weaker framing of the same facts lands weaker), then stores
+the case as a set they weigh together at every refresh (section 4). Separately, a **scoped
 reply** reads just the case to decide what they say about it.
 
-Two consequences matter for play:
+What matters for play:
 
+- **What a case adds is the connection.** Cards the listener already held count anyway;
+  the case adds what they say *together*, scaled by trust in you, fading over the days.
+  So a case of public cards the town already connected adds little, and the Workshop
+  says so ("No new info").
 - **Replies match beliefs.** The stance they voice comes from how far the refresh actually
-  moved the subject (0.06 or more: they accept; 0.02: partly; less: they reject). The
-  scoped reply only supplies the reasons. So "That makes sense to me" means their belief
-  really moved.
+  moved the subject (0.06 or more: they accept; 0.02: partly; less: they reject), and not
+  in a direction the belief didn't go. The scoped reply only supplies the reasons.
 - **The premise doesn't steer the belief.** If your case says "Isolde is evil" but the
-  cards point at Dorian, the refresh raises Dorian, because it reads the evidence, not your
-  framing. The preview's collateral warning ("this mostly raises suspicion of Dorian") is
-  there for this. Making the premise matter is on the backlog.
+  cards point at Dorian, Dorian rises, because it reads the evidence, not your framing.
+  People the case doesn't touch don't move at all. The preview's collateral warning ("this
+  mostly raises suspicion of Dorian") is there for this.
+- **"Suspicious" presses.** A "suspicious" case counts at half weight, but it puts
+  pressure on its subject by how far its cards lift them for the average listener: about
+  0.3 at a meeting for one basic incriminating reading, up to 0.5 (half that in private),
+  once per filing. With a nomination on top (+0.4) that reaches the point where someone
+  hiding a gift breaks.
 
 Re-presenting evidence they already hold adds nothing: the receipts are the same. Citing a
 case or card that's already public is free, and says so.
@@ -395,6 +442,13 @@ reveal a gift to save themselves (they don't need to).
 
 ---
 
+### The demon-type declaration
+
+On a script with both the walking Demon and the Hexer, you may tell the town which it
+faces (`declare walker` / `declare hexer`, once a day). NPCs don't judge it: they read the
+evidence as if it were true (section 4). The first call is free; each change costs 0.1
+credibility with everyone. A script with one kind starts declared.
+
 ## 9. Nominations and votes: the action layer
 
 Belief isn't action. When NPCs nominate or vote, three things are added to suspicion:
@@ -496,7 +550,8 @@ haven't learned. They arrive as rumour cards: a lead, not evidence.
 
 At the start of some phases (40% chance) an NPC may come to you: with news (if they trust
 you 0.5+), a busybody with gossip (Gossip 0.6+), a fearful NPC wanting protection, or evil
-with a frame or a probe. Accepting costs the phase.
+with a frame or a probe. Accepting costs the phase. Someone you've just talked with
+doesn't approach you the next phase.
 
 ---
 
@@ -558,6 +613,17 @@ matters between close candidates, and 3% of nights the Demon skips its top three
 Warden when the Demon is going for someone prominent (+2.5), and avoids a promised vigil
 block (−4.5).
 
+**The Breathstealer** (by day) hunts until it has silenced someone that day: in a free
+phase it goes to its preferred target's workplace (60%), or where the good people it could
+silence are working, or the tavern in the evening. It silences on about 90% of days. The
+town reads "who was near each silencing" from the presence record, and a silenced person
+is a little likelier good (×0.66 on the odds).
+
+**The Hexer** (an experimental Demon) never walks at night. It hexes a public place it's
+standing in once a day, likelier as the day goes on, at busy places with threats, less at
+its own workplace or when you're watching with fewer than three others about, and very
+likely by the evening. That night one good regular of the place dies.
+
 ---
 
 ## 12. Movement and physical evidence
@@ -604,11 +670,13 @@ materials, sometimes (12%) a personal item that puts its owner out that night.
 These are the places where small numbers compound:
 
 1. **Night sightings.** One sighting of a non-walker on a kill night is a big ratio, and
-   Insight-light listeners take it near face value. Hidden night walkers (an unclaimed
-   Lamplighter, Warden or Sleepwalker) get hanged for it.
-2. **Fake Seer yeses and the headline nudge.** The full model hedges a "yes" with the red
-   herring and poison; duller listeners don't. A confident, public fake Seer can steer a
-   low-Insight town.
+   a night's cards are always read together. Hidden night walkers (an unclaimed
+   Lamplighter, Warden or Sleepwalker) get hanged for it. With both demon types on the
+   script and no declaration, each night is read alone, so sightings carry less.
+2. **What the town connects for itself.** Under connections an NPC weighs together only
+   its own knowledge and what bears on it, plus the cases it's heard. Everything else the
+   player has to put together, so a case that combines public cards is where the
+   player's edge lies.
 3. **Agreement versus action.** Belief moves in small steps (0.45 × shift, trust-scaled),
    while the vote need sits around 0.45–0.6. A town can agree with a case for days and
    never hang anyone. Execution priority and late urgency narrow the gap.
