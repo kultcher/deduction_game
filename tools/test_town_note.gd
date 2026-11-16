@@ -155,6 +155,8 @@ func _notes() -> void:
 	_conflict_quotes()
 	_conflict_draft()
 	_supersets()
+	_spent_pressure()
+	_press_from_posterior()
 	Connections.enabled = false
 
 
@@ -311,3 +313,44 @@ func _supersets() -> void:
 	h.public_presentations[big] = int(h.w.day)
 	h.w.day += 40  # (a case the town bought fades slowly: 8 days on it still counts)
 	check(_kind(h, _value(h, "evil", q[3].id, [s2, d2])) != "repeat", "a smaller case long after the larger one faded out isn't a repeat (%s)" % _kind(h, _value(h, "evil", q[3].id, [s2, d2])))
+
+
+## Codex on #155: a "suspicious" filing presses once, from its first hearing; after a meeting
+## heard it, the same case again presses no one, so it's a plain repeat.
+func _spent_pressure() -> void:
+	var g = _game()
+	var p: Array = g.w.npcs
+	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
+	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
+	g.public_citations[seer] = true
+	g.public_citations[dowser] = true
+	var target: String = ""
+	var value: Dictionary = {}
+	for q in p:
+		var v: Dictionary = _value(g, "suspicious", q.id, [seer, dowser])
+		var filed: int = Live.file(g, v)
+		g.public_presentations[filed] = int(g.w.day)
+		if _kind(g, v) == "presses":
+			target = q.id
+			value = v
+			break
+		g.public_presentations.erase(filed)
+	check(target != "", "(fixture) a suspicious repeat that still presses someone")
+	if target == "":
+		return
+	var roots: Dictionary = Live.supports(g, value)
+	var ids: Array = roots.numbers.duplicate()
+	ids.sort()
+	g.w.suspicious_pressure[target + "|" + ",".join(PackedStringArray(ids))] = {"sum": 0.1, "count": 3, "applied": 0.3, "venue": "meeting", "heard": []}
+	check(_kind(g, value) == "repeat", "once a meeting has heard the filing, it presses no one again: a plain repeat (%s)" % _kind(g, value))
+	g.w.suspicious_pressure[target + "|" + ",".join(PackedStringArray(ids))] = {"sum": 0.1, "count": 1, "applied": 0.1, "venue": "private", "heard": [p[1].id]}
+	check(_kind(g, value) == "repeat", "so does a private first hearing: a meeting gets no pressure after it (%s)" % _kind(g, value))
+
+
+## Codex on #155: the "still presses" preview starts from what the neutral listener holds now,
+## not the no-card baseline; a subject the other cards already settle can't be pressed.
+func _press_from_posterior() -> void:
+	var points: Dictionary = {"t": 1.5}
+	check(Live._would_press({}, {"points": points}, "t", {"t": 0.3, "a": 0.3, "b": 0.3}), "a subject in question is pressed by points that point at them")
+	check(not Live._would_press({}, {"points": points}, "t", {"t": 0.999, "a": 0.3, "b": 0.3}), "one the other cards already settle isn't")
+	check(not Live._would_press({}, {"points": {"t": 0.01}}, "t", {"t": 0.3, "a": 0.3, "b": 0.3}), "nor by points too small to press")

@@ -794,15 +794,6 @@ static func case_weight(listener: Dictionary, cs: Dictionary, day: int, fade: fl
 	return w
 
 
-## The weight a "suspicious" premise holds back from a case (the half it isn't heard at), 0
-## for any other premise. What the case would add at this weight is what presses its
-## subject to explain (game/workshop_presentation.gd).
-static func case_withheld(listener: Dictionary, cs: Dictionary, day: int, fade: float = CASE_FADE) -> float:
-	if not cs.get("suspicious", false):
-		return 0.0
-	return presenter_trust(listener, str(cs.get("presenter", ""))) * pow(fade, maxi(0, day - int(cs.get("day", day)))) * (1.0 - Tuning.Workshop.SUSPICIOUS_HEARING)
-
-
 ## The store rule for an NPC nominator's cases (the player's presentations keep their own
 ## store): a case from the same presenter with the same premise and target replaces the
 ## earlier one, and one too old to count at any trust is dropped.
@@ -864,7 +855,7 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 			continue
 		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
 			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
-			"suspicious": bool(cs.get("suspicious", false)), "withheld": case_withheld(listener, cs, day, fade)})
+			"suspicious": bool(cs.get("suspicious", false))})
 	# Oldest first, so a later entry is a later case.
 	var kept: Array = []
 	for i in range(out.size()):
@@ -987,6 +978,21 @@ static func interaction(run: Dictionary, by_key: Dictionary, values: Dictionary,
 	return {"lean": out, "impossible": false, "results": together.results, "cards": ids.size()}
 
 
+## What a set of cards says about everyone, read together by themselves: their own
+## values and what they add together (interaction() is this without the own values).
+## Returns {"lean": {id: log-odds}, "impossible"}.
+static func points(run: Dictionary, by_key: Dictionary, keys: Array, extra: Array = [], challenges: Dictionary = {}) -> Dictionary:
+	var set_: Dictionary = pool(keys.map(func(k): return by_key[k]))
+	var ids: Array = _union(extra.filter(func(id): return id not in set_.ids), set_.ids)
+	var outside: Array = set_.ctx.filter(func(c): return c not in ids)
+	var together: Dictionary = lean_challenged(run, _union(ids, outside), challenges)
+	var context: Dictionary = lean(run, outside)
+	var out: Dictionary = {}
+	for p in run.others:
+		out[p] = float(together.lean.get(p, 0.0)) - float(context.lean.get(p, 0.0))
+	return {"lean": out, "impossible": bool(together.impossible) or bool(context.impossible)}
+
+
 ## The rules for what one stored case adds, as joint sets to weigh: the case adds
 ## (its weight times) the sum of sign x interaction(keys, extra, challenges) over `terms`.
 ## - A case that shares an item with the set the core judges together is judged with it,
@@ -1051,8 +1057,8 @@ static func buy_in_rate(run: Dictionary, by_key: Dictionary, values: Dictionary,
 ## Returns {"lean": {id: log-odds added}, "entries": [{"key", "presenter", "day", "weight",
 ## "merged": judged with the core, "cards": how many were judged together, "shared": how
 ## many of its items an earlier case of the presenter's already held, "replaces": the keys
-## of the earlier cases it took the place of, "lean": what this case added, "withheld": for
-## a "suspicious" case, what its held-back half would add standing alone}], "floors": [a
+## of the earlier cases it took the place of, "lean": what this case added, "points": for
+## a "suspicious" case, what its cards say read by themselves (points())}], "floors": [a
 ## challenge's assessment with its case's "weight" and "case"], "challenged":
 ## challenged_ids(case_list)}.
 static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Dictionary, case_list: Array, day: int) -> Dictionary:
@@ -1093,16 +1099,16 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 				if not is_zero_approx(x):
 					entry.lean[p] = x
 					total[p] = float(total.get(p, 0.0)) + x
-		if float(cs.withheld) > 0.0 and not impossible:
-			# What a "suspicious" case would add with its held-back half, standing alone,
-			# whatever an earlier case already holds of its cards.
-			var alone: Dictionary = interaction(run, by_key, values, cs.keys, cs.extra, cs.challenges)
-			if not alone.impossible:
-				entry["withheld"] = {}
+		if cs.suspicious:
+			# What a "suspicious" case's cards say, alone and together, read by themselves:
+			# what presses its subject to explain (game/workshop_presentation.gd), whatever
+			# weight the case counts at and whatever an earlier case holds of its cards.
+			var says: Dictionary = points(run, by_key, cs.keys, cs.extra, cs.challenges)
+			if not says.impossible:
+				entry["points"] = {}
 				for p in run.others:
-					var x: float = float(cs.withheld) * float(alone.lean[p])
-					if not is_zero_approx(x):
-						entry.withheld[p] = x
+					if not is_zero_approx(float(says.lean[p])):
+						entry.points[p] = float(says.lean[p])
 		for result in results:
 			if cs.challenges.has(result.card):
 				var floor_entry: Dictionary = result.duplicate()
