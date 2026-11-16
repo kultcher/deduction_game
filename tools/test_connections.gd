@@ -31,7 +31,7 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
-	check(not Tuning.Workshop.CONNECTIONS, "the model is off in Tuning")
+	check(Tuning.Workshop.CONNECTIONS, "the model is on in Tuning (since Nov 16)")
 	check(Connections.enabled == Tuning.Workshop.CONNECTIONS, "the runtime switch starts from the Tuning value")
 	_arithmetic()
 	_game(900, 7, 3)

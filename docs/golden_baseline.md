@@ -44,7 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 13): `baseline_b281427`
+### Current baseline (Nov 16): `baseline_a713ca5`
+
+`tools/golden/baseline_a713ca5/` is the capture from `claude/triage-behaviour` (#160): the
+connections belief model on by default (`Tuning.Workshop.CONNECTIONS`), plus the playtest
+triage behaviour batch (3.1-3.6, 3.8, section 6's Dowser bluff, 7.1 the Warden on night 0).
+- **Divergence from `baseline_b281427`:** every seed from its first refresh (record 1; 692 at
+  its meta record), as every mind now carries `workshop_state.connections`. Outcomes at the
+  capture's end:
+  - 42: unchanged (Agnes hanged day 3, good wins);
+  - 54875: Dorian hanged day 2 instead of Edda, Constance day 3, good wins;
+  - 692: Merrin and Constance hanged, play reaches day 4 (was: good wins day 3);
+  - 900: Greta and Jory hanged, evil wins day 3 (was: open at day 4);
+  - 98933: only Merrin hanged (day 3), open at day 4.
+- **Stability:** two captures were identical.
+
+### Previous baseline (Nov 13): `baseline_b281427`
 
 `tools/golden/baseline_b281427/` is the capture from `claude/talk-sightings` (triage 1.7). A
 conversation the player sees now also gives each talker their own sighting card (merged with

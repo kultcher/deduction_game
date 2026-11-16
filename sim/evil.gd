@@ -543,8 +543,11 @@ static func choose_kill_target(w) -> String:
 	for n in w.living_good():
 		var parts = _public_threat(w, n)
 		if parts.has("info_claim") and C.ROLES.get(n.claimed_role, {}).get("first_night", false) and w.day >= 1:
-			# Their start knowledge is already out: less of a threat than a gift that keeps reporting.
+			# Their start knowledge is already out: less of a threat than a gift that keeps reporting,
+			# and killing them unsays nothing they've shared.
 			parts["info_claim"] = Tuning.Evil.KILL_SPENT_INFO_CLAIM
+			if parts.has("implicates_us") and n.info_log.all(func(e): return e["shared"] or not info_implicates(w, e)):
+				parts.erase("implicates_us")
 		var hostile = public_hostility(w, n)
 		if hostile > 0.0:
 			parts["publicly_against_us"] = snappedf(hostile * Tuning.Evil.KILL_HOSTILITY_SCALE, 0.01)

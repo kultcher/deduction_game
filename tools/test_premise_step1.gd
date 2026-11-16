@@ -4,6 +4,8 @@
 ## preference, the movement notes only follow killer-side premises, and the test juror says
 ## when a defence's evidence points the other way.
 extends SceneTree
+
+const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -14,6 +16,8 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
+	# Premises pass step 1: the earlier model's spillover and Insight scaling.
+	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_spillover()
 	_trust_cost()
 	_preference()

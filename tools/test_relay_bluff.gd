@@ -5,6 +5,8 @@
 ## under 2% in a 60-game survey).
 extends SceneTree
 
+const Seeds = preload("res://tools/fixture_seeds.gd")
+
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 
@@ -20,33 +22,43 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
-	_game_case(100059, 4, "merrin", "bart", func(p): return p >= 0.5, "the evil Bart's relays don't clear him for Merrin")
-	_game_case(100019, 5, "isolde", "fenwick", func(p): return p >= 0.5, "the evil Fenwick's relays don't clear him for Isolde")
-	_game_case(100042, 3, "lian", "odette", func(p): return p < 0.2, "the genuine Medium Odette's relay still reads as good for Lian")  # (100039 left Nov 14: the hunting Breathstealer changed its game)
-	_game_case(100020, 3, "constance", "hollis", func(p): return p >= 0.8, "Hollis's invented relay of Constance, seen out while she was home, counts against him")
+	# Real games, each a kind of case found in the Nov 12 survey (then seeds 100059, 100019,
+	# 100042 and 100020); searched for, so play changes don't break them (fixture_seeds.gd).
+	var evil_relayer = func(t): return t.is_evil()
+	var first: Dictionary = Seeds.relay(4, evil_relayer)
+	_found_case(first, func(p): return p >= 0.5, "an evil relayer's relays don't clear them")
+	if not first.is_empty():
+		_found_case(Seeds.relay(5, evil_relayer, false, int(first.seed) + 1), func(p): return p >= 0.5, "nor in another game, later on")
+	# The genuine Medium over three games: a listener can have other cards against them (seed
+	# 100008's Kiran reads 0.58 under connections, 0.11 on the earlier model), so most, not all.
+	var genuine = func(t): return not t.is_evil() and t.role == "medium"
+	var low := 0
+	var seen := 0
+	var from := Seeds.SEEDS_FROM
+	for i in range(3):
+		var f: Dictionary = Seeds.relay(3, genuine, false, from)
+		if f.is_empty():
+			break
+		var p: float = _posterior(f)
+		print("genuine Medium relay, seed %d: %s on %s %.2f" % [int(f.seed), f.listener, f.teller, p])
+		seen += 1
+		low += 1 if p < 0.2 else 0
+		from = int(f.seed) + 1
+	check(seen == 3 and low >= 2, "a genuine Medium's relay still reads as good (%d of %d games under 0.2)" % [low, seen])
+	_found_case(Seeds.relay(3, evil_relayer, true), func(p): return p >= 0.8, "an invented relay of the listener, seen out while they were home, counts against its relayer")
 	print("Relay bluff: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 
-func _game_case(seed_v: int, day: int, listener: String, teller: String, ok: Callable, label: String) -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, 7)
-	var guard := 0
-	while g.state != "over" and guard < 400 and not (g.state == "meeting" and g.w.day >= day):
-		guard += 1
-		match g.state:
-			"approach": g.command("decline")
-			"day": g.command("wait")
-			"meeting": g.command("done" if g.town_quiet else "wait")
-			"talk": g.command("bye")
-			"nomination": g.command("vote no")
-			"night": g.command("sleep")
-			_: break
-	var n = g.w.by_id.get(listener)
-	if g.state != "meeting" or n == null or not n.alive:
-		check(false, "%s (seed %d did not reach the day-%d meeting with %s alive)" % [label, seed_v, day, listener])
+func _found_case(found: Dictionary, ok: Callable, label: String) -> void:
+	if found.is_empty():
+		check(false, "%s (no seed searched has the case)" % label)
 		return
+	var g = found.g
+	var listener: String = str(found.listener)
+	var teller: String = str(found.teller)
+	label += " (seed %d: %s on %s)" % [int(found.seed), listener, teller]
+	var n = g.w.by_id.get(listener)
 	var key: String = n.id + ":good"
 	g._workshop_evaluations.erase(key)
 	var was_defer: bool = g.w.defer_beliefs
@@ -55,3 +67,16 @@ func _game_case(seed_v: int, day: int, listener: String, teller: String, ok: Cal
 	g.w.defer_beliefs = was_defer
 	var p: float = float(g._workshop_evaluations.get(key, {}).get("proposal", {}).get("effects", {}).get(teller, {}).get("posterior", -1.0))
 	check(ok.call(p), "%s (%.2f)" % [label, p])
+
+
+## The listener's posterior on the teller, from a fresh refresh.
+func _posterior(found: Dictionary) -> float:
+	var g = found.g
+	var n = g.w.by_id.get(str(found.listener))
+	var key: String = n.id + ":good"
+	g._workshop_evaluations.erase(key)
+	var was_defer: bool = g.w.defer_beliefs
+	g.w.defer_beliefs = false
+	Mind.refresh_beliefs(g.w, n, " (test)")
+	g.w.defer_beliefs = was_defer
+	return float(g._workshop_evaluations.get(key, {}).get("proposal", {}).get("effects", {}).get(str(found.teller), {}).get("posterior", -1.0))

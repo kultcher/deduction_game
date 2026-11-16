@@ -4,10 +4,14 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 var fails = 0
 
 func _init() -> void:
+	# These test the earlier belief model's mechanics (reliability, source_doubt) directly;
+	# pinned to it since connections went on by default (Nov 16).
+	Connections.enabled = false
 	_test_recovery()
 	_test_independent_evidence()
 	_test_poison_not_honesty()

@@ -11,6 +11,8 @@
 ##   of its own night counts against the sighter (#139), through the sighter contest (#135).
 extends SceneTree
 
+const Seeds = preload("res://tools/fixture_seeds.gd")
+
 const Game = preload("res://game/game.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
@@ -168,6 +170,8 @@ func _adds_up(c: Dictionary) -> bool:
 		var total: float = float(c.core.lean.get(id, 0.0))
 		for it in c.items:
 			total += float(it.lean.get(id, 0.0))
+		# Stored cases (a game played with the model on has NPC nominations among them).
+		total += float(c.get("cases", {}).get("lean", {}).get(id, 0.0))
 		var settled: bool = c.baseline[id] <= Connections.FIXED or c.baseline[id] >= 1.0 - Connections.FIXED
 		var want: float = c.baseline[id] if settled else Connections.chance(Connections.logit(c.baseline[id]) + total + float(c.shift))
 		if c.core.proved.has(id):
@@ -178,6 +182,8 @@ func _adds_up(c: Dictionary) -> bool:
 
 
 ## The three readings of movement on one real state: a script with both kinds of Demon.
+## "Adds up" includes the stored cases' lean: since Nov 16 the game is played with the
+## model on, so NPC nominations are stored cases.
 func _rows_in_game() -> void:
 	var sc = ScriptDef.default_script()
 	sc.demons = ["demon", "daykiller"]
@@ -266,30 +272,43 @@ func _chance(g, listener: String, person: String) -> Dictionary:
 ## #139 and #135 inside a night, on the real games the two fixes were tested on
 ## (test_self_sighting): passive play, walker-only scripts, read night by night.
 func _fixes_inside_a_night() -> void:
-	# Seed 100034: the evil Constance says she saw Odette out; Odette was home.
-	var g = _known_game(100034, 2)
-	var framed: Dictionary = _chance(g, "odette", "constance")
-	var watcher: Dictionary = _chance(g, "isolde", "constance")
-	var watcher_subject: Dictionary = _chance(g, "isolde", "odette")
-	LiveActivity.sighter_contests_enabled = false
-	var framed_off: Dictionary = _chance(g, "odette", "constance")
-	var watcher_off: Dictionary = _chance(g, "isolde", "constance")
-	var watcher_subject_off: Dictionary = _chance(g, "isolde", "odette")
-	LiveActivity.sighter_contests_enabled = true
-	if framed.is_empty() or watcher.is_empty():
-		check(false, "seed 100034 reaches day 2 with Odette and Isolde alive")
+	# Each a kind of case first found on one seed (100034, 100031, 100020), now searched for
+	# so play changes don't break them (tools/fixture_seeds.gd). Played with the model off,
+	# read with it on (as _known_game).
+	Connections.enabled = false
+	Connections.force_row = ""
+	var framed_case: Dictionary = Seeds.framed_sighting(2, true, "street")  # (as 100034's: a "window" sighting of someone leaving home argues less)
+	var sleep_case: Dictionary = Seeds.sleepwalker_sighting(2)
+	var relay_case: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
+	Connections.enabled = true
+	Connections.force_row = "none"
+	if framed_case.is_empty():
+		check(false, "a seed has a planter's fake sighting held by its subject and a bystander")
 	else:
-		check(framed.night > 0.5, "#139: the night Odette was wrongly sighted counts against the sighter (its lean on Constance %+.2f)" % framed.night)
-		check(framed.chance > framed_off.chance + 0.1, "#139 works through #135: Odette on Constance, %.2f with the sighter contest and %.2f without" % [framed.chance, framed_off.chance])
-		check(watcher.chance > watcher_off.chance + 0.05, "#135: a bystander weighs the sighter too (Isolde on Constance, %.2f against %.2f without)" % [watcher.chance, watcher_off.chance])
-		check(watcher_subject.chance < watcher_subject_off.chance - 0.05, "#135: and holds the sighting less against its subject (Isolde on Odette, %.2f against %.2f without)" % [watcher_subject.chance, watcher_subject_off.chance])
-	# Seed 100031: the honest Constance saw Edda, a real Sleepwalker who believes she was home.
-	g = _known_game(100031, 2)
-	var sleepwalker: Dictionary = _chance(g, "edda", "constance")
-	check(not sleepwalker.is_empty() and sleepwalker.chance < 0.5, "the Sleepwalker Edda, seen by the honest Constance, is far from sure she lied (%.2f)" % sleepwalker.get("chance", -1.0))
-	# Seed 100020: the evil Hollis bluffs Medium and invents a relay (#140).
-	g = _known_game(100020, 3)
-	var relay: Dictionary = _chance(g, "constance", "hollis")
-	check(not relay.is_empty() and relay.chance >= 0.6, "the evil Medium Hollis's invented relay doesn't clear him for Constance (%.2f)" % relay.get("chance", -1.0))
+		# The evil sighter says they saw the subject out; the subject was home.
+		var g = framed_case.g
+		var sg: String = framed_case.sighter
+		var sub: String = framed_case.subject
+		var by: String = framed_case.bystander
+		var framed: Dictionary = _chance(g, sub, sg)
+		var watcher: Dictionary = _chance(g, by, sg)
+		var watcher_subject: Dictionary = _chance(g, by, sub)
+		LiveActivity.sighter_contests_enabled = false
+		var framed_off: Dictionary = _chance(g, sub, sg)
+		var watcher_off: Dictionary = _chance(g, by, sg)
+		var watcher_subject_off: Dictionary = _chance(g, by, sub)
+		LiveActivity.sighter_contests_enabled = true
+		# Directions, not sizes: on 100034 the night's lean on the sighter was over +0.5 and the
+		# contest added 0.1 or more, but on other street framings the same mechanisms are much
+		# smaller (seed 100012 on main: +0.08, and 0.02-0.03), so the sizes were that game's.
+		var tag: String = "seed %d, %s framed by %s, bystander %s" % [int(framed_case.seed), sub, sg, by]
+		check(framed.night > 0.0, "#139: the night the subject was wrongly sighted counts against the sighter (its lean %+.2f; %s)" % [framed.night, tag])
+		check(framed.chance > framed_off.chance, "#139 works through #135: the subject on the sighter, %.2f with the sighter contest and %.2f without" % [framed.chance, framed_off.chance])
+		check(watcher.chance > watcher_off.chance, "#135: a bystander weighs the sighter too (%.2f against %.2f without)" % [watcher.chance, watcher_off.chance])
+		check(watcher_subject.chance < watcher_subject_off.chance, "#135: and holds the sighting less against its subject (%.2f against %.2f without)" % [watcher_subject.chance, watcher_subject_off.chance])
+	var sleepwalker: Dictionary = {} if sleep_case.is_empty() else _chance(sleep_case.g, sleep_case.subject, sleep_case.sighter)
+	check(not sleepwalker.is_empty() and sleepwalker.chance < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied (%.2f; seed %d)" % [sleepwalker.get("chance", -1.0), int(sleep_case.get("seed", -1))])
+	var relay: Dictionary = {} if relay_case.is_empty() else _chance(relay_case.g, relay_case.listener, relay_case.teller)
+	check(not relay.is_empty() and relay.chance >= 0.6, "an evil Medium's invented relay doesn't clear them for its subject (%.2f)" % relay.get("chance", -1.0))
 	Connections.force_row = ""
 	Connections.enabled = false

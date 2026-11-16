@@ -314,9 +314,12 @@ static func _public_claim_decision(w, n) -> String:
 	var opening: float = _testimony_openness(w, n)
 	if opening != 0.0:
 		parts["reactive" if opening > 0.0 else "crowd_fade"] = opening
-	if n.protect_lock and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
-		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first"})
-		return ""  # promised to tell the Demonologist first once protected
+	# Promised to tell the Demonologist first once protected, or offered them a deal for it
+	# today (a vigil, a ward, or keeping it quiet): hold it back until that's settled
+	# (triage 3.2: Odette asked for a vigil, then claimed at that evening's meeting).
+	if (n.protect_lock or n.request_day == w.day) and not (n.id in w.meeting.get("nominated", []) or n.pressure >= 0.7 or w.living().size() <= 4):
+		w.observe_decision(n, "claim", false, {"gate": "protect_lock_promised_player_first" if n.protect_lock else "offered_player_a_deal_today"})
+		return ""
 	if w.living().size() <= 4:
 		parts["few_left"] = Tuning.Meeting.PUBLIC_CLAIM_FEW_LEFT
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)

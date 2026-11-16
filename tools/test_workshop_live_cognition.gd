@@ -1,5 +1,7 @@
 ## Native profiles, committed union memory, scoped replies and reversible ownership.
 extends SceneTree
+
+const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -9,6 +11,8 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
+	# The earlier model's Workshop theories across a day advance.
+	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_insight()
 	_attention()
 	_confidence()

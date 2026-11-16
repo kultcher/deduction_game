@@ -1142,6 +1142,8 @@ static func mix_demon(walking: float, still: float, share: float) -> float:
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
 	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
 	var rate: float = rates[profile]
+	if profile == "gift" and night < 1 and role_of(cards, person.id) == "warden":
+		rate = 0.0  # no guard on night 0 (triage 7.1): a night-0 outing isn't the Warden's gift
 	if profile == "ordinary":
 		for card in cards:
 			if card.kind == "secret_claim" and not card.get("quoted", false) and card.subject == person.id and night >= card.applies.from and night <= card.applies.through:

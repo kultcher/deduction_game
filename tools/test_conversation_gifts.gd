@@ -660,9 +660,18 @@ func _accuse_tiers() -> void:
 	n.traits["confidence"] = 0.2
 	w.day = 1
 	var counts = {"hint": 0, "reveal": 0, "generic": 0}
-	for i in range(60):
+	for i in range(200):
 		counts[Mind._accuse_tier(w, n, t, 0.8)["tier"]] += 1
-	_check(counts["hint"] > counts["reveal"] and counts["generic"] == 0, "a private, reluctant Seer mostly hints (%s)" % str(counts))
+	# Against the same Seer, open and bold (the reveal roll sits near even for the reluctant
+	# one, about 52% hints, so 60 draws flipped with any change to play).
+	n.traits["privacy"] = 0.0
+	n.traits["confidence"] = 0.8
+	var open_counts = {"hint": 0, "reveal": 0, "generic": 0}
+	for i in range(200):
+		open_counts[Mind._accuse_tier(w, n, t, 0.8)["tier"]] += 1
+	n.traits["privacy"] = 1.0
+	n.traits["confidence"] = 0.2
+	_check(counts["hint"] > open_counts["hint"] + 20 and counts["generic"] == 0, "a private, reluctant Seer hints far more than an open one, and is never silent here (%s against %s)" % [str(counts), str(open_counts)])
 	# Bold, late, few left: mostly reveals.
 	n.traits["privacy"] = 0.1
 	n.traits["confidence"] = 0.9

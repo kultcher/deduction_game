@@ -76,12 +76,21 @@ func _talk_sightings() -> void:
 	var g = Game.new()
 	g.new_case(692, 10)
 	g.w.dlog.detailed = false
-	var pair: Array = g.w.living().filter(func(n): return not n.at_home()).slice(0, 2)
+	# Two people out at the same place (so neither already has a sighting elsewhere this
+	# phase; the fixture once moved one, which broke whenever play changed).
+	var out: Array = g.w.living().filter(func(n): return not n.at_home())
+	var pair: Array = []
+	for x in out:
+		for y in out:
+			if pair.is_empty() and x != y and x.loc == y.loc:
+				pair = [x, y]
+	check(pair.size() == 2, "(fixture) two people out at the same place")
+	if pair.size() < 2:
+		return
 	var a = pair[0]
 	var b = pair[1]
 	for n in g.w.living():
 		n.busy_with = ""
-	b.loc = a.loc
 	a.busy_with = b.id
 	b.busy_with = a.id
 	var before: int = g.board.size()

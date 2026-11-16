@@ -855,7 +855,7 @@ static func _maybe_tell_relationships(g, n, t, r: Dictionary) -> void:
 		return
 	var p = clampf(Tuning.Dialogue.SHARE_HAUNTS_BASE + Tuning.Dialogue.SHARE_HAUNTS_GOSSIP_SCALE * n.traits.get("gossip", 0.5) + Tuning.Dialogue.SHARE_HAUNTS_TRUST_SCALE * (n.trust - 0.5), 0.0, Tuning.Dialogue.SHARE_HAUNTS_CAP)
 	var roll = g.w.rng.randf()
-	g.w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE), "none": 1.0 - p}}, t.id)
+	g.w.observe_decision(n, "share_relationships", roll < p, {"inputs": {"gossip": n.traits.get("gossip", 0.5), "trust": n.trust}, "probability": p, "draw": roll, "threshold": p, "comparison": "<", "thresholds": {"all": p * Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE, "one": p}, "outcome_chances": {"all": p * Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE, "one": p * (1.0 - Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE), "none": 1.0 - p}}, t.id)
 	if roll >= p:
 		return
 	# Filtered after the roll so the decision draws are unchanged. Ties to the dead belong to
@@ -867,7 +867,7 @@ static func _maybe_tell_relationships(g, n, t, r: Dictionary) -> void:
 	if unknown.is_empty():
 		return
 	unknown.sort_custom(func(a, b): return (n.id in a.bond.people) and not (n.id in b.bond.people))
-	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * Tuning.Dialogue.SHARE_HAUNTS_ALL_SHARE else [unknown[0]]
+	var tell: Array = unknown.slice(0, MAX_BONDS_TOLD) if roll < p * Tuning.Dialogue.SHARE_RELATIONSHIPS_ALL_SHARE else [unknown[0]]
 	var used_keys: Array = []
 	for entry in tell:
 		var bond: Dictionary = entry.bond
