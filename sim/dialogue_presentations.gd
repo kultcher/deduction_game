@@ -245,7 +245,9 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		if ctype in ["evil", "demon", "minion", "good", "marked"] and believed_stance in ["accept", "partial"]:
 			var follow_k: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
 			parts.append(Dialogue.voice_line(listener.id, follow_k, canonical, {"target": target_label}))
-	elif path_kind == "conditional":
+	elif path_kind == "conditional" and believed_stance == "reject":
+		# "Your extra guesses" only when the case didn't move them: a listener it moved says
+		# so, whatever answers it carried (triage 2.5, playtest 44542).
 		primary_key = "present_conditional"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		allow_lean = false

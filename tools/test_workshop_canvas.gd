@@ -111,6 +111,7 @@ func _run() -> void:
 	deleted.remove_premise(disposable)
 	check(Model.new(board.view).restore(JSON.parse_string(JSON.stringify(deleted.export_data())), s) == "", "removing a premise also cleans merged originals' retained link references")
 	_merged_gift_links(s)
+	_given_link(board.view, s)
 	await _ui()
 	print("Workshop canvas: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -223,3 +224,46 @@ func _merged_gift_links(session) -> void:
 			check(restored.compile(premise).citations.get("constance:1") == "gift_claim", "unmerge retains gift links made before or after the merge")
 			restored.unlink("e:gift_claim", "e:vigil1")
 			check(not restored.compile(premise).citations.has("constance:1"), "unlinking the restored gift edge retracts its explanation")
+
+
+## Triage 5.1 (the cheap version): premise -> card on a card that already argues another
+## premise keeps its direction as "given <premise>": the premise and its evidence join the
+## root's evidence. On a card that argues nothing yet, the drag still means it supports.
+func _given_link(view: Dictionary, session) -> void:
+	var m = Model.new(view)
+	var root: String = m.add_premise("hollis", "evil", Vector2.ZERO)
+	var aside: String = m.add_premise("constance", "good", Vector2(0, 200))
+	m.connect_cards("e:survey", root)
+	m.connect_cards("e:dowse", aside)
+	check(m.connect_cards(aside, "e:survey") == "", "premise -> a card that argues another premise links")
+	var edge: Array = m.links.filter(func(e): return e.from == aside and e.to == "e:survey")
+	check(edge.size() == 1 and edge[0].kind == "given", "and keeps its direction, as \"given\" (%s)" % str(edge))
+	var compiled: Dictionary = m.compile(root)
+	check("survey" in compiled.cards and "dowse" in compiled.cards, "the premise's evidence joins the root's (%s)" % str(compiled.cards))
+	var fresh: String = m.add_premise("nisha", "evil", Vector2(0, 400))
+	check(m.connect_cards(fresh, "e:rumor") == "" and m.links.any(func(e): return e.from == "e:rumor" and e.to == fresh and e.kind == "supports"), "premise -> a card that argues nothing yet: the card supports the premise, as before")
+	check(m.connect_cards(aside, "e:dowse") != "", "premise -> one of its own cards would be circular")
+	# Merging a card with a given premise into a contradiction keeps the given link (Codex on #159).
+	var mg = Model.new(view)
+	var mroot: String = mg.add_premise("constance", "evil", Vector2.ZERO)
+	var maside: String = mg.add_premise("nisha", "good", Vector2(0, 200))
+	mg.connect_cards("e:alibi1", mroot)
+	mg.connect_cards("e:survey", maside)
+	mg.connect_cards(maside, "e:alibi1")
+	check(mg.links.any(func(e): return e.from == maside and e.to == "e:alibi1" and e.kind == "given"), "(fixture) a given premise on the alibi")
+	mg.connect_cards("e:vigil1", "e:alibi1")
+	var merged: Array = mg.nodes.keys().filter(func(k): return mg.nodes[k].kind == "contradiction")
+	check(merged.size() == 1 and mg.links.any(func(e): return e.from == maside and e.to == merged[0] and e.kind == "given"), "merging the alibi into a contradiction keeps the given link onto it")
+	check("survey" in mg.compile(mroot).cards, "and the given premise's evidence stays in the root's (%s)" % str(mg.compile(mroot).cards))
+	# A given premise's assumptions go with the line it runs through (Codex on #159).
+	var ma = Model.new(view)
+	var aroot: String = ma.add_premise("hollis", "evil", Vector2.ZERO)
+	var aaside: String = ma.add_premise("constance", "good", Vector2(0, 200))
+	ma.nodes[aaside].positions = {"nisha": "good"}
+	ma.connect_cards("e:survey", aroot)
+	ma.connect_cards("e:dowse", aaside)
+	ma.connect_cards(aaside, "e:survey")
+	var direct_lines: Array = ma.compile(aroot).lines.filter(func(l): return l.id == "direct")
+	check(direct_lines.size() == 1 and direct_lines[0].get("assumption_sets", []) == [{"nisha": "good"}], "a given premise's assumptions go with the line it runs through (%s)" % str(direct_lines))
+	var reopened = Model.new(view)
+	check(reopened.restore(JSON.parse_string(JSON.stringify(m.export_data())), session) == "" and reopened.links.any(func(e): return e.kind == "given"), "a saved canvas with a given link reopens with it (Codex on #159)")
