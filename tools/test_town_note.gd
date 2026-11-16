@@ -342,3 +342,5 @@ func _spent_pressure() -> void:
 	ids.sort()
 	g.w.suspicious_pressure[target + "|" + ",".join(PackedStringArray(ids))] = {"sum": 0.1, "count": 3, "applied": 0.3, "venue": "meeting", "heard": []}
 	check(_kind(g, value) == "repeat", "once a meeting has heard the filing, it presses no one again: a plain repeat (%s)" % _kind(g, value))
+	g.w.suspicious_pressure[target + "|" + ",".join(PackedStringArray(ids))] = {"sum": 0.1, "count": 1, "applied": 0.1, "venue": "private", "heard": [p[1].id]}
+	check(_kind(g, value) == "repeat", "so does a private first hearing: a meeting gets no pressure after it (%s)" % _kind(g, value))

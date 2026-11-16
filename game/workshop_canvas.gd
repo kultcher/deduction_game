@@ -430,15 +430,16 @@ static func _would_press(run: Dictionary, entry: Dictionary, target: String) -> 
 		with_cards[p] = Presentation.held_back_chance(now, entry.get("points", {}), p)
 	return Presentation.connections_pressure(maxf(0.0, float(with_cards.get(target, 0.0)) - float(now.get(target, 0.0)))) >= NOTE_PRESSES
 
-## Has this "suspicious" filing (its target and cards) already pressed the town? Pressure
-## comes once per filing, from its first hearing (WorkshopPresentation._suspicious_pressure):
-## after a meeting heard it, presenting it again presses no one (Codex on #155).
+## Has this "suspicious" filing (its target and cards) already pressed? Pressure comes once
+## per filing, from its first hearing, and only in that venue (WorkshopPresentation.
+## _suspicious_pressure): once anyone has heard it, in private or at a meeting, presenting it
+## at the meeting presses no one more (Codex on #155).
 static func _pressure_spent(g, target: String, numbers: Array) -> bool:
 	var ids: Array = numbers.duplicate()
 	ids.sort()
 	var filing: String = target + "|" + ",".join(PackedStringArray(ids))
 	var entry: Dictionary = g.w.suspicious_pressure.get(filing, {})
-	return int(entry.get("count", 0)) > 0 and str(entry.get("venue", "")) != "private"
+	return int(entry.get("count", 0)) > 0
 
 ## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
 static func _endorsed(value: Dictionary) -> Array:
