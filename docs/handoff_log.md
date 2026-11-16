@@ -27,7 +27,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ---
 
-## 2026-11-16 night, Claude-Quill: playtest 26532, the Muddler and the relayed lie (`claude/relay-lie-attribution`)
+## 2026-11-16 night, Claude-Quill: playtest 26532, the Muddler and the relayed lie (PR #173, `claude/relay-lie-attribution`)
 
 - **Base:** main `c8ef1e7`. **Status:** PR open, golden identical to `baseline_bb6f01c` at `--tol 0`. **Next actor:** Bailiff (merge); Michael for the Muddler question below and for the case log (`case_26532.jsonl`) that task 2 needs.
 - **Which [decided] item next:** "Martyr non-substitution must keep its alternative explanations" (BACKLOG section 2), after the Isolde case (task 2), which waits on the log.
