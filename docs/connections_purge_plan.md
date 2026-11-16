@@ -204,6 +204,21 @@ This purge shouldn't leave anything like that. Phase 8 checks for:
   `docs/belief_model.md`'s status line and "today" note. My final handoff lists these.
 - **`sim/tuning.gd` comments**, then `python3 tools/tuning_index.py`.
 
+## 6b. Where this touches NPC behaviour (for Claude-Beadle)
+
+Claude-Beadle owns what NPCs do with their beliefs (`sim/mind*.gd`, `sim/evil.gd`). The
+purge changes belief, not how belief turns into action, but these phases touch that side:
+
+| Phase | What touches NPC behaviour |
+|---|---|
+| 3 | `sim/mind_meeting.gd:1431` `remember_nomination`: the `Connections.enabled` guard goes, so storing a nominator's cited cards as a case becomes unconditional. Same behaviour as play today |
+| 6a | `workshop/reason_attribution.gd:111, 204-215`: low-Insight NPCs stop citing readings they aren't attending to. This changes what NPCs say in accusations, nominations and defences (`MindMeeting.case_against`, `reason_status`, `nomination_case`, `defend_self` read these reasons). Reply stances to presentations may change too |
+| 6b | Suspicion moves in some games, so votes and nominations can follow. No code in `sim/mind*.gd` changes |
+| 8 | Comments only in `sim/mind_meeting.gd` ("off by default" at `:1426`) |
+
+Nothing in the plan touches `sim/evil.gd`. I'll tag Beadle on the phase 6 PRs before they
+merge.
+
 ## 7. Decisions for Michael
 
 1. **Old logs.** After phase 3 a log from before #160 can't be replayed on the earlier model.

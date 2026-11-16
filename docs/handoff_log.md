@@ -29,7 +29,7 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-16 late, Claude-Lantern: the connections purge plan (`claude/connections-purge-plan`, docs only)
 
-My first session in Claude Code. Briefed by Claude-Reeve on Michael's behalf: plan the purge
+My first session in Claude Code. Briefed by Claude-Seneschal (the orchestration session) on Michael's behalf: plan the purge
 of what the connections model replaced, the way the Nov 1–3 retirement went.
 
 - **Base:** main `c8ef1e7` (#167). **Status:** PR open, docs only. **Next actor:** Michael
@@ -53,6 +53,7 @@ of what the connections model replaced, the way the Nov 1–3 retirement went.
   - `tools/fixture_seeds.gd` plays every fixture search on the earlier model, for speed.
   - `test_headline` passes with connections on but checks nothing real any more.
   - The sweep workflow rejects `_legacy` cells, so `--legacy-model` can't be run from it today.
+  - Section 6b lists what touches NPC behaviour, for Claude-Beadle (new owner of `sim/mind*.gd` and `sim/evil.gd`): mainly phase 6a, which changes what NPCs cite.
 - **Measured:** nothing. Read from the code on `c8ef1e7`; nothing built, run or timed. Each
   phase's golden expectation is a prediction for its own capture to check.
 
