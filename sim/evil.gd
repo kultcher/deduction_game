@@ -807,6 +807,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
 		entry = vetted["entry"]
 		_mark_fake(entry)
+		why = named(w, why)
 		entry["why"] = "evil fabrication: " + why
 		if vetted["outcome"] == "reworked":
 			# Keeps the motive it was made for, and says why it was changed (Steward A2-A3:
@@ -819,6 +820,23 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## A fabrication's motive with people's ids swapped for their names, so the end-of-game
+## reveal reads "the dead Seer Lian 'cleared' the demon Merrin", not raw ids (Steward A3,
+## Nov 17). Whole words only; the rest of the wording is left as written.
+static func named(w, text: String) -> String:
+	if text == "":
+		return text
+	var re := RegEx.new()
+	re.compile("\\b[a-z][a-z0-9_]*\\b")
+	var out: String = ""
+	var cursor: int = 0
+	for m in re.search_all(text):
+		var tok: String = m.get_string()
+		if w.by_id.has(tok) and tok != w.by_id[tok].name:
+			out += text.substr(cursor, m.get_start() - cursor) + w.by_id[tok].name
+			cursor = m.get_end()
+	return out + text.substr(cursor)
 
 ## The bluff rule's other plausible readings for `entry`, stamped as told, for a liar who
 ## noticed its first one points at itself or a teammate (FabricationCheck.vet).
