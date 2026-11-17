@@ -781,20 +781,22 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
 		if gen.is_empty():
 			continue
-		entry = gen["entry"]
+		entry = _stamp_fake(w, gen["entry"], bluff, day_only)
 		why = gen["why"]
 		# Checked against what's already public: a self-incriminating one may be noticed,
-		# then reworked once or held back a day (sim/fabrication_check.gd).
+		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
+		# told: stamped with its gift and night first.
 		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, func():
 			var again: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
-			if not again.is_empty():
-				why = again["why"]
-			return again.get("entry", {}))
+			if again.is_empty():
+				return {}
+			var e2: Dictionary = _stamp_fake(w, again["entry"], bluff, day_only)
+			e2["_regen_why"] = again["why"]  # lambdas capture by value: carry the reason back
+			return e2)
 		entry = vetted["entry"]
-		entry["day"] = w.day
-		if day_only and w.phase != C.NIGHT:
-			entry["phase"] = w.phase
-		entry["role"] = bluff
+		if entry.has("_regen_why"):
+			why = str(entry["_regen_why"])
+		entry.erase("_regen_why")
 		entry["shared"] = false
 		entry["true"] = false
 		entry["fake"] = true
@@ -805,6 +807,14 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## A fabricated reading as it will be told: its gift, its night (or day phase).
+static func _stamp_fake(w, entry: Dictionary, bluff: String, day_only: bool) -> Dictionary:
+	entry["day"] = w.day
+	if day_only and w.phase != C.NIGHT:
+		entry["phase"] = w.phase
+	entry["role"] = bluff
+	return entry
 
 ## A made-up sighting of the scapegoat on night nd, told from where this evil member says
 ## they were (vantage): from their own window at home, or while out on a night-active bluff
