@@ -902,6 +902,11 @@ class Workshop:
 	## them on a night they spent at home counts against the sighter, but not as certain proof
 	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
 	const SLEEPWALK_SELF_DOUBT = 0.1
+	## With the Delusional secret on the script, a good NPC's own readings are this unsure:
+	## its gift might be the Delusional one and give it wrong readings without it knowing
+	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
+	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
+	const DELUSIONAL_SELF_DOUBT = 0.1
 	## The connections belief model (workshop/connections.gd;
 	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
 	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the

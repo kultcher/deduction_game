@@ -18,6 +18,10 @@ const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const History = preload("res://workshop/live_history.gd")
 
+## Measurement switch (on in play): a good listener's small doubt that its own gift is
+## Delusional (DELUSIONAL_SELF_DOUBT, derive). Tests turn it off to compare.
+static var delusional_self_doubt: bool = true
+
 
 static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind: String = "reading") -> float:
 	if src == "":
@@ -207,6 +211,24 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	for s_good in settled_sincere:
 		if not seed_doubt.has(s_good + ":*"):
 			pre_eval.erase(s_good + ":*")
+
+	# "Is my gift Delusional?" (Michael, Nov 17). With the secret on the script a good
+	# listener's own gift might give it wrong readings without it knowing, so each night of
+	# its own readings carries a small honest doubt (DELUSIONAL_SELF_DOUBT), the way its home
+	# nights carry the Sleepwalker's. Honest, so it reaches both the readings' weight and the
+	# role check (a role-checked reading, a Clerk's or a Seer's, moves only there), never a
+	# charge of lying. Its sightings and alibis aren't gift readings.
+	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false):
+		var d_self: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT
+		for c in cards:
+			if str(c.get("kind", "")) != "report" or str(c.get("source", "")) != self_id or c.get("quoted", false) or c.has("relay_source"):
+				continue
+			var n_self: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			if n_self < 0:
+				continue
+			var k_self: String = "%s:%d" % [self_id, n_self]
+			pre_eval[k_self] = maxf(float(pre_eval.get(k_self, 0.0)), d_self)
+			honest[k_self] = maxf(float(honest.get(k_self, 0.0)), d_self)
 
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})
