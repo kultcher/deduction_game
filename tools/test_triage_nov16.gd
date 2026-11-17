@@ -1,6 +1,6 @@
 ## Playtest triage items from Nov 16: a far sighting's crowd count (8.2), the Augur's
 ## sightings hint (5.10), a Lovers confession proving the partner (5.9), the canvas's
-## left-drag box and right-drag pan (8.1).
+## shift+left-drag box, and left- or right-drag pan (8.1, changed by Michael Nov 17).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -169,7 +169,8 @@ func _lovers() -> void:
 	check(cases[other_id].get("ready", false) and float(cases[other_id].get("lr", 1.0)) < float(on_partner.get("lr", 0.0)), "and says nothing of the kind about anyone else (x%.2f against x%.2f)" % [float(cases[other_id].get("lr", 0.0)), float(on_partner.get("lr", 0.0))])
 
 
-## 8.1: on empty canvas, a left-drag draws a selection box and a right-drag pans.
+## 8.1, as Michael changed it on Nov 17: on empty canvas a shift+left-drag draws a selection
+## box, and a plain left-drag (or a right-drag) pans.
 func _canvas_drag() -> void:
 	var CanvasModel = preload("res://workshop/canvas_model.gd")
 	var CanvasView = preload("res://ui/workshop_canvas_view.gd")
@@ -180,20 +181,21 @@ func _canvas_drag() -> void:
 	root.add_child(v)
 	v.model = m
 	v.hit = {prem: Rect2(100, 100, 50, 50)}
-	var press = func(button: int, at: Vector2, down: bool):
+	var press = func(button: int, at: Vector2, down: bool, shift: bool = false):
 		var e := InputEventMouseButton.new()
 		e.button_index = button
 		e.position = at
 		e.pressed = down
+		e.shift_pressed = shift
 		v._gui_input(e)
 	var move = func(at: Vector2):
 		var e := InputEventMouseMotion.new()
 		e.position = at
 		v._gui_input(e)
-	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), true)
+	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), true, true)
 	move.call(Vector2(200, 200))
-	press.call(MOUSE_BUTTON_LEFT, Vector2(200, 200), false)
-	check(v.group == [prem], "a plain left-drag on empty canvas box-selects the card inside (%s)" % str(v.group))
+	press.call(MOUSE_BUTTON_LEFT, Vector2(200, 200), false, true)
+	check(v.group == [prem], "a shift+left-drag on empty canvas box-selects the card inside (%s)" % str(v.group))
 	var before: Vector2 = v.pan
 	press.call(MOUSE_BUTTON_RIGHT, Vector2(300, 300), true)
 	move.call(Vector2(340, 320))
@@ -202,4 +204,9 @@ func _canvas_drag() -> void:
 	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), true)
 	press.call(MOUSE_BUTTON_LEFT, Vector2(10, 10), false)
 	check(v.group.is_empty() and v.pan == before + Vector2(40, 20), "a left click on empty canvas clears the box and doesn't pan")
+	var before_left: Vector2 = v.pan
+	press.call(MOUSE_BUTTON_LEFT, Vector2(300, 300), true)
+	move.call(Vector2(330, 310))
+	press.call(MOUSE_BUTTON_LEFT, Vector2(330, 310), false)
+	check(v.pan == before_left + Vector2(30, 10) and v.group.is_empty(), "a plain left-drag on empty canvas pans (%s -> %s)" % [str(before_left), str(v.pan)])
 	v.queue_free()
