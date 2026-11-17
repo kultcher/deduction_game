@@ -32,13 +32,21 @@ func _init() -> void:
 		check(absf(before.end - before.mid) < 0.005, "%s: with the switch off, doubting it changes nothing (%.3f -> %.3f), as before the fix" % [role, before.mid, before.end])
 		check(absf(after.end - after.pre) < 0.35 * moved, "%s: once its night is doubted (0.8), most of what it did goes (%.3f -> %.3f, from %.3f)" % [role, after.mid, after.end, after.pre])
 		check(is_equal_approx(before.mid, after.mid), "%s: an undoubted reading is read exactly as before" % role)
+	# A night-specific "lied" argument (Codex on #186) is doubt that the teller lied, which the
+	# role check already handles by letting an evil teller lie: it must not soften the reading.
+	for role in ["seer", "archivist"]:
+		CaseEval.doubted_role_check = false
+		var off: Dictionary = _one(role, "lied")
+		CaseEval.doubted_role_check = true
+		var on: Dictionary = _one(role, "lied")
+		check(is_equal_approx(off.end, on.end), "%s: a \"lied\" argument isn't read as an honest error (%.3f with the fix, %.3f without)" % [role, on.end, off.end])
 	CaseEval.doubted_role_check = true
 	print("Role check doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
 ## The listener reads `role` on night 1; its subject's suspicion before, with the reading, and
 ## after a misled argument doubts that night.
-func _one(role: String) -> Dictionary:
+func _one(role: String, doubt_kind: String = "misled") -> Dictionary:
 	var t = _setup(5110)
 	var w = t["w"]
 	var L = t["L"]
@@ -62,7 +70,11 @@ func _one(role: String) -> Dictionary:
 	var pre: float = Mind.susp(L, subject)
 	Mind.apply_info(w, L, L, reading, 1.0)
 	var mid: float = Mind.susp(L, subject)
-	_doubt(t, L.id, 1)
+	if doubt_kind == "misled":
+		_doubt(t, L.id, 1)
+	else:
+		Mind.ledger_hear(t["w"], L, "arg:test-%s:%s:1" % [doubt_kind, L.id], [], 1.0, [],
+			{"kind": "arg", "conclusion": {"type": doubt_kind, "a": L.id, "night": 1}})
 	return {"pre": pre, "mid": mid, "end": Mind.susp(L, subject)}
 
 func _setup(sd: int) -> Dictionary:

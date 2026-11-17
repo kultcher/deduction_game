@@ -36,13 +36,16 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **The fix:** each doubted reading in a set is weighed as genuine with the listener's trust
   in it and as a bare claim of the gift otherwise. This is exact for one doubted reading in
   a set; with several, each mixes against the others read in full.
-  - **The doubt** is `listener.reading_doubt`, filled in `SharedLedger._doubt_adjusted`
-    from the source doubt on that reading's night only ("src:night": a misled argument, a
-    poisoned Night Watch).
-  - **The source's general doubt ("src:*") stays out:** a caught lie, a lying argument,
-    Delusional. My first version took it too, and a bogus Gravedigger reading (a hanging
-    that never happened) stopped convicting its claimant: `test_shared_model` caught it,
-    and it also moved golden on 692 and 900.
+  - **The doubt** is `listener.reading_doubt`. `SourceDoubt.derive` now also returns an
+    `honest` map, built only from honest errors: a poisoned Night Watch, a misled or
+    unreliable argument, and a challenge in an honest-error mode (misled, impaired,
+    unlikely, delusional). `Shared.evaluate` passes it to `_doubt_adjusted`, which sets
+    `reading_doubt` per card. Callers that don't pass it change nothing.
+  - **Caught lies, "lied" arguments and "lying" challenges stay out, by night or in
+    general.** My first version read all source doubt. A bogus Gravedigger reading (a
+    hanging that never happened) then stopped convicting its claimant: `test_shared_model`
+    caught it, and it moved golden. My second read every night-specific doubt, which Codex
+    showed still let a "lying" challenge or a night's "lied" argument soften the reading.
   - **Trust in the teller is left out on purpose:** the role check already lets an evil
     teller lie in the worlds where they're evil, so including it would charge it twice.
   - **Carried through** `Jury._eval_listener`. Both connections judgement keys (`judge_key`
@@ -67,8 +70,9 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   An undoubted reading reads exactly as before. A Clerk reading moved no one in my fixture,
   so it isn't tested here.
 - **Golden:** identical to `baseline_bb6f01c` on all five seeds; two captures identical.
-- **Measured:** the new suite `test_role_check_doubt` (12/12, added to the fast list), the CI
-  fast list on this branch (63/63), and two golden captures. Not measured: how often a doubted
+- **Measured:** the new suite `test_role_check_doubt` (14/14: the three readings, plus a
+  "lied" argument that must not soften the reading; added to the fast list), the CI fast
+  list on this branch, and two golden captures. Not measured: how often a doubted
   role-checked reading occurs in bot games.
 - **Order of my next work:** phase 6b (attention-limited signals read every held card), then
   the double-claim pairing, then Option A (Insight sets the core's joining bar; its

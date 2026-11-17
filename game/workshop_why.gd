@@ -109,7 +109,7 @@ static func _union(n, input: Dictionary, presentations: Dictionary, outside: Dic
 			mutate.call(prepared)
 			proposal = Shared._evaluate_adjusted(plan, prepared, outside, doubt.pre_eval, doubt.full, shaping_eval)
 		else:
-			proposal = Shared.evaluate(plan, outside, doubt.pre_eval, doubt.full, shaping_eval)
+			proposal = Shared.evaluate(plan, outside, doubt.pre_eval, doubt.full, shaping_eval, doubt.get("honest", {}))
 	elif plan.get("ready", false):
 		proposal = {"effects": {}}
 	Shared.last_reason_ctx = kept_ctx
