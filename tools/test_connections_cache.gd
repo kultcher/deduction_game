@@ -11,8 +11,11 @@
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
+const Canvas = preload("res://game/workshop_canvas.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
+const ScriptBuilder = preload("res://sim/script_builder.gd")
+const Evidence = preload("res://workshop/live_evidence.gd")
 const Connections = preload("res://workshop/connections.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Caches = preload("res://workshop/caches.gd")
@@ -33,9 +36,11 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_key()
 	_games()
+	_presentations_and_magistrate()
 	_off()
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.cache_enabled = true
+	CaseEval.cache_enabled = true
 	Connections.cache_verify = false
 	print("Connections cache: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -70,10 +75,12 @@ func _games() -> void:
 	Connections.enabled = true
 	for spec in [[900, 7, 3], [692, 10, 1]]:
 		Connections.cache_enabled = false
+		CaseEval.cache_enabled = false
 		Connections.cache_verify = false
 		var plain: Dictionary = _play(spec[0], spec[1], spec[2])
 		check(plain.stats.hits == 0 and plain.stats.misses == 0, "seed %d: with the cache off nothing is kept" % spec[0])
 		Connections.cache_enabled = true
+		CaseEval.cache_enabled = true
 		var kept: Dictionary = _play(spec[0], spec[1], spec[2])
 		check(kept.stats.hits > 0, "seed %d: with it on, judgements are handed back (%d kept, %d made)" % [spec[0], kept.stats.hits, kept.stats.misses])
 		check(kept.suspicion == plain.suspicion, "seed %d: every NPC's suspicions are the same with the cache on and off" % spec[0])
@@ -83,6 +90,101 @@ func _games() -> void:
 		check(checked.stats.wrong == 0 and checked.stats.hits == kept.stats.hits, "seed %d: every kept answer equals a fresh one (%d checked)" % [spec[0], checked.stats.hits])
 		check(checked.suspicion == plain.suspicion, "seed %d: and checking changes nothing" % spec[0])
 		Connections.cache_verify = false
+	Connections.enabled = false
+
+
+func _play_magistrate_presentations(game_seed: int) -> Dictionary:
+	_reset()
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(game_seed, 7, ScriptBuilder.dynamic({"seed": game_seed, "forced": ["magistrate"]}))
+	var mag_id: String = ""
+	for n in g.w.npcs:
+		if n.role == "magistrate":
+			mag_id = n.id
+			break
+	var presented_days: Dictionary = {}
+	var nominated_days: Dictionary = {}
+	var guard: int = 0
+	while g.state != "over" and int(g.w.day) <= 2 and guard < 300:
+		guard += 1
+		match g.state:
+			"approach":
+				g.command("accept")
+			"day":
+				if mag_id != "" and g.w.by_id[mag_id].alive and g.w.phase == 0:
+					g.command("go " + mag_id)
+					if g.state == "day":
+						g.command("talk " + mag_id)
+					if g.state == "day":
+						g.command("wait")
+				else:
+					g.command("wait")
+			"talk":
+				if g.questions_left == 3:
+					g.command("ask gift")
+				elif g.questions_left == 2:
+					g.command("ask night")
+				else:
+					g.command("bye")
+			"meeting":
+				var d: int = int(g.w.day)
+				var reports: Array = []
+				for c in g.all_receipts():
+					if c.kind == "info" and not c.get("deleted", false):
+						var norm: Dictionary = Evidence.normalize_card(c)
+						if not norm.get("id", "").is_empty():
+							reports.append(norm.id)
+				if not presented_days.has(d) and not reports.is_empty():
+					presented_days[d] = true
+					var living: Array = g.w.living()
+					var draft: Dictionary = {
+						"conclusion": {"type": "evil", "target": living[0].id, "at": "Current alignment"},
+						"cards": reports.slice(0, mini(2, reports.size())),
+						"lines": [], "arguments": [], "positions": {}, "answers": {}, "reading_challenges": {}, "circumstantial": []
+					}
+					var num: int = Canvas.file(g, draft)
+					if num > 0:
+						g.command("present %d" % num)
+					else:
+						g.command("wait")
+				elif not nominated_days.has(d):
+					nominated_days[d] = true
+					var living: Array = g.w.living()
+					var subj: String = living[d % living.size()].id
+					var cases: Array = g.board.filter(func(c): return str(c.get("kind", "")) == "deduction")
+					if not cases.is_empty():
+						g.command("nominate %s #%d" % [subj, int(cases[-1].n)])
+					else:
+						g.command("nominate %s raw" % subj)
+				else:
+					g.command("done" if g.town_quiet else "wait")
+			"nomination":
+				g.command("vote no")
+			"night":
+				g.command("sleep")
+	var suspicion: Dictionary = {}
+	for n in g.w.npcs:
+		suspicion[n.id] = n.suspicion.duplicate()
+	var log: Array = g.w.dlog.entries.map(func(e): return [e.type, e.get("actor", ""), e.get("target", ""), e.get("reason", ""), JSON.stringify(e.get("data", {}))])
+	return {"suspicion": suspicion, "log": log, "stats": Connections.cache_stats.duplicate(), "presented": presented_days.size()}
+
+
+func _presentations_and_magistrate() -> void:
+	Connections.enabled = true
+	Connections.cache_enabled = false
+	CaseEval.cache_enabled = false
+	Connections.cache_verify = false
+	var plain: Dictionary = _play_magistrate_presentations(21)
+	Connections.cache_enabled = true
+	CaseEval.cache_enabled = true
+	Connections.cache_verify = true
+	var kept: Dictionary = _play_magistrate_presentations(21)
+	Connections.cache_verify = false
+	check(plain.presented > 0, "magistrate presentation game files and presents cases (%d days)" % plain.presented)
+	check(kept.stats.wrong == 0 and kept.stats.hits > 0, "magistrate presentation game: kept judgements and fast keys match fresh ones (%d hits)" % kept.stats.hits)
+	check(kept.suspicion == plain.suspicion, "magistrate presentation game: suspicions match with CaseEval and Connections caches on vs off")
+	check(kept.log == plain.log, "magistrate presentation game: dev log matches with CaseEval and Connections caches on vs off (%d records)" % kept.log.size())
 	Connections.enabled = false
 
 
@@ -158,6 +260,10 @@ func _key() -> void:
 	var m_talk: Dictionary = magistrate.duplicate(true)
 	m_talk.timeline.events.append({"kind": "nomination", "subjects": [others[0]], "by": others[1], "at": {"day": 2, "phase": "evening"}})
 	check(Connections.judge_key(m_talk, bare, listener, ids, false) != m_key, "a Magistrate's reading is judged again when the meeting's talk changes")
+	var plain_card: Array = [reports[0]]
+	var mag_card: Array = [magistrate.cards.filter(func(c): return c.id == reports[0].id)[0]]
+	check(CaseEval.compile(view, plain_card, bare).key == CaseEval.compile(talk, plain_card, bare).key, "CaseEval.compile reuses a non-Magistrate card across meeting talk")
+	check(CaseEval.compile(magistrate, mag_card, bare).key != CaseEval.compile(m_talk, mag_card, bare).key, "CaseEval.compile recompiles a Magistrate card when the meeting's talk changes")
 	# Kept, handed back, cleared, and bypassed for a caller that wants the worlds.
 	_reset()
 	var first: Dictionary = Connections.judge(view, bare, listener, ids)

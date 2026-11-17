@@ -20,6 +20,49 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-16 night, Argon: zero-drift connections refresh speed-up (`argon/connections-speed`)
+
+- **Base:** main `fd9bede` (#170). **Status:** PR open. **Next actor:** Lantern (review of the Phase 1 `_consequences_eval` skip and `CaseEval` cache keys); Bailiff (merge once green).
+- **Golden:** zero drift against `baseline_bb6f01c` (`seed_42_7` and `seed_900_7` identical at `--tol 0` on Windows; the three 10-NPC seeds match the exact Windows float values recorded in `docs/maintenance/2026-11-16.md` within `1e-15`, and bit-for-bit identical before vs after this patch on the same machine).
+
+### What changed (`workshop/jury.gd`, `workshop/connections.gd`, `workshop/case_eval.gd`, `workshop/caches.gd`, `tools/test_connections_cache.gd`)
+
+1. **Skip dead `CaseEval` and `_headline` work on a connections refresh (`workshop/jury.gd`, Lantern's purge Phase 1):**
+   - When `refresh and Connections.enabled` is true in `Jury._consequences_eval`, skip `_case_eval(view, scoped, eval_listener)` and pass `{"impossible": false, "people": {}}` into `Connections.overlay(..., connections)` (which takes `impossible` and `people` from the connections result).
+   - Keep `attention`, `compiled`, `scoped`, `attended`, `held`, `challenged`, and `eval_listener` intact for `ReasonAttribution` and the four signals in `Jury._consequences_eval`.
+   - Skip `_headline(...)` when `not connections.is_empty()` (`dull == 0.0`).
+2. **Precompute per-refresh `judge_key` inputs (`workshop/connections.gd`):**
+   - `Connections.begin()` precomputes `_prepare_key_ctx(view, run.bare, listener)` once per listener refresh: the `around` hashes with and without `SOFT_EVENTS`, `bare_hash`, the stripped `listener` dictionary, and each card's index, `SOFT_READERS` flag, and reliability key names (including `Solver.semantic_key`).
+   - `_judge_key_fast` sorts only the matched `ids + own` indices in `view.cards` order, producing the exact same key string as `judge_key` without rescanning all `view.cards` or rehashing `view`/`timeline` on every call. With `Connections.cache_verify = true`, `judge()` asserts `_judge_key_fast == judge_key`.
+   - `Connections.items()` memoizes `_names()` per card id across a refresh.
+3. **`CaseEval` cache keys, caps, `_team_prior`, and `_class_fits` (`workshop/case_eval.gd`, following Lantern's warnings on #169):**
+   - **Compile key (`_compile_impl`):** keeps `view.timeline`, `view.regular_haunts`, and `hearing_weight`; drops only `SOFT_EVENTS` from `timeline.events` when no card in `cards` is a Magistrate card (matching `Connections.judge_key`). Raised `_compiled` cap from 32 to 2,048 (`_own_cache` 64 → 1,024; `_fits_cache` 256 → 2,048).
+   - **`_team_prior` memoization (`_team_prior_cache`):** keyed on `[u_key, curr_conv, raw_susp, npc_trust, good_mask, prior_k]` (covering the universe, `suspicion`, `npc_trust`, and `knowledge.good`). Cut `_team_prior` C# calls on seed 692 from 2,716 to 43 (−98.4%).
+   - **`fits_before` and role-constraint reuse (`_bare_fits_cache`, `_class_fits`):**
+     - For `bare` (`cards` holding no role-constraining cards), caches the 5,040-world role-fit array per `(u_key, view.people, route_tl, live_activity, live, personal)` in `_bare_fits_cache` and slices by `cc.rep[c]` into each subset's equivalence classes, preserving the exact per-`cc` `free == fits` Sleepwalker check.
+     - In live views, when `cards` has no role-constraining cards (`report`, `claim`, `secret_claim`, `totem`, `town_hall`, `martyr` event, `relay_source`, or `role`), `fits` reuses `fits_before` directly.
+     - For non-empty `role_cards`, keys `_fits_cache` on `(u_key, view.people, tl_non_soft, live_activity, live, cc.rep, role_cards)` instead of `cc.key`, and computes `bluff_weights` at most once per `(cc, role_cards)` (instead of repeating for `neutral`, `personal`, and `walked`).
+   - Added `CaseEval.cache_enabled` (default `true`) and cleared `_team_prior_cache` / `_bare_fits_cache` in `WorkshopCaches.clear_all()`.
+4. **Verification checks (`tools/test_connections_cache.gd`):**
+   - `_key()` checks that `CaseEval.compile` reuses a non-Magistrate card across meeting talk (`nomination`, `accusation`) and recompiles a Magistrate card when meeting talk changes.
+   - `_games()` toggles both `Connections.cache_enabled` and `CaseEval.cache_enabled` off vs on (plus `cache_verify = true`).
+   - Added `_presentations_and_magistrate()`: plays a forced-Magistrate game through Day 2 with Workshop case filings, meeting presentations (`present`), and nominations (`nominate`) with both `CaseEval.cache_enabled` and `Connections.cache_enabled` off vs on (and `cache_verify = true`), confirming identical NPC suspicions, identical dev logs, and 0 `cache_verify` mismatches.
+
+### Measured (this machine, 10-NPC town, Seed 692 Days 1–4)
+
+- **Active 10-NPC game (Seed 692, Days 1–4, with Workshop case presentations and nominations each day):**
+  - Beliefs and dev logs are 100% identical before vs after the patch, and with `CaseEval` + `Connections` caches on vs off (`7,121` verified cache hits, `0` mismatches).
+  - **Dawns (`sleep` into morning):** cut roughly in half—Day 2 dawn **3.7 s → 1.5 s** (−60%), Day 3 dawn **7.9 s → 3.5 s** (−56%), Day 4 dawn **9.5 s → 5.1 s** (−46%).
+  - **Nominations (`nominate <name> #<case>`):** **30–48% faster**—Day 1 **0.34 s → 0.19 s**, Day 2 **0.64 s → 0.33 s**, Day 3 **0.66 s → 0.46 s**, Day 4 **0.75 s → 0.53 s** (all well under 1 s).
+  - **Vote rounds (`vote` on NPC nominations):** **33–44% faster**—Day 2 votes **0.37–0.50 s → 0.20–0.29 s**, Day 3 votes **0.24–0.54 s → 0.15–0.31 s**, Day 4 votes **0.28–0.34 s → 0.19–0.22 s**.
+  - **Meeting presentations (`present <case>`):** **15–21% faster**—Days 1–4 **2.05–2.44 s → 1.83–1.98 s** (all under 2 s; the remaining ~1 s in `present` is `Shared.response` / `trust_reward` running the old model's `_headline` and `Support.explain`, which Lantern's Phase 6a covers).
+  - **Whole 4-day active 10-NPC run:** **61.0 s → 36.5 s** (−40%).
+- **Passive 10-NPC game (Golden seed 692, to Day 4, `SolverBackend` profiler):**
+  - Total wall time **43.1 s → 24.9 s** (−42%); belief refresh (`outer_prep` inclusive) **34.8 s → 16.5 s** (2.1× faster); `world_domain` C# calls **42,366 → 13,433** (−68%).
+- **Suites run:** `test_connections`, `test_connections_pairings`, `test_connections_core`, `test_connections_cases`, `test_connections_why`, `test_connections_cache`, `test_town_note`, `test_roles_official` (all 8 pass, 0 failures).
+
+---
+
 ## 2026-11-16 night, Claude-Seneschal: Seneschal and Beadle join the roster (`claude/roster-seneschal-beadle`, stacked on #168)
 
 - **Base:** #168's head `a25ece7`. **Status:** docs and one test, PR open. Merge after #168. **Next actor:** Bailiff.
