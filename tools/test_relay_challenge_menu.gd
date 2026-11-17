@@ -72,6 +72,7 @@ func _init() -> void:
 			bad.nodes[key].mode = "misled"
 	check(CanvasModel.new(view).restore(bad, StubSession.new()) != "", "a saved passing-on challenge of 'misled' is refused on load")
 	_shared_ledger_sides()
+	_morning_relay_night()
 	print("Relay challenge menu: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -86,3 +87,23 @@ func _shared_ledger_sides() -> void:
 	check(Ledger.challenges_conflict(lie_medium, lie_dead), "the Medium's side and the dead person's are two explanations, not one")
 	check(not Ledger.challenges_conflict(plain_lie, plain_lie.duplicate(true)), "plain challenges merge as before")
 	check(Ledger.challenges_conflict(plain_lie, {"mode": "misled", "supports": []}), "two modes still conflict, as before")
+
+## Codex, #195: a relayed morning reading (an Executor's) has night -1. A challenge on the dead
+## person's side must still name the day it was read, or source doubt never reaches the reader.
+func _morning_relay_night() -> void:
+	var Solver = preload("res://workshop/solver.gd")
+	var Ghost = preload("res://workshop/ghost_juror.gd")
+	var view: Dictionary = _view()
+	var card: Dictionary = {"id": "mrelay", "fact_id": "mrelay", "kind": "report", "source": "a", "role": "executor", "night": -1,
+		"data": {"target": "e", "role": "clerk"}, "observed_at": {"day": 2, "phase": "morning"},
+		"relay_source": "b", "relay_observed_at": {"day": 2, "phase": "night"}, "relay_role": "medium", "text": "mrelay"}
+	view.cards = [card]
+	var listener = Ghost.profile(view.people)
+	listener.knowledge = {"good": [], "evil": []}
+	var value = Solver.empty_case()
+	value.conclusion.at = view.alignment_epoch
+	value.cards = [card.id]
+	value.reading_challenges = {card.id: {"mode": "misled", "supports": [], "attribution": "original"}}
+	var r: Dictionary = Challenges.assess(view, value, listener, [card])
+	var res: Dictionary = r.results[0] if not r.results.is_empty() else {}
+	check(int(res.get("night", -1)) == 2, "a relayed morning reading's challenge names the day it was read: %s" % [res.get("night", "none")])

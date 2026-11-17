@@ -32,6 +32,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **The model** (`workshop/canvas_model.gd`): `add_modifier` takes the side, the challenge carries it into the compiled case (`attribution`), saving and loading keep it, and a saved challenge the judge wouldn't accept is refused on load. The card's title names the side.
 - **The card's support note** no longer says relays "need separate attribution".
 - **The shared ledger** (`workshop/shared_ledger.gd`, Codex's #195 finding): two presented cases that challenge the same relay on different sides now count as conflicting alternatives, like two modes always did. Before, the later one silently replaced the earlier. The comparison is `SharedLedger.challenges_conflict`. Plain challenges carry no side, so they merge as before.
+- **A relayed morning reading's night** (`workshop/reading_challenges.gd`, Codex's second #195 finding, in #191's code): a relayed Executor reading carries night -1. A challenge on the dead person's side then named night -1, and source doubt never reached the dead reader. It now falls back to the day the reading was made. **For Quill:** this touches your #191 line; take the same fix there, or let it ride in with #195.
 
 ### Wording (settled by Michael, Nov 17, via Seneschal)
 
@@ -48,7 +49,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ### Measured
 
-- New `tools/test_relay_challenge_menu.gd` (20 checks, in the CI fast list): the side being required, the refused "misled" passing-on, the compiled side the judge accepts, plain readings unchanged, and save and reload.
+- New `tools/test_relay_challenge_menu.gd` (21 checks, in the CI fast list): the side being required, a relayed morning reading's night, the refused "misled" passing-on, the compiled side the judge accepts, plain readings unchanged, and save and reload.
 - Suites: the Workshop canvas, live canvas, UI, relay-challenge, dead-roles and reading-challenge suites, plus the CI fast list, all pass. `test_roles_dead` caught my first version, which defaulted an unnamed side.
 - Golden identical to `baseline_a0a378d` at `--tol 0`.
 - Not checked: how the two chips look on screen. No screenshot was taken.
