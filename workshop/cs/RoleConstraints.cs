@@ -630,8 +630,11 @@ internal static class RoleConstraintsKernel
             // (CaseEval: q for a source that can't read healthily) already prices it, so
             // checking it as well charged a Delusional teller's wrong reading twice (Codex,
             // #183). They still hold the gift (the claim above), and the gift's own acts stay
-            // checked: a Martyr's or Executor's one chosen target, a Veteran's one night.
-            bool deludedReader = live && !contentOnly
+            // checked: a Martyr's or Executor's one chosen target, a Veteran's one night. The
+            // listener's own readings keep their check: they read them themself, and only a
+            // listener's own reading is strong alone (DESIGN), so "I may be the Delusional one"
+            // doesn't excuse them (Bailiff's run of test_connections_pairings, #194).
+            bool deludedReader = live && !contentOnly && source != ownPersonIdx
                 && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
             if (deludedReader && roleId != RoleMartyr && roleId != RoleExecutor && roleId != RoleVeteran)
             {
