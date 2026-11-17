@@ -722,7 +722,7 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 		return {"effects": {}}
 	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
-	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping)
+	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
 
 ## One question (`conclusion`, e.g. a secret) asked of the listener's own evidence the way
 ## the belief refresh weighs it: the same doubt-adjusted cards, through the same attention
@@ -791,12 +791,12 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
 	return prepared
 
-static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary) -> Dictionary:
+static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary, honest_doubt: Dictionary = {}) -> Dictionary:
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	# Premises pass step 1: the shaping presentations' effect reaches non-targets at `spill`.
 	# Step 2: cards only suspicious premises brought count at `hedge` for everyone.
 	if not shaping.is_empty() and shaping.get("without", {}).get("ready", false):
-		var wo_effects: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt).get("effects", {})
+		var wo_effects: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt, {}, honest_doubt).get("effects", {})
 		var hedged: Array = shaping.get("hedged", [])
 		var firm_effects: Dictionary = {}
 		var has_firm: bool = false
@@ -805,7 +805,7 @@ static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion
 				firm_effects = wo_effects  # every shaping presentation hedges
 				has_firm = true
 			elif shaping.get("without_firm", {}).get("ready", false):
-				firm_effects = _evaluate_impl(shaping.without_firm, suspicion, source_doubt, sighting_doubt).get("effects", {})
+				firm_effects = _evaluate_impl(shaping.without_firm, suspicion, source_doubt, sighting_doubt, {}, honest_doubt).get("effects", {})
 				has_firm = true
 		var spill: float = float(shaping.spill)
 		var hedge: float = float(shaping.get("hedge", 1.0)) if has_firm else 1.0

@@ -23,7 +23,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 ## 2026-11-17, Claude-Lantern: a doubted reading speaks through the role check only as far as it's trusted (`claude/own-reading-doubt`)
 
 - **Base:** main `cd3aeb4` (#181 merged). **Status:** PR open. Golden identical to
-  `baseline_bb6f01c` (no doubted role-checked reading on the five seeds), so it isn't in the
+  `baseline_a0a378d` (main after #188; no doubted role-checked reading on the five seeds), so it isn't in the
   golden-moving queue. **Next actor:** Bailiff merges.
   **Then: Claude-Quill**, whose Delusional fix builds on this (see "Where it lives").
 - **The bug** (found unpinning `test_beliefs`, purge phase 2): a reading the listener doubts
@@ -70,7 +70,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
   An undoubted reading reads exactly as before. A Clerk reading moved no one in my fixture,
   so it isn't tested here.
-- **Golden:** identical to `baseline_bb6f01c` on all five seeds; two captures identical.
+- **Golden:** identical to `baseline_a0a378d` on all five seeds (checked again after merging #188); two captures identical.
 - **Measured:** the new suite `test_role_check_doubt` (14/14: the three readings, plus a
   "lied" argument that must not soften the reading; added to the fast list), the CI fast
   list on this branch, and two golden captures. Not measured: how often a doubted
