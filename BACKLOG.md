@@ -419,15 +419,14 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
   Check against the current prior mapping. (Oct 30) [open]
 
-- **Unlimited vigil strength.** [watch] Vigils now see only walkers arriving on the block
-  (or the full Lamplighter tour). (54875: a vigil on the first kill block caught both
-  walkers there on nights 1 and 2, near a free Seer reading.) Options discussed, none
-  chosen:
-  - a vigil makes you sleep in and lose the next morning's action (Claude's favourite);
-  - vigils limited like the ward;
-  - a vigil shows only a count of people on the block (leaves the player reliant on
-    chance sightings and the Night Watch);
-  - keep watch at one location: name anyone at that spot, count the rest of the block.
+- **The vigil watches who leaves a block.** (Michael, Nov 17, with Claude-Vicar; design note
+  [docs/design/vigil.md](docs/design/vigil.md)) Replaces "Unlimited vigil strength". A vigil
+  sees people leaving their homes on the watched block, not people arriving there, so the
+  player aims it at suspects instead of predicting the Demon's victim, and a sighting of
+  someone going out is weaker than one at the scene. No sweep first; a lower bot win rate is
+  fine. The bot's vigil policy changes in the same build to watch its suspects' blocks. The
+  note's section 5 lists what the build should check. Result wording: Herald drafts,
+  Michael settles. Owner Quill. [decided]
 
 - **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
   paired seeds (living candidates, wrongful executions, win rate); the evidence rework's
@@ -922,13 +921,16 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
-- **A double claim of a unique gift raises both claimants** (Lantern, Nov 16; Michael, Nov
-  16). Under connections a claim is only context, so two people claiming a gift only one can
-  hold don't become more suspicious by themselves (in `test_beliefs` both dip about 0.01;
-  the earlier model raised them 0.14 and 0.24). Make the two claims a built-in pairing that
-  raises suspicion on both claimants, and shifts it onto the other when one is shown good by
-  other cards. Report in game terms how much each claimant moves, alone and alongside other
-  evidence. Add it to `docs/belief_model.md`'s pairings. Owner Lantern. **[decided]**
+- **A listener's small doubt that their own gift is Delusional** (Lantern and Quill, Nov 17;
+  Michael, Nov 17). With the Delusional secret on the script, an NPC allows that its own gift
+  might be the Delusional one, at about the rate of the Sleepwalker's self-doubt
+  (`SLEEPWALK_SELF_DOUBT`, 10%): one new constant. Today a listener never doubts its own
+  reading that way (#194 left own readings out of the Delusional skip). Design agreed with
+  Quill: the role fits mix as for the Sleepwalker, 0.9 with the listener's own readings
+  healthy and 0.1 with them skipped in worlds where the listener is the Delusional holder
+  (the world prior gives how likely that is). Quill builds the role check's "self" mode
+  first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
+  that PR moves golden. **[decided]**
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
