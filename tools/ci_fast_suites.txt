@@ -21,6 +21,7 @@ test_connections_why
 test_control_flow
 test_csharp_slice_c0
 test_day_presence
+test_daytime_defence_lines
 test_defence_grounds
 test_evidence_honesty
 test_evil_owned_lie
