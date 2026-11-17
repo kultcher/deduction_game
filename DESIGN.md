@@ -1013,6 +1013,11 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   otherwise it confirms their claim, or guesses a good role (#136; `Evil.GRAVEDIGGER_FRAME_*`).
 - Evil bluffing a walking gift says their gift took them out when asked where they were;
   its invented sightings follow the window/route rule.
+- **Fabrications are checked against the public record** before they're told: one that
+  would make the town suspect the liar or a teammate noticeably more (a reading that,
+  beside what's already been shared, clears the wrong person) may be noticed, likelier the
+  more insightful the liar, and then held back a day; careless liars still slip
+  (`sim/fabrication_check.gd`; playtest 26532).
 
 ### Night choices
 

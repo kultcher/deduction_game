@@ -569,6 +569,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `MAX_DIRECT_PLANTS` | `2` |  | `sim/social.gd` |
 | `PLANTER_SCENE_WEIGHT` | `0.40` |  | `sim/social.gd` |
 | `FAKE_SIGHTING_INVENT_PROB` | `0.5` |  | `sim/evil.gd` |
+| `FABRICATION_CHECK_MARGIN` | `0.10` |  | (unused) |
+| `FABRICATION_NOTICE_BASE` | `0.3` |  | (unused) |
+| `FABRICATION_NOTICE_INSIGHT` | `0.6` |  | (unused) |
 | `FAKE_GOSSIP_PROB` | `0.6` |  | `sim/evil.gd` |
 | `CARELESS_BLUFF_INSIGHT_SCALE` | `0.5` |  | `sim/evil.gd` |
 | `EVIL_VOTE_TIE_BASE` | `0.4` |  | `sim/evil.gd` |

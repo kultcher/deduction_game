@@ -90,6 +90,22 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   only; don't infer that both times were healthy from the earlier promise. Tests should
   isolate every explanation and avoid counting the same failure twice. [decided]
 
+  Built Nov 17 (Quill, `claude/martyr-alternatives`): the promise and the later hanging are
+  read together from public events, keeping all five explanations; the outcome reading
+  carries the check when both are held. Not built: dated health (a poisoning on a
+  particular night); the promise's failure is priced as the report's error.
+
+- **A Delusional teller's false reading is charged twice by the judge.** (Codex on #183,
+  Nov 17) In play the role check skips an evil teller's content but not the Delusional
+  holder's, so for every role-checked gift (Archivist, Clerk, Gravedigger, Executor,
+  Registrar, Monitor, Martyr, Night Watch, Warden, Veteran) a Delusional reader's wrong
+  reading takes a small extra error on top of the false-report likelihood. "They were
+  Delusional" then reads weaker than it should next to "they lied". #183 fixed it for the
+  Martyr promise only. Build after Lantern's poisoned-reading fix has merged (it waits for
+  Argon's #181): both change how the role check treats a doubtful reading. Report in game
+  terms how much more often the town accepts "they were Delusional" over "they lied".
+  Owner Quill. [decided] (Michael, Nov 17)
+
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
   helping execute them and claiming non-substitution as evidence against them an active
@@ -257,17 +273,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   strongly suspects (and who turns out evil, or is widely believed so) earns a little
   trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
-
-- **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
-  said "Greta and Lian shared an alignment"; with Lian's public Archivist reading ("Greta
-  or Isolde is the Breathstealer") and Lian's death, that cleared Greta and convicted
-  Isolde. No bluff rule reads other people's public readings. Michael (Nov 16), as
-  Claude-Beadle proposed: check the fabrication against the public cards; if it would
-  noticeably raise suspicion of the liar or a teammate, a roll scaled by Insight decides
-  whether the liar notices, and a liar who notices reworks the reading or holds it back
-  that day. Low-Insight liars still slip. Report in game terms how often bluffs are
-  reworked or held, and how often self-incriminating ones still get through. Draft
-  numbers: margin 0.10, noticing 0.3 + 0.6 × Insight. Owner Beadle. [decided]
 
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
@@ -782,6 +787,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 
