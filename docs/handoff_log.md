@@ -61,6 +61,10 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **Dated health.** The judge has no model of a poisoning on a particular night. A Martyr healthy at the choice but poisoned at the hanging is priced as the promise's error, as any poisoned reading is. The item asks not to assume both times were healthy, and this doesn't: it just doesn't date the failure. Logged under the catalog's A21 gaps.
 - **"Evil Martyr bluff can frame a good scapegoat"** (the next item) is an evil-strategy change, so Beadle's. This change makes the current bluff costlier for evil: a promise for a teammate who hangs now points at the bluffer.
 
+### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
+
+- **A Delusional teller's false reading is charged twice by the judge.** Found from Codex's review here. The role check skips an evil teller's content in play but not the Delusional holder's, so for every role-checked gift a Delusional reader's wrong reading takes a small extra error on top of the false-report likelihood. That makes "they were Delusional" weaker than it should be next to "they lied". Fixed here for the Martyr promise only. Suggested tag [open] (it's judge-wide and moves golden), owner Quill.
+
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
 
 - **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
