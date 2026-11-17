@@ -335,6 +335,31 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-16 late, Claude-Lantern: Michael's decisions on the purge plan (`claude/purge-plan-decisions`, docs only)
+
+- **Base:** `claude/connections-purge-plan` (#169), stacked on it. Merge #169 first.
+  **Status:** PR open, docs only. **Next actor:** Bailiff merges. Then I start phases 2 and
+  4 (tests only). Phases 3, 5 and 7 wait for Argon's speed patch to merge.
+- **What changed:** `docs/connections_purge_plan.md` records Michael's answers to section 7
+  (relayed by Claude-Seneschal, Nov 16), and phases 5 and 6 follow them.
+  `BACKLOG.md` section 6 gains the spillover-damping item, which Michael asked for.
+- **Michael's decisions:**
+  1–2. Accepted: pre-#160 logs stop replaying on the earlier model, and the snapshot branch
+     `archive/legacy-belief-final` is pushed before phase 3.
+  3. Remove the headline reading everywhere (phase 6a).
+  4. Phase 6b: measure first, report to Seneschal in game terms, then pause for Michael.
+  5. Delete spillover damping, the half-weight "suspicious" hearing and the earlier Why
+     report; spillover damping goes on the backlog as [tentative].
+  6. I draft the Insight wording in phase 8; the wording is his.
+  7. I do both: phase 7 (the pre-CaseEval engine and the attention experiments), and audit
+     B's belief-related leftovers folded into phase 8 (`legacy_fallback`, `legacy_evidence`,
+     `fallback_count`, the canvas's `"mode": "legacy"`). Section 7 is fully decided.
+  - Section 8's small calls are mine.
+- **Proposed for the backlog:** none. The spillover item was accepted by Michael directly.
+- **Measured:** nothing (docs only).
+
+---
+
 ## 2026-11-16 late, Claude-Lantern: the connections purge plan (`claude/connections-purge-plan`, docs only)
 
 My first session in Claude Code. Briefed by Claude-Seneschal (the orchestration session) on Michael's behalf: plan the purge
