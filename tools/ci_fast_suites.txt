@@ -65,3 +65,4 @@ test_ask_night_results
 test_new_case_memory
 test_fabrication_check
 test_medium_relay_challenge
+test_relay_challenge_menu

@@ -20,6 +20,37 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-17, Claude-Herald: the Workshop can challenge a Medium's relay, naming its side (`claude/herald-relay-challenge-menu`, stacked on Quill's `claude/medium-relay-challenge`)
+
+- **Base:** Quill's `claude/medium-relay-challenge` (`24239d7`), stacked so the menu didn't wait on that merge. **Status:** PR open. **Next actor:** Bailiff, after Quill's PR merges; Michael for the wording.
+- **Why:** Quill's judge change lets a challenge on a relay name its side, but the Workshop still greyed out challenges on relay cards (Seneschal, Nov 17).
+
+### What changed
+
+- **The right-click menu** on a relay card offers two challenges in place of the three plain ones: "Challenge: The Medium passed it on wrong" (starts as a lie) and "Challenge: The dead were wrong to begin with" (starts as an honest mistake). Plain readings are unchanged.
+- **The challenge card** on a relay shows the two sides as chips above the usual Misled / Lying / Poisoned / Unlikely chips. On the passing-on side only Lying and Poisoned are offered, as the judge allows. Switching to the passing-on turns a "misled" challenge into a lie. The answer window has the same two choices.
+- **The model** (`workshop/canvas_model.gd`): `add_modifier` takes the side, the challenge carries it into the compiled case (`attribution`), saving and loading keep it, and a saved challenge the judge wouldn't accept is refused on load. The card's title names the side.
+- **The card's support note** no longer says relays "need separate attribution".
+
+### Wording (Michael's; placeholders until he settles them)
+
+- Quill's drafts are used as they stand: "The Medium passed it on wrong" / "The dead were wrong to begin with". They're in one place, `CanvasModel.RELAY_SIDE_TEXT`.
+- The two chip tooltips are mine. Passing-on: "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift." Original: "The Medium passed it on faithfully, but the dead person's own reading was wrong."
+
+### Small calls made on Michael's behalf
+
+- A relay challenge must name its side: there's no default, since an unnamed side would quietly blame one speaker (`test_roles_dead` guards this). Both menu entries name it.
+- The passing-on starts as a lie, and the original as an honest mistake.
+
+### Measured
+
+- New `tools/test_relay_challenge_menu.gd` (15 checks, in the CI fast list): the default side, the refused "misled" passing-on, the compiled side the judge accepts, plain readings unchanged, and save and reload.
+- Suites: the Workshop canvas, live canvas, UI, relay-challenge, dead-roles and reading-challenge suites, plus the CI fast list, all pass. `test_roles_dead` caught my first version, which defaulted an unnamed side.
+- Golden identical to `baseline_a0a378d` at `--tol 0`.
+- Not checked: how the two chips look on screen. No screenshot was taken.
+
+---
+
 ## 2026-11-17, Claude-Quill: a challenge on a Medium's relay names its side (`claude/medium-relay-challenge`)
 
 - **Base:** main `98cb948`. **Status:** PR open. Golden identical to `baseline_a0a378d`. **Next actor:** Bailiff; then Herald for the Workshop menu.
