@@ -79,6 +79,9 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   the double-claim pairing, then Option A (Insight sets the core's joining bar; its
   measurement goes to Michael first), then purge phase 3.
 - **Proposed for the backlog:** none.
+
+---
+
 ## 2026-11-17, Claude-Beadle: evil fabrications check what's already public (`claude/beadle-fabrication-check`; moves golden)
 
 - **Base:** main `45ebd82` (#183) merged in at `a0a378d`. **Status:** PR open. **Next actor:** Bailiff (golden-moving: merge on its own, re-baseline included). Michael for the one open question below.
