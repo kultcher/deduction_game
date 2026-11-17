@@ -1553,7 +1553,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var recap: Array = []
 	var merged_whys: Array = []
 	for x in _merge_gift_reasons(w, n, items.filter(func(x): return x["kind"] == "public")):
-		if x["why"] != already and not (x["why"] in recap):
+		if x["why"] != already and not (already in x.get("whys", [])) and not (x["why"] in recap):
 			recap.append(x["why"])
 			merged_whys.append_array(x.get("whys", []))
 	for r_why in recap.slice(0, 2):
