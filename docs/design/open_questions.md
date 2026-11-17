@@ -58,10 +58,12 @@ These are the ones under discussion now, roughly by how much they shape other wo
 ### 1.3 What Insight does in belief
 - **Open:** Insight was taken out of belief for v1 by the connections model. After the
   purge removes the headline reading, Insight only sets how many cards an NPC cites and how
-  fast they fade from its attention. Seneschal's brief says Michael approved **Option A**
-  for Insight's new role and that it is being measured; **neither the option nor the
-  measurement is in the repo yet.** The written candidates are "one dial: the core
-  threshold, or a second ring" (`docs/belief_model.md`, "Insight is out for v1").
+  fast they fade from its attention. Michael approved **Option A: Insight sets the core's
+  joining bar** (how much a card has to add before it's weighed together with the NPC's own
+  firsthand knowledge; today a fixed 0.4 at every town size, `docs/belief_model.md`).
+  Lantern measures it for Michael before building it (Lantern's `claude/own-reading-doubt`
+  handoff entry, Nov 17, on main: after phase 6b and the double-claim pairing). Still open:
+  what the measurement shows, and whether to keep it.
 - **Also open:** DESIGN's Insight row needs new wording (purge plan, decision 6: Lantern
   drafts it in phase 8, the wording is Michael's).
 - **Evidence:** `docs/belief_model.md`; `docs/connections_purge_plan.md` sections 7–8 (#174).
