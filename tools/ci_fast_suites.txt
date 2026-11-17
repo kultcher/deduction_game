@@ -9,6 +9,7 @@ test_bare_compile
 test_beliefs
 test_bot_m4
 test_buildings_tavern_town_hall
+test_case_metrics_dead
 test_case_script
 test_codex_fixes
 test_connections
