@@ -48,6 +48,14 @@ func _init() -> void:
 			[target.id], inc, {"people": [], "listener": {}}, {"selected": ["c1"]}, "accept", false, false, "canonical", {})
 		t = str(r.get("text", ""))
 		check(moved in t and not (fits in t), "%s: after 'those accounts clash', the same: %s" % [listener.id, t])
+		# A case for someone's innocence: the neutral line, since some voices' lean toward
+		# suspicion ("it weighs with me against {target}"; Codex, #219).
+		var who = w.living_good()[0] if w.living_good()[0] != listener else w.living_good()[1]
+		r = Presentations.render_workshop_reply(w, listener, {"type": "good", "a": who.id, "at": "Original alignment"},
+			[who.id], clash, {"people": [], "listener": {}}, {"selected": ["c1"]}, "accept", false, false, "canonical", {})
+		t = str(r.get("text", ""))
+		check(("Still, it changes how I see %s." % who.name) in t and not (str(v.get("present_accept_open", "")).replace("{target}", who.name) in t),
+			"%s: a clash in a case for innocence ends on the neutral line: %s" % [listener.id, t])
 		for key in ["defence_lying_alone", "defence_lied"]:
 			var line: String = str(v.get(key, ""))
 			check(line != "" and "{source}" in line and not line.begins_with("Then"), "%s/%s stands on its own: %s" % [listener.id, key, line])

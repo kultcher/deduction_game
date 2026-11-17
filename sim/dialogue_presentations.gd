@@ -208,6 +208,17 @@ static func render_self_support(n, variant: String, canonical: String, tic_memor
 
 
 ## Compose the full spoken presentation reaction for a Workshop assessment.
+## The line after a clash opener. Some voices' "still, it moves me" leans toward suspicion
+## ("it weighs with me against {target}"), so a case for someone's innocence takes the
+## neutral line every voice shares (Codex, #219).
+static func _clash_follow(listener, key: String, ctype: String, target_label: String) -> String:
+	const NEUTRAL: String = "Still, it changes how I see %s."
+	if key != "present_clashes_moved":
+		return Dialogue.voice_line(listener.id, key, "", {"target": target_label})
+	if not (ctype in ACCUSING_TYPES):
+		return NEUTRAL % target_label
+	return Dialogue.voice_line(listener.id, key, NEUTRAL % target_label, {"target": target_label})
+
 static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targets: Array, assessment: Dictionary, view: Dictionary, snapshot: Dictionary, believed_stance: String, already_aligned: bool, nothing_new: bool, canonical: String, tic_memory: Dictionary) -> Dictionary:
 	if not Dialogue.has_voice(listener.id):
 		return {"speaker": listener.id, "name": listener.name, "text": canonical, "statement": canonical}
@@ -262,7 +273,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		if believed_stance in ["accept", "partial"]:
 			# After a clash, "Fits what I know" contradicts it: "still, it moves me" (playtest 23973).
 			var inc_follow: String = "present_clashes_moved" if believed_stance == "accept" else "present_partial"
-			parts.append(Dialogue.voice_line(listener.id, inc_follow, "Still, it changes how I see %s." % target_label if believed_stance == "accept" else "", {"target": target_label}))
+			parts.append(_clash_follow(listener, inc_follow, ctype, target_label))
 	elif status == "rival_found" and reasoning.get("rival") is Dictionary and not reasoning.rival.is_empty():
 		var epoch: String = str(root_conclusion.get("at", "now"))
 		var alt: Dictionary = Solver.describe_world(view, reasoning.rival, epoch)
@@ -321,7 +332,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 			# The case still moved them: after "it clashes with what I know", not "Fits what I
 			# know" (playtest 23973: Bart). After "I lost the thread" the usual line stands.
 			var b_key: String = ("present_clashes_moved" if clashes else "present_accept_open") if believed_stance == "accept" else "present_partial"
-			parts.append(Dialogue.voice_line(listener.id, b_key, ("Still, it changes how I see %s." % target_label) if b_key == "present_clashes_moved" else "", {"target": target_label}))
+			parts.append(_clash_follow(listener, b_key, ctype, target_label))
 	elif agreement <= -0.2 or (status == "counterexample_found" and bool(reasoning.get("support_exhausted", false))):
 		var rivals: Array = ev.get("rivals", [])
 		var rival_id: String = ""
