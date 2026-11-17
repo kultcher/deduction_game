@@ -1486,6 +1486,58 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	items.sort_custom(func(x, y): return float(x["contrib"]) > float(y["contrib"]))
 	return items.slice(0, limit)
 
+## Several of the nominator's own readings from one gift, recapped as one reason ("what my
+## gift showed me on the first, second and third nights points at them") rather than one
+## sentence each (89077 finding 3: Constance's three Lamplighter counts against Kiran).
+## Each merged item keeps the sentences it stands for in "whys", so the cards behind
+## them are still the ones recalled.
+static func _merge_gift_reasons(w, n, items: Array) -> Array:
+	var by_role: Dictionary = {}
+	for x in items:
+		var en: Dictionary = x.get("entry", {})
+		if not en.is_empty() and str(x.get("eid", "")).begins_with("info:%s:" % n.id) and str(en.get("role", "")) != "" and int(en.get("phase", C.NIGHT)) == C.NIGHT:
+			by_role[str(en.role)] = by_role.get(str(en.role), []) + [x]
+	var out: Array = []
+	var done: Dictionary = {}
+	for x in items:
+		var en: Dictionary = x.get("entry", {})
+		var role: String = str(en.get("role", "")) if not en.is_empty() else ""
+		var group: Array = by_role.get(role, []) if role != "" else []
+		if group.size() < 2 or not (x in group):
+			out.append(x)
+			continue
+		if done.has(role):
+			continue
+		done[role] = true
+		var nights: Array = []
+		for g in group:
+			var nd: int = int(g.entry.get("day", 0))
+			if not (nd in nights):
+				nights.append(nd)
+		nights.sort()
+		if nights.size() < 2:
+			for g in group:
+				out.append(g)
+			continue
+		var m: Dictionary = x.duplicate()
+		m["why"] = "what my gift showed me %s points at them" % _spoken_nights(nights, int(w.day))
+		m["whys"] = group.map(func(g): return str(g.get("why", "")))
+		out.append(m)
+	return out
+
+## "on the first, second and third nights"; "on the first night and last night".
+static func _spoken_nights(nights: Array, today: int) -> String:
+	var said: Array = nights.map(func(nd): return C.spoken_night(int(nd), today))
+	if said.all(func(s): return str(s).begins_with("the ") and str(s).ends_with(" night") and not str(s).begins_with("the night before")):
+		var ords: Array = said.map(func(s): return str(s).trim_prefix("the ").trim_suffix(" night"))
+		return "on the %s nights" % _and_list(ords)
+	return _and_list(nights.map(func(nd): return C.spoken_when(int(nd), today)))
+
+static func _and_list(parts: Array) -> String:
+	if parts.size() == 1:
+		return str(parts[0])
+	return ", ".join(PackedStringArray(parts.slice(0, parts.size() - 1).map(func(p): return str(p)))) + " and " + str(parts[-1])
+
 ## The nominator lays out their case: public reasons recapped (cosmetic: hearing them again
 ## changes nothing), and their strongest private one hinted at or brought out (claim and
 ## reading, with their usual effect, as at any other time). Returns {lines, facts}.
@@ -1499,9 +1551,11 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	# Each reason once: three readings of one gift can give the same sentence (89077:
 	# Constance's three Lamplighter counts against Kiran).
 	var recap: Array = []
-	for x in items:
-		if x["kind"] == "public" and x["why"] != already and not (x["why"] in recap):
+	var merged_whys: Array = []
+	for x in _merge_gift_reasons(w, n, items.filter(func(x): return x["kind"] == "public")):
+		if x["why"] != already and not (x["why"] in recap):
 			recap.append(x["why"])
+			merged_whys.append_array(x.get("whys", []))
 	for r_why in recap.slice(0, 2):
 		if str(r_why).begins_with("I saw"):
 			_append_accusation_sighting(w, n, t, str(r_why), lines, facts, spoken)
@@ -1514,7 +1568,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 	# "No premise" only when they've given none: not after "I saw them out" (89077: Nisha).
 	if items.is_empty() and already == "":
 		lines.append(say_voiced(n, "nomination_no_reasons", "I don't trust %s, and I can't say better than that." % t.name, {"target": t.name}))
-	var cited_whys: Array = [already] + recap.slice(0, 2)
+	var cited_whys: Array = [already] + recap.slice(0, 2) + merged_whys
 	var cited_cards: Array = []
 	if priv.is_empty() and not relays.is_empty():
 		cited_cards = relays[0].get("cards", [])
