@@ -24,7 +24,7 @@
   there. A Delusional Medium's relay is also ruled out in the kernel's relay check
   (`relayHealthy`; pinned by `test_roles_dead`). I haven't checked whether CaseEval's
   transmission-health channel already prices that case. Both are for a later pass.
-- **Golden:** re-baselined to `baseline_dba17f9` (on main `cee8811`, after #193); see `docs/golden_baseline.md`.
+- **Golden:** re-baselined to `baseline_928cb8b` (on main `730897c`); see `docs/golden_baseline.md`.
   - Every seed diverges from record 1, with small suspicion shifts.
   - Four outcomes are unchanged.
   - **98933 changes:** the town hangs the Revenant on day 2 and the Demon on day 3 and
@@ -35,3 +35,10 @@
   `test_workshop_reading_challenges`, all `test_roles_*` in the fast list,
   `test_location_solver`, `test_shared_model`: all pass.
 - Sessions: none needed from others.
+- **Bailiff's run (Nov 17, later):** test_connections_pairings failed with #194 on main
+  `730897c`: an evil Medium's invented relay left its subject only 0.57 sure the Medium was
+  evil (needs 0.6). Cause: the Delusional skip also covered the listener's own reading, so
+  a listener doubted what they read themself. Fixed (`928cb8b`): the listener's own
+  readings keep their check. The suite now reads 0.84 (main 0.93; the rest is the intended
+  rival explanation for other tellers' readings). Sent to Lantern, who owns the suite, to
+  confirm the principle.

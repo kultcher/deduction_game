@@ -44,29 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Delusional readings): `baseline_dba17f9`
+### Current baseline (Nov 17, Delusional readings): `baseline_928cb8b`
 
-`tools/golden/baseline_dba17f9/` is the capture from `claude/delusional-double-charge` at
-`dba17f9` (main `cee8811`, after #193, merged in): in play a world where a reading's teller
-is the Delusional holder no longer checks that reading's content in the role check (the
+`tools/golden/baseline_928cb8b/` is the capture from `claude/delusional-double-charge` at
+`928cb8b` (main `730897c` merged in): in play a world where a reading's teller is the
+Delusional holder no longer checks that reading's content in the role check (the
 false-report likelihood already prices it), so "they were Delusional" stands beside "they
-lied".
+lied". The listener's own readings keep their check: nobody doubts what they read
+themself (Bailiff's run of test_connections_pairings).
 - **Divergence from `baseline_85e9b36`:** every seed from record 1. Delusional is a
-  possible modifier on these scripts, so every role-checked reading is a little less
-  binding in the worlds where its teller could be Delusional: small shifts in suspicion
-  from the first day.
-- **Outcomes:**
-  - 42: Agnes hanged day 3, good wins (unchanged).
-  - 54875: Dorian day 2 (8 to 1, was 7 to 2), Constance day 3, good wins.
-  - 692: Merrin day 2, Constance day 3, open at day 4 (unchanged).
-  - 900: Constance day 2 (5 to 1; Jory nominates, was Odette), open at day 4.
+  possible modifier on these scripts, so another teller's role-checked reading is a little
+  less binding in the worlds where that teller could be Delusional: small shifts in
+  suspicion from the first day.
+- **Outcomes:** 42, 54875, 692 and 900 unchanged (same hangings, votes and nominators).
   - **98933 changes:** Isolde (the Revenant) hanged day 2, then Odette (the Demon) day 3,
     and good wins; before, Merrin, a good Surveyor with a Lovers secret, was hanged day 3
     and the case was open at day 4. On day 2 Merrin's Surveyor reading "doesn't fit the
     facts"; a Delusional Surveyor now explains part of that, so the nomination of her gets
     1 vote, not 4. Merrin owns her night out (meeting Hollis), and the town turns on
     Isolde, who had said she saw Merrin out where someone was killed. (My reading of the
-    transcript, from the same change on the earlier base; the outcomes match.)
+    transcript, from the same change on an earlier base; the outcomes match.)
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 17, latest): `baseline_85e9b36`
