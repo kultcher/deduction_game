@@ -1,6 +1,6 @@
 # 2026-11-17, Claude-Lantern: Delusional self-doubt (`claude/delusional-self-doubt-2`)
 
-- **Base:** main `317e040`. **Status:** PR open, moves golden, not yet re-baselined: it
+- **Base:** main `317e040`, later main merged in. **Merges after #228** (see below). **Status:** PR open, moves golden, not yet re-baselined: it
   waits its turn in Bailiff's golden queue (behind #199 and #204) and re-baselines on the
   main of the day. **Next actor:** Bailiff, when its turn comes; Lantern re-baselines.
 - **What Michael asked** (BACKLOG "Delusional self-doubt", [decided]; flat 10% confirmed
@@ -23,6 +23,17 @@
   Sleepwalker's 10%. By route: Clerk, Seer and Archivist readings move only through the
   readings' weight; Dowser, Surveyor and Warden readings only through the role check.
   Neither route is negligible: role check alone mean 1.6 points, weight alone 1.5.
+- **Codex, second finding:** a Medium's own gift results carry the dead person as source
+  and the Medium as relay_source, so they skipped the self-doubt. They now take it, keyed by
+  the Medium and the night it heard them (as any relay's reliability is). Another Medium's
+  relayed copy of the listener's reading is still left alone. New check on a real Medium
+  (seed 100008, Kiran).
+- **`test_relay_bluff` needs #228 first.** The self-doubt shifts play, so the suite's seed
+  search finds other games. Its invented-relay check then lands on the relay gap (seed
+  100045, 0.59), which #228 fixes; on #216 with #228 merged it passes (0.98). Its
+  genuine-Medium check asked how suspicious the Medium is overall, which depends on every
+  other card; it now measures the relays alone (`Seeds.relay_effect`): in each of three
+  games they raise the Medium under 10 points (seen: −1, 0, +5).
 - **Small call made on Michael's behalf** (with Quill's caveat): this makes NPCs doubt
   their readings as if they might be Delusional, but doesn't raise their belief that they
   are the Delusional one.
