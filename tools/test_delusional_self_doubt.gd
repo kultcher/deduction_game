@@ -86,7 +86,39 @@ func _init() -> void:
 	check(not nights.any(func(nd): return float(none.pre_eval.get("%s:%d" % [n.id, nd], 0.0)) >= Tuning.Workshop.DELUSIONAL_SELF_DOUBT - 1e-9), "%s: without the Delusional secret on the script its own nights carry no self-doubt" % tag)
 	_finish()
 
+## A good Medium's own gift results (relayed cards it holds with itself as relay_source)
+## carry the self-doubt on the night it heard them (Codex on #216).
+func _medium_case() -> void:
+	var found: Dictionary = Seeds.search(3, func(g):
+		for n in g.w.living_good():
+			if str(n.role) != "medium":
+				continue
+			var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
+			if plan.is_empty() or not "delusional" in plan.prepared.view.get("world_options", {}).get("modifiers", []):
+				continue
+			var mine: Array = plan.prepared.view.cards.filter(func(c): return str(c.get("relay_source", "")) == n.id and not c.get("quoted", false))
+			if not mine.is_empty():
+				return {"listener": n.id}
+		return {})
+	check(not found.is_empty(), "found a good Medium holding its own gift results with the Delusional secret on the script")
+	if found.is_empty():
+		return
+	var g = found.g
+	var n = g.w.by_id[found.listener]
+	var plan: Dictionary = g._workshop_plans[n.id + ":good"]
+	var derived: Dictionary = SourceDoubt.derive(plan, n.ledger, {})
+	var nights: Array = []
+	for c in plan.prepared.view.cards:
+		if str(c.get("relay_source", "")) == n.id and not c.get("quoted", false):
+			var nd: int = int(c.get("relay_observed_at", {}).get("day", -1))
+			if nd >= 0 and nd not in nights:
+				nights.append(nd)
+	var tag: String = "seed %d: %s (Medium)" % [int(found.seed), n.id]
+	check(not nights.is_empty() and nights.all(func(nd): return float(derived.honest.get("%s:%d" % [n.id, nd], 0.0)) >= Tuning.Workshop.DELUSIONAL_SELF_DOUBT - 1e-9), "%s: each night it heard the dead carries the self-doubt (%s)" % [tag, str(nights)])
+
+
 func _finish() -> void:
+	_medium_case()
 	# A gift the deal never gives the Delusional secret (ScriptDef.PLACEMENT_RULES) rules the
 	# self-doubt out: the Chronicler and Rumormonger know they can't be Delusional.
 	check(not SourceDoubt.could_hold_secret("chronicler", "delusional") and not SourceDoubt.could_hold_secret("rumormonger", "delusional"), "a Chronicler or Rumormonger can't be Delusional, so doesn't doubt itself that way")

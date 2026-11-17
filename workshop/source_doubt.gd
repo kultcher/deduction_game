@@ -216,15 +216,23 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# "Is my gift Delusional?" (Michael, Nov 17). With the secret on the script a good
 	# listener's own gift might give it wrong readings without it knowing, so each night of
 	# its own readings carries a small honest doubt (DELUSIONAL_SELF_DOUBT), the way its home
-	# nights carry the Sleepwalker's. Honest, so it reaches both the readings' weight and the
-	# role check (a role-checked reading, a Clerk's or a Seer's, moves only there), never a
-	# charge of lying. Its sightings and alibis aren't gift readings.
+	# nights carry the Sleepwalker's. Honest, so it reaches both the role check and the
+	# readings' weight (measured Nov 17: a Clerk's, Seer's or Archivist's reading softens
+	# through its weight, a Dowser's, Surveyor's or Warden's through the role check), never a
+	# charge of lying. Its sightings and alibis aren't gift readings. A Medium's gift results
+	# carry the dead person as source and the Medium as relay_source; they're keyed, as any
+	# relay's reliability is, by the Medium and the night it heard them. Another Medium's
+	# relayed copy of the listener's reading isn't the listener's gift, so it's left alone.
 	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false) and could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
 		var d_self: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT
 		for c in cards:
-			if str(c.get("kind", "")) != "report" or str(c.get("source", "")) != self_id or c.get("quoted", false) or c.has("relay_source"):
+			if c.get("quoted", false):
 				continue
-			var n_self: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			var n_self: int = -1
+			if str(c.get("relay_source", "")) == self_id:
+				n_self = int(c.get("relay_observed_at", {}).get("day", -1))
+			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
+				n_self = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
 			if n_self < 0:
 				continue
 			var k_self: String = "%s:%d" % [self_id, n_self]
