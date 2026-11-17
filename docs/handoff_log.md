@@ -1,5 +1,8 @@
 # Agent handoff log
 
+> **Frozen on Nov 17, 2026.** New handoff entries go in `docs/handoff/`, one file per entry
+> (see `docs/handoff/README.md`). This file keeps everything up to that date, newest first.
+
 Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
 commit, status, next actor, and anything the next agent must know before starting. Sessions
 don't share memory: this log and the PRs are how they talk.
@@ -20,13 +23,232 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Seneschal: backlog items for the Breathstealer overhaul and the Muddler (`claude/backlog-breathstealer-muddler`)
+## 2026-11-17, Claude-Lantern: purge phase 6b, the connections refresh believes from every held card (`claude/purge-6b-held-signals`)
 
-- **Base:** main. **Status:** `BACKLOG.md` only, PR open. **Next actor:** Bailiff.
-- **Michael accepted both** (Nov 17), from Quill's playtest-26532 findings.
-  - **The Breathstealer:** the existing section-4 item "The Breathstealer confirms the good" becomes the Breathstealer overhaul, which Michael wants before any more Breathstealer tuning. Quill's finding (the judge lets a silencing victim be the Breathstealer) is added to it, unbuilt.
-  - **The Muddler:** a new `[open]` item, "The Muddler rarely has anything to muddle", with Quill's measurements and options. Michael is leaving it for now.
-- No owner is assigned to either yet. Both wait for Michael to shape them.
+- **Base:** main `c676018` (#186 merged in). **Status:** PR open. Golden identical to
+  `baseline_a0a378d`, so it isn't in the golden-moving queue. **Next actor:** Bailiff merges.
+- **For Claude-Quill:** my poisoned-reading fix (#186) merged at `c676018`, so your Delusional
+  fix can start. The hook is `CaseEval._doubted_role_fits`; the doubt arrives as
+  `listener.reading_doubt`, from `SourceDoubt.derive`'s `honest` map. Delusional doubt is
+  deliberately not in that map yet (it sits on the source's general doubt).
+- **What changed and why** (Michael's go, Nov 17): on a connections refresh, four places
+  that still read only the cards a listener attends to now read every card it holds:
+  - the quiet-night protection signal;
+  - the circumstantial pattern;
+  - the floor a "lying" or "failed gift" challenge made outside any case puts under its
+    teller or the Poisoner candidates;
+  - the direct checks.
+  That is the model's own rule ("attention picks what's cited, not what's believed").
+  `workshop/jury.gd` `_consequences_eval` (`believe_held`). Attention's cards still feed
+  reasons and replies, and the earlier model keeps them.
+- **What it changes in play:** on my 16-game measurement (3,856 refreshes) none of the four
+  differed, so golden is identical. The one case bot games never make is now a suite,
+  `test_held_signals` (fast list). A low-Insight listener hears a reading it knows can't
+  be true from a teller it distrusts, and the reading drops out of its attention; then it's
+  challenged as a lie. Before this change the teller didn't move at all. Now the challenge
+  lifts them (seed 100: 0.173 → 0.190; 101: −0.503 → 0.222; 102: 0.165 → 0.179). The floor
+  is a minimum, so a teller already under suspicion moves less.
+- **Not changed:** `invalid` (graph errors and answers on the attended case) still reads
+  attention's case. A refresh's union has no answers or graph, so it's the same either way;
+  phase 3 can fold it in.
+- **Measured:** two golden captures (identical to the baseline and to each other), the CI
+  fast list (63/63), and `test_held_signals` with this change undone (the teller doesn't
+  move; it fails as it should).
+- **Order of my next work:** #186 (the poisoned-reading fix, answering Codex), then the
+  wider Option A measurement Michael asked for, then the double-claim pairing, then purge
+  phase 3.
+
+---
+
+## 2026-11-17, Claude-Lantern: a doubted reading speaks through the role check only as far as it's trusted (`claude/own-reading-doubt`)
+
+- **Base:** main `cd3aeb4` (#181 merged). **Status:** PR open. Golden identical to
+  `baseline_a0a378d` (main after #188; no doubted role-checked reading on the five seeds), so it isn't in the
+  golden-moving queue. **Next actor:** Bailiff merges.
+  **Then: Claude-Quill**, whose Delusional fix builds on this (see "Where it lives").
+- **The bug** (found unpinning `test_beliefs`, purge phase 2): a reading the listener doubts
+  honestly (its night was poisoned or misled) kept moving its people in full, under both
+  belief models. Readings that act through the role check (a Seer's Red Herring placement,
+  an Archivist's, Clerk's or Gravedigger's role reading) never saw the doubt there: the
+  doubt lowered the reading's reliability, which the role check doesn't read. The earlier
+  model only looked different because its headline reading, which the doubt did turn off,
+  added a little on top.
+- **The fix:** each doubted reading in a set is weighed as genuine with the listener's trust
+  in it and as a bare claim of the gift otherwise. This is exact for one doubted reading in
+  a set; with several, each mixes against the others read in full.
+  - **The doubt** is `listener.reading_doubt`. `SourceDoubt.derive` now also returns an
+    `honest` map, built only from honest errors: a poisoned Night Watch, a misled or
+    unreliable argument. Reading challenges are left out, since under connections a
+    challenge acts only inside its own case (`test_connections_cases` caught a failed-gift
+    challenge reaching the reading's own value). `Shared.evaluate` passes it to `_doubt_adjusted`, which sets
+    `reading_doubt` per card. Callers that don't pass it change nothing.
+  - **Caught lies, "lied" arguments and "lying" challenges stay out, by night or in
+    general.** My first version read all source doubt. A bogus Gravedigger reading (a
+    hanging that never happened) then stopped convicting its claimant: `test_shared_model`
+    caught it, and it moved golden. My second read every night-specific doubt, which Codex
+    showed still let a "lying" challenge or a night's "lied" argument soften the reading.
+  - **Trust in the teller is left out on purpose:** the role check already lets an evil
+    teller lie in the worlds where they're evil, so including it would charge it twice.
+  - **Carried through** `Jury._eval_listener`. Both connections judgement keys (`judge_key`
+    and the fast key) include the judged cards' doubts.
+- **Where it lives (for Quill):** `CaseEval._doubted_role_fits` is the one place that handles
+  a doubted reading in the role check. It's called once from `_evaluate_impl`, right after
+  `fits`. `CaseEval.doubted_role_check` switches it off for measuring. Quill's Delusional
+  item (the role check's `sourceEvil` exemption charging a Delusional teller's false reading
+  twice) is in `RoleConstraints.cs`. Delusional doubt sits on the source's general doubt, so
+  it is deliberately not in `reading_doubt` today; if Quill's fix wants a Delusional
+  teller's readings read as honest errors, this function and `reading_doubt` are where it
+  goes.
+- **What changes in play:** on `test_role_check_doubt`'s fixture (seed 5110; the
+  listener's own reading, then a misled argument doubting that night at 0.8):
+
+  | Reading | With the reading | After the doubt, before the fix | After the doubt, now |
+  |---|---|---|---|
+  | Seer "yes" on a pair | 0.10 → 0.15 | 0.15 | 0.107 |
+  | Archivist "one of these two holds the Minion's gift" | 0.10 → 0.385 | 0.385 | 0.119 |
+  | Gravedigger verdict | 0.10 → 0.00 | 0.00 | 0.093 |
+
+  An undoubted reading reads exactly as before. A Clerk reading moved no one in my fixture,
+  so it isn't tested here.
+- **Golden:** identical to `baseline_a0a378d` on all five seeds (checked again after merging #188); two captures identical.
+- **Measured:** the new suite `test_role_check_doubt` (14/14: the three readings, plus a
+  "lied" argument that must not soften the reading; added to the fast list), the CI fast
+  list on this branch, and two golden captures. Not measured: how often a doubted
+  role-checked reading occurs in bot games.
+- **Order of my next work:** phase 6b (attention-limited signals read every held card), then
+  the double-claim pairing, then Option A (Insight sets the core's joining bar; its
+  measurement goes to Michael first), then purge phase 3.
+- **Proposed for the backlog:** none.
+
+---
+
+## 2026-11-17, Claude-Beadle: evil fabrications check what's already public (`claude/beadle-fabrication-check`; moves golden)
+
+- **Base:** main `45ebd82` (#183) merged in at `a0a378d`. **Status:** PR open. **Next actor:** Bailiff (golden-moving: merge on its own, re-baseline included). Michael for the one open question below.
+- **BACKLOG item:** "Evil fabrications check what's already public" ([decided], playtest 26532), built as proposed and moved to BACKLOG_COMPLETED.
+- **What changes in play.** Before an evil member's made-up reading joins what it can tell, it's judged beside every reading already shared, by a listener who knows only the public record.
+  - If it would lift the town's chance that the liar or a living teammate is evil by more than 0.10, the liar may notice. The chance is 0.3 + 0.6 × Insight: about 1 in 3 for the least insightful, 9 in 10 for the sharpest.
+  - Noticed, it asks its bluff rule once more and keeps a safe answer; failing that it holds the reading back a day, then tells it unchanged.
+  - Unnoticed, it goes out as before, so careless liars still give themselves away and the player can catch them.
+  - Every outcome is logged (`think`, topic `lie`) and kept on the reading (`vet`).
+  - Not checked: Night Watch and Medium fabrications, which the judge reads as sightings.
+- **26532's shape** (rebuilt in `tools/test_fabrication_check.gd`): with Lian's public "Greta or the liar is the <role>" and Lian dead to the Demon, the liar's "Greta and Lian shared an alignment" lifts the town's view of the liar from 0.58 to 0.91. Two unrelated good people "shared an alignment" lifts it by 0.03 and passes. Over 40 tries, the least insightful liar let it slip 33 times and the sharpest 5 times.
+- **Measured** with a scratch probe (not committed): 20 passive ten-NPC games, seeds 1000–1019, check on, then the same seeds with it off.
+
+  | | Check on | Check off |
+  |---|---|---|
+  | Fabrications | 139 | 131 |
+  | Self-incriminating: held back a day | 12 (4 in 5) | n/a |
+  | Self-incriminating: slipped through | 3 (1 in 5) | n/a |
+  | Reworked | 0 | n/a |
+  | Good wins | 11 | 12 |
+  | Time for the 20 games | 34.2 min | 35.3 min |
+
+  - In game terms: about 1 made-up reading in 9 would have pointed the town at the liar or a teammate. The liar catches 4 in 5 of those and keeps them back a day; 1 in 5 still gets out.
+  - The flags were Dowser counts with a teammate inside the counted group (10), Gravedigger bluffs calling a hanged good person a Minion (4) and a Martyr bluff (1). In 7 of the 15 the person exposed was a teammate, not the teller. No Magistrate bluff came up in these games, so the 26532 case rests on the suite.
+  - No measurable cost: the timing difference is within noise, with another job sharing the machine. The win counts are too few games to read anything into.
+- **Rework never happened.** Most bluff rules give the same reading when asked again, so a liar who notices ends up holding back. That's how the rule is built, not a bug, but it means "rework" adds little today.
+- **For Michael (one question):** a held reading is told unchanged the next day, as specified. In practice the hold delays a self-incriminating reading rather than stopping it. Options: keep it; re-check it on the day it would be released and hold again; or drop it after one hold. I'd re-check, since it's the same rule applied when the reading would actually be told. Not built; it waits for his call.
+- **Small calls made on Michael's behalf:**
+  - The margin and noticing figures are his draft numbers: `FABRICATION_CHECK_MARGIN` 0.10, `FABRICATION_NOTICE_BASE` 0.3, `FABRICATION_NOTICE_INSIGHT` 0.6, new in `Tuning.Evil`.
+  - "Hold back a day" means kept off the table through the next day's meeting for a night reading, or through the rest of the day for a day reading.
+  - The team checked is the teller plus its living teammates.
+  - A fabrication that can't stand beside the public record at all counts as the largest lift on the teller.
+- **Code:** new `sim/fabrication_check.gd` (`assess`, `vet`). `Evil._make_fake_info_for_phase` stamps a fabrication with its gift and night before checking it (my first measurement judged it unstamped and wrongly flagged a third), keeps held readings in the new `NPC.held_fakes`, and lets them go a day later.
+- **Tests:** new `tools/test_fabrication_check.gd` (on the fast list, about 35 s). Passing: it, `test_evil_owned_lie`, `test_nightwatch_bluff_teammates`, `test_meeting_flow`, `test_conversation_gifts`.
+- **Golden:** new `baseline_a0a378d`, two identical captures. It diverges from `baseline_1c9ac48` on every seed from record 1, as fabrications now carry their check. Only one is self-incriminating (seed 900: Isolde's Gravedigger bluff calling Constance the Scion, held back a day). All five outcomes and every hanging's votes are unchanged. `docs/golden_baseline.md` has the details.
+
+---
+
+## 2026-11-17, Claude-Quill: Martyr promise then hanging keeps every explanation (PR #183, `claude/martyr-alternatives`)
+
+- **Base:** main `97f51a1`, main `cd3aeb4` merged in (after #181). **Status:** PR open. Moves golden: re-baselined to `baseline_1c9ac48` in this PR, re-checked identical on `cd3aeb4` (golden-moving PRs merge one at a time). **Next actor:** Bailiff.
+- **Item:** BACKLOG section 2, "Martyr non-substitution must keep its alternative explanations; Martyr promise versus later hanging" [decided].
+
+### What was wrong
+
+- The Martyr's own outcome reading ("they were hanged and I still stand: they must have been evil") already kept its explanations. The chosen was evil or Marked, or the teller lied. A poisoned or Delusional Martyr can't produce that reading at all: a broken gift says nothing.
+- **The gap was the pair: a public promise ("I have given my life over for X"), then X hanged while the Martyr still stood.** The judge inferred nothing from it, and the Workshop refused any case holding both ("needs a dated outcome/health adapter").
+
+### What changed
+
+- **The promise now carries the same check as the outcome reading** when the chosen was hanged while the Martyr was alive (`workshop/role_constraints.gd`, `LiveHistory.hanged_while_alive`). In each world, either the chosen registered evil (evil or Marked), or the promise is false. A false promise means an evil Martyr's bluff, or a poisoned or Delusional Martyr: the report's ordinary false-teller worlds. It uses public events only: the hanging and the Martyr being alive at it. A Martyr dead before the hanging proves nothing by "surviving" it.
+- **No double count:** if the same Martyr's outcome reading about the same person is in the set, that reading carries the check alone. The promise beside it then holds whatever the chosen was.
+- **The content-only mask** (graded challenges) doesn't count a Marked chosen as evil, as with the other Marked exceptions.
+- **A Delusional Martyr isn't charged twice** (Codex's review). In play the role check skips an evil teller's content but not the Delusional holder's, so a Delusional Martyr's promise took a small-error penalty on top of the false-report likelihood. The promise now has its own flag (`FlagMartyrPromise`), and a world where the Martyr is the Delusional holder skips the check in play. The check's cache key now tells that teller's Delusional status apart, as it already did for Medium relayers. Before, worlds differing only in who was Delusional shared one cached answer.
+- The Workshop no longer refuses a case with a promise and the chosen's later hanging.
+- **Later Codex rounds:** a Medium's relay of the outcome reading no longer stands in for the promise (the kernel ignores it where the Medium is evil); a relayed promise keys the check's cache on both the Medium and the Martyr; and a chosen the Revenant turned evil counts as registering evil at a hanging inside the curse (the promise carries its hanging's time). None of these moved golden.
+
+### What it changes in play
+
+- **Mostly it exposes evil Martyr bluffs.** Evil's Martyr bluff vouches for a teammate (`generate_bluff_reading` picks the mate), so when that teammate hangs, the bluffer stands exposed beside them. A real Martyr's chosen can only hang while the Martyr stands if the chosen was evil, or the Martyr's gift failed.
+- **Golden seed 692:** Hollis (evil, bluffing the Martyr) promised his teammate Constance, and Constance was hanged on day 3. Bart, who had heard the promise, now suspects Hollis noticeably more (0.46 → 0.57 by day 4). Minds that never heard the promise don't move. Outcomes are unchanged: Merrin and Constance are hanged and play reaches day 4. 42, 54875, 900 and 98933 are identical.
+- **How often** (60 passive games, seeds 1–60, 10 NPCs, earlier belief model, played to the end; probe not committed): the pair happened in 5 games, about 1 in 12. All 5 were evil Martyr bluffs vouching for a teammate who was later hanged. A real Martyr's chosen was never hanged with the Martyr standing (17 real choices made); the sim saves a good chosen unless the gift is broken. There were 11 bluffed promises in all, and 26 promises (real or bluffed) were told to someone.
+
+### Tests
+
+- `tools/test_roles_dead.gd` (`_promise_then_hanging`), one check per explanation:
+  - an ordinary good chosen hanged fails a true promise;
+  - an evil chosen fits;
+  - a Marked chosen fits, except under the content-only mask;
+  - a Martyr dead before the hanging fits;
+  - an evil Martyr's bluffed promise fits;
+  - both cards fail once, and the promise defers to the outcome reading.
+  The earlier check that the case is refused now checks that it's accepted. 4 of the new checks fail on main.
+- Also ran `test_case_eval`, `test_workshop_reading_challenges`, `test_premise_step1`–`3`, `test_workshop_vote_and_alibi`, `test_roles_registry`: all pass. Golden captured twice, identical. Codex's fix changed 692 again at the same point (baseline renamed `1c9ac48`); the numbers above are from it.
+
+### Not built
+
+- **Dated health.** The judge has no model of a poisoning on a particular night. A Martyr healthy at the choice but poisoned at the hanging is priced as the promise's error, as any poisoned reading is. The item asks not to assume both times were healthy, and this doesn't: it just doesn't date the failure. Logged under the catalog's A21 gaps.
+- **"Evil Martyr bluff can frame a good scapegoat"** (the next item) is an evil-strategy change, so Beadle's. This change makes the current bluff costlier for evil: a promise for a teammate who hangs now points at the bluffer.
+
+### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
+
+- **A Delusional teller's false reading is charged twice by the judge.** Found from Codex's review here. The role check skips an evil teller's content in play but not the Delusional holder's, so for every role-checked gift a Delusional reader's wrong reading takes a small extra error on top of the false-report likelihood. That makes "they were Delusional" weaker than it should be next to "they lied". Fixed here for the Martyr promise only. **Michael (Nov 17): [decided], owner Quill; added to BACKLOG section 2.** Build it after Lantern's poisoned-reading fix merges (which waits for Argon's #181).
+- **For Claude-Lantern:** I'll build the Delusional item on top of your poisoned-reading fix, since both touch how the role check (`RoleConstraints.cs`, `Solver.Roles.fits_weights`) treats a doubtful reading. Please say in your entry when it has merged, and name anything in the role check I should leave alone.
+
+---
+
+## 2026-11-16 night, Argon: zero-drift connections refresh speed-up (`argon/connections-speed`)
+
+- **Base:** main `6873616` (#176, merged into `argon/connections-speed`). **Status:** PR #181 updated after Codex/Bailiff/Lantern review. **Next actor:** Lantern / Bailiff (re-review and merge once CI is green).
+- **Golden:** local Windows captures (`seed_42_7` and `seed_900_7`) are bit-for-bit identical at `--tol 0`, and the pre-fix 10-NPC Windows run matched before vs after; CI's Linux golden check at `--tol 0` against `baseline_bb6f01c` is what decides.
+
+### What changed (`workshop/jury.gd`, `workshop/connections.gd`, `workshop/case_eval.gd`, `workshop/caches.gd`, `tools/test_connections_cache.gd`, `tools/test_headline.gd`)
+
+1. **Skip dead `CaseEval` and `_headline` work on a connections refresh (`workshop/jury.gd`, Lantern's purge Phase 1):**
+   - When `refresh and Connections.enabled` is true in `Jury._consequences_eval`, skip `_case_eval(view, scoped, eval_listener)` and pass `{"impossible": false, "people": {}}` into `Connections.overlay(..., connections)` (which takes `impossible` and `people` from the connections result).
+   - Keep `attention`, `compiled`, `scoped`, `attended`, `held`, `challenged`, and `eval_listener` intact for `ReasonAttribution` and the four signals in `Jury._consequences_eval`.
+   - Skip `_headline(...)` when `not connections.is_empty()` (`dull == 0.0`). Pinned `tools/test_headline.gd` with `Connections.enabled = false` because `_consequences_eval` now skips the dead headline calculation on a connections refresh (and Lantern's purge Phase 6a removes `_headline` and `test_headline.gd`).
+2. **Precompute per-refresh `judge_key` inputs (`workshop/connections.gd`):**
+   - `Connections.begin()` precomputes `_prepare_key_ctx(view, run.bare, listener)` once per listener refresh: the `around` hashes with and without `SOFT_EVENTS`, `bare_hash`, the stripped `listener` dictionary, and each card's index, `SOFT_READERS` flag, and reliability key names (including `Solver.semantic_key`).
+   - `_judge_key_fast` sorts only the matched `ids + own` indices in `view.cards` order, producing the exact same key string as `judge_key` without rescanning all `view.cards` or rehashing `view`/`timeline` on every call. With `Connections.cache_verify = true`, `judge()` asserts `_judge_key_fast == judge_key`.
+   - `Connections.items()` memoizes `_names()` per card id across a refresh.
+3. **`CaseEval` cache keys, caps, `_team_prior`, and `_class_fits` (`workshop/case_eval.gd`, following Lantern's warnings on #169):**
+   - **Compile key (`_compile_impl`):** keeps `view.timeline`, `view.regular_haunts`, and `hearing_weight`; drops only `SOFT_EVENTS` from `timeline.events` when no card in `cards + known` is a Magistrate card (matching `Connections.judge_key`). Raised `_compiled` cap from 32 to 2,048 (`_own_cache` 64 → 1,024; `_fits_cache` 256 → 2,048).
+   - **`_team_prior` memoization (`_team_prior_cache`):** keyed on `[u_key, curr_conv, raw_susp, npc_trust, good_mask, prior_k]` (covering the universe, `suspicion`, `npc_trust`, and `knowledge.good`).
+   - **`fits_before` and role-constraint reuse (`_bare_fits_cache`, `_class_fits`):**
+     - For `bare` (`cards` holding no role/routing-constraining cards), caches the 5,040-world role-fit array per `(u_key, view.people, route_tl, live_activity, live, personal)` in `_bare_fits_cache` and slices by `cc.rep[c]` into each subset's equivalence classes, preserving the exact per-`cc` `free == fits` Sleepwalker check.
+     - In live views, only when `CaseEval.cache_enabled` is true and `cards` holds no role- or routing-constraining card (`report`, `claim`, `secret_claim`, `totem`, `town_hall`, `martyr` event, `relay_source`, non-empty `role`, or the six routing kinds `sighting`, `evening`, `trace`, `coverage`, `alibi`, `dropped` that feed `Activity.routes` / `forced_lamp`) does `fits` reuse `fits_before` or filter `role_cards` in `_class_fits`. With `CaseEval.cache_enabled = false`, `_evaluate_impl` and `_class_fits` take the full uncached path.
+     - For non-empty `role_cards`, keeps the full `view.timeline` in `_fits_cache`'s `base_fit_key` whenever `role_cards` holds any movement/routing card (`_is_movement_role_card`), dropping `SOFT_EVENTS` otherwise, and computes `bluff_weights` at most once per `(cc, role_cards)` (instead of repeating for `neutral`, `personal`, and `walked`).
+   - Added `CaseEval.cache_enabled` (default `true`) and cleared `_team_prior_cache` / `_bare_fits_cache` in `WorkshopCaches.clear_all()`.
+4. **Verification checks (`tools/test_connections_cache.gd`, 45 checks):**
+   - `_key()` checks that `CaseEval.compile` reuses a non-Magistrate card across meeting talk (`nomination`, `accusation`), recompiles a Magistrate card when meeting talk changes, and verifies before-and-after fits plus `CaseEval.cache_enabled` off vs on equality on both a sightings-only set (that forces a Lamplighter) and a Lamplighter reading plus sightings.
+   - `_games()` toggles both `Connections.cache_enabled` and `CaseEval.cache_enabled` off vs on (plus `cache_verify = true`).
+   - Added `_presentations_and_magistrate()`: ensures Day 1 has an eligible town nomination, wards the Magistrate on Night 1 and reads their gift on Day 2, presents the Magistrate card on Day 2, asserts `Connections.captured` includes judged sets holding a Magistrate card (203 judgements), and verifies identical NPC suspicions, dev logs, and 0 `cache_verify` mismatches with both caches off vs on.
+
+### Measured (initial 10-NPC timings pre-fix; post-fix suite verification below)
+
+- **Active 10-NPC game (Seed 692, Days 1–4, with Workshop case presentations and nominations each day, measured on pre-fix commit):**
+  - Beliefs and dev logs matched before vs after the patch, and with `CaseEval` + `Connections` caches on vs off (`7,121` verified cache hits, `0` mismatches).
+  - **Dawns (`sleep` into morning):** cut roughly in half—Day 2 dawn **3.7 s → 1.5 s** (−60%), Day 3 dawn **7.9 s → 3.5 s** (−56%), Day 4 dawn **9.5 s → 5.1 s** (−46%).
+  - **Nominations (`nominate <name> #<case>`):** **30–48% faster**—Day 1 **0.34 s → 0.19 s**, Day 2 **0.64 s → 0.33 s**, Day 3 **0.66 s → 0.46 s**, Day 4 **0.75 s → 0.53 s** (all well under 1 s).
+  - **Vote rounds (`vote` on NPC nominations):** **33–44% faster**—Day 2 votes **0.37–0.50 s → 0.20–0.29 s**, Day 3 votes **0.24–0.54 s → 0.15–0.31 s**, Day 4 votes **0.28–0.34 s → 0.19–0.22 s**.
+  - **Meeting presentations (`present <case>`):** **15–21% faster**—Days 1–4 **2.05–2.44 s → 1.83–1.98 s** (all under 2 s; the remaining ~1 s in `present` is `Shared.response` / `trust_reward` running the old model's `_headline` and `Support.explain`, which Lantern's Phase 6a covers).
+  - **Whole 4-day active 10-NPC run:** **61.0 s → 36.5 s** (−40%).
+- **Passive 10-NPC game (Golden seed 692, to Day 4, `SolverBackend` profiler, pre-fix commit):**
+  - Total wall time **43.1 s → 24.9 s** (−42%); belief refresh (`outer_prep` inclusive) **34.8 s → 16.5 s** (2.1× faster); `world_domain` C# calls **42,366 → 13,433** (−68%).
+- **Post-fix suites run:** `test_connections_cache` (45/45 checks), `test_connections`, `test_connections_pairings`, `test_connections_core`, `test_connections_cases`, `test_connections_why`, `test_roles_official`, `test_headline` (15/15 checks with `Connections.enabled = false`) — all pass, 0 failures.
 
 ---
 
@@ -113,6 +335,31 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-16 late, Claude-Lantern: Michael's decisions on the purge plan (`claude/purge-plan-decisions`, docs only)
+
+- **Base:** `claude/connections-purge-plan` (#169), stacked on it. Merge #169 first.
+  **Status:** PR open, docs only. **Next actor:** Bailiff merges. Then I start phases 2 and
+  4 (tests only). Phases 3, 5 and 7 wait for Argon's speed patch to merge.
+- **What changed:** `docs/connections_purge_plan.md` records Michael's answers to section 7
+  (relayed by Claude-Seneschal, Nov 16), and phases 5 and 6 follow them.
+  `BACKLOG.md` section 6 gains the spillover-damping item, which Michael asked for.
+- **Michael's decisions:**
+  1–2. Accepted: pre-#160 logs stop replaying on the earlier model, and the snapshot branch
+     `archive/legacy-belief-final` is pushed before phase 3.
+  3. Remove the headline reading everywhere (phase 6a).
+  4. Phase 6b: measure first, report to Seneschal in game terms, then pause for Michael.
+  5. Delete spillover damping, the half-weight "suspicious" hearing and the earlier Why
+     report; spillover damping goes on the backlog as [tentative].
+  6. I draft the Insight wording in phase 8; the wording is his.
+  7. I do both: phase 7 (the pre-CaseEval engine and the attention experiments), and audit
+     B's belief-related leftovers folded into phase 8 (`legacy_fallback`, `legacy_evidence`,
+     `fallback_count`, the canvas's `"mode": "legacy"`). Section 7 is fully decided.
+  - Section 8's small calls are mine.
+- **Proposed for the backlog:** none. The spillover item was accepted by Michael directly.
+- **Measured:** nothing (docs only).
+
+---
+
 ## 2026-11-16 late, Claude-Lantern: the connections purge plan (`claude/connections-purge-plan`, docs only)
 
 My first session in Claude Code. Briefed by Claude-Seneschal (the orchestration session) on Michael's behalf: plan the purge
@@ -178,6 +425,69 @@ of what the connections model replaced, the way the Nov 1–3 retirement went.
     `case_eval.gd:708`. In the cached run, compile normally. A small cap doesn't do this:
     `_compile_impl` returns a hit before it checks the size, and the cap is a fixed `> 32`
     (Codex on #169).
+
+---
+
+## 2026-11-16 late, Claude-Beadle: the Night Watch bluff does hide teammates (`claude/beadle-nightwatch-teammates`, stacked on #175)
+
+- **Base:** `claude/beadle-evil-owned-lie` (#175); merge after it. **Status:** PR open. **Next actor:** Bailiff.
+- **Result: confirmed, no gap. The log matches the behaviour; nothing changes in play.** My #175 audit said the Night Watch bluff logs "hiding teammates" but never drops one. It doesn't need to: the walkers it reports come from its intel, and walker intel only ever names good people. `Evil.gather_night_intel` skips evil sightings, and `Evil.intel_from_share` records a told sighting of a teammate as a threat on the teller instead. The audit read the role file alone and missed that.
+- **Test:** new `tools/test_nightwatch_bluff_teammates.gd`. It checks both intel paths, then the bluff with a teammate and a good walker on the watched block, then a scan of 20 passive 7-NPC games to day 3 (17 reached it; 6 Night Watch fabrications, no teammate named). Not on the fast list: the scan plays games, about 2 minutes.
+- **Code:** a comment in `sim/roles/nightwatch.gd` saying where the hiding happens. Golden: comment and test only, so it can't move.
+- **BACKLOG:** the item moves to BACKLOG_COMPLETED as settled, with this finding. Correction to my #175 entry: the "Night Watch bluff doesn't hide teammates" gap listed under part 1 isn't real.
+
+---
+
+## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
+
+- **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
+- **Base:** main `c8ef1e7` (#167). **Status:** PR #175 open; full suite 155/156 on the branch, the one failure (`test_conversation_gifts`) fixed and re-run green (below). **Next actor:** Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
+- **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
+
+### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
+
+- **Where evil fabricates:** `Evil._make_fake_info_for_phase` (`sim/evil.gd`), each night (day gifts by day), calls the bluffed role's `generate_bluff_reading` and stores the result in the member's `info_log` marked `fake`. It's then shared unchanged: at the meeting (`MindMeeting` share loop, `sim/mind_meeting.gd` ~645), in town chats (`sim/social.gd` ~116) and to the player.
+- **No check exists.** Nothing, at generation or at sharing, compares a fabrication with other people's public readings. Six bluff rules read something public (Magistrate the day's nominations, Dowser public heat, Gravedigger the hanging vote and claim, Registrar public claims, Medium the dead's claim and stances, Psychologist heard statements); none reads anyone else's readings, public clears or the shared judge.
+- **26532, the Magistrate rule:** Isolde's report named Greta and Lian, both good and (since the rule says "different" whenever the scapegoat is in the pair) neither the scapegoat. That falls to the rule's last branch, `same = w.chance(0.6)` (`sim/roles/magistrate.gd`), a coin with no regard to the team. "Same" happened to be true. With Lian's public Archivist reading ("Greta or Isolde is the Breathstealer") and Lian dying to the Demon, it cleared Greta and left Isolde. I don't have the 26532 log, so the branch is inferred from the reported reading, not replayed.
+- **Related gaps found in the same audit (read from code, not seen in play):**
+  - Clerk and Rumormonger bluffs vouch for "a teammate"; a lone evil member has itself as its teammate, so it names itself in its own pair.
+  - The Night Watch bluff logs "hiding teammates" but no code drops teammates from the reported walkers (`sim/roles/nightwatch.gd`). Unchecked whether `intel` ever holds a teammate walker.
+  - The Magistrate bluff says "different" when both are evil (on purpose: "distances teammates after a bus nomination"), which tells the town one of the two is evil.
+  - The Surveyor bluff says "not the same" 65% of the time even with a teammate in the scapegoat's quarter; the Monitor bluff's random role can be an evil one.
+- **Proposal (a new rule, so Michael's call):** one general check, not one per role. When an evil member is about to share a fabrication, it asks how the town would read it beside what's already public: the shared judge's neutral listener on the public cards (as the Workshop's town note does), with and without the fabrication. If it lifts the town's chance that the teller or a teammate is evil by more than a margin, the liar may notice. Noticing is a roll scaled by Insight, so a careless liar still slips and the player can still catch it (26532 was exactly such a catch). Noticed: it reworks the reading once with that person left out, or holds it that day. Every such choice is logged (`think`, topic `lie`).
+  - Draft numbers: margin 0.10; noticing 0.3 + 0.6 × Insight.
+  - Cost: one judgement per shared fabrication, about 10–25 ms at 10 NPCs (Lantern's first-time figure). It would move golden.
+  - Michael's choices: whether to have it at all (evil's blind spots are also the player's openings), the noticing rate, the margin, and rework or hold.
+  - The role-local items above (a lone Clerk naming itself; Night Watch not hiding teammates when it says it does) are separate fixes. The Night Watch one contradicts its own logged reason, so I'd treat it as a bug; the rest change evil's play, so they wait for the same call.
+
+### Review of #171's defence hinge (Herald's; asked by Seneschal)
+
+- **The skip is right; keep it.** A defence that opens "your case rests on where I was last night" has to have something to say about that item. A sighting by day has no answer in `defend_self` today, so choosing the hinge from the next cited reading or night is the honest framing. When a case cites only daytime items the hinge is empty and the defence falls back to its general reply. That's acceptable: it's a rarer case, and an unframed defence reads better than a mismatched one.
+- **Excluding day items from `out_items` is also right.** Being seen in the square at noon isn't "out at night", so it shouldn't feed the night-outing weight.
+- **Herald's open question (should a defence answer a daytime whereabouts case?): yes, but as its own item, not in #171.** The general form: "I was at the mill that evening, and so were Greta and Jory." Daytime whereabouts are mostly public by schedule, so naming who else was there is a real rebuttal (others had the same chance) and it uses no per-role logic. Evil can use the same line, truthfully or by naming people who weren't there, which would be a lie with a logged reason. It needs a new defence line (wording is Michael's, drafted by Herald), so it's proposed below rather than built; it's the daytime counterpart of BACKLOG's "Explicit night-sighting rebuttals".
+
+### Proposed for the backlog: all three accepted (Michael via Seneschal, Nov 16) as [decided], owner Beadle, now on BACKLOG.md
+
+| Title | What I saw, where | Tag | Owner |
+|---|---|---|---|
+| Evil fabrications don't check what's already public | 26532: Isolde's Magistrate bluff cleared Greta and, with Lian's public Archivist reading, convicted herself. No bluff rule reads others' public readings (part 1 above, with the proposed rule) | [open; Michael to decide] | Beadle |
+| A Night Watch bluff doesn't hide teammates | `sim/roles/nightwatch.gd` `generate_bluff_reading` logs "hiding teammates" but never drops a teammate from its reported walkers (read from code; not yet seen in play) | [open: confirm in play first] | Beadle |
+| A defence against a daytime-whereabouts case | #171 review: a case resting on where someone was by day gets no answer of its own. Proposal: "I was at the mill that evening, and so were Greta and Jory", naming others present from public schedules; evil can use it too | [open; wording Michael's] | Beadle (decision), Herald (wording) |
+
+- **For Herald (Michael, Nov 16, via Seneschal):** "ask night" to a claimed night walker should be able to include the gift's result under the usual gating (rapport, Privacy, hiding a gift), not only after "ask gift". The decision of when an NPC shares a reading is in my code: `MindDialogue.answer_gift`'s tiers and `reading_disclosed`, with `_night_gift_result` (#171) as the speaking side. Coordinate through this log. My suggestion: reuse `answer_gift`'s tier test for the reading, so the two questions can't disagree about what an NPC is willing to tell.
+
+### 2. Built: an evil walker's owned lie follows its disclosure (BACKLOG section 1, from 54875)
+
+- **Picked first because** it's the only one of the candidate items in section 1 (a quick fix), it's [decided] with nothing left open, and it's wholly in my files. The others need a call first: the evil-meeting cap and cooldown values; double-claim logic for "Evil backs into a bluff"; what trust "backing a strong case" earns.
+- **What changes in play.** Before: an evil member planning a walking bluff (Warden, Lamplighter, Confessor, Medium, Night Watch), out on its own work and caught out by a sighting in private, kept saying "home" or refused. When it did later name the bluff, the duty story it told for that night silently replaced the "home" it had said. Now, like a good walker:
+  - pressed with a sighting of a night its bluffed duty would account for, it names the bluff;
+  - on naming a walking bluff, it owns the earlier story with the same lines a good walker uses ("So yes: I was out on the first night, whatever I told you…").
+  - It owns only nights the bluff's duty covers (a Night Watch bluff only nights it made a watch report for). Other nights keep the story told. A non-walking bluff owns nothing.
+- **Why:** a caught-out reveal and the owned-lie line were only ever good behaviour, so either was a tell for good. Now both alignments do it.
+- **Not changed:** the podium (public) path. A good walker's podium reveal doesn't own earlier private lies either; evil's podium "So yes, I was out on X" would need the bluffed duty's block (a Night Watch bluff's watch block can differ from where it really was), which wants its own look.
+- **Code:** `MindDialogue._bluff_outing` and `bluff_duty_covers` (the bluffed role's own duty check, asked as if already claimed); `answer_gift`'s owned-lie block no longer excludes evil; evil now records `lied_nights` when it lies "home" (private and podium).
+- **Tests:** new `tools/test_evil_owned_lie.gd` (added to the fast list): Warden, Lamplighter and Confessor bluffs back in and own; Night Watch owns only the watched night; a Seer bluff owns nothing; the good walker is unchanged. `test_meeting_flow`'s press check expected evil walking bluffs to keep a wording-only press; it now expects the reveal for those. `test_conversation_gifts`' refusal fixture used a Minion with a Lamplighter bluff, which now backs into the bluff instead of refusing; it now pins a Seer bluff, since it tests refusals.
+- **Measured:** full suite on the branch, 155/156, then `test_conversation_gifts` fixed and passing with `test_evil_owned_lie` and `test_meeting_flow`; golden as above. No autoplay or sweep run (the bot doesn't press NPCs with sightings in private, so the change doesn't reach it).
 
 ---
 
