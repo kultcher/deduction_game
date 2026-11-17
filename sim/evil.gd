@@ -824,8 +824,15 @@ static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary,
 			if e2.is_empty():
 				continue
 			e2 = _stamp_fake(w, e2, str(entry.get("role", "")), day_only)
+			# A held reading keeps the day and phase it was made for: an alternative is the
+			# same observation told differently, so a day reading stays a day reading
+			# (Codex P2 on #193: a held Dowser or Augur reworked on the night pass).
 			if entry.has("day"):
-				e2["day"] = entry["day"]  # a held reading keeps the night it was made for
+				e2["day"] = entry["day"]
+			if entry.has("phase"):
+				e2["phase"] = entry["phase"]
+			else:
+				e2.erase("phase")
 			out.append({"entry": e2, "why": str(alt.get("why", ""))})
 		return out
 
