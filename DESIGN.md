@@ -1,6 +1,6 @@
 # Working title: Demonologist (single-player social deduction)
 
-Status (Nov 16, 2026): playable Godot prototype with a painted town screen, a case board,
+Status (Nov 16, 2026): a playable Godot game with a painted town screen, a case board,
 a red-string Case Workshop judged by a shared possible-worlds model (its solver kernel in
 C#), case scripts with an editor and dynamic scripts, two demon types, and a deep NPC
 social simulation whose beliefs come from the **connections model** (on in play since Nov
@@ -900,6 +900,8 @@ from its bluff. A real Medium names the hearth only for a night when there was a
 A good NPC shown a sound "you lied" about their own statement knows it's
 true: open or pressed ones own up, the rest stonewall. A good walker pressed with a
 sighting, or disclosing a walking gift later, owns the earlier lie ("So yes: I was out…").
+Evil with a planned walking bluff does the same in private, for the nights its bluffed duty
+accounts for, so neither the reveal nor the owned lie is a tell.
 Seen out at night, the real Sleepwalker (under pressure) and evil bluffers can say "I've
 been known to sleepwalk"; two claimants prove a liar.
 
@@ -1011,6 +1013,11 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   otherwise it confirms their claim, or guesses a good role (#136; `Evil.GRAVEDIGGER_FRAME_*`).
 - Evil bluffing a walking gift says their gift took them out when asked where they were;
   its invented sightings follow the window/route rule.
+- **Fabrications are checked against the public record** before they're told: one that
+  would make the town suspect the liar or a teammate noticeably more (a reading that,
+  beside what's already been shared, clears the wrong person) may be noticed, likelier the
+  more insightful the liar, and then held back a day; careless liars still slip
+  (`sim/fabrication_check.gd`; playtest 26532).
 
 ### Night choices
 

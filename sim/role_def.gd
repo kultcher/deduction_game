@@ -342,6 +342,13 @@ func fake_medium_reading(_w, _n, _dd, _s: String, _sg, _d, _goods: Array, _other
 	return {}
 
 
+## Before a fabrication check asks this bluff rule again (FabricationCheck rework): the
+## retry is the same night's single use of the gift, so a rule that marks the use (the
+## Dowser's `dowsed_day`, the Martyr's one choice) lets go of the mark here (Codex P2, #188).
+func release_bluff_use(_w, _n, _plan: Dictionary) -> void:
+	pass
+
+
 ## Hook called in `Evil.make_fake_info` when an evil bluffer has agreed to a player gift request.
 func on_evil_agreed_request(_w, _n, _asked: Array) -> void:
 	pass
@@ -426,6 +433,13 @@ func uses_night_duty_alibi(_w, _n, _nd: int, _was_out: bool) -> bool:
 	return false
 
 
+## Whether this role's duty story for night `nd` puts a claimant out of the house (a
+## claimant who was out). Default: whenever the duty alibi is used. Roles whose duty story
+## can still be "home" (the Warden before its first night) narrow it.
+func duty_explains_outing(w, n, nd: int) -> bool:
+	return uses_night_duty_alibi(w, n, nd, true)
+
+
 ## Night-whereabouts alibi for a claimant of this role on night `nd`.
 ## Returns `{"handled": true, "line": Dictionary, "fact": Dictionary, "vantage": String, "how": String}` or `{}`.
 func night_duty_alibi(_w, _n, _nd: int, _was_out: bool, _block: String, _mind, _block_name_fn: Callable) -> Dictionary:
@@ -433,6 +447,12 @@ func night_duty_alibi(_w, _n, _nd: int, _was_out: bool, _block: String, _mind, _
 
 
 ## If non-empty, withholds night sightings in `Mind.answer_night` with the returned spoken line (e.g. undisclosed Night Watch report).
+## True when the gift's night result is the night's sightings themselves (the Night
+## Watch), so "ask night" tells it through those rather than as a reading.
+func night_result_in_sightings() -> bool:
+	return false
+
+
 func withholds_night_sightings(_n, _nd: int, _mind) -> String:
 	return ""
 

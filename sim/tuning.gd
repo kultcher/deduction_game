@@ -815,6 +815,13 @@ class Evil:
 	const MAX_DIRECT_PLANTS = 2
 	const PLANTER_SCENE_WEIGHT = 0.40
 	const FAKE_SIGHTING_INVENT_PROB = 0.5
+	# A fabrication checked against the public readings (sim/fabrication_check.gd; 26532):
+	# a lift in the town's chance that the liar or a teammate is evil above this margin is
+	# self-incriminating; the liar notices with chance BASE + INSIGHT x Insight, then reworks
+	# it once or holds it back a day. Michael, Nov 16 (draft numbers).
+	const FABRICATION_CHECK_MARGIN = 0.10
+	const FABRICATION_NOTICE_BASE = 0.3
+	const FABRICATION_NOTICE_INSIGHT = 0.6
 	const FAKE_GOSSIP_PROB = 0.6
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4

@@ -105,11 +105,11 @@ static func _union(n, input: Dictionary, presentations: Dictionary, outside: Dic
 				if not shaping.hedged.is_empty() and shaping.hedged.size() < shaping.keys.size():
 					shaping_eval["without_firm"] = Shared.prepare(input, Shared.without_shaping(presentations, shaping, "hedged"), n.ledger, withdrawn, focus)
 		if mutate.is_valid():
-			var prepared: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full)
+			var prepared: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full, doubt.get("honest", {}))
 			mutate.call(prepared)
-			proposal = Shared._evaluate_adjusted(plan, prepared, outside, doubt.pre_eval, doubt.full, shaping_eval)
+			proposal = Shared._evaluate_adjusted(plan, prepared, outside, doubt.pre_eval, doubt.full, shaping_eval, doubt.get("honest", {}))
 		else:
-			proposal = Shared.evaluate(plan, outside, doubt.pre_eval, doubt.full, shaping_eval)
+			proposal = Shared.evaluate(plan, outside, doubt.pre_eval, doubt.full, shaping_eval, doubt.get("honest", {}))
 	elif plan.get("ready", false):
 		proposal = {"effects": {}}
 	Shared.last_reason_ctx = kept_ctx
@@ -371,7 +371,7 @@ static func presentation(g, real, card: Dictionary, venue: String = "meeting", w
 			"raw_move": sign * (raw.call(e_with) - raw.call(_effect(p_old, target))), "others": others}
 	out["view_change"] = view_change
 	# The evidence half, as this listener weighs the presented cards.
-	var adjusted: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full)
+	var adjusted: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full, doubt.get("honest", {}))
 	var own: Array = adjusted.listener.knowledge.get("own_reports", []).filter(func(id): return id not in scoped.case.cards)
 	var eval_listener: Dictionary = Jury._eval_listener(adjusted.listener, own)
 	var considered: Array = applied.get("reasoning", {}).get("considered", [])
@@ -647,7 +647,7 @@ static func _connections_report(g, real, n, card: Dictionary, venue: String, was
 	out["read_ms"] = Time.get_ticks_msec() - started
 	var outside: Dictionary = state.get("outside", n.suspicion).duplicate(true)
 	var doubt: Dictionary = SourceDoubt.derive(plan, n.ledger, state.get("manual_source_doubt", {}))
-	var adjusted: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full)
+	var adjusted: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full, doubt.get("honest", {}))
 	var own_reports: Array = adjusted.listener.knowledge.get("own_reports", []).filter(func(id): return id not in scoped.case.cards)
 	var evidence: Dictionary = Why.evidence(adjusted.view, scoped.case, Jury._eval_listener(adjusted.listener, own_reports), {"rejected": rejected,
 		"held": case_ids.filter(func(x): return plan.owners.get(x, []).any(func(o): return str(o) != case_key))})

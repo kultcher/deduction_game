@@ -238,7 +238,7 @@ func _inputs(g, n) -> Dictionary:
 	var out: Dictionary = {"ready": false}
 	if plan.get("ready", false) and not plan.get("empty", false):
 		var doubt: Dictionary = SourceDoubt.derive(plan, n.ledger, ws.get("manual_source_doubt", {}))
-		var prepared: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full)
+		var prepared: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full, doubt.get("honest", {}))
 		var by_id: Dictionary = {}
 		for c in prepared.view.cards:
 			by_id[c.id] = c
