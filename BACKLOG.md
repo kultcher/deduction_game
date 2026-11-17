@@ -274,17 +274,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
 
-- **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
-  said "Greta and Lian shared an alignment"; with Lian's public Archivist reading ("Greta
-  or Isolde is the Breathstealer") and Lian's death, that cleared Greta and convicted
-  Isolde. No bluff rule reads other people's public readings. Michael (Nov 16), as
-  Claude-Beadle proposed: check the fabrication against the public cards; if it would
-  noticeably raise suspicion of the liar or a teammate, a roll scaled by Insight decides
-  whether the liar notices, and a liar who notices reworks the reading or holds it back
-  that day. Low-Insight liars still slip. Report in game terms how often bluffs are
-  reworked or held, and how often self-incriminating ones still get through. Draft
-  numbers: margin 0.10, noticing 0.3 + 0.6 × Insight. Owner Beadle. [decided]
-
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
   seen out at night, and nobody has claimed Night Watch). This opens double claims (the
