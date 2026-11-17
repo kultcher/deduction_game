@@ -15,6 +15,7 @@ const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Recency = preload("res://sim/recency.gd")
 const Connections = preload("res://workshop/connections.gd")
+const CaseGraph = preload("res://workshop/case_graph.gd")
 
 static var _mind_script
 
@@ -2005,9 +2006,29 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		w.meeting["vote_parts"][v.id] = {"parts": exact_parts, "margin": s - need, "yes": yes}
 	return yes
 
+## Whether a case catches `target` in a home lie: among `ids`, their own "I was home"
+## for a night and something that puts them out that night (a sighting, a Night Watch
+## report, their own walking gift's reading). The judge's own dispute rule
+## (`CaseGraph.valid_dispute`). Lie severity (BACKLOG, Michael Nov 17): since #210 the
+## judge reads that as evidence, not proof, so a listener can accept it and still not hang.
+static func catches_home_lie(view: Dictionary, ids: Array, target: String) -> bool:
+	if target == "":
+		return false
+	for aid in ids:
+		var alibi: Dictionary = CaseGraph.find_card(view, aid)
+		if alibi.is_empty() or str(alibi.get("kind", "")) != "alibi" or str(alibi.get("subject", "")) != target:
+			continue
+		for oid in ids:
+			if oid == aid:
+				continue
+			if CaseGraph.valid_dispute(view, {"reports": [aid, oid], "challenged": aid, "preferred": oid}):
+				return true
+	return false
+
 ## Step 6 (meeting plan M2d): after the tally, at most MAX_VOTE_RESISTANCE_SPEAKERS voters
 ## say why they voted as they did. First, anyone who accepted the Demonologist's public case
-## against the nominee today and still voted no, voicing the vote part that held them back;
+## against the nominee today (or granted that it caught them in a home lie) and still voted
+## no, voicing the vote part that held them back;
 ## failing that, on a count within one of what was needed, the voter who swung it. An evil
 ## voter speaks from its good self's parts (the shadow's), never from the override.
 static func vote_resistance_lines(w, res: Dictionary) -> Array:
@@ -2027,12 +2048,16 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 		if v.silenced or not v.alive:
 			continue
 		var acc: Dictionary = v.dialogue_memory.get("accepted_cases", {}).get(nominee, {})
-		if acc.is_empty() or int(acc.get("day", -1)) != w.day:
-			continue
+		var accepted: bool = not acc.is_empty() and int(acc.get("day", -1)) == w.day
 		var mind = v.shadow if v.is_evil() and v.shadow != null else v
-		if mind.workshop_state.get("withdrawn", {}).has(str(acc.get("key", ""))):
+		if accepted and mind.workshop_state.get("withdrawn", {}).has(str(acc.get("key", ""))):
+			accepted = false
+		# Granted today that the nominee lied about being home (lie severity, the vote side).
+		var grant: Dictionary = v.dialogue_memory.get("granted_lies", {}).get(nominee, {})
+		var lie: bool = int(grant.get("day", -1)) == w.day and not mind.workshop_state.get("withdrawn", {}).has(str(grant.get("key", "")))
+		if not accepted and not lie:
 			continue
-		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res)
+		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie)
 		if key == "":
 			continue
 		out.append(_resistance_line(w, v, t, key, res))
@@ -2054,7 +2079,7 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 
 
 ## Which reason a no-voter gives, from the parts their vote actually had.
-static func _resistance_key(w, v, vp: Dictionary, res: Dictionary) -> String:
+static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: bool = false) -> String:
 	var parts: Dictionary = vp.get("parts", {})
 	if v.is_evil() and bool(vp.get("yes", false)):
 		# Their good self would have voted yes: the no came from cover-breaking, which is
@@ -2064,6 +2089,10 @@ static func _resistance_key(w, v, vp: Dictionary, res: Dictionary) -> String:
 		return "" # no record of how they weighed it (an evil voter's team rule, say)
 	if float(parts.get("prefers_block", 0.0)) < 0.0 and str(res.get("prev_block", "")) not in ["", res.get("nominee", "")]:
 		return "vote_no_prefers_block"
+	# They granted a case that caught the nominee in a home lie, and still voted no: they
+	# believe the lie and say it isn't enough to hang (lie severity, the vote side).
+	if granted_lie:
+		return "vote_no_lie_not_rope"
 	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes", "player_defends",
 		"player_accuses", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
 	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
@@ -2086,6 +2115,9 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 				{"nominee": t.name, "block": block_name})
 		"vote_no_reluctant":
 			return say_voiced(v, key, "Even with what you laid out, I'm not ready to put a rope on %s tonight." % t.name, {"nominee": t.name})
+		"vote_no_lie_not_rope":
+			return say_voiced(v, key, "I'll grant %s lied about where they were that night. But there's many a reason to be abroad at night that isn't the Demon's work, and I won't hang them for it." % t.name,
+				{"nominee": t.name})
 		"vote_no_distrust_nominator":
 			return say_voiced(v, key, "The case against %s troubles me, yes, though I don't trust %s's hand in pushing it." % [t.name, nom_name],
 				{"nominee": t.name, "nominator": nom_name})

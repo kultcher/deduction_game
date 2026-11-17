@@ -44,20 +44,28 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, the vigil watches who leaves): `baseline_be4a31e`
+### Current baseline (Nov 17, Insight's joining bar): `baseline_1f2e761`
 
-`tools/golden/baseline_be4a31e/` is the capture from `claude/vigil-leavers` at `be4a31e`
-(main merged in): the vigil sees residents leaving the watched block instead of walkers
-arriving (Michael, Nov 17, `docs/design/vigil.md` option A), with Herald's wording.
-- **Divergence from `baseline_5c99636`:** text only, one string on every seed: the night
-  prompt's help line, "'vigil <block>' (watch for activity arriving on a block)" is now
-  "'vigil <block>' (watch who goes out from a block at night)". All five seeds diverge at
-  the first night's prompt (42 record 6, 54875 61, 692 60, 900 23, 98933 71). With that
-  string put back, all five are identical to `baseline_5c99636` at `--tol 0`. Record counts
-  are the same.
-- **Why the rule itself doesn't move golden:** the passive golden player never keeps a
-  vigil, so no game here has a vigil to see anyone.
-- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_5c99636`.
+`tools/golden/baseline_1f2e761/` is the capture from `claude/insight-core-bar` (#199) at
+`1f2e761` (main `ae6637a` merged in): Insight sets how readily a card joins an NPC's core
+(the joining bar runs from 0.8 for a dull NPC to 0.1 for a sharp one; it was 0.8 for all).
+- **Divergence from `baseline_eb8e59b`:** beliefs only, where a sharper NPC's core now takes
+  in a card a dull one wouldn't: 42 from record 35 (Isolde, day 2), 54875 from record 24
+  (Greta's cover, day 1), 692 from record 17 (Fenwick, day 1), 900 from record 88 (Kiran,
+  day 2), 98933 from record 14 (Odette's cover, day 1).
+- **Outcomes unchanged:** 42 good day 3; 54875 good day 2; 692 and 900 reach day 4 with no
+  winner; 98933 good day 3.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, bluff motives name people): `baseline_eb8e59b`
+
+`tools/golden/baseline_eb8e59b/` is the capture from `claude/beadle-motive-names` at `eb8e59b`
+(main `bf7b4f9` and #224 merged in): each fabrication's recorded motive (`why`) swaps
+people's ids for their names (Steward A3).
+- **Divergence from `baseline_5c99636`:** all 5 seeds, from record 1, in the `why` field
+  only. Record counts are the same, and no other field differs.
+- **Outcomes unchanged:** 42, 54875 and 98933 good wins as before; 692 and 900 unfinished
+  as before. Same hangings, votes and nominators.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 17, 23973 wording): `baseline_5c99636`

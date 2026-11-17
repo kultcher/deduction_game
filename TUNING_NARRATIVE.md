@@ -171,7 +171,9 @@ chances in pieces (`workshop/connections.gd`; the full design is `docs/belief_mo
   trace with the profile cards.
 - **Its own knowledge is the core.** Its own readings (and the night holding its own watch
   or lamp round, or a night someone wrongly claimed to see it out) are weighed together
-  with any card that is worth at least 0.4 log-odds more next to them than apart. That's
+  with any card that is worth enough more next to them than apart. How much is enough
+  follows Insight: 0.8 log-odds for the dullest NPC, 0.1 for the sharpest. A sharp NPC
+  links about four times as many cards to its own knowledge as a dull one. That's
   how an NPC catches a lie against what it knows firsthand, the day it hears it. The core
   is rebuilt each dawn, and what its own readings prove alone stays proved.
 - **Arguments it has heard are stored cases.** Each presented case (yours, or the cards an

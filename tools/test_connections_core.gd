@@ -44,7 +44,8 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
-	check(is_equal_approx(Connections.CORE_JOIN, 0.4), "an item joins the core at 0.4")
+	check(is_equal_approx(Connections.join_bar({"insight": 0.0}), 0.8) and is_equal_approx(Connections.join_bar({"insight": 1.0}), 0.1) and is_equal_approx(Connections.join_bar({}), 0.45),
+		"an item joins the core at 0.8 for the dullest listener, 0.1 for the sharpest, 0.45 with no Insight given")
 	check(Connections.seed_wrong_sightings, "a wrong sighting of the listener is firsthand knowledge in play")
 	_firsthand()
 	_tests_and_members()
@@ -111,13 +112,13 @@ func _tests_and_members() -> void:
 		{"key": "day", "kind": "day", "ids": ["n1"], "ctx": []}]
 	var fresh: Dictionary = Connections.candidates(item_list, ["own"], ["own"], {}, 3)
 	check(fresh.rebuilt and fresh.test == ["a", "night:1", "b"] and fresh.kept.is_empty(), "no memory: every other card and pairing is tested, and no always-on connection (%s)" % str(fresh.test))
-	var members: Array = Connections.membership(item_list, fresh.kept, {"a": 0.4, "night:1": 0.39, "b": 1.2})
+	var members: Array = Connections.membership(item_list, fresh.kept, {"a": 0.4, "night:1": 0.39, "b": 1.2}, 0.4)
 	check(members == ["a", "b"], "an item joins at 0.4 or more and not below (%s)" % str(members))
 	var memory: Dictionary = Connections.core_memory(3, ["own"], ["own"], members, ["m1", "m2", "own", "a", "n1", "b"])
 	var same: Dictionary = Connections.candidates(item_list, ["own"], ["own"], memory, 3)
 	check(not same.rebuilt and same.kept == ["a", "b"] and same.test == ["night:1"], "the same day: members stay, and only the pairing with a newly held card (n2) is tested (%s)" % str(same.test))
-	check(Connections.membership(item_list, same.kept, {"night:1": 0.1}) == ["a", "b"], "a member stays for the day without being tested again")
-	check(Connections.membership(item_list, same.kept, {"night:1": 0.7}) == ["a", "night:1", "b"], "a newly heard card that passes joins on arrival")
+	check(Connections.membership(item_list, same.kept, {"night:1": 0.1}, 0.4) == ["a", "b"], "a member stays for the day without being tested again")
+	check(Connections.membership(item_list, same.kept, {"night:1": 0.7}, 0.4) == ["a", "night:1", "b"], "a newly heard card that passes joins on arrival")
 	var all_known: Dictionary = Connections.core_memory(3, ["own"], ["own"], ["a"], ["m1", "m2", "own", "a", "n1", "n2", "b"])
 	var quiet: Dictionary = Connections.candidates(item_list, ["own"], ["own"], all_known, 3)
 	check(not quiet.rebuilt and quiet.test.is_empty() and quiet.kept == ["a"], "nothing new: nothing is tested, and a card that didn't join at dawn doesn't join later")
@@ -130,10 +131,13 @@ func _tests_and_members() -> void:
 
 ## A stand-in for a refresh's working state: every judgement the core will ask for is
 ## already in its memo, so the arithmetic is checked on chosen numbers.
+## The Insight whose joining bar is 0.4 (the fake run's listener).
+const BAR_04: float = 4.0 / 7.0
+
 func _fake_run(leans: Dictionary, chances: Dictionary = {}) -> Dictionary:
 	var others: Array = ["x", "y", "z"]
 	var run: Dictionary = {"others": others, "baseline": {"x": 0.3, "y": 0.3, "z": 0.3}, "memo": {}, "judgements": 0,
-		"listener": {"id": "me", "knowledge": {}}}
+		"listener": {"id": "me", "knowledge": {}, "insight": BAR_04}}
 	for key in leans:
 		var ids: Array = Array(key.split(","))
 		ids.sort()
@@ -171,6 +175,11 @@ func _arithmetic() -> void:
 	check(is_equal_approx(core.tested.a, 0.5) and is_equal_approx(core.tested.b, 0.3) and is_equal_approx(core.tested["night:1"], 0.45) and is_zero_approx(core.tested.c),
 		"each candidate's test: together with the seed, less the seed alone, less the candidate alone (a %.2f, b %.2f, the night %.2f, the claim %.2f)" % [core.tested.a, core.tested.b, core.tested["night:1"], core.tested.c])
 	check(core.members == ["night:1", "a"], "0.4 and over joins (%s)" % str(core.members))
+	# Insight moves the bar: on the same tests the sharpest listener (0.1) also links b, the
+	# dullest (0.8) nothing.
+	var sharp: Array = Connections.membership(item_list, [], core.tested, Connections.join_bar({"insight": 1.0}))
+	var dull: Array = Connections.membership(item_list, [], core.tested, Connections.join_bar({"insight": 0.0}))
+	check(sharp == ["night:1", "a", "b"] and dull.is_empty(), "a sharp listener links more to its own reading than a dull one (sharp %s, dull %s)" % [str(sharp), str(dull)])
 	check(core.lean.keys() == ["x"] and is_equal_approx(core.lean.x, 2.5 - 1.0 - 0.2 - 0.6), "the core adds what its members say together beyond their own values (%+.2f on x)" % core.lean.get("x", 0.0))
 	check(core.cards == 3 and core.rebuilt and core.proved.is_empty() and not core.impossible, "three cards weighed together; nothing proved")
 	check(run.judgements == 0, "every judgement came from the ones already made")
@@ -293,13 +302,13 @@ func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
 		# The seed is exactly the items holding a firsthand card.
 		var want_seed: Array = r.items.filter(func(it): return it.kind != "day" and it.cards.any(func(id): return id in core.firsthand)).map(func(it): return it.key)
 		check(core.seed == want_seed, "%s: the seed is the items holding its firsthand cards (%s)" % [who, str(core.seed)])
-		# Every other card and pairing is tested once; members are the ones at 0.4 or more.
+		# Every other card and pairing is tested once; members are the ones at its bar or more.
 		var candidates: Array = r.items.filter(func(it): return it.kind not in Connections.ALWAYS_ON and it.key not in core.seed).map(func(it): return it.key)
 		var accounted: Array = core.tested.keys() + core.clash
 		accounted.sort()
 		candidates.sort()
-		var want_members: Array = r.items.filter(func(it): return float(core.tested.get(it.key, -1.0)) >= Connections.CORE_JOIN).map(func(it): return it.key)
-		check(core.rebuilt and accounted == candidates and core.members == want_members, "%s: every other card and pairing is tested against the seed, and those at 0.4 or more join (%d tested, %d joined)" % [who, candidates.size(), core.members.size()])
+		var want_members: Array = r.items.filter(func(it): return float(core.tested.get(it.key, -1.0)) >= Connections.join_bar(st.listener)).map(func(it): return it.key)
+		check(core.rebuilt and accounted == candidates and core.members == want_members, "%s: every other card and pairing is tested against the seed, and those at its bar (%.2f) or more join (%d tested, %d joined)" % [who, Connections.join_bar(st.listener), candidates.size(), core.members.size()])
 		check(core.members.all(func(k): return keys[k].kind not in Connections.ALWAYS_ON and k not in core.seed), "%s: no always-on connection joins by the test" % who)
 		# The same day, with the memory: nothing is tested, the same beliefs, fewer judgements.
 		var same: Dictionary = Connections.refresh(st.view, st.case, st.listener, st.held, {"day": day, "core": r.core_memory})

@@ -30,6 +30,7 @@ func _init() -> void:
 	_impossible_record_doesnt_block()
 	_reworked_reason_keeps_motive()
 	_reveal_lists_what_was_told()
+	_motives_use_names()
 	print("Fabrication check: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -224,5 +225,19 @@ func _reveal_lists_what_was_told() -> void:
 			if "told this one instead" in why:
 				reworked += 1
 			_check(not ("names [" in why or "instead\"" in why), "seed %d: no raw-id reason in the reveal (%s)" % [seed_v, why])
+			var re := RegEx.new()
+			re.compile("\\b[a-z][a-z0-9_]*\\b")
+			var ids_left: Array = re.search_all(why).map(func(m): return m.get_string()).filter(func(t): return g.w.by_id.has(t) and t != g.w.by_id[t].name)
+			_check(ids_left.is_empty(), "seed %d: the motive names people, not ids (%s; ids %s)" % [seed_v, why, str(ids_left)])
 	print("  reveal: %d fabrications listed, %d of them reworked" % [listed, reworked])
 	_check(listed > 0, "some fabrications were told in these games")
+
+## Steward A3: a motive's ids become names, whole words only.
+func _motives_use_names() -> void:
+	var s: Dictionary = _setup()
+	var Evil = load("res://sim/evil.gd")
+	var a = s.goods[2]
+	var b = s.goods[3]
+	var got: String = Evil.named(s.w, "the dead Seer %s 'cleared' the demon %s; names [\"%s\", \"%s\"] instead" % [a.id, b.id, a.id, b.id])
+	_check(got == "the dead Seer %s 'cleared' the demon %s; names [\"%s\", \"%s\"] instead" % [a.name, b.name, a.name, b.name], "ids become names (%s)" % got)
+	_check(Evil.named(s.w, "the dead Seer reported same=true") == "the dead Seer reported same=true", "other words are left alone")
