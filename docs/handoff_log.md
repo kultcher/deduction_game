@@ -1,29 +1,173 @@
 # Agent handoff log
 
-Shared notes between Claude (checks, tests, Git) and Argon (main coding). Newest entry
-first. Each entry: who, when, base commit, status, next actor, and anything the other
-agent must know before starting.
+Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
+commit, status, next actor, and anything the next agent must know before starting. Sessions
+don't share memory: this log and the PRs are how they talk.
 
-Who's who (from Nov 4 evening): sign each entry with your name. **Argon** (Gemini, main
-coding, patches on Drive); **Claude-Bailiff** (checks, tests, Git, meeting overhaul);
-**Claude-Quill** (dynamic scripts, integrating patch_013); the balance-sweep Claude (name
-to come). Sessions don't share memory: this log is how we talk.
+Who's who and the ground rules are in `CLAUDE.md` (from Nov 16): Seneschal orchestrates,
+Bailiff integrates and merges, Lantern owns the belief model, Beadle NPC behaviour, Quill
+evidence and challenges, Herald UI, dialogue and onboarding; Tally runs sweeps on request,
+and Steward runs scheduled maintenance. Sign
+each entry `Claude-<Name>`. Entries before Nov 16 also mention Argon (Gemini, patches on
+Drive), Tally and Steward as chat sessions.
+
+Reading it: the file is long. Read the top few entries, then search for your topic or
+agent (`grep -n "^## " docs/handoff_log.md`). Don't load the whole file.
 
 Explaining a playtest (why the town voted, read a case or believed something): replay the
 log with `tools/replay_log.gd --why` and `tools/explain_case.gd` before reading code or
 guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry below.
 
-Ground rules (from Nov 3, until Michael changes them):
+---
 
-- Argon delivers work as a zip on Drive (full files plus a manifest) and names the
-  `base_commit` it was built on. Claude unpacks it on a branch from that commit, so later
-  fixes are merged, never overwritten.
-- `main` only moves when everything is green: `dotnet build`, the selected suites, and
-  (from C1 on) a golden capture identical to the current baseline (`BASELINE` in
-  `.github/workflows/ci.yml`; `docs/golden_baseline.md`) at `--tol 0`.
-  Otherwise the work stays on its branch and the entry says why.
-- Two failed attempts at the same problem: stop, mark `BLOCKED_NEEDS_MICHAEL`, write the
-  exact error. No force pushes, nothing irreversible.
+## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
+
+- **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
+- **Michael (Nov 16):** leads propose new backlog items rather than adding them, even as `[open]`, so nothing slips past him in the back-and-forth.
+- **How it works:** send the proposal to Seneschal, with a short title, what you saw and where, and a suggested tag and owner. Also list it under "Proposed for the backlog" in your handoff entry. Seneschal puts proposals to Michael, and the owning lead adds the accepted ones. Updating or closing an existing item you worked on is still fine.
+
+---
+
+## 2026-11-16 night, Claude-Seneschal: Seneschal and Beadle join the roster (`claude/roster-seneschal-beadle`, stacked on #168)
+
+- **Base:** #168's head `a25ece7`. **Status:** docs and one test, PR open. Merge after #168. **Next actor:** Bailiff.
+- **Seneschal** is the orchestration session (formerly the migration session). It holds the big picture, starts and briefs the leads, and passes on Michael's decisions. It writes no feature code and doesn't merge.
+- **Beadle** is a new lead for NPC behaviour: how beliefs become what NPCs say, do, vote and lie about, including evil play. Michael split it from Lantern, who keeps the belief model.
+- **Sessions started on Nov 16,** each briefed on its first tasks:
+  - **Lantern:** a plan for the connections purge, `docs/connections_purge_plan.md`. It goes to Michael before any code is deleted.
+  - **Quill:** why the Muddler never muddled; the grimoire recording a relay as the relayer's own lie; then the weak case against Isolde (needs `case_26532.jsonl` from Michael).
+  - **Herald:** `ask night` not returning a gift's night result; a defence answering the wrong case.
+  - **Beadle:** a fabricated reading that implicated its own teller; then `[decided]` behaviour items.
+- **Performance goes to Argon** (Michael, Nov 16), working through Antigravity on `argon/` branches. Its first patch is a zero-drift speed-up of connections refreshes in `workshop/jury.gd` (`_consequences_eval`), `workshop/connections.gd` (`judge_key`) and `workshop/case_eval.gd` (cache keys and caps, `_team_prior`, `fits_before`). **Merge order: Argon's patch before any of Lantern's purge code PRs**, since both touch `_consequences_eval`. Lantern's plan PR (docs only) can merge any time. Lantern stays off performance, and flags in this log any cache-key field Argon wants to trim that some path does read.
+- **Bailiff's two notes on #168:** my handoff entry there is now signed `Claude-Seneschal`, and `tools/test_case_viewer.py` now tests the fallback to the old logs folder (13 tests pass).
+
+---
+
+## 2026-11-16 night, Claude-Seneschal (then the migration session): the agent roster, merging and autonomy rules (`claude/lucid-ptolemy-c9d27r`)
+
+- **Base:** main `c8ef1e7` (#167, Bailiff's `CLAUDE.md`). **Status:** docs only, PR open. **Next actor:** Bailiff (review and merge), then each lead starts in its own session.
+- **From:** a structured talk with Michael on how work runs in Claude Code. Everything decided is now in `CLAUDE.md`. In short:
+  - **Standing sessions:** Bailiff (integrator; **merges green, reviewed PRs without waiting for Michael**), Lantern (belief model and the connections purge), Quill (evidence and challenges), and **Herald, new** (UI, dialogue and voices, art integration, and onboarding later).
+  - **On demand:** Tally (sweeps). **Scheduled:** Steward, Monday STANDARD and Thursday DEEP, early morning Eastern, following the new `docs/maintenance/README.md`.
+  - **Picking work:** a lead may start any `[decided]` backlog item in its domain. `[open]` and `[tentative]` wait for Michael.
+  - **Tuning:** agents may change values of existing constants. New mechanics, new constants, design direction, backlog additions and player-facing wording stay Michael's.
+  - **Testing:** run the suites for what you changed (plus golden if game logic changed) before a PR; CI runs the rest.
+  - **Two points Michael added:** NPCs simulate a human mind, not an accurate solver, so don't optimise win rate or belief accuracy. And describe effects in game terms ("about a fifth less often"), not code values ("+0.25 pressure").
+- **This log's header** now points to `CLAUDE.md` for who's who and the rules, and says how to read the file without loading all of it.
+- **No longer called a prototype** (Michael): the project is now named `Demonologist` in `project.godot`, and the README and DESIGN status lines are reworded. **This moves the user data folder** from `app_userdata/Demonologist (text prototype)/` to `app_userdata/Demonologist/`. Logs, saved scripts, settings and playtest marks stay in the old folder until copied. `tools/case_viewer.py` falls back to the old logs folder while the new one doesn't exist.
+
+---
+
+## 2026-11-16 late, Claude-Herald: playtest 26532's "ask night" and defence findings, and remembering the last script (`claude/herald-night-results`)
+
+- **Base:** main `c8ef1e7` (#167). **Status:** PR #171 open. **Next actor:** Bailiff to merge; Michael for the wording below; Beadle for the defence's hinge choice (below).
+- **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds, two captures. That's expected rather than reassuring: the capture plays a passive player (`wait` and votes only), so it never asks `ask night` or files a case for a defence to answer. Bot games are compared below.
+
+### What changed and why
+
+1. **`ask night` now says what the gift showed that night** (playtest 26532). Nothing on BACKLOG.md or in this log owned it ("already slated" had no entry), so I built it. After a gift-holder tells their night's errand (Confessor, Lamplighter, Medium, or an evil bluff of one), they also say one of:
+   - the result again, if you've already heard it ("Last night, I heard Edda's confession: their heart was pure and their spirit good.");
+   - "What my gift showed me that night, I'll keep to myself for now.", if you haven't. `ask night` never discloses a new reading: that stays behind `ask gift`'s gate;
+   - "My gift showed me nothing that night.", if it showed nothing (a Medium with nothing new at the hearth). An evil bluffer with no story ready for that night holds it back instead, since "nothing" from a Confessor would give them away.
+   - The Night Watch is unchanged (its result is the sightings it already holds back or tells). Words only: no new card, no roll. Code: `MindDialogue._night_gift_result`, and `RoleDef.night_result_in_sightings()` (true for the Night Watch).
+2. **A defence answered the wrong case** (Isolde, 26532). Cause: `_disclosed_items_against` turned every sighting a case cited into a "seen out at night" item keyed by its day, so a day-1 evening sighting became "night 1", and on day 2 the defence opened "Your case rests on where I was last night" and gave a night account. Now a sighting by day is its own item (`whereabouts_day`, id `sighting_day:...`), isn't a night outing or a frame, and the hinge is the heaviest cited item a defence can answer (a reading or a night), so Isolde's would now go after Lian's Archivist reading. Not re-played on 26532 itself (no log here).
+   - **Ownership (Seneschal, Nov 16):** NPC behaviour is now Claude-Beadle's. This fix has two parts. Telling a sighting by day from a night one (`_disclosed_items_against`) corrects what the defence was told, and that part is the bug fix. Skipping daytime items when picking the hinge (`defend_self`, `cited`) is a decision about how a defence frames itself, so **it's Beadle's to review or change**. I left it in because without it the hinge would sit on an item with no answer and the defence would open with no framing at all. Whether a defence should have its own answer to a daytime whereabouts case is proposed below.
+3. **Remember the last script** (BACKLOG [decided], section 2 "Scripts, follow-ups"): the New Case screen keeps the town size and script in `user://settings.cfg` under `[new_case]`. The item is moved to BACKLOG_COMPLETED.
+
+### Small calls made on Michael's behalf
+
+- Dynamic is remembered as the mode, not the dealt script, so each case number still deals its own (keeps the Nov 16 seed fix). A custom or loaded script is kept whole; if it no longer reads (a role gone), the screen falls back to Default.
+- The case number is not remembered: each launch still gets a fresh one.
+- Headless runs neither read nor write the settings, so tests and tools never depend on an earlier run.
+- `ask night` repeats a told result rather than only saying "as I told you", so the answer stands alone.
+
+### For Michael: wording (drafts, all fallbacks; no voice has its own yet)
+
+- `night_gift_result_withheld`: "What my gift showed me that night, I'll keep to myself for now." Recommendation: keep it. It mirrors `ask gift`'s "What it's shown me, I'll keep to myself for now." so the player can see it's the same holding back.
+- `night_gift_result_none`: "My gift showed me nothing that night."
+
+### Tests and what I measured
+
+- New `tools/test_ask_night_results.gd` (34 checks, 7 and 10 NPCs): 16 fail on main, all pass with the change. New `tools/test_new_case_memory.gd` (9 checks). Both added to `ci_fast_suites.txt`.
+- Passed: the conversation, defence, meeting, dialogue and role suites (`test_conversation_nights`, `_gifts`, `test_framed_defence`, `test_mechanics_defences`, `test_defence_repeats`, `test_meeting_reasons`, `test_dialogue`, `test_roles_registry`, `test_codex_fixes`, `test_meeting_flow`), `test_ui`, and the CI fast list. Not run: the full ~155-suite run (CI on main does that).
+- **Bot games, main against this branch** (`autoplay.gd --seed 1 --games 6 --npcs 10`, connections on): the same winner, days and every sweep-record field in all 6 (only wall time differs). The new `ask night` line fired (Agnes, an evil Lamplighter bluff, repeated her told count). Seed 3 shows small belief shifts at one vote: Fenwick (evil) answered the player's 13-report case with "I was out because I'm the <gift>", and that move's relief is sized by the night outings against him, which used to include the case's sightings by day. It now relieves him a little less (Agnes on Fenwick 0.37 → 0.38 at the day-2 vote); the vote still failed 4 of 10.
+
+### Proposed for the backlog (sent to Seneschal; not added to BACKLOG.md)
+
+- **A defence's answer to a daytime whereabouts case.** Seen in playtest 26532 (Isolde) and in `MindMeeting.defend_self`: a defence can answer a reading or a night, but has nothing to say to a case built on where someone was by day, so it skips those items. Suggested tag [open], owner Beadle (the decision), with Herald for the wording.
+
+### Picked next, from BACKLOG [decided] in my domain
+
+- **"A whereabouts contradiction gets an irrelevant gift refusal"** (78148, Kiran) is next: it's the press-side twin of the defence fix here.
+- **"Conversation sightings should also cover location sightings"** is tagged [watch] since #152; it needs a check that duplicates still happen before anything is built.
+
+---
+
+## 2026-11-16 late, Claude-Lantern: the connections purge plan (`claude/connections-purge-plan`, docs only)
+
+My first session in Claude Code. Briefed by Claude-Seneschal (the orchestration session) on Michael's behalf: plan the purge
+of what the connections model replaced, the way the Nov 1–3 retirement went.
+
+- **Base:** main `c8ef1e7` (#167). **Status:** PR open, docs only. **Next actor:** Michael
+  reads the plan and answers section 7; Bailiff merges once green. Then I build the phases in
+  order, starting with phase 1.
+- **What changed:** new `docs/connections_purge_plan.md`, and this entry. No code.
+- **What's in it:** an inventory of what only the earlier model uses (file and function, and
+  what still reads each); what stays because connections uses it; the seven pinned suites and
+  what happens to each; eight phases with the golden each is expected to give; the naming
+  sweep; seven decisions for Michael; and the small calls I'd make myself.
+- **Findings worth knowing before reading it:**
+  - On every refresh the earlier model's whole judgement on the attended cards, and its
+    headline reading, are still computed and then thrown away. Phase 1 stops that, golden
+    identical expected.
+  - The earlier model still runs in play whatever the switch says: the headline reading in
+    every evaluation that isn't a refresh (reply stances, the Test juror, the ghost juror, the
+    secret-claim check at dawn) and in what low-Insight NPCs cite; and attention still feeds
+    belief on a refresh in four places (quiet-night protection, the circumstantial pattern, a
+    defence's "lying" floor, the direct checks). Removing those changes behaviour, so they wait
+    for Michael (phase 6).
+  - `tools/fixture_seeds.gd` plays every fixture search on the earlier model, for speed.
+  - `test_headline` passes with connections on but checks nothing real any more.
+  - The sweep workflow rejects `_legacy` cells, so `--legacy-model` can't be run from it today.
+  - Section 6b lists what touches NPC behaviour, for Claude-Beadle (new owner of `sim/mind*.gd` and `sim/evil.gd`): mainly phase 6a, which changes what NPCs cite.
+- **Measured:** nothing. Read from the code on `c8ef1e7`; nothing built, run or timed. Each
+  phase's golden expectation is a prediction for its own capture to check.
+- **Update (Nov 16, late): to Argon and Bailiff, on Argon's speed patch.** Seneschal says
+  Argon's patch lands first. The purge stays out of `jury.gd`, `connections.gd` and
+  `case_eval.gd` until it has merged, and my phase 1 goes to Argon (the plan says so). Read
+  from the code on `c8ef1e7`, not run. **Four things in the patch would change beliefs, not
+  just speed:**
+  1. **`_compile_impl`'s key can't drop `view.timeline`.** Compiling reads it:
+     `PublicEvidence.factors` (`public_evidence.gd:46`), the Breathstealer presence factor
+     (`day_presence.gd:414`), and `Solver.report_table` (Gravedigger `died_before_morning`
+     and the demon-death checks, `solver.gd:421-447`, `1101-1167`, `1387-1404`;
+     `report_table` keys its own cache on the timeline at `solver.gd:348`). Only the
+     meeting's talk (`SOFT_EVENTS`) is safe to leave out, and only without a Magistrate card
+     (`Solver._magistrate_nomination_ok`). That is the same rule `Connections.judge_key` uses.
+  2. **`regular_haunts` is read while compiling:** `Movement.factors` → `LiveActivity`
+     (`live_activity.gd:473, 710, 1514`) and `DayPresence` (`day_presence.gd:89`). It is
+     already appended only when it isn't empty. It can't be dropped for any card set that
+     holds a trace, a sighting or a night card.
+  3. **`hearing_weight` is read while compiling:** the movement likelihood weights each card
+     by it (`live_activity.gd:37, 58, 208, 310, 338`). It is already appended only when a
+     card carries it.
+  4. **`fits_before` isn't per universe.** `_class_fits(view, cc, [], knowledge)` returns one
+     value per class of `cc` (`nc = cc.team.size()`), and the classes depend on the card
+     subset. It is already cached by `cc.key` (`case_eval.gd:1158`). Sharing it across
+     subsets needs it worked out per world and then summed into each subset's classes.
+  - **Smaller points.** Memoizing `_team_prior` has to key on the universe and on the
+    listener's `suspicion`, `npc_trust` and `knowledge.good` (`case_eval.gd:1111-1131`).
+    Raising the cache caps is safe. Precomputing `judge_key` inputs in `begin()` is safe if
+    they're per listener and per refresh.
+  - **How to check:** `Connections.cache_verify` only checks the model's own kept answers,
+    so it won't see a stale CaseEval compile. Golden plays passively, so it won't exercise
+    Magistrate cards or player presentations. A third check that would catch this: run
+    `test_connections_cache` and the Magistrate suites twice, then compare the suspicions.
+    In the uncached run, bypass the cache *read* by calling `CaseEval._compiled.clear()`
+    before each compile, or by adding a bypass flag that skips the lookup at
+    `case_eval.gd:708`. In the cached run, compile normally. A small cap doesn't do this:
+    `_compile_impl` returns a hit before it checks the size, and the cap is a fixed `> 32`
+    (Codex on #169).
 
 ---
 

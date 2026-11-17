@@ -129,7 +129,11 @@ def render_report(case):
 
 def default_log_dir():
     appdata = Path(os.environ.get("APPDATA", str(Path.home() / "AppData" / "Roaming")))
-    return appdata / "Godot" / "app_userdata" / "Demonologist (text prototype)" / "logs"
+    userdata = appdata / "Godot" / "app_userdata"
+    logs = userdata / "Demonologist" / "logs"
+    # Before Nov 16 the project was named "Demonologist (text prototype)", so older logs live there.
+    old = userdata / "Demonologist (text prototype)" / "logs"
+    return old if not logs.is_dir() and old.is_dir() else logs
 
 
 def choose_log(directory):

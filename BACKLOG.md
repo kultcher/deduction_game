@@ -600,7 +600,6 @@ Candidates for a unified retuning proposal, not approved changes.
     only 54% of the time; every miss is "walker").
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
     roster outgrows one script.
-  - **Remember the last script** between runs (session-only now).
 
   [decided]
 

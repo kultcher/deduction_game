@@ -160,6 +160,10 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 	}
 
 
+func night_result_in_sightings() -> bool:
+	return true
+
+
 func withholds_night_sightings(n, nd: int, mind) -> String:
 	for e in n.info_log:
 		if e.get("role", "") == "nightwatch" and e.get("day", -1) == nd and not mind.reading_disclosed(n, e):

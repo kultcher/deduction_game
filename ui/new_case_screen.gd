@@ -1,5 +1,7 @@
 ## The New Case screen, at launch and from More ▸ New case: Town Population (7 / 10) →
-## Script (Default / Dynamic / Load… / Custom…) → Start. Remembers the last choice while the game runs.
+## Script (Default / Dynamic / Load… / Custom…) → Start. Remembers the last town size and
+## script between runs (user://settings.cfg, [new_case]): Default, Dynamic (the mode: each
+## case number deals its own), or the custom or loaded script itself.
 extends Control
 
 signal start_requested(count: int, script_def, case_seed: int)
@@ -39,6 +41,10 @@ var start_btn: Button
 var cancel_btn: Button
 var editor
 var load_dialog: FileDialog
+## Where the last choice is kept between runs. Headless runs (tests, tools) neither read nor
+## write it unless a test turns `remember` on, so a run never depends on an earlier one.
+var settings_path: String = "user://settings.cfg"
+var remember: bool = DisplayServer.get_name() != "headless"
 
 
 func _init() -> void:
@@ -154,6 +160,7 @@ func _init() -> void:
 	start_btn.custom_minimum_size.x = 120
 	start_btn.pressed.connect(func():
 		hide()
+		save_last()
 		start_requested.emit(count, chosen.duplicate_script(), case_seed))
 	foot.add_child(start_btn)
 
@@ -194,6 +201,45 @@ func _init() -> void:
 		_refresh())
 	load_dialog.canceled.connect(_refresh)
 	add_child(load_dialog)
+	load_last()
+
+
+## The last town size and script started, from settings_path ([new_case]). A saved script
+## that no longer reads (a role removed since) falls back to Default.
+func load_last() -> void:
+	if not remember:
+		return
+	var cfg := ConfigFile.new()
+	if cfg.load(settings_path) != OK:
+		return
+	var n: int = int(cfg.get_value("new_case", "town_size", count))
+	if C.SETUPS.has(n):
+		count = n
+	match str(cfg.get_value("new_case", "script", "default")):
+		"dynamic":
+			dynamic_mode = true
+		"custom":
+			var d = cfg.get_value("new_case", "custom", {})
+			var s = ScriptDef.from_dict(d) if d is Dictionary and d.has("town") else null
+			if s != null and s.check(count).errors.is_empty():
+				chosen = s
+				dynamic_mode = false
+
+
+## Keep this choice for the next run (other sections of the settings file are left alone).
+func save_last() -> void:
+	if not remember:
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(settings_path)
+	cfg.set_value("new_case", "town_size", count)
+	var kind: String = "dynamic" if dynamic_mode else ("default" if chosen.is_default() else "custom")
+	cfg.set_value("new_case", "script", kind)
+	if kind == "custom":
+		cfg.set_value("new_case", "custom", chosen.to_dict())
+	elif cfg.has_section_key("new_case", "custom"):
+		cfg.erase_section_key("new_case", "custom")
+	cfg.save(settings_path)
 
 
 ## can_cancel: false at launch (there is no case to go back to). debug_on shows the
