@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 23973 wording): `baseline_5c99636`
+### Current baseline (Nov 17, bluff motives name people): `baseline_eb8e59b`
+
+`tools/golden/baseline_eb8e59b/` is the capture from `claude/beadle-motive-names` at `eb8e59b`
+(main `bf7b4f9` and #224 merged in): each fabrication's recorded motive (`why`) swaps
+people's ids for their names (Steward A3).
+- **Divergence from `baseline_5c99636`:** all 5 seeds, from record 1, in the `why` field
+  only. Record counts are the same, and no other field differs.
+- **Outcomes unchanged:** 42, 54875 and 98933 good wins as before; 692 and 900 unfinished
+  as before. Same hangings, votes and nominators.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 23973 wording): `baseline_5c99636`
 
 `tools/golden/baseline_5c99636/` is the capture from `claude/herald-23973-wording` at
 `5c99636` (main `f754421` merged in): playtest 23973's wording. Of what it changes, only
