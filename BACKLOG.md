@@ -402,17 +402,14 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
   Check against the current prior mapping. (Oct 30) [open]
 
-- **Unlimited vigil strength.** [watch] Options, costs and Vicar's lean (watch who leaves
-  a block instead of who arrives) are in [docs/design/vigil.md](docs/design/vigil.md)
-  (Michael with Claude-Vicar, Nov 17). Vigils now see only walkers arriving on the block
-  (or the full Lamplighter tour). (54875: a vigil on the first kill block caught both
-  walkers there on nights 1 and 2, near a free Seer reading.) Options discussed, none
-  chosen:
-  - a vigil makes you sleep in and lose the next morning's action (Claude's favourite);
-  - vigils limited like the ward;
-  - a vigil shows only a count of people on the block (leaves the player reliant on
-    chance sightings and the Night Watch);
-  - keep watch at one location: name anyone at that spot, count the rest of the block.
+- **The vigil watches who leaves a block.** (Michael, Nov 17, with Claude-Vicar; design note
+  [docs/design/vigil.md](docs/design/vigil.md)) Replaces "Unlimited vigil strength". A vigil
+  sees people leaving their homes on the watched block, not people arriving there, so the
+  player aims it at suspects instead of predicting the Demon's victim, and a sighting of
+  someone going out is weaker than one at the scene. No sweep first; a lower bot win rate is
+  fine. The bot's vigil policy changes in the same build to watch its suspects' blocks. The
+  note's section 5 lists what the build should check. Result wording: Herald drafts,
+  Michael settles. Owner Quill. [decided]
 
 - **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
   paired seeds (living candidates, wrongful executions, win rate); the evidence rework's

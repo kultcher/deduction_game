@@ -1,11 +1,22 @@
 # The vigil: options (design note)
 
-**Status: exploring. Nothing decided; nothing built.** Written Nov 17 from a talk between
-Michael and Claude-Vicar. It replaces the option list under "Unlimited vigil strength" in
-BACKLOG section 2 (Numbers, `[watch]`) and the matching question in DESIGN's "Open
-questions". Possible builders: Quill (the vigil's evidence and how the judge reads it),
-Herald (the result wording and UI), Tally (the comparison sweep). The facts below are read
-from the code on main, not measured.
+**Status: decided (Michael, Nov 17): option A, the vigil watches who leaves a block. Not
+built.** Written Nov 17 from a talk between Michael and Claude-Vicar. It replaces the option
+list under "Unlimited vigil strength" in BACKLOG section 2 (Numbers), now `[decided]`, and
+the matching question in DESIGN's "Open questions". Builders: Quill (the vigil's evidence,
+the judge, and the bot's vigil policy), Herald (the result wording and UI). The facts below
+are read from the code on main, not measured.
+
+## Decision (Michael, Nov 17)
+
+- **The vigil watches who leaves the watched block,** not who arrives (option A below).
+- **No comparison sweep first.** Michael is comfortable with the model; it goes straight to
+  a build and then playtests.
+- **A lower bot win rate is acceptable.**
+- **The bot's vigil policy changes in the same build:** it watches the blocks of the people
+  it suspects most, not the homes of its likeliest victims.
+- **Not taken now:** the other options (B–E). Sleeping in (C) and a higher miss rate stay
+  in reserve as dials if a sweep of the town by vigil proves too efficient in play.
 
 ---
 
@@ -36,7 +47,7 @@ both had a vigil on the right block catch the Demon outright.
 
 ## 2. Options
 
-### A. Watch who leaves instead of who arrives *(Vicar's lean)*
+### A. Watch who leaves instead of who arrives *(chosen, Nov 17)*
 
 The vigil sees people leaving their homes on the watched block, not people arriving there.
 
@@ -117,12 +128,32 @@ which kills by day, so a vigil is less damning.
   watch the blocks of the people it suspects most.
 - **Then a playtest:** tuning is by feel. Was the case too easy, or unsolvable, in hindsight?
 
-## 4. Open for Michael
+## 4. Still open
 
-1. Which option, or which combination (Vicar's lean: A, with C as a dial).
-2. Under A, whether a vigil should miss someone leaving more often than today.
-3. The result wording (Herald drafts; the wording is Michael's). A first draft for A: "You
-   kept watch over Chapel Hill. A little after midnight, Greta left her house." and, for an
-   empty vigil, "You kept watch over Chapel Hill. Nobody stirred." (the Night Watch already
-   says "nobody stirred" for a quiet watch, #178, so the two would match.)
-4. Whether to run the comparison before deciding, or decide and playtest.
+1. **The result wording** (Herald drafts; the wording is Michael's). A first draft: "You kept
+   watch over Chapel Hill. A little after midnight, Greta left her house." and, for an empty
+   vigil, "You kept watch over Chapel Hill. Nobody stirred." (the Night Watch already says
+   "nobody stirred" for a quiet watch, #178, so the two would match).
+2. **Offered and requested vigils.** The player can offer a vigil "on their block", and NPCs
+   can ask for one. Today that reads as watching over the NPC's home. Watching who leaves,
+   it watches the NPC and their neighbours instead, so the offer's meaning shifts (it already
+   builds trust only and doesn't deter the Demon). Whether the offer's wording or its trust
+   reward should change is a small call for the build; Herald for the wording.
+3. **The miss rate:** unchanged unless playtests show an empty vigil clears too cheaply.
+
+## 5. What the build should check
+
+- **The sim and the judge stay matched:** both read `C.vigil_sees_path`. Today's
+  destination rule also catches walkers whose gift sent them to the block (a Warden at a
+  door there, a Medium at a hearth there); under the new rule they're seen only if they live
+  there. The judge's exclusion cards (an empty vigil, a complete vigil list against a claimed
+  walker, `workshop/live_activity.gd`) must read the same rule.
+- **The lamp-route clause** (anyone walking every block is seen) stays, or goes if a
+  Lamplighter leaving home is enough. Builder's small call; say which in the PR.
+- **Tests that pin the destination rule** (for example `tools/test_workshop_live_activity.gd`,
+  `tools/test_evidence_cards.gd`) are updated, not skipped.
+- **Golden:** likely unchanged (the passive player never keeps vigil); say so if it moves.
+- **The bot:** `tools/autoplay.gd`'s vigil policy targets suspects' blocks. Report the bot's
+  win rate and how often its vigils sight the Demon, before and after, in game terms.
+- **DESIGN.md** "Vigils see destinations" and the Night section's Vigil line are rewritten
+  when it's built.

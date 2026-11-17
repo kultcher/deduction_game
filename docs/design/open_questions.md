@@ -88,18 +88,12 @@ These are the ones under discussion now, roughly by how much they shape other wo
 - **Evidence:** BACKLOG section 6 (#174); `docs/premises_plan.md` step 1.
 - **Builds:** Lantern.
 
-### 1.6 Are unlimited vigils too strong?
-- **Open:** a vigil on the right block can catch the Demon outright (playtests 26532,
-  54875): it sees who arrives on a block, the Demon's route ends at the victim's home, and
-  the Demon's target is predictable. Michael (Nov 17) favours inverting it, so it watches
-  who *leaves* a block; other options are a shadowy Demon, sleeping in, limited uses, and
-  unlocking it with Hexer scripts.
-- **Related, in DESIGN:** does the Lamplighter's every-block route make that gift too easy to
-  confirm?
-- **Evidence:** `docs/design/vigil.md` (the options, what each costs, how to measure them);
-  BACKLOG section 2, Numbers ("Unlimited vigil strength", `[watch]`).
-- **Builds:** Quill (the vigil's evidence), Herald (wording), Tally (the comparison, with a
-  bot that watches suspects' blocks).
+### 1.6 ~~Are unlimited vigils too strong?~~ Decided (Nov 17)
+- **Michael (Nov 17):** the vigil watches who *leaves* a block, not who arrives; no sweep
+  first; the bot changes to watch its suspects. BACKLOG section 2 `[decided]`, owner Quill.
+  Details and the build's checklist in `docs/design/vigil.md`.
+- **Still open:** the result wording (Herald drafts), and the Lamplighter question in DESIGN
+  (does its every-block route make the gift too easy to confirm?).
 
 ### 1.7 Onboarding and tutorials (waits for mechanics to settle)
 - **Open:** when mechanics are settled enough to start, and the shape. The decided
