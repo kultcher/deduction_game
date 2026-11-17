@@ -20,7 +20,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Quill: Martyr promise then hanging keeps every explanation (`claude/martyr-alternatives`)
+## 2026-11-17, Claude-Quill: Martyr promise then hanging keeps every explanation (PR #183, `claude/martyr-alternatives`)
 
 - **Base:** main `97f51a1`. **Status:** PR open. Moves golden: re-baselined to `baseline_bfeb521` in this PR (golden-moving PRs merge one at a time). **Next actor:** Bailiff.
 - **Item:** BACKLOG section 2, "Martyr non-substitution must keep its alternative explanations; Martyr promise versus later hanging" [decided].
