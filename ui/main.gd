@@ -41,6 +41,8 @@ var case_view
 var case_state = CaseState.new()   # view, filters and selection shared by every panel
 var map
 var map_stage: Control
+## Top right of the map during a conversation or meeting: back to it (Michael, Nov 17).
+var map_return: Button
 var conversation_view
 var conversation_show_map = false
 var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
@@ -212,6 +214,17 @@ func _ready() -> void:
 	conversation_view = preload("res://ui/day_conversation_view.gd").new()
 	conversation_view.visible = false
 	map_stage.add_child(conversation_view)
+	map_return = Button.new()
+	map_return.name = "MapReturn"
+	map_return.visible = false
+	map_return.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	map_return.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	map_return.offset_left = -10
+	map_return.offset_right = -10
+	map_return.offset_top = 10
+	map_return.offset_bottom = 10
+	map_return.pressed.connect(_on_map_return)
+	map_stage.add_child(map_return)
 	# While the town meets, the meeting circle takes the map's place.
 	meeting_view = MeetingView.new()
 	meeting_view.custom_minimum_size = Vector2(500, 300)
@@ -987,6 +1000,10 @@ func _refresh_all() -> void:
 	map_stage.visible = conversation_finished or reading or (not meeting and not last_words) or meeting_show_map
 	conversation_view.visible = conversation_finished or (g.state == "talk" and not conversation_show_map) or reading or (g.state == "approach" and approach_stage != "")
 	meeting_view.visible = (meeting or last_words) and not meeting_show_map and not conversation_finished and not reading
+	var in_talk_map: bool = g.state == "talk" and conversation_show_map and not conversation_view.visible
+	var in_meeting_map: bool = meeting and meeting_show_map and map_stage.visible
+	map_return.visible = in_talk_map or in_meeting_map
+	map_return.text = "Return to conversation" if in_talk_map else "Return to meeting"
 	input.editable = not conversation_finished and not _presenting()
 	if meeting:
 		meeting_view.refresh()
@@ -1166,7 +1183,9 @@ func _refresh_actions() -> void:
 				conversation_show_map = not conversation_show_map
 				_refresh_all())
 			if conversation_show_map:
-				_actions_talk(w)
+				# The conversation's options wait while the map is up: go back to it to carry on
+				# (Michael, Nov 17).
+				action_title.text = "Talking with %s" % g.talk_with.name
 			else:
 				var lower_actions = actions
 				actions = conversation_view.controls
@@ -1359,6 +1378,16 @@ func _actions_talk(w) -> void:
 		func(c): return not c.get("tavern_gossip", false) and c.get("pressable", true) and c.get("workshop_usable", true),
 		func(num, extra): _run(("present %d" % num) + extra), false, true))
 	_button(actions, "Leave", func(): _run("bye"))
+
+## The map's "Return to conversation" / "Return to meeting" button.
+func _on_map_return() -> void:
+	if g == null:
+		return
+	if g.state == "talk":
+		conversation_show_map = false
+	else:
+		meeting_show_map = false
+	_refresh_all()
 
 ## During the meeting: switch the top-left view between the meeting circle and the map.
 func _map_toggle() -> void:

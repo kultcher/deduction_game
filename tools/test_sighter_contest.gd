@@ -7,6 +7,9 @@
 ##     home fits (scored at 1 - EVIL_SIGHTER_TRUTH of an invented sighting); worlds where c
 ##     is good are unchanged.
 ##   - The listener's own sightings, and sightings by people who can't be evil, never move.
+##   - Since Nov 17 a good a's own "home" may itself be false (GOOD_OWN_ALIBI_OUT), so a
+##     good a and a good c no longer score 0: they score that floor. The checks compare
+##     against it.
 extends SceneTree
 
 const Activity = preload("res://workshop/live_activity.gd")
@@ -66,13 +69,14 @@ func _init() -> void:
 	var r_off: float = S.call(w_c_demon, false) / a_off
 	var r_on: float = S.call(w_c_demon, true) / a_on
 	var r_cm: float = S.call(w_e_demon_c_minion, true) / a_on
-	check(r_off < 1e-6, "without contests, the sighter being the Demon can't explain the clash (%.8f of the subject-Demon world)" % r_off)
-	check(r_on > 0.01, "with contests, the sighter c being the Demon explains the clash (%.4f of the subject-Demon world)" % r_on)
-	check(r_cm > 0.01, "the same when c is a Minion (%.4f)" % r_cm)
+	# The floor: a good a and a good c, explained only by a good a's false "home".
+	var r_floor: float = S.call(w_neither, true) / a_on
+	check(is_equal_approx(r_off, r_floor), "without contests, the sighter being the Demon explains nothing beyond a good a's false 'home' (%.6f, floor %.6f)" % [r_off, r_floor])
+	check(r_on > 2.0 * r_floor, "with contests, the sighter c being the Demon explains the clash (%.4f of the subject-Demon world, floor %.4f)" % [r_on, r_floor])
+	check(r_cm > 2.0 * r_floor, "the same when c is a Minion (%.4f)" % r_cm)
 	check(r_on < 1.0, "the subject stays the stronger suspect than the sighter (%.4f)" % r_on)
 	check(is_equal_approx(a_on, a_off), "worlds where the sighter is good are unchanged (%.6f, %.6f)" % [a_on, a_off])
-	var r_neither: float = S.call(w_neither, true) / a_on
-	check(r_neither < 1e-6, "a good a and a good c: the clash still rules the world out (%.8f)" % r_neither)
+	check(r_floor > 0.0 and r_floor < Tuning.Workshop.GOOD_OWN_ALIBI_OUT, "a good a and a good c: only a good a's false 'home' explains the clash, a small share (%.6f)" % r_floor)
 
 	# The listener's own sighting is never contested: they know they're good.
 	var mine: Dictionary = seen.duplicate()
@@ -124,7 +128,9 @@ func _converted_checks() -> void:
 		var w_conv: Dictionary = {"evil": (1 << i_f) | (1 << ie), "demon": ie, "converted": ic}
 		var w_a: Dictionary = {"evil": (1 << ia) | (1 << i_f), "demon": ia}
 		var r: float = Activity.score(w_conv, f[0]) / Activity.score(w_a, f[0])
+		# The same world with c never turned: a good a's false "home" is all that's left.
+		var r_base: float = Activity.score({"evil": (1 << i_f) | (1 << ie), "demon": ie}, f[0]) / Activity.score(w_a, f[0])
 		if cursed_told:
 			check(r > 0.01, "curse, %s: the converted sighter can explain the clash (%.4f of the subject-Demon world)" % [label, r])
 		else:
-			check(r < 1e-6, "curse, %s: testimony from their good days stays honest (%.8f)" % [label, r])
+			check(is_equal_approx(r, r_base), "curse, %s: testimony from their good days stays honest (%.6f, as with c never turned %.6f)" % [label, r, r_base])

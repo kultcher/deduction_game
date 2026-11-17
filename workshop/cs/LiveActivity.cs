@@ -42,6 +42,8 @@ internal static class LiveActivityKernel
 
     // Mirrors of sim/tuning.gd Workshop.VIGIL_MISS and WALKER_CLAIM_* (Nov 5).
     public const double VigilMiss = 0.05;
+    /// Mirrors Tuning.Workshop.GOOD_OWN_ALIBI_OUT.
+    public const double GoodOwnAlibiOut = 0.2;
     public const double WalkerClaimGift = 0.95;
     public const double WalkerClaimHome = 0.03;
     public const double WalkerClaimSecret = 0.02;
@@ -1017,11 +1019,16 @@ internal static class LiveActivityKernel
             {
                 if (cardInts[off + 3] == personIdx)
                 {
-                    // A person's own word on their night: hard for the good (and the listener,
-                    // good in its own worlds); an evil subject may be covering a night out.
-                    if (!quoted && (currentAlign == AlignGood || cardInts[off + 2] != personIdx))
+                    // Someone else's word on a person's night (a witness) stays hard.
+                    if (!quoted && cardInts[off + 2] != personIdx)
                     {
                         return !isOut ? 1.0 : 0.0;
+                    }
+                    // A person's own word: a good one out on a hidden gift or a secret (or a
+                    // Sleepwalker) may still say "home"; an evil one may be covering a night out.
+                    if (!quoted && currentAlign == AlignGood)
+                    {
+                        return !isOut ? 1.0 : GoodOwnAlibiOut;
                     }
                     return isOut ? (currentAlign != AlignGood ? 0.7 : 0.3) : 0.9;
                 }

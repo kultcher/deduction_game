@@ -10,6 +10,8 @@ const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Tuning = preload("res://sim/tuning.gd")
+const History = preload("res://workshop/live_history.gd")
+const Solver = preload("res://workshop/solver.gd")
 
 var checks = 0
 var fails = 0
@@ -41,6 +43,7 @@ func _init() -> void:
 		var on: Dictionary = _one(role, "lied")
 		check(is_equal_approx(off.end, on.end), "%s: a \"lied\" argument isn't read as an honest error (%.3f with the fix, %.3f without)" % [role, on.end, off.end])
 	CaseEval.doubted_role_check = true
+	_mixture()
 	print("Role check doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -130,3 +133,35 @@ func _h(t: Dictionary, id: String) -> float:
 	var s_pen: float = clampf(0.8 * maxf(0.0, Mind.susp(L, id) - 0.1), 0.0, 0.7) if not Mind.demon_victim(t["w"], id) else 0.0
 	return minf(r_sd, 1.0 - s_pen)
 
+
+## The judge's mix, on a hand-made case: a doubted reading is "genuine" with the listener's
+## trust and otherwise a broken reading, which says these words only by chance (Nov 17). The
+## result should sit near trust x (with the reading) + doubt x (with only the claim). Before,
+## the broken side counted as certain to say what it said, and the doubt weighed about
+## double (a 10% doubt moved a Clerk reading as far as 20% should).
+func _mixture() -> void:
+	var cd = {"id": "cd", "fact_id": "cd", "kind": "claim", "source": "d", "subject": "d", "subjects": ["d"], "role": "seer", "data": {}}
+	var rd = {"id": "rd", "fact_id": "rd", "kind": "report", "source": "b", "role": "clerk", "night": 1, "data": {"pair": ["a", "d"], "role": "dowser"}, "observed_at": {"day": 1, "phase": "night"}}
+	var claim_only: float = _p([cd], {})
+	var with_it: float = _p([cd, rd], {})
+	check(with_it < claim_only - 0.1, "mix: the Clerk's own reading (a or the Seer claimant is the Dowser) clears a (%.3f -> %.3f)" % [claim_only, with_it])
+	for d in [0.1, 0.3]:
+		var doubted: float = _p([cd, rd], {"rd": d})
+		var mix: float = (1.0 - d) * with_it + d * claim_only
+		check(doubted - with_it <= 1.1 * (mix - with_it) and doubted - with_it >= 0.3 * (mix - with_it), "mix: a %d%% doubt gives back about that share of what the reading did (%.3f; the plain mix is %.3f)" % [int(d * 100), doubted, mix])
+
+func _p(cards: Array, doubt: Dictionary) -> float:
+	var people: Array = []
+	for id in ["a", "b", "c", "d", "e", "f", "g"]:
+		people.append({"id": id, "name": id, "home": "market"})
+	var view: Dictionary = {"people": people, "cards": cards, "evil_count": 2, "day": 2, "alignment_epoch": "Original alignment", "live_activity": true,
+		"timeline": History.from_events([{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1, "phase": "night"}}]),
+		"world_options": {"roles": true, "identities": true, "modifiers": ["marked", "delusional", "sleepwalker", "lovers"]}}
+	var c = Solver.empty_case()
+	c.conclusion = {"type": "evil", "target": "a", "at": view.alignment_epoch}
+	c.cards = cards.map(func(x): return x.id)
+	var l: Dictionary = CaseEval.neutral_listener(view)
+	l["knowledge"] = {"self": "b", "own_role": "clerk", "own_reports": ["rd"]}
+	if not doubt.is_empty():
+		l["reading_doubt"] = doubt
+	return float(CaseEval.evaluate(view, c, l).get("posterior", -1))
