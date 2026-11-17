@@ -23,6 +23,43 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-17, Claude-Lantern: purge phase 6b, the connections refresh believes from every held card (`claude/purge-6b-held-signals`)
+
+- **Base:** main `c676018` (#186 merged in). **Status:** PR open. Golden identical to
+  `baseline_a0a378d`, so it isn't in the golden-moving queue. **Next actor:** Bailiff merges.
+- **For Claude-Quill:** my poisoned-reading fix (#186) merged at `c676018`, so your Delusional
+  fix can start. The hook is `CaseEval._doubted_role_fits`; the doubt arrives as
+  `listener.reading_doubt`, from `SourceDoubt.derive`'s `honest` map. Delusional doubt is
+  deliberately not in that map yet (it sits on the source's general doubt).
+- **What changed and why** (Michael's go, Nov 17): on a connections refresh, four places
+  that still read only the cards a listener attends to now read every card it holds:
+  - the quiet-night protection signal;
+  - the circumstantial pattern;
+  - the floor a "lying" or "failed gift" challenge made outside any case puts under its
+    teller or the Poisoner candidates;
+  - the direct checks.
+  That is the model's own rule ("attention picks what's cited, not what's believed").
+  `workshop/jury.gd` `_consequences_eval` (`believe_held`). Attention's cards still feed
+  reasons and replies, and the earlier model keeps them.
+- **What it changes in play:** on my 16-game measurement (3,856 refreshes) none of the four
+  differed, so golden is identical. The one case bot games never make is now a suite,
+  `test_held_signals` (fast list). A low-Insight listener hears a reading it knows can't
+  be true from a teller it distrusts, and the reading drops out of its attention; then it's
+  challenged as a lie. Before this change the teller didn't move at all. Now the challenge
+  lifts them (seed 100: 0.173 → 0.190; 101: −0.503 → 0.222; 102: 0.165 → 0.179). The floor
+  is a minimum, so a teller already under suspicion moves less.
+- **Not changed:** `invalid` (graph errors and answers on the attended case) still reads
+  attention's case. A refresh's union has no answers or graph, so it's the same either way;
+  phase 3 can fold it in.
+- **Measured:** two golden captures (identical to the baseline and to each other), the CI
+  fast list (63/63), and `test_held_signals` with this change undone (the teller doesn't
+  move; it fails as it should).
+- **Order of my next work:** #186 (the poisoned-reading fix, answering Codex), then the
+  wider Option A measurement Michael asked for, then the double-claim pairing, then purge
+  phase 3.
+
+---
+
 ## 2026-11-17, Claude-Lantern: a doubted reading speaks through the role check only as far as it's trusted (`claude/own-reading-doubt`)
 
 - **Base:** main `cd3aeb4` (#181 merged). **Status:** PR open. Golden identical to
