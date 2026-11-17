@@ -1,6 +1,6 @@
 ## The Workshop side of the Medium relay challenge (Quill's judge change, Nov 17; Herald):
-## a challenge on a Medium's relay names its side, "The Medium passed it on wrong" or "The
-## dead were wrong to begin with" (wording placeholders until Michael settles them). The
+## a challenge on a Medium's relay names its side, "The Medium lied or was misled" or "The
+## dead person lied or was misled" (Michael's wording, Nov 17). The
 ## canvas keeps the side on the challenge card, compiles it for the judge, keeps the
 ## passing-on to a lie or a failed gift, and reloads it.
 extends SceneTree
@@ -51,7 +51,7 @@ func _init() -> void:
 	check(m.get("attribution", "") == "original" and m.mode == "misled", "...and a refused change leaves the card as it was")
 	check(board.add_modifier("e:relay", "lying", "transmission") == "", "the Medium can be charged with a lie")
 	check(m.attribution == "transmission" and m.mode == "lying", "...and the card says so")
-	check("The Medium passed it on wrong" in board.title(m.id), "the card's title names the side: " + board.title(m.id))
+	check("The Medium lied or was misled" in board.title(m.id), "the card's title names the side: " + board.title(m.id))
 	# Compiled for the judge with the side, and valid there.
 	check(board.connect_cards(m.id, premise) == "" or true, "(link the challenge into the premise)")
 	var compiled: Dictionary = board.compile(premise)

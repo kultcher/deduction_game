@@ -415,9 +415,10 @@ func connect_cards(from: String, to: String) -> String:
 	version += 1
 	return ""
 
-## Wording placeholders for the two sides of a Medium's relay (Quill's draft, Nov 17; Michael
-## to settle). Keyed by ReadingChallenges.RELAY_ATTRIBUTIONS.
-const RELAY_SIDE_TEXT = {"transmission": "The Medium passed it on wrong", "original": "The dead were wrong to begin with"}
+## The two sides of a Medium's relay, as the player reads them (Michael, Nov 17; without a
+## closing full stop, like the other challenge entries). Keyed by
+## ReadingChallenges.RELAY_ATTRIBUTIONS.
+const RELAY_SIDE_TEXT = {"transmission": "The Medium lied or was misled", "original": "The dead person lied or was misled"}
 
 ## A challenge on a reading. A Medium's relay must also name its side (attribution:
 ## "transmission" or "original"; ReadingChallenges.RELAY_ATTRIBUTIONS), and the passing-on

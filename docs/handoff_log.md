@@ -32,10 +32,11 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **The model** (`workshop/canvas_model.gd`): `add_modifier` takes the side, the challenge carries it into the compiled case (`attribution`), saving and loading keep it, and a saved challenge the judge wouldn't accept is refused on load. The card's title names the side.
 - **The card's support note** no longer says relays "need separate attribution".
 
-### Wording (Michael's; placeholders until he settles them)
+### Wording
 
-- Quill's drafts are used as they stand: "The Medium passed it on wrong" / "The dead were wrong to begin with". They're in one place, `CanvasModel.RELAY_SIDE_TEXT`.
-- The two chip tooltips are mine. Passing-on: "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift." Original: "The Medium passed it on faithfully, but the dead person's own reading was wrong."
+- **Settled by Michael (Nov 17, via Seneschal):** "The Medium lied or was misled" / "The dead person lied or was misled." They're in one place, `CanvasModel.RELAY_SIDE_TEXT`. He wrote the second with a full stop and the first without. The menu's challenge entries and the card's chips have no closing full stops, so both are used without one.
+- **A mismatch for Michael:** "The Medium ... was misled" reads as if a misled Medium is a choice. The judge (Quill, #191) accepts only a lie or a failed gift for the passing-on, since "misled" is about the reading itself. So on that side the card offers Lying and Poisoned only; a Medium whose gift failed is the nearest thing to "misled". Either the label or the judge's rule may want to change. That's Michael's call with Quill.
+- **The two chip tooltips are my drafts, not yet settled.** Passing-on: "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift." Original: "The Medium passed it on faithfully, but the dead person's own reading was wrong."
 
 ### Small calls made on Michael's behalf
 
