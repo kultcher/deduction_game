@@ -231,7 +231,9 @@ static func _defend_pending(g) -> void:
 	if not C.DEFENCE_MOVES:
 		g._line(Mind.defence_line(g.w, g.w.by_id[nm["nominee"]]))
 		return
-	var df = Mind.defend_self(g.w, g.w.by_id[nm["nominee"]], nm["by"], nm.get("case_facts", []))
+	# What the defence answers: the case's new cards, plus a sighting the nominator spoke
+	# again that the town already had (not a new card, still the accusation; 89077).
+	var df = Mind.defend_self(g.w, g.w.by_id[nm["nominee"]], nm["by"], nm.get("case_facts", []) + nm.get("spoken_facts", []))
 	for l in df["lines"]:
 		g._line(l)
 	g._facts(df["facts"])
