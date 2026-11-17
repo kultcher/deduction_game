@@ -327,6 +327,22 @@ A defense mechanism is a habitual *style of handling discomfort*, not a guilt si
 
 Do not implement “truth voice” vs “lying voice.” That would undermine deduction even if inadvertent.
 
+### 8.1 The daytime-whereabouts defence (wording settled by Michael, Nov 17)
+
+For a defence against a case built on where someone was by day (BACKLOG, owner Beadle). The
+voice lines are in `sim/dialogue_voices.gd`. The generic fallbacks, passed by the caller:
+
+| Key | Fallback |
+| --- | --- |
+| `defence_day_others` | "I was at {place} {when}, and so were {others}. Ask any of them what they saw." |
+| `defence_day_alone` | "I was at {place} {when}. Being seen in the open is no crime." |
+| `defence_day_others_pointed` | "I was at {place} {when}. So was {suspect}, if it's company you're weighing." |
+
+- **Slots:** `{place}` a public place; `{when}` "this morning", "yesterday afternoon" or "the first evening"; `{others}` a joined list of two or three names ("Agnes and Hollis"); `{suspect}` someone who was also there and is also under suspicion.
+- **The caller also passes `{Place}` and `{When}`, capitalised.** Bartholomew and Jory start a sentence with one of them.
+- **Stand-only lines:** Greta's and Odette's pointed lines assume a single nominee on the stand. Every voice has both `defence_day_others_pointed` (anywhere) and `defence_day_others_pointed_stand` (at a nomination). For 13 voices the two are the same line. For Greta and Odette the stand line is their meeting-only one and the plain key holds the generic line. At a nomination use `_stand`; in private use the plain key.
+- **Every line keeps its facts** (the place, the time, who was there, who is pointed at). None adds a reason for being there or says what anyone did. Evil uses the same lines, so the choice of line is never a tell. Naming someone who wasn't there is a lie and is logged with its reason.
+
 ## 9. Calibration suite: same intent, fifteen voices
 
 These are **style sketches** for a voice-comparison lab, not assertions about any specific live case. Each of the following has the same approved semantic payload: **“I stayed home last night.”** Decorative lines can be dropped if inappropriate to a given context.

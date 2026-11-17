@@ -42,7 +42,7 @@ Michael:
 The limit on an NPC moves from *which cards it reads* to *which cards it weighs together*. Settled by Michael between Nov 10 and Nov 12; the reasons are in the archive.
 
 - **Every card counts alone,** at its single-card value, always. Nothing is ever out of view, so nothing can be evicted. Claims, confessed secrets and profile cards are context: they explain other cards without joining sets together.
-- **Built-in pairings:** cards that mean little alone are always read with their partner, for every NPC (a night's movement cards; an Augur reading with that day's sightings; a Psychologist reading with its statements; a trace with profile cards).
+- **Built-in pairings:** cards that mean little alone are always read with their partner, for every NPC (a night's movement cards; an Augur reading with that day's sightings; a Psychologist reading with its statements; a trace with profile cards; two or more claims of one gift).
 - **The core:** each NPC weighs its firsthand knowledge together with whatever is worth more next to it than apart. The bar follows Insight (Michael, Nov 17): 0.8 for the dullest NPC, 0.1 for the sharpest, in a straight line between, at every town size (it was 0.4 for everyone). See "Insight sets the core's bar" below.
   - The seed is its own readings, the night holding a Night Watch's or Lamplighter's own reports, and a night it was wrongly sighted ("he says he saw me out, and I wasn't").
   - Each candidate is tested against the seed only, so order can't matter and the core can't snowball.
@@ -85,6 +85,9 @@ Nov 12 · read against main `9e69144`. Michael answered its four questions as re
 | An Augur day | every Augur reading that day, and that day's sightings | claims, known work schedules |
 | A Psychologist reading | the reading and its two statements | none |
 | A trace | the trace | profile cards |
+| A double claim | every claim of one gift, when two or more people claim it | the other held cards that name a claimant, except night and trace cards |
+
+- **A double claim** (Michael, Nov 16). Alone, a claim says little; two claims of a gift only one person holds say that at least one claimant lies, which neither card says by itself. The claims are read together, beside every other held card that names a claimant, so what else is known about one claimant moves the doubt onto the other. In `test_double_claim` (a good listener, two others claiming Seer): the rival claim takes them from 2% and 33% to 17% and 57%; a reading implicating the second then drops the first to 6%; a reading clearing the first instead takes the second to 79%. Night and trace cards stay out of the context (the movement items read them). Today it seldom fires: evil bluffs gifts that aren't in play, so none of 19 measured games (seeds 1-10 at 10 NPCs, passive and bot) had a double claim, and golden doesn't move. It is there for bluffs that back into a claimed gift (BACKLOG, "Evil backs into a bluff").
 
 | Declaration | Nights | Traces | The Hexer's day evidence |
 |---|---|---|---|
