@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 16, later): `baseline_bb6f01c`
+### Current baseline (Nov 17): `baseline_bfeb521`
+
+`tools/golden/baseline_bfeb521/` is the capture from `claude/martyr-alternatives` at
+`bfeb521`: a Martyr's public promise followed by the chosen's hanging, with the Martyr
+still standing, is now read by the judge (the chosen evil or Marked, or the promise false).
+- **Divergence from `baseline_bb6f01c`:** only 692, from record 244 (Hollis's cover, day 3
+  night). Hollis, an evil Martyr bluff, promised his teammate Constance, and Constance was
+  hanged on day 3 with Hollis alive, so every mind's reading of Constance and Hollis moves
+  a little (Constance up about 0.02 for Hollis's cover).
+- **Outcomes unchanged:** 692 still hangs Merrin (day 2) and Constance (day 3) and reaches
+  day 4; 42, 54875, 900 and 98933 are identical.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 16, later): `baseline_bb6f01c`
 
 `tools/golden/baseline_bb6f01c/` is the capture from `claude/triage-nov16` (#162): the
 approach interstitial (2.8/8.3), the "+N people there" note on far sightings (8.2), and a
