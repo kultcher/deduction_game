@@ -3,6 +3,19 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Fixed Nov 17, 2026 (Claude-Lantern, `claude/backlog-and-bare-compile`)
+
+- **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
+  a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
+  doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[decided]** (Michael, Nov 17: "the same situation should always give the same belief")
+
+  > **Fixed Nov 17 (Claude-Lantern):** #181's compile-key rework didn't cover it: two views
+  > whose silencing factor differed still shared one compile. A no-card case that reads the
+  > view's cards for presence (everywhere but the connections judge) now has the view's cards
+  > in its key (`CaseEval._compile_impl`). `tools/test_bare_compile.gd` finds such a pair of
+  > views by search and checks their keys differ and that warm and cold give the same
+  > chances; on main before the fix the key check fails.
+
 ## Built Nov 17, 2026 (Claude-Beadle, `claude/beadle-fabrication-check`)
 
 - **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
