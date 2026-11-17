@@ -317,8 +317,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 					# Martyr's own outcome reading. Otherwise the promise is what failed: an evil
 					# bluff, or a poisoned or Delusional Martyr (the report's false-teller worlds).
 					# Only public events: the hanging and the Martyr's survival of it. Bit 17
-					# marks it a promise: in play a world where the Martyr is the Delusional
-					# holder skips the check (the false-report likelihood prices it; Codex, #183).
+					# marks it a promise (in play a world where the Martyr is the Delusional
+					# holder skips it, as it does every reading's content; Codex, #183).
 					# With the same Martyr's outcome reading about the same person in the set,
 					# that reading carries the check, so one failure isn't counted twice.
 					flags |= (1 << 4) | (1 << 5) | (1 << 17)
@@ -513,8 +513,8 @@ static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
 	return bits
 
 ## The people whose being the Delusional holder changes the role check, so the coarse
-## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of a
-## Martyr promise (a Delusional Martyr's promise is excused in play; Codex, #183).
+## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of every
+## reading (in play a Delusional teller's reading content isn't checked; Codex, #183).
 static func relay_mediums(ids: Array, cards: Array) -> int:
 	var bits: int = 0
 	for card in cards:
@@ -524,11 +524,11 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 			var medium: int = ids.find(card.relay_source)
 			if medium >= 0:
 				bits |= 1 << medium
-		# Independent of the relay: a relayed promise needs its Martyr in the key too.
-		if card.get("kind", "") == "report" and str(card.get("role", "")) == "martyr" and card.get("data") is Dictionary and bool(card.data.get("chosen", false)):
-			var martyr: int = ids.find(str(card.get("source", "")))
-			if martyr >= 0:
-				bits |= 1 << martyr
+		# Independent of the relay: a relayed reading needs its teller in the key too.
+		if card.get("kind", "") == "report":
+			var teller: int = ids.find(str(card.get("source", "")))
+			if teller >= 0:
+				bits |= 1 << teller
 	return bits
 
 static func _live_cards(cards: Array) -> Array:

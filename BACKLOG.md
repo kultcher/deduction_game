@@ -113,6 +113,12 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Argon's #181): both change how the role check treats a doubtful reading. Report in game
   terms how much more often the town accepts "they were Delusional" over "they lied".
   Owner Quill. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/delusional-double-charge`, Nov 17):** the kernel skips the content
+  of the world's Delusional holder's readings in play, as for an evil teller; the gift's own
+  acts (a Martyr's or Executor's one target, a Veteran's one night) stay checked. On a wrong
+  Archivist reading, "they were Delusional" went from about 1 in 600 of the explanation to
+  about 1 in 7 ("they lied" 98% to 85%). Not covered: a Night Watch's list, checked in the
+  movement model, which doesn't know who is Delusional.
 
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
