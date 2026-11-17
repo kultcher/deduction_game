@@ -9,6 +9,7 @@ test_bare_compile
 test_beliefs
 test_bot_m4
 test_buildings_tavern_town_hall
+test_case_metrics_dead
 test_case_script
 test_codex_fixes
 test_connections
@@ -34,6 +35,7 @@ test_headline
 test_held_signals
 test_juror_claims
 test_location_solver
+test_medium_relay_challenge
 test_meeting_m2a
 test_meeting_m2b
 test_meeting_m2c
