@@ -6,9 +6,10 @@
 ## range of seeds for the scenario itself, so a test keeps testing the same thing however
 ## play changes. Each returns {} if no seed in the range has it; the caller fails loudly.
 ##
-## Games are played passively (decline, wait, sleep, vote no) to the day-`day` meeting, on
-## the connections model (purge phase 2; the search used to play them on the earlier model
-## for speed).
+## Games are played passively (decline, wait, sleep, vote no) to the day-`day` meeting. The
+## search plays them on the earlier belief model, which is several times faster (as
+## test_connections_pairings' _known_game does), and restores the switch for the caller's
+## reading of the game it found.
 extends RefCounted
 
 const Game = preload("res://game/game.gd")
@@ -39,6 +40,9 @@ static func play_to_meeting(seed_v: int, day: int, npcs: int = 7):
 ## The first seed whose game, at the day-`day` meeting, `pick.call(g)` finds the scenario
 ## in: {"seed", "g", ...what pick returned}, or {}.
 static func search(day: int, pick: Callable, npcs: int = 7, from: int = SEEDS_FROM, count: int = SEEDS_COUNT) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	var was: bool = Connections.enabled
+	Connections.enabled = false
 	var found: Dictionary = {}
 	for seed_v in range(from, from + count):
 		var g = play_to_meeting(seed_v, day, npcs)
@@ -49,6 +53,7 @@ static func search(day: int, pick: Callable, npcs: int = 7, from: int = SEEDS_FR
 			found["seed"] = seed_v
 			found["g"] = g
 			break
+	Connections.enabled = was
 	return found
 
 
