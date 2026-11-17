@@ -213,6 +213,8 @@ static func _next_npc_nomination(g) -> bool:
 		return false
 	g.w.open_nomination(nm["by"], nm["nominee"], nm["reason"])
 	g.w.meeting["pending"]["case_facts"] = nm.get("case_facts", []).duplicate(true)
+	if not nm.get("spoken_facts", []).is_empty():
+		g.w.meeting["pending"]["spoken_facts"] = nm.spoken_facts.duplicate(true)
 	g.town_quiet = false
 	g._line(nm["speech"])
 	for l in nm.get("case_lines", []):

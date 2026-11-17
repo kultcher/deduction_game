@@ -9,6 +9,8 @@ const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
+const FixtureSeeds = preload("res://tools/fixture_seeds.gd")
 
 var checks = 0
 var fails = 0
@@ -24,6 +26,7 @@ func _init() -> void:
 	_visual_opener_only_for_own_sighting()
 	_no_premise_line_after_a_spoken_sighting()
 	_same_gift_reasons_merge()
+	_spoken_facts_reach_the_pending_nomination()
 	print("Playtest 89077 routing: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -94,3 +97,20 @@ func _same_gift_reasons_merge() -> void:
 	_check(cited_two.size() == 1 and not ("last night" in cited_two[0].why) and cited_two[0].whys == ["a", "b"], "an uncited reading of the same gift isn't folded in (%s)" % str(cited_two.map(func(x): return x.why)))
 	var day_r: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "dowser", "a", n.id, 1), item.call(2, "dowser", "b", n.id, 1)])
 	_check(day_r.size() == 2, "daytime readings aren't merged into 'nights'")
+
+## In played games, an NPC nomination's spoken sightings are kept on the pending nomination,
+## where the defence reads them (Codex P2 on #205: they were dropped on the way).
+func _spoken_facts_reach_the_pending_nomination() -> void:
+	var noms: int = 0
+	var spoken: int = 0
+	for seed_v in range(FixtureSeeds.SEEDS_FROM, FixtureSeeds.SEEDS_FROM + 12):
+		var g = FixtureSeeds.play_to_meeting(seed_v, 3, 10)
+		if g == null or not GameMeeting._next_npc_nomination(g):
+			continue
+		noms += 1
+		var nm: Dictionary = g.w.meeting.get("pending", {})
+		if not nm.get("spoken_facts", []).is_empty():
+			spoken += 1
+			break
+	print("  %d NPC nominations, %d with a spoken sighting" % [noms, spoken])
+	_check(spoken > 0, "a played nomination kept a spoken sighting for the defence")
