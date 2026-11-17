@@ -170,4 +170,4 @@ static func _name(w, id: String) -> String:
 ## The reveal's note on a reworked reading, after its original motive (draft wording for
 ## Michael, Nov 17; Steward A2-A3).
 static func rework_note(w, who: String) -> String:
-	return "its first version would have pointed the town at %s, so it told this one instead" % _name(w, who)
+	return "its first version would have turned the town on %s, so it told this one instead" % _name(w, who)

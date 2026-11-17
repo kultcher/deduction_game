@@ -526,19 +526,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
-  While the player is in a conversation but looking at the map, the conversation's options
-  are hidden; they return to the conversation view to carry on. Herald. [decided]
-
-- **A way back from the map.** (Michael, Nov 17) On the map during a conversation or a
-  meeting, a button at the top right of the map view: "Return to conversation" or "Return
-  to meeting" (Michael's wording). Herald. [decided]
-
-- **Workshop: left-drag pans again.** (Michael, Nov 17) Left-click and drag on empty space
-  pans the view, and shift+left-click and drag draws a selection box. Today left-drag on
-  empty space draws the box and the middle or right button pans; the canvas hint already
-  says "drag empty space to pan". Herald. [decided]
-
 - **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
   "heard" line, type and source icons stack in one corner, the context tag sits on the
   edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
