@@ -136,6 +136,28 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   agreement (Michael, Nov 13, triage 5.3: keep it), so a weaker framing of the same facts
   lands weaker. [watch]
 
+  **Direction (Michael, Nov 17, from his answer on "Say what a card is offered for"):** when
+  a case has a premise, the case's effect should centre on its subject. In a case "Constance
+  is evil" that cites a vigil sighting contradicting her alibi, any suspicion the case moves
+  onto other people in that sighting should be scaled down, with full weight on Constance.
+  This would also cover most of what "Say what a card is offered for" asks. Under the
+  connections model it sits in how a stored case adds its joint value (Lantern).
+
+  **Centre a case on its premise (Michael, Nov 17).** Two ways, to be chosen after
+  measurement:
+  - **A, the joint value only:** on the premise's subject a case adds its joint value (what
+    its cards say together, beyond each alone) in full, and on everyone else at a fraction;
+    brought cards keep counting in full for everyone they name.
+  - **B, the brought cards too:** a card a listener holds only because a case brought it
+    also counts in full on the subject and at a fraction on everyone else; cards held some
+    other way count as usual.
+  In both, there's no centring without a premise, and a "suspicious" premise centres the
+  same way. The bystander fraction is a new constant, approved with this decision. Measure
+  A and B on the same bot games, at 0.5 and one other value: bystander movement per
+  presentation, the subject's own movement, and the others in a vigil sighting like
+  Michael's example. Report side by side, then Michael picks. Owner Lantern.
+  **[decided]: centre on the premise, A or B to be chosen after measurement**
+
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later
   breath-stolen should add a little suspicion, enough to reward noticing it, without the
   player linking every location card. Options: (a) a flat circumstantial amount for
@@ -767,9 +789,6 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   bluff says the dead saw the scapegoat out "on their last night"; for the first victim
   that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
   its target. Moves golden. **[open]**
-- **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
-  a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
-  doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[open]**
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
@@ -787,6 +806,19 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
+- **A double claim of a unique gift raises both claimants** (Lantern, Nov 16; Michael, Nov
+  16). Under connections a claim is only context, so two people claiming a gift only one can
+  hold don't become more suspicious by themselves (in `test_beliefs` both dip about 0.01;
+  the earlier model raised them 0.14 and 0.24). Make the two claims a built-in pairing that
+  raises suspicion on both claimants, and shifts it onto the other when one is shown good by
+  other cards. Report in game terms how much each claimant moves, alone and alongside other
+  evidence. Add it to `docs/belief_model.md`'s pairings. Owner Lantern. **[decided]**
+- **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
+  Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
+  only the glaring ones; nobody connects public cards that don't touch their own knowledge.
+  The joining bar runs from dull to sharp; the range waits on a wider measurement (Michael
+  wants it felt more than 0.6 → 0.25). DESIGN's Insight row and its new line are approved.
+  Owner Lantern. **[decided; range open]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 
