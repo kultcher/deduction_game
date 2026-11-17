@@ -927,7 +927,7 @@ been known to sleepwalk"; two claimants prove a liar.
 **[decided]**:
 - **Backing a strong case builds trust** with NPCs who agree (what makes throwing a
   teammate under the bus pay for evil).
-- **Lie severity** **[open]**: a false gift report weighs more than a whereabouts lie,
+- **Lie severity** **[decided]** (Nov 17; Quill the judge's weighting, Beadle the votes): a false gift report weighs more than a whereabouts lie,
   unless the lie puts them near the crime; NPCs who accept a lie but won't hang should say
   so.
 - **Ways to discover and confront secrets** (sightings that don't fit, confidants,

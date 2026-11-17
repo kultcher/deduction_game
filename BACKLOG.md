@@ -65,7 +65,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
   Demon never actually detours. Decide which is authoritative, then reconcile the
   evaluator, the movement and the explanatory dialogue; compare inference, votes, RNG
-  and timings on fixed replays. [open]
+  and timings on fixed replays. Michael (Nov 17): the Demon still never detours, so
+  remove the detour from inference: drop it from what NPCs assume and from the
+  explanatory dialogue (Herald for any wording), and compare inference and votes on fixed
+  replays. Owner Beadle. [decided]
 
 - **Challenge a Night Watch report using a conflicting player vigil.** Let the player
   target the dated report as lying or misled with a vigil as grounds, reusing the existing
@@ -207,7 +210,9 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     handled separately.
 
   Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
-  gifts actually threaten evil. [open]
+  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
+  values is the owner's call; a new per-role bonus constant is new, so propose it through
+  Seneschal first. Owner Beadle. [decided]
 
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
   on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
@@ -222,7 +227,15 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   about Isolde sits wrong with me"). That gives the target the +0.35 but no pressure,
   chorus, accusation event, trust cost or "ask why". Measure it with a sweep against main.
 
-  [open; Michael to decide]
+  Michael (Nov 17), in place of the voiced-unease idea: a "pressure of silence" check. If
+  everyone has had their turn and the meeting has produced little useful information
+  (roughly fewer than 3 claims or readings), go through the speaking order again with a
+  bonus to speak that rises as Composure falls: less composed characters speak up to fill
+  the silence, even when it isn't the best idea. A full pitch goes to Michael (through
+  Seneschal) before building: how it meets the day-1 accusation floor, what counts as
+  useful information, the bonus size, what the extra speakers say (Herald writes any new
+  lines), and what it does in play, measured on a `mock/` branch if possible. Owner Beadle.
+  [decided: pitch first]
 
 - **Evil meetings are over-weighted and always visible.** (54875) The pairing that matters
   happens before the player picks a place, and evil gets a large bonus whenever a member
@@ -295,7 +308,9 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
 - **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
   the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
-  [open]
+  Michael (Nov 17): as written. Quill owns the weighting in the judge and goes first;
+  Beadle owns the votes and the "won't hang" behaviour; Herald drafts the new lines for
+  Michael. Coordinate through the handoff log. [decided]
 
 - **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
   addressed by the shadow self; revisit after playtests. (30294) [watch]
