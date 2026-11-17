@@ -86,5 +86,11 @@ func _same_gift_reasons_merge() -> void:
 	_check(two.size() == 1 and two[0].why == "what my gift showed me on the first and second nights points at them", "two counts: 'on the first and second nights' (%s)" % str(two.map(func(x): return x.why)))
 	var mixed: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(1, "seer", "b"), item.call(2, "lamplighter", "c", "someone_else")])
 	_check(mixed.size() == 3, "different gifts, or another teller's reading, stay separate")
+	# Only readings that were themselves reasons against the nominee fold in: a third count
+	# on record (and shared) that isn't among the cited reasons leaves the nights untouched.
+	n.info_log = [{"role": "lamplighter", "day": 1, "data": {}, "shared": true}, {"role": "lamplighter", "day": 2, "data": {}, "shared": true},
+		{"role": "lamplighter", "day": 3, "data": {}, "shared": true}]
+	var cited_two: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(2, "lamplighter", "b")])
+	_check(cited_two.size() == 1 and not ("last night" in cited_two[0].why) and cited_two[0].whys == ["a", "b"], "an uncited reading of the same gift isn't folded in (%s)" % str(cited_two.map(func(x): return x.why)))
 	var day_r: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "dowser", "a", n.id, 1), item.call(2, "dowser", "b", n.id, 1)])
 	_check(day_r.size() == 2, "daytime readings aren't merged into 'nights'")
