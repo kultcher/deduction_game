@@ -44,7 +44,38 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 16, later): `baseline_bb6f01c`
+### Current baseline (Nov 17, later): `baseline_a0a378d`
+
+`tools/golden/baseline_a0a378d/` is the capture from `claude/beadle-fabrication-check` at
+`a0a378d` (main `45ebd82` merged in): evil fabrications are checked against the public
+readings before they're told (`sim/fabrication_check.gd`).
+- **Divergence from `baseline_1c9ac48`:** every seed from record 1, because each
+  fabrication now carries its check (`vet`: the lift it would give the liar's team, and the
+  outcome) in the evil member's and its shadow's readings. Only one fabrication in the five
+  games is self-incriminating: on 900, Isolde (bluffing Gravedigger) would have said
+  Constance, a good woman just hanged, was the Scion, which beside the public record lifts
+  the town's suspicion of Isolde by about 0.8. She notices and holds it back a day.
+- **Outcomes unchanged:** 42 (Agnes hanged day 3, good wins), 54875 (Dorian day 2,
+  Constance day 3, good wins), 692 (Merrin day 2, Constance day 3, open at day 4), 900
+  (Constance day 2, open at day 4), 98933 (Merrin day 3, open at day 4); every hanging's
+  votes are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17): `baseline_1c9ac48`
+
+`tools/golden/baseline_1c9ac48/` is the capture from `claude/martyr-alternatives` at
+`1c9ac48`: a Martyr's public promise followed by the chosen's hanging, with the Martyr
+still standing, is now read by the judge (the chosen evil or Marked, or the promise false).
+- **Divergence from `baseline_bb6f01c`:** only 692, from record 244 (Hollis's cover, day 3
+  night). Hollis, an evil Martyr bluff, promised his teammate Constance, and Constance was
+  hanged on day 3 with Hollis alive, so every mind's reading of Constance and Hollis moves
+  a little (Constance up about 0.02 for Hollis's cover).
+- **Outcomes unchanged:** 692 still hangs Merrin (day 2) and Constance (day 3) and reaches
+  day 4; 42, 54875, 900 and 98933 are identical.
+- **Stability:** two captures were identical.
+- **Re-checked on main `cd3aeb4`** (after Argon's #181, merged into the branch): two fresh captures identical to each other and to this baseline, so it stands unchanged.
+
+### Earlier baseline (Nov 16, later): `baseline_bb6f01c`
 
 `tools/golden/baseline_bb6f01c/` is the capture from `claude/triage-nov16` (#162): the
 approach interstitial (2.8/8.3), the "+N people there" note on far sightings (8.2), and a

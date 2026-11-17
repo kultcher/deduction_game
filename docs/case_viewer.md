@@ -56,12 +56,15 @@ python tools/case_viewer.py --serve
 ```
 
 This opens the viewer in your browser. Click **Load log…** to get a native file
-dialog starting at `%APPDATA%/Godot/app_userdata/Demonologist (text prototype)/logs`.
+dialog starting at `%APPDATA%/Godot/app_userdata/Demonologist/logs`.
 For the current Windows account that is:
 
 ```text
-C:\Users\kultc\AppData\Roaming\Godot\app_userdata\Demonologist (text prototype)\logs
+C:\Users\kultc\AppData\Roaming\Godot\app_userdata\Demonologist\logs
 ```
+
+Logs from before Nov 16 are in the old folder, `Demonologist (text prototype)`; the
+viewer opens there if the new folder doesn't exist yet.
 
 The dialog initially filters to `.trace.jsonl`; change its file-type filter to
 All JSONL logs if needed. Leave the terminal running while using native Load;
