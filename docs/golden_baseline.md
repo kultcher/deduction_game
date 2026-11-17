@@ -44,20 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, latest): `baseline_3403754`
+### Current baseline (Nov 17, latest): `baseline_85e9b36`
 
-`tools/golden/baseline_3403754/` is the capture from `claude/herald-89077-wording` at
-`3403754` (main `c676018`): playtest 89077's wording fixes. The Warden and the Medium speak
-nights as ordinals, the Registrar's reading reads after a night phrase, and a first pressed
-home alibi doesn't claim an earlier account.
-- **Divergence from `baseline_a0a378d`:** text only, on two seeds. Every changed field is a
-  text field; record counts are the same.
-  - 692 from record 173 (day 3) and 98933 from record 324 (day 3): Agnes's Medium reading
-    of a relayed sighting read "...out on the Docks on night 0" and now reads "...out on the
-    Docks the night before you arrived".
-  - 42, 54875 and 900: identical.
-- **Outcomes unchanged:** the same hangings, votes and day-4 states as `baseline_a0a378d`.
-- **Stability:** two captures were identical.
+`tools/golden/baseline_85e9b36/` is the capture from `claude/beadle-better-lie` at
+`85e9b36` (main `c676018` merged in): a liar who notices its fabrication would point the
+town at itself or a teammate tells a better lie from its gift's own alternatives, and a
+held reading is checked again on the day it would be told.
+- **Divergence from `baseline_a0a378d`:** two seeds.
+  - **54875, from record 179 (day 3, afternoon):** Constance, bluffing Dowser, would
+    have given a count that lifts the town's suspicion of her by about 0.24. She says
+    "on the Square I sensed 1 evil among Odette and Edda" instead (about 0.06).
+  - **900, from record 143 (day 3, morning):** Isolde's held-back Gravedigger reading
+    ("Constance, whom we hanged, was the Scion") is checked again before it's told. It
+    would now lift her by about 0.9, and this time she doesn't notice, so it goes out.
+- **Outcomes unchanged:** 42 (Agnes hanged day 3, good wins), 54875 (Dorian day 2,
+  Constance day 3, good wins), 692 (Merrin day 2, Constance day 3, open at day 4), 900
+  (Constance day 2, open at day 4), 98933 (Merrin day 3, open at day 4). Every hanging's
+  vote counts are the same.
+- **Stability:** two captures were identical, and identical to a capture taken before
+  main `c676018` was merged in.
 
 ### Earlier baseline (Nov 17, later): `baseline_a0a378d`
 

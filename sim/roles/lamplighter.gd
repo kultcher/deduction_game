@@ -86,3 +86,14 @@ func pressed_night_line(_w, _n, _fact: Dictionary, _night: int, when: String, al
 
 func pressed_night_slots(_w, _n, _fact: Dictionary, _night: int, when: String, _block_name_fn: Callable) -> Dictionary:
 	return {"when": when}
+
+
+## A count one higher or lower (FabricationCheck: a better lie).
+func bluff_alternatives(w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var cur: int = int(entry.get("data", {}).get("count", 0))
+	var out: Array = []
+	for c in [cur - 1, cur + 1]:
+		if c < 0 or c > w.living().size() - 1:
+			continue
+		out.append({"entry": {"data": {"count": c}, "text": "walking the lamps, I counted %d other%s out" % [c, "" if c == 1 else "s"]}, "why": "counts %d out instead" % c})
+	return out

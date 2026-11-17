@@ -3,6 +3,19 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Fixed Nov 17, 2026 (Claude-Lantern, `claude/backlog-and-bare-compile`)
+
+- **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
+  a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
+  doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[decided]** (Michael, Nov 17: "the same situation should always give the same belief")
+
+  > **Fixed Nov 17 (Claude-Lantern):** #181's compile-key rework didn't cover it: two views
+  > whose silencing factor differed still shared one compile. A no-card case that reads the
+  > view's cards for presence (everywhere but the connections judge) now has the view's cards
+  > in its key (`CaseEval._compile_impl`). `tools/test_bare_compile.gd` finds such a pair of
+  > views by search and checks their keys differ and that warm and cold give the same
+  > chances; on main before the fix the key check fails.
+
 ## Built Nov 17, 2026 (Claude-Beadle, `claude/beadle-fabrication-check`)
 
 - **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
@@ -25,6 +38,12 @@ session notes are kept for the record; code pointers may have moved since.
   > the judge). Measured on 20 ten-NPC passive games: 11% of fabrications were
   > self-incriminating; 4 in 5 of those were held back, 1 in 5 slipped through; none was
   > reworked. Golden re-baselined (`baseline_a0a378d`), outcomes unchanged.
+  >
+  > **Better lie (Claude-Beadle, Nov 17, `claude/beadle-better-lie`; Michael's follow-up):**
+  > a liar who notices now picks from its gift's own alternatives (13 gifts) the one that
+  > points at nobody on its team and still pushes the scapegoat; only with none does it hold
+  > back, and a held reading is checked again before it's told. Same 20 games: 8 of the 12
+  > noticed readings became a better lie, 4 were held, 5 slipped. `baseline_85e9b36`.
 
 ## Settled Nov 16, 2026 (Claude-Beadle, `claude/beadle-nightwatch-teammates`)
 

@@ -135,10 +135,6 @@ func on_chosen_executed(w, mart, executed_npc) -> void:
 		w._add_info(mart, info)
 
 
-func release_bluff_use(_w, n, plan: Dictionary) -> void:
-	plan.erase("martyr_bluff_" + n.id)
-
-
 func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Array) -> Dictionary:
 	if w.day == 0 or plan.has("martyr_bluff_" + n.id):
 		return {}
@@ -150,3 +146,17 @@ func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Ar
 		"text": "I have given my life over for %s, should the town ever hang them" % tgt.name,
 	}
 	return {"entry": entry, "why": why}
+
+
+## Gives its life over for a bystander instead (FabricationCheck: a better lie).
+func bluff_alternatives(w, n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	if not d.has("chosen"):
+		return []
+	var cur: String = str(d.get("target", ""))
+	var out: Array = []
+	for b in bluff_bystanders(w, n):
+		if b == cur:
+			continue
+		out.append({"entry": {"data": {"target": b, "chosen": true}, "text": "I have given my life over for %s, should the town ever hang them" % w.by_id[b].name}, "why": "'chooses' %s instead" % b})
+	return cap_alternatives(w, out)
