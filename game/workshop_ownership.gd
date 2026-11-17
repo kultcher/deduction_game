@@ -229,7 +229,8 @@ static func _refresh(g, n, phase: String) -> void:
 					f.seek_end()
 					f.store_line(JSON.stringify({"game": str(g.w.seed_value), "day": int(g.w.day), "listener": n.id, "insight": float(n.traits.get("insight", 0.5)),
 						"evil": g.w.evil_team().map(func(e): return e.id), "demon": g.w.demon_id, "seeds": own.get("seed", []).size(), "members": own.get("members", []).size(),
-						"core_cards": int(own.get("cards", 0)), "items": res.get("items", []).size(), "posterior": res.get("posterior", {})}))
+						"core_cards": int(own.get("cards", 0)), "joined_values": own.get("members", []).map(func(k): return float(own.get("tested", {}).get(k, 0.0))), "items": res.get("items", []).size(), "posterior": res.get("posterior", {}),
+						"cases": res.get("cases", {}).get("entries", []).map(func(e): return {"presenter": str(e.get("presenter", "")), "merged": bool(e.get("merged", false)), "lean": e.get("lean", {}).values().reduce(func(a, b): return maxf(a, absf(float(b))), 0.0), "weight": float(e.get("weight", 0.0))})}))
 					f.close()
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", owned_trace, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
 

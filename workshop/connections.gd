@@ -633,7 +633,12 @@ static func core(run: Dictionary, by_id: Dictionary, item_list: Array, values: D
 		for p in run.others:
 			most = maxf(most, absf(float(joint.lean[p]) - float(seed_value.lean[p]) - float(values[key].lean.get(p, 0.0))))
 		out.tested[key] = most
-	out.members = membership(item_list, plan.kept, out.tested, core_join_v)
+	var bar: float = core_join_v
+	var mix: String = OS.get_environment("CORE_JOIN_MIX")  # "dull,sharp": the bar by Insight 0..1
+	if mix != "":
+		var ends: PackedStringArray = mix.split(",")
+		bar = lerpf(float(ends[0]), float(ends[1]), clampf(float(run.listener.get("insight", 0.5)), 0.0, 1.0))
+	out.members = membership(item_list, plan.kept, out.tested, bar)
 	out.memory = core_memory(day, seeds, first, out.members, held)
 	var keys: Array = seeds + out.members
 	var all: Dictionary = pool(keys.map(func(k): return by_key[k]))
