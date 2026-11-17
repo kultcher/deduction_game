@@ -551,6 +551,12 @@ Candidates for a unified retuning proposal, not approved changes.
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
 
+- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
+  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
+  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
+  knew because of an answer carried over from case #38. The Workshop could list the answers
+  a new case carries when it's filed. Herald. [open]
+
 ### Performance
 
 - **Late-game meeting and presenting cost.** Budget (user's machine): meeting entry and
@@ -931,6 +937,22 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   (the world prior gives how likely that is). Quill builds the role check's "self" mode
   first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
   that PR moves golden. **[decided]**
+- **A listener's doubt that its own reading was poisoned** (Quill and Lantern, Nov 17;
+  Michael, Nov 17: approved as proposed, no new number and no confidence dial). An NPC's own
+  reading is near-certain today, so a clash with other evidence always blames the other side.
+  Now, when an own reading clashes with another teller's card, the NPC weighs "my reading was
+  poisoned" (the chance a Poisoner could have chosen it that night, zero when none could act)
+  against "they're wrong" (its suspicion of the teller, judged without its own reading in
+  view, plus the teller's own chance of a broken gift), using the most trusted clashing
+  teller. The poison explanation's share becomes an honest doubt on that night's reading
+  from the next refresh, through the Delusional self-doubt's route (#216), and a doubted own
+  reading no longer counts as proof. When two of its own readings can't both be true, the
+  doubt goes to the culprits found by dropping each in turn, split by each night's poison
+  chance, or equally when no single one is the culprit or the cause is Delusional. A reading
+  confirmed by another source taking less of the doubt is left for later. Lantern builds the
+  connections side; Quill the per-night poison chance and the judge side. After the #186
+  role-check fix (#214, merged). Moves golden; report how often it fires and how far it moves
+  an NPC, at fixed game states. **[decided]** (Michael, Nov 17)
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
