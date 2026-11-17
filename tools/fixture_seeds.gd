@@ -40,9 +40,6 @@ static func play_to_meeting(seed_v: int, day: int, npcs: int = 7):
 ## The first seed whose game, at the day-`day` meeting, `pick.call(g)` finds the scenario
 ## in: {"seed", "g", ...what pick returned}, or {}.
 static func search(day: int, pick: Callable, npcs: int = 7, from: int = SEEDS_FROM, count: int = SEEDS_COUNT) -> Dictionary:
-	var Connections = preload("res://workshop/connections.gd")
-	var was: bool = Connections.enabled
-	Connections.enabled = false
 	var found: Dictionary = {}
 	for seed_v in range(from, from + count):
 		var g = play_to_meeting(seed_v, day, npcs)
@@ -53,7 +50,6 @@ static func search(day: int, pick: Callable, npcs: int = 7, from: int = SEEDS_FR
 			found["seed"] = seed_v
 			found["g"] = g
 			break
-	Connections.enabled = was
 	return found
 
 
@@ -155,3 +151,42 @@ static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, 
 					continue
 				return {"listener": l.id, "teller": teller.id}
 		return {}, 7, from)
+
+
+## What a teller's Medium relays do to the listener's chance of the teller being evil, under
+## connections: {"with", "without"}, the teller's chance with every held card, and with the
+## cards the teller relayed left out. Both from one refresh's own inputs (the jury's
+## weigher), so the difference is the relays' alone. {} if the listener has no plan.
+static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	var Jury = preload("res://workshop/jury.gd")
+	var Mind = preload("res://sim/mind.gd")
+	var n = g.w.by_id.get(listener_id)
+	if n == null:
+		return {}
+	var key: String = n.id + ":good"
+	g._workshop_evaluations.erase(key)
+	var was_defer: bool = g.w.defer_beliefs
+	g.w.defer_beliefs = false
+	Mind.refresh_beliefs(g.w, n, " (fixture)")
+	g.w.defer_beliefs = was_defer
+	var plan: Dictionary = g._workshop_plans.get(key, {})
+	var cx: Dictionary = g._workshop_evaluations.get(key, {}).get("proposal", {}).get("connections", {})
+	if plan.is_empty() or cx.is_empty():
+		return {}
+	var baseline: Dictionary = plan.prepared.listener
+	var weigher: Dictionary = Jury._eval_listener(baseline, baseline.knowledge.get("own_reports", []))
+	weigher["trust"] = baseline.get("trust", 0.5)
+	weigher["insight"] = baseline.get("insight", 0.5)
+	if baseline.has("player_credibility"):
+		weigher["player_credibility"] = baseline.player_credibility
+	var held: Array = []
+	for it in cx.get("items", []):
+		for id in it.cards:
+			if id not in held:
+				held.append(id)
+	var relayed: Array = plan.prepared.view.cards.filter(func(c): return str(c.get("relay_source", "")) == teller_id).map(func(c): return c.id)
+	var state: Dictionary = baseline.get("connections", {})
+	var with_: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held, state)
+	var without: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held.filter(func(id): return id not in relayed), state)
+	return {"with": float(with_.posterior.get(teller_id, -1.0)), "without": float(without.posterior.get(teller_id, -1.0)), "relayed": relayed.size()}

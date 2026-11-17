@@ -47,7 +47,15 @@ func _init() -> void:
 	# (tools/fixture_seeds.gd).
 	_found_case(Seeds.framed_sighting(2, false, "street"), "subject", "sighter", func(p): return p >= 0.6, "a framed person holds the planter's fake sighting against them")
 	_found_case(Seeds.sleepwalker_sighting(2), "subject", "sighter", func(p): return p < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied")  # (a plain liar caught this way reads near 0.9)
-	_found_case(Seeds.relay(3, func(t): return t.is_evil(), true), "listener", "teller", func(p): return p >= 0.8, "an evil relayer's invented relay of the listener doesn't clear them")
+	# What the relay does to its relayer, not where they end up (on connections the listener's
+	# other cards can pull an evil relayer down: seed 100048's Fenwick, a Minion, is cleared
+	# of being the Demon by Odette's own Seer readings, purge phase 3).
+	var inv: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
+	if inv.is_empty():
+		check(false, "an evil relayer's invented relay of the listener counts against them (no seed searched has the case)")
+	else:
+		var ix: Dictionary = Seeds.relay_effect(inv.g, str(inv.listener), str(inv.teller))
+		check(not ix.is_empty() and float(ix.with) > float(ix.without) + 0.05, "an evil relayer's invented relay of the listener counts against them (seed %d: %s on %s, %.2f with it, %.2f without)" % [int(inv.seed), inv.listener, inv.teller, float(ix.get("with", -1)), float(ix.get("without", -1))])
 	print("Self-sighting: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
