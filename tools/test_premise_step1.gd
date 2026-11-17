@@ -1,6 +1,6 @@
 ## Premises pass step 1 (docs/premises_plan.md): a presented premise shapes beliefs by its
-## target (the target takes the full effect, everyone else the Insight spillover, and the
-## shaping is remembered), a clearly wrong premise costs trust, a rejected premise steers no
+## target (the target takes the full effect, everyone else what the cards say at any
+## Insight, and the shaping is remembered), a clearly wrong premise costs trust, a rejected premise steers no
 ## preference, the movement notes only follow killer-side premises, and the test juror says
 ## when a defence's evidence points the other way.
 extends SceneTree
@@ -16,8 +16,7 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
-	# Premises pass step 1: the earlier model's spillover and Insight scaling.
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
+	# Premises pass step 1, under the connections model (purge phase 2).
 	_spillover()
 	_trust_cost()
 	_preference()
@@ -80,10 +79,10 @@ func _spillover() -> void:
 	var high: Dictionary = _moves(1.0)
 	print("spillover: low Insight target %+.4f other %+.4f; high Insight target %+.4f other %+.4f" % [low.target, low.other, high.target, high.other])
 	check(low.target > 0.0 and high.target > 0.0 and is_equal_approx(low.target, high.target), "the premise's target takes the full effect at any Insight")
-	check(low.other > 0.0 and high.other > low.other, "everyone else moves less, and less still at low Insight")
-	var ratio: float = low.other / high.other if high.other != 0.0 else 0.0
-	var expected: float = Tuning.Workshop.PREMISE_SPILLOVER_MIN / Tuning.Workshop.PREMISE_SPILLOVER_MAX
-	check(absf(ratio - expected) < 0.02, "the spillover runs from %.0f%% to %.0f%% of the case's effect (low/high %.3f, expected %.3f)" % [100 * Tuning.Workshop.PREMISE_SPILLOVER_MIN, 100 * Tuning.Workshop.PREMISE_SPILLOVER_MAX, ratio, expected])
+	# The connections model has no spillover damping, and Insight doesn't change belief:
+	# a case moves the people it only mentions by what its cards say, at any Insight. (The
+	# earlier model scaled them by Insight; that went with the purge, phase 2.)
+	check(low.other > 0.0 and is_equal_approx(low.other, high.other), "everyone else moves by what the cards say, the same at any Insight")
 	check(low.remembered and high.remembered, "the shaping is remembered: a later refresh reproduces it")
 	check(high.other < high.target, "a case moves its target more than the people it only mentions")
 

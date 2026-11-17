@@ -44,25 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Option A): `baseline_e639966`
+### Current baseline (Nov 17, latest): `baseline_85e9b36`
 
-`tools/golden/baseline_e639966/` is the capture from `claude/insight-core-bar` at
-`e639966` (on main `c676018`): Insight sets how readily an NPC links a card to its own
-knowledge (the core's joining bar runs from 0.8 for the dullest NPC to 0.1 for the
-sharpest; it was 0.4 for everyone).
-- **Divergence from `baseline_a0a378d`:** every seed, from the first
-  refresh where an NPC's core takes a card the old bar didn't (or drops one it did): 42 at
-  record 35 (Isolde, day 2), 54875 at 24 (Greta's cover, day 1), 692 at 17 (Fenwick,
-  day 1), 900 at 88 (Kiran, day 2), 98933 at 14 (Odette's cover, day 1).
-- **Outcomes:** 98933 changes. Nisha (good Martyr, Insight 0.88) nominates Odette, the
-  Demon, on day 2, and she is hanged 6 to 3: good wins on day 2. Before, Lian nominated
-  Merrin (good) on day 3 and the game was open at day 4. The other four seeds hang the
-  same people on the same days with the same result: 42 (Agnes day 3, good wins; now
-  nominated by Fenwick, not Kiran), 54875 (Dorian day 2, Constance day 3, good wins;
-  Constance now nominated by Jory, not Odette; Agnes and Jory add a yes vote), 692 (Merrin
-  day 2, Constance day 3, open at day 4; Odette adds a yes on Merrin), 900 (Constance
-  day 2, open at day 4; same votes).
-- **Stability:** two captures were identical.
+`tools/golden/baseline_85e9b36/` is the capture from `claude/beadle-better-lie` at
+`85e9b36` (main `c676018` merged in): a liar who notices its fabrication would point the
+town at itself or a teammate tells a better lie from its gift's own alternatives, and a
+held reading is checked again on the day it would be told.
+- **Divergence from `baseline_a0a378d`:** two seeds.
+  - **54875, from record 179 (day 3, afternoon):** Constance, bluffing Dowser, would
+    have given a count that lifts the town's suspicion of her by about 0.24. She says
+    "on the Square I sensed 1 evil among Odette and Edda" instead (about 0.06).
+  - **900, from record 143 (day 3, morning):** Isolde's held-back Gravedigger reading
+    ("Constance, whom we hanged, was the Scion") is checked again before it's told. It
+    would now lift her by about 0.9, and this time she doesn't notice, so it goes out.
+- **Outcomes unchanged:** 42 (Agnes hanged day 3, good wins), 54875 (Dorian day 2,
+  Constance day 3, good wins), 692 (Merrin day 2, Constance day 3, open at day 4), 900
+  (Constance day 2, open at day 4), 98933 (Merrin day 3, open at day 4). Every hanging's
+  vote counts are the same.
+- **Stability:** two captures were identical, and identical to a capture taken before
+  main `c676018` was merged in.
 
 ### Earlier baseline (Nov 17, later): `baseline_a0a378d`
 

@@ -1,8 +1,9 @@
 # 2026-11-17, Claude-Lantern: Insight sets the core's joining bar (`claude/insight-core-bar`)
 
-- **Base:** main `c676018`. **Status:** PR open. **Golden moves:** re-baselined to
-  `baseline_e639966` in this PR (golden-moving queue: merge one at a time). **Next
-  actor:** Bailiff reviews and merges.
+- **Base:** main `c676018`, main `2251521` merged in. **Status:** PR open. **Golden moves:**
+  it was re-baselined to `baseline_e639966` on `c676018`; main has moved since, so that
+  capture is dropped and the PR re-baselines on main when Bailiff calls it up in the golden
+  queue (#194 first). **Next actor:** Lantern re-baselines on its turn, then Bailiff.
 - **What Michael decided** (Nov 17, BACKLOG "Insight sets how readily a card joins an
   NPC's core", Option A; range 0.8 → 0.1, my recommendation): a sharp NPC links more cards
   to its own readings and nights, a dull one only the glaring ones; nobody connects public
@@ -22,7 +23,7 @@
   own knowledge, on about 1 day in 4; a sharp one (0.7 and over) 1.0, on 2 days in 5. At
   0.4 for everyone both linked 0.55. NPCs don't solve earlier at any setting. Full table in
   `docs/belief_model.md`.
-- **Golden:** every seed diverges from its first refresh where a core differs. 98933's
+- **Golden (on `c676018`, before the drop):** every seed diverges from its first refresh where a core differs. 98933's
   outcome changes: Nisha (good, Insight 0.88) nominates the Demon Odette on day 2 and good
   wins; before, Merrin (good) was hanged on day 3 and the game was open at day 4. The
   other four hang the same people on the same days (details in `docs/golden_baseline.md`).

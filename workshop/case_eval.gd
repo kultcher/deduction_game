@@ -697,9 +697,13 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
 		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
 		if cards.is_empty() and not DayPresence.bare_reads_view:
-			# The connections model's no-card baseline reads no cards for presence (in play a
-			# bare case reads the view's; the key is then as it always was).
+			# The connections model's no-card baseline reads no cards for presence.
 			key_input.append("bare_presence")
+		elif cards.is_empty():
+			# Elsewhere a no-card case reads every card on the view for presence
+			# (DayPresence.breath_factor), so they belong in the key: without them a later view
+			# with different day cards reused an older answer (BACKLOG section 6, Nov 17).
+			key_input.append(view.get("cards", []))
 	# The town's demon mix (the demon-type declaration, game/demon_declaration.gd) changes the
 	# movement factor: without it in the key, a declaration kept the old movement scores.
 	var share: float = Movement.Live.day_demon_share(view)

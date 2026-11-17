@@ -150,3 +150,12 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 	e["data"] = {"nominator": a_id, "nominee": b_id, "same": same}
 	e["text"] = _spoken_text(w, a_id, b_id, same)
 	return {"entry": e, "why": "the dead Magistrate %s weighed %s -> %s (same=%s)" % [dd.id, a_id, b_id, str(same)], "frames": frames_sg}
+
+
+## The other answer on the same nomination (FabricationCheck: a better lie; playtest 26532).
+func bluff_alternatives(w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var a: String = str(d.get("nominator", ""))
+	var b: String = str(d.get("nominee", ""))
+	var same: bool = not bool(d.get("same", true))
+	return [{"entry": {"data": {"nominator": a, "nominee": b, "same": same}, "text": _spoken_text(w, a, b, same)}, "why": "reports %s -> %s same=%s instead" % [a, b, str(same)]}]

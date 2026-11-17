@@ -28,7 +28,8 @@ agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning re
 - `docs/meeting_flow_plan.md`: the meeting trial, slice by slice (M0–M4).
 - `docs/orchestration_plan.md`: work zones and their status.
 - `docs/golden_baseline.md`: the golden capture that guards against behaviour drift.
-- `docs/handoff_log.md`: notes between the agents working on the code.
+- `docs/handoff/`: notes between the agents working on the code, one file per entry (from
+  Nov 17). Entries before then are in `docs/handoff_log.md`, now frozen.
 - `docs/DIALOGUE_DESIGN.md`: the voice bible and dialogue rules.
 - `docs/text_formatting.md`: the shared text system.
 - `role_exploration.md`: role ideas, On Deck gifts, relationships, exploratory places.
@@ -932,7 +933,7 @@ been known to sleepwalk"; two claimants prove a liar.
 **[decided]**:
 - **Backing a strong case builds trust** with NPCs who agree (what makes throwing a
   teammate under the bus pay for evil).
-- **Lie severity** **[open]**: a false gift report weighs more than a whereabouts lie,
+- **Lie severity** **[decided]** (Nov 17; Quill the judge's weighting, Beadle the votes): a false gift report weighs more than a whereabouts lie,
   unless the lie puts them near the crime; NPCs who accept a lie but won't hang should say
   so.
 - **Ways to discover and confront secrets** (sightings that don't fit, confidants,
