@@ -192,7 +192,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **Quiet-night evidence argued by the player.** Support a player-argued link between
   protection, a suspected attack and movement, without exposing hidden attacks. (61251:
   a successful ward on Fenwick suppressed the apparent value of the sightings.) See the
-  "Protection + quiet night + sighting" Workshop gap. [open]
+  "Protection + quiet night + sighting" Workshop gap, and build the two together: a case
+  argues protection, a suspected attack and movement as one chain, without revealing
+  hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
+  [decided] (Michael, Nov 17)
 
 ### NPC behaviour
 
@@ -291,7 +294,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **Medium challenge attribution and nested relays.** Add an explicit choice between
   questioning the Medium's transmission and the dead source's original information. Until
   then, cause modifiers on relay cards stay visibly unavailable. Relays of another Medium's
-  relay and relayed opinions are unsupported. (Oct 23) [open]
+  relay and relayed opinions are unsupported. (Oct 23)
+  Michael (Nov 17): build the choice only, a two-way challenge on a relay ("the Medium
+  relayed it wrong" versus "the dead person was wrong in the first place"). Relays of
+  relays and relayed opinions stay unsupported. Owner Quill. [decided: the choice only]
 
 - **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
   the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
@@ -702,7 +708,8 @@ Workshop and the shared model can't express yet.
   sighting.
 
 - **Protection + quiet night + sighting** (54875): a kept ward or a Warden claim, a quiet
-  night and a sighting near the guarded door, argued as one chain.
+  night and a sighting near the guarded door, argued as one chain. Built with "Quiet-night evidence argued by the
+  player" (section 2), [decided] Nov 17.
 
 ## 5. From the Nov 13 playtest triage (moved Nov 16)
 
