@@ -742,11 +742,19 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 	var prev_doubt: Dictionary = plan.input.listener.get("source_doubt", plan.input.listener.get("discounted", {}))
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
+	# The listener's honest doubt about each reading itself (a poisoned or misled night, from
+	# source doubt), apart from its trust in the teller: the role check reads it
+	# (CaseEval._doubted_role_fits). Trust in the teller isn't in it, because the role check
+	# already lets an evil teller lie in the worlds where they are evil.
+	var honest: Dictionary = {}
+	prepared.listener["reading_doubt"] = honest
 	for card in prepared.view.cards:
 		if card.get("testimony_only", false):
 			continue # The teller's testimony is not a gift that poison can break.
 		if card.has("relay_source"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
+			if prepared.listener.reading_reliability[card.accuracy_origin] < 1.0:
+				honest[card.id] = 1.0 - float(prepared.listener.reading_reliability[card.accuracy_origin])
 			var relay_source: String = card.relay_source
 			var relay_day: int = card.relay_observed_at.day
 			var relay_before: float = maxf(float(prev_doubt.get("%s:%d" % [relay_source, relay_day], 0.0)), float(prev_doubt.get(relay_source + ":*", 0.0)))
@@ -755,6 +763,8 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 			continue
 		if card.has("route_origin"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
+			if prepared.listener.reading_reliability[card.accuracy_origin] < 1.0:
+				honest[card.id] = 1.0 - float(prepared.listener.reading_reliability[card.accuracy_origin])
 			continue
 		if card.kind == "sighting" and card.source not in ["", prepared.listener.id, "player", "evidence", "town"] and card.has("hearing_weight"):
 			var s_now: float = maxf(float(eff_sighting_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(eff_sighting_doubt.get(card.source + ":*", 0.0)))
@@ -768,6 +778,8 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 		if card.kind != "report":
 			continue # Impairment does not invalidate ordinary testimony/role claims.
 		var doubt = maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
+		if doubt > 0.0:
+			honest[card.id] = doubt
 		# Keep hearing-route discount, replacing only the stale interval reliability.
 		var previous = maxf(float(prev_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_doubt.get(card.source + ":*", 0.0)))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
