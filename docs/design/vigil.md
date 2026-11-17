@@ -15,7 +15,7 @@ are read from the code on main, not measured.
 - **A lower bot win rate is acceptable.**
 - **The bot's vigil policy changes in the same build:** it watches the blocks of the people
   it suspects most, not the homes of its likeliest victims.
-- **Not taken now:** the other options (B–E). Sleeping in (C) and a higher miss rate stay
+- **Not taken now:** the other options (B–E). Sleeping in (C) and random misses stay
   in reserve as dials if a sweep of the town by vigil proves too efficient in play.
 
 ---
@@ -31,8 +31,10 @@ both had a vigil on the right block catch the Demon outright.
 
 - **What a vigil sees** (`C.vigil_sees_path`, `sim/content.gd`): anyone whose night route
   *ends* on the watched block, plus anyone walking the full lamp route. People passing
-  through aren't seen. It misses someone it should have seen only about 1 time in 20
-  (`Workshop.VIGIL_MISS`).
+  through aren't seen. In play it never misses: `sim/world.gd` `_night_sightings` adds
+  every walker it can see. Only the judge allows for a miss: it gives about a 1 in 20 chance
+  that someone the vigil should have seen was out anyway, so an empty vigil clears strongly
+  but not absolutely (`Workshop.VIGIL_MISS`, `workshop/live_activity.gd`).
 - **The town has 4 blocks.** One vigil covers about a quarter of the town, so even a blind
   guess catches the Demon on about 1 kill night in 4.
 - **The Demon's target is predictable.** On a kill night the Demon's route ends at the
@@ -76,9 +78,10 @@ The vigil sees people leaving their homes on the watched block, not people arriv
   likely doesn't move, since the passive player never keeps vigil.
 - **Two dials if a sweep proves too efficient:**
   - **Sleeping in** (option C) on top.
-  - **A vigil can miss someone slipping out in the dark** more often than today's 1 in 20.
-    An empty vigil then clears more weakly. This is probably a new constant (Michael's call),
-    since `VIGIL_MISS` is shared with today's vigil and with exclusion cards.
+  - **A vigil can miss someone slipping out in the dark.** Today it never misses in play.
+    Random misses would need a change to the simulation (which walkers it sees) as well as
+    the judge (how much an empty vigil clears, `VIGIL_MISS`), so the two stay matched. An
+    empty vigil then clears more weakly. Probably a new constant (Michael's call).
 
 ### B. The Demon shows only as a shadowy figure
 
@@ -139,7 +142,8 @@ which kills by day, so a vigil is less damning.
    it watches the NPC and their neighbours instead, so the offer's meaning shifts (it already
    builds trust only and doesn't deter the Demon). Whether the offer's wording or its trust
    reward should change is a small call for the build; Herald for the wording.
-3. **The miss rate:** unchanged unless playtests show an empty vigil clears too cheaply.
+3. **Random misses:** none, as today, unless playtests show an empty vigil clears too
+   cheaply. They'd need a simulation change as well as the judge's.
 
 ## 5. What the build should check
 
