@@ -1,5 +1,8 @@
 # Agent handoff log
 
+> **Frozen on Nov 17, 2026.** New handoff entries go in `docs/handoff/`, one file per entry
+> (see `docs/handoff/README.md`). This file keeps everything up to that date, newest first.
+
 Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
 commit, status, next actor, and anything the next agent must know before starting. Sessions
 don't share memory: this log and the PRs are how they talk.

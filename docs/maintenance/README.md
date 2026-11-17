@@ -41,4 +41,4 @@ PRs in it, and the run type.
 - Describe effects in game terms, as `CLAUDE.md` asks.
 - Build and run the suites the window touched if you can (`CLAUDE.md` has the commands);
   otherwise say the review is from reading only.
-- Add a handoff-log entry, as for any PR. Bailiff merges the report PR.
+- Add a handoff entry in `docs/handoff/`, as for any PR. Bailiff merges the report PR.
