@@ -57,7 +57,7 @@ const BATCH7_SLOTS = {
 	"role_already_claimed": {"role": "Archivist"},
 	"role_already_claimed_none": {},
 	"defence_red_herring": {"source": "Hollis"},
-	"warden_doors_report": {"doors": "Night 1 at Agnes's door"},
+	"warden_doors_report": {"doors": "the first night at Agnes's door"},
 	"warden_saves_claim": {"saves": "Agnes on night 1"},
 	"meeting_relay_reading": {"role": "Seer", "reading": "one of Fenwick and Kiran read as the Demon"},
 	"defence_pair_other": {"source": "Hollis", "other": "Fenwick"},
