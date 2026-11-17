@@ -247,7 +247,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
   I can tell you what they were"), which also gives a cautious town a reason to act.
-  [open]
+  Michael (Nov 17): as a hidden motive only. A good Gravedigger with nothing to read leans
+  a little more toward nominating and voting to hang, but never says so: these are real
+  people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
+  for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
 
 - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
   pairing with a good person only works if real Lovers sometimes leave each other out to
@@ -546,16 +549,22 @@ Candidates for a unified retuning proposal, not approved changes.
   personal items, a "you have a secret" card used as leverage. [open]
 
 - **Named corroborators in alibis** ("I was with Jory"), word-against-word cards; evil
-  fake secrets that name someone they really met. [open]
+  fake secrets that name someone they really met. Michael (Nov 17): stays open; it
+  overlaps the backlogged secrets rework. [open]
 
 - **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
   (open since playtest 1) [open]
 
 - **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
-  too as noise. [open]
+  too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
+  over-weighted and always visible" first, then see what's left. [open]
 
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
-  Demon; the Demon goes along with town conclusions to build trust. [open]
+  Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
+  decided, but survey what's already built first (he believes a fair amount exists: a
+  Minion distancing itself under pressure, the Demon going along with the town even
+  against a Minion), and report what happens and what's missing before building the gaps.
+  Owner Beadle. [decided: survey first]
 
 - **Observable actions as evidence (Stage 1B).** Votes, nominations, who defended whom
   and tie-breaks as soft per-world likelihood factors: "voted to execute someone who is
