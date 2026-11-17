@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 89077 wording): `baseline_3ef0e2f`
+### Current baseline (Nov 17, 23973 wording): `baseline_5c99636`
+
+`tools/golden/baseline_5c99636/` is the capture from `claude/herald-23973-wording` at
+`5c99636` (main `f754421` merged in): playtest 23973's wording. Of what it changes, only
+Nisha's agreement line reaches these games: "My own model aligns with {accuser} regarding
+{target}" is now "My own reckoning agrees with {accuser} about {target}".
+- **Divergence from `baseline_3ef0e2f`:** text only, 3 strings, all that line: 692 from
+  record 189 (day 3 meeting) and 98933 from record 117 (day 2 meeting). Record counts are
+  the same. 42, 54875 and 900: identical.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_3ef0e2f`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 89077 wording): `baseline_3ef0e2f`
 
 `tools/golden/baseline_3ef0e2f/` is the capture from `claude/herald-89077-wording` at
 `3ef0e2f` (main `ae6c304` merged in): playtest 89077's wording fixes. Nights are spoken as
