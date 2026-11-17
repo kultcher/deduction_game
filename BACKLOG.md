@@ -85,6 +85,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   statement is true. Allow an honest impaired Warden; neither failure nor a misled
   accusation proves poisoning or alignment. [decided: capability and lying implication]
 
+  Already built (Nov 4, #81 era, the report table in `Solver`): a guard on a door the Demon
+  killed that night is never a true, healthy reading, so the challenge lands as a lie or a
+  failed gift and the walk stays the movement model's. Pinned by `test_warden_challenge`
+  (Quill, Nov 17). Nothing else to build. [done]
+
 - **Martyr non-substitution must keep its alternative explanations; Martyr promise
   versus later hanging.** (78148) An executed choice dying while the claimed Martyr
   survives must not fully confirm the choice as evil: weigh a Delusional Martyr, a
