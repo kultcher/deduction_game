@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 23973 wording): `baseline_5c99636`
+### Current baseline (Nov 17, Insight's joining bar): `baseline_70d0139`
+
+`tools/golden/baseline_70d0139/` is the capture from `claude/insight-core-bar` (#199) at
+`70d0139` (main `9133d3e` merged in): Insight sets how readily a card joins an NPC's core
+(the joining bar runs from 0.8 for a dull NPC to 0.1 for a sharp one; it was 0.8 for all).
+- **Divergence from `baseline_5c99636`:** beliefs only, where a sharper NPC's core now takes
+  in a card a dull one wouldn't: 42 from record 35 (Isolde, day 2), 54875 from record 24
+  (Greta's cover, day 1), 692 from record 17 (Fenwick, day 1), 900 from record 88 (Kiran,
+  day 2), 98933 from record 14 (Odette's cover, day 1).
+- **Outcomes unchanged:** 42 good day 3; 54875 good day 2; 692 and 900 reach day 4 with no
+  winner; 98933 good day 3.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 23973 wording): `baseline_5c99636`
 
 `tools/golden/baseline_5c99636/` is the capture from `claude/herald-23973-wording` at
 `5c99636` (main `f754421` merged in): playtest 23973's wording. Of what it changes, only
