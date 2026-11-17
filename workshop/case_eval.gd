@@ -437,11 +437,11 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 	var oc = _own_counts(view, cc, own)
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
-	var fits = _class_fits(view, cc, cards, knowledge)
 	# The "before" side of the case: role knowledge without the case's own cards. Role-
 	# based readings (Seer, Archivist, Clerk...) act through the role check; applied to
 	# both sides they cancel, and the reading never moved anyone (playtest 37291).
 	var fits_before = _class_fits(view, cc, [], knowledge)
+	var fits = fits_before if (cache_enabled and Domain.live(view) and not _has_role_card(cards)) else _class_fits(view, cc, cards, knowledge)
 	if view.get("chronology", {}).has("curse"):
 		fits = fits.duplicate() # Never modify a cached role table.
 		var worlds: Array = Solver.universe(view)
@@ -659,7 +659,9 @@ static func _evaluate_posterior_cs(view: Dictionary, case_data: Dictionary, card
 		result["pivotal"] = piv_ids
 	return result
 
+static var cache_enabled: bool = true
 static var _compiled: Dictionary = {}
+const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusation", "reading", "clear"]
 
 ## Per presentation: the universe grouped into classes that every listener weighs alike.
 ## A class shares the evil team, what the role check reads, each report card's state
@@ -676,7 +678,11 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 
 static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
 	var conclusion: Dictionary = case_data.conclusion
-	var key_input = [view.get("trace_assessments", []), Solver._universe_key(view), view.get("timeline", {}), view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
+	var timeline: Dictionary = view.get("timeline", {})
+	if timeline.has("events") and not (cards + known).any(func(c): return str(c.get("role", "")) == "magistrate"):
+		timeline = timeline.duplicate(false)
+		timeline["events"] = timeline.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
+	var key_input = [view.get("trace_assessments", []), Solver._universe_key(view), timeline, view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
 		known.map(func(c): return c.get("fact_id", c.id)) if not case_data.get("test_factors", []).is_empty() else [],
 		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.get("source", ""), c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", []), c.get("duty_only", false)])]
 	if cards.any(func(c): return c.has("hearing_weight")):
@@ -705,9 +711,9 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		# is as it always was.
 		key_input.append("hex_off")
 	var key = hash(key_input)
-	if _compiled.has(key) and _compiled[key].input == key_input:
+	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
-	if _compiled.size() > 32:
+	if _compiled.size() > 2048:
 		_compiled.clear()
 		_cc_handles.clear()
 		_cc_generation += 1
@@ -767,7 +773,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	var movement_ok: bool = _movement_ok(view, cards, live)
 	var q_arr: Array = reports.map(func(c): return chance_content(view, c))
 	var out: Dictionary = _compile_classes_cs(view, universe, key_input, key, conclusion, cards, reports, tables, valids, dead, premise, live, movement, movement_ok, tests, q_arr)
-	_compiled[key] = out
+	if cache_enabled:
+		_compiled[key] = out
 	return out
 
 static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Array, key: int, conclusion: Dictionary, cards: Array, reports: Array, tables: Array, valids: Array, dead: PackedByteArray, premise: PackedByteArray, live: bool, movement: Array, movement_ok: bool, tests: Array, q_arr: Array) -> Dictionary:
@@ -998,15 +1005,16 @@ static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Diction
 	# Keyed by the exact compiled case (its input and C# registration), not only a hash.
 	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id))]
 	var key = hash(ref)
-	if _own_cache.has(key) and _own_cache[key].get("_ref", []) == ref:
+	if cache_enabled and _own_cache.has(key) and _own_cache[key].get("_ref", []) == ref:
 		return _own_cache[key]
-	if _own_cache.size() > 64:
+	if _own_cache.size() > 1024:
 		_own_cache.clear()
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
 	var out: Dictionary = _own_counts_cs(cc, own, tables, valids)
 	out["_ref"] = ref
-	_own_cache[key] = out
+	if cache_enabled:
+		_own_cache[key] = out
 	return out
 
 static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Array) -> Dictionary:
@@ -1104,16 +1112,14 @@ static func _state_like(view: Dictionary, own: Array, errs: Array, codes: Array)
 		out[o] = v
 	return out
 
+static var _team_prior_cache: Dictionary = {}
+
 ## Per team: the listener's odds that exactly this team is evil (known-good people zero).
 static func _team_prior(view: Dictionary, listener: Dictionary) -> PackedFloat64Array:
 	return _team_prior_cs(view, listener)
 
 static func _team_prior_cs(view: Dictionary, listener: Dictionary) -> PackedFloat64Array:
 	var u_key: String = Solver._universe_key(view)
-	var universe: Array = Solver.universe(view)
-	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
-	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
-	var fallback: PackedInt64Array = SolverBackend.pack_worlds(universe) if u_handle < 0 else PackedInt64Array()
 	var ids: Array = Solver.person_ids(view)
 	var n_people: int = ids.size()
 	var raw_susp := PackedFloat64Array()
@@ -1132,14 +1138,92 @@ static func _team_prior_cs(view: Dictionary, listener: Dictionary) -> PackedFloa
 		if idx >= 0:
 			good_mask |= (1 << idx)
 	var curr_conv: bool = Solver._curse_active_at(view, "Current alignment")
+	var ref: Array = [u_key, curr_conv, raw_susp, npc_trust, good_mask, prior_k]
+	var key: int = hash(ref)
+	if cache_enabled and _team_prior_cache.has(key) and _team_prior_cache[key].ref == ref:
+		return _team_prior_cache[key].out
+	var universe: Array = Solver.universe(view)
+	var u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
+	var fallback: PackedInt64Array = SolverBackend.pack_worlds(universe) if u_handle < 0 else PackedInt64Array()
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("CaseEval._team_prior", pack_u)
-	return SolverBackend._bridge().CaseEvalTeamPrior(u_handle, fallback, curr_conv, raw_susp, npc_trust, good_mask, prior_k)
+	var out: PackedFloat64Array = SolverBackend._bridge().CaseEvalTeamPrior(u_handle, fallback, curr_conv, raw_susp, npc_trust, good_mask, prior_k)
+	if cache_enabled:
+		if _team_prior_cache.size() >= 256:
+			_team_prior_cache.clear()
+		_team_prior_cache[key] = {"ref": ref, "out": out}
+	return out
 
 static var _fits_cache: Dictionary = {}
+static var _bare_fits_cache: Dictionary = {}
 ## Prior odds = exp(prior_k * suspicion) (Tuning.Workshop.PRIOR_K). Probes may override it;
 ## a negative value restores the old mapping (suspicion read as a probability) for comparison.
 static var prior_k: float = Tuning.Workshop.PRIOR_K
+
+const _MOVEMENT_ROLE_KINDS: Array = ["sighting", "evening", "trace", "coverage", "alibi", "dropped"]
+
+static func _is_role_card(card: Dictionary) -> bool:
+	var k: String = str(card.get("kind", ""))
+	return k in ["report", "claim", "secret_claim", "totem", "town_hall", "sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (k == "event" and card.get("event") == "martyr") or card.has("relay_source") or str(card.get("role", "")) != ""
+
+static func _is_movement_role_card(card: Dictionary) -> bool:
+	var k: String = str(card.get("kind", ""))
+	return k in _MOVEMENT_ROLE_KINDS or card.has("relay_source") or (k in ["report", "claim"] and str(card.get("role", "")) in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])
+
+static func _has_role_card(cards: Array) -> bool:
+	for card in cards:
+		if _is_role_card(card):
+			return true
+	return false
+
+static func _has_bluff_card(cards: Array) -> bool:
+	for card in cards:
+		if card.get("kind", "") in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
+			return true
+	return false
+
+static func _bare_world_fits(view: Dictionary, personal: Dictionary, u_neutral: PackedFloat64Array = PackedFloat64Array()) -> PackedFloat64Array:
+	var u_key: String = Solver._universe_key(view)
+	var live: bool = Domain.live(view)
+	var route_tl: Dictionary = view.get("timeline", {}) if not live else {}
+	var ref: Array = [u_key, view.people, route_tl, view.get("live_activity", false), live, personal]
+	var key: int = hash(ref)
+	if cache_enabled and _bare_fits_cache.has(key) and _bare_fits_cache[key].ref == ref:
+		return _bare_fits_cache[key].out
+	var universe: Array = Solver.universe(view)
+	var base_u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+	var out: PackedFloat64Array
+	if personal.is_empty():
+		out = Solver.Roles.fits_weights(view, universe, [], {}, {}, live, base_u_handle)
+	else:
+		var n_u: int = universe.size()
+		out = PackedFloat64Array()
+		out.resize(n_u)
+		out.fill(0.0)
+		var open_worlds: Array = []
+		var open_u := PackedInt32Array()
+		for i in range(n_u):
+			if u_neutral[i] > 0.0:
+				open_worlds.append(universe[i])
+				open_u.append(i)
+		if not open_worlds.is_empty():
+			var sub_t: PackedFloat64Array = Solver.Roles.fits_weights(view, open_worlds, [], personal, {}, live, base_u_handle, open_u)
+			for x in range(open_u.size()):
+				out[open_u[x]] = sub_t[x]
+	if cache_enabled:
+		if _bare_fits_cache.size() >= 256:
+			_bare_fits_cache.clear()
+		_bare_fits_cache[key] = {"ref": ref, "out": out}
+	return out
+
+static func _slice_by_rep(u_arr: PackedFloat64Array, rep: PackedInt32Array) -> PackedFloat64Array:
+	var nc: int = rep.size()
+	var out := PackedFloat64Array()
+	out.resize(nc)
+	for c in range(nc):
+		out[c] = u_arr[rep[c]]
+	return out
 
 ## Role assignment per class (live views): one check per class representative, since
 ## a class shares everything the role check reads. A listener's own role and outings only
@@ -1151,17 +1235,50 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		ones.resize(nc)
 		ones.fill(1.0)
 		return ones
+	var live: bool = Domain.live(view)
+	var role_cards: Array = cards.filter(_is_role_card) if (cache_enabled and live and not cards.is_empty()) else cards
 	var personal = {"self": knowledge.get("self", ""), "own_role": knowledge.get("own_role", ""), "own_outings": knowledge.get("own_outings", {})}
 	if not knowledge.get("public_roles", {}).is_empty():
 		personal["public_roles"] = knowledge.public_roles
-	var bare: bool = cards.is_empty() # the "before" side: no case cards (see evaluate)
-	var neutral_key = hash([cc.key, "neutral", Domain.live(view), bare])
-	if not _fits_cache.has(neutral_key):
-		_fits_cache[neutral_key] = _fits_over(view, cc, cards, {}, range(nc))
-	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
+	var bare: bool = role_cards.is_empty() # the "before" side: no role-constraining case cards (see evaluate)
+	var u_key: String = Solver._universe_key(view)
+	var base_fit_key: int
+	if bare:
+		var route_tl: Dictionary = view.get("timeline", {}) if not live else {}
+		base_fit_key = hash([u_key, view.people, route_tl, view.get("live_activity", false), live, cc.rep, "bare"])
+	else:
+		var tl: Dictionary = view.get("timeline", {})
+		if tl.has("events") and not role_cards.any(_is_movement_role_card):
+			tl = tl.duplicate(false)
+			tl["events"] = tl.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
+		base_fit_key = hash([u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards])
+	var neutral_key = hash([base_fit_key, "neutral"])
+	var w_all := PackedFloat64Array()
+	var neutral: PackedFloat64Array
+	var u_neutral := PackedFloat64Array()
+	if bare:
+		u_neutral = _bare_world_fits(view, {})
+	if cache_enabled and _fits_cache.has(neutral_key):
+		neutral = _fits_cache[neutral_key]
+	else:
+		if bare:
+			neutral = _slice_by_rep(u_neutral, cc.rep)
+		else:
+			if live and _has_bluff_card(role_cards):
+				var universe: Array = Solver.universe(view)
+				var base_u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+				var cc_reps_handle: int = SolverBackend.get_sub_universe_handle("cc_reps:" + str(hash([u_key, cc.rep])), base_u_handle, cc.rep)
+				var reps: Array = []
+				if cc_reps_handle < 0:
+					for c in range(nc):
+						reps.append(universe[cc.rep[c]])
+				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array())
+			neutral = _fits_over(view, cc, role_cards, {}, range(nc), w_all)
+		if cache_enabled:
+			_fits_cache[neutral_key] = neutral
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
-	var fits: PackedFloat64Array = _personal_fits(view, cc, cards, personal, neutral, neutral_key, bare)
+	var fits: PackedFloat64Array = _personal_fits(view, cc, role_cards, personal, neutral, neutral_key, bare, base_fit_key, u_neutral, w_all)
 	# "Am I the Sleepwalker?" With the secret on the script, a good listener's own nights at
 	# home are a little unsure: with chance SLEEPWALK_SELF_DOUBT they walked without knowing
 	# it, and their home nights say nothing. Being the Sleepwalker is one hidden fact for the
@@ -1174,7 +1291,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 			walked.own_outings.erase(k)
 		var free: PackedFloat64Array = neutral
 		if not (walked.own_role == "" and walked.own_outings.is_empty() and walked.get("public_roles", {}).is_empty()):
-			free = _personal_fits(view, cc, cards, walked, neutral, neutral_key, bare)
+			free = _personal_fits(view, cc, role_cards, walked, neutral, neutral_key, bare, base_fit_key, u_neutral, w_all)
 		if free == fits:
 			return fits   # nothing the home nights rule out (avoids rounding noise)
 		var mixed := PackedFloat64Array()
@@ -1184,26 +1301,48 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		return mixed
 	return fits
 
-static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, personal: Dictionary, neutral: PackedFloat64Array, neutral_key: int, bare: bool) -> PackedFloat64Array:
-	var key = hash([cc.key, personal, Domain.live(view), bare])
-	if not _fits_cache.has(key):
-		if _fits_cache.size() > 256:
-			_fits_cache.clear()
-			_fits_cache[neutral_key] = neutral
+static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, personal: Dictionary, neutral: PackedFloat64Array, neutral_key: int, bare: bool, base_fit_key: int = 0, u_neutral: PackedFloat64Array = PackedFloat64Array(), w_all: PackedFloat64Array = PackedFloat64Array()) -> PackedFloat64Array:
+	var live: bool = Domain.live(view)
+	var key = hash([base_fit_key if base_fit_key != 0 else cc.key, personal, live, bare])
+	if cache_enabled and _fits_cache.has(key):
+		return _fits_cache[key]
+	var out: PackedFloat64Array
+	if bare:
+		var u_pers: PackedFloat64Array = _bare_world_fits(view, personal, u_neutral)
+		out = _slice_by_rep(u_pers, cc.rep)
+	else:
 		var open: Array = []
 		for c in range(cc.team.size()):
 			if neutral[c] > 0.0:
 				open.append(c)
-		_fits_cache[key] = _fits_over(view, cc, cards, personal, open)
-	return _fits_cache[key]
+		if live and _has_bluff_card(cards) and w_all.is_empty():
+			var u_key: String = Solver._universe_key(view)
+			var universe: Array = Solver.universe(view)
+			var base_u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+			var cc_reps_handle: int = SolverBackend.get_sub_universe_handle("cc_reps:" + str(hash([u_key, cc.rep])), base_u_handle, cc.rep)
+			var reps: Array = []
+			if cc_reps_handle < 0:
+				for c in range(cc.team.size()):
+					reps.append(universe[cc.rep[c]])
+			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array())
+		out = _fits_over(view, cc, cards, personal, open, w_all)
+	if cache_enabled:
+		if _fits_cache.size() > 2048:
+			_fits_cache.clear()
+			_fits_cache[neutral_key] = neutral
+		_fits_cache[key] = out
+	return out
 
-static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge: Dictionary, classes) -> PackedFloat64Array:
+static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge: Dictionary, classes, w_all: PackedFloat64Array = PackedFloat64Array()) -> PackedFloat64Array:
 	var out = PackedFloat64Array()
 	out.resize(cc.team.size())
 	out.fill(0.0)
+	if classes.is_empty():
+		return out
+	var u_key: String = Solver._universe_key(view)
 	var universe: Array = Solver.universe(view)
-	var base_u_handle: int = SolverBackend.get_universe_handle(Solver._universe_key(view), universe)
-	var cc_reps_handle: int = SolverBackend.get_sub_universe_handle("cc_reps:" + str(cc.key), base_u_handle, cc.rep)
+	var base_u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
+	var cc_reps_handle: int = SolverBackend.get_sub_universe_handle("cc_reps:" + str(hash([u_key, cc.rep])), base_u_handle, cc.rep)
 	var reps: Array = []
 	var which: Array = []
 	var sub_idx := PackedInt32Array()
@@ -1245,7 +1384,11 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		declarations.fill(0)
 		for y in range(at.size()):
 			declarations[at[y]] = sub[y]
-	var weights: PackedFloat64Array = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx) if live else PackedFloat64Array()
+	var has_w_all: bool = not w_all.is_empty()
+	var weights: PackedFloat64Array = PackedFloat64Array()
+	if live and not has_w_all and _has_bluff_card(cards):
+		weights = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx)
+	var has_weights: bool = not weights.is_empty()
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1
@@ -1270,7 +1413,8 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			if not rel_readings.is_empty():
 				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
 				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
-		out[which[x]] = content * (weights[x] if live else 1.0)
+		var w_mult: float = w_all[which[x]] if has_w_all else (weights[x] if has_weights else 1.0)
+		out[which[x]] = content * w_mult
 	return out
 
 ## Joint facts about the reports, for one listener:

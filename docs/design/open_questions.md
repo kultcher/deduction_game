@@ -1,6 +1,6 @@
 # Open design questions: an index
 
-Kept by Claude-Vicar. **As of Nov 17, from `main` at `6873616` plus the open PRs #174, #180
+Kept by Claude-Vicar. **As of Nov 17 (secrets added later the same day), from `main` at `6873616` plus the open PRs #174, #180
 and #182, which add backlog items not yet merged.** This is an index, not a record:
 each entry says what's open, where the evidence is, and who would build it once Michael
 decides. The record stays in `BACKLOG.md` (items and tags) and `DESIGN.md` (how things work
@@ -37,18 +37,21 @@ These are the ones under discussion now, roughly by how much they shape other wo
 - **Builds:** Beadle (whom it silences, how the silenced behave, evil feigning) and Quill
   (what the judge infers from a silence). Herald for any silence tell.
 
-### 1.2 The Muddler rarely has anything to muddle
-- **Open:** whether the Muddler can work as written. It passed on a reading or night
-  sighting in 5 of 40 forced games, because news is announced at the meeting and nobody
-  repeats what everyone heard. Options: garble its retellings at the meeting; keep night
-  sightings private for a day (about half of games, estimated, but news spreads earlier for
-  both sides and the meeting is less of a reveal); garble day sightings and alibis too
-  (about one more garble per 40 games).
-- **Michael (Nov 17):** leave it for now; unsure it can work without warping the game
-  around it. `[open]`
-- **Evidence:** BACKLOG section 4 (#180); Quill's handoff entry on #173.
-- **Builds:** Beadle (what NPCs pass on), Quill (adjudicating a muddled card, BACKLOG
-  section 6 `[later]`).
+### 1.2 Secrets: a rework (the Muddler folds in)
+- **Open:** how secrets should work. Michael (Nov 17): disclosure is inconsistent (three
+  are hidden from their holder, the Lovers claim at will); a confirmed secret is a
+  confirmed good, so they don't help evil hide; and they leave out good people with
+  reasons to lie. Direction so far: secrets stay riders on a gift; most become something
+  the holder knows but doesn't volunteer; evil can bluff them; a Saint as the worked
+  example. **The Muddler is tentatively cut** (it had something to muddle in 5 of 40
+  games).
+- **Proposal on the table:** the judge keeps one slot for the self-unaware kinds (Marked,
+  Delusional, Sleepwalker); the kinds the holder knows about become ordinary claims, with a
+  per-case hypothesis so the player can argue an unclaimed one.
+- **Evidence:** `docs/design/secrets_rework.md` (the options, costs and the Saint and Baron
+  examples); BACKLOG section 4 for the Muddler (#180).
+- **Builds:** Lantern and Quill (the judge), Beadle (claiming, hiding, bluffing), Herald
+  (wording). Argon to time it, Tally for the Lovers' win rate.
 
 ### 1.3 What Insight does in belief
 - **Open:** Insight was taken out of belief for v1 by the connections model. After the
