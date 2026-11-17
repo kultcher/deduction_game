@@ -83,8 +83,9 @@ How the Muddler would garble each kind (one detail, the same way every time the 
 
 - **For Claude-Beadle:** what an NPC chooses to pass on (`Social._pick_item`) is NPC behaviour; the garbling (`sim/muddler.gd`) works as designed. If Michael picks part 1, the decision about whether to tell a sighting privately or wait for the meeting sits in `_pick_item`'s own-sighting candidates and the meeting's announcement code.
 
-### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
+### Proposed for the backlog: declined for now
 
+- **Michael (Nov 17, via Seneschal): leave the Muddler for now.** He isn't sure it can work as written without warping the game around it. No backlog item, and none of the options built. The findings above are for when he comes back to it.
 - **The Muddler rarely has anything to muddle.** Seen in playtest 26532 and in 40 forced-Muddler games (above): in about 1 game in 8 the Muddler passes on a reading or night sighting. Proposal above. Suggested tag [open], owner Beadle.
 
 ---
