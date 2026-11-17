@@ -60,6 +60,8 @@
 ##   an Augur day the Augur reading and that day's sightings
 ##   a Psychologist reading and its two statements
 ##   a trace      with the profile cards as context
+##   a double claim  every claim of one gift when two or more people claim it, with the
+##                other held cards that name a claimant (not night or trace cards) as context
 ##
 ## The demon-type declaration decides how movement is read (`row`):
 ##   "none"    no declaration on a script with both kinds: each night by itself. Inside a
@@ -557,6 +559,40 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 				for x in ids:
 					placed[x] = true
 				out.append({"key": "psychologist:" + id, "ids": ids, "ctx": [], "kind": "unit"})
+	# Two or more people claiming one gift, read together (Michael, Nov 16): the judge knows
+	# how many can hold it, so the claims say together what neither says alone (at least one
+	# claimant lies). Every other held card naming a claimant is context, so what else is
+	# known about one claimant moves the doubt onto the other: shown good, the other is the
+	# likelier liar. Night and trace cards stay out (the movement items read them).
+	var claims_by_role: Dictionary = {}
+	for id in held:
+		var c: Dictionary = by_id[id]
+		if c.kind == "claim" and not placed.has(id) and str(c.get("role", "")) != "":
+			var r: String = str(c.role)
+			if not claims_by_role.has(r):
+				claims_by_role[r] = []
+			claims_by_role[r].append(id)
+	var claim_roles: Array = claims_by_role.keys()
+	claim_roles.sort()
+	for r in claim_roles:
+		var ids: Array = claims_by_role[r]
+		var claimants: Dictionary = {}
+		for id in ids:
+			claimants[str(by_id[id].get("source", ""))] = true
+		if claimants.size() < 2:
+			continue
+		for id in ids:
+			placed[id] = true
+		var ctx: Array = []
+		for id in held:
+			var c: Dictionary = by_id[id]
+			if id in ids or is_night.call(c) or c.kind in TRACE_KINDS:
+				continue
+			if not names_memo.has(id):
+				names_memo[id] = _names(by_id, [id], people)
+			if names_memo[id].any(func(p): return claimants.has(p)):
+				ctx.append(id)
+		out.append({"key": "claims:" + r, "ids": ids, "ctx": ctx, "kind": "unit"})
 	for id in held:
 		if not placed.has(id):
 			out.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
