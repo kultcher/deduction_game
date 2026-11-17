@@ -48,6 +48,7 @@ test_premise_step1
 test_premise_step2
 test_premise_step3
 test_recency
+test_relay_challenge_menu
 test_review_fixes
 test_role_check_doubt
 test_roles_dead

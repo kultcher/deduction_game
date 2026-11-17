@@ -58,6 +58,12 @@ static func ordinary(target: String) -> bool:
 
 ## A presentation is an endorsement path, not an additional copy of its facts.
 ## Removing it removes only roots with no remaining learned/endorsed owner.
+## Two presented challenges on the same reading that can't be read as one: a different mode,
+## or, on a Medium's relay, a different side (Codex, #195). They need separate alternatives,
+## never one silently replacing the other.
+static func challenges_conflict(a: Dictionary, b: Dictionary) -> bool:
+	return a.get("mode") != b.get("mode") or str(a.get("attribution", "")) != str(b.get("attribution", ""))
+
 static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}, focus: Array = []) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
 		return _prepare_impl(current, presentations, ledger, withdrawn, focus)
@@ -112,7 +118,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 				var challenge: Dictionary = argument.workshop_case.reading_challenges[id]
 				if with_cases and not own_challenges.has(id):
 					own_challenges[id] = challenge.duplicate(true)
-				if reading_challenges.has(id) and reading_challenges[id].mode != challenge.mode:
+				if reading_challenges.has(id) and challenges_conflict(reading_challenges[id], challenge):
 					issues.append("Conflicting reading challenges need separate alternatives.")
 				else:
 					reading_challenges[id] = challenge.duplicate(true)
