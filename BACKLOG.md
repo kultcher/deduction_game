@@ -90,6 +90,22 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   only; don't infer that both times were healthy from the earlier promise. Tests should
   isolate every explanation and avoid counting the same failure twice. [decided]
 
+  Built Nov 17 (Quill, `claude/martyr-alternatives`): the promise and the later hanging are
+  read together from public events, keeping all five explanations; the outcome reading
+  carries the check when both are held. Not built: dated health (a poisoning on a
+  particular night); the promise's failure is priced as the report's error.
+
+- **A Delusional teller's false reading is charged twice by the judge.** (Codex on #183,
+  Nov 17) In play the role check skips an evil teller's content but not the Delusional
+  holder's, so for every role-checked gift (Archivist, Clerk, Gravedigger, Executor,
+  Registrar, Monitor, Martyr, Night Watch, Warden, Veteran) a Delusional reader's wrong
+  reading takes a small extra error on top of the false-report likelihood. "They were
+  Delusional" then reads weaker than it should next to "they lied". #183 fixed it for the
+  Martyr promise only. Build after Lantern's poisoned-reading fix has merged (it waits for
+  Argon's #181): both change how the role check treats a doubtful reading. Report in game
+  terms how much more often the town accepts "they were Delusional" over "they lied".
+  Owner Quill. [decided] (Michael, Nov 17)
+
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
   helping execute them and claiming non-substitution as evidence against them an active
