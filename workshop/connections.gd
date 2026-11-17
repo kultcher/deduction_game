@@ -228,6 +228,14 @@ static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dic
 		if all_heard.has(name):
 			heard[name] = all_heard[name]
 	who["reading_reliability"] = heard
+	# The role check's honest doubt about a reading (CaseEval._doubted_role_fits), keyed by
+	# card id: only the judged cards' doubts belong in the key.
+	var doubted: Dictionary = {}
+	var all_doubt: Dictionary = listener.get("reading_doubt", {})
+	for c in cards:
+		if all_doubt.has(c.id):
+			doubted[c.id] = all_doubt[c.id]
+	who["reading_doubt"] = doubted
 	# Attention's bookkeeping (which reports a presentation put in front of the listener)
 	# is the union model's; no judgement reads it (as Solver._query_knowledge).
 	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
@@ -277,6 +285,7 @@ static func _prepare_key_ctx(view: Dictionary, bare: Dictionary, listener: Dicti
 	who_base.erase("trust")
 	who_base.erase("player_credibility")
 	who_base["reading_reliability"] = {}
+	who_base["reading_doubt"] = {}
 	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
 	known.erase("presented_reports")
 	known.erase("attention_reports")
@@ -328,16 +337,23 @@ static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener
 	for name in names:
 		if all_heard.has(name):
 			heard[name] = all_heard[name]
+	var all_doubt: Dictionary = listener.get("reading_doubt", {})
+	var doubted: Dictionary = {}
+	for c in cards:
+		if all_doubt.has(c.id):
+			doubted[c.id] = all_doubt[c.id]
 	var who_h: int
 	if listener == ctx.listener:
 		var who_base: Dictionary = ctx.who_base
 		who_base["reading_reliability"] = heard
+		who_base["reading_doubt"] = doubted
 		who_h = hash(who_base)
 	else:
 		var who: Dictionary = listener.duplicate(false)
 		who.erase("trust")
 		who.erase("player_credibility")
 		who["reading_reliability"] = heard
+		who["reading_doubt"] = doubted
 		var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
 		known.erase("presented_reports")
 		known.erase("attention_reports")

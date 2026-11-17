@@ -30,7 +30,7 @@ static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind:
 
 static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.get("ready", false) or not plan.has("prepared"):
-		return {"pre_eval": seed_doubt.duplicate(true), "full": seed_doubt.duplicate(true), "settled_sincere": {}}
+		return {"pre_eval": seed_doubt.duplicate(true), "full": seed_doubt.duplicate(true), "settled_sincere": {}, "honest": {}}
 	var prepared: Dictionary = plan.prepared
 	var view: Dictionary = prepared.get("view", {})
 	var listener: Dictionary = prepared.get("listener", {})
@@ -61,6 +61,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			settled_sincere[str(dv)] = true
 
 	var pre_eval: Dictionary = seed_doubt.duplicate(true)
+	# Honest-error doubt only, by "src:night" or "src:*": a reading the listener thinks was
+	# wrong though its teller was sincere (a poisoned Night Watch, a misled or unreliable
+	# argument). Caught lies and lying arguments stay out, and so do reading challenges: under
+	# the connections model a challenge acts only inside its own case. CaseEval._doubted_role_fits
+	# reads it (through reading_doubt).
+	var honest: Dictionary = {}
 	var proven_revenants: Dictionary = {}
 	var curse_exec: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
 	if curse_exec != "":
@@ -126,6 +132,7 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				# report is void, and the source is doubted in general, not written off.
 				var nw_key: String = "%s:%d" % [csrc, cnight]
 				pre_eval[nw_key] = 1.0
+				honest[nw_key] = 1.0
 				pre_eval[csrc + ":*"] = maxf(float(pre_eval.get(csrc + ":*", 0.0)), Tuning.Workshop.DOUBT_FALSE_NW_GENERAL)
 		if ckind == "report" and crole in ["gravedigger", "executor"] and card.get("data", {}).has("role"):
 			var ex_id: String = str(card.get("data", {}).get("executed" if crole == "gravedigger" else "target", ""))
@@ -189,6 +196,7 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			var k_arg: String = "%s:%s" % [ca, str(cn) if cn >= 0 else "*"]
 			var d_val: float = (Tuning.Workshop.DOUBT_ARG_MISLED_SCALE if ctype == "misled" else Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE) * wgt
 			pre_eval[k_arg] = minf(maxf(float(pre_eval.get(k_arg, 0.0)), d_val), Tuning.Workshop.DOUBT_ARG_CAP)
+			honest[k_arg] = minf(maxf(float(honest.get(k_arg, 0.0)), d_val), Tuning.Workshop.DOUBT_ARG_CAP)
 		elif ctype == "lied" and not settled_sincere.has(ca):
 			var cn2: int = int(conc.get("night", -1))
 			var k_lied: String = "%s:%s" % [ca, str(cn2) if cn2 >= 0 else "*"]
@@ -221,7 +229,7 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 					src_pen = maxf(src_pen, clampf(agr, 0.0, 0.95))
 				full_doubt[r_src + ":*"] = maxf(float(full_doubt.get(r_src + ":*", 0.0)), src_pen)
 
-	return {"pre_eval": pre_eval, "full": full_doubt, "settled_sincere": settled_sincere}
+	return {"pre_eval": pre_eval, "full": full_doubt, "settled_sincere": settled_sincere, "honest": honest}
 
 
 ## Night or general doubt about `src` from unowned template arguments (the same values

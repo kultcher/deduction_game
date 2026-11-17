@@ -20,22 +20,67 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Quill: a challenge on a Medium's relay names its side (`claude/medium-relay-challenge`)
+## 2026-11-17, Claude-Lantern: a doubted reading speaks through the role check only as far as it's trusted (`claude/own-reading-doubt`)
 
-- **Base:** main `98cb948`. **Status:** PR open. Golden identical to `baseline_a0a378d`. **Next actor:** Bailiff; then Herald for the Workshop menu.
-- **Item:** BACKLOG section 2, "Medium challenge attribution and nested relays", [decided: the choice only] by Michael on Nov 17. The tag itself lands with PR #190. I left BACKLOG alone here to avoid a conflict; once both are in, the item's judge side is done and only the menu is left.
-- **What changed** (`workshop/reading_challenges.gd`, `workshop/source_doubt.gd`):
-  - A challenge on a relayed reading must name its side: `attribution` "transmission" ("the Medium relayed it wrong") or "original" ("the dead person was wrong in the first place"). Without one it isn't valid, as before.
-  - The passing-on takes only a lie or a failed or Delusional gift. "Misled" and "unlikely" are about the reading itself, so they belong to the original.
-  - The named side's teller is the one blamed:
-    - the contest uses that teller's trust;
-    - the graded test splits lie from honest error by that teller's chance of being evil;
-    - source doubt rises on that teller, on their night: the Medium's passing-on night, or the original reading's night.
-  - Plain readings are unchanged. The new result fields appear only on relay challenges, which keeps golden identical.
-- **Measured** (constructed: a dead Gravedigger's impossible reading, relayed by a Medium). With the Medium distrusted, "relayed it wrong" as a lie lands at agreement 0.96, against 0.90 for "the dead person was wrong". A neutral listener gives both 0.90 (the impossible-reading floor).
-- **Tests:** new `tools/test_medium_relay_challenge.gd` (11 checks), added to `tools/ci_fast_suites.txt`. Also ran `test_workshop_reading_challenges`, `test_mechanics_relays`, `test_roles_dead`, `test_premise_step3`, `test_defence_grounds`: all pass.
-- **For Claude-Herald:** the Workshop's challenge menu still disables challenges on relay cards (`ui/case_workshop_canvas.gd:430`). Offering the two sides means passing `attribution` in the challenge value, and the card's support note in `game/workshop_canvas.gd:53` can then drop "need separate attribution". Wording is Michael's; a draft for the two choices: "The Medium passed it on wrong" / "The dead were wrong to begin with".
-- **Not built:** relays of relays and relayed opinions, unsupported as decided.
+- **Base:** main `cd3aeb4` (#181 merged). **Status:** PR open. Golden identical to
+  `baseline_a0a378d` (main after #188; no doubted role-checked reading on the five seeds), so it isn't in the
+  golden-moving queue. **Next actor:** Bailiff merges.
+  **Then: Claude-Quill**, whose Delusional fix builds on this (see "Where it lives").
+- **The bug** (found unpinning `test_beliefs`, purge phase 2): a reading the listener doubts
+  honestly (its night was poisoned or misled) kept moving its people in full, under both
+  belief models. Readings that act through the role check (a Seer's Red Herring placement,
+  an Archivist's, Clerk's or Gravedigger's role reading) never saw the doubt there: the
+  doubt lowered the reading's reliability, which the role check doesn't read. The earlier
+  model only looked different because its headline reading, which the doubt did turn off,
+  added a little on top.
+- **The fix:** each doubted reading in a set is weighed as genuine with the listener's trust
+  in it and as a bare claim of the gift otherwise. This is exact for one doubted reading in
+  a set; with several, each mixes against the others read in full.
+  - **The doubt** is `listener.reading_doubt`. `SourceDoubt.derive` now also returns an
+    `honest` map, built only from honest errors: a poisoned Night Watch, a misled or
+    unreliable argument. Reading challenges are left out, since under connections a
+    challenge acts only inside its own case (`test_connections_cases` caught a failed-gift
+    challenge reaching the reading's own value). `Shared.evaluate` passes it to `_doubt_adjusted`, which sets
+    `reading_doubt` per card. Callers that don't pass it change nothing.
+  - **Caught lies, "lied" arguments and "lying" challenges stay out, by night or in
+    general.** My first version read all source doubt. A bogus Gravedigger reading (a
+    hanging that never happened) then stopped convicting its claimant: `test_shared_model`
+    caught it, and it moved golden. My second read every night-specific doubt, which Codex
+    showed still let a "lying" challenge or a night's "lied" argument soften the reading.
+  - **Trust in the teller is left out on purpose:** the role check already lets an evil
+    teller lie in the worlds where they're evil, so including it would charge it twice.
+  - **Carried through** `Jury._eval_listener`. Both connections judgement keys (`judge_key`
+    and the fast key) include the judged cards' doubts.
+- **Where it lives (for Quill):** `CaseEval._doubted_role_fits` is the one place that handles
+  a doubted reading in the role check. It's called once from `_evaluate_impl`, right after
+  `fits`. `CaseEval.doubted_role_check` switches it off for measuring. Quill's Delusional
+  item (the role check's `sourceEvil` exemption charging a Delusional teller's false reading
+  twice) is in `RoleConstraints.cs`. Delusional doubt sits on the source's general doubt, so
+  it is deliberately not in `reading_doubt` today; if Quill's fix wants a Delusional
+  teller's readings read as honest errors, this function and `reading_doubt` are where it
+  goes.
+- **What changes in play:** on `test_role_check_doubt`'s fixture (seed 5110; the
+  listener's own reading, then a misled argument doubting that night at 0.8):
+
+  | Reading | With the reading | After the doubt, before the fix | After the doubt, now |
+  |---|---|---|---|
+  | Seer "yes" on a pair | 0.10 → 0.15 | 0.15 | 0.107 |
+  | Archivist "one of these two holds the Minion's gift" | 0.10 → 0.385 | 0.385 | 0.119 |
+  | Gravedigger verdict | 0.10 → 0.00 | 0.00 | 0.093 |
+
+  An undoubted reading reads exactly as before. A Clerk reading moved no one in my fixture,
+  so it isn't tested here.
+- **Golden:** identical to `baseline_a0a378d` on all five seeds (checked again after merging #188); two captures identical.
+- **Measured:** the new suite `test_role_check_doubt` (14/14: the three readings, plus a
+  "lied" argument that must not soften the reading; added to the fast list), the CI fast
+  list on this branch, and two golden captures. Not measured: how often a doubted
+  role-checked reading occurs in bot games.
+- **Order of my next work:** phase 6b (attention-limited signals read every held card), then
+  the double-claim pairing, then Option A (Insight sets the core's joining bar; its
+  measurement goes to Michael first), then purge phase 3.
+- **Proposed for the backlog:** none.
+
+---
 
 ## 2026-11-17, Claude-Beadle: evil fabrications check what's already public (`claude/beadle-fabrication-check`; moves golden)
 
