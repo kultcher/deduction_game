@@ -24,3 +24,8 @@ actor:** Codex, then Bailiff. I re-baseline when it's called up.
 - **Golden against `baseline_3ef0e2f`:** all 5 seeds differ, but only in the recorded
   motive text (each reading's `why`, ids now names). The same number of records, and no
   other field changes, so no behaviour moves.
+
+## Also: the rework note's final wording (Michael, Nov 17)
+- `FabricationCheck.rework_note` now reads "…; its first version would have turned the town
+  on {name}, so it told this one instead", Herald's version, picked by Michael.
+- Golden is unchanged from `baseline_eb8e59b`: no golden seed has a reworked lie.
