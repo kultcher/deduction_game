@@ -67,3 +67,4 @@ test_held_signals
 test_role_check_doubt
 test_fabrication_check
 test_medium_relay_challenge
+test_bare_compile
