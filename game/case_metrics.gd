@@ -32,7 +32,10 @@ static func named_guesses(guesses: Dictionary, role: String) -> Array:
 	return ids
 
 ## Was there evidence pointing at the demon, and where? on_board: cards you held; reachable:
-## held by living townsfolk (true readings, night sightings) or an unsearched true trace.
+## held by living townsfolk (true readings, night sightings) or an unsearched true trace. A
+## dead townsperson's counts only while a living good Medium could still reach them
+## (playtest 89077: Edda's Night Watch reading, learned the night she was killed, with no
+## Medium alive, was listed).
 ## Descriptive only: it says what existed, not that the player should have found it.
 static func demon_evidence(w, board: Array) -> Dictionary:
 	var d: String = w.demon_id
@@ -51,8 +54,11 @@ static func demon_evidence(w, board: Array) -> Dictionary:
 			elif c.get("block", "") == w.loc_block(dn.history.get(w.time_key(c.get("day", -1), 2), "home:" + dn.home_block)):
 				on_board.append(c["n"])
 	var reachable: Array = []
+	var medium_alive: bool = w.npcs.any(func(m): return m.alive and m.role == "medium" and not m.is_evil())
 	for n in w.npcs:
 		if n.is_evil():
+			continue
+		if not n.alive and not medium_alive:
 			continue
 		for e in n.info_log:
 			if not e.get("true", true):
