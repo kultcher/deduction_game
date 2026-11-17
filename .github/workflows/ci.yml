@@ -5,10 +5,14 @@ name: CI
 #   pull requests: fast suite list + golden diff (gate: identical to $BASELINE)
 #   main:          full suite (sharded) + golden diff + Windows golden check
 #   manual:        same as main; tick "windows" to include the Windows check
+#   nightly:       full suite + golden diff on main, so a red suite can't hide when
+#                  back-to-back merges supersede main's push runs (Nov 17)
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 9 * * *"   # 09:17 UTC daily (early morning US Eastern), on main
   workflow_dispatch:
     inputs:
       windows:
