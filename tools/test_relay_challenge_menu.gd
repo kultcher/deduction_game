@@ -71,5 +71,18 @@ func _init() -> void:
 		if bad.nodes[key].get("kind", "") == "modifier" and bad.nodes[key].get("card", "") == "relay":
 			bad.nodes[key].mode = "misled"
 	check(CanvasModel.new(view).restore(bad, StubSession.new()) != "", "a saved passing-on challenge of 'misled' is refused on load")
+	_shared_ledger_sides()
 	print("Relay challenge menu: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
+
+## Codex, #195: two presented cases that challenge the same relay on different sides are two
+## explanations. The shared ledger must not let the later one silently replace the earlier.
+func _shared_ledger_sides() -> void:
+	var Ledger = preload("res://workshop/shared_ledger.gd")
+	var lie_medium: Dictionary = {"mode": "lying", "supports": [], "attribution": "transmission"}
+	var lie_dead: Dictionary = {"mode": "lying", "supports": [], "attribution": "original"}
+	var plain_lie: Dictionary = {"mode": "lying", "supports": []}
+	check(not Ledger.challenges_conflict(lie_medium, lie_medium.duplicate(true)), "the same side twice is one challenge")
+	check(Ledger.challenges_conflict(lie_medium, lie_dead), "the Medium's side and the dead person's are two explanations, not one")
+	check(not Ledger.challenges_conflict(plain_lie, plain_lie.duplicate(true)), "plain challenges merge as before")
+	check(Ledger.challenges_conflict(plain_lie, {"mode": "misled", "supports": []}), "two modes still conflict, as before")
