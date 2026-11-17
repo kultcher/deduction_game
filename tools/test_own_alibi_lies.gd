@@ -3,7 +3,9 @@
 ## unquoted "I was home" from its own subject was a hard constraint in every alignment,
 ## so an evil subject's false alibi ruled out every night-out route: it cleared the
 ## Demon, and a same-night sighting plus the alibi cancelled each other.
-##   - good subject: still hard (the good tell the truth about their own night);
+##   - good subject: hard until Nov 17; now a good person out on a hidden gift or a
+##     secret may still say "home" (Tuning.Workshop.GOOD_OWN_ALIBI_OUT; Michael, Nov 17:
+##     a caught lie from someone who could be good stops being proof);
 ##   - evil subject: priced like a relayed alibi (0.7 if out, 0.9 if home);
 ##   - someone else's alibi for the subject (a witness): unchanged, still hard.
 ## Both kernels (GDScript fallback and C#) are checked.
@@ -11,6 +13,7 @@ extends SceneTree
 
 const Activity = preload("res://workshop/live_activity.gd")
 const History = preload("res://workshop/live_history.gd")
+const Tuning = preload("res://sim/tuning.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -41,7 +44,12 @@ func _init() -> void:
 		check(good_own > 0.0 and good_own <= L.call([], "good") + 1e-9, "%s: a good subject's own alibi still holds them home" % backend)
 		var good_sw: float = L.call([own, seen], "good")
 		var demon_sw: float = L.call([own, seen], "demon")
-		check(is_zero_approx(good_sw) and demon_sw > 0.0, "%s: own alibi + a certain sighting out: only evil fits (good %.4f, demon %.4f)" % [backend, good_sw, demon_sw])
+		var good_s: float = L.call([seen], "good")
+		var demon_s: float = L.call([seen], "demon")
+		var good_ratio: float = good_sw / maxf(good_s, 1e-12)
+		var demon_ratio: float = demon_sw / maxf(demon_s, 1e-12)
+		check(is_equal_approx(good_ratio, Tuning.Workshop.GOOD_OWN_ALIBI_OUT), "%s: own alibi + a certain sighting out: a good subject keeps the measured chance of a false 'home' (x%.3f)" % [backend, good_ratio])
+		check(demon_ratio > good_ratio, "%s: ...and evil fits the caught lie better (x%.3f against x%.3f)" % [backend, demon_ratio, good_ratio])
 		check(is_zero_approx(L.call([witness, seen], "demon")), "%s: a witness's alibi for someone else is unchanged (still hard)" % backend)
 		# Both alibis held: the witness's stays hard whichever came first (#124 review).
 		var ow: float = L.call([own, witness, seen], "demon")
