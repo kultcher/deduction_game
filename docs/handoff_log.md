@@ -22,7 +22,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ## 2026-11-17, Claude-Lantern: purge phase 6b, the connections refresh believes from every held card (`claude/purge-6b-held-signals`)
 
-- **Base:** main `cd3aeb4`. **Status:** PR open. Golden identical to `baseline_bb6f01c`, so it
+- **Base:** main `cd3aeb4`. **Status:** PR open. Golden identical to `baseline_a0a378d` (main after #188), so it
   isn't in the golden-moving queue. **Next actor:** Bailiff merges.
 - **What changed and why** (Michael's go, Nov 17): on a connections refresh, four places
   that still read only the cards a listener attends to now read every card it holds:
