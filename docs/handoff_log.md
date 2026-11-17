@@ -22,7 +22,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ## 2026-11-17, Claude-Quill: Martyr promise then hanging keeps every explanation (PR #183, `claude/martyr-alternatives`)
 
-- **Base:** main `97f51a1`. **Status:** PR open. Moves golden: re-baselined to `baseline_bfeb521` in this PR (golden-moving PRs merge one at a time). **Next actor:** Bailiff.
+- **Base:** main `97f51a1`. **Status:** PR open. Moves golden: re-baselined to `baseline_1c9ac48` in this PR (golden-moving PRs merge one at a time). **Next actor:** Bailiff.
 - **Item:** BACKLOG section 2, "Martyr non-substitution must keep its alternative explanations; Martyr promise versus later hanging" [decided].
 
 ### What was wrong
@@ -35,6 +35,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **The promise now carries the same check as the outcome reading** when the chosen was hanged while the Martyr was alive (`workshop/role_constraints.gd`, `LiveHistory.hanged_while_alive`). In each world, either the chosen registered evil (evil or Marked), or the promise is false. A false promise means an evil Martyr's bluff, or a poisoned or Delusional Martyr: the report's ordinary false-teller worlds. It uses public events only: the hanging and the Martyr being alive at it. A Martyr dead before the hanging proves nothing by "surviving" it.
 - **No double count:** if the same Martyr's outcome reading about the same person is in the set, that reading carries the check alone. The promise beside it then holds whatever the chosen was.
 - **The content-only mask** (graded challenges) doesn't count a Marked chosen as evil, as with the other Marked exceptions.
+- **A Delusional Martyr isn't charged twice** (Codex's review). In play the role check skips an evil teller's content but not the Delusional holder's, so a Delusional Martyr's promise took a small-error penalty on top of the false-report likelihood. The promise now has its own flag (`FlagMartyrPromise`), and a world where the Martyr is the Delusional holder skips the check in play. The check's cache key now tells that teller's Delusional status apart, as it already did for Medium relayers. Before, worlds differing only in who was Delusional shared one cached answer.
 - The Workshop no longer refuses a case with a promise and the chosen's later hanging.
 
 ### What it changes in play
@@ -53,7 +54,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   - an evil Martyr's bluffed promise fits;
   - both cards fail once, and the promise defers to the outcome reading.
   The earlier check that the case is refused now checks that it's accepted. 4 of the new checks fail on main.
-- Also ran `test_case_eval`, `test_workshop_reading_challenges`, `test_premise_step1`–`3`, `test_workshop_vote_and_alibi`, `test_roles_registry`: all pass. Golden captured twice, identical.
+- Also ran `test_case_eval`, `test_workshop_reading_challenges`, `test_premise_step1`–`3`, `test_workshop_vote_and_alibi`, `test_roles_registry`: all pass. Golden captured twice, identical. Codex's fix changed 692 again at the same point (baseline renamed `1c9ac48`); the numbers above are from it.
 
 ### Not built
 
