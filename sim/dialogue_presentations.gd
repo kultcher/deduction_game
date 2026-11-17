@@ -260,8 +260,9 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		allow_lean = false
 		if believed_stance in ["accept", "partial"]:
-			var inc_follow: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
-			parts.append(Dialogue.voice_line(listener.id, inc_follow, "", {"target": target_label}))
+			# After a clash, "Fits what I know" contradicts it: "still, it moves me" (playtest 23973).
+			var inc_follow: String = "present_clashes_moved" if believed_stance == "accept" else "present_partial"
+			parts.append(Dialogue.voice_line(listener.id, inc_follow, "Still, it changes how I see %s." % target_label if believed_stance == "accept" else "", {"target": target_label}))
 	elif status == "rival_found" and reasoning.get("rival") is Dictionary and not reasoning.rival.is_empty():
 		var epoch: String = str(root_conclusion.get("at", "now"))
 		var alt: Dictionary = Solver.describe_world(view, reasoning.rival, epoch)
@@ -317,8 +318,10 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		primary_key = "present_clashes_own" if clashes else "present_lost_thread"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical if not clashes else "That doesn't square with what I already know; I can't make it all fit together, though I'm not saying you're wrong."))
 		if believed_stance in ["accept", "partial"]:
-			var b_key: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
-			parts.append(Dialogue.voice_line(listener.id, b_key, "", {"target": target_label}))
+			# The case still moved them: after "it clashes with what I know", not "Fits what I
+			# know" (playtest 23973: Bart). After "I lost the thread" the usual line stands.
+			var b_key: String = ("present_clashes_moved" if clashes else "present_accept_open") if believed_stance == "accept" else "present_partial"
+			parts.append(Dialogue.voice_line(listener.id, b_key, ("Still, it changes how I see %s." % target_label) if b_key == "present_clashes_moved" else "", {"target": target_label}))
 	elif agreement <= -0.2 or (status == "counterexample_found" and bool(reasoning.get("support_exhausted", false))):
 		var rivals: Array = ev.get("rivals", [])
 		var rival_id: String = ""
