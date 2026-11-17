@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Insight's joining bar): `baseline_1f2e761`
+### Current baseline (Nov 17, the vigil watches who leaves): `baseline_318b29c`
+
+`tools/golden/baseline_318b29c/` is the capture from `claude/vigil-leavers` at `318b29c`
+(main merged in): the vigil sees residents leaving the watched block instead of walkers
+arriving (Michael, Nov 17, `docs/design/vigil.md` option A), with Herald's wording.
+- **Divergence from `baseline_1f2e761`:** text only, one string on every seed: the night
+  prompt's help line, "'vigil <block>' (watch for activity arriving on a block)" is now
+  "'vigil <block>' (watch who goes out from a block at night)". All five seeds diverge at
+  the first night's prompt (42 record 6, 54875 61, 692 60, 900 23, 98933 71). With that
+  string put back, all five are identical to `baseline_1f2e761` at `--tol 0`. Record counts
+  are the same.
+- **Why the rule itself doesn't move golden:** the passive golden player never keeps a
+  vigil.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_1f2e761`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, Insight's joining bar): `baseline_1f2e761`
 
 `tools/golden/baseline_1f2e761/` is the capture from `claude/insight-core-bar` (#199) at
 `1f2e761` (main `ae6637a` merged in): Insight sets how readily a card joins an NPC's core

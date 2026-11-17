@@ -1,6 +1,6 @@
 # 2026-11-17, Claude-Quill: the vigil watches who leaves the block (`claude/vigil-leavers`; moves golden, text only)
 
-- **Base:** main (merged in at `be4a31e`). **Status:** PR open. **Next:** Bailiff (review;
+- **Base:** main (merged in at `318b29c`). **Status:** PR open. **Next:** Bailiff (review;
   golden-moving, merge on its own). Then a playtest.
 - **What (BACKLOG "The vigil watches who leaves", [decided], Michael Nov 17;
   `docs/design/vigil.md` option A):** a player vigil now sees the watched block's residents
@@ -39,9 +39,9 @@
   Demon's block catches it going out. That's the player's deduction doing the work, as the
   note intends: the hit depends on suspecting the right block. Twenty games is a small
   sample; treat the direction, not the size.
-- **Golden:** re-baselined to `baseline_be4a31e`. It's text only: the night prompt's help
+- **Golden:** re-baselined to `baseline_318b29c`. It's text only: the night prompt's help
   line, on every seed. With that string put back, all five seeds are identical to
-  `baseline_5c99636`. The rule itself doesn't reach golden, because the passive player never
+  `baseline_1f2e761`. The rule itself doesn't reach golden, because the passive player never
   keeps a vigil. Two captures were identical.
 - **Tests:** 23 suites that touch vigils pass. Six fixtures that pinned the arrival rule are
   restated to test the same idea under the new one:
