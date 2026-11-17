@@ -6,6 +6,7 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
+const FabricationCheck = preload("res://sim/fabrication_check.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 
@@ -744,6 +745,18 @@ static func make_day_fake_info(w) -> void:
 
 static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 	ensure_scapegoat(w)
+	# Fabrications held back a day join what they can tell once that day has passed.
+	for m in w.evil_team():
+		var keep: Array = []
+		for h in m.held_fakes:
+			# Kept off the table through day `until`: a night pass from that night on, or a
+			# day pass on a later day, lets it go.
+			if int(h["until"]) < w.day or (not day_only and int(h["until"]) <= w.day):
+				m.info_log.append(h["entry"])
+				w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading." % h["entry"].get("role", "?"), {"lie": true})
+			else:
+				keep.append(h)
+		m.held_fakes = keep
 	var plan: Dictionary = w.evil_plan
 	var s: String = plan["scapegoat"]
 	for n in w.evil_team():
@@ -770,6 +783,14 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		entry = gen["entry"]
 		why = gen["why"]
+		# Checked against what's already public: a self-incriminating one may be noticed,
+		# then reworked once or held back a day (sim/fabrication_check.gd).
+		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, func():
+			var again: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
+			if not again.is_empty():
+				why = again["why"]
+			return again.get("entry", {}))
+		entry = vetted["entry"]
 		entry["day"] = w.day
 		if day_only and w.phase != C.NIGHT:
 			entry["phase"] = w.phase
@@ -778,6 +799,10 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		entry["true"] = false
 		entry["fake"] = true
 		entry["why"] = "evil fabrication: " + why
+		if vetted["outcome"] == "held":
+			n.held_fakes.append({"entry": entry, "until": w.day + (0 if day_only else 1)})
+			w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
+			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
 
