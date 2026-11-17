@@ -402,7 +402,9 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
   Check against the current prior mapping. (Oct 30) [open]
 
-- **Unlimited vigil strength.** [watch] Vigils now see only walkers arriving on the block
+- **Unlimited vigil strength.** [watch] Options, costs and Vicar's lean (watch who leaves
+  a block instead of who arrives) are in [docs/design/vigil.md](docs/design/vigil.md)
+  (Michael with Claude-Vicar, Nov 17). Vigils now see only walkers arriving on the block
   (or the full Lamplighter tour). (54875: a vigil on the first kill block caught both
   walkers there on nights 1 and 2, near a free Seer reading.) Options discussed, none
   chosen:

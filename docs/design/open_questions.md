@@ -89,18 +89,17 @@ These are the ones under discussion now, roughly by how much they shape other wo
 - **Builds:** Lantern.
 
 ### 1.6 Are unlimited vigils too strong?
-- **Open:** a vigil on the right block can catch the Demon outright (playtest 26532; also
-  54875, where a vigil on the first kill block caught both walkers on nights 1 and 2, "near a
-  free Seer reading"). Options discussed, none chosen: a vigil costs the next morning's
-  action (Claude's earlier favourite); vigils limited like the ward; a vigil shows only a
-  count of people on the block; watch one spot, name anyone there, count the rest of the
-  block.
-- **Related open question in DESIGN:** does the Lamplighter's every-block route make that
-  gift too easy to confirm, now that nobody else passes through a block?
-- **Evidence:** BACKLOG section 2, Numbers ("Unlimited vigil strength", `[watch]`); DESIGN
-  "Open questions"; 26532 itself isn't written up in the repo (Michael has the log).
-- **Builds:** depends on the option. A cost or limit is player actions (Herald for UI,
-  game flow); a count-only vigil changes evidence (Quill). Tally for a sweep.
+- **Open:** a vigil on the right block can catch the Demon outright (playtests 26532,
+  54875): it sees who arrives on a block, the Demon's route ends at the victim's home, and
+  the Demon's target is predictable. Michael (Nov 17) favours inverting it, so it watches
+  who *leaves* a block; other options are a shadowy Demon, sleeping in, limited uses, and
+  unlocking it with Hexer scripts.
+- **Related, in DESIGN:** does the Lamplighter's every-block route make that gift too easy to
+  confirm?
+- **Evidence:** `docs/design/vigil.md` (the options, what each costs, how to measure them);
+  BACKLOG section 2, Numbers ("Unlimited vigil strength", `[watch]`).
+- **Builds:** Quill (the vigil's evidence), Herald (wording), Tally (the comparison, with a
+  bot that watches suspects' blocks).
 
 ### 1.7 Onboarding and tutorials (waits for mechanics to settle)
 - **Open:** when mechanics are settled enough to start, and the shape. The decided
