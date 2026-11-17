@@ -75,7 +75,11 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# source (the original reading); otherwise the reading's teller.
 		var attribution: String = str(challenge.get("attribution", "")) if report.has("relay_source") else ""
 		var teller: String = str(report.relay_source) if attribution == "transmission" else str(report.source)
-		var teller_night: int = int(report.get("relay_observed_at", {}).get("day", -1)) if attribution == "transmission" else int(report.get("night", report.get("observed_at", {}).get("day", -1)))
+		var teller_night: int = int(report.get("relay_observed_at", {}).get("day", -1)) if attribution == "transmission" else int(report.get("night", -1))
+		if teller_night < 0 and attribution == "original":
+			# A relayed morning reading (an Executor's) carries night -1: its day is when it was
+			# read (Codex, #195), as for a Gravedigger's day below.
+			teller_night = int(report.get("observed_at", {}).get("day", -1))
 		# All challenges share the listener's baseline. Filter the hypothetical good
 		# claimant below instead of solving that same baseline once per report.
 		if reference == null:
