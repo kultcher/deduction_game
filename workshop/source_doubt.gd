@@ -208,7 +208,8 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			var r_cid: String = str(r.get("card", ""))
 			var r_card: Dictionary = Solver.card_by_id(view, r_cid)
 			var r_src: String = str(r.get("source", ""))
-			var r_night: int = int(r_card.get("night", r_card.get("observed_at", {}).get("day", -1)))
+			# A challenge names its own night: a relay's passing-on is the Medium's night.
+			var r_night: int = int(r.get("night", r_card.get("night", r_card.get("observed_at", {}).get("day", -1))))
 			var mult: float = float(r.get("multiplier", 1.0))
 			if r_src != "" and r_night >= 0 and mult < 1.0:
 				var nk_rc: String = "%s:%d" % [r_src, r_night]
