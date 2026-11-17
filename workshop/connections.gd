@@ -228,6 +228,14 @@ static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dic
 		if all_heard.has(name):
 			heard[name] = all_heard[name]
 	who["reading_reliability"] = heard
+	# The role check's honest doubt about a reading (CaseEval._doubted_role_fits), keyed by
+	# card id: only the judged cards' doubts belong in the key.
+	var doubted: Dictionary = {}
+	var all_doubt: Dictionary = listener.get("reading_doubt", {})
+	for c in cards:
+		if all_doubt.has(c.id):
+			doubted[c.id] = all_doubt[c.id]
+	who["reading_doubt"] = doubted
 	# Attention's bookkeeping (which reports a presentation put in front of the listener)
 	# is the union model's; no judgement reads it (as Solver._query_knowledge).
 	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
@@ -237,12 +245,134 @@ static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dic
 	return "%d:%d:%d:%d|%s|%s" % [hash(around), hash(cards), hash(template_case), hash(who), "hex" if hex else "", ",".join(PackedStringArray(ids))]
 
 
-static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
+static func _prepare_key_ctx(view: Dictionary, bare: Dictionary, listener: Dictionary) -> Dictionary:
+	var own: Array = listener.get("knowledge", {}).get("own_reports", [])
+	var own_set: Dictionary = {}
+	for id in own:
+		own_set[id] = true
+	var cards_arr: Array = view.get("cards", [])
+	var n_cards: int = cards_arr.size()
+	var card_pos: Dictionary = {}
+	var card_soft: Array = []
+	var card_names: Array = []
+	var own_indices: Array = []
+	card_soft.resize(n_cards)
+	card_names.resize(n_cards)
+	for i in range(n_cards):
+		var c: Dictionary = cards_arr[i]
+		var cid: String = str(c.get("id", ""))
+		card_pos[cid] = i
+		card_soft[i] = str(c.get("role", "")) in SOFT_READERS
+		var cnames: Array = []
+		for name in [c.get("accuracy_origin", ""), Solver.semantic_key(c), c.get("fact_id", ""), cid]:
+			if name != "" and name not in cnames:
+				cnames.append(name)
+		card_names[i] = cnames
+		if own_set.has(cid):
+			own_indices.append(i)
+	var around_soft: Dictionary = view.duplicate(false)
+	around_soft.erase("cards")
+	var around_soft_hash: int = hash(around_soft)
+	var around_nosoft_hash: int = around_soft_hash
+	var timeline: Dictionary = around_soft.get("timeline", {})
+	if timeline.has("events"):
+		var around_nosoft: Dictionary = around_soft.duplicate(false)
+		var tl_nosoft: Dictionary = timeline.duplicate(false)
+		tl_nosoft["events"] = timeline.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
+		around_nosoft["timeline"] = tl_nosoft
+		around_nosoft_hash = hash(around_nosoft)
+	var who_base: Dictionary = listener.duplicate(false)
+	who_base.erase("trust")
+	who_base.erase("player_credibility")
+	who_base["reading_reliability"] = {}
+	who_base["reading_doubt"] = {}
+	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
+	known.erase("presented_reports")
+	known.erase("attention_reports")
+	who_base["knowledge"] = known
+	return {
+		"view": view,
+		"bare": bare,
+		"bare_hash": hash(bare),
+		"listener": listener,
+		"cards_arr": cards_arr,
+		"card_pos": card_pos,
+		"card_soft": card_soft,
+		"card_names": card_names,
+		"own_indices": own_indices,
+		"around_soft_hash": around_soft_hash,
+		"around_nosoft_hash": around_nosoft_hash,
+		"who_base": who_base,
+		"all_heard": listener.get("reading_reliability", {}),
+	}
+
+
+static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool) -> String:
+	if ctx.is_empty():
+		return judge_key(ctx.get("view", {}), template_case, listener, ids, hex)
+	var idxs: Array = ctx.own_indices.duplicate()
+	var card_pos: Dictionary = ctx.card_pos
+	for id in ids:
+		if card_pos.has(id):
+			var pos: int = card_pos[id]
+			if pos not in idxs:
+				idxs.append(pos)
+	idxs.sort()
+	var cards_arr: Array = ctx.cards_arr
+	var card_soft: Array = ctx.card_soft
+	var card_names: Array = ctx.card_names
+	var cards: Array = []
+	var names: Array = []
+	var soft: bool = false
+	for pos in idxs:
+		cards.append(cards_arr[pos])
+		soft = soft or bool(card_soft[pos])
+		for name in card_names[pos]:
+			if name not in names:
+				names.append(name)
+	var around_h: int = ctx.around_soft_hash if soft else ctx.around_nosoft_hash
+	var tmpl_h: int = ctx.bare_hash if template_case == ctx.bare else hash(template_case)
+	var all_heard: Dictionary = listener.get("reading_reliability", {})
+	var heard: Dictionary = {}
+	for name in names:
+		if all_heard.has(name):
+			heard[name] = all_heard[name]
+	var all_doubt: Dictionary = listener.get("reading_doubt", {})
+	var doubted: Dictionary = {}
+	for c in cards:
+		if all_doubt.has(c.id):
+			doubted[c.id] = all_doubt[c.id]
+	var who_h: int
+	if listener == ctx.listener:
+		var who_base: Dictionary = ctx.who_base
+		who_base["reading_reliability"] = heard
+		who_base["reading_doubt"] = doubted
+		who_h = hash(who_base)
+	else:
+		var who: Dictionary = listener.duplicate(false)
+		who.erase("trust")
+		who.erase("player_credibility")
+		who["reading_reliability"] = heard
+		who["reading_doubt"] = doubted
+		var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
+		known.erase("presented_reports")
+		known.erase("attention_reports")
+		who["knowledge"] = known
+		who_h = hash(who)
+	return "%d:%d:%d:%d|%s|%s" % [around_h, hash(cards), tmpl_h, who_h, "hex" if hex else "", ",".join(PackedStringArray(ids))]
+
+
+static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false, key_ctx: Dictionary = {}) -> Dictionary:
 	# A caller that wants the worlds themselves (CaseEval.capture_worlds) needs the real run.
 	if not cache_enabled or CaseEval.capture_worlds:
 		return _judge(view, template_case, listener, ids, hex)
 	var who: String = str(listener.get("id", ""))
-	var key: String = judge_key(view, template_case, listener, ids, hex)
+	var key: String = _judge_key_fast(key_ctx, template_case, listener, ids, hex) if not key_ctx.is_empty() else judge_key(view, template_case, listener, ids, hex)
+	if cache_verify and not key_ctx.is_empty():
+		var ref_key: String = judge_key(view, template_case, listener, ids, hex)
+		if key != ref_key:
+			cache_stats.wrong += 1
+			push_warning("Connections: fast judge_key differs from reference judge_key (%s, %s)" % [who, str(ids)])
 	var store: Dictionary = _kept.get(who, {})
 	if store.has(key):
 		cache_stats.hits += 1
@@ -349,8 +479,15 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 	var placed: Dictionary = {}
 	var out: Array = []
 	var context: Array = held.filter(func(id): return by_id[id].kind in CONTEXT_KINDS)
+	var names_memo: Dictionary = {}
 	var explain := func(ids: Array, kinds: Array) -> Array:
-		var who: Array = _names(by_id, ids, people)
+		var who: Array = []
+		for id in ids:
+			if not names_memo.has(id):
+				names_memo[id] = _names(by_id, [id], people)
+			for p in names_memo[id]:
+				if p not in who:
+					who.append(p)
 		return context.filter(func(c): return by_id[c].kind in kinds and (by_id[c].kind == "context" or str(by_id[c].get("subject", by_id[c].get("source", ""))) in who or str(by_id[c].get("source", "")) in who))
 	var is_night := func(c: Dictionary) -> bool:
 		return (c.kind in NIGHT_KINDS or (c.kind == "report" and str(c.get("role", "")) in NIGHT_ROLES)) and int(c.get("night", -1)) >= 0
@@ -441,8 +578,9 @@ static func begin(view: Dictionary, case_data: Dictionary, listener: Dictionary)
 	if others.is_empty():
 		return run
 	run["bare"] = template(case_data, others[0])
+	run["key_ctx"] = _prepare_key_ctx(view, run.bare, listener)
 	var started: int = Time.get_ticks_usec() if capture else 0
-	var base: Dictionary = judge(view, run.bare, listener, [])
+	var base: Dictionary = judge(view, run.bare, listener, [], false, run.key_ctx)
 	run.judgements += 1
 	if capture:
 		_captured(run, "", 0, started, base.get("people", {}))
@@ -473,7 +611,7 @@ static func lean(run: Dictionary, ids: Array, hex: bool = false) -> Dictionary:
 	var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
 	if not sorted.is_empty():
 		var started: int = Time.get_ticks_usec() if capture else 0
-		var ev: Dictionary = judge(run.view, run.bare, run.listener, sorted, hex)
+		var ev: Dictionary = judge(run.view, run.bare, run.listener, sorted, hex, run.get("key_ctx", {}))
 		run.judgements += 1
 		if capture:
 			_captured(run, key, sorted.size(), started, ev.get("people", {}))
@@ -920,7 +1058,7 @@ static func lean_challenged(run: Dictionary, ids: Array, challenges: Dictionary)
 		template["reading_challenges"] = named.duplicate(true)
 		var out: Dictionary = {"lean": {}, "chance": {}, "impossible": false}
 		var started: int = Time.get_ticks_usec() if capture else 0
-		var ev: Dictionary = judge(run.view, template, listener, sorted)
+		var ev: Dictionary = judge(run.view, template, listener, sorted, false, run.get("key_ctx", {}))
 		run.judgements += 1
 		if capture:
 			_captured(run, key, sorted.size(), started, ev.get("people", {}))

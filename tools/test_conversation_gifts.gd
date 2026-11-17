@@ -221,6 +221,10 @@ func refusal_privacy():
 	var g = backlog_batch4__fresh()
 	var w = g.w
 	var n = w.minion()
+	# A bluff that doesn't explain a night out: pressed with a sighting, an evil walking
+	# bluff now backs into its gift and owns the outing (Claude-Beadle, Nov 16), and this
+	# fixture is about refusals.
+	w.evil_plan.bluffs[n.id] = "seer"
 	var target = w.living_good()[0]
 	n.home_block = "square"
 	n.history[w.time_key(1, C.NIGHT)] = "night:market"

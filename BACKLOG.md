@@ -40,11 +40,6 @@ section 6): a sighter cut from the sighter contest by the two-sighter cap; an ev
 relay about the first victim naming night 0; a case with no cards answered from an older
 compile; a Night Watch list that wrongly names the listener clearing the rest of the watch.
 
-- **An evil walker's owned lie doesn't follow its disclosure.** (54875) A good walker who
-  discloses after being caught out by a sighting now owns the earlier "home" story. An
-  evil walker bluffing a walking gift should do the same when it discloses after the same
-  kind of press. [decided]
-
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
@@ -94,6 +89,22 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   choice. Bind the choice, the execution and health to their dates, from public knowledge
   only; don't infer that both times were healthy from the earlier promise. Tests should
   isolate every explanation and avoid counting the same failure twice. [decided]
+
+  Built Nov 17 (Quill, `claude/martyr-alternatives`): the promise and the later hanging are
+  read together from public events, keeping all five explanations; the outcome reading
+  carries the check when both are held. Not built: dated health (a poisoning on a
+  particular night); the promise's failure is priced as the report's error.
+
+- **A Delusional teller's false reading is charged twice by the judge.** (Codex on #183,
+  Nov 17) In play the role check skips an evil teller's content but not the Delusional
+  holder's, so for every role-checked gift (Archivist, Clerk, Gravedigger, Executor,
+  Registrar, Monitor, Martyr, Night Watch, Warden, Veteran) a Delusional reader's wrong
+  reading takes a small extra error on top of the false-report likelihood. "They were
+  Delusional" then reads weaker than it should next to "they lied". #183 fixed it for the
+  Martyr promise only. Build after Lantern's poisoned-reading fix has merged (it waits for
+  Argon's #181): both change how the role check treats a doubtful reading. Report in game
+  terms how much more often the town accepts "they were Delusional" over "they lied".
+  Owner Quill. [decided] (Michael, Nov 17)
 
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
@@ -413,6 +424,18 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
+
+- **A defence's answer to a daytime-whereabouts case.** (26532, #171) A case resting on
+  where someone was by day gets no answer of its own; since #171 the defence frames itself
+  on the next reading or night it can answer. Michael (Nov 16): build an answer that names
+  others present, from public schedules ("I was at the mill that evening, and so were
+  Greta and Jory"); evil can use it too, honestly or with a logged lie. Herald writes the
+  wording; Michael approved Herald's drafts (Nov 16), and Herald commits the voice lines
+  with the build. Constraint (Michael, Nov
+  16): `defend_self` runs only at a nomination today, and some voice lines assume a meeting
+  (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
+  such as a private press, those lines must not appear there; use the generic fallback.
+  The PR says where it can fire. Owner Beadle. [decided]
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
