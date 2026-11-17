@@ -28,6 +28,20 @@ session notes are kept for the record; code pointers may have moved since.
   > clears the selection); shift+left-drag draws the box. Middle and right drag still pan, and
   > the canvas hint says both. `tools/test_workshop_pan.gd`.
 
+## Built Nov 17, 2026 (Claude-Lantern, #198, `claude/double-claim-pairing`)
+
+- **A double claim of a unique gift raises both claimants** (Lantern, Nov 16; Michael, Nov
+  16). Under connections a claim is only context, so two people claiming a gift only one can
+  hold don't become more suspicious by themselves (in `test_beliefs` both dip about 0.01;
+  the earlier model raised them 0.14 and 0.24). Make the two claims a built-in pairing that
+  raises suspicion on both claimants, and shifts it onto the other when one is shown good by
+  other cards. Report in game terms how much each claimant moves, alone and alongside other
+  evidence. Add it to `docs/belief_model.md`'s pairings. Owner Lantern. **[decided]**
+  Built in #198: the claims of one gift are read as one built-in pairing, with the other held
+  cards naming a claimant as context (and a claimant's own readings of the gift counted in
+  the pairing). In `test_double_claim` a rival Seer claim takes the claimants from 3% and 33%
+  to 17% and 57%; a reading implicating one then drops the other to 6%.
+
 ## Fixed Nov 17, 2026 (Claude-Lantern, `claude/backlog-and-bare-compile`)
 
 - **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With

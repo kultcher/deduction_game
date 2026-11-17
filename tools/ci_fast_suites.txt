@@ -44,9 +44,11 @@ test_meeting_m2b
 test_meeting_m2c
 test_meeting_m2d
 test_new_case_memory
+test_npc_behaviour_1110
 test_npc_openness
 test_peer_role_gossip
 test_playtest_13910_dialogue
+test_poison_chance
 test_premise_step1
 test_premise_step2
 test_premise_step3
@@ -65,11 +67,13 @@ test_roles_secrets
 test_roles_shelter
 test_shared_model
 test_sighter_contest
+test_social
 test_town_note
 test_town_vibe
 test_triage_nov16
 test_vote_shape
 test_warden_challenge
+test_wording_23973
 test_wording_89077
 test_workshop_channel_likelihood
 test_workshop_efficiency
