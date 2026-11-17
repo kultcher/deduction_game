@@ -95,7 +95,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if n.gift_broken():
 		same = not truth_same
 	elif same != truth_same:
-		mwhy = "a Marked soul read as evil"
+		mwhy = "a Marked soul reads as evil"
 	return {
 		"data": {"nominator": a.id, "nominee": b.id, "same": same},
 		"true": same == truth_same,
@@ -119,17 +119,17 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	if a_ev != b_ev:
 		# One is evil and one is good: claiming 'same' hides the split (or ties evil to a good townsperson).
 		same = true
-		why = "masks alignment split between %s and %s" % [a.id, b.id]
+		why = "hid that %s and %s were on different sides" % [a.id, b.id]
 	elif not a_ev and not b_ev and (a.id == s or b.id == s):
 		# Both good, one is the scapegoat: claiming 'different' casts one of the two as evil!
 		same = false
-		why = "claims alignment clash involving scapegoat %s (%s -> %s)" % [s, a.id, b.id]
+		why = "claimed %s and %s were on different sides, to point at %s, whom evil meant to hang" % [a.id, b.id, s]
 	elif a_ev and b_ev:
 		same = false
-		why = "distances teammates %s and %s after a bus nomination" % [a.id, b.id]
+		why = "claimed %s and %s, both evil, were on different sides after one nominated the other" % [a.id, b.id]
 	else:
 		same = w.chance(0.6)
-		why = "reports %s -> %s same=%s" % [a.id, b.id, str(same)]
+		why = "claimed %s and %s %s on the same side" % [a.id, b.id, "were" if same else "weren't"]
 	return {
 		"entry": {"data": {"nominator": a.id, "nominee": b.id, "same": same}, "text": _spoken_text(w, a.id, b.id, same)},
 		"why": why,
@@ -149,7 +149,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 	var same: bool = false if frames_sg else true
 	e["data"] = {"nominator": a_id, "nominee": b_id, "same": same}
 	e["text"] = _spoken_text(w, a_id, b_id, same)
-	return {"entry": e, "why": "the dead Magistrate %s weighed %s -> %s (same=%s)" % [dd.id, a_id, b_id, str(same)], "frames": frames_sg}
+	return {"entry": e, "why": "made up a reading from the late Magistrate %s that %s and %s %s an alignment" % [dd.id, a_id, b_id, "shared" if same else "did not share"], "frames": frames_sg}
 
 
 ## The other answer on the same nomination (FabricationCheck: a better lie; playtest 26532).

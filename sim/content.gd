@@ -51,6 +51,10 @@ static func spoken_night(nd: int, today: int) -> String:
 		return "last night"
 	return ("the %s night" % ORDINALS[nd - 1]) if nd <= ORDINALS.size() else "night %d" % nd
 
+## A day as an ordinal, for text that isn't tied to today: "the second day".
+static func spoken_day(d: int) -> String:
+	return ("the %s day" % ORDINALS[d - 1]) if d >= 1 and d <= ORDINALS.size() else "day %d" % d
+
 ## spoken_night() as an adverbial: "last night", "on the second night".
 static func spoken_when(nd: int, today: int) -> String:
 	var s: String = spoken_night(nd, today)

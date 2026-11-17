@@ -131,7 +131,7 @@ func on_chosen_executed(w, mart, executed_npc) -> void:
 			"text": "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % executed_npc.name,
 		}
 		if not executed_npc.is_evil():
-			info["why"] = "Marked reads as evil"
+			info["why"] = "a Marked soul reads as evil"
 		w._add_info(mart, info)
 
 

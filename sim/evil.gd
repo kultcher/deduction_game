@@ -247,9 +247,9 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 		if not gs.is_empty() and w.chance(0.5):
 			var g = w.pick(gs)
 			return {"item": {"type": "sighting", "who": g.id, "block": g.home_block, "night": night, "lie": true, "idle": true},
-				"why": "an empty one: the dead saw %s out on their own block (no frame)" % g.id}
+				"why": "passed on a harmless sighting from the late %s: %s out on their own street" % [dd.id, g.id]}
 		return {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
-			"why": "an empty one: the dead was home"}
+			"why": "passed on that the late %s was at home, which harmed nobody" % dd.id}
 	var frames: int = w.evil_plan.get("medium_frames", 0)
 	var frame_ok = frames == 0 or w.chance(0.5)
 	var opts: Array = []   # [weight, {item, why, frames}]
@@ -259,15 +259,15 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 			opts.append([3.0, {"item": {"type": "reading", "entry": r["entry"], "lie": true}, "why": r["why"], "frames": r["frames"]}])
 	if frame_ok and sg.home_block != dd.home_block:
 		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
-			"why": "claims the dead %s saw scapegoat %s out near their cottage on their last night" % [dd.id, s], "frames": true}])
+			"why": "claimed the late %s saw %s, whom evil meant to hang, out near their cottage on their last night" % [dd.id, s], "frames": true}])
 	if dd.info_log.any(func(e): return e.get("shared", false)):
-		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "says the dead %s had nothing new to tell" % dd.id, "frames": false}])
+		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "said the late %s had nothing new to tell" % dd.id, "frames": false}])
 	var said: String = w.stances.get(dd.id, {}).get("target", "")
 	if said != "" and w.by_id.has(said) and w.by_id[said].alive and not w.by_id[said].is_evil():
 		opts.append([0.8, {"item": {"type": "suspicion", "about": said, "lie": false},
-			"why": "repeats the dead %s's public distrust of %s" % [dd.id, said], "frames": false}])
+			"why": "repeated the late %s's open distrust of %s" % [dd.id, said], "frames": false}])
 	opts.append([0.4, {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
-		"why": "says only that the dead %s was home" % dd.id, "frames": false}])
+		"why": "said only that the late %s was at home" % dd.id, "frames": false}])
 	var total = 0.0
 	for o in opts:
 		total += o[0]
@@ -1090,7 +1090,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 		why = "Joins a likely-winning vote against a good NPC."
 	else:
 		yes = w.decision_roll(v, "vote_to_look_natural", Tuning.Evil.EVIL_VOTE_NATURAL_BASE + Tuning.Evil.EVIL_VOTE_NATURAL_CONF_SCALE * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee)
-		why = "Coin-flip vote on a good NPC to look natural."
+		why = "Voted on a good person by chance, to look natural."
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes
 
