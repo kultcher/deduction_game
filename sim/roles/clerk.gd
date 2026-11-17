@@ -71,3 +71,18 @@ func fake_medium_reading(w, n, dd, _s: String, _sg, _d, _goods: Array, other: Ca
 	e["data"] = {"pair": pair, "role": m.claimed_role}
 	e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(m.claimed_role)]
 	return {"entry": e, "why": "the dead Clerk %s 'backs' %s's claim" % [dd.id, m.id], "frames": false}
+
+
+## The same role on a pair with a bystander in one place (FabricationCheck: a better lie).
+func bluff_alternatives(w, n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var pair: Array = d.get("pair", [])
+	var out: Array = []
+	for i in range(pair.size()):
+		for b in bluff_bystanders(w, n):
+			if b in pair:
+				continue
+			var p2: Array = pair.duplicate()
+			p2[i] = b
+			out.append({"entry": {"data": {"pair": p2, "role": d.get("role", "")}, "text": "I learned that one of %s is the %s" % [w._names(p2), content().role_name(str(d.get("role", "")))]}, "why": "names %s instead" % str(p2)})
+	return cap_alternatives(w, out)
