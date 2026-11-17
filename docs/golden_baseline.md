@@ -44,7 +44,27 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, later): `baseline_a0a378d`
+### Current baseline (Nov 17, Option A): `baseline_e639966`
+
+`tools/golden/baseline_e639966/` is the capture from `claude/insight-core-bar` at
+`e639966` (on main `c676018`): Insight sets how readily an NPC links a card to its own
+knowledge (the core's joining bar runs from 0.8 for the dullest NPC to 0.1 for the
+sharpest; it was 0.4 for everyone).
+- **Divergence from `baseline_a0a378d`:** every seed, from the first
+  refresh where an NPC's core takes a card the old bar didn't (or drops one it did): 42 at
+  record 35 (Isolde, day 2), 54875 at 24 (Greta's cover, day 1), 692 at 17 (Fenwick,
+  day 1), 900 at 88 (Kiran, day 2), 98933 at 14 (Odette's cover, day 1).
+- **Outcomes:** 98933 changes. Nisha (good Martyr, Insight 0.88) nominates Odette, the
+  Demon, on day 2, and she is hanged 6 to 3: good wins on day 2. Before, Lian nominated
+  Merrin (good) on day 3 and the game was open at day 4. The other four seeds hang the
+  same people on the same days with the same result: 42 (Agnes day 3, good wins; now
+  nominated by Fenwick, not Kiran), 54875 (Dorian day 2, Constance day 3, good wins;
+  Constance now nominated by Jory, not Odette; Agnes and Jory add a yes vote), 692 (Merrin
+  day 2, Constance day 3, open at day 4; Odette adds a yes on Merrin), 900 (Constance
+  day 2, open at day 4; same votes).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, later): `baseline_a0a378d`
 
 `tools/golden/baseline_a0a378d/` is the capture from `claude/beadle-fabrication-check` at
 `a0a378d` (main `45ebd82` merged in): evil fabrications are checked against the public
