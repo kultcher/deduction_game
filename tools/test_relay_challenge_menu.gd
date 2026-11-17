@@ -73,6 +73,7 @@ func _init() -> void:
 	check(CanvasModel.new(view).restore(bad, StubSession.new()) != "", "a saved passing-on challenge of 'misled' is refused on load")
 	_shared_ledger_sides()
 	_morning_relay_night()
+	_solver_side()
 	print("Relay challenge menu: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -107,3 +108,21 @@ func _morning_relay_night() -> void:
 	var r: Dictionary = Challenges.assess(view, value, listener, [card])
 	var res: Dictionary = r.results[0] if not r.results.is_empty() else {}
 	check(int(res.get("night", -1)) == 2, "a relayed morning reading's challenge names the day it was read: %s" % [res.get("night", "none")])
+
+## Codex, #195: the solver's alignment check follows the side too. With the dead person assumed
+## good, a lie charged to the Medium is consistent; a lie charged to the dead person isn't.
+func _solver_side() -> void:
+	var Solver = preload("res://workshop/solver.gd")
+	var view: Dictionary = _view()
+	var conflict: String = "The selected reader alignment conflicts with the Lying explanation."
+	for side in ["transmission", "original"]:
+		var value = Solver.empty_case()
+		value.conclusion = {"type": "evil", "target": "b", "at": view.alignment_epoch}
+		value.cards = ["relay"]
+		value.positions = {"a": "good"}
+		value.reading_challenges = {"relay": {"mode": "lying", "supports": [], "attribution": side}}
+		var errors: Array = Solver.analyze(view, value).get("errors", [])
+		if side == "transmission":
+			check(not errors.has(conflict), "a lie charged to the Medium doesn't clash with the dead person assumed good: %s" % [errors])
+		else:
+			check(errors.has(conflict), "a lie charged to the dead person still clashes with them assumed good: %s" % [errors])
