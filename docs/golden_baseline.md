@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Delusional readings): `baseline_928cb8b`
+### Current baseline (Nov 17, lie severity): `baseline_f554c4a`
+
+`tools/golden/baseline_f554c4a/` is the capture from `claude/lie-severity` at `f554c4a`
+(main `317e040`, after #194, merged in): a good person's own "I was home" is no longer
+certain (`Tuning.Workshop.GOOD_OWN_ALIBI_OUT` = 0.2, measured: 26% of good people who were
+out told the player "home"), so being seen out after saying "home" is strong evidence, not
+proof.
+- **Divergence from `baseline_928cb8b`:** 42 (record 23), 54875 (record 1), 692 (record 2)
+  and 98933 (record 9): suspicion shifts wherever someone's own "home" meets a sighting.
+  900 is identical.
+- **Outcomes:** 42, 692, 900 and 98933 unchanged (same hangings, votes and nominators).
+  - **54875 changes:** Constance (the Demon) is hanged on day 2 (5 to 4, Jory nominates)
+    and good wins that day. Before, Dorian, a good Archivist and a Sleepwalker, was hanged
+    on day 2: Isolde (good Lamplighter) saw him out on the Docks the night Hollis died,
+    and Dorian, who honestly believed he'd been home, said so. A good person's own "home"
+    against a sighting was proof; it is now 1 chance in 5 of an honest mistake, so the town
+    doesn't hang him on it and turns to Constance a day earlier.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, Delusional readings): `baseline_928cb8b`
 
 `tools/golden/baseline_928cb8b/` is the capture from `claude/delusional-double-charge` at
 `928cb8b` (main `730897c` merged in): in play a world where a reading's teller is the
