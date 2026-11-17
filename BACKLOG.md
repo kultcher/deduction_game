@@ -798,6 +798,14 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
   on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
   far in play. **[tentative]**
+- **Persistence Confidence: a working theory that colours new evidence** (connections purge,
+  Nov 17; Michael asked for it to be kept on the backlog). An experiment for live NPCs: a
+  listener committed to a theory about someone (high Confidence) read new evidence through
+  it, so moderate contrary evidence left the theory standing while a low-Confidence listener
+  revised it. Tunnel vision of this kind fits "simulate a human mind". The connections
+  refresh never read through a theory and live play didn't use it by default, so it is
+  deleted with the purge. Revisit for the connections model. The code survives on the
+  branch `archive/legacy-belief-final`. **[tentative]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 
