@@ -40,11 +40,6 @@ section 6): a sighter cut from the sighter contest by the two-sighter cap; an ev
 relay about the first victim naming night 0; a case with no cards answered from an older
 compile; a Night Watch list that wrongly names the listener clearing the rest of the watch.
 
-- **An evil walker's owned lie doesn't follow its disclosure.** (54875) A good walker who
-  discloses after being caught out by a sighting now owns the earlier "home" story. An
-  evil walker bluffing a walking gift should do the same when it discloses after the same
-  kind of press. [decided]
-
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
@@ -263,6 +258,17 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
 
+- **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
+  said "Greta and Lian shared an alignment"; with Lian's public Archivist reading ("Greta
+  or Isolde is the Breathstealer") and Lian's death, that cleared Greta and convicted
+  Isolde. No bluff rule reads other people's public readings. Michael (Nov 16), as
+  Claude-Beadle proposed: check the fabrication against the public cards; if it would
+  noticeably raise suspicion of the liar or a teammate, a roll scaled by Insight decides
+  whether the liar notices, and a liar who notices reworks the reading or holds it back
+  that day. Low-Insight liars still slip. Report in game terms how often bluffs are
+  reworked or held, and how often self-incriminating ones still get through. Draft
+  numbers: margin 0.10, noticing 0.3 + 0.6 × Insight. Owner Beadle. [decided]
+
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
   seen out at night, and nobody has claimed Night Watch). This opens double claims (the
@@ -413,6 +419,18 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
+
+- **A defence's answer to a daytime-whereabouts case.** (26532, #171) A case resting on
+  where someone was by day gets no answer of its own; since #171 the defence frames itself
+  on the next reading or night it can answer. Michael (Nov 16): build an answer that names
+  others present, from public schedules ("I was at the mill that evening, and so were
+  Greta and Jory"); evil can use it too, honestly or with a logged lie. Herald writes the
+  wording; Michael approved Herald's drafts (Nov 16), and Herald commits the voice lines
+  with the build. Constraint (Michael, Nov
+  16): `defend_self` runs only at a nomination today, and some voice lines assume a meeting
+  (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
+  such as a private press, those lines must not appear there; use the generic fallback.
+  The PR says where it can fire. Owner Beadle. [decided]
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
@@ -582,7 +600,6 @@ Candidates for a unified retuning proposal, not approved changes.
     only 54% of the time; every miss is "walker").
   - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
     roster outgrows one script.
-  - **Remember the last script** between runs (session-only now).
 
   [decided]
 

@@ -50,6 +50,7 @@ func _reset() -> void:
 	LiveActivity.cache.clear()
 	Caches.clear_all()
 	Connections.cache_stats = {"hits": 0, "misses": 0, "wrong": 0}
+	Connections.captured = []
 
 
 ## A passive game to `days`, with the model on. Returns what a difference in any belief
@@ -103,6 +104,7 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 		if n.role == "magistrate":
 			mag_id = n.id
 			break
+	Connections.capture = true
 	var presented_days: Dictionary = {}
 	var nominated_days: Dictionary = {}
 	var guard: int = 0
@@ -113,6 +115,7 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 				g.command("accept")
 			"day":
 				if mag_id != "" and g.w.by_id[mag_id].alive and g.w.phase == 0:
+					g.w.by_id[mag_id].trust = 0.95
 					g.command("go " + mag_id)
 					if g.state == "day":
 						g.command("talk " + mag_id)
@@ -121,7 +124,9 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 				else:
 					g.command("wait")
 			"talk":
-				if g.questions_left == 3:
+				if not g.pending_request.is_empty():
+					g.command("yes")
+				elif g.questions_left == 3:
 					g.command("ask gift")
 				elif g.questions_left == 2:
 					g.command("ask night")
@@ -129,18 +134,24 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 					g.command("bye")
 			"meeting":
 				var d: int = int(g.w.day)
+				var mag_reports: Array = []
 				var reports: Array = []
 				for c in g.all_receipts():
 					if c.kind == "info" and not c.get("deleted", false):
 						var norm: Dictionary = Evidence.normalize_card(c)
-						if not norm.get("id", "").is_empty():
-							reports.append(norm.id)
-				if not presented_days.has(d) and not reports.is_empty():
+						var cid: String = str(norm.get("id", ""))
+						if not cid.is_empty():
+							if str(c.get("role", "")) == "magistrate":
+								mag_reports.append(cid)
+							else:
+								reports.append(cid)
+				var chosen_cards: Array = mag_reports + reports
+				if not presented_days.has(d) and not chosen_cards.is_empty():
 					presented_days[d] = true
 					var living: Array = g.w.living()
 					var draft: Dictionary = {
 						"conclusion": {"type": "evil", "target": living[0].id, "at": "Current alignment"},
-						"cards": reports.slice(0, mini(2, reports.size())),
+						"cards": chosen_cards.slice(0, mini(2, chosen_cards.size())),
 						"lines": [], "arguments": [], "positions": {}, "answers": {}, "reading_challenges": {}, "circumstantial": []
 					}
 					var num: int = Canvas.file(g, draft)
@@ -150,7 +161,9 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 						g.command("wait")
 				elif not nominated_days.has(d):
 					nominated_days[d] = true
-					var living: Array = g.w.living()
+					var living: Array = g.w.living().filter(func(x): return x.id != mag_id)
+					if living.is_empty():
+						living = g.w.living()
 					var subj: String = living[d % living.size()].id
 					var cases: Array = g.board.filter(func(c): return str(c.get("kind", "")) == "deduction")
 					if not cases.is_empty():
@@ -162,12 +175,55 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 			"nomination":
 				g.command("vote no")
 			"night":
-				g.command("sleep")
+				if mag_id != "" and int(g.w.day) == 1:
+					var has_elig_nom: bool = g.w.public_log.any(func(e):
+						return int(e.get("day", -1)) == 1 and str(e.get("kind", "")) == "nomination" and str(e.get("by", "")) not in ["", "player", mag_id])
+					if not has_elig_nom:
+						var nom_pool: Array = g.w.living().filter(func(x): return x.id != mag_id)
+						if nom_pool.size() >= 2:
+							g.w.public_log.append({"day": 1, "phase": 2, "kind": "nomination", "by": nom_pool[0].id, "subjects": [nom_pool[1].id]})
+				if mag_id != "" and g.w.by_id[mag_id].alive and int(g.w.tools.get("ward", 0)) > 0:
+					g.command("ward " + mag_id)
+				else:
+					g.command("sleep")
+	Connections.capture = false
+	var mag_ids: Dictionary = {}
+	for c in g.all_receipts():
+		if str(c.get("role", "")) == "magistrate":
+			var cid: String = str(Evidence.normalize_card(c).get("id", ""))
+			if cid != "":
+				mag_ids[cid] = true
+	for plan in g._workshop_plans.values():
+		if plan is Dictionary:
+			for vc in plan.get("prepared", {}).get("view", {}).get("cards", []):
+				if str(vc.get("role", "")) == "magistrate":
+					mag_ids[str(vc.get("id", ""))] = true
+	var own_mag_listeners: Dictionary = {}
+	for plan in g._workshop_plans.values():
+		if plan is Dictionary:
+			var l: Dictionary = plan.get("prepared", {}).get("listener", {})
+			var lid: String = str(l.get("id", ""))
+			for oid in l.get("knowledge", {}).get("own_reports", []):
+				if mag_ids.has(str(oid)):
+					own_mag_listeners[lid] = true
+					break
+	var mag_judged: int = 0
+	for cap in Connections.captured:
+		var kstr: String = str(cap.get("key", ""))
+		if kstr.begins_with("hex|"):
+			kstr = kstr.substr(4)
+		var hit_card: bool = false
+		for part in kstr.split(",", false):
+			if mag_ids.has(part):
+				hit_card = true
+				break
+		if hit_card or own_mag_listeners.has(str(cap.get("listener", ""))):
+			mag_judged += 1
 	var suspicion: Dictionary = {}
 	for n in g.w.npcs:
 		suspicion[n.id] = n.suspicion.duplicate()
 	var log: Array = g.w.dlog.entries.map(func(e): return [e.type, e.get("actor", ""), e.get("target", ""), e.get("reason", ""), JSON.stringify(e.get("data", {}))])
-	return {"suspicion": suspicion, "log": log, "stats": Connections.cache_stats.duplicate(), "presented": presented_days.size()}
+	return {"suspicion": suspicion, "log": log, "stats": Connections.cache_stats.duplicate(), "presented": presented_days.size(), "mag_judged": mag_judged}
 
 
 func _presentations_and_magistrate() -> void:
@@ -182,6 +238,7 @@ func _presentations_and_magistrate() -> void:
 	var kept: Dictionary = _play_magistrate_presentations(21)
 	Connections.cache_verify = false
 	check(plain.presented > 0, "magistrate presentation game files and presents cases (%d days)" % plain.presented)
+	check(plain.mag_judged > 0 and kept.mag_judged == plain.mag_judged, "magistrate presentation game judges sets holding a Magistrate card (%d judgements)" % plain.mag_judged)
 	check(kept.stats.wrong == 0 and kept.stats.hits > 0, "magistrate presentation game: kept judgements and fast keys match fresh ones (%d hits)" % kept.stats.hits)
 	check(kept.suspicion == plain.suspicion, "magistrate presentation game: suspicions match with CaseEval and Connections caches on vs off")
 	check(kept.log == plain.log, "magistrate presentation game: dev log matches with CaseEval and Connections caches on vs off (%d records)" % kept.log.size())
@@ -264,6 +321,53 @@ func _key() -> void:
 	var mag_card: Array = [magistrate.cards.filter(func(c): return c.id == reports[0].id)[0]]
 	check(CaseEval.compile(view, plain_card, bare).key == CaseEval.compile(talk, plain_card, bare).key, "CaseEval.compile reuses a non-Magistrate card across meeting talk")
 	check(CaseEval.compile(magistrate, mag_card, bare).key != CaseEval.compile(m_talk, mag_card, bare).key, "CaseEval.compile recompiles a Magistrate card when the meeting's talk changes")
+	# Sightings-only and Lamplighter + sightings role-fits & cache-on/off checks (routing cards feed Activity.routes).
+	var alive_others: Array = view.people.filter(func(p): return p.id != n.id and bool(p.get("alive", true)))
+	check(alive_others.size() >= 3, "role-fits fixture has 3 living others")
+	if alive_others.size() >= 3:
+		var p_lamp: Dictionary = alive_others[0]
+		var p_other: Dictionary = alive_others[1]
+		var p_src: Dictionary = alive_others[2]
+		var non_home: Array = ["square", "market", "docks", "hill"].filter(func(b): return b != str(p_lamp.get("home", "")))
+		var s1: Dictionary = {"id": "sight:lamp_1", "fact_id": "sight:lamp_1", "kind": "sighting", "source": p_src.id,
+			"subject": p_lamp.id, "subjects": [p_lamp.id], "block": non_home[0], "night": 1,
+			"observed_at": {"day": 1, "phase": "night"}, "text": "Saw %s on %s." % [p_lamp.id, non_home[0]]}
+		var s2: Dictionary = {"id": "sight:lamp_2", "fact_id": "sight:lamp_2", "kind": "sighting", "source": p_src.id,
+			"subject": p_lamp.id, "subjects": [p_lamp.id], "block": non_home[1], "night": 1,
+			"observed_at": {"day": 1, "phase": "night"}, "text": "Saw %s on %s." % [p_lamp.id, non_home[1]]}
+		var lamp_card: Dictionary = {"id": "rep:lamp_test", "fact_id": "rep:lamp_test", "kind": "report",
+			"role": "lamplighter", "source": p_other.id, "night": 1,
+			"observed_at": {"day": 1, "phase": "night"}, "data": {"count": 1}, "text": "1 folk out."}
+		var view_m: Dictionary = view.duplicate(true)
+		view_m.cards.append_array([s1, s2, lamp_card])
+		var test_listener: Dictionary = listener.duplicate(true)
+		if str(test_listener.get("knowledge", {}).get("own_role", "")) == "lamplighter":
+			test_listener.knowledge["own_role"] = ""
+		var cc_s: Dictionary = CaseEval.compile(view_m, [s1, s2], bare)
+		var fits_before_s: PackedFloat64Array = CaseEval._class_fits(view_m, cc_s, [], test_listener.knowledge)
+		_reset()
+		CaseEval.cache_enabled = false
+		var fits_s_off: PackedFloat64Array = CaseEval._class_fits(view_m, cc_s, [s1, s2], test_listener.knowledge)
+		var ev_s_off: Dictionary = CaseEval.evaluate(view_m, Connections.case_for(bare, [s1.id, s2.id]), test_listener)
+		_reset()
+		CaseEval.cache_enabled = true
+		var fits_s_on: PackedFloat64Array = CaseEval._class_fits(view_m, cc_s, [s1, s2], test_listener.knowledge)
+		var ev_s_on: Dictionary = CaseEval.evaluate(view_m, Connections.case_for(bare, [s1.id, s2.id]), test_listener)
+		check(fits_s_off != fits_before_s, "sightings-only set: after-fits differ from before-fits when sightings force a Lamplighter")
+		check(fits_s_on == fits_s_off and ev_s_on.people == ev_s_off.people, "sightings-only set: fits and beliefs match with CaseEval shortcut/cache on vs off")
+		var cc_ls: Dictionary = CaseEval.compile(view_m, [lamp_card, s1, s2], bare)
+		var fits_before_ls: PackedFloat64Array = CaseEval._class_fits(view_m, cc_ls, [], test_listener.knowledge)
+		var fits_lamp_only: PackedFloat64Array = CaseEval._class_fits(view_m, cc_ls, [lamp_card], test_listener.knowledge)
+		_reset()
+		CaseEval.cache_enabled = false
+		var fits_ls_off: PackedFloat64Array = CaseEval._class_fits(view_m, cc_ls, [lamp_card, s1, s2], test_listener.knowledge)
+		var ev_ls_off: Dictionary = CaseEval.evaluate(view_m, Connections.case_for(bare, [lamp_card.id, s1.id, s2.id]), test_listener)
+		_reset()
+		CaseEval.cache_enabled = true
+		var fits_ls_on: PackedFloat64Array = CaseEval._class_fits(view_m, cc_ls, [lamp_card, s1, s2], test_listener.knowledge)
+		var ev_ls_on: Dictionary = CaseEval.evaluate(view_m, Connections.case_for(bare, [lamp_card.id, s1.id, s2.id]), test_listener)
+		check(fits_ls_off != fits_before_ls and fits_ls_off != fits_lamp_only, "Lamplighter reading plus sightings: after-fits differ from before-fits and from the reading alone")
+		check(fits_ls_on == fits_ls_off and ev_ls_on.people == ev_ls_off.people, "Lamplighter reading plus sightings: fits and beliefs match with CaseEval shortcut/cache on vs off")
 	# Kept, handed back, cleared, and bypassed for a caller that wants the worlds.
 	_reset()
 	var first: Dictionary = Connections.judge(view, bare, listener, ids)

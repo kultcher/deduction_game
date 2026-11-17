@@ -209,6 +209,36 @@ static func _gift_outing(w, n, night: int) -> bool:
 	if n.info_log.any(func(e): return e.get("role", "") == n.role and e.get("day", -1) == night): return true
 	return n.secret.is_empty()
 
+## Evil's side of `_gift_outing`: out that night, with a planned walking bluff whose duty
+## story would cover the night once claimed. Pressed with the sighting, evil backs into
+## that bluff and owns the outing just as a good walker does (BACKLOG, "An evil walker's
+## owned lie doesn't follow its disclosure"), so the response isn't a tell.
+static func _bluff_outing(w, n, night: int) -> bool:
+	if not n.is_evil():
+		return false
+	var bluff: String = str(w.evil_plan.get("bluffs", {}).get(n.id, ""))
+	if bluff == "" or not C.ROLES.get(bluff, {}).get("night_walk", false):
+		return false
+	if not str(n.history.get(w.time_key(night, C.NIGHT), "home")).begins_with("night:"):
+		return false
+	return bluff_duty_covers(w, n, bluff, night)
+
+## Whether an evil member's bluffed walking gift, once named, tells a duty story for night
+## `night`. Asked as if the bluff were already claimed (the roles' duty checks read the claim).
+static func bluff_duty_covers(w, n, bluff: String, night: int) -> bool:
+	if not C.has_role_def(bluff):
+		return false
+	var was_claimed: String = n.claimed_role
+	var was_tier: int = n.max_tier
+	n.claimed_role = bluff
+	n.max_tier = maxi(n.max_tier, 3)
+	# Not just "tells a duty story" but one that puts them out: a Warden bluff has no door
+	# before its first night and says "home" (Codex P2 on #175).
+	var covers: bool = C.role_def(bluff).duty_explains_outing(w, n, night)
+	n.claimed_role = was_claimed
+	n.max_tier = was_tier
+	return covers
+
 ## "I've been known to sleepwalk." Offered under pressure (pressed with a sighting, or
 ## defending against a nomination) by the real Sleepwalker, who can't know they were out
 ## but knows they've walked before, and by an evil member whose bluffed gift doesn't
@@ -236,7 +266,7 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 		"text": "%s says they've been known to sleepwalk (at %s)." % [n.name, where]}}
 
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
-	if not n.claim_public and n.max_tier < 3 and _gift_outing(w, n, night):
+	if not n.claim_public and n.max_tier < 3 and (_gift_outing(w, n, night) or _bluff_outing(w, n, night)):
 		if night not in n.lied_nights: n.lied_nights.append(night)
 		# The existing gift answer owns the admission, claim, reading willingness,
 		# question fatigue and the "So yes: I was out..." line, exactly once.
@@ -680,11 +710,14 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 				lines.append(say_voiced(n, "private_reveal", early_fb, {"role": C.role_name(role)}))
 		else:
 			lines.append(say_voiced(n, "private_reveal", "I'll trust you with this. I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
-		if not evil and C.ROLES[role].get("night_walk", false) and not n.lied_nights.is_empty():
+		# Evil owns only the nights its bluffed duty now tells of; any other night keeps the
+		# story it told (an owned night it would then deny would be a worse slip).
+		var owning: Array = n.lied_nights.filter(func(x): return not evil or bluff_duty_covers(w, n, role, x))
+		if C.ROLES[role].get("night_walk", false) and not owning.is_empty():
 			# The nights they were out, owned now it has a reason: by what they actually said
 			# about each night (a false "home", a refusal, or nothing yet).
 			var by_account: Dictionary = {"alibi": [], "refusal": [], "none": []}
-			for x in n.lied_nights:
+			for x in owning:
 				var said: String = str(n.dialogue_memory.get("night_accounts", {}).get(str(x), {}).get("kind", ""))
 				by_account["alibi" if said == "alibi" else ("refusal" if said == "refusal" else "none")].append(x)
 			var spoken = func(nights: Array) -> String:
@@ -698,8 +731,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 			if not by_account.none.is_empty():
 				var nn: String = spoken.call(by_account.none)
 				lines.append(say_voiced(n, "own_night_out", "So yes, I was out %s. That's the gift's work." % nn, {"nights": nn}))
-			w.dlog.think(n.id, "admit", "Owns the night(s) out now the gift is out: lied %s, refused %s, unasked %s." % [str(by_account.alibi), str(by_account.refusal), str(by_account.none)])
-			n.lied_nights.clear()
+			w.dlog.think(n.id, "admit", "Owns the night(s) out now the gift is out: lied %s, refused %s, unasked %s.%s" % [str(by_account.alibi), str(by_account.refusal), str(by_account.none),
+				(" Evil: the bluffed %s's duty covers them." % C.role_name(role)) if evil else ""], {"lie": evil} if evil else {})
+			n.lied_nights = n.lied_nights.filter(func(x): return not (x in owning))
 	else:
 		lines.append(say_voiced(n, "repeat_gift_confirm", "As you know, I'm the %s." % C.role_name(role), {"role": C.role_name(role)}))
 	facts.append({"kind": "claim", "subject": [n.id], "role": role, "source": n.id, "private": not n.claim_public,
@@ -822,6 +856,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var vantage = ""
 	var refused_whereabouts = false
 	var how = "window"
+	# The gift whose night's work they just told of ("" = none): its result follows.
+	var duty_role: String = ""
 	# A claimed night-walking gift keeps its story: an evil bluff always tells the duty,
 	# a real holder tells it whenever they were actually out (Case 22485: a claimed
 	# Lamplighter must never say "home all night").
@@ -831,6 +867,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		facts.append(duty_res["fact"])
 		vantage = duty_res["vantage"]
 		how = duty_res["how"]
+		duty_role = n.claimed_role
 	elif not was_out:
 		lines.append(home_alibi(w, n, nd))
 		facts.append(_alibi_home(n, nd))
@@ -849,6 +886,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		facts.insert(0, duty_out["fact"])
 		vantage = duty_out["vantage"]
 		how = duty_out["how"]
+		duty_role = n.role
 	elif _honest_outing(w, n, nd) == "withhold" and load("res://sim/mind_podium.gd").admitted_before(n, nd):
 		# Not ready to tell why, but they already owned being out that night (at the podium,
 		# or to you before): the same plain account, not a refusal that would also overwrite
@@ -897,7 +935,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				how = "street"
 			elif bold:
 				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
-				if not n.is_evil() and not (nd in n.lied_nights):
+				if not (nd in n.lied_nights):
 					n.lied_nights.append(nd)
 				lines.append(home_alibi(w, n, nd))
 				facts.append(_alibi_home(n, nd))
@@ -912,6 +950,8 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var accounts: Dictionary = n.dialogue_memory.get("night_accounts", {})
 	accounts[str(nd)] = facts[0].duplicate(true)
 	n.dialogue_memory["night_accounts"] = accounts
+	if duty_role != "":
+		_night_gift_result(w, n, nd, duty_role, lines)
 	# Asking for whereabouts must not disclose a watch result the gift question withheld.
 	if C.has_role_def(n.claimed_role):
 		var withhold_msg: String = C.role_def(n.claimed_role).withholds_night_sightings(n, nd, _mind())
@@ -983,6 +1023,38 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		n.told_to["player|" + fact_id(r.fact)] = true
 	lines.append_array(_observation_lines(n, groups, "player", "answer", not lines.is_empty()))
 	return {"lines": lines, "facts": facts}
+
+## After telling of a night's gift work, what the gift showed that night (playtest 26532:
+## a Confessor said where they went but not what they learned, so "nothing" and "won't
+## say" sounded the same). A result the player has already heard is said again; one they
+## haven't is held back in so many words, for the gift question to give out (no new
+## disclosure here, so this never gets round the gift's own gate); a night the gift showed
+## nothing is said plainly. Words only: the card for a told reading is already on the board.
+## Gifts whose result is the night's sightings (the Night Watch) answer through those.
+static func _night_gift_result(w, n, nd: int, role: String, lines: Array) -> void:
+	if not C.has_readings(role) or not C.has_role_def(role) or C.role_def(role).night_result_in_sightings():
+		return
+	var tonight: Array = n.info_log.filter(func(e): return e.get("role", "") == role and int(e.get("day", -1)) == nd \
+		and not e.has("phase") and not e.get("disowned", false))
+	if tonight.is_empty():
+		if n.is_evil():
+			# No story made up for that night: hold it back rather than say "nothing",
+			# which a real holder of most gifts never could.
+			w.dlog.think(n.id, "stonewall", "Bluffing %s: no reading prepared for night %d; keeps it back." % [role, nd])
+			lines.append(say_voiced(n, "night_gift_result_withheld", "What my gift showed me that night, I'll keep to myself for now."))
+		else:
+			lines.append(say_voiced(n, "night_gift_result_none", "My gift showed me nothing that night."))
+		return
+	var told: Array = tonight.filter(func(e): return reading_disclosed(n, e))
+	if told.size() == tonight.size():
+		if n.is_evil():
+			w.dlog.think(n.id, "lie", "Evil: repeats the fabricated %s result for night %d." % [role, nd])
+		var reports: Array = info_lines(w, n, told, "player", true)
+		if not reports.is_empty():
+			lines.append(say(n, " ".join(PackedStringArray(reports.map(func(line): return line.text)))))
+		return
+	w.dlog.think(n.id, "withhold", "Tells of the night's %s work but keeps its result back (not yet told)." % role)
+	lines.append(say_voiced(n, "night_gift_result_withheld", "What my gift showed me that night, I'll keep to myself for now."))
 
 ## A reading the player already heard, privately or at a meeting.
 static func reading_disclosed(n, entry: Dictionary) -> bool:

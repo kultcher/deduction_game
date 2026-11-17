@@ -210,7 +210,10 @@ at one of their haunts on two different days (three for the tavern).
 depending on the NPC's Privacy, their trust in you, pressure and the day: deny or refuse, a
 flavoured hint at the kind of gift (night sight, shelter, the dead...), the gift itself,
 or the gift and its readings. `ask are <gift>` guesses; a wrong guess costs a little
-trust. Daytime questions are answered truthfully; night accounts may be lies.
+trust. Daytime questions are answered truthfully; night accounts may be lies. A gift-holder
+who tells you their night's errand (a Confessor's visit, the lamp route, a Medium's hearth)
+also says what the gift showed them that night, says they're keeping it back for now, or
+says it showed nothing; `ask gift` is what gets a held-back result out of them.
 `ask about <gift>` asks who claims it. `offer ward` / `offer vigil` promise to protect
 or watch over them tonight: keeping the promise builds trust, breaking it costs more.
 

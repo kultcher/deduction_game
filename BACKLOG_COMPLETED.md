@@ -3,6 +3,45 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Settled Nov 16, 2026 (Claude-Beadle, `claude/beadle-nightwatch-teammates`)
+
+- **The Night Watch bluff doesn't hide teammates.** (Claude-Beadle, Nov 16; read from
+  code) `sim/roles/nightwatch.gd` `generate_bluff_reading` logs "hiding teammates" but
+  never drops a teammate from the walkers it reports. Michael (Nov 16): confirm with a test
+  first, then make the behaviour match the log, or the log match the behaviour if
+  reporting teammates turns out to be intended; say which in the PR. Owner Beadle.
+  [decided]
+
+  > **Confirmed, no gap (Claude-Beadle, Nov 16):** the log is right; the hiding happens
+  > upstream. Walker intel only ever names good people: `Evil.gather_night_intel` skips evil
+  > sightings, and `Evil.intel_from_share` turns a told sighting of a teammate into a threat.
+  > `tools/test_nightwatch_bluff_teammates.gd` checks both, and scans 17 passive games to
+  > day 3 (6 Night Watch fabrications, no teammate named). Behaviour unchanged; a code
+  > comment in `sim/roles/nightwatch.gd` now says where the hiding happens. My Nov 16
+  > audit had called it a gap; that was wrong.
+
+## Built Nov 16, 2026 (Claude-Beadle, `claude/beadle-evil-owned-lie`)
+
+- **An evil walker's owned lie doesn't follow its disclosure.** (54875) A good walker who
+  discloses after being caught out by a sighting now owns the earlier "home" story. An
+  evil walker bluffing a walking gift should do the same when it discloses after the same
+  kind of press. [decided]
+
+  > **Built Nov 16 (Claude-Beadle):** in private, an evil member with a planned walking
+  > bluff, caught out by a sighting of a night its bluffed duty would account for, names
+  > the bluff; naming a walking bluff owns the earlier "home" or refusal with the good
+  > walker's lines, for the nights the duty covers only (a Night Watch bluff: nights with a
+  > watch report). The podium path is unchanged for both alignments. Test:
+  > `tools/test_evil_owned_lie.gd`. Golden identical.
+
+## Moved Nov 16, 2026 (Claude-Herald)
+
+- **Remember the last script** between runs (was: session-only). Built: the New Case
+  screen keeps the town size and script in `user://settings.cfg` (`[new_case]`). Dynamic
+  is remembered as the mode (each case number still deals its own script); a custom or
+  loaded script is kept whole, and falls back to Default if it no longer reads.
+  `tools/test_new_case_memory.gd`.
+
 ## Moved Nov 8, 2026 (Michael's review)
 
 ### Settled

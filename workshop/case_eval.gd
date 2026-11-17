@@ -441,7 +441,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 	# based readings (Seer, Archivist, Clerk...) act through the role check; applied to
 	# both sides they cancel, and the reading never moved anyone (playtest 37291).
 	var fits_before = _class_fits(view, cc, [], knowledge)
-	var fits = fits_before if (Domain.live(view) and not _has_role_card(cards)) else _class_fits(view, cc, cards, knowledge)
+	var fits = fits_before if (cache_enabled and Domain.live(view) and not _has_role_card(cards)) else _class_fits(view, cc, cards, knowledge)
 	if view.get("chronology", {}).has("curse"):
 		fits = fits.duplicate() # Never modify a cached role table.
 		var worlds: Array = Solver.universe(view)
@@ -679,7 +679,7 @@ static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known
 static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
 	var conclusion: Dictionary = case_data.conclusion
 	var timeline: Dictionary = view.get("timeline", {})
-	if timeline.has("events") and not cards.any(func(c): return str(c.get("role", "")) == "magistrate"):
+	if timeline.has("events") and not (cards + known).any(func(c): return str(c.get("role", "")) == "magistrate"):
 		timeline = timeline.duplicate(false)
 		timeline["events"] = timeline.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
 	var key_input = [view.get("trace_assessments", []), Solver._universe_key(view), timeline, view.people, conclusion, case_data.get("citations", {}), case_data.get("test_factors", []),
@@ -1161,9 +1161,15 @@ static var _bare_fits_cache: Dictionary = {}
 ## a negative value restores the old mapping (suspicion read as a probability) for comparison.
 static var prior_k: float = Tuning.Workshop.PRIOR_K
 
+const _MOVEMENT_ROLE_KINDS: Array = ["sighting", "evening", "trace", "coverage", "alibi", "dropped"]
+
 static func _is_role_card(card: Dictionary) -> bool:
 	var k: String = str(card.get("kind", ""))
-	return k in ["report", "claim", "secret_claim", "totem", "town_hall"] or (k == "event" and card.get("event") == "martyr") or card.has("relay_source") or str(card.get("role", "")) != ""
+	return k in ["report", "claim", "secret_claim", "totem", "town_hall", "sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (k == "event" and card.get("event") == "martyr") or card.has("relay_source") or str(card.get("role", "")) != ""
+
+static func _is_movement_role_card(card: Dictionary) -> bool:
+	var k: String = str(card.get("kind", ""))
+	return k in _MOVEMENT_ROLE_KINDS or card.has("relay_source") or (k in ["report", "claim"] and str(card.get("role", "")) in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])
 
 static func _has_role_card(cards: Array) -> bool:
 	for card in cards:
@@ -1230,7 +1236,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		ones.fill(1.0)
 		return ones
 	var live: bool = Domain.live(view)
-	var role_cards: Array = cards.filter(_is_role_card) if live and not cards.is_empty() else cards
+	var role_cards: Array = cards.filter(_is_role_card) if (cache_enabled and live and not cards.is_empty()) else cards
 	var personal = {"self": knowledge.get("self", ""), "own_role": knowledge.get("own_role", ""), "own_outings": knowledge.get("own_outings", {})}
 	if not knowledge.get("public_roles", {}).is_empty():
 		personal["public_roles"] = knowledge.public_roles
@@ -1242,7 +1248,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		base_fit_key = hash([u_key, view.people, route_tl, view.get("live_activity", false), live, cc.rep, "bare"])
 	else:
 		var tl: Dictionary = view.get("timeline", {})
-		if tl.has("events"):
+		if tl.has("events") and not role_cards.any(_is_movement_role_card):
 			tl = tl.duplicate(false)
 			tl["events"] = tl.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
 		base_fit_key = hash([u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards])
