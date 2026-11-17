@@ -22,6 +22,7 @@ func _init() -> void:
 	for bluff in ["warden", "lamplighter", "confessor"]:
 		_pressed_backs_into_bluff(bluff)
 	_nightwatch_owns_only_watched_nights()
+	_before_first_gift_night()
 	_non_walking_bluff_keeps_cover()
 	_good_walker_unchanged()
 	print("Evil owned lie: %d checks, %d failures" % [checks, fails])
@@ -122,3 +123,30 @@ func _good_walker_unchanged() -> void:
 	_check(not MindDialogue._bluff_outing(g.w, n, 1), "a good NPC never takes the evil path")
 	var reply = Mind.press(g.w, n, _sighting(n))
 	_check(n.claimed_role == "warden" and "whatever I told you" in _joined(reply) and n.lied_nights.is_empty(), "good walker: reveal and owned lie as before")
+
+## Night 0, before the Warden's gift works: its duty story is "home", so evil doesn't back
+## into the bluff for it, and naming the bluff later doesn't own it. A Confessor bluff's
+## duty story does put it out on night 0, so there the night is owned (consistent with
+## what it says when asked again).
+func _before_first_gift_night() -> void:
+	var g = _game()
+	var w = g.w
+	var n = _setup(g, "warden")
+	n.history[w.time_key(0, C.NIGHT)] = "night:market"
+	_check(not MindDialogue._bluff_outing(w, n, 0), "warden bluff: night 0 isn't a gift outing")
+	n.lied_nights = [0]
+	n.dialogue_memory["night_accounts"] = {"0": {"kind": "alibi", "home": true, "source": n.id}}
+	var r = MindDialogue.answer_gift(w, n, 3)
+	_check(not ("whatever I told you" in _joined(r)) and n.lied_nights == [0], "warden bluff: naming the gift doesn't own night 0 (%s)" % _joined(r))
+	var again = MindDialogue.answer_night(w, n, 0)
+	_check(again.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "warden bluff: night 0 still reads home (%s)" % _joined(again))
+	var g2 = _game()
+	var n2 = _setup(g2, "confessor")
+	n2.history[g2.w.time_key(0, C.NIGHT)] = "night:market"
+	n2.lied_nights = [0]
+	n2.dialogue_memory["night_accounts"] = {"0": {"kind": "alibi", "home": true, "source": n2.id}}
+	var r2 = MindDialogue.answer_gift(g2.w, n2, 3)
+	var again2 = MindDialogue.answer_night(g2.w, n2, 0)
+	var owned: bool = "whatever I told you" in _joined(r2)
+	var says_out: bool = not again2.facts.any(func(f): return f.kind == "alibi" and f.get("home", false))
+	_check(owned == says_out, "confessor bluff: owns night 0 exactly when it then tells it as out (owned %s, out %s)" % [owned, says_out])

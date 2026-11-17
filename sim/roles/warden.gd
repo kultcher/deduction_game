@@ -156,6 +156,14 @@ func uses_night_duty_alibi(_w, n, _nd: int, was_out: bool) -> bool:
 	return (n.claim_public or n.max_tier >= 3) and ((n.role == "warden" and was_out) or n.is_evil())
 
 
+## No door before the gift's first night (or none on record for a real Warden): the duty
+## story is "home" then, so it doesn't explain being out.
+func duty_explains_outing(w, n, nd: int) -> bool:
+	if not uses_night_duty_alibi(w, n, nd, true) or nd < min_gift_day:
+		return false
+	return n.is_evil() or n.warden_log.get(str(nd), "") != ""
+
+
 func night_duty_alibi(w, n, nd: int, was_out: bool, _block: String, mind, block_name_fn: Callable) -> Dictionary:
 	if not uses_night_duty_alibi(w, n, nd, was_out):
 		return {}

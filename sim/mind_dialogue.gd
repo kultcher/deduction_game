@@ -232,7 +232,9 @@ static func bluff_duty_covers(w, n, bluff: String, night: int) -> bool:
 	var was_tier: int = n.max_tier
 	n.claimed_role = bluff
 	n.max_tier = maxi(n.max_tier, 3)
-	var covers: bool = C.role_def(bluff).uses_night_duty_alibi(w, n, night, true)
+	# Not just "tells a duty story" but one that puts them out: a Warden bluff has no door
+	# before its first night and says "home" (Codex P2 on #175).
+	var covers: bool = C.role_def(bluff).duty_explains_outing(w, n, night)
 	n.claimed_role = was_claimed
 	n.max_tier = was_tier
 	return covers

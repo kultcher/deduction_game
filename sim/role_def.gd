@@ -426,6 +426,13 @@ func uses_night_duty_alibi(_w, _n, _nd: int, _was_out: bool) -> bool:
 	return false
 
 
+## Whether this role's duty story for night `nd` puts a claimant out of the house (a
+## claimant who was out). Default: whenever the duty alibi is used. Roles whose duty story
+## can still be "home" (the Warden before its first night) narrow it.
+func duty_explains_outing(w, n, nd: int) -> bool:
+	return uses_night_duty_alibi(w, n, nd, true)
+
+
 ## Night-whereabouts alibi for a claimant of this role on night `nd`.
 ## Returns `{"handled": true, "line": Dictionary, "fact": Dictionary, "vantage": String, "how": String}` or `{}`.
 func night_duty_alibi(_w, _n, _nd: int, _was_out: bool, _block: String, _mind, _block_name_fn: Callable) -> Dictionary:
