@@ -1,5 +1,8 @@
 # Agent handoff log
 
+> **Frozen on Nov 17, 2026.** New handoff entries go in `docs/handoff/`, one file per entry
+> (see `docs/handoff/README.md`). This file keeps everything up to that date, newest first.
+
 Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
 commit, status, next actor, and anything the next agent must know before starting. Sessions
 don't share memory: this log and the PRs are how they talk.
@@ -20,15 +23,104 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Quill: BACKLOG tags for three decisions (`claude/quill-backlog-decisions`, docs only)
+## 2026-11-17, Claude-Lantern: purge phase 6b, the connections refresh believes from every held card (`claude/purge-6b-held-signals`)
 
-- **Base:** main `98cb948`. **Status:** BACKLOG.md only. **Next actor:** Bailiff.
-- **Michael's decisions, relayed by Seneschal (Nov 17):**
-  - "Quiet-night evidence argued by the player" is [decided], paired with the Workshop gap "Protection + quiet night + sighting". Quill owns the judge side; Herald owns any UI or wording.
-  - "Medium challenge attribution and nested relays" is [decided: the choice only]. That means a two-way challenge on a relay; relays of relays and relayed opinions stay unsupported.
-  - "Believable public revisions" stays [open].
-  - "Trace weight" goes to Tally for a paired measurement; nobody changes it meanwhile.
-- **My queue:** lie severity (judge side, in progress), then the Delusional fix (after Lantern's #186), then these two.
+- **Base:** main `c676018` (#186 merged in). **Status:** PR open. Golden identical to
+  `baseline_a0a378d`, so it isn't in the golden-moving queue. **Next actor:** Bailiff merges.
+- **For Claude-Quill:** my poisoned-reading fix (#186) merged at `c676018`, so your Delusional
+  fix can start. The hook is `CaseEval._doubted_role_fits`; the doubt arrives as
+  `listener.reading_doubt`, from `SourceDoubt.derive`'s `honest` map. Delusional doubt is
+  deliberately not in that map yet (it sits on the source's general doubt).
+- **What changed and why** (Michael's go, Nov 17): on a connections refresh, four places
+  that still read only the cards a listener attends to now read every card it holds:
+  - the quiet-night protection signal;
+  - the circumstantial pattern;
+  - the floor a "lying" or "failed gift" challenge made outside any case puts under its
+    teller or the Poisoner candidates;
+  - the direct checks.
+  That is the model's own rule ("attention picks what's cited, not what's believed").
+  `workshop/jury.gd` `_consequences_eval` (`believe_held`). Attention's cards still feed
+  reasons and replies, and the earlier model keeps them.
+- **What it changes in play:** on my 16-game measurement (3,856 refreshes) none of the four
+  differed, so golden is identical. The one case bot games never make is now a suite,
+  `test_held_signals` (fast list). A low-Insight listener hears a reading it knows can't
+  be true from a teller it distrusts, and the reading drops out of its attention; then it's
+  challenged as a lie. Before this change the teller didn't move at all. Now the challenge
+  lifts them (seed 100: 0.173 → 0.190; 101: −0.503 → 0.222; 102: 0.165 → 0.179). The floor
+  is a minimum, so a teller already under suspicion moves less.
+- **Not changed:** `invalid` (graph errors and answers on the attended case) still reads
+  attention's case. A refresh's union has no answers or graph, so it's the same either way;
+  phase 3 can fold it in.
+- **Measured:** two golden captures (identical to the baseline and to each other), the CI
+  fast list (63/63), and `test_held_signals` with this change undone (the teller doesn't
+  move; it fails as it should).
+- **Order of my next work:** #186 (the poisoned-reading fix, answering Codex), then the
+  wider Option A measurement Michael asked for, then the double-claim pairing, then purge
+  phase 3.
+
+---
+
+## 2026-11-17, Claude-Lantern: a doubted reading speaks through the role check only as far as it's trusted (`claude/own-reading-doubt`)
+
+- **Base:** main `cd3aeb4` (#181 merged). **Status:** PR open. Golden identical to
+  `baseline_a0a378d` (main after #188; no doubted role-checked reading on the five seeds), so it isn't in the
+  golden-moving queue. **Next actor:** Bailiff merges.
+  **Then: Claude-Quill**, whose Delusional fix builds on this (see "Where it lives").
+- **The bug** (found unpinning `test_beliefs`, purge phase 2): a reading the listener doubts
+  honestly (its night was poisoned or misled) kept moving its people in full, under both
+  belief models. Readings that act through the role check (a Seer's Red Herring placement,
+  an Archivist's, Clerk's or Gravedigger's role reading) never saw the doubt there: the
+  doubt lowered the reading's reliability, which the role check doesn't read. The earlier
+  model only looked different because its headline reading, which the doubt did turn off,
+  added a little on top.
+- **The fix:** each doubted reading in a set is weighed as genuine with the listener's trust
+  in it and as a bare claim of the gift otherwise. This is exact for one doubted reading in
+  a set; with several, each mixes against the others read in full.
+  - **The doubt** is `listener.reading_doubt`. `SourceDoubt.derive` now also returns an
+    `honest` map, built only from honest errors: a poisoned Night Watch, a misled or
+    unreliable argument. Reading challenges are left out, since under connections a
+    challenge acts only inside its own case (`test_connections_cases` caught a failed-gift
+    challenge reaching the reading's own value). `Shared.evaluate` passes it to `_doubt_adjusted`, which sets
+    `reading_doubt` per card. Callers that don't pass it change nothing.
+  - **Caught lies, "lied" arguments and "lying" challenges stay out, by night or in
+    general.** My first version read all source doubt. A bogus Gravedigger reading (a
+    hanging that never happened) then stopped convicting its claimant: `test_shared_model`
+    caught it, and it moved golden. My second read every night-specific doubt, which Codex
+    showed still let a "lying" challenge or a night's "lied" argument soften the reading.
+  - **Trust in the teller is left out on purpose:** the role check already lets an evil
+    teller lie in the worlds where they're evil, so including it would charge it twice.
+  - **Carried through** `Jury._eval_listener`. Both connections judgement keys (`judge_key`
+    and the fast key) include the judged cards' doubts.
+- **Where it lives (for Quill):** `CaseEval._doubted_role_fits` is the one place that handles
+  a doubted reading in the role check. It's called once from `_evaluate_impl`, right after
+  `fits`. `CaseEval.doubted_role_check` switches it off for measuring. Quill's Delusional
+  item (the role check's `sourceEvil` exemption charging a Delusional teller's false reading
+  twice) is in `RoleConstraints.cs`. Delusional doubt sits on the source's general doubt, so
+  it is deliberately not in `reading_doubt` today; if Quill's fix wants a Delusional
+  teller's readings read as honest errors, this function and `reading_doubt` are where it
+  goes.
+- **What changes in play:** on `test_role_check_doubt`'s fixture (seed 5110; the
+  listener's own reading, then a misled argument doubting that night at 0.8):
+
+  | Reading | With the reading | After the doubt, before the fix | After the doubt, now |
+  |---|---|---|---|
+  | Seer "yes" on a pair | 0.10 → 0.15 | 0.15 | 0.107 |
+  | Archivist "one of these two holds the Minion's gift" | 0.10 → 0.385 | 0.385 | 0.119 |
+  | Gravedigger verdict | 0.10 → 0.00 | 0.00 | 0.093 |
+
+  An undoubted reading reads exactly as before. A Clerk reading moved no one in my fixture,
+  so it isn't tested here.
+- **Golden:** identical to `baseline_a0a378d` on all five seeds (checked again after merging #188); two captures identical.
+- **Measured:** the new suite `test_role_check_doubt` (14/14: the three readings, plus a
+  "lied" argument that must not soften the reading; added to the fast list), the CI fast
+  list on this branch, and two golden captures. Not measured: how often a doubted
+  role-checked reading occurs in bot games.
+- **Order of my next work:** phase 6b (attention-limited signals read every held card), then
+  the double-claim pairing, then Option A (Insight sets the core's joining bar; its
+  measurement goes to Michael first), then purge phase 3.
+- **Proposed for the backlog:** none.
+
+---
 
 ## 2026-11-17, Claude-Beadle: evil fabrications check what's already public (`claude/beadle-fabrication-check`; moves golden)
 
@@ -240,6 +332,31 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 - **"A whereabouts contradiction gets an irrelevant gift refusal"** (78148, Kiran) is next: it's the press-side twin of the defence fix here.
 - **"Conversation sightings should also cover location sightings"** is tagged [watch] since #152; it needs a check that duplicates still happen before anything is built.
+
+---
+
+## 2026-11-16 late, Claude-Lantern: Michael's decisions on the purge plan (`claude/purge-plan-decisions`, docs only)
+
+- **Base:** `claude/connections-purge-plan` (#169), stacked on it. Merge #169 first.
+  **Status:** PR open, docs only. **Next actor:** Bailiff merges. Then I start phases 2 and
+  4 (tests only). Phases 3, 5 and 7 wait for Argon's speed patch to merge.
+- **What changed:** `docs/connections_purge_plan.md` records Michael's answers to section 7
+  (relayed by Claude-Seneschal, Nov 16), and phases 5 and 6 follow them.
+  `BACKLOG.md` section 6 gains the spillover-damping item, which Michael asked for.
+- **Michael's decisions:**
+  1–2. Accepted: pre-#160 logs stop replaying on the earlier model, and the snapshot branch
+     `archive/legacy-belief-final` is pushed before phase 3.
+  3. Remove the headline reading everywhere (phase 6a).
+  4. Phase 6b: measure first, report to Seneschal in game terms, then pause for Michael.
+  5. Delete spillover damping, the half-weight "suspicious" hearing and the earlier Why
+     report; spillover damping goes on the backlog as [tentative].
+  6. I draft the Insight wording in phase 8; the wording is his.
+  7. I do both: phase 7 (the pre-CaseEval engine and the attention experiments), and audit
+     B's belief-related leftovers folded into phase 8 (`legacy_fallback`, `legacy_evidence`,
+     `fallback_count`, the canvas's `"mode": "legacy"`). Section 7 is fully decided.
+  - Section 8's small calls are mine.
+- **Proposed for the backlog:** none. The spillover item was accepted by Michael directly.
+- **Measured:** nothing (docs only).
 
 ---
 

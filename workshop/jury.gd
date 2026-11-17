@@ -425,7 +425,7 @@ static func _eval_listener(listener: Dictionary, own: Array, challenges: Diction
 	knowledge["own_reports"] = own
 	return {"id": listener.get("id", "listener"), "suspicion": listener.get("suspicion", {}),
 		"npc_trust": listener.get("npc_trust", {}), "knowledge": knowledge,
-		"reading_reliability": listener.get("reading_reliability", {}),
+		"reading_reliability": listener.get("reading_reliability", {}), "reading_doubt": listener.get("reading_doubt", {}),
 		"challenge_reports": challenges.get("reports", {}), "challenge_sources": challenges.get("sources", {})}
 
 ## A bounded listener who looked for no rival explanation ("provisional"), or who
@@ -928,6 +928,20 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# attends to, so re-presenting held evidence (which shifts attention) can't move them.
 	var held: Array = Solver.selected(view, value).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
+	# The connections model believes from every held card (purge phase 6b, Michael Nov 17):
+	# on its refresh, the quiet-night protection signal, the circumstantial pattern, the floor
+	# of a challenge made outside any case and the direct checks read the held cards, not just
+	# the attended ones. Attention still picks what is cited (`challenged` and `attended` stay
+	# for reasons). The earlier model keeps attention's cards.
+	var believe_held: bool = refresh and Connections.enabled
+	var belief_case: Dictionary = attention.case
+	var belief_cards: Array = attended
+	var floor_challenges: Dictionary = challenged
+	if believe_held:
+		belief_case = attention.case.duplicate(true)
+		belief_case.cards = held.map(func(c): return c.id)
+		belief_cards = held
+		floor_challenges = Support.ReadingChallenges.assess(view, belief_case, baseline, belief_cards)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	# The connections model (workshop/connections.gd): on a belief refresh every held card
 	# counts at the value it has alone, whatever attention picked, and the chances it gives
@@ -945,7 +959,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		ev = Connections.overlay({"impossible": false, "people": {}}, connections)
 	else:
 		ev = _case_eval(view, scoped, eval_listener)
-	var protection = Protection.assess(view, attended, baseline)
+	var protection = Protection.assess(view, belief_cards, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
 	# evidence says about everyone else: each person gets their own direct check.
 	var invalid: bool = not attention.case.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, attention.case).is_empty()
@@ -1015,7 +1029,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			alignment += dull * strength * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):
-			var pattern_case = attention.case.duplicate(true)
+			var pattern_case = belief_case.duplicate(true)
 			pattern_case.conclusion = {"type": "suspicious", "target": id, "at": value.conclusion.at}
 			pattern_case.cards = pattern_case.cards.filter(func(c): return c not in attention.private_checks.rejected)
 			circumstantial = 0.3 * _pattern(view, pattern_case, baseline).weight
@@ -1023,9 +1037,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		var protection_signal: float = -protection.get(id, {}).get("weight", 0.0)
 		if absf(protection_signal) > absf(net_weight):
 			net_weight = protection_signal
-		for challenge in challenged.results:
+		for challenge in floor_challenges.results:
 			# The connections model: a challenge a stored case makes acts through that case
-			# alone, below. One made outside any case (an NPC's defence) keeps today's floor.
+			# alone, below. One made outside any case (an NPC's defence) keeps its floor.
 			if not connections.is_empty() and challenge.card in connections.cases.challenged:
 				continue
 			if challenge.mode == "lying" and challenge.source == id and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
@@ -1045,7 +1059,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				var case_cands: Dictionary = challenge.get("candidates", {})
 				if challenge.mode == "impaired" and case_cands.has(id):
 					net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
-		var own_check: Dictionary = attention.case.duplicate(true)
+		var own_check: Dictionary = belief_case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"
 		if direct_fatal:

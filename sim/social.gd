@@ -379,7 +379,13 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 	if not public and item.get("relay", false):
 		item = Muddler.maybe_muddle_item(w, s, item, l.id)
 	_record_direct_statement_for_listener(w, s, l, item, original)
-	var lie: bool = item.get("lie", false)
+	# A relay carries the original teller's "lie" flag (the listener's hearsay keeps it, so
+	# the item stays what the source said). Passing it on is the relayer's lie only if they
+	# are evil and know it: a good relayer repeating Edda's fabrication isn't lying
+	# (playtest 26532: Greta was logged as lying for passing on Edda's fake Clerk reading).
+	var relayed: bool = item.get("relay", false) and str(item.get("from", s.id)) != s.id
+	var relayed_lie: bool = relayed and item.get("lie", false)
+	var lie: bool = item.get("lie", false) and (not relayed or s.is_evil())
 	if not public and not (s.is_evil() and l.is_evil()):
 		w.daily_npc_shares.append({"day": w.day, "phase": w.phase, "loc": s.loc, "speaker": s.id, "listener": l.id, "item": item.duplicate(true)})
 	var desc = _describe(w, s, item)
@@ -388,7 +394,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 	var about_self: bool = public and str(item.get("about", "")) == l.id
 	if not about_self:
 		w.dlog.add("npc_share", s.id, l.id, {"kind": item["kind"], "about": item.get("about", ""), "from": item.get("from", ""),
-			"relay": item.get("relay", false), "lie": lie}, "%s tells %s: %s%s" % [s.name, l.name, desc, "  [LIE]" if lie else ""])
+			"relay": item.get("relay", false), "lie": lie, "relayed_lie": relayed_lie}, "%s tells %s: %s%s" % [s.name, l.name, desc, "  [LIE]" if lie else ""])
 	if lie:
 		w.dlog.think(s.id, "lie", "Evil: tells %s %s." % [l.name, desc], {"lie": true})
 		if not public and s.is_evil() and not l.is_evil() and item.get("kind", "") in ["sighting", "opinion"] and s.id == str(w.evil_plan.get("daily_planter", "")):
