@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 23973 wording): `baseline_5c99636`
+### Current baseline (Nov 17, the vigil watches who leaves): `baseline_be4a31e`
+
+`tools/golden/baseline_be4a31e/` is the capture from `claude/vigil-leavers` at `be4a31e`
+(main merged in): the vigil sees residents leaving the watched block instead of walkers
+arriving (Michael, Nov 17, `docs/design/vigil.md` option A), with Herald's wording.
+- **Divergence from `baseline_5c99636`:** text only, one string on every seed: the night
+  prompt's help line, "'vigil <block>' (watch for activity arriving on a block)" is now
+  "'vigil <block>' (watch who goes out from a block at night)". All five seeds diverge at
+  the first night's prompt (42 record 6, 54875 61, 692 60, 900 23, 98933 71). With that
+  string put back, all five are identical to `baseline_5c99636` at `--tol 0`. Record counts
+  are the same.
+- **Why the rule itself doesn't move golden:** the passive golden player never keeps a
+  vigil, so no game here has a vigil to see anyone.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_5c99636`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 23973 wording): `baseline_5c99636`
 
 `tools/golden/baseline_5c99636/` is the capture from `claude/herald-23973-wording` at
 `5c99636` (main `f754421` merged in): playtest 23973's wording. Of what it changes, only
