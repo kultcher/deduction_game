@@ -362,9 +362,10 @@ static func poisoner_possible(view: Dictionary) -> bool:
 ## poison self-doubt's prior (BACKLOG "A listener's doubt that its own reading was
 ## poisoned", Michael, Nov 17). Zero when no Poisoner can be in play, or when the listener
 ## knows the Poisoner was already dead by that night (a public role, or its own Gravedigger
-## reading). Otherwise the chance a Poisoner is in play (the minion places over the script's
-## minions; certain on an unknown script) over the number it could have chosen: the good
-## people alive that night, as the listener counts them (everyone alive less the evil team).
+## reading), or the Demon is alone. Otherwise the chance a Poisoner is in play (the minion
+## places over the script's minions; certain on an unknown script) over the number it could
+## have chosen: the good people alive that night, as the listener counts them (everyone alive
+## less the evil team).
 ## No new number: the shape is the Poisoner's own rule, one good person a night.
 ## `night` is the night the gift was used, as the honest-doubt map keys it.
 static func poison_chance(view: Dictionary, listener: Dictionary, night: int) -> float:
@@ -383,9 +384,12 @@ static func poison_chance(view: Dictionary, listener: Dictionary, night: int) ->
 			return 0.0
 	var evil: int = int(view.get("evil_count", 0))
 	var minions: Array = view.get("script_minions", [])
-	var in_play: float = 1.0
-	if not minions.is_empty() and evil > 0:
-		in_play = clampf(float(evil - 1) / float(minions.size()), 0.0, 1.0)
+	# Minion places: the evil team less the Demon (unknown when the team size isn't given;
+	# then at least one). None, and no Poisoner, when the Demon is alone (Codex on #223).
+	var places: int = evil - 1 if evil > 0 else 1
+	if places <= 0:
+		return 0.0
+	var in_play: float = 1.0 if minions.is_empty() else clampf(float(places) / float(minions.size()), 0.0, 1.0)
 	var alive: int = 0
 	for p in view.get("people", []):
 		if History.alive_at_night(view, str(p.get("id", "")), night):

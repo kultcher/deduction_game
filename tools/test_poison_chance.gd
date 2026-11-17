@@ -35,6 +35,9 @@ func _init() -> void:
 	var half: float = RC.poison_chance(_view(["poisoner", "brute"], 2), _listener(), 1)
 	check(is_equal_approx(half, 0.1), "one minion place, two script minions: half as likely (%.3f)" % half)
 	check(RC.poison_chance(_view(["poisoner"], 1), _listener(), 1) == 0.0, "no minion places: none")
+	check(RC.poison_chance(_view([], 1), _listener(), 1) == 0.0, "no minion places on an unknown script: none (Codex on #223)")
+	var no_team: float = RC.poison_chance(_view(["poisoner", "brute"], 0), _listener(), 1)
+	check(is_equal_approx(no_team, 1.0 / 14.0), "a team size not given: one minion place assumed, not certainty (%.3f)" % no_team)
 	var unknown: float = RC.poison_chance(_view([], 2), _listener(), 1)
 	check(is_equal_approx(unknown, 0.2), "an unknown script allows it, as poisoner_possible does (%.3f)" % unknown)
 	# Deaths: two killed before night 3 leave three good people to choose from.
