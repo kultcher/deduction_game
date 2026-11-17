@@ -33,3 +33,11 @@
   every seed diverges where a cited reason changes (42 day 3, the rest day 2).
 - **Not here:** merging same-gift reasons into one ("my counts on three nights"; Beadle's
   routing) and the fallback wording (Herald's draft, Michael's call).
+- **Re-baselined on its turn (Nov 17, late):** main `c1e1b70` merged in, golden
+  `baseline_823d388` (two captures identical). 98933 changes outcome (good won day 3; now day
+  4 with no winner); the rest keep theirs. Fast list 84/84 after one test change, agreed with
+  Herald: `test_wording_89077`'s "a Lamplighter count turns up as a reason" check found its
+  only cases in seed 8, Merrin's three counts each credited with the whole joint value, which
+  this PR removes; in 90 seeds no count reason arises. That count is now printed, not
+  checked; the wording rule (any count reason uses the count line) is still checked. Herald
+  adds a constructed case after this merges.

@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 89077 routing): `baseline_89770fe`
+### Current baseline (Nov 17, joint reasons measured within one model): `baseline_823d388`
+
+`tools/golden/baseline_823d388/` is the capture from `claude/count-reading-reasons` (#204) at
+`823d388` (main `c1e1b70` merged in): a "taken together" reason's weight is what removing its
+card really changes, measured within the attribution's own model. Beliefs don't change; what
+NPCs cite does, and so what they do with it.
+- **Divergence from `baseline_89770fe`:** where a cited reason changes: 42 from record 77
+  (day 3), 54875 from record 87 (day 2), 692 from record 83 (day 2), 900 from record 131
+  (day 2 meeting), 98933 from record 99 (day 2).
+- **Outcomes:** 42 good day 3, 54875 good day 2, 692 and 900 reach day 4 with no winner (all
+  unchanged). **98933 changes:** good won on day 3; now play reaches day 4 with no winner.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 89077 routing): `baseline_89770fe`
 
 `tools/golden/baseline_89770fe/` is the capture from `claude/beadle-89077-routing` (#205) at
 `89770fe` (main `f408a60` merged in): which answer a nominee gives. A sighting the nominator
