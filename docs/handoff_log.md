@@ -51,8 +51,8 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   - on the 26532 shape, a sharp liar turns "Greta and Lian shared an alignment" into "did not share" 16 times in 20 (the rest it doesn't notice);
   - every role's alternatives carry matching text and never name the teller.
 
-  The fast list and the bluff-rule suites pass (69/69 before the main merge; re-run after it, see the PR).
-- **Golden:** see `docs/golden_baseline.md`.
+  The fast list and the bluff-rule suites pass: 69/69 before the main merge; `test_fabrication_check`, `test_role_check_doubt`, `test_evil_play` and `test_gravedigger_bluff` after it.
+- **Golden:** new `baseline_85e9b36`; two seeds diverge (54875: Constance tells a better Dowser count on day 3; 900: Isolde's held Gravedigger reading is re-checked and slips out on day 3); all outcomes and votes unchanged. Details in `docs/golden_baseline.md`.
 - **BACKLOG:** Michael's decisions recorded on Nov 17 (via Seneschal):
   - removing the Demon detour from inference;
   - the pressure-of-silence pitch;
