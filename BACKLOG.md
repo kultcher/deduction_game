@@ -563,8 +563,9 @@ Candidates for a unified retuning proposal, not approved changes.
   Open: who can tell the difference (street observers and vigils, not window glimpses).
   [open]
 
-- **The Breathstealer confirms the good.** It only silences the good, so a silenced
-  person is proven good. Options: (a) it may silence a suspected teammate as cover; (b)
+- **The Breathstealer overhaul** (Michael, Nov 17: needs a thorough rework before any
+  more tuning; the items below feed it). **The Breathstealer confirms the good.** It only
+  silences the good, so a silenced person is proven good. Options: (a) it may silence a suspected teammate as cover; (b)
   silence goes quiet: not announced, the victim stonewalls with a small private tell, and
   evil can feign it; (c) both. Two more routes: a good secret that inflicts the same
   silence (a vow, a sore throat), and an optional silence that may skip days. (96773,
@@ -581,6 +582,39 @@ Candidates for a unified retuning proposal, not approved changes.
   help evil. Hunch: a silenced person keeps their vote and has usually spread what they
   knew already, so taking a voice costs good little. Not run: the remote and lasting
   versions in passive cells. No decision yet.
+
+  **The judge lets a silencing victim be the Breathstealer** (Quill, Nov 17; playtest
+  26532, case #90; details in Quill's handoff entries on #173 and #177). The "who was near
+  each silencing" factor averages over a world's Minions without asking which one holds
+  the gift, so every listener kept "Greta is the Breathstealer" alive although Greta had
+  been silenced. A mock fix took the case against Isolde to 92–98% for every listener,
+  but on the earlier belief model it also raised suspicion of Isolde before any case was
+  presented (Bartholomew 12% → 43%, Fenwick 22% → 60%), so the town got there largely
+  without the player. Not measured under connections. Not built: it folds into the
+  overhaul.
+
+- **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
+  Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
+  1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
+  5. When it did, items were garbled at about the designed rate. The limit is supply: news
+  is announced at the meeting and nobody repeats what everyone heard, so NPCs hear under
+  one private reading or sighting a game. Letting everyone pass on more gave no more
+  relays (52 against 60 in 40 games) unless some news also stays private for a while.
+  Options measured or estimated: garble the Muddler's retellings at the meeting; keep
+  night sightings private for a day (Muddler in about half of games, estimated, but news
+  spreads earlier for both sides and the meeting is less of a reveal); garble day
+  sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
+  it for now; he isn't sure the Muddler can work as written without warping the game
+  around it. [open]
+
+- **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
+  [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
+  self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
+  ones the holder knows about become ordinary claims, which evil can bluff, and the player
+  can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
+  Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
+  plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
+  it frees could go to telling Minions apart. [open]
 
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
   Lovers' relationship mods, including the Lovers downside (when one dies, the other
@@ -787,6 +821,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 
