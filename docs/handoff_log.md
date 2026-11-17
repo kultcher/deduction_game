@@ -20,7 +20,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Quill: a Delusional teller's wrong reading is priced once (`claude/delusional-double-charge`; moves golden)
+## 2026-11-17, Claude-Quill: a Delusional teller's wrong reading is priced once (PR #194, `claude/delusional-double-charge`; moves golden)
 
 - **Base:** main `c676018` (#186 merged). **Status:** PR open. **Next:** Bailiff (review,
   golden-moving: merge on its own). Then I build lie severity (judge side) once Michael
