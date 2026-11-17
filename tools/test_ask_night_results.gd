@@ -1,10 +1,11 @@
 ## Playtest 26532 (Nov 16), two findings:
 ## 1. "ask night" to a night-walking gift (Confessor, Lamplighter, Medium) told where they
 ##    went but not what the gift showed, so "it showed nothing" and "I won't say" sounded
-##    the same. Now a result already told is said again; one not yet told is told if they'd
-##    tell their readings to "ask gift" today (the same gate, Michael Nov 16), else held
-##    back in so many words; a night that showed nothing is said plainly. The Night Watch
-##    tells its result through its sightings, behind the same gate.
+##    the same. Now a result already told is said again; one not yet told is told only by
+##    someone already sharing readings who'd still tell them to "ask gift" today (Michael,
+##    Nov 16 and 17: the night question never opens readings), else held back in so many
+##    words; a night that showed nothing is said plainly. The Night Watch tells its result
+##    through its sightings, behind the same rule.
 ## 2. Isolde, on a case about day-1 whereabouts, opened "Your case rests on where I was
 ##    last night". A sighting by day the case cites is not a night outing.
 extends SceneTree
@@ -100,7 +101,8 @@ func _ask_night(size: int, role: String) -> void:
 	check(WITHHELD in t, label + " an untold result is held back in words: " + t)
 	check(not r.facts.any(func(f): return f.get("kind", "") == "info"), label + " ...and not disclosed")
 	check(d.told_readings == 0, label + " ...and not marked as told")
-	# Not yet told, but they'd tell their readings today: told now, card and all.
+	# They'd tell their readings today, but haven't yet shared any (tier 3): the night
+	# question doesn't open them (Michael, Nov 17).
 	g = _game(size)
 	d = _holder(g.w, role)
 	_open(d)
@@ -108,8 +110,18 @@ func _ask_night(size: int, role: String) -> void:
 	d.info_log = [_reading(g.w, d, role)]
 	r = Mind.answer_night(g.w, d)
 	t = _text(r)
+	check(WITHHELD in t and not r.facts.any(func(f): return f.get("kind", "") == "info") and d.told_readings == 0 and d.max_tier == 3,
+		label + " not yet sharing readings: an untold result stays held back, even on an open day: " + t)
+	# Already sharing readings (tier 4) and open today: a new one is told, card and all.
+	g = _game(size)
+	d = _holder(g.w, role)
+	_open(d)
+	d.max_tier = 4
+	d.info_log = [_reading(g.w, d, role)]
+	r = Mind.answer_night(g.w, d)
+	t = _text(r)
 	var told_marker: String = g.w.living_good()[1].name if role == "confessor" else "2"
-	check(told_marker in t and not WITHHELD in t, label + " an untold result is told when the gate is open: " + t)
+	check(told_marker in t and not WITHHELD in t, label + " sharing readings and open today: an untold result is told: " + t)
 	check(r.facts.any(func(f): return f.get("kind", "") == "info" and f.get("role", "") == role), label + " ...with its card")
 	check(d.told_readings == 1, label + " ...and marked as told")
 	# Already told: said again.
@@ -140,6 +152,7 @@ func _ask_night_nightwatch(size: int) -> void:
 		var d = _holder(g.w, "nightwatch")
 		if open:
 			_open(d)
+			d.max_tier = 4
 		d.info_log = [{"role": "nightwatch", "day": 1, "data": {"block": d.home_block, "seen": []}, "true": true, "shared": false, "text": "I watched the Docks: nobody stirred"}]
 		var r: Dictionary = Mind.answer_night(g.w, d)
 		var t: String = _text(r)
