@@ -63,5 +63,6 @@ test_triage_nov16
 test_evil_owned_lie
 test_ask_night_results
 test_new_case_memory
+test_held_signals
 test_role_check_doubt
 test_fabrication_check
