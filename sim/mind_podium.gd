@@ -246,7 +246,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				"Pressed on night %d before the town: lie outright rather than refuse?" % nd)
 			if bold:
 				w.dlog.think(d.id, "lie", "Pressed at the podium: was on %s on night %d, says they were home." % [block, nd], {"lie": true})
-				if not d.is_evil() and not (nd in d.lied_nights):
+				if not (nd in d.lied_nights):
 					d.lied_nights.append(nd)
 				lines.append(_home_alibi(w, d, nd))
 				facts.append(_alibi_home(d, nd))
