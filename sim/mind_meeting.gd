@@ -1881,8 +1881,17 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					var lie_key: String = "lying:" + src_id
 					if _said_by_other(w, d, lie_key) != "":
 						lines.append(say_voiced(d, "defence_lying_echo", "%s again? Then %s is lying about me too." % [src.name, src.name], {"source": src.name}))
-					else:
+					elif not src.alive:
+						# Past tense for a source who has since died (23973: Kiran, killed the night before).
+						lines.append(say_voiced(d, "defence_lied", "%s lied, and you should ask yourselves why." % src.name, {"source": src.name}))
+					elif hinge_at >= 0:
+						# "Then" follows the hinge line's "and that reading is wrong".
 						lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
+					else:
+						# Nothing before it says the reading is wrong (the hinge was their night, or
+						# there was no case): the line stands on its own (23973: Merrin's alibi, then
+						# "Then Kiran speaks with the serpent's own tongue!").
+						lines.append(say_voiced(d, "defence_lying_alone", "%s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
 					_note_said(w, d, lie_key)
 					moves.append("lying")
 					move_strengths["lying"] = 1.0
