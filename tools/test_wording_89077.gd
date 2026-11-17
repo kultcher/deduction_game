@@ -4,7 +4,7 @@
 ## - the Registrar's reading reads after a night phrase ("The night before you arrived, my
 ##   register listed..."), with no stray capital;
 ## - pressed with a sighting, someone who never gave an account of that night doesn't say
-##   "I stand by that account";
+##   "I stand by that account": they give their own voice's alibi (Michael, Nov 17);
 ## - a Lamplighter's count names nobody, so the reason it gives isn't that it "leaves them
 ##   among the likeliest": "my count of folk abroad that night doesn't square with what
 ##   we've been told" (Michael, Nov 17);
@@ -92,8 +92,21 @@ func _pressed_first() -> void:
 	n.history[w.time_key(1, C.NIGHT)] = "home:" + n.home_block
 	n.dialogue_memory = {}
 	var first: String = _text(MindDialogue._answer_pressed_night(w, n, 1))
-	check("at home" in first and not "stand by" in first and not "unchanged" in first and not "isn't changing" in first,
+	check("home" in first.to_lower() and not "stand by" in first and not "unchanged" in first and not "isn't changing" in first,
 		"pressed for the first time, a home alibi doesn't claim an earlier account: " + first)
+	# ...and it's their own voice's alibi, as asking about the night would give it (Michael, Nov 17).
+	var g3 = _game(7350)
+	var w3 = g3.w
+	w3.day = 2
+	var k = w3.living_good()[0]
+	k.secret = {}
+	k.secret_mod = ""
+	k.claimed_role = ""
+	k.max_tier = 0
+	k.history[w3.time_key(1, C.NIGHT)] = "home:" + k.home_block
+	k.dialogue_memory = {}
+	var alibi: String = str(Mind.home_alibi(w3, k, 1).get("text", ""))
+	check(first.begins_with(alibi), "...it's their own voice's alibi line (%s)" % alibi)
 	var g2 = _game(7350)
 	var w2 = g2.w
 	w2.day = 2

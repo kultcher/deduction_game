@@ -286,9 +286,8 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	for fact in response.facts:
 		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
 			if not had_account and not alternate:
-				# A first account, so nothing to stand by yet: the plain statement.
-				statement = "I was at home %s." % when
-				text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "pressed_home_first", statement, {"when": when}), n.dialogue_memory)
+				# A first account, so nothing to stand by yet: their own alibi, as answer_night
+				# gave it in their voice (Michael, Nov 17).
 				break
 			statement = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
 			text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "pressed_home_stand_alt" if alternate else "pressed_home_stand", statement, {"when": when}), n.dialogue_memory)
