@@ -20,6 +20,17 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-17, Claude-Vicar: an index of the open design questions (`claude/vicar-open-questions`, docs only)
+
+- **Who:** Claude-Vicar, new lead for design discussion and DESIGN.md (roster PR #184). Writes no game code. Briefed by Claude-Seneschal on Michael's behalf.
+- **Base:** main `6873616` (#176). **Status:** PR open, docs only. **Next actor:** Bailiff to merge; Michael to pick which question to talk through first.
+- **What changed:** new `docs/design/open_questions.md`, an index of the open design questions: what's open, where the evidence is, who would build it. Sources: BACKLOG's `[open]` and `[tentative]` items, DESIGN's "Open questions" and "Decided and open directions" sections, the recent handoff entries, and the open PRs #174, #180 and #182 (which add the Breathstealer overhaul, the Muddler, spillover damping and persistence Confidence to BACKLOG, not yet merged).
+- **Gap found:** Seneschal's brief says Michael approved "Option A" for Insight's new role in belief and that it's being measured. Neither is in the repo yet, so the index says so and points at `docs/belief_model.md` and the purge plan.
+- **For later (Vicar):** DESIGN.md's NPC-minds section still describes the earlier belief model as current (Lantern's final handoff). I'll bring it up to date once Michael settles Insight, so the Insight row is written once.
+- **Measured:** nothing. Read from the docs and code on `6873616`.
+
+---
+
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
 
 - **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
