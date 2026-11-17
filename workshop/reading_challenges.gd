@@ -358,6 +358,41 @@ static func poisoner_possible(view: Dictionary) -> bool:
 	var roles: Array = view.get("script_minions", [])
 	return roles.is_empty() or "poisoner" in roles
 
+## The chance, as `listener` can tell it, that its own gift was poisoned on `night`: the
+## poison self-doubt's prior (BACKLOG "A listener's doubt that its own reading was
+## poisoned", Michael, Nov 17). Zero when no Poisoner can be in play, or when the listener
+## knows the Poisoner was already dead by that night (a public role, or its own Gravedigger
+## reading). Otherwise the chance a Poisoner is in play (the minion places over the script's
+## minions; certain on an unknown script) over the number it could have chosen: the good
+## people alive that night, as the listener counts them (everyone alive less the evil team).
+## No new number: the shape is the Poisoner's own rule, one good person a night.
+## `night` is the night the gift was used, as the honest-doubt map keys it.
+static func poison_chance(view: Dictionary, listener: Dictionary, night: int) -> float:
+	if night < 0 or not poisoner_possible(view):
+		return 0.0
+	var History = preload("res://workshop/live_history.gd")
+	var knowledge: Dictionary = listener.get("knowledge", {})
+	var known_roles: Dictionary = knowledge.get("public_roles", {}).duplicate()
+	for id in knowledge.get("own_reports", []):
+		var card: Dictionary = Solver.card_by_id(view, str(id))
+		if card.get("kind", "") == "report" and card.get("role", "") == "gravedigger":
+			var d: Dictionary = card.get("data", {})
+			known_roles[str(d.get("executed", ""))] = str(d.get("role", ""))
+	for pid in known_roles:
+		if str(known_roles[pid]) == "poisoner" and not History.alive_at_night(view, str(pid), night):
+			return 0.0
+	var evil: int = int(view.get("evil_count", 0))
+	var minions: Array = view.get("script_minions", [])
+	var in_play: float = 1.0
+	if not minions.is_empty() and evil > 0:
+		in_play = clampf(float(evil - 1) / float(minions.size()), 0.0, 1.0)
+	var alive: int = 0
+	for p in view.get("people", []):
+		if History.alive_at_night(view, str(p.get("id", "")), night):
+			alive += 1
+	var targets: int = maxi(1, alive - maxi(evil, 0))
+	return in_play / float(targets)
+
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
 ## the reading was taken, with no gift or private errand the case gives for it. Nobody
 ## without such a sighting is a candidate.

@@ -47,6 +47,7 @@ test_new_case_memory
 test_npc_openness
 test_peer_role_gossip
 test_playtest_13910_dialogue
+test_poison_chance
 test_premise_step1
 test_premise_step2
 test_premise_step3
