@@ -67,6 +67,51 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **A Delusional teller's false reading is charged twice by the judge.** Found from Codex's review here. The role check skips an evil teller's content in play but not the Delusional holder's, so for every role-checked gift a Delusional reader's wrong reading takes a small extra error on top of the false-report likelihood. That makes "they were Delusional" weaker than it should be next to "they lied". Fixed here for the Martyr promise only. **Michael (Nov 17): [decided], owner Quill; added to BACKLOG section 2.** Build it after Lantern's poisoned-reading fix merges (which waits for Argon's #181).
 - **For Claude-Lantern:** I'll build the Delusional item on top of your poisoned-reading fix, since both touch how the role check (`RoleConstraints.cs`, `Solver.Roles.fits_weights`) treats a doubtful reading. Please say in your entry when it has merged, and name anything in the role check I should leave alone.
 
+---
+
+## 2026-11-16 night, Argon: zero-drift connections refresh speed-up (`argon/connections-speed`)
+
+- **Base:** main `6873616` (#176, merged into `argon/connections-speed`). **Status:** PR #181 updated after Codex/Bailiff/Lantern review. **Next actor:** Lantern / Bailiff (re-review and merge once CI is green).
+- **Golden:** local Windows captures (`seed_42_7` and `seed_900_7`) are bit-for-bit identical at `--tol 0`, and the pre-fix 10-NPC Windows run matched before vs after; CI's Linux golden check at `--tol 0` against `baseline_bb6f01c` is what decides.
+
+### What changed (`workshop/jury.gd`, `workshop/connections.gd`, `workshop/case_eval.gd`, `workshop/caches.gd`, `tools/test_connections_cache.gd`, `tools/test_headline.gd`)
+
+1. **Skip dead `CaseEval` and `_headline` work on a connections refresh (`workshop/jury.gd`, Lantern's purge Phase 1):**
+   - When `refresh and Connections.enabled` is true in `Jury._consequences_eval`, skip `_case_eval(view, scoped, eval_listener)` and pass `{"impossible": false, "people": {}}` into `Connections.overlay(..., connections)` (which takes `impossible` and `people` from the connections result).
+   - Keep `attention`, `compiled`, `scoped`, `attended`, `held`, `challenged`, and `eval_listener` intact for `ReasonAttribution` and the four signals in `Jury._consequences_eval`.
+   - Skip `_headline(...)` when `not connections.is_empty()` (`dull == 0.0`). Pinned `tools/test_headline.gd` with `Connections.enabled = false` because `_consequences_eval` now skips the dead headline calculation on a connections refresh (and Lantern's purge Phase 6a removes `_headline` and `test_headline.gd`).
+2. **Precompute per-refresh `judge_key` inputs (`workshop/connections.gd`):**
+   - `Connections.begin()` precomputes `_prepare_key_ctx(view, run.bare, listener)` once per listener refresh: the `around` hashes with and without `SOFT_EVENTS`, `bare_hash`, the stripped `listener` dictionary, and each card's index, `SOFT_READERS` flag, and reliability key names (including `Solver.semantic_key`).
+   - `_judge_key_fast` sorts only the matched `ids + own` indices in `view.cards` order, producing the exact same key string as `judge_key` without rescanning all `view.cards` or rehashing `view`/`timeline` on every call. With `Connections.cache_verify = true`, `judge()` asserts `_judge_key_fast == judge_key`.
+   - `Connections.items()` memoizes `_names()` per card id across a refresh.
+3. **`CaseEval` cache keys, caps, `_team_prior`, and `_class_fits` (`workshop/case_eval.gd`, following Lantern's warnings on #169):**
+   - **Compile key (`_compile_impl`):** keeps `view.timeline`, `view.regular_haunts`, and `hearing_weight`; drops only `SOFT_EVENTS` from `timeline.events` when no card in `cards + known` is a Magistrate card (matching `Connections.judge_key`). Raised `_compiled` cap from 32 to 2,048 (`_own_cache` 64 → 1,024; `_fits_cache` 256 → 2,048).
+   - **`_team_prior` memoization (`_team_prior_cache`):** keyed on `[u_key, curr_conv, raw_susp, npc_trust, good_mask, prior_k]` (covering the universe, `suspicion`, `npc_trust`, and `knowledge.good`).
+   - **`fits_before` and role-constraint reuse (`_bare_fits_cache`, `_class_fits`):**
+     - For `bare` (`cards` holding no role/routing-constraining cards), caches the 5,040-world role-fit array per `(u_key, view.people, route_tl, live_activity, live, personal)` in `_bare_fits_cache` and slices by `cc.rep[c]` into each subset's equivalence classes, preserving the exact per-`cc` `free == fits` Sleepwalker check.
+     - In live views, only when `CaseEval.cache_enabled` is true and `cards` holds no role- or routing-constraining card (`report`, `claim`, `secret_claim`, `totem`, `town_hall`, `martyr` event, `relay_source`, non-empty `role`, or the six routing kinds `sighting`, `evening`, `trace`, `coverage`, `alibi`, `dropped` that feed `Activity.routes` / `forced_lamp`) does `fits` reuse `fits_before` or filter `role_cards` in `_class_fits`. With `CaseEval.cache_enabled = false`, `_evaluate_impl` and `_class_fits` take the full uncached path.
+     - For non-empty `role_cards`, keeps the full `view.timeline` in `_fits_cache`'s `base_fit_key` whenever `role_cards` holds any movement/routing card (`_is_movement_role_card`), dropping `SOFT_EVENTS` otherwise, and computes `bluff_weights` at most once per `(cc, role_cards)` (instead of repeating for `neutral`, `personal`, and `walked`).
+   - Added `CaseEval.cache_enabled` (default `true`) and cleared `_team_prior_cache` / `_bare_fits_cache` in `WorkshopCaches.clear_all()`.
+4. **Verification checks (`tools/test_connections_cache.gd`, 45 checks):**
+   - `_key()` checks that `CaseEval.compile` reuses a non-Magistrate card across meeting talk (`nomination`, `accusation`), recompiles a Magistrate card when meeting talk changes, and verifies before-and-after fits plus `CaseEval.cache_enabled` off vs on equality on both a sightings-only set (that forces a Lamplighter) and a Lamplighter reading plus sightings.
+   - `_games()` toggles both `Connections.cache_enabled` and `CaseEval.cache_enabled` off vs on (plus `cache_verify = true`).
+   - Added `_presentations_and_magistrate()`: ensures Day 1 has an eligible town nomination, wards the Magistrate on Night 1 and reads their gift on Day 2, presents the Magistrate card on Day 2, asserts `Connections.captured` includes judged sets holding a Magistrate card (203 judgements), and verifies identical NPC suspicions, dev logs, and 0 `cache_verify` mismatches with both caches off vs on.
+
+### Measured (initial 10-NPC timings pre-fix; post-fix suite verification below)
+
+- **Active 10-NPC game (Seed 692, Days 1–4, with Workshop case presentations and nominations each day, measured on pre-fix commit):**
+  - Beliefs and dev logs matched before vs after the patch, and with `CaseEval` + `Connections` caches on vs off (`7,121` verified cache hits, `0` mismatches).
+  - **Dawns (`sleep` into morning):** cut roughly in half—Day 2 dawn **3.7 s → 1.5 s** (−60%), Day 3 dawn **7.9 s → 3.5 s** (−56%), Day 4 dawn **9.5 s → 5.1 s** (−46%).
+  - **Nominations (`nominate <name> #<case>`):** **30–48% faster**—Day 1 **0.34 s → 0.19 s**, Day 2 **0.64 s → 0.33 s**, Day 3 **0.66 s → 0.46 s**, Day 4 **0.75 s → 0.53 s** (all well under 1 s).
+  - **Vote rounds (`vote` on NPC nominations):** **33–44% faster**—Day 2 votes **0.37–0.50 s → 0.20–0.29 s**, Day 3 votes **0.24–0.54 s → 0.15–0.31 s**, Day 4 votes **0.28–0.34 s → 0.19–0.22 s**.
+  - **Meeting presentations (`present <case>`):** **15–21% faster**—Days 1–4 **2.05–2.44 s → 1.83–1.98 s** (all under 2 s; the remaining ~1 s in `present` is `Shared.response` / `trust_reward` running the old model's `_headline` and `Support.explain`, which Lantern's Phase 6a covers).
+  - **Whole 4-day active 10-NPC run:** **61.0 s → 36.5 s** (−40%).
+- **Passive 10-NPC game (Golden seed 692, to Day 4, `SolverBackend` profiler, pre-fix commit):**
+  - Total wall time **43.1 s → 24.9 s** (−42%); belief refresh (`outer_prep` inclusive) **34.8 s → 16.5 s** (2.1× faster); `world_domain` C# calls **42,366 → 13,433** (−68%).
+- **Post-fix suites run:** `test_connections_cache` (45/45 checks), `test_connections`, `test_connections_pairings`, `test_connections_core`, `test_connections_cases`, `test_connections_why`, `test_roles_official`, `test_headline` (15/15 checks with `Connections.enabled = false`) — all pass, 0 failures.
+
+---
+
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
 
 - **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
@@ -215,6 +260,69 @@ of what the connections model replaced, the way the Nov 1–3 retirement went.
     `case_eval.gd:708`. In the cached run, compile normally. A small cap doesn't do this:
     `_compile_impl` returns a hit before it checks the size, and the cap is a fixed `> 32`
     (Codex on #169).
+
+---
+
+## 2026-11-16 late, Claude-Beadle: the Night Watch bluff does hide teammates (`claude/beadle-nightwatch-teammates`, stacked on #175)
+
+- **Base:** `claude/beadle-evil-owned-lie` (#175); merge after it. **Status:** PR open. **Next actor:** Bailiff.
+- **Result: confirmed, no gap. The log matches the behaviour; nothing changes in play.** My #175 audit said the Night Watch bluff logs "hiding teammates" but never drops one. It doesn't need to: the walkers it reports come from its intel, and walker intel only ever names good people. `Evil.gather_night_intel` skips evil sightings, and `Evil.intel_from_share` records a told sighting of a teammate as a threat on the teller instead. The audit read the role file alone and missed that.
+- **Test:** new `tools/test_nightwatch_bluff_teammates.gd`. It checks both intel paths, then the bluff with a teammate and a good walker on the watched block, then a scan of 20 passive 7-NPC games to day 3 (17 reached it; 6 Night Watch fabrications, no teammate named). Not on the fast list: the scan plays games, about 2 minutes.
+- **Code:** a comment in `sim/roles/nightwatch.gd` saying where the hiding happens. Golden: comment and test only, so it can't move.
+- **BACKLOG:** the item moves to BACKLOG_COMPLETED as settled, with this finding. Correction to my #175 entry: the "Night Watch bluff doesn't hide teammates" gap listed under part 1 isn't real.
+
+---
+
+## 2026-11-16 late, Claude-Beadle: evil fabrications vs public readings (report), and an evil walker's owned lie (`claude/beadle-evil-owned-lie`)
+
+- **Who:** Claude-Beadle, new lead for NPC behaviour (what NPCs say, do, vote and lie about; `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). The belief model stays Lantern's; dialogue wording stays Herald's.
+- **Base:** main `c8ef1e7` (#167). **Status:** PR #175 open; full suite 155/156 on the branch, the one failure (`test_conversation_gifts`) fixed and re-run green (below). **Next actor:** Bailiff to merge. Michael accepted part 1's proposal and the two other proposed items (below).
+- **Golden:** identical to `baseline_bb6f01c` at `--tol 0` on all five seeds (one capture; the golden games never press an evil walker with a sighting in private, so nothing in them reaches the change). No re-baseline.
+
+### 1. Playtest 26532: an evil fabrication implicated its own teller (report only; nothing built)
+
+- **Where evil fabricates:** `Evil._make_fake_info_for_phase` (`sim/evil.gd`), each night (day gifts by day), calls the bluffed role's `generate_bluff_reading` and stores the result in the member's `info_log` marked `fake`. It's then shared unchanged: at the meeting (`MindMeeting` share loop, `sim/mind_meeting.gd` ~645), in town chats (`sim/social.gd` ~116) and to the player.
+- **No check exists.** Nothing, at generation or at sharing, compares a fabrication with other people's public readings. Six bluff rules read something public (Magistrate the day's nominations, Dowser public heat, Gravedigger the hanging vote and claim, Registrar public claims, Medium the dead's claim and stances, Psychologist heard statements); none reads anyone else's readings, public clears or the shared judge.
+- **26532, the Magistrate rule:** Isolde's report named Greta and Lian, both good and (since the rule says "different" whenever the scapegoat is in the pair) neither the scapegoat. That falls to the rule's last branch, `same = w.chance(0.6)` (`sim/roles/magistrate.gd`), a coin with no regard to the team. "Same" happened to be true. With Lian's public Archivist reading ("Greta or Isolde is the Breathstealer") and Lian dying to the Demon, it cleared Greta and left Isolde. I don't have the 26532 log, so the branch is inferred from the reported reading, not replayed.
+- **Related gaps found in the same audit (read from code, not seen in play):**
+  - Clerk and Rumormonger bluffs vouch for "a teammate"; a lone evil member has itself as its teammate, so it names itself in its own pair.
+  - The Night Watch bluff logs "hiding teammates" but no code drops teammates from the reported walkers (`sim/roles/nightwatch.gd`). Unchecked whether `intel` ever holds a teammate walker.
+  - The Magistrate bluff says "different" when both are evil (on purpose: "distances teammates after a bus nomination"), which tells the town one of the two is evil.
+  - The Surveyor bluff says "not the same" 65% of the time even with a teammate in the scapegoat's quarter; the Monitor bluff's random role can be an evil one.
+- **Proposal (a new rule, so Michael's call):** one general check, not one per role. When an evil member is about to share a fabrication, it asks how the town would read it beside what's already public: the shared judge's neutral listener on the public cards (as the Workshop's town note does), with and without the fabrication. If it lifts the town's chance that the teller or a teammate is evil by more than a margin, the liar may notice. Noticing is a roll scaled by Insight, so a careless liar still slips and the player can still catch it (26532 was exactly such a catch). Noticed: it reworks the reading once with that person left out, or holds it that day. Every such choice is logged (`think`, topic `lie`).
+  - Draft numbers: margin 0.10; noticing 0.3 + 0.6 × Insight.
+  - Cost: one judgement per shared fabrication, about 10–25 ms at 10 NPCs (Lantern's first-time figure). It would move golden.
+  - Michael's choices: whether to have it at all (evil's blind spots are also the player's openings), the noticing rate, the margin, and rework or hold.
+  - The role-local items above (a lone Clerk naming itself; Night Watch not hiding teammates when it says it does) are separate fixes. The Night Watch one contradicts its own logged reason, so I'd treat it as a bug; the rest change evil's play, so they wait for the same call.
+
+### Review of #171's defence hinge (Herald's; asked by Seneschal)
+
+- **The skip is right; keep it.** A defence that opens "your case rests on where I was last night" has to have something to say about that item. A sighting by day has no answer in `defend_self` today, so choosing the hinge from the next cited reading or night is the honest framing. When a case cites only daytime items the hinge is empty and the defence falls back to its general reply. That's acceptable: it's a rarer case, and an unframed defence reads better than a mismatched one.
+- **Excluding day items from `out_items` is also right.** Being seen in the square at noon isn't "out at night", so it shouldn't feed the night-outing weight.
+- **Herald's open question (should a defence answer a daytime whereabouts case?): yes, but as its own item, not in #171.** The general form: "I was at the mill that evening, and so were Greta and Jory." Daytime whereabouts are mostly public by schedule, so naming who else was there is a real rebuttal (others had the same chance) and it uses no per-role logic. Evil can use the same line, truthfully or by naming people who weren't there, which would be a lie with a logged reason. It needs a new defence line (wording is Michael's, drafted by Herald), so it's proposed below rather than built; it's the daytime counterpart of BACKLOG's "Explicit night-sighting rebuttals".
+
+### Proposed for the backlog: all three accepted (Michael via Seneschal, Nov 16) as [decided], owner Beadle, now on BACKLOG.md
+
+| Title | What I saw, where | Tag | Owner |
+|---|---|---|---|
+| Evil fabrications don't check what's already public | 26532: Isolde's Magistrate bluff cleared Greta and, with Lian's public Archivist reading, convicted herself. No bluff rule reads others' public readings (part 1 above, with the proposed rule) | [open; Michael to decide] | Beadle |
+| A Night Watch bluff doesn't hide teammates | `sim/roles/nightwatch.gd` `generate_bluff_reading` logs "hiding teammates" but never drops a teammate from its reported walkers (read from code; not yet seen in play) | [open: confirm in play first] | Beadle |
+| A defence against a daytime-whereabouts case | #171 review: a case resting on where someone was by day gets no answer of its own. Proposal: "I was at the mill that evening, and so were Greta and Jory", naming others present from public schedules; evil can use it too | [open; wording Michael's] | Beadle (decision), Herald (wording) |
+
+- **For Herald (Michael, Nov 16, via Seneschal):** "ask night" to a claimed night walker should be able to include the gift's result under the usual gating (rapport, Privacy, hiding a gift), not only after "ask gift". The decision of when an NPC shares a reading is in my code: `MindDialogue.answer_gift`'s tiers and `reading_disclosed`, with `_night_gift_result` (#171) as the speaking side. Coordinate through this log. My suggestion: reuse `answer_gift`'s tier test for the reading, so the two questions can't disagree about what an NPC is willing to tell.
+
+### 2. Built: an evil walker's owned lie follows its disclosure (BACKLOG section 1, from 54875)
+
+- **Picked first because** it's the only one of the candidate items in section 1 (a quick fix), it's [decided] with nothing left open, and it's wholly in my files. The others need a call first: the evil-meeting cap and cooldown values; double-claim logic for "Evil backs into a bluff"; what trust "backing a strong case" earns.
+- **What changes in play.** Before: an evil member planning a walking bluff (Warden, Lamplighter, Confessor, Medium, Night Watch), out on its own work and caught out by a sighting in private, kept saying "home" or refused. When it did later name the bluff, the duty story it told for that night silently replaced the "home" it had said. Now, like a good walker:
+  - pressed with a sighting of a night its bluffed duty would account for, it names the bluff;
+  - on naming a walking bluff, it owns the earlier story with the same lines a good walker uses ("So yes: I was out on the first night, whatever I told you…").
+  - It owns only nights the bluff's duty covers (a Night Watch bluff only nights it made a watch report for). Other nights keep the story told. A non-walking bluff owns nothing.
+- **Why:** a caught-out reveal and the owned-lie line were only ever good behaviour, so either was a tell for good. Now both alignments do it.
+- **Not changed:** the podium (public) path. A good walker's podium reveal doesn't own earlier private lies either; evil's podium "So yes, I was out on X" would need the bluffed duty's block (a Night Watch bluff's watch block can differ from where it really was), which wants its own look.
+- **Code:** `MindDialogue._bluff_outing` and `bluff_duty_covers` (the bluffed role's own duty check, asked as if already claimed); `answer_gift`'s owned-lie block no longer excludes evil; evil now records `lied_nights` when it lies "home" (private and podium).
+- **Tests:** new `tools/test_evil_owned_lie.gd` (added to the fast list): Warden, Lamplighter and Confessor bluffs back in and own; Night Watch owns only the watched night; a Seer bluff owns nothing; the good walker is unchanged. `test_meeting_flow`'s press check expected evil walking bluffs to keep a wording-only press; it now expects the reveal for those. `test_conversation_gifts`' refusal fixture used a Minion with a Lamplighter bluff, which now backs into the bluff instead of refusing; it now pins a Seer bluff, since it tests refusals.
+- **Measured:** full suite on the branch, 155/156, then `test_conversation_gifts` fixed and passing with `test_evil_owned_lie` and `test_meeting_flow`; golden as above. No autoplay or sweep run (the bot doesn't press NPCs with sightings in private, so the change doesn't reach it).
 
 ---
 
