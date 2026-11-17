@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, bluff motives name people): `baseline_eb8e59b`
+### Current baseline (Nov 17, bluff motives in plain words): `baseline_e958cb2`
+
+`tools/golden/baseline_e958cb2/` is the capture from `claude/herald-bluff-motives` at
+`e958cb2` (on main `af82ca4`): every fabricated reading's recorded motive (`why`) now
+reads in plain words, as Michael approved (Nov 17): "whom evil meant to hang" for the
+scapegoat, "a fellow evil" for a teammate, street and role names for codes, ordinal days,
+and no numbers the player never saw.
+- **Divergence from `baseline_eb8e59b`:** text only, every seed, all in `why` fields
+  (1,021 strings). Record counts are the same.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_eb8e59b`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, bluff motives name people): `baseline_eb8e59b`
 
 `tools/golden/baseline_eb8e59b/` is the capture from `claude/beadle-motive-names` at `eb8e59b`
 (main `bf7b4f9` and #224 merged in): each fabrication's recorded motive (`why`) swaps
