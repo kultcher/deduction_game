@@ -109,7 +109,7 @@ static func _agreement(g, n):
 	if not plan.ready:
 		return null
 	var doubt_bundle: Dictionary = SourceDoubt.derive(plan, ledger)
-	var eval_res: Dictionary = Shared.evaluate(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full)
+	var eval_res: Dictionary = Shared.evaluate(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full, {}, doubt_bundle.get("honest", {}))
 	var effects: Dictionary = eval_res.get("effects", {})
 	var people: Array = effects.keys().filter(func(id): return id != n.id)
 	if people.is_empty():
@@ -157,7 +157,7 @@ static func _agreement(g, n):
 		# The same attended, doubt-adjusted evidence as the alignment check above (Codex
 		# review of PR #93), not the raw prepared plan.
 		var ev: Dictionary = Shared.evaluate_question(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full,
-			{"type": "secret_mod", "target": str(claim.target), "mod": str(claim.mod), "at": plan.prepared.case.conclusion.get("at", "")})
+			{"type": "secret_mod", "target": str(claim.target), "mod": str(claim.mod), "at": plan.prepared.case.conclusion.get("at", "")}, doubt_bundle.get("honest", {}))
 		if ev.is_empty() or ev.get("impossible", false) or absf(float(ev.posterior) - float(ev.prior)) < Tuning.Trust.CRED_CORROBORATION_MIN:
 			continue
 		var w_s: float = clampf(float(claim.get("weight", Tuning.Trust.CRED_WEIGHT_FORMAL)), 0.05, 1.0)
