@@ -106,7 +106,9 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
 - **Tests:** a suite that needs a particular deal finds a seed with `tools/fixture_seeds.gd`
   rather than hard-coding one. A suite that checks the earlier belief model's mechanics
   pins it (`Connections.enabled = false`). New suites are `tools/test_*.gd`; add quick ones
-  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`.
+  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`, at their
+  alphabetical place (the list is kept sorted so that PRs don't all conflict on its last
+  line).
 - **Two failed attempts at the same problem:** stop and tell Michael, with the exact error.
 
 ## What you may decide, and what waits for Michael
