@@ -125,6 +125,15 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		out[i] = float(results[masks[i]])
 	return out
 
+## The Martyr's own outcome reading ("they must have been evil") about `target` from
+## `source`, among `cards`.
+static func _has_martyr_outcome(cards: Array, source: String, target: String) -> bool:
+	# Only a direct outcome reading: the kernel skips a relayed one in worlds where the
+	# relaying Medium is evil, so it can't stand in for the promise there (Codex, #183).
+	return cards.any(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "martyr" and str(c.get("source", "")) == source \
+		and not c.has("relay_source") and not bool(c.get("quoted", false)) and c.get("data") is Dictionary and bool(c.data.get("evil", false)) and str(c.data.get("target", "")) == target)
+
+
 static func _intern_role(role_map: Dictionary, role: String) -> int:
 	if role_map.has(role):
 		return int(role_map[role])
@@ -301,6 +310,18 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 					flags |= (1 << 4)
 					if History.executed(view, str(data.get("target", "")), int(card.get("observed_at", {}).get("day", -1))):
 						flags |= (1 << 5)
+				elif bool(data.get("chosen", false)) and History.hanged_while_alive(view, str(data.get("target", "")), str(card.get("source", ""))) \
+						and not _has_martyr_outcome(live_cards, str(card.get("source", "")), str(data.get("target", ""))):
+					# The chosen was hanged and the Martyr still stood: a true, healthy choice
+					# means the chosen registered evil (evil or Marked), the same check as the
+					# Martyr's own outcome reading. Otherwise the promise is what failed: an evil
+					# bluff, or a poisoned or Delusional Martyr (the report's false-teller worlds).
+					# Only public events: the hanging and the Martyr's survival of it. Bit 17
+					# marks it a promise: in play a world where the Martyr is the Delusional
+					# holder skips the check (the false-report likelihood prices it; Codex, #183).
+					# With the same Martyr's outcome reading about the same person in the set,
+					# that reading carries the check, so one failure isn't counted twice.
+					flags |= (1 << 4) | (1 << 5) | (1 << 17)
 			elif role_str == "sexton":
 				var sx_night: int = int(data.get("night", -1))
 				if sx_night >= 1:
@@ -424,6 +445,9 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 				var m_tgt: String = str(data.get("target", ""))
 				card_ints[off + 16] = ids.find(m_tgt)
 				card_ints[off + 17] = _intern_token(martyr_tokens, m_tgt) if m_tgt != "" else 0
+				# A promise's hanging time: a chosen the Revenant turned evil registers evil
+				# at a hanging inside the curse (Codex, #183). Slots 20-22 are the Registrar's.
+				card_ints[off + 20] = History.hanged_while_alive_tick(view, m_tgt, str(card.get("source", ""))) if (flags & (1 << 17)) != 0 else -1
 			elif role_str == "seer":
 				if bool(data.get("yes", false)):
 					flags |= (1 << 10)
@@ -488,13 +512,23 @@ static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
 				bits |= 1 << i
 	return bits
 
+## The people whose being the Delusional holder changes the role check, so the coarse
+## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of a
+## Martyr promise (a Delusional Martyr's promise is excused in play; Codex, #183).
 static func relay_mediums(ids: Array, cards: Array) -> int:
 	var bits: int = 0
 	for card in cards:
-		if card.has("relay_source") and not card.get("quoted", false):
+		if card.get("quoted", false):
+			continue
+		if card.has("relay_source"):
 			var medium: int = ids.find(card.relay_source)
 			if medium >= 0:
 				bits |= 1 << medium
+		# Independent of the relay: a relayed promise needs its Martyr in the key too.
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "martyr" and card.get("data") is Dictionary and bool(card.data.get("chosen", false)):
+			var martyr: int = ids.find(str(card.get("source", "")))
+			if martyr >= 0:
+				bits |= 1 << martyr
 	return bits
 
 static func _live_cards(cards: Array) -> Array:
