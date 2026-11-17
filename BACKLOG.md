@@ -229,6 +229,15 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
 ### NPC behaviour
 
+- **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
+  The "it's the other one" defence (`pair_other`, `sim/mind_meeting.gd`) answers only
+  readings that name a two-person pair. Against a reading over a group (a Surveyor's
+  block, a Dowser's count), the nominee falls through to "my gift was turned" or
+  "misled". In 89077, Chapel Hill held only Hollis and Dorian, so Hollis's Surveyor case
+  was really a pair. The fix is a general defence for any group reading: "it's one of
+  the others in it", naming them where the group is small. Michael (Nov 17): approved.
+  Owner Beadle; Herald for the lines. [decided]
+
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
   (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
   It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the

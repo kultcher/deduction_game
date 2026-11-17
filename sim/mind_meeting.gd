@@ -1487,7 +1487,7 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	return items.slice(0, limit)
 
 ## Several of the nominator's own readings from one gift, recapped as one reason ("what my
-## gift showed me on the first, second and third nights points at them") rather than one
+## gift showed me over several nights points at them") rather than one
 ## sentence each (89077 finding 3: Constance's three Lamplighter counts against Kiran).
 ## Each merged item keeps the sentences it stands for in "whys", so the cards behind
 ## them are still the ones recalled.
@@ -1520,23 +1520,12 @@ static func _merge_gift_reasons(w, n, items: Array) -> Array:
 				out.append(g)
 			continue
 		var m: Dictionary = x.duplicate()
-		m["why"] = "what my gift showed me %s points at them" % _spoken_nights(nights, int(w.day))
+		# The nights are on the player's board already (each merged reading was told to the
+		# town), so the line doesn't list them (Herald, by Michael's test, Nov 17).
+		m["why"] = "what my gift showed me %s points at them" % ("on two nights" if nights.size() == 2 else "over several nights")
 		m["whys"] = group.map(func(g): return str(g.get("why", "")))
 		out.append(m)
 	return out
-
-## "on the first, second and third nights"; "on the first night and last night".
-static func _spoken_nights(nights: Array, today: int) -> String:
-	var said: Array = nights.map(func(nd): return C.spoken_night(int(nd), today))
-	if said.all(func(s): return str(s).begins_with("the ") and str(s).ends_with(" night") and not str(s).begins_with("the night before")):
-		var ords: Array = said.map(func(s): return str(s).trim_prefix("the ").trim_suffix(" night"))
-		return "on the %s nights" % _and_list(ords)
-	return _and_list(nights.map(func(nd): return C.spoken_when(int(nd), today)))
-
-static func _and_list(parts: Array) -> String:
-	if parts.size() == 1:
-		return str(parts[0])
-	return ", ".join(PackedStringArray(parts.slice(0, parts.size() - 1).map(func(p): return str(p)))) + " and " + str(parts[-1])
 
 ## The nominator lays out their case: public reasons recapped (cosmetic: hearing them again
 ## changes nothing), and their strongest private one hinted at or brought out (claim and
