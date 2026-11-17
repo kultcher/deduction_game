@@ -896,9 +896,12 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   Michael, Nov 17). With the Delusional secret on the script, an NPC allows that its own gift
   might be the Delusional one, at about the rate of the Sleepwalker's self-doubt
   (`SLEEPWALK_SELF_DOUBT`, 10%): one new constant. Today a listener never doubts its own
-  reading that way (#194 left own readings out of the Delusional skip). Build after #194.
-  Owner Lantern (the belief model, the constant, docs and a suite); Quill does the
-  role-check side. **[decided]**
+  reading that way (#194 left own readings out of the Delusional skip). Design agreed with
+  Quill: the role fits mix as for the Sleepwalker, 0.9 with the listener's own readings
+  healthy and 0.1 with them skipped in worlds where the listener is the Delusional holder
+  (the world prior gives how likely that is). Quill builds the role check's "self" mode
+  first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
+  that PR moves golden. **[decided]**
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
