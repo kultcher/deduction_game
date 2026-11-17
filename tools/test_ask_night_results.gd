@@ -140,12 +140,16 @@ func _ask_night_nightwatch(size: int) -> void:
 		var d = _holder(g.w, "nightwatch")
 		if open:
 			_open(d)
-		d.info_log = [{"role": "nightwatch", "day": 1, "data": {"block": d.home_block, "seen": []}, "true": true, "shared": false, "text": "I watched"}]
+		d.info_log = [{"role": "nightwatch", "day": 1, "data": {"block": d.home_block, "seen": []}, "true": true, "shared": false, "text": "I watched the Docks: nobody stirred"}]
 		var r: Dictionary = Mind.answer_night(g.w, d)
 		var t: String = _text(r)
 		var label: String = "%d NPCs, Night Watch, gate %s:" % [size, "open" if open else "closed"]
 		check(not WITHHELD in t and not NOTHING in t, label + " answers through its sightings, not the reading lines: " + t)
 		check(r.facts.any(func(f): return f.get("kind", "") == "info") == open and d.told_readings == (1 if open else 0), label + " its reading is told only when the gate is open")
+		if open:
+			# Codex, #178: a quiet watch (nobody seen) must still say its result in words.
+			check(r.lines.size() >= 2, label + " the watch result is spoken, not only carded: " + t)
+			check(not "not ready" in t and not "in reserve" in t, label + " ...and not then refused: " + t)
 
 func _ask_night_evil(size: int) -> void:
 	var g = _game(size)

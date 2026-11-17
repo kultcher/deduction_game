@@ -70,7 +70,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **When it opens:** every reading they haven't told comes with it, card and all, as "ask gift" would give them. The night asked about is spoken; earlier untold ones are spoken too.
 - **When it's shut:** "What my gift showed me that night, I'll keep to myself for now."
 - **Unchanged from #171:** a result already told is said again; a night that showed nothing is said plainly; an evil bluffer with no story ready holds it back.
-- **The Night Watch:** its result is the night's sightings. When the gate opens, its reading is told (the card) and the sightings follow; when shut, it keeps its own "who I saw, I'm not ready to share" line.
+- **The Night Watch:** its result is the night's sightings. When the gate opens, its reading is told in words ("I watched the Docks: nobody stirred") and on the board, and the sightings aren't then rolled for or told again (Codex's #178 finding: left to the sightings path, a quiet watch said nothing and a refusal roll could withhold a result already carded). When shut, it keeps its own "who I saw, I'm not ready to share" line.
 - **Fear:** "ask gift"'s fear and protection-request lines are not used by "ask night". Like "ask gift" at the top tier, fear doesn't stop readings being told; it only changes how a refusal is worded.
 
 ### For Beadle (disclosure is your code)
@@ -79,7 +79,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ### Measured
 
-- `tools/test_ask_night_results.gd` now has 56 checks (shut gate, open gate, the Night Watch both ways).
+- `tools/test_ask_night_results.gd` now has 60 checks (shut gate, open gate, the Night Watch both ways, a quiet watch spoken).
 - Golden identical to `baseline_bb6f01c` at `--tol 0` (passive player: it never asks).
 - 72/72 suites passed locally: the CI fast list plus the conversation, dialogue, role, meeting and evil-play suites.
 - Paired bot games, main against this branch (`autoplay --seed 1 --games 6 --npcs 10`): every sweep-record field is the same in all 6. The new path never fired: no reading was told through "ask night" and no result was held back. So this shows nothing else moved, not how often the new path fires. Unmeasured: how often players will get a result from "ask night" rather than "ask gift".
