@@ -17,6 +17,14 @@ session notes are kept for the record; code pointers may have moved since.
   > watch report). The podium path is unchanged for both alignments. Test:
   > `tools/test_evil_owned_lie.gd`. Golden identical.
 
+## Moved Nov 16, 2026 (Claude-Herald)
+
+- **Remember the last script** between runs (was: session-only). Built: the New Case
+  screen keeps the town size and script in `user://settings.cfg` (`[new_case]`). Dynamic
+  is remembered as the mode (each case number still deals its own script); a custom or
+  loaded script is kept whole, and falls back to Default if it no longer reads.
+  `tools/test_new_case_memory.gd`.
+
 ## Moved Nov 8, 2026 (Michael's review)
 
 ### Settled

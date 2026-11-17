@@ -1627,9 +1627,20 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
 			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
 			case_eids[s_eid] = true
+			# A sighting by day (where they were in the morning, afternoon or evening) is
+			# not a night outing: the defence mustn't answer it as "where I was last night"
+			# (playtest 26532: Isolde, on a case about day-1 whereabouts). It keeps its own
+			# id, so it can't stand for the night of the same number either.
+			var by_day: bool = int(f.get("phase", C.NIGHT)) != C.NIGHT
+			if by_day:
+				s_eid = "sighting_day:%s:%s:%d:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), int(f.get("phase", -1)), str(f.get("block", ""))]
+				case_eids[s_eid] = true
 			if not seen_eids.has(s_eid):
 				var s_score: Dictionary = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
-				out.append({"eid": s_eid, "why": "seen out at night", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "movement_out"})
+				if by_day:
+					out.append({"eid": s_eid, "why": "where I was by day", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "whereabouts_day"})
+				else:
+					out.append({"eid": s_eid, "why": "seen out at night", "contrib": float(s_score["contrib"]), "kind": "public", "strength": float(s_score["strength"]), "entry": {}, "channel": "movement_out"})
 				seen_eids[s_eid] = true
 	# Mark what the player's case actually cites, so the defence's "your case rests on"
 	# names one of those, not the heaviest thing anyone holds against them (97626).
@@ -1658,11 +1669,13 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var hinge: Dictionary = {}
 	if case_backed and not items.is_empty():
 		items.sort_custom(func(a, b): return float(a.get("contrib", 0.0)) > float(b.get("contrib", 0.0)))
-		var cited: Array = items.filter(func(x): return x.get("in_case", false))
+		# Only what a defence can answer: a reading or a night. Where they were by day has
+		# no answer of its own here, so the hinge is the next thing the case cites.
+		var cited: Array = items.filter(func(x): return x.get("in_case", false) and x.get("channel", "") != "whereabouts_day")
 		if not cited.is_empty():
 			hinge = cited[0]
 	var role: String = w.evil_plan["bluffs"].get(d.id, "") if d.is_evil() else d.role
-	var out_items: Array = items.filter(func(x): return x.get("channel", "") in ["movement_out", "alibi_contradiction"] or "out" in x["why"] or "night" in x["why"])
+	var out_items: Array = items.filter(func(x): return x.get("channel", "") != "whereabouts_day" and (x.get("channel", "") in ["movement_out", "alibi_contradiction"] or "out" in x["why"] or "night" in x["why"]))
 	var out_weight = 0.0
 	for x in out_items:
 		out_weight += x["contrib"]
