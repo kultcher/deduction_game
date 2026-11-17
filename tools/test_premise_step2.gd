@@ -1,6 +1,6 @@
 ## Premises pass step 2 (docs/premises_plan.md): a presented secret premise is the player's
 ## word (a card told by the player, weighted by credibility, checked at dawn); "suspicious"
-## is heard at half weight and pushes its target once; contradictions keep both cards; and
+## halves only what a case's cards add together, and pushes its target once; contradictions keep both cards; and
 ## a public role claim joins a case that cites it automatically.
 extends SceneTree
 
@@ -18,7 +18,6 @@ var fails = 0
 
 func _init() -> void:
 	# Premises pass step 2: the earlier model's half-weight suspicious premise and held-back press.
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_secret_word()
 	_secret_record()
 	_suspicious()
@@ -124,10 +123,15 @@ func _suspicious() -> void:
 	var evil: Dictionary = _dowser_case("evil")
 	var hedged: Dictionary = _dowser_case("suspicious")
 	print("suspicious: evil target %+.4f other %+.4f; suspicious target %+.4f other %+.4f, pressure %+.4f" % [evil.t, evil.o, hedged.t, hedged.o, hedged.pressure])
-	check(evil.t > 0.0 and absf(hedged.t - 0.5 * evil.t) < 0.005, "a suspicious premise moves its target half as far as the same case argued as evil")
-	check(absf(hedged.o - 0.5 * evil.o) < 0.005, "and everyone else half as far too")
-	var expected: float = float(Tuning.Workshop.SUSPICIOUS_PRESSURE_PER_RISE.private) * evil.t
-	check(hedged.pressure > 0.0 and absf(hedged.pressure - expected) < 0.01, "the other half presses the target (%.4f, expected about %.4f)" % [hedged.pressure, expected])
+	# The connections model (purge phase 2): a card counts in full whatever the premise, and
+	# "suspicious" halves only what a case's cards add together, so a one-card suspicious
+	# case moves beliefs as far as the same card argued as evil. (The earlier model heard
+	# its cards at half weight.) Pressure is #155's: the cards' lift on the subject, scaled
+	# and capped, half in private; test_connections_cases checks the arithmetic.
+	check(evil.t > 0.0 and absf(hedged.t - evil.t) < 0.005, "a one-card suspicious case moves its target as far as the same card argued as evil")
+	check(absf(hedged.o - evil.o) < 0.005, "and everyone else as far too")
+	var cap: float = float(Tuning.Workshop.SUSPICIOUS_PRESSURE_PER_RISE.private) * Tuning.Workshop.SUSPICIOUS_PRESSURE_CONNECTIONS_CAP
+	check(hedged.pressure > 0.0 and hedged.pressure <= cap + 0.000001, "it presses the target, at most the private cap (%.4f, cap %.4f)" % [hedged.pressure, cap])
 	check(evil.pressure == 0.0, "an evil premise adds no such pressure")
 	# Refile the same card as evil: the hedge is withdrawn and the full effect lands once.
 	var g = hedged.g
@@ -150,11 +154,15 @@ func _suspicious() -> void:
 	var n2 = g2.w.npcs[0]
 	var q: Array = g2.w.npcs
 	var before2: float = q[3].pressure
-	var unrelated = _read(g2, q[6], "dowser", 1, {"group": [q[4].id, q[5].id], "count": 0})
+	var unrelated = _read(g2, q[6], "dowser", 1, {"group": [q[5].id], "count": 0})
 	var second = g2.file_deduction({"type": "suspicious", "a": q[3].id}, [unrelated])
 	g2._evaluate_deduction(n2, g2.board[second - 1], 1.0, false)
-	check(first.pressure > 0.0 and q[3].pressure - before2 <= 0.25 * first.pressure,
-		"a second suspicious filing whose cards don't raise the target adds no fresh pressure (%+.4f vs the first's %+.4f)" % [q[3].pressure - before2, first.pressure])
+	# Under connections a reading that clears someone else still lifts the target a little
+	# (the evil count has fewer places to go), so the second filing presses. It presses for
+	# its own cards, read from its own stored case, not for the first filing's rise: a
+	# weaker card presses less (purge phase 2).
+	check(first.pressure > 0.0 and q[3].pressure - before2 < first.pressure - 0.05,
+		"a second suspicious filing with a weaker card presses less than the first (%+.4f vs the first's %+.4f)" % [q[3].pressure - before2, first.pressure])
 
 func _node(model, view, pick: Callable) -> String:
 	for id in model.nodes:

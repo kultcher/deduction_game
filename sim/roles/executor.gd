@@ -243,3 +243,14 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 	e["data"] = {"target": pick_t.id, "assigned": true}
 	e["text"] = _assigned_text(pick_t.name)
 	return {"entry": e, "why": "the dead Executor %s had %s as their charge" % [dd.id, pick_t.id], "frames": false}
+
+
+## Named Executor for a bystander instead (FabricationCheck: a better lie).
+func bluff_alternatives(w, n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var cur: String = str(entry.get("data", {}).get("target", ""))
+	var out: Array = []
+	for b in bluff_bystanders(w, n):
+		if b == cur:
+			continue
+		out.append({"entry": {"data": {"target": b, "assigned": true}, "text": _assigned_text(w.by_id[b].name)}, "why": "says it was named Executor for %s instead" % b})
+	return cap_alternatives(w, out)

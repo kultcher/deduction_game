@@ -16,7 +16,6 @@ var fails = 0
 
 func _init() -> void:
 	# Recency and bounded attention as the earlier model reads them (drift, re-presenting).
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_fade()
 	_topic()
 	_ranking()
@@ -119,8 +118,12 @@ func _recall() -> void:
 	var b: Dictionary = results.bounded
 	var f: Dictionary = results.full
 	print("recall: bounded drifted %.4f -> recalled %.4f -> repeated %.4f; full attention %.4f -> %.4f" % [b.drifted, b.recalled, b.repeated, f.drifted, f.recalled])
-	check(absf(b.drifted - f.drifted) > 0.005, "by day 5 the bounded listener has drifted from their full-attention belief")
-	check(absf(b.recalled - f.recalled) < absf(b.drifted - f.drifted), "re-presenting moves a bounded listener back toward their full-attention belief")
+	# The connections model (purge phase 2): attention picks what is cited, not what is
+	# believed, so a card fading from a bounded mind's attention leaves its belief where a
+	# full-attention listener's is. (The earlier model drifted here, and re-presenting
+	# brought it back.) The card is still brought back to mind (the last check).
+	check(absf(b.drifted - f.drifted) < 0.005, "by day 5 a bounded listener still believes what a full-attention one does (%.4f vs %.4f)" % [b.drifted, f.drifted])
+	check(absf(b.recalled - f.recalled) < 0.005, "and re-presenting keeps them together")
 	check(absf(b.recalled - b.drifted) <= absf(f.recalled - b.drifted) + 0.02, "and not past it")
 	check(absf(b.repeated - b.recalled) < 0.005, "repeating it at once changes nothing more")
 	check(not b.refresh.is_empty(), "the presentation recorded the card as brought back to mind")

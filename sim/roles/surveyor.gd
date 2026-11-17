@@ -114,3 +114,11 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, _goods: Array, _other: Cal
 	e["data"] = {"block": blk, "same": same}
 	e["text"] = _spoken_text(blk, same)
 	return {"entry": e, "why": "the dead Surveyor %s reported %s same=%s" % [dd.id, blk, str(same)], "frames": frames_sg}
+
+
+## The other answer on the same quarter (FabricationCheck: a better lie).
+func bluff_alternatives(_w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var blk: String = str(d.get("block", ""))
+	var same: bool = not bool(d.get("same", false))
+	return [{"entry": {"data": {"block": blk, "same": same}, "text": _spoken_text(blk, same)}, "why": "gives the other answer on %s" % blk}]

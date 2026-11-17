@@ -111,3 +111,27 @@ func fake_medium_reading(w, _n, dd, _s: String, _sg, _d, _goods: Array, _other: 
 	e["data"] = {"executed": ex.id, "role": rl}
 	e["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(rl)]
 	return {"entry": e, "why": "the dead Gravedigger %s 'learned' %s was the %s" % [dd.id, ex.id, rl], "frames": not ex.is_evil()}
+
+
+## Another role for the hanged: their own claim, or a good role on the script
+## (FabricationCheck: a better lie).
+func bluff_alternatives(w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var ex_id: String = str(d.get("executed", ""))
+	if not w.by_id.has(ex_id):
+		return []
+	var ex = w.by_id[ex_id]
+	var cur: String = str(d.get("role", ""))
+	var roles: Array = []
+	if ex.claimed_role != "" and ex.claimed_role != "none" and ex.claimed_role != cur:
+		roles.append(ex.claimed_role)
+	for r in w.case_script.town:
+		if r != cur and not (r in roles):
+			roles.append(r)
+	var out: Array = []
+	for r in roles:
+		out.append({"entry": {"data": {"executed": ex_id, "role": r}, "text": "I learned that %s, whom we hanged, was the %s" % [ex.name, content().role_name(r)]},
+			"why": ("confirms %s's own claim, %s" if r == ex.claimed_role else "names %s the %s") % [ex_id, r]})
+	# Their own claim first, if they made one; then a few good roles.
+	var claim: Array = out.slice(0, 1) if (ex.claimed_role != "" and ex.claimed_role != "none" and ex.claimed_role != cur) else []
+	return claim + cap_alternatives(w, out.slice(claim.size()), 6 - claim.size())

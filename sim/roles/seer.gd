@@ -235,3 +235,26 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, other: Cal
 	e["data"] = {"pair": [a, o2.id], "yes": true}
 	e["text"] = "I looked at %s: one of them reads as the demon" % w._names([a, o2.id])
 	return {"entry": e, "why": "the dead Seer %s 'pinged' %s again" % [dd.id, a], "frames": true}
+
+
+## The other answer on the same pair, or the same answer on a pair with a bystander in
+## place of a teammate (FabricationCheck: a better lie). Never the bluffer's own pair.
+func bluff_alternatives(w, n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var pair: Array = d.get("pair", [])
+	var yes: bool = bool(d.get("yes", false))
+	var out: Array = []
+	var make = func(p: Array, y: bool, why: String) -> Dictionary:
+		return {"entry": {"data": {"pair": p, "yes": y}, "text": "I looked at %s: %s" % [w._names(p), "one of them reads as the demon" if y else "neither is the demon"]}, "why": why}
+	out.append(make.call(pair.duplicate(), not yes, "gives the other answer on %s" % str(pair)))
+	var free: Array = bluff_bystanders(w, n)
+	for i in range(pair.size()):
+		if not w.by_id.has(pair[i]) or not w.by_id[pair[i]].is_evil():
+			continue
+		for b in free:
+			if b in pair:
+				continue
+			var p2: Array = pair.duplicate()
+			p2[i] = b
+			out.append(make.call(p2, yes, "looks at %s instead" % str(p2)))
+	return [out[0]] + cap_alternatives(w, out.slice(1), 5)
