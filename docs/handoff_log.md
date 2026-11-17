@@ -79,6 +79,90 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   the double-claim pairing, then Option A (Insight sets the core's joining bar; its
   measurement goes to Michael first), then purge phase 3.
 - **Proposed for the backlog:** none.
+## 2026-11-17, Claude-Beadle: evil fabrications check what's already public (`claude/beadle-fabrication-check`; moves golden)
+
+- **Base:** main `45ebd82` (#183) merged in at `a0a378d`. **Status:** PR open. **Next actor:** Bailiff (golden-moving: merge on its own, re-baseline included). Michael for the one open question below.
+- **BACKLOG item:** "Evil fabrications check what's already public" ([decided], playtest 26532), built as proposed and moved to BACKLOG_COMPLETED.
+- **What changes in play.** Before an evil member's made-up reading joins what it can tell, it's judged beside every reading already shared, by a listener who knows only the public record.
+  - If it would lift the town's chance that the liar or a living teammate is evil by more than 0.10, the liar may notice. The chance is 0.3 + 0.6 × Insight: about 1 in 3 for the least insightful, 9 in 10 for the sharpest.
+  - Noticed, it asks its bluff rule once more and keeps a safe answer; failing that it holds the reading back a day, then tells it unchanged.
+  - Unnoticed, it goes out as before, so careless liars still give themselves away and the player can catch them.
+  - Every outcome is logged (`think`, topic `lie`) and kept on the reading (`vet`).
+  - Not checked: Night Watch and Medium fabrications, which the judge reads as sightings.
+- **26532's shape** (rebuilt in `tools/test_fabrication_check.gd`): with Lian's public "Greta or the liar is the <role>" and Lian dead to the Demon, the liar's "Greta and Lian shared an alignment" lifts the town's view of the liar from 0.58 to 0.91. Two unrelated good people "shared an alignment" lifts it by 0.03 and passes. Over 40 tries, the least insightful liar let it slip 33 times and the sharpest 5 times.
+- **Measured** with a scratch probe (not committed): 20 passive ten-NPC games, seeds 1000–1019, check on, then the same seeds with it off.
+
+  | | Check on | Check off |
+  |---|---|---|
+  | Fabrications | 139 | 131 |
+  | Self-incriminating: held back a day | 12 (4 in 5) | n/a |
+  | Self-incriminating: slipped through | 3 (1 in 5) | n/a |
+  | Reworked | 0 | n/a |
+  | Good wins | 11 | 12 |
+  | Time for the 20 games | 34.2 min | 35.3 min |
+
+  - In game terms: about 1 made-up reading in 9 would have pointed the town at the liar or a teammate. The liar catches 4 in 5 of those and keeps them back a day; 1 in 5 still gets out.
+  - The flags were Dowser counts with a teammate inside the counted group (10), Gravedigger bluffs calling a hanged good person a Minion (4) and a Martyr bluff (1). In 7 of the 15 the person exposed was a teammate, not the teller. No Magistrate bluff came up in these games, so the 26532 case rests on the suite.
+  - No measurable cost: the timing difference is within noise, with another job sharing the machine. The win counts are too few games to read anything into.
+- **Rework never happened.** Most bluff rules give the same reading when asked again, so a liar who notices ends up holding back. That's how the rule is built, not a bug, but it means "rework" adds little today.
+- **For Michael (one question):** a held reading is told unchanged the next day, as specified. In practice the hold delays a self-incriminating reading rather than stopping it. Options: keep it; re-check it on the day it would be released and hold again; or drop it after one hold. I'd re-check, since it's the same rule applied when the reading would actually be told. Not built; it waits for his call.
+- **Small calls made on Michael's behalf:**
+  - The margin and noticing figures are his draft numbers: `FABRICATION_CHECK_MARGIN` 0.10, `FABRICATION_NOTICE_BASE` 0.3, `FABRICATION_NOTICE_INSIGHT` 0.6, new in `Tuning.Evil`.
+  - "Hold back a day" means kept off the table through the next day's meeting for a night reading, or through the rest of the day for a day reading.
+  - The team checked is the teller plus its living teammates.
+  - A fabrication that can't stand beside the public record at all counts as the largest lift on the teller.
+- **Code:** new `sim/fabrication_check.gd` (`assess`, `vet`). `Evil._make_fake_info_for_phase` stamps a fabrication with its gift and night before checking it (my first measurement judged it unstamped and wrongly flagged a third), keeps held readings in the new `NPC.held_fakes`, and lets them go a day later.
+- **Tests:** new `tools/test_fabrication_check.gd` (on the fast list, about 35 s). Passing: it, `test_evil_owned_lie`, `test_nightwatch_bluff_teammates`, `test_meeting_flow`, `test_conversation_gifts`.
+- **Golden:** new `baseline_a0a378d`, two identical captures. It diverges from `baseline_1c9ac48` on every seed from record 1, as fabrications now carry their check. Only one is self-incriminating (seed 900: Isolde's Gravedigger bluff calling Constance the Scion, held back a day). All five outcomes and every hanging's votes are unchanged. `docs/golden_baseline.md` has the details.
+
+---
+
+## 2026-11-17, Claude-Quill: Martyr promise then hanging keeps every explanation (PR #183, `claude/martyr-alternatives`)
+
+- **Base:** main `97f51a1`, main `cd3aeb4` merged in (after #181). **Status:** PR open. Moves golden: re-baselined to `baseline_1c9ac48` in this PR, re-checked identical on `cd3aeb4` (golden-moving PRs merge one at a time). **Next actor:** Bailiff.
+- **Item:** BACKLOG section 2, "Martyr non-substitution must keep its alternative explanations; Martyr promise versus later hanging" [decided].
+
+### What was wrong
+
+- The Martyr's own outcome reading ("they were hanged and I still stand: they must have been evil") already kept its explanations. The chosen was evil or Marked, or the teller lied. A poisoned or Delusional Martyr can't produce that reading at all: a broken gift says nothing.
+- **The gap was the pair: a public promise ("I have given my life over for X"), then X hanged while the Martyr still stood.** The judge inferred nothing from it, and the Workshop refused any case holding both ("needs a dated outcome/health adapter").
+
+### What changed
+
+- **The promise now carries the same check as the outcome reading** when the chosen was hanged while the Martyr was alive (`workshop/role_constraints.gd`, `LiveHistory.hanged_while_alive`). In each world, either the chosen registered evil (evil or Marked), or the promise is false. A false promise means an evil Martyr's bluff, or a poisoned or Delusional Martyr: the report's ordinary false-teller worlds. It uses public events only: the hanging and the Martyr being alive at it. A Martyr dead before the hanging proves nothing by "surviving" it.
+- **No double count:** if the same Martyr's outcome reading about the same person is in the set, that reading carries the check alone. The promise beside it then holds whatever the chosen was.
+- **The content-only mask** (graded challenges) doesn't count a Marked chosen as evil, as with the other Marked exceptions.
+- **A Delusional Martyr isn't charged twice** (Codex's review). In play the role check skips an evil teller's content but not the Delusional holder's, so a Delusional Martyr's promise took a small-error penalty on top of the false-report likelihood. The promise now has its own flag (`FlagMartyrPromise`), and a world where the Martyr is the Delusional holder skips the check in play. The check's cache key now tells that teller's Delusional status apart, as it already did for Medium relayers. Before, worlds differing only in who was Delusional shared one cached answer.
+- The Workshop no longer refuses a case with a promise and the chosen's later hanging.
+- **Later Codex rounds:** a Medium's relay of the outcome reading no longer stands in for the promise (the kernel ignores it where the Medium is evil); a relayed promise keys the check's cache on both the Medium and the Martyr; and a chosen the Revenant turned evil counts as registering evil at a hanging inside the curse (the promise carries its hanging's time). None of these moved golden.
+
+### What it changes in play
+
+- **Mostly it exposes evil Martyr bluffs.** Evil's Martyr bluff vouches for a teammate (`generate_bluff_reading` picks the mate), so when that teammate hangs, the bluffer stands exposed beside them. A real Martyr's chosen can only hang while the Martyr stands if the chosen was evil, or the Martyr's gift failed.
+- **Golden seed 692:** Hollis (evil, bluffing the Martyr) promised his teammate Constance, and Constance was hanged on day 3. Bart, who had heard the promise, now suspects Hollis noticeably more (0.46 → 0.57 by day 4). Minds that never heard the promise don't move. Outcomes are unchanged: Merrin and Constance are hanged and play reaches day 4. 42, 54875, 900 and 98933 are identical.
+- **How often** (60 passive games, seeds 1–60, 10 NPCs, earlier belief model, played to the end; probe not committed): the pair happened in 5 games, about 1 in 12. All 5 were evil Martyr bluffs vouching for a teammate who was later hanged. A real Martyr's chosen was never hanged with the Martyr standing (17 real choices made); the sim saves a good chosen unless the gift is broken. There were 11 bluffed promises in all, and 26 promises (real or bluffed) were told to someone.
+
+### Tests
+
+- `tools/test_roles_dead.gd` (`_promise_then_hanging`), one check per explanation:
+  - an ordinary good chosen hanged fails a true promise;
+  - an evil chosen fits;
+  - a Marked chosen fits, except under the content-only mask;
+  - a Martyr dead before the hanging fits;
+  - an evil Martyr's bluffed promise fits;
+  - both cards fail once, and the promise defers to the outcome reading.
+  The earlier check that the case is refused now checks that it's accepted. 4 of the new checks fail on main.
+- Also ran `test_case_eval`, `test_workshop_reading_challenges`, `test_premise_step1`–`3`, `test_workshop_vote_and_alibi`, `test_roles_registry`: all pass. Golden captured twice, identical. Codex's fix changed 692 again at the same point (baseline renamed `1c9ac48`); the numbers above are from it.
+
+### Not built
+
+- **Dated health.** The judge has no model of a poisoning on a particular night. A Martyr healthy at the choice but poisoned at the hanging is priced as the promise's error, as any poisoned reading is. The item asks not to assume both times were healthy, and this doesn't: it just doesn't date the failure. Logged under the catalog's A21 gaps.
+- **"Evil Martyr bluff can frame a good scapegoat"** (the next item) is an evil-strategy change, so Beadle's. This change makes the current bluff costlier for evil: a promise for a teammate who hangs now points at the bluffer.
+
+### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
+
+- **A Delusional teller's false reading is charged twice by the judge.** Found from Codex's review here. The role check skips an evil teller's content in play but not the Delusional holder's, so for every role-checked gift a Delusional reader's wrong reading takes a small extra error on top of the false-report likelihood. That makes "they were Delusional" weaker than it should be next to "they lied". Fixed here for the Martyr promise only. **Michael (Nov 17): [decided], owner Quill; added to BACKLOG section 2.** Build it after Lantern's poisoned-reading fix merges (which waits for Argon's #181).
+- **For Claude-Lantern:** I'll build the Delusional item on top of your poisoned-reading fix, since both touch how the role check (`RoleConstraints.cs`, `Solver.Roles.fits_weights`) treats a doubtful reading. Please say in your entry when it has merged, and name anything in the role check I should leave alone.
 
 ---
 

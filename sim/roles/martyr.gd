@@ -135,6 +135,10 @@ func on_chosen_executed(w, mart, executed_npc) -> void:
 		w._add_info(mart, info)
 
 
+func release_bluff_use(_w, n, plan: Dictionary) -> void:
+	plan.erase("martyr_bluff_" + n.id)
+
+
 func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Array) -> Dictionary:
 	if w.day == 0 or plan.has("martyr_bluff_" + n.id):
 		return {}

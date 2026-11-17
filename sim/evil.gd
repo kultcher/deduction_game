@@ -6,6 +6,7 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Gifts = preload("res://sim/gifts.gd")
+const FabricationCheck = preload("res://sim/fabrication_check.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 
@@ -744,6 +745,18 @@ static func make_day_fake_info(w) -> void:
 
 static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 	ensure_scapegoat(w)
+	# Fabrications held back a day join what they can tell once that day has passed.
+	for m in w.evil_team():
+		var keep: Array = []
+		for h in m.held_fakes:
+			# Kept off the table through day `until`: a night pass from that night on, or a
+			# day pass on a later day, lets it go.
+			if int(h["until"]) < w.day or (not day_only and int(h["until"]) <= w.day):
+				m.info_log.append(h["entry"])
+				w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading." % h["entry"].get("role", "?"), {"lie": true})
+			else:
+				keep.append(h)
+		m.held_fakes = keep
 	var plan: Dictionary = w.evil_plan
 	var s: String = plan["scapegoat"]
 	for n in w.evil_team():
@@ -768,18 +781,41 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		var gen: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
 		if gen.is_empty():
 			continue
-		entry = gen["entry"]
+		entry = _stamp_fake(w, gen["entry"], bluff, day_only)
 		why = gen["why"]
-		entry["day"] = w.day
-		if day_only and w.phase != C.NIGHT:
-			entry["phase"] = w.phase
-		entry["role"] = bluff
+		# Checked against what's already public: a self-incriminating one may be noticed,
+		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
+		# told: stamped with its gift and night first.
+		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, func():
+			bdef.release_bluff_use(w, n, plan)
+			var again: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
+			if again.is_empty():
+				return {}
+			var e2: Dictionary = _stamp_fake(w, again["entry"], bluff, day_only)
+			e2["_regen_why"] = again["why"]  # lambdas capture by value: carry the reason back
+			return e2)
+		entry = vetted["entry"]
+		if entry.has("_regen_why"):
+			why = str(entry["_regen_why"])
+		entry.erase("_regen_why")
 		entry["shared"] = false
 		entry["true"] = false
 		entry["fake"] = true
 		entry["why"] = "evil fabrication: " + why
+		if vetted["outcome"] == "held":
+			n.held_fakes.append({"entry": entry, "until": w.day + (0 if day_only else 1)})
+			w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
+			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## A fabricated reading as it will be told: its gift, its night (or day phase).
+static func _stamp_fake(w, entry: Dictionary, bluff: String, day_only: bool) -> Dictionary:
+	entry["day"] = w.day
+	if day_only and w.phase != C.NIGHT:
+		entry["phase"] = w.phase
+	entry["role"] = bluff
+	return entry
 
 ## A made-up sighting of the scapegoat on night nd, told from where this evil member says
 ## they were (vantage): from their own window at home, or while out on a night-active bluff
