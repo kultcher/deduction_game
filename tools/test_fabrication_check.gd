@@ -23,6 +23,7 @@ func _init() -> void:
 	_harmless_fabrication_passes()
 	_notice_follows_insight()
 	_switch_off()
+	_rework_can_ask_again()
 	print("Fabrication check: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -103,3 +104,27 @@ func _switch_off() -> void:
 	var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(s.greta.id, s.lian.id, true), func(): return {})
 	FabricationCheck.enabled = true
 	_check(r.outcome == "ok", "with the check off, everything is told as is")
+
+## A rework asks the bluff rule again on the same night: a rule that marks its one use (the
+## Dowser's day) must let go of the mark first, or a noticed Dowser could only ever hold
+## (Codex P2 on #188).
+func _rework_can_ask_again() -> void:
+	var s: Dictionary = _setup()
+	var w = s.w
+	var n = s.liar
+	var crowd: Array = w.living().filter(func(m): return m != n).slice(0, 4)
+	n.loc = "night:market"
+	for m in crowd:
+		m.loc = n.loc
+	if w.loc_block(n.loc) == "":
+		_check(true, "skipped: no block for the probe location")
+		return
+	var dowser = C.role_def("dowser")
+	var first: Dictionary = dowser.generate_bluff_reading(w, n, w.evil_plan, w.evil_plan["scapegoat"], null, [])
+	if first.is_empty():
+		print("  dowser probe: no first reading (location), skipped")
+		return
+	_check(dowser.generate_bluff_reading(w, n, w.evil_plan, w.evil_plan["scapegoat"], null, []).is_empty(), "without the release, a second Dowser reading the same day is refused")
+	dowser.release_bluff_use(w, n, w.evil_plan)
+	_check(not dowser.generate_bluff_reading(w, n, w.evil_plan, w.evil_plan["scapegoat"], null, []).is_empty(), "after the release, the rework gets a reading")
+	_check(n.dowsed_day == w.day, "the gift is still marked used for the day afterwards")

@@ -787,6 +787,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
 		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, func():
+			bdef.release_bluff_use(w, n, plan)
 			var again: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
 			if again.is_empty():
 				return {}

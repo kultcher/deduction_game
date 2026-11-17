@@ -342,6 +342,13 @@ func fake_medium_reading(_w, _n, _dd, _s: String, _sg, _d, _goods: Array, _other
 	return {}
 
 
+## Before a fabrication check asks this bluff rule again (FabricationCheck rework): the
+## retry is the same night's single use of the gift, so a rule that marks the use (the
+## Dowser's `dowsed_day`, the Martyr's one choice) lets go of the mark here (Codex P2, #188).
+func release_bluff_use(_w, _n, _plan: Dictionary) -> void:
+	pass
+
+
 ## Hook called in `Evil.make_fake_info` when an evil bluffer has agreed to a player gift request.
 func on_evil_agreed_request(_w, _n, _asked: Array) -> void:
 	pass
