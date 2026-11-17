@@ -17,5 +17,6 @@
   only write them. `tools/ci_fast_suites.txt` is `.txt`, so a change to it still runs CI.
 - **Checked:** the detection logic on sample lists and on two real merges: #180 (docs only)
   gives true, and #206 (touched `tools/ci_fast_suites.txt`) gives false. The workflow parses
-  as YAML. This PR itself changes `ci.yml`, so it runs the full CI, which tests the new job's
+  as YAML. `--no-renames` (Codex): a code file renamed to `.md` is listed under both names, so
+  it still runs CI. This PR itself changes `ci.yml`, so it runs the full CI, which tests the new job's
   false path; the true path is first exercised by the next docs-only PR.
