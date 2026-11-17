@@ -24,7 +24,7 @@
   there. A Delusional Medium's relay is also ruled out in the kernel's relay check
   (`relayHealthy`; pinned by `test_roles_dead`). I haven't checked whether CaseEval's
   transmission-health channel already prices that case. Both are for a later pass.
-- **Golden:** re-baselined to `baseline_3ec8ec2`; see `docs/golden_baseline.md`.
+- **Golden:** re-baselined to `baseline_dba17f9` (on main `cee8811`, after #193); see `docs/golden_baseline.md`.
   - Every seed diverges from record 1, with small suspicion shifts.
   - Four outcomes are unchanged.
   - **98933 changes:** the town hangs the Revenant on day 2 and the Demon on day 3 and
