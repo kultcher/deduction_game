@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Delusional readings): `baseline_928cb8b`
+### Current baseline (Nov 17, Insight's core bar): `baseline_e26eb3f`
+
+`tools/golden/baseline_e26eb3f/` is the capture from `claude/insight-core-bar` at `e26eb3f`
+(main `317e040` merged in): Insight sets how readily an NPC links a card to its own
+knowledge (the core's joining bar runs from 0.8 for the dullest NPC to 0.1 for the
+sharpest; it was 0.4 for everyone).
+- **Divergence from `baseline_928cb8b`:** every seed, from the first refresh where an NPC's
+  core takes a card the old bar didn't (or drops one it did): 42 at record 35 (Isolde, day
+  2), 54875 at 24 (Greta's cover, day 1), 692 at 17 (Fenwick, day 1), 900 at 88 (Kiran,
+  day 2), 98933 at 14 (Odette's cover, day 1).
+- **Outcomes unchanged:** every seed hangs the same people on the same days with the same
+  result. 42: Agnes day 3, good wins (now nominated by Fenwick, not Kiran). 54875: Dorian
+  day 2 (one more yes vote), Constance day 3 (nominated by Jory, not Odette; one more yes),
+  good wins. 692: Merrin day 2 (one more yes), Constance day 3, open at day 4. 900:
+  Constance day 2, open at day 4, same votes. 98933: Isolde day 2 (nominated by Nisha, not
+  Lian), Odette day 3 (nominated by Bart, not Nisha), good wins.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, Delusional readings): `baseline_928cb8b`
 
 `tools/golden/baseline_928cb8b/` is the capture from `claude/delusional-double-charge` at
 `928cb8b` (main `730897c` merged in): in play a world where a reading's teller is the
