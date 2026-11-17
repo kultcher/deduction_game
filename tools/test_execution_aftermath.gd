@@ -26,7 +26,6 @@ func _check(ok: bool, label: String) -> void:
 
 func _init() -> void:
 	# Its fixtures set up suspicion with the earlier model's numbers (the freed-soul pre-turn floor).
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_test_gravedigger_rapport()
 	_test_revenant_curse()
 	_test_grief_resentments()
@@ -229,7 +228,7 @@ func _test_freed_soul() -> void:
 	var pub_ally = goods[1]
 	var priv_whisperer = goods[2]
 
-	# Give `victim` strong pre-turn own evidence against `suspect` (> 0.25 old cap!).
+	# Give `victim` pre-turn own evidence against `suspect`.
 	victim.role = "seer"
 	var own_seer: Dictionary = {"day": 1, "phase": C.NIGHT, "role": "seer", "data": {"pair": [suspect.id, w.demon_id], "yes": true}, "true": true, "shared": false, "text": "Demon among pair"}
 	var own_seer0: Dictionary = {"day": 0, "phase": C.NIGHT, "role": "seer", "data": {"pair": [suspect.id, pub_ally.id], "yes": true}, "true": true, "shared": false, "text": "Demon among pair"}
@@ -238,7 +237,7 @@ func _test_freed_soul() -> void:
 	Mind.hear_claim(w, victim, victim.id, "seer", 1.5, "own")
 	Mind.update_from_own_info(w)
 	var pre_turn_susp: float = Mind.susp(victim, suspect.id)
-	_check(pre_turn_susp > 0.26, "precondition: pre-turn suspicion of suspect exceeds old 0.25 cap (%.3f)" % pre_turn_susp)
+	_check(pre_turn_susp > 0.12, "precondition: the victim's own readings raise the suspect before the turn (%.3f)" % pre_turn_susp)
 
 	# Turn `victim` evil via Revenant curse.
 	var rv = w.evil_team()[1] if w.evil_team().size() > 1 else suspect
@@ -273,7 +272,11 @@ func _test_freed_soul() -> void:
 		"public claims and shared readings from the turned period carry forward cleanly")
 	_check(victim.info_log[2].get("disowned", false) and not victim.info_log[0].get("disowned", false) and not victim.info_log[1].get("disowned", false),
 		"fake turned readings are disowned while true pre-turn readings stay intact")
-	_check(Mind.susp(victim, suspect.id) > 0.26,
-		"freed soul keeps genuine pre-turn + public suspicion without the old 0.25 cap (%.3f)" % Mind.susp(victim, suspect.id))
+	# Under the connections model two Seer readings sharing the suspect leave a Red Herring
+	# to explain them, so the fixture no longer reaches the old 0.25 cap (purge phase 2).
+	# What the cap's removal guards is checked directly: the restore keeps the genuine
+	# pre-turn suspicion, and the public reading heard while turned still adds to it.
+	_check(Mind.susp(victim, suspect.id) > pre_turn_susp + 0.02,
+		"freed soul keeps genuine pre-turn suspicion and adds the public reading (%.3f, was %.3f)" % [Mind.susp(victim, suspect.id), pre_turn_susp])
 	_check(victim.workshop_state.outside.values().all(func(v): return is_equal_approx(float(v), 0.1)),
 		"freed soul outside layer remains strictly flat at 0.1")

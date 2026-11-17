@@ -38,6 +38,12 @@ session notes are kept for the record; code pointers may have moved since.
   > the judge). Measured on 20 ten-NPC passive games: 11% of fabrications were
   > self-incriminating; 4 in 5 of those were held back, 1 in 5 slipped through; none was
   > reworked. Golden re-baselined (`baseline_a0a378d`), outcomes unchanged.
+  >
+  > **Better lie (Claude-Beadle, Nov 17, `claude/beadle-better-lie`; Michael's follow-up):**
+  > a liar who notices now picks from its gift's own alternatives (13 gifts) the one that
+  > points at nobody on its team and still pushes the scapegoat; only with none does it hold
+  > back, and a held reading is checked again before it's told. Same 20 games: 8 of the 12
+  > noticed readings became a better lie, 4 were held, 5 slipped. `baseline_85e9b36`.
 
 ## Settled Nov 16, 2026 (Claude-Beadle, `claude/beadle-nightwatch-teammates`)
 
