@@ -32,7 +32,11 @@ static func named_guesses(guesses: Dictionary, role: String) -> Array:
 	return ids
 
 ## Was there evidence pointing at the demon, and where? on_board: cards you held; reachable:
-## held by living townsfolk (true readings, night sightings) or an unsearched true trace.
+## held by living townsfolk (true readings, night sightings) or an unsearched true trace. A
+## dead townsperson's counts only while a living good Medium could still reach them, or a
+## living good townsperson they told holds it (Codex, #202)
+## (playtest 89077: Edda's Night Watch reading, learned the night she was killed, with no
+## Medium alive, was listed).
 ## Descriptive only: it says what existed, not that the player should have found it.
 static func demon_evidence(w, board: Array) -> Dictionary:
 	var d: String = w.demon_id
@@ -51,22 +55,39 @@ static func demon_evidence(w, board: Array) -> Dictionary:
 			elif c.get("block", "") == w.loc_block(dn.history.get(w.time_key(c.get("day", -1), 2), "home:" + dn.home_block)):
 				on_board.append(c["n"])
 	var reachable: Array = []
+	var medium_alive: bool = w.npcs.any(func(m): return m.alive and m.role == "medium" and not m.is_evil())
 	for n in w.npcs:
 		if n.is_evil():
 			continue
+		# A dead witness's evidence: through a living Medium, or a living townsperson they told.
+		var gone: bool = not n.alive and not medium_alive
 		for e in n.info_log:
 			if not e.get("true", true):
+				continue
+			if gone and not _passed_on(w, n.id, func(h): return h.get("kind", "") == "reading" and h.get("entry", {}) == e):
 				continue
 			if _points_at(w, "info", e.get("role", ""), e.get("data", {}), [], -1, d):
 				reachable.append("%s's %s reading (night %d)" % [n.name, e.get("role", ""), e.get("day", -1)])
 		for b in n.beliefs:
 			if b.get("kind", "") == "saw" and b.get("who", "") == d and b.get("phase", -1) == 3:
+				if gone and not _passed_on(w, n.id, func(h): return h.get("kind", "") == "sighting" and h.get("about", "") == d and int(h.get("day", -1)) == int(b.get("day", -1))):
+					continue
 				reachable.append("%s saw %s out on night %d" % [n.name, dn.name, b.get("day", -1)])
 	for sid in w.scenes:
 		var sc: Dictionary = w.scenes[sid]
 		if not sc["searched"] and sc["trace_true"]:
 			reachable.append("the unsearched trace at %s" % sc["name"])
 	return {"on_board": on_board, "reachable": reachable}
+
+## Does a living good townsperson hold, as hearsay, something `source` told them (pred)?
+static func _passed_on(w, source: String, pred: Callable) -> bool:
+	for m in w.npcs:
+		if not m.alive or m.is_evil():
+			continue
+		for h in m.hearsay:
+			if str(h.get("from", "")) == source and pred.call(h):
+				return true
+	return false
 
 static func _points_at(w, kind: String, role: String, data: Dictionary, subj: Array, phase: int, d: String) -> bool:
 	match kind:

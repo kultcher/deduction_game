@@ -85,6 +85,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   statement is true. Allow an honest impaired Warden; neither failure nor a misled
   accusation proves poisoning or alignment. [decided: capability and lying implication]
 
+  Already built (Nov 4, #81 era, the report table in `Solver`): a guard on a door the Demon
+  killed that night is never a true, healthy reading, so the challenge lands as a lie or a
+  failed gift and the walk stays the movement model's. Pinned by `test_warden_challenge`
+  (Quill, Nov 17). Nothing else to build. [done]
+
 - **Martyr non-substitution must keep its alternative explanations; Martyr promise
   versus later hanging.** (78148) An executed choice dying while the claimed Martyr
   survives must not fully confirm the choice as evil: weigh a Delusional Martyr, a
@@ -108,6 +113,12 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Argon's #181): both change how the role check treats a doubtful reading. Report in game
   terms how much more often the town accepts "they were Delusional" over "they lied".
   Owner Quill. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/delusional-double-charge`, Nov 17):** the kernel skips the content
+  of the world's Delusional holder's readings in play, as for an evil teller; the gift's own
+  acts (a Martyr's or Executor's one target, a Veteran's one night) stay checked. On a wrong
+  Archivist reading, "they were Delusional" went from about 1 in 600 of the explanation to
+  about 1 in 7 ("they lied" 98% to 85%). Not covered: a Night Watch's list, checked in the
+  movement model, which doesn't know who is Delusional.
 
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
@@ -221,6 +232,14 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   argues protection, a suspected attack and movement as one chain, without revealing
   hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
   [decided] (Michael, Nov 17)
+
+- **Keep Tally's trace probe as a tool.** Tally measured how much a crime-scene trace
+  weighs with an uncommitted copy of `tools/measure_evidence.gd` that has two extra modes
+  (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
+  proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
+  way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/trace-measure`, Nov 17):** `measure_evidence.gd --what traces`,
+  `combined` and `support`, the same rows as Tally's probe. [done]
 
 ### NPC behaviour
 
@@ -342,6 +361,15 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Michael (Nov 17): as written. Quill owns the weighting in the judge and goes first;
   Beadle owns the votes and the "won't hang" behaviour; Herald drafts the new lines for
   Michael. Coordinate through the handoff log. [decided]
+  - **Judge side (Quill, `claude/lie-severity`):** a good person's own "I was home" stops
+    being certain. New number `Tuning.Workshop.GOOD_OWN_ALIBI_OUT` (0.2): the chance a
+    good person who was out still says "home". Measured Nov 17 on 40 passive 10-NPC games:
+    26% of good people who were out told the player "home" (hiding a night gift or a
+    secret, or a Sleepwalker). "Near the crime" is left to the existing scene reasoning. A
+    caught false reading is unchanged (still near proof when impossible).
+  - **Vote side (Beadle):** how the judge's lighter reading of a caught whereabouts lie
+    reaches votes, and "accepts the lie but won't hang, and says so" (Herald drafts the
+    lines). Follows the judge side.
 
 - **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
   addressed by the shadow self; revisit after playtests. (30294) [watch]
@@ -391,15 +419,14 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
   Check against the current prior mapping. (Oct 30) [open]
 
-- **Unlimited vigil strength.** [watch] Vigils now see only walkers arriving on the block
-  (or the full Lamplighter tour). (54875: a vigil on the first kill block caught both
-  walkers there on nights 1 and 2, near a free Seer reading.) Options discussed, none
-  chosen:
-  - a vigil makes you sleep in and lose the next morning's action (Claude's favourite);
-  - vigils limited like the ward;
-  - a vigil shows only a count of people on the block (leaves the player reliant on
-    chance sightings and the Night Watch);
-  - keep watch at one location: name anyone at that spot, count the rest of the block.
+- **The vigil watches who leaves a block.** (Michael, Nov 17, with Claude-Vicar; design note
+  [docs/design/vigil.md](docs/design/vigil.md)) Replaces "Unlimited vigil strength". A vigil
+  sees people leaving their homes on the watched block, not people arriving there, so the
+  player aims it at suspects instead of predicting the Demon's victim, and a sighting of
+  someone going out is weaker than one at the scene. No sweep first; a lower bot win rate is
+  fine. The bot's vigil policy changes in the same build to watch its suspects' blocks. The
+  note's section 5 lists what the build should check. Result wording: Herald drafts,
+  Michael settles. Owner Quill. [decided]
 
 - **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
   paired seeds (living candidates, wrongful executions, win rate); the evidence rework's
@@ -499,6 +526,19 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
+- **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
+  While the player is in a conversation but looking at the map, the conversation's options
+  are hidden; they return to the conversation view to carry on. Herald. [decided]
+
+- **A way back from the map.** (Michael, Nov 17) On the map during a conversation or a
+  meeting, a button at the top right of the map view: "Return to conversation" or "Return
+  to meeting" (Michael's wording). Herald. [decided]
+
+- **Workshop: left-drag pans again.** (Michael, Nov 17) Left-click and drag on empty space
+  pans the view, and shift+left-click and drag draws a selection box. Today left-drag on
+  empty space draws the box and the middle or right button pans; the canvas hint already
+  says "drag empty space to pan". Herald. [decided]
+
 - **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
   "heard" line, type and source icons stack in one corner, the context tag sits on the
   edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
@@ -510,6 +550,12 @@ Candidates for a unified retuning proposal, not approved changes.
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
+
+- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
+  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
+  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
+  knew because of an answer carried over from case #38. The Workshop could list the answers
+  a new case carries when it's filed. Herald. [open]
 
 ### Performance
 
@@ -881,13 +927,32 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
-- **A double claim of a unique gift raises both claimants** (Lantern, Nov 16; Michael, Nov
-  16). Under connections a claim is only context, so two people claiming a gift only one can
-  hold don't become more suspicious by themselves (in `test_beliefs` both dip about 0.01;
-  the earlier model raised them 0.14 and 0.24). Make the two claims a built-in pairing that
-  raises suspicion on both claimants, and shifts it onto the other when one is shown good by
-  other cards. Report in game terms how much each claimant moves, alone and alongside other
-  evidence. Add it to `docs/belief_model.md`'s pairings. Owner Lantern. **[decided]**
+- **A listener's small doubt that their own gift is Delusional** (Lantern and Quill, Nov 17;
+  Michael, Nov 17). With the Delusional secret on the script, an NPC allows that its own gift
+  might be the Delusional one, at about the rate of the Sleepwalker's self-doubt
+  (`SLEEPWALK_SELF_DOUBT`, 10%): one new constant. Today a listener never doubts its own
+  reading that way (#194 left own readings out of the Delusional skip). Design agreed with
+  Quill: the role fits mix as for the Sleepwalker, 0.9 with the listener's own readings
+  healthy and 0.1 with them skipped in worlds where the listener is the Delusional holder
+  (the world prior gives how likely that is). Quill builds the role check's "self" mode
+  first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
+  that PR moves golden. **[decided]**
+- **A listener's doubt that its own reading was poisoned** (Quill and Lantern, Nov 17;
+  Michael, Nov 17: approved as proposed, no new number and no confidence dial). An NPC's own
+  reading is near-certain today, so a clash with other evidence always blames the other side.
+  Now, when an own reading clashes with another teller's card, the NPC weighs "my reading was
+  poisoned" (the chance a Poisoner could have chosen it that night, zero when none could act)
+  against "they're wrong" (its suspicion of the teller, judged without its own reading in
+  view, plus the teller's own chance of a broken gift), using the most trusted clashing
+  teller. The poison explanation's share becomes an honest doubt on that night's reading
+  from the next refresh, through the Delusional self-doubt's route (#216), and a doubted own
+  reading no longer counts as proof. When two of its own readings can't both be true, the
+  doubt goes to the culprits found by dropping each in turn, split by each night's poison
+  chance, or equally when no single one is the culprit or the cause is Delusional. A reading
+  confirmed by another source taking less of the doubt is left for later. Lantern builds the
+  connections side; Quill the per-night poison chance and the judge side. After the #186
+  role-check fix (#214, merged). Moves golden; report how often it fires and how far it moves
+  an NPC, at fixed game states. **[decided]** (Michael, Nov 17)
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

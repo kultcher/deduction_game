@@ -86,6 +86,11 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
 
 - **`main` moves only when green:** the build, the suites, Codex's review, and a golden
   capture identical at `--tol 0` to `BASELINE` in `.github/workflows/ci.yml`.
+- **Docs-only PRs** (only `.md` files, which the code doesn't read) skip CI; Bailiff still
+  reviews and merges them, and they need no golden check. If you already have an open
+  docs-only PR, add further docs changes to it (each with its own handoff file) rather than
+  opening another. Don't add docs-only changes to a code PR that's waiting in the golden
+  queue.
 - **A change that moves golden re-baselines in the same PR:** capture twice (the two must
   be identical), commit the capture as `tools/golden/baseline_<sha7>/`, set `BASELINE` in
   `ci.yml`, and update "Current baseline" in `docs/golden_baseline.md` (what diverged and
@@ -106,7 +111,9 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
 - **Tests:** a suite that needs a particular deal finds a seed with `tools/fixture_seeds.gd`
   rather than hard-coding one. A suite that checks the earlier belief model's mechanics
   pins it (`Connections.enabled = false`). New suites are `tools/test_*.gd`; add quick ones
-  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`.
+  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`, at their
+  alphabetical place (the list is kept sorted so that PRs don't all conflict on its last
+  line).
 - **Two failed attempts at the same problem:** stop and tell Michael, with the exact error.
 
 ## What you may decide, and what waits for Michael

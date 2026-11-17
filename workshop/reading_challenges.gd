@@ -26,11 +26,24 @@ static var clash_rule: String = "contest"
 static var graded_rule: String = "roles"
 const CaseEval = preload("res://workshop/case_eval.gd")
 
+## The two sides of a Medium's relay (BACKLOG "Medium challenge attribution", Nov 17): the
+## Medium passed it on wrong ("transmission"), or the dead person was wrong in the first
+## place ("original"). A relay must name one; relays of relays and relayed opinions aren't
+## cards here, so they stay unsupported.
+const RELAY_ATTRIBUTIONS = ["transmission", "original"]
+## What can be said of the Medium's passing-on: a lie, or a failed or Delusional gift. "Misled"
+## and "unlikely" are about the reading itself, so they belong to the original.
+const TRANSMISSION_MODES = ["lying", "impaired", "delusional"]
+
 static func valid(view: Dictionary, id: String, value) -> bool:
 	var card = Solver.card_by_id(view, id)
 	if value is Dictionary and value.get("mode") == "delusional" and not value.has("group"):
 		return false  # "they're Delusional" explains a source's readings together
-	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.has("relay_source") and not card.get("testimony_only", false) and (value.mode != "unlikely" or (card.get("role") == "surveyor" and card.get("data", {}).has("count"))) and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
+	if card.has("relay_source"):
+		var attribution: String = str(value.get("attribution", "")) if value is Dictionary else ""
+		if attribution not in RELAY_ATTRIBUTIONS or (attribution == "transmission" and str(value.get("mode", "")) not in TRANSMISSION_MODES):
+			return false
+	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.get("testimony_only", false) and (value.mode != "unlikely" or (card.get("role") == "surveyor" and card.get("data", {}).has("count"))) and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
 
 static func quality(listener: Dictionary, source: String) -> float:
 	if source == listener.id or source == "evidence":
@@ -58,6 +71,15 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			continue
 		var challenge: Dictionary = selected[id]
 		var report = Solver.card_by_id(view, id)
+		# Whom the challenge is about: for a relay, the Medium (the passing-on) or the dead
+		# source (the original reading); otherwise the reading's teller.
+		var attribution: String = str(challenge.get("attribution", "")) if report.has("relay_source") else ""
+		var teller: String = str(report.relay_source) if attribution == "transmission" else str(report.source)
+		var teller_night: int = int(report.get("relay_observed_at", {}).get("day", -1)) if attribution == "transmission" else int(report.get("night", -1))
+		if teller_night < 0 and attribution == "original":
+			# A relayed morning reading (an Executor's) carries night -1: its day is when it was
+			# read (Codex, #195), as for a Gravedigger's day below.
+			teller_night = int(report.get("observed_at", {}).get("day", -1))
 		# All challenges share the listener's baseline. Filter the hypothetical good
 		# claimant below instead of solving that same baseline once per report.
 		if reference == null:
@@ -85,7 +107,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 					var sg1 = Solver.solve(view, day_grounds, {}, {}, listener.knowledge)
 					if sg1.worlds.is_empty() or not sg1.movement_ok:
 						conflict = true
-			if conflict and report.get("role", "") in ["nightwatch", "warden", "medium", "lamplighter"]:
+			if conflict and attribution != "transmission" and report.get("role", "") in ["nightwatch", "warden", "medium", "lamplighter"]:
 				var duty_probe: Dictionary = report.duplicate(true)
 				duty_probe["duty_only"] = true
 				var duty_together = Solver.solve(view, grounds + [duty_probe], {}, {}, listener.knowledge)
@@ -96,7 +118,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# so a challenge landed whichever side lied, on trust in the grounds alone.
 		var contest_lost: bool = false
 		if conflict and clash_rule != "legacy":
-			var q_r: float = quality(listener, report.source)
+			var q_r: float = quality(listener, teller)
 			# P(reading is the broken side | clash) - P(grounds are), with each side reliable
 			# at its teller's quality: (q_g - q_r) / (1 - q_r q_g).
 			var share: float = (strength - q_r) / maxf(1.0 - q_r * strength, 1e-6)
@@ -152,23 +174,25 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				cause_agreement = accuracy_agreement
 				note = "The cited observation rules out their presence where that gift required them to be; impairment cannot explain that."
 			else:
-				cause_agreement *= 1.0 - quality(listener, report.source)
-			if report.role == "gravedigger" and view.has("timeline"):
+				cause_agreement *= 1.0 - quality(listener, teller)
+			# These two say the reader's own gift couldn't have produced it; a failed Medium can
+			# still have garbled the passing-on, so they don't convict the Medium (Codex, #191).
+			if attribution != "transmission" and report.role == "gravedigger" and view.has("timeline"):
 				var gd_n: int = report.night if int(report.get("night", -1)) >= 0 else int(report.get("observed_at", {}).get("day", -1))
 				if not preload("res://workshop/live_history.gd").executed(view, str(report.data.get("executed", "")), gd_n):
 					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
 					cause_agreement = accuracy_agreement
 					note = "No such public execution happened that night; impairment cannot explain that Gravedigger report."
-			if report.role == "executor" and report.data.has("role") and view.has("timeline"):
+			if attribution != "transmission" and report.role == "executor" and report.data.has("role") and view.has("timeline"):
 				var ex_obs_d: int = int(report.get("observed_at", {}).get("day", -1))
 				if not preload("res://workshop/live_history.gd").died_before_morning(view, str(report.data.get("target", "")), ex_obs_d):
 					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
 					cause_agreement = accuracy_agreement
 					note = "That person had not just died before that morning; impairment cannot explain that Executor report."
-			if report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
+			if attribution != "transmission" and report.source != listener.id and report.role == listener.knowledge.get("own_role", ""):
 				cause_agreement = hearing # firsthand knowledge of a unique gift claim
 				note = "They claim the unique gift I know I hold. Impairment cannot explain that role claim."
-			if report.source in listener.knowledge.good:
+			if teller in listener.knowledge.good:
 				cause_agreement = 0.0
 				note += " My established good-alignment knowledge does not support the evil-reader explanation."
 			if cause_agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
@@ -187,7 +211,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 		# pair is no automatic discount either. Its registration is already in the worlds.
 		# A bare defence (an NPC's word, no grounds; SharedLedger) isn't graded: see there.
 		var ungraded: bool = challenge.get("bare", false) or (challenge.mode == "misled" and str(report.get("role", "")) == "seer" and not challenge.has("group"))
-		var graded: Dictionary = {} if ungraded else graded_challenge(view, group, challenge.mode, listener, cards)
+		var graded: Dictionary = {} if ungraded else graded_challenge(view, group, challenge.mode, listener, cards, teller)
 		var backfire: bool = false
 		var candidates: Dictionary = {}
 		if not graded.is_empty():
@@ -198,7 +222,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				note = graded.note
 			var g_agree: float = hearing * graded.cause * graded.effect
 			accuracy_agreement = maxf(accuracy_agreement, hearing * graded.effect)
-			if challenge.mode == "lying" and not (report.source in listener.knowledge.get("good", [])):
+			if challenge.mode == "lying" and not (teller in listener.knowledge.get("good", [])):
 				if g_agree > cause_agreement:
 					cause_agreement = g_agree
 					if cause_agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
@@ -208,6 +232,11 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				# Everyone seen out on any of the group's nights (maintenance 2026-11-07 A4).
 				for member in group:
 					var m_card: Dictionary = Solver.card_by_id(view, member)
+					if not m_card.is_empty() and attribution == "transmission" and m_card.has("relay_source"):
+						# The passing-on failed: those out on the Medium's night, not the reader's.
+						m_card = m_card.duplicate()
+						m_card.source = str(m_card.relay_source)
+						m_card.night = int(m_card.get("relay_observed_at", {}).get("day", -1))
 					if not m_card.is_empty():
 						candidates.merge(poisoner_candidates(view, m_card, value, cards))
 			elif challenge.mode in ["misled", "unlikely", "delusional"]:
@@ -230,8 +259,12 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 					result.reports[member] = minf(result.reports.get(member, 1.0), multiplier)
 			result.reports[id] = minf(result.reports.get(id, 1.0), multiplier)
 		result.results.append({"card": id, "mode": challenge.mode, "supported": supported, "fraction": fraction,
-			"agreement": cause_agreement, "accuracy_agreement": accuracy_agreement, "multiplier": multiplier, "source": report.source, "note": note,
+			"agreement": cause_agreement, "accuracy_agreement": accuracy_agreement, "multiplier": multiplier, "source": teller, "note": note,
 			"graded": graded, "backfire": backfire, "candidates": candidates, "group": group})
+		if attribution != "":
+			# Only a relay's challenge names its side and night (a plain reading's stay its own).
+			result.results[-1]["attribution"] = attribution
+			result.results[-1]["night"] = teller_night
 	if cache.size() >= 64:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
@@ -245,11 +278,11 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 ## (1 - r) q / ((1 - r) q + r f). Its rise above the prior 1 - r, as a share of r, is the
 ## challenge's `effect`; `cause` is how well the named explanation accounts for it. A
 ## neutral rest moves nothing; a rest that backs the reading up is a `backfire`.
-static func graded_challenge(view: Dictionary, group: Array, mode: String, listener: Dictionary, cards: Array) -> Dictionary:
+static func graded_challenge(view: Dictionary, group: Array, mode: String, listener: Dictionary, cards: Array, teller: String = "") -> Dictionary:
 	var reports: Array = group.map(func(gid): return Solver.card_by_id(view, gid)).filter(func(c): return not c.is_empty() and c.get("kind", "") == "report" and Solver.tabled(c))
 	if reports.is_empty():
 		return {}
-	var source: String = str(reports[0].source)
+	var source: String = teller if teller != "" else str(reports[0].source)
 	var ids: Array = reports.map(func(c): return c.id)
 	var rest: Array = cards.filter(func(c): return c.id not in ids and not c.get("quoted", false)).map(func(c): return c.id)
 	var epoch = view.get("alignment_epoch", "")
@@ -324,6 +357,45 @@ static func graded_challenge(view: Dictionary, group: Array, mode: String, liste
 static func poisoner_possible(view: Dictionary) -> bool:
 	var roles: Array = view.get("script_minions", [])
 	return roles.is_empty() or "poisoner" in roles
+
+## The chance, as `listener` can tell it, that its own gift was poisoned on `night`: the
+## poison self-doubt's prior (BACKLOG "A listener's doubt that its own reading was
+## poisoned", Michael, Nov 17). Zero when no Poisoner can be in play, or when the listener
+## knows the Poisoner was already dead by that night (a public role, or its own Gravedigger
+## reading), or the Demon is alone. Otherwise the chance a Poisoner is in play (the minion
+## places over the script's minions; certain on an unknown script) over the number it could
+## have chosen: the good people alive that night, as the listener counts them (everyone alive
+## less the evil team).
+## No new number: the shape is the Poisoner's own rule, one good person a night.
+## `night` is the night the gift was used, as the honest-doubt map keys it.
+static func poison_chance(view: Dictionary, listener: Dictionary, night: int) -> float:
+	if night < 0 or not poisoner_possible(view):
+		return 0.0
+	var History = preload("res://workshop/live_history.gd")
+	var knowledge: Dictionary = listener.get("knowledge", {})
+	var known_roles: Dictionary = knowledge.get("public_roles", {}).duplicate()
+	for id in knowledge.get("own_reports", []):
+		var card: Dictionary = Solver.card_by_id(view, str(id))
+		if card.get("kind", "") == "report" and card.get("role", "") == "gravedigger":
+			var d: Dictionary = card.get("data", {})
+			known_roles[str(d.get("executed", ""))] = str(d.get("role", ""))
+	for pid in known_roles:
+		if str(known_roles[pid]) == "poisoner" and not History.alive_at_night(view, str(pid), night):
+			return 0.0
+	var evil: int = int(view.get("evil_count", 0))
+	var minions: Array = view.get("script_minions", [])
+	# Minion places: the evil team less the Demon (unknown when the team size isn't given;
+	# then at least one). None, and no Poisoner, when the Demon is alone (Codex on #223).
+	var places: int = evil - 1 if evil > 0 else 1
+	if places <= 0:
+		return 0.0
+	var in_play: float = 1.0 if minions.is_empty() else clampf(float(places) / float(minions.size()), 0.0, 1.0)
+	var alive: int = 0
+	for p in view.get("people", []):
+		if History.alive_at_night(view, str(p.get("id", "")), night):
+			alive += 1
+	var targets: int = maxi(1, alive - maxi(evil, 0))
+	return in_play / float(targets)
 
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
 ## the reading was taken, with no gift or private errand the case gives for it. Nobody

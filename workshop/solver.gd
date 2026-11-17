@@ -153,7 +153,10 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	for id in case_data.get("reading_challenges", {}):
 		var mode: String = case_data.reading_challenges[id].get("mode", "")
 		if mode in ["misled", "lying"]:
-			var source: String = card_by_id(view, id).get("source", "")
+			var ch_card: Dictionary = card_by_id(view, id)
+			# A Medium relay's challenge names whose word is doubted (Codex, #195): the
+			# passing-on is the Medium's, so a lie there makes the Medium evil, not the dead.
+			var source: String = str(ch_card.get("relay_source", "")) if ch_card.has("relay_source") and str(case_data.reading_challenges[id].get("attribution", "")) == "transmission" else str(ch_card.get("source", ""))
 			var assumed: String = "good" if mode == "misled" else "evil"
 			var allowed: Array = ["good", "marked"] if mode == "misled" else ["evil", "demon", "minion"]
 			if positions.get(source, assumed) not in allowed:

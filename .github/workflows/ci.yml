@@ -5,10 +5,14 @@ name: CI
 #   pull requests: fast suite list + golden diff (gate: identical to $BASELINE)
 #   main:          full suite (sharded) + golden diff + Windows golden check
 #   manual:        same as main; tick "windows" to include the Windows check
+#   nightly:       full suite + golden diff on main, so a red suite can't hide when
+#                  back-to-back merges supersede main's push runs (Nov 17)
 on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 9 * * *"   # 09:17 UTC daily (early morning US Eastern), on main
   workflow_dispatch:
     inputs:
       windows:
@@ -25,13 +29,45 @@ concurrency:
 
 env:
   GODOT_VERSION: "4.7.2"
-  BASELINE: tools/golden/baseline_85e9b36
+  BASELINE: tools/golden/baseline_5c99636
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   DOTNET_NOLOGO: "1"
 
 jobs:
+  changes:
+    name: Docs-only check
+    # A pull request whose changed files are all Markdown skips the suites and golden
+    # (Michael, Nov 17). No code or test reads a .md file; tools only write them. A job-level
+    # `if` (not paths-ignore) so skipped jobs count as passing if checks are ever required.
+    # Pushes to main and manual runs always run everything.
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.check.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Are all changed files Markdown?
+        id: check
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files=$(git diff --name-only --no-renames "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}")
+          echo "$files"
+          if [[ -n "$files" ]] && ! grep -qv '\.md$' <<< "$files"; then
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+            echo "Docs only: suites and golden skipped." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
   suites:
     name: Suites (${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
@@ -84,6 +120,8 @@ jobs:
 
   golden:
     name: Golden diff (Linux)
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

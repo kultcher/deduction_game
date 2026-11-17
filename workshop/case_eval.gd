@@ -1182,9 +1182,11 @@ static func _is_movement_role_card(card: Dictionary) -> bool:
 ## Gravedigger's verdict...) act through the role check, which never saw the doubt, so a
 ## reading the listener thought was misled still moved its pair (playtest fixture 5110,
 ## Nov 17). Each doubted reading is read as genuine with the listener's trust and as a bare
-## claim of the gift otherwise: fits = trust x (fits with it) + doubt x (fits with only its
-## claim). Exact for one doubted reading in a set; with several, each mixes against the
-## others read in full. Trust in the teller is not here: the role check already lets an evil
+## claim of the gift otherwise: fits = trust x (fits with it) + doubt x (the chance a
+## broken reading says this) x (fits with only its claim). Without that chance a broken
+## reading counted as certain to say what it said, and doubt weighed double (Nov 17).
+## Exact for one doubted reading in a set; with several, each mixes against the others
+## read in full. Trust in the teller is not here: the role check already lets an evil
 ## teller lie in the worlds where they are evil.
 ## Measuring switch (tools and tests): off, doubt doesn't reach the role check (before Nov 17).
 static var doubted_role_check: bool = true
@@ -1205,10 +1207,12 @@ static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, k
 		claimed.data = {}
 		var swapped: Array = cards.map(func(c): return claimed if c.id == card.id else c)
 		var alt: PackedFloat64Array = _class_fits(view, cc, swapped, knowledge)
+		# A broken reading says these words only by chance (CaseEval.chance_content).
+		var content_p: float = chance_content(view, card)
 		var mixed := PackedFloat64Array()
 		mixed.resize(out.size())
 		for c in range(out.size()):
-			mixed[c] = (1.0 - doubt) * out[c] + doubt * alt[c]
+			mixed[c] = (1.0 - doubt) * out[c] + doubt * content_p * alt[c]
 		out = mixed
 	return out
 
