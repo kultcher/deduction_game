@@ -1292,6 +1292,9 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 static func vote_resistance_lines(w, res: Dictionary) -> Array:
 	return MindMeeting.vote_resistance_lines(w, res)
 
+static func catches_home_lie(view: Dictionary, ids: Array, target: String) -> bool:
+	return MindMeeting.catches_home_lie(view, ids, target)
+
 static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int, trace_id: int) -> bool:
 	return MindMeeting._vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, trace_id)
 

@@ -382,6 +382,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		if not n.dialogue_memory.has("accepted_cases"):
 			n.dialogue_memory["accepted_cases"] = {}
 		n.dialogue_memory["accepted_cases"][ctarget] = {"day": g.w.day, "key": key}
+	# A public case that caught the target in a home lie, which they granted (accepted, or
+	# took partly): if they then vote no, they say they believe the lie but won't hang for it
+	# (lie severity, the vote side; since #210 a caught home lie is evidence, not proof).
+	if venue != "private" and voiced_stance in ["accept", "partial"] and ctarget != "" and ctype in ["evil", "demon", "minion", "suspicious"] \
+			and Mind.catches_home_lie(plan.prepared.view, assessment.get("reasoning", {}).get("considered", []), ctarget):
+		if not n.dialogue_memory.has("granted_lies"):
+			n.dialogue_memory["granted_lies"] = {}
+		n.dialogue_memory["granted_lies"][ctarget] = {"day": g.w.day}
 	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
 		"dialogue": descriptor, "workshop": true, "assessment": assessment}
 	g._workshop_repeats[repeat_key] = {"input": state.discussion[signature], "result": result.duplicate(true)}
