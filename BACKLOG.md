@@ -740,13 +740,21 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
   readings can drift away from the frame. Proposal: a bluffer's later readings stay
   consistent with the people its earlier ones implicated, unless the team has switched
-  scapegoat and the old reading no longer matters. **[open]**
+  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
+  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
+  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
+  memory drops when the team switches scapegoat. It's another preference at the better-lie
+  choice point ("consistent with my earlier readings"). One or two new tuning constants
+  are approved. Owner Beadle. **[decided]**
 - **One pass over every bluffer** for the "too clean when an ally is involved" tell that
   gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
   guidelines: within about 1 of the truth, the group size setting the room). For
   comparison, the Surveyor frames the scapegoat's block 60% of the time, clears a
   teammate's block half the rest, or picks at random; the Seer never gives a "no" that
-  covers the scapegoat. **[open]**
+  covers the scapegoat. Michael (Nov 17): review every bluff rule against the Dowser's
+  #160 guideline (stay close to the truth; the situation sets the room) and fix the tells.
+  Pairs with the better-lie rework, which touches every bluff's alternatives. Owner
+  Beadle. **[decided]**
 - **The Demon "before/after" premise for the Scion transfer** (triage 1.6). The alignment
   part was done in #149: the curse "When" field shows only on is evil / suspicious /
   good. The Scion part is new work: a premise time option that means "before / after
@@ -781,7 +789,9 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
 - **An evil Medium's relay about the first victim names night 0** (Lantern, Nov 13). The
   bluff says the dead saw the scapegoat out "on their last night"; for the first victim
   that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
-  its target. Moves golden. **[open]**
+  its target. Moves golden. Michael (Nov 17): fix. For the first victim, the bluff picks
+  a night that can actually frame (not night 0, when the Demon never walks), or makes a
+  different claim. Owner Beadle. **[decided]**
 - **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
   a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
   doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[open]**
