@@ -25,12 +25,12 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **Base:** main `6873616` (#176, merged into `argon/connections-speed`). **Status:** PR #181 updated after Codex/Bailiff/Lantern review. **Next actor:** Lantern / Bailiff (re-review and merge once CI is green).
 - **Golden:** local Windows captures (`seed_42_7` and `seed_900_7`) are bit-for-bit identical at `--tol 0`, and the pre-fix 10-NPC Windows run matched before vs after; CI's Linux golden check at `--tol 0` against `baseline_bb6f01c` is what decides.
 
-### What changed (`workshop/jury.gd`, `workshop/connections.gd`, `workshop/case_eval.gd`, `workshop/caches.gd`, `tools/test_connections_cache.gd`)
+### What changed (`workshop/jury.gd`, `workshop/connections.gd`, `workshop/case_eval.gd`, `workshop/caches.gd`, `tools/test_connections_cache.gd`, `tools/test_headline.gd`)
 
 1. **Skip dead `CaseEval` and `_headline` work on a connections refresh (`workshop/jury.gd`, Lantern's purge Phase 1):**
    - When `refresh and Connections.enabled` is true in `Jury._consequences_eval`, skip `_case_eval(view, scoped, eval_listener)` and pass `{"impossible": false, "people": {}}` into `Connections.overlay(..., connections)` (which takes `impossible` and `people` from the connections result).
    - Keep `attention`, `compiled`, `scoped`, `attended`, `held`, `challenged`, and `eval_listener` intact for `ReasonAttribution` and the four signals in `Jury._consequences_eval`.
-   - Skip `_headline(...)` when `not connections.is_empty()` (`dull == 0.0`).
+   - Skip `_headline(...)` when `not connections.is_empty()` (`dull == 0.0`). Pinned `tools/test_headline.gd` with `Connections.enabled = false` because `_consequences_eval` now skips the dead headline calculation on a connections refresh (and Lantern's purge Phase 6a removes `_headline` and `test_headline.gd`).
 2. **Precompute per-refresh `judge_key` inputs (`workshop/connections.gd`):**
    - `Connections.begin()` precomputes `_prepare_key_ctx(view, run.bare, listener)` once per listener refresh: the `around` hashes with and without `SOFT_EVENTS`, `bare_hash`, the stripped `listener` dictionary, and each card's index, `SOFT_READERS` flag, and reliability key names (including `Solver.semantic_key`).
    - `_judge_key_fast` sorts only the matched `ids + own` indices in `view.cards` order, producing the exact same key string as `judge_key` without rescanning all `view.cards` or rehashing `view`/`timeline` on every call. With `Connections.cache_verify = true`, `judge()` asserts `_judge_key_fast == judge_key`.
@@ -59,7 +59,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   - **Whole 4-day active 10-NPC run:** **61.0 s → 36.5 s** (−40%).
 - **Passive 10-NPC game (Golden seed 692, to Day 4, `SolverBackend` profiler, pre-fix commit):**
   - Total wall time **43.1 s → 24.9 s** (−42%); belief refresh (`outer_prep` inclusive) **34.8 s → 16.5 s** (2.1× faster); `world_domain` C# calls **42,366 → 13,433** (−68%).
-- **Post-fix suites run:** `test_connections_cache` (45/45 checks), `test_connections`, `test_connections_pairings`, `test_connections_core`, `test_connections_cases`, `test_connections_why`, `test_roles_official` (all 7 pass, 0 failures).
+- **Post-fix suites run:** `test_connections_cache` (45/45 checks), `test_connections`, `test_connections_pairings`, `test_connections_core`, `test_connections_cases`, `test_connections_why`, `test_roles_official`, `test_headline` (15/15 checks with `Connections.enabled = false`) — all pass, 0 failures.
 
 ---
 

@@ -6,6 +6,7 @@ const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Caches = preload("res://workshop/caches.gd")
 const Jury = preload("res://workshop/jury.gd")
+const Connections = preload("res://workshop/connections.gd")
 
 var checks = 0
 var fails = 0
@@ -17,6 +18,7 @@ func _check(ok: bool, label: String) -> void:
 		fails += 1
 
 func _init():
+	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(4, 10)
