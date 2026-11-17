@@ -107,6 +107,11 @@ static var held_together_rule: bool = true
 ## Buy-in fading (buy_in_rate). Off, every case keeps CASE_FADE a day (for measuring, and
 ## for arithmetic tests on chosen numbers).
 static var buy_in: bool = true
+## MOCK (never merged): centre a case on its premise. "" off, "A" the joint value only, "B"
+## the brought cards too; PREMISE_FRAC is the bystanders' share.
+static var premise_mode: String = ""
+static var premise_frac: float = 0.5
+static var b_stats: Dictionary = {"items": 0, "brought_any": 0, "scaled": 0, "kinds": {}}
 ## Developer capture (off): one record per judgement a refresh makes, for measuring what a
 ## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
 ## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
@@ -854,8 +859,42 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var values: Dictionary = {}
 	part = Profiler.open("items")
 	run["section"] = "items"
+	var brought: Dictionary = core_state.get("brought", {}) if premise_mode == "B" else {}
 	for it in item_list:
 		var v: Dictionary = value(run, it)
+		# MOCK (B): an item whose cards were all brought by one case's premise counts at
+		# premise_frac on everyone but that case's subject.
+		if not brought.is_empty():
+			b_stats.items += 1
+			if it.ids.any(func(id): return brought.has(id)):
+				b_stats.brought_any += 1
+				b_stats.kinds[it.kind] = int(b_stats.kinds.get(it.kind, 0)) + 1
+		if not brought.is_empty() and not v.impossible and it.ids.all(func(id): return brought.has(id)):
+			var subj: String = str(brought[it.ids[0]])
+			if subj != "" and it.ids.all(func(id): return str(brought[id]) == subj):
+				var scaled: Dictionary = {}
+				for p in v.lean:
+					scaled[p] = float(v.lean[p]) * (1.0 if p == subj else premise_frac)
+				v = {"lean": scaled, "impossible": false}
+				b_stats.scaled += 1
+		# MOCK (C, an estimate): what a case's brought night cards add to a movement item or a
+		# night counts at premise_frac on everyone but that case's subject.
+		if premise_mode == "C" and not v.impossible and it.kind in ["movement", "unit"]:
+			var br: Dictionary = core_state.get("brought", {})
+			var mine: Array = it.ids.filter(func(id): return br.has(id) and str(br[id]) != "")
+			if not mine.is_empty():
+				var subj_c: String = str(br[mine[0]])
+				if mine.all(func(id): return str(br[id]) == subj_c):
+					var rest_ids: Array = it.ids.filter(func(id): return id not in mine)
+					var v_wo: Dictionary = value(run, {"key": it.key + ":wo", "ids": rest_ids, "ctx": it.ctx, "kind": it.kind}) if not rest_ids.is_empty() else {"lean": {}, "impossible": false}
+					if not v_wo.impossible:
+						var scaled_c: Dictionary = {}
+						for p in run.others:
+							var base_l: float = float(v_wo.lean.get(p, 0.0))
+							var x_l: float = base_l + (float(v.lean.get(p, 0.0)) - base_l) * (1.0 if p == subj_c else premise_frac)
+							if not is_zero_approx(x_l):
+								scaled_c[p] = x_l
+						v = {"lean": scaled_c, "impossible": false}
 		values[it.key] = v
 		var entry: Dictionary = {"key": it.key, "kind": it.kind, "cards": it.ids, "ctx": it.ctx, "lean": v.lean}
 		if v.impossible:
@@ -994,7 +1033,7 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 			continue
 		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
 			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
-			"suspicious": bool(cs.get("suspicious", false))})
+			"suspicious": bool(cs.get("suspicious", false)), "target": str(cs.get("target", ""))})
 	# Oldest first, so a later entry is a later case.
 	var kept: Array = []
 	for i in range(out.size()):
@@ -1235,6 +1274,8 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 			state = step.next
 			for p in added:
 				var x: float = cs.weight * float(added[p])
+				if premise_mode in ["A", "B"] and str(cs.get("target", "")) != "" and p != str(cs.target):
+					x *= premise_frac  # MOCK: A and B both centre the joint value
 				if not is_zero_approx(x):
 					entry.lean[p] = x
 					total[p] = float(total.get(p, 0.0)) + x

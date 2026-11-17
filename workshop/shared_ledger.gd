@@ -157,6 +157,16 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 				"suspicious": _root_type(presented) == "suspicious" and not str(key).begins_with("direct:"), "challenges": own_challenges})
 	if with_cases:
 		input.listener.connections["cases"] = input.listener.connections.get("nominations", []).duplicate(true) + stored_cases
+		# MOCK (premise centring, option B): cards held only because a case brought them, and
+		# that case's subject.
+		var target_of: Dictionary = {}
+		for sc in stored_cases:
+			target_of[sc.key] = sc.target
+		var brought: Dictionary = {}
+		for id in owners:
+			if not owners[id].is_empty() and owners[id].all(func(o): return str(o).begins_with("case:")):
+				brought[id] = str(target_of.get(str(owners[id][0]), ""))
+		input.listener.connections["brought"] = brought
 	for entry in ledger.values():
 		var meta: Dictionary = entry.get("meta", {})
 		if meta.get("kind") != "defence" or meta.get("scope", {}).get("type") != "challenge":

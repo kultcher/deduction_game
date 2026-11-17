@@ -956,6 +956,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if baseline.has("player_credibility"):
 			weigher["player_credibility"] = baseline.player_credibility
 		connections = Connections.refresh(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}))
+		if OS.get_environment("PREMISE_LOG") != "":
+			_premise_probe(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}), connections)
 		ev = Connections.overlay({"impossible": false, "people": {}}, connections)
 	else:
 		ev = _case_eval(view, scoped, eval_listener)
@@ -1401,3 +1403,47 @@ static func _changes(view: Dictionary, previous: Dictionary, current: Dictionary
 	if previous.conclusion != current.conclusion:
 		changes.append("You changed the conclusion.")
 	return changes
+
+
+## MOCK (premise centring measurement): on a refresh that holds a case the player presented
+## today, the listener's chances without those cases, as now, and under A and B at two
+## bystander shares, all from the same state. One JSON line per such refresh.
+static func _premise_probe(view: Dictionary, value: Dictionary, weigher: Dictionary, held_ids: Array, cst: Dictionary, now: Dictionary) -> void:
+	var day: int = int(cst.get("day", -1))
+	var today: Array = cst.get("cases", []).filter(func(c): return str(c.get("presenter", "")) == "player" and int(c.get("day", -9)) == day and str(c.get("target", "")) != "")
+	if today.is_empty():
+		return
+	var keys: Array = today.map(func(c): return str(c.key))
+	var none_state: Dictionary = cst.duplicate(true)
+	none_state["cases"] = cst.get("cases", []).filter(func(c): return str(c.get("key", "")) not in keys)
+	var brought: Dictionary = cst.get("brought", {})
+	var by_id: Dictionary = {}
+	for c in view.cards:
+		by_id[c.id] = c
+	var case_cards: Dictionary = {}
+	for c in today:
+		for id in c.get("cards", []):
+			case_cards[id] = true
+	var none_held: Array = held_ids.filter(func(id): return not (brought.has(id) and case_cards.has(id)))
+	var out: Dictionary = {"listener": str(weigher.get("id", "")), "day": day, "seed": int(view.get("seed", -1)),
+		"cases": today.map(func(c): return {"key": c.key, "target": c.target, "type": c.get("type", ""), "cards": c.get("cards", []).size(),
+			"named": Connections._names(by_id, c.get("cards", []).filter(func(id): return by_id.has(id)), view.people.map(func(p): return p.id)),
+			"brought": c.get("cards", []).filter(func(id): return brought.has(id)).size(),
+			"kinds": c.get("cards", []).filter(func(id): return by_id.has(id)).map(func(id): return "%s%s%s" % [str(by_id[id].get("kind", "")), (":" + str(by_id[id].get("role", ""))) if str(by_id[id].get("role", "")) != "" else "", ":complete" if by_id[id].get("complete", false) else ""]),
+			"texts": c.get("cards", []).filter(func(id): return by_id.has(id)).map(func(id): return str(by_id[id].get("text", "")).left(90))}),
+		"post": {"none": Connections.refresh(view, value, weigher, none_held, none_state).posterior, "now": now.posterior}}
+	var was_mode: String = Connections.premise_mode
+	var was_frac: float = Connections.premise_frac
+	for mode in ["A", "B", "C"]:
+		for frac in [0.5]:
+			Connections.premise_mode = mode
+			Connections.premise_frac = frac
+			out.post["%s%.2f" % [mode, frac]] = Connections.refresh(view, value, weigher, held_ids, cst).posterior
+	out["b_stats"] = Connections.b_stats.duplicate(true)
+	Connections.premise_mode = was_mode
+	Connections.premise_frac = was_frac
+	var path: String = OS.get_environment("PREMISE_LOG")
+	var f := FileAccess.open(path, FileAccess.READ_WRITE if FileAccess.file_exists(path) else FileAccess.WRITE)
+	f.seek_end()
+	f.store_line(JSON.stringify(out))
+	f.close()
