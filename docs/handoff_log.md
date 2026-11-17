@@ -29,8 +29,8 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ## 2026-11-16 night, Claude-Quill: playtest 26532, the Muddler and the relayed lie (PR #173, `claude/relay-lie-attribution`)
 
-- **Base:** main `c8ef1e7`. **Status:** PR open, golden identical to `baseline_bb6f01c` at `--tol 0`. **Next actor:** Bailiff (merge); Michael for the Muddler question below and for the case log (`case_26532.jsonl`) that task 2 needs.
-- **Which [decided] item next:** "Martyr non-substitution must keep its alternative explanations" (BACKLOG section 2), after the Isolde case (task 2), which waits on the log.
+- **Base:** main `c8ef1e7`. **Status:** PR open, golden identical to `baseline_bb6f01c` at `--tol 0`. **Next actor:** Bailiff (merge); Michael for the Muddler proposal below.
+- **Which [decided] item next:** "Martyr non-substitution must keep its alternative explanations" (BACKLOG section 2). The Isolde case (task 2) has its own entry and PR.
 
 ### The grimoire listed a relay as the relayer's own lie: fixed
 
@@ -42,31 +42,50 @@ Ground rules (from Nov 3, until Michael changes them):
 
 ### The Muddler never muddled: the gift works, but there's almost nothing to muddle
 
-Measured on 40 passive games, seeds 1–40, 10 NPCs, the default script with the Muddler forced (`sc.forced = ["muddler"]`), played to the end or day 6, earlier belief model (as in the playtest). Probe script not committed.
+- **In 26532 itself (from Michael's log): Hollis passed on nothing at all.** The whole town made 3 relays all game (Greta's relay of Edda's reading and two alibis). What looked like Hollis's relays were his own sightings, which the gift doesn't touch.
+- **Measured** on 40 passive games, seeds 1–40, 10 NPCs, the default script with the Muddler forced (`sc.forced = ["muddler"]`), played to the end or day 6. Probe scripts not committed.
 
-| | Earlier model, 40 games |
-|---|---|
-| Games where the Muddler passed on any reading or night sighting | 5 of 40 |
-| Readings or sightings the Muddler passed on (private and at meetings) | 7 tellings of 6 items |
-| …items garbled | 3 of 6 (the roll is 65% per item; 3 of 6 is within chance) |
-| Games where any garbled relay reached anyone | 3 of 40 |
-| Private readings or sightings the Muddler heard from others | 32 |
-| Everything the Muddler told anyone | 216 shares |
-| Relays of any kind by anyone in town | 60 (1.5 a game) |
+| | Earlier model, 40 games | Connections on, 23 games |
+|---|---|---|
+| Games where the Muddler passed on any reading or night sighting | 5 | 2 |
+| Items garbled, of those passed on | 3 of 6 (65% chance each) | 1 of 2 |
+| Games where a garbled version reached anyone | 3 | 1 |
+| Private readings or sightings the Muddler heard from others | 32 (under 1 a game) | 22 |
+| Everything the Muddler told anyone | 216 | 131 |
+| Relays by anyone in town | 60 (44 of them readings, mostly from the dead) | 20 |
 
-- **So:** when a Muddler relays a reading or a night sighting, it does get garbled about as often as designed. But a Muddler relays one in about 1 game in 8, so in most games a Muddler muddles nothing. 26532 was a typical game, not a broken one. The Muddler's other 209 shares are their own sightings, alibis, opinions, claims and hints, which the gift doesn't touch by design ("someone else's reading or night sighting").
-- **Why relays are rare** (read from the code, not measured): a peer relay is drawn only from the teller's last 4 hearsay items (`Social._pick_item`, `s.hearsay.slice(-4)`), and public meeting receipts, day sightings, opinions and claims fill that window. Readings from the dead are scanned in full, which is why most relays are those.
-- **Not measured:** relays to the player in active play (`gossip_item`, `answer_about_role` both muddle), and the connections model (running; added below when it finishes).
-- **Options, for Michael (each a mechanic change, so not built):**
-  1. Let the Muddler muddle more kinds: their passing-on of public statements, or of day sightings and alibis.
-  2. Let the Muddler's own night sightings be muddled when they tell them (closer to "a muddled person" than "a muddled relay").
-  3. Widen the relay window for everyone (more gossip travels town-wide; touches balance well beyond the Muddler).
-  My recommendation is 1 with day sightings and alibis added: it keeps the Muddler a relayer, gives them material in most games, and leaves everyone else's gossip alone.
-- **For Claude-Beadle:** this sits in NPC behaviour (what an NPC chooses to pass on, `Social._pick_item`), not in evidence or the judge. The Muddler's garbling itself (`sim/muddler.gd`) works as designed. Over to Beadle if Michael picks an option.
+(The connections run hit the session's time limit at 23 games.)
+
+- **So:** when the Muddler passes something on, it's garbled about as designed. But in about 7 games in 8 there's nothing to garble.
+- **The cause is supply, not the relay rule.** I first guessed that NPCs only pass on the last four things they heard. A mock tested that: everything private heard today or yesterday, with yesterday's at half weight, and day sightings allowed. It gave 52 relays in the same 40 games against 60 without it, and 2 garbled games against 3: no rise. NPCs hear very little privately. Most news is announced at the meeting, everyone hears it there, and nobody passes on what everyone heard.
+
+### Proposal: option 3, "everyone passes on more" (Michael asked, via Seneschal; not built; Beadle would build it)
+
+Option 3 only works if there's private news to pass on, so it has two parts.
+
+1. **More news stays private for a while.** An NPC who saw someone out at night tells one or two trusted people during the day, before (or instead of) announcing it at the meeting. That depends on how secretive they are, how much they trust the listener, and whether they suspect the person they saw. Anything not yet public can be passed on, from all of today and yesterday, not just the last four things heard.
+   - *How often (estimate):* sightings told privately are rare now. If a third of night sightings were first told privately, the Muddler would have something to pass on in roughly half of games, not 1 in 8. That's an estimate, not measured.
+2. **More kinds can be passed on:** daytime sightings ("X was at the chapel"), home alibis ("X says they stayed home on the Square") and private gift claims ("X told me they're the Clerk"). Claims are the risky kind: evil learns who holds which gift faster. I'd leave them out of the first build.
+
+How the Muddler would garble each kind (one detail, the same way every time the item is told, as today):
+
+| Kind | What changes | What the player sees |
+|---|---|---|
+| Reading (today) | one person, the yes/no, the role or the count | a "Via Hollis" reading card that the reader disowns when asked |
+| Night sighting (today) | the person, the block or the night | a "Via Hollis" sighting that the seer disowns |
+| Daytime sighting | the place, or the person | "Hollis says Greta was at the tavern" where the player saw her at the chapel |
+| Home alibi | the block or the night | "Constance stayed home on the second night" when she said the first |
+| Private gift claim (if included) | the gift, within its family | "X told me they're the Seer" when X told them Clerk |
+
+- **What it changes in play:** private news would travel further. Every NPC, not just the Muddler, would hear about a day earlier who was out at night, before the meeting. That pushes good's information forward and also helps evil learn what the town knows. The Muddler's secret would show up in a game more often than not, rather than 1 in 8 (estimate). The player could catch it by checking a "Via" card against the original teller.
+- **Risk:** part 1 changes what NPCs say at meetings. Fewer fresh announcements would make the meeting less of a reveal. It needs a sweep before tuning.
+- **A cheaper alternative (new):** garble the Muddler's own retellings at the meeting, when they repeat or cite what someone else said there. No change to how anyone else talks. I'd now recommend this over option 1 (day sightings and alibis): the mock found only 11 such relays town-wide in 40 games, so option 1 gives the Muddler about one more garble every 40 games.
+
+- **For Claude-Beadle:** what an NPC chooses to pass on (`Social._pick_item`) is NPC behaviour; the garbling (`sim/muddler.gd`) works as designed. If Michael picks part 1, the decision about whether to tell a sighting privately or wait for the meeting sits in `_pick_item`'s own-sighting candidates and the meeting's announcement code.
 
 ### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
 
-- **The Muddler rarely has anything to muddle.** Seen in playtest 26532 and in 40 forced-Muddler games (above): 5 of 40 games had the Muddler pass on a reading or night sighting. Options 1–3 above. Suggested tag [open], owner Beadle.
+- **The Muddler rarely has anything to muddle.** Seen in playtest 26532 and in 40 forced-Muddler games (above): in about 1 game in 8 the Muddler passes on a reading or night sighting. Proposal above. Suggested tag [open], owner Beadle.
 
 ---
 
