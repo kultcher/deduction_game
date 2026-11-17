@@ -208,6 +208,17 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if not seed_doubt.has(s_good + ":*"):
 			pre_eval.erase(s_good + ":*")
 
+	# "Was my reading poisoned?" (Michael, Nov 17): what the last refresh found clashing with
+	# the listener's own readings, as an honest doubt on those nights (Connections.
+	# _poison_doubt, kept in the core memory). Honest, so it reaches the role check and the
+	# readings' weight, never a charge of lying.
+	var remembered: Dictionary = listener.get("connections", input_snap.get("listener", {}).get("connections", {}))
+	var poisoned: Dictionary = remembered.get("core", {}).get("poison_doubt", {})
+	for k_p in poisoned:
+		if self_id != "" and str(k_p).begins_with(self_id + ":"):
+			pre_eval[k_p] = maxf(float(pre_eval.get(k_p, 0.0)), float(poisoned[k_p]))
+			honest[k_p] = maxf(float(honest.get(k_p, 0.0)), float(poisoned[k_p]))
+
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})
 	if not rc_case.get("reading_challenges", {}).is_empty():
@@ -256,3 +267,26 @@ static func _arg_doubt(ledger: Dictionary, owned_map: Dictionary, src: String, n
 			"unreliable", "lied":
 				out = maxf(out, minf(0.5 * wgt, 0.9))
 	return out
+
+
+## The listener's honest doubt about its own readings, by night: {night: doubt}, from the
+## honest map's "<self>:<night>" keys (the poison self-doubt, Connections._poison_doubt, and
+## the Delusional self-doubt). A self key "<self>:*" counts as night -1.
+static func own_doubt(self_id: String, honest: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if self_id == "":
+		return out
+	for k in honest:
+		var key: String = str(k)
+		if not key.begins_with(self_id + ":"):
+			continue
+		var rest: String = key.substr(self_id.length() + 1)
+		var night: int = -1 if rest == "*" else int(rest)
+		out[night] = maxf(float(out.get(night, 0.0)), float(honest[k]))
+	return out
+
+
+## An NPC's current doubt about each night of its own readings ({night: doubt}), as its last
+## applied refresh left it: for dialogue ("something seems off about my readings") and tools.
+static func self_doubt(n) -> Dictionary:
+	return n.workshop_state.get("self_doubt", {}).duplicate()

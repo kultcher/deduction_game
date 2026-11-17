@@ -94,6 +94,9 @@ static func _refresh(g, n, phase: String) -> void:
 		state.owned = plan.owned
 		var doubt_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
 		state.source_doubt = doubt_bundle.full.duplicate(true)
+		# What it doubts of its own readings, by night (poison and Delusional self-doubt), for
+		# what it says aloud (SourceDoubt.self_doubt).
+		state["self_doubt"] = SourceDoubt.own_doubt(n.id, doubt_bundle.get("honest", {}))
 		var started = Time.get_ticks_msec()
 		# Premises pass step 1: remembered presentations shape their own cards' effect.
 		var shaping: Dictionary = Shared.premise_shaping(plan, state.get("presentations", {}), state.get("withdrawn", {}), float(plan.prepared.listener.get("insight", 0.5)))
@@ -154,7 +157,13 @@ static func _refresh(g, n, phase: String) -> void:
 		if proposal.has("connections") and committed_inputs[0].listener.has("connections"):
 			if not state.has("connections"):
 				state["connections"] = {}
+			# The poison self-doubt this refresh found (Connections._poison_doubt) is read by
+			# the next one's SourceDoubt.derive; when it differs from what this refresh
+			# applied, Mind runs the refresh once more so beliefs don't lag it.
+			var applied_pd: Dictionary = committed_inputs[0].listener.connections.get("core", {}).get("poison_doubt", {})
 			state.connections["core"] = proposal.connections.get("core_memory", {}).duplicate(true)
+			if state.connections.core.get("poison_doubt", {}) != applied_pd:
+				state["poison_doubt_changed"] = true
 			committed_inputs[0].listener.connections.core = state.connections.core.duplicate(true)
 		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
 		state.requested = {}
