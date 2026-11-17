@@ -205,7 +205,7 @@ func run_morning_bluff(w, n) -> bool:
 		"shared": false,
 		"true": false,
 		"fake": true,
-		"why": "evil fabrication: " + why,
+		"why": "evil fabrication: " + load("res://sim/evil.gd").named(w, why),
 		"data": {"target": ex.id, "role": role},
 		"text": _role_text(ex.name, role),
 	}

@@ -762,8 +762,9 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				hmate = m
 			var re: Dictionary = FabricationCheck.vet(w, m, he, _alternatives(w, m, hdef, w.evil_plan, hmate, he, bool(he.has("phase"))), str(w.evil_plan.get("scapegoat", ""))) if hdef != null else {"entry": he, "outcome": "ok", "why": ""}
 			var out: Dictionary = re["entry"]
-			if re["why"] != "":
-				out["why"] = "evil fabrication: " + str(re["why"])
+			if re["outcome"] == "reworked":
+				# Keeps the motive it was made for, and says why it was changed (Steward A2).
+				out["why"] = str(he.get("why", "evil fabrication")) + "; " + str(re.get("note", ""))
 			_mark_fake(out)
 			if re["outcome"] == "held":
 				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
@@ -771,6 +772,8 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				continue
 			m.info_log.append(out)
 			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
+			# The reveal lists what was actually told (Steward A2): the released version.
+			w.dlog.add("fake_info", m.id, "", out, "%s (evil) tells its held-back reading: %s [%s]" % [m.name, out.get("text", ""), out.get("why", "")])
 		m.held_fakes = keep
 	var plan: Dictionary = w.evil_plan
 	var s: String = plan["scapegoat"]
@@ -803,16 +806,37 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		# told: stamped with its gift and night first.
 		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
 		entry = vetted["entry"]
-		if vetted["why"] != "":
-			why = vetted["why"]
 		_mark_fake(entry)
+		why = named(w, why)
 		entry["why"] = "evil fabrication: " + why
+		if vetted["outcome"] == "reworked":
+			# Keeps the motive it was made for, and says why it was changed (Steward A2-A3:
+			# the alternative's own reason replaced the motive, and named ids).
+			entry["why"] += "; " + str(vetted.get("note", ""))
 		if vetted["outcome"] == "held":
 			n.held_fakes.append({"entry": entry, "until": w.day + (0 if day_only else 1)})
-			w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
+			# Not yet told, so not on the reveal's list of lies (Steward A2): logged apart.
+			w.dlog.add("fake_info_held", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## A fabrication's motive with people's ids swapped for their names, so the end-of-game
+## reveal reads "the dead Seer Lian 'cleared' the demon Merrin", not raw ids (Steward A3,
+## Nov 17). Whole words only; the rest of the wording is left as written.
+static func named(w, text: String) -> String:
+	if text == "":
+		return text
+	var re := RegEx.new()
+	re.compile("\\b[a-z][a-z0-9_]*\\b")
+	var out: String = ""
+	var cursor: int = 0
+	for m in re.search_all(text):
+		var tok: String = m.get_string()
+		if w.by_id.has(tok) and tok != w.by_id[tok].name:
+			out += text.substr(cursor, m.get_start() - cursor) + w.by_id[tok].name
+			cursor = m.get_end()
+	return out + text.substr(cursor)
 
 ## The bluff rule's other plausible readings for `entry`, stamped as told, for a liar who
 ## noticed its first one points at itself or a teammate (FabricationCheck.vet).

@@ -86,6 +86,11 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
 
 - **`main` moves only when green:** the build, the suites, Codex's review, and a golden
   capture identical at `--tol 0` to `BASELINE` in `.github/workflows/ci.yml`.
+- **Docs-only PRs** (only `.md` files, which the code doesn't read) skip CI; Bailiff still
+  reviews and merges them, and they need no golden check. If you already have an open
+  docs-only PR, add further docs changes to it (each with its own handoff file) rather than
+  opening another. Don't add docs-only changes to a code PR that's waiting in the golden
+  queue.
 - **A change that moves golden re-baselines in the same PR:** capture twice (the two must
   be identical), commit the capture as `tools/golden/baseline_<sha7>/`, set `BASELINE` in
   `ci.yml`, and update "Current baseline" in `docs/golden_baseline.md` (what diverged and

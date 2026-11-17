@@ -82,10 +82,11 @@ static func gift_refusal(n) -> Dictionary:
 	return say(n, rendered["text"])
 
 static func home_alibi(w, n, nd: int) -> Dictionary:
+	# The voices' alibis say "all last night"; an earlier night takes its spoken ordinal in
+	# that place ("all the second night"), never a number (Nov 17).
 	var when_label = "last night"
 	if w != null and nd != w.day - 1:
-		var nm: String = C.night_name(nd)
-		when_label = ("on " + nm) if nm.begins_with("night") else nm
+		when_label = C.spoken_night(nd, w.day)
 	var rendered = Dialogue.compose(n.id, Dialogue.alibi_intent("alibi:%d" % nd, when_label), {"audience": "player", "speech_act": "answer", "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory)
 	return say(n, rendered["text"])
 

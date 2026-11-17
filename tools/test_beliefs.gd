@@ -10,8 +10,9 @@ var fails = 0
 
 func _init() -> void:
 	# Reliability, source doubt and belief revision, under the connections model (purge
-	# phase 2). Two checks stay pinned to the earlier model until Michael decides: see
-	# _test_own_reading_poisoned and _test_double_claim_shifts.
+	# phase 2; the last two pinned checks unpinned once #186, the doubted own reading, and
+	# #198, the double-claim pairing, merged).
+	Connections.enabled = preload("res://sim/tuning.gd").Workshop.CONNECTIONS
 	_test_recovery()
 	_test_independent_evidence()
 	_test_poison_not_honesty()
@@ -21,10 +22,8 @@ func _init() -> void:
 	_test_weak_restatement()
 	_test_poison_argument_undone()
 	_test_own_reading_poisoned()
-	Connections.enabled = preload("res://sim/tuning.gd").Workshop.CONNECTIONS
 	_test_sightings_not_poisoned()
 	_test_double_claim_shifts()
-	Connections.enabled = preload("res://sim/tuning.gd").Workshop.CONNECTIONS
 	_test_own_gift()
 	_test_known_good_claimant()
 	print("FAILURES: %d" % fails)
@@ -208,10 +207,8 @@ func _test_poison_argument_undone() -> void:
 	_check(r1 > r0 and r2 <= r1, "poison argument on B lifts A's reliability until C's support is doubted")
 
 func _test_own_reading_poisoned() -> void:
-	# Pinned to the earlier model (purge phase 2): under connections a listener's own
-	# reading keeps its weight after a misled argument doubts it (C 0.151 before and after;
-	# the earlier model drops it). Reported to Michael as a likely bug, Nov 16.
-	Connections.enabled = false
+	# A misled argument doubting the listener's own reading stops it implicating people
+	# (under connections since #186: the doubt reaches the role check).
 	var t = _setup(5110)
 	var w = t["w"]
 	var L = t["L"]
@@ -240,10 +237,8 @@ func _other_role(t: Dictionary) -> String:
 	return "warden"
 
 func _test_double_claim_shifts() -> void:
-	# Pinned to the earlier model (purge phase 2): under connections a claim is only
-	# context, so two claims of one gift don't raise either claimant by themselves (both
-	# dip about 0.01). Whether they should is Michael's call (asked Nov 16).
-	Connections.enabled = false
+	# Two claims of one gift raise both claimants, and a reading against one shifts the
+	# doubt onto them (the double-claim pairing, #198; Michael, Nov 16).
 	var t = _setup(5512)
 	var w = t["w"]
 	var L = t["L"]
