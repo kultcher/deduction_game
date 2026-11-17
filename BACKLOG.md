@@ -238,6 +238,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
   proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
   way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/trace-measure`, Nov 17):** `measure_evidence.gd --what traces`,
+  `combined` and `support`, the same rows as Tally's probe. [done]
 
 ### NPC behaviour
 
@@ -524,6 +526,19 @@ Candidates for a unified retuning proposal, not approved changes.
   [decided; presentation open]
 
 ### UI
+
+- **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
+  While the player is in a conversation but looking at the map, the conversation's options
+  are hidden; they return to the conversation view to carry on. Herald. [decided]
+
+- **A way back from the map.** (Michael, Nov 17) On the map during a conversation or a
+  meeting, a button at the top right of the map view: "Return to conversation" or "Return
+  to meeting" (Michael's wording). Herald. [decided]
+
+- **Workshop: left-drag pans again.** (Michael, Nov 17) Left-click and drag on empty space
+  pans the view, and shift+left-click and drag draws a selection box. Today left-drag on
+  empty space draws the box and the middle or right button pans; the canvas hint already
+  says "drag empty space to pan". Herald. [decided]
 
 - **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
   "heard" line, type and source icons stack in one corner, the context tag sits on the

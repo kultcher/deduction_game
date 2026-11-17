@@ -44,15 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 23973 wording): `baseline_5b77f6f`
+### Current baseline (Nov 17, 89077 wording): `baseline_3ef0e2f`
 
-`tools/golden/baseline_5b77f6f/` is the capture from `claude/herald-23973-wording` at
-`5b77f6f` (on main `c4121b9`): playtest 23973's wording. Of what it changes, only Nisha's
-agreement line reaches these games: "My own model aligns with {accuser} regarding
-{target}" is now "My own reckoning agrees with {accuser} about {target}".
-- **Divergence from `baseline_f554c4a`:** text only, 3 strings: 692 from record 189 (day 3
-  meeting) and 98933 from record 117 (day 2 meeting). Record counts are the same. 42, 54875
-  and 900: identical.
+`tools/golden/baseline_3ef0e2f/` is the capture from `claude/herald-89077-wording` at
+`3ef0e2f` (main `ae6c304` merged in): playtest 89077's wording fixes. Nights are spoken as
+ordinals (the Warden, the Medium, a home alibi for an earlier night), and a Lamplighter's
+count given as a reason says "my count of folk abroad that night doesn't square with what
+we've been told" instead of "...leaves them among the likeliest" (Michael, Nov 17).
+- **Divergence from `baseline_f554c4a`:** text only, on two seeds; every changed field is a
+  string (133 in all) and record counts are the same.
+  - 692 from record 173 (day 3): Agnes's Medium reading, "...on the Docks on night 0" now
+    "...the night before you arrived".
+  - 98933 from record 134 (day 2): Bartholomew's nomination of Dorian gives the count line.
+  - 42, 54875 and 900: identical.
 - **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_f554c4a`.
 - **Stability:** two captures were identical.
 
