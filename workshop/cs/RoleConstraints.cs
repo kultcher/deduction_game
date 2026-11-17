@@ -846,7 +846,12 @@ internal static class RoleConstraintsKernel
                 if ((flags & FlagMartyrEvil) != 0 && !deludedPromise)
                 {
                     int target = cardInts[off + 16];
-                    if (target < 0 || ((evil & (1 << target)) == 0 && (contentOnly || world.Marked != target)))
+                    // A promise's chosen the Revenant turned evil registers evil at a hanging
+                    // inside the curse (slot 20: the hanging's tick; Codex, #183).
+                    int hangTick = (flags & FlagMartyrPromise) != 0 ? cardInts[off + 20] : -1;
+                    bool turnedAtHang = target >= 0 && hangTick >= 0 && hasCurse && worldConverted == target
+                        && hangTick >= curseFrom && hangTick < curseUntil;
+                    if (target < 0 || ((evil & (1 << target)) == 0 && !turnedAtHang && (contentOnly || world.Marked != target)))
                     {
                         return 0.0;
                     }

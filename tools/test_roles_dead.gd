@@ -416,6 +416,20 @@ func _promise_then_hanging(base_view: Dictionary, world: Dictionary) -> void:
 	var deluded_co: Dictionary = promise.duplicate(true)
 	deluded_co["content_only"] = true
 	check(Solver.Roles.fit_weight(view, deluded, [deluded_co], {}, {}, true) == 0.0, "the content-only mask still judges the promise's content")
+	# Codex, #183: the Revenant's curse turned the chosen evil, and they were hanged inside
+	# it. A healthy Martyr surviving that is expected, so the promise holds there.
+	var cursed: Dictionary = view.duplicate(true)
+	cursed.timeline.executions = {"2": ["g"], "3": ["d"]}
+	cursed["chronology"] = {"epochs": {"Original alignment": 0}, "curse": {"from": 10, "until": 1000, "executed": "g", "yes_voters": ["d"], "alive": ["a", "b", "c", "d", "e", "f"]}}
+	var turned: Dictionary = world.duplicate(true)
+	turned["converted"] = 3
+	check(Solver.Roles.fit_weight(cursed, turned, [promise], {}, {}, true) > 0.0, "a chosen turned evil by the curse and hanged inside it explains the Martyr standing")
+	var not_turned: Dictionary = world.duplicate(true)
+	check(Solver.Roles.fit_weight(cursed, not_turned, [promise], {}, {}, true) == 0.0, "without the turn, the same hanging still fails a true promise")
+	# (In play the lifting is a public event, so the timeline, and the memo key, change too.)
+	cursed.chronology.curse.until = 13
+	cursed.timeline.events.append({"kind": "curse_lifted", "subjects": ["d"], "at": {"day": 3, "phase": "morning"}})
+	check(Solver.Roles.fit_weight(cursed, turned, [promise], {}, {}, true) == 0.0, "a curse lifted before the hanging doesn't excuse it")
 	# The same Martyr's outcome reading carries the check; the promise beside it isn't
 	# flagged, so one failure isn't priced as two false reports.
 	var outcome = _report("outcome2", "a", "martyr", {"target": "d", "evil": true}, 2)

@@ -445,6 +445,9 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 				var m_tgt: String = str(data.get("target", ""))
 				card_ints[off + 16] = ids.find(m_tgt)
 				card_ints[off + 17] = _intern_token(martyr_tokens, m_tgt) if m_tgt != "" else 0
+				# A promise's hanging time: a chosen the Revenant turned evil registers evil
+				# at a hanging inside the curse (Codex, #183). Slots 20-22 are the Registrar's.
+				card_ints[off + 20] = History.hanged_while_alive_tick(view, m_tgt, str(card.get("source", ""))) if (flags & (1 << 17)) != 0 else -1
 			elif role_str == "seer":
 				if bool(data.get("yes", false)):
 					flags |= (1 << 10)
