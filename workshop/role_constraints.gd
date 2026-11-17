@@ -128,8 +128,10 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 ## The Martyr's own outcome reading ("they must have been evil") about `target` from
 ## `source`, among `cards`.
 static func _has_martyr_outcome(cards: Array, source: String, target: String) -> bool:
+	# Only a direct outcome reading: the kernel skips a relayed one in worlds where the
+	# relaying Medium is evil, so it can't stand in for the promise there (Codex, #183).
 	return cards.any(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "martyr" and str(c.get("source", "")) == source \
-		and not bool(c.get("quoted", false)) and c.get("data") is Dictionary and bool(c.data.get("evil", false)) and str(c.data.get("target", "")) == target)
+		and not c.has("relay_source") and not bool(c.get("quoted", false)) and c.get("data") is Dictionary and bool(c.data.get("evil", false)) and str(c.data.get("target", "")) == target)
 
 
 static func _intern_role(role_map: Dictionary, role: String) -> int:
@@ -519,7 +521,8 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 			var medium: int = ids.find(card.relay_source)
 			if medium >= 0:
 				bits |= 1 << medium
-		elif card.get("kind", "") == "report" and str(card.get("role", "")) == "martyr" and card.get("data") is Dictionary and bool(card.data.get("chosen", false)):
+		# Independent of the relay: a relayed promise needs its Martyr in the key too.
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "martyr" and card.get("data") is Dictionary and bool(card.data.get("chosen", false)):
 			var martyr: int = ids.find(str(card.get("source", "")))
 			if martyr >= 0:
 				bits |= 1 << martyr

@@ -422,6 +422,16 @@ func _promise_then_hanging(base_view: Dictionary, world: Dictionary) -> void:
 	check(not Solver.Roles.fits(view, world, [promise, outcome], {}), "with both cards, a good chosen still fails")
 	check(Solver.Roles._has_martyr_outcome([promise, outcome], "a", "d") and not Solver.Roles._has_martyr_outcome([promise], "a", "d") \
 		and not Solver.Roles._has_martyr_outcome([promise, outcome], "b", "d"), "the promise defers to the same Martyr's outcome reading about the same person")
+	# Codex, #183: a Medium's relay of the outcome can be ignored (an evil Medium's
+	# invention), so it doesn't stand in for the promise; and a relayed promise keys the
+	# memo on both the Medium and the Martyr.
+	var relayed_outcome: Dictionary = outcome.duplicate(true)
+	relayed_outcome["relay_source"] = "c"
+	check(not Solver.Roles._has_martyr_outcome([promise, relayed_outcome], "a", "d"), "a relayed outcome reading doesn't silence the promise's check")
+	var relayed_promise: Dictionary = promise.duplicate(true)
+	relayed_promise["relay_source"] = "c"
+	var key_ids: Array = ["a", "b", "c", "d", "e", "f", "g"]
+	check(Solver.Roles.relay_mediums(key_ids, [relayed_promise]) == ((1 << 0) | (1 << 2)), "a relayed promise keys the memo on both the Martyr and the Medium")
 
 
 func _live() -> void:
