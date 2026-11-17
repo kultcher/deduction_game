@@ -282,7 +282,7 @@ func _state(g, n) -> Dictionary:
 	var st: Dictionary = {"ready": false, "id": n.id}
 	if plan.get("ready", false) and not plan.get("empty", false):
 		var doubt: Dictionary = SourceDoubt.derive(plan, n.ledger, ws.get("manual_source_doubt", {}))
-		var prepared: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full)
+		var prepared: Dictionary = Shared._doubt_adjusted(plan, outside, doubt.pre_eval, doubt.full, doubt.get("honest", {}))
 		st = _make_state(n.id, prepared.view, prepared.case, prepared.listener)
 	Shared.last_reason_ctx = kept[0]
 	Jury._eval_memo = kept[1]

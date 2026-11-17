@@ -712,47 +712,58 @@ static func _shape_effect(effect: Dictionary, bare: Dictionary, firm: Dictionary
 
 ## `shaping` (premises pass step 1): {targets, spill, without} from premise_shaping, with
 ## `without` the plan prepared without the shaping presentations. Empty: no shaping.
-static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}) -> Dictionary:
+## honest_doubt: SourceDoubt.derive's "honest" map, for the role check (empty: none).
+static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}, honest_doubt: Dictionary = {}) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
-		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping)
+		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
 	var _st: int = SolverBackend.begin_stage("outer_prep")
-	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping)
+	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
 	SolverBackend.end_stage(_st)
 	return _res
 
-static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}) -> Dictionary:
+static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}, honest_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.ready:
 		return {}
 	if plan.empty:
 		return {"effects": {}}
-	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt)
+	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
-	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping)
+	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
 
 ## One question (`conclusion`, e.g. a secret) asked of the listener's own evidence the way
 ## the belief refresh weighs it: the same doubt-adjusted cards, through the same attention
 ## and challenge machinery (Jury), not the raw prepared plan. Returns CaseEval's result
 ## ({prior, posterior, impossible, ...}), or {} when the plan isn't ready.
-static func evaluate_question(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, conclusion: Dictionary) -> Dictionary:
+static func evaluate_question(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, conclusion: Dictionary, honest_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.get("ready", false) or plan.get("empty", false):
 		return {}
-	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt)
+	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
 	var question: Dictionary = prepared.case.duplicate(true)
 	question.conclusion = conclusion.duplicate(true)
 	var res: Dictionary = Jury.evaluate(prepared.view, question, prepared.listener, {"headline_only": true})
 	return res.get("case_eval", {})
 
 ## The plan's prepared view and listener with source and sighting doubt applied.
-static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary) -> Dictionary:
+static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, honest_doubt: Dictionary = {}) -> Dictionary:
 	var eff_sighting_doubt: Dictionary = sighting_doubt if not sighting_doubt.is_empty() else source_doubt
 	var prev_doubt: Dictionary = plan.input.listener.get("source_doubt", plan.input.listener.get("discounted", {}))
 	var prepared: Dictionary = plan.prepared.duplicate(true)
 	prepared.listener.suspicion = suspicion.duplicate(true)
+	# The listener's honest doubt about each reading itself (honest_doubt: SourceDoubt's
+	# "honest" map, by the reading's night or its source in general), which the role check
+	# reads (CaseEval._doubted_role_fits). Caught lies, lying arguments and challenges, and
+	# trust in the teller aren't in it: the role check already lets an evil teller lie in the
+	# worlds where they are evil.
+	var honest: Dictionary = {}
+	prepared.listener["reading_doubt"] = honest
 	for card in prepared.view.cards:
 		if card.get("testimony_only", false):
 			continue # The teller's testimony is not a gift that poison can break.
 		if card.has("relay_source"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
+			var night_doubt: float = SourceDoubt.lookup(honest_doubt, str(card.source), int(card.observed_at.day))
+			if night_doubt > 0.0:
+				honest[card.id] = night_doubt
 			var relay_source: String = card.relay_source
 			var relay_day: int = card.relay_observed_at.day
 			var relay_before: float = maxf(float(prev_doubt.get("%s:%d" % [relay_source, relay_day], 0.0)), float(prev_doubt.get(relay_source + ":*", 0.0)))
@@ -761,6 +772,9 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 			continue
 		if card.has("route_origin"):
 			prepared.listener.reading_reliability[card.accuracy_origin] = 1.0 - maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
+			var night_doubt: float = SourceDoubt.lookup(honest_doubt, str(card.source), int(card.observed_at.day))
+			if night_doubt > 0.0:
+				honest[card.id] = night_doubt
 			continue
 		if card.kind == "sighting" and card.source not in ["", prepared.listener.id, "player", "evidence", "town"] and card.has("hearing_weight"):
 			var s_now: float = maxf(float(eff_sighting_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(eff_sighting_doubt.get(card.source + ":*", 0.0)))
@@ -774,18 +788,21 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 		if card.kind != "report":
 			continue # Impairment does not invalidate ordinary testimony/role claims.
 		var doubt = maxf(float(source_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(source_doubt.get(card.source + ":*", 0.0)))
+		var honest_night: float = SourceDoubt.lookup(honest_doubt, str(card.source), int(card.observed_at.day))
+		if honest_night > 0.0:
+			honest[card.id] = honest_night
 		# Keep hearing-route discount, replacing only the stale interval reliability.
 		var previous = maxf(float(prev_doubt.get("%s:%d" % [card.source, card.observed_at.day], 0.0)), float(prev_doubt.get(card.source + ":*", 0.0)))
 		var route_weight = prepared.listener.reading_reliability[card.id] / (1.0 - previous) if previous < 1.0 else 0.0
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
 	return prepared
 
-static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary) -> Dictionary:
+static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary, honest_doubt: Dictionary = {}) -> Dictionary:
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
 	# Premises pass step 1: the shaping presentations' effect reaches non-targets at `spill`.
 	# Step 2: cards only suspicious premises brought count at `hedge` for everyone.
 	if not shaping.is_empty() and shaping.get("without", {}).get("ready", false):
-		var wo_effects: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt).get("effects", {})
+		var wo_effects: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt, {}, honest_doubt).get("effects", {})
 		var hedged: Array = shaping.get("hedged", [])
 		var firm_effects: Dictionary = {}
 		var has_firm: bool = false
@@ -794,7 +811,7 @@ static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion
 				firm_effects = wo_effects  # every shaping presentation hedges
 				has_firm = true
 			elif shaping.get("without_firm", {}).get("ready", false):
-				firm_effects = _evaluate_impl(shaping.without_firm, suspicion, source_doubt, sighting_doubt).get("effects", {})
+				firm_effects = _evaluate_impl(shaping.without_firm, suspicion, source_doubt, sighting_doubt, {}, honest_doubt).get("effects", {})
 				has_firm = true
 		var spill: float = float(shaping.spill)
 		var hedge: float = float(shaping.get("hedge", 1.0)) if has_firm else 1.0
