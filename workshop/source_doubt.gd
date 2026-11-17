@@ -11,6 +11,7 @@
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
@@ -218,7 +219,7 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# nights carry the Sleepwalker's. Honest, so it reaches both the readings' weight and the
 	# role check (a role-checked reading, a Clerk's or a Seer's, moves only there), never a
 	# charge of lying. Its sightings and alibis aren't gift readings.
-	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false):
+	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false) and could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
 		var d_self: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT
 		for c in cards:
 			if str(c.get("kind", "")) != "report" or str(c.get("source", "")) != self_id or c.get("quoted", false) or c.has("relay_source"):
@@ -278,3 +279,18 @@ static func _arg_doubt(ledger: Dictionary, owned_map: Dictionary, src: String, n
 			"unreliable", "lied":
 				out = maxf(out, minf(0.5 * wgt, 0.9))
 	return out
+
+
+## Whether the deal's placement rules (ScriptDef.PLACEMENT_RULES) let a holder of `role`
+## carry `secret`: a Chronicler or Rumormonger never holds the Delusional secret, so knowing
+## its own gift rules out doubting itself that way. An unknown role could hold it.
+static func could_hold_secret(role: String, secret: String) -> bool:
+	if role == "" or not C.has_role_def(role):
+		return true
+	var def = C.role_def(role)
+	for rule in ScriptDef.PLACEMENT_RULES:
+		if secret in rule.get("except", []) or (rule.has("only") and secret not in rule.only):
+			continue
+		if bool(def.get(str(rule.not_on_flag))):
+			return false
+	return true

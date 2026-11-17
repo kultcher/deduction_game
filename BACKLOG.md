@@ -233,6 +233,14 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
   [decided] (Michael, Nov 17)
 
+- **Keep Tally's trace probe as a tool.** Tally measured how much a crime-scene trace
+  weighs with an uncommitted copy of `tools/measure_evidence.gd` that has two extra modes
+  (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
+  proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
+  way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/trace-measure`, Nov 17):** `measure_evidence.gd --what traces`,
+  `combined` and `support`, the same rows as Tally's probe. [done]
+
 ### NPC behaviour
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
@@ -353,6 +361,15 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Michael (Nov 17): as written. Quill owns the weighting in the judge and goes first;
   Beadle owns the votes and the "won't hang" behaviour; Herald drafts the new lines for
   Michael. Coordinate through the handoff log. [decided]
+  - **Judge side (Quill, `claude/lie-severity`):** a good person's own "I was home" stops
+    being certain. New number `Tuning.Workshop.GOOD_OWN_ALIBI_OUT` (0.2): the chance a
+    good person who was out still says "home". Measured Nov 17 on 40 passive 10-NPC games:
+    26% of good people who were out told the player "home" (hiding a night gift or a
+    secret, or a Sleepwalker). "Near the crime" is left to the existing scene reasoning. A
+    caught false reading is unchanged (still near proof when impossible).
+  - **Vote side (Beadle):** how the judge's lighter reading of a caught whereabouts lie
+    reaches votes, and "accepts the lie but won't hang, and says so" (Herald drafts the
+    lines). Follows the judge side.
 
 - **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
   addressed by the shadow self; revisit after playtests. (30294) [watch]
@@ -509,6 +526,19 @@ Candidates for a unified retuning proposal, not approved changes.
   [decided; presentation open]
 
 ### UI
+
+- **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
+  While the player is in a conversation but looking at the map, the conversation's options
+  are hidden; they return to the conversation view to carry on. Herald. [decided]
+
+- **A way back from the map.** (Michael, Nov 17) On the map during a conversation or a
+  meeting, a button at the top right of the map view: "Return to conversation" or "Return
+  to meeting" (Michael's wording). Herald. [decided]
+
+- **Workshop: left-drag pans again.** (Michael, Nov 17) Left-click and drag on empty space
+  pans the view, and shift+left-click and drag draws a selection box. Today left-drag on
+  empty space draws the box and the middle or right button pans; the canvas hint already
+  says "drag empty space to pan". Herald. [decided]
 
 - **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
   "heard" line, type and source icons stack in one corner, the context tag sits on the

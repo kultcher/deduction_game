@@ -87,5 +87,10 @@ func _init() -> void:
 	_finish()
 
 func _finish() -> void:
+	# A gift the deal never gives the Delusional secret (ScriptDef.PLACEMENT_RULES) rules the
+	# self-doubt out: the Chronicler and Rumormonger know they can't be Delusional.
+	check(not SourceDoubt.could_hold_secret("chronicler", "delusional") and not SourceDoubt.could_hold_secret("rumormonger", "delusional"), "a Chronicler or Rumormonger can't be Delusional, so doesn't doubt itself that way")
+	check(SourceDoubt.could_hold_secret("archivist", "delusional") and SourceDoubt.could_hold_secret("", "delusional"), "an Archivist, or a listener whose gift is unknown, could be")
+	check(SourceDoubt.could_hold_secret("chronicler", "lovers"), "the rule skips the secrets it excepts (a Chronicler can be a Lover)")
 	print("Delusional self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

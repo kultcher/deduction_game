@@ -129,13 +129,15 @@ func medium_text(w, dead, it: Dictionary) -> String:
 		"reading":
 			return "communing with the dead at %s's hearth, I heard what they never told us: %s" % [dead.name, C.third_person(it["entry"]["text"])]
 		"sighting":
-			return "communing with the dead at %s's hearth, I learned they saw %s out on %s on night %d" % [dead.name, w.by_id[it["who"]].name, C.block_name(it["block"]), it["night"]]
+			# Spoken, and kept to be retold on later days: a fixed ordinal ("the second night"),
+			# not the card's "night 2" or a "last night" that would go stale (89077).
+			return "communing with the dead at %s's hearth, I learned they saw %s out on %s %s" % [dead.name, w.by_id[it["who"]].name, C.block_name(it["block"]), C.spoken_when(int(it["night"]), -1)]
 		"suspicion":
 			return "communing with the dead at %s's hearth, I felt their distrust of %s" % [dead.name, w.by_id[it["about"]].name]
 		"nothing":
 			return "communing with the dead at %s's hearth, I learned nothing they hadn't already told us" % dead.name
 		"guard":
-			return "communing with the dead at %s's hearth, I learned they stood guard at %s's door on %s" % [dead.name, w.by_id[it["who"]].name, C.night_name(it["night"])]
+			return "communing with the dead at %s's hearth, I learned they stood guard at %s's door %s" % [dead.name, w.by_id[it["who"]].name, C.spoken_when(int(it["night"]), -1)]
 	return "communing with the dead at %s's hearth, I learned only that they were home on their last night" % dead.name
 
 

@@ -37,6 +37,7 @@ test_haunt_learning
 test_headline
 test_held_signals
 test_juror_claims
+test_lie_severity
 test_location_solver
 test_medium_relay_challenge
 test_meeting_m2a
@@ -52,6 +53,7 @@ test_premise_step2
 test_premise_step3
 test_recency
 test_relay_challenge_menu
+test_relayed_alibi
 test_review_fixes
 test_role_check_doubt
 test_roles_dead
@@ -69,6 +71,7 @@ test_town_vibe
 test_triage_nov16
 test_vote_shape
 test_warden_challenge
+test_wording_89077
 test_workshop_channel_likelihood
 test_workshop_efficiency
 test_workshop_integration
