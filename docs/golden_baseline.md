@@ -44,7 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, later): `baseline_a0a378d`
+### Current baseline (Nov 17, latest): `baseline_3403754`
+
+`tools/golden/baseline_3403754/` is the capture from `claude/herald-89077-wording` at
+`3403754` (main `c676018`): playtest 89077's wording fixes. The Warden and the Medium speak
+nights as ordinals, the Registrar's reading reads after a night phrase, and a first pressed
+home alibi doesn't claim an earlier account.
+- **Divergence from `baseline_a0a378d`:** text only, on two seeds. Every changed field is a
+  text field; record counts are the same.
+  - 692 from record 173 (day 3) and 98933 from record 324 (day 3): Agnes's Medium reading
+    of a relayed sighting read "...out on the Docks on night 0" and now reads "...out on the
+    Docks the night before you arrived".
+  - 42, 54875 and 900: identical.
+- **Outcomes unchanged:** the same hangings, votes and day-4 states as `baseline_a0a378d`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, later): `baseline_a0a378d`
 
 `tools/golden/baseline_a0a378d/` is the capture from `claude/beadle-fabrication-check` at
 `a0a378d` (main `45ebd82` merged in): evil fabrications are checked against the public
