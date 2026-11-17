@@ -931,6 +931,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   (the world prior gives how likely that is). Quill builds the role check's "self" mode
   first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
   that PR moves golden. **[decided]**
+  **Built (Lantern, #216, Nov 17):** as an honest 10% doubt on each night of the listener's
+  own readings (`DELUSIONAL_SELF_DOUBT`), through the same doubt map as anyone else's
+  readings, rather than the role-fit mix: it reaches both the role check and the readings'
+  weight (Seneschal's call, Nov 17; Quill's #214 keeps the role check from charging it
+  twice). A gift the deal never gives the secret (Chronicler, Rumormonger) rules it out.
+  Measured on 37 good listeners (13 seeds, 7 NPCs, day 3): a typical own reading gives up
+  about 8% of its lean (median; up to 8 points). Clerk, Seer and Archivist readings soften
+  only through their weight, Dowser, Surveyor and Warden readings only through the role
+  check. It doesn't raise a listener's belief that it is the Delusional one.
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

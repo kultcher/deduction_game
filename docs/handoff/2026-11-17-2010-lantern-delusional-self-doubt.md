@@ -13,6 +13,16 @@
   `SLEEPWALK_SELF_DOUBT`). It reaches the role check and the readings' weight, the same way
   doubt of anyone else's readings does. Relayed or quoted copies of its readings are left
   alone.
+- **Codex on #216:** a Chronicler or Rumormonger can't hold the Delusional secret (the
+  deal's placement rules), so it was doubting itself for nothing. `SourceDoubt.could_hold_secret`
+  now rules it out from the listener's own gift, generally, from `ScriptDef.PLACEMENT_RULES`.
+- **How far a typical own reading softens** (Seneschal asked; fixed game states, 37 good
+  listeners with own readings, seeds 100000-100015 at 7 NPCs, day 3; each listener's
+  most-moved person): 21 of 37 move half a point or more. Of those, the median moves 2.2
+  points (mean 3.1, at most 8.4) and gives up about 8% of its lean from even, close to the
+  Sleepwalker's 10%. By route: Clerk, Seer and Archivist readings move only through the
+  readings' weight; Dowser, Surveyor and Warden readings only through the role check.
+  Neither route is negligible: role check alone mean 1.6 points, weight alone 1.5.
 - **Small call made on Michael's behalf** (with Quill's caveat): this makes NPCs doubt
   their readings as if they might be Delusional, but doesn't raise their belief that they
   are the Delusional one.
