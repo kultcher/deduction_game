@@ -2052,7 +2052,8 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 		if accepted and mind.workshop_state.get("withdrawn", {}).has(str(acc.get("key", ""))):
 			accepted = false
 		# Granted today that the nominee lied about being home (lie severity, the vote side).
-		var lie: bool = int(v.dialogue_memory.get("granted_lies", {}).get(nominee, {}).get("day", -1)) == w.day
+		var grant: Dictionary = v.dialogue_memory.get("granted_lies", {}).get(nominee, {})
+		var lie: bool = int(grant.get("day", -1)) == w.day and not mind.workshop_state.get("withdrawn", {}).has(str(grant.get("key", "")))
 		if not accepted and not lie:
 			continue
 		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie)
@@ -2114,7 +2115,7 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 		"vote_no_reluctant":
 			return say_voiced(v, key, "Even with what you laid out, I'm not ready to put a rope on %s tonight." % t.name, {"nominee": t.name})
 		"vote_no_lie_not_rope":
-			return say_voiced(v, key, "I'll grant %s lied about where they were that night. But a lie about one's bed isn't the Demon's work, and I won't hang them for it." % t.name,
+			return say_voiced(v, key, "I'll grant %s lied about where they were that night. But there's many a reason to be abroad at night that isn't the Demon's work, and I won't hang them for it." % t.name,
 				{"nominee": t.name})
 		"vote_no_distrust_nominator":
 			return say_voiced(v, key, "The case against %s troubles me, yes, though I don't trust %s's hand in pushing it." % [t.name, nom_name],

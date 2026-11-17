@@ -60,7 +60,7 @@ func _catches_home_lie() -> void:
 ## today and voted no.
 func _res(g, v, t, vp: Dictionary, home_lie: bool, block: String = "") -> Dictionary:
 	v.dialogue_memory["accepted_cases"] = {t.id: {"day": g.w.day, "key": "test"}}
-	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day}} if home_lie else {}
+	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day, "key": "lie-case"}} if home_lie else {}
 	return {"nominee": t.id, "by": "player", "yes": [], "no": [v.id], "count": 1, "threshold": 4, "outcome": "fails",
 		"prev_block": block, "prev_block_count": 4 if block != "" else 0, "voter_parts": {v.id: vp}}
 
@@ -105,6 +105,18 @@ func _voter_says_lie_not_rope() -> void:
 	check(lines.size() == 1 and "lied about where they were" in _said(lines), "granted the lie without accepting the case: still says it")
 	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day - 1}}
 	check(MindMeeting.vote_resistance_lines(g.w, only_lie).is_empty(), "a lie granted on an earlier day doesn't count")
+	# The player withdrew the case that caught the lie: the grant goes with it (Codex P2).
+	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day, "key": "lie-case"}}
+	v.workshop_state["withdrawn"] = {"lie-case": true}
+	check(MindMeeting.vote_resistance_lines(g.w, only_lie).is_empty(), "a withdrawn case takes the granted lie with it")
+	v.workshop_state["withdrawn"] = {}
+	# Michael's wording (Nov 17, via Herald).
+	lines = MindMeeting.vote_resistance_lines(g.w, only_lie)
+	check(_said(lines) == "I'll grant %s lied about where they were that night. But there's many a reason to be abroad at night that isn't the Demon's work, and I won't hang them for it." % t.name, "the agreed line (%s)" % _said(lines))
+	# A report the listener's own knowledge rejected isn't weighed (Codex P2).
+	var Presentation = load("res://game/workshop_presentation.gd")
+	var weighed: Array = Presentation._weighed({"reasoning": {"considered": ["own", "nw"], "private_checks": {"rejected": ["nw"]}}})
+	check(weighed == ["own"], "a rejected report is left out of what was weighed (%s)" % str(weighed))
 
 
 ## The real path: the player files "home, and seen out that night" against t and presents it

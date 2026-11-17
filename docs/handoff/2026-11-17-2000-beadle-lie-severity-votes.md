@@ -17,8 +17,9 @@ Bailiff. Herald drafts the voice lines, and Michael picks the wording.
     for the day.
   - If that listener then votes no on the target, the after-vote resistance lines give
     them their own reason: "I'll grant Kiran lied about where they were that night. But
-    a lie about one's bed isn't the Demon's work, and I won't hang them for it." This
-    is draft wording for Herald and Michael.
+    there's many a reason to be abroad at night that isn't the Demon's work, and I won't
+    hang them for it." That's Michael's wording (Nov 17, via Herald). No voice has its own
+    version yet.
   - It comes after "I'd sooner hang the one on the block". It comes ahead of the other
     reasons, and it is said even when the vote wasn't close.
 - **Why "partial" counts:** since #210, a case that rests only on a caught home lie
@@ -46,3 +47,11 @@ Bailiff. Herald drafts the voice lines, and Michael picks the wording.
 
 - **New key:** `vote_no_lie_not_rope`, with slot `{nominee}`. It has no per-voice lines
   yet, so every voice falls back to the draft above.
+
+## Codex (both P2s, fixed)
+- **Withdrawn case:** the grant keeps the case's key. If the player withdraws that case,
+  the grant is dropped and the voter doesn't claim the lie.
+- **Rejected reports:** a report the listener's own knowledge rejected (for example, a
+  Night Watch list naming them when they know they stayed home) isn't counted toward the
+  lie. This matches how the jury drops such reports.
+- Suite: 21 checks.
