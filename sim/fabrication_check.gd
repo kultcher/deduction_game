@@ -4,9 +4,10 @@
 ## read it beside the readings already shared: a neutral listener on the public record (the
 ## shared judge's `CaseEval.evaluate`), with and without the fabrication. If the fabrication
 ## lifts the town's chance that the liar or a teammate is evil by more than a margin, a roll
-## scaled by Insight decides whether the liar notices. Noticed, it reworks the reading once
-## (asks its bluff rule again) and keeps the new one if it's safe, or else holds the reading
-## back a day. Unnoticed, the self-incriminating reading goes out as before: careless liars
+## scaled by Insight decides whether the liar notices. Noticed, it thinks of a better lie:
+## its bluff rule's other plausible readings (`RoleDef.bluff_alternatives`), keeping one
+## that points at nobody on the team and still pushes the scapegoat (Michael, Nov 17). With
+## none, it holds the reading back a day and checks it again before telling it. Unnoticed, the self-incriminating reading goes out as before: careless liars
 ## still slip, and the player can catch them.
 ##
 ## Every outcome is logged (`think`, topic `lie`), and stored on the entry as `vet` for the
@@ -75,18 +76,22 @@ static func _posteriors(view: Dictionary, cards: Array, ids: Array) -> Dictionar
 
 ## How far `entry`, told by `n`, would lift the town's chance that each of evil's living
 ## members is evil: {"lift", "who", "before", "after"}, or {} if it can't be judged.
-static func assess(w, n, entry: Dictionary) -> Dictionary:
+static func assess(w, n, entry: Dictionary, extra: Array = []) -> Dictionary:
 	if str(entry.get("role", "")) in SKIP_ROLES:
 		return {}
 	var team: Array = w.evil_team().filter(func(m): return m.alive).map(func(m): return m.id)
 	if not (n.id in team):
 		team.append(n.id)
+	var ids: Array = team.duplicate()
+	for x in extra:
+		if x != "" and w.by_id.has(x) and not (x in ids):
+			ids.append(x)
 	var view: Dictionary = ReasonAttribution.public_view_from_world(w)
 	var cards: Array = public_cards(w)
-	var before: Dictionary = _posteriors(view, cards, team)
+	var before: Dictionary = _posteriors(view, cards, ids)
 	var with_fake: Array = cards.duplicate()
 	with_fake.append(_card(n.id, entry, -1))
-	var after: Dictionary = _posteriors(ReasonAttribution.public_view_from_world(w), with_fake, team)
+	var after: Dictionary = _posteriors(ReasonAttribution.public_view_from_world(w), with_fake, ids)
 	if before.is_empty() or after.is_empty():
 		# The fabrication can't stand beside the public record at all: the town would see a
 		# liar. Count it as the largest lift on the teller.
@@ -101,31 +106,47 @@ static func assess(w, n, entry: Dictionary) -> Dictionary:
 	return {"lift": snappedf(lift, 0.001), "who": who, "before": before, "after": after}
 
 
-## Vet a fresh fabrication. `regen` asks the bluff rule again ({} if it has nothing).
-## Returns {"entry": Dictionary, "outcome": "ok"|"slipped"|"reworked"|"held"}. A held entry
-## is the caller's to keep back a day.
-static func vet(w, n, entry: Dictionary, regen: Callable) -> Dictionary:
+## Vet a fresh fabrication. `alternatives` returns the bluff rule's other plausible
+## readings ([{"entry", "why"}], already stamped); `scapegoat` is evil's chosen target.
+## Returns {"entry", "outcome": "ok"|"slipped"|"reworked"|"held", "why": the chosen
+## alternative's reason or ""}. A held entry is the caller's to keep back a day.
+static func vet(w, n, entry: Dictionary, alternatives: Callable, scapegoat: String = "") -> Dictionary:
 	if not enabled:
-		return {"entry": entry, "outcome": "ok"}
+		return {"entry": entry, "outcome": "ok", "why": ""}
 	var tune = Tuning.Evil
 	var a: Dictionary = assess(w, n, entry)
 	if a.is_empty() or float(a.lift) <= tune.FABRICATION_CHECK_MARGIN:
 		entry["vet"] = {"outcome": "ok", "lift": a.get("lift", 0.0)}
-		return {"entry": entry, "outcome": "ok"}
+		return {"entry": entry, "outcome": "ok", "why": ""}
 	var insight: float = float(n.traits.get("insight", 0.5))
 	var p_notice: float = tune.FABRICATION_NOTICE_BASE + tune.FABRICATION_NOTICE_INSIGHT * insight
 	var noticed: bool = w.decision_roll(n, "notice_self_incrimination", p_notice, {"insight": insight, "lift": a.lift, "who": a.who})
 	if not noticed:
 		entry["vet"] = {"outcome": "slipped", "lift": a.lift, "who": a.who}
 		w.dlog.think(n.id, "lie", "Evil: doesn't notice that its %s reading points the town at %s (+%.2f)." % [entry.get("role", "?"), a.who, a.lift], {"lie": true})
-		return {"entry": entry, "outcome": "slipped"}
-	var alt: Dictionary = regen.call()
-	if not alt.is_empty():
-		var b: Dictionary = assess(w, n, alt)
-		if b.is_empty() or float(b.lift) <= tune.FABRICATION_CHECK_MARGIN:
-			alt["vet"] = {"outcome": "reworked", "lift": a.lift, "who": a.who, "new_lift": b.get("lift", 0.0)}
-			w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f); tells a different one." % [entry.get("role", "?"), a.who, a.lift], {"lie": true})
-			return {"entry": alt, "outcome": "reworked"}
+		return {"entry": entry, "outcome": "slipped", "why": ""}
+	# A better lie: of the rule's other readings, those that point at nobody on the team; of
+	# those, the one that still pushes the scapegoat hardest.
+	var best: Dictionary = {}
+	var best_push: float = -INF
+	for alt in alternatives.call():
+		var e2: Dictionary = alt.get("entry", {})
+		if e2.is_empty():
+			continue
+		var b: Dictionary = assess(w, n, e2, [scapegoat])
+		if b.is_empty() or b.get("impossible", false) or float(b.lift) > tune.FABRICATION_CHECK_MARGIN:
+			continue
+		var push: float = 0.0
+		if scapegoat != "" and b.after.has(scapegoat):
+			push = float(b.after[scapegoat]) - float(b.before.get(scapegoat, 0.0))
+		if push > best_push:
+			best_push = push
+			best = {"entry": e2, "why": str(alt.get("why", "")), "lift": float(b.lift)}
+	if not best.is_empty():
+		var chosen: Dictionary = best.entry
+		chosen["vet"] = {"outcome": "reworked", "lift": a.lift, "who": a.who, "new_lift": best.lift, "pushes_scapegoat": snappedf(best_push, 0.001)}
+		w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f); tells a better lie instead: %s." % [entry.get("role", "?"), a.who, a.lift, best.why], {"lie": true})
+		return {"entry": chosen, "outcome": "reworked", "why": best.why}
 	entry["vet"] = {"outcome": "held", "lift": a.lift, "who": a.who}
-	w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f); holds it back a day." % [entry.get("role", "?"), a.who, a.lift], {"lie": true})
-	return {"entry": entry, "outcome": "held"}
+	w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f), and no safer one fits; holds it back a day." % [entry.get("role", "?"), a.who, a.lift], {"lie": true})
+	return {"entry": entry, "outcome": "held", "why": ""}
