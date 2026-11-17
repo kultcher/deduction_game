@@ -42,6 +42,15 @@ func _assess(view: Dictionary, card: Dictionary, challenge: Dictionary, listener
 	var r: Dictionary = Challenges.assess(view, value, listener, [card])
 	return r.results[0] if not r.results.is_empty() else {}
 
+func _assess_with(view: Dictionary, card: Dictionary, extra: Array, challenge: Dictionary, listener: Dictionary) -> Dictionary:
+	view.cards = [card] + extra
+	var value = Solver.empty_case()
+	value.conclusion.at = view.alignment_epoch
+	value.cards = [card.id] + extra.map(func(c): return c.id)
+	value.reading_challenges = {card.id: challenge}
+	var r: Dictionary = Challenges.assess(view, value, listener, [card] + extra)
+	return r.results[0] if not r.results.is_empty() else {}
+
 func _init() -> void:
 	var view: Dictionary = _view()
 	var relay: Dictionary = _relay()
@@ -69,6 +78,20 @@ func _init() -> void:
 	var wt: Dictionary = _assess(view.duplicate(true), relay, {"mode": "lying", "supports": [], "attribution": "transmission"}, wary)
 	var wo: Dictionary = _assess(view.duplicate(true), relay, {"mode": "lying", "supports": [], "attribution": "original"}, wary)
 	check(float(wt.get("agreement", 0.0)) > float(wo.get("agreement", 0.0)), "with the Medium distrusted, blaming the passing-on lands better (%.2f vs %.2f)" % [float(wt.get("agreement", 0.0)), float(wo.get("agreement", 0.0))])
+	# "No such hanging" says the dead reader's gift couldn't have produced it, not that the
+	# Medium lied: it floors only the original side (Codex, #191).
+	check(float(o.get("agreement", 0.0)) >= 0.9 - 1e-6, "the dead Gravedigger's impossible reading floors 'they lied' (%.2f)" % float(o.get("agreement", 0.0)))
+	check(float(t.get("agreement", 0.0)) < 0.9 - 1e-6, "the same floor doesn't convict the Medium (%.2f)" % float(t.get("agreement", 0.0)))
+	# A failed passing-on implicates those out on the Medium's night (Codex, #191).
+	var sv: Dictionary = view.duplicate(true)
+	sv.script_minions = ["poisoner"]
+	var s1: Dictionary = {"id": "s1", "kind": "sighting", "source": "g", "subject": "c", "subjects": ["c"], "night": 1, "block": "market"}
+	var s2: Dictionary = {"id": "s2", "kind": "sighting", "source": "g", "subject": "d", "subjects": ["d"], "night": 2, "block": "market"}
+	var ti: Dictionary = _assess_with(sv, relay, [s1, s2], {"mode": "impaired", "supports": [], "attribution": "transmission"}, listener)
+	var oi: Dictionary = _assess_with(sv, relay, [s1, s2], {"mode": "impaired", "supports": [], "attribution": "original"}, listener)
+	print("impaired candidates: transmission %s, original %s" % [str(ti.get("candidates", {}).keys()), str(oi.get("candidates", {}).keys())])
+	check(ti.get("candidates", {}).has("d") and not ti.get("candidates", {}).has("c"), "a failed passing-on points at those out on the Medium's night")
+	check(oi.get("candidates", {}).has("c") and not oi.get("candidates", {}).has("d"), "a failed reading points at those out on the reader's night")
 	# A plain report is unchanged: no attribution needed, its teller is its source.
 	var plain: Dictionary = relay.duplicate(true)
 	for k in ["relay_source", "relay_observed_at", "relay_role", "logical_origin", "accuracy_origin"]:
