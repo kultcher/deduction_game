@@ -171,13 +171,15 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				note = "The cited observation rules out their presence where that gift required them to be; impairment cannot explain that."
 			else:
 				cause_agreement *= 1.0 - quality(listener, teller)
-			if report.role == "gravedigger" and view.has("timeline"):
+			# These two say the reader's own gift couldn't have produced it; a failed Medium can
+			# still have garbled the passing-on, so they don't convict the Medium (Codex, #191).
+			if attribution != "transmission" and report.role == "gravedigger" and view.has("timeline"):
 				var gd_n: int = report.night if int(report.get("night", -1)) >= 0 else int(report.get("observed_at", {}).get("day", -1))
 				if not preload("res://workshop/live_history.gd").executed(view, str(report.data.get("executed", "")), gd_n):
 					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
 					cause_agreement = accuracy_agreement
 					note = "No such public execution happened that night; impairment cannot explain that Gravedigger report."
-			if report.role == "executor" and report.data.has("role") and view.has("timeline"):
+			if attribution != "transmission" and report.role == "executor" and report.data.has("role") and view.has("timeline"):
 				var ex_obs_d: int = int(report.get("observed_at", {}).get("day", -1))
 				if not preload("res://workshop/live_history.gd").died_before_morning(view, str(report.data.get("target", "")), ex_obs_d):
 					accuracy_agreement = maxf(accuracy_agreement, 0.9 * hearing)
@@ -226,6 +228,11 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				# Everyone seen out on any of the group's nights (maintenance 2026-11-07 A4).
 				for member in group:
 					var m_card: Dictionary = Solver.card_by_id(view, member)
+					if not m_card.is_empty() and attribution == "transmission" and m_card.has("relay_source"):
+						# The passing-on failed: those out on the Medium's night, not the reader's.
+						m_card = m_card.duplicate()
+						m_card.source = str(m_card.relay_source)
+						m_card.night = int(m_card.get("relay_observed_at", {}).get("day", -1))
 					if not m_card.is_empty():
 						candidates.merge(poisoner_candidates(view, m_card, value, cards))
 			elif challenge.mode in ["misled", "unlikely", "delusional"]:
