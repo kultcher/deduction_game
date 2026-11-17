@@ -44,22 +44,51 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Insight's core bar): `baseline_e26eb3f`
+### Current baseline (Nov 17, 23973 wording): `baseline_5c99636`
 
-`tools/golden/baseline_e26eb3f/` is the capture from `claude/insight-core-bar` at `e26eb3f`
-(main `317e040` merged in): Insight sets how readily an NPC links a card to its own
-knowledge (the core's joining bar runs from 0.8 for the dullest NPC to 0.1 for the
-sharpest; it was 0.4 for everyone).
-- **Divergence from `baseline_928cb8b`:** every seed, from the first refresh where an NPC's
-  core takes a card the old bar didn't (or drops one it did): 42 at record 35 (Isolde, day
-  2), 54875 at 24 (Greta's cover, day 1), 692 at 17 (Fenwick, day 1), 900 at 88 (Kiran,
-  day 2), 98933 at 14 (Odette's cover, day 1).
-- **Outcomes unchanged:** every seed hangs the same people on the same days with the same
-  result. 42: Agnes day 3, good wins (now nominated by Fenwick, not Kiran). 54875: Dorian
-  day 2 (one more yes vote), Constance day 3 (nominated by Jory, not Odette; one more yes),
-  good wins. 692: Merrin day 2 (one more yes), Constance day 3, open at day 4. 900:
-  Constance day 2, open at day 4, same votes. 98933: Isolde day 2 (nominated by Nisha, not
-  Lian), Odette day 3 (nominated by Bart, not Nisha), good wins.
+`tools/golden/baseline_5c99636/` is the capture from `claude/herald-23973-wording` at
+`5c99636` (main `f754421` merged in): playtest 23973's wording. Of what it changes, only
+Nisha's agreement line reaches these games: "My own model aligns with {accuser} regarding
+{target}" is now "My own reckoning agrees with {accuser} about {target}".
+- **Divergence from `baseline_3ef0e2f`:** text only, 3 strings, all that line: 692 from
+  record 189 (day 3 meeting) and 98933 from record 117 (day 2 meeting). Record counts are
+  the same. 42, 54875 and 900: identical.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_3ef0e2f`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 89077 wording): `baseline_3ef0e2f`
+
+`tools/golden/baseline_3ef0e2f/` is the capture from `claude/herald-89077-wording` at
+`3ef0e2f` (main `ae6c304` merged in): playtest 89077's wording fixes. Nights are spoken as
+ordinals (the Warden, the Medium, a home alibi for an earlier night), and a Lamplighter's
+count given as a reason says "my count of folk abroad that night doesn't square with what
+we've been told" instead of "...leaves them among the likeliest" (Michael, Nov 17).
+- **Divergence from `baseline_f554c4a`:** text only, on two seeds; every changed field is a
+  string (133 in all) and record counts are the same.
+  - 692 from record 173 (day 3): Agnes's Medium reading, "...on the Docks on night 0" now
+    "...the night before you arrived".
+  - 98933 from record 134 (day 2): Bartholomew's nomination of Dorian gives the count line.
+  - 42, 54875 and 900: identical.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_f554c4a`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, lie severity): `baseline_f554c4a`
+
+`tools/golden/baseline_f554c4a/` is the capture from `claude/lie-severity` at `f554c4a`
+(main `317e040`, after #194, merged in): a good person's own "I was home" is no longer
+certain (`Tuning.Workshop.GOOD_OWN_ALIBI_OUT` = 0.2, measured: 26% of good people who were
+out told the player "home"), so being seen out after saying "home" is strong evidence, not
+proof.
+- **Divergence from `baseline_928cb8b`:** 42 (record 23), 54875 (record 1), 692 (record 2)
+  and 98933 (record 9): suspicion shifts wherever someone's own "home" meets a sighting.
+  900 is identical.
+- **Outcomes:** 42, 692, 900 and 98933 unchanged (same hangings, votes and nominators).
+  - **54875 changes:** Constance (the Demon) is hanged on day 2 (5 to 4, Jory nominates)
+    and good wins that day. Before, Dorian, a good Archivist and a Sleepwalker, was hanged
+    on day 2: Isolde (good Lamplighter) saw him out on the Docks the night Hollis died,
+    and Dorian, who honestly believed he'd been home, said so. A good person's own "home"
+    against a sighting was proof; it is now 1 chance in 5 of an honest mistake, so the town
+    doesn't hang him on it and turns to Constance a day earlier.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 17, Delusional readings): `baseline_928cb8b`

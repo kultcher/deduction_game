@@ -11,6 +11,7 @@ static var cache = {}
 static var route_cache = {}
 const DEMON_DETOUR = Tuning.Workshop.DEMON_DETOUR
 const VIGIL_MISS = Tuning.Workshop.VIGIL_MISS
+const GOOD_OWN_ALIBI_OUT = Tuning.Workshop.GOOD_OWN_ALIBI_OUT
 const WALKER_CLAIM_GIFT = Tuning.Workshop.WALKER_CLAIM_GIFT
 const WALKER_CLAIM_HOME = Tuning.Workshop.WALKER_CLAIM_HOME
 const WALKER_CLAIM_SECRET = Tuning.Workshop.WALKER_CLAIM_SECRET
@@ -576,6 +577,13 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 		var named: Array = []
 		if c.kind == "sighting":
 			named = c.get("subjects", [c.get("subject", "")])
+		elif c.kind == "alibi" and ri >= 0:
+			# A relayed alibi ("the dead told me they were home") is the relayer's word too:
+			# an evil relayer can invent it, so in a world where the relayer is evil it says
+			# nothing about its subject. Only the relayer is contested; the subject's own
+			# word is priced by alignment in _observed.
+			named = [c.get("subject", "")]
+			tellers = [ri]
 		elif c.kind == "report" and str(c.get("role", "")) == "nightwatch" and c.get("data") is Dictionary:
 			named = c.data.get("seen", [])
 		for who in named:
@@ -608,6 +616,8 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 				var src: String = str(c.get("source", ""))
 				var rel: String = str(c.get("relay_source", "~"))
 				var movement: bool = c.kind == "sighting" or (c.kind == "report" and str(c.get("role", "")) == "nightwatch")
+				if c.kind == "alibi" and c.has("relay_source") and not c.get("quoted", false):
+					return not (rel in full_ids or (rel == cursed_id and _told_cursed(curse, c)))
 				return not (movement and (src in full_ids or rel in full_ids or ((src == cursed_id or rel == cursed_id) and _told_cursed(curse, c)))))
 			# Forced outings re-inferred from what's left.
 			var mv: Dictionary = _routes_cs(view, minus, {}, {}, false)
@@ -1629,11 +1639,15 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
 		"alibi":
 			if card.subject == person:
-				# A person's own word on their night. The good tell the truth, so it stays
-				# hard for them (and for the listener, who is good in its own worlds); an
-				# evil subject may be covering a night out, priced like a relayed alibi.
-				if not card.get("quoted", false) and (alignment == "good" or card.get("source", "") != person):
+				# Someone else's word on a person's night (a witness) stays hard.
+				if not card.get("quoted", false) and card.get("source", "") != person:
 					return 1.0 if not out else 0.0
+				# A person's own word on their night. The good mostly tell the truth, but one
+				# out on a hidden gift or a secret (or a Sleepwalker) may still say "home"
+				# (GOOD_OWN_ALIBI_OUT, Nov 17); an evil subject may be covering a night out,
+				# priced like a relayed alibi.
+				if not card.get("quoted", false) and alignment == "good":
+					return 1.0 if not out else GOOD_OWN_ALIBI_OUT
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":
 			if card.role == "warden" and card.source == person:
