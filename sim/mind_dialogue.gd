@@ -271,6 +271,9 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 		# The existing gift answer owns the admission, claim, reading willingness,
 		# question fatigue and the "So yes: I was out..." line, exactly once.
 		return answer_gift(w, n, 3)
+	# Whether they'd already given an account of that night: the pressed "home" line says
+	# "I stand by that account" only if there was one (89077: Nisha had never been asked).
+	var had_account: bool = n.dialogue_memory.get("night_accounts", {}).has(str(night))
 	var response = answer_night(w, n, night)
 	var variants: Dictionary = n.dialogue_memory.get("pressed_nights", {})
 	var count: int = variants.get(str(night), 0)
@@ -282,6 +285,15 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	var statement = ""
 	for fact in response.facts:
 		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
+			if not had_account and not alternate:
+				# A first account, so nothing to stand by yet: their own alibi, as answer_night
+				# gave it in their voice (Michael, Nov 17). Its meaning is the plain statement.
+				statement = "I was at home %s." % when
+				for line in response.lines:
+					if line is Dictionary and line.get("speaker", "") == n.id:
+						text = str(line.get("text", ""))
+						break
+				break
 			statement = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
 			text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "pressed_home_stand_alt" if alternate else "pressed_home_stand", statement, {"when": when}), n.dialogue_memory)
 			break
