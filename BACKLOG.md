@@ -233,6 +233,12 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
   [decided] (Michael, Nov 17)
 
+- **Keep Tally's trace probe as a tool.** Tally measured how much a crime-scene trace
+  weighs with an uncommitted copy of `tools/measure_evidence.gd` that has two extra modes
+  (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
+  proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
+  way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+
 ### NPC behaviour
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
