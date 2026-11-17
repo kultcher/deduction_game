@@ -37,6 +37,7 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **The content-only mask** (graded challenges) doesn't count a Marked chosen as evil, as with the other Marked exceptions.
 - **A Delusional Martyr isn't charged twice** (Codex's review). In play the role check skips an evil teller's content but not the Delusional holder's, so a Delusional Martyr's promise took a small-error penalty on top of the false-report likelihood. The promise now has its own flag (`FlagMartyrPromise`), and a world where the Martyr is the Delusional holder skips the check in play. The check's cache key now tells that teller's Delusional status apart, as it already did for Medium relayers. Before, worlds differing only in who was Delusional shared one cached answer.
 - The Workshop no longer refuses a case with a promise and the chosen's later hanging.
+- **Later Codex rounds:** a Medium's relay of the outcome reading no longer stands in for the promise (the kernel ignores it where the Medium is evil); a relayed promise keys the check's cache on both the Medium and the Martyr; and a chosen the Revenant turned evil counts as registering evil at a hanging inside the curse (the promise carries its hanging's time). None of these moved golden.
 
 ### What it changes in play
 
