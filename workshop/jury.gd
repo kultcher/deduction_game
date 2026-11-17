@@ -425,7 +425,7 @@ static func _eval_listener(listener: Dictionary, own: Array, challenges: Diction
 	knowledge["own_reports"] = own
 	return {"id": listener.get("id", "listener"), "suspicion": listener.get("suspicion", {}),
 		"npc_trust": listener.get("npc_trust", {}), "knowledge": knowledge,
-		"reading_reliability": listener.get("reading_reliability", {}),
+		"reading_reliability": listener.get("reading_reliability", {}), "reading_doubt": listener.get("reading_doubt", {}),
 		"challenge_reports": challenges.get("reports", {}), "challenge_sources": challenges.get("sources", {})}
 
 ## A bounded listener who looked for no rival explanation ("provisional"), or who
@@ -929,11 +929,11 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var held: Array = Solver.selected(view, value).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
-	var ev: Dictionary = _case_eval(view, scoped, eval_listener)
-	# The connections model (workshop/connections.gd; off by default): on a belief refresh
-	# every held card counts at the value it has alone, whatever attention picked, and the
-	# chances it gives replace this pass's. Attention still decides what can be cited.
+	# The connections model (workshop/connections.gd): on a belief refresh every held card
+	# counts at the value it has alone, whatever attention picked, and the chances it gives
+	# replace this pass's. Attention still decides what can be cited.
 	var connections: Dictionary = {}
+	var ev: Dictionary = {}
 	if refresh and Connections.enabled:
 		# A stored case weighs what its presenter does, so the model's listener also carries
 		# the listener's trust in the Demonologist.
@@ -942,7 +942,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if baseline.has("player_credibility"):
 			weigher["player_credibility"] = baseline.player_credibility
 		connections = Connections.refresh(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}))
-		ev = Connections.overlay(ev, connections)
+		ev = Connections.overlay({"impossible": false, "people": {}}, connections)
+	else:
+		ev = _case_eval(view, scoped, eval_listener)
 	var protection = Protection.assess(view, attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
 	# evidence says about everyone else: each person gets their own direct check.
@@ -999,12 +1001,11 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
 		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations
 		# the full model weighs. It only ever raises, and fades out with Insight.
-		var headline_signal: float = _headline(view, held, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
-		var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
-		if not connections.is_empty():
-			# Insight is out of the first connections version, and a card read alone is
-			# already taken close to its word (Michael, Nov 12).
-			dull = 0.0
+		var headline_signal: float = 0.0
+		var dull: float = 0.0
+		if connections.is_empty():
+			headline_signal = _headline(view, held, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
+			dull = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
 		# Only a strong evil reading about this person blends in: with no headline the model's
 		# own effect (including any clearing) stands unchanged.
 		# The pull grows with the headline's strength (Nov 6): a faint ping can't undo a
