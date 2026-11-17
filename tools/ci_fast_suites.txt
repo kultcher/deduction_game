@@ -62,3 +62,4 @@ test_town_note
 test_triage_nov16
 test_ask_night_results
 test_new_case_memory
+test_daytime_defence_lines
