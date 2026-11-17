@@ -20,6 +20,49 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-16 night, Argon: zero-drift connections refresh speed-up (`argon/connections-speed`)
+
+- **Base:** main `6873616` (#176, merged into `argon/connections-speed`). **Status:** PR #181 updated after Codex/Bailiff/Lantern review. **Next actor:** Lantern / Bailiff (re-review and merge once CI is green).
+- **Golden:** local Windows captures (`seed_42_7` and `seed_900_7`) are bit-for-bit identical at `--tol 0`, and the pre-fix 10-NPC Windows run matched before vs after; CI's Linux golden check at `--tol 0` against `baseline_bb6f01c` is what decides.
+
+### What changed (`workshop/jury.gd`, `workshop/connections.gd`, `workshop/case_eval.gd`, `workshop/caches.gd`, `tools/test_connections_cache.gd`, `tools/test_headline.gd`)
+
+1. **Skip dead `CaseEval` and `_headline` work on a connections refresh (`workshop/jury.gd`, Lantern's purge Phase 1):**
+   - When `refresh and Connections.enabled` is true in `Jury._consequences_eval`, skip `_case_eval(view, scoped, eval_listener)` and pass `{"impossible": false, "people": {}}` into `Connections.overlay(..., connections)` (which takes `impossible` and `people` from the connections result).
+   - Keep `attention`, `compiled`, `scoped`, `attended`, `held`, `challenged`, and `eval_listener` intact for `ReasonAttribution` and the four signals in `Jury._consequences_eval`.
+   - Skip `_headline(...)` when `not connections.is_empty()` (`dull == 0.0`). Pinned `tools/test_headline.gd` with `Connections.enabled = false` because `_consequences_eval` now skips the dead headline calculation on a connections refresh (and Lantern's purge Phase 6a removes `_headline` and `test_headline.gd`).
+2. **Precompute per-refresh `judge_key` inputs (`workshop/connections.gd`):**
+   - `Connections.begin()` precomputes `_prepare_key_ctx(view, run.bare, listener)` once per listener refresh: the `around` hashes with and without `SOFT_EVENTS`, `bare_hash`, the stripped `listener` dictionary, and each card's index, `SOFT_READERS` flag, and reliability key names (including `Solver.semantic_key`).
+   - `_judge_key_fast` sorts only the matched `ids + own` indices in `view.cards` order, producing the exact same key string as `judge_key` without rescanning all `view.cards` or rehashing `view`/`timeline` on every call. With `Connections.cache_verify = true`, `judge()` asserts `_judge_key_fast == judge_key`.
+   - `Connections.items()` memoizes `_names()` per card id across a refresh.
+3. **`CaseEval` cache keys, caps, `_team_prior`, and `_class_fits` (`workshop/case_eval.gd`, following Lantern's warnings on #169):**
+   - **Compile key (`_compile_impl`):** keeps `view.timeline`, `view.regular_haunts`, and `hearing_weight`; drops only `SOFT_EVENTS` from `timeline.events` when no card in `cards + known` is a Magistrate card (matching `Connections.judge_key`). Raised `_compiled` cap from 32 to 2,048 (`_own_cache` 64 → 1,024; `_fits_cache` 256 → 2,048).
+   - **`_team_prior` memoization (`_team_prior_cache`):** keyed on `[u_key, curr_conv, raw_susp, npc_trust, good_mask, prior_k]` (covering the universe, `suspicion`, `npc_trust`, and `knowledge.good`).
+   - **`fits_before` and role-constraint reuse (`_bare_fits_cache`, `_class_fits`):**
+     - For `bare` (`cards` holding no role/routing-constraining cards), caches the 5,040-world role-fit array per `(u_key, view.people, route_tl, live_activity, live, personal)` in `_bare_fits_cache` and slices by `cc.rep[c]` into each subset's equivalence classes, preserving the exact per-`cc` `free == fits` Sleepwalker check.
+     - In live views, only when `CaseEval.cache_enabled` is true and `cards` holds no role- or routing-constraining card (`report`, `claim`, `secret_claim`, `totem`, `town_hall`, `martyr` event, `relay_source`, non-empty `role`, or the six routing kinds `sighting`, `evening`, `trace`, `coverage`, `alibi`, `dropped` that feed `Activity.routes` / `forced_lamp`) does `fits` reuse `fits_before` or filter `role_cards` in `_class_fits`. With `CaseEval.cache_enabled = false`, `_evaluate_impl` and `_class_fits` take the full uncached path.
+     - For non-empty `role_cards`, keeps the full `view.timeline` in `_fits_cache`'s `base_fit_key` whenever `role_cards` holds any movement/routing card (`_is_movement_role_card`), dropping `SOFT_EVENTS` otherwise, and computes `bluff_weights` at most once per `(cc, role_cards)` (instead of repeating for `neutral`, `personal`, and `walked`).
+   - Added `CaseEval.cache_enabled` (default `true`) and cleared `_team_prior_cache` / `_bare_fits_cache` in `WorkshopCaches.clear_all()`.
+4. **Verification checks (`tools/test_connections_cache.gd`, 45 checks):**
+   - `_key()` checks that `CaseEval.compile` reuses a non-Magistrate card across meeting talk (`nomination`, `accusation`), recompiles a Magistrate card when meeting talk changes, and verifies before-and-after fits plus `CaseEval.cache_enabled` off vs on equality on both a sightings-only set (that forces a Lamplighter) and a Lamplighter reading plus sightings.
+   - `_games()` toggles both `Connections.cache_enabled` and `CaseEval.cache_enabled` off vs on (plus `cache_verify = true`).
+   - Added `_presentations_and_magistrate()`: ensures Day 1 has an eligible town nomination, wards the Magistrate on Night 1 and reads their gift on Day 2, presents the Magistrate card on Day 2, asserts `Connections.captured` includes judged sets holding a Magistrate card (203 judgements), and verifies identical NPC suspicions, dev logs, and 0 `cache_verify` mismatches with both caches off vs on.
+
+### Measured (initial 10-NPC timings pre-fix; post-fix suite verification below)
+
+- **Active 10-NPC game (Seed 692, Days 1–4, with Workshop case presentations and nominations each day, measured on pre-fix commit):**
+  - Beliefs and dev logs matched before vs after the patch, and with `CaseEval` + `Connections` caches on vs off (`7,121` verified cache hits, `0` mismatches).
+  - **Dawns (`sleep` into morning):** cut roughly in half—Day 2 dawn **3.7 s → 1.5 s** (−60%), Day 3 dawn **7.9 s → 3.5 s** (−56%), Day 4 dawn **9.5 s → 5.1 s** (−46%).
+  - **Nominations (`nominate <name> #<case>`):** **30–48% faster**—Day 1 **0.34 s → 0.19 s**, Day 2 **0.64 s → 0.33 s**, Day 3 **0.66 s → 0.46 s**, Day 4 **0.75 s → 0.53 s** (all well under 1 s).
+  - **Vote rounds (`vote` on NPC nominations):** **33–44% faster**—Day 2 votes **0.37–0.50 s → 0.20–0.29 s**, Day 3 votes **0.24–0.54 s → 0.15–0.31 s**, Day 4 votes **0.28–0.34 s → 0.19–0.22 s**.
+  - **Meeting presentations (`present <case>`):** **15–21% faster**—Days 1–4 **2.05–2.44 s → 1.83–1.98 s** (all under 2 s; the remaining ~1 s in `present` is `Shared.response` / `trust_reward` running the old model's `_headline` and `Support.explain`, which Lantern's Phase 6a covers).
+  - **Whole 4-day active 10-NPC run:** **61.0 s → 36.5 s** (−40%).
+- **Passive 10-NPC game (Golden seed 692, to Day 4, `SolverBackend` profiler, pre-fix commit):**
+  - Total wall time **43.1 s → 24.9 s** (−42%); belief refresh (`outer_prep` inclusive) **34.8 s → 16.5 s** (2.1× faster); `world_domain` C# calls **42,366 → 13,433** (−68%).
+- **Post-fix suites run:** `test_connections_cache` (45/45 checks), `test_connections`, `test_connections_pairings`, `test_connections_core`, `test_connections_cases`, `test_connections_why`, `test_roles_official`, `test_headline` (15/15 checks with `Connections.enabled = false`) — all pass, 0 failures.
+
+---
+
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
 
 - **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
