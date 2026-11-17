@@ -60,9 +60,8 @@ internal static class RoleConstraintsKernel
     /// the source's claimed role and any relayer are not checked.
     public const int FlagContentOnly = 1 << 16;
     /// A Martyr's promise whose chosen was later hanged while the Martyr stood
-    /// (role_constraints.gd): it carries FlagMartyrEvil's check, except where the Martyr is
-    /// the world's Delusional holder in play, whose promise the false-report likelihood
-    /// already prices (Codex, #183).
+    /// (role_constraints.gd): it carries FlagMartyrEvil's check (which, like every reading's
+    /// content, a world whose Delusional holder is the Martyr skips in play).
     public const int FlagMartyrPromise = 1 << 17;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
@@ -626,6 +625,22 @@ internal static class RoleConstraintsKernel
                 return 0.0;
             }
 
+            // The world's Delusional holder in play reads at random: like an evil teller's,
+            // their reading's content says nothing here, and the false-report likelihood
+            // (CaseEval: q for a source that can't read healthily) already prices it, so
+            // checking it as well charged a Delusional teller's wrong reading twice (Codex,
+            // #183). They still hold the gift (the claim above), and the gift's own acts stay
+            // checked: a Martyr's or Executor's one chosen target, a Veteran's one night. The
+            // listener's own readings keep their check: they read them themself, and only a
+            // listener's own reading is strong alone (DESIGN), so "I may be the Delusional one"
+            // doesn't excuse them (Bailiff's run of test_connections_pairings, #194).
+            bool deludedReader = live && !contentOnly && source != ownPersonIdx
+                && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
+            if (deludedReader && roleId != RoleMartyr && roleId != RoleExecutor && roleId != RoleVeteran)
+            {
+                continue;
+            }
+
             if ((flags & FlagRoleInGroup) != 0)
             {
                 int groupMode = cardInts[off + 15];
@@ -725,6 +740,10 @@ internal static class RoleConstraintsKernel
                     if ((flags & FlagExecutorDeadOk) == 0)
                     {
                         return 0.0;
+                    }
+                    if (deludedReader)
+                    {
+                        continue;
                     }
                     int exRoleId = cardInts[off + 18];
                     bool exEvilRole = (flags & FlagReadRoleEvil) != 0;
@@ -841,9 +860,7 @@ internal static class RoleConstraintsKernel
                     return 0.0;
                 }
                 martyrTargetToken = mToken;
-                bool deludedPromise = (flags & FlagMartyrPromise) != 0 && live && !contentOnly
-                    && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
-                if ((flags & FlagMartyrEvil) != 0 && !deludedPromise)
+                if ((flags & FlagMartyrEvil) != 0 && !deludedReader)
                 {
                     int target = cardInts[off + 16];
                     // A promise's chosen the Revenant turned evil registers evil at a hanging

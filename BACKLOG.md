@@ -65,7 +65,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
   Demon never actually detours. Decide which is authoritative, then reconcile the
   evaluator, the movement and the explanatory dialogue; compare inference, votes, RNG
-  and timings on fixed replays. [open]
+  and timings on fixed replays. Michael (Nov 17): the Demon still never detours, so
+  remove the detour from inference: drop it from what NPCs assume and from the
+  explanatory dialogue (Herald for any wording), and compare inference and votes on fixed
+  replays. Owner Beadle. [decided]
 
 - **Challenge a Night Watch report using a conflicting player vigil.** Let the player
   target the dated report as lying or misled with a vigil as grounds, reusing the existing
@@ -81,6 +84,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   be misled.** This is specific to this claim, not a general rule that every good
   statement is true. Allow an honest impaired Warden; neither failure nor a misled
   accusation proves poisoning or alignment. [decided: capability and lying implication]
+
+  Already built (Nov 4, #81 era, the report table in `Solver`): a guard on a door the Demon
+  killed that night is never a true, healthy reading, so the challenge lands as a lie or a
+  failed gift and the walk stays the movement model's. Pinned by `test_warden_challenge`
+  (Quill, Nov 17). Nothing else to build. [done]
 
 - **Martyr non-substitution must keep its alternative explanations; Martyr promise
   versus later hanging.** (78148) An executed choice dying while the claimed Martyr
@@ -105,6 +113,12 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Argon's #181): both change how the role check treats a doubtful reading. Report in game
   terms how much more often the town accepts "they were Delusional" over "they lied".
   Owner Quill. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/delusional-double-charge`, Nov 17):** the kernel skips the content
+  of the world's Delusional holder's readings in play, as for an evil teller; the gift's own
+  acts (a Martyr's or Executor's one target, a Veteran's one night) stay checked. On a wrong
+  Archivist reading, "they were Delusional" went from about 1 in 600 of the explanation to
+  about 1 in 7 ("they lied" 98% to 85%). Not covered: a Night Watch's list, checked in the
+  movement model, which doesn't know who is Delusional.
 
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
@@ -135,6 +149,28 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   doesn't touch don't move by construction. Presented cards are still heard at the case's
   agreement (Michael, Nov 13, triage 5.3: keep it), so a weaker framing of the same facts
   lands weaker. [watch]
+
+  **Direction (Michael, Nov 17, from his answer on "Say what a card is offered for"):** when
+  a case has a premise, the case's effect should centre on its subject. In a case "Constance
+  is evil" that cites a vigil sighting contradicting her alibi, any suspicion the case moves
+  onto other people in that sighting should be scaled down, with full weight on Constance.
+  This would also cover most of what "Say what a card is offered for" asks. Under the
+  connections model it sits in how a stored case adds its joint value (Lantern).
+
+  **Centre a case on its premise (Michael, Nov 17).** Two ways, to be chosen after
+  measurement:
+  - **A, the joint value only:** on the premise's subject a case adds its joint value (what
+    its cards say together, beyond each alone) in full, and on everyone else at a fraction;
+    brought cards keep counting in full for everyone they name.
+  - **B, the brought cards too:** a card a listener holds only because a case brought it
+    also counts in full on the subject and at a fraction on everyone else; cards held some
+    other way count as usual.
+  In both, there's no centring without a premise, and a "suspicious" premise centres the
+  same way. The bystander fraction is a new constant, approved with this decision. Measure
+  A and B on the same bot games, at 0.5 and one other value: bystander movement per
+  presentation, the subject's own movement, and the others in a vigil sighting like
+  Michael's example. Report side by side, then Michael picks. Owner Lantern.
+  **[decided]: centre on the premise, A or B to be chosen after measurement**
 
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later
   breath-stolen should add a little suspicion, enough to reward noticing it, without the
@@ -192,7 +228,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **Quiet-night evidence argued by the player.** Support a player-argued link between
   protection, a suspected attack and movement, without exposing hidden attacks. (61251:
   a successful ward on Fenwick suppressed the apparent value of the sightings.) See the
-  "Protection + quiet night + sighting" Workshop gap. [open]
+  "Protection + quiet night + sighting" Workshop gap, and build the two together: a case
+  argues protection, a suspected attack and movement as one chain, without revealing
+  hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
+  [decided] (Michael, Nov 17)
 
 ### NPC behaviour
 
@@ -207,7 +246,9 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     handled separately.
 
   Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
-  gifts actually threaten evil. [open]
+  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
+  values is the owner's call; a new per-role bonus constant is new, so propose it through
+  Seneschal first. Owner Beadle. [decided]
 
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
   on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
@@ -222,7 +263,15 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   about Isolde sits wrong with me"). That gives the target the +0.35 but no pressure,
   chorus, accusation event, trust cost or "ask why". Measure it with a sweep against main.
 
-  [open; Michael to decide]
+  Michael (Nov 17), in place of the voiced-unease idea: a "pressure of silence" check. If
+  everyone has had their turn and the meeting has produced little useful information
+  (roughly fewer than 3 claims or readings), go through the speaking order again with a
+  bonus to speak that rises as Composure falls: less composed characters speak up to fill
+  the silence, even when it isn't the best idea. A full pitch goes to Michael (through
+  Seneschal) before building: how it meets the day-1 accusation floor, what counts as
+  useful information, the bonus size, what the extra speakers say (Herald writes any new
+  lines), and what it does in play, measured on a `mock/` branch if possible. Owner Beadle.
+  [decided: pitch first]
 
 - **Evil meetings are over-weighted and always visible.** (54875) The pairing that matters
   happens before the player picks a place, and evil gets a large bonus whenever a member
@@ -234,7 +283,10 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
   I can tell you what they were"), which also gives a cautious town a reason to act.
-  [open]
+  Michael (Nov 17): as a hidden motive only. A good Gravedigger with nothing to read leans
+  a little more toward nominating and voting to hang, but never says so: these are real
+  people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
+  for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
 
 - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
   pairing with a good person only works if real Lovers sometimes leave each other out to
@@ -291,11 +343,16 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **Medium challenge attribution and nested relays.** Add an explicit choice between
   questioning the Medium's transmission and the dead source's original information. Until
   then, cause modifiers on relay cards stay visibly unavailable. Relays of another Medium's
-  relay and relayed opinions are unsupported. (Oct 23) [open]
+  relay and relayed opinions are unsupported. (Oct 23)
+  Michael (Nov 17): build the choice only, a two-way challenge on a relay ("the Medium
+  relayed it wrong" versus "the dead person was wrong in the first place"). Relays of
+  relays and relayed opinions stay unsupported. Owner Quill. [decided: the choice only]
 
 - **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
   the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
-  [decided] (Michael, Nov 17, via Seneschal: "yes to both, measure first")
+  Michael (Nov 17): as written. Quill owns the weighting in the judge and goes first;
+  Beadle owns the votes and the "won't hang" behaviour; Herald drafts the new lines for
+  Michael. Coordinate through the handoff log. [decided]
   - **Judge side (Quill, `claude/lie-severity`):** a good person's own "I was home" stops
     being certain. New number `Tuning.Workshop.GOOD_OWN_ALIBI_OUT` (0.2): the chance a
     good person who was out still says "home". Measured Nov 17 on 40 passive 10-NPC games:
@@ -303,8 +360,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     secret, or a Sleepwalker). "Near the crime" is left to the existing scene reasoning. A
     caught false reading is unchanged (still near proof when impossible).
   - **Vote side (Beadle):** how the judge's lighter reading of a caught whereabouts lie
-    reaches votes, and "accepts the lie but won't hang, and says so". Follows the judge
-    side.
+    reaches votes, and "accepts the lie but won't hang, and says so" (Herald drafts the
+    lines). Follows the judge side.
 
 - **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
   addressed by the shadow self; revisit after playtests. (30294) [watch]
@@ -540,16 +597,22 @@ Candidates for a unified retuning proposal, not approved changes.
   personal items, a "you have a secret" card used as leverage. [open]
 
 - **Named corroborators in alibis** ("I was with Jory"), word-against-word cards; evil
-  fake secrets that name someone they really met. [open]
+  fake secrets that name someone they really met. Michael (Nov 17): stays open; it
+  overlaps the backlogged secrets rework. [open]
 
 - **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
   (open since playtest 1) [open]
 
 - **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
-  too as noise. [open]
+  too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
+  over-weighted and always visible" first, then see what's left. [open]
 
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
-  Demon; the Demon goes along with town conclusions to build trust. [open]
+  Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
+  decided, but survey what's already built first (he believes a fair amount exists: a
+  Minion distancing itself under pressure, the Demon going along with the town even
+  against a Minion), and report what happens and what's missing before building the gaps.
+  Owner Beadle. [decided: survey first]
 
 - **Observable actions as evidence (Stage 1B).** Votes, nominations, who defended whom
   and tie-breaks as soft per-world likelihood factors: "voted to execute someone who is
@@ -572,8 +635,9 @@ Candidates for a unified retuning proposal, not approved changes.
   Open: who can tell the difference (street observers and vigils, not window glimpses).
   [open]
 
-- **The Breathstealer confirms the good.** It only silences the good, so a silenced
-  person is proven good. Options: (a) it may silence a suspected teammate as cover; (b)
+- **The Breathstealer overhaul** (Michael, Nov 17: needs a thorough rework before any
+  more tuning; the items below feed it). **The Breathstealer confirms the good.** It only
+  silences the good, so a silenced person is proven good. Options: (a) it may silence a suspected teammate as cover; (b)
   silence goes quiet: not announced, the victim stonewalls with a small private tell, and
   evil can feign it; (c) both. Two more routes: a good secret that inflicts the same
   silence (a vow, a sore throat), and an optional silence that may skip days. (96773,
@@ -590,6 +654,39 @@ Candidates for a unified retuning proposal, not approved changes.
   help evil. Hunch: a silenced person keeps their vote and has usually spread what they
   knew already, so taking a voice costs good little. Not run: the remote and lasting
   versions in passive cells. No decision yet.
+
+  **The judge lets a silencing victim be the Breathstealer** (Quill, Nov 17; playtest
+  26532, case #90; details in Quill's handoff entries on #173 and #177). The "who was near
+  each silencing" factor averages over a world's Minions without asking which one holds
+  the gift, so every listener kept "Greta is the Breathstealer" alive although Greta had
+  been silenced. A mock fix took the case against Isolde to 92–98% for every listener,
+  but on the earlier belief model it also raised suspicion of Isolde before any case was
+  presented (Bartholomew 12% → 43%, Fenwick 22% → 60%), so the town got there largely
+  without the player. Not measured under connections. Not built: it folds into the
+  overhaul.
+
+- **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
+  Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
+  1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
+  5. When it did, items were garbled at about the designed rate. The limit is supply: news
+  is announced at the meeting and nobody repeats what everyone heard, so NPCs hear under
+  one private reading or sighting a game. Letting everyone pass on more gave no more
+  relays (52 against 60 in 40 games) unless some news also stays private for a while.
+  Options measured or estimated: garble the Muddler's retellings at the meeting; keep
+  night sightings private for a day (Muddler in about half of games, estimated, but news
+  spreads earlier for both sides and the meeting is less of a reveal); garble day
+  sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
+  it for now; he isn't sure the Muddler can work as written without warping the game
+  around it. [open]
+
+- **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
+  [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
+  self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
+  ones the holder knows about become ordinary claims, which evil can bluff, and the player
+  can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
+  Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
+  plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
+  it frees could go to telling Minions apart. [open]
 
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
   Lovers' relationship mods, including the Lovers downside (when one dies, the other
@@ -711,7 +808,8 @@ Workshop and the shared model can't express yet.
   sighting.
 
 - **Protection + quiet night + sighting** (54875): a kept ward or a Warden claim, a quiet
-  night and a sighting near the guarded door, argued as one chain.
+  night and a sighting near the guarded door, argued as one chain. Built with "Quiet-night evidence argued by the
+  player" (section 2), [decided] Nov 17.
 
 ## 5. From the Nov 13 playtest triage (moved Nov 16)
 
@@ -734,13 +832,21 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
   readings can drift away from the frame. Proposal: a bluffer's later readings stay
   consistent with the people its earlier ones implicated, unless the team has switched
-  scapegoat and the old reading no longer matters. **[open]**
+  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
+  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
+  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
+  memory drops when the team switches scapegoat. It's another preference at the better-lie
+  choice point ("consistent with my earlier readings"). One or two new tuning constants
+  are approved. Owner Beadle. **[decided]**
 - **One pass over every bluffer** for the "too clean when an ally is involved" tell that
   gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
   guidelines: within about 1 of the truth, the group size setting the room). For
   comparison, the Surveyor frames the scapegoat's block 60% of the time, clears a
   teammate's block half the rest, or picks at random; the Seer never gives a "no" that
-  covers the scapegoat. **[open]**
+  covers the scapegoat. Michael (Nov 17): review every bluff rule against the Dowser's
+  #160 guideline (stay close to the truth; the situation sets the room) and fix the tells.
+  Pairs with the better-lie rework, which touches every bluff's alternatives. Owner
+  Beadle. **[decided]**
 - **The Demon "before/after" premise for the Scion transfer** (triage 1.6). The alignment
   part was done in #149: the curse "When" field shows only on is evil / suspicious /
   good. The Scion part is new work: a premise time option that means "before / after
@@ -775,10 +881,9 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
 - **An evil Medium's relay about the first victim names night 0** (Lantern, Nov 13). The
   bluff says the dead saw the scapegoat out "on their last night"; for the first victim
   that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
-  its target. Moves golden. **[open]**
-- **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
-  a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
-  doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[open]**
+  its target. Moves golden. Michael (Nov 17): fix. For the first victim, the bluff picks
+  a night that can actually frame (not night 0, when the Demon never walks), or makes a
+  different claim. Owner Beadle. **[decided]**
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
@@ -796,6 +901,36 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
+- **A double claim of a unique gift raises both claimants** (Lantern, Nov 16; Michael, Nov
+  16). Under connections a claim is only context, so two people claiming a gift only one can
+  hold don't become more suspicious by themselves (in `test_beliefs` both dip about 0.01;
+  the earlier model raised them 0.14 and 0.24). Make the two claims a built-in pairing that
+  raises suspicion on both claimants, and shifts it onto the other when one is shown good by
+  other cards. Report in game terms how much each claimant moves, alone and alongside other
+  evidence. Add it to `docs/belief_model.md`'s pairings. Owner Lantern. **[decided]**
+- **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
+  Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
+  only the glaring ones; nobody connects public cards that don't touch their own knowledge.
+  The joining bar runs from 0.8 for the dullest NPC to 0.1 for the sharpest (Michael, Nov
+  17, after the wider measurement). DESIGN's Insight row and its new line are approved.
+  Building in #199. Owner Lantern. **[decided]**
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
+- **Persistence Confidence: a working theory that colours new evidence** (connections purge,
+  Nov 17; Michael asked for it to be kept on the backlog). An experiment for live NPCs: a
+  listener committed to a theory about someone (high Confidence) read new evidence through
+  it, so moderate contrary evidence left the theory standing while a low-Confidence listener
+  revised it. Tunnel vision of this kind fits "simulate a human mind". The connections
+  refresh never read through a theory and live play didn't use it by default, so it is
+  deleted with the purge. Revisit for the connections model. The code survives on the
+  branch `archive/legacy-belief-final`. **[tentative]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 

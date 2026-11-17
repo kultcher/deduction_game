@@ -61,3 +61,19 @@ func generate_bluff_reading(w, _n, _plan: Dictionary, s: String, mate, _asked: A
 		"text": "I heard that one of %s is %s" % [w._names(pair), w._secret_phrase(sk)],
 	}
 	return {"entry": entry, "why": why}
+
+
+## The same secret on a pair with a bystander in one place (FabricationCheck: a better lie).
+func bluff_alternatives(w, n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var pair: Array = d.get("pair", [])
+	var sk: String = str(d.get("secret", ""))
+	var out: Array = []
+	for i in range(pair.size()):
+		for b in bluff_bystanders(w, n):
+			if b in pair:
+				continue
+			var p2: Array = pair.duplicate()
+			p2[i] = b
+			out.append({"entry": {"data": {"pair": p2, "secret": sk}, "text": "I heard that one of %s is %s" % [w._names(p2), w._secret_phrase(sk)]}, "why": "names %s instead" % str(p2)})
+	return cap_alternatives(w, out)

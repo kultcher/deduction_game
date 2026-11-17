@@ -23,6 +23,8 @@ func _init() -> void:
 	_harmless_fabrication_passes()
 	_notice_follows_insight()
 	_switch_off()
+	_better_lie()
+	_held_day_reading_keeps_phase()
 	_rework_can_ask_again()
 	print("Fabrication check: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -64,7 +66,7 @@ func _harmless_fabrication_passes() -> void:
 	var a: Dictionary = FabricationCheck.assess(s.w, s.liar, _magistrate(x.id, y.id, true))
 	print("  harmless: lift %s" % str(a.get("lift")))
 	_check(float(a.get("lift", 1.0)) <= Tuning.Evil.FABRICATION_CHECK_MARGIN, "two unrelated good people 'same' doesn't incriminate (%s)" % str(a.get("lift")))
-	var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(x.id, y.id, true), func(): return {})
+	var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(x.id, y.id, true), func(): return [])
 	_check(r.outcome == "ok", "a harmless fabrication is told as is")
 
 ## A sharp liar mostly notices; a careless one mostly slips. Noticed with nothing safer to
@@ -77,7 +79,7 @@ func _notice_follows_insight() -> void:
 			var s: Dictionary = _setup()
 			s.liar.traits["insight"] = insight
 			s.w.rng.seed = sd
-			var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(s.greta.id, s.lian.id, true), func(): return {})
+			var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(s.greta.id, s.lian.id, true), func(): return [])
 			c[r.outcome] += 1
 		counts[insight] = c
 	print("  insight 0: %s; insight 1: %s" % [str(counts[0.0]), str(counts[1.0])])
@@ -92,7 +94,7 @@ func _notice_follows_insight() -> void:
 	for sd in range(1, 21):
 		s2.w.rng.seed = sd
 		var alt: Dictionary = _magistrate(s2.goods[2].id, s2.goods[3].id, true)
-		var r2: Dictionary = FabricationCheck.vet(s2.w, s2.liar, _magistrate(s2.greta.id, s2.lian.id, true), func(): return alt.duplicate(true))
+		var r2: Dictionary = FabricationCheck.vet(s2.w, s2.liar, _magistrate(s2.greta.id, s2.lian.id, true), func(): return [{"entry": alt.duplicate(true), "why": "test alternative"}])
 		if r2.outcome == "reworked":
 			reworked += 1
 			_check(r2.entry.data.nominator == s2.goods[2].id, "the reworked reading is the safe one")
@@ -101,30 +103,64 @@ func _notice_follows_insight() -> void:
 func _switch_off() -> void:
 	var s: Dictionary = _setup()
 	FabricationCheck.enabled = false
-	var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(s.greta.id, s.lian.id, true), func(): return {})
+	var r: Dictionary = FabricationCheck.vet(s.w, s.liar, _magistrate(s.greta.id, s.lian.id, true), func(): return [])
 	FabricationCheck.enabled = true
 	_check(r.outcome == "ok", "with the check off, everything is told as is")
 
-## A rework asks the bluff rule again on the same night: a rule that marks its one use (the
-## Dowser's day) must let go of the mark first, or a noticed Dowser could only ever hold
-## (Codex P2 on #188).
+## A noticed reading becomes a better lie from the role's own alternatives: the 26532
+## Magistrate "same" is swapped for "different", which points at nobody on the team
+## (Michael, Nov 17). Every role's alternatives carry text that matches their data.
+func _better_lie() -> void:
+	var s: Dictionary = _setup()
+	s.liar.traits["insight"] = 1.0
+	var mag = C.role_def("magistrate")
+	var first: Dictionary = _magistrate(s.greta.id, s.lian.id, true)
+	var reworked: int = 0
+	for sd in range(1, 21):
+		s.w.rng.seed = sd
+		var r: Dictionary = FabricationCheck.vet(s.w, s.liar, first.duplicate(true), func():
+			return mag.bluff_alternatives(s.w, s.liar, s.w.evil_plan, "", null, first).map(func(a): return {"entry": a.entry.merged({"role": "magistrate", "day": 2}, true), "why": a.why}), "")
+		if r.outcome == "reworked":
+			reworked += 1
+			_check(r.entry.data.same == false and "did not share" in r.entry.text, "the better lie is 'did not share', worded to match (%s)" % r.entry.text)
+	print("  26532 better lie: reworked %d of 20 (insight 1)" % reworked)
+	_check(reworked > 0, "a sharp liar finds the better lie")
+
 func _rework_can_ask_again() -> void:
+	# Every role with alternatives words them to match their data, and none names the teller.
 	var s: Dictionary = _setup()
 	var w = s.w
 	var n = s.liar
-	var crowd: Array = w.living().filter(func(m): return m != n).slice(0, 4)
-	n.loc = "night:market"
-	for m in crowd:
-		m.loc = n.loc
-	if w.loc_block(n.loc) == "":
-		_check(true, "skipped: no block for the probe location")
-		return
-	var dowser = C.role_def("dowser")
-	var first: Dictionary = dowser.generate_bluff_reading(w, n, w.evil_plan, w.evil_plan["scapegoat"], null, [])
-	if first.is_empty():
-		print("  dowser probe: no first reading (location), skipped")
-		return
-	_check(dowser.generate_bluff_reading(w, n, w.evil_plan, w.evil_plan["scapegoat"], null, []).is_empty(), "without the release, a second Dowser reading the same day is refused")
-	dowser.release_bluff_use(w, n, w.evil_plan)
-	_check(not dowser.generate_bluff_reading(w, n, w.evil_plan, w.evil_plan["scapegoat"], null, []).is_empty(), "after the release, the rework gets a reading")
-	_check(n.dowsed_day == w.day, "the gift is still marked used for the day afterwards")
+	var goods: Array = s.goods
+	var samples: Dictionary = {
+		"seer": {"pair": [goods[2].id, w.demon().id], "yes": true},
+		"dowser": {"group": [goods[2].id, goods[3].id, w.demon().id], "count": 1, "block": goods[2].home_block},
+		"archivist": {"pair": [goods[2].id, w.demon().id], "role": "poisoner"},
+		"clerk": {"pair": [goods[2].id, w.demon().id], "role": "seer"},
+		"executor": {"target": w.demon().id, "assigned": true},
+		"martyr": {"target": w.demon().id, "chosen": true},
+		"surveyor": {"block": goods[2].home_block, "same": false},
+		"lamplighter": {"count": 2},
+	}
+	for role in samples:
+		var alts: Array = C.role_def(role).bluff_alternatives(w, n, w.evil_plan, "", null, {"role": role, "data": samples[role]})
+		_check(not alts.is_empty(), "%s offers alternatives" % role)
+		for a in alts:
+			var d: Dictionary = a.entry.data
+			_check(str(a.entry.get("text", "")) != "" and not (n.id in d.get("pair", [])) and str(d.get("target", "")) != n.id, "%s alternative is worded and never names the teller (%s)" % [role, a.entry.text])
+
+## A held day reading (a Dowser's) reworked on the night pass keeps its day and phase, so
+## its alternatives are judged as the same daytime observation (Codex P2 on #193).
+func _held_day_reading_keeps_phase() -> void:
+	var s: Dictionary = _setup()
+	var w = s.w
+	w.phase = C.NIGHT
+	var Evil = load("res://sim/evil.gd")
+	var held: Dictionary = {"role": "dowser", "day": 1, "phase": 1, "data": {"group": [s.goods[2].id, s.goods[3].id], "count": 1, "block": s.goods[2].home_block}, "text": "probe"}
+	var alts: Array = Evil._alternatives(w, s.liar, C.role_def("dowser"), w.evil_plan, s.liar, held, true).call()
+	_check(not alts.is_empty(), "a held Dowser reading has alternatives")
+	for a in alts:
+		_check(int(a.entry.get("day", -1)) == 1 and int(a.entry.get("phase", -1)) == 1, "an alternative keeps day 1, phase 1 (got day %s, phase %s)" % [str(a.entry.get("day")), str(a.entry.get("phase"))])
+	var night_e: Dictionary = {"role": "magistrate", "day": 2, "data": {"nominator": s.greta.id, "nominee": s.lian.id, "same": true}, "text": "probe"}
+	for a in Evil._alternatives(w, s.liar, C.role_def("magistrate"), w.evil_plan, s.liar, night_e, false).call():
+		_check(not a.entry.has("phase"), "a night reading's alternative stays a night reading")

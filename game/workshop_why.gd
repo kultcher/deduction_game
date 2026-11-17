@@ -427,6 +427,8 @@ static func _item_label(g, it: Dictionary, by_id: Dictionary, nums: Dictionary) 
 				return "Night %s's cards, read together (%s)" % [key.trim_prefix("night:"), _count(n_cards)]
 			if key.begins_with("augur:"):
 				return "Day %s's Augur readings with that day's sightings (%s)" % [key.trim_prefix("augur:"), _count(n_cards)]
+			if key.begins_with("claims:"):
+				return "Every %s claim, read together (%s)" % [C.role_name(key.trim_prefix("claims:")), _count(n_cards)]
 			var first: Dictionary = by_id.get(it.cards[0], {}) if n_cards > 0 else {}
 			if key.begins_with("psychologist:") and not first.is_empty():
 				return "%s with its statements (%s)" % [_card_tag(g, first, nums), _count(n_cards)]

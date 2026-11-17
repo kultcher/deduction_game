@@ -415,15 +415,32 @@ func connect_cards(from: String, to: String) -> String:
 	version += 1
 	return ""
 
-func add_modifier(id: String, mode: String) -> String:
+## The two sides of a Medium's relay, as the player reads them (Michael, Nov 17; without a
+## closing full stop, like the other challenge entries). Keyed by
+## ReadingChallenges.RELAY_ATTRIBUTIONS.
+const RELAY_SIDE_TEXT = {"transmission": "The Medium lied or their gift failed", "original": "The dead person lied or was misled"}
+
+## A challenge on a reading. A Medium's relay must also name its side (attribution:
+## "transmission" or "original"; ReadingChallenges.RELAY_ATTRIBUTIONS), and the passing-on
+## takes only a lie or a failed gift (TRANSMISSION_MODES).
+func add_modifier(id: String, mode: String, attribution: String = "") -> String:
 	if not nodes.has(id) or nodes[id].kind != "evidence":
 		return "Select a reading card."
 	var report = Solver.card_by_id(view, nodes[id].card)
-	if report.kind != "report" or report.has("relay_source") or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
+	var RC = preload("res://workshop/reading_challenges.gd")
+	if report.has("relay_source"):
+		# No default side: an unnamed one would quietly blame a speaker (test_roles_dead).
+		if attribution not in RC.RELAY_ATTRIBUTIONS or (attribution == "transmission" and mode not in RC.TRANSMISSION_MODES):
+			return "Say which side of the relay you're challenging: the Medium's passing-on (a lie or a failed gift) or the dead person's original reading."
+	else:
+		attribution = ""
+	if report.kind != "report" or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
 		return "This modifier is not supported for that evidence type."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
 			node.mode = mode
+			if attribution != "":
+				node["attribution"] = attribution
 			selected = node.id
 			version += 1
 			return ""
@@ -438,6 +455,8 @@ func add_modifier(id: String, mode: String) -> String:
 			edge.from = key
 	nodes[key] = {"id": key, "kind": "modifier", "card": report.id, "mode": mode,
 		"at": [nodes[id].at[0] + 320, nodes[id].at[1]], "prior_links": prior}
+	if attribution != "":
+		nodes[key]["attribution"] = attribution
 	links.append({"from": id, "to": key, "kind": "supports"})
 	selected = key
 	version += 1
@@ -723,6 +742,8 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 			result.disputes.append(node.dispute.duplicate(true))  # drafts from before step 2
 		elif node.kind == "modifier":
 			result.reading_challenges[node.card] = {"mode": node.mode, "supports": _evidence(ancestors(id)).filter(func(card): return card != node.card)}
+			if node.has("attribution"):
+				result.reading_challenges[node.card]["attribution"] = node.attribution
 		elif node.kind == "premise" and node.conclusion.get("type") == "conflict":
 			var reports: Array = _evidence(ancestors(id))
 			for home in reports:
@@ -864,7 +885,8 @@ func title(id: String) -> String:
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
-		return {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": "Failed gift"}[node.mode]
+		var mode_title: String = {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": "Failed gift"}[node.mode]
+		return mode_title + (" · " + RELAY_SIDE_TEXT.get(node.attribution, "") if node.has("attribution") else "")
 	if node.kind == "profile_info":
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))
 	if node.kind == "circumstantial":
@@ -969,7 +991,10 @@ func restore(value, session) -> String:
 				if not n[arr_name].all(func(cid): return cid is String and not Solver.card_by_id(view, cid).is_empty()):
 					return "Invalid whereabouts receipt."
 		elif n.kind == "modifier":
-			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), {"mode": n.get("mode"), "supports": []}):
+			var probe: Dictionary = {"mode": n.get("mode"), "supports": []}
+			if n.has("attribution"):
+				probe["attribution"] = n.attribution
+			if not preload("res://workshop/reading_challenges.gd").valid(view, n.get("card", ""), probe):
 				return "Invalid reading modifier."
 		elif not Graph.valid_dispute(view, n.get("dispute")) or not n.get("children") is Array or n.children.size() != 2 or not n.get("prior_links") is Array or n.prior_links.size() > 160:
 			return "Invalid contradiction provenance."
