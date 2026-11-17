@@ -28,6 +28,15 @@ new reveal note's wording (draft sent to Herald and Seneschal).
     town at Greta, so it told this one instead". This is draft wording for Michael.
   - `vet`'s own "lie" think lines, which the reveal also prints, now use names, not ids.
 
+- **A5, a day sighting also put the same-numbered night in the case:**
+  - **Before:** in `_disclosed_items_against`, the night form of a sighting's id went into
+    "what the case cites" before the day check. So a case citing the accuser's day-1
+    sighting still marked night 1 as in the case. The defence could then answer "where I
+    was last night", the Isolde bug from 26532.
+  - **After:** only the form actually seen, day or night, goes in.
+  - **Test:** a new check in `test_ask_night_results`, where the accuser also saw the
+    defender out on the night of the same number. 2 checks fail without the fix.
+
 ## Measured
 
 - `test_fabrication_check`: 105 checks, all passing.
@@ -37,7 +46,9 @@ new reveal note's wording (draft sent to Herald and Seneschal).
     each one of the liar's readings as told. None was reworked in those games.
 - Also passing: test_evil_owned_lie, test_nightwatch_bluff_teammates, test_evidence_cards,
   test_evil_play, test_relay_bluff.
-- Golden: identical on all 5 seeds.
+- After A5: test_ask_night_results (64 checks), test_meeting_m2c, test_meeting_reasons,
+  test_framed_defence, test_defence_repeats and test_meeting_flow pass.
+- Golden: identical on all 5 seeds, with A5 included.
 - **Not measured:** how often an impossible public record occurs in play, or how many held
   readings A1 frees.
 

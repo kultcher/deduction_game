@@ -1626,7 +1626,6 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 						seen_eids[eid2] = true
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
 			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
-			case_eids[s_eid] = true
 			# A sighting by day (where they were in the morning, afternoon or evening) is
 			# not a night outing: the defence mustn't answer it as "where I was last night"
 			# (playtest 26532: Isolde, on a case about day-1 whereabouts). It keeps its own
@@ -1634,7 +1633,9 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 			var by_day: bool = int(f.get("phase", C.NIGHT)) != C.NIGHT
 			if by_day:
 				s_eid = "sighting_day:%s:%s:%d:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), int(f.get("phase", -1)), str(f.get("block", ""))]
-				case_eids[s_eid] = true
+			# Only the form it was seen in is in the case (Steward A5, Nov 17: the night form went
+			# in first, so a day sighting still marked the night of the same number).
+			case_eids[s_eid] = true
 			if not seen_eids.has(s_eid):
 				var s_score: Dictionary = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
 				if by_day:
