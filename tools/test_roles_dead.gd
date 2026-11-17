@@ -343,6 +343,7 @@ func _constraints() -> void:
 	outcome.data.target = "g"
 	view.timeline.executions["2"] = ["g"]
 	check(Solver.Roles.fits(view, world, [outcome], {}), "evil chosen target explains failure to substitute")
+	_promise_then_hanging(view, world)
 	var substitution = {"id": "public", "kind": "event", "event": "martyr", "source": "player", "data": {"martyr": "a", "saved": "b"}}
 	check(Solver.Roles.fits(view, world, [substitution], {}), "public substitution assigns unique good Martyr and good saved participant")
 	substitution.data.saved = "g"
@@ -368,6 +369,45 @@ func _constraints() -> void:
 	check(not Solver.Roles.fits(view, world, [sexton, twice], {}), "Sexton activation is once per case")
 	view.timeline.events = [{"kind": "demon_death", "subjects": ["c"], "at": {"day": 2}}]
 	check(Solver.Roles.fits(view, world, [sexton], {}), "the bell night can still have a Demon kill")
+
+
+## BACKLOG "Martyr non-substitution must keep its alternative explanations": a public
+## promise ("I have given my life over for X"), then X hanged while the Martyr still stood.
+## World: f and g evil (f the Demon), e Marked, a..e otherwise good.
+func _promise_then_hanging(base_view: Dictionary, world: Dictionary) -> void:
+	var view: Dictionary = base_view.duplicate(true)
+	view.timeline = {"events": [], "deaths": {}, "death_ticks": {}, "executions": {}}
+	var promise = _report("promise", "a", "martyr", {"target": "d", "chosen": true}, 1)
+	check(Solver.Roles.fits(view, world, [promise], {}), "a promise alone says nothing about the chosen")
+	view.timeline.executions = {"2": ["d"]}
+	check(not Solver.Roles.fits(view, world, [promise], {}), "a true, healthy promise can't stand with an ordinary good chosen hanged and the Martyr alive")
+	promise.data.target = "g"
+	view.timeline.executions = {"2": ["g"]}
+	check(Solver.Roles.fits(view, world, [promise], {}), "an evil chosen explains the Martyr surviving the hanging")
+	promise.data.target = "e"
+	view.timeline.executions = {"2": ["e"]}
+	check(Solver.Roles.fits(view, world, [promise], {}), "a Marked chosen explains the Martyr surviving the hanging")
+	var content_only: Dictionary = promise.duplicate(true)
+	content_only["content_only"] = true
+	check(not Solver.Roles.fits(view, world, [content_only], {}), "the content-only mask doesn't count a Marked chosen as evil")
+	promise.data.target = "d"
+	view.timeline.executions = {"2": ["d"]}
+	view.timeline.death_ticks = {"a": 1 * 4 + 3}
+	check(Solver.Roles.fits(view, world, [promise], {}), "a Martyr dead before the hanging proves nothing by surviving it")
+	view.timeline.death_ticks = {}
+	# The promise failing is the false-teller channel: an evil Martyr bluffing...
+	var evil_src: Dictionary = world.duplicate(true)
+	evil_src.evil = (1 << 0) | (1 << 5)
+	check(Solver.Roles.fit_weight(view, evil_src, [promise], {}, {}, true) > 0.0, "an evil Martyr's bluffed promise survives the chosen's hanging")
+	# ...or a broken gift (poisoned or Delusional), which CaseEval prices as the report's
+	# error. Here the honest-content check above is what fails, so the report is false.
+	check(not Solver.Roles.fits(view, world, [promise], {}), "a good chosen's hanging leaves only a false promise (bluff, poison or delusion)")
+	# The same Martyr's outcome reading carries the check; the promise beside it isn't
+	# flagged, so one failure isn't priced as two false reports.
+	var outcome = _report("outcome2", "a", "martyr", {"target": "d", "evil": true}, 2)
+	check(not Solver.Roles.fits(view, world, [promise, outcome], {}), "with both cards, a good chosen still fails")
+	check(Solver.Roles._has_martyr_outcome([promise, outcome], "a", "d") and not Solver.Roles._has_martyr_outcome([promise], "a", "d") \
+		and not Solver.Roles._has_martyr_outcome([promise, outcome], "b", "d"), "the promise defers to the same Martyr's outcome reading about the same person")
 
 
 func _live() -> void:
@@ -415,7 +455,9 @@ func _live() -> void:
 			board.connect_cards("e:" + id, root)
 			board.connect_cards("e:" + Live.Evidence.normalize_card(g.board[execution - 1]).id, root)
 			var status = Live.status(g, board.compile(root))
-			check(not status.ready and status.issues.any(func(issue): return "dated outcome" in issue), "prior promise versus later execution explicitly flags missing temporal-health inference")
+			# Nov 17: the judge now reads the pair (role_constraints: the chosen hanged while
+			# the Martyr stood), so the case is no longer refused.
+			check(status.ready and not status.issues.any(func(issue): return "dated outcome" in issue), "a promise and the chosen's later hanging can be argued (%s)" % str(status.issues))
 
 
 # ---- test_chunk6a_sexton_brute

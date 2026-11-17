@@ -125,6 +125,13 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		out[i] = float(results[masks[i]])
 	return out
 
+## The Martyr's own outcome reading ("they must have been evil") about `target` from
+## `source`, among `cards`.
+static func _has_martyr_outcome(cards: Array, source: String, target: String) -> bool:
+	return cards.any(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "martyr" and str(c.get("source", "")) == source \
+		and not bool(c.get("quoted", false)) and c.get("data") is Dictionary and bool(c.data.get("evil", false)) and str(c.data.get("target", "")) == target)
+
+
 static func _intern_role(role_map: Dictionary, role: String) -> int:
 	if role_map.has(role):
 		return int(role_map[role])
@@ -301,6 +308,16 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 					flags |= (1 << 4)
 					if History.executed(view, str(data.get("target", "")), int(card.get("observed_at", {}).get("day", -1))):
 						flags |= (1 << 5)
+				elif bool(data.get("chosen", false)) and History.hanged_while_alive(view, str(data.get("target", "")), str(card.get("source", ""))) \
+						and not _has_martyr_outcome(live_cards, str(card.get("source", "")), str(data.get("target", ""))):
+					# The chosen was hanged and the Martyr still stood: a true, healthy choice
+					# means the chosen registered evil (evil or Marked), the same check as the
+					# Martyr's own outcome reading. Otherwise the promise is what failed: an evil
+					# bluff, or a poisoned or Delusional Martyr (the report's false-teller worlds).
+					# Only public events: the hanging and the Martyr's survival of it.
+					# With the same Martyr's outcome reading about the same person in the set,
+					# that reading carries the check, so one failure isn't counted twice.
+					flags |= (1 << 4) | (1 << 5)
 			elif role_str == "sexton":
 				var sx_night: int = int(data.get("night", -1))
 				if sx_night >= 1:
