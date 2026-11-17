@@ -351,6 +351,12 @@ voice lines are in `sim/dialogue_voices.gd`. The generic fallbacks, passed by th
 - **`present_clashes_moved` ("still, it moves me").** After a clash opener (`present_clashes_own`, "it doesn't square with what I know", or `present_conflict_weighing`, "those accounts clash"), a listener the case still moved says this line, not `present_accept_open`, which begins "Fits what I know" and so contradicts the opener. It says only that they were moved, since the opener has already said what doesn't fit. Slot `{target}`.
 - **`defence_lying_alone` and `defence_lied`.** Every voice's `defence_lying` starts with "Then", so it only reads right after a line that says the reading is wrong. `defence_lying_alone` says the same thing without "Then"; `defence_lied` is its past tense, for an accuser who has died ("Kiran lied", not "Kiran is lying"). Both stand on their own. Slot `{source}`. Beadle's routing chooses between them.
 
+### 8.3 Doubting one's own gift (`doubt_own_gift`; wording settled by Michael, Nov 17)
+
+- **When:** a good NPC with real doubt about their own readings (they may have been poisoned, or be Delusional) says so, and evil says exactly the same line when cornered. Beadle's routing decides when; the line is the same for both, so its wording never tells them apart.
+- **What it says:** only that the speaker doubts what their gift showed. It never names poison, Delusion or a night, because an honest holder can't know which, and a liar gains nothing from saying more.
+- **One line per voice, no slots.** The shared fallback is "Something seems off about my readings. I fear something has turned my gift."
+
 ## 9. Calibration suite: same intent, fifteen voices
 
 These are **style sketches** for a voice-comparison lab, not assertions about any specific live case. Each of the following has the same approved semantic payload: **“I stayed home last night.”** Decorative lines can be dropped if inappropriate to a given context.
