@@ -1,7 +1,8 @@
 # Purging what the connections model replaced: inventory and plan
 
-Nov 16, 2026 · Claude-Lantern · read against main `c8ef1e7` (#167). **Status:** plan for
-Michael. No code has been changed. Michael has decided the purge will happen; this says how.
+Nov 16, 2026 · Claude-Lantern · read against main `c8ef1e7` (#167). **Status:** Michael
+answered all seven decisions on Nov 16 (relayed by Claude-Seneschal; see "Michael's
+decisions" in section 7). No code has been changed yet.
 
 The model is `docs/archive/legacy_retirement_plan.md` (the Nov 1–3 retirement): an
 inventory, phases that are one PR each, and the switch removed before the code behind it.
@@ -169,13 +170,13 @@ the Why report. Golden matching for those phases proves little; the suites prove
 |---|---|---|
 | 0 | This plan | n/a (docs) |
 | 1 | **Handed to Argon (Nov 16).** Performance work on the model is Argon's now, and its speed patch already skips the dead CaseEval and `_headline` calls on a connections refresh (`jury.gd:925-932`, `:1002-1012`). What's left for the purge is to check that the skip keeps `attention`, `challenged` and `eval_listener` (reason attribution and the four signals in section 2 read them) and takes `impossible` from the connections result. I review that in Argon's PR rather than building it | Identical (Argon checks at `--tol 0` with `cache_verify`) |
-| 2 | **Move the tests off the earlier model** (section 4). `fixture_seeds` searches on connections. No game code changes | Identical (tests only) |
-| 3 | **Snapshot, then remove the switch.** First push a snapshot branch `archive/legacy-belief-final` at the last commit with `--legacy-model` (decision 2). Then: delete `Connections.enabled` and `Tuning.Workshop.CONNECTIONS`; make every gate in 1a unconditional; remove `--legacy-model`, the `_legacy` and `_connections` suffixes (accepting `--connections` as a no-op for a release so old commands don't fail), `golden_capture --connections`, `replay_log` and `explain_case --connections`; `log_replay` warns and stops on a log from before #160 instead of switching models | **Identical** (the default is already on) |
+| 2 | **Move the tests off the earlier model** (section 4). **As built (Nov 17):** the seven pinned suites run on connections, with the replaced mechanics' checks rewritten. Still pinned: two `test_beliefs` checks (the poisoned own reading, a CaseEval bug fixed after #181; the double claim, a pairing Michael approved), the persistence Confidence section of `test_workshop_live_cognition` (deleted with the purge), and `test_workshop_why` (deleted in phase 3). The fixture search moved to phase 3 | Identical (tests only) |
+| 3 | **Snapshot, then remove the switch.** First push a snapshot branch `archive/legacy-belief-final` at the last commit with `--legacy-model` (decision 2). Then: delete `Connections.enabled` and `Tuning.Workshop.CONNECTIONS`; make every gate in 1a unconditional; remove `--legacy-model`, the `_legacy` and `_connections` suffixes (accepting `--connections` as a no-op for a release so old commands don't fail), `golden_capture --connections`, `replay_log` and `explain_case --connections`; `log_replay` warns and stops on a log from before #160 instead of switching models Also: `fixture_seeds` searches on connections, and the four checks that then fail in `test_self_sighting` and `test_relay_bluff` are traced (the search also runs those suites 3–5× slower); the pinned checks above go. **Needs first:** the poisoned-reading fix and the double-claim pairing | **Identical** (the default is already on) |
 | 4 | **Clean the connections suites** of switch-off checks and on/off comparisons | Identical (tests only) |
-| 5 | **Delete the earlier model's refresh-only code** (1b): spillover and card shaping, the earlier "suspicious" pressure, the earlier Why report's branch of `workshop_why.gd` (`case_why.gd` stays), and their constants (`PREMISE_SPILLOVER_MIN/MAX`). Regenerate `tuning_catalogue.md` | **Identical.** All of it is unreachable after phase 3 |
-| 6 | **Only if Michael approves (section 7, decisions 3–5):** remove the headline reading everywhere (`_headline*`, `HEADLINE_*`, reason attribution's route), and have the four signals in section 2 read the held cards instead of the attended ones. Probably two PRs (6a headline, 6b the four signals), merged one at a time | **Moves.** 6a changes what NPCs cite and possibly reply stances; 6b changes suspicion wherever a protection, pattern, defence floor or direct check depended on attention. Re-baseline in each PR, with each seed's outcome in `docs/golden_baseline.md` |
-| 7 | **The pre-CaseEval engine and the attention experiments** (1d), if Michael agrees: `Jury.engine`, `_assess_target`, `Consequences.assess`, `unlimited_cards`, `always_keep_kinds`, `read_everything_gap.gd`, `--no-attention` | Identical (tools only reach them) |
-| 8 | **The naming sweep** (section 6) | Identical (comments, labels, docs). If a dev-log or report label is renamed, the golden `step` records may carry it; check |
+| 5 | **Delete the earlier model's refresh-only code** (1b): spillover and card shaping, the earlier "suspicious" pressure, the earlier Why report's branch of `workshop_why.gd` (`case_why.gd` stays), and their constants (`PREMISE_SPILLOVER_MIN/MAX`). Regenerate `tuning_catalogue.md`. Spillover damping is recorded in `BACKLOG.md` section 6 as [tentative] (decision 5) | **Identical.** All of it is unreachable after phase 3 |
+| 6 | **6a (approved Nov 16): remove the headline reading everywhere** (`_headline*`, `HEADLINE_*`, reason attribution's route). **6b (measure first):** report how often each of the four signals in section 2 changes an NPC's view when it reads the held cards instead of the attended ones, in game terms, to Seneschal for Michael; build only once he answers. Two PRs, merged one at a time | **Moves.** 6a changes what NPCs cite and possibly reply stances; 6b changes suspicion wherever a protection, pattern, defence floor or direct check depended on attention. Re-baseline in each PR, with each seed's outcome in `docs/golden_baseline.md` |
+| 7 | **The pre-CaseEval engine and the attention experiments** (1d), approved Nov 16: `Jury.engine`, `_assess_target`, `Consequences.assess`, `unlimited_cards`, `always_keep_kinds`, `read_everything_gap.gd`, `--no-attention` | Identical (tools only reach them) |
+| 8 | **The naming sweep** (section 6), plus audit B's belief-related leftovers (decision 7) | Identical (comments, labels, docs). If a dev-log or report label is renamed, the golden `step` records may carry it; check |
 
 **Argon's speed patch lands first** (Seneschal, Nov 16). It edits `workshop/jury.gd`
 (`_consequences_eval`), `workshop/connections.gd` and `workshop/case_eval.gd`. No phase that
@@ -223,6 +224,29 @@ Nothing in the plan touches `sim/evil.gd`. I'll tag Beadle on the phase 6 PRs be
 merge.
 
 ## 7. Decisions for Michael
+
+### Michael's decisions (Nov 16, relayed by Claude-Seneschal)
+
+1. **Old logs: accepted.** Logs from before #160 stop replaying on the earlier model; the
+   replay tools say so and stop. `case_start.connections` stays.
+2. **Snapshot branch: accepted.** Push `archive/legacy-belief-final` before the PR that
+   deletes the model (phase 3). Only Michael deletes branches.
+3. **The headline reading: remove it everywhere** (phase 6a), including where that moves golden.
+4. **The four attention signals: measure, then build** (phase 6b). Report how often each
+   changes an NPC's view, in game terms, to Seneschal, and pause for Michael before
+   building.
+5. **Delete all three** (spillover damping by Insight, the half-weight "suspicious" hearing,
+   the earlier Why report). Spillover damping goes into `BACKLOG.md` section 6 as
+   [tentative] so it can be revisited; the code survives on `archive/legacy-belief-final`.
+   Added to `BACKLOG.md` section 6 on Nov 16.
+6. **The Insight wording:** I draft it in phase 8; the wording is Michael's to settle.
+7. **Older leftovers: Lantern does both.** Phase 7 (the pre-CaseEval engine and the
+   attention experiments) goes ahead, and audit B's belief-related leftovers are folded into
+   phase 8: the mislabelled `legacy_fallback` reporting, `legacy_evidence`,
+   `fallback_count`, and the Workshop canvas's `"mode": "legacy"`.
+8. **Section 8's small calls** are mine as listed.
+
+### The questions as put to him
 
 1. **Old logs.** After phase 3 a log from before #160 can't be replayed on the earlier model.
    (The two playtest logs, 44542 and 97626, already don't replay faithfully on main since

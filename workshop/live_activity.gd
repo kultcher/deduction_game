@@ -576,6 +576,13 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 		var named: Array = []
 		if c.kind == "sighting":
 			named = c.get("subjects", [c.get("subject", "")])
+		elif c.kind == "alibi" and ri >= 0:
+			# A relayed alibi ("the dead told me they were home") is the relayer's word too:
+			# an evil relayer can invent it, so in a world where the relayer is evil it says
+			# nothing about its subject. Only the relayer is contested; the subject's own
+			# word is priced by alignment in _observed.
+			named = [c.get("subject", "")]
+			tellers = [ri]
 		elif c.kind == "report" and str(c.get("role", "")) == "nightwatch" and c.get("data") is Dictionary:
 			named = c.data.get("seen", [])
 		for who in named:
@@ -608,6 +615,8 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 				var src: String = str(c.get("source", ""))
 				var rel: String = str(c.get("relay_source", "~"))
 				var movement: bool = c.kind == "sighting" or (c.kind == "report" and str(c.get("role", "")) == "nightwatch")
+				if c.kind == "alibi" and c.has("relay_source") and not c.get("quoted", false):
+					return not (rel in full_ids or (rel == cursed_id and _told_cursed(curse, c)))
 				return not (movement and (src in full_ids or rel in full_ids or ((src == cursed_id or rel == cursed_id) and _told_cursed(curse, c)))))
 			# Forced outings re-inferred from what's left.
 			var mv: Dictionary = _routes_cs(view, minus, {}, {}, false)

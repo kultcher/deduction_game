@@ -24,6 +24,7 @@ func _init() -> void:
 	_notice_follows_insight()
 	_switch_off()
 	_better_lie()
+	_held_day_reading_keeps_phase()
 	_rework_can_ask_again()
 	print("Fabrication check: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -147,3 +148,19 @@ func _rework_can_ask_again() -> void:
 		for a in alts:
 			var d: Dictionary = a.entry.data
 			_check(str(a.entry.get("text", "")) != "" and not (n.id in d.get("pair", [])) and str(d.get("target", "")) != n.id, "%s alternative is worded and never names the teller (%s)" % [role, a.entry.text])
+
+## A held day reading (a Dowser's) reworked on the night pass keeps its day and phase, so
+## its alternatives are judged as the same daytime observation (Codex P2 on #193).
+func _held_day_reading_keeps_phase() -> void:
+	var s: Dictionary = _setup()
+	var w = s.w
+	w.phase = C.NIGHT
+	var Evil = load("res://sim/evil.gd")
+	var held: Dictionary = {"role": "dowser", "day": 1, "phase": 1, "data": {"group": [s.goods[2].id, s.goods[3].id], "count": 1, "block": s.goods[2].home_block}, "text": "probe"}
+	var alts: Array = Evil._alternatives(w, s.liar, C.role_def("dowser"), w.evil_plan, s.liar, held, true).call()
+	_check(not alts.is_empty(), "a held Dowser reading has alternatives")
+	for a in alts:
+		_check(int(a.entry.get("day", -1)) == 1 and int(a.entry.get("phase", -1)) == 1, "an alternative keeps day 1, phase 1 (got day %s, phase %s)" % [str(a.entry.get("day")), str(a.entry.get("phase"))])
+	var night_e: Dictionary = {"role": "magistrate", "day": 2, "data": {"nominator": s.greta.id, "nominee": s.lian.id, "same": true}, "text": "probe"}
+	for a in Evil._alternatives(w, s.liar, C.role_def("magistrate"), w.evil_plan, s.liar, night_e, false).call():
+		_check(not a.entry.has("phase"), "a night reading's alternative stays a night reading")
