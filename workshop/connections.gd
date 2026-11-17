@@ -116,6 +116,8 @@ static var captured: Array = []
 
 ## An item joins the core at this much interaction with the seed (log-odds, any one person).
 const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
+## MOCK (never merged): CORE_JOIN env overrides the joining bar for a measurement.
+static var core_join_v: float = float(OS.get_environment("CORE_JOIN")) if OS.get_environment("CORE_JOIN") != "" else CORE_JOIN
 
 ## A stored case keeps CASE_FADE of its weight a day (more if the listener bought it:
 ## buy_in_rate), and stops counting below CASE_FLOOR.
@@ -631,7 +633,7 @@ static func core(run: Dictionary, by_id: Dictionary, item_list: Array, values: D
 		for p in run.others:
 			most = maxf(most, absf(float(joint.lean[p]) - float(seed_value.lean[p]) - float(values[key].lean.get(p, 0.0))))
 		out.tested[key] = most
-	out.members = membership(item_list, plan.kept, out.tested)
+	out.members = membership(item_list, plan.kept, out.tested, core_join_v)
 	out.memory = core_memory(day, seeds, first, out.members, held)
 	var keys: Array = seeds + out.members
 	var all: Dictionary = pool(keys.map(func(k): return by_key[k]))

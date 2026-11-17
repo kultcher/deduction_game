@@ -220,6 +220,17 @@ static func _refresh(g, n, phase: String) -> void:
 		# The connections model (off by default): what each held card added, for the why tool.
 		if proposal.has("connections"):
 			owned_trace["connections"] = Connections.summary(proposal.connections)
+			var log_path: String = OS.get_environment("CORE_LOG")
+			if log_path != "" and not n.is_shadow and not n.is_evil():
+				var res: Dictionary = proposal.connections
+				var own: Dictionary = res.get("core", {})
+				var f := FileAccess.open(log_path, FileAccess.READ_WRITE) if FileAccess.file_exists(log_path) else FileAccess.open(log_path, FileAccess.WRITE)
+				if f != null:
+					f.seek_end()
+					f.store_line(JSON.stringify({"game": str(g.w.seed_value), "day": int(g.w.day), "listener": n.id, "insight": float(n.traits.get("insight", 0.5)),
+						"evil": g.w.evil_team().map(func(e): return e.id), "demon": g.w.demon_id, "seeds": own.get("seed", []).size(), "members": own.get("members", []).size(),
+						"core_cards": int(own.get("cards", 0)), "items": res.get("items", []).size(), "posterior": res.get("posterior", {})}))
+					f.close()
 		g.w.dlog.trace_event("workshop_ownership", n.id, "", owned_trace, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
 
 ## Attribute this mind's reasons from its latest refresh, once (purge 2a, deferred).
