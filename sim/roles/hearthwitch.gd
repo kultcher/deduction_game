@@ -74,3 +74,16 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Call
 	e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
 	e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
 	return {"entry": e, "why": "the dead Dowser %s sensed evil around scapegoat %s" % [dd.id, s], "frames": true}
+
+
+## Another count over the same neighbours (FabricationCheck: a better lie).
+func bluff_alternatives(w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var nbrs: Array = d.get("nbrs", [])
+	var out: Array = []
+	for c in range(0, nbrs.size() + 1):
+		if c == int(d.get("count", -1)):
+			continue
+		out.append({"entry": {"data": {"nbrs": nbrs.duplicate(), "count": c}, "text": "I sensed that %d of my neighbours (%s) %s evil" % [c, w._names(nbrs), "is" if c == 1 else "are"]},
+			"why": "says %d of its neighbours are evil instead" % c})
+	return cap_alternatives(w, out)
