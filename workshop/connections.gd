@@ -29,8 +29,9 @@
 ##   core        the items holding a firsthand card (the seed), judged together with every
 ##               other item worth more next to the seed than apart from it. Each candidate
 ##               is tested against the seed only, never against what already joined, so the
-##               order can't matter and the core can't snowball. The core adds what its
-##               members say together beyond their own values.
+##               order can't matter and the core can't snowball. How much more it must be
+##               worth follows the listener's Insight (join_bar): a sharp NPC links more.
+##               The core adds what its members say together beyond their own values.
 ##               It is rebuilt on a new day and when the firsthand cards change; otherwise
 ##               its members stay, and only an item with a newly held card is tested. The
 ##               caller keeps that memory (`core_state`) and stores what comes back.
@@ -60,6 +61,9 @@
 ##   an Augur day the Augur reading and that day's sightings
 ##   a Psychologist reading and its two statements
 ##   a trace      with the profile cards as context
+##   a double claim  every claim of one gift when two or more people claim it, and the
+##                claimants' own readings of that gift; the other held cards that name a
+##                claimant (not night or trace cards) are context
 ##
 ## The demon-type declaration decides how movement is read (`row`):
 ##   "none"    no declaration on a script with both kinds: each night by itself. Inside a
@@ -114,8 +118,11 @@ static var buy_in: bool = true
 static var capture: bool = false
 static var captured: Array = []
 
-## An item joins the core at this much interaction with the seed (log-odds, any one person).
-const CORE_JOIN: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN
+## An item joins the core at this much interaction with the seed (log-odds, any one person):
+## CORE_JOIN_DULL for an NPC with no Insight, CORE_JOIN_SHARP with full Insight, in a
+## straight line between (join_bar).
+const CORE_JOIN_DULL: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN_DULL
+const CORE_JOIN_SHARP: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN_SHARP
 
 ## A stored case keeps CASE_FADE of its weight a day (more if the listener bought it:
 ## buy_in_rate), and stops counting below CASE_FLOOR.
@@ -222,6 +229,7 @@ static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dic
 	var who: Dictionary = listener.duplicate(false)
 	who.erase("trust")
 	who.erase("player_credibility")
+	who.erase("insight")  # sets the core's bar only; the judge never reads it
 	var heard: Dictionary = {}
 	var all_heard: Dictionary = listener.get("reading_reliability", {})
 	for name in names:
@@ -284,6 +292,7 @@ static func _prepare_key_ctx(view: Dictionary, bare: Dictionary, listener: Dicti
 	var who_base: Dictionary = listener.duplicate(false)
 	who_base.erase("trust")
 	who_base.erase("player_credibility")
+	who_base.erase("insight")
 	who_base["reading_reliability"] = {}
 	who_base["reading_doubt"] = {}
 	var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
@@ -352,6 +361,7 @@ static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener
 		var who: Dictionary = listener.duplicate(false)
 		who.erase("trust")
 		who.erase("player_credibility")
+		who.erase("insight")
 		who["reading_reliability"] = heard
 		who["reading_doubt"] = doubted
 		var known: Dictionary = listener.get("knowledge", {}).duplicate(false)
@@ -557,6 +567,49 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 				for x in ids:
 					placed[x] = true
 				out.append({"key": "psychologist:" + id, "ids": ids, "ctx": [], "kind": "unit"})
+	# Two or more people claiming one gift, read together (Michael, Nov 16): the judge knows
+	# how many can hold it, so the claims say together what neither says alone (at least one
+	# claimant lies). Every other held card naming a claimant is context, so what else is
+	# known about one claimant moves the doubt onto the other: shown good, the other is the
+	# likelier liar. Night and trace cards stay out (the movement items read them).
+	var claims_by_role: Dictionary = {}
+	for id in held:
+		var c: Dictionary = by_id[id]
+		if c.kind == "claim" and not placed.has(id) and str(c.get("role", "")) != "":
+			var r: String = str(c.role)
+			if not claims_by_role.has(r):
+				claims_by_role[r] = []
+			claims_by_role[r].append(id)
+	var claim_roles: Array = claims_by_role.keys()
+	claim_roles.sort()
+	for r in claim_roles:
+		var ids: Array = claims_by_role[r]
+		var claimants: Dictionary = {}
+		for id in ids:
+			claimants[str(by_id[id].get("source", ""))] = true
+		if claimants.size() < 2:
+			continue
+		# A claimant's own reading of the gift declares the gift too, so it would carry the
+		# clash into the context and the pairing would subtract it away (Codex, #198). Such a
+		# reading is counted in the pairing instead (if no other pairing holds it) and kept
+		# out of the context either way.
+		var declares := func(c: Dictionary) -> bool:
+			return c.kind == "report" and str(c.get("role", "")) == r and claimants.has(str(c.get("source", "")))
+		for id in held:
+			if not placed.has(id) and not is_night.call(by_id[id]) and declares.call(by_id[id]) and id not in ids:
+				ids.append(id)
+		for id in ids:
+			placed[id] = true
+		var ctx: Array = []
+		for id in held:
+			var c: Dictionary = by_id[id]
+			if id in ids or is_night.call(c) or c.kind in TRACE_KINDS or declares.call(c):
+				continue
+			if not names_memo.has(id):
+				names_memo[id] = _names(by_id, [id], people)
+			if names_memo[id].any(func(p): return claimants.has(p)):
+				ctx.append(id)
+		out.append({"key": "claims:" + r, "ids": ids, "ctx": ctx, "kind": "unit"})
 	for id in held:
 		if not placed.has(id):
 			out.append({"key": id, "ids": [id], "ctx": [], "kind": "card"})
@@ -707,7 +760,12 @@ static func candidates(item_list: Array, seeds: Array, firsthand_ids: Array, mem
 
 ## The core's members after a round of tests (item order), and the memory to keep.
 ## tested: {key: interaction with the seed}. kept: members that stay untested.
-static func membership(item_list: Array, kept: Array, tested: Dictionary, threshold: float = CORE_JOIN) -> Array:
+## The joining bar for a listener of this Insight (0 dull .. 1 sharp; 0.5 when it has none).
+static func join_bar(listener: Dictionary) -> float:
+	return lerpf(CORE_JOIN_DULL, CORE_JOIN_SHARP, clampf(float(listener.get("insight", 0.5)), 0.0, 1.0))
+
+
+static func membership(item_list: Array, kept: Array, tested: Dictionary, threshold: float) -> Array:
 	var out: Array = []
 	for it in item_list:
 		if it.key in kept or float(tested.get(it.key, -1.0)) >= threshold:
@@ -769,7 +827,7 @@ static func core(run: Dictionary, by_id: Dictionary, item_list: Array, values: D
 		for p in run.others:
 			most = maxf(most, absf(float(joint.lean[p]) - float(seed_value.lean[p]) - float(values[key].lean.get(p, 0.0))))
 		out.tested[key] = most
-	out.members = membership(item_list, plan.kept, out.tested)
+	out.members = membership(item_list, plan.kept, out.tested, join_bar(run.listener))
 	out.memory = core_memory(day, seeds, first, out.members, held)
 	var keys: Array = seeds + out.members
 	var all: Dictionary = pool(keys.map(func(k): return by_key[k]))

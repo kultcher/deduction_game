@@ -915,6 +915,12 @@ static func _augment_joint_leave_one_out(
 			if not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) == "claim" and str(o.get("role", "")) != "":
 				pid_role = C.role_name(str(o.role))
 		var against: String = ("that doesn't fit their claim to be the %s" % pid_role) if pid_role != "" else "that doesn't fit their account"
+		# A count of folk out at night names nobody, so it can't leave anyone "among the
+		# likeliest"; it's the count against what people owned to (89077 item 3, Michael Nov 17).
+		var walk_count: bool = false
+		if not direct and gist == "" and crole != "":
+			var c_def = C.role_def(crole)
+			walk_count = c_def != null and c_def.shape == "GROUP_COUNT" and c_def.count_mode == "walkers"
 		var guarded: String = ""
 		if crole == "warden" and cand.get("data", {}) is Dictionary:
 			guarded = str(cand.data.get("target", ""))
@@ -926,12 +932,16 @@ static func _augment_joint_leave_one_out(
 				why_own = ("my reading points at them, and " + against) if has_pid_claim else "my own reading, taken with the other reports, points at them"
 			elif gist != "":
 				why_own = "my reading %s, which leaves them among the likeliest of the rest" % gist
+			elif walk_count:
+				why_own = "my count of folk abroad that night doesn't square with what we've been told"
 			else:
 				why_own = "my reading, taken with the other reports, leaves them among the likeliest"
 			if crole != "" and direct and has_pid_claim:
 				why_pub = "the %s reading points at them, and %s" % [C.role_name(crole), against]
 			elif crole != "" and gist != "":
 				why_pub = "the %s reading %s, which leaves them among the likeliest of the rest" % [C.role_name(crole), gist]
+			elif walk_count:
+				why_pub = "the %s's count of folk abroad that night doesn't square with what we've been told" % C.role_name(crole)
 			else:
 				why_pub = "the reports considered together point toward them"
 		else:
@@ -942,6 +952,8 @@ static func _augment_joint_leave_one_out(
 				why_own = "%s's %s reading points at them, and %s" % [sname, C.role_name(crole), against]
 			elif crole != "" and gist != "":
 				why_own = "%s's %s reading %s, which leaves them among the likeliest of the rest" % [sname, C.role_name(crole), gist]
+			elif walk_count:
+				why_own = "%s's count of folk abroad that night doesn't square with what we've been told" % sname
 			else:
 				why_own = "the reports considered together point toward them"
 			# Leaning on the word of someone the town hanged: say so (Case 12926: Edda and

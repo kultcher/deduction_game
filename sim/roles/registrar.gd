@@ -207,7 +207,7 @@ func generate_reading(w, n, _ctx: Dictionary, mind) -> Dictionary:
 		return {
 			"data": {"roles": roles.duplicate()},
 			"true": ok,
-			"text": "My register lists three roles: %s" % _roles_prose(roles),
+			"text": "my register listed three roles: %s" % _roles_prose(roles),
 		}
 	var roles_n: Array = _ensure_slate(w, n)
 	if roles_n.size() != 3:
@@ -272,7 +272,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, mate, asked: Arra
 	if w.day == 0:
 		var entry0: Dictionary = {
 			"data": {"roles": roles.duplicate()},
-			"text": "My register lists three roles: %s" % _roles_prose(roles),
+			"text": "my register listed three roles: %s" % _roles_prose(roles),
 		}
 		return {"entry": entry0, "why": "declares Registrar slate %s" % str(roles)}
 	var C = content()

@@ -82,10 +82,11 @@ static func gift_refusal(n) -> Dictionary:
 	return say(n, rendered["text"])
 
 static func home_alibi(w, n, nd: int) -> Dictionary:
+	# The voices' alibis say "all last night"; an earlier night takes its spoken ordinal in
+	# that place ("all the second night"), never a number (Nov 17).
 	var when_label = "last night"
 	if w != null and nd != w.day - 1:
-		var nm: String = C.night_name(nd)
-		when_label = ("on " + nm) if nm.begins_with("night") else nm
+		when_label = C.spoken_night(nd, w.day)
 	var rendered = Dialogue.compose(n.id, Dialogue.alibi_intent("alibi:%d" % nd, when_label), {"audience": "player", "speech_act": "answer", "trust": n.trust, "pressure": n.pressure}, n.dialogue_memory)
 	return say(n, rendered["text"])
 
@@ -96,7 +97,11 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 		if line is Dictionary and line.get("speaker", "") == n.id:
 			# Rephrasing changes delivery only. Keep the approved statement and any
 			# canonical payload/provenance attached to the original speech event.
-			var is_visual: bool = card.get("kind", "") in ["sighting", "vigil"] or (card.get("kind", "") == "info" and card.get("role", "") == "nightwatch")
+			# The "I saw it with my own eyes" opener is for a witness defending their own
+			# sighting. Someone else's sighting of the speaker (the player's vigil, a
+			# neighbour's window) gets the plain opener (playtest 89077, finding 2).
+			var own_sighting: bool = str(card.get("source", "")) == n.id
+			var is_visual: bool = own_sighting and (card.get("kind", "") in ["sighting", "vigil"] or (card.get("kind", "") == "info" and card.get("role", "") == "nightwatch"))
 			var rephrased: Dictionary = line.duplicate(true)
 			rephrased["text"] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true, "visual": is_visual})["text"]
 			response["lines"][i] = rephrased
@@ -1291,6 +1296,9 @@ static func vote(w, v, nominee: String, nominator: String, player_yes: bool, sta
 
 static func vote_resistance_lines(w, res: Dictionary) -> Array:
 	return MindMeeting.vote_resistance_lines(w, res)
+
+static func catches_home_lie(view: Dictionary, ids: Array, target: String) -> bool:
+	return MindMeeting.catches_home_lie(view, ids, target)
 
 static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int, trace_id: int) -> bool:
 	return MindMeeting._vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, trace_id)

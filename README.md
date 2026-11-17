@@ -16,8 +16,9 @@ The core loop is settled; this is the foundation the game is being built on towa
 is the to-do list; [TUNING_NARRATIVE.md](TUNING_NARRATIVE.md) explains in plain language
 how the social and evidence systems interact, and `sim/tuning.gd` holds every number.
 [docs/belief_model.md](docs/belief_model.md) is how NPCs form beliefs (the connections
-model), and [docs/handoff_log.md](docs/handoff_log.md) is the running record between the
-agents working on the code: read its newest entry before starting work.
+model), and [docs/handoff/](docs/handoff/) is the running record between the agents
+working on the code, one file per entry: read the newest few before starting work
+(entries before Nov 17 are in the frozen [docs/handoff_log.md](docs/handoff_log.md)).
 This README covers running and playing.
 
 ## Running it
@@ -306,6 +307,7 @@ sim/mind.gd, mind_dialogue.gd, mind_meeting.gd
                   defences, votes
 sim/social.gd     NPC-to-NPC exchanges, peer gift talk, approaches, the tavern
 sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
+sim/fabrication_check.gd  whether a fabricated reading would point the town at its teller
 sim/presentation_reply.gd  replies to speech the Workshop doesn't judge; evil's mask
 sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd, dialogue_presentations.gd
                   dialogue composer: words decided statements in a character's voice

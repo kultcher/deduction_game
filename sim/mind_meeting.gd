@@ -15,6 +15,7 @@ const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Recency = preload("res://sim/recency.gd")
 const Connections = preload("res://workshop/connections.gd")
+const CaseGraph = preload("res://workshop/case_graph.gd")
 
 static var _mind_script
 
@@ -852,7 +853,7 @@ static func _note_said(w, n, key: String) -> void:
 		w.meeting.said[key] = n.id
 
 ## A spoken observation must leave the same usable card as asking the witness privately.
-static func _append_accusation_sighting(w, n, target, why: String, lines: Array, facts: Array) -> void:
+static func _append_accusation_sighting(w, n, target, why: String, lines: Array, facts: Array, spoken: Array = []) -> void:
 	var candidates: Array = []
 	if n.is_evil():
 		for key in w.evil_plan.get("fake_sightings", {}):
@@ -866,7 +867,12 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if candidates.is_empty():
 		return
 	var seen: Dictionary = candidates[0]
-	if n.told_to.has(_town_sighting_key(n, seen)): return
+	if n.told_to.has(_town_sighting_key(n, seen)):
+		# Already told the town: not a new card, but it is what this nomination accuses
+		# them of, so the defence still answers it (playtest 89077: Fenwick, a claimed
+		# Warden, pleaded desperation against Nisha's spoken sighting).
+		spoken.append(sighting_report(w, n, seen, seen["day"])["fact"])
+		return
 	n.told_to[_town_sighting_key(n, seen)] = true
 	var report = sighting_report(w, n, seen, seen["day"])
 	facts.append(report["fact"])
@@ -1087,6 +1093,7 @@ static func next_nomination(w):
 	var cs = nomination_case(w, nom, t, why)
 	c["case_lines"] = cs["lines"]
 	c["case_facts"] = cs["facts"]
+	c["spoken_facts"] = cs.get("spoken_facts", [])
 	return c
 
 # ---------------------------------------------------------------- the nominator's case
@@ -1480,28 +1487,78 @@ static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
 	items.sort_custom(func(x, y): return float(x["contrib"]) > float(y["contrib"]))
 	return items.slice(0, limit)
 
+## Several of the nominator's own readings from one gift, recapped as one reason ("what my
+## gift showed me over several nights points at them") rather than one
+## sentence each (89077 finding 3: Constance's three Lamplighter counts against Kiran).
+## Each merged item keeps the sentences it stands for in "whys", so the cards behind
+## them are still the ones recalled.
+static func _merge_gift_reasons(w, n, items: Array) -> Array:
+	var by_role: Dictionary = {}
+	for x in items:
+		var en: Dictionary = x.get("entry", {})
+		if not en.is_empty() and str(x.get("eid", "")).begins_with("info:%s:" % n.id) and str(en.get("role", "")) != "" and int(en.get("phase", C.NIGHT)) == C.NIGHT:
+			by_role[str(en.role)] = by_role.get(str(en.role), []) + [x]
+	var out: Array = []
+	var done: Dictionary = {}
+	for x in items:
+		var en: Dictionary = x.get("entry", {})
+		var role: String = str(en.get("role", "")) if not en.is_empty() else ""
+		var group: Array = by_role.get(role, []) if role != "" else []
+		if group.size() < 2 or not (x in group):
+			out.append(x)
+			continue
+		if done.has(role):
+			continue
+		done[role] = true
+		var nights: Array = []
+		for g in group:
+			var nd: int = int(g.entry.get("day", 0))
+			if not (nd in nights):
+				nights.append(nd)
+		nights.sort()
+		if nights.size() < 2:
+			for g in group:
+				out.append(g)
+			continue
+		var m: Dictionary = x.duplicate()
+		# The nights are on the player's board already (each merged reading was told to the
+		# town), so the line doesn't list them (Herald, by Michael's test, Nov 17).
+		m["why"] = "what my gift showed me %s points at them" % ("on two nights" if nights.size() == 2 else "over several nights")
+		m["whys"] = group.map(func(g): return str(g.get("why", "")))
+		out.append(m)
+	return out
+
 ## The nominator lays out their case: public reasons recapped (cosmetic: hearing them again
 ## changes nothing), and their strongest private one hinted at or brought out (claim and
 ## reading, with their usual effect, as at any other time). Returns {lines, facts}.
 static func nomination_case(w, n, t, already: String) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
+	var spoken: Array = []
 	if already.begins_with("I saw"):
-		_append_accusation_sighting(w, n, t, already, lines, facts)
+		_append_accusation_sighting(w, n, t, already, lines, facts, spoken)
 	var items = case_against(w, n, t.id)
-	var recap: Array = items.filter(func(x): return x["kind"] == "public" and x["why"] != already).map(func(x): return x["why"])
+	# Each reason once: three readings of one gift can give the same sentence (89077:
+	# Constance's three Lamplighter counts against Kiran).
+	var recap: Array = []
+	var merged_whys: Array = []
+	for x in _merge_gift_reasons(w, n, items.filter(func(x): return x["kind"] == "public")):
+		if x["why"] != already and not (already in x.get("whys", [])) and not (x["why"] in recap):
+			recap.append(x["why"])
+			merged_whys.append_array(x.get("whys", []))
 	for r_why in recap.slice(0, 2):
 		if str(r_why).begins_with("I saw"):
-			_append_accusation_sighting(w, n, t, str(r_why), lines, facts)
+			_append_accusation_sighting(w, n, t, str(r_why), lines, facts, spoken)
 	var priv: Array = items.filter(func(x): return x["kind"] in ["private", "player"])
 	var relays: Array = items.filter(func(x): return x["kind"] == "relay")
 	if priv.is_empty() and not relays.is_empty():
 		relay_reading(w, n, relays[0]["src"], relays[0]["entry"], lines, facts)
 	var description = ", ".join(PackedStringArray(items.map(func(x): return "%s (%s, %.2f)" % [x["why"], x["kind"], x["contrib"]])))
 	w.dlog.think(n.id, "nomination_case", "Case against %s: %s." % [t.id, description if description != "" else "no citable reasons on record"], {"items": items.map(func(x): return {"eid": x["eid"], "kind": x["kind"]})})
-	if items.is_empty():
+	# "No premise" only when they've given none: not after "I saw them out" (89077: Nisha).
+	if items.is_empty() and already == "":
 		lines.append(say_voiced(n, "nomination_no_reasons", "I don't trust %s, and I can't say better than that." % t.name, {"target": t.name}))
-	var cited_whys: Array = [already] + recap.slice(0, 2)
+	var cited_whys: Array = [already] + recap.slice(0, 2) + merged_whys
 	var cited_cards: Array = []
 	if priv.is_empty() and not relays.is_empty():
 		cited_cards = relays[0].get("cards", [])
@@ -1533,7 +1590,7 @@ static func nomination_case(w, n, t, already: String) -> Dictionary:
 			facts.append({"kind": "accusation", "subject": [t.id], "source": n.id, "hint": true,
 				"text": "%s nominated %s, hinting at a private reason they won't share yet." % [n.name, t.name]})
 	remember_nomination(w, n, t.id, recall_cited(w, n, t.id, cited_whys, cited_cards))
-	return {"lines": lines, "facts": facts}
+	return {"lines": lines, "facts": facts, "spoken_facts": spoken}
 
 # ---------------------------------------------------------------- the defence
 
@@ -1626,7 +1683,6 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 						seen_eids[eid2] = true
 		elif f.get("kind", "") == "sighting" and d.id in f.get("subject", []):
 			var s_eid: String = "sighting:%s:%s:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), str(f.get("block", ""))]
-			case_eids[s_eid] = true
 			# A sighting by day (where they were in the morning, afternoon or evening) is
 			# not a night outing: the defence mustn't answer it as "where I was last night"
 			# (playtest 26532: Isolde, on a case about day-1 whereabouts). It keeps its own
@@ -1634,7 +1690,9 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 			var by_day: bool = int(f.get("phase", C.NIGHT)) != C.NIGHT
 			if by_day:
 				s_eid = "sighting_day:%s:%s:%d:%d:%s" % [str(f.get("source", "")), d.id, int(f.get("day", -1)), int(f.get("phase", -1)), str(f.get("block", ""))]
-				case_eids[s_eid] = true
+			# Only the form it was seen in is in the case (Steward A5, Nov 17: the night form went
+			# in first, so a day sighting still marked the night of the same number).
+			case_eids[s_eid] = true
 			if not seen_eids.has(s_eid):
 				var s_score: Dictionary = ReasonAttribution.score_disclosed_fact_in_world(w, d_mind, f, d.id)
 				if by_day:
@@ -1752,6 +1810,11 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		var rd = {}
 		var src_id = ""
 		for x in items:
+			# Against the player's filed case, only a reading the case cites: one it doesn't
+			# use isn't the accusation (89077: Constance calling Kiran a liar over his
+			# Psychologist reading).
+			if case_backed and not x.get("in_case", false):
+				continue
 			if x["eid"].begins_with("info:"):
 				var parts2 = x["eid"].split(":")
 				var sn = w.by_id.get(parts2[1])
@@ -1813,15 +1876,24 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_strengths["dispute_night"] = 1.0
 					move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 					defence_scopes["dispute_night"] = {"type": "plea"}
-			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves):
+			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves) and not ("sleepwalk" in moves):
 				if hinge_at >= 0:
 					lines[hinge_at] = say_voiced(d, "defence_case_hinge_reading_wrong", "Your whole case rests on %s's reading, and that reading is wrong." % src.name, {"source": src.name})
 				if trait_of(d, "confidence") > 0.6:
 					var lie_key: String = "lying:" + src_id
 					if _said_by_other(w, d, lie_key) != "":
 						lines.append(say_voiced(d, "defence_lying_echo", "%s again? Then %s is lying about me too." % [src.name, src.name], {"source": src.name}))
-					else:
+					elif not src.alive:
+						# Past tense for a source who has since died (23973: Kiran, killed the night before).
+						lines.append(say_voiced(d, "defence_lied", "%s lied, and you should ask yourselves why." % src.name, {"source": src.name}))
+					elif hinge_at >= 0:
+						# "Then" follows the hinge line's "and that reading is wrong".
 						lines.append(say_voiced(d, "defence_lying", "Then %s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
+					else:
+						# Nothing before it says the reading is wrong (the hinge was their night, or
+						# there was no case): the line stands on its own (23973: Merrin's alibi, then
+						# "Then Kiran speaks with the serpent's own tongue!").
+						lines.append(say_voiced(d, "defence_lying_alone", "%s is lying, and you should ask yourselves why." % src.name, {"source": src.name}))
 					_note_said(w, d, lie_key)
 					moves.append("lying")
 					move_strengths["lying"] = 1.0
@@ -2004,9 +2076,29 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		w.meeting["vote_parts"][v.id] = {"parts": exact_parts, "margin": s - need, "yes": yes}
 	return yes
 
+## Whether a case catches `target` in a home lie: among `ids`, their own "I was home"
+## for a night and something that puts them out that night (a sighting, a Night Watch
+## report, their own walking gift's reading). The judge's own dispute rule
+## (`CaseGraph.valid_dispute`). Lie severity (BACKLOG, Michael Nov 17): since #210 the
+## judge reads that as evidence, not proof, so a listener can accept it and still not hang.
+static func catches_home_lie(view: Dictionary, ids: Array, target: String) -> bool:
+	if target == "":
+		return false
+	for aid in ids:
+		var alibi: Dictionary = CaseGraph.find_card(view, aid)
+		if alibi.is_empty() or str(alibi.get("kind", "")) != "alibi" or str(alibi.get("subject", "")) != target:
+			continue
+		for oid in ids:
+			if oid == aid:
+				continue
+			if CaseGraph.valid_dispute(view, {"reports": [aid, oid], "challenged": aid, "preferred": oid}):
+				return true
+	return false
+
 ## Step 6 (meeting plan M2d): after the tally, at most MAX_VOTE_RESISTANCE_SPEAKERS voters
 ## say why they voted as they did. First, anyone who accepted the Demonologist's public case
-## against the nominee today and still voted no, voicing the vote part that held them back;
+## against the nominee today (or granted that it caught them in a home lie) and still voted
+## no, voicing the vote part that held them back;
 ## failing that, on a count within one of what was needed, the voter who swung it. An evil
 ## voter speaks from its good self's parts (the shadow's), never from the override.
 static func vote_resistance_lines(w, res: Dictionary) -> Array:
@@ -2026,12 +2118,16 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 		if v.silenced or not v.alive:
 			continue
 		var acc: Dictionary = v.dialogue_memory.get("accepted_cases", {}).get(nominee, {})
-		if acc.is_empty() or int(acc.get("day", -1)) != w.day:
-			continue
+		var accepted: bool = not acc.is_empty() and int(acc.get("day", -1)) == w.day
 		var mind = v.shadow if v.is_evil() and v.shadow != null else v
-		if mind.workshop_state.get("withdrawn", {}).has(str(acc.get("key", ""))):
+		if accepted and mind.workshop_state.get("withdrawn", {}).has(str(acc.get("key", ""))):
+			accepted = false
+		# Granted today that the nominee lied about being home (lie severity, the vote side).
+		var grant: Dictionary = v.dialogue_memory.get("granted_lies", {}).get(nominee, {})
+		var lie: bool = int(grant.get("day", -1)) == w.day and not mind.workshop_state.get("withdrawn", {}).has(str(grant.get("key", "")))
+		if not accepted and not lie:
 			continue
-		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res)
+		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie)
 		if key == "":
 			continue
 		out.append(_resistance_line(w, v, t, key, res))
@@ -2053,7 +2149,7 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 
 
 ## Which reason a no-voter gives, from the parts their vote actually had.
-static func _resistance_key(w, v, vp: Dictionary, res: Dictionary) -> String:
+static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: bool = false) -> String:
 	var parts: Dictionary = vp.get("parts", {})
 	if v.is_evil() and bool(vp.get("yes", false)):
 		# Their good self would have voted yes: the no came from cover-breaking, which is
@@ -2063,6 +2159,10 @@ static func _resistance_key(w, v, vp: Dictionary, res: Dictionary) -> String:
 		return "" # no record of how they weighed it (an evil voter's team rule, say)
 	if float(parts.get("prefers_block", 0.0)) < 0.0 and str(res.get("prev_block", "")) not in ["", res.get("nominee", "")]:
 		return "vote_no_prefers_block"
+	# They granted a case that caught the nominee in a home lie, and still voted no: they
+	# believe the lie and say it isn't enough to hang (lie severity, the vote side).
+	if granted_lie:
+		return "vote_no_lie_not_rope"
 	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes", "player_defends",
 		"player_accuses", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
 	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
@@ -2085,6 +2185,9 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 				{"nominee": t.name, "block": block_name})
 		"vote_no_reluctant":
 			return say_voiced(v, key, "Even with what you laid out, I'm not ready to put a rope on %s tonight." % t.name, {"nominee": t.name})
+		"vote_no_lie_not_rope":
+			return say_voiced(v, key, "I'll grant %s lied about where they were that night. But there's many a reason to be abroad at night that isn't the Demon's work, and I won't hang them for it." % t.name,
+				{"nominee": t.name})
 		"vote_no_distrust_nominator":
 			return say_voiced(v, key, "The case against %s troubles me, yes, though I don't trust %s's hand in pushing it." % [t.name, nom_name],
 				{"nominee": t.name, "nominator": nom_name})

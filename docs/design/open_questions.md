@@ -88,19 +88,12 @@ These are the ones under discussion now, roughly by how much they shape other wo
 - **Evidence:** BACKLOG section 6 (#174); `docs/premises_plan.md` step 1.
 - **Builds:** Lantern.
 
-### 1.6 Are unlimited vigils too strong?
-- **Open:** a vigil on the right block can catch the Demon outright (playtest 26532; also
-  54875, where a vigil on the first kill block caught both walkers on nights 1 and 2, "near a
-  free Seer reading"). Options discussed, none chosen: a vigil costs the next morning's
-  action (Claude's earlier favourite); vigils limited like the ward; a vigil shows only a
-  count of people on the block; watch one spot, name anyone there, count the rest of the
-  block.
-- **Related open question in DESIGN:** does the Lamplighter's every-block route make that
-  gift too easy to confirm, now that nobody else passes through a block?
-- **Evidence:** BACKLOG section 2, Numbers ("Unlimited vigil strength", `[watch]`); DESIGN
-  "Open questions"; 26532 itself isn't written up in the repo (Michael has the log).
-- **Builds:** depends on the option. A cost or limit is player actions (Herald for UI,
-  game flow); a count-only vigil changes evidence (Quill). Tally for a sweep.
+### 1.6 ~~Are unlimited vigils too strong?~~ Decided (Nov 17)
+- **Michael (Nov 17):** the vigil watches who *leaves* a block, not who arrives; no sweep
+  first; the bot changes to watch its suspects. BACKLOG section 2 `[decided]`, owner Quill.
+  Details and the build's checklist in `docs/design/vigil.md`.
+- **Still open:** the result wording (Herald drafts), and the Lamplighter question in DESIGN
+  (does its every-block route make the gift too easy to confirm?).
 
 ### 1.7 Onboarding and tutorials (waits for mechanics to settle)
 - **Open:** when mechanics are settled enough to start, and the shape. The decided

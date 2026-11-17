@@ -578,10 +578,20 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		_label(case_box, board.title(answer_id), 22)
 		_label(case_box, "Link grounds to this modifier. It asks the listener to assess your explanation; selecting it does not prove error or deception.", 17)
+		var mod_id: String = answer_id
+		var relay: bool = _report(node.card).has("relay_source")
+		if relay:
+			var sides: Array = ["transmission", "original"]
+			var side_option = _option(case_box, sides.map(func(s): return board.RELAY_SIDE_TEXT[s]))
+			side_option.select(maxi(0, sides.find(str(node.get("attribution", "original")))))
+			side_option.item_selected.connect(func(i): set_evidence_field(mod_id, "side:" + sides[i]))
 		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading", "Failed gift (poisoned)"])
 		option.select(["misled", "lying", "unlikely", "impaired"].find(node.mode))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
-		option.item_selected.connect(func(i): node.mode = ["misled", "lying", "unlikely", "impaired"][i]; _edit())
+		if relay and str(node.get("attribution", "")) == "transmission":
+			option.set_item_disabled(0, true)
+			option.set_item_disabled(2, true)
+		option.item_selected.connect(func(i): set_evidence_field(mod_id, "mode:" + ["misled", "lying", "unlikely", "impaired"][i]))
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)
@@ -1238,8 +1248,19 @@ func set_evidence_field(id: String, field: String) -> void:
 	var value: String = field.substr(kind.length() + 1)
 	board.selected = id
 	if kind == "mode":
-		if node.kind == "modifier" and not (value == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))):
+		var passing_on: bool = str(node.get("attribution", "")) == "transmission"
+		if node.kind == "modifier" and not (value == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
+				and not (passing_on and value not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES):
 			node.mode = value
+			_edit()
+		return
+	if kind == "side":
+		# A Medium relay's challenged side. The passing-on takes only a lie or a failed gift,
+		# so a mode about the reading itself becomes a lie.
+		if node.kind == "modifier" and card.has("relay_source") and value in preload("res://workshop/reading_challenges.gd").RELAY_ATTRIBUTIONS:
+			node["attribution"] = value
+			if value == "transmission" and node.mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES:
+				node.mode = "lying"
 			_edit()
 		return
 	if kind == "why":

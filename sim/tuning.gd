@@ -915,8 +915,13 @@ class Workshop:
 	const CONNECTIONS_FIXED = 0.005
 	## The core (an NPC's own readings and what it weighs together with them): a card or
 	## pairing joins when it is worth this much more, in log-odds for any one person, next
-	## to the NPC's own readings than apart from them.
-	const CONNECTIONS_CORE_JOIN = 0.4
+	## to the NPC's own readings than apart from them. The bar follows Insight (Michael,
+	## Nov 17): the dullest NPC's at CORE_JOIN_DULL, the sharpest's at CORE_JOIN_SHARP, in
+	## a straight line between. A sharp NPC links more cards to what it knows firsthand; a
+	## dull one only the glaring ones.
+	const CONNECTIONS_CORE_JOIN_DULL = 0.8
+	## The sharpest NPC's joining bar (see CONNECTIONS_CORE_JOIN_DULL).
+	const CONNECTIONS_CORE_JOIN_SHARP = 0.1
 	## Stored cases (the player's presentations, an NPC nominator's cited cards): a case
 	## keeps this share of its weight for each day since it was presented, and stops
 	## counting below the floor. Its weight starts at the listener's trust in the presenter.
@@ -1004,6 +1009,15 @@ class Workshop:
 	## 10:1 against the claim (strong, not certain).
 	## Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`.
 	const VIGIL_MISS = 0.05
+	## A good person who was out at night still telling the town "I was home": hiding a
+	## night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17
+	## (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were
+	## out said "home" to the player (51 of 199); good people at home always said so. Before
+	## Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was
+	## proof of evil (Michael: "a caught lie from someone who could be good stops being
+	## proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else
+	## stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`.
+	const GOOD_OWN_ALIBI_OUT = 0.2
 	## A good person who claims a walking gift: how the movement model splits their nights
 	## between doing the duty, staying home anyway, and a secret's outing (before Nov 5:
 	## 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the
