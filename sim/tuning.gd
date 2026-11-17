@@ -915,8 +915,13 @@ class Workshop:
 	const CONNECTIONS_FIXED = 0.005
 	## The core (an NPC's own readings and what it weighs together with them): a card or
 	## pairing joins when it is worth this much more, in log-odds for any one person, next
-	## to the NPC's own readings than apart from them.
-	const CONNECTIONS_CORE_JOIN = 0.4
+	## to the NPC's own readings than apart from them. The bar follows Insight (Michael,
+	## Nov 17): the dullest NPC's at CORE_JOIN_DULL, the sharpest's at CORE_JOIN_SHARP, in
+	## a straight line between. A sharp NPC links more cards to what it knows firsthand; a
+	## dull one only the glaring ones.
+	const CONNECTIONS_CORE_JOIN_DULL = 0.8
+	## The sharpest NPC's joining bar (see CONNECTIONS_CORE_JOIN_DULL).
+	const CONNECTIONS_CORE_JOIN_SHARP = 0.1
 	## Stored cases (the player's presentations, an NPC nominator's cited cards): a case
 	## keeps this share of its weight for each day since it was presented, and stops
 	## counting below the floor. Its weight starts at the listener's trust in the presenter.

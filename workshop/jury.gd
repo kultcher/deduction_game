@@ -939,6 +939,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		# the listener's trust in the Demonologist.
 		var weigher: Dictionary = _eval_listener(baseline, baseline.knowledge.get("own_reports", []))
 		weigher["trust"] = baseline.get("trust", 0.5)
+		weigher["insight"] = baseline.get("insight", 0.5)  # the core's joining bar (Connections.join_bar)
 		if baseline.has("player_credibility"):
 			weigher["player_credibility"] = baseline.player_credibility
 		connections = Connections.refresh(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}))

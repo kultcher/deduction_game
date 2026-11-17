@@ -677,8 +677,10 @@ player's case; it doesn't search for theories.**
     Psychologist reading with its statements; a trace with profile cards.
   - **The core:** each NPC weighs its firsthand knowledge (its own readings, the night
     holding its own watch or lamp reports, a night it was wrongly sighted) together with
-    whatever is worth at least 0.4 log-odds more next to it than apart
-    (`Workshop.CONNECTIONS_CORE_JOIN`). Each candidate is tested against the seed only.
+    whatever is worth enough more next to it than apart: 0.8 log-odds for the dullest
+    NPC, 0.1 for the sharpest, in a straight line by Insight
+    (`Workshop.CONNECTIONS_CORE_JOIN_DULL`, `_SHARP`). Each candidate is tested against
+    the seed only.
     Rebuilt at dawn; a newly heard card is tested when it arrives. What the seed proves
     alone stays proved.
   - **Stored cases:** a presented case (the player's, or an NPC nominator's cited cards)
@@ -693,7 +695,10 @@ player's case; it doesn't search for theories.**
   - **Combining:** each card once, each connection only its interaction, then one common
     shift so P(evil) sums to the evil count.
   - **Attention** (Insight's card budget, recency) now only picks what an NPC cites and
-    explains, never what it believes. The headline nudge is off. The earlier model, where
+    explains. Insight also sets how readily an NPC connects what it hears to what it
+    knows firsthand: a sharp NPC links more cards to its own readings and nights, a dull
+    one only the glaring ones. It never connects public cards that don't touch its own
+    knowledge; that's the player's job. The headline nudge is off. The earlier model, where
     attention bounded belief, runs with `autoplay.gd --legacy-model`.
 - **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the
   listener trusts the source of the evidence, then by **directional Confidence**: the
