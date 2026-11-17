@@ -796,6 +796,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 
