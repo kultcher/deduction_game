@@ -67,11 +67,6 @@ func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 ##             town already suspects; otherwise 0;
 ##   3 people: a true 2 reads 1; otherwise 1 to frame the scapegoat, else 0;
 ##   4 or more: usually the truth + 1 (+ 1 or 2 when the truth is 0), sometimes the truth.
-func release_bluff_use(w, n, _plan: Dictionary) -> void:
-	if n.dowsed_day == w.day:
-		n.dowsed_day = -1
-
-
 func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
 	if w.day < min_gift_day or n.dowsed_day == w.day or n.at_home():
 		return {}
@@ -122,3 +117,17 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Call
 	e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
 	e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
 	return {"entry": e, "why": "the dead Dowser %s sensed evil around scapegoat %s" % [dd.id, s], "frames": true}
+
+
+## Another count over the same crowd (FabricationCheck: a better lie).
+func bluff_alternatives(w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var d: Dictionary = entry.get("data", {})
+	var ids: Array = d.get("group", [])
+	var blk: String = str(d.get("block", ""))
+	var out: Array = []
+	for c in range(0, ids.size() + 1):
+		if c == int(d.get("count", -1)):
+			continue
+		out.append({"entry": {"data": {"group": ids.duplicate(), "count": c, "block": blk}, "text": "on %s I sensed %d evil among %s" % [content().block_name(blk), c, w._names(ids)]},
+			"why": "says %d evil on %s instead" % [c, blk]})
+	return cap_alternatives(w, out)

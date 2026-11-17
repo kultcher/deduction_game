@@ -133,3 +133,9 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, _other: Ca
 	e["data"] = {"yes": true}
 	e["text"] = _spoken_text(true)
 	return {"entry": e, "why": "the dead Augur %s 'sensed the demon' on day %d (toward %s)" % [dd.id, r_day, s], "frames": true}
+
+
+## The other answer (FabricationCheck: a better lie).
+func bluff_alternatives(_w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+	var yes: bool = not bool(entry.get("data", {}).get("yes", false))
+	return [{"entry": {"data": {"yes": yes}, "text": _spoken_text(yes)}, "why": "gives the other answer"}]
