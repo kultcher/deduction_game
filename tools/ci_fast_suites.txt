@@ -66,4 +66,5 @@ test_new_case_memory
 test_held_signals
 test_role_check_doubt
 test_fabrication_check
+test_warden_challenge
 test_bare_compile
