@@ -238,6 +238,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
   proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
   way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/trace-measure`, Nov 17):** `measure_evidence.gd --what traces`,
+  `combined` and `support`, the same rows as Tally's probe. [done]
 
 ### NPC behaviour
 

@@ -6,7 +6,7 @@
 ##
 ## godot --headless --path . --script res://tools/measure_evidence.gd -- [--seeds 1:40] [--size 7] [--out file.jsonl]
 ##   [--default-script] [--force-demon daykiller] [--no-hexer] [--declare walker|hexer]
-##   [--what readings|social|public|player|interactions|premises]
+##   [--what readings|social|public|player|interactions|premises|crosschecks|challenges|traces|combined|support]
 ##
 ## --what interactions: the interaction table (belief-model direction, Phase 3). For pairs of
 ##   cards A and B on one fresh listener, every person's P(evil) and P(Demon) with no cards,
@@ -20,6 +20,18 @@
 ## --what challenges: an accusing reading (Archivist pair, Dowser count of 1+) against
 ##   constructed Confessor readings clearing everyone it accuses, so the grounds contradict
 ##   it. Presented with a lying, misled or failed-gift (impaired) challenge and without.
+## --what traces: every crime scene searched, every trace found; each trace cited with the
+##   town's work and haunt profiles in a case "X is evil", against the profiles alone, for
+##   the Demon, one good person the trace fits and one it doesn't. One row per trace.
+## --what combined: the same, with every trace found cited together (needs two scenes with
+##   traces), for the Demon, a good person who fits every scene and one who misses one.
+## --what support: traces as supporting evidence. (a) one partner card (a night sighting, or a
+##   good holder's true reading naming the Demon) told to a fresh listener, then a case on the
+##   partner's subject citing the profiles with and without the traces; (b) the real town, no
+##   wipe: up to three good listeners' top suspect before and after a case on the Demon and on
+##   a good person who fits every scene. Slow (about a minute a seed).
+##   The trace weights are Tuning.Workshop.TRACE_MATCH_WEIGHT / TRACE_UNKNOWN_WEIGHT; to compare
+##   values, run on a branch that changes them (Tally, Nov 17: docs/handoff/*-tally-trace-weight.md).
 ## --force-roles a,b: put these roles on the script and deal them.
 ## --declare: stands in for the demon-type declaration (LiveActivity.declared_demon_type).
 extends SceneTree
@@ -121,6 +133,9 @@ func _init() -> void:
 			"premises": _measure_premises(g)
 			"crosschecks": _measure_crosschecks(g)
 			"challenges": _measure_challenges(g)
+			"traces": _measure_traces(g)
+			"combined": _measure_combined(g)
+			"support": _measure_support(g)
 		for r in rows.slice(n_rows):
 			if f != null:
 				f.store_line(JSON.stringify(r))
@@ -1229,3 +1244,251 @@ func _present(g, n, filed: int) -> void:
 ## ReadingChallenges.quality for an NPC listener (its witness quality of a teller).
 func _quality(l, source: String) -> float:
 	return RC.quality({"id": l.id, "npc_trust": l.npc_trust, "suspicion": l.suspicion, "trust": l.trust}, source)
+
+
+# ---------------------------------------------------------------- traces (Tally's probe, Nov 17)
+## Searches every crime scene as the player would; returns the trace cards found, by scene.
+func _search_all_scenes(g) -> Dictionary:
+	var by_scene: Dictionary = {}
+	var all_nums: Array = []
+	for sid in g.w.scenes.keys():
+		var before: int = g.board.size()
+		g.loc = sid
+		GameDayNight._search(g)
+		for k in range(before + 1, g.board.size() + 1):
+			if g.board[k - 1].get("kind", "") == "trace":
+				if not by_scene.has(sid):
+					by_scene[sid] = []
+				by_scene[sid].append(k)
+				all_nums.append(k)
+	return {"by_scene": by_scene, "all": all_nums}
+
+## Files the town's work and haunt profiles as receipts, as the player can; their board numbers.
+func _profile_receipts(g) -> Array:
+	var w = g.w
+	var nums: Array = []
+	for m in w.npcs:
+		if str(m.get("work")) != "" and C.LOCATIONS.has(str(m.work)):
+			nums.append(g.add_profile_receipt({"kind": "work", "subject": [m.id], "source": "town", "loc": m.work, "block": w.loc_block(m.work),
+				"day": w.day, "phase": g._phase_now(), "class": "circumstantial", "text": "%s works at %s." % [m.name, w.loc_name(m.work)]}))
+		for h in m.haunts:
+			if C.LOCATIONS.has(str(h)):
+				nums.append(g.add_profile_receipt({"kind": "haunt", "subject": [m.id], "source": "town", "loc": h, "locs": [h], "block": w.loc_block(h),
+					"day": w.day, "phase": g._phase_now(), "class": "circumstantial", "text": "%s often goes to %s when off work." % [m.name, w.loc_name(h)]}))
+	return nums
+
+## Whether a trace's places fit this person's work or haunts.
+func _trace_fits(m, locs: Array) -> bool:
+	if str(m.get("work")) in locs:
+		return true
+	for h in m.haunts:
+		if str(h) in locs:
+			return true
+	return false
+
+## For each living person, how many of the searched scenes have a trace that fits them.
+func _fit_scenes(g, alive: Array, by_scene: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for m in alive:
+		var c: int = 0
+		for sid in by_scene:
+			if by_scene[sid].any(func(k): return _trace_fits(m, g.board[k - 1].get("locs", []))):
+				c += 1
+		out[m.id] = c
+	return out
+
+## A fresh listener's step on `target` from the player's case "target is evil" citing `nums`,
+## after `inject` (if any) tells it something first; null when no listener is available.
+func _case_step(g, l, target: String, nums: Array, inject = null):
+	var d = _delta(g, l, {}, func(n):
+		if inject != null:
+			inject.call(n)
+		n.credibility = 0.8
+		n.trust = 0.8
+		var ded: int = g.file_deduction({"type": "evil", "a": target}, nums)
+		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false))
+	return d
+
+func _measure_traces(g) -> void:
+	var w = g.w
+	var found: Dictionary = _search_all_scenes(g)
+	if found.all.is_empty():
+		return
+	var profile_nums: Array = _profile_receipts(g)
+	for tn in found.all:
+		var card: Dictionary = g.board[tn - 1]
+		var locs: Array = card.get("locs", [])
+		var alive: Array = w.npcs.filter(func(m): return m.alive)
+		var matches: Array = alive.filter(func(m): return _trace_fits(m, locs)).map(func(m): return m.id)
+		# Targets: the Demon, one good match, one good non-match.
+		var targets: Dictionary = {"demon": w.demon_id}
+		for m in alive:
+			if m.is_evil():
+				continue
+			if m.id in matches and not targets.has("good_match"):
+				targets["good_match"] = m.id
+			elif not (m.id in matches) and not targets.has("good_miss"):
+				targets["good_miss"] = m.id
+		var res: Dictionary = {}
+		for tk in targets:
+			var target: String = targets[tk]
+			if not w.by_id[target].alive:
+				continue
+			var l = _listener_for(g, [target])
+			if l == null:
+				continue
+			var steps: Array = []
+			for nums in [profile_nums, profile_nums + [tn]]:
+				var d: Dictionary = _case_step(g, l, target, nums)
+				steps.append(float(d.get(target, NAN)) if not d.is_empty() else null)
+			res[tk] = {"id": target, "fits": target in matches, "evil": w.by_id[target].is_evil(), "without": steps[0], "with": steps[1]}
+		rows.append({"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "night": int(card.get("crime_night", card.get("day", -1))),
+			"slot": int(card.get("trace_slot", 0)), "count": int(card.get("scene_trace_count", 1)), "subtype": card.get("trace_subtype", ""),
+			"locs": locs, "victim": str(card.get("victim", "")), "alive": alive.size(), "matches": matches.size(), "demon_alive": w.by_id[w.demon_id].alive,
+			"demon_fits": _trace_fits(w.by_id[w.demon_id], locs), "evil_matches": alive.filter(func(m): return m.is_evil() and m.id in matches).size(), "targets": res})
+
+## All traces found so far, cited together (one case), against the profiles alone.
+func _measure_combined(g) -> void:
+	var w = g.w
+	var found: Dictionary = _search_all_scenes(g)
+	var by_scene: Dictionary = found.by_scene
+	if by_scene.size() < 2:
+		return
+	var profile_nums: Array = _profile_receipts(g)
+	var alive: Array = w.npcs.filter(func(m): return m.alive)
+	var fit_scenes: Dictionary = _fit_scenes(g, alive, by_scene)
+	var n_sc: int = by_scene.size()
+	var fit_all: Array = alive.filter(func(m): return fit_scenes[m.id] == n_sc).map(func(m): return m.id)
+	var targets: Dictionary = {"demon": w.demon_id}
+	for m in alive:
+		if m.is_evil():
+			continue
+		if fit_scenes[m.id] == n_sc and not targets.has("good_fit_all"):
+			targets["good_fit_all"] = m.id
+		elif fit_scenes[m.id] < n_sc and not targets.has("good_miss_one"):
+			targets["good_miss_one"] = m.id
+	var res: Dictionary = {}
+	for tk in targets:
+		var target: String = targets[tk]
+		if not w.by_id[target].alive:
+			continue
+		var l = _listener_for(g, [target])
+		if l == null:
+			continue
+		var steps: Array = []
+		for nums in [profile_nums, profile_nums + found.all]:
+			var d: Dictionary = _case_step(g, l, target, nums)
+			steps.append(float(d.get(target, NAN)) if not d.is_empty() else null)
+		res[tk] = {"id": target, "fit_scenes": fit_scenes[target], "evil": w.by_id[target].is_evil(), "without": steps[0], "with": steps[1]}
+	rows.append({"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "scenes": n_sc, "traces": found.all.size(), "alive": alive.size(),
+		"fit_all": fit_all.size(), "demon_alive": w.by_id[w.demon_id].alive, "demon_fit_all": fit_scenes.get(w.demon_id, -1) == n_sc,
+		"evil_fit_all": alive.filter(func(m): return m.is_evil() and m.id in fit_all).size(), "targets": res})
+
+## The real town's suspicion before and after `inject`, without wiping the listener.
+func _real_delta(g, n, inject: Callable) -> Dictionary:
+	var saved: Dictionary = _save(n)
+	Caches.clear_all()
+	Mind.refresh_beliefs(g.w, n, " (measure base)")
+	var base: Dictionary = n.suspicion.duplicate(true)
+	inject.call(n)
+	Caches.clear_all()
+	Mind.refresh_beliefs(g.w, n, " (measure)")
+	var after: Dictionary = n.suspicion.duplicate(true)
+	_restore(n, saved)
+	return {"base": base, "after": after}
+
+func _top_alive(g, susp: Dictionary, self_id: String) -> String:
+	var best: String = ""
+	var bv: float = -INF
+	for m in g.w.npcs:
+		if not m.alive or m.id == self_id or not susp.has(m.id):
+			continue
+		if float(susp[m.id]) > bv:
+			bv = float(susp[m.id])
+			best = m.id
+	return best
+
+## Traces as supporting evidence. (a) A partner card told to a fresh listener, then the
+## player's case on its subject with and without the traces; (b) the real town (no wipe).
+func _measure_support(g) -> void:
+	var w = g.w
+	var found: Dictionary = _search_all_scenes(g)
+	var by_scene: Dictionary = found.by_scene
+	if by_scene.size() < 2 or not w.by_id[w.demon_id].alive:
+		return
+	var profile_nums: Array = _profile_receipts(g)
+	var alive: Array = w.npcs.filter(func(m): return m.alive)
+	var n_sc: int = by_scene.size()
+	var fit_scenes: Dictionary = _fit_scenes(g, alive, by_scene)
+	var fit_all: Array = alive.filter(func(m): return fit_scenes[m.id] == n_sc).map(func(m): return m.id)
+	var info: Callable = func(id: String) -> Dictionary:
+		if id == "" or not w.by_id.has(id):
+			return {"id": id}
+		return {"id": id, "demon": id == w.demon_id, "evil": w.by_id[id].is_evil(), "fit_all": id in fit_all}
+	var base_row: Dictionary = {"seed": w.seed_value, "size": w.n_npcs, "day": w.day, "scenes": n_sc, "traces": found.all.size(), "alive": alive.size(),
+		"fit_all": fit_all.size(), "demon_fit_all": w.demon_id in fit_all}
+	# (a) partners
+	var partners: Array = []
+	var seen_t: Dictionary = {}
+	for s in _sightings(g):
+		if w.by_id[s.who].alive and not seen_t.has("s" + s.who):
+			seen_t["s" + s.who] = true
+			partners.append({"kind": "sighting", "target": s.who, "teller": s.teller, "inject": _told(w, s.teller, s.card, 0.8)})
+	for x in _readings(g):
+		if x.s.is_evil() or not bool(x.e.get("true", true)) or not x.s.alive:
+			continue
+		var named: Array = _named(x.e).filter(func(p): return w.by_id.has(p) and w.by_id[p].alive and p != x.s.id)
+		if named.size() < 2 or not (w.demon_id in named):
+			continue
+		for p in named:
+			if seen_t.has("r" + p):
+				continue
+			seen_t["r" + p] = true
+			partners.append({"kind": "reading", "role": str(x.e.get("role", "")), "target": p, "teller": x.s.id, "named": named, "inject": _heard(w, x.s, x.e)})
+	for pt in partners:
+		var l = _listener_for(g, [pt.target, pt.teller])
+		if l == null:
+			continue
+		var res: Dictionary = {}
+		for cond in ["alone", "with_traces"]:
+			var nums: Array = profile_nums if cond == "alone" else profile_nums + found.all
+			var d: Dictionary = _case_step(g, l, pt.target, nums, pt.inject)
+			if d.is_empty():
+				res = {}
+				break
+			var tv: float = float(d.get(pt.target, 0.0))
+			var other: float = -INF
+			for m in alive:
+				if m.id != pt.target and m.id != l.id and d.has(m.id):
+					other = maxf(other, float(d[m.id]))
+			res[cond] = {"step": tv, "gap": tv - other, "top": _top_alive(g, d, l.id)}
+		if res.is_empty():
+			continue
+		var r: Dictionary = base_row.duplicate()
+		r.merge({"part": "a", "partner": pt.kind, "role": pt.get("role", ""), "target": info.call(pt.target),
+			"named": pt.get("named", []).map(func(p): return info.call(p)), "res": res}, true)
+		rows.append(r)
+	# (b) the real town
+	var good_fit: String = ""
+	for m in alive:
+		if not m.is_evil() and m.id in fit_all:
+			good_fit = m.id
+			break
+	for l in alive.filter(func(m): return not m.is_evil()).slice(0, 3):
+		var out: Dictionary = {}
+		for tk in ["demon", "good_fit"]:
+			var target: String = w.demon_id if tk == "demon" else good_fit
+			if target == "" or target == l.id:
+				continue
+			for cond in ["alone", "with_traces"]:
+				var nums: Array = profile_nums if cond == "alone" else profile_nums + found.all
+				var rd: Dictionary = _real_delta(g, l, func(n):
+					var ded: int = g.file_deduction({"type": "evil", "a": target}, nums)
+					g._evaluate_deduction(n, g.board[ded - 1], 1.0, false))
+				if not out.has("before"):
+					out["before"] = info.call(_top_alive(g, rd.base, l.id))
+				out[tk + "_" + cond] = {"top": info.call(_top_alive(g, rd.after, l.id)), "target_after": float(rd.after.get(target, 0.0)), "target_before": float(rd.base.get(target, 0.0)),
+					"demon_after": float(rd.after.get(w.demon_id, 0.0)), "demon_before": float(rd.base.get(w.demon_id, 0.0))}
+		var r: Dictionary = base_row.duplicate()
+		r.merge({"part": "b", "listener": l.id, "listener_fit_all": l.id in fit_all, "good_fit": good_fit, "out": out}, true)
+		rows.append(r)
