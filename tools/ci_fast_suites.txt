@@ -47,6 +47,7 @@ test_new_case_memory
 test_npc_openness
 test_peer_role_gossip
 test_playtest_13910_dialogue
+test_poison_chance
 test_premise_step1
 test_premise_step2
 test_premise_step3
@@ -70,6 +71,7 @@ test_town_vibe
 test_triage_nov16
 test_vote_shape
 test_warden_challenge
+test_wording_89077
 test_workshop_channel_likelihood
 test_workshop_efficiency
 test_workshop_integration

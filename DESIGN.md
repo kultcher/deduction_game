@@ -191,6 +191,9 @@ it means the game must teach its own way of thinking and make evidence very read
 - **Vigils see destinations:** a player vigil on a block sees walkers arriving there, or
   doing the full Lamplighter tour, not people passing through. The Night Watch still sees
   all traffic.
+  **Decided (Michael, Nov 17), not yet built:** the vigil will watch who *leaves* their home
+  on the watched block instead, so it tests suspects rather than catching the Demon at the
+  scene (`docs/design/vigil.md`).
 
 ### Physical evidence
 
@@ -454,7 +457,8 @@ a frame or their gift shares every sighting they remember in that conversation.
 
 - **Vigil** at a block (default, unlimited): see who arrives there, including anyone
   whose gift sent them there, and anyone on the full lamp route. Offered vigils build
-  trust only; they don't deter the demon. Strength **[watch]**.
+  trust only; they don't deter the demon. **Decided (Nov 17), not yet built:** it will
+  watch who leaves the block instead (`docs/design/vigil.md`).
 - **Ward** (toolbox, below) or **sleep**.
 
 ### Toolbox
@@ -1352,8 +1356,8 @@ scoring, tutorials, procedural and larger towns.
 
 ## Open questions
 
-- Is unlimited Vigil too strong? (One well-placed vigil plus an Archivist pair won a case
-  on day 3.)
+- ~~Is unlimited Vigil too strong?~~ Settled (Michael, Nov 17): the vigil will watch who
+  leaves a block, not who arrives (`docs/design/vigil.md`).
 - How many clues per day feel right (1 vs 2 player actions per phase)?
 - Persuasion economy beyond trust (how pressure sours NPCs).
 - ~~Keep the 7-person town until the core loop reliably works.~~ Settled (Michael, Nov 16):

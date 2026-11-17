@@ -131,19 +131,21 @@ func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: 
 	for nd in range(0, w.day):
 		var gd: String = warden_door(w, n, nd)
 		if gd != "" and w.by_id.has(gd):
-			doors.append("%s at %s's door" % [night_name_fn.call(nd), w.by_id[gd].name])
+			# Spoken, so nights as ordinals ("the first night"), not the card's "night 1" (89077).
+			doors.append("%s at %s's door" % [content().spoken_night(nd, w.day), w.by_id[gd].name])
 			facts.append(guard_fact(w, n, nd, gd, block_name_fn))
 	if not doors.is_empty():
 		if not first_time:
 			lines.pop_front() # Skip reconfirmation when there is work to report.
 		var said: String = "; ".join(PackedStringArray(doors))
-		var doors_cap: String = said[0].to_upper() + said.substr(1)
+		# Every wording puts the list after a colon, so no capital ("each night: the first night at...").
+		var doors_cap: String = said
 		lines.append(mind.say_voiced(n, "warden_doors_report", "I keep watch over one door each night: %s." % doors_cap, {"doors": doors_cap}))
 		var saves: Array = []
 		for nd in range(0, w.day):
 			var sv: Dictionary = n.warden_saves.get(str(nd), {})
 			if not sv.is_empty() and w.by_id.has(sv.target):
-				saves.append("%s on %s" % [w.by_id[sv.target].name, night_name_fn.call(nd)])
+				saves.append("%s %s" % [w.by_id[sv.target].name, content().spoken_when(nd, w.day)])
 		if not saves.is_empty():
 			var saves_str: String = " and ".join(PackedStringArray(saves))
 			lines.append(mind.say_voiced(n, "warden_saves_claim", "Nobody died the nights I kept %s safe. I believe the Demon came for them and my watch turned it away." % saves_str, {"saves": saves_str}))
