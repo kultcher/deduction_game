@@ -97,7 +97,7 @@ static func _refresh(g, n, phase: String) -> void:
 		var started = Time.get_ticks_msec()
 		# Premises pass step 1: remembered presentations shape their own cards' effect.
 		var shaping: Dictionary = Shared.premise_shaping(plan, state.get("presentations", {}), state.get("withdrawn", {}), float(plan.prepared.listener.get("insight", 0.5)))
-		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, shaping]
+		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, shaping, doubt_bundle.get("honest", {})]
 		if Connections.enabled:
 			# A result of the other model must not be reused if the switch is flipped mid-run
 			# (tests and tools do that). With the switch off the inputs are as they always were.
@@ -124,7 +124,7 @@ static func _refresh(g, n, phase: String) -> void:
 						shaping_eval["without_firm"] = Shared.prepare(plan.input, Shared.without_shaping(state.get("presentations", {}), shaping, "hedged"), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 				else:
 					Profiler.count("premise_shaping_unprepared")
-			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, shaping_eval)
+			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, shaping_eval, doubt_bundle.get("honest", {}))
 			Profiler.close(union_span)
 			# Deferred attribution inputs ride beside the proposal, never inside it (purge 2a).
 			reason_ctx = Shared.last_reason_ctx

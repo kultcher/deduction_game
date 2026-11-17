@@ -15,6 +15,7 @@ const Ownership = preload("res://game/workshop_ownership.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 const Connections = preload("res://workshop/connections.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
 
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
@@ -524,8 +525,9 @@ static func _filing_rise(g, n, listener_key: String, key: String, target_id: Str
 	if not without.get("ready", false):
 		return 0.0
 	var doubt: Dictionary = state.get("source_doubt", {})
-	var with_e: Dictionary = Shared.evaluate(plan, n.suspicion, doubt, doubt).get("effects", {}).get(target_id, {})
-	var without_e: Dictionary = Shared.evaluate(without, n.suspicion, doubt, doubt).get("effects", {}).get(target_id, {})
+	var honest: Dictionary = SourceDoubt.derive(plan, n.ledger, state.get("manual_source_doubt", {})).get("honest", {})
+	var with_e: Dictionary = Shared.evaluate(plan, n.suspicion, doubt, doubt, {}, honest).get("effects", {}).get(target_id, {})
+	var without_e: Dictionary = Shared.evaluate(without, n.suspicion, doubt, doubt, {}, honest).get("effects", {}).get(target_id, {})
 	return float(with_e.get("requested", 0.0)) - float(without_e.get("requested", 0.0))
 
 ## How far the belief moved toward the claim (negative: away from it).

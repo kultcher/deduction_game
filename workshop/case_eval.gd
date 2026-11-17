@@ -442,6 +442,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 	# both sides they cancel, and the reading never moved anyone (playtest 37291).
 	var fits_before = _class_fits(view, cc, [], knowledge)
 	var fits = fits_before if (cache_enabled and Domain.live(view) and not _has_role_card(cards)) else _class_fits(view, cc, cards, knowledge)
+	fits = _doubted_role_fits(view, cc, cards, knowledge, fits, listener)
 	if view.get("chronology", {}).has("curse"):
 		fits = fits.duplicate() # Never modify a cached role table.
 		var worlds: Array = Solver.universe(view)
@@ -1174,6 +1175,42 @@ static func _is_role_card(card: Dictionary) -> bool:
 static func _is_movement_role_card(card: Dictionary) -> bool:
 	var k: String = str(card.get("kind", ""))
 	return k in _MOVEMENT_ROLE_KINDS or card.has("relay_source") or (k in ["report", "claim"] and str(card.get("role", "")) in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])
+
+## Doubted readings in the role check: the one place that handles a reading the listener
+## doubts honestly (a poisoned or misled night: listener.reading_doubt, from source doubt).
+## Role-checked readings (a Seer's Red Herring, an Archivist's or Clerk's role, a
+## Gravedigger's verdict...) act through the role check, which never saw the doubt, so a
+## reading the listener thought was misled still moved its pair (playtest fixture 5110,
+## Nov 17). Each doubted reading is read as genuine with the listener's trust and as a bare
+## claim of the gift otherwise: fits = trust x (fits with it) + doubt x (fits with only its
+## claim). Exact for one doubted reading in a set; with several, each mixes against the
+## others read in full. Trust in the teller is not here: the role check already lets an evil
+## teller lie in the worlds where they are evil.
+## Measuring switch (tools and tests): off, doubt doesn't reach the role check (before Nov 17).
+static var doubted_role_check: bool = true
+
+static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledge: Dictionary, fits: PackedFloat64Array, listener: Dictionary) -> PackedFloat64Array:
+	var doubts: Dictionary = listener.get("reading_doubt", {})
+	if not doubted_role_check or doubts.is_empty() or not view.get("world_options", {}).get("roles", false):
+		return fits
+	var out: PackedFloat64Array = fits
+	for card in cards:
+		if card.get("kind", "") != "report" or card.get("quoted", false) or card.get("testimony_only", false):
+			continue
+		var doubt: float = clampf(float(doubts.get(card.id, 0.0)), 0.0, 1.0)
+		if doubt <= 0.000001:
+			continue
+		var claimed: Dictionary = card.duplicate()
+		claimed.kind = "claim"
+		claimed.data = {}
+		var swapped: Array = cards.map(func(c): return claimed if c.id == card.id else c)
+		var alt: PackedFloat64Array = _class_fits(view, cc, swapped, knowledge)
+		var mixed := PackedFloat64Array()
+		mixed.resize(out.size())
+		for c in range(out.size()):
+			mixed[c] = (1.0 - doubt) * out[c] + doubt * alt[c]
+		out = mixed
+	return out
 
 static func _has_role_card(cards: Array) -> bool:
 	for card in cards:
