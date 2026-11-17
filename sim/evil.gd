@@ -745,17 +745,32 @@ static func make_day_fake_info(w) -> void:
 
 static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 	ensure_scapegoat(w)
-	# Fabrications held back a day join what they can tell once that day has passed.
+	# Fabrications held back a day are checked again before they join what can be told:
+	# the public record may have moved, and a liar who notices tries for a better lie again.
 	for m in w.evil_team():
 		var keep: Array = []
 		for h in m.held_fakes:
 			# Kept off the table through day `until`: a night pass from that night on, or a
 			# day pass on a later day, lets it go.
-			if int(h["until"]) < w.day or (not day_only and int(h["until"]) <= w.day):
-				m.info_log.append(h["entry"])
-				w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading." % h["entry"].get("role", "?"), {"lie": true})
-			else:
+			if not (int(h["until"]) < w.day or (not day_only and int(h["until"]) <= w.day)):
 				keep.append(h)
+				continue
+			var he: Dictionary = h["entry"]
+			var hdef = C.role_def(str(he.get("role", "")))
+			var hmate = mate(w, m)
+			if hmate == null:
+				hmate = m
+			var re: Dictionary = FabricationCheck.vet(w, m, he, _alternatives(w, m, hdef, w.evil_plan, hmate, he, bool(he.has("phase"))), str(w.evil_plan.get("scapegoat", ""))) if hdef != null else {"entry": he, "outcome": "ok", "why": ""}
+			var out: Dictionary = re["entry"]
+			if re["why"] != "":
+				out["why"] = "evil fabrication: " + str(re["why"])
+			_mark_fake(out)
+			if re["outcome"] == "held":
+				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
+				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
+				continue
+			m.info_log.append(out)
+			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
 		m.held_fakes = keep
 	var plan: Dictionary = w.evil_plan
 	var s: String = plan["scapegoat"]
@@ -786,21 +801,11 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		# Checked against what's already public: a self-incriminating one may be noticed,
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
-		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, func():
-			bdef.release_bluff_use(w, n, plan)
-			var again: Dictionary = bdef.generate_bluff_reading(w, n, plan, s, mate, asked)
-			if again.is_empty():
-				return {}
-			var e2: Dictionary = _stamp_fake(w, again["entry"], bluff, day_only)
-			e2["_regen_why"] = again["why"]  # lambdas capture by value: carry the reason back
-			return e2)
+		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
 		entry = vetted["entry"]
-		if entry.has("_regen_why"):
-			why = str(entry["_regen_why"])
-		entry.erase("_regen_why")
-		entry["shared"] = false
-		entry["true"] = false
-		entry["fake"] = true
+		if vetted["why"] != "":
+			why = vetted["why"]
+		_mark_fake(entry)
 		entry["why"] = "evil fabrication: " + why
 		if vetted["outcome"] == "held":
 			n.held_fakes.append({"entry": entry, "until": w.day + (0 if day_only else 1)})
@@ -808,6 +813,26 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## The bluff rule's other plausible readings for `entry`, stamped as told, for a liar who
+## noticed its first one points at itself or a teammate (FabricationCheck.vet).
+static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary, day_only: bool) -> Callable:
+	return func() -> Array:
+		var out: Array = []
+		for alt in bdef.bluff_alternatives(w, n, plan, str(plan.get("scapegoat", "")), mate, entry):
+			var e2: Dictionary = alt.get("entry", {}).duplicate(true)
+			if e2.is_empty():
+				continue
+			e2 = _stamp_fake(w, e2, str(entry.get("role", "")), day_only)
+			if entry.has("day"):
+				e2["day"] = entry["day"]  # a held reading keeps the night it was made for
+			out.append({"entry": e2, "why": str(alt.get("why", ""))})
+		return out
+
+static func _mark_fake(entry: Dictionary) -> void:
+	entry["shared"] = false
+	entry["true"] = false
+	entry["fake"] = true
 
 ## A fabricated reading as it will be told: its gift, its night (or day phase).
 static func _stamp_fake(w, entry: Dictionary, bluff: String, day_only: bool) -> Dictionary:
