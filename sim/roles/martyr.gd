@@ -140,7 +140,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Ar
 		return {}
 	plan["martyr_bluff_" + n.id] = true
 	var tgt = mate if mate != n else w.pick(w.living_good())
-	var why: String = "'chooses' %s, vouching for them" % tgt.id
+	var why: String = "chose %s, to vouch for them" % tgt.id
 	var entry: Dictionary = {
 		"data": {"target": tgt.id, "chosen": true},
 		"text": "I have given my life over for %s, should the town ever hang them" % tgt.name,

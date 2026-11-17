@@ -105,7 +105,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 		if n.id != w.demon_id and w.by_id.has(w.demon_id) and _public_block_at(w, w.by_id[w.demon_id], w.day, ph) == my_blk:
 			shared_with_demon = true
 	var yes: bool = false
-	var why: String = "reports no demon crossing today"
+	var why: String = "claimed no Demon crossed their path that day"
 	if shared_with_demon and not shared_with_sg:
 		yes = false
 		why = "cleared the Demon, who had been seen on the same street that day"
