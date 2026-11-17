@@ -2,6 +2,7 @@
 extends SceneTree
 
 const Connections = preload("res://workshop/connections.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -12,10 +13,15 @@ var fails = 0
 
 func _init() -> void:
 	# The earlier model's Workshop theories across a day advance.
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	_insight()
 	_attention()
+	# Persistence Confidence on a belief refresh (a working theory biasing what the listener
+	# believes) is the earlier model's: the connections refresh doesn't read through a theory.
+	# Live play doesn't use persistence by default. Pinned until Michael decides whether the
+	# experiment goes with the purge (docs/connections_purge_plan.md).
+	Connections.enabled = false
 	_confidence()
+	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	_cover_and_fallback()
 	_registration()
 	print("Live Workshop cognition: %d checks, %d failures" % [checks, fails])
@@ -99,7 +105,11 @@ func _insight() -> void:
 		check(JSON.stringify([n.workshop_state, n.suspicion, n.trust, g.w.rng.state]) == before, "both preview types leave theories, beliefs and RNG untouched")
 		g.w.day += 1
 		Mind.refresh_beliefs(g.w, n, "new date, original alignment unchanged")
-		check(n.workshop_state.theories == theories and _close(beliefs, n.suspicion), "day advance does not reset original-alignment theories or award evidence again")
+		# The connections model (purge phase 2): a presented case fades by the day, so the
+		# people it named drop a little at the new date and the others take up the slack. A
+		# second award would raise them instead.
+		var named: Array = [g.w.npcs[3].id, g.w.npcs[4].id, g.w.npcs[5].id]
+		check(n.workshop_state.theories == theories and named.all(func(id): return float(n.suspicion[id]) <= float(beliefs[id]) + 0.000001), "day advance does not reset original-alignment theories or award evidence again")
 		if insight < 0.2:
 			n.traits.insight = 0.9
 			var revised = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
@@ -204,16 +214,18 @@ func _registration() -> void:
 	var memory = n.workshop_state.theories.duplicate(true)
 	g._evaluate_deduction(n, g.board[marked - 1], 0.6, true, "meeting")
 	check(n.workshop_state.theories == memory and _close(before, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
-	# Premises step 1: the premise's type doesn't move beliefs (the evidence does), its target
-	# does (the target takes the full effect, everyone else the Insight spillover), and the
-	# shaping is remembered, so a later refresh reproduces it exactly.
+	# Premises step 1: neither the premise's type nor its target moves beliefs (the cards do),
+	# and a later refresh reproduces them exactly.
 	var retyped = g.file_deduction({"type": "demon", "a": p[3].id}, g.board[number - 1].supports)
 	g._evaluate_deduction(n, g.board[retyped - 1], 1.0, false)
 	check(_close(before, n.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
 	var retargeted = g.file_deduction({"type": "evil", "a": p[5].id}, g.board[number - 1].supports)
 	g._evaluate_deduction(n, g.board[retargeted - 1], 1.0, false)
 	var others_same: bool = before.keys().all(func(id): return id == p[5].id or is_equal_approx(before[id], n.suspicion[id]))
-	check(others_same and not is_equal_approx(before[p[5].id], n.suspicion[p[5].id]), "aiming the same cards at someone else gives that person their full effect and leaves the rest as they were")
+	# The connections model (purge phase 2): the premise changes what is asked, not how the
+	# cards are weighed, so the same cards aimed at someone else move no one. (The earlier
+	# model gave the new target the full effect and the rest the Insight spillover.)
+	check(others_same and is_equal_approx(before[p[5].id], n.suspicion[p[5].id]), "aiming the same cards at someone else moves no one: the cards are weighed the same, whoever the premise names")
 	var shaped = n.suspicion.duplicate(true)
 	Mind.refresh_beliefs(g.w, n, " (later refresh)")
 	check(_close(shaped, n.suspicion), "a later refresh reproduces the remembered premise shaping exactly")

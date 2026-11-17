@@ -1,5 +1,8 @@
 # Agent handoff log
 
+> **Frozen on Nov 17, 2026.** New handoff entries go in `docs/handoff/`, one file per entry
+> (see `docs/handoff/README.md`). This file keeps everything up to that date, newest first.
+
 Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
 commit, status, next actor, and anything the next agent must know before starting. Sessions
 don't share memory: this log and the PRs are how they talk.
@@ -20,52 +23,40 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Beadle: a liar who notices tells a better lie (`claude/beadle-better-lie`; moves golden)
+## 2026-11-17, Claude-Lantern: purge phase 6b, the connections refresh believes from every held card (`claude/purge-6b-held-signals`)
 
-- **Base:** main `c676018` (#186) merged in. **Status:** PR open. **Next actor:** Bailiff (golden-moving: merge on its own, re-baseline included).
-- **Why:** Michael's answer on #188's held readings (via Seneschal, Nov 17): "when the liar notices, it should re-think the fabrication and come up with a better lie", not just hold it back.
-- **What changes in play:**
-  - A liar who notices its made-up reading would point the town at itself or a teammate now looks through its gift's other plausible readings: another count over the same crowd, the other yes/no, someone else in the pair or as the target, or a different role for the hanged.
-  - Of those that point at nobody on its team, it tells the one that still pushes the scapegoat hardest.
-  - Only when none fits does it hold the reading back. A held reading is now checked again on the day it would be told, so it may be told then, become a better lie, or be held again.
-  - Every choice is logged with its reason (`think`, topic `lie`): "tells a better lie instead: says 1 evil on square instead".
-- **Gifts that can offer alternatives (13), in their own words:** Dowser, Hearthwitch, Lamplighter, Seer, Surveyor, Augur, Magistrate, Archivist, Clerk, Rumormonger, Executor, Martyr, Gravedigger. A new role hook, `bluff_alternatives`, returns up to six, drawing only on people outside the evil team (`bluff_bystanders`).
-- **Not yet (hold back, re-checked daily):** Chronicler, Confessor, Monitor, Registrar, Psychologist; their bluff rules are more involved. Night Watch and Medium still aren't checked.
-- **Removed:** #188's "ask the bluff rule again" retry and its `release_bluff_use` hook (Dowser, Martyr), which this replaces.
-- **Measured** on the same 20 passive ten-NPC games as #188 (seeds 1000–1019, scratch probe, not committed):
-
-  | | #188 (after the Dowser fix) | This PR |
-  |---|---|---|
-  | Made-up readings | 144 | 129 |
-  | Self-incriminating | 16 (about 1 in 9) | 17 (about 1 in 8) |
-  | … noticed, became a better lie | 1 | 8 |
-  | … noticed, held back | 11 | 4 |
-  | … slipped through | 4 | 5 |
-
-  - In game terms: a liar who notices now finds a safer story 2 times in 3 (8 of 12), where before it nearly always just waited a day.
-  - The holds that remain are Gravedigger readings about a hanged teammate. Once the town is sure the hanged was evil, every role the Gravedigger could name gives the liar away, so it waits.
-  - The slips are the Insight roll, as intended.
-  - The totals differ because the games diverge once a better lie changes what's said.
-- **Correction to my #188 entry:** it says no fabrication was ever reworked. That was before the Dowser fix; afterwards 1 of 12 noticed readings was (PR #188 comment). This PR replaces that mechanism.
-- **Tests:** `tools/test_fabrication_check.gd`:
-  - on the 26532 shape, a sharp liar turns "Greta and Lian shared an alignment" into "did not share" 16 times in 20 (the rest it doesn't notice);
-  - every role's alternatives carry matching text and never name the teller.
-
-  The fast list and the bluff-rule suites pass: 69/69 before the main merge; `test_fabrication_check`, `test_role_check_doubt`, `test_evil_play` and `test_gravedigger_bluff` after it.
-- **Golden:** new `baseline_85e9b36`; two seeds diverge (54875: Constance tells a better Dowser count on day 3; 900: Isolde's held Gravedigger reading is re-checked and slips out on day 3); all outcomes and votes unchanged. Details in `docs/golden_baseline.md`.
-- **BACKLOG:** Michael's decisions recorded on Nov 17 (via Seneschal):
-  - removing the Demon detour from inference;
-  - the pressure-of-silence pitch;
-  - lie severity;
-  - the kill-score pass;
-  - the evil Medium's night-0 frame;
-  - frame memory, scaled by Insight and Confidence;
-  - the pass over every bluffer;
-  - the reluctant-town Gravedigger;
-  - surveying bus-throwing;
-  - corroborators and visible evil meetings, both staying open.
-
-  My order for them is in my messages to Seneschal; next is the Medium's night-0 frame.
+- **Base:** main `c676018` (#186 merged in). **Status:** PR open. Golden identical to
+  `baseline_a0a378d`, so it isn't in the golden-moving queue. **Next actor:** Bailiff merges.
+- **For Claude-Quill:** my poisoned-reading fix (#186) merged at `c676018`, so your Delusional
+  fix can start. The hook is `CaseEval._doubted_role_fits`; the doubt arrives as
+  `listener.reading_doubt`, from `SourceDoubt.derive`'s `honest` map. Delusional doubt is
+  deliberately not in that map yet (it sits on the source's general doubt).
+- **What changed and why** (Michael's go, Nov 17): on a connections refresh, four places
+  that still read only the cards a listener attends to now read every card it holds:
+  - the quiet-night protection signal;
+  - the circumstantial pattern;
+  - the floor a "lying" or "failed gift" challenge made outside any case puts under its
+    teller or the Poisoner candidates;
+  - the direct checks.
+  That is the model's own rule ("attention picks what's cited, not what's believed").
+  `workshop/jury.gd` `_consequences_eval` (`believe_held`). Attention's cards still feed
+  reasons and replies, and the earlier model keeps them.
+- **What it changes in play:** on my 16-game measurement (3,856 refreshes) none of the four
+  differed, so golden is identical. The one case bot games never make is now a suite,
+  `test_held_signals` (fast list). A low-Insight listener hears a reading it knows can't
+  be true from a teller it distrusts, and the reading drops out of its attention; then it's
+  challenged as a lie. Before this change the teller didn't move at all. Now the challenge
+  lifts them (seed 100: 0.173 → 0.190; 101: −0.503 → 0.222; 102: 0.165 → 0.179). The floor
+  is a minimum, so a teller already under suspicion moves less.
+- **Not changed:** `invalid` (graph errors and answers on the attended case) still reads
+  attention's case. A refresh's union has no answers or graph, so it's the same either way;
+  phase 3 can fold it in.
+- **Measured:** two golden captures (identical to the baseline and to each other), the CI
+  fast list (63/63), and `test_held_signals` with this change undone (the teller doesn't
+  move; it fails as it should).
+- **Order of my next work:** #186 (the poisoned-reading fix, answering Codex), then the
+  wider Option A measurement Michael asked for, then the double-claim pairing, then purge
+  phase 3.
 
 ---
 
@@ -341,6 +332,31 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 - **"A whereabouts contradiction gets an irrelevant gift refusal"** (78148, Kiran) is next: it's the press-side twin of the defence fix here.
 - **"Conversation sightings should also cover location sightings"** is tagged [watch] since #152; it needs a check that duplicates still happen before anything is built.
+
+---
+
+## 2026-11-16 late, Claude-Lantern: Michael's decisions on the purge plan (`claude/purge-plan-decisions`, docs only)
+
+- **Base:** `claude/connections-purge-plan` (#169), stacked on it. Merge #169 first.
+  **Status:** PR open, docs only. **Next actor:** Bailiff merges. Then I start phases 2 and
+  4 (tests only). Phases 3, 5 and 7 wait for Argon's speed patch to merge.
+- **What changed:** `docs/connections_purge_plan.md` records Michael's answers to section 7
+  (relayed by Claude-Seneschal, Nov 16), and phases 5 and 6 follow them.
+  `BACKLOG.md` section 6 gains the spillover-damping item, which Michael asked for.
+- **Michael's decisions:**
+  1–2. Accepted: pre-#160 logs stop replaying on the earlier model, and the snapshot branch
+     `archive/legacy-belief-final` is pushed before phase 3.
+  3. Remove the headline reading everywhere (phase 6a).
+  4. Phase 6b: measure first, report to Seneschal in game terms, then pause for Michael.
+  5. Delete spillover damping, the half-weight "suspicious" hearing and the earlier Why
+     report; spillover damping goes on the backlog as [tentative].
+  6. I draft the Insight wording in phase 8; the wording is his.
+  7. I do both: phase 7 (the pre-CaseEval engine and the attention experiments), and audit
+     B's belief-related leftovers folded into phase 8 (`legacy_fallback`, `legacy_evidence`,
+     `fallback_count`, the canvas's `"mode": "legacy"`). Section 7 is fully decided.
+  - Section 8's small calls are mine.
+- **Proposed for the backlog:** none. The spillover item was accepted by Michael directly.
+- **Measured:** nothing (docs only).
 
 ---
 
