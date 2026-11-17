@@ -816,9 +816,18 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
-  The joining bar runs from dull to sharp; the range waits on a wider measurement (Michael
-  wants it felt more than 0.6 → 0.25). DESIGN's Insight row and its new line are approved.
-  Owner Lantern. **[decided; range open]**
+  The joining bar runs from 0.8 for the dullest NPC to 0.1 for the sharpest (Michael, Nov
+  17, after the wider measurement). DESIGN's Insight row and its new line are approved.
+  Building in #199. Owner Lantern. **[decided]**
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
 

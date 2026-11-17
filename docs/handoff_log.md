@@ -1,5 +1,8 @@
 # Agent handoff log
 
+> **Frozen on Nov 17, 2026.** New handoff entries go in `docs/handoff/`, one file per entry
+> (see `docs/handoff/README.md`). This file keeps everything up to that date, newest first.
+
 Shared notes between the Claude Code agents. Newest entry first. Each entry: who, when, base
 commit, status, next actor, and anything the next agent must know before starting. Sessions
 don't share memory: this log and the PRs are how they talk.
@@ -20,41 +23,40 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
-## 2026-11-17, Claude-Lantern: a no-card case's compile holds the view's cards; Michael's backlog decisions (`claude/backlog-and-bare-compile`)
+## 2026-11-17, Claude-Lantern: purge phase 6b, the connections refresh believes from every held card (`claude/purge-6b-held-signals`)
 
-- **Base:** main `c676018`. **Status:** PR open. Golden identical to `baseline_a0a378d`, so it
-  isn't in the golden-moving queue. **Next actor:** Bailiff merges.
-- **The fix** (BACKLOG section 6, "A case with no cards can be answered from an older
-  compile"; Michael, Nov 17: "the same situation should always give the same belief"):
-  - **What was wrong:** a case with no cards, on a record with a silencing, reads every card
-    on the view for "who was near each silencing". `CaseEval`'s compile key didn't include
-    them, so two views with different silencing factors shared one compile. #181's key
-    rework didn't change that.
-  - **The fix:** the key now carries the view's cards in exactly that case (no cards, a
-    silencing, and the view read for presence, which is everywhere except the connections
-    judge).
-  - **New suite `test_bare_compile`** (fast list, 9 s). It finds by search a listener whose
-    view loses a day card that changes a no-card case, and checks that the two compile keys
-    differ and that warm and cold give the same chances. On main from before the fix, the
-    key check fails.
-  - **Not seen in play:** in the game the test finds, the stale compile didn't reach anyone's
-    chances. Golden is identical, so I haven't seen it change a belief in play.
-- **BACKLOG** (Michael's decisions, relayed by Seneschal, Nov 17):
-  - the item above moves to `BACKLOG_COMPLETED.md`;
-  - "NPC-to-NPC credibility" is unchanged;
-  - "The premise should matter" gets Michael's direction in his words, then **[decided]:
-    centre on the premise, A or B to be chosen after measurement**, with both options and
-    what to measure;
-  - two new **[decided]** items in section 6: the double-claim pairing, and Insight setting
-    the core's joining bar (range open).
-- **Measured:** two golden captures (identical to the baseline and to each other), the CI fast
-  list plus the new suite (64/64), and the new suite on the old code (fails as it should).
-- **Order of my next work:**
-  1. the double-claim pairing;
-  2. Insight's core bar (the wider measurement is running);
-  3. measuring A and B for the premise;
-  4. purge phase 3.
-- **Proposed for the backlog:** none.
+- **Base:** main `c676018` (#186 merged in). **Status:** PR open. Golden identical to
+  `baseline_a0a378d`, so it isn't in the golden-moving queue. **Next actor:** Bailiff merges.
+- **For Claude-Quill:** my poisoned-reading fix (#186) merged at `c676018`, so your Delusional
+  fix can start. The hook is `CaseEval._doubted_role_fits`; the doubt arrives as
+  `listener.reading_doubt`, from `SourceDoubt.derive`'s `honest` map. Delusional doubt is
+  deliberately not in that map yet (it sits on the source's general doubt).
+- **What changed and why** (Michael's go, Nov 17): on a connections refresh, four places
+  that still read only the cards a listener attends to now read every card it holds:
+  - the quiet-night protection signal;
+  - the circumstantial pattern;
+  - the floor a "lying" or "failed gift" challenge made outside any case puts under its
+    teller or the Poisoner candidates;
+  - the direct checks.
+  That is the model's own rule ("attention picks what's cited, not what's believed").
+  `workshop/jury.gd` `_consequences_eval` (`believe_held`). Attention's cards still feed
+  reasons and replies, and the earlier model keeps them.
+- **What it changes in play:** on my 16-game measurement (3,856 refreshes) none of the four
+  differed, so golden is identical. The one case bot games never make is now a suite,
+  `test_held_signals` (fast list). A low-Insight listener hears a reading it knows can't
+  be true from a teller it distrusts, and the reading drops out of its attention; then it's
+  challenged as a lie. Before this change the teller didn't move at all. Now the challenge
+  lifts them (seed 100: 0.173 → 0.190; 101: −0.503 → 0.222; 102: 0.165 → 0.179). The floor
+  is a minimum, so a teller already under suspicion moves less.
+- **Not changed:** `invalid` (graph errors and answers on the attended case) still reads
+  attention's case. A refresh's union has no answers or graph, so it's the same either way;
+  phase 3 can fold it in.
+- **Measured:** two golden captures (identical to the baseline and to each other), the CI
+  fast list (63/63), and `test_held_signals` with this change undone (the teller doesn't
+  move; it fails as it should).
+- **Order of my next work:** #186 (the poisoned-reading fix, answering Codex), then the
+  wider Option A measurement Michael asked for, then the double-claim pairing, then purge
+  phase 3.
 
 ---
 
@@ -330,6 +332,31 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 - **"A whereabouts contradiction gets an irrelevant gift refusal"** (78148, Kiran) is next: it's the press-side twin of the defence fix here.
 - **"Conversation sightings should also cover location sightings"** is tagged [watch] since #152; it needs a check that duplicates still happen before anything is built.
+
+---
+
+## 2026-11-16 late, Claude-Lantern: Michael's decisions on the purge plan (`claude/purge-plan-decisions`, docs only)
+
+- **Base:** `claude/connections-purge-plan` (#169), stacked on it. Merge #169 first.
+  **Status:** PR open, docs only. **Next actor:** Bailiff merges. Then I start phases 2 and
+  4 (tests only). Phases 3, 5 and 7 wait for Argon's speed patch to merge.
+- **What changed:** `docs/connections_purge_plan.md` records Michael's answers to section 7
+  (relayed by Claude-Seneschal, Nov 16), and phases 5 and 6 follow them.
+  `BACKLOG.md` section 6 gains the spillover-damping item, which Michael asked for.
+- **Michael's decisions:**
+  1–2. Accepted: pre-#160 logs stop replaying on the earlier model, and the snapshot branch
+     `archive/legacy-belief-final` is pushed before phase 3.
+  3. Remove the headline reading everywhere (phase 6a).
+  4. Phase 6b: measure first, report to Seneschal in game terms, then pause for Michael.
+  5. Delete spillover damping, the half-weight "suspicious" hearing and the earlier Why
+     report; spillover damping goes on the backlog as [tentative].
+  6. I draft the Insight wording in phase 8; the wording is his.
+  7. I do both: phase 7 (the pre-CaseEval engine and the attention experiments), and audit
+     B's belief-related leftovers folded into phase 8 (`legacy_fallback`, `legacy_evidence`,
+     `fallback_count`, the canvas's `"mode": "legacy"`). Section 7 is fully decided.
+  - Section 8's small calls are mine.
+- **Proposed for the backlog:** none. The spillover item was accepted by Michael directly.
+- **Measured:** nothing (docs only).
 
 ---
 
