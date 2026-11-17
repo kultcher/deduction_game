@@ -24,6 +24,24 @@ static func alive_at_night(view: Dictionary, person: String, night: int) -> bool
 static func executed(view: Dictionary, person: String, night: int) -> bool:
 	return person in view.get("timeline", {}).get("executions", {}).get(str(night), [])
 
+## Was `person` hanged at a meeting while `witness` was still alive at it? Public
+## executions and deaths only. A Martyr's choice is made at night and only of the living,
+## so any hanging of the chosen comes after the choice.
+static func hanged_while_alive(view: Dictionary, person: String, witness: String) -> bool:
+	return hanged_while_alive_tick(view, person, witness) >= 0
+
+## The tick of that hanging (day * 4 + evening), or -1.
+static func hanged_while_alive_tick(view: Dictionary, person: String, witness: String) -> int:
+	if person == "" or witness == "" or person == witness:
+		return -1
+	var executions: Dictionary = view.get("timeline", {}).get("executions", {})
+	var witness_death: int = int(view.get("timeline", {}).get("death_ticks", {}).get(witness, 2147483647))
+	for day_key in executions:
+		var hang_tick: int = int(day_key) * 4 + 2
+		if person in executions[day_key] and witness_death > hang_tick:
+			return hang_tick
+	return -1
+
 static func died_before_morning(view: Dictionary, person: String, morning_day: int) -> bool:
 	var dt: int = int(view.get("timeline", {}).get("death_ticks", {}).get(person, 2147483647))
 	return dt < 2147483647 and int(dt / 4) + 1 == morning_day

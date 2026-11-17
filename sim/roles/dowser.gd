@@ -67,6 +67,11 @@ func generate_reading(w, dw, ctx: Dictionary, _mind) -> Dictionary:
 ##             town already suspects; otherwise 0;
 ##   3 people: a true 2 reads 1; otherwise 1 to frame the scapegoat, else 0;
 ##   4 or more: usually the truth + 1 (+ 1 or 2 when the truth is 0), sometimes the truth.
+func release_bluff_use(w, n, _plan: Dictionary) -> void:
+	if n.dowsed_day == w.day:
+		n.dowsed_day = -1
+
+
 func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: Array) -> Dictionary:
 	if w.day < min_gift_day or n.dowsed_day == w.day or n.at_home():
 		return {}

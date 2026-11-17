@@ -107,6 +107,7 @@ var heard = {}           # card text -> times the player has used it on them (di
 var beliefs: Array = []
 ## Ability results: {day, role, data, text, true:bool, why, shared}
 var info_log: Array = []
+var held_fakes: Array = []  # evil fabrications held back a day (FabricationCheck): {"entry", "until"}
 var warden_log = {}          # Warden only: "night" -> who they guarded
 var warden_saves = {}        # Warden only: "night" -> {target, belief}: quiet nights they take as their save
 
