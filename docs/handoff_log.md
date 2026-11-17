@@ -50,8 +50,9 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 - The player's two watch logs count *against* the premise (×0.74–0.83 each). I didn't trace why.
 
-### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
+### Proposed for the backlog: declined for now
 
+- **Michael (Nov 17, via Seneschal): leave it.** He wants a more thorough Breathstealer overhaul before any tuning, and this fix folds into that. No backlog item, no build. The mock's result above (premise 0.92–0.98, and suspicion of Isolde rising *before* any case) is for that overhaul.
 - **The judge lets a silencing victim be the Breathstealer.** Seen in playtest 26532 (case #90 above). Fix: bind "who was near each silencing" to whoever holds the Breathstealer gift in each world (or, smaller, never let a victim hold it). Effect measured on this case only: the case goes from "moderate" to "strong" for every listener. The town also suspects the right person more before any case. Suggested tag [open] (it strengthens good, so it's Michael's call), owner Quill.
 
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
