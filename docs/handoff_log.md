@@ -38,8 +38,9 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
   a set; with several, each mixes against the others read in full.
   - **The doubt** is `listener.reading_doubt`. `SourceDoubt.derive` now also returns an
     `honest` map, built only from honest errors: a poisoned Night Watch, a misled or
-    unreliable argument, and a challenge in an honest-error mode (misled, impaired,
-    unlikely, delusional). `Shared.evaluate` passes it to `_doubt_adjusted`, which sets
+    unreliable argument. Reading challenges are left out, since under connections a
+    challenge acts only inside its own case (`test_connections_cases` caught a failed-gift
+    challenge reaching the reading's own value). `Shared.evaluate` passes it to `_doubt_adjusted`, which sets
     `reading_doubt` per card. Callers that don't pass it change nothing.
   - **Caught lies, "lied" arguments and "lying" challenges stay out, by night or in
     general.** My first version read all source doubt. A bogus Gravedigger reading (a

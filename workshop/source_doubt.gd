@@ -63,8 +63,9 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	var pre_eval: Dictionary = seed_doubt.duplicate(true)
 	# Honest-error doubt only, by "src:night" or "src:*": a reading the listener thinks was
 	# wrong though its teller was sincere (a poisoned Night Watch, a misled or unreliable
-	# argument, a challenge in an honest-error mode). Caught lies, lying arguments and lying
-	# challenges stay out. CaseEval._doubted_role_fits reads it (through reading_doubt).
+	# argument). Caught lies and lying arguments stay out, and so do reading challenges: under
+	# the connections model a challenge acts only inside its own case. CaseEval._doubted_role_fits
+	# reads it (through reading_doubt).
 	var honest: Dictionary = {}
 	var proven_revenants: Dictionary = {}
 	var curse_exec: String = str(view.get("chronology", {}).get("curse", {}).get("executed", ""))
@@ -220,8 +221,6 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			if r_src != "" and r_night >= 0 and mult < 1.0:
 				var nk_rc: String = "%s:%d" % [r_src, r_night]
 				full_doubt[nk_rc] = maxf(float(full_doubt.get(nk_rc, 0.0)), clampf(1.0 - mult, 0.0, 0.95))
-				if str(r.get("mode", "")) != "lying":
-					honest[nk_rc] = maxf(float(honest.get(nk_rc, 0.0)), clampf(1.0 - mult, 0.0, 0.95))
 			if str(r.get("mode", "")) == "lying" and float(r.get("agreement", 0.0)) >= Tuning.Workshop.DOUBT_CHALLENGE_LYING_MIN_AGR and r_src != "" and not settled_sincere.has(r_src):
 				var agr: float = float(r.get("agreement", 0.0))
 				var src_pen: float = clampf(1.0 - float(challenged.get("sources", {}).get(r_src, 1.0)), 0.0, 1.0)
