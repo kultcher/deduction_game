@@ -20,6 +20,63 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-17, Claude-Lantern: a doubted reading speaks through the role check only as far as it's trusted (`claude/own-reading-doubt`)
+
+- **Base:** main `cd3aeb4` (#181 merged). **Status:** PR open. Golden identical to
+  `baseline_bb6f01c` (no doubted role-checked reading on the five seeds), so it isn't in the
+  golden-moving queue. **Next actor:** Bailiff merges.
+  **Then: Claude-Quill**, whose Delusional fix builds on this (see "Where it lives").
+- **The bug** (found unpinning `test_beliefs`, purge phase 2): a reading the listener doubts
+  honestly (its night was poisoned or misled) kept moving its people in full, under both
+  belief models. Readings that act through the role check (a Seer's Red Herring placement,
+  an Archivist's, Clerk's or Gravedigger's role reading) never saw the doubt there: the
+  doubt lowered the reading's reliability, which the role check doesn't read. The earlier
+  model only looked different because its headline reading, which the doubt did turn off,
+  added a little on top.
+- **The fix:** each doubted reading in a set is weighed as genuine with the listener's trust
+  in it and as a bare claim of the gift otherwise. This is exact for one doubted reading in
+  a set; with several, each mixes against the others read in full.
+  - **The doubt** is `listener.reading_doubt`, filled in `SharedLedger._doubt_adjusted`
+    from the source doubt on that reading's night only ("src:night": a misled argument, a
+    poisoned Night Watch).
+  - **The source's general doubt ("src:*") stays out:** a caught lie, a lying argument,
+    Delusional. My first version took it too, and a bogus Gravedigger reading (a hanging
+    that never happened) stopped convicting its claimant: `test_shared_model` caught it,
+    and it also moved golden on 692 and 900.
+  - **Trust in the teller is left out on purpose:** the role check already lets an evil
+    teller lie in the worlds where they're evil, so including it would charge it twice.
+  - **Carried through** `Jury._eval_listener`. Both connections judgement keys (`judge_key`
+    and the fast key) include the judged cards' doubts.
+- **Where it lives (for Quill):** `CaseEval._doubted_role_fits` is the one place that handles
+  a doubted reading in the role check. It's called once from `_evaluate_impl`, right after
+  `fits`. `CaseEval.doubted_role_check` switches it off for measuring. Quill's Delusional
+  item (the role check's `sourceEvil` exemption charging a Delusional teller's false reading
+  twice) is in `RoleConstraints.cs`. Delusional doubt sits on the source's general doubt, so
+  it is deliberately not in `reading_doubt` today; if Quill's fix wants a Delusional
+  teller's readings read as honest errors, this function and `reading_doubt` are where it
+  goes.
+- **What changes in play:** on `test_role_check_doubt`'s fixture (seed 5110; the
+  listener's own reading, then a misled argument doubting that night at 0.8):
+
+  | Reading | With the reading | After the doubt, before the fix | After the doubt, now |
+  |---|---|---|---|
+  | Seer "yes" on a pair | 0.10 → 0.15 | 0.15 | 0.107 |
+  | Archivist "one of these two holds the Minion's gift" | 0.10 → 0.385 | 0.385 | 0.119 |
+  | Gravedigger verdict | 0.10 → 0.00 | 0.00 | 0.093 |
+
+  An undoubted reading reads exactly as before. A Clerk reading moved no one in my fixture,
+  so it isn't tested here.
+- **Golden:** identical to `baseline_bb6f01c` on all five seeds; two captures identical.
+- **Measured:** the new suite `test_role_check_doubt` (12/12, added to the fast list), the CI
+  fast list on this branch (63/63), and two golden captures. Not measured: how often a doubted
+  role-checked reading occurs in bot games.
+- **Order of my next work:** phase 6b (attention-limited signals read every held card), then
+  the double-claim pairing, then Option A (Insight sets the core's joining bar; its
+  measurement goes to Michael first), then purge phase 3.
+- **Proposed for the backlog:** none.
+
+---
+
 ## 2026-11-16 night, Argon: zero-drift connections refresh speed-up (`argon/connections-speed`)
 
 - **Base:** main `6873616` (#176, merged into `argon/connections-speed`). **Status:** PR #181 updated after Codex/Bailiff/Lantern review. **Next actor:** Lantern / Bailiff (re-review and merge once CI is green).
