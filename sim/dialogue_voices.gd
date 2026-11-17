@@ -260,6 +260,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, love, and {others} were there with me. Ask any of them what they saw.",
 		"defence_day_alone": "I was at {place} {when}, out where anyone could see me. There's no harm in that.",
 		"defence_day_others_pointed": "I was at {place} {when}. So was {suspect}, mind, if it's company you're weighing.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. So was {suspect}, mind, if it's company you're weighing.",
 	},
 	"bart": {
 		"description": "Gruff and economical; firm delivery without extra certainty.",
@@ -501,6 +502,7 @@ const VOICES = {
 		"defence_day_others": "{Place}, {when}. {others} too. Ask them.",
 		"defence_day_alone": "{Place}, {when}. In plain sight.",
 		"defence_day_others_pointed": "{Place}, {when}. {suspect} was there too.",
+		"defence_day_others_pointed_stand": "{Place}, {when}. {suspect} was there too.",
 	},
 	"constance": {
 		"description": "Formal and exacting; distinguishes an account from its interpretation.",
@@ -742,6 +744,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, in the company of {others}. Any of them may properly attest to what they saw.",
 		"defence_day_alone": "I was at {place} {when}, in full public view. Presence in a public place is no offence.",
 		"defence_day_others_pointed": "I was at {place} {when}. So, I would note, was {suspect}, if the company one keeps is now the measure.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. So, I would note, was {suspect}, if the company one keeps is now the measure.",
 	},
 	"dorian": {
 		"description": "Self-conscious overthinker; audits how his words sound without doubting what he saw.",
@@ -983,6 +986,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, and so were {others}. I know that sounds like I'm hiding behind them. I'm not. Please, ask them.",
 		"defence_day_alone": "I was at {place} {when}. Just there, in the open. That isn't suspicious, is it? Sorry, I suppose that's for you to say.",
 		"defence_day_others_pointed": "I was at {place} {when}. So was {suspect}. I'm not saying that means anything, I only mean I wasn't the only one.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. So was {suspect}. I'm not saying that means anything, I only mean I wasn't the only one.",
 	},
 	"edda": {
 		"description": "Warm, unflappable pragmatist; grounds exchanges in plain, steady care.",
@@ -1224,6 +1228,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, with {others} about. Ask any of them; they'll tell you.",
 		"defence_day_alone": "I was at {place} {when}, where anyone could see me. Nothing to it.",
 		"defence_day_others_pointed": "I was at {place} {when}. {suspect} was there too, if you're weighing who kept whose company.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. {suspect} was there too, if you're weighing who kept whose company.",
 	},
 	"fenwick": {
 		"description": "Incorrigible raconteur; stages reveals with theatrical flair and drops the act in tragedy.",
@@ -1466,6 +1471,7 @@ const VOICES = {
 		"defence_day_others": "Picture it: {place}, {when}, and an audience of {others}. Ask any of them what they saw of me!",
 		"defence_day_alone": "I was at {place} {when}, in the full light of day. Hardly the stuff of villainy.",
 		"defence_day_others_pointed": "I was at {place} {when}. And who should share the scene but {suspect}? Weigh the company, by all means.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. And who should share the scene but {suspect}? Weigh the company, by all means.",
 	},
 	"greta": {
 		"description": "Sharp-eyed gatekeeper; counter-questions motives and treats trust as earned.",
@@ -1707,6 +1713,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}. So were {others}. Ask them, or is my word the only one you doubt?",
 		"defence_day_alone": "I was at {place} {when}, out in the open. Since when is that a crime?",
 		"defence_day_others_pointed_stand": "I was at {place} {when}. So was {suspect}. Why is it only me you're asking?",
+		"defence_day_others_pointed": "I was at {place} {when}. So was {suspect}, if it's company you're weighing.",
 	},
 	"hollis": {
 		"description": "Exacting scholar; weighs epistemic categories and scope without inventing finer facts.",
@@ -1948,6 +1955,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}; {others} were likewise present. Their accounts would bear on the point.",
 		"defence_day_alone": "I was at {place} {when}. Presence in a public place, I would observe, establishes presence and nothing further.",
 		"defence_day_others_pointed": "I was at {place} {when}. So, for completeness, was {suspect}, if the company is what you mean to weigh.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. So, for completeness, was {suspect}, if the company is what you mean to weigh.",
 	},
 	"isolde": {
 		"description": "Frightened peacemaker; cushions the human cost of testimony while keeping the fact intact.",
@@ -2189,6 +2197,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, and {others} were there too. Please, ask them. They'll tell you what they saw.",
 		"defence_day_alone": "I was at {place} {when}, out where everyone could see. I didn't mean any harm by it.",
 		"defence_day_others_pointed": "I was at {place} {when}. {suspect} was there as well. I don't want anyone blamed for it, only for it to be fair.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. {suspect} was there as well. I don't want anyone blamed for it, only for it to be fair.",
 	},
 	"jory": {
 		"description": "Restless enthusiast; speaks in telegraphic bursts and races toward the next question.",
@@ -2430,6 +2439,7 @@ const VOICES = {
 		"defence_day_others": "At {place}. {When}. {others} too. Ask them!",
 		"defence_day_alone": "At {place}, {when}. Out in the open. So?",
 		"defence_day_others_pointed": "At {place}, {when}. {suspect} too. Just saying.",
+		"defence_day_others_pointed_stand": "At {place}, {when}. {suspect} too. Just saying.",
 	},
 	"kiran": {
 		"description": "Smiling deflector; treats interrogation as a parlor game and turns questions back on the investigator.",
@@ -2671,6 +2681,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, in the excellent company of {others}. Do ask them; I'd love to hear the reviews.",
 		"defence_day_alone": "I was at {place} {when}, in plain view. Scandalous, I know.",
 		"defence_day_others_pointed": "I was at {place} {when}. As, I believe, was {suspect}. If it's company you're weighing, weigh it all.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. As, I believe, was {suspect}. If it's company you're weighing, weigh it all.",
 	},
 	"lian": {
 		"description": "No-nonsense problem solver; treats conversation as crisis triage and demands actionable utility.",
@@ -2912,6 +2923,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}. {others} were there. Check with them.",
 		"defence_day_alone": "I was at {place} {when}, in the open. That's not evidence of anything.",
 		"defence_day_others_pointed": "I was at {place} {when}. So was {suspect}. Weigh both or neither.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. So was {suspect}. Weigh both or neither.",
 	},
 	"merrin": {
 		"description": "Melodramatic catastrophist; frames exchanges as portents of doom before landing on concrete facts.",
@@ -3153,6 +3165,7 @@ const VOICES = {
 		"defence_day_others": "Yes, I was at {place} {when}, and so were {others}! A whole crowd of witnesses! Ask any one of them.",
 		"defence_day_alone": "I was at {place} {when}, out where all the world could see me. Is standing in the open a hanging matter now?",
 		"defence_day_others_pointed": "I was at {place} {when}. And so was {suspect}! If company condemns, it condemns us both.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. And so was {suspect}! If company condemns, it condemns us both.",
 	},
 	"nisha": {
 		"description": "Patient investigator; isolates testable premises and separates observation from inference.",
@@ -3394,6 +3407,7 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}, and so were {others}. If the question is what I did there, they can answer it.",
 		"defence_day_alone": "I was at {place} {when}. That places me there; it doesn't say what I did.",
 		"defence_day_others_pointed": "I was at {place} {when}. So was {suspect}. If the place counts against me, it counts against them too.",
+		"defence_day_others_pointed_stand": "I was at {place} {when}. So was {suspect}. If the place counts against me, it counts against them too.",
 	},
 	"odette": {
 		"description": "Dry-witted independent; uses literalism and velvet-edged understatement to keep distance.",
@@ -3635,5 +3649,6 @@ const VOICES = {
 		"defence_day_others": "I was at {place} {when}. So were {others}. Ask them, if you've the time.",
 		"defence_day_alone": "I was at {place} {when}, in public. A shocking thing to admit, I know.",
 		"defence_day_others_pointed_stand": "I was at {place} {when}. So was {suspect}. Funny how only one of us is up here.",
+		"defence_day_others_pointed": "I was at {place} {when}. So was {suspect}, if it's company you're weighing.",
 	},
 }

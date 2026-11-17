@@ -340,7 +340,7 @@ voice lines are in `sim/dialogue_voices.gd`. The generic fallbacks, passed by th
 
 - **Slots:** `{place}` a public place; `{when}` "this morning", "yesterday afternoon" or "the first evening"; `{others}` a joined list of two or three names ("Agnes and Hollis"); `{suspect}` someone who was also there and is also under suspicion.
 - **The caller also passes `{Place}` and `{When}`, capitalised.** Bartholomew and Jory start a sentence with one of them.
-- **Stand-only lines:** Greta's and Odette's pointed lines assume a single nominee on the stand. They live under `defence_day_others_pointed_stand`. At a nomination, try that key first, then `defence_day_others_pointed`; in private, use only `defence_day_others_pointed`, which falls back to the generic line for those two.
+- **Stand-only lines:** Greta's and Odette's pointed lines assume a single nominee on the stand. Every voice has both `defence_day_others_pointed` (anywhere) and `defence_day_others_pointed_stand` (at a nomination). For 13 voices the two are the same line. For Greta and Odette the stand line is their meeting-only one and the plain key holds the generic line. At a nomination use `_stand`; in private use the plain key.
 - **Every line keeps its facts** (the place, the time, who was there, who is pointed at). None adds a reason for being there or says what anyone did. Evil uses the same lines, so the choice of line is never a tell. Naming someone who wasn't there is a lie and is logged with its reason.
 
 ## 9. Calibration suite: same intent, fifteen voices
