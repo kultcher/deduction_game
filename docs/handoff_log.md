@@ -20,6 +20,46 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ---
 
+## 2026-11-17, Claude-Quill: Martyr promise then hanging keeps every explanation (`claude/martyr-alternatives`)
+
+- **Base:** main `97f51a1`. **Status:** PR open. Moves golden: re-baselined to `baseline_bfeb521` in this PR (golden-moving PRs merge one at a time). **Next actor:** Bailiff.
+- **Item:** BACKLOG section 2, "Martyr non-substitution must keep its alternative explanations; Martyr promise versus later hanging" [decided].
+
+### What was wrong
+
+- The Martyr's own outcome reading ("they were hanged and I still stand: they must have been evil") already kept its explanations. The chosen was evil or Marked, or the teller lied. A poisoned or Delusional Martyr can't produce that reading at all: a broken gift says nothing.
+- **The gap was the pair: a public promise ("I have given my life over for X"), then X hanged while the Martyr still stood.** The judge inferred nothing from it, and the Workshop refused any case holding both ("needs a dated outcome/health adapter").
+
+### What changed
+
+- **The promise now carries the same check as the outcome reading** when the chosen was hanged while the Martyr was alive (`workshop/role_constraints.gd`, `LiveHistory.hanged_while_alive`). In each world, either the chosen registered evil (evil or Marked), or the promise is false. A false promise means an evil Martyr's bluff, or a poisoned or Delusional Martyr: the report's ordinary false-teller worlds. It uses public events only: the hanging and the Martyr being alive at it. A Martyr dead before the hanging proves nothing by "surviving" it.
+- **No double count:** if the same Martyr's outcome reading about the same person is in the set, that reading carries the check alone. The promise beside it then holds whatever the chosen was.
+- **The content-only mask** (graded challenges) doesn't count a Marked chosen as evil, as with the other Marked exceptions.
+- The Workshop no longer refuses a case with a promise and the chosen's later hanging.
+
+### What it changes in play
+
+- **Mostly it exposes evil Martyr bluffs.** Evil's Martyr bluff vouches for a teammate (`generate_bluff_reading` picks the mate), so when that teammate hangs, the bluffer stands exposed beside them. A real Martyr's chosen can only hang while the Martyr stands if the chosen was evil, or the Martyr's gift failed.
+- **Golden seed 692:** Hollis (evil, bluffing the Martyr) promised his teammate Constance, and Constance was hanged on day 3. Bart, who had heard the promise, now suspects Hollis noticeably more (0.46 → 0.57 by day 4). Minds that never heard the promise don't move. Outcomes are unchanged: Merrin and Constance are hanged and play reaches day 4. 42, 54875, 900 and 98933 are identical.
+- **How often** (60 passive games, seeds 1–60, 10 NPCs, earlier belief model, played to the end; probe not committed): the pair happened in 5 games, about 1 in 12. All 5 were evil Martyr bluffs vouching for a teammate who was later hanged. A real Martyr's chosen was never hanged with the Martyr standing (17 real choices made); the sim saves a good chosen unless the gift is broken. There were 11 bluffed promises in all, and 26 promises (real or bluffed) were told to someone.
+
+### Tests
+
+- `tools/test_roles_dead.gd` (`_promise_then_hanging`), one check per explanation:
+  - an ordinary good chosen hanged fails a true promise;
+  - an evil chosen fits;
+  - a Marked chosen fits, except under the content-only mask;
+  - a Martyr dead before the hanging fits;
+  - an evil Martyr's bluffed promise fits;
+  - both cards fail once, and the promise defers to the outcome reading.
+  The earlier check that the case is refused now checks that it's accepted. 4 of the new checks fail on main.
+- Also ran `test_case_eval`, `test_workshop_reading_challenges`, `test_premise_step1`–`3`, `test_workshop_vote_and_alibi`, `test_roles_registry`: all pass. Golden captured twice, identical.
+
+### Not built
+
+- **Dated health.** The judge has no model of a poisoning on a particular night. A Martyr healthy at the choice but poisoned at the hanging is priced as the promise's error, as any poisoned reading is. The item asks not to assume both times were healthy, and this doesn't: it just doesn't date the failure. Logged under the catalog's A21 gaps.
+- **"Evil Martyr bluff can frame a good scapegoat"** (the next item) is an evil-strategy change, so Beadle's. This change makes the current bluff costlier for evil: a promise for a teammate who hangs now points at the bluffer.
+
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
 
 - **Base:** main after #170. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.

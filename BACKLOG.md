@@ -95,6 +95,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   only; don't infer that both times were healthy from the earlier promise. Tests should
   isolate every explanation and avoid counting the same failure twice. [decided]
 
+  Built Nov 17 (Quill, `claude/martyr-alternatives`): the promise and the later hanging are
+  read together from public events, keeping all five explanations; the outcome reading
+  carries the check when both are held. Not built: dated health (a poisoning on a
+  particular night); the promise's failure is priced as the report's error.
+
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
   helping execute them and claiming non-substitution as evidence against them an active
