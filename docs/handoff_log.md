@@ -80,7 +80,9 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 ### Measured
 
 - `tools/test_ask_night_results.gd` now has 56 checks (shut gate, open gate, the Night Watch both ways).
-- Golden, suites and paired bot games: below.
+- Golden identical to `baseline_bb6f01c` at `--tol 0` (passive player: it never asks).
+- 72/72 suites passed locally: the CI fast list plus the conversation, dialogue, role, meeting and evil-play suites.
+- Paired bot games, main against this branch (`autoplay --seed 1 --games 6 --npcs 10`): every sweep-record field is the same in all 6. The new path never fired: no reading was told through "ask night" and no result was held back. So this shows nothing else moved, not how often the new path fires. Unmeasured: how often players will get a result from "ask night" rather than "ask gift".
 
 ---
 
