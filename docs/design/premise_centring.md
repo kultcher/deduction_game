@@ -1,6 +1,6 @@
 # Centring a case on its premise (design note)
 
-**Status: for Michael to decide. Measured on a mock; nothing built.** Written Nov 17 by
+**Status: for Michael to decide; a misframed-case test is requested (section 8). Measured on a mock; nothing built.** Written Nov 17 by
 Claude-Vicar, at Michael's request through Seneschal, from Claude-Lantern's measurements on
 `mock/premise-centre` (one commit on main `cee8811`; `mock/`, so it never merges).
 BACKLOG item: "Centre a case on its premise (Michael, Nov 17)", section 2, Cases and the
@@ -30,6 +30,35 @@ A presented case is weighed in three ways (`docs/belief_model.md`, "Stored cases
 After that, one common shift keeps the town's total in line with the number of evil. So when
 the subject rises, everyone else falls a little. That's the "others cleared" effect, and it
 isn't spillover.
+
+### The goal, restated (Michael, Nov 17, after the first draft)
+
+The night-sighting case already behaves as intended, so set it aside. The idea is **what's
+in focus**:
+
+- A listener hearing "Constance is evil" weighs how far the case proves *that*. They pay
+  less attention to unnamed people it might also implicate, a less insightful listener
+  especially.
+- If the case actually points harder at someone else, the listener doesn't register the full
+  weight against that person, because they're looking through the "Constance is evil" lens.
+- **In gameplay terms:** the player mustn't win just by supplying information to the town.
+  They have to make the right connections and present them that way.
+
+### This was decided once before (Nov 5)
+
+Michael's goal matches the Nov 5 premises decision almost word for word (`docs/premises_plan.md`,
+"Decisions": "so the player can't present all the evidence under a wrong premise and let a
+high-Insight listener solve the case").
+
+- **Built Nov 6 as premises step 1:** a card that only presentations brought was "shaped".
+  The premise's target took its full effect; everyone else took 40% (Insight 0) to 80%
+  (Insight 1). It was remembered at every refresh.
+- **Lost with the connections model:** the shaping never runs with connections on, so since
+  Nov 16 nothing in play does it.
+- **To be deleted in purge phase 5,** with Michael's approval. It's kept on BACKLOG
+  section 6 as "Spillover damping" `[tentative]`, and the code survives on
+  `archive/legacy-belief-final`.
+- **Option B below is that same rule, rebuilt for the connections model.**
 
 ## 2. The options measured
 
@@ -156,29 +185,88 @@ subject clash, the subject's alibi would be the doubted side, not the sighter.
 | C | The same share | One extra movement judgement per night item per presentation. These are the expensive kind: roughly a few percent more refresh time on presentation days, not measured precisely (Argon to check if it's built) | Expected to move |
 | Doubt onto the subject | None if all-or-nothing | None | Expected to move |
 
-## 6. Recommendation (Vicar)
+## 6. How well the model fits the goal, and what each option does for it
 
-1. **Build C at a share of 0.5, and drop A and B.** A and B changed nothing in aggregate. The
-   one place they act (example 2) is a real logical consequence, and centring it means a
-   listener half-ignores what the case's own card proves. C is the only option that touches
-   the contradiction case, and it does so only for night cards, where the "who else was out"
-   spillover lives. Measure C at a second share before settling the value; 0.25 is the
-   natural pair.
-2. **Hold "doubt onto the subject".** It goes furthest toward taking the player's word, and
-   through NPC nominators' cases it would blunt the sighter contest against evil's invented
-   sightings. Revisit only if playtests show C isn't enough, and then consider it for the
-   player's cases alone.
-3. **Look at the night-0 odds separately** (Lantern). They're part of why example 1
-   happens at all, and they also cause the "evil Medium's relay names night 0" bug in BACKLOG
-   section 6.
-4. **Or close the item as satisfied** if Michael's own example (3) was the main concern: it
-   already behaves as he wants, and C is a refinement for contradiction cases.
+### Where the connections model already fits
 
-## 7. For Michael to decide
+- **Connections across kinds of evidence count only if the player makes them.** A reading, a
+  sighting and a claim that mean more together get their joint value only when presented
+  together as a case. A pile of scattered cards gets no joint value.
+- **The town makes some connections itself, by design:** the built-in pairings (a night's
+  movement cards, a trace with profiles, two claims of one gift), and each NPC's core (new
+  cards weighed with its own firsthand readings). That's "the town can notice what the player
+  missed", which is meant to stay.
 
-1. A, B, C, or none (Vicar's recommendation: C).
-2. The share: 0.5 to start, with C measured at 0.25 too.
-3. "Doubt onto the subject": hold, build for every case, or build for the player's cases only.
-4. Whether Lantern looks at the night-0 movement odds as a separate item.
+### Where it doesn't fit
 
-The builder would be Lantern, with Argon checking C's cost if it's built.
+- **Every card the player hands over counts in full for everyone it names, whatever the
+  premise.** A brought card becomes held and keeps its full single value after the case
+  fades. So supplying information does much of the work without any connection being made.
+- **The premise doesn't change how cards are weighed** (`docs/belief_model.md`: "the premise
+  type changes what's asked, not how cards are weighed"). "Constance is evil", with cards that
+  point at Dorian, moves Dorian as much as "Dorian is evil" would. That's the lens failure.
+- **The measurements didn't test this.** The bot presents cases against its own top suspect,
+  so its cases are well framed. "A and B changed nothing" holds for correctly framed cases
+  only. It says nothing about misframed ones, which are the ones the goal is about.
+
+### The options against the goal
+
+| Option | What it does for the lens |
+|---|---|
+| C | Night cards only, which are set aside. Little. |
+| A | What the cards prove only *together* lands mostly on the subject. It helps a little, but each card alone, which is most of a case's weight, still reaches the other person in full. |
+| **B** (includes A) | Cards the listener holds only because this case brought them count mostly on the subject: "they saw it through the Constance lens". Cards already held, or heard another way, count as usual. **The closest fit.** |
+
+## 7. Recommendation (Vicar, revised Nov 17)
+
+1. **B, at a share to be set by the misframed-case test (section 8).** It is the Nov 5 rule
+   on the new model, and the only option that makes the player connect evidence to the right
+   person.
+2. **Drop C,** since night sightings already behave as intended. Drop A on its own, since B
+   includes it.
+3. **Hold "doubt onto the subject"** (section 4), for the reasons given there.
+4. **Look at the night-0 odds separately** (Lantern), as before.
+5. **Before purge phase 5 deletes the step 1 shaping,** Lantern checks whether any of it
+   (its tests, the brought-card bookkeeping) is worth reusing for B.
+
+### What B raises
+
+1. **Re-presenting.** Re-presented with "Dorian is evil", the same cards give Dorian full
+   weight then. That's the desired behaviour: making the right connection. Cycling the
+   premise across everyone would game it, but each try costs a presentation, and a clearly
+   wrong premise costs a little trust (`PRESENTATION_WRONG_COST`). That cost's code is still
+   on main; whether it still fires as intended under connections isn't checked.
+2. **Whether the lens fades.** When the case fades, does a brought card stay scaled or return
+   to full? Vicar's lean: it stays scaled until the card reaches that listener another way,
+   the way the Nov 6 shaping was remembered at every refresh. They remember it in the light
+   it was shown.
+3. **Insight.** "Less insightful listeners are more lens-bound" is the old Insight-scaled
+   share (40% to 80%). Start with one flat share. Scale it by Insight once Insight's role
+   settles (Option A, Lantern measuring).
+4. **NPC nominators' cases centre the same way.** That seems right: a listener hearing
+   "Greta is evil" sees the cards through Greta too.
+5. **"Suspicious" premises:** they centre on their subject like the others (as the BACKLOG
+   item already says).
+
+## 8. The test requested (Nov 17)
+
+Constructed misframed cases, with fixtures, no bot games:
+
+- Take a strong case against X and present it three ways: as "X is evil"; as "Y is evil",
+  where Y is an innocent named in the cards; and as "Z is evil", where Z is unconnected.
+- Measure how far X still rises, and how far Y and Z move, under today's rules, A and B, at
+  shares of 0.5 and 0.25.
+- Cover the kinds of evidence most cases are built from: a reading naming two people, a
+  sighting against an alibi, and a mixed case.
+- Report in game terms, side by side.
+- Requested from Lantern through Seneschal. `mock/premise-centre` already has A and B.
+
+## 9. For Michael to decide
+
+1. A, B, C, or none. Vicar's recommendation: B, pending the test.
+2. The share, from the test.
+3. Whether the lens stays on a brought card after its case fades (Vicar's lean: yes).
+4. "Doubt onto the subject": hold, build for every case, or build for the player's cases only.
+5. Whether Lantern looks at the night-0 movement odds as a separate item.
+
+The builder would be Lantern, with Argon checking the cost.
