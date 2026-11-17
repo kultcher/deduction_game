@@ -98,19 +98,31 @@ func _same_gift_reasons_merge() -> void:
 	var day_r: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "dowser", "a", n.id, 1), item.call(2, "dowser", "b", n.id, 1)])
 	_check(day_r.size() == 2, "daytime readings aren't merged into 'nights'")
 
-## In played games, an NPC nomination's spoken sightings are kept on the pending nomination,
-## where the defence reads them (Codex P2 on #205: they were dropped on the way).
+## A nomination that cites a sighting the nominator already told the town keeps it as a
+## spoken fact for the defence to answer (Codex P2 on #205: it was dropped on the way). A
+## direct check of the nominator's case, since which seeds give such a nomination moves
+## with the belief model; the copy onto the pending nomination is in golden (seed 900_7).
 func _spoken_facts_reach_the_pending_nomination() -> void:
-	var noms: int = 0
-	var spoken: int = 0
-	for seed_v in range(FixtureSeeds.SEEDS_FROM, FixtureSeeds.SEEDS_FROM + 12):
-		var g = FixtureSeeds.play_to_meeting(seed_v, 3, 10)
-		if g == null or not GameMeeting._next_npc_nomination(g):
-			continue
-		noms += 1
-		var nm: Dictionary = g.w.meeting.get("pending", {})
-		if not nm.get("spoken_facts", []).is_empty():
-			spoken += 1
-			break
-	print("  %d NPC nominations, %d with a spoken sighting" % [noms, spoken])
-	_check(spoken > 0, "a played nomination kept a spoken sighting for the defence")
+	var C = load("res://sim/content.gd")
+	for told in [true, false]:
+		var g = Game.new()
+		g.detailed_logging = false
+		g.new_case(9503, 10)
+		var w = g.w
+		w.day = 2
+		var good: Array = w.living().filter(func(p): return not p.is_evil())
+		var n = good[0]
+		var t = good[1]
+		var block: String = t.home_block
+		var b: Dictionary = {"kind": "saw", "who": t.id, "day": 1, "phase": C.NIGHT, "block": block, "how": "window"}
+		n.beliefs.append(b)
+		if told:
+			n.told_to[MindMeeting._town_sighting_key(n, b)] = true
+		var cs: Dictionary = MindMeeting.nomination_case(w, n, t, "I saw them out in the street from my window last night")
+		var spoken: Array = cs.get("spoken_facts", [])
+		var new_cards: Array = cs.get("facts", []).filter(func(f): return f.get("kind", "") == "sighting")
+		if told:
+			_check(spoken.size() == 1 and t.id in spoken[0].get("subject", []), "a sighting already told the town is kept as a spoken fact (%s)" % str(spoken))
+			_check(new_cards.is_empty(), "and isn't a new card")
+		else:
+			_check(spoken.is_empty() and new_cards.size() == 1, "a sighting told for the first time is a new card, not a spoken fact (%d spoken, %d cards)" % [spoken.size(), new_cards.size()])

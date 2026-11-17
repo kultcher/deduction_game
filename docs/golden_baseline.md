@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Insight's joining bar): `baseline_1f2e761`
+### Current baseline (Nov 17, 89077 routing): `baseline_89770fe`
+
+`tools/golden/baseline_89770fe/` is the capture from `claude/beadle-89077-routing` (#205) at
+`89770fe` (main `f408a60` merged in): which answer a nominee gives. A sighting the nominator
+already told the town now reaches the defence, a dead accuser is said to have "lied", the
+"Then ... is lying" opener needs a line before it, and a gift's readings recap as one reason.
+- **Divergence from `baseline_1f2e761`:** 42 (record 108, day 3) and 54875 (record 51, day 1)
+  in spoken text only. 692 (record 111, day 2): Merrin answers Fenwick's sighting with where
+  they were and "Fenwick lied" instead of a reading challenge, so listeners' beliefs about
+  Merrin shift slightly and the record count changes. 900 (record 72, day 2): Constance's
+  nomination keeps her told sighting for the defence, and Greta's line loses its "Then".
+  98933 (record 60, day 1): Nisha's "made it up" line, with small belief shifts after it.
+- **Outcomes unchanged:** same hangings, votes, nominators and deaths. 42 good day 3; 54875
+  good day 2; 692 and 900 reach day 4 with no winner; 98933 good day 3.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, Insight's joining bar): `baseline_1f2e761`
 
 `tools/golden/baseline_1f2e761/` is the capture from `claude/insight-core-bar` (#199) at
 `1f2e761` (main `ae6637a` merged in): Insight sets how readily a card joins an NPC's core
