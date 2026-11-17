@@ -29,6 +29,11 @@ func _init() -> void:
 		if m.role == "medium" and m != witness:
 			m.alive = false
 	check(not (line in CaseMetrics.demon_evidence(w, []).reachable), "a dead witness's sighting isn't, with no Medium alive")
+	# Told before dying: a living good listener still holds it (Codex, #202).
+	var heard = good[2]
+	heard.hearsay.append({"kind": "sighting", "from": witness.id, "about": demon.id, "day": 2, "block": demon.home_block})
+	check(line in CaseMetrics.demon_evidence(w, []).reachable, "a dead witness's sighting a living townsperson heard stays reachable")
+	heard.hearsay.pop_back()
 	var medium = good[1]
 	var old_role: String = medium.role
 	medium.role = "medium"
