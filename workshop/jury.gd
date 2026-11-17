@@ -425,7 +425,7 @@ static func _eval_listener(listener: Dictionary, own: Array, challenges: Diction
 	knowledge["own_reports"] = own
 	return {"id": listener.get("id", "listener"), "suspicion": listener.get("suspicion", {}),
 		"npc_trust": listener.get("npc_trust", {}), "knowledge": knowledge,
-		"reading_reliability": listener.get("reading_reliability", {}),
+		"reading_reliability": listener.get("reading_reliability", {}), "reading_doubt": listener.get("reading_doubt", {}),
 		"challenge_reports": challenges.get("reports", {}), "challenge_sources": challenges.get("sources", {})}
 
 ## A bounded listener who looked for no rival explanation ("provisional"), or who
