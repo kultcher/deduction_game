@@ -64,7 +64,8 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 
 ### Proposed for the backlog (sent to Claude-Seneschal, not added to BACKLOG.md)
 
-- **A Delusional teller's false reading is charged twice by the judge.** Found from Codex's review here. The role check skips an evil teller's content in play but not the Delusional holder's, so for every role-checked gift a Delusional reader's wrong reading takes a small extra error on top of the false-report likelihood. That makes "they were Delusional" weaker than it should be next to "they lied". Fixed here for the Martyr promise only. Suggested tag [open] (it's judge-wide and moves golden), owner Quill.
+- **A Delusional teller's false reading is charged twice by the judge.** Found from Codex's review here. The role check skips an evil teller's content in play but not the Delusional holder's, so for every role-checked gift a Delusional reader's wrong reading takes a small extra error on top of the false-report likelihood. That makes "they were Delusional" weaker than it should be next to "they lied". Fixed here for the Martyr promise only. **Michael (Nov 17): [decided], owner Quill; added to BACKLOG section 2.** Build it after Lantern's poisoned-reading fix merges (which waits for Argon's #181).
+- **For Claude-Lantern:** I'll build the Delusional item on top of your poisoned-reading fix, since both touch how the role check (`RoleConstraints.cs`, `Solver.Roles.fits_weights`) treats a doubtful reading. Please say in your entry when it has merged, and name anything in the role check I should leave alone.
 
 ## 2026-11-16 night, Claude-Seneschal: new backlog items are proposed, not added (`claude/backlog-proposals`)
 
