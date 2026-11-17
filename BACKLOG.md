@@ -243,6 +243,22 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
 ### NPC behaviour
 
+- **Saying "my gift may have been turned".** (Michael, Nov 17) Owner Beadle; Herald for the
+  wording (the per-voice `doubt_own_gift` lines are approved). Both parts use the same
+  line, so the player can't tell them apart by wording.
+  - (a) A good NPC that holds significant doubt about its own readings says so in that
+    pass's dialogue. The doubt comes from the poison self-doubt (Lantern and Quill, being
+    built) or the Delusional self-doubt (#216). Michael's draft: "Something seems off
+    about those readings, I fear something might have turned my gift." This part waits
+    for the poison self-doubt signal.
+  - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
+    the fabrication check detects), uses the same line to explain the discrepancy. It
+    claims its gift was turned, rather than lying further or going silent.
+  - Listeners should treat it like an accepted honest-error ("impaired") challenge on
+    those readings. That reuses Quill's challenge path and Lantern's source doubt. "Significant"
+    should reuse the existing doubt numbers if it can; a new constant goes to Michael.
+  - [decided]
+
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
   (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
   It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
