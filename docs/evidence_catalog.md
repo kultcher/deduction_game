@@ -393,6 +393,7 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 - **Says:** "I guarded X", and on a quiet night "I think I saved X".
 - **System:** movement (the Warden was out to X's door) and worlds. A claimed save holds only where X is good: the Demon goes for the good.
 - **Constrains:** the Warden's route; with a save, X is good.
+- **A guard on a door the Demon killed that night** is never a true, healthy reading (the report table). What's left is a lie (an evil Warden) or a failed gift (poisoned or Delusional); the walk to the door stands apart. A challenge against that night's death lands either way; a neutral listener lays most of it on a lie. Pinned by `tools/test_warden_challenge.gd`.
 - **Wrong when:** defaults; contradicted outright if X died that night.
 - **Strength:** weak, or moderate for a save.
 - **Alone:** partly.
