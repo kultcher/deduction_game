@@ -56,6 +56,7 @@ still standing, is now read by the judge (the chosen evil or Marked, or the prom
 - **Outcomes unchanged:** 692 still hangs Merrin (day 2) and Constance (day 3) and reaches
   day 4; 42, 54875, 900 and 98933 are identical.
 - **Stability:** two captures were identical.
+- **Re-checked on main `cd3aeb4`** (after Argon's #181, merged into the branch): two fresh captures identical to each other and to this baseline, so it stands unchanged.
 
 ### Earlier baseline (Nov 16, later): `baseline_bb6f01c`
 
