@@ -50,7 +50,7 @@ static func view(g) -> Dictionary:
 			"text": receipt.text, "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
-			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; transmission/source modifiers need separate attribution" if activity.has("relay_source") else note
+			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; a challenge names its side (the passing-on or the original)" if activity.has("relay_source") else note
 			if activity.get("testimony_only", false):
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
