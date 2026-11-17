@@ -44,6 +44,7 @@ test_meeting_m2b
 test_meeting_m2c
 test_meeting_m2d
 test_new_case_memory
+test_npc_behaviour_1110
 test_npc_openness
 test_peer_role_gossip
 test_playtest_13910_dialogue
@@ -66,6 +67,7 @@ test_roles_secrets
 test_roles_shelter
 test_shared_model
 test_sighter_contest
+test_social
 test_town_note
 test_town_vibe
 test_triage_nov16
