@@ -71,7 +71,7 @@ func _ready() -> void:
 	_button(tools, "Save…", _save_dialog)
 	_button(tools, "Open…", _open_dialog)
 	_button(tools, "Mock jury", _show_jury)
-	_label(page, "Drag cards to arrange · drag empty space to pan · wheel to zoom · Link, then click a destination · right-click to unlink · Esc cancels linking", 15, "muted")
+	_label(page, "Drag cards to arrange · drag empty space to pan · shift-drag to select several · wheel to zoom · Link, then click a destination · right-click to unlink · Esc cancels linking", 15, "muted")
 	canvas = CanvasView.new()
 	canvas.name = "FreeformCanvas"
 	canvas.model = board
