@@ -402,6 +402,20 @@ func _promise_then_hanging(base_view: Dictionary, world: Dictionary) -> void:
 	# ...or a broken gift (poisoned or Delusional), which CaseEval prices as the report's
 	# error. Here the honest-content check above is what fails, so the report is false.
 	check(not Solver.Roles.fits(view, world, [promise], {}), "a good chosen's hanging leaves only a false promise (bluff, poison or delusion)")
+	# A Delusional Martyr (Codex, #183): in play the world where the Martyr is the Delusional
+	# holder keeps its weight; the false-report likelihood prices the promise, not an
+	# extra error. A Delusional bystander doesn't excuse a healthy Martyr.
+	var deluded: Dictionary = world.duplicate(true)
+	deluded.modifier = "delusional"
+	deluded.marked = -1
+	deluded.holders = 1 << 0
+	check(Solver.Roles.fit_weight(view, deluded, [promise], {}, {}, true) > 0.0, "a Delusional Martyr's promise survives the chosen's hanging (in play)")
+	var bystander: Dictionary = deluded.duplicate(true)
+	bystander.holders = 1 << 1
+	check(Solver.Roles.fit_weight(view, bystander, [promise], {}, {}, true) == 0.0, "a Delusional bystander doesn't excuse a healthy Martyr's promise")
+	var deluded_co: Dictionary = promise.duplicate(true)
+	deluded_co["content_only"] = true
+	check(Solver.Roles.fit_weight(view, deluded, [deluded_co], {}, {}, true) == 0.0, "the content-only mask still judges the promise's content")
 	# The same Martyr's outcome reading carries the check; the promise beside it isn't
 	# flagged, so one failure isn't priced as two false reports.
 	var outcome = _report("outcome2", "a", "martyr", {"target": "d", "evil": true}, 2)

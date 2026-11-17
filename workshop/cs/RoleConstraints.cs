@@ -59,6 +59,11 @@ internal static class RoleConstraintsKernel
     /// The card's content alone (ReadingChallenges' graded test): the source's alignment,
     /// the source's claimed role and any relayer are not checked.
     public const int FlagContentOnly = 1 << 16;
+    /// A Martyr's promise whose chosen was later hanged while the Martyr stood
+    /// (role_constraints.gd): it carries FlagMartyrEvil's check, except where the Martyr is
+    /// the world's Delusional holder in play, whose promise the false-report likelihood
+    /// already prices (Codex, #183).
+    public const int FlagMartyrPromise = 1 << 17;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
     public const int PoolGood = 0;
@@ -836,7 +841,9 @@ internal static class RoleConstraintsKernel
                     return 0.0;
                 }
                 martyrTargetToken = mToken;
-                if ((flags & FlagMartyrEvil) != 0)
+                bool deludedPromise = (flags & FlagMartyrPromise) != 0 && live && !contentOnly
+                    && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
+                if ((flags & FlagMartyrEvil) != 0 && !deludedPromise)
                 {
                     int target = cardInts[off + 16];
                     if (target < 0 || ((evil & (1 << target)) == 0 && (contentOnly || world.Marked != target)))
