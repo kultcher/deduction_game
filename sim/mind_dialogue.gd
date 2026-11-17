@@ -287,7 +287,12 @@ static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 		if fact.get("kind", "") == "alibi" and fact.get("source", "") == n.id and n.id in fact.get("subject", []):
 			if not had_account and not alternate:
 				# A first account, so nothing to stand by yet: their own alibi, as answer_night
-				# gave it in their voice (Michael, Nov 17).
+				# gave it in their voice (Michael, Nov 17). Its meaning is the plain statement.
+				statement = "I was at home %s." % when
+				for line in response.lines:
+					if line is Dictionary and line.get("speaker", "") == n.id:
+						text = str(line.get("text", ""))
+						break
 				break
 			statement = ("That sighting doesn't change where I was: at home %s." if alternate else "I was at home %s. I stand by that account.") % when
 			text = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "pressed_home_stand_alt" if alternate else "pressed_home_stand", statement, {"when": when}), n.dialogue_memory)
