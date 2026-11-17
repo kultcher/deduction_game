@@ -414,7 +414,8 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 - **System:** the role table: the event assigns the Martyr role and makes both people good.
 - **Strength:** the event is decisive for two people. The private report is weak until the event.
 - **Alone:** the event yes; the report no.
-- **Gaps:** a prior Martyr promise followed by a later execution of the chosen person isn't fully adapted yet.
+- **Promise, then the chosen hanged while the Martyr stood (Nov 17):** read like the Martyr's own outcome reading. The chosen registered evil (evil or Marked), or the promise is false: an evil Martyr's bluff, or a poisoned or Delusional Martyr (the report's false-teller worlds). Public events only. With the same Martyr's outcome reading about the same person in the set, that reading carries the check alone.
+- **Gaps:** the judge has no dated health: a Martyr healthy at the choice but poisoned at the hanging is priced as the promise's error, not as a poisoning on a particular night.
 
 ### A22. Sexton (tolled the bell)
 - **Source and timing:** Sexton, once per case (not night 0): may toll the bell and walk every parish. All Minion abilities are suppressed until the next night.

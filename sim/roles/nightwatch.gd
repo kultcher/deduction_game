@@ -80,6 +80,10 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 func generate_bluff_reading(w, n, plan: Dictionary, s: String, _mate, asked: Array) -> Dictionary:
 	var block: String = asked[0] if not asked.is_empty() else w.by_id[s].home_block
 	var seen: Array = []
+	# Teammates never reach this list: walker intel only ever names good people (own
+	# sightings in Evil.gather_night_intel; a told sighting of a teammate becomes a threat in
+	# Evil.intel_from_share). That's what "hiding teammates" in the log below means.
+	# Checked in tools/test_nightwatch_bluff_teammates.gd.
 	for k in n.intel:
 		var it: Dictionary = n.intel[k]
 		if it["kind"] == "walker" and it.get("night", -1) == w.day and it.get("block", "") == block and w.by_id[it["about"]].alive:
