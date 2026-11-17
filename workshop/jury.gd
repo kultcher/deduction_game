@@ -24,6 +24,11 @@ const Connections = preload("res://workshop/connections.gd")
 ## worlds, one pass for every person) or "legacy" (model v5's credibility-state mixture
 ## and per-person consequence loop), kept for offline comparison only.
 static var engine: String = "case_eval"
+## MOCK (purge phase 6b measurement, never merged): with MEASURE_6B set, each connections
+## refresh is redone with one of the four attention-limited signals reading every held card,
+## and the change in each person's requested suspicion is appended to MEASURE_6B's file.
+static var _6b_mode: String = ""
+static var _6b_path: String = OS.get_environment("MEASURE_6B")
 
 ## Within one jury run the view is fixed, so identical (case, listener) evaluations can
 ## be reused without hashing the view: the reply scores the same attended case for its
@@ -927,7 +932,9 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# Source trust and headlines read everything the listener holds, not just what this run
 	# attends to, so re-presenting held evidence (which shifts attention) can't move them.
 	var held: Array = Solver.selected(view, value).filter(func(c): return c.id not in attention.private_checks.rejected)
-	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
+	var held_case: Dictionary = attention.case.duplicate(true)
+	held_case.cards = held.map(func(c): return c.id)
+	var challenged = Support.ReadingChallenges.assess(view, held_case if _6b_mode == "floor" else attention.case, baseline, held if _6b_mode == "floor" else attended)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	var ev: Dictionary = _case_eval(view, scoped, eval_listener)
 	# The connections model (workshop/connections.gd; off by default): on a belief refresh
@@ -943,7 +950,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			weigher["player_credibility"] = baseline.player_credibility
 		connections = Connections.refresh(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}))
 		ev = Connections.overlay(ev, connections)
-	var protection = Protection.assess(view, attended, baseline)
+	var protection = Protection.assess(view, held if _6b_mode == "protection" else attended, baseline)
 	# The headline's own fatal check (say, accusing the listener) doesn't void what the
 	# evidence says about everyone else: each person gets their own direct check.
 	var invalid: bool = not attention.case.get("graph_errors", []).is_empty() or not Solver.validate_answers(view, attention.case).is_empty()
@@ -1014,7 +1021,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			alignment += dull * strength * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):
-			var pattern_case = attention.case.duplicate(true)
+			var pattern_case = (held_case if _6b_mode == "pattern" else attention.case).duplicate(true)
 			pattern_case.conclusion = {"type": "suspicious", "target": id, "at": value.conclusion.at}
 			pattern_case.cards = pattern_case.cards.filter(func(c): return c not in attention.private_checks.rejected)
 			circumstantial = 0.3 * _pattern(view, pattern_case, baseline).weight
@@ -1044,7 +1051,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				var case_cands: Dictionary = challenge.get("candidates", {})
 				if challenge.mode == "impaired" and case_cands.has(id):
 					net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
-		var own_check: Dictionary = attention.case.duplicate(true)
+		var own_check: Dictionary = (held_case if _6b_mode == "direct" else attention.case).duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"
 		if direct_fatal:
@@ -1124,6 +1131,22 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 				"evidence_difference": contribution, "exclusive_cards": exclusive, "alternative_remains": remaining, "note": note})
 	# Reason attribution is deferred (purge 2a): the inputs are kept and attribution runs
 	# only when a meeting or conversation first asks for a reason after this refresh.
+	if refresh and _6b_path != "" and _6b_mode == "" and not connections.is_empty():
+		var rows: Array = []
+		for mode in ["protection", "pattern", "floor", "direct"]:
+			_6b_mode = mode
+			var alt: Dictionary = _consequences_eval(view, value, baseline, headline, common_key, only, refresh)
+			_6b_mode = ""
+			for id in effects:
+				var d: float = float(alt.effects.get(id, {}).get("requested", 0.0)) - float(effects[id].requested)
+				if absf(d) > 0.0001:
+					rows.append({"mode": mode, "listener": str(baseline.get("id", "")), "person": id, "delta": snappedf(d, 0.0001),
+						"base": snappedf(float(baseline.suspicion.get(id, 0.1)) + float(effects[id].requested), 0.0001), "day": int(baseline.get("connections", {}).get("day", -1))})
+		var f := FileAccess.open(_6b_path, FileAccess.READ_WRITE) if FileAccess.file_exists(_6b_path) else FileAccess.open(_6b_path, FileAccess.WRITE)
+		if f != null:
+			f.seek_end()
+			f.store_line(JSON.stringify({"refresh": true, "listener": str(baseline.get("id", "")), "people": effects.size(), "rows": rows}))
+			f.close()
 	var refresh_reasons: Dictionary = {}
 	var reason_inputs: Array = [view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects] if refresh else []
 	Profiler.close(span)
