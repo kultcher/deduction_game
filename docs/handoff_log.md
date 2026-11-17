@@ -33,11 +33,13 @@ guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry
 - **The card's support note** no longer says relays "need separate attribution".
 - **The shared ledger** (`workshop/shared_ledger.gd`, Codex's #195 finding): two presented cases that challenge the same relay on different sides now count as conflicting alternatives, like two modes always did. Before, the later one silently replaced the earlier. The comparison is `SharedLedger.challenges_conflict`. Plain challenges carry no side, so they merge as before.
 
-### Wording
+### Wording (settled by Michael, Nov 17, via Seneschal)
 
-- **Settled by Michael (Nov 17, via Seneschal):** "The Medium lied or was misled" / "The dead person lied or was misled." They're in one place, `CanvasModel.RELAY_SIDE_TEXT`. He wrote the second with a full stop and the first without. The menu's challenge entries and the card's chips have no closing full stops, so both are used without one.
-- **A mismatch for Michael:** "The Medium ... was misled" reads as if a misled Medium is a choice. The judge (Quill, #191) accepts only a lie or a failed gift for the passing-on, since "misled" is about the reading itself. So on that side the card offers Lying and Poisoned only; a Medium whose gift failed is the nearest thing to "misled". Either the label or the judge's rule may want to change. That's Michael's call with Quill.
-- **The two chip tooltips are my drafts, not yet settled.** Passing-on: "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift." Original: "The Medium passed it on faithfully, but the dead person's own reading was wrong."
+- **The two sides:** "The Medium lied or their gift failed" / "The dead person lied or was misled". They're in `CanvasModel.RELAY_SIDE_TEXT`. Like the menu's other entries and the card's chips, neither has a closing full stop.
+- **The rule stays:** he kept Quill's rule (the Medium's side is a lie or a failed gift), so the Medium's label changed to match it. The first version, "lied or was misled", offered a choice the judge doesn't allow.
+- **Tooltips, both kept as drafted:**
+  - Medium's side: "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift."
+  - Dead person's side: "The Medium passed it on faithfully, but the dead person's own reading was wrong."
 
 ### Small calls made on Michael's behalf
 
