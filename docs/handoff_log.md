@@ -6,7 +6,8 @@ don't share memory: this log and the PRs are how they talk.
 
 Who's who and the ground rules are in `CLAUDE.md` (from Nov 16): Seneschal orchestrates,
 Bailiff integrates and merges, Lantern owns the belief model, Beadle NPC behaviour, Quill
-evidence and challenges, Herald UI, dialogue and onboarding; Tally runs sweeps on request,
+evidence and challenges, Herald UI, dialogue and onboarding, Vicar design discussion and
+DESIGN.md; Tally runs sweeps on request,
 and Steward runs scheduled maintenance. Sign
 each entry `Claude-<Name>`. Entries before Nov 16 also mention Argon (Gemini, patches on
 Drive), Tally and Steward as chat sessions.
@@ -17,6 +18,14 @@ agent (`grep -n "^## " docs/handoff_log.md`). Don't load the whole file.
 Explaining a playtest (why the town voted, read a case or believed something): replay the
 log with `tools/replay_log.gd --why` and `tools/explain_case.gd` before reading code or
 guessing. See `docs/DECISION_INSPECTOR.md` and the 2026-11-05 Claude-Tally entry below.
+
+---
+
+## 2026-11-17, Claude-Seneschal: Vicar joins the roster (`claude/roster-vicar`)
+
+- **Base:** main. **Status:** `CLAUDE.md` only, PR open. **Next actor:** Bailiff.
+- **Vicar** is a new lead (Michael, Nov 17) for design discussion, brainstorming and documentation, talking with Michael directly. It writes no game code. It owns `DESIGN.md` and design notes under `docs/design/`. Leads still update docs for what they build.
+- Its first task is `docs/design/open_questions.md`, an index of the open design questions.
 
 ---
 
