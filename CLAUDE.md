@@ -34,6 +34,8 @@ handoff log and PRs are how they talk, not Michael relaying.
 | **Beadle** | NPC behaviour: how beliefs become what NPCs say, do, vote and lie about. Nominations and votes, accusations and defences, disclosure and hiding a gift, evil-team play (bluffs, fabricated readings, the scapegoat plan, evil meetings), night movement and searching (mostly `sim/mind*.gd`, `sim/evil.gd`, `sim/social.gd`). Lantern owns the beliefs; Herald owns the wording. |
 | **Quill** | Evidence and challenges: reading challenges, the graded test, evidence types, the Test juror. |
 | **Herald** | What the player sees and reads: UI, the case board and Workshop UI, art integration, dialogue and voices (`docs/DIALOGUE_DESIGN.md`), and onboarding and tutorials once mechanics settle. |
+| **Vicar** (design) | Design discussion, brainstorming and documentation, with Michael directly. **Writes no game code.** Owns `DESIGN.md` (its shape and design reasoning; leads still update docs for what they build) and design notes under `docs/design/` (proposals, explorations, options awaiting a decision). Records Michael's decisions, dated, and tells Seneschal which lead should build them. |
+| **Coroner** (per playtest) | Playtest review: one fresh session per playtest, started by Seneschal. Replays the log at its own build, explains the decisive moments, and writes `docs/playtests/<seed>.md`, following `docs/playtests/README.md`. Routes bugs and balance findings to the owning lead, proposals to Seneschal, design questions to Vicar. Changes no game code. |
 | **Tally** (on request) | Balance sweeps and analysis. Run as a subagent or a fresh session when asked; not a standing session. |
 | **Steward** (scheduled) | Maintenance: a scheduled task, Monday and Thursday early morning (US Eastern). A STANDARD pass Monday, DEEP Thursday, following `docs/maintenance/README.md`. Opens a PR with `docs/maintenance/<date>.md` and any doc-only fixes; code findings go in the report for the owning lead. |
 
@@ -104,7 +106,9 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
 - **Tests:** a suite that needs a particular deal finds a seed with `tools/fixture_seeds.gd`
   rather than hard-coding one. A suite that checks the earlier belief model's mechanics
   pins it (`Connections.enabled = false`). New suites are `tools/test_*.gd`; add quick ones
-  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`.
+  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`, at their
+  alphabetical place (the list is kept sorted so that PRs don't all conflict on its last
+  line).
 - **Two failed attempts at the same problem:** stop and tell Michael, with the exact error.
 
 ## What you may decide, and what waits for Michael

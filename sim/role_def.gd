@@ -342,11 +342,22 @@ func fake_medium_reading(_w, _n, _dd, _s: String, _sg, _d, _goods: Array, _other
 	return {}
 
 
-## Before a fabrication check asks this bluff rule again (FabricationCheck rework): the
-## retry is the same night's single use of the gift, so a rule that marks the use (the
-## Dowser's `dowsed_day`, the Martyr's one choice) lets go of the mark here (Codex P2, #188).
-func release_bluff_use(_w, _n, _plan: Dictionary) -> void:
-	pass
+## Other plausible readings this gift's bluff could give instead of `entry` (data and its
+## spoken text, in this role's own words), for a liar whose first reading would point the
+## town at itself or a teammate (FabricationCheck; Michael, Nov 17): [{"entry", "why"}].
+## Default: none, so the reading is held back and checked again the next day.
+func bluff_alternatives(_w, _n, _plan: Dictionary, _s: String, _mate, _entry: Dictionary) -> Array:
+	return []
+
+
+## People a bluff can name with nothing to fear: alive, not the teller, not on its team.
+func bluff_bystanders(w, n) -> Array:
+	return w.living().filter(func(m): return m != n and not m.is_evil()).map(func(m): return m.id)
+
+
+## A few of `alts`, in a seeded order (each is judged in full, so the list stays short).
+func cap_alternatives(w, alts: Array, limit: int = 6) -> Array:
+	return w.shuffled(alts).slice(0, limit)
 
 
 ## Hook called in `Evil.make_fake_info` when an evil bluffer has agreed to a player gift request.
