@@ -48,6 +48,8 @@ These are the ones under discussion now, roughly by how much they shape other wo
 - **Proposal on the table:** the judge keeps one slot for the self-unaware kinds (Marked,
   Delusional, Sleepwalker); the kinds the holder knows about become ordinary claims, with a
   per-case hypothesis so the player can argue an unclaimed one.
+- **Backlogged** (Michael, Nov 17: smaller items first; BACKLOG section 4, "The secrets
+  rework", [open]), with a staged plan in the note's section 9.
 - **Evidence:** `docs/design/secrets_rework.md` (the options, costs and the Saint and Baron
   examples); BACKLOG section 4 for the Muddler (#180).
 - **Builds:** Lantern and Quill (the judge), Beadle (claiming, hiding, bluffing), Herald

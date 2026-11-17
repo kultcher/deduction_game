@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17): `baseline_1c9ac48`
+### Current baseline (Nov 17, later): `baseline_a0a378d`
+
+`tools/golden/baseline_a0a378d/` is the capture from `claude/beadle-fabrication-check` at
+`a0a378d` (main `45ebd82` merged in): evil fabrications are checked against the public
+readings before they're told (`sim/fabrication_check.gd`).
+- **Divergence from `baseline_1c9ac48`:** every seed from record 1, because each
+  fabrication now carries its check (`vet`: the lift it would give the liar's team, and the
+  outcome) in the evil member's and its shadow's readings. Only one fabrication in the five
+  games is self-incriminating: on 900, Isolde (bluffing Gravedigger) would have said
+  Constance, a good woman just hanged, was the Scion, which beside the public record lifts
+  the town's suspicion of Isolde by about 0.8. She notices and holds it back a day.
+- **Outcomes unchanged:** 42 (Agnes hanged day 3, good wins), 54875 (Dorian day 2,
+  Constance day 3, good wins), 692 (Merrin day 2, Constance day 3, open at day 4), 900
+  (Constance day 2, open at day 4), 98933 (Merrin day 3, open at day 4); every hanging's
+  votes are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17): `baseline_1c9ac48`
 
 `tools/golden/baseline_1c9ac48/` is the capture from `claude/martyr-alternatives` at
 `1c9ac48`: a Martyr's public promise followed by the chosen's hanging, with the Martyr

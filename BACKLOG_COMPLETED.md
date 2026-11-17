@@ -3,6 +3,29 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 17, 2026 (Claude-Beadle, `claude/beadle-fabrication-check`)
+
+- **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
+  said "Greta and Lian shared an alignment"; with Lian's public Archivist reading ("Greta
+  or Isolde is the Breathstealer") and Lian's death, that cleared Greta and convicted
+  Isolde. No bluff rule reads other people's public readings. Michael (Nov 16), as
+  Claude-Beadle proposed: check the fabrication against the public cards; if it would
+  noticeably raise suspicion of the liar or a teammate, a roll scaled by Insight decides
+  whether the liar notices, and a liar who notices reworks the reading or holds it back
+  that day. Low-Insight liars still slip. Report in game terms how often bluffs are
+  reworked or held, and how often self-incriminating ones still get through. Draft
+  numbers: margin 0.10, noticing 0.3 + 0.6 × Insight. Owner Beadle. [decided]
+
+  > **Built Nov 17 (Claude-Beadle):** `sim/fabrication_check.gd`. Each fabrication is judged
+  > beside every shared reading by a listener who knows only the public record, with and
+  > without it; a lift above 0.10 in the town's chance that the liar or a living teammate is
+  > evil is self-incriminating. Noticing: 0.3 + 0.6 × Insight; noticed, it asks its bluff
+  > rule once more and keeps a safe answer, or holds the reading back a day (told unchanged
+  > after). Night Watch and Medium fabrications aren't checked (they become sightings in
+  > the judge). Measured on 20 ten-NPC passive games: 11% of fabrications were
+  > self-incriminating; 4 in 5 of those were held back, 1 in 5 slipped through; none was
+  > reworked. Golden re-baselined (`baseline_a0a378d`), outcomes unchanged.
+
 ## Settled Nov 16, 2026 (Claude-Beadle, `claude/beadle-nightwatch-teammates`)
 
 - **The Night Watch bluff doesn't hide teammates.** (Claude-Beadle, Nov 16; read from

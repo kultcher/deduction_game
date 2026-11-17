@@ -274,17 +274,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
 
-- **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,
-  said "Greta and Lian shared an alignment"; with Lian's public Archivist reading ("Greta
-  or Isolde is the Breathstealer") and Lian's death, that cleared Greta and convicted
-  Isolde. No bluff rule reads other people's public readings. Michael (Nov 16), as
-  Claude-Beadle proposed: check the fabrication against the public cards; if it would
-  noticeably raise suspicion of the liar or a teammate, a roll scaled by Insight decides
-  whether the liar notices, and a liar who notices reworks the reading or holds it back
-  that day. Low-Insight liars still slip. Report in game terms how often bluffs are
-  reworked or held, and how often self-incriminating ones still get through. Draft
-  numbers: margin 0.10, noticing 0.3 + 0.6 × Insight. Owner Beadle. [decided]
-
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
   seen out at night, and nobody has claimed Night Watch). This opens double claims (the
@@ -592,6 +581,15 @@ Candidates for a unified retuning proposal, not approved changes.
   help evil. Hunch: a silenced person keeps their vote and has usually spread what they
   knew already, so taking a voice costs good little. Not run: the remote and lasting
   versions in passive cells. No decision yet.
+
+- **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
+  [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
+  self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
+  ones the holder knows about become ordinary claims, which evil can bluff, and the player
+  can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
+  Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
+  plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
+  it frees could go to telling Minions apart. [open]
 
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
   Lovers' relationship mods, including the Lovers downside (when one dies, the other

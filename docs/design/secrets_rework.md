@@ -1,6 +1,6 @@
 # Secrets: a rework (design note)
 
-**Status: exploring. Nothing decided beyond the direction below; nothing built.** Started
+**Status: backlogged (Michael, Nov 17; BACKLOG section 4). Nothing decided beyond the direction below; nothing built.** Started
 Nov 17 from a talk between Michael and Claude-Vicar. Whoever builds it: Lantern and
 Quill (the judge), Beadle (how NPCs claim, hide and bluff), Herald (wording, UI).
 Performance figures here are counts read from the code, not timings; Argon would measure.
@@ -186,11 +186,33 @@ A Minion whose presence adds secrets to the town. Can the extras come from the f
 6. **The freed budget,** if any: Minion identities, larger towns, or speed.
 7. **The Lovers' social cost,** now that they're a knowing kind.
 
-## 9. Checks before deciding
+## 9. The staged plan (for when it's picked up)
 
-- **Lantern and Quill:** can the judge take a per-case either/or for one person (3a)?
-  What breaks when the Lovers stop being enumerated?
-- **Argon:** time a judgement with the Lovers dropped from the arrangements, and with no
-  secrets at all, to size the real saving.
-- **Tally:** the Lovers' win rate, and secret-holder outcomes generally, from existing
-  sweep records.
+Backlogged by Michael on Nov 17 (BACKLOG section 4, "The secrets rework"): smaller backlog
+items first. The plan below is Seneschal's, as put to him.
+
+**Stage 1: feasibility reports.** Read-only; they can run in parallel.
+- **Lantern and Quill:**
+  - The per-case either/or (3a): can a case carry it? How does it interact with stored
+    cases that fade and are re-weighed? What does it cost?
+  - What reads the Lovers if they leave the enumeration: `Solver.lovers_needs` (#162),
+    the role checks, tests, golden?
+  - Where would the general allowance plug in without counting twice with 3a?
+- **Quill:** an audit of the gifts that assume a secret means good (the Rumormonger, the
+  Chronicler, and the role checks in `sim/roles/*.gd`).
+- **Beadle:** how much of the hide-a-gift and claim-under-pressure code carries over to
+  knowing secrets, and what evil needs to bluff one with a logged reason.
+- **Argon:** time a judgement with the Lovers dropped, and with no secrets.
+- **Tally:** the Lovers' win rate and secret-holder outcomes, from existing sweep records.
+
+**Stage 2: a disruption prototype** on a `mock/` branch.
+- The Lovers become a knowing claim that evil can bluff, with no enumeration.
+- The general allowance is run at none and at small.
+- Paired sweeps against main on the same seeds compare win rates, how decisive night
+  sightings are, wrongful hangings, and solvability.
+- Then Michael playtests it.
+
+**Stage 3:** Michael and Vicar settle section 8, then Seneschal briefs the builders.
+
+**Timing:** decide it alongside the Breathstealer overhaul, since the room freed here could
+go to telling Minions apart, which the overhaul needs.
