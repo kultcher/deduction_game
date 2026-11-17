@@ -582,6 +582,15 @@ Candidates for a unified retuning proposal, not approved changes.
   knew already, so taking a voice costs good little. Not run: the remote and lasting
   versions in passive cells. No decision yet.
 
+- **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
+  [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
+  self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
+  ones the holder knows about become ordinary claims, which evil can bluff, and the player
+  can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
+  Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
+  plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
+  it frees could go to telling Minions apart. [open]
+
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
   Lovers' relationship mods, including the Lovers downside (when one dies, the other
   withdraws visibly). [open; Lovers downside decided]
