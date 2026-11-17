@@ -92,6 +92,15 @@ func _init() -> void:
 	print("impaired candidates: transmission %s, original %s" % [str(ti.get("candidates", {}).keys()), str(oi.get("candidates", {}).keys())])
 	check(ti.get("candidates", {}).has("d") and not ti.get("candidates", {}).has("c"), "a failed passing-on points at those out on the Medium's night")
 	check(oi.get("candidates", {}).has("c") and not oi.get("candidates", {}).has("d"), "a failed reading points at those out on the reader's night")
+	# A relayed morning reading (an Executor's) carries night -1: blaming the dead reader
+	# names the day it was read (Codex, #195).
+	var morning: Dictionary = relay.duplicate(true)
+	morning.night = -1
+	morning.role = "executor"
+	morning.data = {"target": "e", "role": "clerk"}
+	morning.observed_at = {"day": 2, "phase": "morning"}
+	var mo: Dictionary = _assess(view.duplicate(true), morning, {"mode": "lying", "supports": [], "attribution": "original"}, listener)
+	check(mo.get("source", "") == "a" and int(mo.get("night", -1)) == 2, "a relayed morning reading's challenge names the day it was read (%d)" % int(mo.get("night", -1)))
 	# A plain report is unchanged: no attribution needed, its teller is its source.
 	var plain: Dictionary = relay.duplicate(true)
 	for k in ["relay_source", "relay_observed_at", "relay_role", "logical_origin", "accuracy_origin"]:
