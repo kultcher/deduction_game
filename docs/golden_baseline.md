@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, Delusional readings): `baseline_928cb8b`
+### Current baseline (Nov 17, 89077 wording): `baseline_42d3644`
+
+`tools/golden/baseline_42d3644/` is the capture from `claude/herald-89077-wording` at
+`42d3644` (main `babb7d6` merged in): playtest 89077's wording fixes. Nights are spoken as
+ordinals (the Warden, the Medium, a home alibi for an earlier night), and a Lamplighter's
+count given as a reason says "my count of folk abroad that night doesn't square with what
+we've been told" instead of "...leaves them among the likeliest" (Michael, Nov 17).
+- **Divergence from `baseline_928cb8b`:** text only, on three seeds; every changed field
+  is a string and record counts are the same.
+  - 54875 from record 180 (day 3): Isolde's three Lamplighter-count reasons against Edda.
+  - 692 from record 173 (day 3): Agnes's Medium reading, "...on the Docks on night 0" now
+    "...the night before you arrived".
+  - 98933 from record 134 (day 2): Bartholomew's nomination of Dorian gives the count line.
+  - 42 and 900: identical.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_928cb8b`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, Delusional readings): `baseline_928cb8b`
 
 `tools/golden/baseline_928cb8b/` is the capture from `claude/delusional-double-charge` at
 `928cb8b` (main `730897c` merged in): in play a world where a reading's teller is the
