@@ -60,8 +60,9 @@
 ##   an Augur day the Augur reading and that day's sightings
 ##   a Psychologist reading and its two statements
 ##   a trace      with the profile cards as context
-##   a double claim  every claim of one gift when two or more people claim it, with the
-##                other held cards that name a claimant (not night or trace cards) as context
+##   a double claim  every claim of one gift when two or more people claim it, and the
+##                claimants' own readings of that gift; the other held cards that name a
+##                claimant (not night or trace cards) are context
 ##
 ## The demon-type declaration decides how movement is read (`row`):
 ##   "none"    no declaration on a script with both kinds: each night by itself. Inside a
@@ -581,12 +582,21 @@ static func items(by_id: Dictionary, held: Array, people: Array, row_name: Strin
 			claimants[str(by_id[id].get("source", ""))] = true
 		if claimants.size() < 2:
 			continue
+		# A claimant's own reading of the gift declares the gift too, so it would carry the
+		# clash into the context and the pairing would subtract it away (Codex, #198). Such a
+		# reading is counted in the pairing instead (if no other pairing holds it) and kept
+		# out of the context either way.
+		var declares := func(c: Dictionary) -> bool:
+			return c.kind == "report" and str(c.get("role", "")) == r and claimants.has(str(c.get("source", "")))
+		for id in held:
+			if not placed.has(id) and not is_night.call(by_id[id]) and declares.call(by_id[id]) and id not in ids:
+				ids.append(id)
 		for id in ids:
 			placed[id] = true
 		var ctx: Array = []
 		for id in held:
 			var c: Dictionary = by_id[id]
-			if id in ids or is_night.call(c) or c.kind in TRACE_KINDS:
+			if id in ids or is_night.call(c) or c.kind in TRACE_KINDS or declares.call(c):
 				continue
 			if not names_memo.has(id):
 				names_memo[id] = _names(by_id, [id], people)

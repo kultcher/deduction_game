@@ -16,7 +16,7 @@
   follows what else the listener holds. The judge already knows a gift has one holder;
   nothing about any gift is special-cased. The Why tool labels it "Every Seer claim, read
   together (2 cards)" (wording is a draft for Michael, matching the other pairing labels).
-- **Measured** (`tools/test_double_claim.gd`, 7 checks, in `ci_fast_suites`; 3 fail without
+- **Measured** (`tools/test_double_claim.gd`, 8 checks, in `ci_fast_suites`; 3 fail without
   the pairing). A good listener, two others claiming Seer:
   | | First claimant | Second claimant |
   |---|---|---|
@@ -32,6 +32,11 @@
   (`World.bluffs`), so today a double claim needs something else to go wrong. The pairing
   is ready for "Evil backs into a bluff" (BACKLOG, [decided], Beadle's), which opens
   double claims.
+- **Codex on #198:** a claimant's own reading of the gift declares the gift too, so with
+  both claimants' readings in the context the pairing subtracted the clash away and added
+  nothing. Those readings are now counted in the pairing (unless another pairing holds
+  them) and kept out of its context. New check in `test_double_claim` (8 checks): with both
+  claimants' Seer readings held, the pairing adds +0.97 / +1.14 log-odds (0 before).
 - **Cost:** one more item per double-claimed gift; nothing when there isn't one.
 - **Checked:** `ci_fast_suites` 65/65; golden twice, identical to each other and to
   `baseline_a0a378d` at `--tol 0`.

@@ -95,5 +95,23 @@ func _init() -> void:
 	Mind.hear_claim(x.w, x.L, x.Y, "archivist" if x.gift != "archivist" and x.L.role != "archivist" else "clerk", 0.5, "public")
 	var e2: float = Mind.susp(x.L, x.X)
 	check(absf(e2 - e1) < 0.05, "a claim of a different gift doesn't raise the first claimant (%.3f -> %.3f)" % [e1, e2])
+	# 6. Both claimants also share a reading of the gift (Codex, #198): a claimant's reading
+	# declares the gift too, so the clash must still count, not vanish into the context.
+	var y: Dictionary = _setup(5512)
+	var r0: Array = _susp(y)
+	var gift_reading := func(teller: String, night: int) -> Dictionary:
+		return {"day": night, "phase": 0, "role": y.gift, "data": {"pair": [y.Z, y.D.id], "yes": false}, "text": "%s reading test" % y.gift}
+	for who in [y.X, y.Y]:
+		Mind.hear_claim(y.w, y.L, who, y.gift, 0.5, "public")
+	Mind.apply_info(y.w, y.L, y.w.by_id[y.X], gift_reading.call(y.X, 1), 0.5)
+	Mind.apply_info(y.w, y.L, y.w.by_id[y.Y], gift_reading.call(y.Y, 2), 0.5)
+	var r1: Array = _susp(y)
+	print("both claim and each shares a reading of the gift: %.3f / %.3f (from %.3f / %.3f)" % [r1[0], r1[1], r0[0], r0[1]])
+	var pair_lean: Dictionary = {}
+	for it in y.g._workshop_evaluations.get(y.L.id + ":good", {}).get("proposal", {}).get("connections", {}).get("items", []):
+		if str(it.key) == "claims:" + y.gift:
+			pair_lean = it.lean
+	print("the pairing adds %+.2f / %+.2f log-odds" % [float(pair_lean.get(y.X, 0.0)), float(pair_lean.get(y.Y, 0.0))])
+	check(float(pair_lean.get(y.X, 0.0)) > 0.3 and float(pair_lean.get(y.Y, 0.0)) > 0.3, "the clash still counts when each claimant has also shared a reading of the gift: the pairing raises both")
 	print("Double claim: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
