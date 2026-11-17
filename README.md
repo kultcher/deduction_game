@@ -212,8 +212,9 @@ flavoured hint at the kind of gift (night sight, shelter, the dead...), the gift
 or the gift and its readings. `ask are <gift>` guesses; a wrong guess costs a little
 trust. Daytime questions are answered truthfully; night accounts may be lies. A gift-holder
 who tells you their night's errand (a Confessor's visit, the lamp route, a Medium's hearth)
-also says what the gift showed them that night, says they're keeping it back for now, or
-says it showed nothing; `ask gift` is what gets a held-back result out of them.
+also says what the gift showed them that night (if they'd tell you their readings today,
+the same willingness as `ask gift`), says they're keeping it back for now, or says it
+showed nothing.
 `ask about <gift>` asks who claims it. `offer ward` / `offer vigil` promise to protect
 or watch over them tonight: keeping the promise builds trust, breaking it costs more.
 

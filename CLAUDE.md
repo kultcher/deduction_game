@@ -6,11 +6,13 @@ developer; agents do the coding, testing and all of Git.
 
 ## Read first
 
-1. The newest entries in `docs/handoff_log.md` (newest first). The Nov 16 final handoffs
-   from Bailiff, Lantern and Quill carry what the earlier chat sessions knew. The log is
-   over 3,000 lines: read the top few entries (the first ~300 lines), then search for your
-   topic or agent name (`grep -n "^## " docs/handoff_log.md` lists every entry). Don't
-   load the whole file.
+1. The newest handoff entries in `docs/handoff/`, one file per entry, named
+   `<YYYY-MM-DD-HHMM>-<agent>-<topic>.md` so they sort by time
+   (`ls docs/handoff | sort -r | head` lists the newest). Read the newest few, then search
+   for your topic or agent name. Entries before Nov 17 are in `docs/handoff_log.md`, which
+   is frozen; the Nov 16 final handoffs from Bailiff, Lantern and Quill there carry what
+   the earlier chat sessions knew. It's over 3,000 lines: read its top entries or search
+   it, but don't load the whole file.
 2. `docs/migration_notes.md`: Michael's direction for the Claude Code move, and an audit of
    leftovers from earlier purges.
 3. `BACKLOG.md` for what's next, `DESIGN.md` for how each system works and why,
@@ -50,7 +52,7 @@ handoff log and PRs are how they talk, not Michael relaying.
   `Argon`, and Bailiff reviews and merges its PRs. Speed changes must be zero drift (golden
   identical at `--tol 0`, `Connections.cache_verify` clean). Claude sessions stay off
   performance work. Lantern reviews any Argon change that would alter what NPCs believe,
-  not just how fast. When Argon and a lead touch the same files, the handoff log says
+  not just how fast. When Argon and a lead touch the same files, a handoff entry says
   which PR merges first. The older route still works as a backup: a zip of full files plus
   a manifest and `base_commit` on Drive, which Bailiff unpacks on a branch from that commit.
 
@@ -94,9 +96,12 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
 - **Git:** never force-push, never delete remote branches (Michael does), never rewrite
   main. Branches are `claude/<topic>`; `mock/<topic>` is for experiments that must never
   merge. Commit everything you mean to keep; never commit `tools/_probe*` scripts.
-- **One handoff entry per PR** at the top of `docs/handoff_log.md`, signed with your agent
-  name (`Claude-<Name>`): base, status, next actor, what changed and why, what you
-  measured and on what.
+- **One handoff entry per PR,** as a new file in `docs/handoff/`, named
+  `<YYYY-MM-DD-HHMM>-<agent>-<topic>.md` (UTC time; agent and topic in lower case, joined by
+  hyphens, e.g. `2026-11-17-0530-quill-lie-severity.md`). Sign it with your agent name
+  (`Claude-<Name>`): base, status, next actor, what changed and why, what you measured and
+  on what. Never edit another PR's entry and never append to `docs/handoff_log.md`; a
+  follow-up gets its own file. One file per entry is what keeps PRs from conflicting.
 - **Tests:** a suite that needs a particular deal finds a seed with `tools/fixture_seeds.gd`
   rather than hard-coding one. A suite that checks the earlier belief model's mechanics
   pins it (`Connections.enabled = false`). New suites are `tools/test_*.gd`; add quick ones
