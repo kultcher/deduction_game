@@ -1079,12 +1079,13 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 	for c in cards:
 		card_sig.append([c.get("id", ""), c.get("kind", ""), c.get("source", ""), c.get("role", ""), c.get("hearing_weight", 1.0), c.has("relay_source"), c.get("quoted", false)])
 	var live: bool = Domain.live(view)
-	var neutral_key: int = hash([cc.key, "ra_neutral", live, card_sig])
-	if not _fits_cache.has(neutral_key):
+	var neutral_ref: Array = [cc.key, cc.rep, "ra_neutral", live, card_sig]
+	var neutral_key: int = hash(neutral_ref)
+	if not _fits_cache.has(neutral_key) or _fits_cache[neutral_key].ref != neutral_ref:
 		if _fits_cache.size() > 256:
 			_fits_cache.clear()
-		_fits_cache[neutral_key] = CaseEval._fits_over(view, cc, cards, {}, range(nc))
-	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
+		_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": CaseEval._fits_over(view, cc, cards, {}, range(nc))}
+	var neutral: PackedFloat64Array = _fits_cache[neutral_key].out
 	var personal: Dictionary = {
 		"self": knowledge.get("self", ""),
 		"own_role": knowledge.get("own_role", ""),
@@ -1094,17 +1095,18 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 		personal["public_roles"] = knowledge.public_roles
 	var fits: PackedFloat64Array = neutral
 	if personal.own_role != "" or not personal.own_outings.is_empty() or not personal.get("public_roles", {}).is_empty():
-		var p_key: int = hash([cc.key, "ra_personal", live, card_sig, personal])
-		if not _fits_cache.has(p_key):
+		var p_ref: Array = [cc.key, cc.rep, "ra_personal", live, card_sig, personal]
+		var p_key: int = hash(p_ref)
+		if not _fits_cache.has(p_key) or _fits_cache[p_key].ref != p_ref:
 			if _fits_cache.size() > 256:
 				_fits_cache.clear()
-				_fits_cache[neutral_key] = neutral
+				_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 			var open: Array = []
 			for c_idx in range(nc):
 				if neutral[c_idx] > 0.0:
 					open.append(c_idx)
-			_fits_cache[p_key] = CaseEval._fits_over(view, cc, cards, personal, open)
-		fits = _fits_cache[p_key]
+			_fits_cache[p_key] = {"ref": p_ref.duplicate(true), "out": CaseEval._fits_over(view, cc, cards, personal, open)}
+		fits = _fits_cache[p_key].out
 	return _apply_curse_good(view, cc, fits, knowledge)
 
 
