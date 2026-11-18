@@ -22,7 +22,7 @@
   night-0 reading naming two good people, poison chance 5%): the reader's chance of being evil,
   with the call weighed against without it: even trust 43% → 42%; trust 0.7 42% → 40% (doubt
   11%); trust 0.9 42% → 35% (doubt 32%). One call moves a listener a few points; no sheep.
-- **Golden:** the golden player presents no cases, so this shouldn't move golden beyond #232's
-  own change; checked when #232's re-baseline lands.
+- **Golden: zero drift.** Identical at `--tol 0` on all five seeds to #232 alone (`a03c68a`):
+  the golden player presents no cases.
 - **Tests:** new suite added to the fast list; the suites that touch source doubt and the poison
   chance pass.
