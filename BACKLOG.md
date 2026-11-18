@@ -948,7 +948,8 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
   its target. Moves golden. Michael (Nov 17): fix. For the first victim, the bluff picks
   a night that can actually frame (not night 0, when the Demon never walks), or makes a
-  different claim. Owner Beadle. **[decided]**
+  different claim. Owner Beadle. **[decided]** Built (Nov 18, `claude/beadle-medium-night0`):
+  the first victim's frame names the night they died; an empty relay never names the scapegoat.
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
