@@ -11,12 +11,17 @@
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const History = preload("res://workshop/live_history.gd")
+
+## Measurement switch (on in play): a good listener's small doubt that its own gift is
+## Delusional (DELUSIONAL_SELF_DOUBT, derive). Tests turn it off to compare.
+static var delusional_self_doubt: bool = true
 
 
 static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind: String = "reading") -> float:
@@ -222,6 +227,32 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
 		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
 
+	# "Is my gift Delusional?" (Michael, Nov 17). With the secret on the script a good
+	# listener's own gift might give it wrong readings without it knowing, so each night of
+	# its own readings carries a small honest doubt (DELUSIONAL_SELF_DOUBT), the way its home
+	# nights carry the Sleepwalker's. Honest, so it reaches both the role check and the
+	# readings' weight (measured Nov 17: a Clerk's, Seer's or Archivist's reading softens
+	# through its weight, a Dowser's, Surveyor's or Warden's through the role check), never a
+	# charge of lying. Its sightings and alibis aren't gift readings. A Medium's gift results
+	# carry the dead person as source and the Medium as relay_source; they're keyed, as any
+	# relay's reliability is, by the Medium and the night it heard them. Another Medium's
+	# relayed copy of the listener's reading isn't the listener's gift, so it's left alone.
+	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false) and could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
+		var d_self: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			var n_self: int = -1
+			if str(c.get("relay_source", "")) == self_id:
+				n_self = int(c.get("relay_observed_at", {}).get("day", -1))
+			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
+				n_self = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			if n_self < 0:
+				continue
+			var k_self: String = "%s:%d" % [self_id, n_self]
+			pre_eval[k_self] = maxf(float(pre_eval.get(k_self, 0.0)), d_self)
+			honest[k_self] = maxf(float(honest.get(k_self, 0.0)), d_self)
+
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})
 	if not rc_case.get("reading_challenges", {}).is_empty():
@@ -288,3 +319,18 @@ static func _arg_doubt(ledger: Dictionary, owned_map: Dictionary, src: String, n
 			"unreliable", "lied":
 				out = maxf(out, minf(0.5 * wgt, 0.9))
 	return out
+
+
+## Whether the deal's placement rules (ScriptDef.PLACEMENT_RULES) let a holder of `role`
+## carry `secret`: a Chronicler or Rumormonger never holds the Delusional secret, so knowing
+## its own gift rules out doubting itself that way. An unknown role could hold it.
+static func could_hold_secret(role: String, secret: String) -> bool:
+	if role == "" or not C.has_role_def(role):
+		return true
+	var def = C.role_def(role)
+	for rule in ScriptDef.PLACEMENT_RULES:
+		if secret in rule.get("except", []) or (rule.has("only") and secret not in rule.only):
+			continue
+		if bool(def.get(str(rule.not_on_flag))):
+			return false
+	return true

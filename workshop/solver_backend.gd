@@ -7,6 +7,7 @@ extends RefCounted
 static var _cs_bridge: Variant = null
 static var _cs_probed: bool = false
 static var _universe_handles: Dictionary = {}
+static var _sub_universe_handles: Dictionary = {}
 
 # --- Slice C0 / C0b Microsecond Stage Timers & Boundary Call Counters ---
 static var profiling_enabled: bool = false
@@ -49,6 +50,7 @@ static func is_csharp_available() -> bool:
 
 static func clear_context() -> void:
 	_universe_handles.clear()
+	_sub_universe_handles.clear()
 	var b = _bridge()
 	if b != null:
 		b.ClearContext()
@@ -105,12 +107,17 @@ static func get_universe_handle(u_key: String, universe: Array) -> int:
 static func get_sub_universe_handle(sub_key: String, base_handle: int, indices: PackedInt32Array) -> int:
 	if base_handle < 0 or sub_key == "":
 		return -1
-	if _universe_handles.has(sub_key):
-		return int(_universe_handles[sub_key])
+	var bucket: Array = _sub_universe_handles.get(sub_key, [])
+	for entry in bucket:
+		if int(entry.base) == base_handle and entry.indices == indices:
+			return int(entry.handle)
 	record_boundary_call("SolverContext.RegisterIndexedSubUniverse", 0)
-	var h: int = int(_bridge().RegisterIndexedSubUniverse(sub_key, base_handle, indices))
+	# Disambiguate C# PackedUniverseByKey on sub_key collision while preserving fast lookup.
+	var reg_key: String = sub_key if bucket.is_empty() else "%s#%d" % [sub_key, bucket.size()]
+	var h: int = int(_bridge().RegisterIndexedSubUniverse(reg_key, base_handle, indices))
 	if h >= 0:
-		_universe_handles[sub_key] = h
+		bucket.append({"base": base_handle, "indices": indices.duplicate(), "handle": h})
+		_sub_universe_handles[sub_key] = bucket
 	return h
 
 # --- Re-Entrant Exclusive / Inclusive Profiling Helpers ---

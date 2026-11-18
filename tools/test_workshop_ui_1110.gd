@@ -47,40 +47,53 @@ func _run() -> void:
 	drawer.open(0.6)
 	await process_frame
 	var editor = drawer.editor
-	var nums: Array = g.board.filter(func(c): return c.kind in ["sighting", "location"] or c.get("source", "") == "player").map(func(c): return c.n).slice(0, 3)
+	# Three sighting cards built by hand, so the checks below never depend on what the deal
+	# happens to put on the board (Michael, Nov 18).
+	var nums: Array = []
+	var people: Array = g.w.npcs.slice(0, 3)
+	for i in range(3):
+		var who = people[i]
+		nums.append(g.add_card({"kind": "sighting", "subject": [who.id], "block": "square", "loc": "tavern", "day": 1, "phase": C.MORNING,
+			"source": "player", "text": "You saw %s at the tavern, day 1 Morning." % who.name}))
+	cv.refresh()
+	await process_frame
 	for num in nums:
 		editor.add_evidence(num)
 	var ev_ids: Array = editor.board.nodes.keys().filter(func(k): return editor.board.nodes[k].kind == "evidence")
-	_check(ev_ids.size() >= 2, "cards on the canvas (%d)" % ev_ids.size())
-	if ev_ids.size() >= 2:
-		var canvas = editor.canvas
-		canvas.group = ev_ids.slice(0, 2)
-		var before: Array = canvas.group.map(func(k): return editor.board.nodes[k].at.duplicate())
-		canvas.drag = canvas.group[0]
-		canvas.last_mouse = Vector2(100, 100)
-		var mv := InputEventMouseMotion.new()
-		mv.position = Vector2(160, 130)
-		canvas._gui_input(mv)
-		canvas.drag = ""
-		var moved: bool = true
-		for i in range(2):
-			var now = editor.board.nodes[canvas.group[i]].at
-			moved = moved and absf(now[0] - before[i][0]) > 1.0
-		_check(moved, "dragging one card of a box selection moves the whole group")
-		# Unlink all: link the first card to two others, then unlink all from it.
-		var prem: Array = editor.board.nodes.keys().filter(func(k): return editor.board.nodes[k].kind == "premise")
-		editor.board.connect_cards(ev_ids[0], prem[0])
-		if ev_ids.size() >= 3:
-			editor.board.connect_cards(ev_ids[2], ev_ids[0])
-		editor.context_id = ev_ids[0]
-		editor._context_action(4)
-		_check(not editor.board.links.any(func(e): return e.from == ev_ids[0] or e.to == ev_ids[0]), "Unlink all leaves the card with no links")
-		# Remove the group in one step, then undo.
-		var gids: Array = ev_ids.slice(0, 2)
-		editor.remove_nodes(gids)
-		_check(gids.all(func(k): return not editor.board.nodes.has(k)), "Delete removes the whole box selection")
-		editor._undo_remove()
-		_check(gids.all(func(k): return editor.board.nodes.has(k)), "and one undo brings them all back")
+	_check(ev_ids.size() >= 3, "three cards on the canvas (%d)" % ev_ids.size())
+	if ev_ids.size() < 3:
+		# A missing precondition fails the suite outright rather than skipping the checks.
+		push_error("FAIL: precondition: expected 3 cards on the canvas, got %d" % ev_ids.size())
+		print("%d checks, %d failed" % [_checks, _fails])
+		quit(1)
+		return
+	var canvas = editor.canvas
+	canvas.group = ev_ids.slice(0, 2)
+	var before: Array = canvas.group.map(func(k): return editor.board.nodes[k].at.duplicate())
+	canvas.drag = canvas.group[0]
+	canvas.last_mouse = Vector2(100, 100)
+	var mv := InputEventMouseMotion.new()
+	mv.position = Vector2(160, 130)
+	canvas._gui_input(mv)
+	canvas.drag = ""
+	var moved: bool = true
+	for i in range(2):
+		var now = editor.board.nodes[canvas.group[i]].at
+		moved = moved and absf(now[0] - before[i][0]) > 1.0
+	_check(moved, "dragging one card of a box selection moves the whole group")
+	# Unlink all: link the first card to two others, then unlink all from it.
+	var prem: Array = editor.board.nodes.keys().filter(func(k): return editor.board.nodes[k].kind == "premise")
+	editor.board.connect_cards(ev_ids[0], prem[0])
+	editor.board.connect_cards(ev_ids[2], ev_ids[0])
+	editor.context_id = ev_ids[0]
+	editor._context_action(4)
+	_check(not editor.board.links.any(func(e): return e.from == ev_ids[0] or e.to == ev_ids[0]), "Unlink all leaves the card with no links")
+	# Remove the group in one step, then undo.
+	var gids: Array = ev_ids.slice(0, 2)
+	editor.remove_nodes(gids)
+	_check(gids.all(func(k): return not editor.board.nodes.has(k)), "Delete removes the whole box selection")
+	editor._undo_remove()
+	_check(gids.all(func(k): return editor.board.nodes.has(k)), "and one undo brings them all back")
 	# Fullscreen.
 	drawer.set_fullscreen(true)
 	await process_frame

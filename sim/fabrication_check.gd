@@ -134,7 +134,7 @@ static func vet(w, n, entry: Dictionary, alternatives: Callable, scapegoat: Stri
 	var noticed: bool = w.decision_roll(n, "notice_self_incrimination", p_notice, {"insight": insight, "lift": a.lift, "who": a.who})
 	if not noticed:
 		entry["vet"] = {"outcome": "slipped", "lift": a.lift, "who": a.who}
-		w.dlog.think(n.id, "lie", "Evil: doesn't notice that its %s reading points the town at %s (+%.2f)." % [entry.get("role", "?"), _name(w, a.who), a.lift], {"lie": true})
+		w.dlog.think(n.id, "lie", "Didn't notice that its made-up %s reading would turn the town on %s." % [C.role_name(str(entry.get("role", ""))), _name(w, a.who)], {"lie": true})
 		return {"entry": entry, "outcome": "slipped", "why": ""}
 	# A better lie: of the rule's other readings, those that point at nobody on the team; of
 	# those, the one that still pushes the scapegoat hardest.
@@ -156,10 +156,10 @@ static func vet(w, n, entry: Dictionary, alternatives: Callable, scapegoat: Stri
 	if not best.is_empty():
 		var chosen: Dictionary = best.entry
 		chosen["vet"] = {"outcome": "reworked", "lift": a.lift, "who": a.who, "new_lift": best.lift, "pushes_scapegoat": snappedf(best_push, 0.001)}
-		w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f); tells a better lie instead: %s" % [entry.get("role", "?"), _name(w, a.who), a.lift, str(chosen.get("text", ""))], {"lie": true})
+		w.dlog.think(n.id, "lie", "Saw that its made-up %s reading would turn the town on %s, and told a safer one instead: %s" % [C.role_name(str(entry.get("role", ""))), _name(w, a.who), str(chosen.get("text", ""))], {"lie": true})
 		return {"entry": chosen, "outcome": "reworked", "why": best.why, "who": a.who, "note": rework_note(w, a.who)}
 	entry["vet"] = {"outcome": "held", "lift": a.lift, "who": a.who}
-	w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f), and no safer one fits; holds it back a day." % [entry.get("role", "?"), _name(w, a.who), a.lift], {"lie": true})
+	w.dlog.think(n.id, "lie", "Saw that its made-up %s reading would turn the town on %s, and with no safer one to tell, held it back a day." % [C.role_name(str(entry.get("role", ""))), _name(w, a.who)], {"lie": true})
 	return {"entry": entry, "outcome": "held", "why": ""}
 
 

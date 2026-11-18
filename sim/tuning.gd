@@ -352,7 +352,7 @@ class Trust:
 
 	## Conversation, pressing, promises, nominations, clemency & presentations
 	const CIVIL_TALK_BASE = 0.04
-	const CIVIL_TALK_PRIVACY_DAMP = 0.5
+	const CIVIL_TALK_PRIVACY_DAMP = 0.0  # Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5)
 	const QUESTION_FATIGUE_LIMIT = 3
 	const QUESTION_FATIGUE_BASE = 0.03
 	const QUESTION_FATIGUE_PRIVACY = 0.05
@@ -823,6 +823,13 @@ class Evil:
 	const FABRICATION_NOTICE_BASE = 0.3
 	const FABRICATION_NOTICE_INSIGHT = 0.6
 	const FAKE_GOSSIP_PROB = 0.6
+	# A bluffer's frame memory (BACKLOG, Michael, Nov 17): a fresh made-up reading that would
+	# clear someone its own earlier ones implicated, under the same scapegoat, is swapped for
+	# one of the rule's readings that doesn't, with chance BASE + TRAITS x the mean of the
+	# liar's Insight and Confidence. A sharp or self-assured liar keeps its story; a dull or
+	# unsure one drifts. Draft numbers.
+	const FRAME_MEMORY_BASE = 0.2
+	const FRAME_MEMORY_TRAITS = 0.7
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4
 	## An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion,
@@ -902,6 +909,11 @@ class Workshop:
 	## them on a night they spent at home counts against the sighter, but not as certain proof
 	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
 	const SLEEPWALK_SELF_DOUBT = 0.1
+	## With the Delusional secret on the script, a good NPC's own readings are this unsure:
+	## its gift might be the Delusional one and give it wrong readings without it knowing
+	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
+	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
+	const DELUSIONAL_SELF_DOUBT = 0.1
 	## The connections belief model (workshop/connections.gd;
 	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
 	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the

@@ -92,7 +92,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
 | `SEER` | `{ "public_threat_bonus": 1.0, "red_herring_defence_eff": -0.12, "focus_base":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
-| `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world.gd`, `workshop/live_assessment.gd` |
+| `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 | `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
@@ -111,7 +111,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/world.gd` |
 | `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world.gd` |
 | `WARDEN_TELL_TRUST` | `0.6` | the Warden tells the protectee when trusting them at least this much | `sim/world.gd` |
-| `WARDEN_SAVE_RELIABILITY` | `0.7` | how far the model trusts a claimed save (an inference, not a sighting) | `workshop/live_assessment.gd` |
+| `WARDEN_SAVE_RELIABILITY` | `0.7` | how far the model trusts a claimed save (an inference, not a sighting) | `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 
 ## Mind
 
@@ -190,7 +190,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SECRET_CAP_HIGH_PRIVACY` | `0.3` |  | `sim/mind.gd` |
 | `SECRET_CAP_MID_PRIVACY` | `0.6` |  | `sim/mind.gd` |
 | `CIVIL_TALK_BASE` | `0.04` | Conversation, pressing, promises, nominations, clemency & presentations | `sim/mind_dialogue.gd` |
-| `CIVIL_TALK_PRIVACY_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
+| `CIVIL_TALK_PRIVACY_DAMP` | `0.0` | Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5) | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_LIMIT` | `3` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd` |
@@ -573,6 +573,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `FABRICATION_NOTICE_BASE` | `0.3` |  | (unused) |
 | `FABRICATION_NOTICE_INSIGHT` | `0.6` |  | (unused) |
 | `FAKE_GOSSIP_PROB` | `0.6` |  | `sim/evil.gd` |
+| `FRAME_MEMORY_BASE` | `0.2` |  | `sim/evil.gd` |
+| `FRAME_MEMORY_TRAITS` | `0.7` |  | `sim/evil.gd` |
 | `CARELESS_BLUFF_INSIGHT_SCALE` | `0.5` |  | `sim/evil.gd` |
 | `EVIL_VOTE_TIE_BASE` | `0.4` |  | `sim/evil.gd` |
 | `GRAVEDIGGER_FRAME_BASE` | `0.05` | An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion, or confirm their claim. It reads what the town believed from the hanging vote's yes share: the frame is safe when the town was sure (it keeps the frame and "finds" a Minion), a gamble when it was split, and confirming a claim the town disbelieved outs the Gravedigger (playtest 30987: Hollis vouched for the hanged Dorian and was hanged next). Chance = (FRAME_BASE + FRAME_CONF * confidence) + FRAME_SURE * town certainty, where certainty runs 0 at a bare-majority vote to 1 at unanimity. | `sim/roles/gravedigger.gd` |
@@ -617,13 +619,14 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
-| `OWN_ERR` | `0.002` |  | `workshop/case_eval.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
 | `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity.gd` |
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
-| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `workshop/case_eval.gd` |
+| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
+| `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
 | `CONNECTIONS` | `true` | The connections belief model (workshop/connections.gd; docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the connections model). Off: the earlier model, for comparisons (autoplay --legacy-model; tests that pin it set Connections.enabled themselves). | `tools/autoplay.gd`, `workshop/connections.gd` |
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |
 | `CONNECTIONS_FIXED` | `0.005` | A person the listener's standing view already puts this close to 0 or 1 is settled (the public record, the listener's own knowledge): cards don't move them. | `workshop/connections.gd` |
@@ -667,7 +670,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |
 | `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval.gd` |
-| `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `tools/autoplay.gd`, `workshop/live_activity.gd` |
+| `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity.gd` |
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
@@ -683,7 +686,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXECUTION_PRIORITY_TOP_MARGIN` | `0.12` |  | `workshop/shared_ledger.gd` |
 | `EXECUTION_PRIORITY_TOP_BONUS` | `0.10` |  | `workshop/shared_ledger.gd` |
 | `REASON_MIN_SUSPECT_REQUESTED` | `0.025` | Shared-model suspicion attribution (`workshop/reason_attribution.gd`) | `workshop/reason_attribution.gd` |
-| `REASON_MIN_ITEM_CONTRIB` | `0.03` |  | `workshop/reason_attribution.gd` |
+| `REASON_MIN_ITEM_CONTRIB` | `0.03` |  | `game/workshop_canvas.gd`, `workshop/reason_attribution.gd` |
 | `REASON_MAX_PER_TARGET` | `6` |  | `workshop/reason_attribution.gd` |
 | `REASON_LOO_MIN_SHIFT` | `0.08` |  | `workshop/reason_attribution.gd` |
 | `REASON_LOO_COVERED_SHARE` | `0.5` |  | `workshop/reason_attribution.gd` |

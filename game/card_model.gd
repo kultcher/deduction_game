@@ -185,5 +185,70 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 				return "Town Hall: %s or %s" % [C.role_name(th_rs[0]), C.role_name(th_rs[1])]
 		"vote":
 			return "Vote on %s: %d for (%s)" % [nm.call(card.get("nominee", "")), card.get("yes", []).size(), card.get("outcome", "")]
-	var t: String = card.get("text", "")
-	return t if t.length() <= 60 else t.substr(0, 57) + "..."
+		# Board-card wording (Michael, Nov 18): the fewest words that carry the fact. The
+		# card's column already says when, so these leave the time out.
+		"accusation":
+			return "%s accused %s" % [src, _subjects(card, nm)]
+		"opinion":
+			# Only a known stance is shortened: "distrusts" and "warned you about" cards carry
+			# no stance, and their own text is already short (Codex on #250).
+			if str(card.get("text", "")).contains("vouches"):
+				return "%s vouches for %s" % [src, _subjects(card, nm)]
+			if card.get("stance", "") in ["for", "against"]:
+				return "%s %s %s" % [src, "speaks up for" if card.stance == "for" else "speaks against", _subjects(card, nm)]
+		"alibi":
+			if card.has("block"):
+				# Who it's about, not who said it: an admitted outing says "out", and a
+				# witness's word for someone else names the witness (Codex on #256).
+				var about: String = _subjects(card, nm)
+				var said: String = "" if str(card.get("source", "")) in card.get("subject", []) else ", says %s" % src
+				if not card.get("home", true):
+					return "%s: out on %s%s" % [about, C.block_name(card.block), said]
+				return "%s: home, %s%s" % [about, C.block_name(card.block), said]
+		"sighting":
+			if card.has("loc"):
+				return "%s %sat %s" % [_subjects(card, nm), "working " if card.get("work_sighting", false) else "", C.loc_name(card.loc)]
+		"conversation":
+			if card.has("loc"):
+				return "%s talking at %s" % [_subjects(card, nm), C.loc_name(card.loc)]
+		"death":
+			return "%s killed%s" % [_subjects(card, nm), (", %s" % C.block_name(card.block)) if card.has("block") else ""]
+		"execution":
+			return "%s executed" % _subjects(card, nm)
+		"quiet":
+			return "Nobody died"
+		"hint":
+			var pkg: String = str(card.get("package", ""))
+			var gist: String = {"official": "records", "night_sight": "night sight", "the_dead": "the dead", "shelter": "shelter", "people": "reading people"}.get(pkg, "")
+			if gist != "":
+				# Tavern gossip isn't the person's own hint, so it keeps its "Rumour:" (Codex on #256).
+				return ("Rumour: %s, %s" if _rumour(card) else "%s hints: %s") % [_subjects(card, nm), gist]
+		"secret":
+			var who: String = ("Rumour: " if _rumour(card) else "") + nm.call(str(card.get("owner", card.get("source", ""))))
+			match str(card.get("secret_kind", "")):
+				"sleepwalker":
+					return "%s sleepwalks" % who
+				"lover":
+					return "%s meets %s in secret" % [who, nm.call(str(card.get("partner", "")))] if str(card.get("partner", "")) != "" else "%s has a lover" % who
+				"insomnia":
+					return "%s prays at night" % who
+				"smuggling":
+					return "%s smuggles" % who
+				"debt":
+					return "%s pays a gambling debt" % who
+	# No short form: the full text, which the card cuts to fit and ends in "…".
+	return card.get("text", "")
+
+## Whether a card came from tavern gossip rather than from the person it's about.
+static func _rumour(card: Dictionary) -> bool:
+	return str(card.get("source", "")) == "rumour" or card.get("tavern_gossip", false)
+
+## A card's subjects by name: "Greta", "Merrin and Isolde".
+static func _subjects(card: Dictionary, nm: Callable) -> String:
+	var subs = card.get("subject", [])
+	if subs is String:
+		return nm.call(subs)
+	var named: Array = subs.map(func(x): return nm.call(x))
+	if named.size() == 2:
+		return "%s and %s" % named
+	return ", ".join(PackedStringArray(named))

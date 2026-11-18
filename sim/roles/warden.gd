@@ -102,7 +102,7 @@ func warden_door(w, n, nd: int) -> String:
 		cands = w.living().filter(func(m): return m != n)
 	var guarded: String = w.decision_pick(n, "bluffed_guard_door", cands).id if not cands.is_empty() else ""
 	n.warden_log[str(nd)] = guarded
-	w.dlog.think(n.id, "lie", "Evil bluffing Warden: claims to have guarded %s on night %d." % [guarded, nd], {"lie": true})
+	w.dlog.think(n.id, "lie", "Claimed to have guarded %s %s, as the Warden." % [w.by_id[guarded].name if w.by_id.has(guarded) else "no one", content().spoken_when(nd, -1)], {"lie": true})
 	return guarded
 
 

@@ -10,6 +10,7 @@ const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Tuning = preload("res://sim/tuning.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const History = preload("res://workshop/live_history.gd")
 const Solver = preload("res://workshop/solver.gd")
 
@@ -24,6 +25,9 @@ func check(ok: bool, label: String) -> void:
 
 func _init() -> void:
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
+	# These checks compare the doubt a heard argument brings with none at all; the standing
+	# Delusional self-doubt on one's own readings (test_delusional_self_doubt) is off here.
+	SourceDoubt.delusional_self_doubt = false
 	for role in ["seer", "archivist", "gravedigger"]:
 		CaseEval.doubted_role_check = false
 		var before: Dictionary = _one(role)

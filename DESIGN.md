@@ -16,7 +16,9 @@ agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning re
 
 **Companion documents**
 - `BACKLOG.md`: the to-do list, by effort, plus the Workshop-gap list. The single place
-  for "what's next". `BACKLOG_POLISH.md` holds presentation-only polish.
+  for "what's next", with tabled items at its foot. `BACKLOG_POLISH.md` holds presentation-only
+  polish, `BACKLOG_WATCH.md` the items being watched and the knobs, and `BACKLOG_COMPLETED.md`
+  what's built, settled or closed.
 - `TUNING_NARRATIVE.md`: a plain-English account of how the social and evidence systems
   interact. `tuning_catalogue.md`: the code-level companion (where each number lives).
   The numbers themselves live in `sim/tuning.gd`.
@@ -216,10 +218,10 @@ it means the game must teach its own way of thinking and make evidence very read
 
 - **Passing through vs. stopping** as sighting wording ("heading toward the Docks" vs "out
   on the Docks"). **[open]**
-- **Locations as evidence:** a Dowser reading places the Dowser and group on a block but
-  isn't a location card; your own visit could prove who *wasn't* at a spot. **[open]**
+- ~~**Locations as evidence**~~: closed (Michael, Nov 18). Evil NPCs don't lie the way its
+  example needed, and the other daytime roles are covered.
 - **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
-  Players expect this (playtest 1). **[open]**
+  Players expect this (playtest 1). Tabled (Michael, Nov 18).
 - **NPCs find evidence and personal items.** **[decided]**
 
 ---
@@ -294,6 +296,15 @@ Veteran claims other than themselves). At 0.5 or more they believe it: their tru
 protectee rises, and if they trust the protectee enough they tell them. A Warden report
 of a save holds only in worlds where the protectee is good, at reduced reliability (a save
 is an inference, not something seen).
+The judge also reads the quiet as the Demon's route: any Warden guard report on a night
+the Demon killed nobody, whether or not it claims a save, places the Demon's walk that
+night at the guarded door in worlds where the Warden and the guarded person are both
+good. It's the same route reasoning as the player's scorched sigil, at the save's
+reliability, divided by 1 + the other living Veteran claimants (`LiveActivity._quiet_guards`),
+and scaled by the listener's own trust in the reading: its honest doubt of it (a poisoned or
+misled night) and any challenge that holds (`CaseEval._route_trusted`; Michael, Nov 18).
+A sighting near that door then counts towards the Demon, and a sighting elsewhere counts
+against. The Test juror names the guard when it moves the subject by a reason's weight.
 
 **Hint packages** (each gift sits in at least one package of 2+, so a hint is never a full
 reveal): official business (Archivist, Clerk, Surveyor, Rumormonger, Chronicler,
@@ -671,6 +682,15 @@ player's case; it doesn't search for theories.**
   clash with the grounds counts against the reader in the worlds where they're good (#123). Poison belongs
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
+- **Poison evidence from night outings** ("poisoned, not lying", option A, Michael, Nov 18;
+  `ReadingChallenges.poison_chance` with a reader). The Poisoner is out every night of play,
+  walking to its victim's block, so someone the cards saw out that night with no claimed
+  night gift or confided secret may be the Poisoner. If they were seen on the reader's block,
+  the chance the reader was poisoned rises: in a seven-person town with a Poisoner certain,
+  one in five becomes about two in five. Seen where they couldn't have been going to the
+  reader's home, it falls to about one in nine. Seen with no block named, it changes only if
+  the Poisoner's presence is in doubt. A "failed gift" or "misled" call on a reading goes in
+  the track record as "the teller is good".
 - **The connections model** (`workshop/connections.gd`; on in play since Nov 16; full
   design and spec in `docs/belief_model.md`). The limit on an NPC is on *which cards it
   weighs together*, not which cards it reads:
@@ -731,6 +751,10 @@ player's case; it doesn't search for theories.**
   heard at the case's agreement (Michael, Nov 13: keep it), so a weaker framing of the
   same facts lands weaker. "Suspicious" is the early-game pressure tool: one basic
   incriminating reading presses about 0.3 at a meeting (#155).
+  **Decided (Michael, Nov 18), not yet built:** a case centres on its premise. Cards a
+  listener holds only because a case brought them count in full on its subject and at a
+  third on everyone else, so the player has to aim evidence at the right person
+  (`docs/design/premise_centring.md`).
 - **Observable actions as evidence (Stage 1B)** **[decided: the split; details open]**:
   votes, nominations and defences as per-world likelihood factors measured from bot runs.
 - The running list of patterns the Workshop can't express yet is in BACKLOG ("Workshop
@@ -800,6 +824,15 @@ The player has two numbers with each NPC (`game/credibility.gd`):
   and defend terms. It comes from your track record: the conclusions you argued to that
   NPC, checked each dawn against what they now believe from their own evidence (without
   your presentations, so the check isn't circular).
+- **Withdrawing and revising a case** (Michael, Nov 18). You can take back a filed case
+  in public ("I take back case #N"): everyone who heard it drops the argument and keeps
+  the cards it cited as their own. The board keeps the case, marked withdrawn, and it
+  can't be presented or nominated on again. Changing your mind still costs something:
+  a withdrawn case's conclusions are judged once more at the next dawn, then leave your
+  track record. A revision that cites new evidence clears the old version's conclusions
+  at once, because changing your mind for a reason is cheaper than changing it for none.
+  A revision citing nothing new counts as a withdrawal of the old version. A conclusion
+  you restate before that dawn, in a later case or a nomination, stands.
 
 ### Belief: what an NPC holds
 
@@ -940,18 +973,19 @@ been known to sleepwalk"; two claimants prove a liar.
   unless the lie puts them near the crime; NPCs who accept a lie but won't hang should say
   so.
 - **Ways to discover and confront secrets** (sightings that don't fit, confidants,
-  personal items, a "you have a secret" card as leverage) **[open]**; **named
-  corroborators** in alibis ("I was with Jory"), word-against-word cards **[open]**.
+  personal items, a "you have a secret" card as leverage) **[open]**. Named corroborators
+  in alibis ("I was with Jory"): tabled (Michael, Nov 18); at night people are home or
+  walking alone, and walkers needn't see each other.
 - **Situational credence modifiers** still to settle: early disclosure, quiet night as a
   credence boost, admission against interest, consistency over time, role-specific
   confirmations. **[open]**
 - **Initial general skepticism** **[knob]**: only if the early game gets too decisive.
 - **Trust dynamics around sources:** a relayer naming their source at a cost; evil tracing
   an unnamed source. **[open]**
-- **NPC-to-NPC credibility:** split NPC-to-NPC trust into liking and believing, as the
-  player's is. **[open]**
-- **NPC memory and recency bias.** Attention-level recency is on main (#96; `docs/premises_plan.md`,
-  "Recency as built"). **[open]**
+- **NPC-to-NPC credibility** (liking versus believing): tabled (Michael, Nov 18). NPC
+  relationships are already hard to read, and a second number would dilute them.
+- **NPC memory and recency bias:** built under the connections model; attention and recency
+  pick what an NPC cites (closed Nov 18, Michael).
 
 **Social retuning** **[tentative]** (candidates for one unified retuning proposal; details
 in BACKLOG): Privacy without compounding trust penalties; evidence building NPC-to-NPC
@@ -1060,7 +1094,8 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   vote that isn't close keeps it; words should be the cheap place to keep cover.
   **[decided]**
 - **Evil reads as evil** (casting aspersions with no information; doubting sound
-  deductions). Largely addressed by the shadow self. **[watch]**
+  deductions). Largely addressed by the shadow self; off the backlog as an item (Michael,
+  Nov 18), kept as an ongoing concern.
 
 ---
 

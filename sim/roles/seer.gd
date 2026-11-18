@@ -191,11 +191,11 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 				return {}
 			pair.append(w.pick(fill))
 		yes = s in pair
-		why = "looked where asked; %s" % ["framed the one evil meant to hang" if yes else "made up a reading that harmed nobody"]
+		why = "looked where asked; %s" % ["framed evil's scapegoat" if yes else "made up a reading that harmed nobody"]
 	elif w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0 or late) and not others_s.is_empty():
 		pair = [s, w.pick(others_s)]
 		yes = true
-		why = "said %s, whom evil meant to hang, read as the Demon" % s
+		why = "said %s, evil's scapegoat, read as the Demon" % s
 	elif mate != n and mate.alive and w.chance(Tuning.Roles.SEER.bluff_clear_mate_prob) and not others_m.is_empty():
 		# (A lone evil's "mate" is itself: clearing it would put the bluffer in its own pair.)
 		pair = [mate.id, w.pick(others_m)]

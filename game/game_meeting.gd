@@ -178,12 +178,12 @@ static func _case_names(card: Dictionary, id: String) -> bool:
 	return str(c.get("a", "")) == id and str(c.get("type", "")) in Deduction.ACCUSING
 
 
-## The case on deck against `id`: the latest live (not deleted, not superseded) filed case
+## The case on deck against `id`: the latest live (not deleted, withdrawn or superseded) filed case
 ## whose conclusion accuses them. {} when none.
 static func on_deck_case(g, id: String) -> Dictionary:
 	for i in range(g.board.size() - 1, -1, -1):
 		var c: Dictionary = g.board[i]
-		if c.get("kind", "") != "deduction" or c.get("deleted", false) or int(c.get("superseded_by", 0)) > 0:
+		if c.get("kind", "") != "deduction" or c.get("deleted", false) or c.get("withdrawn", false) or int(c.get("superseded_by", 0)) > 0:
 			continue
 		if _case_names(c, id):
 			return c

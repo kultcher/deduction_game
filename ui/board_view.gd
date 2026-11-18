@@ -28,7 +28,7 @@ const HEAD_W = 132.0     # row labels (screen pixels, not zoomed)
 const HEAD_H = 34.0      # time labels
 const COL_W = 176.0      # world units
 const CARD_W = 158.0
-const CARD_H = 58.0
+const CARD_H = 78.0      # option B (Michael, Nov 18): room for three lines and the "heard" line
 const GAP = 7.0
 const DOT = 30.0
 const ROW_PAD = 10.0
@@ -350,45 +350,104 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 		draw_rect(r, chip * fade)
 		draw_rect(Rect2(r.position, Vector2(maxf(3.0, 6.0 * zoom), r.size.y)), src_col * fade)
 	else:
-		draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)  # shadow
-		_draw_paper(r, n, fade)
-		draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4, r.size.y - 10 * zoom) * Vector2(zoom, 1)), UITheme.ink_of(src_col) * fade)
-		var icon = _icon_for(card, it)
-		var kind = Icons.kind_for(card)
-		var kind_icon = Icons.texture(kind)
-		var icon_count = 1 if icon != null or kind_icon != null else 0
-		var tx = r.position.x + 14 * zoom
-		var icon_x = r.end.x - 26 * zoom
-		if icon != null:
-			var s = 20.0 * zoom
-			draw_texture_rect(icon, Rect2(Vector2(icon_x, r.position.y + 6 * zoom), Vector2(s, s * icon.get_height() / icon.get_width())), false, fade)
-		if kind_icon != null:
-			var kind_y = r.end.y - 26 * zoom if icon != null else r.position.y + 6 * zoom
-			draw_texture_rect(kind_icon, Rect2(Vector2(icon_x, kind_y), Vector2(20, 20) * zoom), false,
-				(UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink) * fade)
-		var fs = int(clampf(13.5 * zoom, 12, 28))
-		var names = {}
-		for m in g.w.npcs:
-			names[m.id] = m.name
-		var text = CardModel.short_text(card, names) if lod == 1 else card.get("text", "")
-		if it["mark"] == "voted_yes":
-			text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?") if lod >= 1 else text
-		var lines = 2 if lod == 1 else 5
-		draw_multiline_string(_font, Vector2(tx, r.position.y + fs + 6 * zoom), text, HORIZONTAL_ALIGNMENT_LEFT,
-			r.size.x - 22 * zoom - 24 * zoom * icon_count, fs, lines, _ink * fade)
-		if lod == 2:
-			var heard = _heard_line(card)
-			if heard != "":
-				draw_string(_font, Vector2(tx, r.end.y - 6 * zoom), heard, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - (44 if kind_icon != null else 20) * zoom, int(fs * 0.8), UITheme.color("ink_soft") * fade)
-		if it["mark"] == "nominated":
-			var seal = UITheme.tex("ui/wax_seal", 0.25)
-			if seal != null:
-				var ss = 18.0 * zoom
-				draw_texture_rect(seal, Rect2(r.end - Vector2(ss + 4 * zoom, ss + 4 * zoom), Vector2(ss, ss)), false, fade)
+		_draw_card_face(it, card, n, r, fade, lod, src_col)
 	if selected or hovered:
 		draw_rect(r.grow(2), UITheme.color("string") if selected else UITheme.color("accent"), false, 2.0)
 	if n in _staged():
 		draw_circle(r.position + Vector2(r.size.x - 4, 4), 4, UITheme.color("accent"))
+
+## A card at reading zoom (option B, Michael, Nov 18): the speaker's colour bar on the
+## left; a gutter down the right with the kind icon on top and the role or place icon
+## below; badges as tabs along the top edge; the text, cut to the lines that fit and ended
+## with "…"; and, at the detail zoom only, the "heard" line along the bottom.
+func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: Color, lod: int, src_col: Color) -> void:
+	draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)  # shadow
+	_draw_paper(r, n, fade)
+	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
+	var names = {}
+	for m in g.w.npcs:
+		names[m.id] = m.name
+	# Every zoom shows the fewest words; the full sentence is the hover tooltip (Michael, Nov 18).
+	var text = CardModel.short_text(card, names)
+	if it["mark"] == "voted_yes":
+		text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?")
+	var fs = int(clampf(13.5 * zoom, 12, 28))
+	var small = int(clampf(10.0 * zoom, 9, 20))
+	var pad: float = 6.0 * zoom
+	var tx: float = r.position.x + 14 * zoom
+	var icon_s: float = 18.0 * zoom
+	# The gutter: kind icon on top, role or place icon below.
+	var icon = _icon_for(card, it)
+	var kind = Icons.kind_for(card)
+	var kind_icon = Icons.texture(kind)
+	var gx: float = r.end.x - pad - icon_s
+	var gy: float = r.position.y + pad
+	var gutter: float = 0.0
+	for tex in [kind_icon, icon]:
+		if tex == null:
+			continue
+		var tint: Color = ((UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink) * fade) if tex == kind_icon else fade
+		draw_texture_rect(tex, Rect2(Vector2(gx, gy), Vector2(icon_s, icon_s * tex.get_height() / tex.get_width())), false, tint)
+		gy += icon_s + 4 * zoom
+		gutter = icon_s + pad
+	# Badges as tabs along the top edge.
+	var bx: float = tx
+	for bdg in _badges(card, n):
+		bx += _draw_tab(Vector2(bx, r.position.y + small * 0.55), bdg[0], bdg[1], small, fade) + 3 * zoom
+	var heard: String = _heard_line(card) if lod == 2 else ""
+	var heard_h: float = small * 1.5 if heard != "" else 0.0
+	var width: float = r.size.x - 20 * zoom - gutter
+	var top: float = r.position.y + pad
+	var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / _font.get_height(fs))))
+	_draw_fitted(text, Vector2(tx, top), width, fs, max_lines, _ink * fade)
+	if heard != "":
+		_draw_fitted(heard, Vector2(tx, r.end.y - pad - _font.get_height(small)), width, small, 1, UITheme.color("ink_soft") * fade)
+	if it["mark"] == "nominated":
+		var seal = UITheme.tex("ui/wax_seal", 0.25)
+		if seal != null:
+			var ss = 18.0 * zoom
+			draw_texture_rect(seal, Rect2(r.end - Vector2(ss + 4 * zoom, ss + 4 * zoom), Vector2(ss, ss)), false, fade)
+
+## Badges a card carries (names approved by Michael, Nov 18): "private" (told to you
+## privately), "in confidence" (you promised to keep it quiet), "context" (background that
+## can't establish guilt alone). [label, colour].
+func _badges(card: Dictionary, n: int) -> Array:
+	var out: Array = []
+	for b in CardModel.badges(card, g.confidences):
+		out.append(["private", Color(0.25, 0.42, 0.62)] if b == "private" else ["in confidence", UITheme.color("red").darkened(0.15)])
+	if context_numbers.has(n):
+		out.append(["context", Color(0.42, 0.40, 0.36)])
+	return out
+
+## A badge tab, its bottom edge at `at`; returns its width.
+func _draw_tab(at: Vector2, label: String, col: Color, fs: int, fade: Color) -> float:
+	var w: float = _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + fs * 0.9
+	var h: float = fs * 1.35
+	var box := StyleBoxFlat.new()
+	box.bg_color = col * fade
+	box.set_corner_radius_all(maxi(2, int(fs * 0.45)))
+	var rr := Rect2(at - Vector2(0, h), Vector2(w, h))
+	draw_style_box(box, rr)
+	draw_string(_font, Vector2(rr.position.x + fs * 0.45, rr.end.y - fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95) * fade)
+	return w
+
+## Text wrapped to `width`, cut to `max_lines`, the last line ending in "…" when cut.
+## Laid-out paragraphs are cached by text, size and width.
+var _para_cache: Dictionary = {}
+func _draw_fitted(text: String, at: Vector2, width: float, fs: int, max_lines: int, col: Color) -> void:
+	var key: String = "%s|%d|%d|%d" % [text, fs, int(width), max_lines]
+	var para: TextParagraph = _para_cache.get(key)
+	if para == null:
+		if _para_cache.size() > 600:
+			_para_cache.clear()
+		para = TextParagraph.new()
+		para.add_string(text, _font, fs)
+		para.width = width
+		para.max_lines_visible = max_lines
+		para.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		para.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+		_para_cache[key] = para
+	para.draw(get_canvas_item(), at, col)
 
 func _heard_line(card: Dictionary) -> String:
 	var ls: Array = card.get("learned", [])

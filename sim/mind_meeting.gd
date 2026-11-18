@@ -326,7 +326,7 @@ static func _public_claim_decision(w, n) -> String:
 	var why = ("Evil cover: publicly claim bluff %s?" % role) if n.is_evil() else ("Publicly reveal true role %s?" % role)
 	if decide(w, n, "claim", parts, why):
 		if n.is_evil():
-			w.dlog.think(n.id, "lie", "Evil cover: publicly claims bluff %s." % role, {"bluff": role, "true_role": n.role})
+			w.dlog.think(n.id, "lie", "Claimed before the town to be the %s, as cover." % C.role_name(role), {"bluff": role, "true_role": n.role})
 		return role
 	return ""
 
@@ -796,7 +796,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 			hint = true
 			if not fake_on_t.is_empty():
 				hint_src = info_eid(n.id, fake_on_t)
-		w.dlog.think(n.id, "lie", "Evil: publicly accuses scapegoat %s, citing: %s." % [t.id, "a hinted private reason" if hint else why if why != "" else "vibes"])
+		w.dlog.think(n.id, "lie", ("Accused %s, evil's scapegoat, before the town, %s." % [t.name, "citing a reason they wouldn't share" if hint else ("citing \"%s\"" % why) if why != "" else "with no reason given"]))
 	else:
 		var tier = _accuse_tier(w, n, t, s2)
 		if tier["tier"] == "reveal":

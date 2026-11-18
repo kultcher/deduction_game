@@ -124,7 +124,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 	if sg != null and sg.alive and w.chance(0.6):
 		walked = true
 		role = sg.role if w.chance(0.5) else str(w.pick(active_script_roles))
-		why = "claimed a %s was abroad on %s, to point at %s, whom evil meant to hang" % [content().role_name(role), content().block_name(blk), s]
+		why = "claimed a %s was abroad on %s, to point at %s, evil's scapegoat" % [content().role_name(role), content().block_name(blk), s]
 	elif mate != null and mate != n and mate.alive and w.chance(0.4):
 		walked = false
 		why = "claimed nobody walked on %s, to cover %s, a fellow evil" % [content().block_name(blk), mate.id]

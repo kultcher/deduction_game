@@ -37,12 +37,13 @@ static func attribute_refresh(
 	listener: Dictionary,
 	eval_listener: Dictionary,
 	ev: Dictionary,
-	effects: Dictionary
+	effects: Dictionary,
+	cx: Dictionary = {}
 ) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
-		return _attribute_refresh_impl(view, scoped_case, attended, held, challenged, listener, eval_listener, ev, effects)
+		return _attribute_refresh_impl(view, scoped_case, attended, held, challenged, listener, eval_listener, ev, effects, cx)
 	var _st: int = SolverBackend.begin_stage("reason_attribution")
-	var _res: Dictionary = _attribute_refresh_impl(view, scoped_case, attended, held, challenged, listener, eval_listener, ev, effects)
+	var _res: Dictionary = _attribute_refresh_impl(view, scoped_case, attended, held, challenged, listener, eval_listener, ev, effects, cx)
 	SolverBackend.end_stage(_st)
 	return _res
 
@@ -55,7 +56,8 @@ static func _attribute_refresh_impl(
 	listener: Dictionary,
 	eval_listener: Dictionary,
 	ev: Dictionary,
-	effects: Dictionary
+	effects: Dictionary,
+	cx: Dictionary = {}
 ) -> Dictionary:
 	if ev.get("impossible", false):
 		return {}
@@ -77,7 +79,7 @@ static func _attribute_refresh_impl(
 	var own_ids: Array = knowledge.get("own_reports", [])
 	if own_ids.is_empty():
 		own_ids = knowledge.get("attention_reports", [])
-	var cc: Dictionary = CaseEval.compile(view, attended, scoped_case, [])
+	var cc: Dictionary = CaseEval.compile(view, CaseEval._route_trusted(attended, eval_listener), scoped_case, [])
 	var universe: Array = Solver.universe(view)
 	var nc: int = cc.team.size()
 	if nc == 0 or universe.is_empty():
@@ -155,6 +157,8 @@ static func _attribute_refresh_impl(
 	var loo_ctx: Dictionary = {"view": view, "cc": cc, "attended": attended, "knowledge": knowledge,
 		"errs": errs, "team_prior": team_prior, "fits_full": fits_full, "like_full": like_full,
 		"move_full": move_full, "test_full": test_full, "nc": nc, "memo": {}}
+	loo_ctx["cx"] = cx  # the belief model's own inputs (Jury), for _connections_drop
+	loo_ctx["cx_memo"] = {}
 
 	var out: Dictionary = {}
 	for pid in suspect_ids:
@@ -871,7 +875,14 @@ static func _augment_joint_leave_one_out(
 		# the two would otherwise be credited to whichever card was removed (playtest 89077:
 		# three Lamplighter counts that moved nothing each credited with 0.38 of the gap).
 		var with_shift: float = full_shift
-		if same_model_loo:
+		var cx_drop: Variant = _connections_drop(loo_ctx, cid, pid, pr0)
+		if cx_drop != null:
+			# Measured in the model that formed the belief: the listener's chance with every held
+			# card against the same refresh without this one (Nov 18: Hollis's own Gravedigger
+			# reading moved Odette 0.50 -> 0.81 there, through the core, while the attribution's
+			# own model saw almost nothing).
+			shift_wo = with_shift - float(cx_drop)
+		elif same_model_loo:
 			var base_id: String = LOO_NONE if _needs_fits_recheck(loo_ctx, cand) else LOO_FULL
 			var pr_all: Dictionary = _person_probs(view, reps, _loo_post(loo_ctx, {"id": base_id}), p_idx)
 			if pr_all.total <= 1e-18:
@@ -928,6 +939,27 @@ static func _augment_joint_leave_one_out(
 ## _augment_joint_leave_one_out). Off, it is measured against the belief's own shift, as
 ## before Nov 17, for showing what the fix changes on a replay.
 static var same_model_loo: bool = true
+
+## What leaving card `cid` out changes in the belief model itself (the connections refresh
+## that formed this belief, Jury's inputs in ctx.cx): the shift in `pid`'s chance of being
+## evil from the prior with every held card, less the same without this one. null when the
+## inputs aren't there (the earlier model, tools), so the caller falls back to its own model.
+## One connections refresh per card, memoised for every suspect.
+static func _connections_drop(ctx: Dictionary, cid: String, pid: String, pr0: Dictionary) -> Variant:
+	var cx: Dictionary = ctx.get("cx", {})
+	if cx.is_empty() or not cx.get("result", {}).has("posterior") or cid not in cx.get("held", []):
+		return null
+	var memo: Dictionary = ctx.get("cx_memo", {})
+	if not memo.has(cid):
+		var Cn = load("res://workshop/connections.gd")
+		memo[cid] = Cn.refresh(cx.view, cx.value, cx.weigher, cx.held.filter(func(id): return id != cid), cx.state).get("posterior", {})
+		ctx["cx_memo"] = memo
+	var full_p: float = float(cx.result.posterior.get(pid, -1.0))
+	var wo_p: float = float(memo[cid].get(pid, -1.0))
+	if full_p < 0.0 or wo_p < 0.0:
+		return null
+	return CaseEval.shift(pr0.evil, full_p) - CaseEval.shift(pr0.evil, wo_p)
+
 
 ## The ids `_loo_post` takes for "remove nothing": LOO_FULL with the full fits, LOO_NONE with
 ## the role fits re-checked over every card, as for a removal that needs the re-check.
@@ -1047,12 +1079,13 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 	for c in cards:
 		card_sig.append([c.get("id", ""), c.get("kind", ""), c.get("source", ""), c.get("role", ""), c.get("hearing_weight", 1.0), c.has("relay_source"), c.get("quoted", false)])
 	var live: bool = Domain.live(view)
-	var neutral_key: int = hash([cc.key, "ra_neutral", live, card_sig])
-	if not _fits_cache.has(neutral_key):
+	var neutral_ref: Array = [cc.key, cc.rep, "ra_neutral", live, card_sig]
+	var neutral_key: int = hash(neutral_ref)
+	if not _fits_cache.has(neutral_key) or _fits_cache[neutral_key].ref != neutral_ref:
 		if _fits_cache.size() > 256:
 			_fits_cache.clear()
-		_fits_cache[neutral_key] = CaseEval._fits_over(view, cc, cards, {}, range(nc))
-	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
+		_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": CaseEval._fits_over(view, cc, cards, {}, range(nc))}
+	var neutral: PackedFloat64Array = _fits_cache[neutral_key].out
 	var personal: Dictionary = {
 		"self": knowledge.get("self", ""),
 		"own_role": knowledge.get("own_role", ""),
@@ -1062,17 +1095,18 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 		personal["public_roles"] = knowledge.public_roles
 	var fits: PackedFloat64Array = neutral
 	if personal.own_role != "" or not personal.own_outings.is_empty() or not personal.get("public_roles", {}).is_empty():
-		var p_key: int = hash([cc.key, "ra_personal", live, card_sig, personal])
-		if not _fits_cache.has(p_key):
+		var p_ref: Array = [cc.key, cc.rep, "ra_personal", live, card_sig, personal]
+		var p_key: int = hash(p_ref)
+		if not _fits_cache.has(p_key) or _fits_cache[p_key].ref != p_ref:
 			if _fits_cache.size() > 256:
 				_fits_cache.clear()
-				_fits_cache[neutral_key] = neutral
+				_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 			var open: Array = []
 			for c_idx in range(nc):
 				if neutral[c_idx] > 0.0:
 					open.append(c_idx)
-			_fits_cache[p_key] = CaseEval._fits_over(view, cc, cards, personal, open)
-		fits = _fits_cache[p_key]
+			_fits_cache[p_key] = {"ref": p_ref.duplicate(true), "out": CaseEval._fits_over(view, cc, cards, personal, open)}
+		fits = _fits_cache[p_key].out
 	return _apply_curse_good(view, cc, fits, knowledge)
 
 
