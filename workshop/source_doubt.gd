@@ -27,6 +27,19 @@ static var delusional_self_doubt: bool = true
 ## The poison self-doubt (off for measuring and for tests of other doubt).
 static var poison_self_doubt: bool = true
 
+## Measurement switch (on in play): the player's "failed gift" call as testimony (derive,
+## "Poisoned, not lying", option C).
+static var player_failed_gift: bool = true
+
+## How far a listener takes the player's word that a reading was a failed gift: one witness
+## as accurate as the listener's trust in the player (c), against the chance the gift was
+## poisoned that night (prior): prior.c / (prior.c + (1 - prior)(1 - c)). At c = 0.5 the call
+## changes nothing; below it, it never lowers a doubt (the caller takes the max).
+static func witness_doubt(prior: float, c: float) -> float:
+	var num: float = prior * c
+	var den: float = num + (1.0 - prior) * (1.0 - c)
+	return num / den if den > 1e-12 else 0.0
+
 static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind: String = "reading") -> float:
 	if src == "":
 		return 0.0
@@ -161,6 +174,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading
 	# proves only as much as it is still credited (Codex on #245).
 	var gift_doubt: Dictionary = _gift_self_doubt(pub_events, self_id, listener.get("suspicion", {}))
+	# The player's "failed gift" calls (option C, _player_failed_gift) go in at the same points,
+	# before the Gravedigger proofs and again after the sincere-teller pass, so a verdict called
+	# poisoned doesn't keep proving at full strength (Codex on #270).
+	var failed_gift: Dictionary = _player_failed_gift(view, listener, cards, self_id)
+	for fg_key in failed_gift:
+		gift_doubt[fg_key] = maxf(float(gift_doubt.get(fg_key, 0.0)), float(failed_gift[fg_key]))
 	for sd_key in gift_doubt:
 		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
 		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
@@ -418,3 +437,55 @@ static func could_hold_secret(role: String, secret: String) -> bool:
 		if bool(def.get(str(rule.not_on_flag))):
 			return false
 	return true
+
+## The player's "failed gift" calls as honest doubt, {"teller:night": doubt}: see derive.
+## "Poisoned, not lying" (Michael, Nov 18, option C; docs/design/poisoned_not_lying.md): a
+## "failed gift" challenge in one of the player's presented cases is the player's word that
+## R's reading that night was poisoned, not a lie. The listener weighs it as one witness as
+## accurate as its trust in the player, against the chance R was poisoned that night
+## (ReadingChallenges.poison_chance with R as the reader, so an unexplained outing near R's
+## home raises it). Honest doubt, so the clash reads as a broken gift rather than a lie, and
+## whatever the reading held up moves to whoever the rest of the evidence favours; nothing
+## spreads it on purpose. Zero with no Poisoner possible. A wrong call costs the player
+## through the track record ("R is good", Quill, game/credibility.gd), nothing more.
+static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: Array, self_id: String) -> Dictionary:
+	var out: Dictionary = {}
+	if not player_failed_gift or not ReadingChallenges.poisoner_possible(view):
+		return out
+	var c_player: float = clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
+	var by_id: Dictionary = {}
+	for card in cards:
+		by_id[str(card.get("id", ""))] = card
+	for cs in listener.get("connections", {}).get("cases", []):
+		if str(cs.get("presenter", "")) != "player":
+			continue
+		var chs: Dictionary = cs.get("challenges", {})
+		for rid in chs:
+			var ch = chs[rid]
+			if not ch is Dictionary or str(ch.get("mode", "")) != "impaired":
+				continue
+			var rc: Dictionary = by_id.get(str(rid), {})
+			if rc.is_empty() or str(rc.get("kind", "")) != "report" or rc.get("quoted", false):
+				continue
+			# Whose gift: a challenge on a relayed reading names its side (ReadingChallenges.
+			# RELAY_ATTRIBUTIONS). Its transmission is the Medium's, keyed as the relay's
+			# reliability is; the original, and any unrelayed reading, is the teller's, by the
+			# reading's day (Codex on #270).
+			var transmission: bool = rc.has("relay_source") and str(ch.get("attribution", "")) == "transmission"
+			var r_id: String = str(rc.get("relay_source", "")) if transmission else str(rc.get("source", ""))
+			var r_day: int = int(rc.get("relay_observed_at", {}).get("day", -1)) if transmission else int(rc.get("observed_at", {}).get("day", rc.get("night", -1)))
+			if r_id == "" or r_id == self_id or r_day < 0:
+				continue
+			# A Registrar's night-0 register can't be poisoned (sim/roles/registrar.gd), so a
+			# call on it carries no poison; a Medium's transmission of it can be (Codex on #270).
+			if not transmission and str(rc.get("role", "")) == "registrar" and r_day == 0:
+				continue
+			var by_night: bool = transmission or str(rc.get("observed_at", {}).get("phase", "")) == "night"
+			var r_night: int = r_day if by_night else r_day - 1
+			var prior: float = ReadingChallenges.poison_chance(view, listener, r_night, r_id)
+			if prior <= 0.0:
+				continue
+			var w_doubt: float = witness_doubt(prior, c_player)
+			var k_r: String = "%s:%d" % [r_id, r_day]
+			out[k_r] = maxf(float(out.get(k_r, 0.0)), w_doubt)
+	return out

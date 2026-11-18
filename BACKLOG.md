@@ -162,7 +162,13 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   keep the reasons they still believe. Players can re-file a case, but can't retract or
   explain. (25923: a final nomination cited the player's earlier argument after the
   player had adopted a different world.) A revised case must not score below the version
-  it replaces. Private guesses stay private. [open]
+  it replaces. Private guesses stay private. [decided]
+  **Built** (Nov 18, Quill #262; Herald's withdrawal UI #267): a public withdrawal takes a
+  case back from everyone who heard it, and they keep its cards. A withdrawn case's
+  conclusions are judged once more at the next dawn and then leave the track record; a
+  revision citing new evidence clears the old version's conclusions at once (Michael's
+  option c). **Still open:** "a revised case must not score below the version it
+  replaces" waits on Michael's reading, since new evidence can legitimately weaken a case.
 
 - **Recovering from a wrong "lying" call.** (Nov 12, Michael; Quill's honest-mistake
   sample, belief-model doc) A "lying" challenge on a poisoned or misregistered good
