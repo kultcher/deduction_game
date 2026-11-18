@@ -79,10 +79,58 @@ static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {
 				if hooks.has("on_diverge"):
 					hooks.on_diverge.call(e, step, out)
 		elif e.type == "workshop_canvas_filed":
-			var n = Canvas.file(g, e.data.case, 0)
+			# Logs from before Nov 18 don't say which case a filing replaced, so they replay
+			# every filing as a new case.
+			var n = Canvas.file(g, e.data.case, int(e.data.get("revises", 0)))
 			if hooks.has("on_filed"):
 				hooks.on_filed.call(e, n)
 	return {"g": g, "steps": step, "diverged": diverged}
+
+## The state digests (World.state_digest, logged after each command and Workshop filing)
+## against the replay's: `hooks` wrapped so that after each replayed command or filing the
+## replay's digest is compared with the one logged after it. `report` gets "checked" (how
+## many compared) and, at the first difference, "first": {"seq", "what", "minds" (whose
+## state differs), "rng" (whether the world's random stream does)}. Logs from before Nov 18
+## have no digests, and nothing is compared.
+static func digest_hooks(events: Array, hooks: Dictionary, report: Dictionary) -> Dictionary:
+	var logged: Dictionary = {}
+	var last: int = -1
+	for e in events:
+		if e.type == "state_digest":
+			if last >= 0:
+				logged[last] = e.data
+		else:
+			last = int(e.seq)
+	report["checked"] = 0
+	var held := {"g": null}
+	var compare := func(g, e, what: String) -> void:
+		if g == null or report.has("first") or not logged.has(int(e.seq)):
+			return
+		report.checked += 1
+		var now: Dictionary = g.w.state_digest()
+		var want: Dictionary = logged[int(e.seq)]
+		if now == want:
+			return
+		var minds: Array = []
+		for id in now.minds:
+			if str(now.minds[id]) != str(want.get("minds", {}).get(id, "")):
+				minds.append(id)
+		report["first"] = {"seq": int(e.seq), "what": what, "minds": minds, "rng": str(now.rng) != str(want.get("rng", ""))}
+	var out: Dictionary = hooks.duplicate()
+	out["before_command"] = func(g, e):
+		held.g = g
+		if hooks.has("before_command"):
+			hooks.before_command.call(g, e)
+	out["after_command"] = func(g, e, msec: int):
+		held.g = g
+		if hooks.has("after_command"):
+			hooks.after_command.call(g, e, msec)
+		compare.call(g, e, "command " + str(e.data.get("cmd", "")))
+	out["on_filed"] = func(e, n):
+		if hooks.has("on_filed"):
+			hooks.on_filed.call(e, n)
+		compare.call(held.g, e, "filing of case #%d" % int(e.data.get("card", 0)))
+	return out
 
 ## The log's vote tallies against the replay's: [logged, replayed], as "nominee:yes,yes".
 static func votes(events: Array, g, stop_seq: int = 1 << 30) -> Array:
