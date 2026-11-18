@@ -136,7 +136,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	var trio: Array = w.shuffled(chosen)
 	return {
 		"entry": {"data": {"trio": trio}, "text": _spoken_text(w, trio)},
-		"why": "named %s, whom evil meant to hang, alongside two innocents" % s,
+		"why": "named %s, evil's scapegoat, alongside two innocents" % s,
 	}
 
 
@@ -162,4 +162,4 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, goods: Array, _other: Ca
 	var trio: Array = w.shuffled(chosen)
 	e["data"] = {"trio": trio}
 	e["text"] = _spoken_text(w, trio)
-	return {"entry": e, "why": "made up a reading from the late Chronicler %s placing %s, whom evil meant to hang, among three with a Minion" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Chronicler %s placing %s, evil's scapegoat, among three with a Minion" % [dd.id, s], "frames": true}

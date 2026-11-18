@@ -251,7 +251,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 			var entry_b: Dictionary = _pair_reading_dict(w.day, pair_b[0], pair_b[1], false, "evil fabrication")
 			entry_b.erase("true")
 			entry_b.erase("why")
-			return {"entry": entry_b, "why": "named the words of %s, whom evil meant to hang, as a likely lie" % s}
+			return {"entry": entry_b, "why": "named the words of %s, evil's scapegoat, as a likely lie" % s}
 	# A fellow evil's lie was among what it heard: swearing nobody lied would give the day a
 	# clean bill that a caught lie undoes (the Dowser's guideline, #160: stay close to the
 	# truth). With two good people's words to hand it casts doubt on those instead.

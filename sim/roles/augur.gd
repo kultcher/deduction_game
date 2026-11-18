@@ -127,7 +127,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 		why = "cleared the Demon, who had been seen on the same street that day"
 	elif shared_with_sg and w.chance(0.75):
 		yes = true
-		why = "claimed the Demon crossed their path, having shared a street that day with %s, whom evil meant to hang" % s
+		why = "claimed the Demon crossed their path, having shared a street that day with %s, evil's scapegoat" % s
 	elif w.chance(0.25):
 		yes = true
 		why = "claimed the Demon crossed their path, without saying where"
