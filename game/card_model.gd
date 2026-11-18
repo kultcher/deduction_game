@@ -215,9 +215,10 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 			var pkg: String = str(card.get("package", ""))
 			var gist: String = {"official": "records", "night_sight": "night sight", "the_dead": "the dead", "shelter": "shelter", "people": "reading people"}.get(pkg, "")
 			if gist != "":
-				return "%s hints: %s" % [_subjects(card, nm), gist]
+				# Tavern gossip isn't the person's own hint, so it keeps its "Rumour:" (Codex on #256).
+				return ("Rumour: %s, %s" if _rumour(card) else "%s hints: %s") % [_subjects(card, nm), gist]
 		"secret":
-			var who: String = nm.call(str(card.get("owner", card.get("source", ""))))
+			var who: String = ("Rumour: " if _rumour(card) else "") + nm.call(str(card.get("owner", card.get("source", ""))))
 			match str(card.get("secret_kind", "")):
 				"sleepwalker":
 					return "%s sleepwalks" % who
@@ -231,6 +232,10 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 					return "%s pays a gambling debt" % who
 	# No short form: the full text, which the card cuts to fit and ends in "…".
 	return card.get("text", "")
+
+## Whether a card came from tavern gossip rather than from the person it's about.
+static func _rumour(card: Dictionary) -> bool:
+	return str(card.get("source", "")) == "rumour" or card.get("tavern_gossip", false)
 
 ## A card's subjects by name: "Greta", "Merrin and Isolde".
 static func _subjects(card: Dictionary, nm: Callable) -> String:
