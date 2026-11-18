@@ -441,7 +441,24 @@ static var list_mix_enabled: bool = true
 ## outings) and the Delusional prior the listener applies to its own gift. Zero for the
 ## listener's own list, a quoted or duty-only card, or a script with neither secret; there a
 ## list that wrongly names the listener stays set aside, and its night void, as before.
+## At most this many lists in a view are mixed (the latest nights first): the movement
+## factor is built once for every subset of them left out. A list beyond them gets no broken
+## chance, so it keeps the old fallback (set aside and its night void when it wrongly names
+## the listener) rather than being scored name by name (Codex on #273).
+const LIST_MIX_MAX = 2
+
 static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
+	var b: float = _list_broken_base(view, listener, card)
+	if b <= 0.0:
+		return 0.0
+	var mixable: Array = view.get("cards", []).filter(func(c): return str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0)
+	mixable.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
+	var keep: Array = mixable.slice(0, LIST_MIX_MAX).map(func(c): return str(c.get("id", "")))
+	if not view.get("cards", []).any(func(c): return str(c.get("id", "")) == str(card.get("id", ""))):
+		return b
+	return b if str(card.get("id", "")) in keep else 0.0
+
+static func _list_broken_base(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
 	if not list_mix_enabled or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
 		return 0.0
 	var src: String = str(card.get("source", ""))

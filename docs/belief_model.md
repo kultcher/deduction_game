@@ -582,7 +582,10 @@ and doubted the watcher in general.
 - **How it's weighed.** The judge weighs sound against broken by fit. The movement factor is
   built with and without the list, and the kernel mixes the two in each world where the watcher
   is good (`LiveActivity._list_mix`, `LiveActivityKernel.ScoreMixed`). Up to two lists, the
-  latest nights first (`LIST_MIX_MAX`), each subset built once.
+  latest nights first (`SourceDoubt.LIST_MIX_MAX`), each subset built once. In the broken
+  branch the watcher still went out to watch its block: a duty-only copy keeps that walk
+  (Codex on #273). A list beyond the two gets no broken chance, so it keeps the old fallback
+  (Codex on #273).
 - **What it does.** A list that wrongly names the listener is kept, and the false name counts
   against the watcher by fit. Its other names count only as much as the listener still believes
   the list is sound.

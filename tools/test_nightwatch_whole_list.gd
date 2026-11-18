@@ -68,6 +68,39 @@ func _town(seen: String) -> Dictionary:
 		"void": float(honest.get("%s:1" % watcher.id, 0.0)), "b": b, "names": [watcher.name, listener.name, other.name]}
 
 
+## Three lists from one watcher, on the first three nights (0, 1, 2), each wrongly naming the
+## listener, who was home: each night's broken chance and honest doubt.
+func _three_lists() -> Dictionary:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(692, 7)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var watcher = goods[0]
+	watcher.role = "nightwatch"
+	if "nightwatch" not in w.case_script.town:
+		w.case_script.town.append("nightwatch")
+	var listener = goods[1]
+	w.day = 3
+	for nd in range(3):
+		listener.history[w.time_key(nd, 3)] = "home:" + listener.home_block
+		var entry: Dictionary = {"day": nd, "phase": 3, "role": "nightwatch", "shared": true, "true": true,
+			"data": {"block": listener.home_block, "seen": [listener.id]}, "text": "I saw %s pass by" % listener.name}
+		watcher.info_log.append(entry)
+		Mind.apply_info(w, listener, watcher, entry, 0.8)
+	var key: String = listener.id + ":good"
+	g._workshop_evaluations.erase(key)
+	w.defer_beliefs = false
+	Mind.refresh_beliefs(w, listener, " (test)")
+	var plan: Dictionary = g._workshop_plans.get(key, {})
+	var honest: Dictionary = SourceDoubt.derive(plan, listener.ledger, {}).honest
+	var bs: Array = [0.0, 0.0, 0.0]
+	for c in plan.prepared.view.cards:
+		if str(c.get("source", "")) == watcher.id and str(c.get("role", "")) == "nightwatch":
+			bs[int(c.get("night", -1))] = SourceDoubt.list_broken_chance(plan.prepared.view, plan.prepared.listener, c)
+	return {"b": bs, "void": [0, 1, 2].map(func(nd): return float(honest.get("%s:%d" % [watcher.id, nd], 0.0)))}
+
+
 func _init() -> void:
 	Connections.enabled = true
 	var none: Dictionary = _town("")
@@ -83,5 +116,12 @@ func _init() -> void:
 	check(wrong.void < 1.0 and old.void >= 1.0, "the list is kept, not voided (honest doubt %.2f; %.2f with the switch off)" % [wrong.void, old.void])
 	check(wrong.watcher > none.watcher, "a list wrongly naming the listener counts against its watcher (%.2f against %.2f with no list)" % [wrong.watcher, none.watcher])
 	check(absf(wrong.other - none.other) < absf(sound.other - none.other), "a list wrong about the listener counts less for its other name than a sound list does (%+.2f against %+.2f)" % [wrong.other - none.other, sound.other - none.other])
+	# Codex on #273: only the latest SourceDoubt.LIST_MIX_MAX lists are mixed. An older one
+	# that wrongly names the listener keeps the old fallback (set aside, its night void),
+	# never the name-by-name scoring.
+	var three: Dictionary = _three_lists()
+	print("three lists: broken chances %s, honest doubt of each night %s" % [three.b, three.void])
+	check(three.b[0] == 0.0 and three.void[0] >= 1.0, "a list beyond the mixing cap keeps the old fallback (broken chance %.2f, night void %.2f)" % [three.b[0], three.void[0]])
+	check(three.b[1] > 0.0 and three.b[2] > 0.0 and three.void[1] < 1.0 and three.void[2] < 1.0, "the latest two lists are mixed and kept")
 	print("Night Watch whole list: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

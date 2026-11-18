@@ -514,10 +514,6 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
 
-## At most this many Night Watch lists are mixed as sound or broken (the latest nights
-## first): the movement factor is built once for every subset of them left out.
-const LIST_MIX_MAX = 2
-
 ## The Night Watch lists to mix as sound or broken as a whole (BACKLOG "A Night Watch list
 ## that wrongly names the listener", Michael, Nov 18): another's report, carrying the chance
 ## its gift was broken that night ("broken_chance", CaseEval._list_broken).
@@ -525,8 +521,10 @@ static func _mixed_lists(view: Dictionary, cards: Array) -> Array:
 	var ids: Array = view.people.map(func(p): return p.id)
 	var lists: Array = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and not c.get("quoted", false) \
 		and not c.get("duty_only", false) and float(c.get("broken_chance", 0.0)) > 0.0 and ids.has(str(c.get("source", ""))))
+	# At most SourceDoubt.LIST_MIX_MAX carry a broken chance (SourceDoubt.list_broken_chance
+	# picks them, so a list left out keeps the old fallback); the cap here is only a guard.
 	lists.sort_custom(func(a, b): return int(a.get("night", -1)) > int(b.get("night", -1)) or (int(a.get("night", -1)) == int(b.get("night", -1)) and str(a.id) < str(b.id)))
-	return lists.slice(0, LIST_MIX_MAX)
+	return lists.slice(0, 2)
 
 ## The movement factor, mixed over each list being sound or broken: in a world where the
 ## watcher is good, the list is sound (every name at its small error) with chance 1 - b, or
@@ -543,7 +541,14 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	var list: Dictionary = lists[0]
 	var rest: Array = lists.slice(1)
 	var sound: Dictionary = _list_mix(view, cards, observations, rest)
-	var broken: Dictionary = _list_mix(view, cards.filter(func(c): return c.get("id", "") != list.id), observations, rest)
+	# Broken, the list says nothing about who walked, but the watcher still went out to
+	# watch that block (sim/world.gd walks it there whatever its gift): a duty-only copy
+	# keeps that (Codex on #273).
+	var duty: Dictionary = list.duplicate(true)
+	duty["duty_only"] = true
+	duty.erase("broken_chance")
+	duty["data"] = {"block": list.get("data", {}).get("block", ""), "seen": []}
+	var broken: Dictionary = _list_mix(view, cards.map(func(c): return duty if c.get("id", "") == list.id else c), observations, rest)
 	var b: float = clampf(float(list.broken_chance), 0.0, 1.0)
 	var top: Dictionary = sound.duplicate(false)
 	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "next": sound, "alt": broken,
