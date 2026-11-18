@@ -576,6 +576,15 @@ Candidates for a unified retuning proposal, not approved changes.
   knew because of an answer carried over from case #38. The Workshop could list the answers
   a new case carries when it's filed. Herald. [open]
 
+- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
+  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
+  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
+  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
+  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
+  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
+  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
+  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided]
+
 ### Performance
 
 - **Late-game meeting and presenting cost.** Budget (user's machine): meeting entry and
