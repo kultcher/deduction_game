@@ -490,14 +490,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
-  "heard" line, type and source icons stack in one corner, the context tag sits on the
-  edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
-  slots) before adding markers. Waiting on it: "shared with you privately" and "in
-  confidence" badges (the data exists; nothing draws them) and the context tag. Coordinate
-  with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
-  open]
-
 - **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
   Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
   full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
@@ -506,6 +498,10 @@ Candidates for a unified retuning proposal, not approved changes.
   game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
   votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
   Owner Herald. [decided]
+  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
+  secrets have one now. Still to do: the Workshop canvas's evidence cards
+  (`ui/workshop_canvas_view.gd`), which print the full sentence, and a pass over the
+  gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking

@@ -3,6 +3,20 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 18, 2026 (Claude-Herald, #250 and `claude/herald-card-text`)
+
+- **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
+  "heard" line, type and source icons stack in one corner, the context tag sits on the
+  edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
+  slots) before adding markers. Waiting on it: "shared with you privately" and "in
+  confidence" badges (the data exists; nothing draws them) and the context tag. Coordinate
+  with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
+  open]
+  Built Nov 18 as option B (Michael's choice): taller cards, an icon gutter, badge tabs
+  ("private", "in confidence", "context"), cut text ending in "…", "heard" at the detail
+  zoom (#250). Then the fewest words on the card at every zoom, the full sentence on hover
+  (`claude/herald-card-text`).
+
 ## Built Nov 18, 2026 (Claude-Herald, `claude/herald-carried-answers`)
 
 - **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
