@@ -223,6 +223,17 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
      challenge (for example in the block message), or offer "I was wrong, they were
      poisoned" as one action. Pairs with the revisions item above.
 
+  **Step 1 measured (Quill, Nov 18):** 10 seeds with a Poisoner, 7 NPCs, crafted state.
+  - **The scenario:** a good Archivist's false "one of B and C is the Poisoner", against a
+    Dowser's "no evil among B and C".
+  - **The lying call:** it lands with 78% of good listeners. The Archivist rises from 0.25
+    to 0.54, but the same two readings with no challenge give exactly the same. The clash
+    does it, and the challenge's vote floor sits below.
+  - **The revision to "failed gift":** about 3% agreement, so it changes nothing.
+  - **A case at the Poisoner:** it takes about 5 points off the Archivist.
+  - **The player's trust:** it moves by at most 0.01 at any step.
+  - Revising isn't a way back today. Put to Michael through Seneschal.
+
   [decided: test later; signposting open]
 
 - **Quiet-night evidence argued by the player.** Support a player-argued link between
@@ -232,6 +243,12 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   argues protection, a suspected attack and movement as one chain, without revealing
   hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
   [decided] (Michael, Nov 17)
+
+  **Judge side built (Quill, Nov 18):** a Warden's guard report
+  on a quiet night sets the Demon's route to the guarded door, where the Warden and the
+  guarded person are good. The player's ward already did this through the scorched sigil.
+  The Test juror's result carries `guards` for Herald's reason line. Herald: the UI and
+  wording.
 
 - **Keep Tally's trace probe as a tool.** Tally measured how much a crime-scene trace
   weighs with an uncommitted copy of `tools/measure_evidence.gd` that has two extra modes
@@ -267,7 +284,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
     (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
-    twice running; no new number; logged with its reason.
+    twice running; no new number; logged with its reason. **Built** (Nov 18,
+    `claude/beadle-gift-turned-evil`), with the listener side below; (a) still to build.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
     far as they believe the line, rather than going through the challenge path, where a
@@ -948,7 +966,8 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
   its target. Moves golden. Michael (Nov 17): fix. For the first victim, the bluff picks
   a night that can actually frame (not night 0, when the Demon never walks), or makes a
-  different claim. Owner Beadle. **[decided]**
+  different claim. Owner Beadle. **[decided]** Built (Nov 18, `claude/beadle-medium-night0`):
+  the first victim's frame names the night they died; an empty relay never names the scapegoat.
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's

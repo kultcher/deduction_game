@@ -154,6 +154,14 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
 					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
 
+	# A teller's own word that its gift may have been turned (BACKLOG "Saying 'my gift may
+	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading
+	# proves only as much as it is still credited (Codex on #245).
+	var gift_doubt: Dictionary = _gift_self_doubt(pub_events, self_id, listener.get("suspicion", {}))
+	for sd_key in gift_doubt:
+		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+
 	# Pass 2: Gravedigger execution proofs from non-discredited other sources.
 	var npc_trust: Dictionary = listener.get("npc_trust", {})
 	for card in cards:
@@ -213,6 +221,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if not seed_doubt.has(s_good + ":*"):
 			pre_eval.erase(s_good + ":*")
 
+	# A teller's own word that its gift may have been turned, put back after the sincere-
+	# teller pass on purpose: a teller known to be sincere can still have a broken gift.
+	for sd_key in gift_doubt:
+		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+
 	# "Is my gift Delusional?" (Michael, Nov 17). With the secret on the script a good
 	# listener's own gift might give it wrong readings without it knowing, so each night of
 	# its own readings carries a small honest doubt (DELUSIONAL_SELF_DOUBT), the way its home
@@ -261,6 +275,24 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				full_doubt[r_src + ":*"] = maxf(float(full_doubt.get(r_src + ":*", 0.0)), src_pen)
 
 	return {"pre_eval": pre_eval, "full": full_doubt, "settled_sincere": settled_sincere, "honest": honest}
+
+
+## Honest doubt from public `self_doubt` events, "teller:*": a teller who said its gift may
+## have been turned, at an unreliable argument's scale, as far as the listener believes it
+## (1 - its suspicion of the teller). The listener's own line is its own business.
+static func _gift_self_doubt(pub_events: Array, self_id: String, susp_map: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for ev in pub_events:
+		if str(ev.get("kind", "")) != "self_doubt":
+			continue
+		var t_id: String = str(ev.get("by", ""))
+		if t_id == "" or t_id == self_id:
+			continue
+		var believe: float = clampf(1.0 - float(susp_map.get(t_id, 0.0)), 0.0, 1.0)
+		var sd_val: float = minf(Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE * believe, Tuning.Workshop.DOUBT_ARG_CAP)
+		if sd_val > 0.0:
+			out[t_id + ":*"] = maxf(float(out.get(t_id + ":*", 0.0)), sd_val)
+	return out
 
 
 ## Night or general doubt about `src` from unowned template arguments (the same values
