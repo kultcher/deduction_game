@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, bluff motives in plain words): `baseline_fdaccb0`
+### Current baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
+
+`tools/golden/baseline_44073d9/` is the capture from `claude/own-night-knowledge` (#228) at
+`44073d9` (main `65a41b4` merged in): a good listener's known home nights reach its movement
+model as soft alibis, and the sighting contests take their balance from what an outsider
+could know, so an invented sighting or relay of a home-staying listener counts against the
+teller.
+- **Divergence from `baseline_fdaccb0`:** beliefs only: 42 from record 9 (Isolde, day 1),
+  54875 from record 65 (Odette, day 1), 692 from record 6 (Merrin, day 1), 900 from record 28
+  (Constance, day 1), 98933 from record 85 (Lian, day 2).
+- **Outcomes unchanged:** 42 good day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with
+  no winner. Record counts are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, bluff motives in plain words): `baseline_fdaccb0`
 
 `tools/golden/baseline_fdaccb0/` is the capture from `claude/herald-bluff-motives` at
 `fdaccb0` (main `5ef66da` merged in): every fabricated reading's recorded motive (`why`)
