@@ -33,6 +33,7 @@ func _init() -> void:
 	_trigger()
 	_gate()
 	_listener()
+	_retracted_gravedigger()
 	print("Gift doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -131,3 +132,40 @@ func _listener() -> void:
 	check(half < full and is_equal_approx(half, full * 0.2), "a suspected teller is believed less (%.2f)" % half)
 	var own: Dictionary = _doubt(g, m)
 	check(float(own.honest.get(key, 0.0)) == 0.0, "the teller's own line doesn't count for itself")
+
+
+## Codex on #245: a trusted Gravedigger's report that the hanged one was good settles them
+## as sincere; once the Gravedigger says its gift may have been turned, that report proves
+## only as much as is still credited, below the bar.
+func _retracted_gravedigger() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(9503, 10)
+	var w = g.w
+	# The listener isn't a Gravedigger itself, or every Gravedigger report would be a caught lie.
+	var goods: Array = w.living().filter(func(n): return not n.is_evil() and n.role != "gravedigger")
+	var l = goods[0]
+	var settled := func(gd, ex, with_line: bool) -> bool:
+		var input: Dictionary = Bridge.capture(g, [], l.id, "private", l)
+		var plan: Dictionary = Shared.prepare(input, {}, l.ledger, {}, [])
+		if not plan.get("ready", false):
+			return false
+		# No real hanging stands behind this made-up report: without the timeline, pass 1
+		# doesn't check it, so this isolates pass 2's proof.
+		plan.prepared.view.erase("timeline")
+		plan.prepared.view.cards.append({"id": "gdtest", "kind": "report", "role": "gravedigger", "source": gd.id, "night": 1,
+			"data": {"executed": ex.id, "role": ex.role}, "subjects": [ex.id]})
+		plan.prepared.listener["npc_trust"] = {gd.id: 0.8}
+		plan.prepared.listener["suspicion"] = {gd.id: 0.0}
+		if with_line:
+			plan.input.public_events = plan.input.get("public_events", []) + [{"kind": "self_doubt", "subjects": [gd.id], "by": gd.id}]
+		return SourceDoubt.derive(plan, l.ledger).settled_sincere.has(ex.id)
+	# A teller and a hanged one this listener has no other doubt about.
+	var pair: Array = []
+	for gd in goods.slice(1):
+		for ex in goods.slice(1):
+			if ex != gd and pair.is_empty() and settled.call(gd, ex, false):
+				pair = [gd, ex]
+	check(not pair.is_empty(), "a trusted Gravedigger's 'they were good' settles the hanged one as sincere")
+	if not pair.is_empty():
+		check(not settled.call(pair[0], pair[1], true), "after it says its gift may have been turned, the same report doesn't (Codex on #245)")
