@@ -118,6 +118,7 @@ These are the ones under discussion now, roughly by how much they shape other wo
 |---|---|---|
 | ~~Centring a case on its premise~~ Decided Nov 18: B at a bystander share of 1/3; no extra trust cost for a misframed case; the night-0 sighting lift goes to Lantern as a probable bug. | `docs/design/premise_centring.md`; BACKLOG section 2 `[decided]` | Lantern |
 | Honest mistakes against lies in challenges: "misled" lands 3–12% on honest mistakes, and to a listener the cards are the same. Pursue evidence that separates them (teller's history, signs of poisoning)? | BACKLOG section 6 `[open; Michael]` | Quill |
+| "Poisoned, not lying": should the player's "failed gift" call sway the town (by trust in the player), and should an unexplained night outing raise the poison chance? Vicar recommends both, with the track record as the cost of a wrong call | `docs/design/poisoned_not_lying.md`; BACKLOG section 2 "Recovering from a wrong 'lying' call" | Quill, Lantern |
 | Purge phase 6b: the four places attention still feeds belief on a refresh. Measured first, then Michael decides | `docs/connections_purge_plan.md` (#174) | Lantern |
 | The Hexer: the declaration's default ("walker"?) and the bot's Hexer call (54% right). On hold until Michael plays two-kind scripts | BACKLOG section 4; Bailiff's final handoff | Quill (bot), Herald (UI) |
 | Is the 10-NPC connections gain real? +5.7 on 300 seeds (z +1.9); a 1,000-seed cell would settle it | Bailiff's final handoff | Tally |
