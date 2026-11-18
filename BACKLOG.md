@@ -505,9 +505,9 @@ Candidates for a unified retuning proposal, not approved changes.
   votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
   Owner Herald. [decided]
   **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
-  secrets have one now. Still to do: the Workshop canvas's evidence cards
-  (`ui/workshop_canvas_view.gd`), which print the full sentence, and a pass over the
-  gift readings' short forms (each role's `short_text`, with their leads).
+  secrets have one now. **The Workshop canvas's evidence cards** show the same short form
+  (`claude/herald-canvas-card-text`, Nov 18), with the sentence still on hover. Still to do:
+  a pass over the gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
