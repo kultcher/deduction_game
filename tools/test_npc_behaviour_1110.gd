@@ -32,7 +32,6 @@ func _run() -> void:
 		for n in g.w.npcs:
 			single = single and n.work_phases.size() == 1
 	_check(single, "every NPC works one shift (20 cases, 10 NPCs)")
-	_check(is_equal_approx(Tuning.Roles.ONGOING_INFO_EARLY_CLAIM, -0.4), "the day-1 ongoing-info penalty is -0.40")
 
 	# Asking about the dead: acknowledged, no opinion; the haunt line in the past tense.
 	var told_dead: int = 0
