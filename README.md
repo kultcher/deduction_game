@@ -379,7 +379,7 @@ Main entry types:
 | `npc_share` | what one NPC told another, the original source, whether it was relayed, and whether it was a lie |
 | `evil_intel`, `evil_share` | what an evil member learned and how (own sighting, told by someone, the player's case); when members pool knowledge (first-night conference, meeting, tavern whisper) |
 | `approach`, `approach_declined` | an NPC seeking out the player, with their agenda (news / frame / gossip) |
-| `deduction`, `deduction_refused`, `deduction_deleted`, `workshop_canvas_filed` | a case the player filed (conclusion, supports, class), one refused and why, one deleted |
+| `deduction`, `deduction_refused`, `deduction_deleted`, `workshop_canvas_filed` | a case the player filed (conclusion, supports, class), one refused and why, one deleted. `workshop_canvas_filed` has `revises`: the case it replaces (0 for a new case) |
 | `argument`, `argument_stance` | an NPC hearing a presented case, and the stance they took |
 | `workshop_presentation`, `workshop_delivery`, `workshop_ownership` | (in the `.trace.jsonl` sidecar) the shared model at work: per listener, the reasoning, the reply and the suspicion vector it applied |
 | `workshop_why` | (only with "Record why each listener moved" on, or `g.workshop_why`) why a listener moved as far as they did on a presented case: the suspicion the case could add at each step, the biggest loss, the strongest surviving alternative, and per card its status, world share and `q` (`docs/DECISION_INSPECTOR.md`) |
@@ -397,6 +397,7 @@ Main entry types:
 | `nomination`, `player_statement`, `clemency`, `vote_tally`, `execution`, `no_execution`, `game_over` | meeting events (vote tallies include threshold and block state) |
 | `snapshot` | per-phase table of every living NPC's location, poison, trust, claim and suspicion |
 | `player_command` | each command the player typed and the full text they saw |
+| `state_digest` | after each command and Workshop filing: a full-precision hash of every mind's suspicion, trust, credibility, NPC trust and Workshop state (real and shadow), and the world's random-stream state. `tools/replay_log.gd` compares them and prints the first command where the replay's state differs, and whose. |
 | `tavern_evening_gossip`, `town_hall` | what the tavern let you overhear; a Town Hall consultation |
 | `player_guess`, `prediction_snapshot`, `prediction_spoiled` | private theory revisions; frozen copies before votes, executions and nights; debug-reveal exclusion |
 | `player_execution_context`, `case_summary` | known card IDs and theory before execution; final identity credit, survival, wrongful-execution fraction and player stance |

@@ -119,4 +119,5 @@ test_workshop_vote_and_alibi
 test_workshop_why
 test_player_failed_gift
 test_nightwatch_whole_list
+test_state_digest
 test_relay_bluff
