@@ -893,7 +893,18 @@ static func flush_beliefs(w, only = null) -> void:
 	var was: bool = w.defer_beliefs
 	w.defer_beliefs = false
 	for p in run:
-		refresh_beliefs(w, p[0], p[1])
+		var m = p[0]
+		if m.is_shadow and not is_same(w.dlog, w.shadow_log):
+			var saved_rng = w.rng
+			var saved_log = w.dlog
+			w.rng = m.shadow_rng
+			w.shadow_log.set_time(saved_log.day, saved_log.phase)
+			w.dlog = w.shadow_log
+			refresh_beliefs(w, m, p[1])
+			w.rng = saved_rng
+			w.dlog = saved_log
+		else:
+			refresh_beliefs(w, m, p[1])
 	w.defer_beliefs = was
 
 static func _refresh_beliefs(w, n, note: String) -> void:

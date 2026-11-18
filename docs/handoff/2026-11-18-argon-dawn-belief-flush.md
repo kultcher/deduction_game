@@ -1,7 +1,13 @@
 # 2026-11-18, Argon: Consolidate night-to-dawn belief refreshes (`argon/dawn-belief-flush`; golden re-baselined, zero decision/state drift)
 
-- **Base:** `origin/main` `426d7976` (includes `#232`, `#273`, `#278`, `#279`, `#281`). **Code commit:** `fe833dc`. **Reviewers:** Claude-Lantern (beliefs) and Claude-Beadle (scapegoat and evil-team behaviour).
+- **Base:** `origin/main` `426d7976` (includes `#232`, `#273`, `#278`, `#279`, `#281`), with `origin/main` `c1f74fc4` (includes `#280` state digest and `#291`) merged in. **Reviewers:** Claude-Lantern (beliefs) and Claude-Beadle (scapegoat and evil-team behaviour).
 - **What and why:** Implements fix `(a)` from Claude-Seneschal's Nov 18 brief on fewer belief refreshes at dawn (`resolve_night` -> `start_new_day` -> dawn).
+
+## Overlapping PRs & Merge Order
+
+- **Lantern `#290` (`claude/purge-phase3`, zero drift):** Overlaps on `sim/world.gd` (lines 14 & 402 vs. our lines 1315–1347 — disjoint, merges cleanly). Does not move golden. Either `#289` or `#290` can merge first.
+- **Beadle `#292` (`claude/beadle-agreement-trust`, moves golden):** Overlaps on `sim/mind.gd` (lines 1046 & 1098 vs. our lines 895–908, 1180–1190), `sim/world.gd` (lines 931 & 1015 vs. our lines 1315–1347), `.github/workflows/ci.yml`, and `docs/golden_baseline.md`. Both `#289` and `#292` move golden, so Bailiff should order them in the golden queue; whichever merges second merges `main` and re-baselines on the post-merge `main`.
+- **Quill's reading-label merge / Thursday suite renames (`claude/rename-playtest-suites`):** Not open on `main` yet; `#289` does not touch `tools/ci_fast_suites.txt` or the renamed suites.
 
 ## Changes
 
@@ -9,8 +15,9 @@
   - Keeps `Mind.end_of_day_trust(self)`, all belief-driven night choices (`sexton`, `kill_t`, `poison_t`, `warden_t`, `watch_block`, `medium_t`, `lamp`, `mart`, `confessor_t`), `_night_movement`, and `C.INFO_BEFORE_KILL`'s `_receive_info` running before deferral so night targeting sees end-of-day beliefs.
   - Sets `defer_beliefs = true` across `_kill`, `_quiet_night`, `_warden_credit`, `_night_sightings`, `Evil.gather_night_intel`, `Evil.make_fake_info`, and `Mind.update_from_own_info`, then runs `Mind.flush_beliefs(self)` once and restores `defer_beliefs` right before `snapshot("night_end")` and `start_new_day()`.
   - Because evil shadows (`n.shadow`) are queued in `w.pending_beliefs` alongside good minds without changing `Mind.refresh_beliefs`/`_refresh_beliefs`, night `_kill` + `_shadow_own_info` refreshes fold into one end-of-night shadow flush without altering daytime `shadow_run` / `_shadow_sync` timing.
-- **`sim/mind.gd` (`Mind.tell_save`, L1180–1190):**
-  - Defers across `hear_claim` + `ledger_hear` and runs `flush_beliefs(w, protectee)` right before reading `susp(protectee, warden.id)`, folding `_quiet_night` + Warden save claim/evidence into one refresh for `protectee`.
+- **`sim/mind.gd` (`Mind.flush_beliefs`, L895–908; `Mind.tell_save`, L1190–1200):**
+  - `flush_beliefs` preserves the shadow logging and RNG context (`w.dlog = w.shadow_log`, `w.rng = m.shadow_rng`, `w.shadow_log.set_time(...)`) when flushing deferred `m.is_shadow` minds outside `shadow_run`, so `detailed_logging` never emits shadow `value_change` / `workshop_ownership` / `belief_recompute` events to the real-mind trace stream (Codex P2 finding on `5ec607c`).
+  - `tell_save` defers across `hear_claim` + `ledger_hear` and runs `flush_beliefs(w, protectee)` right before reading `susp(protectee, warden.id)`, folding `_quiet_night` + Warden save claim/evidence into one refresh for `protectee`.
 
 ## Morning Sites Traced (`start_new_day`, `Social`, `Credibility.dawn`)
 
@@ -36,7 +43,12 @@
   - Compared every non-refresh record (`meta`, all `step` records `-1..N`, and `end`) between Windows `origin/main` and `argon/dawn-belief-flush` at `--tol 0` (excluding `refreshes_so_far`/`refreshes`): **100% bit-for-bit identical** on all 5 seeds (`seed_42_7` 27 records, `seed_54875_10` 41 records, `seed_692_10` 31 records, `seed_900_7` 34 records, `seed_98933_10` 36 records). Every decision, vote, nomination, kill, line said, RNG state, and NPC/shadow state is unchanged.
   - Two independent Windows golden captures matched at `--tol 0` across all 5 seeds (`42_7` 107, `54875_10` 336, `692_10` 246, `900_7` 177, `98933_10` 283 records).
   - Baseline `tools/golden/baseline_fe833dc/` holds the Linux `golden-linux` capture (`ubuntu-latest` CI artifact from `fe833dc`): every `meta`, `step`, and `end` record matches Linux `tools/golden/baseline_e287b3d` bit-for-bit at `--tol 0` (and matches Windows captures at `--tol 1e-13`; `seed_42_7` at `--tol 0`).
+- **State-digest replay check (`#280`, `tools/replay_log.gd`):**
+  - Recorded fresh multi-day (Day 1 -> Day 4, 10 NPCs) playtest logs with Workshop cases filed, revised, and presented on `origin/main` (`c1f74fc4`), then replayed them on `argon/dawn-belief-flush`:
+    - Seed `692`: `STATE DIGEST all 34 match` (`steps=31 diverged=false votes_match=true`; total command time `29,935 ms -> 27,496 ms`, `-8.1%`).
+    - Seed `54875`: `STATE DIGEST all 44 match` (`steps=41 diverged=false votes_match=true`; total command time `48,574 ms -> 44,087 ms`, `-9.2%`).
 - **Suites:**
-  - `test_evil_play`: **PASS** (14.0s).
-  - `test_relay_bluff_games`: **PASS** (68.4s).
+  - `test_state_digest`: **PASS** (8/8 checks).
+  - `test_evil_play`: **PASS** (64/64 checks, re-run after Codex P2 fix).
+  - `test_relay_bluff_games`, `test_social`, `test_npc_behaviour_1110`, `test_connections_cache`: **PASS**.
   - `tools/ci_fast_suites.txt`: **116/117 passed** (`test_csharp_slice_c0` failed only on pre-existing Windows-vs-Linux 1-ULP difference `EvalMathBatch_Tol0[152]: diff=1.776E-015 ulp=1` noted in [the #279 handoff](docs/handoff/2026-11-18-0230-argon-fix-fits-cache-collision.md)).
