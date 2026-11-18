@@ -24,6 +24,7 @@ func _init() -> void:
 	_public_withdrawal()
 	_revisions()
 	_withdraw_chain()
+	_weakens_warning()
 	_new_evidence_rule()
 	print("Public revisions: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -41,6 +42,19 @@ func _read(g, source, role: String, day: int, data: Dictionary) -> int:
 		"phase": 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 	_texts[number] = g.board[number - 1].text
 	return number
+
+func _compile(g, type: String, target: String, support: Array) -> Dictionary:
+	var view: Dictionary = Live.view(g)
+	var model = CanvasModel.new(view)
+	model.contradiction_links = true
+	model.marked_answers = false
+	var premise: String = model.add_premise(target, type, Vector2(400, 40))
+	for number in support:
+		for id in model.nodes:
+			var nd = model.nodes[id]
+			if nd.kind == "evidence" and Solver.card_by_id(view, nd.card).get("text", "") == str(_texts.get(number, "")):
+				model.connect_cards(id, premise)
+	return model.compile(premise)
 
 func _file(g, type: String, target: String, support: Array, previous: int = 0) -> int:
 	var view: Dictionary = Live.view(g)
@@ -192,6 +206,36 @@ func _withdraw_chain() -> void:
 	check(int(n.claim_record.get("secret:" + goods[1].id, {}).get("case", 0)) == rev, "a case's secret claim notes its case")
 	Credibility.retire_case(n, rev, true)
 	check(not n.claim_record.has("secret:" + goods[1].id), "and leaves the record with it")
+
+## "This weakens your previous case" (Michael, Nov 18): a warning, judged by the Test
+## juror or by one listener, when a revision leaves its premise less likely.
+func _weakens_warning() -> void:
+	var g = _game()
+	var goods: Array = g.w.living_good()
+	var reader = goods[0]
+	var x = goods[1]
+	var y = goods[2]
+	var hit: int = _read(g, reader, "dowser", 1, {"group": [x.id], "count": 1})
+	var again: int = _read(g, goods[3], "dowser", 2, {"group": [x.id, y.id], "count": 1})
+	var clear: int = _read(g, goods[3], "dowser", 1, {"group": [x.id, y.id], "count": 0})
+	var first: int = _file(g, "evil", x.id, [hit])
+	if first <= 0:
+		check(false, "the warning's first case can be filed")
+		return
+	var weaker: Dictionary = _compile(g, "evil", x.id, [hit, clear])
+	var warn: Dictionary = Live.revision_weakens(g, weaker, first)
+	check(warn.get("text", "") == "This weakens your previous case" and float(warn.get("after", 1.0)) < float(warn.get("before", 0.0)),
+		"a revision citing a card that clears its subject warns that it weakens the case (%s)" % str(warn))
+	var stronger: Dictionary = _compile(g, "evil", x.id, [hit, again])
+	check(Live.revision_weakens(g, stronger, first).is_empty(), "a revision that adds support gives no warning")
+	var other: Dictionary = _compile(g, "evil", y.id, [hit, clear])
+	check(Live.revision_weakens(g, other, first).is_empty(), "a revision about someone else is a different case: no warning")
+	var epoch: Dictionary = weaker.duplicate(true)
+	epoch.conclusion["at"] = "some other epoch"
+	check(Live.revision_weakens(g, epoch, first).is_empty(), "nor one that changes any other part of the premise (here its epoch)")
+	var l = g.w.living().filter(func(p): return p != reader and p != x and p != y and not p.is_evil())[0]
+	var lw: Dictionary = Live.revision_weakens(g, weaker, first, l.id)
+	check(not lw.is_empty() and float(lw.after) < float(lw.before), "judged by one listener's view, the same revision warns too (%s)" % str(lw))
 
 func _new_evidence_rule() -> void:
 	check(GamePresentation.new_evidence({"supports": [3]}, {"supports": [3, 5]}), "citing a new original card is new evidence")
