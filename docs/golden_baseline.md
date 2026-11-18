@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, premise centring B): `baseline_a3fd022`
+### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_96e729f`
+
+`tools/golden/baseline_96e729f/` is the capture from `claude/beadle-bluff-blend` (#269) at `96e729f`
+(main `c4f5dc6` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
+bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
+- **Divergence from `baseline_a3fd022`:** 54875, 692, 900 and 98933 from record 0 (the world's
+  random state after the first night's fabrications). 42 is identical.
+- **Outcomes:**
+  - **42:** unchanged (good on day 3).
+  - **54875:** was good on day 2 after hanging Constance. Now day 4 with no winner, after
+    hanging Greta on day 2 and Edda on day 3.
+  - **692:** hangs only Constance, on day 3. Merrin is no longer hanged on day 2.
+  - **900:** hangs Lian on day 3, not Constance on day 2.
+  - **98933:** now hangs Dorian on day 2 and Isolde on day 3 (none before).
+  - Every seed but 42 reaches day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, premise centring B): `baseline_a3fd022`
 
 `tools/golden/baseline_a3fd022/` is the capture from `claude/premise-centre-b` (#246) at `a3fd022`
 (main `2430ea5` merged in). An item a case brings is judged against what the listener already
