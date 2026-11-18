@@ -1,7 +1,11 @@
 ## A player's vigil against a Night Watch report (BACKLOG "Challenge a Night Watch report
-## using a conflicting player vigil", [decided]). The world model already weighs the clash;
-## this pins it: same night and block versus another block, the challenge route, a vigil
-## that saw someone (complete coverage), and the watcher's own walk to the block.
+## using a conflicting player vigil", [decided]). A vigil watches a block's doors: it sees
+## everyone who leaves home there (C.vigil_sees_path, the same rule the night uses), not
+## people passing through. So it answers a Night Watch who claims to have seen someone pass
+## when that person lives on the watched block, and a Night Watch who watched their own
+## block (they had to leave home to keep watch). The world model already weighs both; this
+## pins it: the same night and block against another block, the challenge route, a vigil
+## that saw someone else (complete coverage), and the watcher's own walk.
 ##   godot --headless --path . --script res://tools/test_vigil_nightwatch.gd
 extends SceneTree
 
@@ -12,7 +16,7 @@ const Solver = preload("res://workshop/solver.gd")
 const Caches = preload("res://workshop/caches.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 
-const SEEDS = [1, 2, 3]
+const SEEDS = [1, 2, 3, 4]
 var checks = 0
 var fails = 0
 var _texts: Dictionary = {}
@@ -24,17 +28,20 @@ func check(ok: bool, label: String) -> void:
 		fails += 1
 
 func _init() -> void:
-	var same: float = _mean("nobody", "same", "plain", ["x"])
-	var other: float = _mean("nobody", "other", "plain", ["x"])
-	check(same > other + 0.08, "a vigil on the watched block that night counts against the report; one elsewhere doesn't (%+.3f vs %+.3f)" % [same, other])
-	var lying: float = _mean("nobody", "same", "lying", ["x"])
+	# X lives on the watched block; the Night Watch claims to have seen X pass.
+	var same: float = _mean("nobody", "same", "plain", ["x"], "x")
+	var other: float = _mean("nobody", "other", "plain", ["x"], "x")
+	check(same > other + 0.08, "a vigil on X's block that night answers \"I saw X pass\"; one on another block doesn't (%+.3f vs %+.3f)" % [same, other])
+	var lying: float = _mean("nobody", "same", "lying", ["x"], "x")
 	check(lying > 0.03, "the vigil can be the grounds of a lying challenge on the report (%+.3f)" % lying)
-	var saw: float = _mean("saw_y", "same", "plain", ["x"])
-	check(saw > other + 0.08, "a vigil that saw someone else go out is complete coverage: it counts against the report too (%+.3f)" % saw)
-	var own_missing: float = _mean("nobody", "same", "plain", [])
-	var own_seen: float = _mean("saw_nw", "same", "plain", [])
-	print("INFO watcher's own walk: nobody-stirred vigil %+.3f, vigil that saw the watcher %+.3f" % [own_missing, own_seen])
-	check(own_missing > own_seen + 0.05, "a watcher who saw nobody, on a block a vigil saw nobody reach, was never there: that counts against them (%+.3f vs %+.3f)" % [own_missing, own_seen])
+	var saw: float = _mean("saw_y", "same", "plain", ["x"], "x")
+	check(saw > other + 0.08, "a vigil that saw someone else leave is complete coverage: it answers the report too (%+.3f)" % saw)
+	var passing: float = _mean("nobody", "same", "plain", ["x"], "none")
+	check(passing < other + 0.05, "a vigil doesn't see people passing through, so on a block where X doesn't live it says nothing about X (%+.3f vs %+.3f)" % [passing, other])
+	# The watcher's own walk: a Night Watch keeping watch over their own block leaves home.
+	var own_missing: float = _mean("nobody", "same", "plain", [], "nw")
+	var own_seen: float = _mean("saw_nw", "same", "plain", [], "nw")
+	check(own_missing > own_seen + 0.05, "a watcher on their own block whom the vigil never saw leave wasn't keeping watch (%+.3f vs %+.3f)" % [own_missing, own_seen])
 	print("Vigil and Night Watch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -42,17 +49,17 @@ func _init() -> void:
 ## the report with a case. `vigil`: "nobody" (nobody stirred), "saw_y" (saw someone else go
 ## out), "saw_nw" (saw the watcher). `where`: the watched block or another. `seen`: whom the
 ## report names ("x", or [] for nobody).
-func _mean(vigil: String, where: String, mode: String, seen: Array) -> float:
+func _mean(vigil: String, where: String, mode: String, seen: Array, on: String) -> float:
 	var total := 0.0
 	var n := 0
 	for sd in SEEDS:
-		var d = _one(sd, vigil, where, mode, seen)
+		var d = _one(sd, vigil, where, mode, seen, on)
 		if d != null:
 			total += d
 			n += 1
 	return total / maxf(1.0, n)
 
-func _one(sd: int, vigil: String, where: String, mode: String, seen_spec: Array):
+func _one(sd: int, vigil: String, where: String, mode: String, seen_spec: Array, on: String):
 	LiveActivity.cache.clear()
 	Caches.clear_all()
 	var g = Game.new()
@@ -73,14 +80,18 @@ func _one(sd: int, vigil: String, where: String, mode: String, seen_spec: Array)
 	var nw = goods[0]
 	var x = goods[1]
 	var y = goods[2]
-	var block: String = OS.get_environment("BLK")
-	if block == "":
-		block = "docks" if x.home_block != "docks" else "market"
-	print("DBG seed %d block %s x_home %s nw_home %s" % [sd, block, x.home_block, nw.home_block])
+	# `on`: whose block is watched (X's, the Night Watch's, or one where neither lives).
+	var block: String = x.home_block if on == "x" else (nw.home_block if on == "nw" else "")
+	if on == "none":
+		for b in ["docks", "market", "hill", "square"]:
+			if b != x.home_block and b != nw.home_block and b != y.home_block:
+				block = b
+	if block == "" or (on == "x" and x.home_block == nw.home_block) or (on == "nw" and nw.home_block in [x.home_block, y.home_block]):
+		return null
 	var vblock: String = block
 	if where == "other":
 		for b in ["docks", "market", "hill", "square"]:
-			if b != block and b != x.home_block and b != nw.home_block:
+			if b != block and b != x.home_block and b != nw.home_block and b != y.home_block:
 				vblock = b
 	var seen: Array = [x.id] if "x" in seen_spec else []
 	var watch: int = _card(g, {"kind": "info", "source": nw.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": block, "seen": seen}})
@@ -98,9 +109,7 @@ func _one(sd: int, vigil: String, where: String, mode: String, seen_spec: Array)
 	if second <= 0:
 		return null
 	_present(g, listeners, second)
-	var dd: float = _sus(listeners, nw) - before
-	print("DELTA seed %d %s/%s/%s block %s nw_home %s x_home %s: %+.3f" % [sd, vigil, where, mode, block, nw.home_block, x.home_block, dd])
-	return dd
+	return _sus(listeners, nw) - before
 
 func _card(g, card: Dictionary) -> int:
 	card["text"] = "%s %s night 1 %s" % [card.get("source", ""), card.get("kind", ""), JSON.stringify(card.get("data", card.get("subject", [])))] + str(_texts.size())

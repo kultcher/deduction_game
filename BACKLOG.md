@@ -67,6 +67,16 @@ relay about the first victim naming night 0 (Beadle).
   reading-challenge path. Same night and block, complete versus incidental coverage, and
   the watcher excluding themselves matter. A contradiction alone doesn't say which source
   lied, or that impairment caused it. [decided: capability; evaluator details open]
+  **Built, by the existing model** (Quill, Nov 18; measured and pinned in
+  `tools/test_vigil_nightwatch.gd`, no new rule). A vigil watches a block's doors: it sees
+  everyone who leaves home there, not people passing through, the same rule the night uses.
+  - **It answers "I saw X pass" when X lives on the watched block,** and a Night Watch who
+    watched their own block, since they had to leave home. That's about +16 and +44 points
+    of suspicion of the Night Watch in the suite's deals; one on another block adds nothing.
+  - **A vigil that saw someone else leave counts the same,** being complete coverage.
+  - **It works as the grounds of a "lying" challenge**, about +6 points.
+  - **"Misled" lands like "lying"** until "misled" counts as honest doubt (proposed to
+    Michael).
 
 - **Challenge a Warden's particular failed protection claim.** Target "On Night X I
   protected <NPC>" against that night's Demon death, supporting the explanation that a
