@@ -86,8 +86,16 @@ Every bluff rule (`generate_bluff_reading` in `sim/roles/*.gd`) was held to the 
   times when no teammate had. Both behaviours fail on main's code.
 - Golden is identical to baseline_490cdcf: none of the five seeds deals an Augur or
   Psychologist bluff that reaches these branches.
-- How often the new rules fire in play: see the PR body (30 passive 10-NPC games, seed
-  3000, branch and main).
+- **In play:** 25 passive 10-NPC games, seeds 3000-3024, branch against main. (Main ran 30;
+  the branch run stopped at 25 when the container restarted.)
+  - **Augur:** no Augur bluffs were dealt in any of the 25 games, nor in main's 30. The fix
+    is rare in play.
+  - **Psychologist:** 4 of the 25 games changed, and none changed winner (13 evil, 12 good on
+    both). In 3017 a bluffer that swore nobody lied, after a teammate had lied, now casts
+    doubt on two good people's words. In 3001, 3008 and 3012 the change is a different
+    random draw after the skipped roll, not a different rule. Made-up "nobody lied" readings
+    numbered 6 on main and 7 on the branch: the rule catches only days a teammate lied in
+    the bluffer's hearing, which is rare.
 
 ## Proposed for the backlog
 
