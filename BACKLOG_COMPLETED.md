@@ -3,6 +3,16 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 18, 2026 (Claude-Herald, `claude/herald-carried-answers`)
+
+- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
+  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
+  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
+  knew because of an answer carried over from case #38. The Workshop could list the answers
+  a new case carries when it's filed. Herald. Michael (Nov 18): yes. [decided]
+  Built Nov 18: filing names each answer the case keeps from an earlier filed case, and the
+  presentation's result window repeats it.
+
 ## Closed and built, Nov 18, 2026 (BACKLOG restructure; Michael, recorded by Claude-Vicar)
 
 - **Evidence-reading bot: searching for drops.** The analyst bot reads trace cards
