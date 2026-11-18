@@ -64,6 +64,9 @@ internal static class LiveActivityKernel
     public const int FlagItemDrop = 1 << 7;
     public const int FlagTraceHasFamily = 1 << 8;
     public const int FlagRoleIsNightWalk = 1 << 9;
+    /// The listener's own knowledge of a night it spent at home (WorkshopBridge, the listener's
+    /// view): out has likelihood 1 - cardDoubles[c * 2] (packed as 1 - its self-doubt).
+    public const int FlagKnownSelf = 1 << 10;
 
     // Movement role codes (slot 7):
     public const int MoveRoleEmpty = 0;
@@ -493,8 +496,9 @@ internal static class LiveActivityKernel
                                 // probabilistic score is softer (VigilMiss): the town allows a missed sighting.
                                 pathOk = pathOk && !path.VigilSees(cardInts[off + 10]);
                             }
-                            else if (kind == KindAlibi && cardInts[off + 3] == i)
+                            else if (kind == KindAlibi && cardInts[off + 3] == i && (cardInts[off + 1] & FlagKnownSelf) == 0)
                             {
+                                // (The listener's own home night is soft: a Sleepwalker may walk.)
                                 pathOk = pathOk && !isOut;
                             }
                             else if (kind == KindCoverage && (cardInts[off + 5] & (1 << i)) == 0)
@@ -1020,6 +1024,11 @@ internal static class LiveActivityKernel
             }
             case KindAlibi:
             {
+                if ((flags & FlagKnownSelf) != 0)
+                {
+                    // "I know I was home": only a Sleepwalker's doubt leaves room for being out.
+                    return cardInts[off + 3] != personIdx || !isOut ? 1.0 : 1.0 - cardDoubles[cardIdx * 2];
+                }
                 if (cardInts[off + 3] == personIdx)
                 {
                     // Someone else's word on a person's night (a witness) stays hard.
