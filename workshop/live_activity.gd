@@ -671,15 +671,19 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	for c in checked:
 		if c.get("quoted", false):
 			continue
-		# Who might have made it up: the sighter, and for a relayed sighting (a Medium's word
-		# from the dead) the relayer too, since an evil relayer can invent what the dead saw.
+		# Who might have made it up: the sighter; for a relayed card (a Medium's word from the
+		# dead) only the relayer. The dead person never told it: a Medium learns what they
+		# knew and never said, firsthand, so the dead can't have invented it, and an evil
+		# relayer can. Counting the dead as a teller too let the two-sighter cap drop the
+		# relayer, so an invented relay was weighed as the dead's honest word (seeds 929 and
+		# 100029; BACKLOG "A relayer cut from the sighter contest", Michael, Nov 18).
 		var tellers: Array = []
 		var si: int = ids.find(str(c.get("source", "")))
-		if si >= 0:
-			tellers.append(si)
 		var ri: int = ids.find(str(c.get("relay_source", ""))) if c.has("relay_source") else -1
-		if ri >= 0 and ri != si:
+		if ri >= 0:
 			tellers.append(ri)
+		elif si >= 0:
+			tellers.append(si)
 		if tellers.is_empty():
 			continue
 		var named: Array = []
