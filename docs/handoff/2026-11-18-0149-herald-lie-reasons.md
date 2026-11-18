@@ -34,7 +34,7 @@
   - "Claimed to have sat at a hearth on Chapel Hill on the second night, as the Medium."
   - "Told sightings on the first night to match its made-up watch (Agnes)."
   - "Told you they were the Night Watch, as cover."
-- **Golden:** `baseline_a96bdaa`.
+- **Golden:** `baseline_be621cd` (re-captured at the merge with main `040d115`; text only against `baseline_490cdcf`, 394 strings, outcomes unchanged, two captures identical).
   - Text only, in `why` fields: 336 strings, all "evil's scapegoat". I checked this by flattening both captures: no non-string field differs and record counts match.
   - The spoken-lie lines don't appear in golden.
   - Two captures were identical.

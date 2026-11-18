@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
+### Current baseline (Nov 18, evil's lie reasons in plain words): `baseline_be621cd`
+
+`tools/golden/baseline_be621cd/` is the capture from `claude/herald-lie-reasons` (#241) at
+`be621cd` (main `040d115` merged in): evil's "think: lie" lines and fabrication reasons are
+reworded for the reveal (names, roles, ordinal nights, "evil's scapegoat").
+- **Divergence from `baseline_490cdcf`:** text only. 394 strings differ (the `why` of fake
+  readings and sightings, and the lie lines), no number, list or other value. 42 and 900 are
+  identical; 54875 differs from record 84, 692 from 82, 98933 from record 1.
+- **Outcomes:** all unchanged (42 good day 3; 54875 good day 2; 692 and 900 reach day 4 with no
+  winner, the same executions; 98933 reaches day 4 with no executions). Record counts unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
 
 `tools/golden/baseline_490cdcf/` is the capture from `claude/delusional-self-doubt-2` (#216) at
 `490cdcf` (main `f23566a` merged in): with Delusional on the script, a good listener that
