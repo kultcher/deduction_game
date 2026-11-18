@@ -53,7 +53,7 @@ func _pick_kinds(w, s, l, tries: int) -> Dictionary:
 func _test_confide() -> void:
 	var g = _fresh()
 	var w = g.w
-	var s = w.living_good().filter(func(n): return n.secret.is_empty() and C.package_of(n.role) != "")[0]
+	var s = w.living_good().filter(func(n): return n.secret.is_empty() and C.hint_package(w, n.role) != "")[0]
 	var l = w.living_good().filter(func(n): return n != s)[0]
 	s.claim_public = false
 	s.protect_lock = false
@@ -89,9 +89,9 @@ func _test_yesterday_gossip() -> void:
 	var a = w.living_good()[0]
 	var b = w.living_good()[1]
 	w.daily_npc_shares = [{"day": 2, "phase": C.AFTERNOON, "loc": "tavern", "speaker": a.id, "listener": b.id,
-		"item": {"kind": "role_hint", "about": a.id, "from": a.id, "package": C.package_of(a.role), "key": "role_hint:" + a.id}},
+		"item": {"kind": "role_hint", "about": a.id, "from": a.id, "package": C.hint_package(w, a.role), "key": "role_hint:" + a.id}},
 		{"day": 1, "phase": C.NIGHT, "loc": "tavern", "speaker": b.id, "listener": a.id,
-		"item": {"kind": "role_hint", "about": b.id, "from": b.id, "package": C.package_of(b.role), "key": "role_hint:" + b.id}}]
+		"item": {"kind": "role_hint", "about": b.id, "from": b.id, "package": C.hint_package(w, b.role), "key": "role_hint:" + b.id}}]
 	w.start_new_day()
 	var kept: Array = w.daily_npc_shares.filter(func(r): return int(r.day) <= 2)
 	_check(kept.size() == 1 and int(kept[0].day) == 2, "a new day keeps yesterday's talk and drops older (%s)" % str(w.daily_npc_shares.map(func(r): return r.day)))

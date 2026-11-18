@@ -34,7 +34,7 @@ func _probabilities() -> void:
 	view.cards.append(repeat)
 	value.cards.append(repeat.id)
 	check(Eval.evaluate(view, value).people == after.people, "repeated family hints do not stack across dates")
-	var claim = {"id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "surveyor", "data": {}, "observed_at": card.observed_at}
+	var claim = {"id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "clerk", "data": {}, "observed_at": card.observed_at}
 	view.cards.append(claim)
 	value.cards.append(claim.id)
 	check(Eval.evaluate(view, value).people == after.people, "a matching declaration retains the same weak family support")

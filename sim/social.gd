@@ -158,7 +158,7 @@ static func _pick_item(w, s, l):
 	# the same formula, so a private claim is a social clue, never an alignment test.
 	var my_role: String = _my_role(w, s)
 	if my_role != "" and not s.claim_public:
-		var pkg: String = C.package_of(my_role)
+		var pkg: String = C.hint_package(w, my_role)
 		var hint_key: String = "role_hint:" + s.id
 		var claim_key: String = "role_claim:" + s.id
 		var can_hint: bool = pkg != "" and not _told(s, l, hint_key) and not l.known_claims.has(s.id)
@@ -910,8 +910,14 @@ const HINT_TOPICS = {
 	"official": "records and official town business",
 	"night_sight": "seeing things in the dark hours",
 	"the_dead": "the dead",
-	"shelter": "sheltering people from the demon",
+	"shelter": "sheltering people from the Demon and those who serve it",
 	"people": "reading people",
+	"affairs": "the town's affairs",
+	"justice": "the gallows",
+	"true_gifts": "people's true callings",
+	"chosen": "looking into whomever they choose",
+	"against_dark": "bringing to light what the night hides",
+	"conquer_death": "cheating death",
 }
 
 static func _anonymize_reading_text(w, src_id: String, e: Dictionary) -> String:
@@ -1016,7 +1022,7 @@ static func tavern_evening_gossip(g) -> Dictionary:
 					"fact": {"kind": "claim", "role": role, "subject": [], "source": "rumour",
 						"tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
 						"text": "Tavern rumour: word is there's a %s in town." % rname2}})
-			var pkg: String = C.package_of(role)
+			var pkg: String = C.hint_package(w, role)
 			if src_id != "" and w.by_id.has(src_id) and C.HINT_PACKAGES.has(pkg):
 				var hkey: String = "hint:%s:%s" % [src_id, pkg]
 				if not seen_keys.has(hkey):
