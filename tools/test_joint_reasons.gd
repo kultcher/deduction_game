@@ -4,10 +4,14 @@
 ## "without" side came from the attribution's own whole-case model. Any gap between the two
 ## models was credited to every card tested: Constance's three Lamplighter counts, which moved
 ## her suspicion of Kiran by under 0.005 each, were each cited as a strong reason (0.23). Now
-## a removal is measured within the attribution's model (ReasonAttribution.same_model_loo).
+## a removal is measured within one model: since Nov 18 the belief model itself (the
+## connections refresh that formed the belief, ReasonAttribution._connections_drop), which
+## also credits a card the attribution's own model under-reads (test_meeting_flow: Hollis's
+## private Gravedigger reading against Odette, 0.50 -> 0.81 through the core); the
+## attribution's model only where those inputs are missing (ReasonAttribution.same_model_loo).
 ## Games played here with connections on (7 NPCs, to the day-3 meeting), on playtest 89077's
 ## script. For each mind with a "taken together" reason, the reason's weight implies a drop
-## (weight / 0.45, before the belief scale); what the same judge says removing its card does
+## (weight / 0.45, before the belief scale); what the same model says removing its card does
 ## must be at least half of that, less a small allowance. On the earlier measurement 6 of the
 ## first 11 such reasons fail.
 ##   godot --headless --path . --script res://tools/test_joint_reasons.gd
@@ -45,7 +49,7 @@ func _joint_minds(g) -> Array:
 		var m = p.shadow if p.is_evil() and p.shadow != null else p
 		var key: String = p.id + (":cover" if m != p else ":good")
 		var ins: Array = g._workshop_reason_ctx.get(key, {}).get("rctx", {}).get("inputs", [])
-		if ins.size() != 9 or not g.w.workshop_reasons.is_valid():
+		if ins.size() < 9 or not g.w.workshop_reasons.is_valid():
 			continue
 		m.workshop_state["reasons_pending"] = true
 		g.w.workshop_reasons.call(m)
@@ -108,12 +112,20 @@ func _init() -> void:
 				if not attended.any(func(c): return str(c.id) == cid):
 					continue
 				cited += 1
-				var wo_case: Dictionary = base_case.duplicate(true)
-				wo_case["cards"] = attended.filter(func(c): return str(c.id) != cid).map(func(c): return str(c.id))
-				var wo: Dictionary = CaseEval.evaluate(view, wo_case, ins[6])
-				var p_full: float = float(full.get("people", {}).get(pid, {}).get("posterior", 0.0))
-				var p_wo: float = float(wo.get("people", {}).get(pid, {}).get("posterior", 0.0))
-				var p0: float = float(full.get("people", {}).get(pid, {}).get("prior", p_wo))
+				var p_full: float
+				var p_wo: float
+				var p0: float = float(full.get("people", {}).get(pid, {}).get("prior", 0.5))
+				var cx: Dictionary = ins[9] if ins.size() >= 10 else {}
+				if not cx.is_empty() and cid in cx.get("held", []):
+					# The belief model itself, as the attribution measures it (Nov 18).
+					p_full = float(cx.result.posterior.get(pid, 0.0))
+					p_wo = float(Connections.refresh(cx.view, cx.value, cx.weigher, cx.held.filter(func(id): return id != cid), cx.state).posterior.get(pid, 0.0))
+				else:
+					var wo_case: Dictionary = base_case.duplicate(true)
+					wo_case["cards"] = attended.filter(func(c): return str(c.id) != cid).map(func(c): return str(c.id))
+					var wo: Dictionary = CaseEval.evaluate(view, wo_case, ins[6])
+					p_full = float(full.get("people", {}).get(pid, {}).get("posterior", 0.0))
+					p_wo = float(wo.get("people", {}).get(pid, {}).get("posterior", 0.0))
 				var drop: float = CaseEval.shift(p0, p_full) - CaseEval.shift(p0, p_wo)
 				var contrib: float = float(r.get("contrib", 0.0))
 				check(drop >= 0.5 * contrib / 0.45 - ALLOW, "seed %d, %s: a reason against %s at %.2f, and removing its card moves them %.3f (%.3f without, %.3f with): \"%s\"" % [int(found.seed), mi.key, pid, contrib, drop, p_wo, p_full, str(r.get("why_own", ""))])

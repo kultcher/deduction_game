@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
+### Current baseline (Nov 18, a "taken together" reason measured in the belief model): `baseline_58dac68`
+
+`tools/golden/baseline_58dac68/` is the capture from `claude/joint-reasons-in-belief-model` at
+`58dac68` (main `80f7605` merged in): reason attribution weighs a joint ("taken together")
+reason by re-running the listener's own connections refresh without the card, so the reason
+an NPC gives is what moved it in the belief model.
+- **Divergence from `baseline_44073d9`:** reasons first, then what NPCs say and hear: 42 from
+  record 77 (Fenwick's reason for Agnes, day 3), 54875 from 196 (Edda's reasons, day 2), 692
+  from 38 (Nisha's suspicion, float noise at 1e-17, day 1), 900 from 116 (a few beliefs by
+  about 0.2 points, day 2), 98933 from 117 (Lian's reasons, day 2). With the new measure's
+  results thrown away but its refreshes still run, seeds 900 and 692 are identical to
+  `baseline_44073d9`, so the change comes through the reasons, not a side effect. Record
+  counts: 692 has 277 (was 266), 900 201 (was 202); the others are the same.
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
+  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner).
+- **Stability:** two captures were identical, and identical to the capture before main was
+  merged in.
+
+### Earlier baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
 
 `tools/golden/baseline_44073d9/` is the capture from `claude/own-night-knowledge` (#228) at
 `44073d9` (main `65a41b4` merged in): a good listener's known home nights reach its movement
