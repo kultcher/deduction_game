@@ -163,6 +163,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 				"suspicious": _root_type(presented) == "suspicious" and not str(key).begins_with("direct:"), "challenges": own_challenges})
 	if with_cases:
 		input.listener.connections["cases"] = input.listener.connections.get("nominations", []).duplicate(true) + stored_cases
+		input.listener.connections["brought"] = brought_by_premise(owners, stored_cases)
 	for entry in ledger.values():
 		var meta: Dictionary = entry.get("meta", {})
 		if meta.get("kind") != "defence" or meta.get("scope", {}).get("type") != "challenge":
@@ -648,6 +649,30 @@ static func _root_type(presented: Dictionary) -> String:
 		if int(argument.get("board_number", -998)) == int(presented.get("root", -999)):
 			return str(argument.get("conclusion", {}).get("type", ""))
 	return ""
+
+## Premise centring, option B: the cards only presented cases brought, and whose premise
+## each serves: {card id: [targets]}. A card is brought while every owner of it is a case
+## that argues about someone's alignment (premise_targets); held any other way (the
+## listener's own reading, hearsay, the public record) it isn't, and it stays brought after
+## its case fades until then (the lens stays). A withdrawn case owns nothing. A case with no
+## alignment target (Marked, conflict) among its owners leaves the card unshaped. Step 1's
+## selection (premise_shaping) on the connections model.
+static func brought_by_premise(owners: Dictionary, stored_cases: Array) -> Dictionary:
+	var target_of: Dictionary = {}
+	for sc in stored_cases:
+		target_of[str(sc.get("key", ""))] = str(sc.get("target", ""))
+	var out: Dictionary = {}
+	for id in owners:
+		var by: Array = owners[id]
+		if by.is_empty() or not by.all(func(o): return str(o).begins_with("case:") and str(target_of.get(str(o), "")) != ""):
+			continue
+		var targets: Array = []
+		for o in by:
+			var t: String = str(target_of[str(o)])
+			if t not in targets:
+				targets.append(t)
+		out[str(id)] = targets
+	return out
 
 ## The alignment targets a presentation argued about: its root premise (every argument for
 ## a direct accuse / defend), when its type asks an alignment question about a person.
