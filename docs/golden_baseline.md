@@ -44,7 +44,31 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+### Current baseline (Nov 18, single end-of-night belief flush): `baseline_fe833dc`
+
+`tools/golden/baseline_fe833dc/` is recorded from `argon/dawn-belief-flush` at `fe833dc`
+(main `426d7976`). `World.resolve_night` defers belief refreshes after belief-driven night
+choices and `_receive_info`, then runs `Mind.flush_beliefs(self)` once at the end of
+`resolve_night` before `snapshot("night_end")` and `start_new_day()` (so `Evil.review_scapegoat`
+and morning `Social.converse` / `npc_share` still read fresh beliefs); `Mind.tell_save`
+likewise defers across `hear_claim` + `ledger_hear` and flushes `protectee` before reading
+`susp(protectee, warden.id)`.
+- **Divergence from `baseline_e287b3d`:**
+  - Every `meta`, `step`, and `end` record across all 5 seeds matches Windows `origin/main`
+    bit-for-bit (`--tol 0`) with identical decisions, RNG states, votes, nominations,
+    kills, lines said, and final NPC/shadow states (excluding `refreshes_so_far`/`refreshes`).
+  - First refresh divergence: `42` record 9 (refresh #2, `isolde`, day 1 phase 3),
+    `900` record 17 (refresh #9, `greta`, day 1 phase 3), `98933` record 55 (refresh #46,
+    `merrin`, day 1 phase 3), `54875` record 56 (refresh #47, `jory`, day 1 phase 3),
+    `692` record 121 (refresh #104, `odette`, day 2 phase 3).
+- **Outcomes unchanged:**
+  - The same executions, nominators, and winners on every seed.
+  - Refresh / total record counts: `42` 80 / 107 (was 85 / 112), `54875` 295 / 336 (was
+    304 / 345), `692` 215 / 246 (was 220 / 251), `900` 143 / 177 (was 149 / 183),
+    `98933` 247 / 283 (was 255 / 291).
+- **Stability:** two independent Windows captures were identical at `--tol 0`.
+
+### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
