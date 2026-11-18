@@ -44,20 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, premise centring B): `baseline_6640a9b`
+### Current baseline (Nov 18, eleven hint families): `baseline_1dd16d5`
 
-`tools/golden/baseline_6640a9b/` is the capture from `claude/premise-centre-b` (#246) at
-`6640a9b` (main `363da4b` merged in): an item a case brings is judged against what the listener
-already held of it, so only what it adds by itself is centred on the case's premise, and a stored
-case carries every person it argues about.
-- **Divergence from `baseline_45b7506`:** 42 from record 40 (Kiran's refresh on day 2), 692 from
-  record 30 (Constance's cover on day 1), 900 from record 126 (Isolde's cover on day 2) and 98933
-  from record 155 (Merrin's refresh on day 2). 54875 is identical.
-- **Outcomes:** the same executions and winners on every seed (42 good day 3; 54875 good day 2;
-  692, 900 and 98933 reach day 4 with no winner). On 692, Constance's hanging on day 3 is now
-  nominated by Bart rather than Nisha. Record counts are the same except 692 (296, was 277) and
-  98933 (387, was 386).
-- **Stability:** two captures on `9e7558a` were identical, and a third on `6640a9b` matched them.
+`tools/golden/baseline_1dd16d5/` is the capture from `claude/hint-families` at `1dd16d5`
+(main `92a247a` merged in): eleven hint families with deliberate overlaps, and a gift in
+several families hints from the one with the most gifts on the script (`C.hint_package`).
+- **Divergence from `baseline_45b7506`:** only which family a hint names, its wording and
+  its role list. 692 from record 1 (Nisha hears a Medium's hint as night sight, not the
+  dead) and 900 from record 5 (Kiran hears a Psychologist's hint as light against the
+  dark, not reading people). With `--ignore engine,package,roles,text,reply,lines,statement`
+  every seed is identical: no belief, vote or execution changes.
+- **Outcomes:** all five unchanged; the end records are identical.
+- **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
 

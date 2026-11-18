@@ -366,7 +366,7 @@ func refresh() -> void:
 		role = "none"
 		claim_txt = "Says they have no gift."
 	elif n.max_tier == 2:
-		var pk: String = C.package_of(g.w.evil_plan["bluffs"][id] if n.is_evil() else n.role)
+		var pk: String = C.hint_package(g.w, g.w.evil_plan["bluffs"][id] if n.is_evil() else n.role)
 		claim_txt = "Hinted at %s." % C.HINT_PACKAGES[pk]["name"] if C.HINT_PACKAGES.has(pk) else "Hinted at a gift."
 		role = "unknown"
 	claim_label.clear()
