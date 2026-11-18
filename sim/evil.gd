@@ -899,7 +899,10 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 		# who passed where, so a sighting can only repeat it (Constance, 54875: "I saw Isolde"
 		# privately, "I saw Jory" in her Night Watch reading for the same night).
 		var watch: Dictionary = _own_fake_reading(n, nd, "nightwatch")
-		if not watch.is_empty():
+		# Never a night-0 sighting: the Demon doesn't walk then, so a night-0 sighting tells
+		# nothing, and a liar's would only make honest night-0 sighters look like liars
+		# (Michael, Nov 18).
+		if nd >= 1 and not watch.is_empty():
 			var seen: Array = watch.get("data", {}).get("seen", []).filter(func(x): return x != n.id and w.by_id.has(x))
 			if watch["data"].get("block", "") == vantage and not seen.is_empty():
 				var who: String = s if s in seen else seen[0]
@@ -926,7 +929,8 @@ static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]
-	if s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
+	# "Was out last night" on day 1 would be night 0, when the Demon doesn't walk (Michael, Nov 18).
+	if w.day < 2 or s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
 		return null
 	var block: String = w.by_id[s].home_block
 	for sid in w.scenes:
