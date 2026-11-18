@@ -82,7 +82,10 @@ func _draw() -> void:
 			draw_texture(seal, r.position + Vector2(6, 6), fade)
 		draw_multiline_string(_font, r.position + Vector2(36, 22), c.get("text", "").trim_prefix("Deduction: "), HORIZONTAL_ALIGNMENT_LEFT,
 			r.size.x - 44, 12, 5 if open else 1, UITheme.color("red").darkened(0.3) * fade)
-		if pinned_here:
+		if c.get("withdrawn", false):
+			draw_line(Vector2(r.position.x + 8, r.get_center().y), Vector2(r.end.x - 8, r.get_center().y), UITheme.color("ink_soft") * fade, 2.0)
+			draw_string(_font, Vector2(r.position.x + 36, r.end.y - 10), "withdrawn", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.color("ink_soft") * fade)
+		elif pinned_here:
 			draw_string(_font, Vector2(r.position.x + 36, r.end.y - 10), "pinned", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, UITheme.color("ink_soft") * fade)
 		if state != null and c["n"] == state.selected_card:
 			draw_rect(r.grow(2), UITheme.color("string"), false, 2.0)
