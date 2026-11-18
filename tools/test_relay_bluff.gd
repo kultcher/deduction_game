@@ -9,6 +9,7 @@ const Seeds = preload("res://tools/fixture_seeds.gd")
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
+const C = preload("res://sim/content.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -34,27 +35,23 @@ func _init() -> void:
 		# (#216) few games reach day 5 holding such a relay (none in 120 seeds), and the case is
 		# "another game", not "a later day".
 		_relay_case(Seeds.relay(4, evil_relayer, false, int(first.seed) + 1), "nor in another game")
-	# The genuine Medium over three games: its relays don't count against it. A listener can
-	# have other cards against a Medium (seed 100008's Kiran reads 0.58 under connections, 0.11
-	# on the earlier model), so this measures the relays alone: the Medium's chance with every
-	# held card against the same refresh with its relays left out (Seeds.relay_effect). A
-	# genuine relay that sits a little awkwardly with the listener's own view may cost the
-	# Medium a few points (seed 100075, Nov 17: +5); one that makes it look evil is the bug.
-	var genuine = func(t): return not t.is_evil() and t.role == "medium"
-	var fair := 0
-	var seen := 0
-	var from := Seeds.SEEDS_FROM
-	for i in range(3):
-		var f: Dictionary = Seeds.relay(3, genuine, false, from)
-		if f.is_empty():
-			break
-		var eff: Dictionary = Seeds.relay_effect(f.g, str(f.listener), str(f.teller))
-		var shift: float = float(eff.get("with", 1.0)) - float(eff.get("without", 0.0))
-		print("genuine Medium relay, seed %d: %s on %s %.2f with its relays, %.2f without" % [int(f.seed), f.listener, f.teller, float(eff.get("with", -1.0)), float(eff.get("without", -1.0))])
-		seen += 1
-		fair += 1 if not eff.is_empty() and shift < 0.1 else 0
-		from = int(f.seed) + 1
-	check(seen == 3 and fair == 3, "a genuine Medium's relays don't count against it (%d of %d games raise it under 0.1)" % [fair, seen])
+	# A genuine Medium's true relay doesn't count against it, in a town built by hand rather
+	# than found by a seed search (Seneschal, Nov 18: the search tripped on unrelated changes
+	# three times that day, landing on a poisoned Medium's invented relay, a frame that placed
+	# the Medium elsewhere, and a Medium communing on the street of that night's killing).
+	# Measured on the relays alone: the Medium's chance with every held card against the same
+	# refresh with its relays left out (Seeds.relay_effect). A genuine relay that sits a little
+	# awkwardly with the listener's own view may cost the Medium a few points; one that makes it
+	# look evil is the bug.
+	var shifts: Array = []
+	for seed in [692, 900, 42]:
+		for subject_evil in [false, true]:
+			var eff: Dictionary = _genuine_relay(seed, subject_evil)
+			var shift: float = float(eff.get("with", 1.0)) - float(eff.get("without", 0.0))
+			print("genuine Medium relay, seed %d, sighting of %s: %.2f with its relay, %.2f without" % [seed, "an evil" if subject_evil else "a good", float(eff.get("with", -1.0)), float(eff.get("without", -1.0))])
+			if eff.get("relayed", 0) != 1 or shift >= 0.1:
+				shifts.append("%d/%s %+.2f" % [seed, "evil" if subject_evil else "good", shift])
+	check(shifts.is_empty(), "a genuine Medium's true relay doesn't count against it (six built towns; failing: %s)" % ", ".join(PackedStringArray(shifts)))
 	_found_case(Seeds.relay(3, evil_relayer, true), func(p): return p >= 0.8, "an invented relay of the listener, seen out while they were home, counts against its relayer")
 	print("Relay bluff: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -71,6 +68,40 @@ func _relay_case(found: Dictionary, label: String) -> void:
 	var with_r: float = float(eff.get("with", -1.0))
 	var without: float = float(eff.get("without", -1.0))
 	check(not eff.is_empty() and with_r >= without - 0.05, "%s (seed %d: %s on %s, %.2f with the relays, %.2f without)" % [label, int(found.seed), found.listener, found.teller, with_r, without])
+
+
+## A town built by hand on `seed`'s deal (no play): a good Medium (the town's own if it
+## has one, else a good made one, with the Medium on the script) whose dead neighbour was hanged
+## on day 1 relays, on the second night, what the dead saw on the first: a good person, or an
+## evil one, out on their own street. A living good listener hears it. The relay's effect on
+## the listener's chance of the Medium being evil (Seeds.relay_effect).
+func _genuine_relay(seed: int, subject_evil: bool) -> Dictionary:
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(seed, 7)
+	var w = g.w
+	var goods: Array = w.living_good()
+	var mediums: Array = goods.filter(func(n): return n.role == "medium")
+	var medium = mediums[0] if not mediums.is_empty() else goods[0]
+	if medium.role != "medium":
+		medium.role = "medium"
+		if "medium" not in w.case_script.town:
+			w.case_script.town.append("medium")
+	var others: Array = goods.filter(func(n): return n != medium)
+	var dead = others[0]
+	var listener = others[1]
+	var subject = w.evil_team()[0] if subject_evil else others[2]
+	w.day = 1
+	var alive_before: int = w.living().size() + 1
+	w.execute(dead.id, {})
+	g._facts([{"kind": "execution", "subject": [dead.id], "source": "player", "day": 1, "phase": C.EVENING, "alive_before": alive_before, "text": "%s was executed on day 1." % dead.name}])
+	w.day = 2
+	var entry: Dictionary = {"day": 2, "phase": 3, "role": "medium", "shared": true, "true": true,
+		"data": {"dead": dead.id, "item": {"type": "sighting", "who": subject.id, "block": subject.home_block, "night": 0}},
+		"text": "communing with the dead at %s's hearth, I learned they saw %s out the night before you arrived" % [dead.name, subject.name]}
+	medium.info_log.append(entry)
+	Mind.apply_info(w, listener, medium, entry, 0.8)
+	return Seeds.relay_effect(g, listener.id, medium.id)
 
 
 func _found_case(found: Dictionary, ok: Callable, label: String) -> void:
