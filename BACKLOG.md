@@ -258,10 +258,16 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     pass's dialogue. The doubt comes from the poison self-doubt (Lantern and Quill, being
     built) or the Delusional self-doubt (#216). Michael's draft: "Something seems off
     about those readings, I fear something might have turned my gift." This part waits
-    for the poison self-doubt signal.
+    for the poison self-doubt signal: Lantern's rebuilt #232, "prior only", where every
+    own reading on a night a Poisoner could have acted carries the poison chance as
+    standing doubt. Michael (Nov 18): the threshold starts at 25% self-doubt, as a new
+    named constant in `sim/tuning.gd`. He thinks that may be low and will judge it in
+    playtesting; the PR says how often it fires in its tests (no separate sweep).
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
-    claims its gift was turned, rather than lying further or going silent.
+    claims its gift was turned, rather than lying further or going silent. Michael
+    (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
+    twice running; no new number; logged with its reason.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
     far as they believe the line, rather than going through the challenge path, where a
