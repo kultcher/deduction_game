@@ -865,7 +865,19 @@ static func _augment_joint_leave_one_out(
 		if pr_wo.total <= 1e-18:
 			continue
 		var shift_wo: float = CaseEval.shift(pr0.evil, pr_wo.evil)
-		var drop: float = full_shift - shift_wo
+		# What leaving the card out changes is measured within this model: its posterior with
+		# every card, computed the same way (the same role re-check when the removal needs one).
+		# `full_shift` is the belief's own shift, from the connections model; any gap between
+		# the two would otherwise be credited to whichever card was removed (playtest 89077:
+		# three Lamplighter counts that moved nothing each credited with 0.38 of the gap).
+		var with_shift: float = full_shift
+		if same_model_loo:
+			var base_id: String = LOO_NONE if _needs_fits_recheck(loo_ctx, cand) else LOO_FULL
+			var pr_all: Dictionary = _person_probs(view, reps, _loo_post(loo_ctx, {"id": base_id}), p_idx)
+			if pr_all.total <= 1e-18:
+				continue
+			with_shift = CaseEval.shift(pr0.evil, pr_all.evil)
+		var drop: float = with_shift - shift_wo
 		if drop < 0.08:
 			continue
 		var joint_contrib: float = 0.45 * drop * belief_scale
@@ -968,7 +980,28 @@ static func _augment_joint_leave_one_out(
 		})
 
 
-## The class posterior without one report or claim (memoised per refresh).
+## Measurement switch (on in play): a leave-one-out drop is measured within this model (see
+## _augment_joint_leave_one_out). Off, it is measured against the belief's own shift, as
+## before Nov 17, for showing what the fix changes on a replay.
+static var same_model_loo: bool = true
+
+## The ids `_loo_post` takes for "remove nothing": LOO_FULL with the full fits, LOO_NONE with
+## the role fits re-checked over every card, as for a removal that needs the re-check.
+const LOO_FULL: String = "__loo_full__"
+const LOO_NONE: String = "__loo_none__"
+
+## Whether leaving `cand` out changes the role fits enough to re-check them.
+static func _needs_fits_recheck(ctx: Dictionary, cand: Dictionary) -> bool:
+	var l_cid: String = str(cand.get("id", ""))
+	var l_role: String = str(cand.get("role", ""))
+	return (
+		str(cand.get("kind", "")) == "claim"
+		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]
+		or ctx.attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
+	)
+
+## The class posterior without one report or claim (memoised per refresh). With LOO_NONE,
+## nothing is left out but the role fits are re-checked as for a removal.
 static func _loo_post(ctx: Dictionary, cand: Dictionary) -> PackedFloat64Array:
 	var l_cid: String = str(cand.get("id", ""))
 	if ctx.memo.has(l_cid):
@@ -981,14 +1014,8 @@ static func _loo_post(ctx: Dictionary, cand: Dictionary) -> PackedFloat64Array:
 			rep_idx = j
 			break
 	var like_wo: PackedFloat64Array = CaseEval._class_like(cc, ctx.errs, rep_idx) if rep_idx >= 0 else ctx.like_full
-	var l_role: String = str(cand.get("role", ""))
-	var needs_fits_recheck: bool = (
-		str(cand.get("kind", "")) == "claim"
-		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]
-		or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
-	)
 	var fits_wo: PackedFloat64Array = ctx.fits_full
-	if needs_fits_recheck:
+	if l_cid == LOO_NONE or (l_cid != LOO_FULL and _needs_fits_recheck(ctx, cand)):
 		fits_wo = _subset_fits(ctx.view, cc, attended.filter(func(o): return str(o.get("id", "")) != l_cid), ctx.knowledge)
 	var post_wo: PackedFloat64Array = PackedFloat64Array()
 	post_wo.resize(ctx.nc)

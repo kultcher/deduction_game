@@ -35,6 +35,7 @@ test_gravedigger_bluff
 test_haunt_learning
 test_headline
 test_held_signals
+test_joint_reasons
 test_juror_claims
 test_lie_severity
 test_lie_severity_votes
