@@ -1043,6 +1043,34 @@ static func reconsider(w, n, why: String) -> void:
 ## hearing the same reading again (directly, relayed, at the meeting) never stacks.
 ## `public`: told before the whole town (a late relay), so the receipt is public grounds
 ## even though the source's own statement was private.
+## Backing a case builds trust (BACKLOG, Michael, Nov 18): a reading that confirms a good
+## listener raises its trust in the teller. Clearing the listener itself is a teller vouching
+## for it, worth what a Warden's guard is (Roles.WARDEN_SAVE_TRUST); one that agrees with the
+## listener's own reading (pointing at someone it pointed at, or clearing someone it cleared)
+## is worth an agreeing vote (Social.TRUST_VOTED_FOR). Once per reading, on first hearing.
+static func _confirmation_trust(w, l, source, entry: Dictionary) -> void:
+	if l.is_evil() or l.is_shadow or not w.by_id.has(source.id):
+		return
+	var gain: float = 0.0
+	var why: String = ""
+	var cleared: Array = Gifts.clears(entry)
+	var pointed: Array = Gifts.implicated(entry)
+	if l.id in cleared:
+		gain = Tuning.Roles.WARDEN_SAVE_TRUST
+		why = "their reading cleared me"
+	else:
+		for e in l.info_log:
+			if e.get("fake", false) or e.get("disowned", false):
+				continue
+			if Gifts.implicated(e).any(func(x): return x in pointed and x != l.id) or Gifts.clears(e).any(func(x): return x in cleared):
+				gain = Tuning.Social.TRUST_VOTED_FOR
+				why = "their reading agrees with mine"
+				break
+	if gain <= 0.0:
+		return
+	l.npc_trust[source.id] = clampf(l.npc_trust.get(source.id, 0.5) + gain, 0.0, 1.0)
+	w.dlog.add("npc_trust", l.id, source.id, {"to": snappedf(l.npc_trust[source.id], 0.001), "confirmation": why}, why)
+
 static func apply_info(w, listener, source, entry: Dictionary, weight: float, via: String = "", anonymous: bool = false, public: bool = false) -> void:
 	if weight <= 0.01:
 		return
@@ -1067,6 +1095,8 @@ static func apply_info(w, listener, source, entry: Dictionary, weight: float, vi
 	ledger_hear(w, listener, eid, [], weight, [source.id, entry["day"], "reading"], {"kind": "reading", "workshop_receipts": receipts})
 	if fresh and source != listener and weight > 0.2:
 		w.on_execution_reading_heard(listener, source, entry, weight)
+	if fresh and source != listener and not anonymous:
+		_confirmation_trust(w, listener, source, entry)
 
 static func info_eid(src: String, entry: Dictionary) -> String:
 	return WorkshopLedger.reading_key(WorkshopLedger.reading(src, entry))

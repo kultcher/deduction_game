@@ -928,6 +928,7 @@ func open_nomination(by: String, nominee: String, reason: String = "") -> Dictio
 	else:
 		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - Tuning.Trust.NOMINATED_NPC_TRUST_DROP, 0.0, 1.0)
 		dlog.add("npc_trust", nominee, by, {"to": target.npc_trust[by]}, "%s nominated me" % by)
+		Social.backing_trust(self, nominee, by, "nominated %s, whom I suspect too" % nominee)
 	dlog.add("nomination", by, nominee, {"reason": reason, "on_block": meeting["block"], "block_count": meeting["block_count"]})
 	return nm
 
@@ -1011,6 +1012,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		for v in no:
 			if v != nid and by_id.has(v):
 				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	Social.vote_agreement_trust(self, nid, yes, no)
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":
