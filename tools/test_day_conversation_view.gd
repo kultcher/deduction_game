@@ -132,7 +132,9 @@ func _run() -> void:
 	if g.state == "talk":
 		assert(scene.conversation_view.lines == before)
 		scene._run("bye")
-	assert(not scene.conversation_view.visible)
+	# Leaving closes the view, unless someone steps up to the player as the next phase
+	# begins: the approach plays in the same view (triage 2.8).
+	assert(not scene.conversation_view.visible or (g.state == "approach" and scene.approach_stage != ""))
 	# An automatically exhausted conversation keeps its last response on screen.
 	scene._new_case()
 	n = scene.g.w.living_good()[0]
@@ -155,7 +157,8 @@ func _run() -> void:
 	scene._run("wait")
 	assert(scene.g.w.phase == phase_before and scene.conversation_finished)
 	final_buttons[0].pressed.emit()
-	assert(not scene.conversation_finished and not scene.conversation_view.visible and scene.input.editable)
+	assert(not scene.conversation_finished and scene.input.editable)
+	assert(not scene.conversation_view.visible or (scene.g.state == "approach" and scene.approach_stage != ""))
 	# Evening can start a streamed meeting; its speakers wait until dismissal.
 	scene._new_case()
 	n = scene.g.w.living_good()[0]

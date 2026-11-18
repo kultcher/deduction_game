@@ -79,9 +79,12 @@ static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {
 				if hooks.has("on_diverge"):
 					hooks.on_diverge.call(e, step, out)
 		elif e.type == "workshop_canvas_filed":
-			# Logs from before Nov 18 don't say which case a filing replaced, so they replay
-			# every filing as a new case.
-			var n = Canvas.file(g, e.data.case, int(e.data.get("revises", 0)))
+			# JSON reads every number back as a float; the case was filed with ints (versions,
+			# board numbers), and the argument's key hashes them, so 29 and 29.0 made a
+			# different key in the replay (playtest 16010). The log names the case a filing
+			# replaces ("revises"); logs from before Nov 18 don't, so they replay every filing
+			# as a new case.
+			var n = Canvas.file(g, _ints(e.data.case), int(e.data.get("revises", 0)))
 			if hooks.has("on_filed"):
 				hooks.on_filed.call(e, n)
 	return {"g": g, "steps": step, "diverged": diverged}
@@ -137,3 +140,16 @@ static func votes(events: Array, g, stop_seq: int = 1 << 30) -> Array:
 	var logged: Array = events.filter(func(e): return e.type == "vote_tally" and int(e.seq) < stop_seq).map(func(e): return "%s:%s" % [e.target, ",".join(e.data.yes)])
 	var replayed: Array = g.w.dlog.entries.filter(func(e): return e["type"] == "vote_tally").map(func(e): return "%s:%s" % [e["target"], ",".join(e["data"]["yes"])])
 	return [logged, replayed]
+
+## A logged value with its whole-number floats back as ints, as the game held them.
+static func _ints(v):
+	if v is float and v == floorf(v) and absf(v) < 1e15:
+		return int(v)
+	if v is Dictionary:
+		var out := {}
+		for k in v:
+			out[k] = _ints(v[k])
+		return out
+	if v is Array:
+		return v.map(func(x): return _ints(x))
+	return v
