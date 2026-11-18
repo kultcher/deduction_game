@@ -5,6 +5,7 @@ extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const FabricationCheck = preload("res://sim/fabrication_check.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
@@ -767,6 +768,8 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				out["why"] = str(he.get("why", "evil fabrication")) + "; " + str(re.get("note", ""))
 			_mark_fake(out)
 			if re["outcome"] == "held":
+				if _boxed_in_gift_doubt(w, m, out):
+					continue
 				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
 				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
 				continue
@@ -820,6 +823,30 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## BACKLOG "Saying 'my gift may have been turned'", part (b) (Michael, Nov 17-18): a liar
+## whose reading has been held back twice running, for a gift it has claimed in public, has
+## no telling left that doesn't point at itself or a teammate. Rather than keep holding it,
+## it drops the reading and will tell the town its gift may have been turned
+## (MindMeeting._say_gift_doubt). Only where a Poisoner or Delusional could be in play, or
+## the excuse would make no sense; at most once a game. Returns whether it did.
+static func _boxed_in_gift_doubt(w, m, entry: Dictionary) -> bool:
+	var role: String = str(entry.get("role", ""))
+	if not m.claim_public or m.claimed_role != role or not m.gift_doubt.is_empty() or not gift_turn_possible(w):
+		return false
+	var why: String = "its %s reading was held back twice running, and every telling left would point at itself or a teammate" % C.role_name(role)
+	m.gift_doubt = {"day": w.day, "role": role, "why": why}
+	w.dlog.think(m.id, "plan", "Evil: boxed in on its %s reading; drops it and will say its gift may have been turned (%s)." % [role, why])
+	w.dlog.add("gift_doubt_planned", m.id, "", entry, "%s (evil, bluffing %s) drops a reading it can't tell safely and will claim its gift was turned [%s]" % [m.name, role, why])
+	return true
+
+## Whether a turned gift is possible in this case: a Poisoner among the script's minions or
+## Delusional among its secrets (the Default script when there's none).
+static func gift_turn_possible(w) -> bool:
+	var sc = w.case_script
+	var minions: Array = sc.minions if sc != null else ScriptDef.default_minions()
+	var secrets: Array = sc.secrets if sc != null else C.SECRET_MOD_LIST
+	return "poisoner" in minions or "delusional" in secrets
 
 ## A fabrication's motive with people's ids swapped for their names, so the end-of-game
 ## reveal reads "the dead Seer Lian 'cleared' the demon Merrin", not raw ids (Steward A3,
