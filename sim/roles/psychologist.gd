@@ -252,7 +252,13 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 			entry_b.erase("true")
 			entry_b.erase("why")
 			return {"entry": entry_b, "why": "named the words of %s, whom evil meant to hang, as a likely lie" % s}
-	if non_evil.size() >= 2 and w.chance(0.6):
+	# A fellow evil's lie was among what it heard: swearing nobody lied would give the day a
+	# clean bill that a caught lie undoes (the Dowser's guideline, #160: stay close to the
+	# truth). With two good people's words to hand it casts doubt on those instead.
+	var ally_lied: bool = todays.any(func(x):
+		var src_id: String = str(x.get("public_stmt", {}).get("source", ""))
+		return bool(x.get("is_false", false)) and src_id != n.id and w.by_id.has(src_id) and w.by_id[src_id].is_evil())
+	if non_evil.size() >= 2 and (ally_lied or w.chance(0.6)):
 		var sh_ne: Array = w.shuffled(non_evil)
 		var entry_ne: Dictionary = _pair_reading_dict(w.day, sh_ne[0], sh_ne[1], false, "evil fabrication")
 		entry_ne.erase("true")

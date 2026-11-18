@@ -77,6 +77,7 @@ test_roles_shelter
 test_shared_model
 test_sighter_contest
 test_social
+test_too_clean_bluffs
 test_town_note
 test_town_vibe
 test_triage_nov16
