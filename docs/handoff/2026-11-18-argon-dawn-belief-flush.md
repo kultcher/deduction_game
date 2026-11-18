@@ -35,7 +35,7 @@
 - **Zero decision / state drift across all 5 golden seeds:**
   - Compared every non-refresh record (`meta`, all `step` records `-1..N`, and `end`) between Windows `origin/main` and `argon/dawn-belief-flush` at `--tol 0` (excluding `refreshes_so_far`/`refreshes`): **100% bit-for-bit identical** on all 5 seeds (`seed_42_7` 27 records, `seed_54875_10` 41 records, `seed_692_10` 31 records, `seed_900_7` 34 records, `seed_98933_10` 36 records). Every decision, vote, nomination, kill, line said, RNG state, and NPC/shadow state is unchanged.
   - Two independent Windows golden captures matched at `--tol 0` across all 5 seeds (`42_7` 107, `54875_10` 336, `692_10` 246, `900_7` 177, `98933_10` 283 records).
-  - Baseline `tools/golden/baseline_fe833dc/` built by preserving Linux floats from `tools/golden/baseline_e287b3d` for all 1,129 unchanged/matched records (`106/107`, `327/336`, `243/246`, `176/177`, `277/283`), using the captured values for the 20 consolidated night-flush refresh records (pending Linux CI `golden-linux` verification at `--tol 0`).
+  - Baseline `tools/golden/baseline_fe833dc/` holds the Linux `golden-linux` capture (`ubuntu-latest` CI artifact from `fe833dc`): every `meta`, `step`, and `end` record matches Linux `tools/golden/baseline_e287b3d` bit-for-bit at `--tol 0` (and matches Windows captures at `--tol 1e-13`; `seed_42_7` at `--tol 0`).
 - **Suites:**
   - `test_evil_play`: **PASS** (14.0s).
   - `test_relay_bluff_games`: **PASS** (68.4s).

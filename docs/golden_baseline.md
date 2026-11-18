@@ -54,9 +54,10 @@ and morning `Social.converse` / `npc_share` still read fresh beliefs); `Mind.tel
 likewise defers across `hear_claim` + `ledger_hear` and flushes `protectee` before reading
 `susp(protectee, warden.id)`.
 - **Divergence from `baseline_e287b3d`:**
-  - Every `meta`, `step`, and `end` record across all 5 seeds matches Windows `origin/main`
-    bit-for-bit (`--tol 0`) with identical decisions, RNG states, votes, nominations,
-    kills, lines said, and final NPC/shadow states (excluding `refreshes_so_far`/`refreshes`).
+  - Every `meta`, `step`, and `end` record across all 5 seeds matches `baseline_e287b3d` (Linux)
+    and Windows `origin/main` bit-for-bit (`--tol 0`) with identical decisions, RNG states,
+    votes, nominations, kills, lines said, and final NPC/shadow states (excluding
+    `refreshes_so_far`/`refreshes`).
   - First refresh divergence: `42` record 9 (refresh #2, `isolde`, day 1 phase 3),
     `900` record 17 (refresh #9, `greta`, day 1 phase 3), `98933` record 55 (refresh #46,
     `merrin`, day 1 phase 3), `54875` record 56 (refresh #47, `jory`, day 1 phase 3),
@@ -66,7 +67,7 @@ likewise defers across `hear_claim` + `ledger_hear` and flushes `protectee` befo
   - Refresh / total record counts: `42` 80 / 107 (was 85 / 112), `54875` 295 / 336 (was
     304 / 345), `692` 215 / 246 (was 220 / 251), `900` 143 / 177 (was 149 / 183),
     `98933` 247 / 283 (was 255 / 291).
-- **Stability:** two independent Windows captures were identical at `--tol 0`.
+- **Stability:** recorded on Linux (`golden-linux`); two independent Windows captures matched identically at `--tol 0` and matched `baseline_fe833dc` within `--tol 1e-13` (`seed_42_7` at `--tol 0`).
 
 ### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
