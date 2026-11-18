@@ -433,7 +433,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 					base_e = clampf(OWN_ERR + (base_e - OWN_ERR) * (1.0 - 0.55 * boost), OWN_ERR, 1.0)
 					break
 		return base_e
-	var cc = compile(view, cards, case_data, own)
+	var cc = compile(view, _route_trusted(cards, listener), case_data, own)
 	var oc = _own_counts(view, cc, own)
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
@@ -688,6 +688,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		cards.map(func(c): return [c.get("fact_id", c.id), c.kind, c.get("source", ""), c.get("role", ""), c.get("observed_at", {}), c.get("data", {}), c.get("event", ""), c.has("relay_source"), c.get("quoted", false), c.get("block", ""), c.get("night", -1), c.get("subject", ""), c.get("subjects", []), c.get("duty_only", false)])]
 	if cards.any(func(c): return c.has("hearing_weight")):
 		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
+	if cards.any(func(c): return c.has("route_trust")):
+		key_input.append(cards.map(func(c): return c.get("route_trust", 1.0)))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
@@ -717,6 +719,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		# compiled without it must not be reused with it on. In play it is on, and the key
 		# is as it always was.
 		key_input.append("hex_off")
+	if not Movement.Live.quiet_guards_enabled or not Movement.Live.quiet_guards_skip.is_empty():
+		# The same for the quiet-night Warden guards (the Test juror's comparison without
+		# them, WorkshopCanvas.guard_reasons).
+		key_input.append(["quiet_guards_off", Movement.Live.quiet_guards_enabled, Movement.Live.quiet_guards_skip.duplicate()])
 	var key = hash(key_input)
 	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
@@ -1216,6 +1222,29 @@ static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, k
 		for c in range(out.size()):
 			mixed[c] = (1.0 - doubt) * out[c] + doubt * content_p * alt[c]
 		out = mixed
+	return out
+
+## A Warden's guard on a quiet night sets the Demon's route only as far as the listener
+## trusts the reading (Michael, Nov 18): copies of the Warden reports carry "route_trust",
+## 1 less the listener's honest doubt of it (reading_doubt: a poisoned or misled night),
+## times any challenge that holds against the report or its teller. The route reads it
+## (LiveActivity.quiet_guard_cards); the role check has its own doubt (_doubted_role_fits).
+static func _route_trusted(cards: Array, listener: Dictionary) -> Array:
+	var doubts: Dictionary = listener.get("reading_doubt", {})
+	var by_card: Dictionary = listener.get("challenge_reports", {})
+	var by_source: Dictionary = listener.get("challenge_sources", {})
+	if doubts.is_empty() and by_card.is_empty() and by_source.is_empty():
+		return cards
+	var out: Array = []
+	for card in cards:
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "warden":
+			var t: float = (1.0 - clampf(float(doubts.get(card.id, 0.0)), 0.0, 1.0)) * float(by_card.get(card.id, 1.0)) * float(by_source.get(str(card.get("source", "")), 1.0))
+			if t < 1.0:
+				var copy: Dictionary = card.duplicate()
+				copy["route_trust"] = clampf(t, 0.0, 1.0)
+				out.append(copy)
+				continue
+		out.append(card)
 	return out
 
 static func _has_role_card(cards: Array) -> bool:

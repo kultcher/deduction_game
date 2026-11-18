@@ -294,6 +294,15 @@ Veteran claims other than themselves). At 0.5 or more they believe it: their tru
 protectee rises, and if they trust the protectee enough they tell them. A Warden report
 of a save holds only in worlds where the protectee is good, at reduced reliability (a save
 is an inference, not something seen).
+The judge also reads the quiet as the Demon's route: any Warden guard report on a night
+the Demon killed nobody, whether or not it claims a save, places the Demon's walk that
+night at the guarded door in worlds where the Warden and the guarded person are both
+good. It's the same route reasoning as the player's scorched sigil, at the save's
+reliability, divided by 1 + the other living Veteran claimants (`LiveActivity._quiet_guards`),
+and scaled by the listener's own trust in the reading: its honest doubt of it (a poisoned or
+misled night) and any challenge that holds (`CaseEval._route_trusted`; Michael, Nov 18).
+A sighting near that door then counts towards the Demon, and a sighting elsewhere counts
+against. The Test juror names the guard when it moves the subject by a reason's weight.
 
 **Hint packages** (each gift sits in at least one package of 2+, so a hint is never a full
 reveal): official business (Archivist, Clerk, Surveyor, Rumormonger, Chronicler,
