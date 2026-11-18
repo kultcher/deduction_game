@@ -49,3 +49,8 @@
   the dead carries that night's poison chance, keyed as the relay's reliability is (the
   Delusional pass already did this). `test_poison_self_doubt` (12 checks) covers it; the old
   code fails the new check.
+- **Codex on #232 (fixed):** a Registrar's night-0 register can't be poisoned
+  (`sim/roles/registrar.gd`: only Delusional corrupts it), so it no longer carries the poison
+  chance; it keeps any Delusional doubt, and the Registrar's later checks keep theirs.
+  `test_poison_self_doubt` (13 checks) compares it with the same reading as a Dowser's night-0
+  reading (5% against none).

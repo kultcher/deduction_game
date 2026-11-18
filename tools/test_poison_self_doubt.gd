@@ -134,6 +134,25 @@ func _init() -> void:
 	check(absf(d_both - want) < 1e-9, "poison and Delusional combine as independent chances (%.4f)" % d_both)
 	var delus_only: Dictionary = _run(_game(OWN, [CLASH], false))
 	check(absf(float(delus_only[2].doubt.get(1, 0.0)) - Tuning.Workshop.DELUSIONAL_SELF_DOUBT) < 1e-9, "with no Poisoner, only the Delusional doubt (%s)" % str(delus_only[2].doubt))
+	# 8. A Registrar's night-0 register can't be poisoned (sim/roles/registrar.gd), so it
+	#    carries no poison doubt (Codex on #232). The listener's own reading, relabelled as a
+	#    night-0 register, against the same reading as a night-0 Dowser's (Delusional off).
+	SourceDoubt.delusional_self_doubt = false
+	var g8 = _game(OWN, [CLASH])
+	_run(g8)
+	var n8 = g8.w.npcs[0]
+	var plan8: Dictionary = g8._workshop_plans.get(n8.id + ":good", {})
+	var doubt_as: Dictionary = {}
+	for role in ["registrar", "dowser"]:
+		var p8: Dictionary = plan8.duplicate(true)
+		for c in p8.prepared.view.cards:
+			if str(c.get("source", "")) == n8.id and c.get("kind", "") == "report" and not c.has("relay_source"):
+				c["role"] = role
+				c["night"] = 0
+				c["observed_at"] = {"day": 0, "phase": "night"}
+		doubt_as[role] = float(SourceDoubt.derive(p8, n8.ledger, {}).honest.get("%s:0" % n8.id, 0.0))
+	print("night-0 own reading's poison doubt: as a Registrar's register %.3f, as a Dowser's %.3f" % [doubt_as.registrar, doubt_as.dowser])
+	check(doubt_as.registrar == 0.0 and doubt_as.dowser > 0.0, "a Registrar's night-0 register carries no poison doubt; another night-0 reading does")
 	_medium_case()
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

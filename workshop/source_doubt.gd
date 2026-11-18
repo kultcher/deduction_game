@@ -287,6 +287,11 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				p_night = int(c.get("night", -1)) if int(c.get("night", -1)) >= 0 else k_night - 1
 			if k_night < 0:
 				continue
+			# A Registrar's night-0 register can't be poisoned, only made wrong by Delusional
+			# (sim/roles/registrar.gd: a blind first-night poison must not brick every later
+			# check). It keeps any Delusional doubt (Codex on #232).
+			if str(c.get("role", "")) == "registrar" and k_night == 0 and not c.has("relay_source"):
+				continue
 			var pi: float = ReadingChallenges.poison_chance(view, listener, p_night)
 			if pi <= 0.0:
 				continue
