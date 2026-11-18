@@ -285,10 +285,12 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 			return answer_night(w, n, nd)
 		if nd not in n.lied_nights:
 			n.lied_nights.append(nd)
+		_own_night_account(w, n, nd, where.substr(6))
 		return answer_gift(w, n, 3)
 	if n.secret.is_empty():
 		return {}
 	var block: String = where.substr(6)
+	_own_night_account(w, n, nd, block)
 	n.secret_known = true
 	var line: Dictionary = say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])})
 	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
@@ -296,6 +298,14 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 		"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}
 	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi: owns the night and explains it (secret: %s)." % n.secret.get("kind", "?"))
 	return {"lines": [line], "facts": [fact]}
+
+## The night is owned now: a later question about it, in private or at the podium, gets the
+## plain "I was out" account rather than the home alibi it replaced (Codex on #261).
+static func _own_night_account(_w, n, nd: int, block: String) -> void:
+	var accounts: Dictionary = n.dialogue_memory.get("night_accounts", {})
+	accounts[str(nd)] = {"kind": "alibi", "subject": [n.id], "home": false, "day": nd, "phase": C.NIGHT, "source": n.id, "block": block,
+		"text": "%s says they were out on %s on night %d." % [n.name, C.block_name(block), nd]}
+	n.dialogue_memory["night_accounts"] = accounts
 
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	if not n.claim_public and n.max_tier < 3 and (_gift_outing(w, n, night) or _bluff_outing(w, n, night)):

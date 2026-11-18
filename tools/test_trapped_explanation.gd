@@ -48,7 +48,18 @@ func _helper() -> void:
 	n.secret = {"kind": "errand", "text": "tends a sick aunt", "me": "was tending my sick aunt"}
 	var r: Dictionary = MindDialogue.trapped_explanation(w, n, 1)
 	_check(r.get("lines", []).size() == 1 and r.get("facts", []).any(func(f): return f.get("kind", "") == "secret"), "a good NPC with a secret errand explains the night (%s)" % str(r.get("lines", [])))
+	# Asked about the night again (the confession roll aside): the owned account stands, not
+	# the home alibi it replaced (Codex on #261).
+	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi", "home": true, "source": n.id, "subject": [n.id], "day": 1, "phase": 3}}
+	n.secret = {"kind": "errand", "text": "tends a sick aunt", "me": "was tending my sick aunt"}
+	MindDialogue.trapped_explanation(w, n, 1)
 	n.secret = {}
+	var again: Dictionary = MindDialogue.answer_night(w, n, 1)
+	var home_again: bool = again.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and bool(f.get("home", false)))
+	var out_again: bool = again.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and not bool(f.get("home", true)))
+	_check(out_again and not home_again, "asked again after explaining, it keeps to being out, not home (%s)" % str(again.get("facts", []).map(func(f): return f.get("text", ""))))
+	n.secret = {}
+	n.dialogue_memory["night_accounts"] = {}
 	_check(MindDialogue.trapped_explanation(w, n, 1).is_empty(), "with no honest reason to give, nothing follows")
 	var e = w.evil_team()[0]
 	_out(g, e)
