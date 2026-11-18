@@ -684,6 +684,11 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
 	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
 	w.public_event("self_doubt", [n.id], n.id, {"role": role})
+	# Nothing else may be told this turn (the boxed-in liar dropped its reading), so the
+	# listeners take it in now, or at the meeting's next refresh (Codex on #245).
+	for l in w.living():
+		if l != n:
+			_mind().refresh_beliefs(w, l, "heard %s say their gift may have been turned" % n.id)
 	var why: String = str(gd.get("why", ""))
 	if n.is_evil():
 		# The reveal lists it with the other lies, with its reason.

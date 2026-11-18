@@ -69,7 +69,14 @@ func _trigger() -> void:
 	var lines: Array = []
 	var facts: Array = []
 	var events_before: int = w.public_log.size()
+	w.defer_beliefs = true
+	w.pending_beliefs = []
 	MindMeeting._say_gift_doubt(w, m, lines, facts)
+	var queued: Array = w.pending_beliefs.map(func(p): return p[0].id)
+	var others: Array = w.living().filter(func(x): return x != m).map(func(x): return x.id)
+	check(others.all(func(id): return id in queued) and not (m.id in queued), "every other listener's beliefs are queued to take it in (Codex on #245)")
+	w.pending_beliefs = []
+	w.defer_beliefs = false
 	check(lines.size() == 1, "says the line once (%s)" % str(lines.map(func(l): return l.get("text", ""))))
 	check(facts.is_empty(), "no new card: listeners hear it through the public record (Lantern)")
 	check(w.public_log.size() == events_before + 1 and w.public_log[-1].get("kind", "") == "self_doubt" and w.public_log[-1].get("by", "") == m.id, "a public self_doubt event by the teller")
