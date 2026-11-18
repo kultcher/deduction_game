@@ -24,3 +24,9 @@
   reading (Quill's convention); the doubt map key stays the reading's day (#216's keying);
   an accepted challenge on the same night shares the key (max, no stacking).
 - **Backlog:** the item now records the revision.
+- **Proofs under doubt (Michael, Nov 18, option b):** a doubted own reading drops its pin and
+  the judge weighs it by fit, so strong frames can shake an own reading (seed 5: Odette's fake
+  Night Watch report and Jory's fake Archivist reading take the hanged, good Constance from 0%
+  to 90% for Agnes, on an 8% doubt). Weak contradicting evidence barely moves one. Quill's
+  measurement: big moves go towards and away from the truth about equally. A proportional pin
+  was tried (18b836d) and reverted on his decision.

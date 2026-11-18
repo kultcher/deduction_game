@@ -454,6 +454,15 @@ trusted. Built (Nov 18) as the prior only:
   much; no Poisoner, no doubt.
 - **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
   of its own readings (poison, and Delusional with #216), from its last applied refresh.
+- **Strong frames can shake an own reading** (Michael, Nov 18, option b): a doubted own reading
+  no longer pins the person it proves ("proved stays proved" needs the reading undoubted); the
+  judge weighs it genuine or broken by fit. Weak contradicting evidence barely moves it; a
+  strong frame can overturn it. Seed 5 (Quill's measurement): Agnes's true Gravedigger reading
+  cleared the hanged Constance, but Odette (the Demon, bluffing Night Watch) said she saw
+  Constance out on a night she was home, and Jory (bluffing Archivist) named her; with an 8%
+  poison doubt Constance goes from 0% to 90%, the frame favouring "broken" about 2,800 to 1.
+  Big moves go towards and away from the truth about equally (π can't tell which reading was
+  poisoned). With no Poisoner or Delusional possible the doubt is zero and proofs stay absolute.
 
 ## Open items
 
