@@ -261,10 +261,16 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     pass's dialogue. The doubt comes from the poison self-doubt (Lantern and Quill, being
     built) or the Delusional self-doubt (#216). Michael's draft: "Something seems off
     about those readings, I fear something might have turned my gift." This part waits
-    for the poison self-doubt signal.
+    for the poison self-doubt signal: Lantern's rebuilt #232, "prior only", where every
+    own reading on a night a Poisoner could have acted carries the poison chance as
+    standing doubt. Michael (Nov 18): the threshold starts at 25% self-doubt, as a new
+    named constant in `sim/tuning.gd`. He thinks that may be low and will judge it in
+    playtesting; the PR says how often it fires in its tests (no separate sweep).
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
-    claims its gift was turned, rather than lying further or going silent.
+    claims its gift was turned, rather than lying further or going silent. Michael
+    (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
+    twice running; no new number; logged with its reason.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
     far as they believe the line, rather than going through the challenge path, where a
@@ -385,6 +391,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Michael (Nov 17): build the choice only, a two-way challenge on a relay ("the Medium
   relayed it wrong" versus "the dead person was wrong in the first place"). Relays of
   relays and relayed opinions stay unsupported. Owner Quill. [decided: the choice only]
+  **Built (Quill, #191, Nov 17):** a relay challenge names its target, the Medium's
+  transmission or the dead source's original reading (`ReadingChallenges.RELAY_ATTRIBUTIONS`),
+  and each is judged on its own night and teller; covered by `test_medium_relay_challenge`
+  and `test_relay_challenge_menu`. Relays of relays and relayed opinions stay unsupported.
+  [done]
 
 - **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
   the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
@@ -578,6 +589,15 @@ Candidates for a unified retuning proposal, not approved changes.
   card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
   knew because of an answer carried over from case #38. The Workshop could list the answers
   a new case carries when it's filed. Herald. [open]
+
+- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
+  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
+  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
+  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
+  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
+  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
+  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
+  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided]
 
 ### Performance
 
