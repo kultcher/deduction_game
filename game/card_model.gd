@@ -211,8 +211,26 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 			return "%s executed" % _subjects(card, nm)
 		"quiet":
 			return "Nobody died"
-	var t: String = card.get("text", "")
-	return t if t.length() <= 60 else t.substr(0, 57) + "..."
+		"hint":
+			var pkg: String = str(card.get("package", ""))
+			var gist: String = {"official": "records", "night_sight": "night sight", "the_dead": "the dead", "shelter": "shelter", "people": "reading people"}.get(pkg, "")
+			if gist != "":
+				return "%s hints: %s" % [_subjects(card, nm), gist]
+		"secret":
+			var who: String = nm.call(str(card.get("owner", card.get("source", ""))))
+			match str(card.get("secret_kind", "")):
+				"sleepwalker":
+					return "%s sleepwalks" % who
+				"lover":
+					return "%s meets %s in secret" % [who, nm.call(str(card.get("partner", "")))] if str(card.get("partner", "")) != "" else "%s has a lover" % who
+				"insomnia":
+					return "%s prays at night" % who
+				"smuggling":
+					return "%s smuggles" % who
+				"debt":
+					return "%s pays a gambling debt" % who
+	# No short form: the full text, which the card cuts to fit and ends in "…".
+	return card.get("text", "")
 
 ## A card's subjects by name: "Greta", "Merrin and Isolde".
 static func _subjects(card: Dictionary, nm: Callable) -> String:

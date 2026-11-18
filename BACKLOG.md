@@ -490,14 +490,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
-  "heard" line, type and source icons stack in one corner, the context tag sits on the
-  edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
-  slots) before adding markers. Waiting on it: "shared with you privately" and "in
-  confidence" badges (the data exists; nothing draws them) and the context tag. Coordinate
-  with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
-  open]
-
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.

@@ -367,7 +367,8 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var names = {}
 	for m in g.w.npcs:
 		names[m.id] = m.name
-	var text = CardModel.short_text(card, names) if lod == 1 else card.get("text", "")
+	# Every zoom shows the fewest words; the full sentence is the hover tooltip (Michael, Nov 18).
+	var text = CardModel.short_text(card, names)
 	if it["mark"] == "voted_yes":
 		text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?")
 	var fs = int(clampf(13.5 * zoom, 12, 28))
