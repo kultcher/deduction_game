@@ -779,6 +779,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
 				continue
 			m.info_log.append(out)
+			_remember_frame(m, out, str(w.evil_plan.get("scapegoat", "")))
 			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
 			# The reveal lists what was actually told (Steward A2): the released version.
 			w.dlog.add("fake_info", m.id, "", out, "%s (evil) tells its held-back reading: %s [%s]" % [m.name, out.get("text", ""), out.get("why", "")])
@@ -831,6 +832,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			w.dlog.add("fake_info_held", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
 			continue
 		n.info_log.append(entry)
+		_remember_frame(n, entry, s)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
 
 ## BACKLOG "Saying 'my gift may have been turned'", part (b) (Michael, Nov 17-18): a liar
@@ -903,13 +905,7 @@ static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary,
 ## readings told under this scapegoat, so it drops when the team switches. Returns
 ## {"entry", "why"} for a swap, or {} to tell the fresh one.
 static func _keep_frame(w, n, entry: Dictionary, alternatives: Callable, s: String) -> Dictionary:
-	entry["frame_sg"] = s
-	var earlier: Array = []
-	for e in n.info_log:
-		if e.get("fake", false) and str(e.get("frame_sg", "")) == s:
-			for x in Gifts.implicated(e):
-				if not (x in earlier):
-					earlier.append(x)
+	var earlier: Array = n.bluff_frame.get("implicated", []) if str(n.bluff_frame.get("sg", "")) == s else []
 	if earlier.is_empty() or not _drifts(entry, earlier):
 		return {}
 	var traits: float = (float(n.traits.get("insight", 0.5)) + float(n.traits.get("confidence", 0.5))) / 2.0
@@ -921,10 +917,18 @@ static func _keep_frame(w, n, entry: Dictionary, alternatives: Callable, s: Stri
 		var e2: Dictionary = alt.get("entry", {})
 		if e2.is_empty() or _drifts(e2, earlier):
 			continue
-		e2["frame_sg"] = s
 		w.dlog.think(n.id, "plan", "Evil: keeps its story; tells a reading that doesn't clear the ones its earlier readings implicated.")
 		return {"entry": e2, "why": str(alt.get("why", ""))}
 	return {}
+
+## A made-up reading told under scapegoat `s` joins the bluffer's frame memory; a new
+## scapegoat starts it afresh.
+static func _remember_frame(n, entry: Dictionary, s: String) -> void:
+	if str(n.bluff_frame.get("sg", "")) != s:
+		n.bluff_frame = {"sg": s, "implicated": []}
+	for x in Gifts.implicated(entry):
+		if not (x in n.bluff_frame["implicated"]):
+			n.bluff_frame["implicated"].append(x)
 
 ## Whether a reading clears anyone in `earlier`.
 static func _drifts(e: Dictionary, earlier: Array) -> bool:

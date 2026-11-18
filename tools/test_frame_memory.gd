@@ -21,6 +21,7 @@ func _init() -> void:
 	_keeps_by_traits()
 	_memory_drops_on_switch()
 	_no_drift_no_change()
+	_memory_from_told()
 	print("Frame memory: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -41,7 +42,8 @@ func _swaps(trait_value: float, switch_scapegoat: bool = false, drifting: bool =
 		var b: String = goods[1].id
 		var c: String = goods[2].id
 		var s: String = goods[3].id
-		n.info_log = [{"role": "dowser", "day": 1, "fake": true, "frame_sg": s, "data": {"group": [a, b], "count": 1}, "text": "x"}]
+		n.bluff_frame = {}
+		Evil._remember_frame(n, {"role": "dowser", "day": 1, "data": {"group": [a, b], "count": 1}, "text": "x"}, s)
 		var fresh: Dictionary = {"role": "dowser", "day": 2, "data": {"group": [a, c], "count": 0 if drifting else 1}, "text": "y"}
 		var alt: Dictionary = {"role": "dowser", "day": 2, "data": {"group": [a, c], "count": 1}, "text": "z"}
 		var alternatives := func() -> Array: return [{"entry": alt.duplicate(true), "why": "kept the story"}]
@@ -63,3 +65,17 @@ func _memory_drops_on_switch() -> void:
 
 func _no_drift_no_change() -> void:
 	_check(_swaps(1.0, false, false) == 0, "a fresh reading that clears no one implicated before is told as it is")
+
+
+## What it remembers: the people its told readings implicated, under the scapegoat of the time.
+func _memory_from_told() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(9503, 10)
+	var n = g.w.evil_team()[0]
+	n.bluff_frame = {}
+	Evil._remember_frame(n, {"role": "dowser", "data": {"group": ["x1", "x2"], "count": 1}}, "sg1")
+	Evil._remember_frame(n, {"role": "dowser", "data": {"group": ["x3"], "count": 0}}, "sg1")
+	_check(n.bluff_frame.get("implicated", []) == ["x1", "x2"], "it remembers whom its readings implicated, not whom they cleared (%s)" % str(n.bluff_frame))
+	Evil._remember_frame(n, {"role": "dowser", "data": {"group": ["x4", "x5"], "count": 1}}, "sg2")
+	_check(n.bluff_frame.get("implicated", []) == ["x4", "x5"] and n.bluff_frame.get("sg", "") == "sg2", "a new scapegoat starts it afresh (%s)" % str(n.bluff_frame))
