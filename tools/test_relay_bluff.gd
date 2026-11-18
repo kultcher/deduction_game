@@ -28,8 +28,10 @@ func _init() -> void:
 	var first: Dictionary = Seeds.relay(4, evil_relayer)
 	_found_case(first, func(p): return p >= 0.5, "an evil relayer's relays don't clear them")
 	if not first.is_empty():
-		# A wider window than the default: which later games hold such a relay moves with play.
-		_found_case(Seeds.relay(5, evil_relayer, false, int(first.seed) + 1, 2 * Seeds.SEEDS_COUNT), func(p): return p >= 0.5, "nor in another game, later on")
+		# Another game, from the next seed on, at the same day: with the Delusional self-doubt
+		# (#216) few games reach day 5 holding such a relay (none in 120 seeds), and the case is
+		# "another game", not "a later day".
+		_found_case(Seeds.relay(4, evil_relayer, false, int(first.seed) + 1), func(p): return p >= 0.5, "nor in another game")
 	# The genuine Medium over three games: its relays don't count against it. A listener can
 	# have other cards against a Medium (seed 100008's Kiran reads 0.58 under connections, 0.11
 	# on the earlier model), so this measures the relays alone: the Medium's chance with every

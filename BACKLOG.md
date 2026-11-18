@@ -821,7 +821,11 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
   an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
   word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
-  barely with all cards. Moves golden. **[open]**
+  barely with all cards. Moves golden. Michael (Nov 18): fix; owner Lantern. **Built** (Nov 18,
+  `claude/relayer-in-contest`): a relayed card is contested only as its relayer's word, since
+  the dead never told it and can't have invented it, which also frees the cap's slot. Found
+  again on seed 100029 when #216 moved `test_relay_bluff`'s fixture onto it: evil Hollis's
+  invented relay of Merrin took Hollis from 0.83 to 0.46. **[done]**
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
