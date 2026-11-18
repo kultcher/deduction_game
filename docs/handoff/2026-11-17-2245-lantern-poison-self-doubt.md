@@ -1,45 +1,26 @@
-# 2026-11-17, Claude-Lantern: "Was my reading poisoned?" (`claude/poison-self-doubt`)
+# 2026-11-18, Claude-Lantern: "Was my reading poisoned?", the prior only (`claude/poison-self-doubt`)
 
-- **Base:** main `bf7b4f9` (Quill's #223 `poison_chance` in). **Status:** PR open, moves
-  golden, not yet re-baselined. Goes last in my golden queue, after #228 and #216 (Beadle's
-  dialogue signal reads #216's Delusional doubt too). **Next actor:** Bailiff on its turn;
-  Lantern re-baselines. Michael: the cost and the own-against-own narrowing below.
-- **What Michael approved** (Nov 17, Lantern and Quill's joint answer): no half-doubt, no new
-  number. A clash between an own reading and a teller's card is explained by a Poisoner
-  who picked that reading or by the teller being bad, so the doubt is d = π / (π + bad).
-- **Built** (`Connections._poison_doubt`, stored in the core memory, read by
-  `SourceDoubt.derive` into the honest doubt map):
-  - π: `ReadingChallenges.poison_chance` for the night the Poisoner would have acted (a
-    day reading's is the night before).
-  - bad = 1 − (1 − s)(1 − π_T): s from the baseline and every item not touching the reading;
-    π_T for a teller's gift reading.
-  - **Change from the plan (Quill agreed):** a teller's card is never "impossible" beside an
-    own reading (the judge always lets a teller lie), so the clash is graded. w = how hard
-    the reading, taken as right, blames the teller *for its card* (the odds it adds beside
-    the card beyond what it adds without it). d = w · π / (π + bad); a hard clash gives the
-    approved formula.
-  - The clash is judged with the own readings undoubted, so the doubt can't switch itself off.
-  - When a refresh finds a new doubt, `Mind` reruns it once, so beliefs don't lag a refresh.
-  - `SourceDoubt.self_doubt(n)`: per-night own doubt for Beadle's dialogue item.
-- **Own against own, narrowed (Michael to decide):** the judge reads own readings with the
-  0.2% own-reading error, so two that disagree are settled inside it by fit; the π-split
-  leave-one-out only acts on a set no world allows, which is rare. Making it bite means
-  raising an own reading's error to π on Poisoner nights, a different route.
-- **Accepted challenges (Quill's note):** not skipped. The poison doubt and a challenge's
-  doubt share the honest map's key and take the max, so they don't stack.
-- **Measured** (`tools/test_poison_self_doubt.gd`, 9 checks, constructed on seed 692 with the
-  Poisoner on the script, the teller's card heard at half weight):
-  - Against a trusted teller: about 2% doubt. The own reading clears its two people slightly
-    less (1.9% → 2.7%) and blames the teller slightly less (40.7% → 40.3%).
-  - A suspected teller: slightly less doubt (1.9% vs 2.2%). No Poisoner, or a teller who
-    agrees: none. Stable on the next refresh.
-- **Golden** vs `baseline_5c99636`: beliefs diverge from day 1 or 2 on all five seeds;
-  outcomes unchanged (42 good day 3, 54875 good day 2, 692 and 900 day 4, 98933 good day 3).
-  Two captures identical. The workshop state gains `poison_doubt` and `self_doubt` fields.
-- **Cost** (golden capture time, doubt on vs off): +31% on seed 42 (7 NPCs), +11% on 54875
-  (10 NPCs), mostly the extra refresh when a doubt moves. First build was +69% / +31%; pairs
-  that can't clash are now skipped without judging. Options put to Michael via Seneschal:
-  keep (recommended; Argon could cache it zero-drift), accept a one-refresh lag, or rerun
-  only on a material change (a new number).
-- **Suites:** the fast list plus `test_poison_self_doubt` and `test_role_check_doubt` (82,
-  all pass). `test_poison_self_doubt` added to the fast list.
+- **Base:** main merged in (Nov 18). **Status:** PR #232, rebuilt per Michael's Nov 18
+  decision; moves golden, re-baselines on its turn (after #228 and #216). **Next actor:**
+  Quill reruns the 56-seed measurement before and after; Bailiff in queue order.
+- **What Michael decided** (Nov 18, Lantern and Quill's recommendation): the prior only. Each
+  of an NPC's own readings from a night a Poisoner could have acted carries the poison chance
+  (Quill's `ReadingChallenges.poison_chance`, #223) as an honest doubt, in
+  `SourceDoubt.derive` beside the Delusional self-doubt. The judge weighs the doubted reading
+  by how well it fits the rest, so trust in a clashing teller enters on its own.
+- **Why the first build was replaced:** it fed the judge π / (π + bad), a doubt already
+  conditioned on the clash, so the clash counted twice (Quill's measurement: seed 51, a 25%
+  doubt moved Constance 22% → 75%; the prior alone gives 54%). It also needed clash
+  detection, an extra refresh and 11-31% more capture time. All of that is gone: nothing in
+  the connections model, no rerun, no new number.
+- **Kept:** `SourceDoubt.self_doubt(n)` (per-night own doubt, poison and Delusional) for
+  Beadle's "my gift may have been turned" item; `SourceDoubt.poison_self_doubt` switch.
+- **Measured** (`tools/test_poison_self_doubt.gd`, 8 checks, constructed on seed 692, Poisoner
+  on the script, π = 5%): the doubt is π on the reading's night; a trusted teller's clashing
+  card lets the own reading clear Hollis less (1.9% → 3.8%) and blame the teller less
+  (40.7% → 40.0%); a suspected teller, slightly less; a teller who agrees, half as much; no
+  Poisoner, none; a refresh with nothing new changes nothing.
+- **Small calls:** the poison night is the reading's own night, or the night before for a day
+  reading (Quill's convention); the doubt map key stays the reading's day (#216's keying);
+  an accepted challenge on the same night shares the key (max, no stacking).
+- **Backlog:** the item now records the revision.

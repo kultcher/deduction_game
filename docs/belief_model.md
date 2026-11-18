@@ -430,46 +430,30 @@ Full tables are in the archive.
   wasn't kept. The limit is that nobody sees the Hexer at the hexed place in passive play
   (its presence share there 0.23 against 0.19 for others).
 
-### "Was my reading poisoned?" (Lantern with Quill, Nov 17)
+### "Was my reading poisoned?" (Lantern with Quill, Nov 17-18)
 
-Michael's direction: no half-doubt, no new number. When one of the listener's own readings
-clashes with a teller's card, the doubt depends on how far the listener trusts that teller
-and on how likely a Poisoner was to pick that reading.
+Michael's direction: no half-doubt, no new number; more doubt when the clashing source is
+trusted. Built (Nov 18) as the prior only:
 
-- **The doubt,** per own night: d = w · π / (π + bad), from one refresh to the next
-  (`Connections._poison_doubt`, kept in the core memory, read by `SourceDoubt.derive` into
-  the honest doubt map, so it reaches the role check and the readings' weight).
-  - π is Quill's `ReadingChallenges.poison_chance`: zero with no Poisoner on the script or
-    the Poisoner known dead, otherwise the minion places over the script's minions, over
-    the good people it could have picked.
-  - bad = 1 − (1 − s)(1 − π_T): s is the teller's chance of being evil from the baseline and
-    every item that doesn't touch this reading (otherwise a near-certain own reading always
-    blames the teller; and nothing in it moves with the reading's own doubt), and π_T the
-    teller's own poison chance when its card is a gift reading.
-  - w is how hard the reading, taken as right, blames the teller *for its card*: the odds it
-    adds to the teller beside the card, beyond what it adds without it (clearing two people
-    raises everyone else's share of the evil count, card or no card). 1 when the reading
-    proves the teller lied, 0 when it doesn't blame them. A hard clash gives π / (π + bad).
-  - The teller giving the most doubt (the most trusted) decides.
-- **No oscillation:** the clash is judged with the listener's own readings undoubted ("do
-  these fit, if my readings are right?"). Judged on the doubted readings, the clash would
-  fade once doubted, and the doubt with it.
-- **No lag:** when a refresh finds a doubt different from the one it applied, `Mind` runs
-  the refresh once more, so beliefs don't trail the doubt by a refresh (a refresh with
-  nothing new still changes nothing).
-- **Cost:** only pairs that push someone the reading names the opposite way are judged.
-  Golden capture time, against the doubt off: +31% (seed 42, 7 NPCs), +11% (54875, 10 NPCs),
-  mostly the extra refresh when a clash's doubt moves.
+- With a Poisoner possible on the script, each of the listener's own readings carries the
+  chance a Poisoner picked it that night as an honest doubt (`SourceDoubt.derive`, with
+  Quill's `ReadingChallenges.poison_chance`: zero with no Poisoner or one known dead,
+  otherwise the minion places over the script's minions, over the good people it could
+  have picked; the night is the reading's own, or the night before a day reading).
+- The judge does the rest. It mixes the reading as genuine and as broken by how well each
+  fits everything else, so a reading that fits shrugs the doubt off, and one a trusted
+  teller contradicts gives way; a teller already suspected explains the clash, so less.
+- **Why not the clash-gated form first built:** feeding the judge π / (π + bad), a doubt
+  already conditioned on the clash, counted the clash twice (seed 51: a 25% doubt moved
+  Constance from 22% to 75%; the prior alone, 10%, moves her to 54%). It also needed clash
+  detection and an extra refresh (11-31% more capture time).
+- **Measured** (`tools/test_poison_self_doubt.gd`, constructed on seed 692, Poisoner on the
+  script, π = 5%): a trusted teller's clashing card, heard at half weight, lets the own
+  reading clear Hollis less (1.9% → 3.8%) and blame the teller less (40.7% → 40.0%); against
+  a suspected teller it gives way slightly less; a teller who agrees moves Hollis half as
+  much; no Poisoner, no doubt.
 - **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
-  of its own readings (poison and Delusional), from its last applied refresh.
-- **Own against own:** the judge reads own readings with their small own-reading error, so
-  two that disagree are settled inside it by which fits the rest worse. Only a set no world
-  allows gets the leave-one-out split by π. That's rare.
-- **Measured** (`tools/test_poison_self_doubt.gd`, a constructed clash on seed 692, Poisoner
-  on the script, the teller's card heard at half weight): about 2% doubt, so the own reading
-  clears its two people slightly less (1.9% → 2.7%) and blames the teller slightly less
-  (40.7% → 40.3%). A teller already suspected gets slightly less doubt; no Poisoner, or a
-  teller who agrees, gets none.
+  of its own readings (poison, and Delusional with #216), from its last applied refresh.
 
 ## Open items
 

@@ -972,6 +972,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   connections side; Quill the per-night poison chance and the judge side. After the #186
   role-check fix (#214, merged). Moves golden; report how often it fires and how far it moves
   an NPC, at fixed game states. **[decided]** (Michael, Nov 17)
+  **Revised and built (Michael, Nov 18; Lantern, #232):** the prior only. Each of an NPC's
+  own readings from a night a Poisoner could have acted carries the poison chance itself as
+  an honest doubt (`SourceDoubt.derive`); the judge then weighs the reading as genuine or
+  broken by how well each fits the rest, so trust in a clashing teller enters on its own.
+  The clash-gated form above counted the clash twice (it fed the judge a doubt already
+  conditioned on the clash) and cost 11-31% more refresh time. No clash detection, no
+  extra refresh, no new number; the own-against-own split isn't needed (the judge weighs
+  which own reading fits worse). `SourceDoubt.self_doubt(n)` gives the per-night doubt for
+  the dialogue item.
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
