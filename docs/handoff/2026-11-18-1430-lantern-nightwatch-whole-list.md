@@ -1,4 +1,4 @@
-# 2026-11-18, Claude-Lantern: a Night Watch list is sound or broken as a whole (`claude/nightwatch-whole-list`; moves golden, baseline_2a2feab)
+# 2026-11-18, Claude-Lantern: a Night Watch list is sound or broken as a whole (`claude/nightwatch-whole-list`; moves golden, baseline_e287b3d)
 
 - **Base:** main `0670d55`. **Status:** PR open. **Next:** Bailiff. Argon should look at the speed
   afterwards.
@@ -52,9 +52,9 @@
 - **Golden:**
   - 42, 54875, 692 and 98933 diverge; 900 is identical.
   - Executions, nominators and winners are the same on every seed. Two captures were identical.
-  - Committed as `tools/golden/baseline_2a2feab` (re-captured after the Codex fixes; earlier captures were `baseline_cacd3d0` and `baseline_fd419ee`).
+  - Committed as `tools/golden/baseline_e287b3d` (re-captured after the Codex fixes; earlier captures were `baseline_cacd3d0`, `baseline_fd419ee` and `baseline_2a2feab`).
 - **Tests:**
-  - Fast list 116/116 (on `2a2feab`), including the new `test_nightwatch_whole_list` (6 checks, about 4 s; added
+  - Fast list 116/116 (on `e287b3d`), including the new `test_nightwatch_whole_list` (6 checks, about 4 s; added
     to the fast list).
   - `test_relay_bluff` 4/4.
 - **Codex on #273 (fixed in `fd419ee`):**
@@ -75,6 +75,15 @@
     in the world where the watcher is the converted person, as the sighting contest does.
   - Golden is identical to `baseline_2a2feab`: no golden seed has such a list.
   - Fast list 116/116, `test_relay_bluff` 4/4.
+- **Codex on #273, fourth review (fixed in `e287b3d`):**
+  - Where a Scion succession splits the score, each split divides by its own good profiles, so
+    one scale for the whole score was wrong there.
+  - The broken branch, and every factor under it, now divides by the sound branch's good
+    profiles in every component: direct and each succession split (`SetListNorm`).
+  - The mix scale is now only the outsider's chance of the list's words.
+  - Golden moved from `baseline_2a2feab` only on days 2–3 of 54875, 692 and 98933; seed 42 moved
+    by rounding only. Executions and winners are unchanged.
+  - The hand-built numbers are unchanged. Fast list 116/116, `test_relay_bluff` 4/4.
 - **Speed:** whole golden capture, one machine, main `0670d55` and this branch alternating, two
   runs each.
 
