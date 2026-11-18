@@ -224,7 +224,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	for rc in assessment.get("reading_challenges", []):
 		var rc_src: String = str(rc.get("source", ""))
 		if str(rc.get("mode", "")) in ["impaired", "misled"] and rc_src != "" and g.w.by_id.has(rc_src) and rc_src not in stated:
-			preload("res://game/credibility.gd").record(n, "good", rc_src, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
+			preload("res://game/credibility.gd").record(n, "good", rc_src, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL, int(card.get("n", 0)) if card.get("kind", "") == "deduction" else 0)
 	if direction != "deduction":
 		for target in targets:
 			preload("res://game/credibility.gd").record(n, "good" if direction == "defend" else "evil", target, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
