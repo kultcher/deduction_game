@@ -997,8 +997,14 @@ class Workshop:
 	## Calibrated outer belief scale when source reliability is applied per-card upstream.
 	const JURY_BELIEF_SCALE = 1.35
 	const JURY_ALIGNMENT_COEFF = 0.45
-	const JURY_CHALLENGE_LYING_MIN_AGR = 0.6
-	const JURY_CHALLENGE_LYING_SCALE = 0.12
+	## A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by
+	## the listener's agreement and the case's weight), and the gate it must pass, shared with
+	## the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and
+	## 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed
+	## and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good
+	## reader's suspicion about 3 points from a middling player and 11 from a trusted one.
+	const JURY_CHALLENGE_LYING_MIN_AGR = 0.3
+	const JURY_CHALLENGE_LYING_SCALE = 0.4
 	## Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]).
 	const SOURCE_REL_BASE = 0.50
 	const SOURCE_REL_SLOPE = 0.50

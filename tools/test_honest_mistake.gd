@@ -189,6 +189,8 @@ func _init() -> void:
 		for r in h.results:
 			cands += r.get("candidates", {}).size()
 		check(not h.results.is_empty() and cands == 0, "with no Poisoner no one is pointed at (%d results, %d candidates)" % [h.results.size(), cands])
+	# 4. The lie.
+	_lie(sd)
 	_finish()
 
 
