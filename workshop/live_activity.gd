@@ -561,8 +561,8 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	var log_scale: float = _log_good(broken) - _log_good(sound) \
 		+ _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
 	var top: Dictionary = sound.duplicate(false)
-	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "next": sound, "alt": broken,
-		"key": "%s:%s:%s|%s|%s" % [list.id, b, log_scale, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
+	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "cursed": _told_cursed(view.get("chronology", {}).get("curse", {}), list), "next": sound, "alt": broken,
+		"key": "%s:%s:%s:%s|%s|%s" % [list.id, b, log_scale, _told_cursed(view.get("chronology", {}).get("curse", {}), list), sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
 	return top
 
 ## Sum of log good profiles of a built movement factor (the kernel's BaseScore divisor).
@@ -1224,7 +1224,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	if not mix.is_empty():
 		var next_h: int = _ensure_factor_handle(mix.next)
 		var alt_h: int = _ensure_factor_handle(mix.alt)
-		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), next_h, alt_h)
+		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}

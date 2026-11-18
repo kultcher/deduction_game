@@ -485,8 +485,8 @@ public partial class SolverBridge : RefCounted
     public static void LiveAttachContests(int factorHandle, int[] ints, double[] doubles) =>
         LiveActivityKernel.AttachContests(factorHandle, ints, doubles);
 
-    public static void LiveAttachListMix(int factorHandle, int watcher, double broken, double altScale, int nextHandle, int altHandle) =>
-        LiveActivityKernel.AttachListMix(factorHandle, watcher, broken, altScale, nextHandle, altHandle);
+    public static void LiveAttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle) =>
+        LiveActivityKernel.AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle);
 
     public static void LiveAttachGuards(int factorHandle, int[] ints, double[] doubles) =>
         LiveActivityKernel.AttachGuards(factorHandle, ints, doubles);

@@ -219,6 +219,10 @@ internal static class LiveActivityKernel
         /// honest one would, from what an outsider could know (the contests' balance). Computed
         /// in LiveActivity._list_mix.</summary>
         public double ListMixAltScale = 1.0;
+        /// <summary>The list was told while the curse could have converted its watcher
+        /// (LiveActivity._told_cursed): in a world where the watcher is the converted person, it
+        /// takes the evil-teller path, as the sighting contest does (Codex on #273).</summary>
+        public bool ListMixToldCursed;
     }
 
     /// <summary>A Warden's guard of a door on a night the Demon killed nobody. In a world where
@@ -1764,8 +1768,9 @@ internal static class LiveActivityKernel
     /// T = 1 .. 2^K - 1: the demon profile of each person; then, per Scion split in order,
     /// the same subsets for its before profiles and then for its after profiles].
     /// </summary>
-    public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, int nextHandle, int altHandle)
+    public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle)
     {
+        SolverContext.GetMovementFactor(factorHandle).ListMixToldCursed = toldCursed;
         var factor = SolverContext.GetMovementFactor(factorHandle);
         factor.ListMixWatcher = watcher;
         factor.ListMixBroken = broken;
@@ -1993,7 +1998,8 @@ internal static class LiveActivityKernel
         if (factor.ListMixWatcher < 0)
             return ScoreWorldCore(world, factor);
         double sound = ScoreMixed(world, factor.ListMixNext);
-        if ((world.Evil & (1 << factor.ListMixWatcher)) != 0)
+        if ((world.Evil & (1 << factor.ListMixWatcher)) != 0
+            || (factor.ListMixToldCursed && world.ConvertedOrMinusOne == factor.ListMixWatcher))
             return sound;
         double b = factor.ListMixBroken;
         // Both on the sound branch's scale: a mixed factor's score is a ratio over its own
