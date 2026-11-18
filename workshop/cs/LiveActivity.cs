@@ -156,6 +156,9 @@ internal static class LiveActivityKernel
     {
         public int ExecutedIdx;
         public int AliveDemonMask;
+        /// <summary>The quiet-night guards for each side of the succession (AttachGuards), or null.</summary>
+        public GuardSet PreGuards;
+        public GuardSet PostGuards;
         public double[] PreGood = Array.Empty<double>();
         public double[] PreMinion = Array.Empty<double>();
         public double[] PreDemon = Array.Empty<double>();
@@ -1722,7 +1725,8 @@ internal static class LiveActivityKernel
     /// <summary>
     /// Attaches the quiet-night Warden guards to a registered factor.
     /// ints: [K, then per guard: source, target]. doubles: [R x K, then per subset
-    /// T = 1 .. 2^K - 1: the demon profile of each person].
+    /// T = 1 .. 2^K - 1: the demon profile of each person; then, per Scion split in order,
+    /// the same subsets for its before profiles and then for its after profiles].
     /// </summary>
     public static void AttachGuards(int factorHandle, int[] ints, double[] doubles)
     {
@@ -1737,10 +1741,25 @@ internal static class LiveActivityKernel
         }
         int dPos = k;
         int subsets = (1 << k) - 1;
-        g.AltDemon = new double[subsets][];
-        for (int t = 0; t < subsets; t++)
-            g.AltDemon[t] = SliceDoubles(doubles, ref dPos, factor.PeopleCount);
+        g.AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount);
         factor.Guards = k > 0 ? g : null;
+        if (k == 0)
+            return;
+        foreach (var split in factor.ScionSplits)
+        {
+            if (dPos >= doubles.Length)
+                break;
+            split.PreGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
+            split.PostGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
+        }
+    }
+
+    private static double[][] ReadAlt(double[] doubles, ref int dPos, int subsets, int n)
+    {
+        var alt = new double[subsets][];
+        for (int t = 0; t < subsets; t++)
+            alt[t] = SliceDoubles(doubles, ref dPos, n);
+        return alt;
     }
 
     /// <summary>The demon profile of person i with the world's holding guards mixed in: the
@@ -1983,11 +2002,11 @@ internal static class LiveActivityKernel
         double preS = BaseScore(
             factor.PeopleCount, evil, convIdx, split.ExecutedIdx, false,
             split.PreGood, split.PreMinion, dayType ? split.PreMinion : split.PreDemon, Array.Empty<double>(),
-            split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+            split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight, null, 1.0, dayType, split.PreGuards);
         double postS = BaseScore(
             factor.PeopleCount, evil, convIdx, world.DemonOrMinusOne, false,
             split.PostGood, split.PostMinion, dayType ? split.PostMinion : split.PostDemon, Array.Empty<double>(),
-            split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight);
+            split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight, null, 1.0, dayType, split.PostGuards);
         return preS * postS;
     }
 

@@ -717,10 +717,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		# compiled without it must not be reused with it on. In play it is on, and the key
 		# is as it always was.
 		key_input.append("hex_off")
-	if not Movement.Live.quiet_guards_enabled:
+	if not Movement.Live.quiet_guards_enabled or not Movement.Live.quiet_guards_skip.is_empty():
 		# The same for the quiet-night Warden guards (the Test juror's comparison without
 		# them, WorkshopCanvas.guard_reasons).
-		key_input.append("quiet_guards_off")
+		key_input.append(["quiet_guards_off", Movement.Live.quiet_guards_enabled, Movement.Live.quiet_guards_skip.duplicate()])
 	var key = hash(key_input)
 	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]

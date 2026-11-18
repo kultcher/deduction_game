@@ -109,6 +109,7 @@ func _run() -> void:
 	LiveActivity.quiet_guards_enabled = true
 	_check(is_equal_approx(off, base), "with the switch off, the guard leaves the route alone")
 	_listener_doubt(quiet, seen)
+	_codex_243(seen)
 	_juror()
 	print("Warden quiet route: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails else 0)
@@ -191,3 +192,29 @@ func _listener_doubt(quiet: Dictionary, seen: Dictionary) -> void:
 	var p_d: float = float(doubting.get("people", {}).get("d", {}).get("posterior", -1.0))
 	var p_b: float = float(bare.get("people", {}).get("d", {}).get("posterior", -1.0))
 	_check(p_b >= 0.0 and p_t > p_d and p_d > p_b, "the judge: the subject's chance is highest trusting the Warden, lower doubting, lowest without the route (%.3f, %.3f, %.3f)" % [p_t, p_d, p_b])
+
+
+## Codex on #243: the Scion succession branches carry the guards too, and the Test juror
+## credits each guard with its own effect, not the guards' together.
+func _codex_243(seen: Dictionary) -> void:
+	var hanged: Dictionary = _view()
+	hanged.timeline = History.from_events([{"kind": "execution", "subjects": ["h"], "at": {"day": 2, "phase": "evening"}}])
+	var f: Array = LiveActivity.factors(hanged, [seen, _guard("t")], {})
+	var splits: Array = f[0].get("scion_splits", []) if not f.is_empty() else []
+	_check(not splits.is_empty() and splits[0].get("pre_guard_alt", []).size() == 1 and splits[0].get("post_guard_alt", []).size() == 1,
+		"a possible Scion succession: both sides of the split carry the guard (%d splits)" % splits.size())
+	# Two guards, the second on a night nothing places anyone: only the first moves the case.
+	var quiet: Dictionary = _view()
+	var g2: Dictionary = {"id": "guard2", "fact_id": "guard2", "kind": "report", "source": "h", "role": "warden", "night": 2, "block": "square",
+		"data": {"target": "f"}, "observed_at": {"day": 2, "phase": "night"}}
+	var view: Dictionary = quiet.duplicate(true)
+	view.cards = [seen, _guard("t"), g2]
+	var value: Dictionary = Solver.empty_case()
+	value.conclusion = {"type": "evil", "target": "d", "at": view.alignment_epoch}
+	value.cards = ["s-d", "guard", "guard2"]
+	var ev: Dictionary = CaseEval.evaluate(view, value)
+	var result: Dictionary = {}
+	Live.guard_reasons(view, value, ev, result)
+	var listed: Array = result.get("guards", []).map(func(g): return g.report)
+	_check(listed == ["guard"], "two guards: the juror names only the one that moved the subject (%s)" % str(listed))
+	_check(LiveActivity.quiet_guards_enabled and LiveActivity.quiet_guards_skip.is_empty(), "and puts the switch and the skip list back")
