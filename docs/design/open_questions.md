@@ -120,7 +120,7 @@ These are the ones under discussion now, roughly by how much they shape other wo
 ### 1.9 Smaller live calls
 | Question | Where | Builds |
 |---|---|---|
-| Centring a case on its premise: which of options A, B, C (Vicar recommends C), the share, and whether doubt in a contradiction moves onto the subject | `docs/design/premise_centring.md`; BACKLOG section 2 `[decided]`, option to choose | Lantern |
+| Centring a case on its premise: which of options A, B, C (Vicar recommends B, pending a misframed-case test), the share, and whether doubt in a contradiction moves onto the subject | `docs/design/premise_centring.md`; BACKLOG section 2 `[decided]`, option to choose | Lantern |
 | Honest mistakes against lies in challenges: "misled" lands 3–12% on honest mistakes, and to a listener the cards are the same. Pursue evidence that separates them (teller's history, signs of poisoning)? | BACKLOG section 6 `[open; Michael]` | Quill |
 | Purge phase 6b: the four places attention still feeds belief on a refresh. Measured first, then Michael decides | `docs/connections_purge_plan.md` (#174) | Lantern |
 | The Hexer: the declaration's default ("walker"?) and the bot's Hexer call (54% right). On hold until Michael plays two-kind scripts | BACKLOG section 4; Bailiff's final handoff | Quill (bot), Herald (UI) |
