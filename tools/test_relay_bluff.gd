@@ -25,10 +25,15 @@ func _init() -> void:
 	# Real games, each a kind of case found in the Nov 12 survey (then seeds 100059, 100019,
 	# 100042 and 100020); searched for, so play changes don't break them (fixture_seeds.gd).
 	var evil_relayer = func(t): return t.is_evil()
+	# What the relays do, not where the relayer ends up: the earlier check (their chance at least
+	# 0.5) broke whenever other evidence moved them, as #216 and #232 each did on these games.
 	var first: Dictionary = Seeds.relay(4, evil_relayer)
-	_found_case(first, func(p): return p >= 0.5, "an evil relayer's relays don't clear them")
+	_relay_case(first, "an evil relayer's relays don't clear them")
 	if not first.is_empty():
-		_found_case(Seeds.relay(5, evil_relayer, false, int(first.seed) + 1), func(p): return p >= 0.5, "nor in another game, later on")
+		# Another game, from the next seed on, at the same day: with the Delusional self-doubt
+		# (#216) few games reach day 5 holding such a relay (none in 120 seeds), and the case is
+		# "another game", not "a later day".
+		_relay_case(Seeds.relay(4, evil_relayer, false, int(first.seed) + 1), "nor in another game")
 	# The genuine Medium over three games: its relays don't count against it. A listener can
 	# have other cards against a Medium (seed 100008's Kiran reads 0.58 under connections, 0.11
 	# on the earlier model), so this measures the relays alone: the Medium's chance with every
@@ -53,6 +58,19 @@ func _init() -> void:
 	_found_case(Seeds.relay(3, evil_relayer, true), func(p): return p >= 0.8, "an invented relay of the listener, seen out while they were home, counts against its relayer")
 	print("Relay bluff: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
+
+
+## An evil relayer's relays don't clear them: with every held card, the relayer's chance of being
+## evil isn't more than 5 points below the same refresh with its relays left out
+## (Seeds.relay_effect). Before Nov 12 a relay cleared its evil relayer outright.
+func _relay_case(found: Dictionary, label: String) -> void:
+	if found.is_empty():
+		check(false, "%s (no seed searched has the case)" % label)
+		return
+	var eff: Dictionary = Seeds.relay_effect(found.g, str(found.listener), str(found.teller))
+	var with_r: float = float(eff.get("with", -1.0))
+	var without: float = float(eff.get("without", -1.0))
+	check(not eff.is_empty() and with_r >= without - 0.05, "%s (seed %d: %s on %s, %.2f with the relays, %.2f without)" % [label, int(found.seed), found.listener, found.teller, with_r, without])
 
 
 func _found_case(found: Dictionary, ok: Callable, label: String) -> void:

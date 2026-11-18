@@ -89,13 +89,35 @@ func _ask_why_free() -> void:
 	var w = g.w
 	var n = w.living_good()[0]
 	n.hints = {}
-	var before: int = n.pressed_today
 	_check(not Mind.has_live_hint(w, n), "no hint on record")
 	var victim = w.living_good()[1]
 	n.hints = {victim.id: {"day": 1, "src": ""}}
 	w._kill(victim)
 	_check(not Mind.has_live_hint(w, n), "a dead target's hint is not live")
-	_check(n.pressed_today == before, "checking costs nothing")
+	# Asking about it in a real conversation spends no question (the check used to read a
+	# counter nothing had touched).
+	if g.state == "approach":
+		g.command("decline")
+	var t = null
+	for x in w.living():
+		if x != victim and not x.at_home() and x.busy_with == "" and g.can_see(x):
+			t = x
+			break
+	if t == null:
+		_check(false, "someone to talk to")
+		return
+	t.hints = {victim.id: {"day": 1, "src": ""}}
+	g.command("go " + t.id)
+	g.command("talk " + t.id)
+	var q_before: int = g.questions_left
+	var pressed_before: int = t.pressed_today
+	g.command("ask why")
+	_check(g.state == "talk" and g.questions_left == q_before and t.pressed_today == pressed_before,
+		"asking why about a dead target's hint costs no question (%d -> %d left)" % [q_before, g.questions_left])
+	t.hints = {w.living_good().filter(func(x): return x != t)[0].id: {"day": w.day, "src": ""}}
+	if Mind.has_live_hint(w, t):
+		g.command("ask why")
+		_check(g.questions_left == q_before - 1, "while a live hint does cost one (%d -> %d left)" % [q_before, g.questions_left])
 
 ## 6a: a reading's own time words and full stop aren't doubled by the spoken lead.
 func _reading_clause() -> void:

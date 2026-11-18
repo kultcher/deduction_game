@@ -507,15 +507,6 @@ Candidates for a unified retuning proposal, not approved changes.
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
 
-- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
-  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
-  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
-  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
-  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
-  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
-  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
-  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided]
-
 ### Performance
 
 The one performance item, "Late-game meeting and presenting cost", is in
@@ -830,7 +821,11 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
   an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
   word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
-  barely with all cards. Moves golden. **[open]**
+  barely with all cards. Moves golden. Michael (Nov 18): fix; owner Lantern. **Built** (Nov 18,
+  `claude/relayer-in-contest`): a relayed card is contested only as its relayer's word, since
+  the dead never told it and can't have invented it, which also frees the cap's slot. Found
+  again on seed 100029 when #216 moved `test_relay_bluff`'s fixture onto it: evil Hollis's
+  invented relay of Merrin took Hollis from 0.83 to 0.46. **[done]**
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
@@ -879,6 +874,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   connections side; Quill the per-night poison chance and the judge side. After the #186
   role-check fix (#214, merged). Moves golden; report how often it fires and how far it moves
   an NPC, at fixed game states. **[decided]** (Michael, Nov 17)
+  **Revised and built (Michael, Nov 18; Lantern, #232):** the prior only. Each of an NPC's
+  own readings from a night a Poisoner could have acted carries the poison chance itself as
+  an honest doubt (`SourceDoubt.derive`); the judge then weighs the reading as genuine or
+  broken by how well each fits the rest, so trust in a clashing teller enters on its own.
+  The clash-gated form above counted the clash twice (it fed the judge a doubt already
+  conditioned on the clash) and cost 11-31% more refresh time. No clash detection, no
+  extra refresh, no new number; the own-against-own split isn't needed (the judge weighs
+  which own reading fits worse). `SourceDoubt.self_doubt(n)` gives the per-night doubt for
+  the dialogue item.
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

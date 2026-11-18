@@ -549,6 +549,10 @@ func workshop_retract(number: int, listener_id: String) -> void:
 func _workshop_retract(number: int, listener_id: String) -> void:
 	GamePresentation._workshop_retract(self, number, listener_id)
 
+## The player takes back a filed case in public. "" or why not.
+func workshop_withdraw_public(number: int) -> String:
+	return GamePresentation.workshop_withdraw_public(self, number)
+
 ## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
 	return GamePresentation._evaluate_deduction(self, n, ded, scale, speak, venue)
@@ -594,6 +598,14 @@ func _dispatch(text: String) -> void:
 			return
 		"delete":
 			_narr(delete_deduction(rest.strip_edges().trim_prefix("#").to_int()))
+			return
+		"withdraw", "takeback":
+			var wnum: int = rest.strip_edges().trim_prefix("#").to_int()
+			var werr: String = workshop_withdraw_public(wnum)
+			if werr != "":
+				_err(werr)
+			else:
+				_narr("You stand and take back case #%d." % wnum)
 			return
 		"showhidden":
 			show_hidden = not show_hidden
@@ -904,7 +916,7 @@ func on_deck_case(id: String) -> Dictionary:
 	return GameMeeting.on_deck_case(self, id)
 
 func cases_naming(id: String) -> Array:
-	return board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and int(c.get("superseded_by", 0)) == 0 and GameMeeting._case_names(c, id))
+	return board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and not c.get("withdrawn", false) and int(c.get("superseded_by", 0)) == 0 and GameMeeting._case_names(c, id))
 
 func already_public(card: Dictionary) -> bool:
 	return GameMeeting.already_public(self, card)
