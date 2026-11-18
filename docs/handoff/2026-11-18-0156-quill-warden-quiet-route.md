@@ -24,6 +24,10 @@
   route's reliability is scaled by it. Measured on the 7-person test view, d's chance as the
   subject: 0.60 trusting the Warden, 0.53 at half doubt, 0.44 with no route. Reason
   attribution's compile reads it the same way.
+- **Codex on #243 (both fixed):**
+  - Scion succession branches now carry the guards on both sides.
+  - The juror credits each guard with its own effect (leave-one-out through
+    `LiveActivity.quiet_guards_skip`), and lists only the guards the route uses.
 - **Small calls made on Michael's behalf:**
   - A guard report without a claimed save counts the same as one with: the quiet is the
     judge's inference either way.
@@ -40,7 +44,7 @@
   - **Autoplay** (seed 1, 10 NPCs, the first 5 of 8 games): the guard never reached the judge.
     The bot's cases don't cite Warden reports, and NPC beliefs didn't hit it in these games.
     So in practice this is the player's argument, as the item intends.
-- **Tests:** new `tools/test_warden_quiet_route` (20 checks), added to the fast list. Also
+- **Tests:** new `tools/test_warden_quiet_route` (23 checks), added to the fast list. Also
   passing: `test_warden_challenge`, `test_demon_types`, `test_workshop_regressions`,
   `test_workshop_live_activity`, `test_evidence_cards`, `test_juror_claims`,
   `test_workshop_remaining`, `test_workshop_integration`, `test_workshop_ui`,
