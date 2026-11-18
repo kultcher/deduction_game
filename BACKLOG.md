@@ -153,8 +153,9 @@ relay about the first victim naming night 0 (Beadle).
   case back from everyone who heard it, and they keep its cards. A withdrawn case's
   conclusions are judged once more at the next dawn and then leave the track record; a
   revision citing new evidence clears the old version's conclusions at once (Michael's
-  option c). **Still open:** "a revised case must not score below the version it
-  replaces" waits on Michael's reading, since new evidence can legitimately weaken a case.
+  option c). "A revised case must not score below the version it replaces" became a
+  warning (Michael, Nov 18): "This weakens your previous case", detected in Quill's #275
+  and shown by Herald.
 
 - **Recovering from a wrong "lying" call.** (Nov 12, Michael; Quill's honest-mistake
   sample, belief-model doc) A "lying" challenge on a poisoned or misregistered good
