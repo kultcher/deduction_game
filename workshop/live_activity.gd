@@ -1049,6 +1049,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		for item in guards.items:
 			g_ints.append(int(item.source))
 			g_ints.append(int(item.target))
+			g_ints.append(int(item.night))
 			g_doubles.append(float(item.r))
 		for col in guards.alt:
 			for v in col:

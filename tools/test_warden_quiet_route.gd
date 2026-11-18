@@ -218,3 +218,20 @@ func _codex_243(seen: Dictionary) -> void:
 	var listed: Array = result.get("guards", []).map(func(g): return g.report)
 	_check(listed == ["guard"], "two guards: the juror names only the one that moved the subject (%s)" % str(listed))
 	_check(LiveActivity.quiet_guards_enabled and LiveActivity.quiet_guards_skip.is_empty(), "and puts the switch and the skip list back")
+	# Two Wardens on the same quiet night at different doors: at most one held, and which
+	# claimant is which doesn't matter (a and h both live on the hill).
+	var ga: Dictionary = _guard("t")
+	var gh: Dictionary = {"id": "gh", "fact_id": "gh", "kind": "report", "source": "h", "role": "warden", "night": 1, "block": "square",
+		"data": {"target": "g"}, "observed_at": {"day": 1, "phase": "night"}}
+	var ga2: Dictionary = ga.duplicate(true)
+	ga2.data.target = "g"
+	ga2.block = "square"
+	var gh2: Dictionary = gh.duplicate(true)
+	gh2.data.target = "t"
+	gh2.block = "docks"
+	var both: float = _lean(quiet, [seen, ga, gh], "f")
+	var swapped: float = _lean(quiet, [seen, ga2, gh2], "f")
+	var one: float = _lean(quiet, [seen, ga], "f")
+	var bare: float = _lean(quiet, [seen], "f")
+	_check(is_equal_approx(both, swapped), "two guards on one night: who guarded which door doesn't change the weighing (%.4f, %.4f)" % [both, swapped])
+	_check(both > bare and both < one, "and the rival door draws some of the Demon's route (%.3f < %.3f < %.3f)" % [bare, both, one])

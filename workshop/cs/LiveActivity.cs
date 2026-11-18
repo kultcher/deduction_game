@@ -210,6 +210,7 @@ internal static class LiveActivityKernel
     {
         public int[] Sources = Array.Empty<int>();
         public int[] Targets = Array.Empty<int>();
+        public int[] Nights = Array.Empty<int>();
         public double[] R = Array.Empty<double>();
         public double[][] AltDemon = Array.Empty<double[]>();
     }
@@ -1724,7 +1725,7 @@ internal static class LiveActivityKernel
 
     /// <summary>
     /// Attaches the quiet-night Warden guards to a registered factor.
-    /// ints: [K, then per guard: source, target]. doubles: [R x K, then per subset
+    /// ints: [K, then per guard: source, target, night]. doubles: [R x K, then per subset
     /// T = 1 .. 2^K - 1: the demon profile of each person; then, per Scion split in order,
     /// the same subsets for its before profiles and then for its after profiles].
     /// </summary>
@@ -1732,11 +1733,12 @@ internal static class LiveActivityKernel
     {
         var factor = SolverContext.GetMovementFactor(factorHandle);
         int k = ints[0];
-        var g = new GuardSet { Sources = new int[k], Targets = new int[k], R = new double[k] };
+        var g = new GuardSet { Sources = new int[k], Targets = new int[k], Nights = new int[k], R = new double[k] };
         for (int j = 0; j < k; j++)
         {
-            g.Sources[j] = ints[1 + 2 * j];
-            g.Targets[j] = ints[2 + 2 * j];
+            g.Sources[j] = ints[1 + 3 * j];
+            g.Targets[j] = ints[2 + 3 * j];
+            g.Nights[j] = ints[3 + 3 * j];
             g.R[j] = doubles[j];
         }
         int dPos = k;
@@ -1749,8 +1751,8 @@ internal static class LiveActivityKernel
         {
             if (dPos >= doubles.Length)
                 break;
-            split.PreGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
-            split.PostGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
+            split.PreGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, Nights = g.Nights, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
+            split.PostGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, Nights = g.Nights, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
         }
     }
 
@@ -1779,17 +1781,49 @@ internal static class LiveActivityKernel
         }
         if (h == 0)
             return usual;
+        // The Demon visits one door a night: of the holding guards on one night, at most one
+        // held (Codex on #243). Each night is a choice of none (1 - the sum of their R) or one
+        // of them (its R), the sum scaled to 1 if it goes over; nights are independent.
         double total = 0.0;
         for (int sub = h; ; sub = (sub - 1) & h)
         {
             double w = 1.0;
-            for (int j = 0; j < g.Sources.Length; j++)
+            bool ok = true;
+            for (int j = 0; j < g.Sources.Length && ok; j++)
             {
                 if ((h & (1 << j)) == 0)
                     continue;
-                w *= (sub & (1 << j)) != 0 ? g.R[j] : 1.0 - g.R[j];
+                bool first = true;   // the first holding guard of its night carries that night's weight
+                double sumR = 0.0;
+                int chosen = 0;
+                for (int q = 0; q < g.Sources.Length; q++)
+                {
+                    if ((h & (1 << q)) == 0 || g.Nights[q] != g.Nights[j])
+                        continue;
+                    if (q < j)
+                        first = false;
+                    sumR += g.R[q];
+                    if ((sub & (1 << q)) != 0)
+                        chosen++;
+                }
+                if (chosen > 1)
+                {
+                    ok = false;
+                    break;
+                }
+                if (!first)
+                    continue;
+                double scale = sumR > 1.0 ? 1.0 / sumR : 1.0;
+                double wNight = Math.Max(0.0, 1.0 - sumR * scale);
+                for (int q = 0; q < g.Sources.Length; q++)
+                {
+                    if ((h & (1 << q)) != 0 && g.Nights[q] == g.Nights[j] && (sub & (1 << q)) != 0)
+                        wNight = g.R[q] * scale;
+                }
+                w *= wNight;
             }
-            total += w * (sub == 0 ? usual : g.AltDemon[sub - 1][i]);
+            if (ok)
+                total += w * (sub == 0 ? usual : g.AltDemon[sub - 1][i]);
             if (sub == 0)
                 break;
         }
