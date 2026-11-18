@@ -50,6 +50,12 @@ These are the ones under discussion now, roughly by how much they shape other wo
   per-case hypothesis so the player can argue an unclaimed one.
 - **Backlogged** (Michael, Nov 17: smaller items first; BACKLOG section 4, "The secrets
   rework", [open]), with a staged plan in the note's section 9.
+- **Decided Nov 18 (Michael):**
+  - good NPCs may lie about their gift, with a reason (avoiding or drawing the Demon),
+    uncommonly, and only under pressure;
+  - every secret is unique;
+  - the hidden kinds (probably Delusional and Sleepwalker) are mutually exclusive by script.
+  - **Not yet decided:** plain folk and confidants (note section 10).
 - **Evidence:** `docs/design/secrets_rework.md` (the options, costs and the Saint and Baron
   examples); BACKLOG section 4 for the Muddler (#180).
 - **Builds:** Lantern and Quill (the judge), Beadle (claiming, hiding, bluffing), Herald

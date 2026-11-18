@@ -321,7 +321,10 @@ relay about the first victim naming night 0 (Beadle).
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:
   - **Shielding a friend:** not built. A good NPC bends the truth to cover someone it trusts.
   - **Lying about one's role:** may a good NPC lie about their gift, for example a Veteran
-    falsely claiming another gift to draw the Demon's attack?
+    falsely claiming another gift to draw the Demon's attack? Michael (Nov 18): yes, with a
+    reason (avoiding or drawing the Demon's attention), fairly uncommon, possibly tied to
+    Confidence. It doesn't volunteer the lie and picks the most harmless one available.
+    Part of the secrets rework (`docs/design/secrets_rework.md`, sections 2 and 10.1).
   A caught lie still implicates strongly, so both need care. [open]
 
 - **Backing a strong case builds trust.** Nominating or voting for someone the town
@@ -608,7 +611,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
   can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
-  it frees could go to telling Minions apart. [open]
+  it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
+  good NPCs may lie about their gift with a reason; every secret is unique; the hidden kinds
+  (probably Delusional and Sleepwalker) are mutually exclusive by script. Not decided yet:
+  plain folk and confidants (section 10). [open]
   - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
     pairing with a good person only works if real Lovers sometimes leave each other out to
     dry. **If evil ever fakes a Lovers confession**, `Solver.lovers_needs` (and its use in
