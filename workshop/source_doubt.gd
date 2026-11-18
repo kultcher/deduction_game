@@ -11,12 +11,17 @@
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const History = preload("res://workshop/live_history.gd")
+
+## Measurement switch (on in play): a good listener's small doubt that its own gift is
+## Delusional (DELUSIONAL_SELF_DOUBT, derive). Tests turn it off to compare.
+static var delusional_self_doubt: bool = true
 
 
 ## The poison self-doubt (off for measuring and for tests of other doubt).
@@ -152,6 +157,14 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
 					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
 
+	# A teller's own word that its gift may have been turned (BACKLOG "Saying 'my gift may
+	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading
+	# proves only as much as it is still credited (Codex on #245).
+	var gift_doubt: Dictionary = _gift_self_doubt(pub_events, self_id, listener.get("suspicion", {}))
+	for sd_key in gift_doubt:
+		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+
 	# Pass 2: Gravedigger execution proofs from non-discredited other sources.
 	var npc_trust: Dictionary = listener.get("npc_trust", {})
 	for card in cards:
@@ -211,13 +224,49 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if not seed_doubt.has(s_good + ":*"):
 			pre_eval.erase(s_good + ":*")
 
+	# A teller's own word that its gift may have been turned, put back after the sincere-
+	# teller pass on purpose: a teller known to be sincere can still have a broken gift.
+	for sd_key in gift_doubt:
+		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
+
+	# "Is my gift Delusional?" (Michael, Nov 17). With the secret on the script a good
+	# listener's own gift might give it wrong readings without it knowing, so each night of
+	# its own readings carries a small honest doubt (DELUSIONAL_SELF_DOUBT), the way its home
+	# nights carry the Sleepwalker's. Honest, so it reaches both the role check and the
+	# readings' weight (measured Nov 17: a Clerk's, Seer's or Archivist's reading softens
+	# through its weight, a Dowser's, Surveyor's or Warden's through the role check), never a
+	# charge of lying. Its sightings and alibis aren't gift readings. A Medium's gift results
+	# carry the dead person as source and the Medium as relay_source; they're keyed, as any
+	# relay's reliability is, by the Medium and the night it heard them. Another Medium's
+	# relayed copy of the listener's reading isn't the listener's gift, so it's left alone.
+	var delusional_by_key: Dictionary = {}
+	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false) and could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
+		var d_self: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			var n_self: int = -1
+			if str(c.get("relay_source", "")) == self_id:
+				n_self = int(c.get("relay_observed_at", {}).get("day", -1))
+			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
+				n_self = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			if n_self < 0:
+				continue
+			var k_self: String = "%s:%d" % [self_id, n_self]
+			delusional_by_key[k_self] = d_self
+			pre_eval[k_self] = maxf(float(pre_eval.get(k_self, 0.0)), d_self)
+			honest[k_self] = maxf(float(honest.get(k_self, 0.0)), d_self)
+
 	# "Was my reading poisoned?" (Michael, Nov 17-18, with Quill). With a Poisoner possible, each
 	# of the listener's own readings carries the chance that a Poisoner picked it that night
 	# (ReadingChallenges.poison_chance: zero with no Poisoner on the script or one known dead)
 	# as an honest doubt. Only the prior: the judge then weighs the reading as genuine or
 	# broken by how well each fits the rest, so a reading that fits shrugs it off and one that
 	# fights everything else gives way, more so against a trusted teller. Honest, so it reaches
-	# the role check and the readings' weight, never a charge of lying.
+	# the role check and the readings' weight, never a charge of lying. Where the Delusional
+	# self-doubt also holds for that night, the two are independent ways the gift can fail:
+	# 1 - (1 - poison)(1 - delusional), as the Night Watch's broken chance (Michael, Nov 18).
 	if poison_self_doubt and self_id != "" and ReadingChallenges.poisoner_possible(view):
 		for c in cards:
 			if str(c.get("kind", "")) != "report" or str(c.get("source", "")) != self_id or c.get("quoted", false) or c.has("relay_source"):
@@ -232,8 +281,9 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			if pi <= 0.0:
 				continue
 			var k_p: String = "%s:%d" % [self_id, k_night]
-			pre_eval[k_p] = maxf(float(pre_eval.get(k_p, 0.0)), pi)
-			honest[k_p] = maxf(float(honest.get(k_p, 0.0)), pi)
+			var broken: float = 1.0 - (1.0 - pi) * (1.0 - float(delusional_by_key.get(k_p, 0.0)))
+			pre_eval[k_p] = maxf(float(pre_eval.get(k_p, 0.0)), broken)
+			honest[k_p] = maxf(float(honest.get(k_p, 0.0)), broken)
 
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})
@@ -257,6 +307,24 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				full_doubt[r_src + ":*"] = maxf(float(full_doubt.get(r_src + ":*", 0.0)), src_pen)
 
 	return {"pre_eval": pre_eval, "full": full_doubt, "settled_sincere": settled_sincere, "honest": honest}
+
+
+## Honest doubt from public `self_doubt` events, "teller:*": a teller who said its gift may
+## have been turned, at an unreliable argument's scale, as far as the listener believes it
+## (1 - its suspicion of the teller). The listener's own line is its own business.
+static func _gift_self_doubt(pub_events: Array, self_id: String, susp_map: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for ev in pub_events:
+		if str(ev.get("kind", "")) != "self_doubt":
+			continue
+		var t_id: String = str(ev.get("by", ""))
+		if t_id == "" or t_id == self_id:
+			continue
+		var believe: float = clampf(1.0 - float(susp_map.get(t_id, 0.0)), 0.0, 1.0)
+		var sd_val: float = minf(Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE * believe, Tuning.Workshop.DOUBT_ARG_CAP)
+		if sd_val > 0.0:
+			out[t_id + ":*"] = maxf(float(out.get(t_id + ":*", 0.0)), sd_val)
+	return out
 
 
 ## Night or general doubt about `src` from unowned template arguments (the same values
@@ -306,3 +374,17 @@ static func own_doubt(self_id: String, honest: Dictionary) -> Dictionary:
 ## applied refresh left it: for dialogue ("something seems off about my readings") and tools.
 static func self_doubt(n) -> Dictionary:
 	return n.workshop_state.get("self_doubt", {}).duplicate()
+
+## Whether the deal's placement rules (ScriptDef.PLACEMENT_RULES) let a holder of `role`
+## carry `secret`: a Chronicler or Rumormonger never holds the Delusional secret, so knowing
+## its own gift rules out doubting itself that way. An unknown role could hold it.
+static func could_hold_secret(role: String, secret: String) -> bool:
+	if role == "" or not C.has_role_def(role):
+		return true
+	var def = C.role_def(role)
+	for rule in ScriptDef.PLACEMENT_RULES:
+		if secret in rule.get("except", []) or (rule.has("only") and secret not in rule.only):
+			continue
+		if bool(def.get(str(rule.not_on_flag))):
+			return false
+	return true

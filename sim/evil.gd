@@ -5,6 +5,7 @@ extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const FabricationCheck = preload("res://sim/fabrication_check.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
@@ -243,7 +244,8 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 	var night = maxi(0, dd.death_day - 1)
 	var sg = w.by_id[s]
 	if w.chance(C.MEDIUM_USELESS_CHANCE):
-		var gs: Array = w.living_good()
+		# An empty one names someone harmless: never the scapegoat, whom it would clear.
+		var gs: Array = w.living_good().filter(func(x): return x.id != s)
 		if not gs.is_empty() and w.chance(0.5):
 			var g = w.pick(gs)
 			return {"item": {"type": "sighting", "who": g.id, "block": g.home_block, "night": night, "lie": true, "idle": true},
@@ -257,8 +259,12 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 		var r = _fake_dead_reading(w, n, dd, dd.claimed_role, s, night)
 		if not r.is_empty() and (frame_ok or not r["frames"]):
 			opts.append([3.0, {"item": {"type": "reading", "entry": r["entry"], "lie": true}, "why": r["why"], "frames": r["frames"]}])
+	# Night 0 can't frame: the Demon never walks it, so the scapegoat "out" then reads as
+	# innocent. The first victim's frame is told on the night they died instead, when the
+	# Demon did walk (BACKLOG, "An evil Medium's relay about the first victim names night 0").
+	var frame_night: int = night if night >= 1 else maxi(1, dd.death_day)
 	if frame_ok and sg.home_block != dd.home_block:
-		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
+		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": frame_night, "lie": true},
 			"why": "claimed the late %s saw %s, whom evil meant to hang, out near their cottage on their last night" % [dd.id, s], "frames": true}])
 	if dd.info_log.any(func(e): return e.get("shared", false)):
 		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "said the late %s had nothing new to tell" % dd.id, "frames": false}])
@@ -767,6 +773,8 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				out["why"] = str(he.get("why", "evil fabrication")) + "; " + str(re.get("note", ""))
 			_mark_fake(out)
 			if re["outcome"] == "held":
+				if _boxed_in_gift_doubt(w, m, out):
+					continue
 				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
 				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
 				continue
@@ -820,6 +828,30 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## BACKLOG "Saying 'my gift may have been turned'", part (b) (Michael, Nov 17-18): a liar
+## whose reading has been held back twice running, for a gift it has claimed in public, has
+## no telling left that doesn't point at itself or a teammate. Rather than keep holding it,
+## it drops the reading and will tell the town its gift may have been turned
+## (MindMeeting._say_gift_doubt). Only where a Poisoner or Delusional could be in play, or
+## the excuse would make no sense; at most once a game. Returns whether it did.
+static func _boxed_in_gift_doubt(w, m, entry: Dictionary) -> bool:
+	var role: String = str(entry.get("role", ""))
+	if not m.claim_public or m.claimed_role != role or not m.gift_doubt.is_empty() or not gift_turn_possible(w):
+		return false
+	var why: String = "it had held back its made-up %s reading twice, and every way of telling it would have turned the town on itself or a fellow evil" % C.role_name(role)
+	m.gift_doubt = {"day": w.day, "role": role, "why": why}
+	w.dlog.think(m.id, "plan", "Evil: boxed in on its %s reading; drops it and will say its gift may have been turned (%s)." % [role, why])
+	w.dlog.add("gift_doubt_planned", m.id, "", entry, "%s (evil, bluffing %s) drops a reading it can't tell safely and will claim its gift was turned [%s]" % [m.name, role, why])
+	return true
+
+## Whether a turned gift is possible in this case: a Poisoner among the script's minions or
+## Delusional among its secrets (the Default script when there's none).
+static func gift_turn_possible(w) -> bool:
+	var sc = w.case_script
+	var minions: Array = sc.minions if sc != null else ScriptDef.default_minions()
+	var secrets: Array = sc.secrets if sc != null else C.SECRET_MOD_LIST
+	return "poisoner" in minions or "delusional" in secrets
 
 ## A fabrication's motive with people's ids swapped for their names, so the end-of-game
 ## reveal reads "the dead Seer Lian 'cleared' the demon Merrin", not raw ids (Steward A3,
@@ -899,7 +931,10 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 		# who passed where, so a sighting can only repeat it (Constance, 54875: "I saw Isolde"
 		# privately, "I saw Jory" in her Night Watch reading for the same night).
 		var watch: Dictionary = _own_fake_reading(n, nd, "nightwatch")
-		if not watch.is_empty():
+		# Never a night-0 sighting: the Demon doesn't walk then, so a night-0 sighting tells
+		# nothing, and a liar's would only make honest night-0 sighters look like liars
+		# (Michael, Nov 18).
+		if nd >= 1 and not watch.is_empty():
 			var seen: Array = watch.get("data", {}).get("seen", []).filter(func(x): return x != n.id and w.by_id.has(x))
 			if watch["data"].get("block", "") == vantage and not seen.is_empty():
 				var who: String = s if s in seen else seen[0]
@@ -926,7 +961,8 @@ static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]
-	if s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
+	# "Was out last night" on day 1 would be night 0, when the Demon doesn't walk (Michael, Nov 18).
+	if w.day < 2 or s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
 		return null
 	var block: String = w.by_id[s].home_block
 	for sid in w.scenes:

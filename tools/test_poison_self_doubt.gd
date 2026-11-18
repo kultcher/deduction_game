@@ -6,6 +6,7 @@
 ## Poisoner on the script.
 ## Constructed on seed 692's 7-NPC deal (the Poisoner is on its script), flat beliefs.
 extends SceneTree
+const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
@@ -80,6 +81,9 @@ const AGAINST_NISHA = ["odette", "seer", 1, 3, {"pair": ["nisha", "agnes"], "yes
 
 func _init() -> void:
 	Connections.enabled = true
+	# Seed 692's script carries Delusional too; the poison-only checks run without that
+	# self-doubt, and section 7 puts the two together.
+	SourceDoubt.delusional_self_doubt = false
 	# 1. The doubt itself: the poison chance, on the night the Poisoner would have acted (the
 	#    night before a day reading), keyed to the reading's own day.
 	var on: Dictionary = _run(_game(OWN, [CLASH]))
@@ -119,5 +123,15 @@ func _init() -> void:
 	check(none[2].doubt.is_empty(), "with no Poisoner on the script there's no poison self-doubt (%s)" % str(none[2].doubt))
 	# 6. Stable: the next refresh changes nothing.
 	check(absf(on[1].post.hollis - on[2].post.hollis) < 1e-9 and on[1].doubt == on[2].doubt, "a refresh with nothing new changes nothing")
+	# 7. With the Delusional self-doubt as well (#216): two independent ways the gift can fail,
+	#    1 - (1 - poison)(1 - Delusional), as the Night Watch's broken chance (Michael, Nov 18).
+	SourceDoubt.delusional_self_doubt = true
+	var both: Dictionary = _run(_game(OWN, [CLASH]))
+	var d_both: float = float(both[2].doubt.get(1, 0.0))
+	var want: float = 1.0 - (1.0 - float(both.pi)) * (1.0 - Tuning.Workshop.DELUSIONAL_SELF_DOUBT)
+	print("with Delusional too: %.4f (want %.4f)" % [d_both, want])
+	check(absf(d_both - want) < 1e-9, "poison and Delusional combine as independent chances (%.4f)" % d_both)
+	var delus_only: Dictionary = _run(_game(OWN, [CLASH], false))
+	check(absf(float(delus_only[2].doubt.get(1, 0.0)) - Tuning.Workshop.DELUSIONAL_SELF_DOUBT) < 1e-9, "with no Poisoner, only the Delusional doubt (%s)" % str(delus_only[2].doubt))
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

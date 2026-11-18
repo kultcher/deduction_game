@@ -239,7 +239,7 @@ static func reasons_for(g, n) -> void:
 	var refresh_reasons: Dictionary = rctx.get("computed", {})
 	if not rctx.has("computed"):
 		var ins: Array = rctx.get("inputs", [])
-		var raw: Dictionary = ReasonAttribution.attribute_refresh(ins[0], ins[1], ins[2], ins[3], ins[4], ins[5], ins[6], ins[7], ins[8]) if ins.size() == 9 else {}
+		var raw: Dictionary = ReasonAttribution.attribute_refresh(ins[0], ins[1], ins[2], ins[3], ins[4], ins[5], ins[6], ins[7], ins[8], ins[9] if ins.size() >= 10 else {}) if ins.size() >= 9 else {}
 		refresh_reasons = ReasonAttribution.attach_owners(raw, rctx.get("owners", {}), rctx.get("public_good", []))
 		rctx["computed"] = refresh_reasons # a cached proposal reuses its attribution
 	refresh_reasons = refresh_reasons.duplicate(true)
