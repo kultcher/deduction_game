@@ -8,7 +8,8 @@
 ## play, so changes to play can't move them (BACKLOG "Build test_relay_bluff's evil-relayer
 ## and invented-relay checks by hand", Michael, Nov 18; the seed searches tripped three
 ## times on Nov 18). Each measures the relays alone: the relayer's chance with every held card
-## against the same refresh with its relays left out (Seeds.relay_effect).
+## against the same refresh with its relays left out (Seeds.relay_effect). The played-game
+## regression guard for #265's bug, which these towns don't reach, is test_relay_bluff_games.
 ##   godot --headless --path . --script res://tools/test_relay_bluff.gd
 extends SceneTree
 
