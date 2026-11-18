@@ -114,3 +114,4 @@ test_workshop_reading_challenges
 test_workshop_regressions
 test_workshop_vote_and_alibi
 test_workshop_why
+test_player_failed_gift

@@ -38,6 +38,10 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
+	# These checks are case arithmetic on chosen numbers. The player's "failed gift" call as
+	# testimony (SourceDoubt.player_failed_gift, option C) deliberately reaches beyond its case,
+	# so it's off here; test_player_failed_gift covers it.
+	preload("res://workshop/source_doubt.gd").player_failed_gift = false
 	check(is_equal_approx(Connections.CASE_FADE, 0.5) and is_equal_approx(Connections.CASE_FLOOR, 0.05), "a case keeps half its weight a day and stops counting under 0.05")
 	_weights()
 	_plan()
