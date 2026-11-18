@@ -153,6 +153,29 @@ func _init() -> void:
 		doubt_as[role] = float(SourceDoubt.derive(p8, n8.ledger, {}).honest.get("%s:0" % n8.id, 0.0))
 	print("night-0 own reading's poison doubt: as a Registrar's register %.3f, as a Dowser's %.3f" % [doubt_as.registrar, doubt_as.dowser])
 	check(doubt_as.registrar == 0.0 and doubt_as.dowser > 0.0, "a Registrar's night-0 register carries no poison doubt; another night-0 reading does")
+	# 9. A reading by day takes the night before's poison (Codex on #232): a Martyr's evening
+	#    reading carries the coming night on its card, but the poison still holding then is
+	#    the night before's. A known Poisoner dead on day 2: its night-1 poison still holds for
+	#    a day-2 evening reading, so that reading keeps a doubt, keyed to day 2.
+	var p9: Dictionary = plan8.duplicate(true)
+	var poisoner_id: String = str(p9.prepared.view.people[3].id)
+	p9.prepared.view["timeline"] = p9.prepared.view.get("timeline", {}).duplicate(true)
+	if not p9.prepared.view.timeline.has("deaths"):
+		p9.prepared.view.timeline["deaths"] = {}
+	p9.prepared.view.timeline.deaths[poisoner_id] = 2
+	var kn: Dictionary = p9.prepared.listener.get("knowledge", {})
+	if not kn.has("public_roles"):
+		kn["public_roles"] = {}
+	kn.public_roles[poisoner_id] = "poisoner"
+	for c in p9.prepared.view.cards:
+		if str(c.get("source", "")) == n8.id and c.get("kind", "") == "report" and not c.has("relay_source"):
+			c["role"] = "martyr"
+			c["night"] = 2
+			c["observed_at"] = {"day": 2, "phase": "evening"}
+	var want9: float = ReadingChallenges.poison_chance(p9.prepared.view, p9.prepared.listener, 1)
+	var got9: float = float(SourceDoubt.derive(p9, n8.ledger, {}).honest.get("%s:2" % n8.id, 0.0))
+	print("a day-2 evening reading with the Poisoner dead on day 2: doubt %.3f (night 1's chance %.3f, night 2's %.3f)" % [got9, want9, ReadingChallenges.poison_chance(p9.prepared.view, p9.prepared.listener, 2)])
+	check(want9 > 0.0 and absf(got9 - want9) < 1e-9, "an evening reading takes the night before's poison chance, keyed to its own day")
 	_medium_case()
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

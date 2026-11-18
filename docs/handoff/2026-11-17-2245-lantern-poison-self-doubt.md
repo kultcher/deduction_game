@@ -54,3 +54,8 @@
   chance; it keeps any Delusional doubt, and the Registrar's later checks keep theirs.
   `test_poison_self_doubt` (13 checks) compares it with the same reading as a Dowser's night-0
   reading (5% against none).
+- **Codex on #232 (fixed):** the poison night comes from the reading's phase. A night reading
+  takes its own night; any reading by day, a Martyr's or Sexton's evening one included (their
+  cards carry the coming night), takes the night before, whose poison still holds. The doubt
+  stays keyed to the reading's own day. `test_poison_self_doubt` (14 checks): with a known
+  Poisoner dead on day 2, a day-2 evening reading keeps night 1's 5% (night 2's would be 0).

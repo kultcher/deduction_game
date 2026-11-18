@@ -282,9 +282,10 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				p_night = k_night
 			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
 				k_night = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
-				# The night a Poisoner would have acted: the reading's own, or for a day reading
-				# the night before.
-				p_night = int(c.get("night", -1)) if int(c.get("night", -1)) >= 0 else k_night - 1
+				# The night a Poisoner would have acted: a night reading's own, or for any reading
+				# by day (a Martyr's or Sexton's evening one too, whose card carries the coming
+				# night) the night before, whose poison still holds (Codex on #232).
+				p_night = k_night if str(c.get("observed_at", {}).get("phase", "")) == "night" else k_night - 1
 			if k_night < 0:
 				continue
 			# A Registrar's night-0 register can't be poisoned, only made wrong by Delusional
