@@ -77,6 +77,8 @@ func _public_withdrawal() -> void:
 	var l = listeners[0]
 	check(int(l.claim_record.get(accused.id, {}).get("case", 0)) == case_n, "the track record notes which case argued the claim")
 	check(not g.on_deck_case(accused.id).is_empty(), "before: the case is on deck against %s" % accused.name)
+	var lmind = l.shadow if l.is_evil() and l.shadow != null else l
+	var facts_before: int = lmind.workshop_state.get("facts", {}).size()
 	var err: String = g.workshop_withdraw_public(case_n)
 	check(err == "", "the case can be taken back in public (%s)" % err)
 	check(g.board[case_n - 1].get("withdrawn", false) and not g.board[case_n - 1].get("deleted", false), "the board keeps the case, marked withdrawn")
@@ -87,6 +89,7 @@ func _public_withdrawal() -> void:
 			all_out = false
 	check(all_out, "everyone who heard it drops the argument")
 	check(l.claim_record.get(accused.id, {}).get("withdrawn", false), "its claim waits in the track record for the next dawn")
+	check(facts_before > 0 and lmind.workshop_state.get("facts", {}).size() == facts_before, "listeners keep the cards it cited as their own (%d before, %d after)" % [facts_before, lmind.workshop_state.get("facts", {}).size()])
 	check(g.on_deck_case(accused.id).is_empty() and g.cases_naming(accused.id).is_empty(), "a withdrawn case is no longer on deck or offered for a nomination")
 	check(g._presentation_rejection(g.board[case_n - 1]) != "", "and can't be presented again")
 	check(g.workshop_withdraw_public(case_n) != "", "taking it back twice is refused")

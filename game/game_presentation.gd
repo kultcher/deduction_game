@@ -326,6 +326,27 @@ static func new_evidence(older: Dictionary, case: Dictionary) -> bool:
 	return false
 
 
+## A public withdrawal takes back the argument, not the evidence: each original card the
+## listener heard only through case `number` gets an owner of its own, as testimony the
+## player passed on (Codex on #262). A private developer retraction still removes them.
+static func _keep_receipts(g, mind, number: int) -> void:
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	var presentations: Dictionary = mind.workshop_state.get("presentations", {})
+	for key in presentations:
+		if str(key) != str(number) and not str(key).begins_with("direct:%d:" % number):
+			continue
+		var presented: Dictionary = presentations[key]
+		var endorsed: Array = Shared.endorsed_facts(presented, presented.root)
+		for receipt in presented.get("evidence", []):
+			if receipt.id in presented.get("selected", []) and receipt.id in endorsed:
+				var eid: String = "tell:kept:%d:%s" % [number, str(receipt.id)]
+				if not mind.ledger.has(eid):
+					# The shape Mind.ledger_hear gives a heard card; no weight of its own.
+					mind.ledger[eid] = {"eid": eid, "effects": [], "weight": 0.0, "rel": ["player", g.w.day, "tell"], "day": g.w.day, "times": 1,
+						"justs": [], "meta": {"kind": "tell", "workshop_card": receipt.duplicate(true),
+						"text": str(receipt.get("text", "")), "kept_from_case": number}}
+
+
 ## Does `real`'s track record still hold a claim from case `number`?
 static func _record_cites(real, number: int) -> bool:
 	for entry in real.claim_record.values():
@@ -371,6 +392,7 @@ static func workshop_withdraw_public(g, number: int) -> String:
 				if str(key).begins_with("direct:%d:" % ver):
 					has_it = true
 			if has_it:
+				_keep_receipts(g, mind, ver)
 				_workshop_retract(g, ver, real.id, false)
 				if not (real.id in heard):
 					heard.append(real.id)

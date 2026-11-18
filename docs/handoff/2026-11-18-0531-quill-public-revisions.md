@@ -42,7 +42,7 @@
   - Adding a premise alone is not new evidence.
   - Someone who hasn't heard the revision keeps the old claim untouched.
 - **Docs:** a DESIGN paragraph under "Rapport and credibility".
-- **Tests:** a new suite, `tools/test_public_revisions.gd` (25 checks), added to the fast list.
+- **Tests:** a new suite, `tools/test_public_revisions.gd` (26 checks), added to the fast list.
 
 ## For Herald
 
@@ -105,3 +105,18 @@
   it's judged at the next dawn.
 - **Superseded versions:** you can't withdraw one directly. You withdraw the latest
   version, which is the one the town is acting on.
+
+## Codex fixes
+
+Two rounds of Codex findings, all real:
+- **Earlier versions:** a public withdrawal walks the `revises` chain and takes back
+  every version each listener heard, including someone who missed the revision.
+- **Secret claims** carry their case, so they retire with it.
+- **Direct accusations:** a `tell <suspect> <case#>` records the cited case's number on
+  its claim.
+- **Cards kept:** a public withdrawal keeps each card the listener heard only through
+  the case. It becomes a `tell:kept:<case>:<card>` ledger entry with no weight of its
+  own: testimony the player passed on, which credibility already excludes as the player's
+  word. The private developer retraction still removes them, as `test_workshop_live_canvas`
+  expects. My first description in this entry said cards were kept by the existing code.
+  That was wrong for cards heard only through the case.
