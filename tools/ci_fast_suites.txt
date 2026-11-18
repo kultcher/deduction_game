@@ -41,6 +41,7 @@ test_lie_severity
 test_lie_severity_votes
 test_location_solver
 test_medium_relay_challenge
+test_meeting_flow
 test_meeting_m2a
 test_meeting_m2b
 test_meeting_m2c
