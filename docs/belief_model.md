@@ -454,6 +454,15 @@ trusted. Built (Nov 18) as the prior only:
   much; no Poisoner, no doubt.
 - **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
   of its own readings (poison, and Delusional with #216), from its last applied refresh.
+- **A doubted proof holds in proportion to its trust** (Nov 18, pending Michael's
+  confirmation): "proved stays proved" pinned a person only when the listener's own readings
+  alone settled them, so any doubt switched the proof off (seed 5: an 8% poison doubt on a
+  Gravedigger's reading moved the hanged, good Constance from 0% to 90%, because the rest of
+  what the listener held said evil). Now a proof the own readings give with their doubt set
+  aside pins the person at (1 − d) × the proved value + d × where the rest puts them, d the
+  largest doubt on the own readings naming them (`Connections._doubted_proofs`). Seed 5:
+  7.8%. A doubted proof gives way at most by its doubt. It covers the Delusional self-doubt
+  (#216) as well.
 
 ## Open items
 
