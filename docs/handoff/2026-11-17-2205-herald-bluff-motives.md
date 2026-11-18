@@ -1,6 +1,6 @@
 # 2026-11-17, Claude-Herald: bluff motives in plain words (`claude/herald-bluff-motives`)
 
-- **Base:** main `af82ca4` (#227 merged). **Status:** PR open; moves golden (text only). **Next actor:** Beadle to review; then Bailiff.
+- **Base:** main `5ef66da` (opened on `af82ca4`). **Status:** PR open; moves golden (text only). **Next actor:** Beadle to review; then Bailiff.
 - **Source:** Michael approved my drafts on Nov 17, through Seneschal: the full motive set, the rework note (already in #227), and the coin-flip vote reason. Beadle and I agreed that I'd build both the strings and the slot changes, and that Beadle reviews.
 
 ## What changed
@@ -30,4 +30,4 @@
 ## Measured
 
 - Passed: `test_evidence_cards`, `test_evil_owned_lie`, `test_evil_play`, `test_fabrication_check`, `test_lie_severity`, `test_medium_relay_challenge`, all eight `test_roles_*`, `test_dialogue`, `test_case_metrics_dead`.
-- Golden: text only, every seed, all in `why` fields (1,021 strings). Record counts and outcomes are unchanged. Re-baselined to `baseline_e958cb2` from two identical captures; `ci.yml` and `docs/golden_baseline.md` are updated.
+- Golden: text only, every seed, all in `why` fields (1,148 strings against `baseline_e1f0fc2`). Record counts and outcomes are unchanged. Re-baselined to `baseline_fdaccb0` (main `5ef66da` merged in) from two identical captures; `ci.yml` and `docs/golden_baseline.md` are updated. The first capture, `baseline_e958cb2`, was dropped as main moved.
