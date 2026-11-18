@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
+### Current baseline (Nov 18, eleven hint families): `baseline_4211f5b`
+
+`tools/golden/baseline_4211f5b/` is the capture from `claude/hint-families` at `4211f5b`
+(main merged in): eleven hint families with deliberate overlaps, and a gift in several
+families hints from the one with the most gifts on the script (`C.hint_package`).
+- **Divergence from `baseline_490cdcf`:** only which family a hint names, and its wording
+  and role list. 692 from record 1 (Nisha hears a Medium's hint as night sight, not the
+  dead) and 900 from record 5 (Kiran hears a Psychologist's hint as "against the dark", not
+  reading people). With `--ignore engine,package,roles,text,reply,lines,statement` every
+  seed is identical: no belief, vote or execution changes.
+- **Outcomes:** all five unchanged; the end records are identical.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
 
 `tools/golden/baseline_490cdcf/` is the capture from `claude/delusional-self-doubt-2` (#216) at
 `490cdcf` (main `f23566a` merged in): with Delusional on the script, a good listener that
