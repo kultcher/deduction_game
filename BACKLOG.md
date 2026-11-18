@@ -822,6 +822,12 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   independent slip, so keeping the list cleared the rest of the watch (−0.36).
   `SourceDoubt` still voids that night's list. Fix: a list that's wrong about the listener
   is suspect as a whole. Moves golden. **[decided: fix]**
+  - **Decided (Michael, Nov 18):** a list is sound or broken as a whole. The broken chance is
+    the watcher's poison and Delusional priors, the judge weighs sound against broken by fit,
+    and a broken list clears nobody. The void rule stays only as the fallback on scripts with
+    neither secret. No new number.
+  - **Built** (Nov 18, `claude/nightwatch-whole-list`): see `docs/belief_model.md`, "A Night
+    Watch list is sound or broken as a whole".
 - **A relayer cut from the sighter contest by the two-sighter cap** (Lantern, Nov 13).
   Sighters of a person are ranked by how many sightings they told, then by town order, and
   only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,

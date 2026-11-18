@@ -79,7 +79,7 @@ static func _attribute_refresh_impl(
 	var own_ids: Array = knowledge.get("own_reports", [])
 	if own_ids.is_empty():
 		own_ids = knowledge.get("attention_reports", [])
-	var cc: Dictionary = CaseEval.compile(view, CaseEval._route_trusted(attended, eval_listener), scoped_case, [])
+	var cc: Dictionary = CaseEval.compile(view, CaseEval._list_broken(view, CaseEval._route_trusted(attended, eval_listener), eval_listener), scoped_case, [])
 	var universe: Array = Solver.universe(view)
 	var nc: int = cc.team.size()
 	if nc == 0 or universe.is_empty():

@@ -560,6 +560,56 @@ the player wins by making the right connections, not by supplying information.
   `test_connections_cases`, which checks case arithmetic on chosen numbers, runs with it off
   (`Connections.premise_centring`).
 
+### A Night Watch list is sound or broken as a whole (Lantern, Nov 18)
+
+Michael (Nov 18) chose the whole-list model for BACKLOG "A Night Watch list that wrongly names
+the listener". The movement model scored each name on a list as its own small slip, so a list
+that wrongly named the listener would still read as a credible watch, clearing the watcher and
+casting the rest of the list as out. The game set such a list aside instead, voided its night,
+and doubted the watcher in general.
+
+- **The model.** Another's Night Watch list is sound or broken as a whole.
+  - **Sound:** every name at the small per-name error, as before.
+  - **Broken:** it says nothing about who walked that night, so it clears nobody.
+- **The broken chance.** It's the watcher's chance of a failed gift that night,
+  1 − (1 − poison)(1 − Delusional), with no new number:
+  - the poison chance, read with the night's outings (`ReadingChallenges.poison_chance`);
+  - the Delusional prior the listener applies to its own gift (`DELUSIONAL_SELF_DOUBT`), when
+    Delusional is on the script and a Night Watch can hold it.
+  - See `SourceDoubt.list_broken_chance`.
+- **An evil watcher.** In a world where the watcher is evil, the sighting contest already lets
+  an evil teller say anything.
+- **How it's weighed.** The judge weighs sound against broken by fit. The movement factor is
+  built with and without the list, and the kernel mixes the two in each world where the watcher
+  is good (`LiveActivity._list_mix`, `LiveActivityKernel.ScoreMixed`). The kernel's scores are
+  ratios over each branch's own good profiles, so the broken branch is put on the sound
+  branch's scale. A broken list is taken to say these words as often as an honest one would,
+  from what an outsider could know, which is the sighting contests' balance (Codex on #273). Up to two lists, the
+  latest nights first (`SourceDoubt.LIST_MIX_MAX`), each subset built once. In the broken
+  branch the watcher still went out to watch its block: a duty-only copy keeps that walk
+  (Codex on #273). A list beyond the two gets no broken chance, so it keeps the old fallback
+  (Codex on #273).
+- **What it does.** A list that wrongly names the listener is kept, and the false name counts
+  against the watcher by fit. Its other names count only as much as the listener still believes
+  the list is sound.
+- **Fallback.** Where neither Poisoner nor Delusional is on the script, the broken chance is
+  zero, and the list is still set aside with its night void (`Reasoner.direct_checks`,
+  `SourceDoubt.derive`).
+- **Test:** `tools/test_nightwatch_whole_list.gd`, built by hand on seed 692's deal, with a
+  broken chance of 0.14.
+
+  | Chance of being evil | No list | List wrongly naming the listener | Sound list |
+  |---|---|---|---|
+  | The watcher | 0.20 | 0.44 (0.20 under the old void) | |
+  | The other named person | 0.33 | 0.34 | 0.43 |
+
+- **In played games** (seeds 100014–100076, day 3, eight listeners named by an evil watcher):
+  - The kept list does count against the watcher.
+  - Against the old rule, the watcher is suspected less in six of eight (one by a single point).
+    For example, Kiran 0.69 → 0.55 and Merrin 0.50 → 0.34.
+  - The reason: the old void's general doubt (`DOUBT_FALSE_NW_GENERAL`, 0.5) fell on all of
+    the watcher's readings, while a broken gift now explains the false name at about 0.15.
+
 ## Open items
 
 Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.

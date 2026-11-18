@@ -437,7 +437,7 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 					base_e = clampf(OWN_ERR + (base_e - OWN_ERR) * (1.0 - 0.55 * boost), OWN_ERR, 1.0)
 					break
 		return base_e
-	var cc = compile(view, _route_trusted(cards, listener), case_data, own)
+	var cc = compile(view, _list_broken(view, _route_trusted(cards, listener), listener), case_data, own)
 	var oc = _own_counts(view, cc, own)
 	# Per class: prior (team odds, role fits) and the case's likelihood.
 	var team_prior = _team_prior(view, listener)
@@ -696,6 +696,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
 	if cards.any(func(c): return c.has("route_trust")):
 		key_input.append(cards.map(func(c): return c.get("route_trust", 1.0)))
+	if cards.any(func(c): return c.has("broken_chance")):
+		key_input.append(cards.map(func(c): return c.get("broken_chance", 0.0)))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
@@ -1248,6 +1250,23 @@ static func _route_trusted(cards: Array, listener: Dictionary) -> Array:
 			if t < 1.0:
 				var copy: Dictionary = card.duplicate()
 				copy["route_trust"] = clampf(t, 0.0, 1.0)
+				out.append(copy)
+				continue
+		out.append(card)
+	return out
+
+## Another's Night Watch list is sound or broken as a whole (Michael, Nov 18): copies carry
+## "broken_chance", the watcher's poison and Delusional priors that night
+## (SourceDoubt.list_broken_chance). The movement model mixes the two (LiveActivity._list_mix).
+static func _list_broken(view: Dictionary, cards: Array, listener: Dictionary) -> Array:
+	var SourceDoubt = preload("res://workshop/source_doubt.gd")
+	var out: Array = []
+	for card in cards:
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "nightwatch":
+			var b: float = SourceDoubt.list_broken_chance(view, listener, card)
+			if b > 0.0:
+				var copy: Dictionary = card.duplicate()
+				copy["broken_chance"] = b
 				out.append(copy)
 				continue
 		out.append(card)
