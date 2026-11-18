@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, bluff motives in plain words): `baseline_fdaccb0`
+### Current baseline (Nov 18, "evil's scapegoat"): `baseline_a96bdaa`
+
+`tools/golden/baseline_a96bdaa/` is the capture from `claude/herald-lie-reasons` at `a96bdaa`
+(main `878ddaa`): Michael's Nov 18 change, "evil's
+scapegoat" in place of "whom evil meant to hang" in the fabricated readings' motives. The
+same PR rewords evil's spoken-lie reasons for the reveal, but those are dev-log `think`
+lines that golden doesn't record.
+- **Divergence from `baseline_fdaccb0`:** text only, in `why` fields (336 strings, no
+  other field changes). Record counts are the same.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_fdaccb0`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, bluff motives in plain words): `baseline_fdaccb0`
 
 `tools/golden/baseline_fdaccb0/` is the capture from `claude/herald-bluff-motives` at
 `fdaccb0` (main `5ef66da` merged in): every fabricated reading's recorded motive (`why`)

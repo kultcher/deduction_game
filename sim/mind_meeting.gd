@@ -768,7 +768,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 			hint = true
 			if not fake_on_t.is_empty():
 				hint_src = info_eid(n.id, fake_on_t)
-		w.dlog.think(n.id, "lie", ("Accused %s, evil's scapegoat, before the town, %s." % [t.name, "citing a reason they wouldn't share" if hint else ("citing %s" % why) if why != "" else "with no reason given"]))
+		w.dlog.think(n.id, "lie", ("Accused %s, evil's scapegoat, before the town, %s." % [t.name, "citing a reason they wouldn't share" if hint else ("citing \"%s\"" % why) if why != "" else "with no reason given"]))
 	else:
 		var tier = _accuse_tier(w, n, t, s2)
 		if tier["tier"] == "reveal":

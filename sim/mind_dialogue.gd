@@ -1430,7 +1430,7 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	elif bond == "rival" and not combined and not Dialogue.has_voice(n.id):
 		text += " We don't get along, mind."
 	if lie:
-		w.dlog.think(n.id, "lie", "Gave a false opinion of %s, as cover, %s." % [t.name, ("citing %s" % why) if why != "" else "with no reason given"])
+		w.dlog.think(n.id, "lie", "Gave a false opinion of %s, as cover, %s." % [t.name, ("citing \"%s\"" % why) if why != "" else "with no reason given"])
 	else:
 		w.dlog.think(n.id, "opinion", "%s opinion of %s: level %.2f, reason: %s." %
 			["Evil (mimicking the town)" if n.is_evil() else "Honest", t.id, level, why if why != "" else "vibes"])
