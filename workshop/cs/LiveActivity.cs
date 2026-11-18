@@ -194,6 +194,21 @@ internal static class LiveActivityKernel
         /// sighters whose word about them is weighed by their alignment in each world.</summary>
         public SightingContest[] Contests = Array.Empty<SightingContest>();
         public double ContestTruth;
+        /// <summary>Warden guards on quiet nights (AttachGuards), or null.</summary>
+        public GuardSet Guards;
+    }
+
+    /// <summary>A Warden's guard of a door on a night the Demon killed nobody. In a world where
+    /// the Warden and the guarded person are both good, the guard held with chance R: the
+    /// Demon's walk that night ended at that door. The Demon's profile mixes over which of
+    /// those guards held: AltDemon[T - 1] is its profile with an attack at the door of each
+    /// guard in the non-empty subset T.</summary>
+    internal sealed class GuardSet
+    {
+        public int[] Sources = Array.Empty<int>();
+        public int[] Targets = Array.Empty<int>();
+        public double[] R = Array.Empty<double>();
+        public double[][] AltDemon = Array.Empty<double[]>();
     }
 
     /// <summary>A person's evidence with some sighters' sightings of them removed. In a world
@@ -1704,6 +1719,64 @@ internal static class LiveActivityKernel
         }
     }
 
+    /// <summary>
+    /// Attaches the quiet-night Warden guards to a registered factor.
+    /// ints: [K, then per guard: source, target]. doubles: [R x K, then per subset
+    /// T = 1 .. 2^K - 1: the demon profile of each person].
+    /// </summary>
+    public static void AttachGuards(int factorHandle, int[] ints, double[] doubles)
+    {
+        var factor = SolverContext.GetMovementFactor(factorHandle);
+        int k = ints[0];
+        var g = new GuardSet { Sources = new int[k], Targets = new int[k], R = new double[k] };
+        for (int j = 0; j < k; j++)
+        {
+            g.Sources[j] = ints[1 + 2 * j];
+            g.Targets[j] = ints[2 + 2 * j];
+            g.R[j] = doubles[j];
+        }
+        int dPos = k;
+        int subsets = (1 << k) - 1;
+        g.AltDemon = new double[subsets][];
+        for (int t = 0; t < subsets; t++)
+            g.AltDemon[t] = SliceDoubles(doubles, ref dPos, factor.PeopleCount);
+        factor.Guards = k > 0 ? g : null;
+    }
+
+    /// <summary>The demon profile of person i with the world's holding guards mixed in: the
+    /// guards whose Warden and guarded person are both good here (not evil, not the demon,
+    /// not the converted).</summary>
+    private static double GuardedDemon(GuardSet g, int i, int evilMask, int convIdx, int demonIdx, double usual)
+    {
+        int h = 0;
+        for (int j = 0; j < g.Sources.Length; j++)
+        {
+            int s = g.Sources[j];
+            int t = g.Targets[j];
+            bool sGood = (evilMask & (1 << s)) == 0 && s != demonIdx && s != convIdx;
+            bool tGood = (evilMask & (1 << t)) == 0 && t != demonIdx && t != convIdx;
+            if (sGood && tGood)
+                h |= 1 << j;
+        }
+        if (h == 0)
+            return usual;
+        double total = 0.0;
+        for (int sub = h; ; sub = (sub - 1) & h)
+        {
+            double w = 1.0;
+            for (int j = 0; j < g.Sources.Length; j++)
+            {
+                if ((h & (1 << j)) == 0)
+                    continue;
+                w *= (sub & (1 << j)) != 0 ? g.R[j] : 1.0 - g.R[j];
+            }
+            total += w * (sub == 0 ? usual : g.AltDemon[sub - 1][i]);
+            if (sub == 0)
+                break;
+        }
+        return total;
+    }
+
     private static double[] SliceDoubles(double[] src, ref int pos, int count)
     {
         if (count <= 0)
@@ -1898,7 +1971,8 @@ internal static class LiveActivityKernel
             factor.TraceUnknownWeight,
             factor.Contests,
             factor.ContestTruth,
-            dayType);
+            dayType,
+            factor.Guards);
 
     /// <summary>The succession branch's movement: before the execution scored with the
     /// executed person as demon, after it with the successor.</summary>
@@ -1932,7 +2006,8 @@ internal static class LiveActivityKernel
         double unkWeight,
         SightingContest[] contests = null,
         double contestTruth = 1.0,
-        bool dayType = false)
+        bool dayType = false,
+        GuardSet guards = null)
     {
         double result = 1.0;
         for (int i = 0; i < nPeople; i++)
@@ -1948,6 +2023,8 @@ internal static class LiveActivityKernel
             {
                 pVal = profDemon[i];
                 align = dayType ? 1 : 2;
+                if (guards != null && !dayType)
+                    pVal = GuardedDemon(guards, i, evilMask, convIdx, demonIdx, pVal);
             }
             else if ((evilMask & (1 << i)) != 0)
             {

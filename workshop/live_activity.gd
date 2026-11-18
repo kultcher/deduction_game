@@ -471,7 +471,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {}), sighter_contests_enabled]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {}), sighter_contests_enabled, quiet_guards_enabled]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
@@ -526,6 +526,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 			p_dict["converted"] = raw_prof[b + 3]
 		profiles[i] = p_dict
 
+	var guards: Dictionary = _quiet_guards(view, ids, env, cards, packed_checked, stride) if quiet_guards_enabled else {}
 	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles) if sighter_contests_enabled else []
 	var scene_tables: Array = _build_scene_tables_cs(view, ids, env, checked, packed_checked)
 	var scion_splits: Array = _scion_succession_splits_cs(view, ids, env, checked)
@@ -536,6 +537,8 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 	if not contests.is_empty():
 		result[0]["contests"] = contests
 		result[0]["contest_truth"] = Tuning.Workshop.EVIL_SIGHTER_TRUTH
+	if not guards.is_empty():
+		result[0]["guards"] = guards
 	if share > 0.0:
 		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
 		# pre x post product over the one shared type (see ScoreWorldCore).
@@ -544,6 +547,71 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
 		result[0]["hex_successions"] = hex_successions(view, ids, result[0]["hex_kills"])
 	return result
+
+
+## Diagnostics: turn the quiet-night Warden guards off (_quiet_guards; tests and tools only).
+static var quiet_guards_enabled: bool = true
+## At most this many guards, the latest nights first: the Demon's profile is computed for
+## every subset of them.
+const QUIET_GUARD_MAX = 3
+
+## A Warden's guard of a door on a night the Demon killed nobody (BACKLOG "Quiet-night
+## evidence argued by the player"; DESIGN "Warden saves"). Where the Warden and the guarded
+## person are both good, the quiet is the guard holding, so the Demon walked to that door:
+## the same route reasoning as a player's held ward (the scorched sigil), at the reliability
+## of a Warden's claimed save, shared with any other living Veteran claimant who could have
+## turned the Demon instead (1 / (1 + Veteran claims), as the Warden's own belief). The
+## kernel mixes the Demon's profile over which guards held (GuardedDemon). Returns
+## {"items": [{source, target, night, r}], "alt": [the demon profile per subset]}, or {}.
+static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed: Dictionary, stride: int) -> Dictionary:
+	var events: Array = view.get("timeline", {}).get("events", [])
+	var busy: Dictionary = {}
+	for ev in events:
+		if ev.get("kind", "") in ["demon_death", "demon_attack"]:
+			busy[int(ev.get("at", {}).get("day", -1))] = true
+	var deaths: PackedInt32Array = env.deaths
+	var vets: Array = []
+	for card in cards:
+		if card.get("kind", "") in ["claim", "report"] and str(card.get("role", "")) == "veteran" and not card.get("quoted", false) and str(card.get("source", "")) in ids and str(card.source) not in vets:
+			vets.append(str(card.source))
+	var items: Array = []
+	var seen: Dictionary = {}
+	for card in cards:
+		if card.get("kind", "") != "report" or str(card.get("role", "")) != "warden" or card.get("quoted", false) or card.has("relay_source") or card.get("duty_only", false):
+			continue
+		var night: int = int(card.get("night", -1))
+		var s_idx: int = ids.find(str(card.get("source", "")))
+		var data = card.get("data", {})
+		var t_idx: int = ids.find(str(data.get("target", ""))) if data is Dictionary else -1
+		if night < 1 or s_idx < 0 or t_idx < 0 or s_idx == t_idx or busy.has(night) or night >= deaths[s_idx] or night >= deaths[t_idx]:
+			continue
+		var key: String = "%d:%d" % [s_idx, night]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		var others: int = vets.filter(func(v): return v != ids[s_idx] and night < deaths[ids.find(v)]).size()
+		items.append({"source": s_idx, "target": t_idx, "night": night, "r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others)})
+	if items.is_empty():
+		return {}
+	items.sort_custom(func(x, y): return x.night > y.night or (x.night == y.night and x.source < y.source))
+	items = items.slice(0, QUIET_GUARD_MAX)
+	var n: int = ids.size()
+	var alt: Array = []
+	var bridge = SolverBackend._bridge()
+	for sub in range(1, 1 << items.size()):
+		var ev_sub := PackedInt32Array(env.demon_events)
+		for j in range(items.size()):
+			if sub & (1 << j):
+				ev_sub.append(int(items[j].night))
+				ev_sub.append(int(items[j].target))
+		var raw: PackedFloat64Array = bridge.LiveAllProfiles(
+			env.has_curse, env.homes, env.deaths, ev_sub, env.has_curse, env.curse_from, env.curse_until,
+			DEMON_DETOUR, packed.ints, packed.doubles)
+		var col: Array = []
+		for i in range(n):
+			col.append(raw[i * stride + 2])
+		alt.append(col)
+	return {"items": items, "alt": alt}
 
 
 ## The sighters whose word about a person depends on the sighter's alignment: anyone in the
@@ -851,8 +919,8 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_factor_handles.clear()
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", [])]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", [])])
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {})]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {})])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -960,6 +1028,18 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 						c_doubles.append(float(v))
 					c_doubles.append(float(sub.c))
 		bridge.LiveAttachContests(h, c_ints, c_doubles)
+	var guards: Dictionary = factor.get("guards", {})
+	if not guards.is_empty():
+		var g_ints := PackedInt32Array([guards.items.size()])
+		var g_doubles := PackedFloat64Array()
+		for item in guards.items:
+			g_ints.append(int(item.source))
+			g_ints.append(int(item.target))
+			g_doubles.append(float(item.r))
+		for col in guards.alt:
+			for v in col:
+				g_doubles.append(float(v))
+		bridge.LiveAttachGuards(h, g_ints, g_doubles)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}
