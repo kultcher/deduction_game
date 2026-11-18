@@ -1,6 +1,6 @@
 # Secrets: a rework (design note)
 
-**Status: backlogged (Michael, Nov 17; BACKLOG section 4). Nothing decided beyond the direction below; nothing built.** Started
+**Status: backlogged (Michael, Nov 17; BACKLOG section 4). Direction in section 2, with Michael's Nov 18 decisions (good NPCs lying about their gift, unique secrets, one hidden kind per script); nothing built.** Started
 Nov 17 from a talk between Michael and Claude-Vicar. Whoever builds it: Lantern and
 Quill (the judge), Beadle (how NPCs claim, hide and bluff), Herald (wording, UI).
 Performance figures here are counts read from the code, not timings; Argon would measure.
@@ -38,6 +38,26 @@ a twist on Clocktower's Outsiders. Michael's three problems with them as built (
 - **Worked example: a Saint** without Clocktower's "you lose if they're executed". It has
   some other penalty. The holder knows, and claims it under pressure or when nominated.
   Evil can bluff it.
+
+### Decided, Nov 18 (Michael, with Claude-Vicar)
+
+1. **Good NPCs may lie about their gift, but only with a reason.** It should be fairly
+   uncommon, and possibly tied to Confidence. The main reasons:
+   - **avoiding the Demon's attention** (a valuable gift claiming something less
+     threatening);
+   - **drawing it** (a Veteran-like gift claiming something the Demon wants dead).
+
+   A good liar **doesn't volunteer the lie**; it gives the false claim only under pressure.
+   It picks **the most harmless lie it can**. More in section 10.
+2. **Every secret is unique:** at most one holder of each kind per game (the Lovers count as
+   one pair). Michael: it keeps things fairer. A second claim of the same secret means
+   someone is lying, as with gifts.
+3. **Some truly hidden (self-unaware) secrets stay,** probably Delusional and Sleepwalker,
+   but **they are mutually exclusive at the script level,** to keep the judge's work in
+   check. A script carries at most one of them. Marked's place is not settled.
+
+**Not decided yet** (Michael, Nov 18): plain folk (non-gifted townsfolk) and the specifics of
+confidants. Both are in section 10.
 
 ## 3. The proposed structure: two kinds
 
@@ -176,15 +196,25 @@ A Minion whose presence adds secrets to the town. Can the extras come from the f
 ## 8. Open for Michael
 
 1. **The two-kind split itself:** one enumerated slot for self-unaware kinds, everything
-   the holder knows about as ordinary claims.
+   the holder knows about as ordinary claims. *Partly answered Nov 18:* the hidden kinds are
+   mutually exclusive by script, probably Delusional and Sleepwalker. Still open: Marked's
+   place, and whether the knowing kinds leave the enumeration.
 2. **The unclaimed knowing secret:** is the per-case either/or (3a) worth building, or are
    card challenges and confessions enough?
 3. **The town's general allowance:** how much a caught lie or a sighting should be
    softened by "good people sometimes have reasons". This touches every case.
 4. **The Saint's penalty,** and whether hanging consequences become a shared mechanic.
-5. **The Baron's extras:** option 1, 2 or 3 in section 6.
+5. **The Baron's extras:** option 1, 2 or 3 in section 6. With one hidden kind per script
+   (Nov 18), a Baron's extras can't be a second hidden kind, which points to option 1.
+   Since secrets are unique, the extras must also be kinds not already in play.
 6. **The freed budget,** if any: Minion identities, larger towns, or speed.
 7. **The Lovers' social cost,** now that they're a knowing kind.
+8. **Good lying about a gift** (section 10): how Confidence enters, what counts as "most
+   harmless", and how the judge allows for it.
+9. **Confidants** (section 10): how many real secrets start known to someone, and how far
+   it spreads.
+10. **Plain folk** (section 10): whether to bring back non-gifted townsfolk, and their
+   counts by town size.
 
 ## 9. The staged plan (for when it's picked up)
 
@@ -216,3 +246,129 @@ items first. The plan below is Seneschal's, as put to him.
 
 **Timing:** decide it alongside the Breathstealer overhaul, since the room freed here could
 go to telling Minions apart, which the overhaul needs.
+
+## 10. Good NPCs lying, confidants and plain folk (Nov 18)
+
+From a talk between Michael and Claude-Vicar on Nov 18. Section 2 has the three decisions;
+this section has the reasoning and what's still open. Code facts are read from main, not run.
+
+### 10.1 Good NPCs lying about their gift (decided in direction)
+
+**What changes for the judge.** Today a good, healthy teller's gift claim is taken as true,
+and no two people hold the same claimed gift (`WorldDomainKernel.ClaimsCompatible`, the
+role check in `ReadingFraction`). So a double claim means one of the two is evil, and that
+is one of the player's strongest tells. With good lying, a good person's claim becomes
+"very probably true", and a double claim becomes "very probably one evil".
+
+- **Keeping it uncommon keeps the double claim readable.** That's the point of Michael's
+  "relatively uncommon".
+- **The nearest precedent** is lie severity: a good person's own "I was home" is no longer
+  certain (`Tuning.Workshop.GOOD_OWN_ALIBI_OUT`, 0.2, Quill). The same kind of allowance on
+  gift claims would add no arrangements to work through. A new constant is Michael's call.
+  Tracking *who* is lying would add arrangements: Argon to check the math.
+- **Each lie has a logged reason,** as evil's do. The two reasons are avoiding the Demon's
+  attention and drawing it.
+
+**Behaviour (Beadle).**
+- **Fairly uncommon, possibly tied to Confidence.** Which way it leans is open. A confident
+  NPC may be more willing to run a bluff; an unconfident one may be more inclined to hide.
+- **The liar doesn't volunteer it.** It keeps its head down and gives the false claim only
+  under pressure, through the existing disclosure model (pressure, being nominated, trust,
+  Privacy against a reveal cost; `Tuning` "reveal_early_*", `REVEAL_COST_*`).
+- **The most harmless lie available.** A suggestion, not decided: claim a gift whose
+  readings needn't name anyone, or one that only clears, so the lie frames nobody.
+- **Open: when it comes clean.** For example, when it's nominated, or once its reason is
+  gone (the Demon's dead or it no longer needs cover). Coming clean reads as a public
+  revision, so it ties into "Believable public revisions" (BACKLOG section 2, `[decided]`
+  Nov 18). Evil will use the same move.
+
+**For the player.** A new skill: telling which side of a double claim has a reason to lie.
+The risk is noisier anchors. Keeping the reasons to two, both about the Demon, keeps them
+guessable.
+
+### 10.2 Unique secrets and evil's bluffs (decided: unique)
+
+- **Once secrets are unique, a bluffed secret can be called by its real holder.** This
+  splits the knowing kinds by value:
+  - **High-value ones (the Saint):** high-risk, high-reward bluffs, best used when cornered
+    or when the real holder is likely dead or silent.
+  - **Low-value ones:** safe, but they shield less.
+- **A collision is fine if it's a reasoned choice** with a logged reason. It gives the
+  player something to read, and a counter-claim may drag the real holder down too.
+- **The Baron:** evil knows its own team, so it knows whether a Baron is in play. With a
+  Baron there are more real holders and a higher chance of collision, so evil should claim
+  secrets more warily. A town seeing several secret claims learns a Baron is likely.
+- **The tuning target:** evil bluffs a secret often enough that a claim is ambiguous, but
+  not so often that bluffing becomes a tell. The no-gift denial
+  (`Tuning.Setup.ALLOW_NO_GIFT_DENIAL`, off because evil almost never bluffed it) and
+  today's Lovers show what goes wrong when only one side ever makes a claim.
+
+### 10.3 One hidden kind per script (decided)
+
+A rough count, from the code and not timed. Section 4 has today's figures: 42 placements
+per evil team at 10 NPCs, so 5,040 arrangements. Suppose two things hold:
+- the Lovers leave the enumeration as a knowing kind;
+- the script names its single hidden kind (Delusional or Sleepwalker).
+
+Then the judge places one holder among the 7 good people, which is 840 arrangements, or 960
+if "not dealt this game" is allowed. That is about a sixth of today, before Minion identities
+or larger towns spend the room. As section 4 says, the real speed-up is smaller than the
+count; Argon would measure it.
+
+Still open: whether Marked stays as a hidden kind in the same exclusive group, becomes
+something else, or goes.
+
+### 10.4 Confidants: secrets known to others (not decided)
+
+Michael's idea: deal some secrets as already known to another townsperson, so that gossip
+can expose them. This answers "semi-hidden secrets are annoying" without making the holders
+chatty.
+
+- **Code precedent:** the day-1 gift confidant (`npc.confided`, `Social._gift_disclosure`,
+  `Tuning.Social.SHARE_ROLE_CONFIDE_BONUS`).
+- **What it buys:**
+  - The player finds a secret by asking around, not only by pressing the holder.
+  - The gossip network gets a job.
+  - The self-unaware kinds gain the one route that suits them, someone else noticing (a
+    neighbour saw the Sleepwalker out).
+- **Risks:**
+  - **The silence becomes a tell.** If every real secret has a confidant, a bluff nobody
+    has heard of looks fake. Two fixes:
+    - only some real secrets start with one;
+    - evil can vouch for a teammate's bluff ("she told me weeks ago").
+  - **Too fast a spread** makes every secret public by day 2.
+  - **The Rumormonger overlaps.** It starts knowing "one of two carries a secret", which
+    is less special once confidants exist.
+- **The judge:** a confidant's report is hearsay, weighed by trust in the teller, like a
+  relay. Nothing new to enumerate.
+- **A social cost:** a confidant who blabs loses the holder's trust. That reuses
+  "using a confessed secret costs trust" and gives the Lovers' admission a cost. It should
+  stay on existing rapport: Michael tabled a second NPC-to-NPC number on Nov 18.
+- **Open:** what share of secrets start with a confidant, who is chosen (a friend, a
+  relationship), and how far and how fast it spreads.
+
+### 10.5 Plain folk and town sizes (not decided)
+
+**The aim (Michael):** secrets are a balancing knob against good's numbers, short of a
+whole extra Minion. Today the setups are fixed (`Tuning.Setup.SETUPS`):
+- 7 NPCs: 5 town, 1 Minion, 1 secret;
+- 10 NPCs: 7 town, 2 Minions, 1 secret.
+
+Letting the handicap flex would fill the sizes between. A secret is a soft handicap, though:
+the holder keeps a working gift (Delusional is the exception). Non-gifted townsfolk would be
+a real one.
+
+**Plain folk, as an option:**
+- **The no-gift denial comes back with a reason.** If the script says the town has plain
+  folk, evil has a reason to bluff "I'm plain": a low-profile claim the Demon has less
+  reason to kill. The denial stops being near-proof of good.
+- **Outsider math without good having to lie:** "two plain folk" with three claimants
+  means one is lying. A Baron could be "two gifts become plain folk".
+- **They still play:** they have secrets, relationships, sightings and voices. In "New role
+  hint families" (BACKLOG section 3) they'd be the "no gift" answer.
+- **For the judge:** several people can hold "plain", so it can't use the
+  one-person-per-gift rule. A public count of plain folk becomes a new check (no more good
+  claimants than the script allows). It's probably a check on claims, not a new hidden
+  slot; Quill and Argon to confirm.
+- **Michael (Nov 18):** not ready to decide; possibly a messy can of worms.
+
