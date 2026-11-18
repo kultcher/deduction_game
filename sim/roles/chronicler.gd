@@ -52,8 +52,8 @@ func implicated(d: Dictionary) -> Array:
 	return d.get("trio", []).duplicate()
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s Chronicler: folk/secret/minion in %s" % [src, _names(d.get("trio", []), nm)]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "%s: plain, secret, minion" % _names(d.get("trio", []), nm)
 
 
 func _spoken_text(w, trio: Array) -> String:

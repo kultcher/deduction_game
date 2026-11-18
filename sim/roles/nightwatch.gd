@@ -18,10 +18,11 @@ func _init() -> void:
 	request_agree_slot = "block"
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	var C = content()
-	var seen_str: String = ", ".join(PackedStringArray(d.get("seen", []).map(nm))) if not d.get("seen", []).is_empty() else "nobody"
-	return "%s Watch %s: %s" % [src, C.block_name(d.get("block", "")), seen_str]
+	var seen: Array = d.get("seen", [])
+	var bname: String = C.block_name(d.get("block", "")).trim_prefix("the ")
+	return "%s: saw %s" % [bname, ", ".join(PackedStringArray(seen.map(nm))) if not seen.is_empty() else "nobody"]
 
 
 func pick_targets(w, n, mind):

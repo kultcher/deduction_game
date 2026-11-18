@@ -27,8 +27,8 @@ func setup_world(w, holder) -> void:
 	holder.red_herring = w.pick(cands).id
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s Seer: %s → %s" % [src, _names(d.get("pair", []), nm), "YES" if d.get("yes", false) else "no"]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "%s: Demon or Red Herring? %s" % [_names(d.get("pair", []), nm), "YES" if d.get("yes", false) else "NO"]
 
 
 func on_reading_heard(listener, source, entry: Dictionary, fresh: bool) -> void:

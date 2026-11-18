@@ -400,7 +400,8 @@ func _test_count_and_route_hooks() -> void:
 	_check(surv_blk in C.BLOCKS and surv_blk != surv.home_block and w.npcs.filter(func(m): return m.home_block == surv_blk).size() >= 2 and surv_r.get("data", {}).get("same") is bool, "Surveyor generate_reading reads alignment parity on a non-own >=2 resident block")
 	var surv_entry = {"role": "surveyor", "day": 0, "data": surv_r["data"], "text": surv_r["text"]}
 	_check(Gifts.implicated(surv_entry).is_empty() and Gifts.clears(surv_entry).is_empty(), "Surveyor reading implicates and clears nobody directly")
-	_check("Surveyor:" in Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn), "Surveyor short_text formats block alignment parity")
+	var surv_short: String = Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn)
+	_check(C.block_name(surv_blk).trim_prefix("the ") in surv_short and (surv_short.ends_with("one side") or surv_short.ends_with("mixed")), "Surveyor short_text gives the block and its parity on the card (got %s)" % surv_short)
 
 	# 2. Lamplighter (GROUP_COUNT walkers)
 	w.night_walkers = [{"id": lamp.id, "block": lamp.home_block, "path": [lamp.home_block]}, {"id": walker.id, "block": walker.home_block, "path": [walker.home_block]}]

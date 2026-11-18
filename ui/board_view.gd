@@ -20,6 +20,7 @@ const CardModel = preload("res://game/card_model.gd")
 const BoardModel = preload("res://game/board_model.gd")
 const UITheme = preload("res://ui/theme.gd")
 const Icons = preload("res://ui/board_icons.gd")
+const PortraitBadge = preload("res://ui/portrait_badge.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const TraceArt = preload("res://ui/trace_art.gd")
 const TraceTooltip = preload("res://ui/trace_tooltip.gd")
@@ -363,7 +364,9 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: Color, lod: int, src_col: Color) -> void:
 	draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)  # shadow
 	_draw_paper(r, n, fade)
-	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
+	# The speaker's colour as a bar across the top (Michael, Nov 18).
+	var bar_h: float = 6.0 * zoom
+	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(r.size.x - 12 * zoom, bar_h)), UITheme.ink_of(src_col) * fade)
 	var names = {}
 	for m in g.w.npcs:
 		names[m.id] = m.name
@@ -374,15 +377,22 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var fs = int(clampf(13.5 * zoom, 12, 28))
 	var small = int(clampf(10.0 * zoom, 9, 20))
 	var pad: float = 6.0 * zoom
-	var tx: float = r.position.x + 14 * zoom
+	var tx: float = r.position.x + 10 * zoom
 	var icon_s: float = 18.0 * zoom
 	# The gutter: kind icon on top, role or place icon below.
 	var icon = _icon_for(card, it)
 	var kind = Icons.kind_for(card)
 	var kind_icon = Icons.texture(kind)
 	var gx: float = r.end.x - pad - icon_s
-	var gy: float = r.position.y + pad
+	var gy: float = r.position.y + pad + bar_h
 	var gutter: float = 0.0
+	# A gift reading shows who told it, as a small round portrait above the role icon,
+	# in place of the generic reading eye (Michael, Nov 18).
+	if kind == "reading" and g.w.by_id.has(src_id(card)):
+		if _draw_face(src_id(card), Vector2(gx, gy) + Vector2(icon_s, icon_s) / 2, icon_s * 0.62, fade):
+			kind_icon = null
+			gy += icon_s * 1.24 + 3 * zoom
+			gutter = icon_s + pad
 	for tex in [kind_icon, icon]:
 		if tex == null:
 			continue
@@ -400,7 +410,7 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var heard: String = _heard_line(card) if lod == 2 else ""
 	var heard_h: float = small * 1.5 if heard != "" else 0.0
 	var width: float = r.size.x - 20 * zoom - gutter
-	var top: float = r.position.y + pad
+	var top: float = r.position.y + pad + bar_h * 0.5
 	var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / _font.get_height(fs))))
 	_draw_fitted(text, Vector2(tx, top), width, fs, max_lines, _ink * fade)
 	if heard != "":
@@ -464,6 +474,30 @@ func _heard_line(card: Dictionary) -> String:
 		var nm: String = g.w.by_id[who].name if g.w.by_id.has(who) else ("you" if who in ["player", "evidence", ""] else who)
 		parts.append("%s %s%s" % [CardModel.time_label({"day": d["day"], "phase": d["phase"]}), nm, " (public)" if d.get("public", false) else ""])
 	return "heard: " + "; ".join(PackedStringArray(parts))
+
+func src_id(card: Dictionary) -> String:
+	return str(card.get("source", ""))
+
+## A person's face in a small circle with a gold ring, as in the roster (PortraitBadge's
+## framing). Returns false when the person has no portrait.
+func _draw_face(id: String, center: Vector2, radius: float, fade: Color) -> bool:
+	var tex = UITheme.tex("art/portraits/" + id, 0.25)
+	if tex == null:
+		return false
+	var dims: Vector2 = tex.get_size()
+	var frame: Vector3 = PortraitBadge.FACE_FRAMES.get(id, Vector3(0.5, dims.x * 0.58 / dims.y, 1.08))
+	var span: Vector2 = Vector2(dims.x, dims.x) * frame.z / dims
+	var origin: Vector2 = Vector2(frame.x, frame.y) - span / 2
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	for i in 32:
+		var a: float = TAU * i / 32.0
+		var unit := Vector2(cos(a), sin(a))
+		pts.append(center + unit * radius)
+		uvs.append(origin + (unit * 0.5 + Vector2(0.5, 0.5)) * span)
+	draw_colored_polygon(pts, fade, uvs, tex)
+	draw_arc(center, radius, 0, TAU, 32, Color("c9a24a") * fade, maxf(1.5, 1.6 * zoom), true)
+	return true
 
 func _icon_for(card: Dictionary, it: Dictionary):
 	var role: String = ""
