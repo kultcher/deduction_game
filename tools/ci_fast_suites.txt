@@ -24,6 +24,7 @@ test_day_presence
 test_daytime_defence_lines
 test_defence_grounds
 test_delusional_reading
+test_delusional_self_doubt
 test_double_claim
 test_evidence_honesty
 test_evil_owned_lie
@@ -31,6 +32,7 @@ test_evil_play
 test_execution_aftermath
 test_fabrication_check
 test_framed_defence
+test_gift_doubt
 test_gravedigger_bluff
 test_haunt_learning
 test_headline
@@ -40,7 +42,9 @@ test_juror_claims
 test_lie_severity
 test_lie_severity_votes
 test_location_solver
+test_medium_night0_frame
 test_medium_relay_challenge
+test_meeting_flow
 test_meeting_m2a
 test_meeting_m2b
 test_meeting_m2c
@@ -53,6 +57,7 @@ test_playtest_13910_dialogue
 test_playtest_23973
 test_playtest_89077
 test_poison_chance
+test_poison_outing
 test_premise_step1
 test_premise_step2
 test_premise_step3
@@ -77,6 +82,7 @@ test_town_vibe
 test_triage_nov16
 test_vote_shape
 test_warden_challenge
+test_warden_quiet_route
 test_wording_23973
 test_wording_89077
 test_workshop_channel_likelihood

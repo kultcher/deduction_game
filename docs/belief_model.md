@@ -430,6 +430,28 @@ Full tables are in the archive.
   wasn't kept. The limit is that nobody sees the Hexer at the hexed place in passive play
   (its presence share there 0.23 against 0.19 for others).
 
+### A listener's own nights at home (Lantern, Nov 17)
+
+Beadle found that an evil Medium's invented relay of a listener, out on a night the
+listener knows it spent at home, counted almost nothing against the relayer. Two reasons:
+the listener's home knowledge reached only the role check, not the movement model, and the
+sighting contests set their balance from the listener's own view, where a sighting it knows
+is false has no honest explanation. That cancelled the relay's weight against its teller.
+
+- The workshop bridge passes the nights a good listener knows it spent at home as
+  knowledge (`view.own_home`, like the known haunts: never in the ledger, ownership,
+  citations or the world domain). Inside the movement model only, each becomes a soft
+  alibi, "I know I was home on night 1" (`LiveActivity.own_home_cards`, `FlagKnownSelf`):
+  the listener out that night is possible only by its self-doubt, which is the
+  Sleepwalker's 10% when that secret is on the script, and the own-reading error
+  otherwise. The routes check skips it, so it never makes a night impossible, and it's
+  added only when the listener holds some night evidence.
+- The sighting contests take their balance from what an outsider could know: the same
+  profiles with the known-home cards left out.
+- On the searched cases in `tools/test_own_night_knowledge.gd`, the invented relay now
+  raises the relayer by 16 points (it was 1), a planted street sighting by 21 (it was 20),
+  and a Sleepwalker honestly seen out still stays about even on the sighter (+1).
+
 ## Open items
 
 Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.

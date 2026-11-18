@@ -15,6 +15,186 @@ session notes are kept for the record; code pointers may have moved since.
   wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided] Built Nov 18 with Michael's change: "evil's scapegoat" in place of
   "whom evil meant to hang", here and in the bluff motives.
 
+## Built Nov 18, 2026 (Claude-Herald, #250 and `claude/herald-card-text`)
+
+- **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
+  "heard" line, type and source icons stack in one corner, the context tag sits on the
+  edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
+  slots) before adding markers. Waiting on it: "shared with you privately" and "in
+  confidence" badges (the data exists; nothing draws them) and the context tag. Coordinate
+  with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
+  open]
+  Built Nov 18 as option B (Michael's choice): taller cards, an icon gutter, badge tabs
+  ("private", "in confidence", "context"), cut text ending in "…", "heard" at the detail
+  zoom (#250). Then the fewest words on the card at every zoom, the full sentence on hover
+  (`claude/herald-card-text`).
+
+## Built Nov 18, 2026 (Claude-Herald, `claude/herald-carried-answers`)
+
+- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
+  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
+  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
+  knew because of an answer carried over from case #38. The Workshop could list the answers
+  a new case carries when it's filed. Herald. Michael (Nov 18): yes. [decided]
+  Built Nov 18: filing names each answer the case keeps from an earlier filed case, and the
+  presentation's result window repeats it.
+
+## Closed and built, Nov 18, 2026 (BACKLOG restructure; Michael, recorded by Claude-Vicar)
+
+- **Evidence-reading bot: searching for drops.** The analyst bot reads trace cards
+  through the shared model, but it searches only crime scenes and never chooses where to
+  look for drops or totems. Teach it, so bot runs measure what physical evidence is worth.
+  The bot also doesn't offer wards or vigils or ask about others for haunts. [decided]
+
+  > **Nov 18:** closed (Michael, Nov 18): drops are to be removed from the game.
+
+- **Locations as evidence, from both sides.** A Dowser reading places the Dowser and the
+  group on a block, but it isn't a location card, so the player can't use it to show a
+  fake Medium or Dowser wasn't where they said. Your own visit excludes people: anyone
+  not seen at a spot wasn't there that phase (except people at home on that block).
+  Low impact while most suspicious activity happens at night. (Oct 19) [open]
+
+  > **Nov 18:** closed (Michael, Nov 18): evil NPCs don't lie as in the example, and the other daytime roles are covered.
+
+- **A demon that kills during the day** (user concept, Oct 23). Built as the Hexer
+  (`sim/roles/daykiller.gd`, experimental; #111, Nov 10), with the player's declaration
+  (#131). Its day evidence is weak in passive play: triage 4.6 (Nov 16) found no lean
+  away from the true Hexer on current main, but nobody sees the Hexer at the hexed place
+  either, so the day connection barely tells it apart. Player day logs are what would
+  strengthen it. [watch]
+
+  > **Nov 18:** closed (Michael, Nov 18): built as the Hexer; the work continues under "Scripts, follow-ups".
+
+- **NPC memory and recency bias.** (Random ideas) Attention-level recency is on main (PR
+  #96, Nov 9; `docs/premises_plan.md` "Recency as built"). Under the connections model
+  attention and recency pick only what an NPC cites and explains, not what it believes.
+  [open]
+
+  > **Nov 18:** closed (Michael, Nov 18): built under the connections model (attention and recency pick what an NPC cites).
+
+- **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
+  addressed by the shadow self; revisit after playtests. (30294) [watch]
+
+  > **Nov 18:** removed (Michael, Nov 18): mostly resolved; an ongoing concern rather than an item.
+
+- **Martyr non-substitution must keep its alternative explanations; Martyr promise
+  versus later hanging.** (78148) An executed choice dying while the claimed Martyr
+  survives must not fully confirm the choice as evil: weigh a Delusional Martyr, a
+  poisoned Martyr, a bluffing evil Martyr and a Marked executed person alongside an evil
+  choice. Bind the choice, the execution and health to their dates, from public knowledge
+  only; don't infer that both times were healthy from the earlier promise. Tests should
+  isolate every explanation and avoid counting the same failure twice. [decided]
+
+  Built Nov 17 (Quill, `claude/martyr-alternatives`): the promise and the later hanging are
+  read together from public events, keeping all five explanations; the outcome reading
+  carries the check when both are held. Not built: dated health (a poisoning on a
+  particular night); the promise's failure is priced as the report's error.
+
+  > **Nov 18:** built (Quill, Nov 17), as the item records; dated health stays unbuilt.
+
+- **A Delusional teller's false reading is charged twice by the judge.** (Codex on #183,
+  Nov 17) In play the role check skips an evil teller's content but not the Delusional
+  holder's, so for every role-checked gift (Archivist, Clerk, Gravedigger, Executor,
+  Registrar, Monitor, Martyr, Night Watch, Warden, Veteran) a Delusional reader's wrong
+  reading takes a small extra error on top of the false-report likelihood. "They were
+  Delusional" then reads weaker than it should next to "they lied". #183 fixed it for the
+  Martyr promise only. Build after Lantern's poisoned-reading fix has merged (it waits for
+  Argon's #181): both change how the role check treats a doubtful reading. Report in game
+  terms how much more often the town accepts "they were Delusional" over "they lied".
+  Owner Quill. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/delusional-double-charge`, Nov 17):** the kernel skips the content
+  of the world's Delusional holder's readings in play, as for an evil teller; the gift's own
+  acts (a Martyr's or Executor's one target, a Veteran's one night) stay checked. On a wrong
+  Archivist reading, "they were Delusional" went from about 1 in 600 of the explanation to
+  about 1 in 7 ("they lied" 98% to 85%). Not covered: a Night Watch's list, checked in the
+  movement model, which doesn't know who is Delusional.
+
+  > **Nov 18:** built (Quill, Nov 17), as the item records.
+
+- **Keep Tally's trace probe as a tool.** Tally measured how much a crime-scene trace
+  weighs with an uncommitted copy of `tools/measure_evidence.gd` that has two extra modes
+  (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
+  proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
+  way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/trace-measure`, Nov 17):** `measure_evidence.gd --what traces`,
+  `combined` and `support`, the same rows as Tally's probe. [done]
+
+  > **Nov 18:** built (Quill, Nov 17).
+
+- **Medium challenge attribution and nested relays.** Add an explicit choice between
+  questioning the Medium's transmission and the dead source's original information. Until
+  then, cause modifiers on relay cards stay visibly unavailable. Relays of another Medium's
+  relay and relayed opinions are unsupported. (Oct 23)
+  Michael (Nov 17): build the choice only, a two-way challenge on a relay ("the Medium
+  relayed it wrong" versus "the dead person was wrong in the first place"). Relays of
+  relays and relayed opinions stay unsupported. Owner Quill. [decided: the choice only]
+  **Built (Quill, #191, Nov 17):** a relay challenge names its target, the Medium's
+  transmission or the dead source's original reading (`ReadingChallenges.RELAY_ATTRIBUTIONS`),
+  and each is judged on its own night and teller; covered by `test_medium_relay_challenge`
+  and `test_relay_challenge_menu`. Relays of relays and relayed opinions stay unsupported.
+  [done]
+
+  > **Nov 18:** built (Quill, #191, Nov 17).
+
+- **The vigil watches who leaves a block.** (Michael, Nov 17, with Claude-Vicar; design note
+  [docs/design/vigil.md](docs/design/vigil.md)) Replaces "Unlimited vigil strength". A vigil
+  sees people leaving their homes on the watched block, not people arriving there, so the
+  player aims it at suspects instead of predicting the Demon's victim, and a sighting of
+  someone going out is weaker than one at the scene. No sweep first; a lower bot win rate is
+  fine. The bot's vigil policy changes in the same build to watch its suspects' blocks. The
+  note's section 5 lists what the build should check. Result wording: Herald drafts,
+  Michael settles. Owner Quill. [decided]
+  **Built (Quill, `claude/vigil-leavers`, Nov 17):** the sim and the judge both read the new
+  rule, the bot watches the block of the people it suspects most, and Herald's wording
+  (approved by Michael) is in. Bot, 20 games before and after: good won 17 instead of 13,
+  and about 1 vigil in 4 saw the Demon instead of 1 in 5 (it watches its suspects' homes,
+  and the Demon leaves home every kill night). Small sample.
+
+  > **Nov 18:** built (Quill, Nov 17).
+
+- **An evil Medium's relay about the first victim names night 0** (Lantern, Nov 13). The
+  bluff says the dead saw the scapegoat out "on their last night"; for the first victim
+  that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
+  its target. Moves golden. Michael (Nov 17): fix. For the first victim, the bluff picks
+  a night that can actually frame (not night 0, when the Demon never walks), or makes a
+  different claim. Owner Beadle. **[decided]** Built (Nov 18, `claude/beadle-medium-night0`):
+  the first victim's frame names the night they died; an empty relay never names the scapegoat.
+
+  > **Nov 18:** built (Beadle, Nov 18).
+
+## Settled Nov 18, 2026 (Michael; recorded by Claude-Vicar)
+
+- **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
+  paired seeds (living candidates, wrongful executions, win rate); the evidence rework's
+  planned sweep wasn't recorded. [open]
+
+  > **Settled Nov 18 (Michael):** keep 3:1. Tally's report (#212) found no measurable
+  > difference in outcomes between the ratios; at 3:1 traces work as supporting evidence and
+  > narrow the field without singling out the Demon.
+
+- **Say what a card is offered for.** (54875) Collateral from a sighting card lands on
+  everyone it places. Let the player say what a card is offered for ("about Constance's
+  alibi"). Deferred from the Oct 26 feedback batch because it changes how evidence
+  counts. [open]
+
+  > **Settled Nov 18 (Michael):** covered by premise centring, option B at a bystander share
+  > of 1/3 (`docs/design/premise_centring.md`; Lantern building). A card a case brought counts
+  > mostly on the case's subject, so the premise says what the card is offered for.
+
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
+
+  > **Settled Nov 18 (Michael):** premise centring B largely rebuilds it for the connections
+  > model (`docs/design/premise_centring.md`), with a flat share of 1/3 in place of the
+  > Insight-scaled 40–80%.
+
 ## Built Nov 17, 2026 (Claude-Herald, `claude/herald-map-ui`)
 
 - **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)

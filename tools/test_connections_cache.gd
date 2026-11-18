@@ -37,6 +37,7 @@ func _init() -> void:
 	_key()
 	_games()
 	_presentations_and_magistrate()
+	_cache_collision_safety()
 	_off()
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.cache_enabled = true
@@ -396,6 +397,81 @@ func _key() -> void:
 		if str(k).ends_with("|connections_kept"):
 			kept += int(profile.counters[k])
 	check(kept > 0, "the profiler counts the judgements handed back (%d)" % kept)
+	Connections.enabled = false
+
+
+func _cache_collision_safety() -> void:
+	Connections.enabled = true
+	Connections.cache_enabled = true
+	CaseEval.cache_enabled = true
+	var played: Dictionary = _play(900, 7, 2)
+	var g = played.g
+	var n = g.w.living().filter(func(x): return not x.is_evil())[0]
+	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
+	check(not plan.is_empty(), "collision safety: fixture has a listener with a plan")
+	if plan.is_empty():
+		Connections.enabled = false
+		return
+	var view: Dictionary = plan.prepared.view.duplicate(true)
+	var listener: Dictionary = preload("res://workshop/jury.gd")._eval_listener(plan.prepared.listener, plan.prepared.listener.knowledge.get("own_reports", [])).duplicate(true)
+	var others: Array = view.people.map(func(p): return p.id).filter(func(p): return p != n.id)
+	var bare: Dictionary = Connections.template(plan.prepared.get("case", {"cards": [], "conclusion": {"type": "evil", "target": others[0]}}), others[0])
+	var reports: Array = view.cards.filter(func(c): return c.kind == "report" and c.id not in listener.knowledge.get("own_reports", []))
+	check(not reports.is_empty(), "collision safety: fixture holds at least one report card")
+	if reports.is_empty():
+		Connections.enabled = false
+		return
+	var card_rep: Dictionary = reports[0]
+	var live: bool = CaseEval.Domain.live(view)
+	var u_key: String = CaseEval.Solver._universe_key(view)
+	var universe: Array = CaseEval.Solver.universe(view)
+	var case_r: Dictionary = Connections.case_for(bare, [card_rep.id])
+	var cc_r: Dictionary = CaseEval.compile(view, [card_rep], case_r)
+	var nc_r: int = cc_r.team.size()
+	CaseEval.cache_enabled = false
+	var ev_expected: Dictionary = CaseEval.evaluate(view, case_r, listener)
+	CaseEval.cache_enabled = true
+	Caches.clear_all()
+	var role_cards: Array = [card_rep].filter(CaseEval._is_role_card) if live else [card_rep]
+	var tl: Dictionary = view.get("timeline", {})
+	if not role_cards.is_empty() and tl.has("events") and not role_cards.any(CaseEval._is_movement_role_card):
+		tl = tl.duplicate(false)
+		tl["events"] = tl.events.filter(func(e): return str(e.get("kind", "")) not in CaseEval.SOFT_EVENTS)
+	var base_fit_ref: Array = [u_key, view.people, tl if not role_cards.is_empty() else (view.get("timeline", {}) if not live else {}), view.get("live_activity", false), live, cc_r.rep, "bare" if role_cards.is_empty() else role_cards]
+	var base_fit_key: int = hash(base_fit_ref)
+	var neutral_key: int = hash([base_fit_ref, "neutral"])
+	var personal: Dictionary = {"self": listener.knowledge.get("self", ""), "own_role": listener.knowledge.get("own_role", ""), "own_outings": listener.knowledge.get("own_outings", {})}
+	if not listener.knowledge.get("public_roles", {}).is_empty():
+		personal["public_roles"] = listener.knowledge.public_roles
+	var pers_key: int = hash([base_fit_key, personal, live, role_cards.is_empty()])
+	# Poison both _fits_cache slots with wrong-sized arrays to simulate 32-bit hash collisions.
+	var wrong_size := PackedFloat64Array([1.0, 1.0])
+	CaseEval._fits_cache[neutral_key] = {"ref": ["forced_neutral_collision", nc_r], "out": wrong_size}
+	CaseEval._fits_cache[pers_key] = {"ref": ["forced_personal_collision", nc_r], "out": wrong_size}
+	var valid_key: int = hash([u_key, card_rep.kind, card_rep.get("source", ""), card_rep.get("observed_at", {}), card_rep.get("role", ""), view.get("timeline", {}), card_rep.get("testimony_only", false), card_rep.get("reported_at"), card_rep.get("duty_only", false)])
+	CaseEval._valid_cache[valid_key] = {"ref": ["forced_valid_collision"], "out": PackedByteArray([1])}
+	var prem_key: int = hash([u_key, CaseEval.Solver.question_inputs(view, bare.conclusion), view.get("timeline", {})])
+	CaseEval._premise_cache[prem_key] = {"ref": ["forced_premise_collision"], "out": PackedByteArray([0])}
+	var ev_after: Dictionary = CaseEval.evaluate(view, case_r, listener)
+	check(absf(float(ev_after.posterior) - float(ev_expected.posterior)) < 1e-12 and ev_after.people == ev_expected.people,
+		"_fits_cache / _valid_cache / _premise_cache ignore 32-bit hash collisions with mismatched refs")
+	var ReasonAttr := preload("res://workshop/reason_attribution.gd")
+	ReasonAttr._fits_cache.clear()
+	var ra_expected: PackedFloat64Array = ReasonAttr._subset_fits(view, cc_r, [card_rep], listener.knowledge)
+	ReasonAttr._fits_cache.clear()
+	var ra_sig: Array = [[card_rep.get("id", ""), card_rep.get("kind", ""), card_rep.get("source", ""), card_rep.get("role", ""), card_rep.get("hearing_weight", 1.0), card_rep.has("relay_source"), card_rep.get("quoted", false)]]
+	var ra_neutral_key: int = hash([cc_r.key, cc_r.rep, "ra_neutral", live, ra_sig])
+	var ra_pers_key: int = hash([cc_r.key, cc_r.rep, "ra_personal", live, ra_sig, personal])
+	ReasonAttr._fits_cache[ra_neutral_key] = {"ref": ["forced_ra_neutral", nc_r], "out": wrong_size}
+	ReasonAttr._fits_cache[ra_pers_key] = {"ref": ["forced_ra_personal", nc_r], "out": wrong_size}
+	var ra_after: PackedFloat64Array = ReasonAttr._subset_fits(view, cc_r, [card_rep], listener.knowledge)
+	check(ra_after == ra_expected, "ReasonAttribution._fits_cache ignores 32-bit hash collisions with mismatched refs")
+	var base_h: int = SolverBackend.get_universe_handle(u_key, universe)
+	var h_small: int = SolverBackend.get_sub_universe_handle("cc_reps:forced_collision", base_h, PackedInt32Array([0, 1]))
+	var h_large: int = SolverBackend.get_sub_universe_handle("cc_reps:forced_collision", base_h, PackedInt32Array([0, 1, 2, 3, 4]))
+	var h_small_repeat: int = SolverBackend.get_sub_universe_handle("cc_reps:forced_collision", base_h, PackedInt32Array([0, 1]))
+	check(h_small >= 0 and h_large >= 0 and h_small != h_large and h_small == h_small_repeat,
+		"get_sub_universe_handle disambiguates colliding sub_keys with different index arrays")
 	Connections.enabled = false
 
 

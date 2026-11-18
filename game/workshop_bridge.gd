@@ -5,6 +5,7 @@ const ScriptDef = preload("res://sim/script_def.gd")
 
 const Evidence = preload("res://workshop/live_evidence.gd")
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const CardModel = preload("res://game/card_model.gd")
 const Connections = preload("res://workshop/connections.gd")
 
@@ -197,6 +198,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 			input.receipts.append({"card": card, "private": true})
 	if w != null:
 		input["regular_haunts"] = known_haunts(w, n)
+		input["own_home"] = own_home(w, n, input.listener.own_outings)
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -225,6 +227,20 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 		card["phase"] = e.phase
 	card["when"] = CardModel.when(card, card.day, -1)
 	return card
+
+
+## The nights an NPC knows it spent at home, for its movement model (view.own_home):
+## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not
+## evidence: it never enters the ledger, ownership, citations or the world domain. Only a
+## Sleepwalker could have walked unknowing, so with that secret on the script a night
+## carries SLEEPWALK_SELF_DOUBT; otherwise the tiny own-reading error.
+static func own_home(w, n, outings: Dictionary) -> Dictionary:
+	var doubt: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT if w.case_script != null and "sleepwalker" in w.case_script.secrets else Tuning.Workshop.OWN_ERR
+	var nights: Dictionary = {}
+	for k in outings:
+		if not bool(outings[k]):
+			nights[str(k)] = doubt
+	return {"self": n.id, "block": n.home_block, "nights": nights}
 
 
 ## The haunts an NPC knows without being told (regulars know regulars): their own, and
