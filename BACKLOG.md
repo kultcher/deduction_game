@@ -171,9 +171,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   presentation, the subject's own movement, and the others in a vigil sighting like
   Michael's example. Report side by side, then Michael picks. Owner Lantern.
   **Michael (Nov 18): build B at a bystander share of 1/3,** reusing step 1's
-  `premise_shaping` selection (`docs/design/premise_centring.md`). Still open: whether a
-  misframed case (its cards point more at someone else) should cost trust, beyond today's
-  cost when the evidence argues against the premise. Owner Lantern.
+  `premise_shaping` selection (`docs/design/premise_centring.md`). No extra trust cost for a
+  misframed case: the case not landing is the cost (Michael, Nov 18). Owner Lantern.
   **[decided]: B at a share of 1/3**
 
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later

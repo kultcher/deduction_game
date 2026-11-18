@@ -17,9 +17,10 @@ the Workshop, now `[decided]: B at a share of 1/3`, owner Lantern.
   under that rule stays shaped until the listener gets it some other way, which answers the
   "does the lens fade?" question as Vicar leaned (section 7). Lantern to confirm in the build.
 - **Not taken:** A alone, C, and "doubt onto the subject" (section 4).
-- **Still open:** whether a misframed case should cost trust more often. Today a premise
-  costs trust only when the evidence argues *against* it. A case "Constance is evil" whose
-  cards say little about Constance but a lot about Dorian costs nothing.
+- **No extra trust cost for a misframed case** (Michael, Nov 18). The case not landing is
+  the cost. A premise still costs trust only when the evidence argues *against* it, as today.
+- **The night-0 sighting lift is probably a bug** (Michael, Nov 18). Lantern is investigating
+  it as its own item (example 1 and section 7, item 4).
 
 ---
 
@@ -277,10 +278,6 @@ Constructed misframed cases, with fixtures, no bot games:
 
 ## 9. For Michael to decide
 
-Answered Nov 18 (see "Decision" at the top): B; a share of 1/3; the lens stays (through step
-1's selection rule); "doubt onto the subject" not taken. Two calls remain:
-
-1. **A misframed case and trust.** Should a case cost trust when its cards point elsewhere
-   more than at its subject, and not only when they argue against the subject?
-2. **The night-0 movement odds** (section 7, item 4): whether Lantern looks at them as a
-   separate item.
+All answered Nov 18 (see "Decision" at the top): B; a share of 1/3; the lens stays (through
+step 1's selection rule); "doubt onto the subject" not taken; no extra trust cost for a
+misframed case; the night-0 lift goes to Lantern as a probable bug.

@@ -8,5 +8,5 @@
   - DESIGN.md's cases directions ("decided, not yet built");
   - the open-questions index row.
 - **Noted for Lantern:** step 1's selection keeps a card shaped until the listener gets it another way, which matches the "the lens stays" lean. Confirm in the build.
-- **Still open (Michael):** whether a misframed case, whose cards point more at someone else, should cost trust beyond today's cost when the evidence argues against the premise. Also the night-0 movement odds as a separate item.
+- **Then (Michael, Nov 18, same PR):** no extra trust cost for a misframed case, since the case not landing is the cost. The night-0 sighting lift is probably a bug, and Lantern is investigating it as its own item. Recorded in the note, BACKLOG and the index. Nothing is left open on this item.
 - **Measured:** nothing.
