@@ -1161,3 +1161,60 @@ func _first_of(values: Array, candidates: Array) -> String:
 		if v in candidates:
 			return v
 	return ""
+
+
+## Answers a case being filed reuses from an earlier filed case: an answer picked on a card
+## stays on it, so the next case citing that card carries it (playtest 23973: a Dowser
+## answer picked for case #38 rode along into #78). `filed` maps a case number (as a
+## string) to the answers it was filed with; `same_case` lists the numbers that are this
+## case (it and its earlier revisions), which never count. An answer counts only when it
+## still chooses something. Returns [{card, answer, from}] with `from` the earliest other
+## case filed with the same answer, in card order.
+func carried_answers(answers: Dictionary, filed: Dictionary, same_case: Array) -> Array:
+	var out: Array = []
+	var earlier: Array = filed.keys().filter(func(k): return int(k) not in same_case)
+	earlier.sort_custom(func(a, b): return int(a) < int(b))
+	for card_id in answers:
+		var answer = answers[card_id]
+		if not (answer is Dictionary) or answer_parts(answer).is_empty():
+			continue
+		for k in earlier:
+			if filed[k].get(card_id, {}) == answer:
+				out.append({"card": card_id, "answer": answer, "from": int(k)})
+				break
+	return out
+
+
+## What an answer chooses, in a few words each: people picked (and Marked), streets, a
+## Seer registration, a role in play, a Psychologist statement and why. Empty when the
+## answer chooses nothing (a cleared selection keeps empty lists).
+func answer_parts(answer: Dictionary) -> Array:
+	var parts: Array = []
+	var people: Array = answer.get("positive", []).filter(func(p): return str(p) != "")
+	if not people.is_empty():
+		parts.append(", ".join(PackedStringArray(people.map(func(p): return Solver.person_name(view, str(p)) + (" (Marked)" if p in answer.get("marked", []) else "")))))
+	var blocks: Array = answer.get("blocks", []).filter(func(b): return str(b) != "")
+	if not blocks.is_empty():
+		parts.append(", ".join(PackedStringArray(blocks.map(func(b): return C.block_name(str(b))))))
+	var reg: String = str(answer.get("registration", ""))
+	if reg != "":
+		parts.append({"demon": "the Demon", "red_herring": "the Red Herring", "marked": "Marked"}.get(reg, reg.capitalize()))
+	var in_play: String = str(answer.get("in_play_role", ""))
+	if in_play != "":
+		parts.append("the %s in play" % C.role_name(in_play))
+	var slot: String = str(answer.get("false_slot", ""))
+	if slot != "":
+		var which: String = {"0": "the first statement false", "1": "the second statement false", "both": "both statements false"}.get(slot, "a statement false")
+		var why: String = str(answer.get("false_reason", ""))
+		parts.append(which + (" (%s)" % why if why != "" else ""))
+	return parts
+
+
+## A carried answer in a few words: "Kiran's Dowser reading (Bartholomew)".
+func carried_answer_text(item: Dictionary) -> String:
+	var card: Dictionary = Solver.card_by_id(view, item.card)
+	var src: String = str(card.get("source", ""))
+	var what: String = (C.role_name(card.role) + " reading") if card.get("role", "") != "" else {"alibi": "home alibi", "sighting": "sighting", "claim": "role claim"}.get(card.get("kind", ""), "card")
+	var label: String = ("%s's %s" % [Solver.person_name(view, src), what]) if src != "" else what.capitalize()
+	var parts: Array = answer_parts(item.answer)
+	return label + (" (%s)" % "; ".join(PackedStringArray(parts)) if not parts.is_empty() else "")

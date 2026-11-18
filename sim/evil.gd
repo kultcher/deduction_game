@@ -90,6 +90,7 @@ static func _pick_scapegoat(w, why: String) -> void:
 			best_s = s
 			best = g
 	w.evil_plan["scapegoat"] = best.id
+	_forget_frames(w)
 	w.dlog.think(w.demon_id, "scapegoat", "Evil picks %s as scapegoat (%s)." % [best.id, why])
 
 ## Each morning (from day 2), evil reconsiders its scapegoat: ride the town's suspect
@@ -143,6 +144,7 @@ static func review_scapegoat(w) -> void:
 			best = g.id
 	if best != "" and best != cur:
 		w.evil_plan["scapegoat"] = best
+		_forget_frames(w)
 		w.dlog.think(w.demon_id, "scapegoat", "Evil switches scapegoat %s -> %s (scores %s)." % [cur, best, str(table)], {"scores": table, "from": cur, "to": best})
 	else:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
@@ -779,6 +781,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
 				continue
 			m.info_log.append(out)
+			_remember_frame(m, out, str(w.evil_plan.get("scapegoat", "")))
 			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
 			# The reveal lists what was actually told (Steward A2): the released version.
 			w.dlog.add("fake_info", m.id, "", out, "%s (evil) tells its held-back reading: %s [%s]" % [m.name, out.get("text", ""), out.get("why", "")])
@@ -809,6 +812,10 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		entry = _stamp_fake(w, gen["entry"], bluff, day_only)
 		why = gen["why"]
+		var kept: Dictionary = _keep_frame(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
+		if not kept.is_empty():
+			entry = kept["entry"]
+			why = kept["why"]
 		# Checked against what's already public: a self-incriminating one may be noticed,
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
@@ -827,6 +834,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			w.dlog.add("fake_info_held", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
 			continue
 		n.info_log.append(entry)
+		_remember_frame(n, entry, s)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
 
 ## BACKLOG "Saying 'my gift may have been turned'", part (b) (Michael, Nov 17-18): a liar
@@ -891,6 +899,48 @@ static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary,
 				e2.erase("phase")
 			out.append({"entry": e2, "why": str(alt.get("why", ""))})
 		return out
+
+## A bluffer's frame memory (BACKLOG, Michael, Nov 17). Earlier made-up readings told under
+## the current scapegoat implicated some people; a fresh one that would clear any of them
+## drifts from the story. A liar who keeps its story (chance from Insight and Confidence)
+## tells one of the rule's other readings that doesn't, if there is one. The memory is the
+## readings told under this scapegoat, so it drops when the team switches. Returns
+## {"entry", "why"} for a swap, or {} to tell the fresh one.
+static func _keep_frame(w, n, entry: Dictionary, alternatives: Callable, s: String) -> Dictionary:
+	var earlier: Array = n.bluff_frame.get("implicated", []) if str(n.bluff_frame.get("sg", "")) == s else []
+	if earlier.is_empty() or not _drifts(entry, earlier):
+		return {}
+	var traits: float = (float(n.traits.get("insight", 0.5)) + float(n.traits.get("confidence", 0.5))) / 2.0
+	var p_keep: float = clampf(Tuning.Evil.FRAME_MEMORY_BASE + Tuning.Evil.FRAME_MEMORY_TRAITS * traits, 0.0, 1.0)
+	if not w.decision_roll(n, "keep_frame", p_keep, {"traits": traits, "earlier": earlier}):
+		w.dlog.think(n.id, "plan", "Evil: its new made-up reading clears someone its earlier ones implicated; doesn't notice.")
+		return {}
+	for alt in alternatives.call():
+		var e2: Dictionary = alt.get("entry", {})
+		if e2.is_empty() or _drifts(e2, earlier):
+			continue
+		w.dlog.think(n.id, "plan", "Evil: keeps its story; tells a reading that doesn't clear the ones its earlier readings implicated.")
+		return {"entry": e2, "why": str(alt.get("why", ""))}
+	return {}
+
+## A made-up reading told under scapegoat `s` joins the bluffer's frame memory; a new
+## scapegoat starts it afresh.
+static func _remember_frame(n, entry: Dictionary, s: String) -> void:
+	if str(n.bluff_frame.get("sg", "")) != s:
+		n.bluff_frame = {"sg": s, "implicated": []}
+	for x in Gifts.implicated(entry):
+		if not (x in n.bluff_frame["implicated"]):
+			n.bluff_frame["implicated"].append(x)
+
+## A new scapegoat: every bluffer's frame memory drops, even one that told nothing under the
+## last (Codex on #255: a switch A -> B -> A must not bring the old A memory back).
+static func _forget_frames(w) -> void:
+	for m in w.evil_team():
+		m.bluff_frame = {}
+
+## Whether a reading clears anyone in `earlier`.
+static func _drifts(e: Dictionary, earlier: Array) -> bool:
+	return Gifts.clears(e).any(func(x): return x in earlier)
 
 static func _mark_fake(entry: Dictionary) -> void:
 	entry["shared"] = false
