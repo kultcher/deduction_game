@@ -46,7 +46,7 @@
   - **Autoplay** (seed 1, 10 NPCs, the first 5 of 8 games): the guard never reached the judge.
     The bot's cases don't cite Warden reports, and NPC beliefs didn't hit it in these games.
     So in practice this is the player's argument, as the item intends.
-- **Tests:** new `tools/test_warden_quiet_route` (25 checks), added to the fast list. Also
+- **Tests:** new `tools/test_warden_quiet_route` (26 checks), added to the fast list. Also
   passing: `test_warden_challenge`, `test_demon_types`, `test_workshop_regressions`,
   `test_workshop_live_activity`, `test_evidence_cards`, `test_juror_claims`,
   `test_workshop_remaining`, `test_workshop_integration`, `test_workshop_ui`,

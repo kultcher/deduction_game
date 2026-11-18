@@ -583,7 +583,7 @@ static func quiet_guard_cards(view: Dictionary, cards: Array) -> Array:
 	var out: Array = []
 	var seen: Dictionary = {}
 	for card in cards:
-		if card.get("kind", "") != "report" or str(card.get("role", "")) != "warden" or card.get("quoted", false) or card.has("relay_source") or card.get("duty_only", false) or str(card.get("id", "")) in quiet_guards_skip:
+		if card.get("kind", "") != "report" or str(card.get("role", "")) != "warden" or card.get("quoted", false) or card.has("relay_source") or card.get("duty_only", false):
 			continue
 		var night: int = int(card.get("night", -1))
 		var src: String = str(card.get("source", ""))
@@ -599,7 +599,9 @@ static func quiet_guard_cards(view: Dictionary, cards: Array) -> Array:
 		out.append({"report": str(card.get("id", "")), "source": src, "target": tgt, "night": night, "saved": bool(data.get("saved", false)),
 			"r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others) * clampf(float(card.get("route_trust", 1.0)), 0.0, 1.0)})
 	out.sort_custom(func(x, y): return x.night > y.night or (x.night == y.night and x.source < y.source))
-	return out.slice(0, QUIET_GUARD_MAX)
+	# The cap first, then the skip: leaving one guard out mustn't let a capped-out one in
+	# (Codex on #243).
+	return out.slice(0, QUIET_GUARD_MAX).filter(func(g): return g.report not in quiet_guards_skip)
 
 static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed: Dictionary, stride: int) -> Dictionary:
 	var items: Array = quiet_guard_cards(view, cards).map(func(g): return {"source": ids.find(g.source), "target": ids.find(g.target), "night": g.night, "r": g.r})

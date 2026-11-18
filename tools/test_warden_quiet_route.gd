@@ -218,6 +218,17 @@ func _codex_243(seen: Dictionary) -> void:
 	var listed: Array = result.get("guards", []).map(func(g): return g.report)
 	_check(listed == ["guard"], "two guards: the juror names only the one that moved the subject (%s)" % str(listed))
 	_check(LiveActivity.quiet_guards_enabled and LiveActivity.quiet_guards_skip.is_empty(), "and puts the switch and the skip list back")
+	# Four guards on four nights: the cap keeps the latest three, and leaving one of them out
+	# doesn't let the fourth back in.
+	var four: Array = []
+	for nt in [1, 2, 3, 4]:
+		four.append({"id": "q%d" % nt, "fact_id": "q%d" % nt, "kind": "report", "source": "a", "role": "warden", "night": nt, "block": "docks",
+			"data": {"target": "t"}, "observed_at": {"day": nt, "phase": "night"}})
+	var kept: Array = LiveActivity.quiet_guard_cards(quiet, four).map(func(g): return g.report)
+	LiveActivity.quiet_guards_skip = ["q4"]
+	var left: Array = LiveActivity.quiet_guard_cards(quiet, four).map(func(g): return g.report)
+	LiveActivity.quiet_guards_skip = []
+	_check(kept == ["q4", "q3", "q2"] and left == ["q3", "q2"], "the cap keeps the latest three; leaving one out doesn't admit the fourth (%s, %s)" % [str(kept), str(left)])
 	# Two Wardens on the same quiet night at different doors: at most one held, and which
 	# claimant is which doesn't matter (a and h both live on the hill).
 	var ga: Dictionary = _guard("t")
