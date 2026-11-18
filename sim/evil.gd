@@ -243,7 +243,8 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 	var night = maxi(0, dd.death_day - 1)
 	var sg = w.by_id[s]
 	if w.chance(C.MEDIUM_USELESS_CHANCE):
-		var gs: Array = w.living_good()
+		# An empty one names someone harmless: never the scapegoat, whom it would clear.
+		var gs: Array = w.living_good().filter(func(x): return x.id != s)
 		if not gs.is_empty() and w.chance(0.5):
 			var g = w.pick(gs)
 			return {"item": {"type": "sighting", "who": g.id, "block": g.home_block, "night": night, "lie": true, "idle": true},
@@ -257,8 +258,12 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 		var r = _fake_dead_reading(w, n, dd, dd.claimed_role, s, night)
 		if not r.is_empty() and (frame_ok or not r["frames"]):
 			opts.append([3.0, {"item": {"type": "reading", "entry": r["entry"], "lie": true}, "why": r["why"], "frames": r["frames"]}])
+	# Night 0 can't frame: the Demon never walks it, so the scapegoat "out" then reads as
+	# innocent. The first victim's frame is told on the night they died instead, when the
+	# Demon did walk (BACKLOG, "An evil Medium's relay about the first victim names night 0").
+	var frame_night: int = night if night >= 1 else maxi(1, dd.death_day)
 	if frame_ok and sg.home_block != dd.home_block:
-		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
+		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": frame_night, "lie": true},
 			"why": "claimed the late %s saw %s, whom evil meant to hang, out near their cottage on their last night" % [dd.id, s], "frames": true}])
 	if dd.info_log.any(func(e): return e.get("shared", false)):
 		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "said the late %s had nothing new to tell" % dd.id, "frames": false}])
@@ -899,7 +904,10 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 		# who passed where, so a sighting can only repeat it (Constance, 54875: "I saw Isolde"
 		# privately, "I saw Jory" in her Night Watch reading for the same night).
 		var watch: Dictionary = _own_fake_reading(n, nd, "nightwatch")
-		if not watch.is_empty():
+		# Never a night-0 sighting: the Demon doesn't walk then, so a night-0 sighting tells
+		# nothing, and a liar's would only make honest night-0 sighters look like liars
+		# (Michael, Nov 18).
+		if nd >= 1 and not watch.is_empty():
 			var seen: Array = watch.get("data", {}).get("seen", []).filter(func(x): return x != n.id and w.by_id.has(x))
 			if watch["data"].get("block", "") == vantage and not seen.is_empty():
 				var who: String = s if s in seen else seen[0]
@@ -926,7 +934,8 @@ static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
 
 static func fake_gossip(w, speaker):
 	var s: String = w.evil_plan["scapegoat"]
-	if s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
+	# "Was out last night" on day 1 would be night 0, when the Demon doesn't walk (Michael, Nov 18).
+	if w.day < 2 or s == "" or not w.by_id[s].alive or not w.decision_roll(speaker, "spread_false_gossip", Tuning.Evil.FAKE_GOSSIP_PROB, {}, s):
 		return null
 	var block: String = w.by_id[s].home_block
 	for sid in w.scenes:
