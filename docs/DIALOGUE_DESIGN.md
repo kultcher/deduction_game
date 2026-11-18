@@ -32,7 +32,7 @@ This is the **creative and behavioral specification** for dialogue. It does not 
 6. **Personality is not numerical ability.** The fixed voice describes habits of communication. Rolled privacy, confidence, insight, composure, and gossip affect decisions and circumstances through existing systems; they must not make a voice automatically accurate, dishonest, persuasive, or incompetent.
 7. **Continuity needs an authorized cause.** Repetition, an immediately preceding accusation, a previously established friendship, or an already revised belief can shape delivery only when the caller supplies that context. The renderer does not invent memory from prose.
 8. **Readable in a log.** The game presents large amounts of testimony. Distinctiveness must coexist with scanability; embellishment must not bury who, where, when, source, and certainty.
-9. **Learned, not modern or academic (Michael, Nov 17).** Refined words are fine; modern ones (data, variable, constraint) aren't, and neither is the scholarly jargon of a later age ("epistemic interference", "independent confirmation", "the operative term"). In any new line, trim such words back to what a well-read villager would say. Hollis and Nisha stay analytical and intellectual through how they reason (distinctions, conditions, testing one premise at a time), not through a specialist's vocabulary. Existing lines aren't being reworded for this now; it applies to new dialogue.
+9. **Learned is fine; modern isn't (Michael, Nov 17; corrected Nov 18).** A scholarly or analytical register is welcome: Hollis and Nisha can sound learned, and words like "eliminating", "implicated" or "testimony" belong in their mouths. What to avoid is language that sounds modern: data, variable, model, constraint and the like. In any new line, swap such words for what someone of the period would say. Nights are spoken as ordinals ("the second night"); cards and the board keep numbered nights ("Night 2"). Existing lines aren't being reworded for this now; it applies to new dialogue.
 
 ### Three content layers
 
@@ -303,6 +303,17 @@ If a refusal or reaction contains a mechanical explanation (e.g., “Revealing m
 The NPC's existing evaluator selects agreement/partial/rejection, cited support, reservations, and permitted alternatives. The voice renderer shapes their wording **without enhancing their logic**. Nisha can isolate an approved weak premise; Hollis can distinguish an approved inference from a report; Constance can express the responsibility of making an accusation. But none may invent a counterexample or new suspicion.
 
 For nominations, the decision is already made. Voice can affect ceremony and force (“I put forward X” vs “Put X to a vote”), not who is nominated or why. Silence and lack of speech must remain meaningful: do not create dialogue for a silenced NPC or fabricate speech from silent evaluation. The current prototype leaves voting silent pending separate meeting-flow work; do not present new vote dialogue as already integrated.
+
+### 7.6 Board and card text (standing rule, Michael, Nov 18)
+
+Card and board text uses the fewest words that carry the fact. Keep trimming as cards are touched.
+
+- **Drop what the board already shows.** The column gives the time; the row gives who it's about; tabs show "private", "in confidence" and "context"; the gutter icons show the kind and the gift. So the normal-zoom card reads "Kiran accused Greta", not "Kiran publicly accused Greta on the second day".
+- **Name, verb, object.** "Merrin: home, the Market"; "Edda killed, the Market"; "Isolde vouches for Merrin". There's no "says that" or "I learned that" on a card face.
+- **Full text at the detail zoom.** The card's full sentence shows only when the player zooms in to read, and in the hover tooltip, so nothing is lost.
+- **Cut text ends in "…"** rather than being clipped mid-word.
+
+The short forms live in `CardModel.short_text` (`game/card_model.gd`) and in each role's `short_text` for gift readings.
 
 ## 8. Serious mode and verbal defenses
 
