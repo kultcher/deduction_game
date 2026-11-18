@@ -1,0 +1,23 @@
+# 2026-11-18, Claude-Vicar: BACKLOG restructure (`claude/vicar-centring-decision`, docs only)
+
+- **Base:** main `0a9f672`, merged into #236's branch. **Status:** in PR #236 (docs only). **Next actor:** Bailiff to merge. Leads verify the "probably fixed" items and report to Seneschal; Seneschal passes the results on, and I close them in a second PR.
+- **Michael (Nov 18, via Seneschal):** restructure BACKLOG.md. Done in one pass so nobody else edits BACKLOG.md in parallel. Every original line is accounted for: it's still in BACKLOG.md, moved to BACKLOG_WATCH.md or BACKLOG_COMPLETED.md, or is one of the five lines reworded on purpose (below).
+- **Built or done → BACKLOG_COMPLETED.md** ("Closed and built, Nov 18, 2026"). Michael called it BACKLOG_FINISHED; I reused the existing COMPLETED file.
+  - Built, each with its own "Built" note: Martyr non-substitution, the Delusional double charge, Tally's trace probe, Medium challenge attribution, the vigil watching who leaves, the evil Medium's night-0 relay.
+  - Closed by Michael, with dated reasons: the evidence-reading bot's drop search (drops are to be removed); locations as evidence; a demon that kills by day (built as the Hexer); NPC memory and recency bias; "Evil reads as evil" (removed as an ongoing concern).
+  - "Trace weight" was already closed in #236.
+- **New BACKLOG_WATCH.md:** every `[watch]` and `[knob]` item, plus Martyr urgency (with Michael's Nov 18 note) and the late-game meeting and presenting cost. BACKLOG.md's header points to it. The section-6 "Cost:" pointer is dropped, since it pointed at the item that moved.
+- **Tabled section** at the foot of BACKLOG.md: NPC-to-NPC credibility and named corroborators (moved back from COMPLETED's "Tabled Nov 18"), plus evidence chains and the procedural town.
+- **Folded in** as sub-points, each marked "Folded in Nov 18":
+  - Seen with the silenced → the Breathstealer overhaul.
+  - Lovers as an excuse, Secret awareness and bluffing, and Ways to discover and confront secrets → the secrets rework.
+  - Storyteller-driven Medium visits → Storyteller/director.
+- **Reframed:** "Good NPCs lie tactically" is now `[open]` on whether a good NPC may lie about their role (a Veteran claiming falsely to draw the attack). Beadle is verifying that the two original cases exist.
+- **Marked:** "Apologise" in Expanded dialogue is built. "Misled versus reading-lie strength" now links to the two lying/poison items.
+- **Left in place** for the leads to verify, as asked. That includes the three `[watch]` items on that list: conversation sightings, killed by the Demon, and the Revenant's new totem.
+- **Small calls made on Michael's behalf:**
+  - "Reading challenges and further gift adapters" (`[watch; broader adapters open]`) and "The premise should matter" (an old `[watch]`, now carrying the decided centring) stay in BACKLOG.md, since each still has open or decided work.
+  - The empty Performance heading now points to the watch file.
+  - Section 1's list of four golden-moving bugs is unchanged. At least the night-0 relay is now fixed; leads to confirm the rest, for the second PR.
+- **Also:** DESIGN.md's directions (locations, evidence chains, NPC memory, "Evil reads as evil") and its list of docs, plus the open-questions index, match.
+- **Measured:** nothing.
