@@ -42,7 +42,7 @@
   - Adding a premise alone is not new evidence.
   - Someone who hasn't heard the revision keeps the old claim untouched.
 - **Docs:** a DESIGN paragraph under "Rapport and credibility".
-- **Tests:** a new suite, `tools/test_public_revisions.gd` (21 checks), added to the fast list.
+- **Tests:** a new suite, `tools/test_public_revisions.gd` (25 checks), added to the fast list.
 
 ## For Herald
 

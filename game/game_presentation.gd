@@ -354,18 +354,27 @@ static func workshop_withdraw_public(g, number: int) -> String:
 		return "Case #%d is already withdrawn." % number
 	card["withdrawn"] = true
 	card["withdrawn_day"] = g.w.day
+	# The case and every earlier version of it: someone who missed a revision still holds
+	# the version they heard, and that is taken back too (Codex on #262).
+	var versions: Array = []
+	var v: int = number
+	while v > 0 and v <= g.board.size() and not (v in versions):
+		versions.append(v)
+		v = int(g.board[v - 1].get("revises", 0))
 	var heard: Array = []
 	for real in g.w.npcs:
 		var mind = real.shadow if real.is_evil() and real.shadow != null else real
 		var st: Dictionary = mind.workshop_state
-		var has_it: bool = st.get("presentations", {}).has(str(number)) or mind.ledger.has("arg:workshop:%d" % number) or _record_cites(real, number)
-		for key in st.get("presentations", {}):
-			if str(key).begins_with("direct:%d:" % number):
-				has_it = true
-		if has_it:
-			_workshop_retract(g, number, real.id, false)
-			heard.append(real.id)
-		real.player_cases = real.player_cases.filter(func(c): return int(c.get("card", {}).get("n", 0)) != number)
+		for ver in versions:
+			var has_it: bool = st.get("presentations", {}).has(str(ver)) or mind.ledger.has("arg:workshop:%d" % ver) or _record_cites(real, ver)
+			for key in st.get("presentations", {}):
+				if str(key).begins_with("direct:%d:" % ver):
+					has_it = true
+			if has_it:
+				_workshop_retract(g, ver, real.id, false)
+				if not (real.id in heard):
+					heard.append(real.id)
+		real.player_cases = real.player_cases.filter(func(c): return not (int(c.get("card", {}).get("n", 0)) in versions))
 	g.w.dlog.add("deduction_withdrawn", "player", str(card.get("conclusion", {}).get("a", "")), {"card": number, "heard": heard, "day": g.w.day},
 		"The Demonologist took back case #%d in public." % number)
 	return ""

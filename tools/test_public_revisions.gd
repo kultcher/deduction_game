@@ -23,6 +23,7 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_public_withdrawal()
 	_revisions()
+	_withdraw_chain()
 	_new_evidence_rule()
 	print("Public revisions: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -161,6 +162,33 @@ func _revisions() -> void:
 		var rev3: int = _file(g3, "evil", goods3[2].id, [h2], f3)
 		_present(g3, ls3.slice(0, ls3.size() - 1), rev3)
 		check(int(ls3[-1].claim_record.get(goods3[1].id, {}).get("case", 0)) == f3 and not ls3[-1].claim_record[goods3[1].id].get("withdrawn", false), "someone who hasn't heard the revision keeps the old claim as it was")
+
+## Codex on #262: withdrawing the latest version also takes back the version a listener
+## heard before missing the revision; and a withdrawn case's secret claims retire too.
+func _withdraw_chain() -> void:
+	var g = _game()
+	var goods: Array = g.w.living_good()
+	var ls: Array = g.w.living().filter(func(p): return p != goods[0] and p != goods[1] and p != goods[2])
+	var k1: int = _read(g, goods[0], "dowser", 1, {"group": [goods[1].id], "count": 1})
+	var k2: int = _read(g, goods[0], "dowser", 2, {"group": [goods[2].id], "count": 1})
+	var first: int = _file(g, "evil", goods[1].id, [k1])
+	if first <= 0:
+		check(false, "the chain's first case can be filed")
+		return
+	_present(g, ls, first)
+	var rev: int = _file(g, "evil", goods[2].id, [k2], first)
+	_present(g, ls.slice(0, ls.size() - 1), rev)
+	var missed = ls[-1]
+	check(g.workshop_withdraw_public(rev) == "", "the latest version can be taken back")
+	var mind = missed.shadow if missed.is_evil() and missed.shadow != null else missed
+	check(not mind.workshop_state.get("presentations", {}).has(str(first)) and missed.claim_record.get(goods[1].id, {}).get("withdrawn", false),
+		"someone who missed the revision has the version they heard taken back too")
+	# Secret claims carry their case.
+	var n = ls[0]
+	Credibility.record_case_secrets(n, {"n": rev, "conclusion": {"type": "secret_mod", "a": goods[1].id, "mod": "marked"}}, g.w.day)
+	check(int(n.claim_record.get("secret:" + goods[1].id, {}).get("case", 0)) == rev, "a case's secret claim notes its case")
+	Credibility.retire_case(n, rev, true)
+	check(not n.claim_record.has("secret:" + goods[1].id), "and leaves the record with it")
 
 func _new_evidence_rule() -> void:
 	check(GamePresentation.new_evidence({"supports": [3]}, {"supports": [3, 5]}), "citing a new original card is new evidence")
