@@ -4,6 +4,7 @@ extends RefCounted
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
+const TermDefs = preload("res://ui/term_defs.gd")
 
 ## These names can also describe ordinary things or occupations. In prose, match their
 ## canonical capitalization only; a caller can opt into role_context for known gift text.
@@ -41,6 +42,11 @@ func _init(include_defaults: bool = true) -> void:
 			"icon_path": spath if FileAccess.file_exists(spath) else "",
 			"aliases": [{"text": secret["name"], "case_sensitive": true},
 				{"text": secret["name"], "role_only": true}, {"text": secret_id, "role_only": true}]})
+
+	# The mechanics (learning resources, layer 1): no colour of their own, a tooltip each.
+	for term in TermDefs.MECHANICS:
+		register_term({"id": "mechanic:" + term.id, "kind": "mechanic", "content_id": term.id,
+			"label": term.label, "tooltip": term.tooltip, "aliases": term.aliases})
 
 ## Extend with any kind of term. Optional appearance: color (null inherits), icon_path,
 ## tooltip. Aliases are strings (case-insensitive) or {text, case_sensitive, role_only}.
