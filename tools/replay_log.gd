@@ -104,6 +104,7 @@ func _init():
 	var run: Dictionary = Replay.replay(events, stop_seq, hooks)
 	var g = run.g
 	if g == null:
+		quit(1)  # a log played on the earlier model (LogReplay.new_game printed why)
 		return
 	if json_out != "":
 		var f = FileAccess.open(json_out, FileAccess.WRITE)

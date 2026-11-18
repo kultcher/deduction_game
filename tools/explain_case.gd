@@ -98,6 +98,7 @@ func _init():
 	var variants: Array = [{"label": "as filed", "case": base}]
 	var probe: Dictionary = Replay.replay(events, stop)
 	if probe.g == null:
+		quit(1)  # a log played on the earlier model (LogReplay.new_game printed why)
 		return
 	var cards_info: Dictionary = _card_info(probe.g, base)
 	for who in adds:
