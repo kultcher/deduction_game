@@ -1067,12 +1067,42 @@ internal static class CaseEvalKernel
         //  [1] LR_WEAK
         //  [2] LR_MODERATE
         //  [3] LR_STRONG
-        var cc = SolverContext.GetCompiledCase(ccHandle)!;
+        var cc = SolverContext.GetCompiledCase(ccHandle)
+            ?? throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: invalid ccHandle {ccHandle}");
         int nc = cc.Team.Length;
         int k = cc.K;
         int nPeople = cc.NPeople;
+        if (evalInts.Length < 9)
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: evalInts.Length ({evalInts.Length}) < 9");
+        }
+        if (tuningDoubles.Length < 4)
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: tuningDoubles.Length ({tuningDoubles.Length}) < 4");
+        }
         int ns = evalInts[0];
         int ko = evalInts[1];
+        int expectedNc = evalInts[8];
+        if (expectedNc != nc)
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: class count mismatch (evalInts[8]={expectedNc}, cc.Team.Length={nc})");
+        }
+        if (fits.Length != nc || fitsBefore.Length != nc)
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: fits length mismatch (nc={nc}, fits={fits.Length}, fitsBefore={fitsBefore.Length})");
+        }
+        if (counts.Length != nc * ns || (ns > 1 && ownOf.Length != cc.ClassOf.Length))
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: own-counts shape mismatch (nc={nc}, ns={ns}, counts={counts.Length}, ownOf={ownOf.Length}, worlds={cc.ClassOf.Length})");
+        }
+        if (caseErrs.Length != k || ownErrs.Length != ko || ownQs.Length != ko || flatOwnCodes.Length != ns * ko)
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: evidence array mismatch (k={k}, caseErrs={caseErrs.Length}, ko={ko}, ns={ns}, ownErrs={ownErrs.Length}, ownQs={ownQs.Length}, flatOwnCodes={flatOwnCodes.Length})");
+        }
+        if (routeCredits.Length != cc.NumTests || testLog2Ratios.Length != cc.NumTests)
+        {
+            throw new ArgumentException($"CaseEvalKernel.EvaluatePosterior: test array mismatch (mTests={cc.NumTests}, routeCredits={routeCredits.Length}, testLog2Ratios={testLog2Ratios.Length})");
+        }
         bool hasBias = evalInts[2] != 0;
         int biasTargetIdx = evalInts[3];
         int biasPosCode = evalInts[4];

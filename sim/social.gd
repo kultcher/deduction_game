@@ -396,7 +396,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		w.dlog.add("npc_share", s.id, l.id, {"kind": item["kind"], "about": item.get("about", ""), "from": item.get("from", ""),
 			"relay": item.get("relay", false), "lie": lie, "relayed_lie": relayed_lie}, "%s tells %s: %s%s" % [s.name, l.name, desc, "  [LIE]" if lie else ""])
 	if lie:
-		w.dlog.think(s.id, "lie", "Evil: tells %s %s." % [l.name, desc], {"lie": true})
+		w.dlog.think(s.id, "lie", "Told %s %s." % [l.name, desc], {"lie": true})
 		if not public and s.is_evil() and not l.is_evil() and item.get("kind", "") in ["sighting", "opinion"] and s.id == str(w.evil_plan.get("daily_planter", "")):
 			w.evil_plan["plants_today"] = int(w.evil_plan.get("plants_today", 0)) + 1
 	if l.is_evil():
@@ -664,7 +664,7 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 			if agenda == "frame":
 				var sg = w.by_id[w.evil_plan["scapegoat"]]
 				var why = Evil.cite(w, n, Evil.bluff_reason(w, n, sg))
-				w.dlog.think(n.id, "lie", "Evil: approaches the player to push scapegoat %s." % sg.id)
+				w.dlog.think(n.id, "lie", "Sought you out to push %s, evil's scapegoat." % sg.name)
 				var reason_s: String = ((why[0].to_upper() + why.substr(1)).trim_suffix(".") + ".") if why != "" else "Something's off about them."
 				var canonical_warn: String = "And keep an eye on %s. %s" % [sg.name, reason_s]
 				lines.append(Mind.say_voiced(n, "approach_frame_warn", canonical_warn, {"subject": sg.name, "reason": reason_s}))

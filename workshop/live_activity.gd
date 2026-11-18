@@ -494,7 +494,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	if observations.is_empty() and not (day_demon_share(view) > 0.0 and hex_factor_enabled and has_day_evidence(cards)):
 		return []
 	var tc_digests: Array = view.get("trace_assessments", []).map(func(ta): return str(ta.get("digest", "")))
-	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {}), sighter_contests_enabled]
+	var input = [view.people, view.get("timeline", {}), movement_inputs(view, cards, {}, true), tc_digests, view.get("regular_haunts", {}), sighter_contests_enabled, quiet_guards_enabled, quiet_guards_skip]
 	if view.get("chronology", {}).has("curse"):
 		input.append(view.chronology.curse)
 	if day_demon_share(view) > 0.0:
@@ -549,9 +549,10 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 			p_dict["converted"] = raw_prof[b + 3]
 		profiles[i] = p_dict
 
-	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles) if sighter_contests_enabled else []
+	var guards: Dictionary = _quiet_guards(view, ids, env, cards, packed_checked, stride) if quiet_guards_enabled else {}
+	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles, guards.get("items", [])) if sighter_contests_enabled else []
 	var scene_tables: Array = _build_scene_tables_cs(view, ids, env, checked, packed_checked)
-	var scion_splits: Array = _scion_succession_splits_cs(view, ids, env, checked)
+	var scion_splits: Array = _scion_succession_splits_cs(view, ids, env, checked, guards.get("items", []))
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
 		"label": "Movement / trace: joint live comparison", "profiles": profiles, "scene_tables": scene_tables, "scion_splits": scion_splits,
 		"cards": observations.map(func(c): return c.id), "note": "One joint comparison; persistent activity and evening habits. Unknown passers remain possible. Activity rates and background contamination are experimental priors, not calibrated guilt probabilities."}]
@@ -559,6 +560,8 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 	if not contests.is_empty():
 		result[0]["contests"] = contests
 		result[0]["contest_truth"] = Tuning.Workshop.EVIL_SIGHTER_TRUTH
+	if not guards.is_empty():
+		result[0]["guards"] = guards
 	if share > 0.0:
 		# The Scion's before/after splits keep walking demon profiles; C# mixes each split's
 		# pre x post product over the one shared type (see ScoreWorldCore).
@@ -567,6 +570,88 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		result[0]["hex_floor"] = Tuning.Workshop.HEX_UNKNOWN_FLOOR
 		result[0]["hex_successions"] = hex_successions(view, ids, result[0]["hex_kills"])
 	return result
+
+
+## Diagnostics: turn the quiet-night Warden guards off (_quiet_guards; tests and tools only).
+static var quiet_guards_enabled: bool = true
+## Warden report ids whose guard is left out (the Test juror's leave-one-out,
+## WorkshopCanvas.guard_reasons). The factor and compiled-case keys carry it.
+static var quiet_guards_skip: Array = []
+## At most this many guards, the latest nights first: the Demon's profile is computed for
+## every subset of them.
+const QUIET_GUARD_MAX = 3
+
+## A Warden's guard of a door on a night the Demon killed nobody (BACKLOG "Quiet-night
+## evidence argued by the player"; DESIGN "Warden saves"). Where the Warden and the guarded
+## person are both good, the quiet is the guard holding, so the Demon walked to that door:
+## the same route reasoning as a player's held ward (the scorched sigil), at the reliability
+## of a Warden's claimed save, shared with any other living Veteran claimant who could have
+## turned the Demon instead (1 / (1 + Veteran claims), as the Warden's own belief). The
+## kernel mixes the Demon's profile over which guards held (GuardedDemon). Returns
+## {"items": [{source, target, night, r}], "alt": [the demon profile per subset]}, or {}.
+## The guards in a card list that the route reads, as ids: {report (card id), source,
+## target, night, saved, r}. r is scaled by the card's "route_trust", the listener's trust
+## in the reading (CaseEval._route_trusted).
+static func quiet_guard_cards(view: Dictionary, cards: Array) -> Array:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var d_map: Dictionary = view.get("timeline", {}).get("deaths", {})
+	var busy: Dictionary = {}
+	for ev in view.get("timeline", {}).get("events", []):
+		if ev.get("kind", "") in ["demon_death", "demon_attack"]:
+			busy[int(ev.get("at", {}).get("day", -1))] = true
+	var vets: Array = []
+	for card in cards:
+		if card.get("kind", "") in ["claim", "report"] and str(card.get("role", "")) == "veteran" and not card.get("quoted", false) and str(card.get("source", "")) in ids and str(card.source) not in vets:
+			vets.append(str(card.source))
+	var out: Array = []
+	var seen: Dictionary = {}
+	for card in cards:
+		if card.get("kind", "") != "report" or str(card.get("role", "")) != "warden" or card.get("quoted", false) or card.has("relay_source") or card.get("duty_only", false):
+			continue
+		var night: int = int(card.get("night", -1))
+		var src: String = str(card.get("source", ""))
+		var data = card.get("data", {})
+		var tgt: String = str(data.get("target", "")) if data is Dictionary else ""
+		if night < 1 or src not in ids or tgt not in ids or src == tgt or busy.has(night) or night >= int(d_map.get(src, 2147483647)) or night >= int(d_map.get(tgt, 2147483647)):
+			continue
+		var key: String = "%s:%d" % [src, night]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		var others: int = vets.filter(func(v): return v != src and night < int(d_map.get(v, 2147483647))).size()
+		out.append({"report": str(card.get("id", "")), "source": src, "target": tgt, "night": night, "saved": bool(data.get("saved", false)),
+			"r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others) * clampf(float(card.get("route_trust", 1.0)), 0.0, 1.0)})
+	out.sort_custom(func(x, y): return x.night > y.night or (x.night == y.night and x.source < y.source))
+	# The cap first, then the skip: leaving one guard out mustn't let a capped-out one in
+	# (Codex on #243).
+	return out.slice(0, QUIET_GUARD_MAX).filter(func(g): return g.report not in quiet_guards_skip)
+
+static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed: Dictionary, stride: int) -> Dictionary:
+	var items: Array = quiet_guard_cards(view, cards).map(func(g): return {"source": ids.find(g.source), "target": ids.find(g.target), "night": g.night, "r": g.r})
+	if items.is_empty():
+		return {}
+	return {"items": items, "alt": _guard_alt(items, env, packed, env.has_curse, stride),
+		"curse": {"on": env.has_curse, "from": env.curse_from, "until": env.curse_until}}
+
+## The demon profile of each person with the attacks of each non-empty subset of the guards.
+static func _guard_alt(items: Array, env: Dictionary, packed: Dictionary, include_converted: bool, stride: int) -> Array:
+	var n: int = env.homes.size()
+	var alt: Array = []
+	var bridge = SolverBackend._bridge()
+	for sub in range(1, 1 << items.size()):
+		var ev_sub := PackedInt32Array(env.demon_events)
+		for j in range(items.size()):
+			if sub & (1 << j):
+				ev_sub.append(int(items[j].night))
+				ev_sub.append(int(items[j].target))
+		var raw: PackedFloat64Array = bridge.LiveAllProfiles(
+			include_converted, env.homes, env.deaths, ev_sub, env.has_curse, env.curse_from, env.curse_until,
+			DEMON_DETOUR, packed.ints, packed.doubles)
+		var col: Array = []
+		for i in range(n):
+			col.append(raw[i * stride + 2])
+		alt.append(col)
+	return alt
 
 
 ## The sighters whose word about a person depends on the sighter's alignment: anyone in the
@@ -578,7 +663,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 ## against a person's own home alibi convicted the alibi-giver alone (Tally, Nov 11: evil's
 ## fake sightings of good stay-at-homes). At most SIGHTER_CONTEST_MAX sighters a person,
 ## the most-cited first. The Scion's split branches keep their usual profiles.
-static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, cards: Array, checked: Array, profiles: Array) -> Array:
+static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, cards: Array, checked: Array, profiles: Array, guard_items: Array = []) -> Array:
 	var n: int = ids.size()
 	var curse: Dictionary = view.get("chronology", {}).get("curse", {})
 	var by_person: Dictionary = {}   # person idx -> {sighter idx: count}
@@ -586,15 +671,19 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	for c in checked:
 		if c.get("quoted", false):
 			continue
-		# Who might have made it up: the sighter, and for a relayed sighting (a Medium's word
-		# from the dead) the relayer too, since an evil relayer can invent what the dead saw.
+		# Who might have made it up: the sighter; for a relayed card (a Medium's word from the
+		# dead) only the relayer. The dead person never told it: a Medium learns what they
+		# knew and never said, firsthand, so the dead can't have invented it, and an evil
+		# relayer can. Counting the dead as a teller too let the two-sighter cap drop the
+		# relayer, so an invented relay was weighed as the dead's honest word (seeds 929 and
+		# 100029; BACKLOG "A relayer cut from the sighter contest", Michael, Nov 18).
 		var tellers: Array = []
 		var si: int = ids.find(str(c.get("source", "")))
-		if si >= 0:
-			tellers.append(si)
 		var ri: int = ids.find(str(c.get("relay_source", ""))) if c.has("relay_source") else -1
-		if ri >= 0 and ri != si:
+		if ri >= 0:
 			tellers.append(ri)
+		elif si >= 0:
+			tellers.append(si)
 		if tellers.is_empty():
 			continue
 		var named: Array = []
@@ -627,6 +716,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	var stride: int = 4 if has_curse else 3
 	var bridge = SolverBackend._bridge()
 	var alt_cache: Dictionary = {}   # [full sighters, cursed-only sighter] -> raw profiles
+	var guard_cache: Dictionary = {}   # the same key -> the guard subsets' demon columns
 	# The balance C is an outsider's: how often an honest sighter would report this, from what
 	# anyone could know. The listener's own knowledge of its nights (known_self cards) stays
 	# out of it; otherwise knowing a sighting of itself is false would make an honest one
@@ -664,6 +754,10 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			alt_cache[key] = bridge.LiveAllProfiles(
 				has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
 				DEMON_DETOUR, packed.ints, packed.doubles)
+			# With quiet-night guards, the same alternative with each guard subset's attacks
+			# (Codex on #243): removing a witness's sightings keeps the guards' evidence.
+			if not guard_items.is_empty():
+				guard_cache[key] = _guard_alt(guard_items, env, packed, has_curse, stride)
 			if not private_ids.is_empty():
 				var minus_out: Array = minus.filter(func(x): return str(x.get("id", "")) not in private_ids)
 				var packed_out: Dictionary = _pack_activity_cards(ids, env.homes, minus_out, {}, {})
@@ -683,7 +777,10 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 		var c: float = 0.0
 		for a in range(3):
 			c += weights[a] * (with_c[a] / alt_c[a] if alt_c[a] > 1e-30 else 1.0)
-		return {"alt": alt, "c": c}
+		var out_sub: Dictionary = {"alt": alt, "c": c}
+		if guard_cache.has(key):
+			out_sub["guard_alt"] = guard_cache[key].map(func(col): return col[pi])
+		return out_sub
 	var out: Array = []
 	var persons: Array = by_person.keys()
 	persons.sort()
@@ -899,8 +996,8 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_factor_handles.clear()
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", [])]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", [])])
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {})]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {})])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -1008,6 +1105,40 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 						c_doubles.append(float(v))
 					c_doubles.append(float(sub.c))
 		bridge.LiveAttachContests(h, c_ints, c_doubles)
+	var guards: Dictionary = factor.get("guards", {})
+	if not guards.is_empty():
+		var g_ints := PackedInt32Array([guards.items.size()])
+		var g_doubles := PackedFloat64Array()
+		for item in guards.items:
+			g_ints.append(int(item.source))
+			g_ints.append(int(item.target))
+			g_ints.append(int(item.night))
+			g_doubles.append(float(item.r))
+		for col in guards.alt:
+			for v in col:
+				g_doubles.append(float(v))
+		for sp in factor.get("scion_splits", []):
+			for side in ["pre_guard_alt", "post_guard_alt"]:
+				for col in sp.get(side, []):
+					for v in col:
+						g_doubles.append(float(v))
+		# The contested sightings' guarded alternatives, in person order as AttachContests
+		# stored them: per subset, then per converted sighter's subsets.
+		var by_p: Array = factor.get("contests", []).duplicate()
+		by_p.sort_custom(func(x, y): return int(x.person) < int(y.person))
+		for ct in by_p:
+			for sub in ct.subsets:
+				for v in sub.get("guard_alt", []):
+					g_doubles.append(float(v))
+			for per in ct.get("converted", []):
+				for sub in per:
+					for v in sub.get("guard_alt", []):
+						g_doubles.append(float(v))
+		var curse: Dictionary = guards.get("curse", {})
+		g_ints.append(1 if curse.get("on", false) else 0)
+		g_ints.append(int(curse.get("from", 0)))
+		g_ints.append(int(curse.get("until", 0)))
+		bridge.LiveAttachGuards(h, g_ints, g_doubles)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}
@@ -1197,8 +1328,23 @@ static func mix_demon(walking: float, still: float, share: float) -> float:
 		return walking
 	return walking * (1.0 - share) + still * share
 
+## How often a good person is out on a night, as the movement model's good profile has it,
+## from what the cards say they claim (ReadingChallenges._outing_poison_chance): its profile
+## weights (_likelihood_gd) times each profile's walk rate (_profile_paths).
+static func good_walk_chance(cards: Array, person: String) -> float:
+	var role: String = role_of(cards, person)
+	var gift: bool = bool(C.ROLES.get(role, {}).get("night_walk", false))
+	if role != "" and not gift:
+		return 0.9 * PROFILE_RATES.ordinary + 0.1 * PROFILE_RATES.secret
+	if gift:
+		return WALKER_CLAIM_HOME * PROFILE_RATES.ordinary + WALKER_CLAIM_GIFT * PROFILE_RATES.gift + WALKER_CLAIM_SECRET * PROFILE_RATES.secret
+	return 0.75 * PROFILE_RATES.ordinary + 0.15 * PROFILE_RATES.gift + 0.1 * PROFILE_RATES.secret
+
+## Each profile's chance of being out on a night (the C# kernel's BuildProfilePaths has the same).
+const PROFILE_RATES = {"minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
-	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": PROFILE_RATES.minion, "gift": PROFILE_RATES.gift, "secret": PROFILE_RATES.secret, "ordinary": PROFILE_RATES.ordinary}
 	var rate: float = rates[profile]
 	if profile == "gift" and night < 1 and role_of(cards, person.id) == "warden":
 		rate = 0.0  # no guard on night 0 (triage 7.1): a night-0 outing isn't the Warden's gift
@@ -1284,7 +1430,7 @@ static func relationships(view: Dictionary, cards: Array) -> Array:
 			result.append("Scattered sightings: %s's movements fit the claimed %s gift. This is corroboration, not proof of that identity." % [person.name, C.role_name(role)])
 	return result
 
-static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dictionary, cards: Array) -> Array:
+static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dictionary, cards: Array, guard_items: Array = []) -> Array:
 	var out: Array = []
 	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
 	if execs.is_empty():
@@ -1338,10 +1484,18 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 			post_profiles[i] = {"good": raw_post[b], "minion": raw_post[b + 1], "demon": raw_post[b + 2]}
 		var pre_scenes: Array = _build_scene_tables_cs(view, ids, env, pre_cards, p_pre)
 		var post_scenes: Array = _build_scene_tables_cs(view, ids, env, post_cards, p_post)
+		# The quiet-night guards on each side (Codex on #243): the same subsets as the direct
+		# branch, against each side's own cards.
+		var pre_guard_alt: Array = _guard_alt(guard_items, env, p_pre, false, 3) if not guard_items.is_empty() else []
+		var post_guard_alt: Array = _guard_alt(guard_items, env, p_post, false, 3) if not guard_items.is_empty() else []
 		for exec_id in execs[day_str]:
 			var idx: int = ids.find(exec_id)
 			if idx >= 0:
-				out.append({"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles, "pre_scenes": pre_scenes, "post_scenes": post_scenes})
+				var split: Dictionary = {"exec_day": exec_day, "executed_idx": idx, "alive_demon_mask": alive_mask, "pre_profiles": pre_profiles, "post_profiles": post_profiles, "pre_scenes": pre_scenes, "post_scenes": post_scenes}
+				if not guard_items.is_empty():
+					split["pre_guard_alt"] = pre_guard_alt
+					split["post_guard_alt"] = post_guard_alt
+				out.append(split)
 	return out
 
 static func crossing_probability(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:

@@ -116,7 +116,7 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Call
 		return {}
 	e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
 	e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
-	return {"entry": e, "why": "made up a reading from the late Dowser %s that sensed evil around %s, whom evil meant to hang" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Dowser %s that sensed evil around %s, evil's scapegoat" % [dd.id, s], "frames": true}
 
 
 ## Another count over the same crowd (FabricationCheck: a better lie).

@@ -60,7 +60,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 		return {}
 	if n.is_evil():
 		block = block if was_out else n.home_block
-		w.dlog.think(n.id, "lie", "Evil bluffing %s: claims their gift took them out on night %d." % [n.claimed_role, nd], {"lie": true})
+		w.dlog.think(n.id, "lie", "Claimed their gift as the %s took them out %s." % [content().role_name(n.claimed_role), content().spoken_when(nd, -1)], {"lie": true})
 	return {
 		"handled": true,
 		"line": mind.say_voiced(n, "duty_lamplighter", "Walking the lamp route, as I do every night."),

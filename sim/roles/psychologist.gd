@@ -251,7 +251,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 			var entry_b: Dictionary = _pair_reading_dict(w.day, pair_b[0], pair_b[1], false, "evil fabrication")
 			entry_b.erase("true")
 			entry_b.erase("why")
-			return {"entry": entry_b, "why": "named the words of %s, whom evil meant to hang, as a likely lie" % s}
+			return {"entry": entry_b, "why": "named the words of %s, evil's scapegoat, as a likely lie" % s}
 	if non_evil.size() >= 2 and w.chance(0.6):
 		var sh_ne: Array = w.shuffled(non_evil)
 		var entry_ne: Dictionary = _pair_reading_dict(w.day, sh_ne[0], sh_ne[1], false, "evil fabrication")

@@ -5,6 +5,7 @@ extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const FabricationCheck = preload("res://sim/fabrication_check.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
@@ -89,6 +90,7 @@ static func _pick_scapegoat(w, why: String) -> void:
 			best_s = s
 			best = g
 	w.evil_plan["scapegoat"] = best.id
+	_forget_frames(w)
 	w.dlog.think(w.demon_id, "scapegoat", "Evil picks %s as scapegoat (%s)." % [best.id, why])
 
 ## Each morning (from day 2), evil reconsiders its scapegoat: ride the town's suspect
@@ -142,6 +144,7 @@ static func review_scapegoat(w) -> void:
 			best = g.id
 	if best != "" and best != cur:
 		w.evil_plan["scapegoat"] = best
+		_forget_frames(w)
 		w.dlog.think(w.demon_id, "scapegoat", "Evil switches scapegoat %s -> %s (scores %s)." % [cur, best, str(table)], {"scores": table, "from": cur, "to": best})
 	else:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
@@ -243,7 +246,8 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 	var night = maxi(0, dd.death_day - 1)
 	var sg = w.by_id[s]
 	if w.chance(C.MEDIUM_USELESS_CHANCE):
-		var gs: Array = w.living_good()
+		# An empty one names someone harmless: never the scapegoat, whom it would clear.
+		var gs: Array = w.living_good().filter(func(x): return x.id != s)
 		if not gs.is_empty() and w.chance(0.5):
 			var g = w.pick(gs)
 			return {"item": {"type": "sighting", "who": g.id, "block": g.home_block, "night": night, "lie": true, "idle": true},
@@ -257,9 +261,13 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 		var r = _fake_dead_reading(w, n, dd, dd.claimed_role, s, night)
 		if not r.is_empty() and (frame_ok or not r["frames"]):
 			opts.append([3.0, {"item": {"type": "reading", "entry": r["entry"], "lie": true}, "why": r["why"], "frames": r["frames"]}])
+	# Night 0 can't frame: the Demon never walks it, so the scapegoat "out" then reads as
+	# innocent. The first victim's frame is told on the night they died instead, when the
+	# Demon did walk (BACKLOG, "An evil Medium's relay about the first victim names night 0").
+	var frame_night: int = night if night >= 1 else maxi(1, dd.death_day)
 	if frame_ok and sg.home_block != dd.home_block:
-		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
-			"why": "claimed the late %s saw %s, whom evil meant to hang, out near their cottage on their last night" % [dd.id, s], "frames": true}])
+		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": frame_night, "lie": true},
+			"why": "claimed the late %s saw %s, evil's scapegoat, out near their cottage on their last night" % [dd.id, s], "frames": true}])
 	if dd.info_log.any(func(e): return e.get("shared", false)):
 		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "said the late %s had nothing new to tell" % dd.id, "frames": false}])
 	var said: String = w.stances.get(dd.id, {}).get("target", "")
@@ -767,11 +775,14 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				out["why"] = str(he.get("why", "evil fabrication")) + "; " + str(re.get("note", ""))
 			_mark_fake(out)
 			if re["outcome"] == "held":
+				if _boxed_in_gift_doubt(w, m, out):
+					continue
 				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
-				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
+				w.dlog.think(m.id, "lie", "Still couldn't tell its held-back %s reading safely, so kept holding it." % C.role_name(str(out.get("role", ""))), {"lie": true})
 				continue
 			m.info_log.append(out)
-			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
+			_remember_frame(m, out, str(w.evil_plan.get("scapegoat", "")))
+			w.dlog.think(m.id, "lie", "Told its held-back %s reading at last." % C.role_name(str(out.get("role", ""))), {"lie": true})
 			# The reveal lists what was actually told (Steward A2): the released version.
 			w.dlog.add("fake_info", m.id, "", out, "%s (evil) tells its held-back reading: %s [%s]" % [m.name, out.get("text", ""), out.get("why", "")])
 		m.held_fakes = keep
@@ -801,6 +812,10 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		entry = _stamp_fake(w, gen["entry"], bluff, day_only)
 		why = gen["why"]
+		var kept: Dictionary = _keep_frame(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
+		if not kept.is_empty():
+			entry = kept["entry"]
+			why = kept["why"]
 		# Checked against what's already public: a self-incriminating one may be noticed,
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
@@ -819,7 +834,32 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			w.dlog.add("fake_info_held", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
 			continue
 		n.info_log.append(entry)
+		_remember_frame(n, entry, s)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## BACKLOG "Saying 'my gift may have been turned'", part (b) (Michael, Nov 17-18): a liar
+## whose reading has been held back twice running, for a gift it has claimed in public, has
+## no telling left that doesn't point at itself or a teammate. Rather than keep holding it,
+## it drops the reading and will tell the town its gift may have been turned
+## (MindMeeting._say_gift_doubt). Only where a Poisoner or Delusional could be in play, or
+## the excuse would make no sense; at most once a game. Returns whether it did.
+static func _boxed_in_gift_doubt(w, m, entry: Dictionary) -> bool:
+	var role: String = str(entry.get("role", ""))
+	if not m.claim_public or m.claimed_role != role or not m.gift_doubt.is_empty() or not gift_turn_possible(w):
+		return false
+	var why: String = "it had held back its made-up %s reading twice, and every way of telling it would have turned the town on itself or a fellow evil" % C.role_name(role)
+	m.gift_doubt = {"day": w.day, "role": role, "why": why}
+	w.dlog.think(m.id, "plan", "Evil: boxed in on its %s reading; drops it and will say its gift may have been turned (%s)." % [role, why])
+	w.dlog.add("gift_doubt_planned", m.id, "", entry, "%s (evil, bluffing %s) drops a reading it can't tell safely and will claim its gift was turned [%s]" % [m.name, role, why])
+	return true
+
+## Whether a turned gift is possible in this case: a Poisoner among the script's minions or
+## Delusional among its secrets (the Default script when there's none).
+static func gift_turn_possible(w) -> bool:
+	var sc = w.case_script
+	var minions: Array = sc.minions if sc != null else ScriptDef.default_minions()
+	var secrets: Array = sc.secrets if sc != null else C.SECRET_MOD_LIST
+	return "poisoner" in minions or "delusional" in secrets
 
 ## A fabrication's motive with people's ids swapped for their names, so the end-of-game
 ## reveal reads "the dead Seer Lian 'cleared' the demon Merrin", not raw ids (Steward A3,
@@ -859,6 +899,48 @@ static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary,
 				e2.erase("phase")
 			out.append({"entry": e2, "why": str(alt.get("why", ""))})
 		return out
+
+## A bluffer's frame memory (BACKLOG, Michael, Nov 17). Earlier made-up readings told under
+## the current scapegoat implicated some people; a fresh one that would clear any of them
+## drifts from the story. A liar who keeps its story (chance from Insight and Confidence)
+## tells one of the rule's other readings that doesn't, if there is one. The memory is the
+## readings told under this scapegoat, so it drops when the team switches. Returns
+## {"entry", "why"} for a swap, or {} to tell the fresh one.
+static func _keep_frame(w, n, entry: Dictionary, alternatives: Callable, s: String) -> Dictionary:
+	var earlier: Array = n.bluff_frame.get("implicated", []) if str(n.bluff_frame.get("sg", "")) == s else []
+	if earlier.is_empty() or not _drifts(entry, earlier):
+		return {}
+	var traits: float = (float(n.traits.get("insight", 0.5)) + float(n.traits.get("confidence", 0.5))) / 2.0
+	var p_keep: float = clampf(Tuning.Evil.FRAME_MEMORY_BASE + Tuning.Evil.FRAME_MEMORY_TRAITS * traits, 0.0, 1.0)
+	if not w.decision_roll(n, "keep_frame", p_keep, {"traits": traits, "earlier": earlier}):
+		w.dlog.think(n.id, "plan", "Evil: its new made-up reading clears someone its earlier ones implicated; doesn't notice.")
+		return {}
+	for alt in alternatives.call():
+		var e2: Dictionary = alt.get("entry", {})
+		if e2.is_empty() or _drifts(e2, earlier):
+			continue
+		w.dlog.think(n.id, "plan", "Evil: keeps its story; tells a reading that doesn't clear the ones its earlier readings implicated.")
+		return {"entry": e2, "why": str(alt.get("why", ""))}
+	return {}
+
+## A made-up reading told under scapegoat `s` joins the bluffer's frame memory; a new
+## scapegoat starts it afresh.
+static func _remember_frame(n, entry: Dictionary, s: String) -> void:
+	if str(n.bluff_frame.get("sg", "")) != s:
+		n.bluff_frame = {"sg": s, "implicated": []}
+	for x in Gifts.implicated(entry):
+		if not (x in n.bluff_frame["implicated"]):
+			n.bluff_frame["implicated"].append(x)
+
+## A new scapegoat: every bluffer's frame memory drops, even one that told nothing under the
+## last (Codex on #255: a switch A -> B -> A must not bring the old A memory back).
+static func _forget_frames(w) -> void:
+	for m in w.evil_team():
+		m.bluff_frame = {}
+
+## Whether a reading clears anyone in `earlier`.
+static func _drifts(e: Dictionary, earlier: Array) -> bool:
+	return Gifts.clears(e).any(func(x): return x in earlier)
 
 static func _mark_fake(entry: Dictionary) -> void:
 	entry["shared"] = false
@@ -907,12 +989,12 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 			if watch["data"].get("block", "") == vantage and not seen.is_empty():
 				var who: String = s if s in seen else seen[0]
 				result = {"kind": "saw", "who": who, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": "street"}
-				w.dlog.think(n.id, "lie", "Evil: tells the night-%d sighting of %s from its own fake watch report." % [nd, who], {"lie": true})
+				w.dlog.think(n.id, "lie", "Told of seeing %s %s, from its made-up watch." % [w.by_id[who].name, C.spoken_when(nd, -1)], {"lie": true})
 			cache[key] = result if result != null else false
 		elif s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(Tuning.Evil.FAKE_SIGHTING_INVENT_PROB):
 			var detail = "leaving_home" if (how == "window" and w.by_id[s].home_block == vantage and w.chance(0.5)) else "street"
 			result = {"kind": "saw", "who": s, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": detail}
-			w.dlog.think(n.id, "lie", "Evil: invents a night sighting of scapegoat %s on %s (%s)." % [s, vantage, "from their window" if how == "window" else "while out"], {"lie": true})
+			w.dlog.think(n.id, "lie", "Made up seeing %s, evil's scapegoat, on %s at night, %s." % [w.by_id[s].name, C.block_name(vantage), "from their window" if how == "window" else "while out"], {"lie": true})
 		if not cache.has(key):
 			cache[key] = result if result != null else false
 	var r = cache[key]
@@ -937,7 +1019,7 @@ static func fake_gossip(w, speaker):
 		if w.scenes[sid]["day"] == w.day - 1:
 			block = w.scenes[sid]["block"]
 	var sg = w.by_id[s]
-	w.dlog.think(speaker.id, "lie", "Evil gossip: spreads a false rumour that %s was out on %s." % [s, block], {"lie": true})
+	w.dlog.think(speaker.id, "lie", "Spread a false rumour that %s was out on %s." % [w.by_id[s].name, C.block_name(block)], {"lie": true})
 	return {"lines": ["You overhear %s telling the room that %s was skulking around %s last night." % [speaker.name, sg.name, C.block_name(block)]],
 		"facts": [{"kind": "sighting", "subject": [s], "block": block, "day": w.day - 1, "phase": C.NIGHT, "source": speaker.id,
 			"text": "Gossip from %s: %s was out on %s on night %d." % [speaker.name, sg.name, C.block_name(block), w.day - 1]}]}

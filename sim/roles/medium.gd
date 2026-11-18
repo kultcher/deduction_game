@@ -207,7 +207,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 		return {}
 	if n.is_evil():
 		block = bluff_hearth(w, n, nd)
-		w.dlog.think(n.id, "lie", "Evil bluffing Medium: claims to have sat at a hearth on %s on night %d." % [block, nd], {"lie": true})
+		w.dlog.think(n.id, "lie", "Claimed to have sat at a hearth on %s %s, as the Medium." % [content().block_name(block), content().spoken_when(nd, -1)], {"lie": true})
 	var hearth = hearth_dead(w, n, nd)
 	var duty: String = "Communing with the dead at %s's hearth, as my gift asks." % hearth.name if hearth != null else "Communing with the dead, as my gift asks."
 	var duty_line: Dictionary = mind.say_voiced(n, "duty_medium_hearth", duty, {"target": hearth.name}) if hearth != null else mind.say_voiced(n, "duty_medium_plain", duty)

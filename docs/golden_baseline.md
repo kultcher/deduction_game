@@ -44,7 +44,68 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
+### Current baseline (Nov 18, a relayed sighting's only teller is its relayer): `baseline_23d0330`
+
+`tools/golden/baseline_23d0330/` is the capture from `claude/relayer-in-contest` at `23d0330`
+(main `b65b728` merged in): in the sighter contests a Medium's relay is contested only as the
+relayer's word. The dead person never told it, so it can't have invented it; counting them
+as a teller too let the two-sighter cap drop the relayer, and an evil Medium's invented relay
+was weighed as the dead's honest word.
+- **Divergence from `baseline_be621cd`:** 98933 only, from record 209 (Agnes's refresh on day
+  2, after the good Medium Agnes's relays): beliefs move in the fourth decimal. 42, 54875,
+  692 and 900 are identical.
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed. Record
+  counts are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, evil's lie reasons in plain words): `baseline_be621cd`
+
+`tools/golden/baseline_be621cd/` is the capture from `claude/herald-lie-reasons` (#241) at
+`be621cd` (main `040d115` merged in): evil's "think: lie" lines and fabrication reasons are
+reworded for the reveal (names, roles, ordinal nights, "evil's scapegoat").
+- **Divergence from `baseline_490cdcf`:** text only. 394 strings differ (the `why` of fake
+  readings and sightings, and the lie lines), no number, list or other value. 42 and 900 are
+  identical; 54875 differs from record 84, 692 from 82, 98933 from record 1.
+- **Outcomes:** all unchanged (42 good day 3; 54875 good day 2; 692 and 900 reach day 4 with no
+  winner, the same executions; 98933 reaches day 4 with no executions). Record counts unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
+
+`tools/golden/baseline_490cdcf/` is the capture from `claude/delusional-self-doubt-2` (#216) at
+`490cdcf` (main `f23566a` merged in): with Delusional on the script, a good listener that
+could hold it gives each night of its own readings a small honest doubt
+(`DELUSIONAL_SELF_DOUBT`, 10%), so its own gift's word softens a little, never as a charge
+of lying.
+- **Divergence from `baseline_58dac68`:** beliefs from the first record on every seed (the
+  first day's own readings carry the doubt: a Lamplighter's, Night Watch's, Clerk's,
+  Surveyor's or Seer's reading weighs about a tenth less to its holder).
+- **Outcomes:** 42, 54875, 692 and 900 unchanged (42 good day 3; 54875 good day 2; 692 and 900
+  reach day 4 with no winner, the same executions). **98933 changes:** the town no longer
+  hangs Isolde (the Revenant, evil) on day 3; all five day-3 nominations fail, Nisha's of the
+  Demon Odette at 3 of the 5 votes needed. It still reaches day 4 with no winner. Record
+  counts are the same except 98933 (386, was 414).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a "taken together" reason measured in the belief model): `baseline_58dac68`
+
+`tools/golden/baseline_58dac68/` is the capture from `claude/joint-reasons-in-belief-model` at
+`58dac68` (main `80f7605` merged in): reason attribution weighs a joint ("taken together")
+reason by re-running the listener's own connections refresh without the card, so the reason
+an NPC gives is what moved it in the belief model.
+- **Divergence from `baseline_44073d9`:** reasons first, then what NPCs say and hear: 42 from
+  record 77 (Fenwick's reason for Agnes, day 3), 54875 from 196 (Edda's reasons, day 2), 692
+  from 38 (Nisha's suspicion, float noise at 1e-17, day 1), 900 from 116 (a few beliefs by
+  about 0.2 points, day 2), 98933 from 117 (Lian's reasons, day 2). With the new measure's
+  results thrown away but its refreshes still run, seeds 900 and 692 are identical to
+  `baseline_44073d9`, so the change comes through the reasons, not a side effect. Record
+  counts: 692 has 277 (was 266), 900 201 (was 202); the others are the same.
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
+  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner).
+- **Stability:** two captures were identical, and identical to the capture before main was
+  merged in.
+
+### Earlier baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
 
 `tools/golden/baseline_44073d9/` is the capture from `claude/own-night-knowledge` (#228) at
 `44073d9` (main `65a41b4` merged in): a good listener's known home nights reach its movement

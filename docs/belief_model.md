@@ -452,6 +452,22 @@ is false has no honest explanation. That cancelled the relay's weight against it
   raises the relayer by 16 points (it was 1), a planted street sighting by 21 (it was 20),
   and a Sleepwalker honestly seen out still stays about even on the sighter (+1).
 
+### A relayed sighting's teller is its relayer (Lantern, Nov 18)
+
+The sighter contests doubt a sighting by its teller's alignment: in a world where the teller
+is evil, the sighting may be invented. A Medium's relay used to name two tellers, the dead
+source and the relayer. But the dead never told it: a Medium learns what they knew and never
+said, firsthand, so only the relayer can have invented it. With both counted, the two-sighter
+cap (`SIGHTER_CONTEST_MAX`) could keep the dead and drop the relayer, and an invented relay
+was weighed as the dead's honest word. Now a relayed card's only teller is the relayer, as a
+relayed alibi's already was.
+
+- **Seed 100029** (`test_relay_bluff`, which #216's change in play moved onto it): Hollis, the
+  Demon bluffing Medium, relays the dead Jory seeing Merrin out on the night Jory died. Merrin's
+  sighters were Fenwick, Jory and Hollis; the cap kept Fenwick and Jory, and Hollis's relays
+  took him from 0.83 to 0.46 for Nisha. With the relayer contested they no longer clear him.
+- Seed 929 (Nov 13), the case that found it, is the same shape.
+
 ### Premise centring, option B (Lantern, Nov 18)
 
 Michael's goal (Nov 17-18, `docs/design/premise_centring.md`): a listener hearing "X is evil"

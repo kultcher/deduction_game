@@ -192,6 +192,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var delivery_key = signature + "|" + audience
 	var text: String = assessment.response
 	var trapped_out: bool = false
+	var trapped_night: int = -1
 	var trapped_canonical: String = ""
 	var trapped_voiced: String = ""
 	if not repeated and not n.is_shadow and n.secret_mod != "sleepwalker":
@@ -202,6 +203,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 				trapped_voiced = Mind.Dialogue.voice_line(n.id, "trapped_night_out", trapped_canonical)
 				text = trapped_voiced
 				trapped_out = true
+				trapped_night = int(alibis[0].observed_at.day)
 				break
 	var repeated_same_audience: bool = repeated and state.get("delivered", {}).get(delivery_key, "") == inputs
 	if repeated_same_audience:
@@ -210,9 +212,25 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		for claim in assessment.claims:
 			if claim.conclusion.target in targets.slice(1):
 				text += " About %s: %s" % [g.w.by_id[claim.conclusion.target].name, claim.note]
+	# A "failed gift" (or "misled") call on a reading says its teller is good but was wrong:
+	# it goes in the track record as "R is good", so a wrong call costs credibility at dawn
+	# ("poisoned, not lying", Michael, Nov 18). Never over a conclusion the case states about
+	# the same person: those are recorded already (GamePresentation._evaluate_deduction) or
+	# just below, and stand (Codex on #252).
+	var stated: Array = targets.duplicate()
+	for conc in [card.get("conclusion", {}), root.get("conclusion", {})]:
+		if conc is Dictionary:
+			for k in ["a", "target"]:
+				if str(conc.get(k, "")) != "":
+					stated.append(str(conc.get(k, "")))
+	for rc in assessment.get("reading_challenges", []):
+		var rc_src: String = str(rc.get("source", ""))
+		if str(rc.get("mode", "")) in ["impaired", "misled"] and rc_src != "" and g.w.by_id.has(rc_src) and rc_src not in stated:
+			preload("res://game/credibility.gd").record(n, "good", rc_src, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL, int(card.get("n", 0)) if card.get("kind", "") == "deduction" else 0)
 	if direction != "deduction":
 		for target in targets:
-			preload("res://game/credibility.gd").record(n, "good" if direction == "defend" else "evil", target, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
+			preload("res://game/credibility.gd").record(n, "good" if direction == "defend" else "evil", target, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL,
+				int(card.get("n", 0)) if card.get("kind", "") == "deduction" else 0)  # a cited case owns the claim (Codex on #262)
 			var eid = "workshop:tell:%s:%s" % [key, target]
 			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", ""), "conclusion": root.conclusion.duplicate(true)}
 			if card.get("kind") == "deduction":
@@ -364,6 +382,17 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
 		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": descriptor_special, "voiced_text": spoken_line["text"]}
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
+	var trapped_facts: Array = []
+	if trapped_out and speak and not n.silenced:
+		# "Fine, I was out", then why, if they're open enough (Michael, Nov 18): the day's
+		# disclosure tier, no new number. Tier 1, or no honest reason, and the line stands alone.
+		var tier: int = Mind._target_tier(g.w, n)
+		var why: Dictionary = {}
+		if tier >= 2:
+			why = preload("res://sim/mind_podium.gd").press_night(g.w, n, trapped_night, true, true) if venue != "private" else Mind.MindDialogue.trapped_explanation(g.w, n, trapped_night)
+		g.w.dlog.think(n.id, "admit_out", "Caught out of a home alibi (tier %d): %s." % [tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
+		lines.append_array(why.get("lines", []))
+		trapped_facts = why.get("facts", [])
 	g.w.dlog.trace_event("workshop_presentation", n.id, root.conclusion.get("a", ""),
 		{"venue": venue, "key": key, "agreement": assessment.agreement, "stance": assessment.stance,
 		"reading_challenges": assessment.get("reading_challenges", []),
@@ -391,7 +420,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			n.dialogue_memory["granted_lies"] = {}
 		# The case's key, so a withdrawn case takes the grant with it (Codex P2 on #215).
 		n.dialogue_memory["granted_lies"][ctarget] = {"day": g.w.day, "key": key}
-	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
+	var result = {"lines": lines, "facts": trapped_facts, "agreement": assessment.agreement, "repeated": repeated,
 		"dialogue": descriptor, "workshop": true, "assessment": assessment}
 	g._workshop_repeats[repeat_key] = {"input": state.discussion[signature], "result": result.duplicate(true)}
 	return result
