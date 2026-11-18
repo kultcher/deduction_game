@@ -352,7 +352,7 @@ class Trust:
 
 	## Conversation, pressing, promises, nominations, clemency & presentations
 	const CIVIL_TALK_BASE = 0.04
-	const CIVIL_TALK_PRIVACY_DAMP = 0.5
+	const CIVIL_TALK_PRIVACY_DAMP = 0.0  # Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5)
 	const QUESTION_FATIGUE_LIMIT = 3
 	const QUESTION_FATIGUE_BASE = 0.03
 	const QUESTION_FATIGUE_PRIVACY = 0.05

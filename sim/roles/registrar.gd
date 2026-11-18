@@ -304,10 +304,10 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, mate, asked: Arra
 		tid = s
 		if w.by_id[s].claim_public and w.by_id[s].claimed_role in roles:
 			yes = false
-			why = "contradicted the %s claimed by %s, whom evil meant to hang" % [content().role_name(w.by_id[s].claimed_role), s]
+			why = "contradicted the %s claimed by %s, evil's scapegoat" % [content().role_name(w.by_id[s].claimed_role), s]
 		else:
 			yes = true
-			why = "named %s, whom evil meant to hang, among the register's roles" % s
+			why = "named %s, evil's scapegoat, among the register's roles" % s
 	elif mate != null and mate != n and mate.alive and not checked.has(mate.id) and str(plan.get("bluffs", {}).get(mate.id, "")) in roles and w.chance(0.45):
 		tid = mate.id
 		yes = true

@@ -90,7 +90,7 @@ static func press_role(w, d, grounds: bool) -> Dictionary:
 	var why: String = ("Evil cover: pressed at the podium, claim bluff %s?" % role) if d.is_evil() else ("Pressed at the podium: claim %s before the town?" % role)
 	if _mind().decide(w, d, "podium_claim", parts, why):
 		if d.is_evil():
-			w.dlog.think(d.id, "lie", "Evil cover: claims bluff %s when pressed at the podium." % role, {"bluff": role, "true_role": d.role})
+			w.dlog.think(d.id, "lie", "Pressed before the town, claimed to be the %s, as cover." % C.role_name(role), {"bluff": role, "true_role": d.role})
 		MindMeeting._public_disclosure(w, d, lines, facts)
 		return {"lines": lines, "facts": facts, "outcome": "claim"}
 	var pk: String = C.package_of(role)
@@ -99,7 +99,7 @@ static func press_role(w, d, grounds: bool) -> Dictionary:
 		hint_parts["hint_ease"] = Tuning.Meeting.PODIUM_HINT_EASE
 		if _mind().decide(w, d, "podium_hint", hint_parts, "Pressed at the podium: hint at my gift (%s) instead?" % pk):
 			if d.is_evil():
-				w.dlog.think(d.id, "lie", "Evil: hints at bluff %s when pressed at the podium." % role, {"lie": true})
+				w.dlog.think(d.id, "lie", "Pressed before the town, hinted at being the %s, as cover." % C.role_name(role), {"lie": true})
 			var pkg: Dictionary = C.HINT_PACKAGES[pk]
 			lines.append(_say(d, "hint_pkg_" + pk, pkg["text"] + " That's as far as I'll go."))
 			facts.append({"kind": "hint", "subject": [d.id], "source": d.id, "package": pk, "roles": pkg["roles"], "public": true,
@@ -245,7 +245,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				"privacy_stonewalls": -(_trait(d, "privacy") - 0.5) * Tuning.Dialogue.LIE_BOLD_PRIVACY_SLOPE},
 				"Pressed on night %d before the town: lie outright rather than refuse?" % nd)
 			if bold:
-				w.dlog.think(d.id, "lie", "Pressed at the podium: was on %s on night %d, says they were home." % [block, nd], {"lie": true})
+				w.dlog.think(d.id, "lie", "Pressed before the town, said they were home %s, though they were out on %s." % [C.spoken_when(nd, -1), C.block_name(block)], {"lie": true})
 				if not (nd in d.lied_nights):
 					d.lied_nights.append(nd)
 				lines.append(_home_alibi(w, d, nd))
