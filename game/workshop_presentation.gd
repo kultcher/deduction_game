@@ -212,11 +212,18 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 				text += " About %s: %s" % [g.w.by_id[claim.conclusion.target].name, claim.note]
 	# A "failed gift" (or "misled") call on a reading says its teller is good but was wrong:
 	# it goes in the track record as "R is good", so a wrong call costs credibility at dawn
-	# ("poisoned, not lying", Michael, Nov 18). Recorded before the case's own conclusions, so
-	# a premise about the same person stands.
+	# ("poisoned, not lying", Michael, Nov 18). Never over a conclusion the case states about
+	# the same person: those are recorded already (GamePresentation._evaluate_deduction) or
+	# just below, and stand (Codex on #252).
+	var stated: Array = targets.duplicate()
+	for conc in [card.get("conclusion", {}), root.get("conclusion", {})]:
+		if conc is Dictionary:
+			for k in ["a", "target"]:
+				if str(conc.get(k, "")) != "":
+					stated.append(str(conc.get(k, "")))
 	for rc in assessment.get("reading_challenges", []):
 		var rc_src: String = str(rc.get("source", ""))
-		if str(rc.get("mode", "")) in ["impaired", "misled"] and rc_src != "" and g.w.by_id.has(rc_src):
+		if str(rc.get("mode", "")) in ["impaired", "misled"] and rc_src != "" and g.w.by_id.has(rc_src) and rc_src not in stated:
 			preload("res://game/credibility.gd").record(n, "good", rc_src, g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
 	if direction != "deduction":
 		for target in targets:

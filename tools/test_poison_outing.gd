@@ -99,3 +99,23 @@ func _track_record() -> void:
 	var rec: Dictionary = listener.claim_record.get(reader.id, {})
 	check(str(rec.get("type", "")) == "good", "the listener records that the player called %s good (%s)" % [reader.name, str(rec)])
 	check(str(listener.claim_record.get(goods[2].id, {}).get("type", "")) == "good", "and the case's own conclusion as before")
+	# A case that concludes the reader is evil while calling their reading a failed gift: the
+	# stated conclusion stands (Codex on #252).
+	var view2: Dictionary = Live.view(g)
+	var model2 = CanvasModel.new(view2)
+	model2.contradiction_links = true
+	model2.marked_answers = false
+	var node2: String = ""
+	for id in model2.nodes:
+		if model2.nodes[id].kind == "evidence" and Solver.card_by_id(view2, model2.nodes[id].card).get("text", "") == text:
+			node2 = id
+	var premise2: String = model2.add_premise(reader.id, "evil", Vector2(400, 40))
+	model2.add_modifier(node2, "impaired")
+	model2.connect_cards(model2.selected, premise2)
+	var filed2: int = Live.file(g, model2.compile(premise2))
+	if filed2 > 0:
+		var other = goods[4]
+		g._evaluate_deduction(other, g.board[filed2 - 1], 1.0, false)
+		check(str(other.claim_record.get(reader.id, {}).get("type", "")) == "evil", "a case's stated conclusion about the reader stands over the failed-gift call (%s)" % str(other.claim_record.get(reader.id, {})))
+	else:
+		check(false, "the second case can be filed (%s)" % g.last_error)

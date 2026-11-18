@@ -25,8 +25,8 @@
      - Without `reader`, nothing changes, so the poison self-doubt's call (#232) is unchanged.
   2. **The track record.** A presented case with an `impaired` ("failed gift") or `misled`
      challenge on R's reading records "R is good" with each listener
-     (`Credibility.record`). It's recorded before the case's own conclusions, so a premise
-     about R still stands.
+     (`Credibility.record`). It never overwrites a conclusion the case itself states about R
+     (Codex on #252).
 - **Effect in game terms** (7 people, two evil, a Poisoner certain on the script, reader
   sharing the docks with one neighbour). The chance the reader's gift was poisoned that night:
 
@@ -52,7 +52,7 @@
     but wrong.
 - **Golden:** identical to `baseline_44073d9` on all five seeds at `--tol 0`. Nothing calls
   the reader form yet, and the passive player presents no cases.
-- **Tests:** new `test_poison_outing` (16 checks: the outing link and the track record),
+- **Tests:** new `test_poison_outing` (17 checks: the outing link and the track record),
   added to the fast list. Also passing: `test_poison_chance`,
   `test_workshop_reading_challenges`, `test_warden_challenge`, `test_premise_step2`,
   `test_premise_step3`, `test_connections_cases`, `test_social_credibility`,
