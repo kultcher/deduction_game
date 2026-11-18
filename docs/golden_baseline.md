@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
+### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_b4e4201`
+
+`tools/golden/baseline_b4e4201/` is the capture from `claude/beadle-bluff-blend` (#269) at `b4e4201`
+(main `8737e29` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
+bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
+- **Divergence from `baseline_45b7506`:** 54875, 692, 900 and 98933 from record 0 (the world's
+  random state after the first night's fabrications). 42 is identical.
+- **Outcomes:**
+  - **42:** unchanged (good on day 3).
+  - **54875:** was good on day 2 after hanging Constance. Now day 4 with no winner, after
+    hanging Greta on day 2 and Edda on day 3.
+  - **692:** hangs only Constance, on day 3. Merrin is no longer hanged on day 2.
+  - **900:** hangs Lian on day 3, not Constance on day 2.
+  - **98933:** now hangs Dorian on day 2 and Isolde on day 3 (none before).
+  - Every seed but 42 reaches day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
 
 `tools/golden/baseline_45b7506/` is the capture from `claude/poison-self-doubt` (#232) at
 `45b7506` (main `f947be6` merged in): with a Poisoner possible, each of a good listener's own
