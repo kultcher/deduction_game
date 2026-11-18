@@ -213,11 +213,19 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.board[previous - 1].text += " (Superseded by case #%d.)" % number
 	# The native filer may have returned a pre-existing flat deduction. Never
 	# overwrite that card or turn another draft into this graph.
+	# The log says which case this one replaces ("revises", 0 for a new case): a replay
+	# files it the same way, or the superseded case would still stand (case 16010, Nov 18).
+	var revises: int = int(card.get("revises", 0))
 	if number > old_size:
 		g.board[number - 1] = card
-		g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": false, "case": value, "supports": roots.numbers})
+	else:
+		number = g.add_card(card)
+	if number < 1:
 		return number
-	return g.add_card(card)
+	g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": revises > 0, "revises": revises, "case": value, "supports": roots.numbers})
+	if g.state_digests:
+		g.w.dlog.add("state_digest", "", "", g.w.state_digest())
+	return number
 
 ## The test juror: public facts and default trust, no private knowledge. Says how well
 ## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
