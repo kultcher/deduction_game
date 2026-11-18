@@ -624,13 +624,16 @@ func evidence_layout(id: String) -> Dictionary:
 					"tip": {"transmission": "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift.", "original": "The Medium passed it on faithfully, but the dead person's own reading was wrong."}[s]})
 				y += 32.0
 			y += 4.0
-		for mode in ["misled", "lying", "impaired", "unlikely"]:
-			var label: String = {"misled": "Misled", "lying": "Lying", "impaired": "Poisoned", "unlikely": "Unlikely"}[mode]
+		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named and tipped
+		# in ReadingChallenges.
+		var RCh = preload("res://workshop/reading_challenges.gd")
+		for mode in [RCh.HONEST, "lying", "unlikely"]:
+			var label: String = {"lying": "Lying", RCh.HONEST: RCh.HONEST_LABEL, "unlikely": "Unlikely"}[mode]
 			var w: float = 84.0
 			var disabled: bool = (mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
 				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES)
-			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": node.mode == mode, "disabled": disabled, "field": "mode:" + mode,
-				"tip": {"misled": "Honest but wrong: a misleading registration (Red Herring, Marked).", "lying": "The reader is lying about this result.", "impaired": "Their gift failed that night: a Poisoner. Points at whoever was seen out that night without a reason.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
+			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": preload("res://workshop/reading_challenges.gd").canonical(node.mode) == mode, "disabled": disabled, "field": "mode:" + mode,
+				"tip": {"lying": "The reader is lying about this result.", RCh.HONEST: RCh.HONEST_TIP, "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0
 		y += 36.0
 		return {"h": y + 44.0, "els": els, "text": text_lines, "details": false}

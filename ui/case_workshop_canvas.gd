@@ -431,7 +431,7 @@ func _context(id: String) -> void:
 				context_menu.add_item("Challenge: " + board.RELAY_SIDE_TEXT[entry[1]], entry[0])
 				context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("testimony_only", false))
 		else:
-			for entry in [[200, "misled (honest but wrong)", "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
+			for entry in [[200, "mistaken", "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
 				context_menu.add_item("Challenge: " + entry[1], entry[0])
 				context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))))
 	if board.nodes[id].kind == "modifier":

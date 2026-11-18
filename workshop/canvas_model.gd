@@ -885,7 +885,7 @@ func title(id: String) -> String:
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
-		var mode_title: String = {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": "Failed gift"}[node.mode]
+		var mode_title: String = {"misled": "Mistaken reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": "Mistaken reading"}[node.mode]
 		return mode_title + (" · " + RELAY_SIDE_TEXT.get(node.attribution, "") if node.has("attribution") else "")
 	if node.kind == "profile_info":
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))

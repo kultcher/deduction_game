@@ -45,6 +45,7 @@ test_haunt_learning
 test_headline
 test_held_signals
 test_hint_families
+test_honest_mistake
 test_joint_reasons
 test_juror_claims
 test_lie_severity
