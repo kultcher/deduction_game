@@ -671,6 +671,9 @@ func _file() -> int:
 			status.text += " " + _carried_note
 		if not weakens.is_empty():
 			status.text = str(weakens.text) + ". " + status.text
+			# Presenting files first and then replaces the status line, so the warning also
+			# heads the presentation's feedback, like the carried-answers note (Codex on #285).
+			_carried_note = (str(weakens.text) + ". " + _carried_note).strip_edges()
 		_store()
 		filed.emit()
 	else:
