@@ -2032,6 +2032,21 @@ func snapshot(tag: String) -> void:
 
 ## Capture boundaries catch direct assignments, including death/conversion resets.
 ## Does not create/sync shadow minds or mutate any gameplay state.
+## A fingerprint of everything the minds hold and the world's random stream, at full
+## precision, for the dev log (Game._finish_command; the 16010 replay drift, Nov 18: play and
+## replay parted below anything the log recorded). Per NPC, a hash of its suspicion, trust,
+## credibility, NPC trust and Workshop state (the connections memory, presentations and
+## cached reasoning), real mind and shadow; and the world's RNG state. Strings, so a JSON
+## round trip keeps them exact. The replay compares them (LogReplay.digest_hooks).
+func state_digest() -> Dictionary:
+	var minds: Dictionary = {}
+	for n in npcs:
+		var parts: Array = [n.suspicion, n.trust, n.credibility, n.npc_trust, n.workshop_state]
+		if n.shadow != null:
+			parts.append([n.shadow.suspicion, n.shadow.trust, n.shadow.credibility, n.shadow.npc_trust, n.shadow.workshop_state])
+		minds[n.id] = str(hash(parts))
+	return {"rng": str(rng.state), "minds": minds}
+
 func trace_capture(tag: String, checkpoint: bool = false) -> void:
 	if not detailed_logging:
 		return

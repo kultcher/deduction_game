@@ -99,6 +99,8 @@ func _init():
 			print("TIME seq %d  %-28s %6d ms" % [int(e.seq), str(e.data.cmd), msec])
 			if profile:
 				_print_profile(report)
+	var digest_report: Dictionary = {}
+	hooks = Replay.digest_hooks(events, hooks, digest_report)
 	var run: Dictionary = Replay.replay(events, stop_seq, hooks)
 	var g = run.g
 	if g == null:
@@ -112,7 +114,12 @@ func _init():
 	if vt[0] != vt[1]:
 		print("VOTES logged   %s\nVOTES replayed %s" % [str(vt[0]), str(vt[1])])
 	if timed:
-		print("TIME all commands %d ms%s" % [spent[0], ""])
+		print("TIME all commands %d ms" % spent[0])
+	if digest_report.has("first"):
+		var d: Dictionary = digest_report.first
+		print("STATE DIGEST first differs after seq %d (%s): minds %s%s" % [d.seq, d.what, str(d.minds), ", and the world's random stream" if d.rng else ""])
+	elif int(digest_report.get("checked", 0)) > 0:
+		print("STATE DIGEST all %d match" % int(digest_report.checked))
 	print("REPLAY done steps=%d diverged=%s votes_match=%s day=%d state=%s" % [run.steps, str(run.diverged), str(vt[0] == vt[1]), g.w.day, g.state])
 	quit()
 
