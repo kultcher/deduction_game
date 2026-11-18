@@ -34,4 +34,5 @@
 ## Measured
 
 - **Screenshots:** from seed 23973 on day 2, at both zooms, through a probe that isn't committed. Text no longer overruns the card, and the tabs and icons don't overlap.
-- **Suites and golden:** see the PR.
+- **Suites:** 11 passed: `test_evidence_context`, `test_location_solver`, `test_playtest_1709`, `test_text_ui`, `test_town_ui`, `test_trace_solver`, `test_ui`, `test_ui_controls`, `test_workshop_pan`, `test_triage_nov16` and `test_roles_registry`.
+- **Golden:** identical to `baseline_44073d9` at `--tol 0` on all 5 seeds.
