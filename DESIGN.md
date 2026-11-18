@@ -16,7 +16,9 @@ agreed, not built yet. **[tentative]** = a proposal awaiting design or tuning re
 
 **Companion documents**
 - `BACKLOG.md`: the to-do list, by effort, plus the Workshop-gap list. The single place
-  for "what's next". `BACKLOG_POLISH.md` holds presentation-only polish.
+  for "what's next", with tabled items at its foot. `BACKLOG_POLISH.md` holds presentation-only
+  polish, `BACKLOG_WATCH.md` the items being watched and the knobs, and `BACKLOG_COMPLETED.md`
+  what's built, settled or closed.
 - `TUNING_NARRATIVE.md`: a plain-English account of how the social and evidence systems
   interact. `tuning_catalogue.md`: the code-level companion (where each number lives).
   The numbers themselves live in `sim/tuning.gd`.
@@ -216,10 +218,10 @@ it means the game must teach its own way of thinking and make evidence very read
 
 - **Passing through vs. stopping** as sighting wording ("heading toward the Docks" vs "out
   on the Docks"). **[open]**
-- **Locations as evidence:** a Dowser reading places the Dowser and group on a block but
-  isn't a location card; your own visit could prove who *wasn't* at a spot. **[open]**
+- ~~**Locations as evidence**~~: closed (Michael, Nov 18). Evil NPCs don't lie the way its
+  example needed, and the other daytime roles are covered.
 - **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
-  Players expect this (playtest 1). **[open]**
+  Players expect this (playtest 1). Tabled (Michael, Nov 18).
 - **NPCs find evidence and personal items.** **[decided]**
 
 ---
@@ -964,8 +966,8 @@ been known to sleepwalk"; two claimants prove a liar.
   an unnamed source. **[open]**
 - **NPC-to-NPC credibility** (liking versus believing): tabled (Michael, Nov 18). NPC
   relationships are already hard to read, and a second number would dilute them.
-- **NPC memory and recency bias.** Attention-level recency is on main (#96; `docs/premises_plan.md`,
-  "Recency as built"). **[open]**
+- **NPC memory and recency bias:** built under the connections model; attention and recency
+  pick what an NPC cites (closed Nov 18, Michael).
 
 **Social retuning** **[tentative]** (candidates for one unified retuning proposal; details
 in BACKLOG): Privacy without compounding trust penalties; evidence building NPC-to-NPC
@@ -1074,7 +1076,8 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
   vote that isn't close keeps it; words should be the cheap place to keep cover.
   **[decided]**
 - **Evil reads as evil** (casting aspersions with no information; doubting sound
-  deductions). Largely addressed by the shadow self. **[watch]**
+  deductions). Largely addressed by the shadow self; off the backlog as an item (Michael,
+  Nov 18), kept as an ongoing concern.
 
 ---
 

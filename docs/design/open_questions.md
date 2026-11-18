@@ -153,19 +153,20 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
   let one speaker voice unease without pressure. `[open; Michael to decide]`
 - **Kill-score pass on every role** (whom the Demon targets).
 - **The Gravedigger in a reluctant town** pushing for a hanging.
-- **Lovers as an excuse** (evil faking a Lovers confession; the solver's proof must go if so,
-  Quill).
-- **Good NPCs lie tactically** (stretch). **Lie severity.**
+- **Lovers as an excuse**: folded into the secrets rework (Nov 18).
+- **Good NPCs lie tactically**, reframed Nov 18: may a good NPC lie about their role (a Veteran
+  falsely claiming to draw the attack)? **Lie severity.**
 - ~~**NPC-to-NPC credibility**~~ Tabled Nov 18: NPC relationships are already hard to read.
 - **Throw a teammate under the bus**; **evil coordination you can see**; **trust dynamics
   around sources** (naming a source; evil tracing one).
-- **Storyteller-driven Medium visits.**
+- **Storyteller-driven Medium visits**: folded into the Storyteller/director item (Nov 18).
 
 ### World, evidence types and structure
-- **Locations as evidence, from both sides**; **passing through versus stopping**;
-  **evidence chains**; **the demon lures a victim elsewhere**. Quill (evidence), Beadle
+- **Passing through versus stopping**; **the demon lures a victim elsewhere**. (Locations as
+  evidence: closed Nov 18. Evidence chains: tabled Nov 18.) Quill (evidence), Beadle
   (movement).
-- **Ways to discover and confront secrets** (named corroborators in alibis: tabled Nov 18). Beadle,
+- **Ways to discover and confront secrets**: folded into the secrets rework (Nov 18; named
+  corroborators tabled). Beadle,
   Quill.
 - **Role hints from workplaces and haunts.** Quill.
 - **Relationships** (Bonded, Unrequited, Feuding, Hater). Beadle, Lantern.

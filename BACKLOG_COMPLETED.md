@@ -3,22 +3,128 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
-## Tabled Nov 18, 2026 (Michael; recorded by Claude-Vicar)
+## Closed and built, Nov 18, 2026 (BACKLOG restructure; Michael, recorded by Claude-Vicar)
 
-- **NPC-to-NPC credibility.** The player now has two numbers with each NPC (rapport and
-  credibility). Split NPC-to-NPC trust the same way, so liking someone and believing
-  their word can differ; source doubt is the natural place it plugs in. (Nov 1) [open]
+- **Evidence-reading bot: searching for drops.** The analyst bot reads trace cards
+  through the shared model, but it searches only crime scenes and never chooses where to
+  look for drops or totems. Teach it, so bot runs measure what physical evidence is worth.
+  The bot also doesn't offer wards or vigils or ask about others for haunts. [decided]
 
-  > **Tabled Nov 18 (Michael):** the interpersonal side of NPC relationships is already a bit
-  > hard to read, and a second NPC-to-NPC number would dilute it further.
+  > **Nov 18:** closed (Michael, Nov 18): drops are to be removed from the game.
 
-- **Named corroborators in alibis** ("I was with Jory"), word-against-word cards; evil
-  fake secrets that name someone they really met. Michael (Nov 17): stays open; it
-  overlaps the backlogged secrets rework. [open]
+- **Locations as evidence, from both sides.** A Dowser reading places the Dowser and the
+  group on a block, but it isn't a location card, so the player can't use it to show a
+  fake Medium or Dowser wasn't where they said. Your own visit excludes people: anyone
+  not seen at a spot wasn't there that phase (except people at home on that block).
+  Low impact while most suspicious activity happens at night. (Oct 19) [open]
 
-  > **Tabled Nov 18 (Michael):** at night everyone is either home or out walking, and walkers
-  > have no guarantee of seeing each other, so a named corroborator has no place as things
-  > stand.
+  > **Nov 18:** closed (Michael, Nov 18): evil NPCs don't lie as in the example, and the other daytime roles are covered.
+
+- **A demon that kills during the day** (user concept, Oct 23). Built as the Hexer
+  (`sim/roles/daykiller.gd`, experimental; #111, Nov 10), with the player's declaration
+  (#131). Its day evidence is weak in passive play: triage 4.6 (Nov 16) found no lean
+  away from the true Hexer on current main, but nobody sees the Hexer at the hexed place
+  either, so the day connection barely tells it apart. Player day logs are what would
+  strengthen it. [watch]
+
+  > **Nov 18:** closed (Michael, Nov 18): built as the Hexer; the work continues under "Scripts, follow-ups".
+
+- **NPC memory and recency bias.** (Random ideas) Attention-level recency is on main (PR
+  #96, Nov 9; `docs/premises_plan.md` "Recency as built"). Under the connections model
+  attention and recency pick only what an NPC cites and explains, not what it believes.
+  [open]
+
+  > **Nov 18:** closed (Michael, Nov 18): built under the connections model (attention and recency pick what an NPC cites).
+
+- **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
+  addressed by the shadow self; revisit after playtests. (30294) [watch]
+
+  > **Nov 18:** removed (Michael, Nov 18): mostly resolved; an ongoing concern rather than an item.
+
+- **Martyr non-substitution must keep its alternative explanations; Martyr promise
+  versus later hanging.** (78148) An executed choice dying while the claimed Martyr
+  survives must not fully confirm the choice as evil: weigh a Delusional Martyr, a
+  poisoned Martyr, a bluffing evil Martyr and a Marked executed person alongside an evil
+  choice. Bind the choice, the execution and health to their dates, from public knowledge
+  only; don't infer that both times were healthy from the earlier promise. Tests should
+  isolate every explanation and avoid counting the same failure twice. [decided]
+
+  Built Nov 17 (Quill, `claude/martyr-alternatives`): the promise and the later hanging are
+  read together from public events, keeping all five explanations; the outcome reading
+  carries the check when both are held. Not built: dated health (a poisoning on a
+  particular night); the promise's failure is priced as the report's error.
+
+  > **Nov 18:** built (Quill, Nov 17), as the item records; dated health stays unbuilt.
+
+- **A Delusional teller's false reading is charged twice by the judge.** (Codex on #183,
+  Nov 17) In play the role check skips an evil teller's content but not the Delusional
+  holder's, so for every role-checked gift (Archivist, Clerk, Gravedigger, Executor,
+  Registrar, Monitor, Martyr, Night Watch, Warden, Veteran) a Delusional reader's wrong
+  reading takes a small extra error on top of the false-report likelihood. "They were
+  Delusional" then reads weaker than it should next to "they lied". #183 fixed it for the
+  Martyr promise only. Build after Lantern's poisoned-reading fix has merged (it waits for
+  Argon's #181): both change how the role check treats a doubtful reading. Report in game
+  terms how much more often the town accepts "they were Delusional" over "they lied".
+  Owner Quill. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/delusional-double-charge`, Nov 17):** the kernel skips the content
+  of the world's Delusional holder's readings in play, as for an evil teller; the gift's own
+  acts (a Martyr's or Executor's one target, a Veteran's one night) stay checked. On a wrong
+  Archivist reading, "they were Delusional" went from about 1 in 600 of the explanation to
+  about 1 in 7 ("they lied" 98% to 85%). Not covered: a Night Watch's list, checked in the
+  movement model, which doesn't know who is Delusional.
+
+  > **Nov 18:** built (Quill, Nov 17), as the item records.
+
+- **Keep Tally's trace probe as a tool.** Tally measured how much a crime-scene trace
+  weighs with an uncommitted copy of `tools/measure_evidence.gd` that has two extra modes
+  (handoff in #212, `docs/handoff/2026-11-17-1846-tally-trace-weight.md`). Make it a
+  proper tool, not named `_probe*`, so later evidence changes can be re-measured the same
+  way. Owner Quill, after the doubted-role-check fix. [decided] (Michael, Nov 17)
+  **Built (Quill, `claude/trace-measure`, Nov 17):** `measure_evidence.gd --what traces`,
+  `combined` and `support`, the same rows as Tally's probe. [done]
+
+  > **Nov 18:** built (Quill, Nov 17).
+
+- **Medium challenge attribution and nested relays.** Add an explicit choice between
+  questioning the Medium's transmission and the dead source's original information. Until
+  then, cause modifiers on relay cards stay visibly unavailable. Relays of another Medium's
+  relay and relayed opinions are unsupported. (Oct 23)
+  Michael (Nov 17): build the choice only, a two-way challenge on a relay ("the Medium
+  relayed it wrong" versus "the dead person was wrong in the first place"). Relays of
+  relays and relayed opinions stay unsupported. Owner Quill. [decided: the choice only]
+  **Built (Quill, #191, Nov 17):** a relay challenge names its target, the Medium's
+  transmission or the dead source's original reading (`ReadingChallenges.RELAY_ATTRIBUTIONS`),
+  and each is judged on its own night and teller; covered by `test_medium_relay_challenge`
+  and `test_relay_challenge_menu`. Relays of relays and relayed opinions stay unsupported.
+  [done]
+
+  > **Nov 18:** built (Quill, #191, Nov 17).
+
+- **The vigil watches who leaves a block.** (Michael, Nov 17, with Claude-Vicar; design note
+  [docs/design/vigil.md](docs/design/vigil.md)) Replaces "Unlimited vigil strength". A vigil
+  sees people leaving their homes on the watched block, not people arriving there, so the
+  player aims it at suspects instead of predicting the Demon's victim, and a sighting of
+  someone going out is weaker than one at the scene. No sweep first; a lower bot win rate is
+  fine. The bot's vigil policy changes in the same build to watch its suspects' blocks. The
+  note's section 5 lists what the build should check. Result wording: Herald drafts,
+  Michael settles. Owner Quill. [decided]
+  **Built (Quill, `claude/vigil-leavers`, Nov 17):** the sim and the judge both read the new
+  rule, the bot watches the block of the people it suspects most, and Herald's wording
+  (approved by Michael) is in. Bot, 20 games before and after: good won 17 instead of 13,
+  and about 1 vigil in 4 saw the Demon instead of 1 in 5 (it watches its suspects' homes,
+  and the Demon leaves home every kill night). Small sample.
+
+  > **Nov 18:** built (Quill, Nov 17).
+
+- **An evil Medium's relay about the first victim names night 0** (Lantern, Nov 13). The
+  bluff says the dead saw the scapegoat out "on their last night"; for the first victim
+  that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
+  its target. Moves golden. Michael (Nov 17): fix. For the first victim, the bluff picks
+  a night that can actually frame (not night 0, when the Demon never walks), or makes a
+  different claim. Owner Beadle. **[decided]** Built (Nov 18, `claude/beadle-medium-night0`):
+  the first victim's frame names the night they died; an empty relay never names the scapegoat.
+
+  > **Nov 18:** built (Beadle, Nov 18).
 
 ## Settled Nov 18, 2026 (Michael; recorded by Claude-Vicar)
 
