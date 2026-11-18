@@ -498,6 +498,15 @@ Candidates for a unified retuning proposal, not approved changes.
   with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
   open]
 
+- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
+  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
+  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
+  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
+  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
+  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
+  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
+  Owner Herald. [decided]
+
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
