@@ -910,8 +910,14 @@ const HINT_TOPICS = {
 	"official": "records and official town business",
 	"night_sight": "seeing things in the dark hours",
 	"the_dead": "the dead",
-	"shelter": "sheltering people from the demon",
+	"shelter": "sheltering people from the Demon and those who serve it",
 	"people": "reading people",
+	"affairs": "the town's affairs",
+	"justice": "the gallows",
+	"true_gifts": "people's true callings",
+	"chosen": "looking into whomever they choose",
+	"against_dark": "bringing to light what the night hides",
+	"conquer_death": "cheating death",
 }
 
 static func _anonymize_reading_text(w, src_id: String, e: Dictionary) -> String:

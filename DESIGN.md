@@ -314,11 +314,11 @@ overlaps, so future roles have places to fit. A hint names a family, never the g
 4. The dead: Gravedigger, Medium, Executor, Martyr.
 5. Shelter: Warden, Veteran, Sexton.
 6. Reading people: Dowser, Psychologist, Confessor, Augur, Seer.
-7. The town's justice: Magistrate, Executor, Gravedigger, Martyr.
+7. The gallows: Magistrate, Executor, Gravedigger, Martyr.
 8. True callings: Gravedigger, Monitor, Executor, Registrar.
-9. Chosen marks: Registrar, Seer, Confessor.
-10. Against the dark: Night Watch, Lamplighter, Psychologist, Sexton.
-11. Against death: Medium, Martyr, Warden.
+9. Searching: Registrar, Seer, Confessor.
+10. Light against the dark: Night Watch, Lamplighter, Psychologist, Sexton.
+11. Cheating death: Medium, Martyr, Warden.
 
 The first-night gifts are spread so a hint at them isn't a giveaway. A gift in several
 families hints from whichever has the most gifts on the case's script, so the hint gives
