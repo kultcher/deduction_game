@@ -627,7 +627,7 @@ static func begin(view: Dictionary, case_data: Dictionary, listener: Dictionary)
 	var people: Array = Solver.person_ids(view)
 	var others: Array = people.filter(func(p): return p != self_id)
 	var run: Dictionary = {"view": view, "listener": listener, "people": people, "others": others, "memo": {}, "judgements": 0,
-		"prior": {}, "baseline": {}, "impossible": false, "row": row(view), "case_data": case_data}
+		"prior": {}, "baseline": {}, "impossible": false, "row": row(view)}
 	if others.is_empty():
 		return run
 	run["bare"] = template(case_data, others[0])
@@ -781,7 +781,7 @@ static func core_memory(day: int, seeds: Array, firsthand_ids: Array, members: A
 
 
 static func _no_core(seeds: Array, firsthand_ids: Array) -> Dictionary:
-	return {"seed": seeds, "firsthand": firsthand_ids, "members": [], "tested": {}, "clash": [], "lean": {}, "proved": {}, "proved_doubted": {},
+	return {"seed": seeds, "firsthand": firsthand_ids, "members": [], "tested": {}, "clash": [], "lean": {}, "proved": {},
 		"cards": 0, "rebuilt": true, "impossible": false}
 
 
@@ -809,12 +809,6 @@ static func core(run: Dictionary, by_id: Dictionary, item_list: Array, values: D
 			var settled: bool = run.baseline[p] <= FIXED or run.baseline[p] >= 1.0 - FIXED
 			if not settled and (own.chance[p] <= FIXED or own.chance[p] >= 1.0 - FIXED):
 				out.proved[p] = own.chance[p]
-	# A proof the listener's own readings would give if it didn't doubt them (a poisoned or
-	# Delusional night): it holds in proportion to their trust. The proved person's chance is
-	# then (1 - d) x the proved value + d x where the rest puts them (refresh, after combine),
-	# d the largest doubt on the own readings that name them. Without this any doubt, however
-	# small, switched the proof off (seed 5, Nov 18: Constance 0% -> 90% on an 8% doubt).
-	out["proved_doubted"] = _doubted_proofs(run, by_id, first, out.proved)
 	var seed_set: Dictionary = pool(seeds.map(func(k): return by_key[k]))
 	var seed_value: Dictionary = set_value(run, seed_set.ids, seed_set.ctx)
 	if seed_value.impossible:
@@ -947,63 +941,11 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	for p in told.lean:
 		total[p] += float(told.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
-	if not own.get("proved_doubted", {}).is_empty():
-		# Doubted proofs: proved with the readings' trust, as the rest says with their doubt.
-		var pins: Dictionary = own.proved.duplicate()
-		for p in own.proved_doubted:
-			var pd: Dictionary = own.proved_doubted[p]
-			pins[p] = (1.0 - float(pd.d)) * float(pd.value) + float(pd.d) * float(settled.posterior.get(p, pd.value))
-		settled = combine(others, baseline, total, pins)
 	Profiler.count("connections_judgements", int(run.judgements))
 	Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
 		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
-
-
-## Proofs the listener's own readings give only when their doubt is set aside:
-## {id: {"value": the proved chance, "d": the largest doubt on the own readings that name
-## them (any own reading's, if none names them)}}. Two judgements (a baseline and the own
-## readings), and only when an own reading is doubted.
-static func _doubted_proofs(run: Dictionary, by_id: Dictionary, first: Array, proved: Dictionary) -> Dictionary:
-	var rd: Dictionary = run.listener.get("reading_doubt", {})
-	var doubted: Array = first.filter(func(id): return float(rd.get(id, 0.0)) > 0.0)
-	if doubted.is_empty():
-		return {}
-	var free_listener: Dictionary = run.listener.duplicate(false)
-	var rd_free: Dictionary = rd.duplicate()
-	var rr_free: Dictionary = run.listener.get("reading_reliability", {}).duplicate()
-	for id in doubted:
-		rd_free.erase(id)
-		if rr_free.has(id):
-			rr_free[id] = 1.0
-	free_listener["reading_doubt"] = rd_free
-	free_listener["reading_reliability"] = rr_free
-	var free: Dictionary = begin(run.view, run.get("case_data", {}), free_listener)
-	if free.get("impossible", false) or free.others.is_empty():
-		run.judgements += int(free.judgements)
-		return {}
-	var own_free: Dictionary = lean(free, first)
-	run.judgements += int(free.judgements)
-	if own_free.impossible:
-		return {}
-	var out: Dictionary = {}
-	for p in run.others:
-		if proved.has(p):
-			continue
-		var settled: bool = run.baseline[p] <= FIXED or run.baseline[p] >= 1.0 - FIXED
-		var c: float = float(own_free.chance.get(p, 0.5))
-		if settled or not (c <= FIXED or c >= 1.0 - FIXED):
-			continue
-		var d := 0.0
-		for id in doubted:
-			if p in _names(by_id, [id], run.people):
-				d = maxf(d, float(rd[id]))
-		if d <= 0.0:
-			for id in doubted:
-				d = maxf(d, float(rd[id]))
-		out[p] = {"value": c, "d": clampf(d, 0.0, 1.0)}
-	return out
 
 
 ## Everyone's chance from the baseline and the summed leans: one common shift, so the people

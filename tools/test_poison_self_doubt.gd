@@ -11,7 +11,6 @@ const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
 const Caches = preload("res://workshop/caches.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
-const Seeds = preload("res://tools/fixture_seeds.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 
 var checks := 0
@@ -120,24 +119,5 @@ func _init() -> void:
 	check(none[2].doubt.is_empty(), "with no Poisoner on the script there's no poison self-doubt (%s)" % str(none[2].doubt))
 	# 6. Stable: the next refresh changes nothing.
 	check(absf(on[1].post.hollis - on[2].post.hollis) < 1e-9 and on[1].doubt == on[2].doubt, "a refresh with nothing new changes nothing")
-	# 7. A proof from a doubted own reading holds in proportion to its trust: the proved
-	#    person moves at most the doubt away from the proved value, however strongly the rest
-	#    disagrees (a hanged person a Gravedigger proved good, Nov 18). Searched for.
-	var found: Dictionary = Seeds.search(3, func(g):
-		for m in g.w.living_good():
-			g.w.defer_beliefs = false
-			Connections.enabled = true
-			g._workshop_evaluations.erase(m.id + ":good")
-			Mind.refresh_beliefs(g.w, m, " (search)")
-			var cx: Dictionary = g._workshop_evaluations.get(m.id + ":good", {}).get("proposal", {}).get("connections", {})
-			var pd: Dictionary = cx.get("core", {}).get("proved_doubted", {})
-			for p in pd:
-				return {"listener": m.id, "person": p, "value": float(pd[p].value), "d": float(pd[p].d), "post": float(cx.posterior.get(p, -1.0))}
-		return {}, 10)
-	check(not found.is_empty(), "found an own reading's proof held under a poison doubt")
-	if not found.is_empty():
-		var moved: float = absf(float(found.post) - float(found.value))
-		print("seed %d: %s's proof of %s (proved %.3f, doubt %.3f) -> %.3f" % [int(found.seed), found.listener, found.person, float(found.value), float(found.d), float(found.post)])
-		check(moved <= float(found.d) + 1e-6, "seed %d: a doubted proof gives way at most by its doubt (%.3f moved, doubt %.3f)" % [int(found.seed), moved, float(found.d)])
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
