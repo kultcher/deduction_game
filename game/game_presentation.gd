@@ -164,6 +164,8 @@ static func _presentation_rejection(g, card: Dictionary) -> String:
 		return "Card #%d is an unattributed tavern rumour and cannot be cited as evidence." % int(card.get("n", 0))
 	if card.get("superseded_by", 0) > 0:
 		return "Case #%d was superseded by case #%d." % [card.n, card.superseded_by]
+	if card.get("withdrawn", false):
+		return "Case #%d was withdrawn." % card.n
 	var speech: Array = []
 	if card.kind == "deduction":
 		var input: Dictionary = workshop_snapshot(g, [card.n])
@@ -188,7 +190,10 @@ static func workshop_retract(g, number: int, listener_id: String) -> void:
 	_workshop_retract(g, number, listener_id)
 
 
-static func _workshop_retract(g, number: int, listener_id: String) -> void:
+## `clear_now`: the case was replaced by a revision backed by new evidence, so the claims it
+## made leave the player's track record at once; otherwise they are judged once more at the
+## next dawn (Credibility.retire_case; Michael, Nov 18, option c).
+static func _workshop_retract(g, number: int, listener_id: String, clear_now: bool = false) -> void:
 	var real = g.w.by_id.get(listener_id)
 	if real == null:
 		return
@@ -210,6 +215,7 @@ static func _workshop_retract(g, number: int, listener_id: String) -> void:
 			entry.weight = 0.0
 			entry.justs = []
 			entry.meta = {"kind": "retired_workshop"}
+	preload("res://game/credibility.gd").retire_case(real, number, clear_now)
 	Mind.refresh_beliefs(g.w, n, " (case endorsement withdrawn)")
 
 
@@ -218,7 +224,7 @@ static func _evaluate_deduction(g, n, ded: Dictionary, scale: float, speak: bool
 	var span = WorkshopProfiler.open("listener", n.id)
 	# The player argued this to them: it joins their track record (game/credibility.gd).
 	var said: Dictionary = ded.get("conclusion", {})
-	preload("res://game/credibility.gd").record(n, str(said.get("type", "")), str(said.get("a", "")), g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL)
+	preload("res://game/credibility.gd").record(n, str(said.get("type", "")), str(said.get("a", "")), g.w.day, Tuning.Trust.CRED_WEIGHT_FORMAL, int(ded.get("n", 0)))
 	preload("res://game/credibility.gd").record_case_secrets(n, ded, g.w.day)
 	var result: Dictionary = _evaluate_deduction_inner(g, n, ded, scale, speak, venue)
 	WorkshopProfiler.close(span)
@@ -297,8 +303,8 @@ static func workshop_canvas_retire(g, real, ded: Dictionary) -> void:
 	var st: Dictionary = n.workshop_state
 	var ancestor: int = ded.get("revises", 0)
 	while ancestor > 0 and ancestor <= g.board.size():
-		if st.get("presentations", {}).has(str(ancestor)) or n.ledger.has("arg:workshop:%d" % ancestor):
-			_workshop_retract(g, ancestor, n.id)
+		if st.get("presentations", {}).has(str(ancestor)) or n.ledger.has("arg:workshop:%d" % ancestor) or _record_cites(real, ancestor):
+			_workshop_retract(g, ancestor, n.id, new_evidence(g.board[ancestor - 1], ded))
 		ancestor = g.board[ancestor - 1].get("revises", 0)
 	if not st.has("canvas_versions"):
 		st.canvas_versions = {}
@@ -307,6 +313,93 @@ static func workshop_canvas_retire(g, real, ded: Dictionary) -> void:
 	if st.canvas_versions.get(key, signature) != signature:
 		_workshop_retract(g, ded.n, n.id)
 	st.canvas_versions[key] = signature
+
+
+## Does `case` cite an original card that `older` didn't? Then a revision from `older` to
+## `case` is "changing your mind for a reason", and the old version's claims leave the
+## track record at once (Michael, Nov 18, option c).
+static func new_evidence(older: Dictionary, case: Dictionary) -> bool:
+	var before: Array = older.get("supports", []).filter(func(x): return int(x) > 0)
+	for x in case.get("supports", []):
+		if int(x) > 0 and not (x in before):
+			return true
+	return false
+
+
+## A public withdrawal takes back the argument, not the evidence: each original card the
+## listener heard only through case `number` gets an owner of its own, as testimony the
+## player passed on (Codex on #262). A private developer retraction still removes them.
+static func _keep_receipts(g, mind, number: int) -> void:
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	var presentations: Dictionary = mind.workshop_state.get("presentations", {})
+	for key in presentations:
+		if str(key) != str(number) and not str(key).begins_with("direct:%d:" % number):
+			continue
+		var presented: Dictionary = presentations[key]
+		var endorsed: Array = Shared.endorsed_facts(presented, presented.root)
+		for receipt in presented.get("evidence", []):
+			if receipt.id in presented.get("selected", []) and receipt.id in endorsed:
+				var eid: String = "tell:kept:%d:%s" % [number, str(receipt.id)]
+				if not mind.ledger.has(eid):
+					# The shape Mind.ledger_hear gives a heard card; no weight of its own.
+					mind.ledger[eid] = {"eid": eid, "effects": [], "weight": 0.0, "rel": ["player", g.w.day, "tell"], "day": g.w.day, "times": 1,
+						"justs": [], "meta": {"kind": "tell", "workshop_card": receipt.duplicate(true),
+						"text": str(receipt.get("text", "")), "kept_from_case": number}}
+
+
+## Does `real`'s track record still hold a claim from case `number`?
+static func _record_cites(real, number: int) -> bool:
+	for entry in real.claim_record.values():
+		if int(entry.get("case", 0)) == number:
+			return true
+	return false
+
+
+## The player takes back case `number` in public ("I take back case #N"; BACKLOG "Believable
+## public revisions", Michael, Nov 18). Everyone who heard it drops the argument (the same
+## retraction as a private withdrawal) and keeps the cards it cited as their own items. The
+## board keeps the case, marked withdrawn; it can't be presented or nominated on again.
+## Its claims stay in each listener's track record for the next dawn's check, then leave.
+## Returns "" or why it can't be withdrawn.
+static func workshop_withdraw_public(g, number: int) -> String:
+	if g.workshop_presenting:
+		return "Wait for the current presentation to finish."
+	if number < 1 or number > g.board.size():
+		return "No such case."
+	var card: Dictionary = g.board[number - 1]
+	if card.get("kind", "") != "deduction" or card.get("deleted", false):
+		return "Only a filed case can be taken back."
+	if int(card.get("superseded_by", 0)) > 0:
+		return "Case #%d was superseded by case #%d; take that one back instead." % [number, int(card.superseded_by)]
+	if card.get("withdrawn", false):
+		return "Case #%d is already withdrawn." % number
+	card["withdrawn"] = true
+	card["withdrawn_day"] = g.w.day
+	# The case and every earlier version of it: someone who missed a revision still holds
+	# the version they heard, and that is taken back too (Codex on #262).
+	var versions: Array = []
+	var v: int = number
+	while v > 0 and v <= g.board.size() and not (v in versions):
+		versions.append(v)
+		v = int(g.board[v - 1].get("revises", 0))
+	var heard: Array = []
+	for real in g.w.npcs:
+		var mind = real.shadow if real.is_evil() and real.shadow != null else real
+		var st: Dictionary = mind.workshop_state
+		for ver in versions:
+			var has_it: bool = st.get("presentations", {}).has(str(ver)) or mind.ledger.has("arg:workshop:%d" % ver) or _record_cites(real, ver)
+			for key in st.get("presentations", {}):
+				if str(key).begins_with("direct:%d:" % ver):
+					has_it = true
+			if has_it:
+				_keep_receipts(g, mind, ver)
+				_workshop_retract(g, ver, real.id, false)
+				if not (real.id in heard):
+					heard.append(real.id)
+		real.player_cases = real.player_cases.filter(func(c): return not (int(c.get("card", {}).get("n", 0)) in versions))
+	g.w.dlog.add("deduction_withdrawn", "player", str(card.get("conclusion", {}).get("a", "")), {"card": number, "heard": heard, "day": g.w.day},
+		"The Demonologist took back case #%d in public." % number)
+	return ""
 
 
 ## "present <card#> [for|against <name>]" in conversation: work out what the player means.

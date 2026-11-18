@@ -27,7 +27,9 @@ static func players_word(eid: String) -> bool:
 ## The player argued `type` about `target` to `n` (a presented case, a nomination, an
 ## accusation). Only alignment conclusions count; the latest direction per target stands,
 ## while a casual statement in the same direction never downgrades an existing formal weight.
-static func record(n, type: String, target: String, day: int, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL) -> void:
+## `case_n` is the filed case that argued it (0 for a nomination, accusation or statement),
+## so withdrawing or revising that case can retire the claim (retire_case).
+static func record(n, type: String, target: String, day: int, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL, case_n: int = 0) -> void:
 	if target == "" or target == n.id:
 		return
 	var direction: String = "evil" if type in EVIL_LEANING else ("good" if type in GOOD_LEANING else "")
@@ -38,18 +40,44 @@ static func record(n, type: String, target: String, day: int, weight: float = Tu
 	if str(prev.get("type", "")) == direction:
 		eff_weight = maxf(float(prev.get("weight", eff_weight)), eff_weight)
 	var entry: Dictionary = {"type": direction, "day": day, "weight": eff_weight}
+	if case_n > 0:
+		entry["case"] = case_n
 	n.claim_record[target] = entry
 	if n.shadow != null:
 		n.shadow.claim_record[target] = entry.duplicate(true)
+
+## The player withdrew or revised case `case_n` with `n` ("Believable public revisions",
+## Michael, Nov 18, option c). Each claim that case still stands for is either cleared now
+## (`clear_now`: a revision backed by new evidence) or marked withdrawn, to be judged once
+## more at the next dawn and then cleared (a bare withdrawal, or a revision with nothing new).
+## A claim another argument has since restated (a later case, a nomination) is untouched.
+## `n` is the real NPC; its shadow's copy of the record follows.
+static func retire_case(n, case_n: int, clear_now: bool) -> void:
+	if case_n <= 0:
+		return
+	var minds: Array = [n]
+	if n.shadow != null:
+		minds.append(n.shadow)
+	for mind in minds:
+		for key in mind.claim_record.keys():
+			var entry: Dictionary = mind.claim_record[key]
+			if int(entry.get("case", 0)) != case_n:
+				continue
+			if clear_now:
+				mind.claim_record.erase(key)
+			else:
+				entry["withdrawn"] = true
 
 ## Premises pass step 2: the player said `target` holds secret `mod` (a presented secret
 ## premise, the root or one inside the case). Kept beside the alignment claims under
 ## "secret:<target>"; the latest secret named for a person stands. Checked at dawn against
 ## how likely the NPC's own evidence makes it.
-static func record_secret(n, target: String, mod: String, day: int, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL) -> void:
+static func record_secret(n, target: String, mod: String, day: int, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL, case_n: int = 0) -> void:
 	if target == "" or mod == "" or target == n.id:
 		return
 	var entry: Dictionary = {"type": "secret", "target": target, "mod": mod, "day": day, "weight": clampf(weight, 0.05, 1.0)}
+	if case_n > 0:
+		entry["case"] = case_n  # so withdrawing the case retires it (Codex on #262)
 	n.claim_record["secret:" + target] = entry
 	if n.shadow != null:
 		n.shadow.claim_record["secret:" + target] = entry.duplicate(true)
@@ -61,7 +89,7 @@ static func record_case_secrets(n, ded: Dictionary, day: int) -> void:
 		conclusions.append(claim.get("case", {}).get("conclusion", {}))
 	for c in conclusions:
 		if str(c.get("type", "")) == "secret_mod":
-			record_secret(n, str(c.get("a", c.get("target", ""))), str(c.get("mod", "")), day)
+			record_secret(n, str(c.get("a", c.get("target", ""))), str(c.get("mod", "")), day, Tuning.Trust.CRED_WEIGHT_FORMAL, int(ded.get("n", 0)))
 
 ## Every living NPC everyone heard it from: nominations and public accusations.
 static func record_public(g, type: String, target: String, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL) -> void:
@@ -92,6 +120,14 @@ static func dawn(g) -> void:
 			}, "Track record: the player's claims against my own evidence")
 		mind.credibility = value
 		n.credibility = value
+	# A withdrawn case's claims were judged this once; now they leave the record.
+	for n in g.w.npcs:
+		for mind in [n, n.shadow]:
+			if mind == null:
+				continue
+			for key in mind.claim_record.keys():
+				if mind.claim_record[key].get("withdrawn", false):
+					mind.claim_record.erase(key)
 
 ## Mean agreement in [-1, 1] between the player's recorded claims and the NPC's own view,
 ## or null when the view can't be prepared.
