@@ -16,8 +16,9 @@
 - **What:**
   - The check now builds six towns by hand, on the 7-NPC deals of seeds 692, 900 and 42 with no
     play.
-  - In each, a good Medium relays, on the second night, what a neighbour hanged on day 1 saw on
-    the first night: a good person out, or an evil one. If the deal already has a Medium, that's
+  - In each, the Demon kills a good neighbour on the first night (a Medium communes only with
+    the Demon's victims; Codex on #272). On the second night a good Medium relays what the
+    neighbour saw the night before the town arrived: a good person out, or an evil one. If the deal already has a Medium, that's
     the one used; otherwise a good person is made one, with the Medium added to the script.
   - A living good listener hears the relay. The check fails if the relay raises the Medium's
     chance of being evil by 10 points or more in any town.
@@ -25,9 +26,15 @@
     the relays' own effect (#271), so they're steadier, but they could be built the same way
     later.
 - **Measured:**
-  - **On main:** the relay costs the Medium 3 to 5 points in all six towns (692: 0.37 → 0.41;
-    900: 0.50 → 0.53 and 0.55; 42: 0.28 → 0.31).
-  - **On main plus #269:** identical, as expected, since the towns don't depend on play.
+  - **On main:** with the Demon-victim fixture, the relay costs the Medium 3 to 8 points in the
+    six towns (692: 0.46 → 0.54 and 0.53; 900: 0.48 → 0.51 and 0.53; 42: 0.35 → 0.43). The
+    earlier hanged-neighbour version, which a Medium couldn't produce, cost 3 to 5.
+  - **The larger cost:** the relay puts the Medium at the house where the Demon killed the
+    night before. The 8 points on 692 and 42 sit near the check's 10-point line. They don't
+    drift with play, but a belief-model change that weighs that placing more would trip it,
+    which is the intent.
+  - **On main plus #269:** the earlier version gave identical numbers, since the towns don't
+    depend on play. The Demon-victim version isn't re-run there.
   - **Pre-#265 `832bd17`:** both evil-relayer checks fail, as before. The genuine check passes
     there too: #265's bug cleared evil relayers and never touched genuine ones.
 - **Tests:** `test_relay_bluff` 4 of 4 on main and on main plus #269. Only that file changes, so

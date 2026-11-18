@@ -71,8 +71,8 @@ func _relay_case(found: Dictionary, label: String) -> void:
 
 
 ## A town built by hand on `seed`'s deal (no play): a good Medium (the town's own if it
-## has one, else a good made one, with the Medium on the script) whose dead neighbour was hanged
-## on day 1 relays, on the second night, what the dead saw on the first: a good person, or an
+## has one, else a good made one, with the Medium on the script) whose neighbour the Demon killed
+## on the first night relays, on the second night, what the dead saw on the first: a good person, or an
 ## evil one, out on their own street. A living good listener hears it. The relay's effect on
 ## the listener's chance of the Medium being evil (Seeds.relay_effect).
 func _genuine_relay(seed: int, subject_evil: bool) -> Dictionary:
@@ -91,11 +91,12 @@ func _genuine_relay(seed: int, subject_evil: bool) -> Dictionary:
 	var dead = others[0]
 	var listener = others[1]
 	var subject = w.evil_team()[0] if subject_evil else others[2]
+	# The neighbour is the Demon's victim of the first night (a Medium communes only with
+	# those, sim/roles/medium.gd), announced at the second dawn as the game does.
 	w.day = 1
-	var alive_before: int = w.living().size() + 1
-	w.execute(dead.id, {})
-	g._facts([{"kind": "execution", "subject": [dead.id], "source": "player", "day": 1, "phase": C.EVENING, "alive_before": alive_before, "text": "%s was executed on day 1." % dead.name}])
+	w._kill(dead)
 	w.day = 2
+	g._facts([{"kind": "death", "subject": [dead.id], "block": dead.home_block, "source": "player", "night": 1, "text": "%s was killed by the demon on night 1." % dead.name}])
 	var entry: Dictionary = {"day": 2, "phase": 3, "role": "medium", "shared": true, "true": true,
 		"data": {"dead": dead.id, "item": {"type": "sighting", "who": subject.id, "block": subject.home_block, "night": 0}},
 		"text": "communing with the dead at %s's hearth, I learned they saw %s out the night before you arrived" % [dead.name, subject.name]}
