@@ -672,8 +672,8 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 
 ## "My gift may have been turned" (BACKLOG, Michael, Nov 17-18), said once to the town by a
 ## public claimant who has it waiting (`n.gift_doubt`): for now only a boxed-in liar
-## (Evil._boxed_in_gift_doubt). The card is the teller's own word that its gift may have
-## failed; listeners read it as honest doubt about all of that teller's readings.
+## (Evil._boxed_in_gift_doubt). It is the teller's own word that its gift may have failed;
+## listeners read it as honest doubt about all of that teller's readings.
 static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 	var gd: Dictionary = n.gift_doubt
 	if gd.is_empty() or gd.has("said") or not n.claim_public or n.claimed_role != str(gd.get("role", "")):
@@ -681,8 +681,8 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 	gd["said"] = w.day
 	var role: String = str(gd["role"])
 	lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
-	facts.append({"kind": "self_doubt", "subject": [n.id], "source": n.id, "role": role, "day": w.day,
-		"text": "%s says their gift as %s may have been turned." % [n.name, C.role_name(role)]})
+	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
+	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
 	w.public_event("self_doubt", [n.id], n.id, {"role": role})
 	var why: String = str(gd.get("why", ""))
 	if n.is_evil():

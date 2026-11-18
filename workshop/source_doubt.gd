@@ -208,6 +208,26 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if not seed_doubt.has(s_good + ":*"):
 			pre_eval.erase(s_good + ":*")
 
+	# A teller's own word that its gift may have been turned (BACKLOG "Saying 'my gift may
+	# have been turned'", Michael, Nov 17-18): a public `self_doubt` event. Honest doubt about
+	# all of that teller's readings ("src:*"), at an unreliable argument's scale, as far as
+	# the listener believes the teller (1 - its suspicion of them). After the sincere-teller
+	# pass on purpose: a teller known to be sincere can still have a broken gift. The
+	# listener's own line is its own business (its own self-doubt is separate).
+	var susp_map: Dictionary = listener.get("suspicion", {})
+	for ev in pub_events:
+		if str(ev.get("kind", "")) != "self_doubt":
+			continue
+		var t_id: String = str(ev.get("by", ""))
+		if t_id == "" or t_id == self_id:
+			continue
+		var believe: float = clampf(1.0 - float(susp_map.get(t_id, 0.0)), 0.0, 1.0)
+		var sd_val: float = minf(Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE * believe, Tuning.Workshop.DOUBT_ARG_CAP)
+		if sd_val <= 0.0:
+			continue
+		pre_eval[t_id + ":*"] = maxf(float(pre_eval.get(t_id + ":*", 0.0)), sd_val)
+		honest[t_id + ":*"] = maxf(float(honest.get(t_id + ":*", 0.0)), sd_val)
+
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})
 	if not rc_case.get("reading_challenges", {}).is_empty():

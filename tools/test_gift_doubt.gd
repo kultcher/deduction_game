@@ -3,13 +3,19 @@
 ## and tells the town its gift may have been turned. Checked here:
 ##   - Evil._boxed_in_gift_doubt: only for the gift it claimed in public, only where a
 ##     Poisoner or Delusional could be in play, at most once a game, logged with a reason;
-##   - MindMeeting._say_gift_doubt: the line is said once, with a self_doubt card and a
-##     public event, and the reveal lists it as a lie.
+##   - MindMeeting._say_gift_doubt: the line is said once, with a public self_doubt event,
+##     and the reveal lists it as a lie;
+##   - SourceDoubt.derive: a listener who hears it doubts all of that teller's readings
+##     (honest doubt, "teller:*"), less the more it suspects the teller; not its own line.
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Evil = preload("res://sim/evil.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const Shared = preload("res://workshop/shared_ledger.gd")
+const Bridge = preload("res://game/workshop_bridge.gd")
+const SourceDoubt = preload("res://workshop/source_doubt.gd")
+const Tuning = preload("res://sim/tuning.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -26,6 +32,7 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_trigger()
 	_gate()
+	_listener()
 	print("Gift doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -63,18 +70,10 @@ func _trigger() -> void:
 	var events_before: int = w.public_log.size()
 	MindMeeting._say_gift_doubt(w, m, lines, facts)
 	check(lines.size() == 1, "says the line once (%s)" % str(lines.map(func(l): return l.get("text", ""))))
-	check(facts.size() == 1 and facts[0].get("kind", "") == "self_doubt" and facts[0].get("source", "") == m.id and facts[0].get("role", "") == role,
-		"leaves a self_doubt card from the teller about its gift")
-	check(w.public_log.size() == events_before + 1 and w.public_log[-1].get("kind", "") == "self_doubt", "and a public event")
+	check(facts.is_empty(), "no new card: listeners hear it through the public record (Lantern)")
+	check(w.public_log.size() == events_before + 1 and w.public_log[-1].get("kind", "") == "self_doubt" and w.public_log[-1].get("by", "") == m.id, "a public self_doubt event by the teller")
 	var lied: Array = w.dlog.entries.filter(func(e): return e["type"] == "think" and e["data"].get("topic", "") == "lie" and e["actor"] == m.id and "may have been turned" in str(e["reason"]))
 	check(lied.size() == 1, "the reveal lists it as a lie, with its reason")
-	# The card reaches the case board and the Workshop's evidence without trouble.
-	var before: int = g.board.size()
-	g._facts(facts)
-	check(g.board.size() == before + 1, "the card goes on the case board")
-	var Evidence = load("res://workshop/live_evidence.gd")
-	var norm: Dictionary = Evidence.normalize_card(g.board[-1])
-	check(not norm.is_empty() and str(norm.get("source", "")) == m.id, "and normalizes as the teller's card (%s)" % str(norm.get("kind", "")))
 	lines.clear()
 	facts.clear()
 	MindMeeting._say_gift_doubt(w, m, lines, facts)
@@ -101,3 +100,34 @@ func _gate() -> void:
 	fs.secrets = []
 	fs.minions = ["poisoner"]
 	check(Evil.gift_turn_possible(w), "and so is a Poisoner")
+
+
+func _doubt(g, l) -> Dictionary:
+	var input: Dictionary = Bridge.capture(g, [], l.id, "private", l)
+	var plan: Dictionary = Shared.prepare(input, {}, l.ledger, {}, [])
+	check(plan.get("ready", false), "the listener's plan prepares (%s)" % str(plan.get("issues", [])))
+	return SourceDoubt.derive(plan, l.ledger)
+
+
+func _listener() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(9503, 10)
+	var w = g.w
+	var m = _liar(g)
+	var l = w.living().filter(func(n): return not n.is_evil())[0]
+	var key: String = m.id + ":*"
+	var before: Dictionary = _doubt(g, l)
+	check(float(before.honest.get(key, 0.0)) == 0.0, "before the line: no honest doubt about the teller")
+	w.public_event("self_doubt", [m.id], m.id, {"role": "seer"})
+	l.suspicion[m.id] = 0.0
+	var after: Dictionary = _doubt(g, l)
+	var full: float = float(after.honest.get(key, 0.0))
+	check(is_equal_approx(full, Tuning.Workshop.DOUBT_ARG_UNRELIABLE_SCALE), "a trusted teller's line: all its readings doubted at an unreliable argument's scale (%.2f)" % full)
+	check(is_equal_approx(float(after.pre_eval.get(key, 0.0)), full), "in pre_eval too")
+	check(SourceDoubt.lookup(after.honest, m.id, 2) == full, "it reaches every night's reading")
+	l.suspicion[m.id] = 0.8
+	var half: float = float(_doubt(g, l).honest.get(key, 0.0))
+	check(half < full and is_equal_approx(half, full * 0.2), "a suspected teller is believed less (%.2f)" % half)
+	var own: Dictionary = _doubt(g, m)
+	check(float(own.honest.get(key, 0.0)) == 0.0, "the teller's own line doesn't count for itself")
