@@ -501,6 +501,9 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 		# The Hexer factor reads schedules, sightings and the watch record (day presence).
 		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []), "hex_on": hex_factor_enabled,
 			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening", "watch_log"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
+	var mixed: Array = cards.filter(func(c): return float(c.get("broken_chance", 0.0)) > 0.0).map(func(c): return [c.get("id", ""), float(c.broken_chance)])
+	if not mixed.is_empty():
+		input.append({"list_mix": mixed})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -511,7 +514,43 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
 
+## At most this many Night Watch lists are mixed as sound or broken (the latest nights
+## first): the movement factor is built once for every subset of them left out.
+const LIST_MIX_MAX = 2
+
+## The Night Watch lists to mix as sound or broken as a whole (BACKLOG "A Night Watch list
+## that wrongly names the listener", Michael, Nov 18): another's report, carrying the chance
+## its gift was broken that night ("broken_chance", CaseEval._list_broken).
+static func _mixed_lists(view: Dictionary, cards: Array) -> Array:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var lists: Array = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and not c.get("quoted", false) \
+		and not c.get("duty_only", false) and float(c.get("broken_chance", 0.0)) > 0.0 and ids.has(str(c.get("source", ""))))
+	lists.sort_custom(func(a, b): return int(a.get("night", -1)) > int(b.get("night", -1)) or (int(a.get("night", -1)) == int(b.get("night", -1)) and str(a.id) < str(b.id)))
+	return lists.slice(0, LIST_MIX_MAX)
+
+## The movement factor, mixed over each list being sound or broken: in a world where the
+## watcher is good, the list is sound (every name at its small error) with chance 1 - b, or
+## broken (it says nothing about who walked) with chance b, the watcher's poison and
+## Delusional priors; a broken list clears nobody. In a world where the watcher is evil the
+## sighting contest already lets it say anything. The kernel weighs the two by fit
+## (LiveActivityKernel.ScoreMixed).
 static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> Array:
+	return [_list_mix(view, cards, observations, _mixed_lists(view, cards))]
+
+static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists: Array) -> Dictionary:
+	if lists.is_empty():
+		return _factors_core(view, cards, observations)[0]
+	var list: Dictionary = lists[0]
+	var rest: Array = lists.slice(1)
+	var sound: Dictionary = _list_mix(view, cards, observations, rest)
+	var broken: Dictionary = _list_mix(view, cards.filter(func(c): return c.get("id", "") != list.id), observations, rest)
+	var b: float = clampf(float(list.broken_chance), 0.0, 1.0)
+	var top: Dictionary = sound.duplicate(false)
+	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "next": sound, "alt": broken,
+		"key": "%s:%s|%s|%s" % [list.id, b, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
+	return top
+
+static func _factors_core(view: Dictionary, cards: Array, observations: Array) -> Array:
 	var checked: Array = cards.duplicate()
 	var movement: Dictionary = _routes_cs(view, cards, {}, {}, false)
 	for night in movement.nights:
@@ -996,8 +1035,9 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_factor_handles.clear()
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {})]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {})])
+	var mix_key: String = str(factor.get("list_mix", {}).get("key", ""))
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {}), mix_key]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {}), mix_key])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -1139,6 +1179,11 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		g_ints.append(int(curse.get("from", 0)))
 		g_ints.append(int(curse.get("until", 0)))
 		bridge.LiveAttachGuards(h, g_ints, g_doubles)
+	var mix: Dictionary = factor.get("list_mix", {})
+	if not mix.is_empty():
+		var next_h: int = _ensure_factor_handle(mix.next)
+		var alt_h: int = _ensure_factor_handle(mix.alt)
+		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), next_h, alt_h)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}

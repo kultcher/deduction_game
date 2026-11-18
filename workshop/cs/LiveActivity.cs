@@ -202,6 +202,17 @@ internal static class LiveActivityKernel
         public double ContestTruth;
         /// <summary>Warden guards on quiet nights (AttachGuards), or null.</summary>
         public GuardSet Guards;
+        /// <summary>A Night Watch list that is sound or broken as a whole (AttachListMix;
+        /// BACKLOG "A Night Watch list that wrongly names the listener", Michael, Nov 18).
+        /// -1 for none. Otherwise, in a world where the watcher is good, the list is sound with
+        /// chance 1 - ListMixBroken (scored as ListMixNext, every name at its small error) or
+        /// broken (ListMixAlt, the same evidence without the list: it says nothing about who
+        /// walked). In a world where the watcher is evil, ListMixNext, whose sighting contest
+        /// already lets an evil teller say anything. The factor's own profiles go unused.</summary>
+        public int ListMixWatcher = -1;
+        public double ListMixBroken;
+        public CompiledMovementFactor ListMixNext;
+        public CompiledMovementFactor ListMixAlt;
     }
 
     /// <summary>A Warden's guard of a door on a night the Demon killed nobody. In a world where
@@ -1747,6 +1758,15 @@ internal static class LiveActivityKernel
     /// T = 1 .. 2^K - 1: the demon profile of each person; then, per Scion split in order,
     /// the same subsets for its before profiles and then for its after profiles].
     /// </summary>
+    public static void AttachListMix(int factorHandle, int watcher, double broken, int nextHandle, int altHandle)
+    {
+        var factor = SolverContext.GetMovementFactor(factorHandle);
+        factor.ListMixWatcher = watcher;
+        factor.ListMixBroken = broken;
+        factor.ListMixNext = SolverContext.GetMovementFactor(nextHandle);
+        factor.ListMixAlt = SolverContext.GetMovementFactor(altHandle);
+    }
+
     public static void AttachGuards(int factorHandle, int[] ints, double[] doubles)
     {
         var factor = SolverContext.GetMovementFactor(factorHandle);
@@ -1940,7 +1960,7 @@ internal static class LiveActivityKernel
         {
             return 1.0;
         }
-        return ScoreWorldCore(new WorldEntry(packedWorld), factor);
+        return ScoreMixed(new WorldEntry(packedWorld), factor);
     }
 
     public static double[] ScoreWorlds(long[] packedWorlds, int factorHandle)
@@ -1954,9 +1974,22 @@ internal static class LiveActivityKernel
         }
         for (int i = 0; i < packedWorlds.Length; i++)
         {
-            outScores[i] = ScoreWorldCore(new WorldEntry(packedWorlds[i]), factor);
+            outScores[i] = ScoreMixed(new WorldEntry(packedWorlds[i]), factor);
         }
         return outScores;
+    }
+
+    /// <summary>ScoreWorldCore, mixed over each Night Watch list being sound or broken
+    /// (CompiledMovementFactor.ListMixWatcher).</summary>
+    private static double ScoreMixed(WorldEntry world, CompiledMovementFactor factor)
+    {
+        if (factor.ListMixWatcher < 0)
+            return ScoreWorldCore(world, factor);
+        double sound = ScoreMixed(world, factor.ListMixNext);
+        if ((world.Evil & (1 << factor.ListMixWatcher)) != 0)
+            return sound;
+        double b = factor.ListMixBroken;
+        return (1.0 - b) * sound + b * ScoreMixed(world, factor.ListMixAlt);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

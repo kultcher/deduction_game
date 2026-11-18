@@ -825,12 +825,16 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 			# A Medium's relay is kept too: its relayer may be the liar (RoleConstraints lets an
 			# evil relayer's relay be a bluff in play; LiveActivity._sighting_contests weighs
 			# them). Still set aside:
-			# - a Night Watch list: each name on it is scored as an independent slip, so a list
-			#   that wrongly names me would still read as a credible watch, clearing the watch
-			#   and casting the rest of the list as out (test_workshop_consequences).
-			#   SourceDoubt voids that night's list and doubts the watch instead.
+			# - a Night Watch list, where it can't be weighed as sound or broken as a whole (a
+			#   script with neither Poisoner nor Delusional, SourceDoubt.list_broken_chance):
+			#   each name on it would be scored as an independent slip, so a list that wrongly
+			#   names me would still read as a credible watch, clearing the watch and casting the
+			#   rest of the list as out (test_workshop_consequences). SourceDoubt voids that
+			#   night's list and doubts the watch instead. Otherwise it's kept: the movement model
+			#   mixes the list as sound or broken (LiveActivity._list_mix), so the false name
+			#   counts against the watcher and a broken list clears nobody (Michael, Nov 18).
 			objections.append("%s conflicts with my firsthand knowledge that I was home on night %s; the report may be wrong." % [card.id, night])
-			if card.kind == "report":
+			if card.kind == "report" and preload("res://workshop/source_doubt.gd").list_broken_chance(view, {"id": self_id, "knowledge": knowledge}, card) <= 0.0:
 				rejected.append(card.id)
 		if card.kind == "alibi" and card.subject == self_id and was_out:
 			objections.append("%s says I was home, but I know I went out on night %s." % [card.id, night])

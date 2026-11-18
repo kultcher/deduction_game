@@ -148,9 +148,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			pre_eval[csrc + ":*"] = 1.0
 		if ckind == "report" and crole == "nightwatch" and self_id != "" and self_id in card.get("data", {}).get("seen", []):
 			var nd_key: String = str(cnight)
-			if own_outings.has(nd_key) and not bool(own_outings[nd_key]) and not settled_sincere.has(csrc):
+			if own_outings.has(nd_key) and not bool(own_outings[nd_key]) and not settled_sincere.has(csrc) and list_broken_chance(view, listener, card) <= 0.0:
 				# A Night Watch list can be wrong without a lie (a poisoned watch): that night's
-				# report is void, and the source is doubted in general, not written off.
+				# report is void, and the source is doubted in general, not written off. Only
+				# where the list can't be weighed as sound or broken as a whole (a script with
+				# neither Poisoner nor Delusional): otherwise the movement model mixes the two
+				# (LiveActivity._list_mix) and the kept list counts against its watcher by fit.
 				var nw_key: String = "%s:%d" % [csrc, cnight]
 				pre_eval[nw_key] = 1.0
 				honest[nw_key] = 1.0
@@ -427,6 +430,29 @@ static func self_doubt(n) -> Dictionary:
 ## Whether the deal's placement rules (ScriptDef.PLACEMENT_RULES) let a holder of `role`
 ## carry `secret`: a Chronicler or Rumormonger never holds the Delusional secret, so knowing
 ## its own gift rules out doubting itself that way. An unknown role could hold it.
+## Diagnostics: off, every Night Watch list is scored name by name again, and one that
+## wrongly names the listener is set aside and its night void (tests and tools only).
+static var list_mix_enabled: bool = true
+
+## The chance another's Night Watch list was broken that night, as a whole (BACKLOG "A Night
+## Watch list that wrongly names the listener", Michael, Nov 18): the watcher's poison and
+## Delusional priors, as independent ways the gift can fail, 1 - (1 - poison)(1 - delusional).
+## No new number: the poison chance (ReadingChallenges.poison_chance, read with the night's
+## outings) and the Delusional prior the listener applies to its own gift. Zero for the
+## listener's own list, a quoted or duty-only card, or a script with neither secret; there a
+## list that wrongly names the listener stays set aside, and its night void, as before.
+static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
+	if not list_mix_enabled or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
+		return 0.0
+	var src: String = str(card.get("source", ""))
+	var me: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))
+	if src == "" or src == me or src in ["player", "evidence", "town"]:
+		return 0.0
+	var night: int = int(card.get("night", card.get("observed_at", {}).get("day", -1)))
+	var poison: float = ReadingChallenges.poison_chance(view, listener, night, src)
+	var delusional: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT if "delusional" in view.get("world_options", {}).get("modifiers", []) and could_hold_secret("nightwatch", "delusional") else 0.0
+	return 1.0 - (1.0 - poison) * (1.0 - delusional)
+
 static func could_hold_secret(role: String, secret: String) -> bool:
 	if role == "" or not C.has_role_def(role):
 		return true
