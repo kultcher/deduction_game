@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a relayed sighting's only teller is its relayer): `baseline_23d0330`
+### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_be6e788`
+
+`tools/golden/baseline_be6e788/` is the capture from `claude/poison-self-doubt` (#232) at
+`be6e788` (main `23136f3` merged in): with a Poisoner possible, each of a good listener's own
+readings carries the chance a Poisoner picked it that night as an honest doubt (combined with
+the Delusional self-doubt as independent chances), and the judge weighs the reading as genuine
+or broken by fit.
+- **Divergence from `baseline_23d0330`:** beliefs from the first record on every seed (the first
+  day's own readings carry the doubt).
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
+  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner). Record counts are the
+  same except 54875 (201, was 225).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a relayed sighting's only teller is its relayer): `baseline_23d0330`
 
 `tools/golden/baseline_23d0330/` is the capture from `claude/relayer-in-contest` at `23d0330`
 (main `b65b728` merged in): in the sighter contests a Medium's relay is contested only as the

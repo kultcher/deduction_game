@@ -67,3 +67,6 @@
   unlikely as the poisoning itself. `test_poison_self_doubt` (16 checks): the Gravedigger
   reading keeps 6.2% (0 before), and a later own reading carries none. No judge-side caller
   of `poison_chance` exists today (Quill), so nothing else changes.
+- **Re-baselined (Nov 18):** main `23136f3` merged in. `baseline_be6e788`: beliefs move from the
+  first record on every seed; outcomes are the same on all five (54875 has 201 records, was 225).
+  Two captures identical; the fast list passed 110 of 110.
