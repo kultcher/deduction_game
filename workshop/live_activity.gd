@@ -220,6 +220,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			flags |= (1 << 8)
 		if bool(C.ROLES.get(role_str, {}).get("night_walk", false)):
 			flags |= (1 << 9)
+		if bool(card.get("known_self", false)):
+			flags |= (1 << 10)  # FlagKnownSelf: the listener's own home night
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))
@@ -308,7 +310,7 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			card_ints[off + 18] = int(app.get("from", 0))
 			card_ints[off + 19] = int(app.get("through", -1))
 
-		card_doubles[c_i * 2] = float(card.get("hearing_weight", 1.0))
+		card_doubles[c_i * 2] = (1.0 - float(card.get("self_doubt", 0.0))) if card.get("known_self", false) else float(card.get("hearing_weight", 1.0))
 		card_doubles[c_i * 2 + 1] = clampf(float(card.get("report_error", default_nw_err)), 0.02, 0.45)
 
 	return {"ints": card_ints, "doubles": card_doubles}
@@ -345,7 +347,7 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			elif card.kind == "sighting" and card.get("complete", false) and person.id not in card.get("excluded", []):
 				# Logical consistency; the probabilistic score uses VIGIL_MISS instead.
 				okay = okay and not C.vigil_sees_path(card.block, path)
-			elif card.kind == "alibi" and card.subject == person.id:
+			elif card.kind == "alibi" and card.subject == person.id and not card.get("known_self", false):
 				okay = okay and not out
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
 				okay = okay and not C.vigil_sees_path(card.block, path)
@@ -462,9 +464,30 @@ static var hex_factor_enabled: bool = true
 ## Diagnostics: turn the sighter contests off (_sighting_contests; tests and tools only).
 static var sighter_contests_enabled: bool = true
 
+## The listener's known home nights (view.own_home) as movement cards: one soft alibi a
+## night ("I know I was home"), doubted only by its self-doubt (FlagKnownSelf). They exist
+## only inside the movement model, so the sighting contests and profiles weigh a sighting
+## of the listener out against whoever told it.
+static func own_home_cards(view: Dictionary) -> Array:
+	var own: Dictionary = view.get("own_home", {})
+	var me: String = str(own.get("self", ""))
+	if me == "" or not view.get("people", []).any(func(p): return p.id == me):
+		return []
+	var out: Array = []
+	for k in own.get("nights", {}):
+		var nd: int = int(k)
+		out.append({"id": "own-home:%s:%d" % [me, nd], "kind": "alibi", "source": me, "subject": me, "subjects": [me],
+			"block": str(own.get("block", "")), "night": nd, "observed_at": {"day": nd, "phase": "night"}, "data": {},
+			"known_self": true, "self_doubt": float(own.nights[k])})
+	out.sort_custom(func(a, b): return a.night < b.night)
+	return out
+
 static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if not available(view):
 		return []
+	var known: Array = own_home_cards(view)
+	if not known.is_empty() and not relevant(cards).is_empty():
+		cards = cards + known  # never a movement factor from the listener's own nights alone
 	var observations = relevant(cards).filter(func(c): return not c.get("quoted", false) or c.kind == "alibi")
 	# With a Hexer possible, daytime evidence alone (a Whereabouts day log, morning and
 	# afternoon reports) still bears on who hexed whom, so it doesn't need a night card.
@@ -604,6 +627,19 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	var stride: int = 4 if has_curse else 3
 	var bridge = SolverBackend._bridge()
 	var alt_cache: Dictionary = {}   # [full sighters, cursed-only sighter] -> raw profiles
+	# The balance C is an outsider's: how often an honest sighter would report this, from what
+	# anyone could know. The listener's own knowledge of its nights (known_self cards) stays
+	# out of it; otherwise knowing a sighting of itself is false would make an honest one
+	# impossible, and the invented one with it (Beadle, Nov 17: an evil Medium's
+	# invented relay of a home-staying listener counted almost nothing against them).
+	var private_ids: Array = cards.filter(func(x): return x.get("known_self", false)).map(func(x): return str(x.get("id", "")))
+	var outsider_cache: Dictionary = {}  # same keys, without the known_self cards
+	var outsider_with: PackedFloat64Array = PackedFloat64Array()
+	if not private_ids.is_empty():
+		var outside: Array = checked.filter(func(x): return str(x.get("id", "")) not in private_ids)
+		var p_out: Dictionary = _pack_activity_cards(ids, env.homes, outside, {}, {})
+		outsider_with = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
+			DEMON_DETOUR, p_out.ints, p_out.doubles)
 	var evil_n: float = float(view.get("evil_count", 1))
 	var weights: Array = [maxf(0.0, 1.0 - evil_n / float(n)), maxf(0.0, evil_n - 1.0) / float(n), 1.0 / float(n)]
 	# The profile without `full`'s sightings and the ones `cursed` told while converted.
@@ -628,13 +664,25 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			alt_cache[key] = bridge.LiveAllProfiles(
 				has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
 				DEMON_DETOUR, packed.ints, packed.doubles)
+			if not private_ids.is_empty():
+				var minus_out: Array = minus.filter(func(x): return str(x.get("id", "")) not in private_ids)
+				var packed_out: Dictionary = _pack_activity_cards(ids, env.homes, minus_out, {}, {})
+				outsider_cache[key] = bridge.LiveAllProfiles(
+					has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
+					DEMON_DETOUR, packed_out.ints, packed_out.doubles)
 		var raw: PackedFloat64Array = alt_cache[key]
 		var b: int = pi * stride
 		var alt: Array = [raw[b], raw[b + 1], raw[b + 2], raw[b + 3] if has_curse else 0.0]
 		var with_: Array = [float(profiles[pi].good), float(profiles[pi].minion), float(profiles[pi].demon)]
+		var with_c: Array = with_
+		var alt_c: Array = alt
+		if not private_ids.is_empty():
+			var raw_o: PackedFloat64Array = outsider_cache[key]
+			with_c = [outsider_with[b], outsider_with[b + 1], outsider_with[b + 2]]
+			alt_c = [raw_o[b], raw_o[b + 1], raw_o[b + 2]]
 		var c: float = 0.0
 		for a in range(3):
-			c += weights[a] * (with_[a] / alt[a] if alt[a] > 1e-30 else 1.0)
+			c += weights[a] * (with_c[a] / alt_c[a] if alt_c[a] > 1e-30 else 1.0)
 		return {"alt": alt, "c": c}
 	var out: Array = []
 	var persons: Array = by_person.keys()
@@ -1618,6 +1666,8 @@ static func _evaluate_trace_for_person_impl(view: Dictionary, cards: Array, trac
 ## so keeping only whichever came first would change beliefs with card order (#124 review).
 static func _alibi_incident(card: Dictionary) -> String:
 	var subject: String = str(card.get("subject", ""))
+	if card.get("known_self", false):
+		return "alibi:" + subject + ":known"  # the listener's own knowledge, not a told alibi
 	return "alibi:" + subject + (":self" if str(card.get("source", "")) == subject else "")
 
 static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
@@ -1638,6 +1688,9 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 			if person not in card.get("excluded", []):
 				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
 		"alibi":
+			if card.get("known_self", false):
+				# "I know I was home": only a Sleepwalker's doubt leaves room for being out.
+				return 1.0 if card.subject != person or not out else float(card.get("self_doubt", 0.0))
 			if card.subject == person:
 				# Someone else's word on a person's night (a witness) stays hard.
 				if not card.get("quoted", false) and card.get("source", "") != person:

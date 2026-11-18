@@ -388,6 +388,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   Michael (Nov 17): build the choice only, a two-way challenge on a relay ("the Medium
   relayed it wrong" versus "the dead person was wrong in the first place"). Relays of
   relays and relayed opinions stay unsupported. Owner Quill. [decided: the choice only]
+  **Built (Quill, #191, Nov 17):** a relay challenge names its target, the Medium's
+  transmission or the dead source's original reading (`ReadingChallenges.RELAY_ATTRIBUTIONS`),
+  and each is judged on its own night and teller; covered by `test_medium_relay_challenge`
+  and `test_relay_challenge_menu`. Relays of relays and relayed opinions stay unsupported.
+  [done]
 
 - **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
   the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
