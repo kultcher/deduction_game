@@ -233,7 +233,7 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
   [decided] (Michael, Nov 17)
 
-  **Judge side built (Quill, Nov 18, `claude/warden-quiet-route`):** a Warden's guard report
+  **Judge side built (Quill, Nov 18):** a Warden's guard report
   on a quiet night sets the Demon's route to the guarded door, where the Warden and the
   guarded person are good. The player's ward already did this through the scorched sigil.
   The Test juror's result carries `guards` for Herald's reason line. Herald: the UI and
