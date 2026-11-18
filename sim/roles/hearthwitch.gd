@@ -43,14 +43,14 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	var why: String = ""
 	if s in nbrs:
 		count = 1
-		why = "frames scapegoat %s as an evil neighbour" % s
+		why = "named %s, whom evil meant to hang, as an evil neighbour" % s
 	else:
 		var framable: Array = nbrs.filter(func(x): return not w.by_id[x].is_evil())
 		if not framable.is_empty() and w.day >= 1 and w.chance(0.3):
 			count = 1
-			why = "frames a good neighbour"
+			why = "named a good neighbour as evil"
 		else:
-			why = "reports 0 to clear neighbours (incl. any teammate)"
+			why = "said no neighbour was evil, clearing any fellow evil among them"
 	var entry: Dictionary = {
 		"data": {"nbrs": nbrs, "count": count},
 		"text": "I sensed that %d of my neighbours (%s) %s evil" % [count, w._names(nbrs), "is" if count == 1 else "are"],
@@ -66,14 +66,14 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Call
 		if grp.size() >= 2:
 			e["data"] = {"group": grp, "count": 0, "block": d.home_block}
 			e["text"] = "on %s I sensed 0 evil among %s" % [C.block_name(d.home_block), w._names(grp)]
-			return {"entry": e, "why": "the dead Dowser %s 'found no evil' with the demon %s" % [dd.id, d.id], "frames": false}
+			return {"entry": e, "why": "made up a reading from the late Hearthwitch %s that found no evil around %s, the Demon" % [dd.id, d.id], "frames": false}
 	var near2: Array = goods.filter(func(x): return x != sg and x.home_block == sg.home_block).slice(0, 2)
 	var grp2: Array = [s] + near2.map(func(x): return x.id)
 	if grp2.size() < 2:
 		return {}
 	e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
 	e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
-	return {"entry": e, "why": "the dead Dowser %s sensed evil around scapegoat %s" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Hearthwitch %s that sensed evil around %s, whom evil meant to hang" % [dd.id, s], "frames": true}
 
 
 ## Another count over the same neighbours (FabricationCheck: a better lie).

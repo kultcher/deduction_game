@@ -92,9 +92,9 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, _mate, asked: Arr
 	var why: String = ""
 	if not (s in seen) and w.day >= 1 and w.by_id[s].home_block == block:
 		seen.append(s)
-		why = "watches scapegoat's block; adds fake sighting of %s to true ones" % s
+		why = "watched the street of the one evil meant to hang, and added a false sighting of %s to the true ones" % s
 	else:
-		why = "reports walkers it knows of on scapegoat's block, hiding teammates"
+		why = "told of the walkers they knew of on that street, leaving out their fellow evil"
 	plan["fake_watch"][str(w.day)] = block
 	var entry: Dictionary = {
 		"data": {"block": block, "seen": seen},
@@ -107,7 +107,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, _mate, asked: Arr
 func fake_medium_reading(_w, _n, dd, s: String, sg, _d, _goods: Array, _other: Callable, e: Dictionary, _demon_implicated: bool) -> Dictionary:
 	e["data"] = {"block": dd.home_block, "seen": [s]}
 	e["text"] = "I watched %s: I saw %s pass by" % [content().block_name(dd.home_block), sg.name]
-	return {"entry": e, "why": "the dead Night Watch %s saw scapegoat %s on their last watch" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Night Watch %s that saw %s, whom evil meant to hang, on their last watch" % [dd.id, s], "frames": true}
 
 
 ## An evil member's made-up Night Watch report for night `nd`, or `{}`.

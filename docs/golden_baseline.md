@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, the vigil watches who leaves): `baseline_e1f0fc2`
+### Current baseline (Nov 18, bluff motives in plain words): `baseline_fdaccb0`
+
+`tools/golden/baseline_fdaccb0/` is the capture from `claude/herald-bluff-motives` at
+`fdaccb0` (main `5ef66da` merged in): every fabricated reading's recorded motive (`why`)
+now reads in plain words, as Michael approved (Nov 17). "Whom evil meant to hang" replaces
+"scapegoat", "a fellow evil" replaces "teammate", street and role names replace codes, days
+are ordinals, and numbers the player never saw are gone.
+- **Divergence from `baseline_e1f0fc2`:** text only, on every seed, all in `why` fields
+  (1,148 strings). Record counts are the same.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_e1f0fc2`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, the vigil watches who leaves): `baseline_e1f0fc2`
 
 `tools/golden/baseline_e1f0fc2/` is the capture from `claude/vigil-leavers` at `e1f0fc2`
 (main `eb74fad` merged in): the vigil sees residents leaving the watched block instead of

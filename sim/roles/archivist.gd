@@ -49,7 +49,7 @@ func generate_bluff_reading(w, _n, _plan: Dictionary, s: String, _mate, _asked: 
 	var other = w.pick(w.living_good().filter(func(x): return x.id != s))
 	var pair: Array = w.shuffled([s, other.id])
 	var mr: String = w.by_id[w.pick(w.minion_ids)].role
-	var why = "names scapegoat %s as a possible %s" % [s, mr]
+	var why = "named %s, whom evil meant to hang, as a possible %s" % [s, content().role_name(mr)]
 	var entry: Dictionary = {
 		"data": {"pair": pair, "role": mr},
 		"text": "I learned that one of %s is the %s" % [w._names(pair), C.role_name(mr)],
@@ -66,7 +66,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, other: Ca
 	var mr: String = w.pick(w.case_script.minions.filter(func(x): return x != "breathstealer" or w.living_with_role("breathstealer") != null))
 	e["data"] = {"pair": pair2, "role": mr}
 	e["text"] = "I learned that one of %s is the %s" % [w._names(pair2), C.role_name(mr)]
-	return {"entry": e, "why": "the dead Archivist %s 'named' scapegoat %s as a minion" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Archivist %s naming %s, whom evil meant to hang, as a Minion" % [dd.id, s], "frames": true}
 
 
 ## The same role on a pair with a bystander in one place (FabricationCheck: a better lie).

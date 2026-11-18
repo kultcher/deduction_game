@@ -432,7 +432,7 @@ func _test_monitor_readings_and_marked() -> void:
 		var r_m: Dictionary = rdef.generate_reading(w, n, {}, Mind)
 		if str(r_m.data.get("role", "")) in (C.MINION_ROLES + ["demon"]):
 			saw_evil_role = true
-			_check(r_m.get("why", "") == "a Marked soul read as evil", "Marked registration sets correct why clause")
+			_check(r_m.get("why", "") == "a Marked soul reads as evil", "Marked registration sets correct why clause")
 			break
 	_check(saw_evil_role, "Marked walker on home block registers as evil role")
 

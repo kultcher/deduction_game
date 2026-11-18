@@ -679,7 +679,7 @@ func _test_confessor_readings_alignment_and_marked() -> void:
 		var r_mk: Dictionary = rdef.generate_reading(w, conf, {"confessor_t": good_target.id}, Mind)
 		if bool(r_mk.data.get("forgot", false)):
 			saw_marked_forgot = true
-			_check(r_mk.get("why", "") == "a Marked soul read as evil", "Marked target returns marked why clause")
+			_check(r_mk.get("why", "") == "a Marked soul reads as evil", "Marked target returns marked why clause")
 			break
 	_check(saw_marked_forgot, "Marked good target can return forgot: true to Confessor")
 
