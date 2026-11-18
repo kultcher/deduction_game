@@ -3,6 +3,39 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Settled Nov 18, 2026 (Michael; recorded by Claude-Vicar)
+
+- **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
+  paired seeds (living candidates, wrongful executions, win rate); the evidence rework's
+  planned sweep wasn't recorded. [open]
+
+  > **Settled Nov 18 (Michael):** keep 3:1. Tally's report (#212) found no measurable
+  > difference in outcomes between the ratios; at 3:1 traces work as supporting evidence and
+  > narrow the field without singling out the Demon.
+
+- **Say what a card is offered for.** (54875) Collateral from a sighting card lands on
+  everyone it places. Let the player say what a card is offered for ("about Constance's
+  alibi"). Deferred from the Oct 26 feedback batch because it changes how evidence
+  counts. [open]
+
+  > **Settled Nov 18 (Michael):** covered by premise centring, option B at a bystander share
+  > of 1/3 (`docs/design/premise_centring.md`; Lantern building). A card a case brought counts
+  > mostly on the case's subject, so the premise says what the card is offered for.
+
+- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
+  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
+  had a presented premise shape its own cards' effect: the premise's target took the case's
+  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
+  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
+  case moves people it doesn't name only through its own cards, so the damping never ran with
+  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
+  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
+  far in play. **[tentative]**
+
+  > **Settled Nov 18 (Michael):** premise centring B largely rebuilds it for the connections
+  > model (`docs/design/premise_centring.md`), with a flat share of 1/3 in place of the
+  > Insight-scaled 40–80%.
+
 ## Built Nov 17, 2026 (Claude-Herald, `claude/herald-map-ui`)
 
 - **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)

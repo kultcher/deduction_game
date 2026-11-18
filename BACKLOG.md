@@ -187,11 +187,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   (`DayPresence.breath_factor`), and since #157 (Nov 14) it assumes a Breathstealer that
   hunts. Check what's still missing for the player before choosing an option.
 
-- **Say what a card is offered for.** (54875) Collateral from a sighting card lands on
-  everyone it places. Let the player say what a card is offered for ("about Constance's
-  alibi"). Deferred from the Oct 26 feedback batch because it changes how evidence
-  counts. [open]
-
 - **Killed by the Demon, so credit the victim's alibi.** (54875) A Demon victim's alibi
   should count as modest grounds for challenging a reading against it ("it's likelier
   Constance is lying than that Dorian has a secret night walk"): not zero, never proof.
@@ -473,10 +468,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   (approved by Michael) is in. Bot, 20 games before and after: good won 17 instead of 13,
   and about 1 vigil in 4 saw the Demon instead of 1 in 5 (it watches its suspects' homes,
   and the Demon leaves home every kill night). Small sample.
-
-- **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
-  paired seeds (living candidates, wrongful executions, win rate); the evidence rework's
-  planned sweep wasn't recorded. [open]
 
 - **Situational credence modifiers** still to settle: early disclosure, a quiet night as a
   credence boost, admission against interest, consistency over time, role-specific
@@ -1001,15 +992,6 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   The joining bar runs from 0.8 for the dullest NPC to 0.1 for the sharpest (Michael, Nov
   17, after the wider measurement). DESIGN's Insight row and its new line are approved.
   Building in #199. Owner Lantern. **[decided]**
-- **Spillover damping, removed with the earlier belief model** (connections purge, Nov 16;
-  Michael asked for it to be kept on the backlog). Premises pass step 1 (`docs/premises_plan.md`)
-  had a presented premise shape its own cards' effect: the premise's target took the case's
-  full effect, and everyone else took a share that grew with the listener's Insight, from 40%
-  to 80% (`PREMISE_SPILLOVER_MIN/MAX`, `SharedLedger.premise_shaping`). Under connections a
-  case moves people it doesn't name only through its own cards, so the damping never ran with
-  the model on, and it is deleted in purge phase 5 (`docs/connections_purge_plan.md`). The code survives
-  on the branch `archive/legacy-belief-final`. Revisit if presentations move bystanders too
-  far in play. **[tentative]**
 - **Persistence Confidence: a working theory that colours new evidence** (connections purge,
   Nov 17; Michael asked for it to be kept on the backlog). An experiment for live NPCs: a
   listener committed to a theory about someone (high Confidence) read new evidence through

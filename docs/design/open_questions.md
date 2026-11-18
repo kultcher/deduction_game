@@ -80,13 +80,9 @@ These are the ones under discussion now, roughly by how much they shape other wo
   purge pushes it.
 - **Builds:** Lantern.
 
-### 1.5 Spillover damping `[tentative]`
-- **Open:** whether a presented premise should shape its own cards' effect again (the
-  premise's target takes the full effect, bystanders 40–80% by Insight). Under connections a
-  case moves bystanders only through its own cards. Revisit if presentations move
-  bystanders too far in play; it would tie into 1.3 if Insight comes back.
-- **Evidence:** BACKLOG section 6 (#174); `docs/premises_plan.md` step 1.
-- **Builds:** Lantern.
+### 1.5 ~~Spillover damping~~ Settled (Nov 18)
+- **Michael (Nov 18):** closed; premise centring B at a share of 1/3 largely rebuilds it for
+  the connections model (`docs/design/premise_centring.md`). In BACKLOG_COMPLETED.md.
 
 ### 1.6 ~~Are unlimited vigils too strong?~~ Decided (Nov 17)
 - **Michael (Nov 17):** the vigil watches who *leaves* a block, not who arrives; no sweep
@@ -135,8 +131,7 @@ These are the ones under discussion now, roughly by how much they shape other wo
 Older open items, grouped. One line each; the BACKLOG entry has the detail.
 
 ### Evidence, cases and the judge (Quill unless noted)
-- **Say what a card is offered for** ("about Constance's alibi"), so a sighting's collateral
-  doesn't land on everyone it places. Changes how evidence counts.
+- ~~**Say what a card is offered for**~~ Settled Nov 18: covered by premise centring B.
 - **Withdraw or revise a case** believably, without scoring below the version it replaces.
   Pairs with signposting the way back from a wrong "lying" call (`[decided: test later;
   signposting open]`). Herald for the UI.
@@ -146,7 +141,7 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
   versus the dead source; nested relays. Beadle for the social side.
 - **The sighter contest cap** and **an evil Medium's night-0 relay**: known bugs in the judge
   that move golden, waiting on a call (BACKLOG section 6). Lantern.
-- **Trace weight** (3:1 against 1.5:1 and 2:1); **the Seer's rise looks small**;
+- ~~**Trace weight**~~ (settled Nov 18: keep 3:1, Tally's #212); **the Seer's rise looks small**;
   **situational credence modifiers** (early disclosure, a quiet night, admission against
   interest, consistency). Tally to measure, Lantern to build.
 - **Demon detours** exist in inference but not in movement: which is authoritative?
