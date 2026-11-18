@@ -1312,6 +1312,8 @@ func resolve_night() -> void:
 		for n in living_good():
 			if C.ROLES[n.role]["kind"] == "info":
 				_receive_info(n, watch_block, medium_t, lamp, confessor_t)
+	var was_defer: bool = defer_beliefs
+	defer_beliefs = true
 	var kill_outcome = ""
 	if kill_t != "":
 		var v = by_id[kill_t]
@@ -1341,6 +1343,8 @@ func resolve_night() -> void:
 	Evil.gather_night_intel(self)
 	Evil.make_fake_info(self)
 	Mind.update_from_own_info(self)
+	Mind.flush_beliefs(self)
+	defer_beliefs = was_defer
 	player_ward = ""
 	snapshot("night_end")
 	_check_parity()

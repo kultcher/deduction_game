@@ -1177,12 +1177,16 @@ static func tell_save(w, warden, protectee, night: int, belief: float) -> void:
 		"%s tells %s they stood at their door on night %d." % [warden.name, protectee.name, night])
 	if protectee.is_evil():
 		return
+	var was_defer: bool = w.defer_beliefs
+	w.defer_beliefs = true
 	hear_claim(w, protectee, warden.id, "warden", 1.0, "told")
 	var card = fact.duplicate(true)
 	card["learned"] = [{"day": w.day, "phase": w.phase, "via": warden.id}]
 	var receipt = WorkshopLedger.Evidence.normalize_card(card)
 	ledger_hear(w, protectee, "heard:" + receipt.id, [], 1.0, [warden.id, night, "report"],
 		{"kind": "tell", "workshop_card": receipt, "workshop_teller": warden.id, "workshop_public": false})
+	w.defer_beliefs = was_defer
+	flush_beliefs(w, protectee)
 	if susp(protectee, warden.id) < Tuning.Social.GOSSIP_BELIEVED_BELOW:
 		protectee.npc_trust[warden.id] = clampf(protectee.npc_trust.get(warden.id, 0.5) + Tuning.Roles.WARDEN_SAVE_TRUST * belief, 0.0, 1.0)
 
