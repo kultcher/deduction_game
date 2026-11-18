@@ -581,7 +581,10 @@ and doubted the watcher in general.
   an evil teller say anything.
 - **How it's weighed.** The judge weighs sound against broken by fit. The movement factor is
   built with and without the list, and the kernel mixes the two in each world where the watcher
-  is good (`LiveActivity._list_mix`, `LiveActivityKernel.ScoreMixed`). Up to two lists, the
+  is good (`LiveActivity._list_mix`, `LiveActivityKernel.ScoreMixed`). The kernel's scores are
+  ratios over each branch's own good profiles, so the broken branch is put on the sound
+  branch's scale. A broken list is taken to say these words as often as an honest one would,
+  from what an outsider could know, which is the sighting contests' balance (Codex on #273). Up to two lists, the
   latest nights first (`SourceDoubt.LIST_MIX_MAX`), each subset built once. In the broken
   branch the watcher still went out to watch its block: a duty-only copy keeps that walk
   (Codex on #273). A list beyond the two gets no broken chance, so it keeps the old fallback
@@ -597,13 +600,13 @@ and doubted the watcher in general.
 
   | Chance of being evil | No list | List wrongly naming the listener | Sound list |
   |---|---|---|---|
-  | The watcher | 0.20 | 0.51 (0.20 under the old void) | |
-  | The other named person | 0.33 | 0.34 | 0.42 |
+  | The watcher | 0.20 | 0.44 (0.20 under the old void) | |
+  | The other named person | 0.33 | 0.34 | 0.43 |
 
 - **In played games** (seeds 100014–100076, day 3, eight listeners named by an evil watcher):
   - The kept list does count against the watcher.
-  - Against the old rule, the watcher is suspected less in five of eight. For example, Kiran
-    0.69 → 0.55 and Merrin 0.50 → 0.35.
+  - Against the old rule, the watcher is suspected less in six of eight (one by a single point).
+    For example, Kiran 0.69 → 0.55 and Merrin 0.50 → 0.34.
   - The reason: the old void's general doubt (`DOUBT_FALSE_NW_GENERAL`, 0.5) fell on all of
     the watcher's readings, while a broken gift now explains the false name at about 0.15.
 

@@ -44,9 +44,9 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_fd419ee`
+### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_2a2feab`
 
-`tools/golden/baseline_fd419ee/` is the capture from `claude/nightwatch-whole-list` at `fd419ee`
+`tools/golden/baseline_2a2feab/` is the capture from `claude/nightwatch-whole-list` at `2a2feab`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
 or broken (it says nothing about who walked), with the watcher's poison and Delusional priors as
 the broken chance. A list wrongly naming the listener is kept instead of set aside.
