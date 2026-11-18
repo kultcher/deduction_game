@@ -809,6 +809,10 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			continue
 		entry = _stamp_fake(w, gen["entry"], bluff, day_only)
 		why = gen["why"]
+		var kept: Dictionary = _keep_frame(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
+		if not kept.is_empty():
+			entry = kept["entry"]
+			why = kept["why"]
 		# Checked against what's already public: a self-incriminating one may be noticed,
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
@@ -891,6 +895,40 @@ static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary,
 				e2.erase("phase")
 			out.append({"entry": e2, "why": str(alt.get("why", ""))})
 		return out
+
+## A bluffer's frame memory (BACKLOG, Michael, Nov 17). Earlier made-up readings told under
+## the current scapegoat implicated some people; a fresh one that would clear any of them
+## drifts from the story. A liar who keeps its story (chance from Insight and Confidence)
+## tells one of the rule's other readings that doesn't, if there is one. The memory is the
+## readings told under this scapegoat, so it drops when the team switches. Returns
+## {"entry", "why"} for a swap, or {} to tell the fresh one.
+static func _keep_frame(w, n, entry: Dictionary, alternatives: Callable, s: String) -> Dictionary:
+	entry["frame_sg"] = s
+	var earlier: Array = []
+	for e in n.info_log:
+		if e.get("fake", false) and str(e.get("frame_sg", "")) == s:
+			for x in Gifts.implicated(e):
+				if not (x in earlier):
+					earlier.append(x)
+	if earlier.is_empty() or not _drifts(entry, earlier):
+		return {}
+	var traits: float = (float(n.traits.get("insight", 0.5)) + float(n.traits.get("confidence", 0.5))) / 2.0
+	var p_keep: float = clampf(Tuning.Evil.FRAME_MEMORY_BASE + Tuning.Evil.FRAME_MEMORY_TRAITS * traits, 0.0, 1.0)
+	if not w.decision_roll(n, "keep_frame", p_keep, {"traits": traits, "earlier": earlier}):
+		w.dlog.think(n.id, "plan", "Evil: its new made-up reading clears someone its earlier ones implicated; doesn't notice.")
+		return {}
+	for alt in alternatives.call():
+		var e2: Dictionary = alt.get("entry", {})
+		if e2.is_empty() or _drifts(e2, earlier):
+			continue
+		e2["frame_sg"] = s
+		w.dlog.think(n.id, "plan", "Evil: keeps its story; tells a reading that doesn't clear the ones its earlier readings implicated.")
+		return {"entry": e2, "why": str(alt.get("why", ""))}
+	return {}
+
+## Whether a reading clears anyone in `earlier`.
+static func _drifts(e: Dictionary, earlier: Array) -> bool:
+	return Gifts.clears(e).any(func(x): return x in earlier)
 
 static func _mark_fake(entry: Dictionary) -> void:
 	entry["shared"] = false
