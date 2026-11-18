@@ -948,6 +948,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# replace this pass's. Attention still decides what can be cited.
 	var connections: Dictionary = {}
 	var ev: Dictionary = {}
+	var cx_args: Dictionary = {}
 	if refresh and Connections.enabled:
 		# A stored case weighs what its presenter does, so the model's listener also carries
 		# the listener's trust in the Demonologist.
@@ -958,6 +959,10 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			weigher["player_credibility"] = baseline.player_credibility
 		connections = Connections.refresh(view, value, weigher, held.map(func(c): return c.id), baseline.get("connections", {}))
 		ev = Connections.overlay({"impossible": false, "people": {}}, connections)
+		# Kept for reason attribution: a "taken together" reason is weighed by what leaving its
+		# card out changes in this same model (ReasonAttribution._connections_drop).
+		cx_args = {"view": view, "value": value, "weigher": weigher, "held": held.map(func(c): return c.id),
+			"state": baseline.get("connections", {}), "result": connections}
 	else:
 		ev = _case_eval(view, scoped, eval_listener)
 	var protection = Protection.assess(view, belief_cards, baseline)
@@ -1141,7 +1146,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# Reason attribution is deferred (purge 2a): the inputs are kept and attribution runs
 	# only when a meeting or conversation first asks for a reason after this refresh.
 	var refresh_reasons: Dictionary = {}
-	var reason_inputs: Array = [view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects] if refresh else []
+	var reason_inputs: Array = [view, scoped, attended, held, challenged, baseline, eval_listener, ev, effects, cx_args] if refresh else []
 	Profiler.close(span)
 	var out: Dictionary = {"effects": effects, "reasons": refresh_reasons, "reason_inputs": reason_inputs, "claims": claims, "theories": theories, "considered": attention.considered,
 		"reading_challenges": challenged.results,
