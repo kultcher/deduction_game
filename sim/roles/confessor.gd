@@ -189,8 +189,8 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 		data = {"forgot": true}
 		why = "claimed to have forgotten whom they visited"
 	else:
-		var goods: Array = w.living_good().filter(func(m): return m.id != s)
-		var tgt = w.pick(goods) if not goods.is_empty() else mate
+		var goods: Array = w.living_good().filter(func(m): return m.id != s and m != n and not (m.id in vouched))
+		var tgt = w.pick(goods) if not goods.is_empty() else null
 		if tgt != null:
 			data = {"target": tgt.id, "good": true}
 			why = "vouched for %s, to seem like any other Confessor" % tgt.id

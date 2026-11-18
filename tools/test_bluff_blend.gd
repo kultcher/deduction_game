@@ -196,6 +196,22 @@ func _confessor() -> void:
 	m.info_log.append(e)
 	var second: Dictionary = Registry.get_def("confessor").generate_bluff_reading(w, m, w.evil_plan, "", Evil.mate(w, m), [])
 	_check(str(second["entry"]["data"].get("target", "")) != d.id, "but not night after night")
+	# Over many nights, nobody twice, the fallbacks included (Codex on #269); a forgotten visit
+	# once nobody is left.
+	var seen: Array = []
+	var repeats: int = 0
+	for night in range(12):
+		var gen: Dictionary = Registry.get_def("confessor").generate_bluff_reading(w, m, w.evil_plan, "", Evil.mate(w, m), [])
+		var ne: Dictionary = gen["entry"]
+		var t: String = str(ne["data"].get("target", ""))
+		if t != "":
+			if t in seen:
+				repeats += 1
+			seen.append(t)
+		ne["role"] = "confessor"
+		ne["fake"] = true
+		m.info_log.append(ne)
+	_check(repeats == 0, "twelve nights of a bluffing Confessor name nobody twice (%d repeats, %d named)" % [repeats, seen.size()])
 	var trusted: int = 0
 	var ran: int = 0
 	for sd in range(40):
