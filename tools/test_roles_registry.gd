@@ -575,8 +575,8 @@ func _test_pools_hints_and_seer_solo_bluff() -> void:
 		"START_ROLES keeps the 4 Night-0 info roles")
 	_check("augur" in C.IDENTIFIER_ROLES and C.GOOD_ROLES.size() >= 18,
 		"IDENTIFIER_ROLES includes augur and GOOD_ROLES has 18 roles")
-	_check("chronicler" in C.HINT_PACKAGES["official"].roles and "magistrate" in C.HINT_PACKAGES["official"].roles and "augur" in C.HINT_PACKAGES["people"].roles,
-		"HINT_PACKAGES wires chronicler + magistrate to official and augur to people")
+	_check("chronicler" in C.HINT_PACKAGES["official"].roles and "magistrate" in C.HINT_PACKAGES["affairs"].roles and "augur" in C.HINT_PACKAGES["people"].roles,
+		"HINT_PACKAGES wires chronicler to official, magistrate to affairs and augur to people")
 
 	# Solo-evil Seer bluff guard (Seed 2004 regression):
 	var g = Game.new()

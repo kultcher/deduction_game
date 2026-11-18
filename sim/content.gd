@@ -495,19 +495,32 @@ const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]
 static func secret_name(k: String) -> String:
 	return SECRET_MODS[k]["name"] if SECRET_MODS.has(k) else k
 
-## Flavoured hints. Each package holds 2+ roles so a hint is never a full reveal; a gift
-## may sit in two (its hint is from the first).
+## Flavoured hints (Michael, Nov 18: eleven families of about four, overlaps by design).
+## A hint names a family, never the gift; a gift in several families hints from the one with
+## the most roles on the case's script (hint_package). Names and lines: Herald.
 const HINT_PACKAGES = {
-	"official": {"roles": ["archivist", "clerk", "surveyor", "rumormonger", "chronicler", "magistrate", "registrar"], "name": "a gift of official business",
+	"official": {"roles": ["archivist", "clerk", "chronicler", "registrar"], "name": "a gift of official business",
 		"text": "My gift deals in records and reports, the town's official business."},
-	"night_sight": {"roles": ["seer", "nightwatch", "lamplighter", "hearthwitch", "monitor"], "name": "a night-sight gift",
+	"affairs": {"roles": ["magistrate", "surveyor", "rumormonger"], "name": "a gift of the town's affairs",
+		"text": "My gift tells me how this town is put together."},
+	"night_sight": {"roles": ["seer", "nightwatch", "lamplighter", "hearthwitch", "monitor", "medium"], "name": "a night-sight gift",
 		"text": "My gift shows me things in the dark hours."},
-	"the_dead": {"roles": ["gravedigger", "medium", "sexton", "martyr", "executor"], "name": "a gift of the dead",
-		"text": "My gift has to do with the dead, and with death."},
-	"shelter": {"roles": ["warden", "veteran", "martyr"], "name": "a sheltering gift",
-		"text": "My gift is a kind of shelter against the demon."},
-	"people": {"roles": ["dowser", "psychologist", "rumormonger", "augur", "confessor"], "name": "a gift for reading people",
-		"text": "My gift lets me read people, if I'm close enough."},
+	"the_dead": {"roles": ["gravedigger", "medium", "executor", "martyr"], "name": "a gift of the dead",
+		"text": "My gift works through a death."},
+	"shelter": {"roles": ["warden", "veteran", "sexton"], "name": "a sheltering gift",
+		"text": "My gift is a kind of shelter against the Demon and those who serve it."},
+	"people": {"roles": ["dowser", "psychologist", "confessor", "augur", "seer"], "name": "a gift for reading people",
+		"text": "My gift lets me read people for what they truly are."},
+	"justice": {"roles": ["magistrate", "executor", "gravedigger", "martyr"], "name": "a gift of the town's justice",
+		"text": "My gift turns on the meeting and the rope."},
+	"true_gifts": {"roles": ["gravedigger", "monitor", "executor", "registrar"], "name": "a gift for true callings",
+		"text": "My gift shows me what gift a person truly holds."},
+	"chosen": {"roles": ["registrar", "seer", "confessor"], "name": "a gift that chooses its mark",
+		"text": "My gift lets me choose whom I learn about."},
+	"against_dark": {"roles": ["nightwatch", "lamplighter", "psychologist", "sexton"], "name": "a gift against the dark",
+		"text": "My gift pushes back against what the night hides."},
+	"conquer_death": {"roles": ["medium", "martyr", "warden"], "name": "a gift against death",
+		"text": "My gift cheats death of something."},
 }
 
 ## Demon temperaments shape kill choice.
@@ -602,11 +615,36 @@ static func package_roles_text(pkg: String, case_script = null) -> String:
 			roles = on
 	return " / ".join(PackedStringArray(roles.map(func(r): return role_name(r))))
 
+## The first family a gift is in, with no script to weigh (developer views only; play
+## uses hint_package).
 static func package_of(r: String) -> String:
 	for p in HINT_PACKAGES:
 		if r in HINT_PACKAGES[p]["roles"]:
 			return p
 	return ""
+
+## The family a holder of gift `r` hints from in this case (Michael, Nov 18): of the gift's
+## families, the one with the most roles on the case's script, so the hint gives the most
+## cover; ties broken by the seed. Fixed for the game, the same for a true holder and for
+## evil bluffing the gift. "" when every family the gift is in has only one role on the
+## script: such a hint would name the gift, so the holder gives none.
+static func hint_package(w, r: String) -> String:
+	var script = w.case_script if w != null else null
+	if script == null:
+		return package_of(r)
+	var best: String = ""
+	var best_count: int = 0
+	var best_tie: int = 0
+	for p in HINT_PACKAGES:
+		if not (r in HINT_PACKAGES[p]["roles"]):
+			continue
+		var count: int = HINT_PACKAGES[p]["roles"].filter(func(x): return x in script.town or x in script.minions or x in script.demons).size()
+		var tie: int = hash([int(w.seed_value), r, p])
+		if count > best_count or (count == best_count and count > 0 and tie > best_tie):
+			best = p
+			best_count = count
+			best_tie = tie
+	return best if best_count >= 2 else ""
 
 static func tier(v: float) -> String:
 	if v < 0.34:

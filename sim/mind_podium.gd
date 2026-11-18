@@ -93,7 +93,7 @@ static func press_role(w, d, grounds: bool) -> Dictionary:
 			w.dlog.think(d.id, "lie", "Evil cover: claims bluff %s when pressed at the podium." % role, {"bluff": role, "true_role": d.role})
 		MindMeeting._public_disclosure(w, d, lines, facts)
 		return {"lines": lines, "facts": facts, "outcome": "claim"}
-	var pk: String = C.package_of(role)
+	var pk: String = C.hint_package(w, role)
 	if pk != "":
 		var hint_parts: Dictionary = parts.duplicate()
 		hint_parts["hint_ease"] = Tuning.Meeting.PODIUM_HINT_EASE

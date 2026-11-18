@@ -667,6 +667,8 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	var target: int = gate["target"]
 	var tier: int = gate["tier"]
 	var withholding: bool = gate["withholding"]
+	if tier == 2 and C.hint_package(w, role) == "":
+		tier = 1  # every family the gift is in has only it on this script: a hint would name it
 	if tier <= 1:
 		# Denying any gift is off (C.ALLOW_NO_GIFT_DENIAL): evil almost never says it, so it
 		# read as a near-certain good, at the price of the gift. Refusing to say remains.
@@ -702,7 +704,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		n.max_tier = maxi(n.max_tier, 1)
 		return {"lines": lines, "facts": facts}
 	if tier == 2:
-		var pk: String = C.package_of(role)
+		var pk: String = C.hint_package(w, role)
 		if evil:
 			w.dlog.think(n.id, "lie", "Evil: gives a hint matching bluff %s." % role, {"lie": true})
 		var pkg_fb: String = C.HINT_PACKAGES[pk]["text"] + " That's all I'll say."

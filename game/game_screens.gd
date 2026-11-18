@@ -187,7 +187,7 @@ static func _cast(g) -> String:
 		elif n.max_tier >= 3:
 			claim = "  told you: %s" % C.role_name(n.claimed_role)
 		elif n.max_tier == 2:
-			claim = "  hinted: %s" % C.package_of(g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
+			claim = "  hinted: %s" % C.hint_package(g.w, g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
 		elif n.claimed_role == "none":
 			claim = "  told you: no gift"
 		out.append("  %-12s %-13s works %s at %s; lives on %s.%s%s" % [n.name, n.occupation, C.phase_list(n.work_phases),
@@ -642,7 +642,7 @@ static func _claim_text(g, n) -> String:
 	elif n.max_tier >= 3:
 		return "told you: " + C.role_name(n.claimed_role)
 	elif n.max_tier == 2:
-		return "hinted: " + C.package_of(g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
+		return "hinted: " + C.hint_package(g.w, g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
 	elif n.claimed_role == "none":
 		return "told you: no gift"
 	return ""
