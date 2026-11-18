@@ -190,7 +190,12 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 		"accusation":
 			return "%s accused %s" % [src, _subjects(card, nm)]
 		"opinion":
-			return "%s %s %s" % [src, "vouches for" if str(card.get("text", "")).contains("vouches") else ("speaks up for" if card.get("stance", "for") == "for" else "speaks against"), _subjects(card, nm)]
+			# Only a known stance is shortened: "distrusts" and "warned you about" cards carry
+			# no stance, and their own text is already short (Codex on #250).
+			if str(card.get("text", "")).contains("vouches"):
+				return "%s vouches for %s" % [src, _subjects(card, nm)]
+			if card.get("stance", "") in ["for", "against"]:
+				return "%s %s %s" % [src, "speaks up for" if card.stance == "for" else "speaks against", _subjects(card, nm)]
 		"alibi":
 			if card.has("block"):
 				return "%s: home, %s" % [src, C.block_name(card.block)]
