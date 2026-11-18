@@ -20,17 +20,23 @@
   - **Presented as that person:** barely changes. Two Dowser readings 51% → 50%; sightings against
     an alibi 69% → 65%.
   - **Misframed** (presented as someone named in the cards, or someone unconnected): the right person
-    gains much less. 51% → about 45%; 69% → about 50%.
+    gains much less. 51% → about 43%; 69% → about 50%; mixed 58% → about 46%.
   - The wrongly named person doesn't rise in any frame.
   - The presenter's trust is unchanged by a misframe (Michael: the case not landing is the cost).
 - **Golden:** moves on all five seeds. Against `baseline_fdaccb0` (stale), the first changes are on
   day 1 or 2: listeners hearing a presented case shift the bystanders less. Re-measured from the
   current baseline at re-baseline time.
 - **Tests:**
-  - New `tools/test_premise_centring` (9 checks), added to the fast list. It covers the frames, the
-    selection, and the lens after fading.
+  - New `tools/test_premise_centring` (13 checks), added to the fast list. It covers the frames, the
+    selection, the lens after fading, and that only what a brought item adds by itself is centred.
   - `test_premise_step1`'s two checks still pass with it on.
   - `test_connections_cases` checks case arithmetic on chosen numbers, so it runs with it off
     (`Connections.premise_centring = false`).
   - Fast list: 85 of 85 passed on `ab783c1`. Two captures were identical.
 - **Docs:** `docs/belief_model.md`, "Premise centring, option B".
+- **Codex on #246 (fixed):** the centred item values were also what the core and the stored
+  cases subtracted from their joint judgements, so the suppressed two-thirds came back as a
+  false interaction: on the misframed bystander, a case added back about 0.08 of log-odds on
+  two Dowser readings. Now `values` keeps the raw value and only the item's own addition to
+  the total is centred. A new check catches the old code (2 of 3 constructed cases failed).
+  Misframed numbers after the fix: two Dowser readings 43% (was 45%), mixed 46% (was 47%).

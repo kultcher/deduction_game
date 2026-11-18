@@ -117,7 +117,7 @@ func _chances(g, n) -> Dictionary:
 
 ## The sighting-against-alibi case presented as `frame` (p[3] is the one the cards point at,
 ## p[4] the named sighter): the listener's chances after, and its connections result.
-func _present(frame_index: int, centring: bool) -> Dictionary:
+func _present(frame_index: int, centring: bool, kind: String = "sighting vs alibi") -> Dictionary:
 	Connections.enabled = true
 	Connections.premise_centring = centring
 	_texts = {}
@@ -125,7 +125,7 @@ func _present(frame_index: int, centring: bool) -> Dictionary:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	g.w.defer_beliefs = false
-	var cards: Array = _cards(g, "sighting vs alibi")
+	var cards: Array = _cards(g, kind)
 	var filed: int = _file(g, p[frame_index].id, cards)
 	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
 	Connections.premise_centring = true
@@ -144,6 +144,29 @@ func _init() -> void:
 	check(absf(right_on.post[x] - right_off.post[x]) < 0.05, "presented as the right person, the case lifts them about as without centring")
 	check(wrong_on.post[x] < wrong_off.post[x] - 0.05, "misframed, it lifts the person the evidence points at less")
 	check(wrong_on.post[x] < right_on.post[x], "...and less than the right frame does")
+	# 1b. Centring shapes only what the brought items add by themselves. The core and the
+	#     stored case still subtract the raw values from their joint judgements, so what they
+	#     add for X is the same interaction as without centring, the case's at the bystander
+	#     share (Codex on #246: a centred value there turned the suppressed part into a false
+	#     interaction).
+	var moved: float = 0.0
+	for kind in ["two names", "sighting vs alibi", "mixed"]:
+		var on: Dictionary = _present(4, true, kind)
+		var off: Dictionary = _present(4, false, kind)
+		var worst_core: float = 0.0
+		var worst_case: float = 0.0
+		for p in off.cx.get("prior", {}):
+			var core_on: float = float(on.cx.get("core", {}).get("lean", {}).get(p, 0.0))
+			var core_off: float = float(off.cx.get("core", {}).get("lean", {}).get(p, 0.0))
+			var case_on: float = float(on.cx.get("cases", {}).get("lean", {}).get(p, 0.0))
+			var case_off: float = float(off.cx.get("cases", {}).get("lean", {}).get(p, 0.0))
+			var share: float = 1.0 if p == on.p[4].id else Connections.PREMISE_SHARE
+			worst_core = maxf(worst_core, absf(core_on - core_off))
+			worst_case = maxf(worst_case, absf(case_on - share * case_off))
+			moved = maxf(moved, maxf(absf(core_off), absf(case_off)))
+		print("%s: the core's largest change %.6f, the case's largest gap from its share %.6f" % [kind, worst_core, worst_case])
+		check(worst_core < 1e-6 and worst_case < 1e-6, "%s: the core adds the same as without centring, and the case its interaction at the share" % kind)
+	check(moved > 0.01, "...and some core or case part is non-zero, so that was tested (largest %.3f)" % moved)
 	# 2. The case's cards are brought, for its target.
 	var brought: Dictionary = wrong_on.n.workshop_state.get("connections", {}).get("brought", {})
 	if brought.is_empty():

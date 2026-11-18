@@ -918,9 +918,13 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	run["section"] = "items"
 	# Premise centring, option B: an item made only of cards presented cases brought counts
 	# in full on those cases' targets and at PREMISE_BYSTANDER_SHARE on everyone else.
+	# `values` keeps the raw value: the core and the stored cases subtract it from joint
+	# judgements, and a centred value there would turn the suppressed part into a false
+	# interaction that the core (in full) or a case would add back (Codex on #246).
 	var brought: Dictionary = core_state.get("brought", {}) if premise_centring else {}
 	for it in item_list:
 		var v: Dictionary = value(run, it)
+		values[it.key] = v
 		if not brought.is_empty() and not v.impossible and not it.ids.is_empty() and it.ids.all(func(id): return brought.has(id)):
 			var aimed: Array = []
 			for id in it.ids:
@@ -931,7 +935,6 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 			for p in v.lean:
 				centred[p] = float(v.lean[p]) * (1.0 if p in aimed else PREMISE_SHARE)
 			v = {"lean": centred, "impossible": false}
-		values[it.key] = v
 		var entry: Dictionary = {"key": it.key, "kind": it.kind, "cards": it.ids, "ctx": it.ctx, "lean": v.lean}
 		if v.impossible:
 			entry["impossible"] = true

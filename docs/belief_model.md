@@ -471,10 +471,10 @@ the player wins by making the right connections, not by supplying information.
   the person the cards point at starts at 41%; their chance after the case, without B → with
   B): presented as them, two Dowser readings 51% → 50%, sightings against their alibi
   69% → 65%, mixed 58% → 56%; misframed as someone named in the cards or someone
-  unconnected, 51% → 45%, 69% → 50%, 58% → 47%. The wrongly named person doesn't rise in any
+  unconnected, 51% → 43%, 69% → 50%, 58% → 46%. The wrongly named person doesn't rise in any
   frame. The presenter's trust is unchanged by a misframe (Michael, Nov 18: the case not
   landing is the cost).
-- **Tests:** `test_premise_centring` (frames, the selection, the lens after fading);
+- **Tests:** `test_premise_centring` (frames, the selection, the lens after fading, and that the core and stored cases subtract raw item values);
   `test_premise_step1`'s "a case moves its target more than the people it only mentions" and
   "the shaping is remembered on a later refresh" still pass with it on.
   `test_connections_cases`, which checks case arithmetic on chosen numbers, runs with it off
