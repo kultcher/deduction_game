@@ -44,9 +44,9 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_296f93e`
+### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_b1d92a0`
 
-`tools/golden/baseline_296f93e/` is the capture from `claude/beadle-bluff-blend` at `296f93e` (main
+`tools/golden/baseline_b1d92a0/` is the capture from `claude/beadle-bluff-blend` at `296f93e` (main
 `f947be6` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
 bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
 - **Divergence from `baseline_1e6b846`:** 54875, 692, 900 and 98933 from record 0 (the world's
