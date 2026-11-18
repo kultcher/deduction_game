@@ -28,7 +28,11 @@ const HEAD_W = 132.0     # row labels (screen pixels, not zoomed)
 const HEAD_H = 34.0      # time labels
 const COL_W = 176.0      # world units
 const CARD_W = 158.0
-const CARD_H = 58.0
+const CARD_H_BASE = 58.0
+## Mock (mock/herald-board-cards, never merges): "" is today's card, "strip" option A, "corners" option B.
+static var MOCK: String = ""
+var CARD_H: float:
+	get: return 78.0 if MOCK == "corners" else CARD_H_BASE
 const GAP = 7.0
 const DOT = 30.0
 const ROW_PAD = 10.0
@@ -337,6 +341,11 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 	var lod = _lod()
 	var src: String = card.get("source", "")
 	var src_col = C.npc_color(src) if g.w.by_id.has(src) else UITheme.color("border")
+	if MOCK != "" and lod >= 1:
+		_draw_card_mock(it, card, n, r, fade, lod, src_col)
+		if selected or hovered:
+			draw_rect(r.grow(2), UITheme.color("string") if selected else UITheme.color("accent"), false, 2.0)
+		return
 	if lod == 0:
 		# Overview: a chip in the speaker's colour (process: red for a nomination, dark for a death).
 		var chip = UITheme.color("paper").darkened(0.05)
@@ -389,6 +398,109 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 		draw_rect(r.grow(2), UITheme.color("string") if selected else UITheme.color("accent"), false, 2.0)
 	if n in _staged():
 		draw_circle(r.position + Vector2(r.size.x - 4, 4), 4, UITheme.color("accent"))
+
+## The mock's badges: [label, colour] for "shared with you privately", "in confidence"
+## (you promised to keep it quiet) and "context" (can't establish guilt alone).
+func _mock_badges(card: Dictionary, n: int) -> Array:
+	var out: Array = []
+	for b in CardModel.badges(card, g.confidences):
+		out.append(["private", Color(0.25, 0.42, 0.62)] if b == "private" else ["in confidence", UITheme.color("red").darkened(0.15)])
+	if context_numbers.has(n):
+		out.append(["context", Color(0.42, 0.40, 0.36)])
+	return out
+
+func _draw_pill(at: Vector2, label: String, col: Color, fs: int, fade: Color) -> float:
+	var w: float = _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + fs * 0.9
+	var h: float = fs * 1.35
+	var rr := Rect2(at - Vector2(0, h), Vector2(w, h))
+	draw_style_box(_pill_box(col * fade), rr)
+	draw_string(_font, Vector2(rr.position.x + fs * 0.45, rr.end.y - fs * 0.35), label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(1, 1, 1, 0.95) * fade)
+	return w
+
+func _pill_box(col: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = col
+	sb.set_corner_radius_all(6)
+	return sb
+
+func _draw_card_mock(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: Color, lod: int, src_col: Color) -> void:
+	draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)
+	_draw_paper(r, n, fade)
+	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
+	var names = {}
+	for m in g.w.npcs:
+		names[m.id] = m.name
+	var text = CardModel.short_text(card, names) if lod == 1 else card.get("text", "")
+	if it["mark"] == "voted_yes":
+		text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?")
+	var icon = _icon_for(card, it)
+	var kind = Icons.kind_for(card)
+	var kind_icon = Icons.texture(kind)
+	var kind_tint: Color = (UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink) * fade
+	var fs = int(clampf(13.5 * zoom, 12, 28))
+	var small = int(clampf(10.0 * zoom, 9, 20))
+	var pad: float = 6.0 * zoom
+	var tx: float = r.position.x + 14 * zoom
+	var badges: Array = _mock_badges(card, n)
+	var heard: String = _heard_line(card) if lod == 2 and MOCK == "corners" else ""
+	var icon_s: float = 18.0 * zoom
+	if MOCK == "strip":
+		# Option A: same card size. Icons in a row at the top right, the text clipped to the
+		# lines that fit, and a strip of badges along the bottom only when a card has any.
+		# The "heard" line moves to the hover tooltip (it is already there).
+		var strip_h: float = (small * 1.6) if (heard != "" or not badges.is_empty()) else 0.0
+		var ix: float = r.end.x - pad - icon_s
+		var icons_w: float = 0.0
+		for tex in [kind_icon, icon]:
+			if tex != null:
+				draw_texture_rect(tex, Rect2(Vector2(ix, r.position.y + pad), Vector2(icon_s, icon_s * tex.get_height() / tex.get_width())), false, kind_tint if tex == kind_icon else fade)
+				ix -= icon_s + 3 * zoom
+				icons_w += icon_s + 3 * zoom
+		var body_top: float = r.position.y + pad
+		var body_h: float = r.size.y - pad * 2 - strip_h
+		var line_h: float = _font.get_height(fs)
+		var max_lines: int = maxi(1, int(floor(body_h / line_h)))
+		# First line shares the header with the icons; later lines use the full width.
+		draw_multiline_string(_font, Vector2(tx, body_top + _font.get_ascent(fs)), text, HORIZONTAL_ALIGNMENT_LEFT,
+			r.size.x - 20 * zoom - icons_w, fs, max_lines, _ink * fade)
+		if strip_h > 0.0:
+			var sy: float = r.end.y - pad * 0.6
+			draw_line(Vector2(tx, sy - strip_h + 2 * zoom), Vector2(r.end.x - pad, sy - strip_h + 2 * zoom), Color(0, 0, 0, 0.18) * fade, 1.0)
+			var bx: float = r.end.x - pad
+			for bdg in badges:
+				var w: float = _font.get_string_size(bdg[0], HORIZONTAL_ALIGNMENT_LEFT, -1, small).x + small * 0.9
+				bx -= w
+				_draw_pill(Vector2(bx, sy), bdg[0], bdg[1], small, fade)
+				bx -= 3 * zoom
+			if heard != "":
+				draw_string(_font, Vector2(tx, sy - small * 0.3), heard, HORIZONTAL_ALIGNMENT_LEFT, bx - tx - 4 * zoom, small, UITheme.color("ink_soft") * fade)
+	else:
+		# Option B: a taller card. A gutter down the right holds the icons (kind on top, role
+		# or place below). Badges sit as tabs along the top edge; the "heard" line has its own
+		# line at the bottom.
+		var gutter: float = icon_s + pad * 1.5
+		var gx: float = r.end.x - pad - icon_s
+		var gy: float = r.position.y + pad
+		for tex in [kind_icon, icon]:
+			if tex != null:
+				draw_texture_rect(tex, Rect2(Vector2(gx, gy), Vector2(icon_s, icon_s * tex.get_height() / tex.get_width())), false, kind_tint if tex == kind_icon else fade)
+				gy += icon_s + 4 * zoom
+		var bx: float = tx
+		for bdg in badges:
+			bx += _draw_pill(Vector2(bx, r.position.y + small * 0.55), bdg[0], bdg[1], small, fade) + 3 * zoom
+		var heard_h: float = small * 1.5 if heard != "" else 0.0
+		var top: float = r.position.y + pad + (small * 0.6 if not badges.is_empty() else 0.0)
+		var line_h: float = _font.get_height(fs)
+		var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / line_h)))
+		draw_multiline_string(_font, Vector2(tx, top + _font.get_ascent(fs)), text, HORIZONTAL_ALIGNMENT_LEFT,
+			r.size.x - 20 * zoom - gutter, fs, max_lines, _ink * fade)
+		if heard != "":
+			draw_string(_font, Vector2(tx, r.end.y - pad), heard, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 20 * zoom - gutter, small, UITheme.color("ink_soft") * fade)
+	if it["mark"] == "nominated":
+		var seal = UITheme.tex("ui/wax_seal", 0.25)
+		if seal != null:
+			var ss = 18.0 * zoom
+			draw_texture_rect(seal, Rect2(r.end - Vector2(ss + 4 * zoom, ss + 4 * zoom), Vector2(ss, ss)), false, fade)
 
 func _heard_line(card: Dictionary) -> String:
 	var ls: Array = card.get("learned", [])
