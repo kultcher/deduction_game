@@ -382,10 +382,26 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		if not n.dialogue_memory.has("accepted_cases"):
 			n.dialogue_memory["accepted_cases"] = {}
 		n.dialogue_memory["accepted_cases"][ctarget] = {"day": g.w.day, "key": key}
+	# A public case that caught the target in a home lie, which they granted (accepted, or
+	# took partly): if they then vote no, they say they believe the lie but won't hang for it
+	# (lie severity, the vote side; since #210 a caught home lie is evidence, not proof).
+	if venue != "private" and voiced_stance in ["accept", "partial"] and ctarget != "" and ctype in ["evil", "demon", "minion", "suspicious"] \
+			and Mind.catches_home_lie(plan.prepared.view, _weighed(assessment), ctarget):
+		if not n.dialogue_memory.has("granted_lies"):
+			n.dialogue_memory["granted_lies"] = {}
+		# The case's key, so a withdrawn case takes the grant with it (Codex P2 on #215).
+		n.dialogue_memory["granted_lies"][ctarget] = {"day": g.w.day, "key": key}
 	var result = {"lines": lines, "facts": [], "agreement": assessment.agreement, "repeated": repeated,
 		"dialogue": descriptor, "workshop": true, "assessment": assessment}
 	g._workshop_repeats[repeat_key] = {"input": state.discussion[signature], "result": result.duplicate(true)}
 	return result
+
+## The cards a listener weighed and believed: what they attended to, less the reports their
+## own knowledge rejected (as the jury drops them; Codex P2 on #215).
+static func _weighed(assessment: Dictionary) -> Array:
+	var reasoning: Dictionary = assessment.get("reasoning", {})
+	var rejected: Array = reasoning.get("private_checks", {}).get("rejected", [])
+	return reasoning.get("considered", []).filter(func(id): return not (id in rejected))
 
 ## Replies must match beliefs (BACKLOG, decided Oct 26). The scoped reply and the belief
 ## refresh are separate assessments with different attention, so a listener could say

@@ -275,13 +275,16 @@ func _sigil_is_an_attack() -> void:
 		if n.home_block != demon.home_block:
 			target = n
 			break
+	# A witness, not a vigil: since Nov 17 a vigil sees residents leaving the block, which says
+	# nothing of where they went; a sighting on the target's block does.
+	var witness = w.living_good().filter(func(n): return n != target)[0]
 	w.day = 2
 	g.add_card({"kind": "ward", "source": "player", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "Night 1: you spent your ward on %s's door." % target.name})
-	var seen_n: int = g.add_card({"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": "player", "day": 1, "phase": C.NIGHT, "vigil": true, "text": "Night 1 vigil: you saw %s on %s." % [demon.name, C.block_name(target.home_block)]})
+	var seen_n: int = g.add_card({"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": witness.id, "day": 1, "phase": C.NIGHT, "text": "Night 1 sighting: %s saw %s on %s." % [witness.name, demon.name, C.block_name(target.home_block)]})
 	var sigil_n: int = g.add_card({"kind": "scorched_sigil", "source": "evidence", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "You alone found a scorched sigil on %s's door: the Demon came on night 1." % target.name})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
-	var seen = _node(model, view, func(c): return c.get("text", "").begins_with("Night 1 vigil"))
+	var seen = _node(model, view, func(c): return c.get("text", "").begins_with("Night 1 sighting"))
 	var sigil = _node(model, view, func(c): return c.get("text", "").begins_with("You alone found"))
 	_check(seen != "" and sigil != "", "the sigil and the ward reach the Workshop (%s, %s)" % [seen, sigil])
 	var premise = model.add_premise(demon.id, "evil", Vector2(0, 0))
@@ -538,9 +541,12 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	var agnes = w.by_id["agnes"]
 	var hollis = w.by_id["hollis"]
 
-	# Reproduce #98933 Day 3: #81 complete Vigil on Market (saw only Agnes) + #63 Agnes Medium claim + #110 Isolde Night Watch on Market.
+	# Reproduce #98933 Day 3: #81 complete Vigil (saw only Agnes) + #63 Agnes Medium claim + #110 Isolde Night Watch on Market.
+	# Since Nov 17 a vigil sees residents leaving the block: the vigil is on Isolde's own block
+	# (Agnes a neighbour), so a Night Watch who walked out to the Market should have been seen.
+	agnes.home_block = isolde.home_block
 	var c_vigil: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true,
-		"day": 2, "phase": C.NIGHT, "block": "market", "text": "Night 2 vigil on the Market: saw Agnes."})
+		"day": 2, "phase": C.NIGHT, "block": isolde.home_block, "text": "Night 2 vigil on Isolde's block: saw Agnes."})
 	var c_agnes_claim: int = g.add_card({"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium",
 		"day": 2, "phase": C.EVENING, "text": "Agnes publicly claims to be the Medium."})
 	var c_isolde_nw: int = g.add_card({"kind": "info", "source": isolde.id, "role": "nightwatch", "subject": [hollis.id],
@@ -565,7 +571,7 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	_check(prep.ready, "Vigil + Medium claim + Isolde Night Watch report prepares cleanly (%s)" % str(prep.issues))
 	var ev: Dictionary = Eval.evaluate(prep.view, prep.case, prep.listener)
 	_check(not ev.impossible and ev.lr >= Tuning.Workshop.LR_STRONG and ev.posterior > 0.85,
-		"Complete Vigil missing Night Watch on her watched block strongly supports Evil (LR=%.2f, post=%.3f)" % [ev.lr, ev.posterior])
+		"Complete Vigil on her own block missing the Night Watch strongly supports Evil (LR=%.2f, post=%.3f)" % [ev.lr, ev.posterior])
 
 	# Also verify right-click / 'lied' reading challenge recognizes absent physical presence cannot be impairment!
 	var ch_case: Dictionary = prep.case.duplicate(true)

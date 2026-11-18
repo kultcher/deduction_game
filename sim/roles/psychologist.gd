@@ -251,18 +251,18 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 			var entry_b: Dictionary = _pair_reading_dict(w.day, pair_b[0], pair_b[1], false, "evil fabrication")
 			entry_b.erase("true")
 			entry_b.erase("why")
-			return {"entry": entry_b, "why": "pairs scapegoat %s's statement as a suspected lie" % s}
+			return {"entry": entry_b, "why": "named the words of %s, whom evil meant to hang, as a likely lie" % s}
 	if non_evil.size() >= 2 and w.chance(0.6):
 		var sh_ne: Array = w.shuffled(non_evil)
 		var entry_ne: Dictionary = _pair_reading_dict(w.day, sh_ne[0], sh_ne[1], false, "evil fabrication")
 		entry_ne.erase("true")
 		entry_ne.erase("why")
-		return {"entry": entry_ne, "why": "casts doubt on two townsfolk statements from day %d" % w.day}
+		return {"entry": entry_ne, "why": "cast doubt on two good people's words from %s" % content().spoken_day(w.day)}
 	if not todays.is_empty():
 		var entry_nf: Dictionary = _none_false_dict(w.day, false, "evil fabrication")
 		entry_nf.erase("true")
 		entry_nf.erase("why")
-		return {"entry": entry_nf, "why": "vouches that day %d statements contained no lies" % w.day}
+		return {"entry": entry_nf, "why": "swore nobody lied on %s" % content().spoken_day(w.day)}
 	return {}
 
 
@@ -270,4 +270,4 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 	var dh: int = maxi(1, int(e.get("day", 1)))
 	e["data"] = {"mode": "none_false", "day_heard": dh}
 	e["text"] = "none of the information I heard on day %d was a lie or misread" % dh
-	return {"entry": e, "why": "the dead Psychologist %s vouched for day %d statements (protecting cover vs %s)" % [dd.id, dh, s], "frames": false}
+	return {"entry": e, "why": "made up a reading from the late Psychologist %s that swore nobody lied on %s, to protect a fellow evil" % [dd.id, content().spoken_day(dh)], "frames": false}

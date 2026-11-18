@@ -44,7 +44,88 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, 23973 wording): `baseline_5c99636`
+### Current baseline (Nov 18, bluff motives in plain words): `baseline_fdaccb0`
+
+`tools/golden/baseline_fdaccb0/` is the capture from `claude/herald-bluff-motives` at
+`fdaccb0` (main `5ef66da` merged in): every fabricated reading's recorded motive (`why`)
+now reads in plain words, as Michael approved (Nov 17). "Whom evil meant to hang" replaces
+"scapegoat", "a fellow evil" replaces "teammate", street and role names replace codes, days
+are ordinals, and numbers the player never saw are gone.
+- **Divergence from `baseline_e1f0fc2`:** text only, on every seed, all in `why` fields
+  (1,148 strings). Record counts are the same.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_e1f0fc2`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, the vigil watches who leaves): `baseline_e1f0fc2`
+
+`tools/golden/baseline_e1f0fc2/` is the capture from `claude/vigil-leavers` at `e1f0fc2`
+(main `eb74fad` merged in): the vigil sees residents leaving the watched block instead of
+walkers arriving (Michael, Nov 17, `docs/design/vigil.md` option A), with Herald's wording.
+- **Divergence from `baseline_823d388`:** text only, one string on every seed: the night
+  prompt's help line, "'vigil <block>' (watch for activity arriving on a block)" is now
+  "'vigil <block>' (watch who goes out from a block at night)". All five seeds diverge at
+  the first night's prompt (42 record 6, 54875 61, 692 60, 900 23, 98933 71). With that
+  string put back, all five are identical to `baseline_823d388` at `--tol 0`. Record counts
+  are the same.
+- **Why the rule itself doesn't move golden:** the passive golden player never keeps a
+  vigil.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_823d388`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, joint reasons measured within one model): `baseline_823d388`
+
+`tools/golden/baseline_823d388/` is the capture from `claude/count-reading-reasons` (#204) at
+`823d388` (main `c1e1b70` merged in): a "taken together" reason's weight is what removing its
+card really changes, measured within the attribution's own model. Beliefs don't change; what
+NPCs cite does, and so what they do with it.
+- **Divergence from `baseline_89770fe`:** where a cited reason changes: 42 from record 77
+  (day 3), 54875 from record 87 (day 2), 692 from record 83 (day 2), 900 from record 131
+  (day 2 meeting), 98933 from record 99 (day 2).
+- **Outcomes:** 42 good day 3, 54875 good day 2, 692 and 900 reach day 4 with no winner (all
+  unchanged). **98933 changes:** good won on day 3; now play reaches day 4 with no winner.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 89077 routing): `baseline_89770fe`
+
+`tools/golden/baseline_89770fe/` is the capture from `claude/beadle-89077-routing` (#205) at
+`89770fe` (main `f408a60` merged in): which answer a nominee gives. A sighting the nominator
+already told the town now reaches the defence, a dead accuser is said to have "lied", the
+"Then ... is lying" opener needs a line before it, and a gift's readings recap as one reason.
+- **Divergence from `baseline_1f2e761`:** 42 (record 108, day 3) and 54875 (record 51, day 1)
+  in spoken text only. 692 (record 111, day 2): Merrin answers Fenwick's sighting with where
+  they were and "Fenwick lied" instead of a reading challenge, so listeners' beliefs about
+  Merrin shift slightly and the record count changes. 900 (record 72, day 2): Constance's
+  nomination keeps her told sighting for the defence, and Greta's line loses its "Then".
+  98933 (record 60, day 1): Nisha's "made it up" line, with small belief shifts after it.
+- **Outcomes unchanged:** same hangings, votes, nominators and deaths. 42 good day 3; 54875
+  good day 2; 692 and 900 reach day 4 with no winner; 98933 good day 3.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, Insight's joining bar): `baseline_1f2e761`
+
+`tools/golden/baseline_1f2e761/` is the capture from `claude/insight-core-bar` (#199) at
+`1f2e761` (main `ae6637a` merged in): Insight sets how readily a card joins an NPC's core
+(the joining bar runs from 0.8 for a dull NPC to 0.1 for a sharp one; it was 0.8 for all).
+- **Divergence from `baseline_eb8e59b`:** beliefs only, where a sharper NPC's core now takes
+  in a card a dull one wouldn't: 42 from record 35 (Isolde, day 2), 54875 from record 24
+  (Greta's cover, day 1), 692 from record 17 (Fenwick, day 1), 900 from record 88 (Kiran,
+  day 2), 98933 from record 14 (Odette's cover, day 1).
+- **Outcomes unchanged:** 42 good day 3; 54875 good day 2; 692 and 900 reach day 4 with no
+  winner; 98933 good day 3.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, bluff motives name people): `baseline_eb8e59b`
+
+`tools/golden/baseline_eb8e59b/` is the capture from `claude/beadle-motive-names` at `eb8e59b`
+(main `bf7b4f9` and #224 merged in): each fabrication's recorded motive (`why`) swaps
+people's ids for their names (Steward A3).
+- **Divergence from `baseline_5c99636`:** all 5 seeds, from record 1, in the `why` field
+  only. Record counts are the same, and no other field differs.
+- **Outcomes unchanged:** 42, 54875 and 98933 good wins as before; 692 and 900 unfinished
+  as before. Same hangings, votes and nominators.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, 23973 wording): `baseline_5c99636`
 
 `tools/golden/baseline_5c99636/` is the capture from `claude/herald-23973-wording` at
 `5c99636` (main `f754421` merged in): playtest 23973's wording. Of what it changes, only

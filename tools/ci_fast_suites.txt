@@ -35,8 +35,10 @@ test_gravedigger_bluff
 test_haunt_learning
 test_headline
 test_held_signals
+test_joint_reasons
 test_juror_claims
 test_lie_severity
+test_lie_severity_votes
 test_location_solver
 test_medium_relay_challenge
 test_meeting_m2a
@@ -48,6 +50,8 @@ test_npc_behaviour_1110
 test_npc_openness
 test_peer_role_gossip
 test_playtest_13910_dialogue
+test_playtest_23973
+test_playtest_89077
 test_poison_chance
 test_poison_self_doubt
 test_premise_step1
