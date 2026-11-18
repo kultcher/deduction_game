@@ -229,6 +229,31 @@ func _codex_243(seen: Dictionary) -> void:
 	var left: Array = LiveActivity.quiet_guard_cards(quiet, four).map(func(g): return g.report)
 	LiveActivity.quiet_guards_skip = []
 	_check(kept == ["q4", "q3", "q2"] and left == ["q3", "q2"], "the cap keeps the latest three; leaving one out doesn't admit the fourth (%s, %s)" % [str(kept), str(left)])
+	# A contested sighting (an NPC witness who may have invented it): the branch where the
+	# witness lied keeps the guard's evidence from the honest sighting elsewhere.
+	var honest_away: Dictionary = _sighting("d", 1, "square")
+	var told: Dictionary = {"id": "told", "fact_id": "told", "kind": "sighting", "source": "g", "subject": "d", "subjects": ["d"],
+		"night": 1, "block": "docks", "data": {}, "role": "", "observed_at": {"day": 1, "phase": "night"}}
+	var cf: Array = LiveActivity.factors(quiet, [honest_away, told, _guard("t")], {})
+	var cts: Array = cf[0].get("contests", []) if not cf.is_empty() else []
+	_check(not cts.is_empty() and cts[0].subsets[0].has("guard_alt") and cts[0].subsets[0].guard_alt.size() == 1,
+		"a contested sighting's alternative carries the guard too (%s)" % str(cts.map(func(c): return c.person)))
+	_check(_lean(quiet, [honest_away, told, _guard("t")], "g") < _lean(quiet, [honest_away, told], "g"),
+		"where the witness is evil, the honest sighting away from the guarded door still counts against d")
+	# A converted Warden (the Revenant's curse from the third night): good on the first night,
+	# so their first-night guard still holds in the world where they're the converted person.
+	var cursed: Dictionary = _view()
+	cursed["chronology"] = {"curse": {"from": 3 * 4, "until": 99}}
+	var wd: Dictionary = {"evil": _mask(["d", "f"]), "demon": IDS.find("d"), "converted": IDS.find("a")}
+	var we: Dictionary = {"evil": _mask(["e", "f"]), "demon": IDS.find("e"), "converted": IDS.find("a")}
+	var fg: Array = LiveActivity.factors(cursed, [seen, _guard("t")], {})
+	var fn: Array = LiveActivity.factors(cursed, [seen], {})
+	if not fg.is_empty() and not fn.is_empty():
+		var conv_g: float = LiveActivity.score(wd, fg[0]) / LiveActivity.score(we, fg[0])
+		var conv_n: float = LiveActivity.score(wd, fn[0]) / LiveActivity.score(we, fn[0])
+		_check(conv_g > conv_n * 1.2, "a Warden converted only later: their earlier guard still holds (%.3f -> %.3f)" % [conv_n, conv_g])
+	else:
+		_check(false, "the cursed view gives a movement factor")
 	# Two Wardens on the same quiet night at different doors: at most one held, and which
 	# claimant is which doesn't matter (a and h both live on the hill).
 	var ga: Dictionary = _guard("t")

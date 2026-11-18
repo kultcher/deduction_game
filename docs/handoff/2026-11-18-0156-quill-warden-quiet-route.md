@@ -28,6 +28,8 @@
   - Scion succession branches now carry the guards on both sides.
   - Two Wardens' guards on one quiet night: at most one held (each night a choice of none
     or one, by their reliabilities), so neither claimant is favoured.
+  - A contested sighting's alternatives (an evil witness's branch) carry the guards too,
+    and a converted Warden or guarded person counts as good outside the curse window.
   - The juror credits each guard with its own effect (leave-one-out through
     `LiveActivity.quiet_guards_skip`), and lists only the guards the route uses.
 - **Small calls made on Michael's behalf:**
@@ -46,7 +48,7 @@
   - **Autoplay** (seed 1, 10 NPCs, the first 5 of 8 games): the guard never reached the judge.
     The bot's cases don't cite Warden reports, and NPC beliefs didn't hit it in these games.
     So in practice this is the player's argument, as the item intends.
-- **Tests:** new `tools/test_warden_quiet_route` (26 checks), added to the fast list. Also
+- **Tests:** new `tools/test_warden_quiet_route` (29 checks), added to the fast list. Also
   passing: `test_warden_challenge`, `test_demon_types`, `test_workshop_regressions`,
   `test_workshop_live_activity`, `test_evidence_cards`, `test_juror_claims`,
   `test_workshop_remaining`, `test_workshop_integration`, `test_workshop_ui`,

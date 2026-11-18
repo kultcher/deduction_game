@@ -212,6 +212,10 @@ internal static class LiveActivityKernel
         public int[] Targets = Array.Empty<int>();
         public int[] Nights = Array.Empty<int>();
         public double[] R = Array.Empty<double>();
+        /// <summary>The curse window: a converted person is evil only on nights inside it.</summary>
+        public bool HasCurse;
+        public int CurseFrom;
+        public int CurseUntil;
         public double[][] AltDemon = Array.Empty<double[]>();
     }
 
@@ -232,6 +236,11 @@ internal static class LiveActivityKernel
         /// where j is the converted person and not originally evil.</summary>
         public double[][][] ConvAlt = Array.Empty<double[][]>();
         public double[][] ConvC = Array.Empty<double[]>();
+        /// <summary>With quiet-night guards (AttachGuards): per subset m (index m - 1), the
+        /// demon profile without those sightings for each guard subset T (index T - 1); and
+        /// the same per converted sighter j. Null without guards.</summary>
+        public double[][] GuardAlt;
+        public double[][][] ConvGuardAlt;
     }
 
     internal sealed class HexSuccession
@@ -1741,6 +1750,13 @@ internal static class LiveActivityKernel
             g.Nights[j] = ints[3 + 3 * j];
             g.R[j] = doubles[j];
         }
+        int iPos = 1 + 3 * k;
+        if (iPos + 2 < ints.Length)
+        {
+            g.HasCurse = ints[iPos] != 0;
+            g.CurseFrom = ints[iPos + 1];
+            g.CurseUntil = ints[iPos + 2];
+        }
         int dPos = k;
         int subsets = (1 << k) - 1;
         g.AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount);
@@ -1749,11 +1765,42 @@ internal static class LiveActivityKernel
             return;
         foreach (var split in factor.ScionSplits)
         {
-            if (dPos >= doubles.Length)
-                break;
-            split.PreGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, Nights = g.Nights, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
-            split.PostGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, Nights = g.Nights, R = g.R, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
+            split.PreGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, Nights = g.Nights, R = g.R, HasCurse = g.HasCurse, CurseFrom = g.CurseFrom, CurseUntil = g.CurseUntil, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
+            split.PostGuards = new GuardSet { Sources = g.Sources, Targets = g.Targets, Nights = g.Nights, R = g.R, HasCurse = g.HasCurse, CurseFrom = g.CurseFrom, CurseUntil = g.CurseUntil, AltDemon = ReadAlt(doubles, ref dPos, subsets, factor.PeopleCount) };
         }
+        // Then the contested sightings' alternatives, person by person (Codex on #243).
+        for (int p = 0; p < factor.Contests.Length; p++)
+        {
+            var ct = factor.Contests[p];
+            if (ct == null)
+                continue;
+            int ms = ct.Alt.Length;
+            ct.GuardAlt = new double[ms][];
+            for (int m = 0; m < ms; m++)
+                ct.GuardAlt[m] = SliceDoubles(doubles, ref dPos, subsets);
+            ct.ConvGuardAlt = new double[ct.Sighters.Length][][];
+            for (int j = 0; j < ct.Sighters.Length; j++)
+            {
+                if (ct.ConvAlt.Length <= j || ct.ConvAlt[j] == null)
+                    continue;
+                ct.ConvGuardAlt[j] = new double[ms][];
+                for (int m = 1; m <= ms; m++)
+                {
+                    if ((m & (1 << j)) == 0)
+                        continue;
+                    ct.ConvGuardAlt[j][m - 1] = SliceDoubles(doubles, ref dPos, subsets);
+                }
+            }
+        }
+    }
+
+    /// <summary>A contest's per-subset values as GuardedMix's alt (one value per row).</summary>
+    private static double[][] Column(double[] values)
+    {
+        var col = new double[values.Length][];
+        for (int t = 0; t < values.Length; t++)
+            col[t] = new[] { values[t] };
+        return col;
     }
 
     private static double[][] ReadAlt(double[] doubles, ref int dPos, int subsets, int n)
@@ -1767,16 +1814,29 @@ internal static class LiveActivityKernel
     /// <summary>The demon profile of person i with the world's holding guards mixed in: the
     /// guards whose Warden and guarded person are both good here (not evil, not the demon,
     /// not the converted).</summary>
-    private static double GuardedDemon(GuardSet g, int i, int evilMask, int convIdx, int demonIdx, double usual)
+    private static double GuardedDemon(GuardSet g, int i, int evilMask, int convIdx, int demonIdx, double usual) =>
+        GuardedMix(g, evilMask, convIdx, demonIdx, usual, g.AltDemon, i);
+
+    /// <summary>Good on the guard's night: not evil, not the demon, and not the converted
+    /// person while the curse holds (Codex on #243).</summary>
+    private static bool GoodOnNight(GuardSet g, int x, int night, int evilMask, int convIdx, int demonIdx)
+    {
+        if ((evilMask & (1 << x)) != 0 || x == demonIdx)
+            return false;
+        if (x != convIdx)
+            return true;
+        int tick = night * 4 + 3;
+        return !(g.HasCurse && tick >= g.CurseFrom && tick < g.CurseUntil);
+    }
+
+    /// <summary>The mixture over which holding guards held. alt[T - 1][i] is the demon profile
+    /// with the attacks of subset T; with i &lt; 0, alt[T - 1][0] (a contest's alternative).</summary>
+    private static double GuardedMix(GuardSet g, int evilMask, int convIdx, int demonIdx, double usual, double[][] alt, int i)
     {
         int h = 0;
         for (int j = 0; j < g.Sources.Length; j++)
         {
-            int s = g.Sources[j];
-            int t = g.Targets[j];
-            bool sGood = (evilMask & (1 << s)) == 0 && s != demonIdx && s != convIdx;
-            bool tGood = (evilMask & (1 << t)) == 0 && t != demonIdx && t != convIdx;
-            if (sGood && tGood)
+            if (GoodOnNight(g, g.Sources[j], g.Nights[j], evilMask, convIdx, demonIdx) && GoodOnNight(g, g.Targets[j], g.Nights[j], evilMask, convIdx, demonIdx))
                 h |= 1 << j;
         }
         if (h == 0)
@@ -1823,7 +1883,7 @@ internal static class LiveActivityKernel
                 w *= wNight;
             }
             if (ok)
-                total += w * (sub == 0 ? usual : g.AltDemon[sub - 1][i]);
+                total += w * (sub == 0 ? usual : (i >= 0 ? alt[sub - 1][i] : alt[sub - 1][0]));
             if (sub == 0)
                 break;
         }
@@ -2105,10 +2165,18 @@ internal static class LiveActivityKernel
                 if (convJ >= 0)
                 {
                     int mc = m | (1 << convJ);
-                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.ConvC[convJ][mc - 1] * ct.ConvAlt[convJ][mc - 1][align];
+                    double altV = ct.ConvAlt[convJ][mc - 1][align];
+                    if (align == 2 && guards != null && ct.ConvGuardAlt != null && ct.ConvGuardAlt[convJ] != null && ct.ConvGuardAlt[convJ][mc - 1] != null)
+                        altV = GuardedMix(guards, evilMask, convIdx, demonIdx, altV, Column(ct.ConvGuardAlt[convJ][mc - 1]), -1);
+                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.ConvC[convJ][mc - 1] * altV;
                 }
                 else if (m != 0)
-                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.C[m - 1] * ct.Alt[m - 1][align];
+                {
+                    double altV = ct.Alt[m - 1][align];
+                    if (align == 2 && guards != null && ct.GuardAlt != null)
+                        altV = GuardedMix(guards, evilMask, convIdx, demonIdx, altV, Column(ct.GuardAlt[m - 1]), -1);
+                    pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.C[m - 1] * altV;
+                }
             }
             result *= Math.Max(pVal, GdFloor1e30) / Math.Max(profGood[i], GdFloor1e30);
         }

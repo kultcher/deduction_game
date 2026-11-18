@@ -527,7 +527,7 @@ static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> 
 		profiles[i] = p_dict
 
 	var guards: Dictionary = _quiet_guards(view, ids, env, cards, packed_checked, stride) if quiet_guards_enabled else {}
-	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles) if sighter_contests_enabled else []
+	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles, guards.get("items", [])) if sighter_contests_enabled else []
 	var scene_tables: Array = _build_scene_tables_cs(view, ids, env, checked, packed_checked)
 	var scion_splits: Array = _scion_succession_splits_cs(view, ids, env, checked, guards.get("items", []))
 	var result: Array = [{"origin": "movement_model", "joint_live": true, "target": "", "log2_ratio": 1.0,
@@ -607,7 +607,8 @@ static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: 
 	var items: Array = quiet_guard_cards(view, cards).map(func(g): return {"source": ids.find(g.source), "target": ids.find(g.target), "night": g.night, "r": g.r})
 	if items.is_empty():
 		return {}
-	return {"items": items, "alt": _guard_alt(items, env, packed, env.has_curse, stride)}
+	return {"items": items, "alt": _guard_alt(items, env, packed, env.has_curse, stride),
+		"curse": {"on": env.has_curse, "from": env.curse_from, "until": env.curse_until}}
 
 ## The demon profile of each person with the attacks of each non-empty subset of the guards.
 static func _guard_alt(items: Array, env: Dictionary, packed: Dictionary, include_converted: bool, stride: int) -> Array:
@@ -639,7 +640,7 @@ static func _guard_alt(items: Array, env: Dictionary, packed: Dictionary, includ
 ## against a person's own home alibi convicted the alibi-giver alone (Tally, Nov 11: evil's
 ## fake sightings of good stay-at-homes). At most SIGHTER_CONTEST_MAX sighters a person,
 ## the most-cited first. The Scion's split branches keep their usual profiles.
-static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, cards: Array, checked: Array, profiles: Array) -> Array:
+static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, cards: Array, checked: Array, profiles: Array, guard_items: Array = []) -> Array:
 	var n: int = ids.size()
 	var curse: Dictionary = view.get("chronology", {}).get("curse", {})
 	var by_person: Dictionary = {}   # person idx -> {sighter idx: count}
@@ -688,6 +689,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	var stride: int = 4 if has_curse else 3
 	var bridge = SolverBackend._bridge()
 	var alt_cache: Dictionary = {}   # [full sighters, cursed-only sighter] -> raw profiles
+	var guard_cache: Dictionary = {}   # the same key -> the guard subsets' demon columns
 	var evil_n: float = float(view.get("evil_count", 1))
 	var weights: Array = [maxf(0.0, 1.0 - evil_n / float(n)), maxf(0.0, evil_n - 1.0) / float(n), 1.0 / float(n)]
 	# The profile without `full`'s sightings and the ones `cursed` told while converted.
@@ -712,6 +714,10 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			alt_cache[key] = bridge.LiveAllProfiles(
 				has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
 				DEMON_DETOUR, packed.ints, packed.doubles)
+			# With quiet-night guards, the same alternative with each guard subset's attacks
+			# (Codex on #243): removing a witness's sightings keeps the guards' evidence.
+			if not guard_items.is_empty():
+				guard_cache[key] = _guard_alt(guard_items, env, packed, has_curse, stride)
 		var raw: PackedFloat64Array = alt_cache[key]
 		var b: int = pi * stride
 		var alt: Array = [raw[b], raw[b + 1], raw[b + 2], raw[b + 3] if has_curse else 0.0]
@@ -719,7 +725,10 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 		var c: float = 0.0
 		for a in range(3):
 			c += weights[a] * (with_[a] / alt[a] if alt[a] > 1e-30 else 1.0)
-		return {"alt": alt, "c": c}
+		var out_sub: Dictionary = {"alt": alt, "c": c}
+		if guard_cache.has(key):
+			out_sub["guard_alt"] = guard_cache[key].map(func(col): return col[pi])
+		return out_sub
 	var out: Array = []
 	var persons: Array = by_person.keys()
 	persons.sort()
@@ -1061,6 +1070,22 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 				for col in sp.get(side, []):
 					for v in col:
 						g_doubles.append(float(v))
+		# The contested sightings' guarded alternatives, in person order as AttachContests
+		# stored them: per subset, then per converted sighter's subsets.
+		var by_p: Array = factor.get("contests", []).duplicate()
+		by_p.sort_custom(func(x, y): return int(x.person) < int(y.person))
+		for ct in by_p:
+			for sub in ct.subsets:
+				for v in sub.get("guard_alt", []):
+					g_doubles.append(float(v))
+			for per in ct.get("converted", []):
+				for sub in per:
+					for v in sub.get("guard_alt", []):
+						g_doubles.append(float(v))
+		var curse: Dictionary = guards.get("curse", {})
+		g_ints.append(1 if curse.get("on", false) else 0)
+		g_ints.append(int(curse.get("from", 0)))
+		g_ints.append(int(curse.get("until", 0)))
 		bridge.LiveAttachGuards(h, g_ints, g_doubles)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
