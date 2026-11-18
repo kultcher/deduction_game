@@ -131,7 +131,7 @@ func on_chosen_executed(w, mart, executed_npc) -> void:
 			"text": "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % executed_npc.name,
 		}
 		if not executed_npc.is_evil():
-			info["why"] = "Marked reads as evil"
+			info["why"] = "a Marked soul reads as evil"
 		w._add_info(mart, info)
 
 
@@ -140,7 +140,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Ar
 		return {}
 	plan["martyr_bluff_" + n.id] = true
 	var tgt = mate if mate != n else w.pick(w.living_good())
-	var why: String = "'chooses' %s, vouching for them" % tgt.id
+	var why: String = "chose %s, to vouch for them" % tgt.id
 	var entry: Dictionary = {
 		"data": {"target": tgt.id, "chosen": true},
 		"text": "I have given my life over for %s, should the town ever hang them" % tgt.name,

@@ -48,7 +48,7 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, mate, _asked: A
 	var other = w.pick(w.living_good())
 	var role: String = plan["bluffs"].get(mate.id, w.pick(w.case_script.town))
 	var pair: Array = w.shuffled([mate.id, other.id])
-	var why = "vouches for teammate %s as the %s" % [mate.id, role]
+	var why = "vouched for %s, a fellow evil, as the %s" % [mate.id, content().role_name(role)]
 	var entry: Dictionary = {
 		"data": {"pair": pair, "role": role},
 		"text": "I learned that one of %s is the %s" % [w._names(pair), C.role_name(role)],
@@ -70,7 +70,7 @@ func fake_medium_reading(w, n, dd, _s: String, _sg, _d, _goods: Array, other: Ca
 	var pair: Array = w.shuffled([m.id, o3.id])
 	e["data"] = {"pair": pair, "role": m.claimed_role}
 	e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(m.claimed_role)]
-	return {"entry": e, "why": "the dead Clerk %s 'backs' %s's claim" % [dd.id, m.id], "frames": false}
+	return {"entry": e, "why": "made up a reading from the late Clerk %s that backed the claim of %s, a fellow evil" % [dd.id, m.id], "frames": false}
 
 
 ## The same role on a pair with a bystander in one place (FabricationCheck: a better lie).

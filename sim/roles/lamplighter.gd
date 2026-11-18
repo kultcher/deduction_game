@@ -38,7 +38,7 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 
 func generate_bluff_reading(w, _n, _plan: Dictionary, _s: String, _mate, _asked: Array) -> Dictionary:
 	var cnt: int = clampi(w.night_walkers.size() + w.pick([-1, 0, 1]), 0, w.living().size() - 1)
-	var why: String = "guesses a plausible count of walkers (%d)" % cnt
+	var why: String = "made up a plausible count of walkers"
 	var entry: Dictionary = {
 		"data": {"count": cnt},
 		"text": "walking the lamps, I counted %d other%s out" % [cnt, "" if cnt == 1 else "s"],

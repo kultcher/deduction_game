@@ -165,7 +165,7 @@ func generate_reading(w, n, _ctx: Dictionary, mind) -> Dictionary:
 		"text": "I looked at %s: %s" % [w._names(pair), "one of them reads as the demon" if reported_yes else "neither is the demon"],
 	}
 	if yes and not true_yes and not broken:
-		entry["why"] = "red herring %s" % n.red_herring if n.red_herring in pair else "a Marked soul read as the demon"
+		entry["why"] = "%s is the Seer's red herring, so reads as the Demon" % n.red_herring if n.red_herring in pair else "a Marked soul reads as the Demon"
 	return entry
 
 
@@ -191,18 +191,18 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 				return {}
 			pair.append(w.pick(fill))
 		yes = s in pair
-		why = "looks where asked (%s); %s" % [str(clean_asked), "frames the scapegoat" if yes else "a harmless 'no'"]
+		why = "looked where asked; %s" % ["framed the one evil meant to hang" if yes else "made up a reading that harmed nobody"]
 	elif w.by_id[s].alive and (w.day % 2 == 1 or w.day == 0 or late) and not others_s.is_empty():
 		pair = [s, w.pick(others_s)]
 		yes = true
-		why = "frames scapegoat %s with a 'yes'" % s
+		why = "said %s, whom evil meant to hang, read as the Demon" % s
 	elif mate != n and mate.alive and w.chance(Tuning.Roles.SEER.bluff_clear_mate_prob) and not others_m.is_empty():
 		# (A lone evil's "mate" is itself: clearing it would put the bluffer in its own pair.)
 		pair = [mate.id, w.pick(others_m)]
-		why = "clears teammate %s with a 'no'" % mate.id
+		why = "cleared %s, a fellow evil" % mate.id
 	elif others_s.size() >= 2:
 		pair = w.shuffled(others_s).slice(0, 2)
-		why = "harmless 'no' on two people"
+		why = "made up a reading that harmed nobody"
 	else:
 		return {}
 	pair = w.shuffled(pair)
@@ -221,7 +221,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, other: Cal
 		if o != null:
 			e["data"] = {"pair": [d.id, o.id], "yes": false}
 			e["text"] = "I looked at %s: neither is the demon" % w._names([d.id, o.id])
-			return {"entry": e, "why": "the dead Seer %s 'cleared' the demon %s" % [dd.id, d.id], "frames": false}
+			return {"entry": e, "why": "made up a reading from the late Seer %s that cleared %s, the Demon" % [dd.id, d.id], "frames": false}
 	var prior: Array = []
 	for pe in dd.info_log:
 		if pe.get("shared", false) and pe.get("role", "") == "seer" and pe["data"].get("yes", false):
@@ -234,7 +234,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, other: Cal
 		return {}
 	e["data"] = {"pair": [a, o2.id], "yes": true}
 	e["text"] = "I looked at %s: one of them reads as the demon" % w._names([a, o2.id])
-	return {"entry": e, "why": "the dead Seer %s 'pinged' %s again" % [dd.id, a], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Seer %s that pointed at %s again" % [dd.id, a], "frames": true}
 
 
 ## The other answer on the same pair, or the same answer on a pair with a bystander in

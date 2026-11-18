@@ -60,7 +60,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	if broken:
 		same = not truth_same
 	elif same != truth_same:
-		swhy = "a Marked soul read as evil"
+		swhy = "a Marked soul reads as evil"
 	return {
 		"data": {"block": blk, "same": same},
 		"true": same == truth_same,
@@ -84,15 +84,15 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 		var res_sg: Array = w.npcs.filter(func(m): return m.home_block == blk)
 		var has_mate: bool = res_sg.any(func(m): return m.is_evil())
 		same = false if not has_mate else w.chance(0.35)
-		why = "casts doubt on %s's quarter (%s, same=%s)" % [s, blk, str(same)]
+		why = "cast doubt on %s's street" % s
 	elif mate != null and mate != n and mate.home_block in eligible and w.chance(0.5):
 		blk = mate.home_block
 		same = true
-		why = "clears teammate %s's quarter (%s, same=true)" % [mate.id, blk]
+		why = "cleared the street of %s, a fellow evil" % mate.id
 	else:
 		blk = w.pick(eligible)
 		same = w.chance(0.5)
-		why = "reports %s same=%s" % [blk, str(same)]
+		why = "claimed %s's households %s all on one side" % [content().block_name(blk), "were" if same else "weren't"]
 	var entry: Dictionary = {
 		"data": {"block": blk, "same": same},
 		"text": _spoken_text(blk, same),
@@ -107,13 +107,13 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, _goods: Array, _other: Cal
 	if d != null and d.alive and demon_implicated and d.home_block in eligible and w.chance(0.5):
 		e["data"] = {"block": d.home_block, "same": true}
 		e["text"] = _spoken_text(d.home_block, true)
-		return {"entry": e, "why": "the dead Surveyor %s 'cleared' the demon %s's block" % [dd.id, d.id], "frames": false}
+		return {"entry": e, "why": "made up a reading from the late Surveyor %s that cleared the Demon %s's street" % [dd.id, d.id], "frames": false}
 	var blk: String = sg.home_block if (sg != null and sg.home_block in eligible) else w.pick(eligible)
 	var frames_sg: bool = (sg != null and blk == sg.home_block)
 	var same: bool = false if frames_sg else true
 	e["data"] = {"block": blk, "same": same}
 	e["text"] = _spoken_text(blk, same)
-	return {"entry": e, "why": "the dead Surveyor %s reported %s same=%s" % [dd.id, blk, str(same)], "frames": frames_sg}
+	return {"entry": e, "why": "made up a reading from the late Surveyor %s about who lives on %s" % [dd.id, content().block_name(blk)], "frames": frames_sg}
 
 
 ## The other answer on the same quarter (FabricationCheck: a better lie).
