@@ -51,3 +51,8 @@
   captures identical (seed 900 recaptured twice after a disk-full write broke one line).
 - **Suites run:** the fast list (all pass), `test_role_check_doubt`,
   `test_connections_pairings`, `test_delusional_self_doubt`.
+- **Re-baselined (Nov 18):** main `f23566a` merged in (the #245 gift-doubt block sits next to
+  this one in `SourceDoubt.derive`; both raise doubt only, kept both). `baseline_490cdcf`:
+  beliefs move from the first record on every seed. Outcomes are the same on 42, 54875, 692
+  and 900. On 98933 the town no longer hangs Isolde (the evil Revenant) on day 3; all five
+  day-3 nominations fail. Two captures identical; fast list 89 of 89.
