@@ -1,6 +1,6 @@
 # 2026-11-18, Claude-Herald: show carried answers when a case is filed (`claude/herald-carried-answers`)
 
-- **Base:** main `878ddaa`. **Status:** PR open, expected zero drift. **Next actor:** Bailiff.
+- **Base:** main `940ce2c`. **Status:** PR open, zero drift. **Next actor:** Bailiff.
 - **Source:** BACKLOG "Show carried answers when a case is filed" (playtest 23973, Coroner's note 1). Michael said yes on Nov 18, through Seneschal. The item is marked [decided] and moved to `BACKLOG_COMPLETED.md`.
 
 ## What changed
@@ -23,4 +23,5 @@
 
 ## Measured
 
-- See the PR for suites and golden. No sim code changed, so golden should be identical to the baseline.
+- Suites passed: `test_carried_answers` (new), `test_workshop_live_canvas`, `test_workshop_canvas`, `test_triage_nov16` and `test_workshop`.
+- Golden is identical to `baseline_44073d9` at `--tol 0` on all 5 seeds.
