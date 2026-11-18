@@ -468,6 +468,43 @@ relayed alibi's already was.
   took him from 0.83 to 0.46 for Nisha. With the relayer contested they no longer clear him.
 - Seed 929 (Nov 13), the case that found it, is the same shape.
 
+### "Was my reading poisoned?" (Lantern with Quill, Nov 17-18)
+
+Michael's direction: no half-doubt, no new number; more doubt when the clashing source is
+trusted. Built (Nov 18) as the prior only:
+
+- With a Poisoner possible on the script, each of the listener's own readings carries the
+  chance a Poisoner picked it that night as an honest doubt (`SourceDoubt.derive`, with
+  Quill's `ReadingChallenges.poison_chance`: zero with no Poisoner or one known dead,
+  otherwise the minion places over the script's minions, over the good people it could
+  have picked; the night is the reading's own, or the night before a day reading).
+- The judge does the rest. It mixes the reading as genuine and as broken by how well each
+  fits everything else, so a reading that fits shrugs the doubt off, and one a trusted
+  teller contradicts gives way; a teller already suspected explains the clash, so less.
+- **Why not the clash-gated form first built:** feeding the judge π / (π + bad), a doubt
+  already conditioned on the clash, counted the clash twice (seed 51: a 25% doubt moved
+  Constance from 22% to 75%; the prior alone, 10%, moves her to 54%). It also needed clash
+  detection and an extra refresh (11-31% more capture time).
+- **Measured** (`tools/test_poison_self_doubt.gd`, constructed on seed 692, Poisoner on the
+  script, π = 5%): a trusted teller's clashing card, heard at half weight, lets the own
+  reading clear Hollis less (1.9% → 3.8%) and blame the teller less (40.7% → 40.0%); against
+  a suspected teller it gives way slightly less; a teller who agrees moves Hollis half as
+  much; no Poisoner, no doubt.
+- **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
+  of its own readings (poison, and Delusional with #216), from its last applied refresh.
+- **Strong frames can shake an own reading** (Michael, Nov 18, option b): a doubted own reading
+  no longer pins the person it proves ("proved stays proved" needs the reading undoubted); the
+  judge weighs it genuine or broken by fit. Weak contradicting evidence barely moves it; a
+  strong frame can overturn it. Seed 5 (Quill's measurement): Agnes's true Gravedigger reading
+  cleared the hanged Constance, but Odette (the Demon, bluffing Night Watch) said she saw
+  Constance out on a night she was home, and Jory (bluffing Archivist) named her; with an 8%
+  poison doubt Constance goes from 0% to 90%, the frame favouring "broken" about 2,800 to 1.
+  Big moves go towards and away from the truth about equally (π can't tell which reading was
+  poisoned). With no Poisoner or Delusional possible the doubt is zero and proofs stay absolute.
+- **With Delusional too** (#216): the two are independent ways an own gift can fail, so a
+  night that carries both takes 1 − (1 − poison)(1 − Delusional), as the Night Watch's
+  broken chance does (a 5% poison chance and the 10% Delusional doubt give 14.5%).
+
 ## Open items
 
 Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.

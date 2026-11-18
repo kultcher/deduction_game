@@ -94,6 +94,9 @@ static func _refresh(g, n, phase: String) -> void:
 		state.owned = plan.owned
 		var doubt_bundle: Dictionary = SourceDoubt.derive(plan, n.ledger, manual_sd)
 		state.source_doubt = doubt_bundle.full.duplicate(true)
+		# What it doubts of its own readings, by night (poison and Delusional self-doubt), for
+		# what it says aloud (SourceDoubt.self_doubt).
+		state["self_doubt"] = SourceDoubt.own_doubt(n.id, doubt_bundle.get("honest", {}))
 		var started = Time.get_ticks_msec()
 		# Premises pass step 1: remembered presentations shape their own cards' effect.
 		var shaping: Dictionary = Shared.premise_shaping(plan, state.get("presentations", {}), state.get("withdrawn", {}), float(plan.prepared.listener.get("insight", 0.5)))
