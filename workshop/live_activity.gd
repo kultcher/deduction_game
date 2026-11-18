@@ -1324,8 +1324,23 @@ static func mix_demon(walking: float, still: float, share: float) -> float:
 		return walking
 	return walking * (1.0 - share) + still * share
 
+## How often a good person is out on a night, as the movement model's good profile has it,
+## from what the cards say they claim (ReadingChallenges._outing_poison_chance): its profile
+## weights (_likelihood_gd) times each profile's walk rate (_profile_paths).
+static func good_walk_chance(cards: Array, person: String) -> float:
+	var role: String = role_of(cards, person)
+	var gift: bool = bool(C.ROLES.get(role, {}).get("night_walk", false))
+	if role != "" and not gift:
+		return 0.9 * PROFILE_RATES.ordinary + 0.1 * PROFILE_RATES.secret
+	if gift:
+		return WALKER_CLAIM_HOME * PROFILE_RATES.ordinary + WALKER_CLAIM_GIFT * PROFILE_RATES.gift + WALKER_CLAIM_SECRET * PROFILE_RATES.secret
+	return 0.75 * PROFILE_RATES.ordinary + 0.15 * PROFILE_RATES.gift + 0.1 * PROFILE_RATES.secret
+
+## Each profile's chance of being out on a night (the C# kernel's BuildProfilePaths has the same).
+const PROFILE_RATES = {"minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
-	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": PROFILE_RATES.minion, "gift": PROFILE_RATES.gift, "secret": PROFILE_RATES.secret, "ordinary": PROFILE_RATES.ordinary}
 	var rate: float = rates[profile]
 	if profile == "gift" and night < 1 and role_of(cards, person.id) == "warden":
 		rate = 0.0  # no guard on night 0 (triage 7.1): a night-0 outing isn't the Warden's gift
