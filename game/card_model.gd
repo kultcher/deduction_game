@@ -198,7 +198,13 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 				return "%s %s %s" % [src, "speaks up for" if card.stance == "for" else "speaks against", _subjects(card, nm)]
 		"alibi":
 			if card.has("block"):
-				return "%s: home, %s" % [src, C.block_name(card.block)]
+				# Who it's about, not who said it: an admitted outing says "out", and a
+				# witness's word for someone else names the witness (Codex on #256).
+				var about: String = _subjects(card, nm)
+				var said: String = "" if str(card.get("source", "")) in card.get("subject", []) else ", says %s" % src
+				if not card.get("home", true):
+					return "%s: out on %s%s" % [about, C.block_name(card.block), said]
+				return "%s: home, %s%s" % [about, C.block_name(card.block), said]
 		"sighting":
 			if card.has("loc"):
 				return "%s %sat %s" % [_subjects(card, nm), "working " if card.get("work_sighting", false) else "", C.loc_name(card.loc)]
