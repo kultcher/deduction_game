@@ -148,7 +148,10 @@ relay about the first victim naming night 0 (Beadle).
   keep the reasons they still believe. Players can re-file a case, but can't retract or
   explain. (25923: a final nomination cited the player's earlier argument after the
   player had adopted a different world.) A revised case must not score below the version
-  it replaces. Private guesses stay private. [open]
+  it replaces. Private guesses stay private.
+  Michael (Nov 18): decided. Owners: probably Quill (the judge) and Herald (the UI). It
+  pairs with "Recovering from a wrong 'lying' call" (below) and "The player's 'poisoned,
+  not lying' call" (docs/design/poisoned_not_lying.md). [decided]
 
 - **Recovering from a wrong "lying" call.** (Nov 12, Michael; Quill's honest-mistake
   sample, belief-model doc) A "lying" challenge on a poisoned or misregistered good
@@ -325,16 +328,19 @@ relay about the first victim naming night 0 (Beadle).
   strongly suspects (and who turns out evil, or is widely believed so) earns a little
   trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
+  Michael (Nov 18): the item covers agreement through votes, nominations, accusations
+  and defences, plus "their reading confirms me" (Beadle rescoping).
+  - **Evidence can build NPC-to-NPC trust.** A relationship gain when credible evidence
+    reduces suspicion, especially a Clerk reading matching the listener's own role
+    (about +0.20, provisional), or a Seer "no" on someone building that person's trust
+    in the Seer. Base it on the listener's knowledge, scale by strength, and deduplicate
+    the underlying fact. (Folded in Nov 18, Michael.)
 
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
   seen out at night, and nobody has claimed Night Watch). This opens double claims (the
   real Night Watch may just be quiet), which need their own logic; once handled, fake
   Mediums and evil generally can make bolder lies. (Oct 19) [decided]
-
-- **Medium relays: later social consequences.** Relays keep both sources, the original
-  and visit times and the original's health. Still open: who gains or loses trust, or is
-  blamed, when a relay is challenged. (Oct 23) [open]
 
 - **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
   the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
@@ -358,12 +364,6 @@ relay about the first victim naming night 0 (Beadle).
   - player wards the Warden knows about counting as an alternative explanation.
 
   [decided: direction]
-
-### Exploration
-
-- **Role hints from workplaces and haunts.** Occasionally reward searching an NPC's
-  workplace or haunt with an attributed hint about their claimed or possible gift.
-  Searches shouldn't become guaranteed hidden-role checks. (Oct 21) [open]
 
 ### Numbers
 
@@ -389,9 +389,12 @@ relay about the first victim naming night 0 (Beadle).
   Check against the current prior mapping. (Oct 30) Michael (Nov 18): saved for a dedicated
   role-tuning pass. [later: role tuning pass]
 
-- **Situational credence modifiers** still to settle: early disclosure, a quiet night as a
-  credence boost, admission against interest, consistency over time, role-specific
-  confirmations. [open]
+- **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
+  producing zero-count group clears. Specify whether "evil" means registered evil
+  (including Marked), how poison and Delusional results behave, and when an absent ping
+  is observable.
+  Michael (Nov 18): moved to the role-tuning pass with "The Seer's rise looks small".
+  [later: role tuning pass]
 
 ### Tentative social tuning (Oct 20–21 discussion)
 
@@ -405,22 +408,11 @@ Candidates for a unified retuning proposal, not approved changes.
   trust. The first day swings a lot on how many private characters are dealt.) Consider
   removing the double count or dealing at least one openish person per phase. [tentative]
 
-- **Evidence can build NPC-to-NPC trust.** A relationship gain when credible evidence
-  reduces suspicion, especially a Clerk reading matching the listener's own role (about
-  +0.20, provisional), or a Seer "no" on someone building that person's trust in the
-  Seer. Base it on the listener's knowledge, scale by strength, and deduplicate the
-  underlying fact. [tentative]
-
 - **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
   and add plausible-success credit for a kept ward followed by a deathless night.
   Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
   credit on what the listener can observe; avoid crediting promise, protection and
   outcome twice. [decided: direction; amounts open]
-
-- **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
-  producing zero-count group clears. Specify whether "evil" means registered evil
-  (including Marked), how poison and Delusional results behave, and when an absent ping
-  is observable. [tentative]
 
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
@@ -515,11 +507,13 @@ The one performance item, "Late-game meeting and presenting cost", is in
   what they know, allow legitimate changes such as succession, and keep suspicion of
   misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
 
-- **Trust dynamics around sources.** A relayer may name their source outright, at the
-  cost of that person's trust; evil may try to trace an unnamed source ("the Seer told
-  me") back to a person, to kill or frame them. (Oct 19) [open]
-
-- **Talking to a group:** 3 questions per phase, split among anyone at the spot. [open]
+- **New role hint families.** (Michael, Nov 18) Some hint families are crowded: "official
+  business" holds seven roles, and Rumormonger and Martyr sit in two families each
+  (`HINT_PACKAGES`, `sim/content.gd`; the case-start "Hint families:" list,
+  `game/game_screens.gd`). Add more families so each holds fewer roles, which makes a
+  hint narrow the field further. Design first: which families, and which roles move.
+  Owners: Quill (roles and evidence), Herald (the wording); Michael names the families.
+  [decided]
 
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
@@ -878,6 +872,27 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
 
 - **Procedural town:** blocks, buildings and roads generated per case. [deferred, Nov 8]
   Tabled (Michael, Nov 18; deferred since Nov 8).
+
+- **Medium relays: later social consequences.** Relays keep both sources, the original
+  and visit times and the original's health. Still open: who gains or loses trust, or is
+  blamed, when a relay is challenged. (Oct 23) [open]
+  - **Trust dynamics around sources.** A relayer may name their source outright, at the
+    cost of that person's trust; evil may try to trace an unnamed source ("the Seer told
+    me") back to a person, to kill or frame them. (Oct 19)
+  Bundled and tabled (Michael, Nov 18).
+
+- **Role hints from workplaces and haunts.** Occasionally reward searching an NPC's
+  workplace or haunt with an attributed hint about their claimed or possible gift.
+  Searches shouldn't become guaranteed hidden-role checks. (Oct 21) [open]
+  Tabled (Michael, Nov 18).
+
+- **Situational credence modifiers** still to settle: early disclosure, a quiet night as a
+  credence boost, admission against interest, consistency over time, role-specific
+  confirmations. [open]
+  Tabled (Michael, Nov 18).
+
+- **Talking to a group:** 3 questions per phase, split among anyone at the spot. [open]
+  Tabled (Michael, Nov 18).
 
 ## Closed
 
