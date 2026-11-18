@@ -4,7 +4,8 @@
 ##   - a near-unanimous hanging: usually "they were a Minion" (keeps the frame);
 ##   - a bare majority: usually confirm their claim, sometimes gamble on a frame;
 ##   - a bolder (more confident) evil NPC frames more often;
-##   - a hanged teammate is still covered with their bluff.
+##   - a hanged teammate: covered with their bluff, or named as their true role, which a Demon
+##     or Scion does more often on its first reading, a Minion less (Michael, Nov 18).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -72,10 +73,23 @@ func _init() -> void:
 	check(bold.framed > timid.framed, "a bolder evil NPC frames more often (%.2f against %.2f)" % [bold.framed, timid.framed])
 	check(sure.framed + sure.confirmed > 0.999, "every report is a Minion or their own claim")
 
-	# A hanged teammate is still covered with their bluff.
+	# A hanged teammate: covered with their bluff, or named as their true role (Michael, Nov 18:
+	# a Demon or Scion leans toward blending in on its first reading, a Minion toward covering).
 	var mate = evil[1] if evil.size() > 1 else evil[0]
 	w.executed_today = mate.id
-	var r2: Dictionary = role_def.generate_bluff_reading(w, digger, {"bluffs": {mate.id: "clerk"}}, "", null, [])
-	check(str(r2.entry.data.role) == "clerk", "a hanged teammate is covered with their bluff")
+	var covered: int = 0
+	var named_true: int = 0
+	for i in range(200):
+		var r2: Dictionary = role_def.generate_bluff_reading(w, digger, {"bluffs": {mate.id: "clerk"}}, "", null, [])
+		var said: String = str(r2.entry.data.role)
+		if said == "clerk":
+			covered += 1
+		elif said == mate.role:
+			named_true += 1
+	var Evil = load("res://sim/evil.gd")
+	var leans_blend: bool = Evil.blends_in(w, digger) or Evil.badly_exposed(w, digger)
+	print("  a hanged teammate (%s): covered %d, true role %d, of 200" % ["leans to blend" if leans_blend else "leans to cover", covered, named_true])
+	check(covered + named_true == 200, "a hanged teammate is either covered with their bluff or named as their true role")
+	check((named_true > covered) == leans_blend, "the lean follows the liar's kind (covered %d, true role %d)" % [covered, named_true])
 	print("Gravedigger bluff: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

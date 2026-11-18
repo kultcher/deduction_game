@@ -418,6 +418,22 @@ static func _shadow_own_info(w, n) -> void:
 			s.applied_info = s.info_log.size()
 			apply_info(w, s, s, mine, C.SHADOW_OWN_READING_WEIGHT))
 
+## A made-up reading of n's own changed before it was told (Evil.blend_clerk_readings): the
+## shadow, which took the old version as its own reading, drops that one's evidence and takes
+## the new, so its cover follows the reading n will actually claim (Codex on #269). A reading
+## the shadow hasn't taken yet needs nothing: _shadow_own_info copies the new version.
+static func shadow_replace_own_info(w, n, old_entry: Dictionary, new_entry: Dictionary) -> void:
+	shadow_run(w, n, func(s):
+		for i in range(s.info_log.size()):
+			var e: Dictionary = s.info_log[i]
+			if not e.get("fake", false) or e.get("role", "") != old_entry.get("role", "") or e.get("day", -1) != old_entry.get("day", -1) or e.get("data", {}) != old_entry.get("data", {}):
+				continue
+			s.ledger.erase(info_eid(s.id, e))
+			var mine: Dictionary = new_entry.duplicate(true)
+			s.info_log[i] = mine
+			apply_info(w, s, s, mine, C.SHADOW_OWN_READING_WEIGHT)
+			return)
+
 ## Step 2: should evil NPC n break cover, doing the evil choice instead of what its good
 ## self would? stakes: what the evil choice buys (a teammate saved, a frame pushed);
 ## deviation: how far the evil choice strays from the shadow's (0..1). Logged either way.

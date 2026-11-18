@@ -13,6 +13,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const SEEDS_FROM = 100
 const SEEDS_COUNT = 40
 const WANT = 3
+const HELD_FLOOR_SEEN = 0.2
 
 var checks = 0
 var fails = 0
@@ -89,6 +90,12 @@ func _seed(seed_v: int) -> int:
 	var after: float = float(n.suspicion.get(teller.id, 0.1))
 	print("seed %d: %s on %s, attended before %s / after %s, suspicion %.3f -> %.3f" % [seed_v, n.id, teller.id, card.id in considered, attended, before, after])
 	if attended:
+		return 0
+	# A teller already as suspected as the floor would put them (the floor lands at 0.2 to 0.22 on
+	# every seed that lifts) has nothing to lift: not a case for this test (#269: a deal where
+	# the teller started at 0.253).
+	if absf(after - before) < 0.005 and before >= HELD_FLOOR_SEEN:
+		print("  seed %d: %s already above the floor; skipped" % [seed_v, teller.id])
 		return 0
 	# The floor is a minimum on the evidence against the teller, so it lifts them only as far
 	# as they weren't already suspected. Before purge phase 6b it never applied here (the

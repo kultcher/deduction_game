@@ -41,10 +41,16 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	}
 
 
-func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, mate, _asked: Array) -> Dictionary:
+func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Array) -> Dictionary:
 	if w.day != 0:
 		return {}
 	var C = content()
+	# Michael, Nov 18: a Scion or Demon may blend in instead, by "confirming" a good
+	# townsperson who claimed early. Nobody has claimed yet on the first night, so it is told
+	# as a cover now and changed, if still untold, once a good townsperson has claimed
+	# (Evil.blend_clerk_readings). Its telling isn't held back for it.
+	if load("res://sim/evil.gd").blends_in(w, n) and w.chance(Tuning.Evil.BLUFF_BLEND_PROB):
+		plan["clerk_blend_" + n.id] = true
 	var other = w.pick(w.living_good())
 	var role: String = plan["bluffs"].get(mate.id, w.pick(w.case_script.town))
 	var pair: Array = w.shuffled([mate.id, other.id])

@@ -575,6 +575,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `FAKE_GOSSIP_PROB` | `0.6` |  | `sim/evil.gd` |
 | `FRAME_MEMORY_BASE` | `0.2` |  | `sim/evil.gd` |
 | `FRAME_MEMORY_TRAITS` | `0.7` |  | `sim/evil.gd` |
+| `BLUFF_BLEND_PROB` | `0.35` |  | `sim/evil.gd`, `sim/roles/clerk.gd`, `sim/roles/confessor.gd`, `sim/roles/rumormonger.gd` |
 | `CARELESS_BLUFF_INSIGHT_SCALE` | `0.5` |  | `sim/evil.gd` |
 | `EVIL_VOTE_TIE_BASE` | `0.4` |  | `sim/evil.gd` |
 | `GRAVEDIGGER_FRAME_BASE` | `0.05` | An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion, or confirm their claim. It reads what the town believed from the hanging vote's yes share: the frame is safe when the town was sure (it keeps the frame and "finds" a Minion), a gamble when it was split, and confirming a claim the town disbelieved outs the Gravedigger (playtest 30987: Hollis vouched for the hanged Dorian and was hanged next). Chance = (FRAME_BASE + FRAME_CONF * confidence) + FRAME_SURE * town certainty, where certainty runs 0 at a bare-majority vote to 1 at unanimity. | `sim/roles/gravedigger.gd` |
