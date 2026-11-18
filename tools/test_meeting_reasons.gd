@@ -218,7 +218,10 @@ func _test_vigil_vs_nightwatch_joint_contradiction() -> void:
 	listener.ledger = {}
 	listener.credibility = 0.85
 
-	var c_vig: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": "market", "text": "Night 2 vigil on Market: saw only Agnes."})
+	# A vigil sees residents leaving the block (Nov 17): a vigil on Isolde's own block saw only
+	# Agnes (a neighbour) leave, yet Isolde says she walked out to watch the Market.
+	agnes.home_block = isolde.home_block
+	var c_vig: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": isolde.home_block, "text": "Night 2 vigil on Isolde's block: saw only Agnes."})
 	var c_clm: int = g.add_card({"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium", "day": 2, "phase": C.EVENING, "text": "Agnes claims Medium."})
 	var c_nw: int = g.add_card({"kind": "info", "source": isolde.id, "subject": [hollis.id], "role": "nightwatch", "day": 2, "phase": C.NIGHT, "data": {"block": "market", "seen": [hollis.id]}, "text": "Isolde (Night Watch): watched Market, saw Hollis."})
 	var id_vig: String = Live.Evidence.normalize_card(g.board[c_vig - 1]).id

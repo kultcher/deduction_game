@@ -93,21 +93,23 @@ internal static class LiveActivityKernel
 
     /// <summary>
     /// Compact representation of a night path on the 4-block pairwise-connected map.
-    /// StayHome: BlockMask = 0, LastBlock = -1, IsLampTour = false.
-    /// Direct / Detour: BlockMask != 0, LastBlock = destination (0..3), IsLampTour = false.
-    /// LampTour (C.BLOCKS.keys()): BlockMask = 0xF, LastBlock = 3 ("hill"), IsLampTour = true.
+    /// StayHome: BlockMask = 0, FirstBlock = LastBlock = -1, IsLampTour = false.
+    /// Direct / Detour: BlockMask != 0, FirstBlock = home, LastBlock = destination (0..3), IsLampTour = false.
+    /// LampTour (C.BLOCKS.keys()): BlockMask = 0xF, FirstBlock = 0 ("square"), LastBlock = 3 ("hill"), IsLampTour = true.
     /// </summary>
     internal readonly struct PathSpec
     {
         public readonly int BlockMask;
+        public readonly int FirstBlock;
         public readonly int LastBlock;
         public readonly bool IsLampTour;
         public readonly double Weight;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PathSpec(int blockMask, int lastBlock, bool isLampTour, double weight = 1.0)
+        public PathSpec(int blockMask, int firstBlock, int lastBlock, bool isLampTour, double weight = 1.0)
         {
             BlockMask = blockMask;
+            FirstBlock = firstBlock;
             LastBlock = lastBlock;
             IsLampTour = isLampTour;
             Weight = weight;
@@ -125,19 +127,20 @@ internal static class LiveActivityKernel
 
         /// <summary>
         /// Matches C.vigil_sees_path(block, path):
-        /// not path.is_empty() and (path.back() == block or path.size() == BLOCKS.size())
+        /// not path.is_empty() and (path.front() == block or path.size() == BLOCKS.size())
+        /// (a vigil sees residents leaving home, Nov 17).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool VigilSees(int blockCode) =>
-            LastBlock >= 0 && ((blockCode >= 0 && LastBlock == blockCode) || IsLampTour);
+            LastBlock >= 0 && ((blockCode >= 0 && FirstBlock == blockCode) || IsLampTour);
 
-        public static PathSpec StayHome(double weight = 1.0) => new(0, -1, false, weight);
+        public static PathSpec StayHome(double weight = 1.0) => new(0, -1, -1, false, weight);
 
-        public static PathSpec LampTour(double weight = 1.0) => new(0xF, BlockHill, true, weight);
+        public static PathSpec LampTour(double weight = 1.0) => new(0xF, BlockSquare, BlockHill, true, weight);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PathSpec Route(int home, int dest, double weight = 1.0) =>
-            new((1 << home) | (1 << dest), dest, false, weight);
+            new((1 << home) | (1 << dest), home, dest, false, weight);
     }
 
     internal sealed class SceneTableData
@@ -943,13 +946,13 @@ internal static class LiveActivityKernel
                 // Exact demon_routes(home, dest) order: direct first, then via blocks in 0..3 order
                 int directMask = (1 << home) | (1 << dest);
                 int viaCount = home == dest ? 3 : 2;
-                result.Add(new PathSpec(directMask, dest, false, baseWeight * (1.0 - demonDetour)));
+                result.Add(new PathSpec(directMask, home, dest, false, baseWeight * (1.0 - demonDetour)));
                 double detourShare = demonDetour / (double)viaCount;
                 for (int b = 0; b < BlockCount; b++)
                 {
                     if ((directMask & (1 << b)) == 0)
                     {
-                        result.Add(new PathSpec(directMask | (1 << b), dest, false, baseWeight * detourShare));
+                        result.Add(new PathSpec(directMask | (1 << b), home, dest, false, baseWeight * detourShare));
                     }
                 }
             }

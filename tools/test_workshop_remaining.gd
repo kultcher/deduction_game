@@ -42,9 +42,13 @@ func _run() -> void:
 	absent.data.detection = 0.0
 	check(is_equal_approx(Movement.likelihood(view, [absent], "constance", true), 1.0), "zero observation coverage provides no evidence of absence")
 	absent.data.detection = 1.0
+	# A vigil sees residents leaving the block (Nov 17): the relevant coverage is the suspect's
+	# own block.
+	var home: String = str(view.people.filter(func(p): return p.id == "constance")[0].home)
+	absent.block = home
 	check(Movement.likelihood(view, [absent], "constance", true) < Movement.likelihood(view, [absent], "constance", false), "complete relevant coverage can favor a non-hunting explanation without proving good")
-	absent.block = "market"
-	check(Movement.likelihood(view, [absent], "constance", true) > 0, "watching a block off the route does not prove the suspect stayed home")
+	absent.block = "market" if home != "market" else "docks"
+	check(Movement.likelihood(view, [absent], "constance", true) > 0, "watching a block that isn't the suspect's own does not prove the suspect stayed home")
 	var trace = Movement.trace_distribution("market", ["hill"])
 	check(trace.market == 0.6 and trace.hill == 0.4, "trace mechanism matches the game's eligible-passer 40 percent branch")
 	check(Movement.trace_distribution("market", ["market"]).market == 1.0, "a matching eligible passer does not change the trace material")

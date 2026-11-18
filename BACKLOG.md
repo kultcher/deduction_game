@@ -454,6 +454,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   fine. The bot's vigil policy changes in the same build to watch its suspects' blocks. The
   note's section 5 lists what the build should check. Result wording: Herald drafts,
   Michael settles. Owner Quill. [decided]
+  **Built (Quill, `claude/vigil-leavers`, Nov 17):** the sim and the judge both read the new
+  rule, the bot watches the block of the people it suspects most, and Herald's wording
+  (approved by Michael) is in. Bot, 20 games before and after: good won 17 instead of 13,
+  and about 1 vigil in 4 saw the Demon instead of 1 in 5 (it watches its suspects' homes,
+  and the Demon leaves home every kill night). Small sample.
 
 - **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across
   paired seeds (living candidates, wrongful executions, win rate); the evidence rework's
