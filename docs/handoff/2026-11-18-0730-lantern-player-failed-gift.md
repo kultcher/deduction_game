@@ -26,3 +26,10 @@
   the golden player presents no cases.
 - **Tests:** new suite added to the fast list; the suites that touch source doubt and the poison
   chance pass.
+- **Codex on #270 (both fixed):**
+  - A call on a relayed reading lands on the side the challenge names. `transmission` is the
+    Medium's night; `original` is the dead reader's own reading and night.
+  - A call on a Registrar's night-0 register carries no poison doubt, since it can't be poisoned.
+    A Medium's transmission of it still can be.
+  - `test_player_failed_gift` has 10 checks, including a guard that the unchanged call does carry
+    a doubt.

@@ -106,6 +106,39 @@ func _init() -> void:
 	var nopo: Dictionary = _hear(call, 1, 0.9)
 	g4.w.case_script.minions = mins
 	check(nopo.doubt == 0.0, "with no Poisoner on the script the call carries nothing (%.3f)" % nopo.doubt)
+	# 4b. Codex on #270: the challenged card as a Registrar's night-0 register (never poisoned)
+	#     carries nothing; as a relayed reading, the call lands on whichever side it names.
+	var call5: Dictionary = _game(true)
+	var g5 = call5.g
+	var lis = call5.goods[1]
+	_hear(call5, 1, 0.9)
+	var plan5: Dictionary = g5._workshop_plans.get(lis.id + ":good", {})
+	var rid: String = ""
+	for cs in plan5.prepared.listener.get("connections", {}).get("cases", []):
+		for id in cs.get("challenges", {}):
+			rid = str(id)
+	var medium_id: String = str(call5.goods[4].id)
+	var doubts: Dictionary = {}
+	for variant in ["registrar", "original", "transmission"]:
+		var p5: Dictionary = plan5.duplicate(true)
+		for c in p5.prepared.view.cards:
+			if str(c.get("id", "")) != rid:
+				continue
+			if variant == "registrar":
+				c["role"] = "registrar"
+			else:
+				c["relay_source"] = medium_id
+				c["relay_observed_at"] = {"day": 1, "phase": "night"}
+		for cs in p5.prepared.listener.connections.cases:
+			if cs.get("challenges", {}).has(rid) and variant != "registrar":
+				cs.challenges[rid]["attribution"] = variant
+		doubts[variant] = SourceDoubt.derive(p5, lis.ledger, {}).honest
+	var reader_key: String = "%s:0" % call5.reader.id
+	var medium_key: String = "%s:1" % medium_id
+	check(float(SourceDoubt.derive(plan5, lis.ledger, {}).honest.get(reader_key, 0.0)) > 0.0, "the unchanged call does carry a doubt (so the checks below test something)")
+	check(float(doubts.registrar.get(reader_key, 0.0)) == 0.0, "a call on a Registrar's night-0 register carries no poison doubt (%.3f)" % float(doubts.registrar.get(reader_key, 0.0)))
+	check(float(doubts.original.get(reader_key, 0.0)) > 0.0 and float(doubts.original.get(medium_key, 0.0)) == 0.0, "a call on a relayed reading's original doubts the dead reader, not the Medium")
+	check(float(doubts.transmission.get(medium_key, 0.0)) > 0.0 and float(doubts.transmission.get(reader_key, 0.0)) == 0.0, "a call on its transmission doubts the Medium's night, not the reader")
 	# 5. How far one call moves a listener (Michael, Nov 18: report it at typical and high
 	#    trust in the player, in game terms): the reader's chance of being evil with the call
 	#    weighed, against the same case with it left out of honest doubt.

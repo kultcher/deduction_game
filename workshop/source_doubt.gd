@@ -353,13 +353,20 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 				var rc: Dictionary = by_id.get(str(rid), {})
 				if rc.is_empty() or str(rc.get("kind", "")) != "report" or rc.get("quoted", false):
 					continue
-				# Whose gift: a relayed reading's transmission is the Medium's, keyed as the relay's
-				# reliability is; otherwise the teller's, by the reading's day.
-				var r_id: String = str(rc.get("relay_source", "")) if rc.has("relay_source") else str(rc.get("source", ""))
-				var r_day: int = int(rc.get("relay_observed_at", {}).get("day", -1)) if rc.has("relay_source") else int(rc.get("observed_at", {}).get("day", rc.get("night", -1)))
+				# Whose gift: a challenge on a relayed reading names its side (ReadingChallenges.
+				# RELAY_ATTRIBUTIONS). Its transmission is the Medium's, keyed as the relay's
+				# reliability is; the original, and any unrelayed reading, is the teller's, by the
+				# reading's day (Codex on #270).
+				var transmission: bool = rc.has("relay_source") and str(ch.get("attribution", "")) == "transmission"
+				var r_id: String = str(rc.get("relay_source", "")) if transmission else str(rc.get("source", ""))
+				var r_day: int = int(rc.get("relay_observed_at", {}).get("day", -1)) if transmission else int(rc.get("observed_at", {}).get("day", rc.get("night", -1)))
 				if r_id == "" or r_id == self_id or r_day < 0:
 					continue
-				var by_night: bool = rc.has("relay_source") or str(rc.get("observed_at", {}).get("phase", "")) == "night"
+				# A Registrar's night-0 register can't be poisoned (sim/roles/registrar.gd), so a
+				# call on it carries no poison; a Medium's transmission of it can be (Codex on #270).
+				if not transmission and str(rc.get("role", "")) == "registrar" and r_day == 0:
+					continue
+				var by_night: bool = transmission or str(rc.get("observed_at", {}).get("phase", "")) == "night"
 				var r_night: int = r_day if by_night else r_day - 1
 				var prior: float = ReadingChallenges.poison_chance(view, listener, r_night, r_id)
 				if prior <= 0.0:
