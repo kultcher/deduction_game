@@ -141,7 +141,7 @@ static func sleepwalker_sighting(day: int) -> Dictionary:
 ## A Medium's relayed sighting held by a living good listener, from a relayer that
 ## `relayer_ok` accepts: {"listener", "teller"}. `about_listener`: the relayed sighting names
 ## the listener, out on a night they were home (an invented relay of them).
-static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, from: int = SEEDS_FROM) -> Dictionary:
+static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, from: int = SEEDS_FROM, count: int = SEEDS_COUNT) -> Dictionary:
 	return search(day, func(g):
 		var w = g.w
 		for l in w.living_good():
@@ -154,7 +154,7 @@ static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, 
 				if about_listener and not (str(item.get("who", "")) == l.id and not was_out(w, l, int(item.get("night", -1)))):
 					continue
 				return {"listener": l.id, "teller": teller.id}
-		return {}, 7, from)
+		return {}, 7, from, count)
 
 
 ## What a teller's Medium relays do to the listener's chance of the teller being evil, under
