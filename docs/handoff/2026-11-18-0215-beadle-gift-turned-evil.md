@@ -22,10 +22,12 @@
   pick) times 1 minus the listener's suspicion of the teller. The listener's own line is
   skipped. It sits after the sincere-teller pass on purpose: a sincere teller can still have
   a broken gift.
-- **Wording for Michael** (the reveal line, a draft in Herald's plain past tense): "Told the
-  town its gift as the Gravedigger might have been turned, as an excuse: it had held back its
-  made-up Gravedigger reading twice, and every way of telling it would have turned the town
-  on itself or a fellow evil."
+- **The reveal line** (Michael's wording, Nov 18, via Seneschal): "Claimed its gift as the
+  {Role} might have been turned, to explain away a made-up reading." The full reason is kept
+  in the dev log's "plan" entry and the lie entry's data.
+- **Codex P2 (fixed):** the doubt now applies before the Gravedigger proofs (pass 2) and is
+  put back after the sincere-teller erase, so a retracted Gravedigger "they were good" no
+  longer settles the hanged one as sincere at full trust.
 
 ## What it does in play
 - 30 passive 10-NPC games (seeds 3000-3029): it fired in 5 (3010, 3011, 3012, 3026, 3028),
@@ -37,8 +39,9 @@
 - Not measured: how votes moved in those 5 games.
 
 ## Checks
-- `tools/test_gift_doubt.gd` (fast list), 24 checks: the trigger and its gates, the line and
-  the public event, the reveal's lie, and the listener's doubt (trusted, suspected, own line).
+- `tools/test_gift_doubt.gd` (fast list), 27 checks: the trigger and its gates, the line and
+  the public event, the reveal's lie in Michael's words, the listener's doubt (trusted,
+  suspected, own line), and the retracted Gravedigger proof (Codex).
 - **Golden:** zero drift. Two captures identical to each other and to `baseline_44073d9` on
   all 5 seeds (before merging main `d2ffb20`, whose #239 is also zero drift).
 - **Suites run:** test_gift_doubt, test_role_check_doubt, test_delusional_reading,

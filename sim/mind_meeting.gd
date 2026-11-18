@@ -687,7 +687,8 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 	var why: String = str(gd.get("why", ""))
 	if n.is_evil():
 		# The reveal lists it with the other lies, with its reason.
-		w.dlog.think(n.id, "lie", "Told the town its gift as the %s might have been turned, as an excuse: %s." % [C.role_name(role), why], {"lie": true})
+		# Michael's wording (Nov 18). The full reason stays in the "plan" entry.
+		w.dlog.think(n.id, "lie", "Claimed its gift as the %s might have been turned, to explain away a made-up reading." % C.role_name(role), {"lie": true, "why": why})
 	else:
 		w.dlog.think(n.id, "self_doubt", "Tells the town its %s gift may have been turned (%s)." % [role, why])
 

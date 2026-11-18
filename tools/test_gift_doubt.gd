@@ -74,7 +74,9 @@ func _trigger() -> void:
 	check(facts.is_empty(), "no new card: listeners hear it through the public record (Lantern)")
 	check(w.public_log.size() == events_before + 1 and w.public_log[-1].get("kind", "") == "self_doubt" and w.public_log[-1].get("by", "") == m.id, "a public self_doubt event by the teller")
 	var lied: Array = w.dlog.entries.filter(func(e): return e["type"] == "think" and e["data"].get("topic", "") == "lie" and e["actor"] == m.id and "have been turned" in str(e["reason"]))
-	check(lied.size() == 1, "the reveal lists it as a lie, with its reason")
+	check(lied.size() == 1, "the reveal lists it as a lie")
+	check(lied.size() == 1 and str(lied[0]["reason"]) == "Claimed its gift as the %s might have been turned, to explain away a made-up reading." % load("res://sim/content.gd").role_name(role),
+		"in Michael's words (%s)" % (str(lied[0]["reason"]) if lied.size() == 1 else ""))
 	lines.clear()
 	facts.clear()
 	MindMeeting._say_gift_doubt(w, m, lines, facts)
