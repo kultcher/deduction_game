@@ -20,7 +20,7 @@
   any secret). A revision that changes whom or what the case concludes is a different
   case, so it gets no warning.
 - **It only warns.** Filing is unchanged.
-- **Tests:** four checks added to `tools/test_public_revisions.gd`, now 30.
+- **Tests:** five checks added to `tools/test_public_revisions.gd`, now 31.
   - A card that clears the subject warns: the Test juror's chance goes from 69% to 24%,
     and one listener's from 70% to 24%.
   - Added support doesn't warn.

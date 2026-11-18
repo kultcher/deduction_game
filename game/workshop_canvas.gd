@@ -258,8 +258,9 @@ static func revision_weakens(g, value: Dictionary, previous: int, listener_id: S
 		return {}
 	var oc: Dictionary = old.get("conclusion", {})
 	var nc: Dictionary = value.get("conclusion", {})
-	if str(oc.get("type", "")) != str(nc.get("type", "")) or str(oc.get("target", "")) != str(nc.get("target", "")) \
-			or str(oc.get("mod", "")) != str(nc.get("mod", "")):
+	# Every field names the proposition (type, target, secret, the questioned report, a
+	# claimed role, the alignment epoch): any change asks a different question (Codex on #275).
+	if JSON.stringify(oc) != JSON.stringify(nc):
 		return {}
 	var before: float = _premise_chance(g, old, listener_id)
 	var after: float = _premise_chance(g, value, listener_id)
@@ -273,6 +274,7 @@ static func _premise_chance(g, value: Dictionary, listener_id: String) -> float:
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var prepared
 	var judged: Dictionary
+	var listener: Dictionary = {}
 	if listener_id == "":
 		var juror: Dictionary = juror_case(g, value)
 		if not juror.ready:
@@ -284,7 +286,8 @@ static func _premise_chance(g, value: Dictionary, listener_id: String) -> float:
 		if not prepared.ready:
 			return -1.0
 		judged = prepared.case
-	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
+		listener = prepared.listener  # that listener's own trust, doubts and knowledge (Codex on #275)
+	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged, listener)
 	if ev.get("impossible", false):
 		return 0.0
 	return float(ev.get("posterior", -1.0))

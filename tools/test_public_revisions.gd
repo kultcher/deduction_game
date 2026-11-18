@@ -230,6 +230,9 @@ func _weakens_warning() -> void:
 	check(Live.revision_weakens(g, stronger, first).is_empty(), "a revision that adds support gives no warning")
 	var other: Dictionary = _compile(g, "evil", y.id, [hit, clear])
 	check(Live.revision_weakens(g, other, first).is_empty(), "a revision about someone else is a different case: no warning")
+	var epoch: Dictionary = weaker.duplicate(true)
+	epoch.conclusion["at"] = "some other epoch"
+	check(Live.revision_weakens(g, epoch, first).is_empty(), "nor one that changes any other part of the premise (here its epoch)")
 	var l = g.w.living().filter(func(p): return p != reader and p != x and p != y and not p.is_evil())[0]
 	var lw: Dictionary = Live.revision_weakens(g, weaker, first, l.id)
 	check(not lw.is_empty() and float(lw.after) < float(lw.before), "judged by one listener's view, the same revision warns too (%s)" % str(lw))
