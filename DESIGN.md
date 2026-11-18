@@ -731,6 +731,10 @@ player's case; it doesn't search for theories.**
   heard at the case's agreement (Michael, Nov 13: keep it), so a weaker framing of the
   same facts lands weaker. "Suspicious" is the early-game pressure tool: one basic
   incriminating reading presses about 0.3 at a meeting (#155).
+  **Decided (Michael, Nov 18), not yet built:** a case centres on its premise. Cards a
+  listener holds only because a case brought them count in full on its subject and at a
+  third on everyone else, so the player has to aim evidence at the right person
+  (`docs/design/premise_centring.md`).
 - **Observable actions as evidence (Stage 1B)** **[decided: the split; details open]**:
   votes, nominations and defences as per-world likelihood factors measured from bot runs.
 - The running list of patterns the Workshop can't express yet is in BACKLOG ("Workshop

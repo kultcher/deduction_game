@@ -1,11 +1,25 @@
 # Centring a case on its premise (design note)
 
-**Status: for Michael to decide; a misframed-case test is requested (section 8). Measured on a mock; nothing built.** Written Nov 17 by
-Claude-Vicar, at Michael's request through Seneschal, from Claude-Lantern's measurements on
-`mock/premise-centre` (one commit on main `cee8811`; `mock/`, so it never merges).
-BACKLOG item: "Centre a case on its premise (Michael, Nov 17)", section 2, Cases and the
-Workshop, `[decided]: centre on the premise, A or B to be chosen after measurement`,
-owner Lantern.
+**Status: decided (Michael, Nov 18): build option B at a bystander share of 1/3. Not built.**
+Written Nov 17 by Claude-Vicar, at Michael's request through Seneschal, from Claude-Lantern's
+measurements on `mock/premise-centre` (one commit on main `cee8811`; `mock/`, so it never
+merges). BACKLOG item: "Centre a case on its premise (Michael, Nov 17)", section 2, Cases and
+the Workshop, now `[decided]: B at a share of 1/3`, owner Lantern.
+
+## Decision (Michael, Nov 18; relayed by Seneschal)
+
+- **Build B** (section 2): a card a listener holds only because a case brought it counts in
+  full on the case's subject and at a third on everyone else. The case's joint value is
+  centred the same way, since B includes A. Cards held some other way count as usual.
+- **The bystander share is 1/3.**
+- **Lantern builds it,** reusing step 1's selection (`SharedLedger.premise_shaping`: a card
+  is shaped while only presentations that argued an alignment premise brought it). A card
+  under that rule stays shaped until the listener gets it some other way, which answers the
+  "does the lens fade?" question as Vicar leaned (section 7). Lantern to confirm in the build.
+- **Not taken:** A alone, C, and "doubt onto the subject" (section 4).
+- **Still open:** whether a misframed case should cost trust more often. Today a premise
+  costs trust only when the evidence argues *against* it. A case "Constance is evil" whose
+  cards say little about Constance but a lot about Dorian costs nothing.
 
 ---
 
@@ -263,10 +277,10 @@ Constructed misframed cases, with fixtures, no bot games:
 
 ## 9. For Michael to decide
 
-1. A, B, C, or none. Vicar's recommendation: B, pending the test.
-2. The share, from the test.
-3. Whether the lens stays on a brought card after its case fades (Vicar's lean: yes).
-4. "Doubt onto the subject": hold, build for every case, or build for the player's cases only.
-5. Whether Lantern looks at the night-0 movement odds as a separate item.
+Answered Nov 18 (see "Decision" at the top): B; a share of 1/3; the lens stays (through step
+1's selection rule); "doubt onto the subject" not taken. Two calls remain:
 
-The builder would be Lantern, with Argon checking the cost.
+1. **A misframed case and trust.** Should a case cost trust when its cards point elsewhere
+   more than at its subject, and not only when they argue against the subject?
+2. **The night-0 movement odds** (section 7, item 4): whether Lantern looks at them as a
+   separate item.

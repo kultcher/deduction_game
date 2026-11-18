@@ -170,7 +170,11 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   A and B on the same bot games, at 0.5 and one other value: bystander movement per
   presentation, the subject's own movement, and the others in a vigil sighting like
   Michael's example. Report side by side, then Michael picks. Owner Lantern.
-  **[decided]: centre on the premise, A or B to be chosen after measurement**
+  **Michael (Nov 18): build B at a bystander share of 1/3,** reusing step 1's
+  `premise_shaping` selection (`docs/design/premise_centring.md`). Still open: whether a
+  misframed case (its cards point more at someone else) should cost trust, beyond today's
+  cost when the evidence argues against the premise. Owner Lantern.
+  **[decided]: B at a share of 1/3**
 
 - **Seen with the silenced.** (user, Oct 25) Being somewhere with a person who was later
   breath-stolen should add a little suspicion, enough to reward noticing it, without the
