@@ -1,7 +1,9 @@
 # 2026-11-18, Claude-Lantern: purge phase 3, the connections model is the only belief model (`claude/purge-phase3`)
 
-- **Base:** main `426d797`, with main `bf73e64` (#280) merged in. **Status:** PR open. **Next:**
-  Bailiff. Then I go on to phase 5, which deletes the earlier model's code that is now unreachable.
+- **Base:** main `426d797`, with main `bf73e64` (#280) merged in. **Status:** PR #290 open,
+  Codex clean. **Next:** Bailiff merges. **Then: paused.** Michael is pausing after this set of
+  work (Seneschal, Nov 18), so I don't start phase 5 until Seneschal says. Phase 5 deletes the
+  earlier model's code that is now unreachable.
 - **Snapshot first (Michael's decision 2):** `archive/legacy-belief-final` is pushed at main
   `426d797`, the last commit that has `--legacy-model`. A comparison against the earlier
   model runs from there.
@@ -39,6 +41,12 @@
       "Persistence Confidence").
   - **Docs:** BACKLOG's state of play, CLAUDE.md's tests rule (the pinning sentence), DESIGN,
     README, TUNING_NARRATIVE and `docs/belief_model.md`.
+- **Codex on #290, both fixed:**
+  - The replay tools now quit, with code 1, on a log played on the earlier model, instead of
+    hanging (`replay_log`, and `explain_case` in case mode).
+  - The other two replay callers, `read_everything_gap` and `connections_prototype`, stop the
+    same way.
+  - Each was checked on a hand-made log without the `connections` flag.
 - **Found on the way, fixed here:** `test_self_sighting` had a check left stale by my #273.
   - It expected a Night Watch list that wrongly names the listener to be set aside.
   - Since #273 such a list is kept and weighed as sound or broken as a whole wherever a
