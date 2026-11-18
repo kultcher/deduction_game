@@ -42,8 +42,8 @@ Michael:
 The limit on an NPC moves from *which cards it reads* to *which cards it weighs together*. Settled by Michael between Nov 10 and Nov 12; the reasons are in the archive.
 
 - **Every card counts alone,** at its single-card value, always. Nothing is ever out of view, so nothing can be evicted. Claims, confessed secrets and profile cards are context: they explain other cards without joining sets together.
-- **Built-in pairings:** cards that mean little alone are always read with their partner, for every NPC (a night's movement cards; an Augur reading with that day's sightings; a Psychologist reading with its statements; a trace with profile cards).
-- **The core:** each NPC weighs its firsthand knowledge together with whatever is worth more next to it than apart (threshold 0.4 at every town size).
+- **Built-in pairings:** cards that mean little alone are always read with their partner, for every NPC (a night's movement cards; an Augur reading with that day's sightings; a Psychologist reading with its statements; a trace with profile cards; two or more claims of one gift).
+- **The core:** each NPC weighs its firsthand knowledge together with whatever is worth more next to it than apart. The bar follows Insight (Michael, Nov 17): 0.8 for the dullest NPC, 0.1 for the sharpest, in a straight line between, at every town size (it was 0.4 for everyone). See "Insight sets the core's bar" below.
   - The seed is its own readings, the night holding a Night Watch's or Lamplighter's own reports, and a night it was wrongly sighted ("he says he saw me out, and I wasn't").
   - Each candidate is tested against the seed only, so order can't matter and the core can't snowball.
   - Rebuilt at dawn. A newly heard card is tested when it arrives, so an NPC can catch a lie the day it hears it.
@@ -85,6 +85,9 @@ Nov 12 · read against main `9e69144`. Michael answered its four questions as re
 | An Augur day | every Augur reading that day, and that day's sightings | claims, known work schedules |
 | A Psychologist reading | the reading and its two statements | none |
 | A trace | the trace | profile cards |
+| A double claim | every claim of one gift, when two or more people claim it | the other held cards that name a claimant, except night and trace cards |
+
+- **A double claim** (Michael, Nov 16). Alone, a claim says little; two claims of a gift only one person holds say that at least one claimant lies, which neither card says by itself. The claims are read together, beside every other held card that names a claimant, so what else is known about one claimant moves the doubt onto the other. In `test_double_claim` (a good listener, two others claiming Seer): the rival claim takes them from 2% and 33% to 17% and 57%; a reading implicating the second then drops the first to 6%; a reading clearing the first instead takes the second to 79%. Night and trace cards stay out of the context (the movement items read them). Today it seldom fires: evil bluffs gifts that aren't in play, so none of 19 measured games (seeds 1-10 at 10 NPCs, passive and bot) had a double claim, and golden doesn't move. It is there for bluffs that back into a claimed gift (BACKLOG, "Evil backs into a bluff").
 
 | Declaration | Nights | Traces | The Hexer's day evidence |
 |---|---|---|---|
@@ -98,6 +101,24 @@ Nov 12 · read against main `9e69144`. Michael answered its four questions as re
 ### The core
 
 As in the design above. Membership is fixed within a day except for newly held cards and a change in the firsthand cards. What the firsthand cards prove alone (within 0.5% of 0 or 1) stays proved, and the others share what is left of the evil count.
+
+#### Insight sets the core's bar (Michael, Nov 17; Option A)
+
+A card or pairing joins when it is worth more next to the seed than apart by at least `Connections.join_bar(listener)`: 0.8 log-odds at Insight 0, 0.1 at Insight 1, in a straight line between (`Workshop.CONNECTIONS_CORE_JOIN_DULL`, `_SHARP`). Insight never connects public cards that don't touch the listener's own knowledge; only the core's bar moves. The judge doesn't read Insight, so it stays out of the judge's cache keys.
+
+Measured before the build (mock branch, 10-NPC towns, seeds 1-10, 10 passive and 10 bot games a setting, each NPC's last belief of each day):
+
+| Bar | Cards linked (passive) | Days with a link |
+|---|---|---|
+| 0.8 for everyone | 0.3 | 1 in 5 |
+| 0.4 for everyone (before) | 0.6 | 3 in 10 |
+| 0.1 for everyone | 1.8 | 1 in 2 |
+| 0.8 → 0.1 by Insight: dull NPCs (under 0.4) | 0.25 | 1 in 4 |
+| 0.8 → 0.1 by Insight: sharp NPCs (0.7 and over) | 1.0 | 2 in 5 |
+
+- **Borderline links:** at the loose end, about 45% of new links are under 0.25.
+- **Solving early:** no change at any setting. In passive games about 1 good NPC in 17 is fairly sure of the Demon (0.7) by the second day, and about 1 in 80 near-certain (0.9), at every bar.
+- **How well good NPCs pick out evil** doesn't move with the bar on average. A single loose bar lets dull NPCs catch up with sharp ones; the bar by Insight keeps them apart.
 
 ### Stored cases
 
@@ -408,6 +429,28 @@ Full tables are in the archive.
   it's an unlearned haunt). A per-person floor for unlearned haunts scored 0.00, so it
   wasn't kept. The limit is that nobody sees the Hexer at the hexed place in passive play
   (its presence share there 0.23 against 0.19 for others).
+
+### A listener's own nights at home (Lantern, Nov 17)
+
+Beadle found that an evil Medium's invented relay of a listener, out on a night the
+listener knows it spent at home, counted almost nothing against the relayer. Two reasons:
+the listener's home knowledge reached only the role check, not the movement model, and the
+sighting contests set their balance from the listener's own view, where a sighting it knows
+is false has no honest explanation. That cancelled the relay's weight against its teller.
+
+- The workshop bridge passes the nights a good listener knows it spent at home as
+  knowledge (`view.own_home`, like the known haunts: never in the ledger, ownership,
+  citations or the world domain). Inside the movement model only, each becomes a soft
+  alibi, "I know I was home on night 1" (`LiveActivity.own_home_cards`, `FlagKnownSelf`):
+  the listener out that night is possible only by its self-doubt, which is the
+  Sleepwalker's 10% when that secret is on the script, and the own-reading error
+  otherwise. The routes check skips it, so it never makes a night impossible, and it's
+  added only when the listener holds some night evidence.
+- The sighting contests take their balance from what an outsider could know: the same
+  profiles with the known-home cards left out.
+- On the searched cases in `tools/test_own_night_knowledge.gd`, the invented relay now
+  raises the relayer by 16 points (it was 1), a planted street sighting by 21 (it was 20),
+  and a Sleepwalker honestly seen out still stays about even on the sighter (+1).
 
 ## Open items
 

@@ -32,6 +32,7 @@ This is the **creative and behavioral specification** for dialogue. It does not 
 6. **Personality is not numerical ability.** The fixed voice describes habits of communication. Rolled privacy, confidence, insight, composure, and gossip affect decisions and circumstances through existing systems; they must not make a voice automatically accurate, dishonest, persuasive, or incompetent.
 7. **Continuity needs an authorized cause.** Repetition, an immediately preceding accusation, a previously established friendship, or an already revised belief can shape delivery only when the caller supplies that context. The renderer does not invent memory from prose.
 8. **Readable in a log.** The game presents large amounts of testimony. Distinctiveness must coexist with scanability; embellishment must not bury who, where, when, source, and certainty.
+9. **Learned, not modern or academic (Michael, Nov 17).** Refined words are fine; modern ones (data, variable, constraint) aren't, and neither is the scholarly jargon of a later age ("epistemic interference", "independent confirmation", "the operative term"). In any new line, trim such words back to what a well-read villager would say. Hollis and Nisha stay analytical and intellectual through how they reason (distinctions, conditions, testing one premise at a time), not through a specialist's vocabulary. Existing lines aren't being reworded for this now; it applies to new dialogue.
 
 ### Three content layers
 
@@ -158,6 +159,7 @@ These are **authoring directions**, not fixed semantic behavior or mechanical tr
 - **Architecture:** qualification, parentheses, precise self-correction; occasionally loses the conversational thread to a useful distinction.
 - **Social maneuver / defense:** intellectually examines the objection; can unintentionally amuse through pedantry.
 - **Serious mode:** the tangents vanish; an economical conclusion from Hollis should feel decisive.
+- **Register:** analytical without being modern or academic; see principle 9.
 - **Restraint:** pedantry may clarify *known* time/place granularity, but cannot invent a finer position (“near the well”) or a different observation.
 - **Illustrative challenge:** “An interesting objection. I don't see that it displaces my observation.”
 
@@ -212,6 +214,7 @@ These are **authoring directions**, not fixed semantic behavior or mechanical tr
 - **Architecture:** disciplined conditional phrasing; breaks compound claims into distinct parts, sometimes with an “if/then” progression.
 - **Social maneuver / defense:** isolates the precise contested premise instead of merely expressing indignation.
 - **Serious mode:** compresses her reasoning into an unusually direct verdict or imperative when a decision is urgent.
+- **Register:** analytical without being modern or academic; see principle 9.
 - **Restraint:** doesn't generate conclusions the evaluator hasn't reached; mustn't claim a gift would expose someone to a specific demon response without a caller-approved belief or reason.
 - **Illustrative challenge:** “Which part do you dispute: the person, the place, or the time?”
 
@@ -326,6 +329,33 @@ A defense mechanism is a habitual *style of handling discomfort*, not a guilt si
 **Activation rule:** do not use hidden guilt, secret possession, poisoning truth, or narrator-only knowledge as triggers. Prefer explicit, already expressed events such as bereavement known to the speaker, a publicly consequential accusation, a close relationship threatened, or a validated high-pressure conversational state. High pressure is not universally the same as grief. Serious mode changes expression, not approved disclosure or the actual NPC decision.
 
 Do not implement “truth voice” vs “lying voice.” That would undermine deduction even if inadvertent.
+
+### 8.1 The daytime-whereabouts defence (wording settled by Michael, Nov 17)
+
+For a defence against a case built on where someone was by day (BACKLOG, owner Beadle). The
+voice lines are in `sim/dialogue_voices.gd`. The generic fallbacks, passed by the caller:
+
+| Key | Fallback |
+| --- | --- |
+| `defence_day_others` | "I was at {place} {when}, and so were {others}. Ask any of them what they saw." |
+| `defence_day_alone` | "I was at {place} {when}. Being seen in the open is no crime." |
+| `defence_day_others_pointed` | "I was at {place} {when}. So was {suspect}, if it's company you're weighing." |
+
+- **Slots:** `{place}` a public place; `{when}` "this morning", "yesterday afternoon" or "the first evening"; `{others}` a joined list of two or three names ("Agnes and Hollis"); `{suspect}` someone who was also there and is also under suspicion.
+- **The caller also passes `{Place}` and `{When}`, capitalised.** Bartholomew and Jory start a sentence with one of them.
+- **Stand-only lines:** Greta's and Odette's pointed lines assume a single nominee on the stand. Every voice has both `defence_day_others_pointed` (anywhere) and `defence_day_others_pointed_stand` (at a nomination). For 13 voices the two are the same line. For Greta and Odette the stand line is their meeting-only one and the plain key holds the generic line. At a nomination use `_stand`; in private use the plain key.
+- **Every line keeps its facts** (the place, the time, who was there, who is pointed at). None adds a reason for being there or says what anyone did. Evil uses the same lines, so the choice of line is never a tell. Naming someone who wasn't there is a lie and is logged with its reason.
+
+### 8.2 Lines that must follow what came before (playtest 23973; wording settled by Michael, Nov 17)
+
+- **`present_clashes_moved` ("still, it moves me").** After a clash opener (`present_clashes_own`, "it doesn't square with what I know", or `present_conflict_weighing`, "those accounts clash"), a listener the case still moved says this line, not `present_accept_open`, which begins "Fits what I know" and so contradicts the opener. It says only that they were moved, since the opener has already said what doesn't fit. Slot `{target}`.
+- **`defence_lying_alone` and `defence_lied`.** Every voice's `defence_lying` starts with "Then", so it only reads right after a line that says the reading is wrong. `defence_lying_alone` says the same thing without "Then"; `defence_lied` is its past tense, for an accuser who has died ("Kiran lied", not "Kiran is lying"). Both stand on their own. Slot `{source}`. Beadle's routing chooses between them.
+
+### 8.3 Doubting one's own gift (`doubt_own_gift`; wording settled by Michael, Nov 17)
+
+- **When:** a good NPC with real doubt about their own readings (they may have been poisoned, or be Delusional) says so, and evil says exactly the same line when cornered. Beadle's routing decides when; the line is the same for both, so its wording never tells them apart.
+- **What it says:** only that the speaker doubts what their gift showed. It never names poison, Delusion or a night, because an honest holder can't know which, and a liar gains nothing from saying more.
+- **One line per voice, no slots.** The shared fallback is "Something seems off about my readings. I fear something has turned my gift."
 
 ## 9. Calibration suite: same intent, fifteen voices
 

@@ -207,7 +207,7 @@ func generate_reading(w, n, _ctx: Dictionary, mind) -> Dictionary:
 		return {
 			"data": {"roles": roles.duplicate()},
 			"true": ok,
-			"text": "My register lists three roles: %s" % _roles_prose(roles),
+			"text": "my register listed three roles: %s" % _roles_prose(roles),
 		}
 	var roles_n: Array = _ensure_slate(w, n)
 	if roles_n.size() != 3:
@@ -224,7 +224,7 @@ func generate_reading(w, n, _ctx: Dictionary, mind) -> Dictionary:
 	var swhy: String = ""
 	if not yes and has_minion and tgt.secret_mod == "marked" and w.chance(0.5):
 		yes = true
-		swhy = "a Marked soul matched the minion role on the register"
+		swhy = "a Marked soul reads as a Minion on the register"
 	var reported_yes: bool = w.chance(0.5) if broken else yes
 	return {
 		"data": {"roles": roles_n.duplicate(), "target": tid, "yes": reported_yes},
@@ -272,9 +272,9 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, mate, asked: Arra
 	if w.day == 0:
 		var entry0: Dictionary = {
 			"data": {"roles": roles.duplicate()},
-			"text": "My register lists three roles: %s" % _roles_prose(roles),
+			"text": "my register listed three roles: %s" % _roles_prose(roles),
 		}
-		return {"entry": entry0, "why": "declares Registrar slate %s" % str(roles)}
+		return {"entry": entry0, "why": "made up the register's three roles"}
 	var C = content()
 	var has_minion: bool = roles.any(func(r): return C.is_minion(str(r)))
 	var checked = {}
@@ -290,28 +290,28 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, mate, asked: Arra
 		var t_npc = w.by_id[tid]
 		if tid == s and has_minion:
 			yes = true
-			why = "checks requested scapegoat %s and frames via minion on slate" % s
+			why = "checked %s when asked, and framed them with a Minion on the register" % s
 		elif mate != null and mate != n and tid == mate.id and str(plan.get("bluffs", {}).get(mate.id, "")) in roles:
 			yes = true
-			why = "vouches for requested teammate %s's bluff" % mate.id
+			why = "backed the false claim of %s, a fellow evil, when asked to" % mate.id
 		elif not t_npc.is_evil() and t_npc.claim_public and t_npc.claimed_role in roles and tid != s:
 			yes = true
-			why = "confirms requested %s's public claim %s" % [tid, t_npc.claimed_role]
+			why = "confirmed %s's public claim to be the %s when asked" % [tid, content().role_name(t_npc.claimed_role)]
 		else:
 			yes = false
-			why = "reports 'no' on requested %s" % tid
+			why = "cleared %s when asked to look at them" % tid
 	elif s != "" and w.by_id.has(s) and w.by_id[s].alive and s != n.id and not checked.has(s) and (has_minion or (w.by_id[s].claim_public and w.by_id[s].claimed_role in roles)):
 		tid = s
 		if w.by_id[s].claim_public and w.by_id[s].claimed_role in roles:
 			yes = false
-			why = "contradicts scapegoat %s's claimed gift %s" % [s, w.by_id[s].claimed_role]
+			why = "contradicted the %s claimed by %s, whom evil meant to hang" % [content().role_name(w.by_id[s].claimed_role), s]
 		else:
 			yes = true
-			why = "frames scapegoat %s with a 'yes' on minion-bearing slate" % s
+			why = "named %s, whom evil meant to hang, among the register's roles" % s
 	elif mate != null and mate != n and mate.alive and not checked.has(mate.id) and str(plan.get("bluffs", {}).get(mate.id, "")) in roles and w.chance(0.45):
 		tid = mate.id
 		yes = true
-		why = "vouches for teammate %s's bluff on register" % mate.id
+		why = "backed the false claim of %s, a fellow evil, from the register" % mate.id
 	else:
 		var others: Array = w.living().filter(func(m): return m != n and not checked.has(m.id) and m.id != (mate.id if mate != null else ""))
 		if others.is_empty():
@@ -321,7 +321,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, mate, asked: Arra
 		var pick_m = w.pick(others)
 		tid = pick_m.id
 		yes = not pick_m.is_evil() and pick_m.claim_public and pick_m.claimed_role in roles and tid != s
-		why = "harmless '%s' check on %s" % ["yes" if yes else "no", tid]
+		why = "made up a reading that harmed nobody"
 	var tgt_name: String = w.by_id[tid].name
 	var entry: Dictionary = {
 		"data": {"roles": roles.duplicate(), "target": tid, "yes": yes},
@@ -365,4 +365,4 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 		_roles_short_list(roles),
 		"they hold one of those roles" if yes else "they hold none of those roles",
 	]
-	return {"entry": e, "why": "the dead Registrar %s framed %s" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Registrar %s that framed %s" % [dd.id, s], "frames": true}

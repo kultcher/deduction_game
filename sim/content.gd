@@ -51,6 +51,10 @@ static func spoken_night(nd: int, today: int) -> String:
 		return "last night"
 	return ("the %s night" % ORDINALS[nd - 1]) if nd <= ORDINALS.size() else "night %d" % nd
 
+## A day as an ordinal, for text that isn't tied to today: "the second day".
+static func spoken_day(d: int) -> String:
+	return ("the %s day" % ORDINALS[d - 1]) if d >= 1 and d <= ORDINALS.size() else "day %d" % d
+
 ## spoken_night() as an adverbial: "last night", "on the second night".
 static func spoken_when(nd: int, today: int) -> String:
 	var s: String = spoken_night(nd, today)
@@ -86,11 +90,13 @@ static func third_person(text: String) -> String:
 		out = re.sub(out, pair[1], true)
 	return out
 
-## A player vigil on `block` spots walkers whose destination is `block` (or the
-## Lamplighter making the full four-block tour), not residents merely leaving `block`
-## for another quarter. Night Watch still sees all traffic (`block in path`).
+## A player vigil on `block` spots residents of `block` leaving home (a night path starts at
+## the walker's home), and the Lamplighter making the full four-block tour; not walkers who
+## arrive from elsewhere or pass through (Michael, Nov 17, docs/design/vigil.md option A:
+## the vigil aims at suspects, not at the Demon's likely target). A Demon whose victim lives
+## on its own block still leaves home. Night Watch still sees all traffic (`block in path`).
 static func vigil_sees_path(block: String, path: Array) -> bool:
-	return not path.is_empty() and (path.back() == block or path.size() == BLOCKS.size())
+	return not path.is_empty() and (path.front() == block or path.size() == BLOCKS.size())
 
 static func route(a: String, b: String) -> Array:
 	if a == b:

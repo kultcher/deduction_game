@@ -9,9 +9,10 @@ const Connections = preload("res://workshop/connections.gd")
 var fails = 0
 
 func _init() -> void:
-	# These test the earlier belief model's mechanics (reliability, source_doubt) directly;
-	# pinned to it since connections went on by default (Nov 16).
-	Connections.enabled = false
+	# Reliability, source doubt and belief revision, under the connections model (purge
+	# phase 2; the last two pinned checks unpinned once #186, the doubted own reading, and
+	# #198, the double-claim pairing, merged).
+	Connections.enabled = preload("res://sim/tuning.gd").Workshop.CONNECTIONS
 	_test_recovery()
 	_test_independent_evidence()
 	_test_poison_not_honesty()
@@ -206,6 +207,8 @@ func _test_poison_argument_undone() -> void:
 	_check(r1 > r0 and r2 <= r1, "poison argument on B lifts A's reliability until C's support is doubted")
 
 func _test_own_reading_poisoned() -> void:
+	# A misled argument doubting the listener's own reading stops it implicating people
+	# (under connections since #186: the doubt reaches the role check).
 	var t = _setup(5110)
 	var w = t["w"]
 	var L = t["L"]
@@ -234,6 +237,8 @@ func _other_role(t: Dictionary) -> String:
 	return "warden"
 
 func _test_double_claim_shifts() -> void:
+	# Two claims of one gift raise both claimants, and a reading against one shifts the
+	# doubt onto them (the double-claim pairing, #198; Michael, Nov 16).
 	var t = _setup(5512)
 	var w = t["w"]
 	var L = t["L"]

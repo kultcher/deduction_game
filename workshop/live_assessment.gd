@@ -127,7 +127,10 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 		"timeline": History.from_events(snapshot.public_events),
 		"watched": snapshot.get("watched", []).duplicate(true),
 		# The haunts a regular knows (WorkshopBridge.known_haunts); the Demonologist's view has none.
-		"regular_haunts": snapshot.get("regular_haunts", {}).duplicate(true)}
+		"regular_haunts": snapshot.get("regular_haunts", {}).duplicate(true),
+		# The nights the listener knows it spent at home (WorkshopBridge.own_home), for the
+		# movement model only (LiveActivity.own_home_cards); the Demonologist's view has none.
+		"own_home": snapshot.get("own_home", {}).duplicate(true)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
 	for card in cards:

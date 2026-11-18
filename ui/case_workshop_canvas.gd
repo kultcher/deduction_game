@@ -71,7 +71,7 @@ func _ready() -> void:
 	_button(tools, "Save…", _save_dialog)
 	_button(tools, "Open…", _open_dialog)
 	_button(tools, "Mock jury", _show_jury)
-	_label(page, "Drag cards to arrange · drag empty space to pan · wheel to zoom · Link, then click a destination · right-click to unlink · Esc cancels linking", 15, "muted")
+	_label(page, "Drag cards to arrange · drag empty space to pan · shift-drag to select several · wheel to zoom · Link, then click a destination · right-click to unlink · Esc cancels linking", 15, "muted")
 	canvas = CanvasView.new()
 	canvas.name = "FreeformCanvas"
 	canvas.model = board
@@ -425,9 +425,15 @@ func _context(id: String) -> void:
 	context_menu.add_item("Link to another card", 1)
 	if board.nodes[id].kind == "evidence":
 		var report = _report(board.nodes[id].card)
-		for entry in [[200, "misled (honest but wrong)", "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
-			context_menu.add_item("Challenge: " + entry[1], entry[0])
-			context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.has("relay_source") or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))))
+		if report.has("relay_source"):
+			# A Medium's relay names its side (Quill, Nov 17): the passing-on, or the original.
+			for entry in [[210, "transmission"], [211, "original"]]:
+				context_menu.add_item("Challenge: " + board.RELAY_SIDE_TEXT[entry[1]], entry[0])
+				context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("testimony_only", false))
+		else:
+			for entry in [[200, "misled (honest but wrong)", "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
+				context_menu.add_item("Challenge: " + entry[1], entry[0])
+				context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))))
 	if board.nodes[id].kind == "modifier":
 		context_menu.add_item("Remove modifier (keep evidence and links)", 203)
 	if board.nodes[id].kind == "contradiction":
@@ -456,6 +462,12 @@ func _context_action(action: int) -> void:
 		_session_changed()
 		if error != "":
 			status.text = error
+	elif action in [210, 211]:
+		# The passing-on starts as a lie, the original as an honest mistake; the card's chips change it.
+		var error_r = board.add_modifier(context_id, "lying" if action == 210 else "misled", "transmission" if action == 210 else "original")
+		_session_changed()
+		if error_r != "":
+			status.text = error_r
 	elif action == 203:
 		board.remove_modifier(context_id)
 		_session_changed()

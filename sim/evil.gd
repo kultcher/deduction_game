@@ -248,9 +248,9 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 		if not gs.is_empty() and w.chance(0.5):
 			var g = w.pick(gs)
 			return {"item": {"type": "sighting", "who": g.id, "block": g.home_block, "night": night, "lie": true, "idle": true},
-				"why": "an empty one: the dead saw %s out on their own block (no frame)" % g.id}
+				"why": "passed on a harmless sighting from the late %s: %s out on their own street" % [dd.id, g.id]}
 		return {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
-			"why": "an empty one: the dead was home"}
+			"why": "passed on that the late %s was at home, which harmed nobody" % dd.id}
 	var frames: int = w.evil_plan.get("medium_frames", 0)
 	var frame_ok = frames == 0 or w.chance(0.5)
 	var opts: Array = []   # [weight, {item, why, frames}]
@@ -264,15 +264,15 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 	var frame_night: int = night if night >= 1 else maxi(1, dd.death_day)
 	if frame_ok and sg.home_block != dd.home_block:
 		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": frame_night, "lie": true},
-			"why": "claims the dead %s saw scapegoat %s out near their cottage on night %d%s" % [dd.id, s, frame_night, "" if frame_night == night else " (the night they died; night 0 couldn't frame)"], "frames": true}])
+			"why": "claimed the late %s saw %s, whom evil meant to hang, out near their cottage on their last night" % [dd.id, s], "frames": true}])
 	if dd.info_log.any(func(e): return e.get("shared", false)):
-		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "says the dead %s had nothing new to tell" % dd.id, "frames": false}])
+		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "said the late %s had nothing new to tell" % dd.id, "frames": false}])
 	var said: String = w.stances.get(dd.id, {}).get("target", "")
 	if said != "" and w.by_id.has(said) and w.by_id[said].alive and not w.by_id[said].is_evil():
 		opts.append([0.8, {"item": {"type": "suspicion", "about": said, "lie": false},
-			"why": "repeats the dead %s's public distrust of %s" % [dd.id, said], "frames": false}])
+			"why": "repeated the late %s's open distrust of %s" % [dd.id, said], "frames": false}])
 	opts.append([0.4, {"item": {"type": "home", "night": night, "block": dd.home_block, "lie": false},
-		"why": "says only that the dead %s was home" % dd.id, "frames": false}])
+		"why": "said only that the late %s was at home" % dd.id, "frames": false}])
 	var total = 0.0
 	for o in opts:
 		total += o[0]
@@ -767,8 +767,9 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				hmate = m
 			var re: Dictionary = FabricationCheck.vet(w, m, he, _alternatives(w, m, hdef, w.evil_plan, hmate, he, bool(he.has("phase"))), str(w.evil_plan.get("scapegoat", ""))) if hdef != null else {"entry": he, "outcome": "ok", "why": ""}
 			var out: Dictionary = re["entry"]
-			if re["why"] != "":
-				out["why"] = "evil fabrication: " + str(re["why"])
+			if re["outcome"] == "reworked":
+				# Keeps the motive it was made for, and says why it was changed (Steward A2).
+				out["why"] = str(he.get("why", "evil fabrication")) + "; " + str(re.get("note", ""))
 			_mark_fake(out)
 			if re["outcome"] == "held":
 				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
@@ -776,6 +777,8 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 				continue
 			m.info_log.append(out)
 			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
+			# The reveal lists what was actually told (Steward A2): the released version.
+			w.dlog.add("fake_info", m.id, "", out, "%s (evil) tells its held-back reading: %s [%s]" % [m.name, out.get("text", ""), out.get("why", "")])
 		m.held_fakes = keep
 	var plan: Dictionary = w.evil_plan
 	var s: String = plan["scapegoat"]
@@ -808,16 +811,37 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		# told: stamped with its gift and night first.
 		var vetted: Dictionary = FabricationCheck.vet(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
 		entry = vetted["entry"]
-		if vetted["why"] != "":
-			why = vetted["why"]
 		_mark_fake(entry)
+		why = named(w, why)
 		entry["why"] = "evil fabrication: " + why
+		if vetted["outcome"] == "reworked":
+			# Keeps the motive it was made for, and says why it was changed (Steward A2-A3:
+			# the alternative's own reason replaced the motive, and named ids).
+			entry["why"] += "; " + str(vetted.get("note", ""))
 		if vetted["outcome"] == "held":
 			n.held_fakes.append({"entry": entry, "until": w.day + (0 if day_only else 1)})
-			w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
+			# Not yet told, so not on the reveal's list of lies (Steward A2): logged apart.
+			w.dlog.add("fake_info_held", n.id, "", entry, "%s (evil, bluffing %s) prepares but holds back: %s [%s]" % [n.name, bluff, entry["text"], why])
 			continue
 		n.info_log.append(entry)
 		w.dlog.add("fake_info", n.id, "", entry, "%s (evil, bluffing %s) prepares: %s [%s]" % [n.name, bluff, entry["text"], why])
+
+## A fabrication's motive with people's ids swapped for their names, so the end-of-game
+## reveal reads "the dead Seer Lian 'cleared' the demon Merrin", not raw ids (Steward A3,
+## Nov 17). Whole words only; the rest of the wording is left as written.
+static func named(w, text: String) -> String:
+	if text == "":
+		return text
+	var re := RegEx.new()
+	re.compile("\\b[a-z][a-z0-9_]*\\b")
+	var out: String = ""
+	var cursor: int = 0
+	for m in re.search_all(text):
+		var tok: String = m.get_string()
+		if w.by_id.has(tok) and tok != w.by_id[tok].name:
+			out += text.substr(cursor, m.get_start() - cursor) + w.by_id[tok].name
+			cursor = m.get_end()
+	return out + text.substr(cursor)
 
 ## The bluff rule's other plausible readings for `entry`, stamped as told, for a liar who
 ## noticed its first one points at itself or a teammate (FabricationCheck.vet).
@@ -829,8 +853,15 @@ static func _alternatives(w, n, bdef, plan: Dictionary, mate, entry: Dictionary,
 			if e2.is_empty():
 				continue
 			e2 = _stamp_fake(w, e2, str(entry.get("role", "")), day_only)
+			# A held reading keeps the day and phase it was made for: an alternative is the
+			# same observation told differently, so a day reading stays a day reading
+			# (Codex P2 on #193: a held Dowser or Augur reworked on the night pass).
 			if entry.has("day"):
-				e2["day"] = entry["day"]  # a held reading keeps the night it was made for
+				e2["day"] = entry["day"]
+			if entry.has("phase"):
+				e2["phase"] = entry["phase"]
+			else:
+				e2.erase("phase")
 			out.append({"entry": e2, "why": str(alt.get("why", ""))})
 		return out
 
@@ -1064,7 +1095,7 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 		why = "Joins a likely-winning vote against a good NPC."
 	else:
 		yes = w.decision_roll(v, "vote_to_look_natural", Tuning.Evil.EVIL_VOTE_NATURAL_BASE + Tuning.Evil.EVIL_VOTE_NATURAL_CONF_SCALE * v.traits.get("confidence", 0.5), {"confidence": v.traits.get("confidence", 0.5)}, nominee)
-		why = "Coin-flip vote on a good NPC to look natural."
+		why = "Voted on a good person by chance, to look natural."
 	w.dlog.think(v.id, "vote", "%s on %s. %s" % ["YES" if yes else "no", nominee, why], {"evil": true})
 	return yes
 

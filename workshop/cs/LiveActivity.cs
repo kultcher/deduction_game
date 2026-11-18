@@ -42,6 +42,8 @@ internal static class LiveActivityKernel
 
     // Mirrors of sim/tuning.gd Workshop.VIGIL_MISS and WALKER_CLAIM_* (Nov 5).
     public const double VigilMiss = 0.05;
+    /// Mirrors Tuning.Workshop.GOOD_OWN_ALIBI_OUT.
+    public const double GoodOwnAlibiOut = 0.2;
     public const double WalkerClaimGift = 0.95;
     public const double WalkerClaimHome = 0.03;
     public const double WalkerClaimSecret = 0.02;
@@ -62,6 +64,9 @@ internal static class LiveActivityKernel
     public const int FlagItemDrop = 1 << 7;
     public const int FlagTraceHasFamily = 1 << 8;
     public const int FlagRoleIsNightWalk = 1 << 9;
+    /// The listener's own knowledge of a night it spent at home (WorkshopBridge, the listener's
+    /// view): out has likelihood 1 - cardDoubles[c * 2] (packed as 1 - its self-doubt).
+    public const int FlagKnownSelf = 1 << 10;
 
     // Movement role codes (slot 7):
     public const int MoveRoleEmpty = 0;
@@ -88,21 +93,23 @@ internal static class LiveActivityKernel
 
     /// <summary>
     /// Compact representation of a night path on the 4-block pairwise-connected map.
-    /// StayHome: BlockMask = 0, LastBlock = -1, IsLampTour = false.
-    /// Direct / Detour: BlockMask != 0, LastBlock = destination (0..3), IsLampTour = false.
-    /// LampTour (C.BLOCKS.keys()): BlockMask = 0xF, LastBlock = 3 ("hill"), IsLampTour = true.
+    /// StayHome: BlockMask = 0, FirstBlock = LastBlock = -1, IsLampTour = false.
+    /// Direct / Detour: BlockMask != 0, FirstBlock = home, LastBlock = destination (0..3), IsLampTour = false.
+    /// LampTour (C.BLOCKS.keys()): BlockMask = 0xF, FirstBlock = 0 ("square"), LastBlock = 3 ("hill"), IsLampTour = true.
     /// </summary>
     internal readonly struct PathSpec
     {
         public readonly int BlockMask;
+        public readonly int FirstBlock;
         public readonly int LastBlock;
         public readonly bool IsLampTour;
         public readonly double Weight;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public PathSpec(int blockMask, int lastBlock, bool isLampTour, double weight = 1.0)
+        public PathSpec(int blockMask, int firstBlock, int lastBlock, bool isLampTour, double weight = 1.0)
         {
             BlockMask = blockMask;
+            FirstBlock = firstBlock;
             LastBlock = lastBlock;
             IsLampTour = isLampTour;
             Weight = weight;
@@ -120,19 +127,20 @@ internal static class LiveActivityKernel
 
         /// <summary>
         /// Matches C.vigil_sees_path(block, path):
-        /// not path.is_empty() and (path.back() == block or path.size() == BLOCKS.size())
+        /// not path.is_empty() and (path.front() == block or path.size() == BLOCKS.size())
+        /// (a vigil sees residents leaving home, Nov 17).
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool VigilSees(int blockCode) =>
-            LastBlock >= 0 && ((blockCode >= 0 && LastBlock == blockCode) || IsLampTour);
+            LastBlock >= 0 && ((blockCode >= 0 && FirstBlock == blockCode) || IsLampTour);
 
-        public static PathSpec StayHome(double weight = 1.0) => new(0, -1, false, weight);
+        public static PathSpec StayHome(double weight = 1.0) => new(0, -1, -1, false, weight);
 
-        public static PathSpec LampTour(double weight = 1.0) => new(0xF, BlockHill, true, weight);
+        public static PathSpec LampTour(double weight = 1.0) => new(0xF, BlockSquare, BlockHill, true, weight);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PathSpec Route(int home, int dest, double weight = 1.0) =>
-            new((1 << home) | (1 << dest), dest, false, weight);
+            new((1 << home) | (1 << dest), home, dest, false, weight);
     }
 
     internal sealed class SceneTableData
@@ -488,8 +496,9 @@ internal static class LiveActivityKernel
                                 // probabilistic score is softer (VigilMiss): the town allows a missed sighting.
                                 pathOk = pathOk && !path.VigilSees(cardInts[off + 10]);
                             }
-                            else if (kind == KindAlibi && cardInts[off + 3] == i)
+                            else if (kind == KindAlibi && cardInts[off + 3] == i && (cardInts[off + 1] & FlagKnownSelf) == 0)
                             {
+                                // (The listener's own home night is soft: a Sleepwalker may walk.)
                                 pathOk = pathOk && !isOut;
                             }
                             else if (kind == KindCoverage && (cardInts[off + 5] & (1 << i)) == 0)
@@ -937,13 +946,13 @@ internal static class LiveActivityKernel
                 // Exact demon_routes(home, dest) order: direct first, then via blocks in 0..3 order
                 int directMask = (1 << home) | (1 << dest);
                 int viaCount = home == dest ? 3 : 2;
-                result.Add(new PathSpec(directMask, dest, false, baseWeight * (1.0 - demonDetour)));
+                result.Add(new PathSpec(directMask, home, dest, false, baseWeight * (1.0 - demonDetour)));
                 double detourShare = demonDetour / (double)viaCount;
                 for (int b = 0; b < BlockCount; b++)
                 {
                     if ((directMask & (1 << b)) == 0)
                     {
-                        result.Add(new PathSpec(directMask | (1 << b), dest, false, baseWeight * detourShare));
+                        result.Add(new PathSpec(directMask | (1 << b), home, dest, false, baseWeight * detourShare));
                     }
                 }
             }
@@ -1015,13 +1024,23 @@ internal static class LiveActivityKernel
             }
             case KindAlibi:
             {
+                if ((flags & FlagKnownSelf) != 0)
+                {
+                    // "I know I was home": only a Sleepwalker's doubt leaves room for being out.
+                    return cardInts[off + 3] != personIdx || !isOut ? 1.0 : 1.0 - cardDoubles[cardIdx * 2];
+                }
                 if (cardInts[off + 3] == personIdx)
                 {
-                    // A person's own word on their night: hard for the good (and the listener,
-                    // good in its own worlds); an evil subject may be covering a night out.
-                    if (!quoted && (currentAlign == AlignGood || cardInts[off + 2] != personIdx))
+                    // Someone else's word on a person's night (a witness) stays hard.
+                    if (!quoted && cardInts[off + 2] != personIdx)
                     {
                         return !isOut ? 1.0 : 0.0;
+                    }
+                    // A person's own word: a good one out on a hidden gift or a secret (or a
+                    // Sleepwalker) may still say "home"; an evil one may be covering a night out.
+                    if (!quoted && currentAlign == AlignGood)
+                    {
+                        return !isOut ? 1.0 : GoodOwnAlibiOut;
                     }
                     return isOut ? (currentAlign != AlignGood ? 0.7 : 0.3) : 0.9;
                 }

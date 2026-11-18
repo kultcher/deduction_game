@@ -1,9 +1,11 @@
 ## Playtest 26532 (Nov 16), two findings:
 ## 1. "ask night" to a night-walking gift (Confessor, Lamplighter, Medium) told where they
 ##    went but not what the gift showed, so "it showed nothing" and "I won't say" sounded
-##    the same. Now a result already told is said again, one not yet told is held back in
-##    so many words, and a night that showed nothing is said plainly. The Night Watch
-##    still answers through its sightings.
+##    the same. Now a result already told is said again; one not yet told is told only by
+##    someone already sharing readings who'd still tell them to "ask gift" today (Michael,
+##    Nov 16 and 17: the night question never opens readings), else held back in so many
+##    words; a night that showed nothing is said plainly. The Night Watch tells its result
+##    through its sightings, behind the same rule.
 ## 2. Isolde, on a case about day-1 whereabouts, opened "Your case rests on where I was
 ##    last night". A sighting by day the case cites is not a night outing.
 extends SceneTree
@@ -66,7 +68,19 @@ func _holder(w, role: String):
 	d.secret_mod = ""
 	d.poisoned = false
 	d.history[w.time_key(1, C.NIGHT)] = "night:" + d.home_block
+	_shut(d)
 	return d
+
+## Closed: as private and distrustful as can be, so today's gate keeps readings back.
+func _shut(d) -> void:
+	d.traits["privacy"] = 1.0
+	d.trust = 0.0
+	d.pressure = 0.0
+
+## Open: no privacy, full trust, so the gate tells readings.
+func _open(d) -> void:
+	d.traits["privacy"] = 0.0
+	d.trust = 1.0
 
 func _reading(w, d, role: String) -> Dictionary:
 	var other = w.living_good()[1]
@@ -87,6 +101,29 @@ func _ask_night(size: int, role: String) -> void:
 	check(WITHHELD in t, label + " an untold result is held back in words: " + t)
 	check(not r.facts.any(func(f): return f.get("kind", "") == "info"), label + " ...and not disclosed")
 	check(d.told_readings == 0, label + " ...and not marked as told")
+	# They'd tell their readings today, but haven't yet shared any (tier 3): the night
+	# question doesn't open them (Michael, Nov 17).
+	g = _game(size)
+	d = _holder(g.w, role)
+	_open(d)
+	check(Mind.MindDialogue.disclosure_gate(g.w, d)["readings_open"], label + " (fixture: the open gate is open)")
+	d.info_log = [_reading(g.w, d, role)]
+	r = Mind.answer_night(g.w, d)
+	t = _text(r)
+	check(WITHHELD in t and not r.facts.any(func(f): return f.get("kind", "") == "info") and d.told_readings == 0 and d.max_tier == 3,
+		label + " not yet sharing readings: an untold result stays held back, even on an open day: " + t)
+	# Already sharing readings (tier 4) and open today: a new one is told, card and all.
+	g = _game(size)
+	d = _holder(g.w, role)
+	_open(d)
+	d.max_tier = 4
+	d.info_log = [_reading(g.w, d, role)]
+	r = Mind.answer_night(g.w, d)
+	t = _text(r)
+	var told_marker: String = g.w.living_good()[1].name if role == "confessor" else "2"
+	check(told_marker in t and not WITHHELD in t, label + " sharing readings and open today: an untold result is told: " + t)
+	check(r.facts.any(func(f): return f.get("kind", "") == "info" and f.get("role", "") == role), label + " ...with its card")
+	check(d.told_readings == 1, label + " ...and marked as told")
 	# Already told: said again.
 	g = _game(size)
 	d = _holder(g.w, role)
@@ -110,11 +147,22 @@ func _ask_night(size: int, role: String) -> void:
 	check(not WITHHELD in t and not NOTHING in t, label + " a hidden gift says nothing of a result: " + t)
 
 func _ask_night_nightwatch(size: int) -> void:
-	var g = _game(size)
-	var d = _holder(g.w, "nightwatch")
-	d.info_log = [{"role": "nightwatch", "day": 1, "data": {"block": d.home_block, "seen": []}, "true": true, "shared": false, "text": "I watched"}]
-	var t: String = _text(Mind.answer_night(g.w, d))
-	check(not WITHHELD in t and not NOTHING in t, "%d NPCs, Night Watch: unchanged, answers through its sightings: %s" % [size, t])
+	for open in [false, true]:
+		var g = _game(size)
+		var d = _holder(g.w, "nightwatch")
+		if open:
+			_open(d)
+			d.max_tier = 4
+		d.info_log = [{"role": "nightwatch", "day": 1, "data": {"block": d.home_block, "seen": []}, "true": true, "shared": false, "text": "I watched the Docks: nobody stirred"}]
+		var r: Dictionary = Mind.answer_night(g.w, d)
+		var t: String = _text(r)
+		var label: String = "%d NPCs, Night Watch, gate %s:" % [size, "open" if open else "closed"]
+		check(not WITHHELD in t and not NOTHING in t, label + " answers through its sightings, not the reading lines: " + t)
+		check(r.facts.any(func(f): return f.get("kind", "") == "info") == open and d.told_readings == (1 if open else 0), label + " its reading is told only when the gate is open")
+		if open:
+			# Codex, #178: a quiet watch (nobody seen) must still say its result in words.
+			check(r.lines.size() >= 2, label + " the watch result is spoken, not only carded: " + t)
+			check(not "not ready" in t and not "in reserve" in t, label + " ...and not then refused: " + t)
 
 func _ask_night_evil(size: int) -> void:
 	var g = _game(size)
@@ -151,3 +199,11 @@ func _defence_day_sighting(size: int) -> void:
 			check(not "dispute_night" in res.moves and not "where I was" in t, label + " a sighting by day isn't answered as last night: " + t)
 			var items: Array = MindMeeting._disclosed_items_against(w, d, accuser, spoken)
 			check(items.all(func(x): return x.get("channel", "") != "movement_out"), label + " a sighting by day isn't a night outing")
+			# The accuser also saw them out on the night of the same number: citing the day
+			# sighting doesn't put that night in the case (Steward A5, Nov 17).
+			accuser.beliefs.append({"kind": "saw", "who": d.id, "block": "hill", "day": 1, "phase": C.NIGHT, "how": "street"})
+			Mind.refresh_beliefs(w, accuser, " (test)")
+			var both: Array = MindMeeting._disclosed_items_against(w, d, accuser, spoken)
+			var night_item: Array = both.filter(func(x): return str(x.get("eid", "")).begins_with("sighting:"))
+			check(both.any(func(x): return str(x.get("eid", "")).begins_with("sighting_day:") and x.get("in_case", false)), label + " the day sighting is in the case")
+			check(night_item.all(func(x): return not x.get("in_case", false)), label + " the same-numbered night is not in the case (%s)" % str(night_item.map(func(x): return x.eid)))

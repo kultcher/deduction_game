@@ -88,7 +88,7 @@ func _run_playtest_followups() -> void:
 
 func _run_playtest_regressions() -> void:
 	_public_sighting()
-	_vigil_destination_only()
+	_vigil_leavers_only()
 	_multi_subject_vigil_no_collateral_note()
 
 
@@ -579,7 +579,7 @@ func _public_sighting() -> void:
 	_check(g.board.size() == before + 1, "repeating the same public sighting does not duplicate its card")
 
 
-func _vigil_destination_only() -> void:
+func _vigil_leavers_only() -> void:
 	var g = playtest_regressions__game()
 	var w = g.w
 	var a = w.npcs[0]
@@ -595,8 +595,9 @@ func _vigil_destination_only() -> void:
 	]
 	w.player_vigil = "docks"
 	w._night_sightings()
-	_check(not (a.id in w.player_vigil_seen) and (b.id in w.player_vigil_seen) and (lamp.id in w.player_vigil_seen),
-		"player vigil spots destination visitors and the Lamplighter, not residents leaving for another block")
+	# Since Nov 17 the vigil watches who leaves the block (docs/design/vigil.md option A).
+	_check((a.id in w.player_vigil_seen) and not (b.id in w.player_vigil_seen) and (lamp.id in w.player_vigil_seen),
+		"player vigil spots residents leaving the block and the Lamplighter, not visitors arriving from another block")
 	var watch_def = C.role_def("nightwatch")
 	var watch_reading: Dictionary = watch_def.generate_reading(w, w.npcs[3], {"watch_block": "docks"}, Mind)
 	_check(a.id in watch_reading["data"]["seen"] and b.id in watch_reading["data"]["seen"],

@@ -865,7 +865,19 @@ static func _augment_joint_leave_one_out(
 		if pr_wo.total <= 1e-18:
 			continue
 		var shift_wo: float = CaseEval.shift(pr0.evil, pr_wo.evil)
-		var drop: float = full_shift - shift_wo
+		# What leaving the card out changes is measured within this model: its posterior with
+		# every card, computed the same way (the same role re-check when the removal needs one).
+		# `full_shift` is the belief's own shift, from the connections model; any gap between
+		# the two would otherwise be credited to whichever card was removed (playtest 89077:
+		# three Lamplighter counts that moved nothing each credited with 0.38 of the gap).
+		var with_shift: float = full_shift
+		if same_model_loo:
+			var base_id: String = LOO_NONE if _needs_fits_recheck(loo_ctx, cand) else LOO_FULL
+			var pr_all: Dictionary = _person_probs(view, reps, _loo_post(loo_ctx, {"id": base_id}), p_idx)
+			if pr_all.total <= 1e-18:
+				continue
+			with_shift = CaseEval.shift(pr0.evil, pr_all.evil)
+		var drop: float = with_shift - shift_wo
 		if drop < 0.08:
 			continue
 		var joint_contrib: float = 0.45 * drop * belief_scale
@@ -888,55 +900,11 @@ static func _augment_joint_leave_one_out(
 				var oc_id: String = str(oc.get("id", ""))
 				if not oc.get("quoted", false) and oc_id != cid and str(oc.get("kind", "")) in ["report", "claim"]:
 					roots.append(oc_id)
-		var has_pid_claim: bool = attended.any(func(o): return not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) in ["report", "claim"])
-		var why_own: String
-		var why_pub: String
-		# What the reading says, when it's about someone else (Case 12926: a Confessor's
-		# reading that cleared the man Nisha accused read as a bare "contradicts their account").
-		var gist: String = _reading_gist(view, cand, pid, csrc)
-		# Say why, not just "contradicts" (playtest triage 2.1): a reading that names them
-		# is set against their claimed gift; one about others only leaves them among the
-		# likelier; a Warden's watch is a night they had to account for.
-		var direct: bool = pid in _mentions(cand)
-		var pid_role: String = ""
-		for o in attended:
-			if not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) == "claim" and str(o.get("role", "")) != "":
-				pid_role = C.role_name(str(o.role))
-		var against: String = ("that doesn't fit their claim to be the %s" % pid_role) if pid_role != "" else "that doesn't fit their account"
-		var guarded: String = ""
-		if crole == "warden" and cand.get("data", {}) is Dictionary:
-			guarded = str(cand.data.get("target", ""))
 		if csrc == self_id:
 			found_own_joint = true
-			if guarded != "" and guarded != pid and has_pid_claim:
-				why_own = "I guarded %s that night, and their account of that night doesn't fit it" % Solver.person_name(view, guarded)
-			elif direct:
-				why_own = ("my reading points at them, and " + against) if has_pid_claim else "my own reading, taken with the other reports, points at them"
-			elif gist != "":
-				why_own = "my reading %s, which leaves them among the likeliest of the rest" % gist
-			else:
-				why_own = "my reading, taken with the other reports, leaves them among the likeliest"
-			if crole != "" and direct and has_pid_claim:
-				why_pub = "the %s reading points at them, and %s" % [C.role_name(crole), against]
-			elif crole != "" and gist != "":
-				why_pub = "the %s reading %s, which leaves them among the likeliest of the rest" % [C.role_name(crole), gist]
-			else:
-				why_pub = "the reports considered together point toward them"
-		else:
-			var sname: String = Solver.person_name(view, csrc) if csrc != "player" else "the Demonologist"
-			if crole != "" and direct and self_id in _mentions(cand):
-				why_own = "%s's %s reading names me and them, and I know I'm good, so it points at them" % [sname, C.role_name(crole)]
-			elif crole != "" and direct and has_pid_claim:
-				why_own = "%s's %s reading points at them, and %s" % [sname, C.role_name(crole), against]
-			elif crole != "" and gist != "":
-				why_own = "%s's %s reading %s, which leaves them among the likeliest of the rest" % [sname, C.role_name(crole), gist]
-			else:
-				why_own = "the reports considered together point toward them"
-			# Leaning on the word of someone the town hanged: say so (Case 12926: Edda and
-			# Nisha cited Lian's Registrar report the day after Lian was hanged).
-			if csrc != "player" and _was_hanged(view, csrc) and crole != "" and why_own != "the reports considered together point toward them":
-				why_own += "; I'm not sure we hanged the right person, and I still think that reading may be right"
-			why_pub = why_own
+		var whys: Dictionary = joint_whys(view, cand, pid, csrc, self_id, crole, attended)
+		var why_own: String = whys.own
+		var why_pub: String = whys.public
 
 		_put_item(items_by_id, {
 			"card_id": cid,
@@ -956,7 +924,94 @@ static func _augment_joint_leave_one_out(
 		})
 
 
-## The class posterior without one report or claim (memoised per refresh).
+## Measurement switch (on in play): a leave-one-out drop is measured within this model (see
+## _augment_joint_leave_one_out). Off, it is measured against the belief's own shift, as
+## before Nov 17, for showing what the fix changes on a replay.
+static var same_model_loo: bool = true
+
+## The ids `_loo_post` takes for "remove nothing": LOO_FULL with the full fits, LOO_NONE with
+## the role fits re-checked over every card, as for a removal that needs the re-check.
+const LOO_FULL: String = "__loo_full__"
+const LOO_NONE: String = "__loo_none__"
+
+## Whether leaving `cand` out changes the role fits enough to re-check them.
+static func _needs_fits_recheck(ctx: Dictionary, cand: Dictionary) -> bool:
+	var l_cid: String = str(cand.get("id", ""))
+	var l_role: String = str(cand.get("role", ""))
+	return (
+		str(cand.get("kind", "")) == "claim"
+		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]
+		or ctx.attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
+	)
+
+## Why a "taken together" reading moves the listener against pid, as they'd say it
+## (own) and as it reads when the town knows the reading (public). Split out of
+## _augment_joint_leave_one_out so the wording can be checked on its own (Herald, Nov 18).
+static func joint_whys(view: Dictionary, cand: Dictionary, pid: String, csrc: String, self_id: String, crole: String, attended: Array) -> Dictionary:
+	var has_pid_claim: bool = attended.any(func(o): return not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) in ["report", "claim"])
+	var why_own: String
+	var why_pub: String
+	# What the reading says, when it's about someone else (Case 12926: a Confessor's
+	# reading that cleared the man Nisha accused read as a bare "contradicts their account").
+	var gist: String = _reading_gist(view, cand, pid, csrc)
+	# Say why, not just "contradicts" (playtest triage 2.1): a reading that names them
+	# is set against their claimed gift; one about others only leaves them among the
+	# likelier; a Warden's watch is a night they had to account for.
+	var direct: bool = pid in _mentions(cand)
+	var pid_role: String = ""
+	for o in attended:
+		if not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) == "claim" and str(o.get("role", "")) != "":
+			pid_role = C.role_name(str(o.role))
+	var against: String = ("that doesn't fit their claim to be the %s" % pid_role) if pid_role != "" else "that doesn't fit their account"
+	# A count of folk out at night names nobody, so it can't leave anyone "among the
+	# likeliest"; it's the count against what people owned to (89077 item 3, Michael Nov 17).
+	var walk_count: bool = false
+	if not direct and gist == "" and crole != "":
+		var c_def = C.role_def(crole)
+		walk_count = c_def != null and c_def.shape == "GROUP_COUNT" and c_def.count_mode == "walkers"
+	var guarded: String = ""
+	if crole == "warden" and cand.get("data", {}) is Dictionary:
+		guarded = str(cand.data.get("target", ""))
+	if csrc == self_id:
+		if guarded != "" and guarded != pid and has_pid_claim:
+			why_own = "I guarded %s that night, and their account of that night doesn't fit it" % Solver.person_name(view, guarded)
+		elif direct:
+			why_own = ("my reading points at them, and " + against) if has_pid_claim else "my own reading, taken with the other reports, points at them"
+		elif gist != "":
+			why_own = "my reading %s, which leaves them among the likeliest of the rest" % gist
+		elif walk_count:
+			why_own = "my count of folk abroad that night doesn't square with what we've been told"
+		else:
+			why_own = "my reading, taken with the other reports, leaves them among the likeliest"
+		if crole != "" and direct and has_pid_claim:
+			why_pub = "the %s reading points at them, and %s" % [C.role_name(crole), against]
+		elif crole != "" and gist != "":
+			why_pub = "the %s reading %s, which leaves them among the likeliest of the rest" % [C.role_name(crole), gist]
+		elif walk_count:
+			why_pub = "the %s's count of folk abroad that night doesn't square with what we've been told" % C.role_name(crole)
+		else:
+			why_pub = "the reports considered together point toward them"
+	else:
+		var sname: String = Solver.person_name(view, csrc) if csrc != "player" else "the Demonologist"
+		if crole != "" and direct and self_id in _mentions(cand):
+			why_own = "%s's %s reading names me and them, and I know I'm good, so it points at them" % [sname, C.role_name(crole)]
+		elif crole != "" and direct and has_pid_claim:
+			why_own = "%s's %s reading points at them, and %s" % [sname, C.role_name(crole), against]
+		elif crole != "" and gist != "":
+			why_own = "%s's %s reading %s, which leaves them among the likeliest of the rest" % [sname, C.role_name(crole), gist]
+		elif walk_count:
+			why_own = "%s's count of folk abroad that night doesn't square with what we've been told" % sname
+		else:
+			why_own = "the reports considered together point toward them"
+		# Leaning on the word of someone the town hanged: say so (Case 12926: Edda and
+		# Nisha cited Lian's Registrar report the day after Lian was hanged).
+		if csrc != "player" and _was_hanged(view, csrc) and crole != "" and why_own != "the reports considered together point toward them":
+			why_own += "; I'm not sure we hanged the right person, and I still think that reading may be right"
+		why_pub = why_own
+	return {"own": why_own, "public": why_pub}
+
+## The class posterior without one report or claim (memoised per refresh). With LOO_NONE,
+## nothing is left out but the role fits are re-checked as for a removal.
 static func _loo_post(ctx: Dictionary, cand: Dictionary) -> PackedFloat64Array:
 	var l_cid: String = str(cand.get("id", ""))
 	if ctx.memo.has(l_cid):
@@ -969,14 +1024,8 @@ static func _loo_post(ctx: Dictionary, cand: Dictionary) -> PackedFloat64Array:
 			rep_idx = j
 			break
 	var like_wo: PackedFloat64Array = CaseEval._class_like(cc, ctx.errs, rep_idx) if rep_idx >= 0 else ctx.like_full
-	var l_role: String = str(cand.get("role", ""))
-	var needs_fits_recheck: bool = (
-		str(cand.get("kind", "")) == "claim"
-		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]
-		or attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
-	)
 	var fits_wo: PackedFloat64Array = ctx.fits_full
-	if needs_fits_recheck:
+	if l_cid == LOO_NONE or (l_cid != LOO_FULL and _needs_fits_recheck(ctx, cand)):
 		fits_wo = _subset_fits(ctx.view, cc, attended.filter(func(o): return str(o.get("id", "")) != l_cid), ctx.knowledge)
 	var post_wo: PackedFloat64Array = PackedFloat64Array()
 	post_wo.resize(ctx.nc)

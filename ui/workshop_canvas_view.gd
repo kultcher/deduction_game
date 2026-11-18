@@ -455,9 +455,15 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
+		# Empty space: left-drag pans, shift+left-drag draws a selection box (Michael, Nov 17).
 		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "":
-			box_from = event.position
-			box_to = event.position
+			if event.shift_pressed:
+				box_from = event.position
+				box_to = event.position
+			else:
+				group = []
+				panning = true
+			queue_redraw()
 			accept_event()
 			return
 		if event.button_index == MOUSE_BUTTON_LEFT and not (chosen in group):
@@ -610,10 +616,19 @@ func evidence_layout(id: String) -> Dictionary:
 	if node.kind == "modifier":
 		y += 4.0
 		var x: float = 16.0
+		var side: String = str(node.get("attribution", ""))
+		if card.has("relay_source"):
+			# A Medium's relay: which side is challenged, then how (Quill, Nov 17).
+			for s in ["transmission", "original"]:
+				els.append({"t": "chip", "rect": Rect2(16.0, y, WIDTH - 32.0, 26), "text": model.RELAY_SIDE_TEXT[s], "on": side == s, "disabled": false, "field": "side:" + s,
+					"tip": {"transmission": "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift.", "original": "The Medium passed it on faithfully, but the dead person's own reading was wrong."}[s]})
+				y += 32.0
+			y += 4.0
 		for mode in ["misled", "lying", "impaired", "unlikely"]:
 			var label: String = {"misled": "Misled", "lying": "Lying", "impaired": "Poisoned", "unlikely": "Unlikely"}[mode]
 			var w: float = 84.0
-			var disabled: bool = mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))
+			var disabled: bool = (mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
+				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES)
 			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": node.mode == mode, "disabled": disabled, "field": "mode:" + mode,
 				"tip": {"misled": "Honest but wrong: a misleading registration (Red Herring, Marked).", "lying": "The reader is lying about this result.", "impaired": "Their gift failed that night: a Poisoner. Points at whoever was seen out that night without a reason.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0

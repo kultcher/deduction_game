@@ -3,6 +3,58 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 17, 2026 (Claude-Herald, `claude/herald-map-ui`)
+
+- **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
+  While the player is in a conversation but looking at the map, the conversation's options
+  are hidden; they return to the conversation view to carry on. Herald. [decided]
+
+  > **Built Nov 17 (Claude-Herald):** while the map is up in a conversation, only "Look at
+  > conversation" is offered; the conversation's options come back with it. `tools/test_map_return.gd`.
+
+- **A way back from the map.** (Michael, Nov 17) On the map during a conversation or a
+  meeting, a button at the top right of the map view: "Return to conversation" or "Return
+  to meeting" (Michael's wording). Herald. [decided]
+
+  > **Built Nov 17 (Claude-Herald):** the button sits at the map's top right whenever the map
+  > has replaced a conversation or the meeting circle, and brings it back. `tools/test_map_return.gd`.
+
+- **Workshop: left-drag pans again.** (Michael, Nov 17) Left-click and drag on empty space
+  pans the view, and shift+left-click and drag draws a selection box. Today left-drag on
+  empty space draws the box and the middle or right button pans; the canvas hint already
+  says "drag empty space to pan". Herald. [decided]
+
+  > **Built Nov 17 (Claude-Herald):** left-drag on empty space pans (and a plain click there
+  > clears the selection); shift+left-drag draws the box. Middle and right drag still pan, and
+  > the canvas hint says both. `tools/test_workshop_pan.gd`.
+
+## Built Nov 17, 2026 (Claude-Lantern, #198, `claude/double-claim-pairing`)
+
+- **A double claim of a unique gift raises both claimants** (Lantern, Nov 16; Michael, Nov
+  16). Under connections a claim is only context, so two people claiming a gift only one can
+  hold don't become more suspicious by themselves (in `test_beliefs` both dip about 0.01;
+  the earlier model raised them 0.14 and 0.24). Make the two claims a built-in pairing that
+  raises suspicion on both claimants, and shifts it onto the other when one is shown good by
+  other cards. Report in game terms how much each claimant moves, alone and alongside other
+  evidence. Add it to `docs/belief_model.md`'s pairings. Owner Lantern. **[decided]**
+  Built in #198: the claims of one gift are read as one built-in pairing, with the other held
+  cards naming a claimant as context (and a claimant's own readings of the gift counted in
+  the pairing). In `test_double_claim` a rival Seer claim takes the claimants from 3% and 33%
+  to 17% and 57%; a reading implicating one then drops the other to 6%.
+
+## Fixed Nov 17, 2026 (Claude-Lantern, `claude/backlog-and-bare-compile`)
+
+- **A case with no cards can be answered from an older compile** (Lantern, Nov 13). With
+  a silencing on the record it reads the view's day cards, but `CaseEval`'s compile key
+  doesn't include them (seed 962: 0.612 cold, 0.579 warm). Moves golden. **[decided]** (Michael, Nov 17: "the same situation should always give the same belief")
+
+  > **Fixed Nov 17 (Claude-Lantern):** #181's compile-key rework didn't cover it: two views
+  > whose silencing factor differed still shared one compile. A no-card case that reads the
+  > view's cards for presence (everywhere but the connections judge) now has the view's cards
+  > in its key (`CaseEval._compile_impl`). `tools/test_bare_compile.gd` finds such a pair of
+  > views by search and checks their keys differ and that warm and cold give the same
+  > chances; on main before the fix the key check fails.
+
 ## Built Nov 17, 2026 (Claude-Beadle, `claude/beadle-fabrication-check`)
 
 - **Evil fabrications check what's already public.** (26532) Isolde, bluffing Magistrate,

@@ -95,7 +95,7 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 			else:
 				forgot = true
 	elif marked_triggered:
-		why = "a Marked soul read as evil"
+		why = "a Marked soul reads as evil"
 
 	var data: Dictionary = {}
 	if forgot:
@@ -168,19 +168,19 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 	var why: String = ""
 	if mate != null and mate != n and mate.alive and w.chance(0.6):
 		data = {"target": mate.id, "good": true}
-		why = "clears evil teammate %s as good" % mate.id
+		why = "cleared %s, a fellow evil, as good" % mate.id
 	elif w.chance(0.5):
 		data = {"forgot": true}
-		why = "claims they forgot who they visited"
+		why = "claimed to have forgotten whom they visited"
 	else:
 		var goods: Array = w.living_good().filter(func(m): return m.id != s)
 		var tgt = w.pick(goods) if not goods.is_empty() else mate
 		if tgt != null:
 			data = {"target": tgt.id, "good": true}
-			why = "vouches for %s to blend in" % tgt.id
+			why = "vouched for %s, to seem like any other Confessor" % tgt.id
 		else:
 			data = {"forgot": true}
-			why = "claims they forgot who they visited"
+			why = "claimed to have forgotten whom they visited"
 	var entry: Dictionary = {
 		"data": data,
 		"text": _spoken_text(data, nm),
@@ -195,10 +195,10 @@ func fake_medium_reading(w, _n, dd, _s: String, _sg, d, _goods: Array, _other: C
 	var why: String = ""
 	if d != null and d.alive and demon_implicated and w.chance(0.6):
 		data = {"target": d.id, "good": true}
-		why = "the dead Confessor %s cleared demon %s" % [dd.id, d.id]
+		why = "made up a reading from the late Confessor %s that cleared %s, the Demon" % [dd.id, d.id]
 	else:
 		data = {"forgot": true}
-		why = "the dead Confessor %s could not remember their last visit" % dd.id
+		why = "made up a reading from the late Confessor %s that couldn't remember their last visit" % dd.id
 	e["data"] = data
 	e["text"] = _spoken_text(data, nm)
 	return {"entry": e, "why": why, "frames": false}

@@ -55,7 +55,7 @@ func generate_bluff_reading(w, _n, _plan: Dictionary, s: String, mate, _asked: A
 	var other = w.pick(w.living_good().filter(func(x): return x.id != s))
 	var pair: Array = w.shuffled([mate.id, other.id])
 	var sk: String = w.pick(w.case_script.secrets)
-	var why: String = "lends teammate %s a harmless secret" % mate.id
+	var why: String = "gave %s, a fellow evil, a harmless secret to own to" % mate.id
 	var entry: Dictionary = {
 		"data": {"pair": pair, "secret": sk},
 		"text": "I heard that one of %s is %s" % [w._names(pair), w._secret_phrase(sk)],

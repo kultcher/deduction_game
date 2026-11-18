@@ -92,7 +92,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 				var other_roles: Array = active_script_roles.filter(func(r): return r != true_role)
 				role = str(w.pick(other_roles)) if not other_roles.is_empty() else str(w.pick(active_script_roles))
 	elif marked_triggered:
-		why = "a Marked soul read as evil"
+		why = "a Marked soul reads as evil"
 
 	var data: Dictionary = {"block": blk, "walked": walked}
 	if walked and role != "":
@@ -124,17 +124,17 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 	if sg != null and sg.alive and w.chance(0.6):
 		walked = true
 		role = sg.role if w.chance(0.5) else str(w.pick(active_script_roles))
-		why = "claims a %s was abroad on %s (framing scapegoat %s)" % [role, blk, s]
+		why = "claimed a %s was abroad on %s, to point at %s, whom evil meant to hang" % [content().role_name(role), content().block_name(blk), s]
 	elif mate != null and mate != n and mate.alive and w.chance(0.4):
 		walked = false
-		why = "claims no one walked on %s (covering teammate %s)" % [blk, mate.id]
+		why = "claimed nobody walked on %s, to cover %s, a fellow evil" % [content().block_name(blk), mate.id]
 	else:
 		walked = w.chance(0.5)
 		if walked:
 			role = str(w.pick(active_script_roles))
-			why = "reports %s abroad on %s" % [role, blk]
+			why = "claimed a %s was abroad on %s" % [content().role_name(role), content().block_name(blk)]
 		else:
-			why = "reports no one walked on %s" % blk
+			why = "claimed nobody walked on %s" % content().block_name(blk)
 
 	var data: Dictionary = {"block": blk, "walked": walked}
 	if walked and role != "":
@@ -153,7 +153,7 @@ func fake_medium_reading(w, _n, dd, s: String, sg, _d, _goods: Array, _other: Ca
 	var role: String = sg.role if (sg != null and w.chance(0.6)) else str(w.pick(active_script_roles))
 	e["data"] = {"block": blk, "walked": true, "role": role}
 	e["text"] = _spoken_text(blk, true, role)
-	return {"entry": e, "why": "the dead Monitor %s reported a %s was abroad on %s (framing %s)" % [dd.id, role, blk, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Monitor %s that a %s was abroad on %s, to point at %s" % [dd.id, content().role_name(role), content().block_name(blk), s], "frames": true}
 
 
 func check_public_sighting_pregate(_w, _n, b: Dictionary, _mind) -> int:

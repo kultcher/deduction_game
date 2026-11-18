@@ -57,7 +57,7 @@ const BATCH7_SLOTS = {
 	"role_already_claimed": {"role": "Archivist"},
 	"role_already_claimed_none": {},
 	"defence_red_herring": {"source": "Hollis"},
-	"warden_doors_report": {"doors": "Night 1 at Agnes's door"},
+	"warden_doors_report": {"doors": "the first night at Agnes's door"},
 	"warden_saves_claim": {"saves": "Agnes on night 1"},
 	"meeting_relay_reading": {"role": "Seer", "reading": "one of Fenwick and Kiran read as the Demon"},
 	"defence_pair_other": {"source": "Hollis", "other": "Fenwick"},
@@ -465,17 +465,31 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 236, "Agnes voice pack contains all 236 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 244, "Agnes voice pack contains all 244 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()
-		_check(ks == ref_keys, "%s shares identical 230-key schema with Agnes" % id)
+		_check(ks == ref_keys, "%s shares identical key schema with Agnes" % id)
 
 	var all_string_keys: Dictionary = BATCH5_SLOTS.duplicate()
 	for k in BATCH6_EVENT_SLOTS:
 		all_string_keys[k] = BATCH6_EVENT_SLOTS[k]
 	for k in BATCH7_SLOTS:
 		all_string_keys[k] = BATCH7_SLOTS[k]
+	# The daytime-whereabouts defence (DIALOGUE_DESIGN 8.1). The private pointed line is left
+	# out: Greta and Odette share the generic one there.
+	# {Place}/{When} are the capitalised forms some voices start a sentence with; the same
+	# value here, so the line keeps it whichever form the voice uses.
+	var day_slots: Dictionary = {"place": "Gallows Hill", "Place": "Gallows Hill", "when": "at noon", "When": "at noon"}
+	all_string_keys["defence_day_others"] = day_slots.merged({"others": "Agnes and Hollis"})
+	all_string_keys["defence_day_alone"] = day_slots.duplicate()
+	all_string_keys["defence_day_others_pointed_stand"] = day_slots.merged({"suspect": "Kiran"})
+	# Playtest 23973 (Michael, Nov 17).
+	all_string_keys["present_clashes_moved"] = {"target": "Merrin"}
+	all_string_keys["defence_lying_alone"] = {"source": "Kiran"}
+	all_string_keys["defence_lied"] = {"source": "Kiran"}
+	# Doubting one's own gift (Michael, Nov 17): good and evil say the same line.
+	all_string_keys["doubt_own_gift"] = {}
 	for key in all_string_keys:
 		var slots: Dictionary = all_string_keys[key]
 		var seen: Dictionary = {}
