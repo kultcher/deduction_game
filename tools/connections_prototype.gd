@@ -174,7 +174,9 @@ func _init():
 				explain.append(str(args[i + 1]).split(":")); i += 1
 		i += 1
 	var events: Array = Replay.load_events(args[0])
-	_run(events)
+	if not _run(events):
+		quit(1)  # a log played on the earlier model (LogReplay.new_game printed why)
+		return
 	if out_path != "":
 		var f = FileAccess.open(out_path, FileAccess.WRITE)
 		f.store_string(JSON.stringify({"log": args[0], "thetas": THETAS, "declare": declare, "fades": fades, "cap": cap, "movement_seed": movement_seed, "legacy_seed": legacy_seed,
@@ -185,8 +187,11 @@ func _init():
 
 # ---------------------------------------------------------------- replay
 
-func _run(events: Array) -> void:
+## False for a log played on the earlier model, which the replay won't run.
+func _run(events: Array) -> bool:
 	var g = Replay.new_game(events)
+	if g == null:
+		return false
 	var filed: Dictionary = {}
 	var last_day := -1
 	var diverged := false
@@ -248,6 +253,7 @@ func _run(events: Array) -> void:
 	var votes: Array = Replay.votes(events, g)
 	print("replay: command outputs %s; every vote tally %s" % ["differ somewhere" if diverged else "match the log", "matches the log" if votes[0] == votes[1] else "DIFFERS from the log"])
 	records.append({"kind": "replay", "diverged": diverged, "votes_match": votes[0] == votes[1], "truth": _truth(g)})
+	return true
 
 func _presented(cmd: String, filed: Dictionary) -> int:
 	var words: PackedStringArray = cmd.split(" ", false)
