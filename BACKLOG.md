@@ -581,12 +581,6 @@ Candidates for a unified retuning proposal, not approved changes.
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
 
-- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
-  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
-  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
-  knew because of an answer carried over from case #38. The Workshop could list the answers
-  a new case carries when it's filed. Herald. [open]
-
 - **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
   approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
   sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,

@@ -1161,3 +1161,35 @@ func _first_of(values: Array, candidates: Array) -> String:
 		if v in candidates:
 			return v
 	return ""
+
+
+## Answers a case being filed reuses from an earlier filed case: an answer picked on a card
+## stays on it, so the next case citing that card carries it (playtest 23973: a Dowser
+## answer picked for case #38 rode along into #78). `filed` maps a case number (as a
+## string) to the answers it was filed with. Returns [{card, answer, from}] with `from`
+## the earliest other case filed with the same answer, in card order.
+func carried_answers(answers: Dictionary, filed: Dictionary, number: int) -> Array:
+	var out: Array = []
+	var earlier: Array = filed.keys().filter(func(k): return int(k) != number)
+	earlier.sort_custom(func(a, b): return int(a) < int(b))
+	for card_id in answers:
+		var answer = answers[card_id]
+		if not (answer is Dictionary) or answer.is_empty():
+			continue
+		for k in earlier:
+			if filed[k].get(card_id, {}) == answer:
+				out.append({"card": card_id, "answer": answer, "from": int(k)})
+				break
+	return out
+
+
+## A carried answer in a few words: "Kiran's Dowser reading (Bartholomew)".
+func carried_answer_text(item: Dictionary) -> String:
+	var card: Dictionary = Solver.card_by_id(view, item.card)
+	var src: String = str(card.get("source", ""))
+	var what: String = (C.role_name(card.role) + " reading") if card.get("role", "") != "" else {"alibi": "home alibi", "sighting": "sighting", "claim": "role claim"}.get(card.get("kind", ""), "card")
+	var label: String = ("%s's %s" % [Solver.person_name(view, src), what]) if src != "" else what.capitalize()
+	var answer: Dictionary = item.answer
+	var picked: Array = answer.get("positive", answer.get("slots", []))
+	var names: Array = picked.filter(func(p): return str(p) != "").map(func(p): return Solver.person_name(view, str(p)) + (" (Marked)" if p in answer.get("marked", []) else ""))
+	return label + (" (%s)" % ", ".join(PackedStringArray(names)) if not names.is_empty() else "")
