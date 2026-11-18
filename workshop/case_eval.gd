@@ -734,7 +734,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	var key = hash(key_input)
 	if cache_enabled and _compiled.has(key) and _compiled[key].input == key_input:
 		return _compiled[key]
-	if _compiled.size() > 2048:
+	if _compiled.size() > 4096:
 		_compiled.clear()
 		_cc_handles.clear()
 		_cc_generation += 1
@@ -1377,7 +1377,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array())
 			neutral = _fits_over(view, cc, role_cards, {}, range(nc), w_all)
 		if cache_enabled:
-			if _fits_cache.size() > 2048:
+			if _fits_cache.size() > 4096:
 				_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
@@ -1405,7 +1405,11 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 		return mixed
 	return fits
 
+static var use_cc_reps_handle: bool = true
+
 static func _cc_reps_handle(u_key: String, universe: Array, rep: PackedInt32Array) -> int:
+	if not use_cc_reps_handle:
+		return -1
 	var base_u_handle: int = SolverBackend.get_universe_handle(u_key, universe)
 	var sub_key: String = "cc_reps:%d:%d" % [rep.size(), hash([u_key, rep])]
 	return SolverBackend.get_sub_universe_handle(sub_key, base_u_handle, rep)
@@ -1436,7 +1440,7 @@ static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, perso
 			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array())
 		out = _fits_over(view, cc, cards, personal, open, w_all)
 	if cache_enabled:
-		if _fits_cache.size() > 2048:
+		if _fits_cache.size() > 4096:
 			_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 		_fits_cache[key] = {"ref": ref.duplicate(true), "out": out}
@@ -1454,16 +1458,18 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 	var reps: Array = []
 	var which: Array = []
 	var sub_idx := PackedInt32Array()
-	var full_cc: bool = classes.size() == cc.rep.size()
-	for k_i in range(classes.size()):
+	var n_classes: int = classes.size()
+	var full_cc: bool = n_classes == cc.rep.size()
+	for k_i in range(n_classes):
 		var c: int = int(classes[k_i])
-		reps.append(universe[cc.rep[c]])
+		if cc_reps_handle < 0:
+			reps.append(universe[cc.rep[c]])
 		which.append(c)
 		if full_cc and c != k_i:
 			full_cc = false
 	if not full_cc and cc_reps_handle >= 0:
-		sub_idx.resize(which.size())
-		for k_i in range(which.size()):
+		sub_idx.resize(n_classes)
+		for k_i in range(n_classes):
 			sub_idx[k_i] = int(which[k_i])
 	var live: bool = Domain.live(view)
 	var t: PackedFloat64Array = Solver.Roles.fits_weights(view, reps, cards, knowledge, {}, live, cc_reps_handle, sub_idx)
@@ -1481,14 +1487,15 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		var failed: Array = []
 		var at: PackedInt32Array = PackedInt32Array()
 		var failed_cc_idx := PackedInt32Array()
-		for x in range(reps.size()):
+		for x in range(n_classes):
 			if t[x] == 0.0:
-				failed.append(reps[x])
+				if cc_reps_handle < 0:
+					failed.append(reps[x])
 				at.append(x)
 				if cc_reps_handle >= 0:
 					failed_cc_idx.append(int(which[x]))
 		var sub: PackedByteArray = Solver.Roles.fits_table(view, failed, claims, knowledge, {}, true, cc_reps_handle, failed_cc_idx)
-		declarations.resize(reps.size())
+		declarations.resize(n_classes)
 		declarations.fill(0)
 		for y in range(at.size()):
 			declarations[at[y]] = sub[y]
@@ -1508,7 +1515,7 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			# merely because several claimed Seer results share no exact Red Herring.
 			content = DEFAULT_ERR
 		if content > 0.0 and not relayed_seers.is_empty():
-			var w_rep: Dictionary = reps[x]
+			var w_rep: Dictionary = reps[x] if cc_reps_handle < 0 else universe[cc.rep[which[x]]]
 			var rel_readings: Array = []
 			for rc in relayed_seers:
 				if Solver.source_valid(view, w_rep, rc):

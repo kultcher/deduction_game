@@ -348,6 +348,45 @@ public partial class SolverBridge : RefCounted
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
             headerInts, publicRolesInts, forcedLampIndices, cardInts);
 
+    public static int GetUniverseSize(int handle) =>
+        SolverContext.GetUniverseSize(handle);
+
+    public static int RoleCreateMemo() =>
+        SolverContext.CreateRoleConstraintMemo();
+
+    public static void RoleClearMemos() =>
+        SolverContext.ClearRoleConstraintMemos();
+
+    public static double[] RoleTryLookupMemoByHandle(
+        int memoSlot,
+        int people,
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        bool seer,
+        int mediums,
+        int walkers) =>
+        RoleConstraintsKernel.TryLookupMemo(
+            memoSlot,
+            people,
+            SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
+            seer,
+            mediums,
+            walkers);
+
+    public static double[] RoleFitsWeightsMemoByHandle(
+        int memoSlot,
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        int[] headerInts,
+        int[] publicRolesInts,
+        int[] forcedLampIndices,
+        int[] cardInts) =>
+        RoleConstraintsKernel.FitsWeights(
+            SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
+            headerInts, publicRolesInts, forcedLampIndices, cardInts, memoSlot);
+
     public static byte[] RoleFitsTable(
         long[] packedWorlds,
         int[] headerInts,

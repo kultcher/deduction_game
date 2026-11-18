@@ -952,7 +952,7 @@ static func _connections_drop(ctx: Dictionary, cid: String, pid: String, pr0: Di
 	var memo: Dictionary = ctx.get("cx_memo", {})
 	if not memo.has(cid):
 		var Cn = load("res://workshop/connections.gd")
-		memo[cid] = Cn.refresh(cx.view, cx.value, cx.weigher, cx.held.filter(func(id): return id != cid), cx.state).get("posterior", {})
+		memo[cid] = Cn.drop_card_posterior(cx.view, cx.value, cx.weigher, cx.held, cx.state, cx.result, cid)
 		ctx["cx_memo"] = memo
 	var full_p: float = float(cx.result.posterior.get(pid, -1.0))
 	var wo_p: float = float(memo[cid].get(pid, -1.0))
