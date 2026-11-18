@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
+### Current baseline (Nov 18, "it's another of us"): `baseline_c3b0f34`
+
+`tools/golden/baseline_c3b0f34/` is the capture from `claude/beadle-group-defence` at
+`c3b0f34` (main `80f7605`): a nominee named by a reading over a group says it's one of the
+others (89077 finding 1), rather than calling the reading a lie.
+- **Divergence from `baseline_44073d9`:** 54875 from record 42 (day 1): Constance answers
+  Jory's group reading with "look at Odette" instead of "Jory is lying". 692 from record 127
+  (day 2): Merrin names Nisha and Hollis, and Nisha names Hollis, instead of "Fenwick lied" /
+  "Fenwick made it up". The defence is now speech, not a challenge, so listeners' owned
+  entries and some beliefs differ after it. 42, 900 and 98933 identical.
+- **Outcomes unchanged:** same hangings, votes and winners. 54875 good day 2; 692 reaches
+  day 4 with no winner.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, own home nights in the movement model): `baseline_44073d9`
 
 `tools/golden/baseline_44073d9/` is the capture from `claude/own-night-knowledge` (#228) at
 `44073d9` (main `65a41b4` merged in): a good listener's known home nights reach its movement
