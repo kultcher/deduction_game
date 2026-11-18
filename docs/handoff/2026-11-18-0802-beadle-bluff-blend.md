@@ -21,7 +21,7 @@ from the approved `Tuning.Evil.BLUFF_BLEND_PROB = 0.35`.
 | Rumormonger | Always pairs a teammate with a harmless secret | About a third of the time, names two good townsfolk as possibly Delusional; otherwise as before |
 | Clerk | Always vouches for a teammate | A Demon or Scion, about a third of the time, turns its first-night reading into a "confirmation" of the earliest good public claimer, if the reading is still untold that morning. Its timing is unchanged: nothing waits for a claim, and a reading already told stays the cover. A Minion always covers |
 | Martyr | Always gives its life for a teammate | Gives it for the good soul under the most public heat, the likeliest to hang. If they hang, it says they must have been evil (the reading a true Martyr gets when its chosen hangs and it lives) |
-| Gravedigger | A hanged teammate: always confirms its false claim | A Demon or Scion names the teammate's true role about two times in three on its first reading, and about one in three after. A Minion does so about one in three, or two in three when badly exposed. A hanged good soul: blending confirms their claim; disruption keeps the old frame roll |
+| Gravedigger | A hanged teammate: always confirms its false claim | A Demon or Scion names the teammate's true role about two times in three on its first reading, and about one in three after. A Minion does so about one in three, or two in three when badly exposed. A hanged good soul is read as before (the tuned frame roll) |
 | Executor | A dead teammate: always confirms its false claim | The same rule; its one result is always its first |
 | Confessor | Vouches for a teammate 60% of the time | A Minion vouches for its Demon. A Demon or Scion vouches for the good soul the town trusts most, about two times in three, or else for a teammate. Never the same soul twice |
 
@@ -79,7 +79,10 @@ one still slips.
   - Gravedigger, a hanged teammate's true role: a Minion 16 of 60, the Demon 37 of 60.
   - Confessor: a Minion vouches for its Demon, not twice running; the Demon vouches for a
     good soul 27 of 40 times.
-- **In play:** 25 passive 10-NPC games, seeds 3000-3024, on main 9943120 and on this branch.
+- **In play:** 25 passive 10-NPC games, seeds 3000-3024, on main 9943120 and on this branch,
+  measured before the Gravedigger's blend was narrowed to a dead teammate. CI caught that one:
+  a hanged good soul's frame rate had dropped from 91% to 58%. The two "read the hanged X"
+  readings in the table no longer happen; those hangings get the frame roll, as on main.
   12 games changed.
   - **Winners:** main 13 evil and 12 good; here 11 evil and 14 good.
     - **3011 (evil to good):** a Minion Gravedigger's frame of a hanged good soul as the
@@ -104,6 +107,12 @@ one still slips.
 
 - **Golden:** moves on four of the five seeds, from record 0 (the night-0 rolls shift). Two
   captures were identical. Outcomes and the re-baseline are in the PR.
+- **Tests updated for the new behaviour:**
+  - `test_gravedigger_bluff`: a hanged teammate is covered or named true, by evil type,
+    instead of always covered.
+  - `test_peer_role_gossip`: finds its deal among a few seeds, since a fixed seed's deal moved.
+  - `test_held_signals`: skips a teller already above the floor, which this deal now produces
+    on seed 102.
 
 ## Proposed for the backlog
 
