@@ -139,7 +139,7 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
 
 ### Evidence, cases and the judge (Quill unless noted)
 - ~~**Say what a card is offered for**~~ Settled Nov 18: covered by premise centring B.
-- ~~**Withdraw or revise a case**~~ Decided and built Nov 18 (Quill #262, Herald #267); the "must not score below" rule waits on Michael.
+- ~~**Withdraw or revise a case**~~ Decided and built Nov 18 (Quill #262, Herald #267). The "must not score below" rule became a warning instead ("This weakens your previous case"); its detection is built (Quill #275).
   Pairs with the wrong-"lying"-call work and "poisoned, not lying".
 - **Quiet-night evidence argued by the player** (protection + quiet night + sighting).
 - **Misled versus lying strength** at equal weight.
