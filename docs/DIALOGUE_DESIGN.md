@@ -22,6 +22,8 @@ This is the **creative and behavioral specification** for dialogue. It does not 
 
 **Do not couple a character's voice to guilt, role, hidden knowledge, or an outcome the simulation has not approved.** A good and evil version of the same character should be able to say the same permitted words with the same voice.
 
+**Who approves which wording (Michael, Nov 18).** Player-facing wording is Michael's: Herald drafts, recommends, and builds what he picks. Debug-only text needs no approval. That covers the Test juror readout and other developer-facing readouts, dev logs and probe output. It only has to get the idea across; Herald (or the lead who owns it) writes it and says so in the PR.
+
 ## 2. Non-negotiable design principles
 
 1. **Simulation-owned meaning.** The game decides whether to disclose, refuse, lie, confess, accuse, retract, nominate, or express doubt. Dialogue does not make those decisions.

@@ -660,7 +660,7 @@ func _file() -> int:
 		files[board.selected] = number
 		var originals: Array = Live.supports(g, value).numbers
 		status.text = "Filed / updated case #%d with originals %s. %d disconnected evidence cards are scratch work. Nobody's beliefs change until presentation." % [number, str(originals), board.nodes.values().filter(func(n): return n.kind == "evidence" and n.card not in value.cards).size()]
-		var carried: Array = board.carried_answers(value.get("answers", {}), filed_answers, number)
+		var carried: Array = board.carried_answers(value.get("answers", {}), filed_answers, revisions(g, number))
 		filed_answers[str(number)] = value.get("answers", {}).duplicate(true)
 		_carried_note = carried_note(carried) if not carried.is_empty() else ""
 		if _carried_note != "":
@@ -671,12 +671,22 @@ func _file() -> int:
 		status.text = g.last_error
 	return number
 
-## The filing note for answers a case reuses from an earlier case (draft wording, for Michael).
+## The filing note for answers a case reuses from an earlier case (Michael's wording, Nov 18).
 func carried_note(carried: Array) -> String:
-	var parts: Array = carried.map(func(c): return "%s, picked for case #%d" % [board.carried_answer_text(c), c.from])
+	var parts: Array = carried.map(func(c): return board.carried_answer_text(c))
 	return "This case keeps your earlier %s: %s. Clear %s on the card if this case shouldn't use %s." % [
 		"answer" if carried.size() == 1 else "answers", "; ".join(PackedStringArray(parts)),
 		"it" if carried.size() == 1 else "them", "it" if carried.size() == 1 else "them"]
+
+## A filed case and every earlier revision of it (Live.file links them by "revises"):
+## refiling the same case isn't carrying answers from another one.
+static func revisions(game, number: int) -> Array:
+	var out: Array = []
+	var n: int = number
+	while n > 0 and n <= game.board.size() and n not in out:
+		out.append(n)
+		n = int(game.board[n - 1].get("revises", 0))
+	return out
 
 func _preview_effectiveness() -> void:
 	if board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].conclusion.is_empty():
