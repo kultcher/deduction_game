@@ -795,8 +795,7 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
   memory drops when the team switches scapegoat. It's another preference at the better-lie
   choice point ("consistent with my earlier readings"). One or two new tuning constants
-  are approved. Owner Beadle. **[decided]** Built (Nov 18, `claude/beadle-frame-memory`):
-  `FRAME_MEMORY_BASE` 0.2 + `FRAME_MEMORY_TRAITS` 0.7 x the mean of Insight and Confidence.
+  are approved. Owner Beadle. **[decided]**
 - **One pass over every bluffer** for the "too clean when an ally is involved" tell that
   gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
   guidelines: within about 1 of the truth, the group size setting the room). For

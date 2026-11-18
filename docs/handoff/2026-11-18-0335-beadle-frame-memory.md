@@ -1,6 +1,6 @@
 # Beadle: a bluffer's frame memory
 
-- **Base:** main `3d1bbea`. **Status:** ready for review. **Next actor:** Bailiff.
+- **Base:** main `3d1bbea`. **Status:** ready for review. **Next actor:** Bailiff. BACKLOG is left alone while Vicar restructures it; the item is built.
 - **The item:** BACKLOG "A bluffer's frame memory" (triage 6; Michael, Nov 17: yes, scaled by
   Insight and/or Confidence; one or two new constants approved).
 
