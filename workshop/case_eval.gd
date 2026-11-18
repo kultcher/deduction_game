@@ -694,6 +694,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(case_data.get("reading_challenges", {}).keys())
 	if not view.get("regular_haunts", {}).is_empty():
 		key_input.append(view.regular_haunts)  # traces and presence read the listener's regular knowledge
+	if not view.get("own_home", {}).get("nights", {}).is_empty():
+		key_input.append(view.own_home)  # the movement model reads the listener's known home nights
 	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
 		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
 		if cards.is_empty() and not DayPresence.bare_reads_view:
