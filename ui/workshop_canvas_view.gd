@@ -455,9 +455,15 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
+		# Empty space: left-drag pans, shift+left-drag draws a selection box (Michael, Nov 17).
 		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "":
-			box_from = event.position
-			box_to = event.position
+			if event.shift_pressed:
+				box_from = event.position
+				box_to = event.position
+			else:
+				group = []
+				panning = true
+			queue_redraw()
 			accept_event()
 			return
 		if event.button_index == MOUSE_BUTTON_LEFT and not (chosen in group):
