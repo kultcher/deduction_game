@@ -26,8 +26,10 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	# These checks compare the doubt a heard argument brings with none at all; the standing
-	# Delusional self-doubt on one's own readings (test_delusional_self_doubt) is off here.
+	# Delusional and poison self-doubts on one's own readings (test_delusional_self_doubt,
+	# test_poison_self_doubt) are off here.
 	SourceDoubt.delusional_self_doubt = false
+	SourceDoubt.poison_self_doubt = false
 	for role in ["seer", "archivist", "gravedigger"]:
 		CaseEval.doubted_role_check = false
 		var before: Dictionary = _one(role)

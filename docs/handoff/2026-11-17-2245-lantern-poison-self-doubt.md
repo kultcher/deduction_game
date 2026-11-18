@@ -30,3 +30,17 @@
   to 90% for Agnes, on an 8% doubt). Weak contradicting evidence barely moves one. Quill's
   measurement: big moves go towards and away from the truth about equally. A proportional pin
   was tried (18b836d) and reverted on his decision.
+- **With #216 merged in (Nov 18):**
+  - **Small call made on Michael's behalf:** where a listener's own night carries both the
+    poison chance and the Delusional self-doubt, they combine as independent chances,
+    1 − (1 − poison)(1 − Delusional), as Michael set for the Night Watch's broken chance.
+    Taking the larger alone would undercount a gift that can fail either way. With a 5%
+    poison chance and the 10% Delusional doubt, an own reading is doubted 14.5%.
+  - `test_poison_self_doubt` (10 checks) runs its poison-only checks with the Delusional
+    doubt off, then checks the combination.
+  - `test_role_check_doubt` pins the poison self-doubt off as well as the Delusional one:
+    it compares a heard argument's doubt with none at all.
+  - `test_own_night_knowledge`: the relay check is now in log-odds (at least what 15 points
+    from even is). The fixture finder lands on seed 100031 with poison self-doubt on, where
+    the relayer is already at 97% without the relay. On the earlier seed 100055 the relay
+    lifts the relayer 74% → 99% with poison self-doubt on or off.
