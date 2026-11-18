@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a "taken together" reason measured in the belief model): `baseline_58dac68`
+### Current baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
+
+`tools/golden/baseline_490cdcf/` is the capture from `claude/delusional-self-doubt-2` (#216) at
+`490cdcf` (main `f23566a` merged in): with Delusional on the script, a good listener that
+could hold it gives each night of its own readings a small honest doubt
+(`DELUSIONAL_SELF_DOUBT`, 10%), so its own gift's word softens a little, never as a charge
+of lying.
+- **Divergence from `baseline_58dac68`:** beliefs from the first record on every seed (the
+  first day's own readings carry the doubt: a Lamplighter's, Night Watch's, Clerk's,
+  Surveyor's or Seer's reading weighs about a tenth less to its holder).
+- **Outcomes:** 42, 54875, 692 and 900 unchanged (42 good day 3; 54875 good day 2; 692 and 900
+  reach day 4 with no winner, the same executions). **98933 changes:** the town no longer
+  hangs Isolde (the Revenant, evil) on day 3; all five day-3 nominations fail, Nisha's of the
+  Demon Odette at 3 of the 5 votes needed. It still reaches day 4 with no winner. Record
+  counts are the same except 98933 (386, was 414).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a "taken together" reason measured in the belief model): `baseline_58dac68`
 
 `tools/golden/baseline_58dac68/` is the capture from `claude/joint-reasons-in-belief-model` at
 `58dac68` (main `80f7605` merged in): reason attribution weighs a joint ("taken together")

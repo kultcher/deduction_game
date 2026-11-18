@@ -490,6 +490,19 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
+- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
+  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
+  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
+  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
+  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
+  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
+  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
+  Owner Herald. [decided]
+  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
+  secrets have one now. Still to do: the Workshop canvas's evidence cards
+  (`ui/workshop_canvas_view.gd`), which print the full sentence, and a pass over the
+  gift readings' short forms (each role's `short_text`, with their leads).
+
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
@@ -847,6 +860,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   (the world prior gives how likely that is). Quill builds the role check's "self" mode
   first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
   that PR moves golden. **[decided]**
+  **Built (Lantern, #216, Nov 17):** as an honest 10% doubt on each night of the listener's
+  own readings (`DELUSIONAL_SELF_DOUBT`), through the same doubt map as anyone else's
+  readings, rather than the role-fit mix: it reaches both the role check and the readings'
+  weight (Seneschal's call, Nov 17; Quill's #214 keeps the role check from charging it
+  twice). A gift the deal never gives the secret (Chronicler, Rumormonger) rules it out.
+  Measured on 37 good listeners (13 seeds, 7 NPCs, day 3): a typical own reading gives up
+  about 8% of its lean (median; up to 8 points). Clerk, Seer and Archivist readings soften
+  only through their weight, Dowser, Surveyor and Warden readings only through the role
+  check. It doesn't raise a listener's belief that it is the Delusional one.
 - **A listener's doubt that its own reading was poisoned** (Quill and Lantern, Nov 17;
   Michael, Nov 17: approved as proposed, no new number and no confidence dial). An NPC's own
   reading is near-certain today, so a clash with other evidence always blames the other side.
