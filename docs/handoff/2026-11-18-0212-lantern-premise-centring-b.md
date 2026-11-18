@@ -45,9 +45,11 @@
   as a bystander and the order mattered. Stored cases now carry `targets` (every argued
   person; `Connections.case_targets`, with a nomination's nominee as its only target), and
   both the brought map and the case centring use the full list.
-- **Re-baselined (Nov 18):** main `363da4b` merged in (conflicts in `test_connections_cases` pins
-  and `docs/belief_model.md` sections kept both sides). The capture on `6640a9b` is identical to
-  the two earlier captures on `9e7558a`; committed as `tools/golden/baseline_6640a9b`, set in
-  `ci.yml`. Against `baseline_45b7506`: 42, 692, 900 and 98933 diverge on day 1 or 2; 54875 is
-  identical; executions and winners are unchanged, but on 692 Bart rather than Nisha nominates
-  Constance on day 3. Affected suites 5 of 5 on `6640a9b`.
+- **Re-baselined (Nov 18):**
+  - Main `2430ea5` (#263) is merged in. The conflicts were only in `ci.yml` and `golden_baseline.md`.
+  - Two captures on `a3fd022` were identical. They're committed as `tools/golden/baseline_a3fd022`, set in
+    `ci.yml`.
+  - Against `baseline_1dd16d5`, 42, 692, 900 and 98933 diverge on day 1 or 2, and 54875 is identical.
+  - Executions and winners are unchanged. On 692, Bart rather than Nisha nominates Constance on day 3.
+  - `test_relay_bluff` passes 4 of 4. The premise-centring, premise-step-1, connections-cases and
+    connections-why suites pass 4 of 4.
