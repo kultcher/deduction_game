@@ -41,3 +41,10 @@
   test_meeting_m2c, test_meeting_m2d, test_defence_repeats.
 
 Claude-Beadle
+
+## Also in this PR: two test fixes (Michael, Nov 18, via Seneschal; zero drift)
+- `test_playtest_13910_dialogue` `_ask_why_free`: the "checking costs nothing" check read a
+  counter nothing had touched. It now asks "why" in a real conversation: a dead target's
+  hint costs no question, and a live hint costs one.
+- `test_npc_behaviour_1110`: the check pinning `ONGOING_INFO_EARLY_CLAIM == -0.4` is gone, so
+  tuning that value can't break the suite.
