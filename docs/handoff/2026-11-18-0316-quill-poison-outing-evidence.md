@@ -57,5 +57,9 @@
   `test_workshop_reading_challenges`, `test_warden_challenge`, `test_premise_step2`,
   `test_premise_step3`, `test_connections_cases`, `test_social_credibility`,
   `test_workshop_regressions`, `test_workshop_live_activity`, `test_warden_quiet_route`.
+- **Also (Seneschal's small call, Nov 18):** `test_mechanics_sightings` now pins BACKLOG
+  "Conversation sightings should also cover location sightings" in both orders. A same-phase
+  visit and a seen talk give one sighting card per talker plus the talk card, because the
+  sightings share a fact id and merge.
 - **Docs:** DESIGN gains "Poison evidence from night outings" after Source doubt. The BACKLOG
   item comes with Vicar's #236.
