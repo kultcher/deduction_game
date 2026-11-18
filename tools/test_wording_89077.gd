@@ -21,7 +21,11 @@ const SCRIPT: Dictionary = {"demons": ["demon"], "forced": [], "minions": ["brea
 	"secrets": ["delusional", "marked", "muddler", "sleepwalker"], "town": ["archivist", "clerk", "gravedigger", "lamplighter", "magistrate", "medium",
 	"nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]}
 const COUNT_LINE: String = "count of folk abroad that night doesn't square with what we've been told"
-const COUNT_SEEDS: int = 30
+## Games played for the natural check. Since #204 none of them yields a count reason (the
+## constructed case below checks the wording itself), so a few games are enough to guard the
+## play path against "among the likeliest" coming back; 30 cost ~2.5 minutes on every PR
+## (Seneschal, Nov 18).
+const COUNT_SEEDS: int = 3
 var checks = 0
 var fails = 0
 
@@ -139,11 +143,13 @@ func _home_alibi_ordinal() -> void:
 ## printed, not checked, until Herald's constructed case.
 func _count_line() -> void:
 	var found: int = 0
+	var played: int = 0
 	var wrong: Array = []
 	for seed_v in range(1, COUNT_SEEDS + 1):
 		var g = _play(seed_v, 3)
 		if g == null or not g.w.workshop_reasons.is_valid():
 			continue
+		played += 1
 		for p in g.w.living():
 			var m = p.shadow if p.is_evil() and p.shadow != null else p
 			m.workshop_state["reasons_pending"] = true
@@ -162,7 +168,8 @@ func _count_line() -> void:
 			break
 	# #204 (Nov 17): no natural count reason arises once counts are credited only with what they
 	# move; a constructed case follows (Herald).
-	print("count-line reasons found: %d" % found)
+	print("count-line reasons found: %d (in %d games)" % [found, played])
+	check(played > 0, "at least one game reached the third day's meeting, so the play path was exercised (%d)" % played)
 	check(wrong.is_empty(), "...and never as leaving them 'among the likeliest': " + str(wrong))
 
 func _play(seed_v: int, day: int):
