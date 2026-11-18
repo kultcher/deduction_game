@@ -176,6 +176,29 @@ func _init() -> void:
 	var got9: float = float(SourceDoubt.derive(p9, n8.ledger, {}).honest.get("%s:2" % n8.id, 0.0))
 	print("a day-2 evening reading with the Poisoner dead on day 2: doubt %.3f (night 1's chance %.3f, night 2's %.3f)" % [got9, want9, ReadingChallenges.poison_chance(p9.prepared.view, p9.prepared.listener, 2)])
 	check(want9 > 0.0 and absf(got9 - want9) < 1e-9, "an evening reading takes the night before's poison chance, keyed to its own day")
+	# 10. An own Gravedigger reading that names a hanged person as the Poisoner may be the
+	#     poisoned one (Codex on #232): it doesn't rule poison out for itself. Read with the
+	#     listener's own reports counted, the chance would be zero.
+	var p10: Dictionary = plan8.duplicate(true)
+	var hanged: String = str(p10.prepared.view.people[3].id)
+	p10.prepared.view["timeline"] = p10.prepared.view.get("timeline", {}).duplicate(true)
+	if not p10.prepared.view.timeline.has("deaths"):
+		p10.prepared.view.timeline["deaths"] = {}
+	p10.prepared.view.timeline.deaths[hanged] = 1
+	var gd_id: String = ""
+	for c in p10.prepared.view.cards:
+		if str(c.get("source", "")) == n8.id and c.get("kind", "") == "report" and not c.has("relay_source"):
+			c["role"] = "gravedigger"
+			c["data"] = {"executed": hanged, "role": "poisoner"}
+			c["night"] = 2
+			c["observed_at"] = {"day": 2, "phase": "night"}
+			gd_id = str(c.id)
+	p10.prepared.listener["knowledge"] = p10.prepared.listener.get("knowledge", {}).duplicate(true)
+	p10.prepared.listener.knowledge["own_reports"] = [gd_id]
+	var as_known: float = ReadingChallenges.poison_chance(p10.prepared.view, p10.prepared.listener, 2)
+	var got10: float = float(SourceDoubt.derive(p10, n8.ledger, {}).honest.get("%s:2" % n8.id, 0.0))
+	print("own Gravedigger reading naming the hanged %s the Poisoner: doubt %.3f (with own reports as known roles %.3f)" % [hanged, got10, as_known])
+	check(as_known == 0.0 and got10 > 0.0, "an own reading naming a dead Poisoner doesn't rule poison out for itself")
 	_medium_case()
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
