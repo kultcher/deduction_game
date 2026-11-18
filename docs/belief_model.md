@@ -459,7 +459,7 @@ weighs how far the case proves that and under-registers what it implies about th
 the player wins by making the right connections, not by supplying information.
 
 - **What's shaped:** what a card adds when only presented cases brought it, and what a
-  stored case's cards add together. Both count in full on the case's target and at
+  stored case's cards add together. Both count in full on the case's targets (every person it argues about) and at
   `PREMISE_BYSTANDER_SHARE` (1/3, Michael's split of the measured 0.5 and 0.25) on everyone
   else (`Connections.refresh` items, `Connections.cases`).
 - **Which cards** (`SharedLedger.brought_by_premise`, step 1's selection): a card is brought
