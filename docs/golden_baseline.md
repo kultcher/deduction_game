@@ -44,7 +44,34 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, evil's lie reasons in plain words): `baseline_be621cd`
+### Current baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
+
+`tools/golden/baseline_1e6b846/` is the capture from `claude/beadle-group-defence` (#249) at
+`1e6b846` (main `23136f3` merged in): a nominee named by a reading over a group (a Dowser's count,
+a Chronicler's three, a Surveyor's mixed street, a Medium's relay of one) says it's one of the
+others, naming them when there are one or two and none is a teammate.
+- **Divergence from `baseline_23d0330`:** 54875 from record 42 (Hollis's refresh on day 1) and
+  692 from record 39 (Constance's cover on day 1): an owned defence that was a challenge is now
+  the group defence ("rival"). 42, 900 and 98933 are identical.
+- **Outcomes unchanged:** the same executions, nominators, votes and winners on every seed
+  (54875 good on day 2; 692 reaches day 4 with no winner). Record counts are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a relayed sighting's only teller is its relayer): `baseline_23d0330`
+
+`tools/golden/baseline_23d0330/` is the capture from `claude/relayer-in-contest` at `23d0330`
+(main `b65b728` merged in): in the sighter contests a Medium's relay is contested only as the
+relayer's word. The dead person never told it, so it can't have invented it; counting them
+as a teller too let the two-sighter cap drop the relayer, and an evil Medium's invented relay
+was weighed as the dead's honest word.
+- **Divergence from `baseline_be621cd`:** 98933 only, from record 209 (Agnes's refresh on day
+  2, after the good Medium Agnes's relays): beliefs move in the fourth decimal. 42, 54875,
+  692 and 900 are identical.
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed. Record
+  counts are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, evil's lie reasons in plain words): `baseline_be621cd`
 
 `tools/golden/baseline_be621cd/` is the capture from `claude/herald-lie-reasons` (#241) at
 `be621cd` (main `040d115` merged in): evil's "think: lie" lines and fabrication reasons are

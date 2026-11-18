@@ -1656,6 +1656,34 @@ static func _reading_known_to_defender(d, src_id: String, rd: Dictionary, disclo
 ## they (honestly) spent at home. -1 if evil, if any sighting is of a real outing, or if
 ## no sighting names a night. Anyone recorded as out is not framed (a Sleepwalker's walk
 ## can't be told from a gift's duty here, so they keep today's defence).
+## The group a reading says holds evil, for "it's another of us": a count over a group or
+## site, a role found within a group, a Chronicler's three, or a Surveyor's mixed block. Not a pair (its own defence),
+## and not a Night Watch list, whose people were each seen, not grouped.
+static func _reading_group(w, rd: Dictionary) -> Array:
+	var rdef = C.role_def(str(rd.get("role", "")))
+	if rdef == null:
+		return []
+	var dd: Dictionary = rd.get("data", {})
+	if str(rd.get("role", "")) == "medium":
+		# A relay is read as the reading it carries: a relayed Night Watch list stays a list
+		# of sightings (Codex on #249).
+		var it: Dictionary = dd.get("item", {})
+		return _reading_group(w, it.get("entry", {})) if str(it.get("type", "")) == "reading" else []
+	if str(rd.get("role", "")) == "surveyor":
+		# "Not all of them share an alignment": the block's residents (89077's Chapel Hill).
+		if dd.has("block") and not bool(dd.get("same", true)):
+			var blk: String = str(dd["block"])
+			return w.npcs.filter(func(m): return m.home_block == blk).map(func(m): return m.id)
+		return []
+	if str(rd.get("role", "")) != "chronicler" and not (str(rdef.get("shape")) in ["GROUP_COUNT", "ROLE_AT_SITE", "ROLE_IN_GROUP"]):
+		return []
+	var g: Array = Gifts.implicated(rd)
+	# A count as large as the group leaves no one in it innocent, so no "another of us"
+	# (Codex on #249).
+	if dd.has("count") and int(dd.get("count", 0)) >= g.size():
+		return []
+	return g if g.size() >= 2 else []
+
 static func framed_night_of(w, d, out_items: Array) -> int:
 	if d.is_evil():
 		return -1
@@ -1696,7 +1724,8 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 				out.append(it)
 				seen_eids[it["eid"]] = true
 	for f in disclosed_facts:
-		if f.get("kind", "") == "info" and d.id in f.get("subject", []):
+		# Against them by name, or by the group it points at (a Surveyor's block names no one).
+		if f.get("kind", "") == "info" and (d.id in f.get("subject", []) or d.id in _reading_group(w, f)):
 			var src_id: String = str(f.get("source", ""))
 			var sn2 = w.by_id.get(src_id)
 			if sn2 == null or sn2 == d:
@@ -1887,6 +1916,24 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_strengths["pair_other"] = 1.0
 					move_scales["pair_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA
 					defence_scopes["pair_other"] = {"type": "rival", "source": src_id, "other": other}
+			elif d.id in _reading_group(w, rd):
+				# "It's another of us" (89077, Coroner finding 1; Michael, Nov 17): the pair
+				# defence for a reading over a group, naming the others where they're few.
+				var others: Array = _reading_group(w, rd).filter(func(x): return x != d.id and w.by_id.has(x) and w.by_id[x].alive)
+				var pointed: Array = others.filter(func(x): return not Evil.is_teammate(w, d, x)) if d.is_evil() else others
+				var fits_g: bool = not pointed.is_empty() and (d.is_evil() or pointed.any(func(x): return susp(d, x) >= susp(d, src_id)))
+				if fits_g:
+					# Named when there are one or two others (a group of three at most) and none is
+					# a teammate it would be shielding; otherwise "the others" (a small call).
+					if others.size() <= 2 and pointed.size() == others.size():
+						var named_s: String = w._names(pointed)
+						lines.append(say_voiced(d, "defence_group_named", "%s's reading points at one of us. It isn't me, so look at %s." % [src.name, named_s], {"source": src.name, "others": named_s}))
+					else:
+						lines.append(say_voiced(d, "defence_group_others", "%s's reading points at one of several of us. It isn't me, so look among the rest." % src.name, {"source": src.name}))
+					moves.append("group_other")
+					move_strengths["group_other"] = 1.0
+					move_scales["group_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA
+					defence_scopes["group_other"] = {"type": "rival", "source": src_id, "others": pointed}
 			# A good defender who knows the sighting is true (they were out that night, and
 			# aren't a sleepwalker who believes they slept) owns it and gives their account,
 			# rather than calling the watcher a liar (Case 12926: Nisha, the Sexton, out
@@ -1904,7 +1951,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_strengths["dispute_night"] = 1.0
 					move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 					defence_scopes["dispute_night"] = {"type": "plea"}
-			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves) and not ("sleepwalk" in moves):
+			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves) and not ("group_other" in moves) and not ("sleepwalk" in moves):
 				if hinge_at >= 0:
 					lines[hinge_at] = say_voiced(d, "defence_case_hinge_reading_wrong", "Your whole case rests on %s's reading, and that reading is wrong." % src.name, {"source": src.name})
 				if trait_of(d, "confidence") > 0.6:

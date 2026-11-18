@@ -599,6 +599,14 @@ func _dispatch(text: String) -> void:
 		"delete":
 			_narr(delete_deduction(rest.strip_edges().trim_prefix("#").to_int()))
 			return
+		"withdraw", "takeback":
+			var wnum: int = rest.strip_edges().trim_prefix("#").to_int()
+			var werr: String = workshop_withdraw_public(wnum)
+			if werr != "":
+				_err(werr)
+			else:
+				_narr("You stand and take back case #%d." % wnum)
+			return
 		"showhidden":
 			show_hidden = not show_hidden
 			_narr("Hidden cards are now %s." % ("shown" if show_hidden else "hidden"))

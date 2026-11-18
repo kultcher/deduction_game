@@ -68,6 +68,8 @@ static func line_for(c: Dictionary) -> String:
 			history.append("revision of #%d" % c.revises)
 		if int(c.get("superseded_by", 0)) > 0:
 			history.append("superseded by #%d" % c.superseded_by)
+		if c.get("withdrawn", false):
+			history.append("withdrawn on day %d" % int(c.get("withdrawn_day", 0)))
 	var revision = " (" + "; ".join(PackedStringArray(history)) + ")" if not history.is_empty() else ""
 	return "#%d  %s · %s%s%s" % [c["n"], label, c.get("text", ""), revision, also]
 

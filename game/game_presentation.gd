@@ -315,6 +315,29 @@ static func workshop_canvas_retire(g, real, ded: Dictionary) -> void:
 	st.canvas_versions[key] = signature
 
 
+## A revision of a case the town has heard, backed by new evidence, is narrated as one
+## (Michael, Nov 18: the player is silent; the game narrates): "You stand and revise case #N
+## in light of something new: <the new card, in the board's short form>." "" otherwise.
+static func _revision_narration(g, ded: Dictionary) -> String:
+	var CardModel = load("res://game/card_model.gd")
+	var older: int = int(ded.get("revises", 0))
+	while older > 0 and older <= g.board.size() and not g.public_presentations.has(older):
+		older = int(g.board[older - 1].get("revises", 0))
+	if older < 1 or older > g.board.size() or not new_evidence(g.board[older - 1], ded):
+		return ""
+	var before: Array = g.board[older - 1].get("supports", [])
+	var names: Dictionary = {}
+	for n in g.w.npcs:
+		names[n.id] = n.name
+	for x in ded.get("supports", []):
+		if int(x) > 0 and not (x in before) and int(x) <= g.board.size():
+			var short: String = str(CardModel.short_text(g.board[int(x) - 1], names)).strip_edges()
+			if not short.ends_with(".") and not short.ends_with("…"):
+				short += "."
+			return "You stand and revise case #%d in light of something new: %s" % [older, short]
+	return ""
+
+
 ## Does `case` cite an original card that `older` didn't? Then a revision from `older` to
 ## `case` is "changing your mind for a reason", and the old version's claims leave the
 ## track record at once (Michael, Nov 18, option c).
@@ -363,16 +386,16 @@ static func _record_cites(real, number: int) -> bool:
 ## Returns "" or why it can't be withdrawn.
 static func workshop_withdraw_public(g, number: int) -> String:
 	if g.workshop_presenting:
-		return "Wait for the current presentation to finish."
+		return "Wait until the current presentation ends."
 	if number < 1 or number > g.board.size():
-		return "No such case."
+		return "There's no case #%d." % number
 	var card: Dictionary = g.board[number - 1]
 	if card.get("kind", "") != "deduction" or card.get("deleted", false):
-		return "Only a filed case can be taken back."
+		return "Only a case you've filed can be taken back."
 	if int(card.get("superseded_by", 0)) > 0:
-		return "Case #%d was superseded by case #%d; take that one back instead." % [number, int(card.superseded_by)]
+		return "Case #%d was replaced by case #%d. Take that one back instead." % [number, int(card.superseded_by)]
 	if card.get("withdrawn", false):
-		return "Case #%d is already withdrawn." % number
+		return "You've already taken back case #%d." % number
 	card["withdrawn"] = true
 	card["withdrawn_day"] = g.w.day
 	# The case and every earlier version of it: someone who missed a revision still holds
@@ -575,6 +598,9 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	if not _presentation_gate(g, ded, g.w.living(), [], "deduction", "meeting"):
 		return
 	g.presented_today = true
+	var revised: String = _revision_narration(g, ded)
+	if revised != "":
+		g._narr(revised)
 	g._narr("You take the floor: %s" % ded["text"])
 	if g.public_presentations.has(num) and WorkshopPresentation.faded(g, ded):
 		g._ev({"k": "note", "text": "The town has heard this case before. Putting it to them again brings it back to mind."})
