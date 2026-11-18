@@ -507,15 +507,6 @@ Candidates for a unified retuning proposal, not approved changes.
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
 
-- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
-  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
-  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
-  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
-  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
-  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
-  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
-  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided]
-
 ### Performance
 
 The one performance item, "Late-game meeting and presenting cost", is in
