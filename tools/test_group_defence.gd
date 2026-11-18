@@ -24,6 +24,7 @@ func _init() -> void:
 	_surveyor_block()
 	_evil_shields_no_teammate()
 	_trusts_the_others()
+	_not_for_full_counts_or_relayed_lists()
 	print("Group defence: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -147,3 +148,23 @@ func _trusts_the_others() -> void:
 	_reside(g, [d, goods[2], goods[3]], "chapel", src)
 	var r: Dictionary = _defend(g, src, d, "dowser", {"group": [d.id, goods[2].id, goods[3].id], "count": 1, "block": "chapel"}, 0.05)
 	_check(not ("group_other" in r.get("moves", [])), "suspecting the source more than anyone in the group: no 'another of us' (%s)" % str(_said(r)))
+
+
+## Codex on #249: a count as large as the group implicates the nominee too; a Medium's
+## relayed Night Watch list is still a list of sightings.
+func _not_for_full_counts_or_relayed_lists() -> void:
+	var g = _game()
+	var w = g.w
+	var goods: Array = w.living_good()
+	var d = goods[1]
+	var a = goods[2]
+	var b = goods[3]
+	var full: Dictionary = {"role": "dowser", "data": {"group": [d.id, a.id], "count": 2, "block": "chapel"}}
+	_check(not (d.id in MindMeeting._reading_group(w, full)), "two evil among two: no 'another of us'")
+	var part: Dictionary = {"role": "dowser", "data": {"group": [d.id, a.id, b.id], "count": 2, "block": "chapel"}}
+	_check(d.id in MindMeeting._reading_group(w, part), "two evil among three: still a group")
+	var watch: Dictionary = {"role": "nightwatch", "day": 1, "data": {"block": "chapel", "seen": [d.id, a.id]}}
+	var relayed: Dictionary = {"role": "medium", "data": {"item": {"type": "reading", "entry": watch}}}
+	_check(MindMeeting._reading_group(w, relayed).is_empty(), "a Medium's relayed Night Watch list isn't a group")
+	var relayed_count: Dictionary = {"role": "medium", "data": {"item": {"type": "reading", "entry": part}}}
+	_check(d.id in MindMeeting._reading_group(w, relayed_count), "a relayed Dowser count is")

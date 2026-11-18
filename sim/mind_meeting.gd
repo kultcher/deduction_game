@@ -1636,6 +1636,11 @@ static func _reading_group(w, rd: Dictionary) -> Array:
 	if rdef == null:
 		return []
 	var dd: Dictionary = rd.get("data", {})
+	if str(rd.get("role", "")) == "medium":
+		# A relay is read as the reading it carries: a relayed Night Watch list stays a list
+		# of sightings (Codex on #249).
+		var it: Dictionary = dd.get("item", {})
+		return _reading_group(w, it.get("entry", {})) if str(it.get("type", "")) == "reading" else []
 	if str(rd.get("role", "")) == "surveyor":
 		# "Not all of them share an alignment": the block's residents (89077's Chapel Hill).
 		if dd.has("block") and not bool(dd.get("same", true)):
@@ -1645,6 +1650,10 @@ static func _reading_group(w, rd: Dictionary) -> Array:
 	if str(rd.get("role", "")) != "chronicler" and not (str(rdef.get("shape")) in ["GROUP_COUNT", "ROLE_AT_SITE", "ROLE_IN_GROUP"]):
 		return []
 	var g: Array = Gifts.implicated(rd)
+	# A count as large as the group leaves no one in it innocent, so no "another of us"
+	# (Codex on #249).
+	if dd.has("count") and int(dd.get("count", 0)) >= g.size():
+		return []
 	return g if g.size() >= 2 else []
 
 static func framed_night_of(w, d, out_items: Array) -> int:
