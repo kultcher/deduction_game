@@ -44,3 +44,8 @@
     from even is). The fixture finder lands on seed 100031 with poison self-doubt on, where
     the relayer is already at 97% without the relay. On the earlier seed 100055 the relay
     lifts the relayer 74% → 99% with poison self-doubt on or off.
+- **Codex on #232 (fixed):** a Medium's own transmissions carry the dead person as source and
+  the Medium as relay, so the poison block skipped them. Now each night a good Medium heard
+  the dead carries that night's poison chance, keyed as the relay's reliability is (the
+  Delusional pass already did this). `test_poison_self_doubt` (12 checks) covers it; the old
+  code fails the new check.

@@ -269,14 +269,24 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# 1 - (1 - poison)(1 - delusional), as the Night Watch's broken chance (Michael, Nov 18).
 	if poison_self_doubt and self_id != "" and ReadingChallenges.poisoner_possible(view):
 		for c in cards:
-			if str(c.get("kind", "")) != "report" or str(c.get("source", "")) != self_id or c.get("quoted", false) or c.has("relay_source"):
+			if c.get("quoted", false):
 				continue
-			var k_night: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			var k_night: int = -1
+			var p_night: int = -1
+			if str(c.get("relay_source", "")) == self_id:
+				# The listener's own Medium transmission: the dead person is the card's source and
+				# the Medium its relay (LiveAssessment.medium_card). The gift works at night, so
+				# the poison night is the night it heard them, keyed as the relay's reliability is
+				# (Codex on #232; the Delusional pass above does the same).
+				k_night = int(c.get("relay_observed_at", {}).get("day", -1))
+				p_night = k_night
+			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
+				k_night = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+				# The night a Poisoner would have acted: the reading's own, or for a day reading
+				# the night before.
+				p_night = int(c.get("night", -1)) if int(c.get("night", -1)) >= 0 else k_night - 1
 			if k_night < 0:
 				continue
-			# The night a Poisoner would have acted: the reading's own, or for a day reading
-			# the night before.
-			var p_night: int = int(c.get("night", -1)) if int(c.get("night", -1)) >= 0 else k_night - 1
 			var pi: float = ReadingChallenges.poison_chance(view, listener, p_night)
 			if pi <= 0.0:
 				continue

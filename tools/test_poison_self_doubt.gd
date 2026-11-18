@@ -7,6 +7,7 @@
 ## Constructed on seed 692's 7-NPC deal (the Poisoner is on its script), flat beliefs.
 extends SceneTree
 const Tuning = preload("res://sim/tuning.gd")
+const Seeds = preload("res://tools/fixture_seeds.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
@@ -133,5 +134,44 @@ func _init() -> void:
 	check(absf(d_both - want) < 1e-9, "poison and Delusional combine as independent chances (%.4f)" % d_both)
 	var delus_only: Dictionary = _run(_game(OWN, [CLASH], false))
 	check(absf(float(delus_only[2].doubt.get(1, 0.0)) - Tuning.Workshop.DELUSIONAL_SELF_DOUBT) < 1e-9, "with no Poisoner, only the Delusional doubt (%s)" % str(delus_only[2].doubt))
+	_medium_case()
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
+
+
+## A Medium's own transmissions carry the dead person as source and the Medium as relay
+## (LiveAssessment.medium_card): each night it heard them carries the poison chance for that
+## night (Codex on #232). The Delusional doubt is off here, so the doubt is the chance alone.
+func _medium_case() -> void:
+	SourceDoubt.delusional_self_doubt = false
+	var found: Dictionary = Seeds.search(3, func(g):
+		for n in g.w.living_good():
+			if str(n.role) != "medium":
+				continue
+			var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
+			if plan.is_empty() or not ReadingChallenges.poisoner_possible(plan.prepared.view):
+				continue
+			var mine: Array = plan.prepared.view.cards.filter(func(c): return str(c.get("relay_source", "")) == n.id and not c.get("quoted", false))
+			if not mine.is_empty():
+				return {"listener": n.id}
+		return {})
+	check(not found.is_empty(), "found a good Medium holding its own gift results with a Poisoner possible")
+	if found.is_empty():
+		return
+	var g = found.g
+	var n = g.w.by_id[found.listener]
+	var plan: Dictionary = g._workshop_plans[n.id + ":good"]
+	var derived: Dictionary = SourceDoubt.derive(plan, n.ledger, {})
+	var ok: bool = true
+	var seen: Array = []
+	for c in plan.prepared.view.cards:
+		if str(c.get("relay_source", "")) != n.id or c.get("quoted", false):
+			continue
+		var nd: int = int(c.get("relay_observed_at", {}).get("day", -1))
+		if nd < 0 or nd in seen:
+			continue
+		seen.append(nd)
+		var pi: float = ReadingChallenges.poison_chance(plan.prepared.view, plan.prepared.listener, nd)
+		var got: float = float(derived.honest.get("%s:%d" % [n.id, nd], 0.0))
+		ok = ok and got >= pi - 1e-9 and pi > 0.0
+	check(ok and not seen.is_empty(), "seed %d: %s (Medium): each night it heard the dead carries that night's poison chance (%s)" % [int(found.seed), n.id, str(seen)])
