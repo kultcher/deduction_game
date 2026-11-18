@@ -22,3 +22,9 @@
 ## Tests
 
 - `test_dialogue_voices`: 246 keys. Both new keys resolve in every voice with their slot values kept, and each voice's line differs from the others'. `test_dialogue` passes.
+
+## Also in this PR: `test_workshop_ui_1110` no longer depends on the deal (Michael, Nov 18, through Seneschal)
+
+- **The problem:** the suite took its canvas cards from seed 54875's board, and guarded the drag, unlink, delete and undo checks with `if ev_ids.size() >= 2`. A deal with fewer cards would have skipped those checks silently.
+- **The fix:** it now adds three sighting cards by hand, and fails outright (`quit(1)`) if fewer than three reach the canvas. The suite isn't renamed: Steward renames the playtest-named suites on Thursday.
+- **Result:** 9 checks pass.
