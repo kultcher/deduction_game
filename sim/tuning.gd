@@ -823,6 +823,13 @@ class Evil:
 	const FABRICATION_NOTICE_BASE = 0.3
 	const FABRICATION_NOTICE_INSIGHT = 0.6
 	const FAKE_GOSSIP_PROB = 0.6
+	# A bluffer's frame memory (BACKLOG, Michael, Nov 17): a fresh made-up reading that would
+	# clear someone its own earlier ones implicated, under the same scapegoat, is swapped for
+	# one of the rule's readings that doesn't, with chance BASE + TRAITS x the mean of the
+	# liar's Insight and Confidence. A sharp or self-assured liar keeps its story; a dull or
+	# unsure one drifts. Draft numbers.
+	const FRAME_MEMORY_BASE = 0.2
+	const FRAME_MEMORY_TRAITS = 0.7
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4
 	## An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion,
