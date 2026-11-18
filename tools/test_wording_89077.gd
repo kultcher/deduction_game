@@ -7,7 +7,8 @@
 ##   "I stand by that account": they give their own voice's alibi (Michael, Nov 17);
 ## - a Lamplighter's count names nobody, so the reason it gives isn't that it "leaves them
 ##   among the likeliest": "my count of folk abroad that night doesn't square with what
-##   we've been told" (Michael, Nov 17);
+##   we've been told" (Michael, Nov 17); any such reason must use it (since #204 one rarely
+##   arises in play; a constructed case follows);
 ## - a home alibi for an earlier night says "all the second night", not "all on night 2".
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -132,7 +133,9 @@ func _home_alibi_ordinal() -> void:
 	check(bad.is_empty(), "a home alibi for an earlier night names it as an ordinal, in every voice here: " + str(bad))
 
 ## Games on 89077's script to the third day's meeting: every "taken together" reason from a
-## Lamplighter's count uses the count line, never "among the likeliest".
+## Lamplighter's count uses the count line, never "among the likeliest". Since #204 (Nov 17)
+## counts are credited only with what they move, so none may arise here; how many did is
+## printed, not checked, until Herald's constructed case.
 func _count_line() -> void:
 	var found: int = 0
 	var wrong: Array = []
@@ -156,7 +159,9 @@ func _count_line() -> void:
 							wrong.append(why)
 		if found >= 3:
 			break
-	check(found > 0, "a Lamplighter's count is given as a reason in the count line (%d found)" % found)
+	# #204 (Nov 17): no natural count reason arises once counts are credited only with what they
+	# move; a constructed case follows (Herald).
+	print("count-line reasons found: %d" % found)
 	check(wrong.is_empty(), "...and never as leaving them 'among the likeliest': " + str(wrong))
 
 func _play(seed_v: int, day: int):

@@ -97,7 +97,11 @@ static func _challenged(n, response: Dictionary, card: Dictionary) -> Dictionary
 		if line is Dictionary and line.get("speaker", "") == n.id:
 			# Rephrasing changes delivery only. Keep the approved statement and any
 			# canonical payload/provenance attached to the original speech event.
-			var is_visual: bool = card.get("kind", "") in ["sighting", "vigil"] or (card.get("kind", "") == "info" and card.get("role", "") == "nightwatch")
+			# The "I saw it with my own eyes" opener is for a witness defending their own
+			# sighting. Someone else's sighting of the speaker (the player's vigil, a
+			# neighbour's window) gets the plain opener (playtest 89077, finding 2).
+			var own_sighting: bool = str(card.get("source", "")) == n.id
+			var is_visual: bool = own_sighting and (card.get("kind", "") in ["sighting", "vigil"] or (card.get("kind", "") == "info" and card.get("role", "") == "nightwatch"))
 			var rephrased: Dictionary = line.duplicate(true)
 			rephrased["text"] = voiced(n, "doubted", line["text"], fact_id(card), {"challenged": true, "visual": is_visual})["text"]
 			response["lines"][i] = rephrased

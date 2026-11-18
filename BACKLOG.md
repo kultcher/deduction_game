@@ -243,6 +243,33 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
 ### NPC behaviour
 
+- **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
+  The "it's the other one" defence (`pair_other`, `sim/mind_meeting.gd`) answers only
+  readings that name a two-person pair. Against a reading over a group (a Surveyor's
+  block, a Dowser's count), the nominee falls through to "my gift was turned" or
+  "misled". In 89077, Chapel Hill held only Hollis and Dorian, so Hollis's Surveyor case
+  was really a pair. The fix is a general defence for any group reading: "it's one of
+  the others in it", naming them where the group is small. Michael (Nov 17): approved.
+  Owner Beadle; Herald for the lines. [decided]
+- **Saying "my gift may have been turned".** (Michael, Nov 17) Owner Beadle; Herald for the
+  wording (the per-voice `doubt_own_gift` lines are approved). Both parts use the same
+  line, so the player can't tell them apart by wording.
+  - (a) A good NPC that holds significant doubt about its own readings says so in that
+    pass's dialogue. The doubt comes from the poison self-doubt (Lantern and Quill, being
+    built) or the Delusional self-doubt (#216). Michael's draft: "Something seems off
+    about those readings, I fear something might have turned my gift." This part waits
+    for the poison self-doubt signal.
+  - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
+    the fabrication check detects), uses the same line to explain the discrepancy. It
+    claims its gift was turned, rather than lying further or going silent.
+  - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
+    it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
+    far as they believe the line, rather than going through the challenge path, where a
+    claim with nothing cited does nothing (Quill and Lantern, Nov 17). Said only when a
+    Poisoner or Delusional could be in play. "Significant" should reuse the existing
+    doubt numbers if it can; a new constant goes to Michael.
+  - [decided]
+
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
   (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
   It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
