@@ -50,6 +50,12 @@ func _votes() -> void:
 	_check(not a.npc_trust.has(c.id), "not to one who voted the other way")
 	_check(evil.npc_trust.is_empty(), "an evil voter's own trust doesn't move")
 	_check(not c.npc_trust.has(a.id), "a lone voter on its side gains nothing")
+	# A second ballot the same day adds nothing: a day of agreeing is one agreement.
+	Social.vote_agreement_trust(w, goods[4].id, [a.id, b.id], [])
+	_check(is_equal_approx(a.npc_trust.get(b.id, 0.5), 0.5 + step), "a second agreeing vote the same day adds nothing")
+	w.day += 1
+	Social.vote_agreement_trust(w, goods[4].id, [a.id, b.id], [])
+	_check(is_equal_approx(a.npc_trust.get(b.id, 0.5), 0.5 + 2.0 * step), "the next day's agreement counts again")
 
 func _backing() -> void:
 	var w = _world()

@@ -564,10 +564,16 @@ static func tavern_whispers(w) -> void:
 
 ## Backing a case builds trust (BACKLOG, Michael, Nov 18): a good NPC warms a little to
 ## someone who agrees with it, by the same small step a nominee gives those who vote to spare
-## it (Social.TRUST_VOTED_FOR). Evil NPCs' own trust isn't moved (their shadow copies it).
+## it (Social.TRUST_VOTED_FOR), at most once a day for each ally: a day of agreeing votes is
+## one agreement, not one per ballot. Evil NPCs' own trust isn't moved (their shadow copies it).
 static func agreement_trust(w, l, ally_id: String, why: String) -> void:
 	if l == null or not l.alive or l.is_evil() or ally_id == l.id or not w.by_id.has(ally_id):
 		return
+	var agreed: Dictionary = l.dialogue_memory.get("agreed_on_day", {})
+	if int(agreed.get(ally_id, -1)) == w.day:
+		return
+	agreed[ally_id] = w.day
+	l.dialogue_memory["agreed_on_day"] = agreed
 	l.npc_trust[ally_id] = clampf(l.npc_trust.get(ally_id, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
 	w.dlog.add("npc_trust", l.id, ally_id, {"to": snappedf(l.npc_trust[ally_id], 0.001), "agreement": why}, "%s %s" % [ally_id, why])
 
