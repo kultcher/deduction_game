@@ -259,7 +259,7 @@ static func _fake_medium_item(w, n, dd, s: String) -> Dictionary:
 			opts.append([3.0, {"item": {"type": "reading", "entry": r["entry"], "lie": true}, "why": r["why"], "frames": r["frames"]}])
 	if frame_ok and sg.home_block != dd.home_block:
 		opts.append([1.5, {"item": {"type": "sighting", "who": s, "block": dd.home_block, "night": night, "lie": true},
-			"why": "claimed the late %s saw %s, whom evil meant to hang, out near their cottage on their last night" % [dd.id, s], "frames": true}])
+			"why": "claimed the late %s saw %s, evil's scapegoat, out near their cottage on their last night" % [dd.id, s], "frames": true}])
 	if dd.info_log.any(func(e): return e.get("shared", false)):
 		opts.append([0.8, {"item": {"type": "nothing", "lie": false}, "why": "said the late %s had nothing new to tell" % dd.id, "frames": false}])
 	var said: String = w.stances.get(dd.id, {}).get("target", "")
@@ -768,10 +768,10 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			_mark_fake(out)
 			if re["outcome"] == "held":
 				keep.append({"entry": out, "until": w.day + (0 if day_only else 1)})
-				w.dlog.think(m.id, "lie", "Evil: still can't tell its held-back %s reading safely; keeps holding it." % out.get("role", "?"), {"lie": true})
+				w.dlog.think(m.id, "lie", "Still couldn't tell its held-back %s reading safely, so kept holding it." % C.role_name(str(out.get("role", ""))), {"lie": true})
 				continue
 			m.info_log.append(out)
-			w.dlog.think(m.id, "lie", "Evil: now ready to tell its held-back %s reading (%s)." % [out.get("role", "?"), re["outcome"]], {"lie": true})
+			w.dlog.think(m.id, "lie", "Told its held-back %s reading at last." % C.role_name(str(out.get("role", ""))), {"lie": true})
 			# The reveal lists what was actually told (Steward A2): the released version.
 			w.dlog.add("fake_info", m.id, "", out, "%s (evil) tells its held-back reading: %s [%s]" % [m.name, out.get("text", ""), out.get("why", "")])
 		m.held_fakes = keep
@@ -904,12 +904,12 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 			if watch["data"].get("block", "") == vantage and not seen.is_empty():
 				var who: String = s if s in seen else seen[0]
 				result = {"kind": "saw", "who": who, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": "street"}
-				w.dlog.think(n.id, "lie", "Evil: tells the night-%d sighting of %s from its own fake watch report." % [nd, who], {"lie": true})
+				w.dlog.think(n.id, "lie", "Told of seeing %s %s, from its made-up watch." % [w.by_id[who].name, C.spoken_when(nd, -1)], {"lie": true})
 			cache[key] = result if result != null else false
 		elif s != n.id and w.by_id[s].alive and nd >= 1 and w.chance(Tuning.Evil.FAKE_SIGHTING_INVENT_PROB):
 			var detail = "leaving_home" if (how == "window" and w.by_id[s].home_block == vantage and w.chance(0.5)) else "street"
 			result = {"kind": "saw", "who": s, "loc": "", "block": vantage, "day": nd, "phase": C.NIGHT, "how": how, "detail": detail}
-			w.dlog.think(n.id, "lie", "Evil: invents a night sighting of scapegoat %s on %s (%s)." % [s, vantage, "from their window" if how == "window" else "while out"], {"lie": true})
+			w.dlog.think(n.id, "lie", "Made up seeing %s, evil's scapegoat, on %s at night, %s." % [w.by_id[s].name, C.block_name(vantage), "from their window" if how == "window" else "while out"], {"lie": true})
 		if not cache.has(key):
 			cache[key] = result if result != null else false
 	var r = cache[key]
@@ -933,7 +933,7 @@ static func fake_gossip(w, speaker):
 		if w.scenes[sid]["day"] == w.day - 1:
 			block = w.scenes[sid]["block"]
 	var sg = w.by_id[s]
-	w.dlog.think(speaker.id, "lie", "Evil gossip: spreads a false rumour that %s was out on %s." % [s, block], {"lie": true})
+	w.dlog.think(speaker.id, "lie", "Spread a false rumour that %s was out on %s." % [w.by_id[s].name, C.block_name(block)], {"lie": true})
 	return {"lines": ["You overhear %s telling the room that %s was skulking around %s last night." % [speaker.name, sg.name, C.block_name(block)]],
 		"facts": [{"kind": "sighting", "subject": [s], "block": block, "day": w.day - 1, "phase": C.NIGHT, "source": speaker.id,
 			"text": "Gossip from %s: %s was out on %s on night %d." % [speaker.name, sg.name, C.block_name(block), w.day - 1]}]}

@@ -92,7 +92,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, _mate, asked: Arr
 	var why: String = ""
 	if not (s in seen) and w.day >= 1 and w.by_id[s].home_block == block:
 		seen.append(s)
-		why = "watched the street of the one evil meant to hang, and added a false sighting of %s to the true ones" % s
+		why = "watched the street of evil's scapegoat, and added a false sighting of %s to the true ones" % s
 	else:
 		why = "told of the walkers they knew of on that street, leaving out their fellow evil"
 	plan["fake_watch"][str(w.day)] = block
@@ -107,7 +107,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, _mate, asked: Arr
 func fake_medium_reading(_w, _n, dd, s: String, sg, _d, _goods: Array, _other: Callable, e: Dictionary, _demon_implicated: bool) -> Dictionary:
 	e["data"] = {"block": dd.home_block, "seen": [s]}
 	e["text"] = "I watched %s: I saw %s pass by" % [content().block_name(dd.home_block), sg.name]
-	return {"entry": e, "why": "made up a reading from the late Night Watch %s that saw %s, whom evil meant to hang, on their last watch" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Night Watch %s that saw %s, evil's scapegoat, on their last watch" % [dd.id, s], "frames": true}
 
 
 ## An evil member's made-up Night Watch report for night `nd`, or `{}`.
@@ -141,7 +141,7 @@ func night_duty_alibi(w, n, nd: int, was_out: bool, block: String, mind, block_n
 	if n.is_evil():
 		watch_b = w.evil_plan["fake_watch"][str(nd)]
 		var where: String = n.history.get(w.time_key(nd, 3), "home:" + n.home_block)
-		w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: claims to have watched %s (actually %s)." % [watch_b, where], {"lie": true})
+		w.dlog.think(n.id, "lie", "Claimed to have kept watch on %s, though they were %s." % [content().block_name(watch_b), ("out on " + content().block_name(where.split(":")[1])) if where.begins_with("night:") else "at home"], {"lie": true})
 	return {
 		"handled": true,
 		"line": mind.say_voiced(n, "duty_nightwatch", "Keeping watch over %s, as is my duty." % block_name_fn.call(watch_b), {"block": block_name_fn.call(watch_b)}),
@@ -181,7 +181,7 @@ func override_night_sightings(w, n, nd: int, _reported: Array = []) -> Dictionar
 	for x in watch_story["data"].get("seen", []):
 		if x != n.id and w.by_id.has(x):
 			reported.append({"kind": "saw", "who": x, "loc": "", "block": watch_story["data"]["block"], "day": nd, "phase": 3, "how": "street", "detail": "street"})
-	w.dlog.think(n.id, "lie", "Evil bluffing Night Watch: night-%d sightings match the fake watch report (%s)." % [nd, ", ".join(PackedStringArray(watch_story["data"].get("seen", [])))])
+	w.dlog.think(n.id, "lie", "Told sightings %s to match its made-up watch%s." % [content().spoken_when(nd, -1), "" if reported.is_empty() else " (%s)" % w._names(reported.map(func(r): return r["who"]))])
 	return {"handled": true, "reported": reported}
 
 

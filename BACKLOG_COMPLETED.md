@@ -3,6 +3,18 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 18, 2026 (Claude-Herald, `claude/herald-lie-reasons`)
+
+- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
+  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
+  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
+  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
+  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
+  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
+  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
+  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided] Built Nov 18 with Michael's change: "evil's scapegoat" in place of
+  "whom evil meant to hang", here and in the bluff motives.
+
 ## Built Nov 17, 2026 (Claude-Herald, `claude/herald-map-ui`)
 
 - **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
