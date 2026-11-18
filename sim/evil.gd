@@ -834,7 +834,7 @@ static func _boxed_in_gift_doubt(w, m, entry: Dictionary) -> bool:
 	var role: String = str(entry.get("role", ""))
 	if not m.claim_public or m.claimed_role != role or not m.gift_doubt.is_empty() or not gift_turn_possible(w):
 		return false
-	var why: String = "its %s reading was held back twice running, and every telling left would point at itself or a teammate" % C.role_name(role)
+	var why: String = "it had held back its made-up %s reading twice, and every way of telling it would have turned the town on itself or a fellow evil" % C.role_name(role)
 	m.gift_doubt = {"day": w.day, "role": role, "why": why}
 	w.dlog.think(m.id, "plan", "Evil: boxed in on its %s reading; drops it and will say its gift may have been turned (%s)." % [role, why])
 	w.dlog.add("gift_doubt_planned", m.id, "", entry, "%s (evil, bluffing %s) drops a reading it can't tell safely and will claim its gift was turned [%s]" % [m.name, role, why])
