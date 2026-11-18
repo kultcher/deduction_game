@@ -116,7 +116,9 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	var night = -1
 	if kind in ["sighting", "secret"] and card.get("phase", -1) == C.NIGHT and card.get("source", "") != n.id:
 		night = card.get("day", -1)
-	elif kind == "deduction" and c.get("type", "") in ["lied", "unreliable"]:
+	elif kind == "deduction":
+		# A case resting on night evidence is about that night, whatever it concludes (Michael,
+		# Nov 18: a "suspicious" case built from an alibi or a vigil got a gift refusal).
 		for x in card.get("support_cards", []):
 			if x.get("phase", -1) == C.NIGHT:
 				night = x.get("day", -1)
