@@ -846,6 +846,14 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
     3 minutes, off the fast list.
   - **What:** build each from a fixed deal with no play, as the genuine check is, then add the
     suite to the fast list. Owner Lantern. Michael (Nov 18): yes. **[decided]**
+  - **Built** (Nov 18, `claude/relay-bluff-by-hand`):
+    - Every check in `test_relay_bluff` is a hand-built town on the deals of seeds 692, 900 and
+      42. The suite runs in about 6 s and is on the fast list.
+    - The hand-built towns don't reach #265's bug: two attempts, a crowded sighter contest
+      with and without prior suspicion, gave the same numbers before and after the fix.
+    - So the two searched evil-relayer checks stay as a regression guard,
+      `test_relay_bluff_games`. It runs on main with the full list, not the fast list
+      (Michael, Nov 18).
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
