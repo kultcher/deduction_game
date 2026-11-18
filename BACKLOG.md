@@ -838,6 +838,14 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   the dead never told it and can't have invented it, which also frees the cap's slot. Found
   again on seed 100029 when #216 moved `test_relay_bluff`'s fixture onto it: evil Hollis's
   invented relay of Merrin took Hollis from 0.83 to 0.46. **[done]**
+- **Build `test_relay_bluff`'s evil-relayer and invented-relay checks by hand** (Lantern,
+  Nov 18).
+  - **Why:** the genuine-Medium check has been built by hand since #272, but the other three
+    checks still search seeds for a game that fits. Changes to play keep moving which game they
+    land on (they tripped three times on Nov 18), and the searches keep the suite at about
+    3 minutes, off the fast list.
+  - **What:** build each from a fixed deal with no play, as the genuine check is, then add the
+    suite to the fast list. Owner Lantern. Michael (Nov 18): yes. **[decided]**
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
