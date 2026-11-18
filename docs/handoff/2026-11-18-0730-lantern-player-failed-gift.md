@@ -33,3 +33,11 @@
     A Medium's transmission of it still can be.
   - `test_player_failed_gift` has 10 checks, including a guard that the unchanged call does carry
     a doubt.
+- **Codex on #270 (fixed):** the call's doubt goes in before the Gravedigger and Executor proofs
+  and again after the sincere-teller pass, as #245's "my gift may have been turned" does
+  (`SourceDoubt._player_failed_gift`). So a verdict called poisoned no longer proves at full
+  strength. In the test, a trusted Gravedigger's "the hanged Odette was the Poisoner" puts 0.85
+  doubt on Odette's word uncalled, and none when called poisoned at near-full trust.
+- **`test_connections_cases`** pins the new pass off. It checks case arithmetic on chosen
+  numbers, including "a challenge acts only inside its own case", and option C makes the
+  player's "failed gift" call the one deliberate exception (`docs/belief_model.md`).

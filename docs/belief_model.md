@@ -52,7 +52,9 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
   - They're re-weighed at every refresh, with no accepted or rejected state.
   - Old cases fade (× 0.5 a day) rather than being pushed out by a cap. Presenting a case again restores its weight, never above full.
   - A case overlapping the core merges with it, so one that clashes with the listener's own readings scores low by itself.
-  - A challenge acts only inside its own case.
+  - A challenge acts only inside its own case. The exception (Michael, Nov 18, option C): the
+    player's "failed gift" call also counts as testimony, an honest doubt on that reading
+    everywhere ("Poisoned, not lying" below).
 - **No per-teller bundles:** evil's stories are generated to cohere, so a bundle doesn't catch a liar.
 - **Combining:** each card counts once; a connection adds only its interaction (joint minus the parts). Then one common shift so P(evil) sums to the evil count ("A for sure, then B or C", never four people at 70% in a two-evil town).
 - **The demon-type declaration** is the player's call alone, at a meeting, at most once a day; single-demon scripts start declared.

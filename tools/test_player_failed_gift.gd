@@ -139,6 +139,36 @@ func _init() -> void:
 	check(float(doubts.registrar.get(reader_key, 0.0)) == 0.0, "a call on a Registrar's night-0 register carries no poison doubt (%.3f)" % float(doubts.registrar.get(reader_key, 0.0)))
 	check(float(doubts.original.get(reader_key, 0.0)) > 0.0 and float(doubts.original.get(medium_key, 0.0)) == 0.0, "a call on a relayed reading's original doubts the dead reader, not the Medium")
 	check(float(doubts.transmission.get(medium_key, 0.0)) > 0.0 and float(doubts.transmission.get(reader_key, 0.0)) == 0.0, "a call on its transmission doubts the Medium's night, not the reader")
+	# 4c. A Gravedigger verdict called poisoned proves less (Codex on #270): the doubt goes in
+	#     before the Gravedigger proofs, so a trusted teller's "X was the Poisoner" puts less
+	#     doubt on X's own word than the same verdict uncalled.
+	var p6: Dictionary = plan5.duplicate(true)
+	var hanged: String = str(call5.goods[3].id)
+	var digger: String = str(call5.goods[4].id)
+	for c in p6.prepared.view.cards:
+		if str(c.get("id", "")) == rid:
+			c["source"] = digger
+			c["role"] = "gravedigger"
+			c["data"] = {"executed": hanged, "role": "poisoner"}
+			c["night"] = 1
+			c["observed_at"] = {"day": 1, "phase": "night"}
+	# The hanging on the record, so the verdict is possible (day 1's execution, dead from night 1).
+	p6.prepared.view["timeline"] = p6.prepared.view.get("timeline", {}).duplicate(true)
+	if not p6.prepared.view.timeline.has("executions"):
+		p6.prepared.view.timeline["executions"] = {}
+	p6.prepared.view.timeline.executions["1"] = [hanged]
+	if not p6.prepared.view.timeline.has("deaths"):
+		p6.prepared.view.timeline["deaths"] = {}
+	p6.prepared.view.timeline.deaths[hanged] = 1
+	p6.prepared.listener["npc_trust"] = p6.prepared.listener.get("npc_trust", {}).duplicate()
+	p6.prepared.listener.npc_trust[digger] = 1.0
+	p6.prepared.listener["player_credibility"] = 0.99
+	var called: float = float(SourceDoubt.derive(p6, lis.ledger, {}).pre_eval.get(hanged + ":*", 0.0))
+	SourceDoubt.player_failed_gift = false
+	var uncalled: float = float(SourceDoubt.derive(p6, lis.ledger, {}).pre_eval.get(hanged + ":*", 0.0))
+	SourceDoubt.player_failed_gift = true
+	print("the verdict's doubt on %s's word: %.3f called poisoned, %.3f uncalled" % [hanged, called, uncalled])
+	check(uncalled > 0.0 and called < uncalled, "a Gravedigger verdict called poisoned puts less doubt on its subject than the same verdict uncalled")
 	# 5. How far one call moves a listener (Michael, Nov 18: report it at typical and high
 	#    trust in the player, in game terms): the reader's chance of being evil with the call
 	#    weighed, against the same case with it left out of honest doubt.
