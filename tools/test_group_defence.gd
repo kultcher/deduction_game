@@ -103,7 +103,7 @@ func _unnamed_large_group() -> void:
 	var r: Dictionary = _defend(g, src, d, "dowser", {"group": grp, "count": 1, "block": "chapel"})
 	var said: Array = _said(r)
 	_check("group_other" in r.get("moves", []), "a count over four: still another of us (%s)" % str(said))
-	_check(said.any(func(s): return "among the others" in s) and not said.any(func(s): return goods[2].name in s), "without naming three people (%s)" % str(said))
+	_check(said.any(func(s): return "among the rest" in s) and not said.any(func(s): return goods[2].name in s), "without naming three people (%s)" % str(said))
 
 func _surveyor_block() -> void:
 	var g = _game()

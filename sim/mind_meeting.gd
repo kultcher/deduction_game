@@ -1929,7 +1929,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 						var named_s: String = w._names(pointed)
 						lines.append(say_voiced(d, "defence_group_named", "%s's reading points at one of us. It isn't me, so look at %s." % [src.name, named_s], {"source": src.name, "others": named_s}))
 					else:
-						lines.append(say_voiced(d, "defence_group_others", "%s's reading points at one of several of us. It isn't me, so look among the others." % src.name, {"source": src.name}))
+						lines.append(say_voiced(d, "defence_group_others", "%s's reading points at one of several of us. It isn't me, so look among the rest." % src.name, {"source": src.name}))
 					moves.append("group_other")
 					move_strengths["group_other"] = 1.0
 					move_scales["group_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA

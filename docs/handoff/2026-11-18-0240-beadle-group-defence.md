@@ -20,11 +20,11 @@
 - **A cited group reading reaches the defence** even when it names no one (a Surveyor's
   block): the nomination's info card counts if the nominee is in its group.
 
-## Lines (Herald to voice; Michael to approve)
+## Lines (Michael approved, Nov 18; voiced in Herald's #253)
 - `defence_group_named` ({source}, {others}): "{source}'s reading points at one of us. It
   isn't me, so look at {others}."
 - `defence_group_others` ({source}): "{source}'s reading points at one of several of us. It
-  isn't me, so look among the others."
+  isn't me, so look among the rest."
 
 ## Small calls made on Michael's behalf
 - "Small" means one or two others (a group of three at most), a fixed limit in the code,
