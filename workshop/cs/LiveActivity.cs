@@ -213,6 +213,12 @@ internal static class LiveActivityKernel
         public double ListMixBroken;
         public CompiledMovementFactor ListMixNext;
         public CompiledMovementFactor ListMixAlt;
+        /// <summary>ScoreWorldCore is a likelihood ratio over each branch's own good profiles
+        /// (BaseScore divides by ProfGood), so the broken branch is put on the sound branch's
+        /// scale (Codex on #273), times the chance a broken list says these words: as often as an
+        /// honest one would, from what an outsider could know (the contests' balance). Computed
+        /// in LiveActivity._list_mix.</summary>
+        public double ListMixAltScale = 1.0;
     }
 
     /// <summary>A Warden's guard of a door on a night the Demon killed nobody. In a world where
@@ -1758,13 +1764,14 @@ internal static class LiveActivityKernel
     /// T = 1 .. 2^K - 1: the demon profile of each person; then, per Scion split in order,
     /// the same subsets for its before profiles and then for its after profiles].
     /// </summary>
-    public static void AttachListMix(int factorHandle, int watcher, double broken, int nextHandle, int altHandle)
+    public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, int nextHandle, int altHandle)
     {
         var factor = SolverContext.GetMovementFactor(factorHandle);
         factor.ListMixWatcher = watcher;
         factor.ListMixBroken = broken;
         factor.ListMixNext = SolverContext.GetMovementFactor(nextHandle);
         factor.ListMixAlt = SolverContext.GetMovementFactor(altHandle);
+        factor.ListMixAltScale = altScale;
     }
 
     public static void AttachGuards(int factorHandle, int[] ints, double[] doubles)
@@ -1989,7 +1996,9 @@ internal static class LiveActivityKernel
         if ((world.Evil & (1 << factor.ListMixWatcher)) != 0)
             return sound;
         double b = factor.ListMixBroken;
-        return (1.0 - b) * sound + b * ScoreMixed(world, factor.ListMixAlt);
+        // Both on the sound branch's scale: a mixed factor's score is a ratio over its own
+        // ProfGood, which is its sound branch's.
+        return (1.0 - b) * sound + b * factor.ListMixAltScale * ScoreMixed(world, factor.ListMixAlt);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

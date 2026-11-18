@@ -549,11 +549,47 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	duty.erase("broken_chance")
 	duty["data"] = {"block": list.get("data", {}).get("block", ""), "seen": []}
 	var broken: Dictionary = _list_mix(view, cards.map(func(c): return duty if c.get("id", "") == list.id else c), observations, rest)
+	# (broken_cards below is the same list, for the outsider's scale.)
 	var b: float = clampf(float(list.broken_chance), 0.0, 1.0)
+	# The kernel's scores are ratios over each branch's own good profiles (BaseScore), so the
+	# broken branch goes on the sound branch's scale (Codex on #273): prod good(broken) /
+	# prod good(sound). A broken list then says these words as often as an honest one would,
+	# from what an outsider could know (the sighting contests' balance, without the listener's
+	# own nights): prod outsider good(sound) / prod outsider good(broken). No new number.
+	var broken_cards: Array = cards.map(func(c): return duty if c.get("id", "") == list.id else c)
+	var private_free: Callable = func(cs: Array) -> Array: return cs.filter(func(x): return not x.get("known_self", false))
+	var log_scale: float = _log_good(broken) - _log_good(sound) \
+		+ _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
 	var top: Dictionary = sound.duplicate(false)
-	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "next": sound, "alt": broken,
-		"key": "%s:%s|%s|%s" % [list.id, b, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
+	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "next": sound, "alt": broken,
+		"key": "%s:%s:%s|%s|%s" % [list.id, b, log_scale, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
 	return top
+
+## Sum of log good profiles of a built movement factor (the kernel's BaseScore divisor).
+static func _log_good(factor: Dictionary) -> float:
+	var out: float = 0.0
+	for p in factor.get("profiles", []):
+		out += log(maxf(float(p.good), 1e-30))
+	return out
+
+## The same for a card list's plain profiles (no contests or guards: they don't touch the
+## good column), with the outings it forces.
+static func _log_good_of(view: Dictionary, cards: Array) -> float:
+	var checked: Array = cards.duplicate()
+	var movement: Dictionary = _routes_cs(view, cards, {}, {}, false)
+	for night in movement.nights:
+		for person in movement.nights[night].forced_out:
+			checked.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
+	var ids: Array = view.people.map(func(p): return p.id)
+	var env: Dictionary = _pack_view_env(view, ids)
+	var packed: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, {})
+	var raw: PackedFloat64Array = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
+		DEMON_DETOUR, packed.ints, packed.doubles)
+	var stride: int = 4 if env.has_curse else 3
+	var out: float = 0.0
+	for i in range(ids.size()):
+		out += log(maxf(raw[i * stride], 1e-30))
+	return out
 
 static func _factors_core(view: Dictionary, cards: Array, observations: Array) -> Array:
 	var checked: Array = cards.duplicate()
@@ -1188,7 +1224,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	if not mix.is_empty():
 		var next_h: int = _ensure_factor_handle(mix.next)
 		var alt_h: int = _ensure_factor_handle(mix.alt)
-		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), next_h, alt_h)
+		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), next_h, alt_h)
 	if _factor_handles.size() >= 64:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}
