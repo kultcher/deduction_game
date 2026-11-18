@@ -182,11 +182,10 @@ func run_morning_bluff(w, n) -> bool:
 	plan["executor_bluff_resolved_" + n.id] = true
 	var role: String = ""
 	var why: String = ""
-	# Blending in or disruption (Michael, Nov 18; Evil.blend_chance), as the Gravedigger: its one
-	# result is always its first. Blending reads the dead as an honest Executor would, a fellow
-	# evil's true role or a good soul's own claim; disruption covers or frames, as before.
-	var blend: bool = w.chance(load("res://sim/evil.gd").blend_chance(w, n, true))
-	if ex.is_evil() and blend:
+	# A dead teammate: blending in or disruption (Michael, Nov 18; Evil.blend_chance), as the
+	# Gravedigger; its one result is always its first. Blending names the teammate's true
+	# role; disruption covers its false claim. A dead good soul is read as before.
+	if ex.is_evil() and w.chance(load("res://sim/evil.gd").blend_chance(w, n, true)):
 		role = ex.role
 		why = "named %s, a dead fellow evil, as the %s, to pass as an honest Executor" % [ex.id, content().role_name(role)]
 	elif ex.is_evil():
@@ -194,7 +193,7 @@ func run_morning_bluff(w, n) -> bool:
 		if role == "":
 			role = w.pick(w.case_script.town.filter(func(r): return r != "executor"))
 		why = "covered for %s, a dead fellow evil, as the %s they had claimed" % [ex.id, content().role_name(role)]
-	elif not blend and ex.death_cause == "executed" and w.chance(0.5):
+	elif ex.death_cause == "executed" and w.chance(0.5):
 		var mpool: Array = w.case_script.minions.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
 		role = w.pick(mpool) if not mpool.is_empty() else w.pick(w.case_script.town)
 		why = "named %s, hanged and good, as the %s" % [ex.id, content().role_name(role)]

@@ -252,13 +252,21 @@ func _test_player_hears_second_hand() -> void:
 
 
 func _test_opinion_mentions_second_hand() -> void:
-	var g = _game(7107)
-	var w = g.w
-	var pr: Array = _good_pair(w, ["warden", "martyr", "seer"])
-	var s = pr[0]
-	var l = pr[1]
-	_prime(w, s, l, 0.95)
-	var item = _pick_kind(w, s, l, "role_claim")
+	# The first of a few deals where the speaker would confide its gift (a fixed seed broke
+	# when evil's first-night rolls moved, #269).
+	var w = null
+	var s = null
+	var l = null
+	var item = null
+	for sd in range(7107, 7127):
+		w = _game(sd).w
+		var pr: Array = _good_pair(w, ["warden", "martyr", "seer"])
+		s = pr[0]
+		l = pr[1]
+		_prime(w, s, l, 0.95)
+		item = _pick_kind(w, s, l, "role_claim")
+		if item != null:
+			break
 	if item == null:
 		_check(false, "setup: a claim for the opinion note")
 		return
