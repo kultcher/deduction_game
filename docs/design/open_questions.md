@@ -119,6 +119,20 @@ These are the ones under discussion now, roughly by how much they shape other wo
 - **Evidence:** Beadle's #175 entry; BACKLOG section 5.
 - **Builds:** Beadle.
 
+### 1.8b When evil lies: telling the truth on purpose (Nov 18)
+- **Open:** Michael wants evil smarter about *when* it lies. This is the substance behind
+  BACKLOG's "Evil sometimes tells the truth". Quill measured it: evil's fakes come out true
+  38% of the time, against 45% by chance, so the judge's side already fits today.
+- **Options:**
+  - A, credit first and lie late;
+  - B, lie when it's safe and tell the truth when it's checkable;
+  - C, prefer a true reading that still serves the plan;
+  - D, leave it at the #264 blend lean.
+
+  Vicar's lean: B plus C, with A in reserve.
+- **Evidence:** `docs/design/evil_truth_timing.md`.
+- **Builds:** Beadle (evil's choices) and Quill (the judge's t), after Michael decides.
+
 ### 1.9 Smaller live calls
 | Question | Where | Builds |
 |---|---|---|
