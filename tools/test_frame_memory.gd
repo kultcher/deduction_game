@@ -22,6 +22,7 @@ func _init() -> void:
 	_memory_drops_on_switch()
 	_no_drift_no_change()
 	_memory_from_told()
+	_switch_and_back()
 	print("Frame memory: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -79,3 +80,18 @@ func _memory_from_told() -> void:
 	_check(n.bluff_frame.get("implicated", []) == ["x1", "x2"], "it remembers whom its readings implicated, not whom they cleared (%s)" % str(n.bluff_frame))
 	Evil._remember_frame(n, {"role": "dowser", "data": {"group": ["x4", "x5"], "count": 1}}, "sg2")
 	_check(n.bluff_frame.get("implicated", []) == ["x4", "x5"] and n.bluff_frame.get("sg", "") == "sg2", "a new scapegoat starts it afresh (%s)" % str(n.bluff_frame))
+
+
+## Codex on #255: a switch A -> B -> A with nothing told under B doesn't bring A's memory back.
+func _switch_and_back() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(9503, 10)
+	var w = g.w
+	var n = w.evil_team()[0]
+	Evil._remember_frame(n, {"role": "dowser", "data": {"group": ["x1", "x2"], "count": 1}}, "sgA")
+	Evil._forget_frames(w)
+	check_empty(n)
+
+func check_empty(n) -> void:
+	_check(n.bluff_frame.is_empty(), "a scapegoat change clears every bluffer's memory, told or not (%s)" % str(n.bluff_frame))

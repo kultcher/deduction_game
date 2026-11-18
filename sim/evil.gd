@@ -90,6 +90,7 @@ static func _pick_scapegoat(w, why: String) -> void:
 			best_s = s
 			best = g
 	w.evil_plan["scapegoat"] = best.id
+	_forget_frames(w)
 	w.dlog.think(w.demon_id, "scapegoat", "Evil picks %s as scapegoat (%s)." % [best.id, why])
 
 ## Each morning (from day 2), evil reconsiders its scapegoat: ride the town's suspect
@@ -143,6 +144,7 @@ static func review_scapegoat(w) -> void:
 			best = g.id
 	if best != "" and best != cur:
 		w.evil_plan["scapegoat"] = best
+		_forget_frames(w)
 		w.dlog.think(w.demon_id, "scapegoat", "Evil switches scapegoat %s -> %s (scores %s)." % [cur, best, str(table)], {"scores": table, "from": cur, "to": best})
 	else:
 		w.dlog.think(w.demon_id, "scapegoat", "Evil keeps scapegoat %s (scores %s)." % [cur, str(table)], {"scores": table})
@@ -929,6 +931,12 @@ static func _remember_frame(n, entry: Dictionary, s: String) -> void:
 	for x in Gifts.implicated(entry):
 		if not (x in n.bluff_frame["implicated"]):
 			n.bluff_frame["implicated"].append(x)
+
+## A new scapegoat: every bluffer's frame memory drops, even one that told nothing under the
+## last (Codex on #255: a switch A -> B -> A must not bring the old A memory back).
+static func _forget_frames(w) -> void:
+	for m in w.evil_team():
+		m.bluff_frame = {}
 
 ## Whether a reading clears anyone in `earlier`.
 static func _drifts(e: Dictionary, earlier: Array) -> bool:
