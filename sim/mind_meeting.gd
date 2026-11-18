@@ -668,6 +668,34 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 					apply_info(w, l, n, e, heard_weight(l, n))
 					PsychRole.record_heard(w, l, n.id, pub_fact, is_false_pub, f_why_pub)
 		lines.append_array(info_lines(w, n, shared_this_turn, "town", not lines.is_empty(), "volunteer"))
+		_say_gift_doubt(w, n, lines, facts)
+
+## "My gift may have been turned" (BACKLOG, Michael, Nov 17-18), said once to the town by a
+## public claimant who has it waiting (`n.gift_doubt`): for now only a boxed-in liar
+## (Evil._boxed_in_gift_doubt). It is the teller's own word that its gift may have failed;
+## listeners read it as honest doubt about all of that teller's readings.
+static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
+	var gd: Dictionary = n.gift_doubt
+	if gd.is_empty() or gd.has("said") or not n.claim_public or n.claimed_role != str(gd.get("role", "")):
+		return
+	gd["said"] = w.day
+	var role: String = str(gd["role"])
+	lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
+	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
+	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
+	w.public_event("self_doubt", [n.id], n.id, {"role": role})
+	# Nothing else may be told this turn (the boxed-in liar dropped its reading), so the
+	# listeners take it in now, or at the meeting's next refresh (Codex on #245).
+	for l in w.living():
+		if l != n:
+			_mind().refresh_beliefs(w, l, "heard %s say their gift may have been turned" % n.id)
+	var why: String = str(gd.get("why", ""))
+	if n.is_evil():
+		# The reveal lists it with the other lies, with its reason.
+		# Michael's wording (Nov 18). The full reason stays in the "plan" entry.
+		w.dlog.think(n.id, "lie", "Claimed its gift as the %s might have been turned, to explain away a made-up reading." % C.role_name(role), {"lie": true, "why": why})
+	else:
+		w.dlog.think(n.id, "self_doubt", "Tells the town its %s gift may have been turned (%s)." % [role, why])
 
 ## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
 ## Reuse ordinary public claiming without adding the speaker's reading backlog.

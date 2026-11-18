@@ -278,7 +278,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
     (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
-    twice running; no new number; logged with its reason.
+    twice running; no new number; logged with its reason. **Built** (Nov 18,
+    `claude/beadle-gift-turned-evil`), with the listener side below; (a) still to build.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
     far as they believe the line, rather than going through the challenge path, where a
