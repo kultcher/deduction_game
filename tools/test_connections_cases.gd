@@ -59,7 +59,6 @@ func _init() -> void:
 	_movement_challenge()
 	_challenged_factors()
 	_nominations(900, 7, 3)
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	print("Connections cases: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -360,8 +359,7 @@ func _adds_up(c: Dictionary) -> bool:
 
 
 ## A Seer "yes" on p3 and p4 with a Dowser clearing p4, presented as "p3 is <type>".
-func _seer_case(type: String, on: bool) -> Dictionary:
-	Connections.enabled = on
+func _seer_case(type: String) -> Dictionary:
 	var g = _game()
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
@@ -373,7 +371,7 @@ func _seer_case(type: String, on: bool) -> Dictionary:
 
 
 func _presented() -> void:
-	var s: Dictionary = _seer_case("evil", true)
+	var s: Dictionary = _seer_case("evil")
 	var c: Dictionary = s.proposal.get("connections", {})
 	check(s.filed > 0 and not c.is_empty(), "a filed case presented to a listener is assessed with the model on")
 	if c.is_empty():
@@ -395,24 +393,18 @@ func _presented() -> void:
 	print("NOTE: the Seer's pair with one of the two cleared: together they add %+.3f on the other beyond their own values" % float(entries[0].lean.get(s.p[3].id, 0.0)))
 	check(_adds_up(c), "each chance is the baseline plus every item's lean, the core's and the cases', plus the common shift")
 	check(c.items.any(func(it): return seer_id in it.cards) and c.items.any(func(it): return dowser_id in it.cards), "the cards it brought are held, and count alone as well")
-	# Spillover damping is off; with the model off it is there.
 	check(Shared.premise_shaping(plan, s.n.workshop_state.presentations, s.n.workshop_state.get("withdrawn", {}), 0.5).is_empty(), "no spillover damping: the case is weighed as its own cards")
-	var off: Dictionary = _seer_case("evil", false)
-	var off_plan: Dictionary = off.g._workshop_plans[off.n.id + ":good"]
-	check(not off.proposal.has("connections") and not off_plan.prepared.listener.has("connections") and not off.n.workshop_state.has("connections"), "with the model off, nothing of it is there")
-	check(not Shared.premise_shaping(off_plan, off.n.workshop_state.presentations, off.n.workshop_state.get("withdrawn", {}), 0.5).is_empty(), "and today's damping applies to the same presentation")
 	# A "suspicious" premise halves the case.
-	var hedged: Dictionary = _seer_case("suspicious", true)
+	var hedged: Dictionary = _seer_case("suspicious")
 	var h: Array = hedged.proposal.get("connections", {}).get("cases", {}).get("entries", [])
 	check(h.size() == 1 and is_equal_approx(h[0].weight, entries[0].weight * Tuning.Workshop.SUSPICIOUS_HEARING), "a \"suspicious\" premise halves the case's weight (%.3f)" % (h[0].weight if h.size() == 1 else -1.0))
 	if h.size() == 1:
 		check(absf(float(h[0].lean.get(hedged.p[3].id, 0.0)) - 0.5 * float(entries[0].lean.get(s.p[3].id, 0.0))) < 1e-6, "and so what it adds")
-	Connections.enabled = false
 
 
 ## In a game: the same two cards put to the listener again under another premise.
 func _reuse_in_game() -> void:
-	var s: Dictionary = _seer_case("evil", true)
+	var s: Dictionary = _seer_case("evil")
 	var g = s.g
 	var n = s.n
 	var first: Array = s.proposal.get("connections", {}).get("cases", {}).get("entries", [])
@@ -453,13 +445,12 @@ func _reuse_in_game() -> void:
 	Mind.refresh_beliefs(g.w, n, " (rule off)")
 	check(_proposal(g, n).connections.cases.entries.size() == 3, "with the rule off (the measurement switch) all three count, as before")
 	Connections.reuse_rule = true
-	Connections.enabled = false
 
 
 ## Re-presenting a case moves it after the cases presented since, so the latest presentation
 ## is the one that takes the others' place (Codex on #150).
 func _represent_order() -> void:
-	var s: Dictionary = _seer_case("evil", true)
+	var s: Dictionary = _seer_case("evil")
 	var g = s.g
 	var n = s.n
 	g.w.day += 1
@@ -473,11 +464,10 @@ func _represent_order() -> void:
 	check(keys.back() == str(s.filed), "presenting the first case again moves it last (%s)" % str(keys))
 	check(now.size() == 1 and now[0].key == "case:%d" % s.filed and "case:%d" % other in now[0].replaces, "and it takes the other's place, not the other way round (%s)" % str(now.map(func(e): return e.key)))
 	g.w.day -= 1
-	Connections.enabled = false
 
 
 func _fading_and_repeat() -> void:
-	var s: Dictionary = _seer_case("evil", true)
+	var s: Dictionary = _seer_case("evil")
 	var g = s.g
 	var n = s.n
 	var first: Array = s.proposal.get("connections", {}).get("cases", {}).get("entries", [])
@@ -504,17 +494,11 @@ func _fading_and_repeat() -> void:
 	var gone: Dictionary = _proposal(g, n).get("connections", {})
 	check(gone.cases.entries.is_empty() and gone.cases.lean.is_empty(), "long after, it no longer counts")
 	check(gone.items.any(func(it): return _card_id(g, n, s.seer) in it.cards), "but the cards it brought are still held at their own value")
-	Connections.enabled = false
-	# With the model off a later-day repeat is what it always was.
-	var off: Dictionary = _seer_case("evil", false)
-	off.g.w.day += 1
-	check(not WorkshopPresentation.faded(off.g, off.g.board[off.filed - 1]) and off.g._evaluate_deduction(off.n, off.g.board[off.filed - 1], 1.0, false).get("repeated", false), "with the model off, a later repeat is waved off as before")
 
 
 ## A Seer "yes" on p3 and p4, both cleared by Dowsers, and someone seen out that night;
 ## presented as "p1 is evil", with or without a challenge on the Seer's reading.
 func _challenge_case(mode: String, listener_role: String = "warden") -> Dictionary:
-	Connections.enabled = true
 	var g = _game()
 	var n = g.w.npcs[0]
 	n.role = listener_role
@@ -534,7 +518,6 @@ func _challenge_case(mode: String, listener_role: String = "warden") -> Dictiona
 ## Under a Walker reading, a case made only of movement cards adds nothing for their
 ## meeting, but its challenge is still assessed and puts its floor in (Codex on #151).
 func _movement_challenge() -> void:
-	Connections.enabled = true
 	Connections.force_row = "walker"
 	var g = _game()
 	var n = g.w.npcs[0]
@@ -552,7 +535,6 @@ func _movement_challenge() -> void:
 	check(c.get("row", "") == "walker" and entries.size() == 1, "a case of movement cards under Walker is stored (%s, %d)" % [str(c.get("row", "")), entries.size()])
 	check(c.get("cases", {}).get("floors", []).size() == 1, "and its challenge on the Night Watch reading is assessed (%d floors)" % c.get("cases", {}).get("floors", []).size())
 	Connections.force_row = ""
-	Connections.enabled = false
 
 
 func _challenges() -> void:
@@ -615,14 +597,12 @@ func _challenges() -> void:
 			"the floor under the reader is scaled by the case's weight (at least %.3f)" % floor_value)
 	else:
 		print("NOTE: the lying challenge's agreement is %.2f, under the floor's bar; the floor isn't exercised here" % (float(lr[0].agreement) if lr.size() == 1 else -1.0))
-	Connections.enabled = false
 
 
 ## Codex's review of #146: inside a stored case, a challenged reading is also on the judged
 ## case's reading_challenges, as it is today, so CaseEval leaves it out of the Augur
 ## crossing and the Psychologist corroboration.
 func _challenged_factors() -> void:
-	Connections.enabled = true
 	var g = _game()
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
@@ -641,7 +621,6 @@ func _challenged_factors() -> void:
 	var ids: Array = view.get("cards", []).filter(func(c): return c.id == aug_id or c.get("kind", "") == "location").map(func(c): return c.id)
 	if aug_id == "" or ids.size() < 2:
 		check(false, "the Augur fixture has its reading and a day card (%s, %d cards)" % [aug_id, ids.size()])
-		Connections.enabled = false
 		return
 	var run: Dictionary = Connections.begin(view, {}, listener)
 	var by_id: Dictionary = {}
@@ -676,13 +655,11 @@ func _challenged_factors() -> void:
 	check(queued == want_ids, "storing a nomination case queues a refresh for every listener but the nominator (%d of %d)" % [queued.size(), want_ids.size()])
 	g.w.defer_beliefs = false
 	g.w.pending_beliefs = []
-	Connections.enabled = false
 
 
 # ------------------------------------------------------------ NPC nominators' cases, in play
 
 func _nominations(seed_v: int, npcs: int, day: int) -> void:
-	Connections.enabled = true
 	LiveActivity.cache.clear()
 	Caches.clear_all()
 	var g = Game.new()
@@ -737,4 +714,3 @@ func _nominations(seed_v: int, npcs: int, day: int) -> void:
 	check(not nominated.is_empty() and stored > 0, "%s: NPC nominators' cited cards are kept by the town (%d nominations, %d stored cases)" % [tag, nominated.size(), stored])
 	check(well_formed and not own_kept and not twice, "%s: each has its nominator, target, cards and day; nobody stores its own; one per nominator and target" % tag)
 	check(counted > 0, "%s: some of them count in a refresh (%d)" % [tag, counted])
-	Connections.enabled = false

@@ -11,8 +11,6 @@ const Seeds = preload("res://tools/fixture_seeds.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Caches = preload("res://workshop/caches.gd")
 const DayPresence = preload("res://workshop/day_presence.gd")
-const Connections = preload("res://workshop/connections.gd")
-const Tuning = preload("res://sim/tuning.gd")
 
 var checks = 0
 var fails = 0
@@ -26,7 +24,6 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	# A listener at a day-2 meeting whose view has a silencing, and a day card whose removal
 	# changes what a no-card case says (so a stale compile would show).
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	DayPresence.bare_reads_view = true  # as in play outside the connections judge
 	var found: Dictionary = Seeds.search(2, func(g):
 		for n in g.w.living_good():

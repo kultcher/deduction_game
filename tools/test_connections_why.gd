@@ -41,12 +41,10 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_report()
 	_hedged_and_faded()
-	_off()
 	_log_flag()
 	_masks()
 	_profiling()
 	_pinned_parts()
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	print("Connections why: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -137,8 +135,7 @@ func _proposal(g, n) -> Dictionary:
 ## A Seer "yes" on p3 and p4 with a Dowser clearing p4, filed as "p3 is <type>" and not yet
 ## presented. The listener has already been shown the Dowser's reading by itself ("p4 is
 ## good"), so they hold it and have a refresh to compare with.
-func _filed(type: String, on: bool) -> Dictionary:
-	Connections.enabled = on
+func _filed(type: String) -> Dictionary:
 	var g = _game()
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
@@ -153,13 +150,13 @@ func _filed(type: String, on: bool) -> Dictionary:
 ## Everything the report could touch, to show it changes none of it.
 func _state(g, n) -> Array:
 	return [n.suspicion.duplicate(true), n.workshop_state.duplicate(true), g._workshop_evaluations.duplicate(true).hash(), g.w.rng.state if "rng" in g.w else 0,
-		g.w.dlog.entries.size(), Connections.enabled]
+		g.w.dlog.entries.size()]
 
 
 # ------------------------------------------------------------ the report, model on
 
 func _report() -> void:
-	var s: Dictionary = _filed("evil", true)
+	var s: Dictionary = _filed("evil")
 	var g = s.g
 	var n = s.n
 	var t: String = s.target
@@ -234,11 +231,10 @@ func _report() -> void:
 	var logged: Array = g.w.dlog.entries.filter(func(e): return e.type == "workshop_why")
 	check(logged.size() == 1 and logged[0].data.get("model", "") == "connections" and logged[0].data.has("parts") and str(logged[0].reason).contains("weighed together"),
 		"the dev log's record is the connections one (%s)" % (str(logged[0].reason) if logged.size() == 1 else "none"))
-	Connections.enabled = false
 
 
 func _hedged_and_faded() -> void:
-	var s: Dictionary = _filed("suspicious", true)
+	var s: Dictionary = _filed("suspicious")
 	var g = s.g
 	var n = s.n
 	var was: Dictionary = WorkshopWhy.before(n, g)
@@ -254,56 +250,26 @@ func _hedged_and_faded() -> void:
 		and is_equal_approx(float(later["case"].weight), float(later["case"].trust) * float(later["case"].rate) * Tuning.Workshop.SUSPICIOUS_HEARING),
 		"a day on, the weight shows the fading too (%.3f)" % float(later["case"].weight))
 	check(not later.had_before and later.parts[s.target].before == null and later.text.contains("No earlier refresh was recorded"), "with no \"before\" taken, only the \"after\" side is shown")
-	Connections.enabled = false
 
 
-# ------------------------------------------------------------ model off
-
-func _off() -> void:
-	var s: Dictionary = _filed("evil", false)
-	var g = s.g
-	var n = s.n
-	var was: Dictionary = WorkshopWhy.before(n, g)
-	check(not was.has("connections"), "with the model off, nothing of it is kept beforehand")
-	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false, "meeting")
-	var b: Dictionary = WorkshopWhy.presentation(g, n, g.board[s.filed - 1], "meeting", was)
-	check(b.get("ready", false) and not b.has("model") and b.chain.map(func(x): return x.stage) == ["certain", "face", "heard", "attention", "new", "resistance", "applied"],
-		"with the model off, the report is today's, stage for stage")
-	check(b.text.contains("attention") and not b.text.contains("connections model"), "and so is its text")
-
-
-# ------------------------------------------------------------ the log says the model was on
+# ------------------------------------------------------------ the log says which model it was played on
 
 func _log_flag() -> void:
-	Connections.enabled = true
-	var on = Game.new()
-	on.detailed_logging = false
-	on.new_case(900, 7)
-	var start_on: Dictionary = on.w.dlog.entries.filter(func(e): return e.type == "case_start")[0].data
-	Connections.enabled = false
-	var off = Game.new()
-	off.detailed_logging = false
-	off.new_case(900, 7)
-	var start_off: Dictionary = off.w.dlog.entries.filter(func(e): return e.type == "case_start")[0].data
-	check(start_on.get("connections", false) == true, "a case played with the model on says so in case_start")
-	check(not start_off.has("connections"), "one played with it off says nothing, as before")
-	# A replay tool turns it on from the log.
-	var events: Array = [{"type": "case_start", "seq": 1, "data": start_on}]
-	Replay.new_game(events)
-	check(Connections.enabled, "replaying such a log turns the model on")
-	Connections.enabled = true
-	Replay.new_game([{"type": "case_start", "seq": 1, "data": start_off}])
-	check(not Connections.enabled, "and a log without it (the earlier model, or --legacy-model) replays with it off (Codex on #160)")
-	Replay.model_override = 1
-	Replay.new_game([{"type": "case_start", "seq": 1, "data": start_off}])
-	check(Connections.enabled, "unless a tool says otherwise (replay_log --connections)")
-	Replay.model_override = -1
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(900, 7)
+	var start: Dictionary = g.w.dlog.entries.filter(func(e): return e.type == "case_start")[0].data
+	check(start.get("connections", false) == true, "every case says in case_start that it was played on the connections model")
+	check(Replay.new_game([{"type": "case_start", "seq": 1, "data": start}]) != null, "a replay tool replays such a log")
+	var earlier: Dictionary = start.duplicate()
+	earlier.erase("connections")
+	check(Replay.new_game([{"type": "case_start", "seq": 1, "data": earlier}]) == null, "and stops on a log without it, played on the earlier model (purge phase 3)")
 
 
 # ------------------------------------------------------------ the premise check's kept masks
 
 func _masks() -> void:
-	var s: Dictionary = _filed("evil", true)
+	var s: Dictionary = _filed("evil")
 	var g = s.g
 	var n = s.n
 	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false, "meeting")
@@ -316,16 +282,15 @@ func _masks() -> void:
 	check(cold == warm, "and gives the same answer from kept masks as from fresh ones")
 	Caches.clear_all()
 	check(CaseWhy._mask_cache.is_empty(), "clearing the caches clears them")
-	Connections.enabled = false
 
 
 # ------------------------------------------------------------ profiling records, and changes nothing
 
 func _profiling() -> void:
-	var plain: Dictionary = _filed("evil", true)
+	var plain: Dictionary = _filed("evil")
 	plain.g._evaluate_deduction(plain.n, plain.g.board[plain.filed - 1], 1.0, false, "meeting")
 	var want: Dictionary = _proposal(plain.g, plain.n).connections.posterior.duplicate()
-	var s: Dictionary = _filed("evil", true)
+	var s: Dictionary = _filed("evil")
 	Connections.capture = true
 	Connections.captured = []
 	Profiler.start()
@@ -351,4 +316,3 @@ func _profiling() -> void:
 		if str(k).ends_with("|connections_judgements"):
 			counted += int(profile.counters[k])
 	check(counted == judged.size(), "and counts its judgements (%d)" % counted)
-	Connections.enabled = false

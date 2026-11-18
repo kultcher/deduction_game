@@ -8,8 +8,8 @@ still being shaped) live in role_exploration.md. Items being watched, and knobs 
 only if needed (`[watch]`, `[knob]`), live in [BACKLOG_WATCH.md](BACKLOG_WATCH.md); tabled items are
 in the Tabled section at the bottom.
 
-**State of play (Nov 16):** the connections belief model is on in play
-(`Tuning.Workshop.CONNECTIONS`; design and spec in [docs/belief_model.md](docs/belief_model.md)).
+**State of play (Nov 16):** the connections belief model is on in play, and since purge
+phase 3 (Nov 18) it's the only one (design and spec in [docs/belief_model.md](docs/belief_model.md)).
 The Nov 13 playtest triage is closed: what's left of it is in
 [section 5](#5-from-the-nov-13-playtest-triage-moved-nov-16), and the connections build's
 own open items are in [section 6](#6-the-connections-model-open-items). The full triage

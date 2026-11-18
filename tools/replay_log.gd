@@ -8,8 +8,8 @@
 ## --at S,..  with --why: only before the votes logged at these seqs
 ## --worlds N with --why: how many evil teams to list (default 5)
 ## --json OUT with --why: also write the views as JSONL
-## --connections  replay with the connections belief model on (workshop/connections.gd).
-##            Logs record it from Nov 13 (case_start) and turn it on by themselves.
+## --connections  accepted and ignored: connections is the only belief model since purge
+##            phase 3 (Nov 18). A log played on the earlier model stops (LogReplay.new_game).
 ## --time     print how long each command took (those over 100 ms), and the total
 ## --profile  with --time: under each such command, where the time went (the Workshop
 ##            profiler's spans, slowest first) and how many connections judgements it made
@@ -21,7 +21,6 @@
 extends SceneTree
 const Replay = preload("res://tools/log_replay.gd")
 const Views = preload("res://tools/belief_views.gd")
-const Connections = preload("res://workshop/connections.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 
 func _init():
@@ -40,8 +39,7 @@ func _init():
 			"--why":
 				why = true
 			"--connections":
-				Connections.enabled = true
-				Replay.model_override = 1
+				pass  # the only model now (purge phase 3); kept so old commands still run
 			"--time":
 				timed = true
 			"--profile":
@@ -103,6 +101,8 @@ func _init():
 				_print_profile(report)
 	var run: Dictionary = Replay.replay(events, stop_seq, hooks)
 	var g = run.g
+	if g == null:
+		return
 	if json_out != "":
 		var f = FileAccess.open(json_out, FileAccess.WRITE)
 		for d in dumps:
@@ -112,7 +112,7 @@ func _init():
 	if vt[0] != vt[1]:
 		print("VOTES logged   %s\nVOTES replayed %s" % [str(vt[0]), str(vt[1])])
 	if timed:
-		print("TIME all commands %d ms%s" % [spent[0], " (connections on)" if Connections.enabled else ""])
+		print("TIME all commands %d ms%s" % [spent[0], ""])
 	print("REPLAY done steps=%d diverged=%s votes_match=%s day=%d state=%s" % [run.steps, str(run.diverged), str(vt[0] == vt[1]), g.w.day, g.state])
 	quit()
 

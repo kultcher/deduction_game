@@ -7,8 +7,6 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Connections = preload("res://workshop/connections.gd")
-const Tuning = preload("res://sim/tuning.gd")
 
 const SEEDS_FROM = 100
 const SEEDS_COUNT = 40
@@ -25,7 +23,6 @@ func _check(ok: bool, label: String) -> void:
 		fails += 1
 
 func _init() -> void:
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	var tested := 0
 	for seed_v in range(SEEDS_FROM, SEEDS_FROM + SEEDS_COUNT):
 		tested += _seed(seed_v)

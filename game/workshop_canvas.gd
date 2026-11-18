@@ -385,7 +385,7 @@ const NOTE_REFRESH_MIN: float = 0.01
 static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Meeting = preload("res://game/game_meeting.gd")
-	if not Connections.enabled or value.get("cards", []).is_empty():
+	if value.get("cards", []).is_empty():
 		return {}
 	# A reading challenge changes how the town weighs a case (SharedLedger.prepare), and the
 	# stored-case arithmetic below doesn't carry it: no note rather than a wrong one.

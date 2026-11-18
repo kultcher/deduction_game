@@ -10,7 +10,6 @@ const Tuning = preload("res://sim/tuning.gd")
 const Seeds = preload("res://tools/fixture_seeds.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Connections = preload("res://workshop/connections.gd")
 const Caches = preload("res://workshop/caches.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
@@ -81,7 +80,6 @@ const AGAINST_NISHA = ["odette", "seer", 1, 3, {"pair": ["nisha", "agnes"], "yes
 
 
 func _init() -> void:
-	Connections.enabled = true
 	# Seed 692's script carries Delusional too; the poison-only checks run without that
 	# self-doubt, and section 7 puts the two together.
 	SourceDoubt.delusional_self_doubt = false

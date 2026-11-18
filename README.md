@@ -95,8 +95,8 @@ Options: `--seed N`, `--npcs 7|10` (town size, default 7), `--log-dir DIR` (defa
 `logs/`), `--debug` (unlocks `grimoire` mid-game), `--echo-log` (prints every dev-log
 entry as it happens). Headless runs use the Default script.
 
-**Autoplay bot** (for testing and balance; NPCs use the connections model, and
-`--legacy-model` runs the earlier one for comparison):
+**Autoplay bot** (for testing and balance; NPCs use the connections model, the only belief
+model since purge phase 3):
 
 ```sh
 godot --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 50
