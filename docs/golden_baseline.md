@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
+### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
+
+`tools/golden/baseline_45b7506/` is the capture from `claude/poison-self-doubt` (#232) at
+`45b7506` (main `f947be6` merged in): with a Poisoner possible, each of a good listener's own
+readings carries the chance a Poisoner picked it that night as an honest doubt (combined with
+the Delusional self-doubt as independent chances), and the judge weighs the reading as genuine
+or broken by fit.
+- **Divergence from `baseline_1e6b846`:** beliefs from the first record on every seed (the first
+  day's own readings carry the doubt).
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
+  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner). Record counts are the
+  same except 54875 (201, was 225).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
 
 `tools/golden/baseline_1e6b846/` is the capture from `claude/beadle-group-defence` (#249) at
 `1e6b846` (main `23136f3` merged in): a nominee named by a reading over a group (a Dowser's count,
