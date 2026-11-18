@@ -24,6 +24,7 @@ test_day_presence
 test_daytime_defence_lines
 test_defence_grounds
 test_delusional_reading
+test_delusional_self_doubt
 test_double_claim
 test_evidence_honesty
 test_evil_owned_lie

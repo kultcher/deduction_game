@@ -308,7 +308,11 @@ func _fixes_inside_a_night() -> void:
 		check(watcher_subject.chance < watcher_subject_off.chance, "#135: and holds the sighting less against its subject (%.2f against %.2f without)" % [watcher_subject.chance, watcher_subject_off.chance])
 	var sleepwalker: Dictionary = {} if sleep_case.is_empty() else _chance(sleep_case.g, sleep_case.subject, sleep_case.sighter)
 	check(not sleepwalker.is_empty() and sleepwalker.chance < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied (%.2f; seed %d)" % [sleepwalker.get("chance", -1.0), int(sleep_case.get("seed", -1))])
-	var relay: Dictionary = {} if relay_case.is_empty() else _chance(relay_case.g, relay_case.listener, relay_case.teller)
-	check(not relay.is_empty() and relay.chance >= 0.6, "an evil Medium's invented relay doesn't clear them for its subject (%.2f)" % relay.get("chance", -1.0))
+	# What the relay itself does to its relayer (Seeds.relay_effect: with it held, and left
+	# out), not where the relayer ends up: that depends on the game's other cards, which any
+	# change to play reshuffles (the Delusional self-doubt, Nov 17, moved this game's ending
+	# so the relayer sat at 0.53 although the relay still counted against them).
+	var relay: Dictionary = {} if relay_case.is_empty() else Seeds.relay_effect(relay_case.g, str(relay_case.listener), str(relay_case.teller))
+	check(not relay.is_empty() and float(relay.with) >= float(relay.without) - 0.01, "an evil Medium's invented relay doesn't clear them for its subject (%.2f with it, %.2f without; seed %d)" % [float(relay.get("with", -1.0)), float(relay.get("without", -1.0)), int(relay_case.get("seed", -1))])
 	Connections.force_row = ""
 	Connections.enabled = false
