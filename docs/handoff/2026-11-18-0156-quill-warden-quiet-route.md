@@ -17,14 +17,18 @@
     subject moved by at least `REASON_MIN_ITEM_CONTRIB`, `result.guards` lists {warden, guarded,
     night, saved, report, quiet, shift} for Herald's reason line. `CaseEval`'s compiled key
     carries the switch, as it does the Hexer's.
+- **Michael's decision (Nov 18, via Seneschal):** the listener's doubt of the Warden cuts the
+  route too, not only the report's role check. `CaseEval._route_trusted` gives copies of the
+  Warden reports a `route_trust`: 1 − the listener's honest doubt of the reading
+  (`reading_doubt`), times any challenge that holds against the report or its teller. The
+  route's reliability is scaled by it. Measured on the 7-person test view, d's chance as the
+  subject: 0.60 trusting the Warden, 0.53 at half doubt, 0.44 with no route. Reason
+  attribution's compile reads it the same way.
 - **Small calls made on Michael's behalf:**
   - A guard report without a claimed save counts the same as one with: the quiet is the
     judge's inference either way.
   - At most 3 guards per case, the latest nights first (`QUIET_GUARD_MAX`, a code limit in
     `workshop/`, not a tuning value).
-  - The listener's own doubt of the Warden (the honest map) discounts the report's role check
-    but not this route. The 30% the route leaves open stands in for a poisoned or mistaken
-    Warden. Raised with Seneschal as a possible follow-up.
 - **Measured:**
   - **The seed-4460 juror case** (7 NPCs): a sighting of the Demon on the guarded block weighs
     1.96 alone and 3.31 with the Warden's report. With the route off, the report gives 1.84.
@@ -36,7 +40,7 @@
   - **Autoplay** (seed 1, 10 NPCs, the first 5 of 8 games): the guard never reached the judge.
     The bot's cases don't cite Warden reports, and NPC beliefs didn't hit it in these games.
     So in practice this is the player's argument, as the item intends.
-- **Tests:** new `tools/test_warden_quiet_route` (16 checks), added to the fast list. Also
+- **Tests:** new `tools/test_warden_quiet_route` (20 checks), added to the fast list. Also
   passing: `test_warden_challenge`, `test_demon_types`, `test_workshop_regressions`,
   `test_workshop_live_activity`, `test_evidence_cards`, `test_juror_claims`,
   `test_workshop_remaining`, `test_workshop_integration`, `test_workshop_ui`,

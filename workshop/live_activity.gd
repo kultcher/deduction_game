@@ -564,7 +564,8 @@ const QUIET_GUARD_MAX = 3
 ## kernel mixes the Demon's profile over which guards held (GuardedDemon). Returns
 ## {"items": [{source, target, night, r}], "alt": [the demon profile per subset]}, or {}.
 ## The guards in a card list that the route reads, as ids: {report (card id), source,
-## target, night, saved, r}.
+## target, night, saved, r}. r is scaled by the card's "route_trust", the listener's trust
+## in the reading (CaseEval._route_trusted).
 static func quiet_guard_cards(view: Dictionary, cards: Array) -> Array:
 	var ids: Array = view.people.map(func(p): return p.id)
 	var d_map: Dictionary = view.get("timeline", {}).get("deaths", {})
@@ -593,7 +594,7 @@ static func quiet_guard_cards(view: Dictionary, cards: Array) -> Array:
 		seen[key] = true
 		var others: int = vets.filter(func(v): return v != src and night < int(d_map.get(v, 2147483647))).size()
 		out.append({"report": str(card.get("id", "")), "source": src, "target": tgt, "night": night, "saved": bool(data.get("saved", false)),
-			"r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others)})
+			"r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others) * clampf(float(card.get("route_trust", 1.0)), 0.0, 1.0)})
 	return out
 
 static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed: Dictionary, stride: int) -> Dictionary:

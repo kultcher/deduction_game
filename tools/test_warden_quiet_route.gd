@@ -14,6 +14,7 @@ const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
 
 var _checks: int = 0
 var _fails: int = 0
@@ -107,6 +108,7 @@ func _run() -> void:
 	var off: float = _lean(quiet, [seen, _guard("t")])
 	LiveActivity.quiet_guards_enabled = true
 	_check(is_equal_approx(off, base), "with the switch off, the guard leaves the route alone")
+	_listener_doubt(quiet, seen)
 	_juror()
 	print("Warden quiet route: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails else 0)
@@ -162,3 +164,30 @@ func _node(model, view, pick: Callable) -> String:
 		if nd.kind == "evidence" and pick.call(Solver.card_by_id(view, nd.card)):
 			return id
 	return ""
+
+
+## The listener's doubt of the Warden cuts the route too, not only the report's role check
+## (Michael, Nov 18): its honest doubt of the reading, or a challenge that holds.
+func _listener_doubt(quiet: Dictionary, seen: Dictionary) -> void:
+	var guard: Dictionary = _guard("t")
+	var half: Array = CaseEval._route_trusted([seen, guard], {"reading_doubt": {"guard": 0.5}})
+	var hf: Array = LiveActivity.factors(quiet, half, {})
+	_check(hf[0].has("guards") and is_equal_approx(float(hf[0].guards.items[0].r), Tuning.Roles.WARDEN_SAVE_RELIABILITY * 0.5), "an honest doubt of one half halves the route (%.3f)" % float(hf[0].guards.items[0].r))
+	var none: Array = CaseEval._route_trusted([seen, guard], {"challenge_sources": {"a": 0.0}})
+	_check(is_equal_approx(_lean(quiet, none), _lean(quiet, [seen])), "a challenge that sets the Warden's word aside leaves the route alone")
+	_check(CaseEval._route_trusted([seen, guard], {}) == [seen, guard], "a listener with no doubt reads the cards as they are")
+	# Through the judge: the subject's chance with the guard, with half doubt, and without.
+	var view: Dictionary = quiet.duplicate(true)
+	view.cards = [seen, guard]
+	var value: Dictionary = Solver.empty_case()
+	value.conclusion = {"type": "evil", "target": "d", "at": view.alignment_epoch}
+	value.cards = ["s-d", "guard"]
+	var trusting: Dictionary = CaseEval.evaluate(view, value, {"id": "x", "knowledge": {"good": [], "evil": []}})
+	var doubting: Dictionary = CaseEval.evaluate(view, value, {"id": "x", "knowledge": {"good": [], "evil": []}, "reading_doubt": {"guard": 0.5}})
+	LiveActivity.quiet_guards_enabled = false
+	var bare: Dictionary = CaseEval.evaluate(view, value, {"id": "x", "knowledge": {"good": [], "evil": []}})
+	LiveActivity.quiet_guards_enabled = true
+	var p_t: float = float(trusting.get("people", {}).get("d", {}).get("posterior", -1.0))
+	var p_d: float = float(doubting.get("people", {}).get("d", {}).get("posterior", -1.0))
+	var p_b: float = float(bare.get("people", {}).get("d", {}).get("posterior", -1.0))
+	_check(p_b >= 0.0 and p_t > p_d and p_d > p_b, "the judge: the subject's chance is highest trusting the Warden, lower doubting, lowest without the route (%.3f, %.3f, %.3f)" % [p_t, p_d, p_b])

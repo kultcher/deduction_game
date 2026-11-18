@@ -298,7 +298,9 @@ The judge also reads the quiet as the Demon's route: any Warden guard report on 
 the Demon killed nobody, whether or not it claims a save, places the Demon's walk that
 night at the guarded door in worlds where the Warden and the guarded person are both
 good. It's the same route reasoning as the player's scorched sigil, at the save's
-reliability, divided by 1 + the other living Veteran claimants (`LiveActivity._quiet_guards`).
+reliability, divided by 1 + the other living Veteran claimants (`LiveActivity._quiet_guards`),
+and scaled by the listener's own trust in the reading: its honest doubt of it (a poisoned or
+misled night) and any challenge that holds (`CaseEval._route_trusted`; Michael, Nov 18).
 A sighting near that door then counts towards the Demon, and a sighting elsewhere counts
 against. The Test juror names the guard when it moves the subject by a reason's weight.
 
