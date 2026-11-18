@@ -1,7 +1,7 @@
 ## Learning resources, layer 1 (BACKLOG "Learning resources", [decided: direction]): the
 ## mechanics terms that the text formatter marks with a tooltip, and the tooltips on UI
 ## controls. One registry, so the later field manual (layer 2) reads the same words.
-## DRAFT wording, Nov 18: awaiting Michael's approval (player-facing text is his).
+## Wording approved by Michael, Nov 18.
 extends RefCounted
 
 ## Each term: id, label, aliases (as in TextTerms.register_term) and a tooltip.
@@ -10,7 +10,7 @@ const MECHANICS = [
 	{"id": "on_the_block", "label": "On the Block", "aliases": [{"text": "on the block"}],
 		"tooltip": "On the Block: the person the town will hang at the day's end, unless a later nomination draws more votes. A tie clears the block."},
 	{"id": "vigil", "label": "Vigil", "aliases": [{"text": "Vigil", "case_sensitive": true}, {"text": "vigil", "case_sensitive": true}],
-		"tooltip": "Vigil: you spend the night watching one street. You see its residents leave home, and anyone walking the round of the whole town; not those only passing through. An empty vigil clears that street's residents for the night."},
+		"tooltip": "Vigil: you spend the night watching one block. You see its residents leave home; not those only passing through. An empty vigil means no one on that block left their home by normal means."},
 	{"id": "ward", "label": "Ward", "aliases": [{"text": "Ward", "case_sensitive": true}],
 		"tooltip": "Ward: once per case, you sign a door at night and the Demon cannot kill there. A stopped kill leaves a scorched sigil, which you can show the town."},
 	{"id": "clemency", "label": "Clemency", "aliases": [{"text": "Clemency"}],
@@ -47,7 +47,7 @@ const CONTROLS = [
 	["Speak against them", "One statement per vote: speak against the nominee, citing a card if you like."],
 	["Speak in their defence", "One statement per vote: speak for the nominee, citing a card if you like."],
 	["Invoke Clemency", "Cancel this nomination. Once per case; the one you spare trusts you more."],
-	["Keep vigil on", "Watch one street tonight: you see its residents leave home."],
+	["Keep vigil on", "Watch one block tonight: you see its residents leave home."],
 	["Ward", "Sign a door tonight so the Demon cannot kill there. Once per case."],
 	["Sleep", "Spend the night at home."],
 	["Present a deduction", "Put a filed case to the whole town. Once per meeting."],
