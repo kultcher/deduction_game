@@ -44,17 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_b1d92a0`
+### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
 
-`tools/golden/baseline_b1d92a0/` is the capture from `claude/beadle-bluff-blend` at `296f93e` (main
-`f947be6` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
-bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
-- **Divergence from `baseline_1e6b846`:** 54875, 692, 900 and 98933 from record 0 (the world's
-  random state after the first night's fabrications). 42 is identical.
-- **Outcomes:** 42 unchanged (good on day 3). 54875 good on day 2, hanging Constance, becomes
-  day 4 with no winner, hanging Edda on day 3. 692 hangs Constance on day 3 only (Merrin is no
-  longer hanged on day 2). 900 hangs Lian on day 3, not Constance on day 2. 98933 now hangs Edda
-  on day 2. Every seed but 42 still reaches day 4.
+`tools/golden/baseline_45b7506/` is the capture from `claude/poison-self-doubt` (#232) at
+`45b7506` (main `f947be6` merged in): with a Poisoner possible, each of a good listener's own
+readings carries the chance a Poisoner picked it that night as an honest doubt (combined with
+the Delusional self-doubt as independent chances), and the judge weighs the reading as genuine
+or broken by fit.
+- **Divergence from `baseline_1e6b846`:** beliefs from the first record on every seed (the first
+  day's own readings carry the doubt).
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
+  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner). Record counts are the
+  same except 54875 (201, was 225).
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, "it's another of us"): `baseline_1e6b846`

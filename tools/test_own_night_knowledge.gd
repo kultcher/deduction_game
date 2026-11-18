@@ -60,6 +60,11 @@ func _effect(g, listener_id: String, teller_id: String, drop: Callable) -> Dicti
 		"dropped": dropped.size(), "view": plan.prepared.view, "held": held}
 
 
+func _logit(p: float) -> float:
+	var q: float = clampf(p, 1e-9, 1.0 - 1e-9)
+	return log(q / (1.0 - q))
+
+
 func _own_cards(view: Dictionary, who: String) -> Array:
 	return LiveActivity.own_home_cards(view).filter(func(c): return str(c.get("source", "")) == who)
 
@@ -103,7 +108,12 @@ func _init() -> void:
 		var label2: String = "seed %d: %s, relayed out by %s" % [r.seed, r.listener, r.teller]
 		print("%s: %.3f with the relay, %.3f without" % [label2, e2.with, e2.without])
 		check(e2.dropped > 0, "%s: the relay is held" % label2)
-		check(e2.with - e2.without >= 0.15, "%s: the invented relay raises the relayer by 15 points or more (%+.3f)" % [label2, e2.with - e2.without])
+		# In log-odds, so a relayer the rest already makes nearly certain still has room: at
+		# least what 15 points from even odds is (0.50 -> 0.65). Which seed the finder picks
+		# moves with the game (with poison self-doubt on it is 100031, where the relayer is at
+		# 0.97 without the relay; the earlier 100055 shows the same +25 points either way).
+		var lift: float = _logit(e2.with) - _logit(e2.without)
+		check(lift >= _logit(0.65) - _logit(0.5), "%s: the invented relay raises the relayer at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label2, lift, e2.with - e2.without])
 	# 3. A real Sleepwalker, honestly seen out: its known-home cards carry the doubt.
 	var s: Dictionary = Seeds.sleepwalker_sighting(2)
 	if s.is_empty():
