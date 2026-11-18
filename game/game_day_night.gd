@@ -604,14 +604,14 @@ static func _resolve_night(g) -> void:
 				"text": "Night %d: the Sexton tolled the death knell (no gift that walks abroad should work)." % g.w.day}])
 	if vig != "":
 		if g.w.player_vigil_seen.is_empty():
-			g._narr("Nobody comes to %s all night." % C.block_name(vig))
+			g._narr("You kept watch over %s all night. Nobody stirred." % C.block_name(vig))
 			g._facts([{"kind": "vigil", "subject": [], "block": vig, "source": "player", "day": g.w.day, "phase": C.NIGHT,
-				"text": "Night %d vigil on %s: nobody came to %s." % [g.w.day, C.block_name(vig), C.block_name(vig)]}])
+				"text": "Night %d vigil on %s: nobody stirred." % [g.w.day, C.block_name(vig)]}])
 		else:
 			var names: Array = g.w.player_vigil_seen.map(func(i): return g.w.by_id[i].name)
-			g._narr("During your vigil you see %s out on %s." % [", ".join(PackedStringArray(names)), C.block_name(vig)])
+			g._narr("You kept watch over %s. In the night, %s went out." % [C.block_name(vig), ", ".join(PackedStringArray(names))])
 			g._facts([{"kind": "sighting", "subject": g.w.player_vigil_seen.duplicate(), "block": vig, "source": "player",
-				"day": g.w.day, "phase": C.NIGHT, "vigil": true, "text": "Night %d vigil: you saw %s on %s." % [g.w.day, ", ".join(PackedStringArray(names)), C.block_name(vig)]}])
+				"day": g.w.day, "phase": C.NIGHT, "vigil": true, "text": "Night %d vigil on %s: you saw %s go out." % [g.w.day, C.block_name(vig), ", ".join(PackedStringArray(names))]}])
 	g.w.player_vigil = ""
 	if g.w.game_over:
 		return

@@ -7,7 +7,8 @@
 ##   "I stand by that account": they give their own voice's alibi (Michael, Nov 17);
 ## - a Lamplighter's count names nobody, so the reason it gives isn't that it "leaves them
 ##   among the likeliest": "my count of folk abroad that night doesn't square with what
-##   we've been told" (Michael, Nov 17);
+##   we've been told" (Michael, Nov 17); any such reason must use it (since #204 one rarely
+##   arises in play; a constructed case follows);
 ## - a home alibi for an earlier night says "all the second night", not "all on night 2".
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -46,6 +47,7 @@ func _init() -> void:
 	_pressed_first()
 	_home_alibi_ordinal()
 	_count_line()
+	_count_line_constructed()
 	print("Wording 89077: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -132,7 +134,9 @@ func _home_alibi_ordinal() -> void:
 	check(bad.is_empty(), "a home alibi for an earlier night names it as an ordinal, in every voice here: " + str(bad))
 
 ## Games on 89077's script to the third day's meeting: every "taken together" reason from a
-## Lamplighter's count uses the count line, never "among the likeliest".
+## Lamplighter's count uses the count line, never "among the likeliest". Since #204 (Nov 17)
+## counts are credited only with what they move, so none may arise here; how many did is
+## printed, not checked, until Herald's constructed case.
 func _count_line() -> void:
 	var found: int = 0
 	var wrong: Array = []
@@ -156,7 +160,9 @@ func _count_line() -> void:
 							wrong.append(why)
 		if found >= 3:
 			break
-	check(found > 0, "a Lamplighter's count is given as a reason in the count line (%d found)" % found)
+	# #204 (Nov 17): no natural count reason arises once counts are credited only with what they
+	# move; a constructed case follows (Herald).
+	print("count-line reasons found: %d" % found)
 	check(wrong.is_empty(), "...and never as leaving them 'among the likeliest': " + str(wrong))
 
 func _play(seed_v: int, day: int):
@@ -175,3 +181,24 @@ func _play(seed_v: int, day: int):
 			"night": g.command("sleep")
 			_: break
 	return g if g.state == "meeting" and g.w.day >= day else null
+
+## The count line itself, on a constructed reading (Herald, Nov 18): since #204 no natural
+## count reason arises in the seeds above, so the wording is checked on ReasonAttribution's
+## joint_whys directly. A Lamplighter's count names nobody; from its holder it reads "my
+## count of folk abroad...", from someone else "Agnes's count...", and as the town knows it
+## "the Lamplighter's count...". A reading that names someone still points at them.
+func _count_line_constructed() -> void:
+	var RA = preload("res://workshop/reason_attribution.gd")
+	var view: Dictionary = {"people": [{"id": "agnes", "name": "Agnes"}, {"id": "bart", "name": "Bart"}, {"id": "hollis", "name": "Hollis"}]}
+	var count: Dictionary = {"id": "c1", "kind": "report", "role": "lamplighter", "source": "agnes", "data": {"count": 2}}
+	var own: Dictionary = RA.joint_whys(view, count, "bart", "agnes", "agnes", "lamplighter", [count])
+	check(own.own == "my " + COUNT_LINE, "a Lamplighter's own count, as its holder says it: " + str(own.own))
+	check(own.public == "the Lamplighter's " + COUNT_LINE, "...and as the town knows it: " + str(own.public))
+	var other: Dictionary = RA.joint_whys(view, count, "bart", "agnes", "hollis", "lamplighter", [count])
+	check(other.own == "Agnes's " + COUNT_LINE, "...and from someone else: " + str(other.own))
+	for k in ["own", "public"]:
+		check(not ("among the likeliest" in str(own[k])) and not ("among the likeliest" in str(other[k])), "...never 'among the likeliest' (%s)" % k)
+	# A Night Watch reading that names them isn't a count: it points at them.
+	var seen: Dictionary = {"id": "c2", "kind": "report", "role": "nightwatch", "source": "agnes", "data": {"block": "hill", "seen": ["bart"]}}
+	var named: Dictionary = RA.joint_whys(view, seen, "bart", "agnes", "agnes", "nightwatch", [seen])
+	check("points at them" in str(named.own) and not (COUNT_LINE in str(named.own)), "a reading that names them isn't given the count line: " + str(named.own))
