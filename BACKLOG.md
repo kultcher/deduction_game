@@ -86,6 +86,11 @@ relay about the first victim naming night 0 (Beadle).
   be misled.** This is specific to this claim, not a general rule that every good
   statement is true. Allow an honest impaired Warden; neither failure nor a misled
   accusation proves poisoning or alignment. [decided: capability and lying implication]
+  **Built** (Nov 4, #81; pinned by `tools/test_warden_challenge.gd`, re-checked Nov 18).
+  A guard report on someone the Demon killed that night is never a true, healthy reading.
+  A "lying" challenge and a "failed gift" challenge are both supported against it. A
+  neutral listener lays most of it on a lie, a failed-gift call doesn't prove poisoning,
+  and someone else's death that night says nothing about the guard.
 
   Already built (Nov 4, #81 era, the report table in `Solver`): a guard on a door the Demon
   killed that night is never a true, healthy reading, so the challenge lands as a lie or a

@@ -48,6 +48,13 @@ the vigil, after a first case built on the report.
 "Misled" lands like "lying" here. That's the gap from "Misled versus reading-lie strength";
 Seneschal has the proposal for Michael.
 
+## Also: the Warden failed-protection item was already built
+
+Seneschal queued "Challenge a Warden's particular failed protection claim" next. It was
+built on Nov 4 (#81), and `tools/test_warden_challenge.gd` pins it; that suite passes on
+today's main. BACKLOG still listed it as unbuilt, so this PR marks it built with a short
+note. No code change.
+
 ## Measured
 
 - **Golden:** not affected. This PR changes only a test, the fast list and BACKLOG.
