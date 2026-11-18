@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_96e729f`
+### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_cacd3d0`
+
+`tools/golden/baseline_cacd3d0/` is the capture from `claude/nightwatch-whole-list` at `cacd3d0`
+(main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
+or broken (it says nothing about who walked), with the watcher's poison and Delusional priors as
+the broken chance. A list wrongly naming the listener is kept instead of set aside.
+- **Divergence from `baseline_96e729f`:**
+  - 692 and 98933 from record 1 (the first day's beliefs: small shifts wherever a Night Watch
+    list is held).
+  - 54875 from record 13 (Dorian's refresh on day 1).
+  - 42 from record 61 (Fenwick's refresh on day 2).
+  - 900 is identical.
+- **Outcomes unchanged:**
+  - The same executions, nominators and winners on every seed: 42 good on day 3; 54875, 692,
+    900 and 98933 reach day 4 with no winner.
+  - Record counts are the same except 54875 (345, was 352) and 98933 (291, was 307).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_96e729f`
 
 `tools/golden/baseline_96e729f/` is the capture from `claude/beadle-bluff-blend` (#269) at `96e729f`
 (main `c4f5dc6` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
