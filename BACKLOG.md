@@ -234,6 +234,32 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
   [decided: test later; signposting open]
 
+- **The player's "poisoned, not lying" call, and poison evidence from night outings.**
+  (Michael, Nov 18, with Claude-Vicar; design note
+  [docs/design/poisoned_not_lying.md](docs/design/poisoned_not_lying.md), option C) From
+  Quill's measurement for the item above: once a clash pins a poisoned good reader, "failed
+  gift" is almost never accepted, because nothing makes poison likelier than a lie.
+  - **Evidence:** any unexplained night outing on night N raises the poison chance for
+    readings from that night, more strongly if the person could have reached the reader's
+    home.
+  - **The player's call:** a "failed gift" call counts as the player's word that the reading
+    was a failed gift, at the listener's credibility in the player, through the honest-doubt
+    route. The clash then reads as poison, and suspicion spreads toward the Poisoner
+    candidates and the town rather than settling on the reader.
+  - **Guards:** only where a Poisoner or Delusional could be in play, scaled by the poison
+    chance; the call records "the reader is good" in the player's track record, so a wrong
+    call costs credibility at dawn. Nothing stronger (Michael). No diminishing returns.
+  - **Not now:** NPCs making the same call; revisit with "An NPC defender's challenge isn't
+    stored as a case" (section 5).
+  - **Before building:** whether a player's-word card can feed the honest-doubt route (and
+    reaches the connections refresh); re-run Quill's 10-seed measurement under the change
+    (how far the reader recovers, where the suspicion goes); whether recording "the reader is
+    good" misfires when the reader is Delusional.
+  - **Report:** how far one call moves a listener at typical and at high credibility, in game
+    terms (the sheep check).
+  - Owners: Quill (the judge: the challenge, the poison chance, the night-outing link),
+    Lantern (the belief side). [decided]
+
 - **Quiet-night evidence argued by the player.** Support a player-argued link between
   protection, a suspected attack and movement, without exposing hidden attacks. (61251:
   a successful ward on Fenwick suppressed the apparent value of the sightings.) See the

@@ -1,12 +1,26 @@
 # "Poisoned, not lying": can the player's call sway the town? (design note)
 
-**Status: for Michael to decide. Nothing built.** Written Nov 18 by Claude-Vicar, from
+**Status: decided (Michael, Nov 18): option C. Not built.** BACKLOG section 2, "The
+player's 'poisoned, not lying' call, and poison evidence from night outings" `[decided]`. Written Nov 18 by Claude-Vicar, from
 Michael's question relayed by Seneschal and Quill's measurement on recovering from a wrong
 "lying" call (BACKLOG section 2, "Recovering from a wrong 'lying' call"; Quill's handoff PR to
 come). Builders: Quill (the challenge, the poison chance, the Poisoner-evidence link) and
 Lantern (how a listener's belief takes it). The code facts below are read from main, not run.
 
 ---
+
+## Decision (Michael, Nov 18; relayed by Seneschal)
+
+1. **Option C:** build both the evidence link and the player's call as testimony.
+2. **The cost of being wrong:** through the existing track record only, nothing stronger.
+3. **The Poisoner-evidence reach:** any unexplained night outing on night N counts, more
+   strongly if the person could have reached the reader's home.
+4. **NPCs making the same call:** not now. Revisit with the deferred "An NPC defender's
+   challenge isn't stored as a case" (BACKLOG section 5).
+5. **The build** runs the three checks in section 6 first, and reports how far one call moves
+   a listener at typical and at high credibility, in game terms.
+
+Builders: Quill (the judge) and Lantern (the belief side).
 
 ## 1. The problem
 
@@ -117,14 +131,9 @@ track record already prices misuse), and **an extra cost only when the teller is
   (Beadle, Nov 18). Under C the player has the same argument from outside, and it can be wrong
   in the same ways.
 
-## 5. Open for Michael
+## 5. Michael's calls
 
-1. **A, B or C.** Vicar recommends C.
-2. **The cost on being wrong:** through the track record, as recommended, or something stronger.
-3. **The Poisoner-evidence link's reach:** any unexplained night outing on night N, or only one
-   that could have reached the reader's home that night.
-4. **Whether NPCs can make the same call** for a reading they defend (an NPC defender's challenge
-   is stored as a case only later; BACKLOG section 5, deferred).
+All answered Nov 18; see "Decision" at the top.
 
 ## 6. Checks before building (Quill, Lantern)
 
