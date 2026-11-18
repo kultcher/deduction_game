@@ -45,16 +45,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
 
-- **Conversation sightings should also cover location sightings.** An automatic card of
-  two people talking already places both at that location. Visiting it in the same
-  day/phase shouldn't create redundant solo sighting cards. Suppress only the same
-  player's same-person, same-location, same-phase duplicate; keep the talk relationship,
-  independent witnesses and provenance. [decided]
-
-  Nov 13 (#152, triage 1.7) went the other way for seen talks: a talk you see now gives
-  three cards, each talker's own sighting and the talk. Check whether a same-phase visit
-  still makes duplicates before building this. [watch]
-
 - **A whereabouts contradiction gets an irrelevant gift refusal.** (78148, Kiran)
   Presenting "Kiran is suspicious" from alibi/vigil evidence produced "Whether I have a
   gift is my own business." Carry the dated contradiction through the press so a knowing
@@ -145,11 +135,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   `premise_shaping` selection (`docs/design/premise_centring.md`). No extra trust cost for a
   misframed case: the case not landing is the cost (Michael, Nov 18). Owner Lantern.
   **[decided]: B at a share of 1/3**
-
-- **Killed by the Demon, so credit the victim's alibi.** (54875) A Demon victim's alibi
-  should count as modest grounds for challenging a reading against it ("it's likelier
-  Constance is lying than that Dorian has a secret night walk"): not zero, never proof.
-  Check what weight the shared model gives it now, in the balance pass. [watch]
 
 - **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
   skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
@@ -328,18 +313,12 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
   handling of genuine home accounts, unremembered outings and evil cover. (44814)
   [decided; mechanics open]
 
-- **Revenant revelation and reversible town uncertainty.** A publicly recognised haunting
-  should establish the executed Revenant as evil (built) and add a small global "anyone
-  could be possessed" uncertainty. Today the curse only makes living yes-voters a little
-  suspect. Burning the totem should reverse the added uncertainty without undoing
-  independent evidence, and the possessed person stays hidden. (Oct 21) [decided;
-  amounts open]
-
-- **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Michael
-  thinks both example cases (shielding a friend, hiding a secret errand) already exist; Beadle
-  is verifying. The open question now: may a good NPC lie about their *role*, for example a
-  Veteran falsely claiming a gift to draw the Demon's attack? A caught lie still implicates
-  strongly, so this needs care. [open]
+- **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
+  secret errand already exists (Beadle verified, Nov 18). Two cases are open:
+  - **Shielding a friend:** not built. A good NPC bends the truth to cover someone it trusts.
+  - **Lying about one's role:** may a good NPC lie about their gift, for example a Veteran
+    falsely claiming another gift to draw the Demon's attack?
+  A caught lie still implicates strongly, so both need care. [open]
 
 - **Backing a strong case builds trust.** Nominating or voting for someone the town
   strongly suspects (and who turns out evil, or is widely believed so) earns a little
@@ -431,25 +410,11 @@ Candidates for a unified retuning proposal, not approved changes.
   Seer. Base it on the listener's knowledge, scale by strength, and deduplicate the
   underlying fact. [tentative]
 
-- **Opinion strength and shared origins.** Weaken the first equal-weight meeting voices
-  (0.12 / 0.06 / 0.03 → 0.08 / 0.04 / 0.02), keeping fade and cap. Several NPCs
-  repeating one original story should not count as independent. [tentative]
-
-- **Demon victims' earlier information.** Strengthen belief that a Demon victim was
-  reporting sincerely without trusting every reading's accuracy. Keep sincerity, claimed
-  role and night-specific misdirection distinct; base it on listener knowledge, not hidden
-  roles or poison. [tentative]
-
 - **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
   and add plausible-success credit for a kept ward followed by a deathless night.
   Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
   credit on what the listener can observe; avoid crediting promise, protection and
   outcome twice. [decided: direction; amounts open]
-
-- **Softer secret breaches.** Secret-keeping rapport now decays nightly. Still to review:
-  first-use and repeated breach losses and the permanent caps, keeping a real betrayal
-  consequence while allowing proportionate recovery, with apologies and confidentiality
-  promises. [decided; values open]
 
 - **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
   producing zero-count group clears. Specify whether "evil" means registered evil
@@ -524,23 +489,24 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 ## 3. Medium features (several days; touch a few systems)
 
-- **Expanded dialogue and trust management** (Oct 20; design candidates). [tentative]
+- **Expanded dialogue and trust management** (Oct 20; design candidates; reworded Nov 18).
+  [tentative]
+  - **Built:** apologising for a specific incident, and the NPC-asked confidentiality
+    promise (verified Nov 18).
   - **General requests spread through town chats:** "Someone should check Nisha" or
     "Someone should watch the Wharf", without outing a gift-holder. Hearing a request
     isn't volunteering or completing it.
-  - **Responsibility and follow-through build trust:** a meaningful accepted task earns a
-    small, non-repeatable rapport gain; later credit depends on what the NPC believes was
+  - **NPC credit for completing tasks:** a meaningful accepted task earns a small,
+    non-repeatable rapport gain; later credit depends on what the NPC believes was
     accomplished. Don't reward incriminating results by default; prevent request spam.
-  - **Responsibility cuts both ways:** an NPC may feel guilt when their information helps
-    execute someone who later looks innocent, based on perceived responsibility and known
-    outcomes. (Oct 21)
+  - **Responsibility and remorse after a bad hanging:** an NPC may feel guilt when their
+    information helps execute someone who later looks innocent, based on perceived
+    responsibility and known outcomes. (Oct 21)
   - **Ask what would change their mind:** expose friendship, conflicting information,
     distrust of the player, or preference for another execution as actionable
     resistance.
   - **Explain an execution's purpose:** propose an information-seeking execution (for a
     Gravedigger read) without asserting the target is the Demon.
-  - **Apologise** (built; Michael, Nov 18) for a specific incident, scaled by harm and responsibility; **promise
-    confidentiality**.
 
 - **NPCs voice doubt about their own readings.** Notice apparently inconsistent results
   (repeated Seer checks of the same pair changing yes/no) and let the NPC say something's
@@ -556,10 +522,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
-
-- **The Revenant can hide a new totem each day.** The burned-totem notice now warns that
-  the spirit will seek a new hiding place; whether the totem search can keep pace is a
-  balance question. (54875) [watch]
 
 - **NPCs find evidence and personal items** (dropped items, traces). [decided]
 
@@ -667,6 +629,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
     confirmations. (61251/25923) [open] (Folded in Nov 18, Michael.)
   - **Ways to discover and confront secrets:** sightings that don't fit, confidants,
     personal items, a "you have a secret" card used as leverage. [open] (Folded in Nov 18, Michael.)
+  - **Softer secret breaches.** Secret-keeping rapport now decays nightly. Still to review:
+    first-use and repeated breach losses and the permanent caps, keeping a real betrayal
+    consequence while allowing proportionate recovery, with apologies and confidentiality
+    promises. [decided; values open] (Folded in Nov 18, Michael.)
 
 - **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
   Lovers' relationship mods, including the Lovers downside (when one dies, the other

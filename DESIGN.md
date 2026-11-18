@@ -971,8 +971,9 @@ been known to sleepwalk"; two claimants prove a liar.
 
 **Social retuning** **[tentative]** (candidates for one unified retuning proposal; details
 in BACKLOG): Privacy without compounding trust penalties; evidence building NPC-to-NPC
-trust; diminishing trust changes near the extremes; opinion strength and shared origins;
-Martyr urgency; Demon victims' earlier readings.
+trust. Diminishing trust changes near the extremes and Martyr urgency are in BACKLOG_WATCH;
+opinion strength and shared origins, and Demon victims' earlier readings, were verified as
+covered and closed (Nov 18).
 
 **Expanded dialogue and trust management** **[tentative]**: suggest general requests that
 spread through town chats; responsibility and follow-through as small trust gains;

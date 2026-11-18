@@ -3,6 +3,49 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Verified Nov 18, 2026 (leads' checks; Michael, recorded by Claude-Vicar)
+
+- **Conversation sightings should also cover location sightings.** An automatic card of
+  two people talking already places both at that location. Visiting it in the same
+  day/phase shouldn't create redundant solo sighting cards. Suppress only the same
+  player's same-person, same-location, same-phase duplicate; keep the talk relationship,
+  independent witnesses and provenance. [decided]
+
+  Nov 13 (#152, triage 1.7) went the other way for seen talks: a talk you see now gives
+  three cards, each talker's own sighting and the talk. Check whether a same-phase visit
+  still makes duplicates before building this. [watch]
+
+  > **Closed:** verified Nov 18 (Quill): done; a pinning check is being added.
+
+- **Killed by the Demon, so credit the victim's alibi.** (54875) A Demon victim's alibi
+  should count as modest grounds for challenging a reading against it ("it's likelier
+  Constance is lying than that Dorian has a secret night walk"): not zero, never proof.
+  Check what weight the shared model gives it now, in the balance pass. [watch]
+
+  > **Closed:** verified Nov 18 (Lantern): covered by the judge's "a Demon victim is good" fact, which holds in 95% of worlds.
+
+- **Demon victims' earlier information.** Strengthen belief that a Demon victim was
+  reporting sincerely without trusting every reading's accuracy. Keep sincerity, claimed
+  role and night-specific misdirection distinct; base it on listener knowledge, not hidden
+  roles or poison. [tentative]
+
+  > **Closed:** verified Nov 18 (Lantern): covered by the same "a Demon victim is good" fact.
+
+- **Revenant revelation and reversible town uncertainty.** A publicly recognised haunting
+  should establish the executed Revenant as evil (built) and add a small global "anyone
+  could be possessed" uncertainty. Today the curse only makes living yes-voters a little
+  suspect. Burning the totem should reverse the added uncertainty without undoing
+  independent evidence, and the possessed person stays hidden. (Oct 21) [decided;
+  amounts open]
+
+  > **Closed:** verified Nov 18 (Beadle and Lantern): done. The added uncertainty covers the curse's yes-voters only, not the whole town.
+
+- **Opinion strength and shared origins.** Weaken the first equal-weight meeting voices
+  (0.12 / 0.06 / 0.03 → 0.08 / 0.04 / 0.02), keeping fade and cap. Several NPCs
+  repeating one original story should not count as independent. [tentative]
+
+  > **Closed:** verified Nov 18 (Lantern): shared origins are covered, and opinions aren't evidence under the connections model; the old meeting-voice weights no longer exist.
+
 ## Closed and built, Nov 18, 2026 (BACKLOG restructure; Michael, recorded by Claude-Vicar)
 
 - **Evidence-reading bot: searching for drops.** The analyst bot reads trace cards

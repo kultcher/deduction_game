@@ -195,12 +195,13 @@ social tuning"; plus 1.4 and 1.5 above). Lantern for belief, Beadle for behaviou
 
 - Privacy without compounding trust penalties (54875: three of three stonewalled on day 1).
 - Evidence building NPC-to-NPC trust.
-- Opinion strength and shared origins (several NPCs repeating one story aren't independent).
-- Martyr urgency from day 3.
-- Demon victims' earlier information read as sincere.
+- ~~Opinion strength and shared origins~~ (closed Nov 18: covered under connections).
+- Martyr urgency (moved to BACKLOG_WATCH Nov 18: in play the Martyr may act too early).
+- ~~Demon victims' earlier information~~ (closed Nov 18: covered by the "Demon victim is good" fact).
 - Dowser clearing only on a positive ping.
-- Expanded dialogue and trust management (requests spreading through chats, follow-through,
-  guilt, "what would change your mind", apologies). Herald for wording.
+- Expanded dialogue and trust management (requests spreading through chats, credit for
+  completing tasks, remorse after a bad hanging, "what would change your mind", explaining an
+  execution's purpose; apologies and confidentiality are built). Herald for wording.
 
 ---
 
