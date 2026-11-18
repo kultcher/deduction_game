@@ -59,10 +59,11 @@
   cards carry the coming night), takes the night before, whose poison still holds. The doubt
   stays keyed to the reading's own day. `test_poison_self_doubt` (14 checks): with a known
   Poisoner dead on day 2, a day-2 evening reading keeps night 1's 5% (night 2's would be 0).
-- **Codex on #232 (fixed):** the prior no longer leans on the listener's own readings.
-  `poison_chance` takes an own Gravedigger reading's role as known, so a poisoned reading
-  naming a hanged good person as the Poisoner ruled poison out for itself and every later
-  reading. The self-doubt now asks it with the listener's own reports left out, so only roles
-  the town knows by other means close the door. `test_poison_self_doubt` (15 checks): such a
-  reading keeps 6.2% (0 with its own report counted). Quill told: the judge's own use of
-  `poison_chance` reads own reports the same way.
+- **Codex on #232 (fixed), narrowed with Quill:** a reading can't vouch for its own gift.
+  `poison_chance` takes an own Gravedigger reading's role as known, so a poisoned one naming a
+  hanged good person as the Poisoner ruled poison out for itself. That reading's own doubt is
+  now asked without it. For the listener's other readings its word stands: that night only
+  one person is poisoned, and a later poisoning needs the reading wrong as well, about as
+  unlikely as the poisoning itself. `test_poison_self_doubt` (16 checks): the Gravedigger
+  reading keeps 6.2% (0 before), and a later own reading carries none. No judge-side caller
+  of `poison_chance` exists today (Quill), so nothing else changes.

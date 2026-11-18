@@ -199,6 +199,22 @@ func _init() -> void:
 	var got10: float = float(SourceDoubt.derive(p10, n8.ledger, {}).honest.get("%s:2" % n8.id, 0.0))
 	print("own Gravedigger reading naming the hanged %s the Poisoner: doubt %.3f (with own reports as known roles %.3f)" % [hanged, got10, as_known])
 	check(as_known == 0.0 and got10 > 0.0, "an own reading naming a dead Poisoner doesn't rule poison out for itself")
+	#     ...but it does for the listener's other readings (Quill, Nov 18): a night-3 reading of
+	#     its own, with the Gravedigger's word that the Poisoner is dead, carries no poison doubt.
+	var later: Dictionary = {}
+	for c in p10.prepared.view.cards:
+		if str(c.get("id", "")) == gd_id:
+			later = c.duplicate(true)
+	later["id"] = "probe-later-reading"
+	later["role"] = "dowser"
+	later["data"] = {"group": ["hollis", "merrin"], "count": 0}
+	later["night"] = 3
+	later["observed_at"] = {"day": 3, "phase": "night"}
+	p10.prepared.view.cards.append(later)
+	p10.prepared.listener.knowledge.own_reports.append("probe-later-reading")
+	var d10: Dictionary = SourceDoubt.derive(p10, n8.ledger, {}).honest
+	print("with it, a night-3 own reading's doubt %.3f; the Gravedigger reading's own %.3f" % [float(d10.get("%s:3" % n8.id, 0.0)), float(d10.get("%s:2" % n8.id, 0.0))])
+	check(float(d10.get("%s:3" % n8.id, 0.0)) == 0.0 and float(d10.get("%s:2" % n8.id, 0.0)) > 0.0, "...while for the listener's later readings its word that the Poisoner is dead stands")
 	_medium_case()
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

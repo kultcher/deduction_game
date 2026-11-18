@@ -268,14 +268,14 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# self-doubt also holds for that night, the two are independent ways the gift can fail:
 	# 1 - (1 - poison)(1 - delusional), as the Night Watch's broken chance (Michael, Nov 18).
 	if poison_self_doubt and self_id != "" and ReadingChallenges.poisoner_possible(view):
-		# The prior can't lean on the listener's own readings: poison_chance takes an own
-		# Gravedigger reading's role as known, so a poisoned reading naming a hanged good
-		# person as the Poisoner would rule poison out for itself and every later reading.
-		# Only roles the town knows by other means do that here (Codex on #232).
-		var pubwise: Dictionary = listener.duplicate(false)
-		var pub_knowledge: Dictionary = listener.get("knowledge", {}).duplicate(false)
-		pub_knowledge["own_reports"] = []
-		pubwise["knowledge"] = pub_knowledge
+		# A reading can't vouch for its own gift: poison_chance takes an own Gravedigger
+		# reading's role as known, so a poisoned one naming a hanged good person as the
+		# Poisoner would rule poison out for itself. That reading's own doubt is asked without
+		# it (Codex on #232). For the listener's other readings it stands: that night only one
+		# person is poisoned, and later nights need the reading wrong as well, about as
+		# unlikely as the poisoning itself, so believing one's own reading is near enough
+		# (Quill, Nov 18).
+		var own_ids: Array = listener.get("knowledge", {}).get("own_reports", [])
 		for c in cards:
 			if c.get("quoted", false):
 				continue
@@ -301,7 +301,13 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			# check). It keeps any Delusional doubt (Codex on #232).
 			if str(c.get("role", "")) == "registrar" and k_night == 0 and not c.has("relay_source"):
 				continue
-			var pi: float = ReadingChallenges.poison_chance(view, pubwise, p_night)
+			var asker: Dictionary = listener
+			if str(c.get("role", "")) == "gravedigger" and str(c.get("id", "")) in own_ids:
+				asker = listener.duplicate(false)
+				var k_without: Dictionary = listener.get("knowledge", {}).duplicate(false)
+				k_without["own_reports"] = own_ids.filter(func(id): return str(id) != str(c.id))
+				asker["knowledge"] = k_without
+			var pi: float = ReadingChallenges.poison_chance(view, asker, p_night)
 			if pi <= 0.0:
 				continue
 			var k_p: String = "%s:%d" % [self_id, k_night]
