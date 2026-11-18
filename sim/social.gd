@@ -63,7 +63,11 @@ static func has_news(w, n) -> bool:
 	return false
 
 ## Extra pairing weight for someone with news and the person they'd tell.
-static func news_bonus(w, a, b) -> float:
+## `before_choice`: the pairing made before the player picks a place, which the player sees.
+## Evil keeps its own conferring for after the choice, out of sight (BACKLOG "Evil meetings
+## are over-weighted and always visible", Michael: confer after the player commits), so
+## before it two evil members pair only as any two neighbours would.
+static func news_bonus(w, a, b, before_choice: bool = false) -> float:
 	var bonus = 0.0
 	for p in [[a, b], [b, a]]:
 		var x = p[0]
@@ -72,7 +76,8 @@ static func news_bonus(w, a, b) -> float:
 			continue
 		if x.is_evil():
 			if y.is_evil():
-				bonus += Tuning.Social.NEWS_BONUS_EVIL
+				if not before_choice:
+					bonus += Tuning.Social.NEWS_BONUS_EVIL
 			elif x.id == str(w.evil_plan.get("daily_planter", "")) and int(w.evil_plan.get("plants_today", 0)) < Tuning.Evil.MAX_DIRECT_PLANTS and y.id != str(w.evil_plan.get("scapegoat", "")) and trait_of(y, "gossip") >= Tuning.Social.PLANTER_TARGET_GOSSIP_MIN and y.npc_trust.get(x.id, 0.5) >= Tuning.Social.PLANTER_TARGET_TRUST_MIN:
 				bonus += Tuning.Social.PLANTER_WHISPER_BONUS
 		elif x.npc_trust.get(y.id, 0.5) > Tuning.Social.GOOD_NEWS_TRUST_MIN:

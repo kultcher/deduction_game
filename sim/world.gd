@@ -728,7 +728,7 @@ func player_options() -> Array:
 	return living().filter(func(n): return n.available())
 
 ## Weight for two NPCs choosing to talk: driven by mutual trust.
-func pair_weight(a, b) -> float:
+func pair_weight(a, b, before_choice: bool = false) -> float:
 	var t: float = (a.npc_trust.get(b.id, 0.5) + b.npc_trust.get(a.id, 0.5)) / 2.0
 	var nudge: float = maxf(
 		C.role_def(a.role).conversation_nudge if not a.is_evil() else 0.0,
@@ -736,7 +736,7 @@ func pair_weight(a, b) -> float:
 	)
 	if a.silenced or b.silenced:
 		return Tuning.Setup.PAIR_SILENCED_WEIGHT
-	return clampf((t - Tuning.Setup.PAIR_TRUST_PIVOT) * Tuning.Setup.PAIR_TRUST_SLOPE + Social.news_bonus(self, a, b) + nudge, Tuning.Setup.PAIR_SILENCED_WEIGHT, Tuning.Setup.PAIR_MAX_WEIGHT)
+	return clampf((t - Tuning.Setup.PAIR_TRUST_PIVOT) * Tuning.Setup.PAIR_TRUST_SLOPE + Social.news_bonus(self, a, b, before_choice) + nudge, Tuning.Setup.PAIR_SILENCED_WEIGHT, Tuning.Setup.PAIR_MAX_WEIGHT)
 
 func _idle_pairable() -> Array:
 	return living().filter(func(n): return not n.working and n.available() and n.pair_day != day)
@@ -751,19 +751,19 @@ func _pre_pair() -> void:
 			break
 		if not decision_roll(null, "pre_phase_conversation", Tuning.Setup.PRE_PHASE_CHAT_CHANCE):
 			continue
-		var pr = _choose_pair(cands)
+		var pr = _choose_pair(cands, true)
 		if pr.is_empty():
 			break
 		_make_pair(pr[0], pr[1], "pre")
 		made += 1
 
-func _choose_pair(cands: Array) -> Array:
+func _choose_pair(cands: Array, before_choice: bool = false) -> Array:
 	var best: Array = []
 	var total = 0.0
 	var options: Array = []
 	for i in range(cands.size()):
 		for j in range(i + 1, cands.size()):
-			var wgt = pair_weight(cands[i], cands[j])
+			var wgt = pair_weight(cands[i], cands[j], before_choice)
 			options.append([cands[i], cands[j], wgt])
 			total += wgt
 	if options.is_empty():
@@ -804,8 +804,11 @@ func _make_pair(a, b, when: String) -> void:
 		"%s and %s talk%s (content: stage 2)." % [a.name, b.name, " (evil meeting)" if evil_meet else ""])
 	Social.converse(self, a, b, when)
 
-## After the player's action: remaining idlers on the same location may pair off.
+## After the player's action: evil members with word for each other confer out of sight
+## (wherever they are: the player has gone, and nobody notes it), then the remaining idlers on
+## the same location may pair off.
 func _post_pair(talked_id: String) -> void:
+	_evil_conference(talked_id)
 	var cands = _idle_pairable().filter(func(n): return n.id != talked_id)
 	var by_loc = {}
 	for n in cands:
@@ -822,6 +825,29 @@ func _post_pair(talked_id: String) -> void:
 		var p = Tuning.Setup.POST_PHASE_PAIR_MULT * pair_weight(pr[0], pr[1])
 		if decision_roll(pr[0], "post_phase_conversation", p, {"pair_weight": p / Tuning.Setup.POST_PHASE_PAIR_MULT}, pr[1].id):
 			_make_pair(pr[0], pr[1], "post")
+
+## Evil confers after the player commits (BACKLOG, Michael): two idle teammates with unshared
+## word meet unseen, with the chance an after-the-choice pair has (POST_PHASE_PAIR_MULT x
+## their pair weight, the evil news bonus included). Each NPC still talks at most once a day,
+## which keeps the same pair from meeting every phase.
+func _evil_conference(talked_id: String) -> void:
+	var team: Array = _idle_pairable().filter(func(n): return n.is_evil() and n.id != talked_id)
+	if team.size() < 2:
+		return
+	# The pair with the most unshared word between them (the first such, on a tie).
+	var pr: Array = []
+	var most: int = 0
+	for i in range(team.size()):
+		for j in range(i + 1, team.size()):
+			var word: int = Evil.unshared_intel(team[i], team[j]) + Evil.unshared_intel(team[j], team[i])
+			if word > most:
+				most = word
+				pr = [team[i], team[j]]
+	if pr.is_empty():
+		return
+	var p = Tuning.Setup.POST_PHASE_PAIR_MULT * pair_weight(pr[0], pr[1])
+	if decision_roll(pr[0], "evil_conference", p, {"pair_weight": p / Tuning.Setup.POST_PHASE_PAIR_MULT}, pr[1].id):
+		_make_pair(pr[0], pr[1], "unseen")
 
 func _day_sightings() -> void:
 	var live = living()
