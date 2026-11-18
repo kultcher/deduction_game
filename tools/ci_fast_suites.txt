@@ -79,6 +79,7 @@ test_town_vibe
 test_triage_nov16
 test_vote_shape
 test_warden_challenge
+test_warden_quiet_route
 test_wording_23973
 test_wording_89077
 test_workshop_channel_likelihood
