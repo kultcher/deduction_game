@@ -54,9 +54,12 @@
     "Suspected lie" and "Unlikely reading".
   - The "inconsistent" cause "Poisoned that night" becomes "Mistaken". The older canvas's
     "misled (honest but wrong)" becomes "mistaken". The modifier title is "Mistaken
-    reading", and the theory error reads "…conflicts with the Mistaken explanation."
-  - Still mine, for Herald to reword: one NPC reply note, "An honest mistake can be a
-    failed gift or a misleading registration; it does not establish poisoning."
+    reading", and the theory error reads "…conflicts with the Mistaken explanation." All of
+    these are built from `HONEST_LABEL` (Herald's request).
+  - One NPC reply note is unchanged here: "An honest mistake can be a failed gift or a
+    misleading registration; it does not establish poisoning." Herald's draft, awaiting
+    Michael: "A mistaken reading can come from poison, delusion, a Red Herring or a Marked
+    soul; it doesn't show which, nor that anyone lied."
 - **Docs:** the DESIGN "Challenges" bullet now describes the three labels.
 - **Tests:**
   - New `tools/test_honest_mistake.gd` (14 checks, fast list). Both names carry the same
@@ -94,7 +97,12 @@ player's case calls the Archivist reading wrong. Figures are the change in suspi
   0.6 gate.
 - **The Poisoner nudge** shares the gate, but its agreement (0.12–0.17) stays below 0.3, so
   it didn't change.
-- **Golden and suites:** see the PR.
+- **Golden:** moves to `baseline_21df80d`. The only change is the stored mode of NPCs'
+  "misled" defence challenges, now "impaired", on 98933, 900 and 54875. With
+  `--ignore engine,mode` all five seeds are identical, with the same outcomes and record
+  counts. Two captures were identical.
+- **Suites:** all 118 fast-list suites pass, plus 9 more that touch the edited UI and
+  workshop files.
 
 ## Evil sometimes tells the truth: starting data (not built)
 
