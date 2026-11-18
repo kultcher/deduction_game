@@ -551,29 +551,21 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	var broken: Dictionary = _list_mix(view, cards.map(func(c): return duty if c.get("id", "") == list.id else c), observations, rest)
 	# (broken_cards below is the same list, for the outsider's scale.)
 	var b: float = clampf(float(list.broken_chance), 0.0, 1.0)
-	# The kernel's scores are ratios over each branch's own good profiles (BaseScore), so the
-	# broken branch goes on the sound branch's scale (Codex on #273): prod good(broken) /
-	# prod good(sound). A broken list then says these words as often as an honest one would,
-	# from what an outsider could know (the sighting contests' balance, without the listener's
-	# own nights): prod outsider good(sound) / prod outsider good(broken). No new number.
+	# The kernel scores the broken branch on the sound branch's scale (it divides by the sound
+	# branch's good profiles in every component; LiveActivityKernel.SetListNorm, Codex on #273).
+	# A broken list says these words as often as an honest one would, from what an outsider
+	# could know (the sighting contests' balance, without the listener's own nights):
+	# prod outsider good(sound) / prod outsider good(broken). No new number.
 	var broken_cards: Array = cards.map(func(c): return duty if c.get("id", "") == list.id else c)
 	var private_free: Callable = func(cs: Array) -> Array: return cs.filter(func(x): return not x.get("known_self", false))
-	var log_scale: float = _log_good(broken) - _log_good(sound) \
-		+ _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
+	var log_scale: float = _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
 	var top: Dictionary = sound.duplicate(false)
 	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "cursed": _told_cursed(view.get("chronology", {}).get("curse", {}), list), "next": sound, "alt": broken,
 		"key": "%s:%s:%s:%s|%s|%s" % [list.id, b, log_scale, _told_cursed(view.get("chronology", {}).get("curse", {}), list), sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
 	return top
 
-## Sum of log good profiles of a built movement factor (the kernel's BaseScore divisor).
-static func _log_good(factor: Dictionary) -> float:
-	var out: float = 0.0
-	for p in factor.get("profiles", []):
-		out += log(maxf(float(p.good), 1e-30))
-	return out
-
-## The same for a card list's plain profiles (no contests or guards: they don't touch the
-## good column), with the outings it forces.
+## Sum of log good profiles of a card list's plain profiles (no contests or guards: they don't
+## touch the good column), with the outings it forces.
 static func _log_good_of(view: Dictionary, cards: Array) -> float:
 	var checked: Array = cards.duplicate()
 	var movement: Dictionary = _routes_cs(view, cards, {}, {}, false)

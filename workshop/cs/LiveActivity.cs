@@ -170,6 +170,10 @@ internal static class LiveActivityKernel
         public double[] PostDemon = Array.Empty<double>();
         public SceneTableData[] PreScenes = Array.Empty<SceneTableData>();
         public SceneTableData[] PostScenes = Array.Empty<SceneTableData>();
+        /// <summary>The divisors for PreGood and PostGood in BaseScore, or null for those (a
+        /// Night Watch list's broken branch takes its sound branch's; SetListNorm).</summary>
+        public double[] NormPreGood;
+        public double[] NormPostGood;
     }
 
     internal sealed class CompiledMovementFactor
@@ -213,12 +217,14 @@ internal static class LiveActivityKernel
         public double ListMixBroken;
         public CompiledMovementFactor ListMixNext;
         public CompiledMovementFactor ListMixAlt;
-        /// <summary>ScoreWorldCore is a likelihood ratio over each branch's own good profiles
-        /// (BaseScore divides by ProfGood), so the broken branch is put on the sound branch's
-        /// scale (Codex on #273), times the chance a broken list says these words: as often as an
-        /// honest one would, from what an outsider could know (the contests' balance). Computed
-        /// in LiveActivity._list_mix.</summary>
+        /// <summary>The chance a broken list says these words, as often as an honest one would,
+        /// from what an outsider could know (the contests' balance), computed in
+        /// LiveActivity._list_mix. The branches already score on one scale (NormGood).</summary>
         public double ListMixAltScale = 1.0;
+        /// <summary>The divisor for ProfGood in BaseScore, or null for ProfGood. A broken branch
+        /// (and every factor under it) divides by its sound branch's good profiles, so the two
+        /// branches score on one scale in every component (Codex on #273).</summary>
+        public double[] NormGood;
         /// <summary>The list was told while the curse could have converted its watcher
         /// (LiveActivity._told_cursed): in a world where the watcher is the converted person, it
         /// takes the evil-teller path, as the sighting contest does (Codex on #273).</summary>
@@ -1777,6 +1783,27 @@ internal static class LiveActivityKernel
         factor.ListMixNext = SolverContext.GetMovementFactor(nextHandle);
         factor.ListMixAlt = SolverContext.GetMovementFactor(altHandle);
         factor.ListMixAltScale = altScale;
+        SetListNorm(factor.ListMixAlt, factor);
+    }
+
+    /// <summary>Score <paramref name="f"/> and everything under it on <paramref name="src"/>'s
+    /// scale: the same divisors in BaseScore, the direct profiles and each succession
+    /// split's.</summary>
+    private static void SetListNorm(CompiledMovementFactor f, CompiledMovementFactor src)
+    {
+        if (f == null || src == null)
+            return;
+        f.NormGood = src.NormGood ?? src.ProfGood;
+        if (f.ScionSplits.Length == src.ScionSplits.Length)
+        {
+            for (int k = 0; k < f.ScionSplits.Length; k++)
+            {
+                f.ScionSplits[k].NormPreGood = src.ScionSplits[k].NormPreGood ?? src.ScionSplits[k].PreGood;
+                f.ScionSplits[k].NormPostGood = src.ScionSplits[k].NormPostGood ?? src.ScionSplits[k].PostGood;
+            }
+        }
+        SetListNorm(f.ListMixNext, src);
+        SetListNorm(f.ListMixAlt, src);
     }
 
     public static void AttachGuards(int factorHandle, int[] ints, double[] doubles)
@@ -2002,8 +2029,8 @@ internal static class LiveActivityKernel
             || (factor.ListMixToldCursed && world.ConvertedOrMinusOne == factor.ListMixWatcher))
             return sound;
         double b = factor.ListMixBroken;
-        // Both on the sound branch's scale: a mixed factor's score is a ratio over its own
-        // ProfGood, which is its sound branch's.
+        // Both on the sound branch's scale: the broken branch divides by the sound branch's
+        // good profiles (NormGood, SetListNorm).
         return (1.0 - b) * sound + b * factor.ListMixAltScale * ScoreMixed(world, factor.ListMixAlt);
     }
 
@@ -2142,7 +2169,8 @@ internal static class LiveActivityKernel
             factor.Contests,
             factor.ContestTruth,
             dayType,
-            factor.Guards);
+            factor.Guards,
+            factor.NormGood);
 
     /// <summary>The succession branch's movement: before the execution scored with the
     /// executed person as demon, after it with the successor.</summary>
@@ -2153,11 +2181,11 @@ internal static class LiveActivityKernel
         double preS = BaseScore(
             factor.PeopleCount, evil, convIdx, split.ExecutedIdx, false,
             split.PreGood, split.PreMinion, dayType ? split.PreMinion : split.PreDemon, Array.Empty<double>(),
-            split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight, null, 1.0, dayType, split.PreGuards);
+            split.PreScenes, factor.TracePasserEps, factor.TraceUnknownWeight, null, 1.0, dayType, split.PreGuards, split.NormPreGood);
         double postS = BaseScore(
             factor.PeopleCount, evil, convIdx, world.DemonOrMinusOne, false,
             split.PostGood, split.PostMinion, dayType ? split.PostMinion : split.PostDemon, Array.Empty<double>(),
-            split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight, null, 1.0, dayType, split.PostGuards);
+            split.PostScenes, factor.TracePasserEps, factor.TraceUnknownWeight, null, 1.0, dayType, split.PostGuards, split.NormPostGood);
         return preS * postS;
     }
 
@@ -2177,8 +2205,10 @@ internal static class LiveActivityKernel
         SightingContest[] contests = null,
         double contestTruth = 1.0,
         bool dayType = false,
-        GuardSet guards = null)
+        GuardSet guards = null,
+        double[] normGood = null)
     {
+        double[] divisor = normGood ?? profGood;
         double result = 1.0;
         for (int i = 0; i < nPeople; i++)
         {
@@ -2235,7 +2265,7 @@ internal static class LiveActivityKernel
                     pVal = contestTruth * pVal + (1.0 - contestTruth) * ct.C[m - 1] * altV;
                 }
             }
-            result *= Math.Max(pVal, GdFloor1e30) / Math.Max(profGood[i], GdFloor1e30);
+            result *= Math.Max(pVal, GdFloor1e30) / Math.Max(divisor[i], GdFloor1e30);
         }
         result *= SceneScore(evilMask, convIdx, demonIdx, sceneTables, eps, unkWeight);
         return result;
