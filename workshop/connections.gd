@@ -110,9 +110,6 @@ static var held_together_rule: bool = true
 ## Buy-in fading (buy_in_rate). Off, every case keeps CASE_FADE a day (for measuring, and
 ## for arithmetic tests on chosen numbers).
 static var buy_in: bool = true
-## The poison self-doubt (Michael, Nov 17; _poison_doubt). Off, a listener never doubts its
-## own readings for a clash (for measuring, and for tests of other doubt).
-static var poison_self_doubt: bool = true
 ## Developer capture (off): one record per judgement a refresh makes, for measuring what a
 ## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
 ## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
@@ -932,175 +929,11 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	for p in told.lean:
 		total[p] += float(told.lean[p])
 	var settled: Dictionary = combine(others, baseline, total, own.proved)
-	# How far the listener should doubt its own readings for what clashes with them, for the
-	# next refresh (SourceDoubt.derive reads it from the core memory).
-	part = Profiler.open("poison_doubt")
-	memory["poison_doubt"] = _poison_doubt(run, case_data, by_id, item_list, values)
-	Profiler.close(part)
 	Profiler.count("connections_judgements", int(run.judgements))
 	Profiler.count("connections_kept", int(cache_stats.hits) - kept_before)
 	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
 		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
-
-
-## "Was my reading poisoned?" (Michael, Nov 17, with Quill.) When one of the listener's own
-## readings R can't stand beside another card, or its own readings can't stand together,
-## a Poisoner who might have picked it that night is one explanation, and a lying or broken
-## teller the other. Per own night {"self:night": doubt}, from this refresh, for the next:
-##  - against a teller T's card: d = w x pi_R / (pi_R + bad_T), with bad_T = 1 - (1 - s_T)(1 -
-##    pi_T), and w how hard R (taken as right) blames T for T's card: from the odds R adds to
-##    T beside the card beyond what R adds to T without it (1 - 1/that ratio): 1 when R
-##    proves T lied, 0 when R doesn't blame T for it. s_T is T's chance of being evil with R's own pull taken out (the items holding R
-##    and the core's lean: R near-certain would otherwise blame T entirely), pi_R and pi_T
-##    the chance that night's reading was poisoned (ReadingChallenges.poison_chance; pi_T is
-##    zero for a card that isn't a gift reading). The clashing teller that gives the most doubt (the most trusted) decides.
-##  - own readings no world allows together: each one whose removal makes the rest fit takes
-##    pi_R / (the culprits' summed pi); if no single removal fixes it, all share so. (The
-##    judge reads the listener's own readings with their small own-reading error, so two that
-##    merely disagree are settled inside it, by which fits the rest worse; this only acts on
-##    a set no world allows.)
-## The clash itself is judged with the listener's own readings at full strength (no doubt
-## on them): "do these fit, if my readings are right?" A clash judged on the doubted
-## readings would vanish once they're doubted, and the doubt with it, refresh after refresh.
-## Zero when no Poisoner is possible on the script; no new constant.
-static func _poison_doubt(run: Dictionary, case_data: Dictionary, by_id: Dictionary, item_list: Array, values: Dictionary) -> Dictionary:
-	var listener: Dictionary = run.listener
-	var self_id: String = str(listener.get("id", ""))
-	if not poison_self_doubt or self_id == "" or not ReadingChallenges.poisoner_possible(run.view):
-		return {}
-	var own_ids: Array = []
-	var pi: Dictionary = {}
-	for id in by_id:
-		var c: Dictionary = by_id[id]
-		if c.get("kind", "") != "report" or str(c.get("source", "")) != self_id or c.has("relay_source") or c.get("quoted", false):
-			continue
-		own_ids.append(id)
-		pi[id] = ReadingChallenges.poison_chance(run.view, listener, _poison_night(c))
-	own_ids = own_ids.filter(func(id): return _held(item_list, id))
-	if own_ids.is_empty() or not own_ids.any(func(id): return float(pi[id]) > 0.0):
-		return {}
-	own_ids.sort()
-	# The same judgements with the listener's own readings undoubted.
-	var free_listener: Dictionary = listener.duplicate(false)
-	var rd: Dictionary = listener.get("reading_doubt", {}).duplicate()
-	var rr: Dictionary = listener.get("reading_reliability", {}).duplicate()
-	for id in own_ids:
-		rd.erase(id)
-		if rr.has(id):
-			rr[id] = 1.0
-	free_listener["reading_doubt"] = rd
-	free_listener["reading_reliability"] = rr
-	var free: Dictionary = begin(run.view, case_data, free_listener)
-	if free.get("impossible", false) or free.others.is_empty():
-		return {}
-	var out: Dictionary = {}
-	var add := func(id: String, d: float) -> void:
-		if d <= 0.0:
-			return
-		var k: String = "%s:%d" % [self_id, _doubt_night(by_id[id])]
-		out[k] = maxf(float(out.get(k, 0.0)), clampf(d, 0.0, 1.0))
-	# Own against own.
-	if own_ids.size() >= 2 and lean(free, own_ids).impossible:
-		var culprits: Array = own_ids.filter(func(id): return not lean(free, own_ids.filter(func(o): return o != id)).impossible)
-		if culprits.is_empty():
-			culprits = own_ids
-		var sum_pi: float = 0.0
-		for id in culprits:
-			sum_pi += float(pi[id])
-		if sum_pi > 0.0:
-			for id in culprits:
-				add.call(id, float(pi[id]) / sum_pi)
-	# Against tellers.
-	var people: Array = run.people
-	for id in own_ids:
-		var pi_r: float = float(pi[id])
-		if pi_r <= 0.0 or lean(free, [id]).impossible:
-			continue
-		var named: Array = _names(by_id, [id], people)
-		# What R's own item says of each person on this refresh (no judgement needed).
-		var r_lean: Dictionary = {}
-		for other in item_list:
-			if id in other.ids:
-				for p in values[other.key].lean:
-					r_lean[p] = float(r_lean.get(p, 0.0)) + float(values[other.key].lean[p])
-		var r_alone: Dictionary = {}
-		var best: float = 0.0
-		for it in item_list:
-			if it.kind == "day" or id in it.ids or it.ids.any(func(x): return x in own_ids):
-				continue
-			var shared: Array = _names(by_id, it.ids, people).filter(func(p): return named.is_empty() or p in named)
-			if shared.is_empty():
-				continue
-			# Only a card that pushes someone R names the other way can clash with R: skip the
-			# rest without judging them.
-			var v_lean: Dictionary = values[it.key].lean
-			if not shared.any(func(p): return float(r_lean.get(p, 0.0)) * float(v_lean.get(p, 0.0)) < -1e-9):
-				continue
-			if r_alone.is_empty():
-				r_alone = lean(free, [id])
-			var tellers: Array = []
-			for x in it.ids:
-				var t: String = str(by_id[x].get("relay_source", by_id[x].get("source", "")))
-				if t != self_id and t in run.others and t not in tellers:
-					tellers.append(t)
-			if tellers.is_empty():
-				continue
-			var with_it: Array = _union(it.ids, it.get("ctx", []))
-			var alone: Dictionary = lean(free, with_it)
-			var both: Dictionary = lean(free, _union([id], with_it))
-			if alone.impossible:
-				continue
-			for t in tellers:
-				# How hard R, taken as right, blames T beside T's card: 1 when it proves T
-				# lied (or was broken), 0 when it doesn't blame T at all.
-				# Only what R says against T *beside T's card* counts: R's pull on T with the card,
-				# over its pull without it (clearing others raises everyone else's share of the
-				# evil count, card or no card).
-				var w: float = 1.0
-				if not both.impossible:
-					var with_card: float = logit(float(both.chance.get(t, 0.5)), 1e-9) - logit(float(alone.chance.get(t, 0.5)), 1e-9)
-					var without_card: float = logit(float(r_alone.chance.get(t, free.baseline.get(t, 0.5))), 1e-9) - logit(float(free.baseline.get(t, 0.5)), 1e-9)
-					var beyond: float = with_card - without_card
-					if beyond <= 0.0:
-						continue
-					w = 1.0 - exp(-beyond)
-				# T's chance from what else the listener holds: the baseline and every item that
-				# doesn't touch R. Nothing in it depends on R or on the doubt R gets, so the doubt
-				# is the same refresh after refresh.
-				var lo: float = logit(float(run.baseline.get(t, 0.5)))
-				for other in item_list:
-					if id not in other.ids and id not in other.get("ctx", []):
-						lo += float(values[other.key].lean.get(t, 0.0))
-				var s_t: float = chance(lo)
-				var pi_t: float = 0.0
-				for x in it.ids:
-					var c: Dictionary = by_id[x]
-					if c.get("kind", "") == "report" and str(c.get("relay_source", c.get("source", ""))) == t:
-						pi_t = maxf(pi_t, ReadingChallenges.poison_chance(run.view, {"knowledge": {}}, _poison_night(c)))
-				var bad: float = 1.0 - (1.0 - s_t) * (1.0 - pi_t)
-				best = maxf(best, w * pi_r / (pi_r + maxf(bad, 1e-6)))
-		add.call(id, best)
-	run.judgements += int(free.judgements)
-	return out
-
-
-## The doubt map's night for a reading (SourceDoubt's "source:night" key, as #216 keys it).
-static func _doubt_night(c: Dictionary) -> int:
-	return int(c.get("observed_at", {}).get("day", c.get("night", -1)))
-
-
-## The night a Poisoner would have acted to break this reading: its own night, or for a day
-## reading the night before (ReadingChallenges.poison_chance's convention).
-static func _poison_night(c: Dictionary) -> int:
-	var nd: int = int(c.get("night", -1))
-	if nd >= 0:
-		return nd
-	return int(c.get("observed_at", {}).get("day", 0)) - 1
-
-
-static func _held(item_list: Array, id: String) -> bool:
-	return item_list.any(func(it): return id in it.ids)
 
 
 ## Everyone's chance from the baseline and the summed leans: one common shift, so the people

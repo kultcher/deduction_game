@@ -157,13 +157,7 @@ static func _refresh(g, n, phase: String) -> void:
 		if proposal.has("connections") and committed_inputs[0].listener.has("connections"):
 			if not state.has("connections"):
 				state["connections"] = {}
-			# The poison self-doubt this refresh found (Connections._poison_doubt) is read by
-			# the next one's SourceDoubt.derive; when it differs from what this refresh
-			# applied, Mind runs the refresh once more so beliefs don't lag it.
-			var applied_pd: Dictionary = committed_inputs[0].listener.connections.get("core", {}).get("poison_doubt", {})
 			state.connections["core"] = proposal.connections.get("core_memory", {}).duplicate(true)
-			if state.connections.core.get("poison_doubt", {}) != applied_pd:
-				state["poison_doubt_changed"] = true
 			committed_inputs[0].listener.connections.core = state.connections.core.duplicate(true)
 		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
 		state.requested = {}

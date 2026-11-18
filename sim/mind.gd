@@ -882,11 +882,6 @@ static func _refresh_beliefs(w, n, note: String) -> void:
 		return
 	if w.workshop_refresh.is_valid():
 		w.workshop_refresh.call(n)
-		# A poison self-doubt this refresh found applies now, not a refresh late (once).
-		if n.workshop_state.get("poison_doubt_changed", false):
-			n.workshop_state.erase("poison_doubt_changed")
-			w.workshop_refresh.call(n)
-			n.workshop_state.erase("poison_doubt_changed")
 	_refresh_ledger_preferences(w, n)
 	prune_resentments(w, n)
 	w.dlog.capture_npc(n, "belief_recompute" + note)

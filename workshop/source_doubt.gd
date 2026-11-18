@@ -19,6 +19,9 @@ const TimeModel = preload("res://workshop/chronology.gd")
 const History = preload("res://workshop/live_history.gd")
 
 
+## The poison self-doubt (off for measuring and for tests of other doubt).
+static var poison_self_doubt: bool = true
+
 static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind: String = "reading") -> float:
 	if src == "":
 		return 0.0
@@ -208,16 +211,29 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if not seed_doubt.has(s_good + ":*"):
 			pre_eval.erase(s_good + ":*")
 
-	# "Was my reading poisoned?" (Michael, Nov 17): what the last refresh found clashing with
-	# the listener's own readings, as an honest doubt on those nights (Connections.
-	# _poison_doubt, kept in the core memory). Honest, so it reaches the role check and the
-	# readings' weight, never a charge of lying.
-	var remembered: Dictionary = listener.get("connections", input_snap.get("listener", {}).get("connections", {}))
-	var poisoned: Dictionary = remembered.get("core", {}).get("poison_doubt", {})
-	for k_p in poisoned:
-		if self_id != "" and str(k_p).begins_with(self_id + ":"):
-			pre_eval[k_p] = maxf(float(pre_eval.get(k_p, 0.0)), float(poisoned[k_p]))
-			honest[k_p] = maxf(float(honest.get(k_p, 0.0)), float(poisoned[k_p]))
+	# "Was my reading poisoned?" (Michael, Nov 17-18, with Quill). With a Poisoner possible, each
+	# of the listener's own readings carries the chance that a Poisoner picked it that night
+	# (ReadingChallenges.poison_chance: zero with no Poisoner on the script or one known dead)
+	# as an honest doubt. Only the prior: the judge then weighs the reading as genuine or
+	# broken by how well each fits the rest, so a reading that fits shrugs it off and one that
+	# fights everything else gives way, more so against a trusted teller. Honest, so it reaches
+	# the role check and the readings' weight, never a charge of lying.
+	if poison_self_doubt and self_id != "" and ReadingChallenges.poisoner_possible(view):
+		for c in cards:
+			if str(c.get("kind", "")) != "report" or str(c.get("source", "")) != self_id or c.get("quoted", false) or c.has("relay_source"):
+				continue
+			var k_night: int = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			if k_night < 0:
+				continue
+			# The night a Poisoner would have acted: the reading's own, or for a day reading
+			# the night before.
+			var p_night: int = int(c.get("night", -1)) if int(c.get("night", -1)) >= 0 else k_night - 1
+			var pi: float = ReadingChallenges.poison_chance(view, listener, p_night)
+			if pi <= 0.0:
+				continue
+			var k_p: String = "%s:%d" % [self_id, k_night]
+			pre_eval[k_p] = maxf(float(pre_eval.get(k_p, 0.0)), pi)
+			honest[k_p] = maxf(float(honest.get(k_p, 0.0)), pi)
 
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})

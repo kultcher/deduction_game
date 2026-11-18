@@ -1,10 +1,9 @@
-## "Was my reading poisoned?" (Michael, Nov 17, with Quill; Connections._poison_doubt). When
-## a listener's own reading clashes with a teller's card, a Poisoner who might have picked
-## it that night is one explanation, the teller lying or broken the other, so the listener
-## doubts that night of its own a little: more against a trusted teller, less against a
-## suspected one, none with no Poisoner on the script. Own readings that can't stand
-## together share the doubt. The clash is judged with the listener's readings at full
-## strength, so the doubt doesn't switch itself off on the next refresh.
+## "Was my reading poisoned?" (Michael, Nov 17-18, with Quill; SourceDoubt.derive). With a
+## Poisoner possible, each of the listener's own readings carries the chance a Poisoner
+## picked it that night (ReadingChallenges.poison_chance) as an honest doubt: the prior
+## only. The judge does the rest: a reading that fits shrugs it off, one that a trusted
+## teller contradicts gives way, less so when the teller is already suspected. None with no
+## Poisoner on the script.
 ## Constructed on seed 692's 7-NPC deal (the Poisoner is on its script), flat beliefs.
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -12,6 +11,7 @@ const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
 const Caches = preload("res://workshop/caches.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
+const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 
 var checks := 0
 var fails := 0
@@ -66,8 +66,10 @@ func _run(g) -> Dictionary:
 		var post: Dictionary = {}
 		for id in eff:
 			post[id] = float(eff[id].get("posterior", -1.0))
-		out[i] = {"post": post, "doubt": n.workshop_state.get("connections", {}).get("core", {}).get("poison_doubt", {}).duplicate()}
+		out[i] = {"post": post, "doubt": SourceDoubt.self_doubt(n)}
 	out["self_doubt"] = SourceDoubt.self_doubt(n)
+	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
+	out["pi"] = ReadingChallenges.poison_chance(plan.prepared.view, plan.prepared.listener, 0) if not plan.is_empty() else -1.0
 	return out
 
 
@@ -78,33 +80,44 @@ const AGAINST_NISHA = ["odette", "seer", 1, 3, {"pair": ["nisha", "agnes"], "yes
 
 func _init() -> void:
 	Connections.enabled = true
-	# 1. A trusted teller's card clashes with the listener's own reading.
-	Connections.poison_self_doubt = false
-	var off: Dictionary = _run(_game(OWN, [CLASH]))
-	Connections.poison_self_doubt = true
+	# 1. The doubt itself: the poison chance, on the night the Poisoner would have acted (the
+	#    night before a day reading), keyed to the reading's own day.
 	var on: Dictionary = _run(_game(OWN, [CLASH]))
-	var d1: float = float(on[2].doubt.get("constance:1", 0.0))
-	print("trusted teller: doubt %.3f; Hollis %.3f -> %.3f, Nisha %.3f -> %.3f" % [d1, off[2].post.hollis, on[2].post.hollis, off[2].post.nisha, on[2].post.nisha])
-	check(d1 > 0.0 and d1 < 0.5, "a clash with a teller's card makes the listener doubt that night of its own a little (%.3f)" % d1)
-	check(on[2].post.hollis > off[2].post.hollis and on[2].post.nisha < off[2].post.nisha, "so its reading clears Hollis less and blames the teller less")
-	check(on[2].doubt.keys() == ["constance:1"], "only the clashing night is doubted (%s)" % str(on[2].doubt.keys()))
-	check(absf(float(on.self_doubt.get(1, 0.0)) - d1) < 1e-9, "the NPC's own self-doubt signal carries it, for what it says (%s)" % str(on.self_doubt))
-	check(absf(float(on[1].doubt.get("constance:1", 0.0)) - d1) < 0.005 and absf(on[1].post.hollis - on[2].post.hollis) < 0.005, "it holds on the next refresh: the doubt doesn't switch its own clash off (%.4f, then %.4f)" % [float(on[1].doubt.get("constance:1", 0.0)), d1])
-	# 2. The same clash from a teller the listener already suspects: less doubt.
+	var d1: float = float(on[2].doubt.get(1, 0.0))
+	print("own reading's doubt %.3f (poison chance for that night %.3f)" % [d1, float(on.pi)])
+	check(d1 > 0.0 and absf(d1 - float(on.pi)) < 1e-9, "an own reading carries the poison chance as its doubt (%.3f)" % d1)
+	check(on[2].doubt.keys() == [1], "only the night of its own reading is doubted (%s)" % str(on[2].doubt.keys()))
+	check(absf(float(on.self_doubt.get(1, 0.0)) - d1) < 1e-9, "the NPC's self-doubt signal carries it, for what it says (%s)" % str(on.self_doubt))
+	# 2. Against a trusted teller's clashing card, the reading gives way: it clears Hollis less
+	#    and blames the teller less.
+	SourceDoubt.poison_self_doubt = false
+	var off: Dictionary = _run(_game(OWN, [CLASH]))
+	SourceDoubt.poison_self_doubt = true
+	print("trusted teller: Hollis %.3f -> %.3f, Nisha %.3f -> %.3f" % [off[2].post.hollis, on[2].post.hollis, off[2].post.nisha, on[2].post.nisha])
+	check(on[2].post.hollis > off[2].post.hollis and on[2].post.nisha < off[2].post.nisha, "a clash with a trusted teller's card: the own reading clears Hollis less and blames the teller less")
+	var rise_trusted: float = on[2].post.hollis - off[2].post.hollis
+	# 3. The same clash from a teller the listener already suspects: the teller explains it,
+	#    so the reading gives way less.
+	SourceDoubt.poison_self_doubt = false
+	var sus_off: Dictionary = _run(_game(OWN, [CLASH, AGAINST_NISHA]))
+	SourceDoubt.poison_self_doubt = true
 	var sus: Dictionary = _run(_game(OWN, [CLASH, AGAINST_NISHA]))
-	var d2: float = float(sus[2].doubt.get("constance:1", 0.0))
-	print("suspected teller: doubt %.3f (Nisha %.3f)" % [d2, sus[2].post.nisha])
-	check(d2 < d1, "a teller already suspected explains the clash better, so the listener doubts itself less (%.3f vs %.3f)" % [d2, d1])
-	# 3. No Poisoner on the script: no such doubt.
+	var rise_sus: float = sus[2].post.hollis - sus_off[2].post.hollis
+	print("suspected teller: Hollis rises %.4f (trusted: %.4f); Nisha %.3f" % [rise_sus, rise_trusted, sus[2].post.nisha])
+	check(rise_sus < rise_trusted, "a teller already suspected explains the clash better, so the reading gives way less (%.4f vs %.4f)" % [rise_sus, rise_trusted])
+	# 4. A teller who agrees: the reading fits, so the doubt barely shows.
+	var agree: Array = [["nisha", "seer", 1, 3, {"pair": ["hollis", "merrin"], "yes": false}]]
+	SourceDoubt.poison_self_doubt = false
+	var calm_off: Dictionary = _run(_game(OWN, agree))
+	SourceDoubt.poison_self_doubt = true
+	var calm: Dictionary = _run(_game(OWN, agree))
+	var calm_move: float = absf(calm[2].post.hollis - calm_off[2].post.hollis)
+	print("agreeing teller: Hollis moves %.4f" % calm_move)
+	check(calm_move < rise_trusted, "a reading that fits shrugs the doubt off: it moves Hollis less than the clash does (%.4f vs %.4f)" % [calm_move, rise_trusted])
+	# 5. No Poisoner on the script: no such doubt.
 	var none: Dictionary = _run(_game(OWN, [CLASH], false))
 	check(none[2].doubt.is_empty(), "with no Poisoner on the script there's no poison self-doubt (%s)" % str(none[2].doubt))
-	# 4. No clash: nothing.
-	var calm: Dictionary = _run(_game(OWN, [["nisha", "seer", 1, 3, {"pair": ["hollis", "merrin"], "yes": false}]]))
-	check(calm[2].doubt.is_empty(), "a teller who agrees raises no doubt (%s)" % str(calm[2].doubt))
-	# 5. Two of its own readings that disagree: the judge settles that by fit (own readings
-	#    carry the small own-reading error), so no extra doubt from this path.
-	var pair: Dictionary = _run(_game(OWN + [[2, {"group": ["hollis", "odette"], "count": 2}]], []))
-	print("own against own (disagreeing, not impossible): %s" % str(pair[2].doubt))
-	check(pair[2].doubt.is_empty(), "two own readings that merely disagree add no poison doubt: the judge already weighs which is wrong (%s)" % str(pair[2].doubt))
+	# 6. Stable: the next refresh changes nothing.
+	check(absf(on[1].post.hollis - on[2].post.hollis) < 1e-9 and on[1].doubt == on[2].doubt, "a refresh with nothing new changes nothing")
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
