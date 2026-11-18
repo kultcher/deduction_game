@@ -465,7 +465,7 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 240, "Agnes voice pack contains all 240 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 244, "Agnes voice pack contains all 244 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()
@@ -484,6 +484,12 @@ func _test_voice_pack_completeness_and_symmetry() -> void:
 	all_string_keys["defence_day_others"] = day_slots.merged({"others": "Agnes and Hollis"})
 	all_string_keys["defence_day_alone"] = day_slots.duplicate()
 	all_string_keys["defence_day_others_pointed_stand"] = day_slots.merged({"suspect": "Kiran"})
+	# Playtest 23973 (Michael, Nov 17).
+	all_string_keys["present_clashes_moved"] = {"target": "Merrin"}
+	all_string_keys["defence_lying_alone"] = {"source": "Kiran"}
+	all_string_keys["defence_lied"] = {"source": "Kiran"}
+	# Doubting one's own gift (Michael, Nov 17): good and evil say the same line.
+	all_string_keys["doubt_own_gift"] = {}
 	for key in all_string_keys:
 		var slots: Dictionary = all_string_keys[key]
 		var seen: Dictionary = {}

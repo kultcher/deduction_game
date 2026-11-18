@@ -57,13 +57,18 @@ func _routes() -> void:
 	var claim = {"id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "medium", "data": {}}
 	check(not Activity.routes(view, [first, second, claim]).okay, "different accepted gift cannot excuse a lamp-only route")
 	check(Activity.routes(view, [first, _sight("homeblock", "a", 1, "hill")]).okay, "home block and one destination are compatible")
-	var empty = {"id": "empty", "kind": "coverage", "source": "player", "night": 1, "block": "market", "excluded": []}
-	check(not Activity.routes(view, [empty, first]).okay, "empty complete vigil contradicts a positive crossing")
+	# A vigil watches who leaves the block (Nov 17, docs/design/vigil.md option A): a (home
+	# hill) seen out on the market left the hill.
+	var empty = {"id": "empty", "kind": "coverage", "source": "player", "night": 1, "block": "hill", "excluded": []}
+	check(not Activity.routes(view, [empty, first]).okay, "empty complete vigil contradicts a resident seen out")
 	empty.excluded = ["a"]
 	check(Activity.routes(view, [empty, first]).okay, "coverage exclusions are honored")
-	var complete = _sight("complete", "b", 1, "market")
+	empty.excluded = []
+	empty.block = "market"
+	check(Activity.routes(view, [empty, first]).okay, "an empty vigil says nothing of a visitor arriving from another block")
+	var complete = _sight("complete", "b", 1, "square")
 	complete["complete"] = true
-	check(not Activity.routes(view, [complete, first]).okay, "positive complete vigil also constrains omitted passers")
+	check(not Activity.routes(view, [complete, _sight("c_out", "c", 1, "market")]).okay, "positive complete vigil also constrains omitted residents who went out")
 	complete["excluded"] = ["a"]
 	check(Activity.routes(view, [complete, first]).okay, "positive vigil preserves native same-night victim exclusions")
 	var knowledge = {"self": "a", "good": ["a"], "own_role": "warden", "own_outings": {"1": false}}

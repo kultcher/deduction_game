@@ -92,10 +92,21 @@ static func assess(w, n, entry: Dictionary, extra: Array = []) -> Dictionary:
 	var with_fake: Array = cards.duplicate()
 	with_fake.append(_card(n.id, entry, -1))
 	var after: Dictionary = _posteriors(ReasonAttribution.public_view_from_world(w), with_fake, ids)
-	if before.is_empty() or after.is_empty():
+	return lift_of(before, after, team, n.id)
+
+
+## The lift from the town's chances before and after the fabrication (`assess`'s arithmetic).
+static func lift_of(before: Dictionary, after: Dictionary, team: Array, teller: String) -> Dictionary:
+	if before.is_empty():
+		# The public record already fits no world, before this reading: that says nothing
+		# about the new lie, so it can't be judged and goes out as before (Steward A1, Nov 17:
+		# otherwise every reading and every alternative looked self-incriminating, and evil
+		# held all its readings for as long as the record stayed impossible).
+		return {}
+	if after.is_empty():
 		# The fabrication can't stand beside the public record at all: the town would see a
 		# liar. Count it as the largest lift on the teller.
-		return {"lift": 1.0, "who": n.id, "before": before, "after": after, "impossible": true}
+		return {"lift": 1.0, "who": teller, "before": before, "after": after, "impossible": true}
 	var lift: float = -INF
 	var who: String = ""
 	for id in team:
@@ -123,7 +134,7 @@ static func vet(w, n, entry: Dictionary, alternatives: Callable, scapegoat: Stri
 	var noticed: bool = w.decision_roll(n, "notice_self_incrimination", p_notice, {"insight": insight, "lift": a.lift, "who": a.who})
 	if not noticed:
 		entry["vet"] = {"outcome": "slipped", "lift": a.lift, "who": a.who}
-		w.dlog.think(n.id, "lie", "Evil: doesn't notice that its %s reading points the town at %s (+%.2f)." % [entry.get("role", "?"), a.who, a.lift], {"lie": true})
+		w.dlog.think(n.id, "lie", "Evil: doesn't notice that its %s reading points the town at %s (+%.2f)." % [entry.get("role", "?"), _name(w, a.who), a.lift], {"lie": true})
 		return {"entry": entry, "outcome": "slipped", "why": ""}
 	# A better lie: of the rule's other readings, those that point at nobody on the team; of
 	# those, the one that still pushes the scapegoat hardest.
@@ -145,8 +156,18 @@ static func vet(w, n, entry: Dictionary, alternatives: Callable, scapegoat: Stri
 	if not best.is_empty():
 		var chosen: Dictionary = best.entry
 		chosen["vet"] = {"outcome": "reworked", "lift": a.lift, "who": a.who, "new_lift": best.lift, "pushes_scapegoat": snappedf(best_push, 0.001)}
-		w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f); tells a better lie instead: %s." % [entry.get("role", "?"), a.who, a.lift, best.why], {"lie": true})
-		return {"entry": chosen, "outcome": "reworked", "why": best.why}
+		w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f); tells a better lie instead: %s" % [entry.get("role", "?"), _name(w, a.who), a.lift, str(chosen.get("text", ""))], {"lie": true})
+		return {"entry": chosen, "outcome": "reworked", "why": best.why, "who": a.who, "note": rework_note(w, a.who)}
 	entry["vet"] = {"outcome": "held", "lift": a.lift, "who": a.who}
-	w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f), and no safer one fits; holds it back a day." % [entry.get("role", "?"), a.who, a.lift], {"lie": true})
+	w.dlog.think(n.id, "lie", "Evil: its %s reading would point the town at %s (+%.2f), and no safer one fits; holds it back a day." % [entry.get("role", "?"), _name(w, a.who), a.lift], {"lie": true})
 	return {"entry": entry, "outcome": "held", "why": ""}
+
+
+static func _name(w, id: String) -> String:
+	return w.by_id[id].name if w.by_id.has(id) else id
+
+
+## The reveal's note on a reworked reading, after its original motive (draft wording for
+## Michael, Nov 17; Steward A2-A3).
+static func rework_note(w, who: String) -> String:
+	return "its first version would have turned the town on %s, so it told this one instead" % _name(w, who)

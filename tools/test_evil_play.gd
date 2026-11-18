@@ -367,7 +367,7 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 	})
 	var vig_num: int = g.add_card({
 		"kind": "vigil", "subject": [], "block": "hill", "day": 1, "phase": C.NIGHT,
-		"source": "player", "vigil": true, "text": "Night 1 vigil: nobody came to Chapel Hill.",
+		"source": "player", "vigil": true, "text": "Night 1 vigil on Chapel Hill: nobody stirred.",
 	})
 	var cview: Dictionary = WorkshopCanvas.view(g)
 	var wc_id: String = WorkshopCanvas.Evidence.normalize_card(g.board[watch_card_num - 1]).id

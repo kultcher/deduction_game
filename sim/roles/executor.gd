@@ -120,7 +120,7 @@ func run_morning_gift(w, n) -> bool:
 	var entry: Dictionary = {}
 	if ex.secret_mod == "marked" and w.chance(Tuning.Roles.GRAVEDIGGER.marked_evil_chance):
 		role = w.pick(w.case_script.demons + w.case_script.minions)
-		entry["why"] = "Marked reads as evil"
+		entry["why"] = "a Marked soul reads as evil"
 	if broken:
 		var pool: Array = (w.case_script.town + w.case_script.demons + w.case_script.minions).filter(
 			func(x): return x != true_role and x != "executor" and x != "hearthwitch"
@@ -148,7 +148,7 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, mate, _asked: Arr
 		"data": {"target": tgt.id, "assigned": true},
 		"text": _assigned_text(tgt.name),
 	}
-	return {"entry": entry, "why": "names %s as Executor charge" % tgt.id}
+	return {"entry": entry, "why": "named %s as their charge" % tgt.id}
 
 
 func run_morning_bluff(w, n) -> bool:
@@ -186,18 +186,18 @@ func run_morning_bluff(w, n) -> bool:
 		role = str(plan.get("bluffs", {}).get(ex.id, ""))
 		if role == "":
 			role = w.pick(w.case_script.town.filter(func(r): return r != "executor"))
-		why = "covers dead teammate %s as their bluff %s" % [ex.id, role]
+		why = "covered for %s, a dead fellow evil, as the %s they had claimed" % [ex.id, content().role_name(role)]
 	elif ex.death_cause == "executed" and w.chance(0.5):
 		var mpool: Array = w.case_script.minions.filter(func(m): return m != "breathstealer" or w.living_with_role("breathstealer") != null)
 		role = w.pick(mpool) if not mpool.is_empty() else w.pick(w.case_script.town)
-		why = "frames hanged townsfolk %s as %s" % [ex.id, role]
+		why = "named %s, hanged and good, as the %s" % [ex.id, content().role_name(role)]
 	elif ex.claimed_role != "" and ex.claimed_role != "none" and ex.claimed_role != "executor":
 		role = ex.claimed_role
-		why = "confirms dead %s's own claim %s" % [ex.id, role]
+		why = "confirmed the late %s's own claim to be the %s" % [ex.id, content().role_name(role)]
 	else:
 		var tpool: Array = w.case_script.town.filter(func(r): return r != "executor")
 		role = w.pick(tpool) if not tpool.is_empty() else "clerk"
-		why = "guesses good role %s for dead %s" % [role, ex.id]
+		why = "guessed that the late %s was the %s" % [ex.id, content().role_name(role)]
 	var entry: Dictionary = {
 		"day": w.day,
 		"phase": content().MORNING,
@@ -205,7 +205,7 @@ func run_morning_bluff(w, n) -> bool:
 		"shared": false,
 		"true": false,
 		"fake": true,
-		"why": "evil fabrication: " + why,
+		"why": "evil fabrication: " + load("res://sim/evil.gd").named(w, why),
 		"data": {"target": ex.id, "role": role},
 		"text": _role_text(ex.name, role),
 	}
@@ -233,7 +233,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 		e["phase"] = C.MORNING
 		e["data"] = {"target": ex.id, "role": rl}
 		e["text"] = _role_text(ex.name, rl)
-		return {"entry": e, "why": "the dead Executor %s 'learned' %s was the %s" % [dd.id, ex.id, rl], "frames": not ex.is_evil()}
+		return {"entry": e, "why": "made up a reading from the late Executor %s that %s was the %s" % [dd.id, ex.id, content().role_name(rl)], "frames": not ex.is_evil()}
 	var cands: Array = w.npcs.filter(func(x): return x != dd)
 	if cands.is_empty():
 		return {}
@@ -242,7 +242,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, _d, _goods: Array, _other: C
 	e.erase("phase")
 	e["data"] = {"target": pick_t.id, "assigned": true}
 	e["text"] = _assigned_text(pick_t.name)
-	return {"entry": e, "why": "the dead Executor %s had %s as their charge" % [dd.id, pick_t.id], "frames": false}
+	return {"entry": e, "why": "made up a reading from the late Executor %s naming %s as their charge" % [dd.id, pick_t.id], "frames": false}
 
 
 ## Named Executor for a bystander instead (FabricationCheck: a better lie).

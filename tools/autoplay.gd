@@ -36,9 +36,8 @@
 ## budget scatters the town's beliefs, and what reading everything costs.
 ##
 ## The M4 policy (meeting plan slice M4; default): the bot presses the nominee at the
-## podium, nominates less (and not below the one on the block), keeps vigils where the
-## Demon is likeliest to strike (the homes of trusted high-value gifts, away from a suspect
-## walker's own home), lets exclusion cards (empty vigils, complete vigil lists) into its
+## podium, nominates less (and not below the one on the block), keeps vigils on the block of
+## the people it suspects most (a vigil sees residents leaving home), lets exclusion cards (empty vigils, complete vigil lists) into its
 ## cases against claimed walkers, and names the Demon from P(Demon), not P(evil).
 ## --pre-m4 restores the earlier policy, for A/Bs.
 ##
@@ -89,10 +88,7 @@ const DECLARE_BF = 3.0
 const DECLARE_CHANGE_BF = 10.0
 const M4_BLOCK_MARGIN = 0.1    # don't nominate unless they're this far above the one on the block
 const PRESS_INTEREST_P = 0.35  # press a nominee it suspects at least this much (always its own)
-const VIGIL_SAFE_P = 0.35      # a trusted claimant: below this P(evil)
 const DEMON_CANDIDATES = 3     # the Demon guess weighs P(Demon) for the top few by P(evil)
-const HIGH_VALUE_GIFTS = ["warden", "veteran"]   # plus C.INFO_ROLES
-const WALK_CLAIMS = ["lamplighter", "nightwatch", "medium", "warden", "sexton"]
 
 const NEW_ACTIONS = ["offer_ward", "offer_vigil", "ask_person", "answer_confidence", "answer_protection", "apologise", "request_check", "request_guard", "request_watch", "keep_ward", "keep_vigil"]
 var talk_policy_used = {}
@@ -179,7 +175,7 @@ func _init() -> void:
 	var log_dir: String = ProjectSettings.globalize_path(args.get("log-dir", "res://logs"))
 	var keys = ["days", "exec_evil", "exec_good", "kills", "lies", "nominations", "clemency", "reveals", "max_tier4", "pairs", "guards",
 		"shares", "evil_shares", "approaches", "kill_on_threat", "deductions", "arguments", "matched_links", "links",
-		"workshop_cases", "hub_cases", "cross_cases", "declarations", "declarations_right"]
+		"workshop_cases", "hub_cases", "cross_cases", "declarations", "declarations_right", "vigils", "vigils_seen", "vigils_demon"]
 	keys.append_array(NEW_ACTIONS)
 	keys.append_array(VoteShape.KEYS)
 	var stats = {"good": 0, "evil": 0}
@@ -218,6 +214,7 @@ func _init() -> void:
 		print("  links %.1f/case (%.1f matched), deductions %.1f/case (workshop %.1f, hub %.1f), NPC argument evaluations %.1f/case" %
 			[stats["links"] / gf, stats["matched_links"] / gf, stats["deductions"] / gf, stats["workshop_cases"] / gf, stats["hub_cases"] / gf, stats["arguments"] / gf])
 	print("  Phase 5: cross-check cases %d; demon-type declarations %d (%d right)" % [stats["cross_cases"], stats["declarations"], stats["declarations_right"]])
+	print("  vigils: %d kept, %d saw someone, %d saw the Demon" % [stats["vigils"], stats["vigils_seen"], stats["vigils_demon"]])
 	print("  vote shape: %d votes, unanimous but the nominee %d, only the nominator %d; evil nominations %d (carried %d, hanged %d), on good targets %d (carried %d, hanged %d)" %
 		[stats["votes"], stats["votes_unanimous"], stats["votes_only_nominator"], stats["evil_nominations"], stats["evil_nominations_carried"], stats["evil_nominations_executed"],
 		stats["evil_nominations_good_target"], stats["evil_nominations_good_target_carried"], stats["evil_nominations_good_target_executed"]])
@@ -310,7 +307,8 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 		"exec_good": 0, "exec_evil": 0, "kills": 0, "lies": 0, "nominations": 0, "clemency": 0, "reveals": 0,
 		"max_tier4": 0, "pairs": 0, "guards": 1 if guard >= 600 else 0, "shares": 0, "evil_shares": 0, "approaches": 0, "kill_on_threat": 0, "deductions": 0, "arguments": 0, "matched_links": 0, "links": 0,
 		"workshop_cases": workshop_cases_filed, "hub_cases": hub_cases_filed, "cross_cases": cross_cases_filed,
-		"declarations": declarations.size(), "declarations_right": declarations.filter(func(d): return d[2]).size()}
+		"declarations": declarations.size(), "declarations_right": declarations.filter(func(d): return d[2]).size(),
+		"vigils": 0, "vigils_seen": 0, "vigils_demon": 0}
 	for key in NEW_ACTIONS: r[key] = new_talk_counts[key]
 	r.merge(VoteShape.build(g.w))
 	for e in w.executions:
@@ -320,6 +318,11 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 			r["exec_good"] += 1
 	for e in w.dlog.entries:
 		match e["type"]:
+			"player_vigil":
+				var seen: Array = e["data"].get("seen", [])
+				r["vigils"] += 1
+				r["vigils_seen"] += 1 if not seen.is_empty() else 0
+				r["vigils_demon"] += 1 if w.demon_id in seen else 0
 			"kill":
 				r["kills"] += 1
 			"nomination":
@@ -834,25 +837,24 @@ func _press_choice(nm: Dictionary, s: float) -> String:
 		return "press night %d" % (g.w.day - 1)
 	return "press skip"
 
-## M4: keep the vigil where the Demon is likeliest to strike: the home of a trusted
-## high-value gift (an information gift, the Warden, the Veteran). A watch there sees the
-## killer arrive. Avoid the home block of a suspected walker claimant, so the vigil also
-## tests the claim (an empty vigil is soft evidence against a claimed walker who should have
-## passed: Tuning.Workshop.VIGIL_MISS). Returns "" when no trusted high-value claim is known.
+## M4: keep the vigil on the block of the people the bot suspects most (Michael, Nov 17,
+## docs/design/vigil.md option A): a vigil sees residents leaving home, so it aims at
+## suspects, not at the Demon's likely victim. The block whose living residents carry the most
+## suspicion between them; an empty vigil there clears them all for that night. Returns ""
+## when nobody is suspected at all.
 func _vigil_block(sc: Dictionary) -> String:
-	var living: Array = g.w.living()
-	var targets: Array = living.filter(func(n): return n.claim_public and (n.claimed_role in C.INFO_ROLES or n.claimed_role in HIGH_VALUE_GIFTS) and sc.get(n.id, 0.0) < VIGIL_SAFE_P)
-	if targets.is_empty():
-		return ""
-	targets.sort_custom(func(a, b): return sc[a.id] < sc[b.id] if not is_equal_approx(sc[a.id], sc[b.id]) else a.id < b.id)
-	var avoid: Dictionary = {}
-	for n in living:
-		if n.claim_public and n.claimed_role in WALK_CLAIMS and sc.get(n.id, 0.0) >= VIGIL_SAFE_P:
-			avoid[n.home_block] = true
-	for n in targets:
-		if not avoid.has(n.home_block):
-			return n.home_block
-	return targets[0].home_block
+	var by_block: Dictionary = {}
+	for n in g.w.living():
+		by_block[n.home_block] = float(by_block.get(n.home_block, 0.0)) + float(sc.get(n.id, 0.0))
+	var best: String = ""
+	var best_s: float = 0.0
+	var blocks: Array = by_block.keys()
+	blocks.sort()
+	for blk in blocks:
+		if float(by_block[blk]) > best_s:
+			best_s = float(by_block[blk])
+			best = blk
+	return best
 
 func _pick_location() -> String:
 	var w = g.w

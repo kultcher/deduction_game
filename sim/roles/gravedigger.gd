@@ -33,7 +33,7 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	var entry: Dictionary = {}
 	if ex.secret_mod == "marked" and w.chance(Tuning.Roles.GRAVEDIGGER.marked_evil_chance):
 		role = w.pick(w.case_script.demons + w.case_script.minions)
-		entry["why"] = "Marked reads as evil"
+		entry["why"] = "a Marked soul reads as evil"
 	if broken:
 		role = w.pick(C.ROLES.keys().filter(func(x): return x != ex.role and not C.is_demon(x) and x != "hearthwitch"))
 	entry["data"] = {"executed": ex.id, "role": role}
@@ -68,7 +68,7 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: 
 	var why = ""
 	if ex.is_evil():
 		role = plan["bluffs"][ex.id]
-		why = "covers executed teammate as their bluff %s" % role
+		why = "covered for their hanged fellow evil as the %s they had claimed" % content().role_name(role)
 	else:
 		# What the town believed of them, from the vote that hanged them (public).
 		var sure: float = town_certainty(w, ex.id)
@@ -77,13 +77,13 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: 
 		var minions: Array = w.case_script.minions
 		if not minions.is_empty() and w.decision_roll(_n, "gravedigger_frame", p_frame, {"town_certainty": sure, "confidence": conf}, ex.id):
 			role = w.pick(minions)
-			why = "frames executed good NPC as a Minion (town certainty %.2f)" % sure
+			why = "named %s, hanged and good, as a Minion" % ex.id
 		elif ex.claimed_role != "" and ex.claimed_role != "none":
 			role = ex.claimed_role
-			why = "confirms executed good NPC's own claim (town certainty %.2f)" % sure
+			why = "confirmed the hanged %s's true claim, to seem honest" % ex.id
 		else:
 			role = w.pick(w.case_script.town)
-			why = "guesses a good role for executed NPC"
+			why = "guessed a good gift for the hanged %s" % ex.id
 	var entry: Dictionary = {
 		"data": {"executed": ex.id, "role": role},
 		"text": "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(role)],
@@ -110,7 +110,7 @@ func fake_medium_reading(w, _n, dd, _s: String, _sg, _d, _goods: Array, _other: 
 		rl = w.pick(pool)
 	e["data"] = {"executed": ex.id, "role": rl}
 	e["text"] = "I learned that %s, whom we hanged, was the %s" % [ex.name, C.role_name(rl)]
-	return {"entry": e, "why": "the dead Gravedigger %s 'learned' %s was the %s" % [dd.id, ex.id, rl], "frames": not ex.is_evil()}
+	return {"entry": e, "why": "made up a reading from the late Gravedigger %s that %s was the %s" % [dd.id, ex.id, content().role_name(rl)], "frames": not ex.is_evil()}
 
 
 ## Another role for the hanged: their own claim, or a good role on the script

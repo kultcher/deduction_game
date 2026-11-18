@@ -78,7 +78,7 @@ func generate_reading(w, ag, ctx: Dictionary, _mind) -> Dictionary:
 	if ag.gift_broken():
 		crossed = not truth_crossed
 	elif crossed != truth_crossed and marked_triggered:
-		awhy = "a Marked soul read as the demon"
+		awhy = "a Marked soul reads as the Demon"
 	return {
 		"data": {"yes": crossed},
 		"true": crossed == truth_crossed,
@@ -105,16 +105,16 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 		if n.id != w.demon_id and w.by_id.has(w.demon_id) and _public_block_at(w, w.by_id[w.demon_id], w.day, ph) == my_blk:
 			shared_with_demon = true
 	var yes: bool = false
-	var why: String = "reports no demon crossing today"
+	var why: String = "claimed no Demon crossed their path that day"
 	if shared_with_demon and not shared_with_sg:
 		yes = false
-		why = "clears demon after sharing a daytime block"
+		why = "cleared the Demon, who had been seen on the same street that day"
 	elif shared_with_sg and w.chance(0.75):
 		yes = true
-		why = "claims a demon crossing after sharing a daytime block with scapegoat %s" % s
+		why = "claimed the Demon crossed their path, having shared a street that day with %s, whom evil meant to hang" % s
 	elif w.chance(0.25):
 		yes = true
-		why = "claims an unspecific daytime demon crossing"
+		why = "claimed the Demon crossed their path, without saying where"
 	return {
 		"entry": {"data": {"yes": yes}, "text": _spoken_text(yes)},
 		"why": why,
@@ -129,10 +129,10 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, _other: Ca
 	if d != null and d.alive and demon_implicated and w.chance(0.5):
 		e["data"] = {"yes": false}
 		e["text"] = _spoken_text(false)
-		return {"entry": e, "why": "the dead Augur %s 'sensed no demon' on day %d" % [dd.id, r_day], "frames": false}
+		return {"entry": e, "why": "made up a reading from the late Augur %s that sensed no Demon on %s" % [dd.id, content().spoken_day(r_day)], "frames": false}
 	e["data"] = {"yes": true}
 	e["text"] = _spoken_text(true)
-	return {"entry": e, "why": "the dead Augur %s 'sensed the demon' on day %d (toward %s)" % [dd.id, r_day, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Augur %s that sensed the Demon on %s, pointing toward %s" % [dd.id, content().spoken_day(r_day), s], "frames": true}
 
 
 ## The other answer (FabricationCheck: a better lie).
