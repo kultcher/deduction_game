@@ -36,10 +36,11 @@ towns.
 
 ## 1. Bugs and quick fixes (hours, low risk)
 
-Four known bugs move golden when fixed, so each needs a re-baseline in its PR (details in
-section 6): a sighter cut from the sighter contest by the two-sighter cap; an evil Medium's
-relay about the first victim naming night 0; a case with no cards answered from an older
-compile; a Night Watch list that wrongly names the listener clearing the rest of the watch.
+Two known bugs move golden when fixed, so each needs a re-baseline in its PR (details in
+section 6; both Lantern's): a sighter cut from the sighter contest by the two-sighter cap; a
+Night Watch list that wrongly names the listener clearing the rest of the watch. Fixed since
+(Nov 17–18): a case with no cards answered from an older compile (#192), and an evil Medium's
+relay about the first victim naming night 0 (Beadle).
 
 ## 2. Small features and tuning (a day or so each)
 
