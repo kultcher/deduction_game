@@ -489,6 +489,31 @@ trusted. Built (Nov 18) as the prior only:
   night that carries both takes 1 − (1 − poison)(1 − Delusional), as the Night Watch's
   broken chance does (a 5% poison chance and the 10% Delusional doubt give 14.5%).
 
+### "Poisoned, not lying": the player's failed-gift call (Lantern with Quill, Nov 18)
+
+Michael's decision (option C, `docs/design/poisoned_not_lying.md`): the player's "failed gift"
+challenge counts as testimony that the reading was poisoned, not a lie.
+
+- **The pass** (`SourceDoubt.derive`): for each "failed gift" challenge in one of the player's
+  presented cases, on someone else's reading, the listener sets an honest doubt on that
+  reader's night. It's one witness as accurate as the listener's trust in the player (c),
+  against the chance that reader was poisoned that night (π, Quill's
+  `ReadingChallenges.poison_chance` with the reader, so an unexplained outing near the
+  reader's home raises it): π·c / (π·c + (1 − π)(1 − c)). No new constant.
+- **Bounds:** zero with no Poisoner on the script; it never lowers a doubt (a max); a relayed
+  reading's transmission is the Medium's, keyed as the relay's reliability is. A listener
+  doesn't otherwise apply a poison chance to another person's reading, so at even trust the
+  call weighs poison at its plain chance, and more trust raises it.
+- **Nothing spreads on purpose:** honest doubt mixes the reading as genuine or broken, so what
+  it held up moves to whoever the rest of the evidence favours.
+- **The cost of being wrong** is the track record only: the call records "R is good" (Quill,
+  #252).
+- **Measured** (`tools/test_player_failed_gift.gd`, seed 692, 7 NPCs, a good Archivist's
+  night-0 reading naming two good people, poison chance 5%): the reader's chance of being evil
+  with the call weighed against without it, 43% → 42% at even trust, 42% → 40% at trust 0.7,
+  42% → 35% at 0.9. One call moves a listener a few points, more for one who trusts the player
+  highly. Quill's 10-seed before/after with a clashing reading follows once this is on main.
+
 ## Open items
 
 Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.
