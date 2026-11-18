@@ -824,6 +824,15 @@ The player has two numbers with each NPC (`game/credibility.gd`):
   and defend terms. It comes from your track record: the conclusions you argued to that
   NPC, checked each dawn against what they now believe from their own evidence (without
   your presentations, so the check isn't circular).
+- **Withdrawing and revising a case** (Michael, Nov 18). You can take back a filed case
+  in public ("I take back case #N"): everyone who heard it drops the argument and keeps
+  the cards it cited as their own. The board keeps the case, marked withdrawn, and it
+  can't be presented or nominated on again. Changing your mind still costs something:
+  a withdrawn case's conclusions are judged once more at the next dawn, then leave your
+  track record. A revision that cites new evidence clears the old version's conclusions
+  at once, because changing your mind for a reason is cheaper than changing it for none.
+  A revision citing nothing new counts as a withdrawal of the old version. A conclusion
+  you restate before that dawn, in a later case or a nomination, stands.
 
 ### Belief: what an NPC holds
 

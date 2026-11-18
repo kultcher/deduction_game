@@ -43,7 +43,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	var why: String = ""
 	if s in nbrs:
 		count = 1
-		why = "named %s, whom evil meant to hang, as an evil neighbour" % s
+		why = "named %s, evil's scapegoat, as an evil neighbour" % s
 	else:
 		var framable: Array = nbrs.filter(func(x): return not w.by_id[x].is_evil())
 		if not framable.is_empty() and w.day >= 1 and w.chance(0.3):
@@ -73,7 +73,7 @@ func fake_medium_reading(w, _n, dd, s: String, sg, d, goods: Array, _other: Call
 		return {}
 	e["data"] = {"group": grp2, "count": 1, "block": sg.home_block}
 	e["text"] = "on %s I sensed 1 evil among %s" % [C.block_name(sg.home_block), w._names(grp2)]
-	return {"entry": e, "why": "made up a reading from the late Hearthwitch %s that sensed evil around %s, whom evil meant to hang" % [dd.id, s], "frames": true}
+	return {"entry": e, "why": "made up a reading from the late Hearthwitch %s that sensed evil around %s, evil's scapegoat" % [dd.id, s], "frames": true}
 
 
 ## Another count over the same neighbours (FabricationCheck: a better lie).

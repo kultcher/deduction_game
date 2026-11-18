@@ -490,14 +490,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
-  "heard" line, type and source icons stack in one corner, the context tag sits on the
-  edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
-  slots) before adding markers. Waiting on it: "shared with you privately" and "in
-  confidence" badges (the data exists; nothing draws them) and the context tag. Coordinate
-  with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
-  open]
-
 - **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
   Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
   full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
@@ -506,19 +498,14 @@ Candidates for a unified retuning proposal, not approved changes.
   game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
   votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
   Owner Herald. [decided]
+  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
+  secrets have one now. Still to do: the Workshop canvas's evidence cards
+  (`ui/workshop_canvas_view.gd`), which print the full sentence, and a pass over the
+  gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
-
-- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
-  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
-  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
-  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
-  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
-  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
-  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
-  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided]
 
 ### Performance
 
@@ -834,7 +821,11 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
   an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
   word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
-  barely with all cards. Moves golden. **[open]**
+  barely with all cards. Moves golden. Michael (Nov 18): fix; owner Lantern. **Built** (Nov 18,
+  `claude/relayer-in-contest`): a relayed card is contested only as its relayer's word, since
+  the dead never told it and can't have invented it, which also frees the cap's slot. Found
+  again on seed 100029 when #216 moved `test_relay_bluff`'s fixture onto it: evil Hollis's
+  invented relay of Merrin took Hollis from 0.83 to 0.46. **[done]**
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's

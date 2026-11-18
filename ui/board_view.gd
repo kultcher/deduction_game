@@ -367,7 +367,8 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var names = {}
 	for m in g.w.npcs:
 		names[m.id] = m.name
-	var text = CardModel.short_text(card, names) if lod == 1 else card.get("text", "")
+	# Every zoom shows the fewest words; the full sentence is the hover tooltip (Michael, Nov 18).
+	var text = CardModel.short_text(card, names)
 	if it["mark"] == "voted_yes":
 		text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?")
 	var fs = int(clampf(13.5 * zoom, 12, 28))
@@ -393,6 +394,9 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var bx: float = tx
 	for bdg in _badges(card, n):
 		bx += _draw_tab(Vector2(bx, r.position.y + small * 0.55), bdg[0], bdg[1], small, fade) + 3 * zoom
+	# A case taken back in public is struck through (Michael, Nov 18).
+	if card.get("withdrawn", false):
+		draw_line(Vector2(r.position.x + pad, r.get_center().y), Vector2(r.end.x - pad, r.get_center().y), _ink * fade, maxf(1.5, 2.0 * zoom))
 	var heard: String = _heard_line(card) if lod == 2 else ""
 	var heard_h: float = small * 1.5 if heard != "" else 0.0
 	var width: float = r.size.x - 20 * zoom - gutter
@@ -416,6 +420,8 @@ func _badges(card: Dictionary, n: int) -> Array:
 		out.append(["private", Color(0.25, 0.42, 0.62)] if b == "private" else ["in confidence", UITheme.color("red").darkened(0.15)])
 	if context_numbers.has(n):
 		out.append(["context", Color(0.42, 0.40, 0.36)])
+	if card.get("withdrawn", false):
+		out.append(["withdrawn", Color(0.38, 0.38, 0.40)])
 	return out
 
 ## A badge tab, its bottom edge at `at`; returns its width.

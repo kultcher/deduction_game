@@ -6,6 +6,11 @@
 extends "res://sim/role_def.gd"
 
 
+## A crowd this size (the Dowser's "4+" row in its bluff guideline) is cover enough for a
+## bluffing Augur to tell the truth about the Demon on its street.
+const DEMON_CROWD := 4
+
+
 func _init() -> void:
 	id = "augur"
 	display_name = "Augur"
@@ -95,6 +100,8 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 		return {}
 	var shared_with_sg: bool = false
 	var shared_with_demon: bool = false
+	# Everyone else seen in public on the bluffer's street in a phase the Demon was there.
+	var demon_crowd: Dictionary = {}
 	var sg = w.by_id.get(s)
 	for ph in [C.MORNING, C.AFTERNOON]:
 		var my_blk: String = _public_block_at(w, n, w.day, ph)
@@ -104,14 +111,23 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 			shared_with_sg = true
 		if n.id != w.demon_id and w.by_id.has(w.demon_id) and _public_block_at(w, w.by_id[w.demon_id], w.day, ph) == my_blk:
 			shared_with_demon = true
+			for m in w.npcs:
+				if m != n and _public_block_at(w, m, w.day, ph) == my_blk:
+					demon_crowd[m.id] = true
 	var yes: bool = false
 	var why: String = "claimed no Demon crossed their path that day"
-	if shared_with_demon and not shared_with_sg:
+	# The Dowser's guideline (#160, Michael): stay close to the truth, with the crowd setting
+	# the room. Among a crowd of four or more a "yes" points at nobody in particular, so the
+	# liar tells it true rather than give the Demon a clean day it can be caught out on.
+	if shared_with_demon and demon_crowd.size() >= DEMON_CROWD:
+		yes = true
+		why = "admitted the Demon crossed their path, safe in the crowd of %d on the same street" % demon_crowd.size()
+	elif shared_with_demon and not shared_with_sg:
 		yes = false
 		why = "cleared the Demon, who had been seen on the same street that day"
 	elif shared_with_sg and w.chance(0.75):
 		yes = true
-		why = "claimed the Demon crossed their path, having shared a street that day with %s, whom evil meant to hang" % s
+		why = "claimed the Demon crossed their path, having shared a street that day with %s, evil's scapegoat" % s
 	elif w.chance(0.25):
 		yes = true
 		why = "claimed the Demon crossed their path, without saying where"
