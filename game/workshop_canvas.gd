@@ -242,6 +242,53 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 		result["set_aside"] = aside
 	return result
 
+## "This weakens your previous case" (Michael, Nov 18; BACKLOG "Believable public
+## revisions"): would `value`, filed as a revision of case `previous`, leave its premise
+## less likely than the version it replaces? Judged by the Test juror, or, with
+## `listener_id`, by that listener's own view, on the same conclusion: a revision that
+## changes whom or what the case concludes is a different case and gets no warning.
+## Belief follows the evidence, so this only warns; the revision can still be filed.
+## Returns {} or {"text", "before", "after"} (the premise's chance under each version).
+const REVISION_WEAKENS_TEXT: String = "This weakens your previous case"
+static func revision_weakens(g, value: Dictionary, previous: int, listener_id: String = "") -> Dictionary:
+	if previous < 1 or previous > g.board.size():
+		return {}
+	var old: Dictionary = g.board[previous - 1].get("workshop_case", {})
+	if old.is_empty() or old == value:
+		return {}
+	var oc: Dictionary = old.get("conclusion", {})
+	var nc: Dictionary = value.get("conclusion", {})
+	if str(oc.get("type", "")) != str(nc.get("type", "")) or str(oc.get("target", "")) != str(nc.get("target", "")) \
+			or str(oc.get("mod", "")) != str(nc.get("mod", "")):
+		return {}
+	var before: float = _premise_chance(g, old, listener_id)
+	var after: float = _premise_chance(g, value, listener_id)
+	if before < 0.0 or after < 0.0 or after >= before - 1e-9:
+		return {}
+	return {"text": REVISION_WEAKENS_TEXT, "before": before, "after": after}
+
+## The chance the case's premise holds, as the Test juror (or `listener_id`) would judge
+## the case alone; -1 when it can't be judged.
+static func _premise_chance(g, value: Dictionary, listener_id: String) -> float:
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var prepared
+	var judged: Dictionary
+	if listener_id == "":
+		var juror: Dictionary = juror_case(g, value)
+		if not juror.ready:
+			return -1.0
+		prepared = juror.prepared
+		judged = juror.case
+	else:
+		prepared = Assess.prepare(snapshot(g, value, listener_id))
+		if not prepared.ready:
+			return -1.0
+		judged = prepared.case
+	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
+	if ev.get("impossible", false):
+		return 0.0
+	return float(ev.get("posterior", -1.0))
+
 ## What the test juror judges (shared with its "why" readout, game/workshop_why.gd):
 ## {"ready", "issues", "prepared", "case"}. The public claims it hears are weighed with the
 ## case's cards (CaseEval reads the case's cards), on a copy; the case itself is unchanged.
