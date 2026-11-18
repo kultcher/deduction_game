@@ -388,7 +388,11 @@ relay about the first victim naming night 0 (Beadle).
   is true with probability t, noise otherwise. Correct readings then exonerate less;
   false readings still implicate strongly. Same cost. Set t from the simulation (how often
   fake readings happen to be true in a bot run), not by hand, and re-measure whenever
-  evil's reading strategy changes. [decided: add; t measured]
+  evil's reading strategy changes. Quill (Nov 18, 40 bot games): fakes are true 38% of the
+  time against 45% by chance, so the judge's side changes nothing today. Michael (Nov 18)
+  wants evil smarter about *when* it lies; options in
+  [docs/design/evil_truth_timing.md](docs/design/evil_truth_timing.md), awaiting his call.
+  [decided: add; t measured]
 
 - **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
   pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
