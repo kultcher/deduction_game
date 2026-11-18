@@ -135,12 +135,40 @@ func on_chosen_executed(w, mart, executed_npc) -> void:
 		w._add_info(mart, info)
 
 
+## A liar bluffing Martyr whose made-up choice has just hanged: a true Martyr would have
+## died in their place, and this one stands, so it tells the town they must have been evil
+## (the reading a true Martyr gets when its chosen hangs and it lives).
+func on_bluff_chosen_executed(w, executed_npc) -> void:
+	for m in w.evil_team():
+		if not m.alive or m == executed_npc:
+			continue
+		# The choice as it will be told (a better lie may have changed it), and only once.
+		if not m.info_log.any(func(e): return e.get("fake", false) and e.get("role", "") == "martyr" and bool(e.get("data", {}).get("chosen", false)) and str(e["data"].get("target", "")) == executed_npc.id):
+			continue
+		if m.info_log.any(func(e): return e.get("fake", false) and e.get("role", "") == "martyr" and e.get("data", {}).has("evil")):
+			continue
+		var why: String = "said %s, hanged and good, must have been evil, since its made-up Martyr gift didn't take them" % executed_npc.id
+		var entry: Dictionary = {
+			"day": w.day, "phase": content().EVENING, "role": "martyr", "shared": false, "true": false, "fake": true,
+			"why": "evil fabrication: " + load("res://sim/evil.gd").named(w, why),
+			"data": {"target": executed_npc.id, "evil": true},
+			"text": "As the Martyr, I chose %s. They were hanged and I still stand: they must have been evil or my gift failed" % executed_npc.name,
+		}
+		m.info_log.append(entry)
+		w.dlog.add("fake_info", m.id, "", entry, "%s (evil, bluffing martyr) prepares: %s [%s]" % [m.name, entry["text"], why])
+
+
 func generate_bluff_reading(w, n, plan: Dictionary, _s: String, mate, _asked: Array) -> Dictionary:
 	if w.day == 0 or plan.has("martyr_bluff_" + n.id):
 		return {}
 	plan["martyr_bluff_" + n.id] = true
-	var tgt = mate if mate != n else w.pick(w.living_good())
-	var why: String = "chose %s, to vouch for them" % tgt.id
+	# Michael, Nov 18: choosing a teammate has almost no upside. A liar chooses a good soul,
+	# ideally one already under heat and likely to hang: when they're hanged and its gift
+	# "doesn't fire", it can say they must have been evil (on_bluff_chosen_executed).
+	var tgt = load("res://sim/evil.gd").hottest_good(w, [n.id])
+	if tgt == null:
+		tgt = mate
+	var why: String = "chose %s, a good soul under suspicion, to cast doubt on them should they hang" % tgt.id
 	var entry: Dictionary = {
 		"data": {"target": tgt.id, "chosen": true},
 		"text": "I have given my life over for %s, should the town ever hang them" % tgt.name,

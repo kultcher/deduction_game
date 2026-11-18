@@ -79,7 +79,7 @@ static func _attribute_refresh_impl(
 	var own_ids: Array = knowledge.get("own_reports", [])
 	if own_ids.is_empty():
 		own_ids = knowledge.get("attention_reports", [])
-	var cc: Dictionary = CaseEval.compile(view, CaseEval._route_trusted(attended, eval_listener), scoped_case, [])
+	var cc: Dictionary = CaseEval.compile(view, CaseEval._list_broken(view, CaseEval._route_trusted(attended, eval_listener), eval_listener), scoped_case, [])
 	var universe: Array = Solver.universe(view)
 	var nc: int = cc.team.size()
 	if nc == 0 or universe.is_empty():
@@ -952,7 +952,7 @@ static func _connections_drop(ctx: Dictionary, cid: String, pid: String, pr0: Di
 	var memo: Dictionary = ctx.get("cx_memo", {})
 	if not memo.has(cid):
 		var Cn = load("res://workshop/connections.gd")
-		memo[cid] = Cn.refresh(cx.view, cx.value, cx.weigher, cx.held.filter(func(id): return id != cid), cx.state).get("posterior", {})
+		memo[cid] = Cn.drop_card_posterior(cx.view, cx.value, cx.weigher, cx.held, cx.state, cx.result, cid)
 		ctx["cx_memo"] = memo
 	var full_p: float = float(cx.result.posterior.get(pid, -1.0))
 	var wo_p: float = float(memo[cid].get(pid, -1.0))
@@ -1079,12 +1079,13 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 	for c in cards:
 		card_sig.append([c.get("id", ""), c.get("kind", ""), c.get("source", ""), c.get("role", ""), c.get("hearing_weight", 1.0), c.has("relay_source"), c.get("quoted", false)])
 	var live: bool = Domain.live(view)
-	var neutral_key: int = hash([cc.key, "ra_neutral", live, card_sig])
-	if not _fits_cache.has(neutral_key):
+	var neutral_ref: Array = [cc.key, cc.rep, "ra_neutral", live, card_sig]
+	var neutral_key: int = hash(neutral_ref)
+	if not _fits_cache.has(neutral_key) or _fits_cache[neutral_key].ref != neutral_ref:
 		if _fits_cache.size() > 256:
 			_fits_cache.clear()
-		_fits_cache[neutral_key] = CaseEval._fits_over(view, cc, cards, {}, range(nc))
-	var neutral: PackedFloat64Array = _fits_cache[neutral_key]
+		_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": CaseEval._fits_over(view, cc, cards, {}, range(nc))}
+	var neutral: PackedFloat64Array = _fits_cache[neutral_key].out
 	var personal: Dictionary = {
 		"self": knowledge.get("self", ""),
 		"own_role": knowledge.get("own_role", ""),
@@ -1094,17 +1095,18 @@ static func _subset_fits(view: Dictionary, cc: Dictionary, cards: Array, knowled
 		personal["public_roles"] = knowledge.public_roles
 	var fits: PackedFloat64Array = neutral
 	if personal.own_role != "" or not personal.own_outings.is_empty() or not personal.get("public_roles", {}).is_empty():
-		var p_key: int = hash([cc.key, "ra_personal", live, card_sig, personal])
-		if not _fits_cache.has(p_key):
+		var p_ref: Array = [cc.key, cc.rep, "ra_personal", live, card_sig, personal]
+		var p_key: int = hash(p_ref)
+		if not _fits_cache.has(p_key) or _fits_cache[p_key].ref != p_ref:
 			if _fits_cache.size() > 256:
 				_fits_cache.clear()
-				_fits_cache[neutral_key] = neutral
+				_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 			var open: Array = []
 			for c_idx in range(nc):
 				if neutral[c_idx] > 0.0:
 					open.append(c_idx)
-			_fits_cache[p_key] = CaseEval._fits_over(view, cc, cards, personal, open)
-		fits = _fits_cache[p_key]
+			_fits_cache[p_key] = {"ref": p_ref.duplicate(true), "out": CaseEval._fits_over(view, cc, cards, personal, open)}
+		fits = _fits_cache[p_key].out
 	return _apply_curse_good(view, cc, fits, knowledge)
 
 

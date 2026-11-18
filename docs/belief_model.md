@@ -52,7 +52,9 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
   - They're re-weighed at every refresh, with no accepted or rejected state.
   - Old cases fade (× 0.5 a day) rather than being pushed out by a cap. Presenting a case again restores its weight, never above full.
   - A case overlapping the core merges with it, so one that clashes with the listener's own readings scores low by itself.
-  - A challenge acts only inside its own case.
+  - A challenge acts only inside its own case. The exception (Michael, Nov 18, option C): the
+    player's "failed gift" call also counts as testimony, an honest doubt on that reading
+    everywhere ("Poisoned, not lying" below).
 - **No per-teller bundles:** evil's stories are generated to cohere, so a bundle doesn't catch a liar.
 - **Combining:** each card counts once; a connection adds only its interaction (joint minus the parts). Then one common shift so P(evil) sums to the evil count ("A for sure, then B or C", never four people at 70% in a two-evil town).
 - **The demon-type declaration** is the player's call alone, at a meeting, at most once a day; single-demon scripts start declared.
@@ -451,6 +453,179 @@ is false has no honest explanation. That cancelled the relay's weight against it
 - On the searched cases in `tools/test_own_night_knowledge.gd`, the invented relay now
   raises the relayer by 16 points (it was 1), a planted street sighting by 21 (it was 20),
   and a Sleepwalker honestly seen out still stays about even on the sighter (+1).
+
+### A relayed sighting's teller is its relayer (Lantern, Nov 18)
+
+The sighter contests doubt a sighting by its teller's alignment: in a world where the teller
+is evil, the sighting may be invented. A Medium's relay used to name two tellers, the dead
+source and the relayer. But the dead never told it: a Medium learns what they knew and never
+said, firsthand, so only the relayer can have invented it. With both counted, the two-sighter
+cap (`SIGHTER_CONTEST_MAX`) could keep the dead and drop the relayer, and an invented relay
+was weighed as the dead's honest word. Now a relayed card's only teller is the relayer, as a
+relayed alibi's already was.
+
+- **Seed 100029** (`test_relay_bluff`, which #216's change in play moved onto it): Hollis, the
+  Demon bluffing Medium, relays the dead Jory seeing Merrin out on the night Jory died. Merrin's
+  sighters were Fenwick, Jory and Hollis; the cap kept Fenwick and Jory, and Hollis's relays
+  took him from 0.83 to 0.46 for Nisha. With the relayer contested they no longer clear him.
+- Seed 929 (Nov 13), the case that found it, is the same shape.
+
+### "Was my reading poisoned?" (Lantern with Quill, Nov 17-18)
+
+Michael's direction: no half-doubt, no new number; more doubt when the clashing source is
+trusted. Built (Nov 18) as the prior only:
+
+- With a Poisoner possible on the script, each of the listener's own readings carries the
+  chance a Poisoner picked it that night as an honest doubt (`SourceDoubt.derive`, with
+  Quill's `ReadingChallenges.poison_chance`: zero with no Poisoner or one known dead,
+  otherwise the minion places over the script's minions, over the good people it could
+  have picked; the night is the reading's own, or the night before a day reading).
+- The judge does the rest. It mixes the reading as genuine and as broken by how well each
+  fits everything else, so a reading that fits shrugs the doubt off, and one a trusted
+  teller contradicts gives way; a teller already suspected explains the clash, so less.
+- **Why not the clash-gated form first built:** feeding the judge π / (π + bad), a doubt
+  already conditioned on the clash, counted the clash twice (seed 51: a 25% doubt moved
+  Constance from 22% to 75%; the prior alone, 10%, moves her to 54%). It also needed clash
+  detection and an extra refresh (11-31% more capture time).
+- **Measured** (`tools/test_poison_self_doubt.gd`, constructed on seed 692, Poisoner on the
+  script, π = 5%): a trusted teller's clashing card, heard at half weight, lets the own
+  reading clear Hollis less (1.9% → 3.8%) and blame the teller less (40.7% → 40.0%); against
+  a suspected teller it gives way slightly less; a teller who agrees moves Hollis half as
+  much; no Poisoner, no doubt.
+- **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
+  of its own readings (poison, and Delusional with #216), from its last applied refresh.
+- **Strong frames can shake an own reading** (Michael, Nov 18, option b): a doubted own reading
+  no longer pins the person it proves ("proved stays proved" needs the reading undoubted); the
+  judge weighs it genuine or broken by fit. Weak contradicting evidence barely moves it; a
+  strong frame can overturn it. Seed 5 (Quill's measurement): Agnes's true Gravedigger reading
+  cleared the hanged Constance, but Odette (the Demon, bluffing Night Watch) said she saw
+  Constance out on a night she was home, and Jory (bluffing Archivist) named her; with an 8%
+  poison doubt Constance goes from 0% to 90%, the frame favouring "broken" about 2,800 to 1.
+  Big moves go towards and away from the truth about equally (π can't tell which reading was
+  poisoned). With no Poisoner or Delusional possible the doubt is zero and proofs stay absolute.
+- **With Delusional too** (#216): the two are independent ways an own gift can fail, so a
+  night that carries both takes 1 − (1 − poison)(1 − Delusional), as the Night Watch's
+  broken chance does (a 5% poison chance and the 10% Delusional doubt give 14.5%).
+
+### "Poisoned, not lying": the player's failed-gift call (Lantern with Quill, Nov 18)
+
+Michael's decision (option C, `docs/design/poisoned_not_lying.md`): the player's "failed gift"
+challenge counts as testimony that the reading was poisoned, not a lie.
+
+- **The pass** (`SourceDoubt.derive`): for each "failed gift" challenge in one of the player's
+  presented cases, on someone else's reading, the listener sets an honest doubt on that
+  reader's night.
+- **How strong (Michael, Nov 18, after the first build was too weak at default trust):** the
+  player is the expert, so the listener takes the call at its credibility in the player (c).
+  - The doubt runs in a straight line from `FAILED_GIFT_DOUBT_LOW` (0.2) at the lowest
+    credibility (`CRED_MIN`, 0.1) to `FAILED_GIFT_DOUBT_HIGH` (0.8) at the highest (`CRED_MAX`,
+    0.9). That's 0.5 at the starting credibility (`SourceDoubt.call_doubt`).
+  - Quill's refinement: the doubt is never less than the earlier one-witness weighing,
+    π·c / (π·c + (1 − π)(1 − c)), where π is the chance the reader was poisoned that night
+    (`ReadingChallenges.poison_chance` with the reader). So an unexplained outing near the
+    reader's home still strengthens a call.
+  - Target: one call removes about a fifth, half and four-fifths of what the reading costs its
+    reader at low, default and high trust.
+- **Bounds:**
+  - It counts only where π isn't zero: a Poisoner possible on the script, alive that night,
+    and the Demon not alone.
+  - It never lowers a doubt (a max).
+  - A relayed reading's transmission is the Medium's, keyed as the relay's reliability is.
+- **Nothing spreads on purpose:** honest doubt mixes the reading as genuine or broken, so what
+  it held up moves to whoever the rest of the evidence favours.
+- **The cost of being wrong** is the track record only: the call records "R is good" (Quill,
+  #252). Dawn's check (`Credibility._agreement`) rebuilds the listener's view without the
+  player's ledger entries, so the call can't vouch for itself at any strength.
+- **Measured** (`tools/test_player_failed_gift.gd`: seed 692, 7 NPCs, a good Archivist's
+  night-0 reading naming two good people, π = 5%). The reader's chance of being evil without
+  → with the call; fully doubting the reading would remove 6.5–7.5 points here.
+
+  | Trust | Doubt | Without → with | Share of the reading's cost removed |
+  |---|---|---|---|
+  | 0.1 | 0.2 | 0.348 → 0.325 | 31% |
+  | 0.5 | 0.5 | 0.343 → 0.297 | 66% |
+  | 0.9 | 0.8 | 0.338 → 0.280 | 89% |
+
+  The first build (one witness only) gave 0.343 → 0.336 at 0.5. Quill's 10 seeds, where the
+  reading costs less, follow.
+
+### Premise centring, option B (Lantern, Nov 18)
+
+Michael's goal (Nov 17-18, `docs/design/premise_centring.md`): a listener hearing "X is evil"
+weighs how far the case proves that and under-registers what it implies about the others, so
+the player wins by making the right connections, not by supplying information.
+
+- **What's shaped:** what a card adds when only presented cases brought it, and what a
+  stored case's cards add together. Both count in full on the case's targets (every person it argues about) and at
+  `PREMISE_BYSTANDER_SHARE` (1/3, Michael's split of the measured 0.5 and 0.25) on everyone
+  else (`Connections.refresh` items, `Connections.cases`).
+- **Which cards** (`SharedLedger.brought_by_premise`, step 1's selection): a card is brought
+  while every owner of it is a presented case arguing someone's alignment. Held any other
+  way (the listener's own reading, hearsay, the public record) it isn't; it stays brought
+  after its case fades (the lens stays, Vicar); a withdrawn case owns nothing; a case with no
+  alignment target (Marked, conflict) shapes nothing.
+- **Measured** (`tools/measure_premise_frames.gd`, constructed on seed 692's 7-NPC deal;
+  the person the cards point at starts at 41%; their chance after the case, without B → with
+  B): presented as them, two Dowser readings 51% → 50%, sightings against their alibi
+  69% → 65%, mixed 58% → 56%; misframed as someone named in the cards or someone
+  unconnected, 51% → 43%, 69% → 50%, 58% → 46%. The wrongly named person doesn't rise in any
+  frame. The presenter's trust is unchanged by a misframe (Michael, Nov 18: the case not
+  landing is the cost).
+- **Tests:** `test_premise_centring` (frames, the selection, the lens after fading, every target of a direct presentation, and that the core and stored cases subtract raw item values);
+  `test_premise_step1`'s "a case moves its target more than the people it only mentions" and
+  "the shaping is remembered on a later refresh" still pass with it on.
+  `test_connections_cases`, which checks case arithmetic on chosen numbers, runs with it off
+  (`Connections.premise_centring`).
+
+### A Night Watch list is sound or broken as a whole (Lantern, Nov 18)
+
+Michael (Nov 18) chose the whole-list model for BACKLOG "A Night Watch list that wrongly names
+the listener". The movement model scored each name on a list as its own small slip, so a list
+that wrongly named the listener would still read as a credible watch, clearing the watcher and
+casting the rest of the list as out. The game set such a list aside instead, voided its night,
+and doubted the watcher in general.
+
+- **The model.** Another's Night Watch list is sound or broken as a whole.
+  - **Sound:** every name at the small per-name error, as before.
+  - **Broken:** it says nothing about who walked that night, so it clears nobody.
+- **The broken chance.** It's the watcher's chance of a failed gift that night,
+  1 − (1 − poison)(1 − Delusional), with no new number:
+  - the poison chance, read with the night's outings (`ReadingChallenges.poison_chance`);
+  - the Delusional prior the listener applies to its own gift (`DELUSIONAL_SELF_DOUBT`), when
+    Delusional is on the script and a Night Watch can hold it.
+  - See `SourceDoubt.list_broken_chance`.
+- **An evil watcher.** In a world where the watcher is evil, the sighting contest already lets
+  an evil teller say anything.
+- **How it's weighed.** The judge weighs sound against broken by fit. The movement factor is
+  built with and without the list, and the kernel mixes the two in each world where the watcher
+  is good (`LiveActivity._list_mix`, `LiveActivityKernel.ScoreMixed`). The kernel's scores are
+  ratios over each branch's own good profiles, so the broken branch is put on the sound
+  branch's scale. A broken list is taken to say these words as often as an honest one would,
+  from what an outsider could know, which is the sighting contests' balance (Codex on #273). Up to two lists, the
+  latest nights first (`SourceDoubt.LIST_MIX_MAX`), each subset built once. In the broken
+  branch the watcher still went out to watch its block: a duty-only copy keeps that walk
+  (Codex on #273). A list beyond the two gets no broken chance, so it keeps the old fallback
+  (Codex on #273).
+- **What it does.** A list that wrongly names the listener is kept, and the false name counts
+  against the watcher by fit. Its other names count only as much as the listener still believes
+  the list is sound.
+- **Fallback.** Where neither Poisoner nor Delusional is on the script, the broken chance is
+  zero, and the list is still set aside with its night void (`Reasoner.direct_checks`,
+  `SourceDoubt.derive`).
+- **Test:** `tools/test_nightwatch_whole_list.gd`, built by hand on seed 692's deal, with a
+  broken chance of 0.14.
+
+  | Chance of being evil | No list | List wrongly naming the listener | Sound list |
+  |---|---|---|---|
+  | The watcher | 0.20 | 0.44 (0.20 under the old void) | |
+  | The other named person | 0.33 | 0.34 | 0.43 |
+
+- **In played games** (seeds 100014–100076, day 3, eight listeners named by an evil watcher):
+  - The kept list does count against the watcher.
+  - Against the old rule, the watcher is suspected less in six of eight (one by a single point).
+    For example, Kiran 0.69 → 0.55 and Merrin 0.50 → 0.34.
+  - The reason: the old void's general doubt (`DOUBT_FALSE_NW_GENERAL`, 0.5) fell on all of
+    the watcher's readings, while a broken gift now explains the false name at about 0.15.
 
 ## Open items
 

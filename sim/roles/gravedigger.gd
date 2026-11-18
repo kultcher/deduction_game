@@ -66,9 +66,18 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: 
 	var ex = w.by_id[w.executed_today]
 	var role = ""
 	var why = ""
+	# A hanged teammate: blending in or disruption (Michael, Nov 18; Evil.blend_chance).
+	# Blending names the teammate's true role, as an honest Gravedigger would; disruption
+	# covers its false claim. A hanged good soul keeps the frame roll below.
 	if ex.is_evil():
-		role = plan["bluffs"][ex.id]
-		why = "covered for their hanged fellow evil as the %s they had claimed" % content().role_name(role)
+		var Evil = load("res://sim/evil.gd")
+		var first: bool = not _n.info_log.any(func(e): return e.get("fake", false) and e.get("role", "") == "gravedigger")
+		if w.chance(Evil.blend_chance(w, _n, first)):
+			role = ex.role
+			why = "named their hanged fellow evil %s as the %s, to pass as an honest Gravedigger" % [ex.id, content().role_name(role)]
+		else:
+			role = plan["bluffs"][ex.id]
+			why = "covered for their hanged fellow evil as the %s they had claimed" % content().role_name(role)
 	else:
 		# What the town believed of them, from the vote that hanged them (public).
 		var sure: float = town_certainty(w, ex.id)

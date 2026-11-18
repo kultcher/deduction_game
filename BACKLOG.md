@@ -148,10 +148,13 @@ relay about the first victim naming night 0 (Beadle).
   keep the reasons they still believe. Players can re-file a case, but can't retract or
   explain. (25923: a final nomination cited the player's earlier argument after the
   player had adopted a different world.) A revised case must not score below the version
-  it replaces. Private guesses stay private.
-  Michael (Nov 18): decided. Owners: probably Quill (the judge) and Herald (the UI). It
-  pairs with "Recovering from a wrong 'lying' call" (below) and "The player's 'poisoned,
-  not lying' call" (docs/design/poisoned_not_lying.md). [decided]
+  it replaces. Private guesses stay private. [decided]
+  **Built** (Nov 18, Quill #262; Herald's withdrawal UI #267): a public withdrawal takes a
+  case back from everyone who heard it, and they keep its cards. A withdrawn case's
+  conclusions are judged once more at the next dawn and then leave the track record; a
+  revision citing new evidence clears the old version's conclusions at once (Michael's
+  option c). **Still open:** "a revised case must not score below the version it
+  replaces" waits on Michael's reading, since new evidence can legitimately weaken a case.
 
 - **Recovering from a wrong "lying" call.** (Nov 12, Michael; Quill's honest-mistake
   sample, belief-model doc) A "lying" challenge on a poisoned or misregistered good
@@ -451,32 +454,22 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
-  "heard" line, type and source icons stack in one corner, the context tag sits on the
-  edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
-  slots) before adding markers. Waiting on it: "shared with you privately" and "in
-  confidence" badges (the data exists; nothing draws them) and the context tag. Coordinate
-  with "Card zoom and text extension" in BACKLOG_POLISH.md. [decided: needed; design
-  open]
+- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
+  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
+  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
+  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
+  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
+  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
+  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
+  Owner Herald. [decided]
+  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
+  secrets have one now. Still to do: the Workshop canvas's evidence cards
+  (`ui/workshop_canvas_view.gd`), which print the full sentence, and a pass over the
+  gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
-
-- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
-  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
-  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
-  knew because of an answer carried over from case #38. The Workshop could list the answers
-  a new case carries when it's filed. Herald. [open]
-
-- **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael
-  approved Nov 18) The reveal's "every lie" list prints evil's "think: lie" lines from
-  sim/mind_meeting.gd, sim/social.gd, sim/mind_podium.gd, sim/mind_dialogue.gd,
-  sim/evil.gd, sim/fabrication_check.gd and a few role files, in developer shorthand
-  ("Evil: publicly accuses scapegoat kiran, citing: vibes"). Reword them under the same
-  rules as the bluff motives (#231): names, streets and roles; ordinal nights; "whom evil
-  meant to hang" for the scapegoat; no numbers the player never saw. Herald drafts the
-  wording for Michael and builds it; Beadle reviews. Golden moves on text only. [decided]
 
 ### Performance
 
@@ -793,12 +786,38 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   independent slip, so keeping the list cleared the rest of the watch (−0.36).
   `SourceDoubt` still voids that night's list. Fix: a list that's wrong about the listener
   is suspect as a whole. Moves golden. **[decided: fix]**
+  - **Decided (Michael, Nov 18):** a list is sound or broken as a whole. The broken chance is
+    the watcher's poison and Delusional priors, the judge weighs sound against broken by fit,
+    and a broken list clears nobody. The void rule stays only as the fallback on scripts with
+    neither secret. No new number.
+  - **Built** (Nov 18, `claude/nightwatch-whole-list`): see `docs/belief_model.md`, "A Night
+    Watch list is sound or broken as a whole".
 - **A relayer cut from the sighter contest by the two-sighter cap** (Lantern, Nov 13).
   Sighters of a person are ranked by how many sightings they told, then by town order, and
   only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
   an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
   word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
-  barely with all cards. Moves golden. **[open]**
+  barely with all cards. Moves golden. Michael (Nov 18): fix; owner Lantern. **Built** (Nov 18,
+  `claude/relayer-in-contest`): a relayed card is contested only as its relayer's word, since
+  the dead never told it and can't have invented it, which also frees the cap's slot. Found
+  again on seed 100029 when #216 moved `test_relay_bluff`'s fixture onto it: evil Hollis's
+  invented relay of Merrin took Hollis from 0.83 to 0.46. **[done]**
+- **Build `test_relay_bluff`'s evil-relayer and invented-relay checks by hand** (Lantern,
+  Nov 18).
+  - **Why:** the genuine-Medium check has been built by hand since #272, but the other three
+    checks still search seeds for a game that fits. Changes to play keep moving which game they
+    land on (they tripped three times on Nov 18), and the searches keep the suite at about
+    3 minutes, off the fast list.
+  - **What:** build each from a fixed deal with no play, as the genuine check is, then add the
+    suite to the fast list. Owner Lantern. Michael (Nov 18): yes. **[decided]**
+  - **Built** (Nov 18, `claude/relay-bluff-by-hand`):
+    - Every check in `test_relay_bluff` is a hand-built town on the deals of seeds 692, 900 and
+      42. The suite runs in about 6 s and is on the fast list.
+    - The hand-built towns don't reach #265's bug: two attempts, a crowded sighter contest
+      with and without prior suspicion, gave the same numbers before and after the fix.
+    - So the two searched evil-relayer checks stay as a regression guard,
+      `test_relay_bluff_games`. It runs on main with the full list, not the fast list
+      (Michael, Nov 18).
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same
   cards, so no rule separates them. It would need evidence that does (the teller's
@@ -822,6 +841,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   (the world prior gives how likely that is). Quill builds the role check's "self" mode
   first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
   that PR moves golden. **[decided]**
+  **Built (Lantern, #216, Nov 17):** as an honest 10% doubt on each night of the listener's
+  own readings (`DELUSIONAL_SELF_DOUBT`), through the same doubt map as anyone else's
+  readings, rather than the role-fit mix: it reaches both the role check and the readings'
+  weight (Seneschal's call, Nov 17; Quill's #214 keeps the role check from charging it
+  twice). A gift the deal never gives the secret (Chronicler, Rumormonger) rules it out.
+  Measured on 37 good listeners (13 seeds, 7 NPCs, day 3): a typical own reading gives up
+  about 8% of its lean (median; up to 8 points). Clerk, Seer and Archivist readings soften
+  only through their weight, Dowser, Surveyor and Warden readings only through the role
+  check. It doesn't raise a listener's belief that it is the Delusional one.
 - **A listener's doubt that its own reading was poisoned** (Quill and Lantern, Nov 17;
   Michael, Nov 17: approved as proposed, no new number and no confidence dial). An NPC's own
   reading is near-certain today, so a clash with other evidence always blames the other side.
@@ -838,6 +866,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   connections side; Quill the per-night poison chance and the judge side. After the #186
   role-check fix (#214, merged). Moves golden; report how often it fires and how far it moves
   an NPC, at fixed game states. **[decided]** (Michael, Nov 17)
+  **Revised and built (Michael, Nov 18; Lantern, #232):** the prior only. Each of an NPC's
+  own readings from a night a Poisoner could have acted carries the poison chance itself as
+  an honest doubt (`SourceDoubt.derive`); the judge then weighs the reading as genuine or
+  broken by how well each fits the rest, so trust in a clashing teller enters on its own.
+  The clash-gated form above counted the clash twice (it fed the judge a doubt already
+  conditioned on the clash) and cost 11-31% more refresh time. No clash detection, no
+  extra refresh, no new number; the own-against-own split isn't needed (the judge weighs
+  which own reading fits worse). `SourceDoubt.self_doubt(n)` gives the per-night doubt for
+  the dialogue item.
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

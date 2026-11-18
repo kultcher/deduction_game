@@ -94,7 +94,7 @@ func _good_pair(w, role_pref: Array) -> Array:
 	var picks: Array = []
 	for r in role_pref:
 		picks.append_array(goods.filter(func(n): return n.role == r))
-	picks.append_array(goods.filter(func(n): return C.package_of(n.role) != ""))
+	picks.append_array(goods.filter(func(n): return C.hint_package(w, n.role) != ""))
 	var s = picks[0]
 	var l = goods.filter(func(x): return x != s)[0]
 	return [s, l]
@@ -162,7 +162,7 @@ func _test_hint_only_at_moderate_bond() -> void:
 	var item = _pick_kind(w, s, l, "role_hint")
 	if item != null:
 		Social._deliver(w, s, l, item)
-		_check(not l.known_claims.has(s.id) and l.hearsay.any(func(h): return h["kind"] == "role_hint" and h["package"] == C.package_of(s.role)),
+		_check(not l.known_claims.has(s.id) and l.hearsay.any(func(h): return h["kind"] == "role_hint" and h["package"] == C.hint_package(w, s.role)),
 			"a hint is remembered by family, with no claim on record")
 	s.told_to.erase(l.id + "|role_hint:" + s.id)
 	l.hearsay = []
@@ -252,13 +252,21 @@ func _test_player_hears_second_hand() -> void:
 
 
 func _test_opinion_mentions_second_hand() -> void:
-	var g = _game(7107)
-	var w = g.w
-	var pr: Array = _good_pair(w, ["warden", "martyr", "seer"])
-	var s = pr[0]
-	var l = pr[1]
-	_prime(w, s, l, 0.95)
-	var item = _pick_kind(w, s, l, "role_claim")
+	# The first of a few deals where the speaker would confide its gift (a fixed seed broke
+	# when evil's first-night rolls moved, #269).
+	var w = null
+	var s = null
+	var l = null
+	var item = null
+	for sd in range(7107, 7127):
+		w = _game(sd).w
+		var pr: Array = _good_pair(w, ["warden", "martyr", "seer"])
+		s = pr[0]
+		l = pr[1]
+		_prime(w, s, l, 0.95)
+		item = _pick_kind(w, s, l, "role_claim")
+		if item != null:
+			break
 	if item == null:
 		_check(false, "setup: a claim for the opinion note")
 		return

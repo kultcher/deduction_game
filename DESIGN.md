@@ -306,12 +306,27 @@ misled night) and any challenge that holds (`CaseEval._route_trusted`; Michael, 
 A sighting near that door then counts towards the Demon, and a sighting elsewhere counts
 against. The Test juror names the guard when it moves the subject by a reason's weight.
 
-**Hint packages** (each gift sits in at least one package of 2+, so a hint is never a full
-reveal): official business (Archivist, Clerk, Surveyor, Rumormonger, Chronicler,
-Magistrate, Registrar); night sight (Seer, Night Watch, Lamplighter, Monitor); the dead
-(Gravedigger, Medium, Sexton, Martyr, Executor); shelter (Warden, Veteran, Martyr);
-reading people (Dowser, Psychologist, Rumormonger, Augur, Confessor). Keep packages in mind when
-adding roles.
+**Hint families** (Michael, Nov 18): eleven families of about four, with deliberate
+overlaps, so future roles have places to fit. A hint names a family, never the gift.
+1. Official business: Archivist, Clerk, Chronicler, Registrar.
+2. The town's affairs: Magistrate, Surveyor, Rumormonger.
+3. Night sight: Seer, Night Watch, Lamplighter, Monitor, Medium.
+4. The dead: Gravedigger, Medium, Executor, Martyr.
+5. Shelter: Warden, Veteran, Sexton.
+6. Reading people: Dowser, Psychologist, Confessor, Augur, Seer.
+7. The gallows: Magistrate, Executor, Gravedigger, Martyr.
+8. True callings: Gravedigger, Monitor, Executor, Registrar.
+9. Searching: Registrar, Seer, Confessor.
+10. Light against the dark: Night Watch, Lamplighter, Psychologist, Sexton.
+11. Cheating death: Medium, Martyr, Warden.
+
+The first-night gifts are spread so a hint at them isn't a giveaway. A gift in several
+families hints from whichever has the most gifts on the case's script, so the hint gives
+the most cover. A tie is broken by the seed, and the choice holds for the game, for a true
+holder and for evil bluffing the gift alike (`C.hint_package`). When every family a gift
+is in has only that gift on the script, the holder gives no hint and keeps the gift hidden
+or claims it. A possible tell, for playtests to watch: a player who knows the script could
+read which of a gift's families was chosen. Keep the families in mind when adding roles.
 
 Benched: **Hearthwitch** (learns how many living lane-neighbours are evil; kept in code,
 `status = "benched"`, off every script).
@@ -682,6 +697,15 @@ player's case; it doesn't search for theories.**
   clash with the grounds counts against the reader in the worlds where they're good (#123). Poison belongs
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
+- **Poison evidence from night outings** ("poisoned, not lying", option A, Michael, Nov 18;
+  `ReadingChallenges.poison_chance` with a reader). The Poisoner is out every night of play,
+  walking to its victim's block, so someone the cards saw out that night with no claimed
+  night gift or confided secret may be the Poisoner. If they were seen on the reader's block,
+  the chance the reader was poisoned rises: in a seven-person town with a Poisoner certain,
+  one in five becomes about two in five. Seen where they couldn't have been going to the
+  reader's home, it falls to about one in nine. Seen with no block named, it changes only if
+  the Poisoner's presence is in doubt. A "failed gift" or "misled" call on a reading goes in
+  the track record as "the teller is good".
 - **The connections model** (`workshop/connections.gd`; on in play since Nov 16; full
   design and spec in `docs/belief_model.md`). The limit on an NPC is on *which cards it
   weighs together*, not which cards it reads:
@@ -815,6 +839,15 @@ The player has two numbers with each NPC (`game/credibility.gd`):
   and defend terms. It comes from your track record: the conclusions you argued to that
   NPC, checked each dawn against what they now believe from their own evidence (without
   your presentations, so the check isn't circular).
+- **Withdrawing and revising a case** (Michael, Nov 18). You can take back a filed case
+  in public ("I take back case #N"): everyone who heard it drops the argument and keeps
+  the cards it cited as their own. The board keeps the case, marked withdrawn, and it
+  can't be presented or nominated on again. Changing your mind still costs something:
+  a withdrawn case's conclusions are judged once more at the next dawn, then leave your
+  track record. A revision that cites new evidence clears the old version's conclusions
+  at once, because changing your mind for a reason is cheaper than changing it for none.
+  A revision citing nothing new counts as a withdrawal of the old version. A conclusion
+  you restate before that dawn, in a later case or a nomination, stands.
 
 ### Belief: what an NPC holds
 

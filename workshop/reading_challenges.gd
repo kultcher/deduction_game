@@ -368,7 +368,16 @@ static func poisoner_possible(view: Dictionary) -> bool:
 ## less the evil team).
 ## No new number: the shape is the Poisoner's own rule, one good person a night.
 ## `night` is the night the gift was used, as the honest-doubt map keys it.
-static func poison_chance(view: Dictionary, listener: Dictionary, night: int) -> float:
+##
+## With `reader` (the person whose gift it was; "poisoned, not lying", option A, Michael,
+## Nov 18), the chance also reads the night's outings: see _outing_poison_chance.
+static func poison_chance(view: Dictionary, listener: Dictionary, night: int, reader: String = "") -> float:
+	var base: float = _base_poison_chance(view, listener, night)
+	if reader == "" or base <= 0.0:
+		return base
+	return _outing_poison_chance(view, listener, night, reader, base)
+
+static func _base_poison_chance(view: Dictionary, listener: Dictionary, night: int) -> float:
 	if night < 0 or not poisoner_possible(view):
 		return 0.0
 	var History = preload("res://workshop/live_history.gd")
@@ -396,6 +405,104 @@ static func poison_chance(view: Dictionary, listener: Dictionary, night: int) ->
 			alive += 1
 	var targets: int = maxi(1, alive - maxi(evil, 0))
 	return in_play / float(targets)
+
+## The poison chance of `reader`'s gift on `night`, read with the night's outings (BACKLOG
+## "The player's 'poisoned, not lying' call, and poison evidence from night outings";
+## docs/design/poisoned_not_lying.md, option A). The Poisoner is out every night of play,
+## walking to its victim's home block (sim/world.gd). So each person the listener's cards saw
+## out that night, with no claimed night gift or confided secret to explain it, may be the
+## Poisoner, and where they were seen says whose door they could have been going to:
+##   w = the chance this walker is the Poisoner: the prior (a Poisoner in play, one of the
+##       others alive) against how often a good person is out (the movement model's good
+##       profile: unclaimed, about one night in four; with a claimed gift that keeps them
+##       home, one in ten). The walkers are exclusive (one Poisoner), so the w are capped at 1.
+##   t = the chance the reader was the victim, if this walker is the Poisoner: shared evenly
+##       by the people whose home the walker could have been going to by way of every block
+##       they were seen on (C.route), counted at the good share of the town; 0 if the reader's
+##       home is not one of them.
+##   chance = sum(w t) + (1 - sum(w)) x base.
+## A walker seen on the reader's block raises it; one seen where they couldn't have been
+## going to the reader's home lowers it; one seen with no block, or on their own block,
+## changes it only through the chance that a Poisoner is in play at all. No new number.
+static func _outing_poison_chance(view: Dictionary, listener: Dictionary, night: int, reader: String, base: float) -> float:
+	var History = preload("res://workshop/live_history.gd")
+	var Live = preload("res://workshop/live_activity.gd")
+	var C = preload("res://sim/content.gd")
+	var cards: Array = view.get("cards", [])
+	var knowledge: Dictionary = listener.get("knowledge", {})
+	var known_good: Array = knowledge.get("good", [])
+	var self_id: String = str(listener.get("id", knowledge.get("self", "")))
+	var homes: Dictionary = {}
+	for p in view.get("people", []):
+		homes[str(p.get("id", ""))] = str(p.get("home", ""))
+	if not homes.has(reader):
+		return base
+	var alive: Array = homes.keys().filter(func(id): return History.alive_at_night(view, id, night))
+	if alive.size() < 2:
+		return base
+	# Who was seen out that night, and on which blocks ("" when no block is named).
+	var seen: Dictionary = {}
+	for c in cards:
+		if c.get("quoted", false) or int(c.get("night", -1)) != night:
+			continue
+		var who: Array = []
+		var blk: String = str(c.get("block", ""))
+		if c.get("kind", "") == "sighting":
+			who = c.get("subjects", [c.get("subject", "")])
+		elif c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and c.get("data") is Dictionary:
+			who = c.data.get("seen", [])
+			blk = str(c.data.get("block", blk))
+		for x in who:
+			var xs: String = str(x)
+			if xs == "" or xs == reader or xs == self_id or xs in known_good or xs not in alive:
+				continue
+			if not seen.has(xs):
+				seen[xs] = []
+			if blk != "" and blk not in seen[xs]:
+				seen[xs].append(blk)
+	if seen.is_empty():
+		return base
+	var evil: int = int(view.get("evil_count", 0))
+	var good_share: float = clampf(float(alive.size() - maxi(evil, 0)) / float(alive.size() - 1), 0.0, 1.0)
+	# The chance a given other living person is the Poisoner, before their outing.
+	var in_play: float = base * float(maxi(1, alive.size() - maxi(evil, 0)))
+	var p0: float = clampf(in_play / float(alive.size() - 1), 0.0, 1.0)
+	var mix: Array = []
+	var w_sum: float = 0.0
+	for x in seen:
+		if _outing_explained(cards, x, night, knowledge):
+			continue
+		var out_good: float = Live.good_walk_chance(cards, x)
+		var lr: float = 1.0 / maxf(out_good, 1e-6)
+		var w: float = p0 * lr / (p0 * lr + 1.0 - p0)
+		var reach: Array = alive.filter(func(t): return t != x and seen[x].all(func(b): return b in C.route(homes[x], homes[t])))
+		var t_x: float = 0.0
+		if reader in reach:
+			t_x = 1.0 / maxf(1.0, float(reach.size()) * good_share)
+		mix.append([w, t_x])
+		w_sum += w
+	if mix.is_empty():
+		return base
+	var scale: float = 1.0 / w_sum if w_sum > 1.0 else 1.0
+	var out: float = 0.0
+	for m in mix:
+		out += m[0] * scale * m[1]
+	return clampf(out + (1.0 - w_sum * scale) * base, 0.0, 1.0)
+
+## A night outing the cards explain: a claimed gift that walks at night, or a confided
+## secret (a Sleepwalker's) that covers the night.
+static func _outing_explained(cards: Array, person: String, night: int, knowledge: Dictionary) -> bool:
+	var C = preload("res://sim/content.gd")
+	var Live = preload("res://workshop/live_activity.gd")
+	var role: String = Live.role_of(cards, person, knowledge)
+	if role != "" and bool(C.ROLES.get(role, {}).get("night_walk", false)) and C.ROLES.get(role, {}).get("align", "good") == "good":
+		return true
+	for c in cards:
+		if c.get("kind", "") == "secret_claim" and not c.get("quoted", false) and str(c.get("subject", "")) == person:
+			var ap: Dictionary = c.get("applies", {})
+			if night >= int(ap.get("from", -1)) and night <= int(ap.get("through", -1)):
+				return true
+	return false
 
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
 ## the reading was taken, with no gift or private errand the case gives for it. Nobody

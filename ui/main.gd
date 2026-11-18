@@ -1202,6 +1202,10 @@ func _refresh_actions() -> void:
 			if not g.presented_today:
 				_button(actions, "Present a deduction to everyone…", func(): _card_picker("Present a deduction to the meeting",
 					func(c): return c["kind"] == "deduction", func(num, _x): _run("present %d" % num), false))
+			# Take back a filed case in public (BACKLOG "Believable public revisions", Nov 18).
+			if g.board.any(_withdrawable):
+				_button(actions, "Take back a case…", func(): _card_picker("Take back a case in public",
+					_withdrawable, func(num, _x): _confirm_withdraw(num), false))
 			if Declaration.blocked(w) == "":
 				# The demon-type declaration: its own action, once a day (game/demon_declaration.gd).
 				for kind in Declaration.TYPES:
@@ -1553,6 +1557,21 @@ func _ask_gift_picker(anchor: Control) -> void:
 ## "Offer…": your ward on their door tonight, or a vigil on their block.
 func _ward_remaining() -> String:
 	return "%d left, once per case" % g.w.tools["ward"]
+
+## A filed case that can still be taken back: live, not replaced, not already withdrawn.
+func _withdrawable(c: Dictionary) -> bool:
+	return c.get("kind", "") == "deduction" and not c.get("deleted", false) and not c.get("withdrawn", false) and int(c.get("superseded_by", 0)) == 0
+
+func _confirm_withdraw(num: int) -> ConfirmationDialog:
+	var dialog = ConfirmationDialog.new()
+	dialog.dialog_text = "Take back case #%d in public? If the town still thinks it was wrong at dawn, it may cost you some of their trust." % num
+	add_child(dialog)
+	dialog.confirmed.connect(func():
+		_run("withdraw %d" % num)
+		dialog.queue_free(), CONNECT_ONE_SHOT)
+	dialog.canceled.connect(dialog.queue_free, CONNECT_ONE_SHOT)
+	dialog.popup_centered()
+	return dialog
 
 func _confirm_ward(id: String) -> ConfirmationDialog:
 	var dialog = ConfirmationDialog.new()

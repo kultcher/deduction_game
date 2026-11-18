@@ -101,3 +101,39 @@ func _talk_sightings() -> void:
 	var after: int = g.board.size()
 	g._card_conversations()
 	check(not g.board.slice(after).any(func(c): return c.kind == "sighting"), "seeing the same talk again adds no new sightings")
+	# Visiting the spot in the same phase: the visit's sighting of each talker is the same
+	# fact (source, person, day, phase, block), so it merges into the talk's sighting card
+	# (Seneschal, Nov 18: BACKLOG "Conversation sightings should also cover location sightings").
+	g.loc = a.loc
+	var at_visit: int = g.board.size()
+	g._observe()
+	var dup = func(n): return g.board.slice(at_visit).any(func(c): return c.kind == "sighting" and c.subject == [n.id] and int(c.phase) == g.w.phase)
+	check(not dup.call(a) and not dup.call(b), "visiting the spot in the same phase adds no second sighting of either talker")
+	_visit_then_talk()
+
+
+## The other order: the visit first, then seeing them talk in the same phase.
+func _visit_then_talk() -> void:
+	var g = Game.new()
+	g.new_case(692, 10)
+	g.w.dlog.detailed = false
+	var out: Array = g.w.living().filter(func(n): return not n.at_home())
+	var pair: Array = []
+	for x in out:
+		for y in out:
+			if pair.is_empty() and x != y and x.loc == y.loc and not x.loc.begins_with("home_"):
+				pair = [x, y]
+	if pair.size() < 2:
+		check(false, "(fixture) two people out at the same place")
+		return
+	for n in g.w.living():
+		n.busy_with = ""
+	g.loc = pair[0].loc
+	g._observe()
+	var seen_first = func(n): return g.board.filter(func(c): return c.kind == "sighting" and c.subject == [n.id] and int(c.day) == g.w.day and int(c.phase) == g.w.phase).size()
+	var before_a: int = seen_first.call(pair[0])
+	pair[0].busy_with = pair[1].id
+	pair[1].busy_with = pair[0].id
+	g._card_conversations()
+	check(before_a == 1 and seen_first.call(pair[0]) == 1 and seen_first.call(pair[1]) == 1, "a visit then the talk in the same phase: still one sighting card each")
+	check(g.board.any(func(c): return c.kind == "conversation" and pair[0].id in c.subject and pair[1].id in c.subject), "and the talk is its own card")

@@ -154,7 +154,7 @@ static func _pack_view_env(view: Dictionary, ids: Array) -> Dictionary:
 		"curse_from": curse_from,
 		"curse_until": curse_until,
 	}
-	if _env_cache.size() >= 16:
+	if _env_cache.size() >= 128:
 		_env_cache.clear()
 	_env_cache[env_k] = {"input": env_in.duplicate(true), "env": env_out}
 	return env_out
@@ -385,7 +385,7 @@ static func _routes_dispatch(view: Dictionary, cards: Array, answers: Dictionary
 	if route_cache.has(key) and route_cache[key].input == input:
 		return route_cache[key].result
 	var result: Dictionary = _routes_cs(view, cards, answers, knowledge, strict_reports)
-	if route_cache.size() >= 128:
+	if route_cache.size() >= 2048:
 		route_cache.clear()
 	route_cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
@@ -501,17 +501,89 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 		# The Hexer factor reads schedules, sightings and the watch record (day presence).
 		input.append({"day_demon_share": day_demon_share(view), "watched": view.get("watched", []), "hex_on": hex_factor_enabled,
 			"presence_cards": cards.filter(func(c): return c.get("kind", "") in ["context", "location", "evening", "watch_log"]).map(func(c): return [c.get("id", ""), c.get("data", {}), c.get("source", "")])})
+	var mixed: Array = cards.filter(func(c): return float(c.get("broken_chance", 0.0)) > 0.0).map(func(c): return [c.get("id", ""), float(c.broken_chance)])
+	if not mixed.is_empty():
+		input.append({"list_mix": mixed})
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
 	var result: Array = _factors_cs(view, cards, observations)
 	_ensure_factor_handle(result[0])
-	if cache.size() >= 128:
+	if cache.size() >= 2048:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
 
+## The Night Watch lists to mix as sound or broken as a whole (BACKLOG "A Night Watch list
+## that wrongly names the listener", Michael, Nov 18): another's report, carrying the chance
+## its gift was broken that night ("broken_chance", CaseEval._list_broken).
+static func _mixed_lists(view: Dictionary, cards: Array) -> Array:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var lists: Array = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and not c.get("quoted", false) \
+		and not c.get("duty_only", false) and float(c.get("broken_chance", 0.0)) > 0.0 and ids.has(str(c.get("source", ""))))
+	# At most SourceDoubt.LIST_MIX_MAX carry a broken chance (SourceDoubt.list_broken_chance
+	# picks them, so a list left out keeps the old fallback); the cap here is only a guard.
+	lists.sort_custom(func(a, b): return int(a.get("night", -1)) > int(b.get("night", -1)) or (int(a.get("night", -1)) == int(b.get("night", -1)) and str(a.id) < str(b.id)))
+	return lists.slice(0, 2)
+
+## The movement factor, mixed over each list being sound or broken: in a world where the
+## watcher is good, the list is sound (every name at its small error) with chance 1 - b, or
+## broken (it says nothing about who walked) with chance b, the watcher's poison and
+## Delusional priors; a broken list clears nobody. In a world where the watcher is evil the
+## sighting contest already lets it say anything. The kernel weighs the two by fit
+## (LiveActivityKernel.ScoreMixed).
 static func _factors_cs(view: Dictionary, cards: Array, observations: Array) -> Array:
+	return [_list_mix(view, cards, observations, _mixed_lists(view, cards))]
+
+static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists: Array) -> Dictionary:
+	if lists.is_empty():
+		return _factors_core(view, cards, observations)[0]
+	var list: Dictionary = lists[0]
+	var rest: Array = lists.slice(1)
+	var sound: Dictionary = _list_mix(view, cards, observations, rest)
+	# Broken, the list says nothing about who walked, but the watcher still went out to
+	# watch that block (sim/world.gd walks it there whatever its gift): a duty-only copy
+	# keeps that (Codex on #273).
+	var duty: Dictionary = list.duplicate(true)
+	duty["duty_only"] = true
+	duty.erase("broken_chance")
+	duty["data"] = {"block": list.get("data", {}).get("block", ""), "seen": []}
+	var broken: Dictionary = _list_mix(view, cards.map(func(c): return duty if c.get("id", "") == list.id else c), observations, rest)
+	# (broken_cards below is the same list, for the outsider's scale.)
+	var b: float = clampf(float(list.broken_chance), 0.0, 1.0)
+	# The kernel scores the broken branch on the sound branch's scale (it divides by the sound
+	# branch's good profiles in every component; LiveActivityKernel.SetListNorm, Codex on #273).
+	# A broken list says these words as often as an honest one would, from what an outsider
+	# could know (the sighting contests' balance, without the listener's own nights):
+	# prod outsider good(sound) / prod outsider good(broken). No new number.
+	var broken_cards: Array = cards.map(func(c): return duty if c.get("id", "") == list.id else c)
+	var private_free: Callable = func(cs: Array) -> Array: return cs.filter(func(x): return not x.get("known_self", false))
+	var log_scale: float = _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
+	var top: Dictionary = sound.duplicate(false)
+	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "cursed": _told_cursed(view.get("chronology", {}).get("curse", {}), list), "next": sound, "alt": broken,
+		"key": "%s:%s:%s:%s|%s|%s" % [list.id, b, log_scale, _told_cursed(view.get("chronology", {}).get("curse", {}), list), sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
+	return top
+
+## Sum of log good profiles of a card list's plain profiles (no contests or guards: they don't
+## touch the good column), with the outings it forces.
+static func _log_good_of(view: Dictionary, cards: Array) -> float:
+	var checked: Array = cards.duplicate()
+	var movement: Dictionary = _routes_cs(view, cards, {}, {}, false)
+	for night in movement.nights:
+		for person in movement.nights[night].forced_out:
+			checked.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
+	var ids: Array = view.people.map(func(p): return p.id)
+	var env: Dictionary = _pack_view_env(view, ids)
+	var packed: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, {})
+	var raw: PackedFloat64Array = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
+		DEMON_DETOUR, packed.ints, packed.doubles)
+	var stride: int = 4 if env.has_curse else 3
+	var out: float = 0.0
+	for i in range(ids.size()):
+		out += log(maxf(raw[i * stride], 1e-30))
+	return out
+
+static func _factors_core(view: Dictionary, cards: Array, observations: Array) -> Array:
 	var checked: Array = cards.duplicate()
 	var movement: Dictionary = _routes_cs(view, cards, {}, {}, false)
 	for night in movement.nights:
@@ -671,15 +743,19 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	for c in checked:
 		if c.get("quoted", false):
 			continue
-		# Who might have made it up: the sighter, and for a relayed sighting (a Medium's word
-		# from the dead) the relayer too, since an evil relayer can invent what the dead saw.
+		# Who might have made it up: the sighter; for a relayed card (a Medium's word from the
+		# dead) only the relayer. The dead person never told it: a Medium learns what they
+		# knew and never said, firsthand, so the dead can't have invented it, and an evil
+		# relayer can. Counting the dead as a teller too let the two-sighter cap drop the
+		# relayer, so an invented relay was weighed as the dead's honest word (seeds 929 and
+		# 100029; BACKLOG "A relayer cut from the sighter contest", Michael, Nov 18).
 		var tellers: Array = []
 		var si: int = ids.find(str(c.get("source", "")))
-		if si >= 0:
-			tellers.append(si)
 		var ri: int = ids.find(str(c.get("relay_source", ""))) if c.has("relay_source") else -1
-		if ri >= 0 and ri != si:
+		if ri >= 0:
 			tellers.append(ri)
+		elif si >= 0:
+			tellers.append(si)
 		if tellers.is_empty():
 			continue
 		var named: Array = []
@@ -992,8 +1068,9 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		_factor_handles.clear()
 		_mru_epoch = epoch
 	var day_share: float = float(factor.get("day_demon_share", 0.0))
-	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {})]) if day_share <= 0.0 \
-		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {})])
+	var mix_key: String = str(factor.get("list_mix", {}).get("key", ""))
+	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {}), mix_key]) if day_share <= 0.0 \
+		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {}), mix_key])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
 		if hit.factor == factor:
@@ -1135,7 +1212,12 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		g_ints.append(int(curse.get("from", 0)))
 		g_ints.append(int(curse.get("until", 0)))
 		bridge.LiveAttachGuards(h, g_ints, g_doubles)
-	if _factor_handles.size() >= 64:
+	var mix: Dictionary = factor.get("list_mix", {})
+	if not mix.is_empty():
+		var next_h: int = _ensure_factor_handle(mix.next)
+		var alt_h: int = _ensure_factor_handle(mix.alt)
+		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h)
+	if _factor_handles.size() >= 2048:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}
 	_mru_factor = factor
@@ -1324,8 +1406,23 @@ static func mix_demon(walking: float, still: float, share: float) -> float:
 		return walking
 	return walking * (1.0 - share) + still * share
 
+## How often a good person is out on a night, as the movement model's good profile has it,
+## from what the cards say they claim (ReadingChallenges._outing_poison_chance): its profile
+## weights (_likelihood_gd) times each profile's walk rate (_profile_paths).
+static func good_walk_chance(cards: Array, person: String) -> float:
+	var role: String = role_of(cards, person)
+	var gift: bool = bool(C.ROLES.get(role, {}).get("night_walk", false))
+	if role != "" and not gift:
+		return 0.9 * PROFILE_RATES.ordinary + 0.1 * PROFILE_RATES.secret
+	if gift:
+		return WALKER_CLAIM_HOME * PROFILE_RATES.ordinary + WALKER_CLAIM_GIFT * PROFILE_RATES.gift + WALKER_CLAIM_SECRET * PROFILE_RATES.secret
+	return 0.75 * PROFILE_RATES.ordinary + 0.15 * PROFILE_RATES.gift + 0.1 * PROFILE_RATES.secret
+
+## Each profile's chance of being out on a night (the C# kernel's BuildProfilePaths has the same).
+const PROFILE_RATES = {"minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+
 static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
-	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
+	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": PROFILE_RATES.minion, "gift": PROFILE_RATES.gift, "secret": PROFILE_RATES.secret, "ordinary": PROFILE_RATES.ordinary}
 	var rate: float = rates[profile]
 	if profile == "gift" and night < 1 and role_of(cards, person.id) == "warden":
 		rate = 0.0  # no guard on night 0 (triage 7.1): a night-0 outing isn't the Warden's gift

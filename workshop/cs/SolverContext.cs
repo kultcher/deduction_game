@@ -198,6 +198,7 @@ internal static class SolverContext
     private static readonly List<CaseEvalKernel.CompiledCaseEntry> CompiledCases = new(64);
     private static readonly List<ChannelSumProductKernel.CompiledProgram> Programs = new(32);
     private static readonly List<ChannelSumProductKernel.CompiledCircuit> Circuits = new(32);
+    private static readonly List<Dictionary<long, double>> RoleConstraintMemos = new(256);
 
     public static void Clear()
     {
@@ -210,6 +211,7 @@ internal static class SolverContext
         CompiledCases.Clear();
         Programs.Clear();
         Circuits.Clear();
+        RoleConstraintMemos.Clear();
     }
 
     public static int CachedUniverseCount => UniverseStride3Cache.Count;
@@ -306,6 +308,21 @@ internal static class SolverContext
         }
         return meta;
     }
+
+    public static int GetUniverseSize(int handle) =>
+        (handle >= 0 && handle < PackedUniverses.Count) ? PackedUniverses[handle].Length : 0;
+
+    public static void ClearRoleConstraintMemos() => RoleConstraintMemos.Clear();
+
+    public static int CreateRoleConstraintMemo()
+    {
+        int slot = RoleConstraintMemos.Count;
+        RoleConstraintMemos.Add(new Dictionary<long, double>(256));
+        return slot;
+    }
+
+    public static Dictionary<long, double>? GetRoleConstraintMemo(int slot) =>
+        (slot >= 0 && slot < RoleConstraintMemos.Count) ? RoleConstraintMemos[slot] : null;
 
     private static readonly List<double[]> PresenceWeights = new(16);
 

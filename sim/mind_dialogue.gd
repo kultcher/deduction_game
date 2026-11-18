@@ -116,7 +116,9 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 	var night = -1
 	if kind in ["sighting", "secret"] and card.get("phase", -1) == C.NIGHT and card.get("source", "") != n.id:
 		night = card.get("day", -1)
-	elif kind == "deduction" and c.get("type", "") in ["lied", "unreliable"]:
+	elif kind == "deduction":
+		# A case resting on night evidence is about that night, whatever it concludes (Michael,
+		# Nov 18: a "suspicious" case built from an alibi or a vigil got a gift refusal).
 		for x in card.get("support_cards", []):
 			if x.get("phase", -1) == C.NIGHT:
 				night = x.get("day", -1)
@@ -255,7 +257,7 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 		if not (n.id in w.sleepwalk_claims) and not decide(w, n, "sleepwalk_bluff", {"base": -0.1, "pressure": n.pressure * 0.5},
 				"Evil: explain being seen out by claiming to sleepwalk?"):
 			return {}
-		w.dlog.think(n.id, "lie", "Evil: says they sleepwalk to explain being seen out.", {"lie": true})
+		w.dlog.think(n.id, "lie", "Claimed to sleepwalk, to explain being seen out.", {"lie": true})
 	elif n.secret_mod != "sleepwalker":
 		return {}
 	if not (n.id in w.sleepwalk_claims):
@@ -264,6 +266,48 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 	return {"line": line, "fact": {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id,
 		"secret_kind": "sleepwalker", "mod": "sleepwalker",
 		"text": "%s says they've been known to sleepwalk (at %s)." % [n.name, where]}}
+
+## "Fine, I was out", then why (Michael, Nov 18): a good NPC caught out of a home alibi in
+## private, who has an honest reason, gives it: the gift that took them out, or the secret
+## errand. {} when there's no honest reason to give (evil work, a gift kept back): they
+## stonewall. Never the lie branch: they've just owned the night.
+static func trapped_explanation(w, n, nd: int) -> Dictionary:
+	if n.is_evil():
+		return {}
+	var where: String = str(n.history.get(w.time_key(nd, C.NIGHT), ""))
+	if not where.begins_with("night:"):
+		return {}
+	if _honest_outing(w, n, nd) == "reveal":
+		return answer_night(w, n, nd)
+	if _gift_outing(w, n, nd):
+		# Out on gift business (a Night Watch, Warden, Lamplighter...), as a direct press would
+		# answer it: their claimed duty if they're already out with it, else the gift itself
+		# (Codex on #261: only the Sexton reached the reveal branch).
+		if n.claim_public:
+			return answer_night(w, n, nd)
+		if nd not in n.lied_nights:
+			n.lied_nights.append(nd)
+		_own_night_account(w, n, nd, where.substr(6))
+		return answer_gift(w, n, 3)
+	if n.secret.is_empty():
+		return {}
+	var block: String = where.substr(6)
+	_own_night_account(w, n, nd, block)
+	n.secret_known = true
+	var line: Dictionary = say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])})
+	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
+		"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "", "partner": str(n.secret.get("with", "")) if n.secret.get("kind", "") == "lover" else "",
+		"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}
+	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi: owns the night and explains it (secret: %s)." % n.secret.get("kind", "?"))
+	return {"lines": [line], "facts": [fact]}
+
+## The night is owned now: a later question about it, in private or at the podium, gets the
+## plain "I was out" account rather than the home alibi it replaced (Codex on #261).
+static func _own_night_account(_w, n, nd: int, block: String) -> void:
+	var accounts: Dictionary = n.dialogue_memory.get("night_accounts", {})
+	accounts[str(nd)] = {"kind": "alibi", "subject": [n.id], "home": false, "day": nd, "phase": C.NIGHT, "source": n.id, "block": block,
+		"text": "%s says they were out on %s on night %d." % [n.name, C.block_name(block), nd]}
+	n.dialogue_memory["night_accounts"] = accounts
 
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	if not n.claim_public and n.max_tier < 3 and (_gift_outing(w, n, night) or _bluff_outing(w, n, night)):
@@ -667,6 +711,8 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	var target: int = gate["target"]
 	var tier: int = gate["tier"]
 	var withholding: bool = gate["withholding"]
+	if tier == 2 and C.hint_package(w, role) == "":
+		tier = 1  # every family the gift is in has only it on this script: a hint would name it
 	if tier <= 1:
 		# Denying any gift is off (C.ALLOW_NO_GIFT_DENIAL): evil almost never says it, so it
 		# read as a near-certain good, at the price of the gift. Refusing to say remains.
@@ -674,9 +720,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 			"Tier 1: deny having a gift (lie) rather than refuse to say?")
 		if lie:
 			if not evil:
-				w.dlog.think(n.id, "lie", "Caution: denies having a gift (true role %s)." % n.role, {"lie": true})
+				w.dlog.think(n.id, "lie", "Denied having a gift, out of caution (they are the %s)." % C.role_name(n.role), {"lie": true})
 			else:
-				w.dlog.think(n.id, "lie", "Evil: denies having a gift.", {"lie": true})
+				w.dlog.think(n.id, "lie", "Denied having a gift.", {"lie": true})
 			n.claimed_role = "none"
 			lines.append(say_voiced(n, "deny_any_gift", "A gift? No, nothing like that. I'm only the %s." % n.occupation, {"occupation": n.occupation}))
 			facts.append({"kind": "claim", "subject": [n.id], "role": "none", "source": n.id, "private": true,
@@ -702,9 +748,9 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		n.max_tier = maxi(n.max_tier, 1)
 		return {"lines": lines, "facts": facts}
 	if tier == 2:
-		var pk: String = C.package_of(role)
+		var pk: String = C.hint_package(w, role)
 		if evil:
-			w.dlog.think(n.id, "lie", "Evil: gives a hint matching bluff %s." % role, {"lie": true})
+			w.dlog.think(n.id, "lie", "Hinted at being the %s, as cover." % C.role_name(role), {"lie": true})
 		var pkg_fb: String = C.HINT_PACKAGES[pk]["text"] + " That's all I'll say."
 		lines.append(say_voiced(n, "hint_pkg_" + pk, pkg_fb))
 		facts.append({"kind": "hint", "subject": [n.id], "source": n.id, "private": true, "package": pk,
@@ -717,7 +763,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	var first_time = n.max_tier < 3 and not n.claim_public
 	n.claimed_role = role
 	if evil:
-		w.dlog.think(n.id, "lie", "Evil cover: tells the player they are the %s." % role, {"true_role": n.role})
+		w.dlog.think(n.id, "lie", "Told you they were the %s, as cover." % C.role_name(role), {"true_role": n.role})
 	if first_time:
 		var reveal_cue: String = Dialogue.exchange_cue(n.dialogue_memory, "gift", n.id)
 		var contextual: String = Dialogue.gift_reveal(n.id, C.role_name(role), reveal_cue)
@@ -786,7 +832,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 		n.told_readings = n.info_log.size()
 		n.max_tier = 4
 	if evil and not readings.is_empty():
-		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results." % role)
+		w.dlog.think(n.id, "lie", "Recited its made-up %s readings." % C.role_name(role))
 	if not first_time and not readings.is_empty(): lines.pop_front()
 	# Asked again with something new: say the new reading and stand by the old ones, rather
 	# than reciting the whole history before reaching the news. (Facts still cover them all.)
@@ -958,7 +1004,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				vantage = block
 				how = "street"
 			elif bold:
-				w.dlog.think(n.id, "lie", "Hiding (%s): was on %s, claims to have been home." % [hiding, block], {"lie": true})
+				w.dlog.think(n.id, "lie", "Said they were home, though they were out on %s, to hide %s." % [C.block_name(block), _hidden_thing(w, n)], {"lie": true})
 				if not (nd in n.lied_nights):
 					n.lied_nights.append(nd)
 				lines.append(home_alibi(w, n, nd))
@@ -989,7 +1035,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 	var reported: Array = []
 	for b in seen:
 		if n.is_evil() and Evil.is_teammate(w, n, b["who"]) and b["kind"] == "saw":
-			w.dlog.think(n.id, "lie", "Evil: omits seeing teammate %s at night." % b["who"])
+			w.dlog.think(n.id, "lie", "Left out seeing %s, a fellow evil, at night." % w.by_id[b["who"]].name)
 			continue
 		if vantage != "" and b["block"] != vantage:
 			# Seen from somewhere they say they weren't: telling it would give the lie away.
@@ -1085,7 +1131,7 @@ static func _night_gift_result(w, n, nd: int, role: String, lines: Array, facts:
 		if in_sightings:
 			return false
 		if n.is_evil():
-			w.dlog.think(n.id, "lie", "Evil: repeats the fabricated %s result for night %d." % [role, nd])
+			w.dlog.think(n.id, "lie", "Repeated its made-up %s reading for %s." % [C.role_name(role), C.spoken_night(nd, -1)])
 		var reports: Array = info_lines(w, n, told, "player", true)
 		if not reports.is_empty():
 			lines.append(say(n, " ".join(PackedStringArray(reports.map(func(line): return line.text)))))
@@ -1112,7 +1158,7 @@ static func _night_gift_result(w, n, nd: int, role: String, lines: Array, facts:
 		memo[str(n.info_log.find(e))] = true
 	n.dialogue_memory["told_player_readings"] = memo
 	if n.is_evil():
-		w.dlog.think(n.id, "lie", "Evil: recites fabricated %s results (asked about night %d)." % [role, nd])
+		w.dlog.think(n.id, "lie", "Recited its made-up %s readings when asked about %s." % [C.role_name(role), C.spoken_night(nd, -1)])
 	else:
 		w.dlog.think(n.id, "disclose", "Asked about night %d: tells the %s result%s." % [nd, role, "" if fresh.size() == 1 else "s"])
 	if not fresh.is_empty():
@@ -1429,8 +1475,11 @@ static func answer_opinion(w, n, t) -> Dictionary:
 		text += " We're close, mind."
 	elif bond == "rival" and not combined and not Dialogue.has_voice(n.id):
 		text += " We don't get along, mind."
-	w.dlog.think(n.id, "lie" if lie else "opinion", "%s opinion of %s: level %.2f, reason: %s." %
-		["Evil cover" if lie else ("Evil (mimicking the town)" if n.is_evil() else "Honest"), t.id, level, why if why != "" else "vibes"])
+	if lie:
+		w.dlog.think(n.id, "lie", "Gave a false opinion of %s, as cover, %s." % [t.name, ("citing \"%s\"" % why) if why != "" else "with no reason given"])
+	else:
+		w.dlog.think(n.id, "opinion", "%s opinion of %s: level %.2f, reason: %s." %
+			["Evil (mimicking the town)" if n.is_evil() else "Honest", t.id, level, why if why != "" else "vibes"])
 	level = shown
 	# An uncombined friend or rival gets the voice's partiality note after the opinion.
 	var tail_kind: String = bond if (bond != "" and not combined) else "friend"
@@ -1697,3 +1746,18 @@ static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}
 			lines.append(say_voiced(n, "trace_point_connection", "%s had ties around that cottage as well, if you're asking around." % pointer_target.name, {"target": pointer_target.name}))
 	w.dlog.add("trace_reaction", n.id, pointer_target.id if pointer_target != null else "", {"card": card.get("n", 0), "fits_self": fits_me, "minion_guarded": is_minion, "haunt_shared": pointer_loc if pointer_is_haunt else ""})
 	return {"lines": lines, "facts": [], "profile_haunts": profile_haunts}
+
+
+## What a "home all night" lie hid, in plain words for the reveal.
+static func _hidden_thing(w, n) -> String:
+	if n.is_evil():
+		return "their evil work"
+	var kind: String = str(n.secret.get("kind", ""))
+	if kind == "":
+		return "their gift as the %s" % C.role_name(n.role)
+	if kind == "lover":
+		var partner = w.by_id.get(str(n.secret.get("with", "")))
+		return "that they meet %s in secret" % partner.name if partner != null else "a lovers' meeting"
+	if n.secret.has("text"):
+		return "that %s %s" % [n.name, n.secret["text"]]
+	return "a secret"

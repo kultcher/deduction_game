@@ -123,7 +123,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	elif not a_ev and not b_ev and (a.id == s or b.id == s):
 		# Both good, one is the scapegoat: claiming 'different' casts one of the two as evil!
 		same = false
-		why = "claimed %s and %s were on different sides, to point at %s, whom evil meant to hang" % [a.id, b.id, s]
+		why = "claimed %s and %s were on different sides, to point at %s, evil's scapegoat" % [a.id, b.id, s]
 	elif a_ev and b_ev:
 		same = false
 		why = "claimed %s and %s, both evil, were on different sides after one nominated the other" % [a.id, b.id]

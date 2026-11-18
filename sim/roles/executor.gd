@@ -182,7 +182,13 @@ func run_morning_bluff(w, n) -> bool:
 	plan["executor_bluff_resolved_" + n.id] = true
 	var role: String = ""
 	var why: String = ""
-	if ex.is_evil():
+	# A dead teammate: blending in or disruption (Michael, Nov 18; Evil.blend_chance), as the
+	# Gravedigger; its one result is always its first. Blending names the teammate's true
+	# role; disruption covers its false claim. A dead good soul is read as before.
+	if ex.is_evil() and w.chance(load("res://sim/evil.gd").blend_chance(w, n, true)):
+		role = ex.role
+		why = "named %s, a dead fellow evil, as the %s, to pass as an honest Executor" % [ex.id, content().role_name(role)]
+	elif ex.is_evil():
 		role = str(plan.get("bluffs", {}).get(ex.id, ""))
 		if role == "":
 			role = w.pick(w.case_script.town.filter(func(r): return r != "executor"))

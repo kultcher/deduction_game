@@ -111,6 +111,9 @@ static var held_together_rule: bool = true
 ## Buy-in fading (buy_in_rate). Off, every case keeps CASE_FADE a day (for measuring, and
 ## for arithmetic tests on chosen numbers).
 static var buy_in: bool = true
+## Premise centring, option B (Michael, Nov 18). Off for measuring and for tests that check
+## a case's arithmetic on chosen numbers.
+static var premise_centring: bool = true
 ## Developer capture (off): one record per judgement a refresh makes, for measuring what a
 ## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
 ## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
@@ -127,6 +130,7 @@ const CORE_JOIN_SHARP: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN_SHARP
 ## A stored case keeps CASE_FADE of its weight a day (more if the listener bought it:
 ## buy_in_rate), and stops counting below CASE_FLOOR.
 const CASE_FADE: float = Tuning.Workshop.CONNECTIONS_CASE_FADE
+const PREMISE_SHARE: float = Tuning.Workshop.PREMISE_BYSTANDER_SHARE
 const CASE_FLOOR: float = Tuning.Workshop.CONNECTIONS_CASE_FLOOR
 ## A case the listener bought fades slower: up to CASE_FADE_BOUGHT a day (buy_in_rate).
 const CASE_FADE_BOUGHT: float = Tuning.Workshop.CONNECTIONS_CASE_FADE_BOUGHT
@@ -912,9 +916,25 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var values: Dictionary = {}
 	part = Profiler.open("items")
 	run["section"] = "items"
+	# Premise centring, option B: an item made only of cards presented cases brought counts
+	# in full on those cases' targets and at PREMISE_BYSTANDER_SHARE on everyone else.
+	# `values` keeps the raw value: the core and the stored cases subtract it from joint
+	# judgements, and a centred value there would turn the suppressed part into a false
+	# interaction that the core (in full) or a case would add back (Codex on #246).
+	var brought: Dictionary = core_state.get("brought", {}) if premise_centring else {}
 	for it in item_list:
 		var v: Dictionary = value(run, it)
 		values[it.key] = v
+		if not brought.is_empty() and not v.impossible and not it.ids.is_empty() and it.ids.all(func(id): return brought.has(id)):
+			var aimed: Array = []
+			for id in it.ids:
+				for t in brought[id]:
+					if t not in aimed:
+						aimed.append(t)
+			var centred: Dictionary = {}
+			for p in v.lean:
+				centred[p] = float(v.lean[p]) * (1.0 if p in aimed else PREMISE_SHARE)
+			v = {"lean": centred, "impossible": false}
 		var entry: Dictionary = {"key": it.key, "kind": it.kind, "cards": it.ids, "ctx": it.ctx, "lean": v.lean}
 		if v.impossible:
 			entry["impossible"] = true
@@ -946,6 +966,159 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	Profiler.close(span)
 	return {"prior": run.prior, "baseline": baseline, "posterior": settled.posterior, "shift": settled.shift, "row": run.row, "impossible": false,
 		"items": entries, "core": own, "core_memory": memory, "cases": told, "judgements": run.judgements}
+
+
+## Leave-one-out posterior for ReasonAttribution._connections_drop: skips re-running
+## core/cases when dropping `cid` touches neither any core item (cards or context), nor
+## any firsthand seed card, nor any stored case (or non-always-on item sharing cards with
+## one), and leaves core membership/structure intact. Falls back to refresh() otherwise.
+static func drop_card_posterior(view: Dictionary, case_data: Dictionary, listener: Dictionary, held: Array, core_state: Dictionary, full_result: Dictionary, cid: String) -> Dictionary:
+	var fallback := func() -> Dictionary:
+		return refresh(view, case_data, listener, held.filter(func(id): return id != cid), core_state).get("posterior", {})
+	if full_result.is_empty() or bool(full_result.get("impossible", false)) or not full_result.has("posterior") or not full_result.has("baseline"):
+		return fallback.call()
+	var core_res: Dictionary = full_result.get("core", {})
+	if bool(core_res.get("impossible", false)):
+		return fallback.call()
+	if cid in core_res.get("firsthand", []):
+		return fallback.call()
+	var core_keys: Array = core_res.get("seed", []) + core_res.get("members", [])
+	var old_items: Array = full_result.get("items", [])
+	for it in old_items:
+		if str(it.get("key", "")) in core_keys:
+			if cid in it.get("cards", []) or cid in it.get("ctx", []):
+				return fallback.call()
+	var case_list: Array = core_state.get("cases", [])
+	var case_cards: Dictionary = {}
+	for cs in case_list:
+		if cid in cs.get("cards", []) or cs.get("challenges", {}).has(cid):
+			return fallback.call()
+		for ccid in cs.get("cards", []):
+			case_cards[str(ccid)] = true
+	if not case_cards.is_empty():
+		for it in old_items:
+			if str(it.get("kind", "")) in ALWAYS_ON:
+				continue
+			var touches_case: bool = false
+			for ic in it.get("cards", []):
+				if case_cards.has(str(ic)):
+					touches_case = true
+					break
+			if touches_case and (cid in it.get("cards", []) or cid in it.get("ctx", [])):
+				return fallback.call()
+	var people: Array = Solver.person_ids(view)
+	var self_id: String = str(listener.get("id", ""))
+	var others: Array = people.filter(func(p): return p != self_id)
+	if others.is_empty():
+		return full_result.get("posterior", {}).duplicate()
+	var by_id: Dictionary = {}
+	for c in view.cards:
+		by_id[c.id] = c
+	var ids_wo: Array = held.filter(func(id): return id != cid and by_id.has(id))
+	ids_wo.sort()
+	var row_name: String = str(full_result.get("row", row(view)))
+	var item_list_wo: Array = items(by_id, ids_wo, people, row_name)
+	var old_by_key: Dictionary = {}
+	for it in old_items:
+		old_by_key[str(it.get("key", ""))] = it
+	var new_by_key: Dictionary = {}
+	for it in item_list_wo:
+		new_by_key[str(it.key)] = it
+	var same_item := func(it_new: Dictionary, it_old: Dictionary) -> bool:
+		return str(it_old.get("kind", "")) == str(it_new.kind) and it_old.get("cards", []) == it_new.ids and it_old.get("ctx", []) == it_new.ctx
+	for k in core_keys:
+		if not new_by_key.has(k) or not old_by_key.has(k) or not same_item.call(new_by_key[k], old_by_key[k]):
+			return fallback.call()
+	if not case_cards.is_empty():
+		for it in old_items:
+			if str(it.get("kind", "")) in ALWAYS_ON:
+				continue
+			var touches_case: bool = false
+			for ic in it.get("cards", []):
+				if case_cards.has(str(ic)):
+					touches_case = true
+					break
+			if touches_case:
+				var ok_k: String = str(it.get("key", ""))
+				if not new_by_key.has(ok_k) or not same_item.call(new_by_key[ok_k], it):
+					return fallback.call()
+	if not core_res.get("seed", []).is_empty():
+		for it in item_list_wo:
+			var nk: String = str(it.key)
+			if not old_by_key.has(nk) or not same_item.call(it, old_by_key[nk]):
+				if str(it.kind) not in ALWAYS_ON:
+					return fallback.call()
+	var total: Dictionary = {}
+	for p in others:
+		total[p] = 0.0
+	var brought: Dictionary = core_state.get("brought", {}) if premise_centring else {}
+	var run: Dictionary = {}
+	for it in item_list_wo:
+		var nk: String = str(it.key)
+		if old_by_key.has(nk) and same_item.call(it, old_by_key[nk]):
+			var old_lean: Dictionary = old_by_key[nk].get("lean", {})
+			for p in old_lean:
+				total[p] += float(old_lean[p])
+		else:
+			if run.is_empty():
+				run = {
+					"view": view,
+					"listener": listener,
+					"people": people,
+					"others": others,
+					"memo": {},
+					"judgements": 0,
+					"prior": full_result.get("prior", {}),
+					"baseline": full_result.get("baseline", {}),
+					"impossible": false,
+					"row": row_name,
+					"bare": template(case_data, others[0]),
+				}
+				run["key_ctx"] = _prepare_key_ctx(view, run.bare, listener)
+				run["section"] = "items"
+			var v: Dictionary = value(run, it)
+			if not brought.is_empty() and not v.impossible and not it.ids.is_empty() and it.ids.all(func(id): return brought.has(id)):
+				var aimed: Array = []
+				for id in it.ids:
+					for t in brought[id]:
+						if t not in aimed:
+							aimed.append(t)
+				var centred: Dictionary = {}
+				for p in v.lean:
+					centred[p] = float(v.lean[p]) * (1.0 if p in aimed else PREMISE_SHARE)
+				v = {"lean": centred, "impossible": false}
+			for p in v.lean:
+				total[p] += float(v.lean[p])
+	var core_lean: Dictionary = core_res.get("lean", {})
+	for p in core_lean:
+		total[p] += float(core_lean[p])
+	var cases_lean: Dictionary = full_result.get("cases", {}).get("lean", {})
+	for p in cases_lean:
+		total[p] += float(cases_lean[p])
+	var settled: Dictionary = combine(others, full_result.baseline, total, core_res.get("proved", {}))
+	if cache_verify:
+		var prev_cache: bool = cache_enabled
+		var prev_verify: bool = cache_verify
+		var prev_capture: bool = capture
+		var prev_stats: Dictionary = cache_stats.duplicate()
+		cache_enabled = false
+		cache_verify = false
+		capture = false
+		var ref_post: Dictionary = fallback.call()
+		cache_enabled = prev_cache
+		cache_verify = prev_verify
+		capture = prev_capture
+		cache_stats = prev_stats
+		var diff: bool = settled.posterior.size() != ref_post.size()
+		if not diff:
+			for p in settled.posterior:
+				if not ref_post.has(p) or absf(float(settled.posterior[p]) - float(ref_post[p])) > 1e-12:
+					diff = true
+					break
+		if diff:
+			cache_stats.wrong += 1
+			push_warning("Connections.drop_card_posterior differs from full refresh (%s)" % cid)
+	return settled.posterior
 
 
 ## Everyone's chance from the baseline and the summed leans: one common shift, so the people
@@ -1052,7 +1225,7 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 			continue
 		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
 			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
-			"suspicious": bool(cs.get("suspicious", false))})
+			"suspicious": bool(cs.get("suspicious", false)), "target": str(cs.get("target", "")), "targets": case_targets(cs)})
 	# Oldest first, so a later entry is a later case.
 	var kept: Array = []
 	for i in range(out.size()):
@@ -1072,6 +1245,17 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 		entry.erase("cited")
 	return kept
 
+
+## Every person a stored case argues about: a direct presentation can argue several
+## (premise_targets); an NPC nomination carries only its nominee as "target" (Codex on #246).
+static func case_targets(sc: Dictionary) -> Array:
+	var named: Array = []
+	for t in sc.get("targets", []):
+		if str(t) != "" and str(t) not in named:
+			named.append(str(t))
+	if named.is_empty() and str(sc.get("target", "")) != "":
+		named.append(str(sc.target))
+	return named
 
 ## Every reading some stored case challenges, counted or not: with the model on, those
 ## challenges act through their case alone.
@@ -1293,6 +1477,11 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 			state = step.next
 			for p in added:
 				var x: float = cs.weight * float(added[p])
+				# Premise centring, option B: the case's cards together count in full on its
+				# targets (every person it argues about) and at PREMISE_BYSTANDER_SHARE on
+				# everyone else.
+				if premise_centring and not cs.get("targets", []).is_empty() and p not in cs.targets:
+					x *= PREMISE_SHARE
 				if not is_zero_approx(x):
 					entry.lean[p] = x
 					total[p] = float(total.get(p, 0.0)) + x

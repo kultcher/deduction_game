@@ -352,7 +352,7 @@ class Trust:
 
 	## Conversation, pressing, promises, nominations, clemency & presentations
 	const CIVIL_TALK_BASE = 0.04
-	const CIVIL_TALK_PRIVACY_DAMP = 0.5
+	const CIVIL_TALK_PRIVACY_DAMP = 0.0  # Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5)
 	const QUESTION_FATIGUE_LIMIT = 3
 	const QUESTION_FATIGUE_BASE = 0.03
 	const QUESTION_FATIGUE_PRIVACY = 0.05
@@ -823,6 +823,18 @@ class Evil:
 	const FABRICATION_NOTICE_BASE = 0.3
 	const FABRICATION_NOTICE_INSIGHT = 0.6
 	const FAKE_GOSSIP_PROB = 0.6
+	# A bluffer's frame memory (BACKLOG, Michael, Nov 17): a fresh made-up reading that would
+	# clear someone its own earlier ones implicated, under the same scapegoat, is swapped for
+	# one of the rule's readings that doesn't, with chance BASE + TRAITS x the mean of the
+	# liar's Insight and Confidence. A sharp or self-assured liar keeps its story; a dull or
+	# unsure one drifts. Draft numbers.
+	const FRAME_MEMORY_BASE = 0.2
+	const FRAME_MEMORY_TRAITS = 0.7
+	# Blending in versus disruption (Michael, Nov 18, on #264). A liar that leans one way
+	# takes the other this often: a Scion or Demon bluffing Clerk "confirms" an early good
+	# claimer rather than covering a teammate; a Rumormonger names two good townsfolk as
+	# possibly Delusional; a Gravedigger, Executor or Confessor takes its less-favoured choice.
+	const BLUFF_BLEND_PROB = 0.35
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4
 	## An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion,
@@ -902,6 +914,20 @@ class Workshop:
 	## them on a night they spent at home counts against the sighter, but not as certain proof
 	## of a lie (Michael, Nov 12; backlog: scale it with confidence).
 	const SLEEPWALK_SELF_DOUBT = 0.1
+	## With the Delusional secret on the script, a good NPC's own readings are this unsure:
+	## its gift might be the Delusional one and give it wrong readings without it knowing
+	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
+	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
+	const DELUSIONAL_SELF_DOUBT = 0.1
+	## The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the
+	## expert, so a listener takes a call at its credibility in the player. The doubt runs in a
+	## straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to
+	## FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility,
+	## or the one-witness doubt where that is more. One call then removes about a fifth,
+	## half and four-fifths of what the reading costs its reader at low, default and high
+	## trust (Michael, Nov 18). Only where a Poisoner is possible.
+	const FAILED_GIFT_DOUBT_LOW = 0.2
+	const FAILED_GIFT_DOUBT_HIGH = 0.8
 	## The connections belief model (workshop/connections.gd;
 	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
 	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
@@ -1117,6 +1143,12 @@ class Workshop:
 	## effect, from the lowest to the highest Insight. Remembered for every refresh.
 	const PREMISE_SPILLOVER_MIN = 0.4
 	const PREMISE_SPILLOVER_MAX = 0.8
+	## Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a
+	## card adds when only presented cases brought it, and what a stored case's cards add
+	## together, count in full on the case's target and at this share on everyone else. A
+	## listener hearing "X is evil" weighs how far the case proves that, and under-registers
+	## what it implies about the others.
+	const PREMISE_BYSTANDER_SHARE = 1.0 / 3.0
 	## Premise types whose target is an alignment question. Marked, secret, misled and
 	## conflict premises name no alignment target, so their cards spill over in full.
 	const PREMISE_SHAPING_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]

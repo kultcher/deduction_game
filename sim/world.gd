@@ -1059,6 +1059,7 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
 	mart_def.on_chosen_executed(self, mart, n)
+	mart_def.on_bluff_chosen_executed(self, n)
 	C.role_def(n.role).on_executed(self, n, res, Mind)
 	_grief(n, res)
 	if id == demon_id:

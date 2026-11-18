@@ -48,10 +48,20 @@ func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:
 	}
 
 
-func generate_bluff_reading(w, _n, _plan: Dictionary, s: String, mate, _asked: Array) -> Dictionary:
+func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Array) -> Dictionary:
 	if w.day != 0:
 		return {}
 	var C = content()
+	# Michael, Nov 18: now and then it implies two good townsfolk may be Delusional, which
+	# casts doubt on whatever gifts they later claim; otherwise covering a teammate is still
+	# the better lie, since a wrong Rumormonger reading is very hard to catch out.
+	var goods: Array = w.living_good().filter(func(x): return x != n)
+	if "delusional" in w.case_script.secrets and goods.size() >= 2 and w.chance(Tuning.Evil.BLUFF_BLEND_PROB):
+		var two: Array = w.shuffled(goods).slice(0, 2).map(func(x): return x.id)
+		return {
+			"entry": {"data": {"pair": two, "secret": "delusional"}, "text": "I heard that one of %s is %s" % [w._names(two), w._secret_phrase("delusional")]},
+			"why": "implied that %s or %s, both good, might be Delusional, to cast doubt on their gifts" % [two[0], two[1]],
+		}
 	var other = w.pick(w.living_good().filter(func(x): return x.id != s))
 	var pair: Array = w.shuffled([mate.id, other.id])
 	var sk: String = w.pick(w.case_script.secrets)

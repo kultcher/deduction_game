@@ -44,7 +44,144 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a "taken together" reason measured in the belief model): `baseline_58dac68`
+### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+
+`tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
+(main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
+or broken (it says nothing about who walked), with the watcher's poison and Delusional priors as
+the broken chance. A list wrongly naming the listener is kept instead of set aside.
+- **Divergence from `baseline_96e729f`:**
+  - 692 and 98933 from record 1 (the first day's beliefs: small shifts wherever a Night Watch
+    list is held).
+  - 54875 from record 13 (Dorian's refresh on day 1).
+  - 42 from record 61 (Fenwick's refresh on day 2).
+  - 900 is identical.
+- **Outcomes unchanged:**
+  - The same executions, nominators and winners on every seed: 42 good on day 3; 54875, 692,
+    900 and 98933 reach day 4 with no winner.
+  - Record counts are the same except 54875 (345, was 352) and 98933 (291, was 307).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_96e729f`
+
+`tools/golden/baseline_96e729f/` is the capture from `claude/beadle-bluff-blend` (#269) at `96e729f`
+(main `c4f5dc6` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
+bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
+- **Divergence from `baseline_a3fd022`:** 54875, 692, 900 and 98933 from record 0 (the world's
+  random state after the first night's fabrications). 42 is identical.
+- **Outcomes:**
+  - **42:** unchanged (good on day 3).
+  - **54875:** was good on day 2 after hanging Constance. Now day 4 with no winner, after
+    hanging Greta on day 2 and Edda on day 3.
+  - **692:** hangs only Constance, on day 3. Merrin is no longer hanged on day 2.
+  - **900:** hangs Lian on day 3, not Constance on day 2.
+  - **98933:** now hangs Dorian on day 2 and Isolde on day 3 (none before).
+  - Every seed but 42 reaches day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, premise centring B): `baseline_a3fd022`
+
+`tools/golden/baseline_a3fd022/` is the capture from `claude/premise-centre-b` (#246) at `a3fd022`
+(main `2430ea5` merged in). An item a case brings is judged against what the listener already
+held of it, so only what it adds by itself is centred on the case's premise. A stored case
+carries every person it argues about.
+- **Divergence from `baseline_1dd16d5`:**
+  - 42 from record 40 (Kiran's refresh on day 2).
+  - 692 from record 30 (Constance's cover on day 1).
+  - 900 from record 126 (Isolde's cover on day 2).
+  - 98933 from record 155 (Merrin's refresh on day 2).
+  - 54875 is identical.
+- **Outcomes:**
+  - The executions and winners are the same on every seed: 42 good on day 3, 54875 good on
+    day 2, and 692, 900 and 98933 reach day 4 with no winner.
+  - On 692, Bart rather than Nisha now nominates Constance for her hanging on day 3.
+  - Record counts are the same except 692 (296, was 277) and 98933 (387, was 386).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, eleven hint families): `baseline_1dd16d5`
+
+`tools/golden/baseline_1dd16d5/` is the capture from `claude/hint-families` at `1dd16d5`
+(main `92a247a` merged in): eleven hint families with deliberate overlaps, and a gift in
+several families hints from the one with the most gifts on the script (`C.hint_package`).
+- **Divergence from `baseline_45b7506`:** only which family a hint names, its wording and
+  its role list. 692 from record 1 (Nisha hears a Medium's hint as night sight, not the
+  dead) and 900 from record 5 (Kiran hears a Psychologist's hint as light against the
+  dark, not reading people). With `--ignore engine,package,roles,text,reply,lines,statement`
+  every seed is identical: no belief, vote or execution changes.
+- **Outcomes:** all five unchanged; the end records are identical.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
+
+`tools/golden/baseline_45b7506/` is the capture from `claude/poison-self-doubt` (#232) at
+`45b7506` (main `f947be6` merged in): with a Poisoner possible, each of a good listener's own
+readings carries the chance a Poisoner picked it that night as an honest doubt (combined with
+the Delusional self-doubt as independent chances), and the judge weighs the reading as genuine
+or broken by fit.
+- **Divergence from `baseline_1e6b846`:** beliefs from the first record on every seed (the first
+  day's own readings carry the doubt).
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
+  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner). Record counts are the
+  same except 54875 (201, was 225).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
+
+`tools/golden/baseline_1e6b846/` is the capture from `claude/beadle-group-defence` (#249) at
+`1e6b846` (main `23136f3` merged in): a nominee named by a reading over a group (a Dowser's count,
+a Chronicler's three, a Surveyor's mixed street, a Medium's relay of one) says it's one of the
+others, naming them when there are one or two and none is a teammate.
+- **Divergence from `baseline_23d0330`:** 54875 from record 42 (Hollis's refresh on day 1) and
+  692 from record 39 (Constance's cover on day 1): an owned defence that was a challenge is now
+  the group defence ("rival"). 42, 900 and 98933 are identical.
+- **Outcomes unchanged:** the same executions, nominators, votes and winners on every seed
+  (54875 good on day 2; 692 reaches day 4 with no winner). Record counts are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a relayed sighting's only teller is its relayer): `baseline_23d0330`
+
+`tools/golden/baseline_23d0330/` is the capture from `claude/relayer-in-contest` at `23d0330`
+(main `b65b728` merged in): in the sighter contests a Medium's relay is contested only as the
+relayer's word. The dead person never told it, so it can't have invented it; counting them
+as a teller too let the two-sighter cap drop the relayer, and an evil Medium's invented relay
+was weighed as the dead's honest word.
+- **Divergence from `baseline_be621cd`:** 98933 only, from record 209 (Agnes's refresh on day
+  2, after the good Medium Agnes's relays): beliefs move in the fourth decimal. 42, 54875,
+  692 and 900 are identical.
+- **Outcomes unchanged:** the same executions, nominators and winners on every seed. Record
+  counts are the same.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, evil's lie reasons in plain words): `baseline_be621cd`
+
+`tools/golden/baseline_be621cd/` is the capture from `claude/herald-lie-reasons` (#241) at
+`be621cd` (main `040d115` merged in): evil's "think: lie" lines and fabrication reasons are
+reworded for the reveal (names, roles, ordinal nights, "evil's scapegoat").
+- **Divergence from `baseline_490cdcf`:** text only. 394 strings differ (the `why` of fake
+  readings and sightings, and the lie lines), no number, list or other value. 42 and 900 are
+  identical; 54875 differs from record 84, 692 from 82, 98933 from record 1.
+- **Outcomes:** all unchanged (42 good day 3; 54875 good day 2; 692 and 900 reach day 4 with no
+  winner, the same executions; 98933 reaches day 4 with no executions). Record counts unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a good listener doubts its own Delusional gift): `baseline_490cdcf`
+
+`tools/golden/baseline_490cdcf/` is the capture from `claude/delusional-self-doubt-2` (#216) at
+`490cdcf` (main `f23566a` merged in): with Delusional on the script, a good listener that
+could hold it gives each night of its own readings a small honest doubt
+(`DELUSIONAL_SELF_DOUBT`, 10%), so its own gift's word softens a little, never as a charge
+of lying.
+- **Divergence from `baseline_58dac68`:** beliefs from the first record on every seed (the
+  first day's own readings carry the doubt: a Lamplighter's, Night Watch's, Clerk's,
+  Surveyor's or Seer's reading weighs about a tenth less to its holder).
+- **Outcomes:** 42, 54875, 692 and 900 unchanged (42 good day 3; 54875 good day 2; 692 and 900
+  reach day 4 with no winner, the same executions). **98933 changes:** the town no longer
+  hangs Isolde (the Revenant, evil) on day 3; all five day-3 nominations fail, Nisha's of the
+  Demon Odette at 3 of the 5 votes needed. It still reaches day 4 with no winner. Record
+  counts are the same except 98933 (386, was 414).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a "taken together" reason measured in the belief model): `baseline_58dac68`
 
 `tools/golden/baseline_58dac68/` is the capture from `claude/joint-reasons-in-belief-model` at
 `58dac68` (main `80f7605` merged in): reason attribution weighs a joint ("taken together")

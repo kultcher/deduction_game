@@ -11,6 +11,7 @@
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 const C = preload("res://sim/content.gd")
 const Solver = preload("res://workshop/solver.gd")
 const PublicEvidence = preload("res://workshop/public_evidence.gd")
@@ -18,6 +19,26 @@ const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const History = preload("res://workshop/live_history.gd")
 
+## Measurement switch (on in play): a good listener's small doubt that its own gift is
+## Delusional (DELUSIONAL_SELF_DOUBT, derive). Tests turn it off to compare.
+static var delusional_self_doubt: bool = true
+
+
+## The poison self-doubt (off for measuring and for tests of other doubt).
+static var poison_self_doubt: bool = true
+
+## Measurement switch (on in play): the player's "failed gift" call as testimony (derive,
+## "Poisoned, not lying", option C).
+static var player_failed_gift: bool = true
+
+## How far a listener takes the player's word that a reading was a failed gift: one witness
+## as accurate as the listener's trust in the player (c), against the chance the gift was
+## poisoned that night (prior): prior.c / (prior.c + (1 - prior)(1 - c)). At c = 0.5 the call
+## changes nothing; below it, it never lowers a doubt (the caller takes the max).
+static func witness_doubt(prior: float, c: float) -> float:
+	var num: float = prior * c
+	var den: float = num + (1.0 - prior) * (1.0 - c)
+	return num / den if den > 1e-12 else 0.0
 
 static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind: String = "reading") -> float:
 	if src == "":
@@ -127,9 +148,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			pre_eval[csrc + ":*"] = 1.0
 		if ckind == "report" and crole == "nightwatch" and self_id != "" and self_id in card.get("data", {}).get("seen", []):
 			var nd_key: String = str(cnight)
-			if own_outings.has(nd_key) and not bool(own_outings[nd_key]) and not settled_sincere.has(csrc):
+			if own_outings.has(nd_key) and not bool(own_outings[nd_key]) and not settled_sincere.has(csrc) and list_broken_chance(view, listener, card) <= 0.0:
 				# A Night Watch list can be wrong without a lie (a poisoned watch): that night's
-				# report is void, and the source is doubted in general, not written off.
+				# report is void, and the source is doubted in general, not written off. Only
+				# where the list can't be weighed as sound or broken as a whole (a script with
+				# neither Poisoner nor Delusional): otherwise the movement model mixes the two
+				# (LiveActivity._list_mix) and the kept list counts against its watcher by fit.
 				var nw_key: String = "%s:%d" % [csrc, cnight]
 				pre_eval[nw_key] = 1.0
 				honest[nw_key] = 1.0
@@ -153,6 +177,12 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading
 	# proves only as much as it is still credited (Codex on #245).
 	var gift_doubt: Dictionary = _gift_self_doubt(pub_events, self_id, listener.get("suspicion", {}))
+	# The player's "failed gift" calls (option C, _player_failed_gift) go in at the same points,
+	# before the Gravedigger proofs and again after the sincere-teller pass, so a verdict called
+	# poisoned doesn't keep proving at full strength (Codex on #270).
+	var failed_gift: Dictionary = _player_failed_gift(view, listener, cards, self_id)
+	for fg_key in failed_gift:
+		gift_doubt[fg_key] = maxf(float(gift_doubt.get(fg_key, 0.0)), float(failed_gift[fg_key]))
 	for sd_key in gift_doubt:
 		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
 		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
@@ -222,6 +252,91 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		pre_eval[sd_key] = maxf(float(pre_eval.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
 		honest[sd_key] = maxf(float(honest.get(sd_key, 0.0)), float(gift_doubt[sd_key]))
 
+	# "Is my gift Delusional?" (Michael, Nov 17). With the secret on the script a good
+	# listener's own gift might give it wrong readings without it knowing, so each night of
+	# its own readings carries a small honest doubt (DELUSIONAL_SELF_DOUBT), the way its home
+	# nights carry the Sleepwalker's. Honest, so it reaches both the role check and the
+	# readings' weight (measured Nov 17: a Clerk's, Seer's or Archivist's reading softens
+	# through its weight, a Dowser's, Surveyor's or Warden's through the role check), never a
+	# charge of lying. Its sightings and alibis aren't gift readings. A Medium's gift results
+	# carry the dead person as source and the Medium as relay_source; they're keyed, as any
+	# relay's reliability is, by the Medium and the night it heard them. Another Medium's
+	# relayed copy of the listener's reading isn't the listener's gift, so it's left alone.
+	var delusional_by_key: Dictionary = {}
+	if delusional_self_doubt and self_id != "" and "delusional" in view.get("world_options", {}).get("modifiers", []) and not knowledge.get("not_delusional", false) and could_hold_secret(str(knowledge.get("own_role", "")), "delusional"):
+		var d_self: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			var n_self: int = -1
+			if str(c.get("relay_source", "")) == self_id:
+				n_self = int(c.get("relay_observed_at", {}).get("day", -1))
+			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
+				n_self = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+			if n_self < 0:
+				continue
+			var k_self: String = "%s:%d" % [self_id, n_self]
+			delusional_by_key[k_self] = d_self
+			pre_eval[k_self] = maxf(float(pre_eval.get(k_self, 0.0)), d_self)
+			honest[k_self] = maxf(float(honest.get(k_self, 0.0)), d_self)
+
+	# "Was my reading poisoned?" (Michael, Nov 17-18, with Quill). With a Poisoner possible, each
+	# of the listener's own readings carries the chance that a Poisoner picked it that night
+	# (ReadingChallenges.poison_chance: zero with no Poisoner on the script or one known dead)
+	# as an honest doubt. Only the prior: the judge then weighs the reading as genuine or
+	# broken by how well each fits the rest, so a reading that fits shrugs it off and one that
+	# fights everything else gives way, more so against a trusted teller. Honest, so it reaches
+	# the role check and the readings' weight, never a charge of lying. Where the Delusional
+	# self-doubt also holds for that night, the two are independent ways the gift can fail:
+	# 1 - (1 - poison)(1 - delusional), as the Night Watch's broken chance (Michael, Nov 18).
+	if poison_self_doubt and self_id != "" and ReadingChallenges.poisoner_possible(view):
+		# A reading can't vouch for its own gift: poison_chance takes an own Gravedigger
+		# reading's role as known, so a poisoned one naming a hanged good person as the
+		# Poisoner would rule poison out for itself. That reading's own doubt is asked without
+		# it (Codex on #232). For the listener's other readings it stands: that night only one
+		# person is poisoned, and later nights need the reading wrong as well, about as
+		# unlikely as the poisoning itself, so believing one's own reading is near enough
+		# (Quill, Nov 18).
+		var own_ids: Array = listener.get("knowledge", {}).get("own_reports", [])
+		for c in cards:
+			if c.get("quoted", false):
+				continue
+			var k_night: int = -1
+			var p_night: int = -1
+			if str(c.get("relay_source", "")) == self_id:
+				# The listener's own Medium transmission: the dead person is the card's source and
+				# the Medium its relay (LiveAssessment.medium_card). The gift works at night, so
+				# the poison night is the night it heard them, keyed as the relay's reliability is
+				# (Codex on #232; the Delusional pass above does the same).
+				k_night = int(c.get("relay_observed_at", {}).get("day", -1))
+				p_night = k_night
+			elif str(c.get("kind", "")) == "report" and str(c.get("source", "")) == self_id and not c.has("relay_source"):
+				k_night = int(c.get("observed_at", {}).get("day", c.get("night", -1)))
+				# The night a Poisoner would have acted: a night reading's own, or for any reading
+				# by day (a Martyr's or Sexton's evening one too, whose card carries the coming
+				# night) the night before, whose poison still holds (Codex on #232).
+				p_night = k_night if str(c.get("observed_at", {}).get("phase", "")) == "night" else k_night - 1
+			if k_night < 0:
+				continue
+			# A Registrar's night-0 register can't be poisoned, only made wrong by Delusional
+			# (sim/roles/registrar.gd: a blind first-night poison must not brick every later
+			# check). It keeps any Delusional doubt (Codex on #232).
+			if str(c.get("role", "")) == "registrar" and k_night == 0 and not c.has("relay_source"):
+				continue
+			var asker: Dictionary = listener
+			if str(c.get("role", "")) == "gravedigger" and str(c.get("id", "")) in own_ids:
+				asker = listener.duplicate(false)
+				var k_without: Dictionary = listener.get("knowledge", {}).duplicate(false)
+				k_without["own_reports"] = own_ids.filter(func(id): return str(id) != str(c.id))
+				asker["knowledge"] = k_without
+			var pi: float = ReadingChallenges.poison_chance(view, asker, p_night)
+			if pi <= 0.0:
+				continue
+			var k_p: String = "%s:%d" % [self_id, k_night]
+			var broken: float = 1.0 - (1.0 - pi) * (1.0 - float(delusional_by_key.get(k_p, 0.0)))
+			pre_eval[k_p] = maxf(float(pre_eval.get(k_p, 0.0)), broken)
+			honest[k_p] = maxf(float(honest.get(k_p, 0.0)), broken)
+
 	var full_doubt: Dictionary = pre_eval.duplicate(true)
 	var rc_case: Dictionary = prepared.get("case", {})
 	if not rc_case.get("reading_challenges", {}).is_empty():
@@ -287,4 +402,143 @@ static func _arg_doubt(ledger: Dictionary, owned_map: Dictionary, src: String, n
 				out = maxf(out, minf(0.8 * wgt, 0.9))
 			"unreliable", "lied":
 				out = maxf(out, minf(0.5 * wgt, 0.9))
+	return out
+
+
+## The listener's honest doubt about its own readings, by night: {night: doubt}, from the
+## honest map's "<self>:<night>" keys (the poison self-doubt, Connections._poison_doubt, and
+## the Delusional self-doubt). A self key "<self>:*" counts as night -1.
+static func own_doubt(self_id: String, honest: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if self_id == "":
+		return out
+	for k in honest:
+		var key: String = str(k)
+		if not key.begins_with(self_id + ":"):
+			continue
+		var rest: String = key.substr(self_id.length() + 1)
+		var night: int = -1 if rest == "*" else int(rest)
+		out[night] = maxf(float(out.get(night, 0.0)), float(honest[k]))
+	return out
+
+
+## An NPC's current doubt about each night of its own readings ({night: doubt}), as its last
+## applied refresh left it: for dialogue ("something seems off about my readings") and tools.
+static func self_doubt(n) -> Dictionary:
+	return n.workshop_state.get("self_doubt", {}).duplicate()
+
+## Whether the deal's placement rules (ScriptDef.PLACEMENT_RULES) let a holder of `role`
+## carry `secret`: a Chronicler or Rumormonger never holds the Delusional secret, so knowing
+## its own gift rules out doubting itself that way. An unknown role could hold it.
+## Diagnostics: off, every Night Watch list is scored name by name again, and one that
+## wrongly names the listener is set aside and its night void (tests and tools only).
+static var list_mix_enabled: bool = true
+
+## The chance another's Night Watch list was broken that night, as a whole (BACKLOG "A Night
+## Watch list that wrongly names the listener", Michael, Nov 18): the watcher's poison and
+## Delusional priors, as independent ways the gift can fail, 1 - (1 - poison)(1 - delusional).
+## No new number: the poison chance (ReadingChallenges.poison_chance, read with the night's
+## outings) and the Delusional prior the listener applies to its own gift. Zero for the
+## listener's own list, a quoted or duty-only card, or a script with neither secret; there a
+## list that wrongly names the listener stays set aside, and its night void, as before.
+## At most this many lists in a view are mixed (the latest nights first): the movement
+## factor is built once for every subset of them left out. A list beyond them gets no broken
+## chance, so it keeps the old fallback (set aside and its night void when it wrongly names
+## the listener) rather than being scored name by name (Codex on #273).
+const LIST_MIX_MAX = 2
+
+static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
+	var b: float = _list_broken_base(view, listener, card)
+	if b <= 0.0:
+		return 0.0
+	var mixable: Array = view.get("cards", []).filter(func(c): return str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0)
+	mixable.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
+	var keep: Array = mixable.slice(0, LIST_MIX_MAX).map(func(c): return str(c.get("id", "")))
+	if not view.get("cards", []).any(func(c): return str(c.get("id", "")) == str(card.get("id", ""))):
+		return b
+	return b if str(card.get("id", "")) in keep else 0.0
+
+static func _list_broken_base(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
+	if not list_mix_enabled or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
+		return 0.0
+	var src: String = str(card.get("source", ""))
+	var me: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))
+	if src == "" or src == me or src in ["player", "evidence", "town"]:
+		return 0.0
+	var night: int = int(card.get("night", card.get("observed_at", {}).get("day", -1)))
+	var poison: float = ReadingChallenges.poison_chance(view, listener, night, src)
+	var delusional: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT if "delusional" in view.get("world_options", {}).get("modifiers", []) and could_hold_secret("nightwatch", "delusional") else 0.0
+	return 1.0 - (1.0 - poison) * (1.0 - delusional)
+
+static func could_hold_secret(role: String, secret: String) -> bool:
+	if role == "" or not C.has_role_def(role):
+		return true
+	var def = C.role_def(role)
+	for rule in ScriptDef.PLACEMENT_RULES:
+		if secret in rule.get("except", []) or (rule.has("only") and secret not in rule.only):
+			continue
+		if bool(def.get(str(rule.not_on_flag))):
+			return false
+	return true
+
+## The player's "failed gift" calls as honest doubt, {"teller:night": doubt}: see derive.
+## "Poisoned, not lying" (Michael, Nov 18, option C; docs/design/poisoned_not_lying.md): a
+## "failed gift" challenge in one of the player's presented cases is the player's word that
+## R's reading that night was poisoned, not a lie. The player is the expert, so the listener
+## takes the call at its credibility in the player: a doubt from FAILED_GIFT_DOUBT_LOW at the
+## lowest credibility to FAILED_GIFT_DOUBT_HIGH at the highest, in a straight line (Michael,
+## Nov 18), or, where that is more, the call weighed as one witness as accurate as its trust
+## in the player against the chance R was poisoned that night (ReadingChallenges.poison_chance
+## with R as the reader, so an unexplained outing near R's home still strengthens a call;
+## Quill). The call counts only where that chance isn't zero. Honest doubt, so the clash reads as a broken gift rather than a lie, and
+## whatever the reading held up moves to whoever the rest of the evidence favours; nothing
+## spreads it on purpose. Zero with no Poisoner possible. A wrong call costs the player
+## through the track record ("R is good", Quill, game/credibility.gd), nothing more.
+## The doubt a "failed gift" call carries by the listener's credibility in the player, before
+## the one-witness weighing: FAILED_GIFT_DOUBT_LOW at Trust.CRED_MIN rising in a straight line
+## to FAILED_GIFT_DOUBT_HIGH at Trust.CRED_MAX (clamped outside them).
+static func call_doubt(c: float) -> float:
+	var t: float = clampf((c - Tuning.Trust.CRED_MIN) / (Tuning.Trust.CRED_MAX - Tuning.Trust.CRED_MIN), 0.0, 1.0)
+	return lerpf(Tuning.Workshop.FAILED_GIFT_DOUBT_LOW, Tuning.Workshop.FAILED_GIFT_DOUBT_HIGH, t)
+
+static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: Array, self_id: String) -> Dictionary:
+	var out: Dictionary = {}
+	if not player_failed_gift or not ReadingChallenges.poisoner_possible(view):
+		return out
+	var c_player: float = clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
+	var by_id: Dictionary = {}
+	for card in cards:
+		by_id[str(card.get("id", ""))] = card
+	for cs in listener.get("connections", {}).get("cases", []):
+		if str(cs.get("presenter", "")) != "player":
+			continue
+		var chs: Dictionary = cs.get("challenges", {})
+		for rid in chs:
+			var ch = chs[rid]
+			if not ch is Dictionary or str(ch.get("mode", "")) != "impaired":
+				continue
+			var rc: Dictionary = by_id.get(str(rid), {})
+			if rc.is_empty() or str(rc.get("kind", "")) != "report" or rc.get("quoted", false):
+				continue
+			# Whose gift: a challenge on a relayed reading names its side (ReadingChallenges.
+			# RELAY_ATTRIBUTIONS). Its transmission is the Medium's, keyed as the relay's
+			# reliability is; the original, and any unrelayed reading, is the teller's, by the
+			# reading's day (Codex on #270).
+			var transmission: bool = rc.has("relay_source") and str(ch.get("attribution", "")) == "transmission"
+			var r_id: String = str(rc.get("relay_source", "")) if transmission else str(rc.get("source", ""))
+			var r_day: int = int(rc.get("relay_observed_at", {}).get("day", -1)) if transmission else int(rc.get("observed_at", {}).get("day", rc.get("night", -1)))
+			if r_id == "" or r_id == self_id or r_day < 0:
+				continue
+			# A Registrar's night-0 register can't be poisoned (sim/roles/registrar.gd), so a
+			# call on it carries no poison; a Medium's transmission of it can be (Codex on #270).
+			if not transmission and str(rc.get("role", "")) == "registrar" and r_day == 0:
+				continue
+			var by_night: bool = transmission or str(rc.get("observed_at", {}).get("phase", "")) == "night"
+			var r_night: int = r_day if by_night else r_day - 1
+			var prior: float = ReadingChallenges.poison_chance(view, listener, r_night, r_id)
+			if prior <= 0.0:
+				continue
+			var w_doubt: float = maxf(call_doubt(c_player), witness_doubt(prior, c_player))
+			var k_r: String = "%s:%d" % [r_id, r_day]
+			out[k_r] = maxf(float(out.get(k_r, 0.0)), w_doubt)
 	return out
