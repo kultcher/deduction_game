@@ -58,7 +58,7 @@ const PREMISE_TYPE_HINTS = {
 	"minion": "Argue they're one of the Demon's Minions.",
 }
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
-const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": "Mistaken", "delusional": "They're Delusional"}
+const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "delusional": "They're Delusional"}
 
 func premise_types() -> Array:
 	return LIVE_TYPES

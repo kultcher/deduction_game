@@ -163,7 +163,7 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 			var assumed: String = "good" if mode == "misled" else "evil"
 			var allowed: Array = ["good", "marked"] if mode == "misled" else ["evil", "demon", "minion"]
 			if positions.get(source, assumed) not in allowed:
-				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % ("Lying" if mode == "lying" else "Mistaken"))
+				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % ("Lying" if mode == "lying" else preload("res://workshop/reading_challenges.gd").HONEST_LABEL))
 			else:
 				positions[source] = positions.get(source, assumed)
 	for pcard in cards:
