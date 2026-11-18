@@ -44,18 +44,17 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_be6e788`
+### Current baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
 
-`tools/golden/baseline_be6e788/` is the capture from `claude/poison-self-doubt` (#232) at
-`be6e788` (main `23136f3` merged in): with a Poisoner possible, each of a good listener's own
-readings carries the chance a Poisoner picked it that night as an honest doubt (combined with
-the Delusional self-doubt as independent chances), and the judge weighs the reading as genuine
-or broken by fit.
-- **Divergence from `baseline_23d0330`:** beliefs from the first record on every seed (the first
-  day's own readings carry the doubt).
-- **Outcomes unchanged:** the same executions, nominators and winners on every seed (42 good
-  day 3; 54875 good day 2; 692, 900 and 98933 reach day 4 with no winner). Record counts are the
-  same except 54875 (201, was 225).
+`tools/golden/baseline_1e6b846/` is the capture from `claude/beadle-group-defence` (#249) at
+`1e6b846` (main `23136f3` merged in): a nominee named by a reading over a group (a Dowser's count,
+a Chronicler's three, a Surveyor's mixed street, a Medium's relay of one) says it's one of the
+others, naming them when there are one or two and none is a teammate.
+- **Divergence from `baseline_23d0330`:** 54875 from record 42 (Hollis's refresh on day 1) and
+  692 from record 39 (Constance's cover on day 1): an owned defence that was a challenge is now
+  the group defence ("rival"). 42, 900 and 98933 are identical.
+- **Outcomes unchanged:** the same executions, nominators, votes and winners on every seed
+  (54875 good on day 2; 692 reaches day 4 with no winner). Record counts are the same.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, a relayed sighting's only teller is its relayer): `baseline_23d0330`
