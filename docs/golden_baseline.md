@@ -44,7 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
+### Current baseline (Nov 18, premise centring B): `baseline_6640a9b`
+
+`tools/golden/baseline_6640a9b/` is the capture from `claude/premise-centre-b` (#246) at
+`6640a9b` (main `363da4b` merged in): an item a case brings is judged against what the listener
+already held of it, so only what it adds by itself is centred on the case's premise, and a stored
+case carries every person it argues about.
+- **Divergence from `baseline_45b7506`:** 42 from record 40 (Kiran's refresh on day 2), 692 from
+  record 30 (Constance's cover on day 1), 900 from record 126 (Isolde's cover on day 2) and 98933
+  from record 155 (Merrin's refresh on day 2). 54875 is identical.
+- **Outcomes:** the same executions and winners on every seed (42 good day 3; 54875 good day 2;
+  692, 900 and 98933 reach day 4 with no winner). On 692, Constance's hanging on day 3 is now
+  nominated by Bart rather than Nisha. Record counts are the same except 692 (296, was 277) and
+  98933 (387, was 386).
+- **Stability:** two captures on `9e7558a` were identical, and a third on `6640a9b` matched them.
+
+### Earlier baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
 
 `tools/golden/baseline_45b7506/` is the capture from `claude/poison-self-doubt` (#232) at
 `45b7506` (main `f947be6` merged in): with a Poisoner possible, each of a good listener's own
