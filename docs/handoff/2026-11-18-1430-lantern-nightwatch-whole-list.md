@@ -1,4 +1,4 @@
-# 2026-11-18, Claude-Lantern: a Night Watch list is sound or broken as a whole (`claude/nightwatch-whole-list`; moves golden, baseline_cacd3d0)
+# 2026-11-18, Claude-Lantern: a Night Watch list is sound or broken as a whole (`claude/nightwatch-whole-list`; moves golden, baseline_fd419ee)
 
 - **Base:** main `0670d55`. **Status:** PR open. **Next:** Bailiff. Argon should look at the speed
   afterwards.
@@ -52,9 +52,27 @@
 - **Golden:**
   - 42, 54875, 692 and 98933 diverge; 900 is identical.
   - Executions, nominators and winners are the same on every seed. Two captures were identical.
-  - Committed as `tools/golden/baseline_cacd3d0`.
+  - Committed as `tools/golden/baseline_fd419ee` (re-captured after the Codex fixes; the first capture was `baseline_cacd3d0`).
 - **Tests:**
-  - Fast list 116/116, including the new `test_nightwatch_whole_list` (4 checks, about 4 s; added
+  - Fast list 116/116 (on `fd419ee`), including the new `test_nightwatch_whole_list` (6 checks, about 4 s; added
     to the fast list).
   - `test_relay_bluff` 4/4.
+- **Codex on #273 (fixed in `fd419ee`):**
+  - The broken branch now keeps a duty-only copy of the list, because a poisoned or Delusional
+    watcher still walked to its block.
+  - Only the latest two lists in a view get a broken chance (`SourceDoubt.LIST_MIX_MAX`). An older
+    one keeps the old set-aside and void, rather than per-name scoring.
+  - A new check in the test covers this: three lists, the oldest voided.
+- **Speed:** whole golden capture, one machine, main `0670d55` and this branch alternating, two
+  runs each.
+
+  | Run | Main | Branch |
+  |---|---|---|
+  | 1 | 270 s | 275 s |
+  | 2 | 239 s | 246 s |
+
+  - That's about 2–3% slower.
+  - Bailiff measured 211 s against 149–158 s from main runs earlier in the day, which is 35–40%.
+    The two figures disagree, and that difference isn't explained yet.
+  - Argon should look either way.
 - **Proposed for the backlog:** none.
