@@ -159,7 +159,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			# A "suspicious" premise hedges, so the whole case counts at half weight (today
 			# it halves the cards only it brought: premise_shaping).
 			stored_cases.append({"key": "case:" + str(key), "presenter": "player", "day": int(presented.get("now", {}).get("day", -1)),
-				"cards": own_cards, "type": _root_type(presented), "target": str(premise[0]) if not premise.is_empty() else "",
+				"cards": own_cards, "type": _root_type(presented), "target": str(premise[0]) if not premise.is_empty() else "", "targets": premise.duplicate(),
 				"suspicious": _root_type(presented) == "suspicious" and not str(key).begins_with("direct:"), "challenges": own_challenges})
 	if with_cases:
 		input.listener.connections["cases"] = input.listener.connections.get("nominations", []).duplicate(true) + stored_cases
@@ -658,19 +658,20 @@ static func _root_type(presented: Dictionary) -> String:
 ## alignment target (Marked, conflict) among its owners leaves the card unshaped. Step 1's
 ## selection (premise_shaping) on the connections model.
 static func brought_by_premise(owners: Dictionary, stored_cases: Array) -> Dictionary:
+	var Cn = load("res://workshop/connections.gd")
 	var target_of: Dictionary = {}
 	for sc in stored_cases:
-		target_of[str(sc.get("key", ""))] = str(sc.get("target", ""))
+		target_of[str(sc.get("key", ""))] = Cn.case_targets(sc)
 	var out: Dictionary = {}
 	for id in owners:
 		var by: Array = owners[id]
-		if by.is_empty() or not by.all(func(o): return str(o).begins_with("case:") and str(target_of.get(str(o), "")) != ""):
+		if by.is_empty() or not by.all(func(o): return str(o).begins_with("case:") and not target_of.get(str(o), []).is_empty()):
 			continue
 		var targets: Array = []
 		for o in by:
-			var t: String = str(target_of[str(o)])
-			if t not in targets:
-				targets.append(t)
+			for t in target_of[str(o)]:
+				if t not in targets:
+					targets.append(t)
 		out[str(id)] = targets
 	return out
 

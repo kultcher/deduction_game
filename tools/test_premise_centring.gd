@@ -190,5 +190,10 @@ func _init() -> void:
 	check(not b.has("b"), "a card the listener also holds another way (here the public record) isn't")
 	check(b.has("c") and b.c.size() == 2, "a card two cases hold serves both their targets")
 	check(not b.has("d"), "a case with no alignment target (Marked, conflict) shapes nothing")
+	# 5. A direct presentation can argue about several people: every one is a target, in any
+	#    order (Codex on #246); an NPC nomination carries only its nominee.
+	var both: Dictionary = preload("res://workshop/shared_ledger.gd").brought_by_premise({"e": ["case:4"]}, [{"key": "case:4", "target": "x", "targets": ["x", "y"]}])
+	check(both.has("e") and both.e == ["x", "y"], "a card a two-person presentation brought serves both people")
+	check(Connections.case_targets({"target": "z"}) == ["z"], "a nomination's only target is its nominee")
 	print("Premise centring: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

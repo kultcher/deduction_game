@@ -1072,7 +1072,7 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 			continue
 		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
 			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
-			"suspicious": bool(cs.get("suspicious", false)), "target": str(cs.get("target", ""))})
+			"suspicious": bool(cs.get("suspicious", false)), "target": str(cs.get("target", "")), "targets": case_targets(cs)})
 	# Oldest first, so a later entry is a later case.
 	var kept: Array = []
 	for i in range(out.size()):
@@ -1092,6 +1092,17 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 		entry.erase("cited")
 	return kept
 
+
+## Every person a stored case argues about: a direct presentation can argue several
+## (premise_targets); an NPC nomination carries only its nominee as "target" (Codex on #246).
+static func case_targets(sc: Dictionary) -> Array:
+	var named: Array = []
+	for t in sc.get("targets", []):
+		if str(t) != "" and str(t) not in named:
+			named.append(str(t))
+	if named.is_empty() and str(sc.get("target", "")) != "":
+		named.append(str(sc.target))
+	return named
 
 ## Every reading some stored case challenges, counted or not: with the model on, those
 ## challenges act through their case alone.
@@ -1314,8 +1325,9 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 			for p in added:
 				var x: float = cs.weight * float(added[p])
 				# Premise centring, option B: the case's cards together count in full on its
-				# target and at PREMISE_BYSTANDER_SHARE on everyone else.
-				if premise_centring and str(cs.get("target", "")) != "" and p != str(cs.target):
+				# targets (every person it argues about) and at PREMISE_BYSTANDER_SHARE on
+				# everyone else.
+				if premise_centring and not cs.get("targets", []).is_empty() and p not in cs.targets:
 					x *= PREMISE_SHARE
 				if not is_zero_approx(x):
 					entry.lean[p] = x

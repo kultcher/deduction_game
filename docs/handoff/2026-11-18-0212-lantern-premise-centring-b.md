@@ -27,7 +27,7 @@
   day 1 or 2: listeners hearing a presented case shift the bystanders less. Re-measured from the
   current baseline at re-baseline time.
 - **Tests:**
-  - New `tools/test_premise_centring` (13 checks), added to the fast list. It covers the frames, the
+  - New `tools/test_premise_centring` (15 checks), added to the fast list. It covers the frames, the
     selection, the lens after fading, and that only what a brought item adds by itself is centred.
   - `test_premise_step1`'s two checks still pass with it on.
   - `test_connections_cases` checks case arithmetic on chosen numbers, so it runs with it off
@@ -40,3 +40,8 @@
   two Dowser readings. Now `values` keeps the raw value and only the item's own addition to
   the total is centred. A new check catches the old code (2 of 3 constructed cases failed).
   Misframed numbers after the fix: two Dowser readings 43% (was 45%), mixed 46% (was 47%).
+- **Codex on #246, second finding (fixed):** a direct presentation can argue about several
+  people, but the stored case kept only the first as its target, so the second was centred
+  as a bystander and the order mattered. Stored cases now carry `targets` (every argued
+  person; `Connections.case_targets`, with a nomination's nominee as its only target), and
+  both the brought map and the case centring use the full list.
