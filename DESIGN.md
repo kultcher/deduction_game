@@ -680,6 +680,15 @@ player's case; it doesn't search for theories.**
   clash with the grounds counts against the reader in the worlds where they're good (#123). Poison belongs
   to the night, not the person; a good NPC never doubts their own honesty but can accept
   that their own reading was poisoned.
+- **Poison evidence from night outings** ("poisoned, not lying", option A, Michael, Nov 18;
+  `ReadingChallenges.poison_chance` with a reader). The Poisoner is out every night of play,
+  walking to its victim's block, so someone the cards saw out that night with no claimed
+  night gift or confided secret may be the Poisoner. If they were seen on the reader's block,
+  the chance the reader was poisoned rises: in a seven-person town with a Poisoner certain,
+  one in five becomes about two in five. Seen where they couldn't have been going to the
+  reader's home, it falls to about one in nine. Seen with no block named, it changes only if
+  the Poisoner's presence is in doubt. A "failed gift" or "misled" call on a reading goes in
+  the track record as "the teller is good".
 - **The connections model** (`workshop/connections.gd`; on in play since Nov 16; full
   design and spec in `docs/belief_model.md`). The limit on an NPC is on *which cards it
   weighs together*, not which cards it reads:
