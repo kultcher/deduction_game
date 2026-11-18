@@ -360,10 +360,21 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 ## left; a gutter down the right with the kind icon on top and the role or place icon
 ## below; badges as tabs along the top edge; the text, cut to the lines that fit and ended
 ## with "…"; and, at the detail zoom only, the "heard" line along the bottom.
+## MOCK ONLY (mock/herald-reading-cards; never merge): reading-card variants for Michael.
+static var MOCK_VARIANT: String = ""   # "", "wide", "horizontal", "portrait"
+static var MOCK_TEXT: Dictionary = {}  # card n -> shorthand
+
 func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: Color, lod: int, src_col: Color) -> void:
 	draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)  # shadow
 	_draw_paper(r, n, fade)
-	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
+	var top_bar: float = 0.0
+	if MOCK_VARIANT == "horizontal":
+		draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(r.size.x - 12 * zoom, 6 * zoom)), UITheme.ink_of(src_col) * fade)
+		top_bar = 7.0 * zoom
+	elif MOCK_VARIANT == "wide":
+		draw_rect(Rect2(r.position + Vector2(5, 5) * zoom, Vector2(10 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
+	else:
+		draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
 	var names = {}
 	for m in g.w.npcs:
 		names[m.id] = m.name
@@ -371,22 +382,28 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var text = CardModel.short_text(card, names)
 	if it["mark"] == "voted_yes":
 		text = "Voted to hang %s" % names.get(card.get("nominee", ""), "?")
+	if MOCK_TEXT.has(n):
+		text = MOCK_TEXT[n]
 	var fs = int(clampf(13.5 * zoom, 12, 28))
 	var small = int(clampf(10.0 * zoom, 9, 20))
 	var pad: float = 6.0 * zoom
-	var tx: float = r.position.x + 14 * zoom
+	var tx: float = r.position.x + (20 if MOCK_VARIANT == "wide" else 10 if MOCK_VARIANT == "horizontal" else 14) * zoom
 	var icon_s: float = 18.0 * zoom
 	# The gutter: kind icon on top, role or place icon below.
 	var icon = _icon_for(card, it)
 	var kind = Icons.kind_for(card)
 	var kind_icon = Icons.texture(kind)
+	if MOCK_VARIANT == "portrait" and g.w.by_id.has(str(card.get("source", ""))):
+		var face = UITheme.tex("art/portraits/" + str(card.get("source", "")), 0.12)
+		if face != null:
+			kind_icon = face
 	var gx: float = r.end.x - pad - icon_s
-	var gy: float = r.position.y + pad
+	var gy: float = r.position.y + pad + top_bar
 	var gutter: float = 0.0
 	for tex in [kind_icon, icon]:
 		if tex == null:
 			continue
-		var tint: Color = ((UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink) * fade) if tex == kind_icon else fade
+		var tint: Color = ((UITheme.color("red").darkened(0.1) if kind == "accusation" else _ink) * fade) if (tex == kind_icon and MOCK_VARIANT != "portrait") else fade
 		draw_texture_rect(tex, Rect2(Vector2(gx, gy), Vector2(icon_s, icon_s * tex.get_height() / tex.get_width())), false, tint)
 		gy += icon_s + 4 * zoom
 		gutter = icon_s + pad
@@ -400,7 +417,7 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var heard: String = _heard_line(card) if lod == 2 else ""
 	var heard_h: float = small * 1.5 if heard != "" else 0.0
 	var width: float = r.size.x - 20 * zoom - gutter
-	var top: float = r.position.y + pad
+	var top: float = r.position.y + pad + top_bar
 	var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / _font.get_height(fs))))
 	_draw_fitted(text, Vector2(tx, top), width, fs, max_lines, _ink * fade)
 	if heard != "":
