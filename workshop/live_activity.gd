@@ -154,7 +154,7 @@ static func _pack_view_env(view: Dictionary, ids: Array) -> Dictionary:
 		"curse_from": curse_from,
 		"curse_until": curse_until,
 	}
-	if _env_cache.size() >= 16:
+	if _env_cache.size() >= 128:
 		_env_cache.clear()
 	_env_cache[env_k] = {"input": env_in.duplicate(true), "env": env_out}
 	return env_out
@@ -385,7 +385,7 @@ static func _routes_dispatch(view: Dictionary, cards: Array, answers: Dictionary
 	if route_cache.has(key) and route_cache[key].input == input:
 		return route_cache[key].result
 	var result: Dictionary = _routes_cs(view, cards, answers, knowledge, strict_reports)
-	if route_cache.size() >= 128:
+	if route_cache.size() >= 2048:
 		route_cache.clear()
 	route_cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
@@ -509,7 +509,7 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 		return cache[key].result
 	var result: Array = _factors_cs(view, cards, observations)
 	_ensure_factor_handle(result[0])
-	if cache.size() >= 128:
+	if cache.size() >= 2048:
 		cache.clear()
 	cache[key] = {"input": input.duplicate(true), "result": result}
 	return result
@@ -1217,7 +1217,7 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		var next_h: int = _ensure_factor_handle(mix.next)
 		var alt_h: int = _ensure_factor_handle(mix.alt)
 		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h)
-	if _factor_handles.size() >= 64:
+	if _factor_handles.size() >= 2048:
 		_factor_handles.clear()
 	_factor_handles[fkey] = {"factor": factor, "handle": h}
 	_mru_factor = factor

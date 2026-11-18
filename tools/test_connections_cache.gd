@@ -38,6 +38,8 @@ func _init() -> void:
 	_games()
 	_presentations_and_magistrate()
 	_cache_collision_safety()
+	_role_constraints_key_and_parity()
+	_drop_card_posterior_parity()
 	_off()
 	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.cache_enabled = true
@@ -472,6 +474,118 @@ func _cache_collision_safety() -> void:
 	var h_small_repeat: int = SolverBackend.get_sub_universe_handle("cc_reps:forced_collision", base_h, PackedInt32Array([0, 1]))
 	check(h_small >= 0 and h_large >= 0 and h_small != h_large and h_small == h_small_repeat,
 		"get_sub_universe_handle disambiguates colliding sub_keys with different index arrays")
+	Connections.enabled = false
+
+
+func _role_constraints_key_and_parity() -> void:
+	Connections.enabled = true
+	Connections.cache_enabled = true
+	CaseEval.cache_enabled = true
+	var played: Dictionary = _play(900, 7, 2)
+	var g = played.g
+	var n = g.w.living().filter(func(x): return not x.is_evil())[0]
+	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
+	check(not plan.is_empty(), "role_constraints key test: fixture has a plan")
+	if plan.is_empty():
+		Connections.enabled = false
+		return
+	var view: Dictionary = plan.prepared.view.duplicate(true)
+	var listener: Dictionary = preload("res://workshop/jury.gd")._eval_listener(plan.prepared.listener, plan.prepared.listener.knowledge.get("own_reports", [])).duplicate(true)
+	var others: Array = view.people.map(func(p): return p.id).filter(func(p): return p != n.id)
+	var reports: Array = view.cards.filter(func(c): return c.kind == "report" and c.id not in listener.knowledge.get("own_reports", []))
+	check(not reports.is_empty(), "role_constraints key test: fixture has report cards")
+	if reports.is_empty():
+		Connections.enabled = false
+		return
+	var Roles = CaseEval.Solver.Roles
+	var universe: Array = CaseEval.Solver.universe(view)
+	var u_h: int = SolverBackend.get_universe_handle(CaseEval.Solver._universe_key(view), universe)
+	_reset()
+	var w_base: PackedFloat64Array = Roles.fits_weights(view, universe, [reports[0]], listener.knowledge, {}, false, u_h)
+	var cache_after_base: int = Roles.cache.size()
+	var view_soft: Dictionary = view.duplicate(true)
+	view_soft.timeline.events.append({"kind": "vote", "by": others[0], "subjects": [others[1]], "at": {"day": 2, "phase": "evening"}})
+	view_soft.timeline.events.append({"kind": "nomination", "by": others[0], "subjects": [others[1]], "at": {"day": 2, "phase": "evening"}})
+	var w_soft: PackedFloat64Array = Roles.fits_weights(view_soft, [], [reports[0]], listener.knowledge, {}, false, u_h)
+	check(cache_after_base == 1 and Roles.cache.size() == 1 and w_soft == w_base,
+		"RoleConstraints strips SOFT_EVENTS from key and handles empty reps with handle")
+	var martyr_card: Dictionary = {"id": "rep:martyr_curse", "fact_id": "rep:martyr_curse", "kind": "report",
+		"role": "martyr", "source": others[0], "observed_at": {"day": 2, "phase": "night"},
+		"data": {"chosen": true, "target": others[1]}, "text": "promised"}
+	var view_c1: Dictionary = view.duplicate(true)
+	view_c1.timeline.events.append({"kind": "execution", "subjects": [others[1]], "by": others[0], "at": {"day": 1, "phase": "evening"}})
+	view_c1["chronology"] = {"curse": {"executed": others[1], "from": 0, "until": 0}}
+	var view_c2: Dictionary = view_c1.duplicate(true)
+	view_c2["chronology"] = {"curse": {"executed": others[1], "from": 0, "until": 10}}
+	Roles.reuse = false
+	var w_c1_off: PackedFloat64Array = Roles.fits_weights(view_c1, universe, [martyr_card], listener.knowledge, {}, false, u_h)
+	var w_c2_off: PackedFloat64Array = Roles.fits_weights(view_c2, universe, [martyr_card], listener.knowledge, {}, false, u_h)
+	Roles.reuse = true
+	_reset()
+	var w_c1_on: PackedFloat64Array = Roles.fits_weights(view_c1, universe, [martyr_card], listener.knowledge, {}, false, u_h)
+	var c1_sz: int = Roles.cache.size()
+	var w_c2_on: PackedFloat64Array = Roles.fits_weights(view_c2, universe, [martyr_card], listener.knowledge, {}, false, u_h)
+	var c2_sz: int = Roles.cache.size()
+	check(c1_sz == 1 and c2_sz == 2 and w_c1_on == w_c1_off and w_c2_on == w_c2_off,
+		"RoleConstraints includes view.chronology in key and matches uncached evaluation (%d -> %d entries)" % [c1_sz, c2_sz])
+	var bare: Dictionary = Connections.template(plan.prepared.get("case", {"cards": [], "conclusion": {"type": "evil", "target": others[0]}}), others[0])
+	var case_r: Dictionary = Connections.case_for(bare, reports.slice(0, mini(2, reports.size())).map(func(c): return c.id))
+	_reset()
+	CaseEval.use_cc_reps_handle = false
+	var ev_no_h: Dictionary = CaseEval.evaluate(view, case_r, listener)
+	_reset()
+	CaseEval.use_cc_reps_handle = true
+	var ev_with_h: Dictionary = CaseEval.evaluate(view, case_r, listener)
+	check(ev_with_h.people == ev_no_h.people,
+		"CaseEval._fits_over matches with cc_reps_handle forced off vs on")
+	Connections.enabled = false
+
+
+func _drop_card_posterior_parity() -> void:
+	Connections.enabled = true
+	Connections.cache_enabled = true
+	CaseEval.cache_enabled = true
+	Connections.cache_verify = true
+	var played: Dictionary = _play(900, 7, 3)
+	var g = played.g
+	var ReasonAttr := preload("res://workshop/reason_attribution.gd")
+	var checked_drops: int = 0
+	var max_diff: float = 0.0
+	var play_wrong: int = int(played.stats.wrong)
+	Connections.cache_stats = {"hits": 0, "misses": 0, "wrong": 0}
+	for n in g.w.living():
+		var plan_key: String = n.id + (":cover" if n.is_shadow else ":good")
+		var plan: Dictionary = g._workshop_plans.get(plan_key, {})
+		if plan.is_empty():
+			continue
+		var prep: Dictionary = plan.prepared
+		var view: Dictionary = prep.view
+		var own_rep: Array = prep.listener.get("knowledge", {}).get("own_reports", [])
+		var listener: Dictionary = preload("res://workshop/jury.gd")._eval_listener(prep.listener, own_rep)
+		listener["trust"] = prep.listener.get("trust", 0.5)
+		listener["insight"] = prep.listener.get("insight", 0.5)
+		var held_ids: Array = view.cards.map(func(c): return c.id)
+		if held_ids.size() < 2:
+			continue
+		var base_case: Dictionary = {"cards": held_ids, "conclusion": {"type": "evil", "target": view.people[0].id, "at": "Current alignment"}}
+		var state_cfg: Dictionary = prep.listener.get("connections", {})
+		var state: Dictionary = {"day": int(state_cfg.get("day", -1)), "core": state_cfg.get("core", {}), "cases": [{"key": "c:test", "presenter": "player", "day": int(g.w.day), "cards": [held_ids[0]], "challenges": {}, "target": view.people[0].id}]}
+		var full_res: Dictionary = Connections.refresh(view, base_case, listener, held_ids, state)
+		if bool(full_res.get("impossible", false)):
+			continue
+		var pr0: Dictionary = {"evil": 0.3}
+		var ctx: Dictionary = {"cx": {"view": view, "value": base_case, "weigher": listener, "held": held_ids, "state": state, "result": full_res}}
+		var pid: String = view.people[0].id if view.people[0].id != n.id else view.people[1].id
+		for cid in held_ids:
+			var post_fast: Dictionary = Connections.drop_card_posterior(view, base_case, listener, held_ids, state, full_res, cid)
+			var post_ref: Dictionary = Connections.refresh(view, base_case, listener, held_ids.filter(func(id): return id != cid), state).get("posterior", {})
+			for p in post_ref:
+				max_diff = maxf(max_diff, absf(float(post_fast.get(p, -1.0)) - float(post_ref[p])))
+			var _d = ReasonAttr._connections_drop(ctx, cid, pid, pr0)
+			checked_drops += 1
+	check(checked_drops > 0 and play_wrong == 0 and Connections.cache_stats.wrong == 0 and max_diff < 1e-12,
+		"Connections.drop_card_posterior matches full refresh across %d card drops (max diff %.12f, wrong=%d)" % [checked_drops, max_diff, Connections.cache_stats.wrong])
+	Connections.cache_verify = false
 	Connections.enabled = false
 
 

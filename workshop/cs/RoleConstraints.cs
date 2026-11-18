@@ -206,12 +206,34 @@ internal static class RoleConstraintsKernel
         return nCandidates > 0 ? totalWeight / (double)nCandidates : 0.0;
     }
 
+    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, bool seer, int mediums, int walkers)
+    {
+        var memo = SolverContext.GetRoleConstraintMemo(memoSlot);
+        if (memo == null || memo.Count == 0)
+        {
+            return Array.Empty<double>();
+        }
+        int n = packedWorlds.Length;
+        var outWeights = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            long mask = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums, walkers);
+            if (!memo.TryGetValue(mask, out double val))
+            {
+                return Array.Empty<double>();
+            }
+            outWeights[i] = val;
+        }
+        return outWeights;
+    }
+
     public static double[] FitsWeights(
         long[] packedWorlds,
         int[] headerInts,
         int[] publicRolesInts,
         int[] forcedLampIndices,
-        int[] cardInts)
+        int[] cardInts,
+        int memoSlot = -1)
     {
         int uLen = packedWorlds.Length;
         double[] outWeights = new double[uLen];
@@ -238,7 +260,9 @@ internal static class RoleConstraintsKernel
         }
         int[] relayMediumSourceIndices = relayInferredSources.Count > 0 ? relayInferredSources.ToArray() : Array.Empty<int>();
 
-        if (!reuseMemo)
+        var persistentMemo = SolverContext.GetRoleConstraintMemo(memoSlot);
+        bool useMemo = reuseMemo || persistentMemo != null;
+        if (!useMemo)
         {
             for (int i = 0; i < uLen; i++)
             {
@@ -254,7 +278,7 @@ internal static class RoleConstraintsKernel
             return outWeights;
         }
 
-        var memo = new Dictionary<long, double>(Math.Min(uLen, 256));
+        var memo = persistentMemo ?? new Dictionary<long, double>(Math.Min(uLen, 256));
         for (int i = 0; i < uLen; i++)
         {
             var world = new WorldEntry(packedWorlds[i]);
