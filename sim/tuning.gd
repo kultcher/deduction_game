@@ -919,6 +919,15 @@ class Workshop:
 	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
 	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
 	const DELUSIONAL_SELF_DOUBT = 0.1
+	## The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the
+	## expert, so a listener takes a call at its credibility in the player. The doubt runs in a
+	## straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to
+	## FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility,
+	## or the one-witness doubt where that is more. One call then removes about a fifth,
+	## half and four-fifths of what the reading costs its reader at low, default and high
+	## trust (Michael, Nov 18). Only where a Poisoner is possible.
+	const FAILED_GIFT_DOUBT_LOW = 0.2
+	const FAILED_GIFT_DOUBT_HIGH = 0.8
 	## The connections belief model (workshop/connections.gd;
 	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
 	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
