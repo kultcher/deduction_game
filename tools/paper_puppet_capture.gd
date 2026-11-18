@@ -5,7 +5,7 @@
 extends SceneTree
 
 const ConversationView = preload("res://ui/day_conversation_view.gd")
-const Puppet = preload("res://ui/paper_puppet.gd")
+const PUPPET = preload("res://ui/paper_puppet/edda_puppet.tscn")
 const SIZE = Vector2i(1600, 900)
 const FPS = 30.0
 const RENDER_SCALE = 0.6
@@ -34,10 +34,10 @@ func _run() -> void:
 	vp.transparent_bg = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(vp)
-	var puppet = Puppet.new()
+	var puppet = PUPPET.instantiate()
 	puppet.scale = Vector2.ONE * RENDER_SCALE
+	puppet.set_process(false)
 	vp.add_child(puppet)
-	puppet.build("res://assets/art/paper_puppet_poc/edda")
 	puppet.stepped = mode == "stepped"
 	view.portrait.texture = vp.get_texture()
 	var label = Label.new()
