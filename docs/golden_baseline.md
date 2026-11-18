@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
+### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_296f93e`
+
+`tools/golden/baseline_296f93e/` is the capture from `claude/beadle-bluff-blend` at `296f93e` (main
+`f947be6` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
+bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
+- **Divergence from `baseline_1e6b846`:** 54875, 692, 900 and 98933 from record 0 (the world's
+  random state after the first night's fabrications). 42 is identical.
+- **Outcomes:** 42 unchanged (good on day 3). 54875 good on day 2, hanging Constance, becomes
+  day 4 with no winner, hanging Edda on day 3. 692 hangs Constance on day 3 only (Merrin is no
+  longer hanged on day 2). 900 hangs Lian on day 3, not Constance on day 2. 98933 now hangs Edda
+  on day 2. Every seed but 42 still reaches day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, "it's another of us"): `baseline_1e6b846`
 
 `tools/golden/baseline_1e6b846/` is the capture from `claude/beadle-group-defence` (#249) at
 `1e6b846` (main `23136f3` merged in): a nominee named by a reading over a group (a Dowser's count,
