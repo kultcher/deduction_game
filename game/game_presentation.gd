@@ -497,3 +497,6 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 			await progress.call(n.name)
 		var r: Dictionary = _evaluate_deduction(g, n, ded, Tuning.Workshop.VENUE_MULTS.meeting, true, "meeting")
 		g._lines(r["lines"])
+		# What a listener told the town in answer (a caught alibi explained) goes on the board
+		# too (Codex on #261).
+		g._facts(r.get("facts", []))
