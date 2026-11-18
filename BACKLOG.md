@@ -942,7 +942,7 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
   an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
   word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
-  barely with all cards. Moves golden. **[open]**
+  barely with all cards. Moves golden. Owner Lantern. **[decided]** (Michael, Nov 18)
 - **An evil Medium's relay about the first victim names night 0** (Lantern, Nov 13). The
   bluff says the dead saw the scapegoat out "on their last night"; for the first victim
   that is night 0, when the model's Demon never walks, so the frame *lowers* suspicion of
