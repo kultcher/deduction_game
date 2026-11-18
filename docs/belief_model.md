@@ -52,7 +52,9 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
   - They're re-weighed at every refresh, with no accepted or rejected state.
   - Old cases fade (× 0.5 a day) rather than being pushed out by a cap. Presenting a case again restores its weight, never above full.
   - A case overlapping the core merges with it, so one that clashes with the listener's own readings scores low by itself.
-  - A challenge acts only inside its own case.
+  - A challenge acts only inside its own case. The exception (Michael, Nov 18, option C): the
+    player's "failed gift" call also counts as testimony, an honest doubt on that reading
+    everywhere ("Poisoned, not lying" below).
 - **No per-teller bundles:** evil's stories are generated to cohere, so a bundle doesn't catch a liar.
 - **Combining:** each card counts once; a connection adds only its interaction (joint minus the parts). Then one common shift so P(evil) sums to the evil count ("A for sure, then B or C", never four people at 70% in a two-evil town).
 - **The demon-type declaration** is the player's call alone, at a meeting, at most once a day; single-demon scripts start declared.
@@ -504,6 +506,31 @@ trusted. Built (Nov 18) as the prior only:
 - **With Delusional too** (#216): the two are independent ways an own gift can fail, so a
   night that carries both takes 1 − (1 − poison)(1 − Delusional), as the Night Watch's
   broken chance does (a 5% poison chance and the 10% Delusional doubt give 14.5%).
+
+### "Poisoned, not lying": the player's failed-gift call (Lantern with Quill, Nov 18)
+
+Michael's decision (option C, `docs/design/poisoned_not_lying.md`): the player's "failed gift"
+challenge counts as testimony that the reading was poisoned, not a lie.
+
+- **The pass** (`SourceDoubt.derive`): for each "failed gift" challenge in one of the player's
+  presented cases, on someone else's reading, the listener sets an honest doubt on that
+  reader's night. It's one witness as accurate as the listener's trust in the player (c),
+  against the chance that reader was poisoned that night (π, Quill's
+  `ReadingChallenges.poison_chance` with the reader, so an unexplained outing near the
+  reader's home raises it): π·c / (π·c + (1 − π)(1 − c)). No new constant.
+- **Bounds:** zero with no Poisoner on the script; it never lowers a doubt (a max); a relayed
+  reading's transmission is the Medium's, keyed as the relay's reliability is. A listener
+  doesn't otherwise apply a poison chance to another person's reading, so at even trust the
+  call weighs poison at its plain chance, and more trust raises it.
+- **Nothing spreads on purpose:** honest doubt mixes the reading as genuine or broken, so what
+  it held up moves to whoever the rest of the evidence favours.
+- **The cost of being wrong** is the track record only: the call records "R is good" (Quill,
+  #252).
+- **Measured** (`tools/test_player_failed_gift.gd`, seed 692, 7 NPCs, a good Archivist's
+  night-0 reading naming two good people, poison chance 5%): the reader's chance of being evil
+  with the call weighed against without it, 43% → 42% at even trust, 42% → 40% at trust 0.7,
+  42% → 35% at 0.9. One call moves a listener a few points, more for one who trusts the player
+  highly. Quill's 10-seed before/after with a clashing reading follows once this is on main.
 
 ### Premise centring, option B (Lantern, Nov 18)
 
