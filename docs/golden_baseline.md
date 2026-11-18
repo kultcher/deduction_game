@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+### Current baseline (Nov 18, backing a case builds trust): `baseline_37b9ba5`
+
+`tools/golden/baseline_37b9ba5/` is the capture from `claude/beadle-agreement-trust` at `37b9ba5` (main
+`6fcdc32` merged in): a good NPC warms a little to those who vote the same way, to someone who
+nominates or accuses a person it already suspects, and to a teller whose reading clears it or
+agrees with its own (Michael, Nov 18).
+- **Divergence from `baseline_e287b3d`:** every seed. 54875 from record 1, 98933 from record 5,
+  42 from 27, 900 from 46, 692 from 52: refreshes where trust in an agreeing teller or voter
+  had moved.
+- **Outcomes:**
+  - **42:** unchanged (good on day 3, hanging Agnes).
+  - **692:** unchanged (Constance hanged on day 3, no winner by day 4).
+  - **900:** unchanged (Lian hanged on day 3, no winner by day 4).
+  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs nobody by day 4.
+  - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
