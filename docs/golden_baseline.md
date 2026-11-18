@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 17, joint reasons measured within one model): `baseline_823d388`
+### Current baseline (Nov 18, the vigil watches who leaves): `baseline_e1f0fc2`
+
+`tools/golden/baseline_e1f0fc2/` is the capture from `claude/vigil-leavers` at `e1f0fc2`
+(main `eb74fad` merged in): the vigil sees residents leaving the watched block instead of
+walkers arriving (Michael, Nov 17, `docs/design/vigil.md` option A), with Herald's wording.
+- **Divergence from `baseline_823d388`:** text only, one string on every seed: the night
+  prompt's help line, "'vigil <block>' (watch for activity arriving on a block)" is now
+  "'vigil <block>' (watch who goes out from a block at night)". All five seeds diverge at
+  the first night's prompt (42 record 6, 54875 61, 692 60, 900 23, 98933 71). With that
+  string put back, all five are identical to `baseline_823d388` at `--tol 0`. Record counts
+  are the same.
+- **Why the rule itself doesn't move golden:** the passive golden player never keeps a
+  vigil.
+- **Outcomes unchanged:** the same hangings, votes and nominators as `baseline_823d388`.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 17, joint reasons measured within one model): `baseline_823d388`
 
 `tools/golden/baseline_823d388/` is the capture from `claude/count-reading-reasons` (#204) at
 `823d388` (main `c1e1b70` merged in): a "taken together" reason's weight is what removing its

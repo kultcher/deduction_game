@@ -1,7 +1,7 @@
 # The vigil: options (design note)
 
-**Status: decided (Michael, Nov 17): option A, the vigil watches who leaves a block. Not
-built.** Written Nov 17 from a talk between Michael and Claude-Vicar. It replaces the option
+**Status: decided (Michael, Nov 17): option A, the vigil watches who leaves a block. Built
+Nov 17 (Quill, `claude/vigil-leavers`).** Written Nov 17 from a talk between Michael and Claude-Vicar. It replaces the option
 list under "Unlimited vigil strength" in BACKLOG section 2 (Numbers), now `[decided]`, and
 the matching question in DESIGN's "Open questions". Builders: Quill (the vigil's evidence,
 the judge, and the bot's vigil policy), Herald (the result wording and UI). The facts below

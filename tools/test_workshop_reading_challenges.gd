@@ -34,8 +34,11 @@ func _alibis() -> void:
 	g.w.dlog.detailed = false
 	var n = g.w.by_id.nisha
 	n.history[g.w.time_key(1, 3)] = "night:docks"
+	# A vigil sees residents leaving the block (Nov 17): it watches Nisha's own block, and
+	# Constance is made her neighbour so both can be seen going out.
+	g.w.by_id.constance.home_block = n.home_block
 	var vigil = g.add_card({"kind": "sighting", "source": "player", "subject": ["constance", "nisha"], "vigil": true,
-		"day": 1, "phase": 3, "block": "square", "text": "Regression vigil: Constance and Nisha on the Square."})
+		"day": 1, "phase": 3, "block": n.home_block, "text": "Regression vigil: Constance and Nisha leaving home."})
 	var home = g.add_card({"kind": "alibi", "source": "nisha", "subject": ["nisha"], "day": 1, "phase": 3,
 		"block": "docks", "text": "Regression Nisha says she was home."})
 	for reverse in [false, true]:
