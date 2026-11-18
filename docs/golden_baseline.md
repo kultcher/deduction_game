@@ -44,9 +44,9 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, backing a case builds trust): `baseline_37b9ba5`
+### Current baseline (Nov 18, backing a case builds trust): `baseline_e881c2f`
 
-`tools/golden/baseline_37b9ba5/` is the capture from `claude/beadle-agreement-trust` at `37b9ba5` (main
+`tools/golden/baseline_e881c2f/` is the capture from `claude/beadle-agreement-trust` at `37b9ba5` (main
 `6fcdc32` merged in): a good NPC warms a little to those who vote the same way, to someone who
 nominates or accuses a person it already suspects, and to a teller whose reading clears it or
 agrees with its own (Michael, Nov 18).
@@ -57,7 +57,7 @@ agrees with its own (Michael, Nov 18).
   - **42:** unchanged (good on day 3, hanging Agnes).
   - **692:** unchanged (Constance hanged on day 3, no winner by day 4).
   - **900:** unchanged (Lian hanged on day 3, no winner by day 4).
-  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs nobody by day 4.
+  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs only Jory, on day 3.
   - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
 - **Stability:** two captures were identical.
 
