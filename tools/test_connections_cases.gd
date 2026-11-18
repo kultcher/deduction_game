@@ -38,6 +38,10 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
+	# This suite checks a case's arithmetic on chosen numbers; premise centring (option B)
+	# rescales what a case's cards say on bystanders, and has its own suite
+	# (test_premise_centring).
+	Connections.premise_centring = false
 	# These checks are case arithmetic on chosen numbers. The player's "failed gift" call as
 	# testimony (SourceDoubt.player_failed_gift, option C) deliberately reaches beyond its case,
 	# so it's off here; test_player_failed_gift covers it.

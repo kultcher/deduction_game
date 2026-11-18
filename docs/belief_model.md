@@ -532,6 +532,34 @@ challenge counts as testimony that the reading was poisoned, not a lie.
   42% → 35% at 0.9. One call moves a listener a few points, more for one who trusts the player
   highly. Quill's 10-seed before/after with a clashing reading follows once this is on main.
 
+### Premise centring, option B (Lantern, Nov 18)
+
+Michael's goal (Nov 17-18, `docs/design/premise_centring.md`): a listener hearing "X is evil"
+weighs how far the case proves that and under-registers what it implies about the others, so
+the player wins by making the right connections, not by supplying information.
+
+- **What's shaped:** what a card adds when only presented cases brought it, and what a
+  stored case's cards add together. Both count in full on the case's targets (every person it argues about) and at
+  `PREMISE_BYSTANDER_SHARE` (1/3, Michael's split of the measured 0.5 and 0.25) on everyone
+  else (`Connections.refresh` items, `Connections.cases`).
+- **Which cards** (`SharedLedger.brought_by_premise`, step 1's selection): a card is brought
+  while every owner of it is a presented case arguing someone's alignment. Held any other
+  way (the listener's own reading, hearsay, the public record) it isn't; it stays brought
+  after its case fades (the lens stays, Vicar); a withdrawn case owns nothing; a case with no
+  alignment target (Marked, conflict) shapes nothing.
+- **Measured** (`tools/measure_premise_frames.gd`, constructed on seed 692's 7-NPC deal;
+  the person the cards point at starts at 41%; their chance after the case, without B → with
+  B): presented as them, two Dowser readings 51% → 50%, sightings against their alibi
+  69% → 65%, mixed 58% → 56%; misframed as someone named in the cards or someone
+  unconnected, 51% → 43%, 69% → 50%, 58% → 46%. The wrongly named person doesn't rise in any
+  frame. The presenter's trust is unchanged by a misframe (Michael, Nov 18: the case not
+  landing is the cost).
+- **Tests:** `test_premise_centring` (frames, the selection, the lens after fading, every target of a direct presentation, and that the core and stored cases subtract raw item values);
+  `test_premise_step1`'s "a case moves its target more than the people it only mentions" and
+  "the shaping is remembered on a later refresh" still pass with it on.
+  `test_connections_cases`, which checks case arithmetic on chosen numbers, runs with it off
+  (`Connections.premise_centring`).
+
 ## Open items
 
 Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.

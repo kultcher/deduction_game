@@ -74,6 +74,7 @@ test_playtest_13910_dialogue
 test_playtest_23973
 test_playtest_89077
 test_poison_chance
+test_premise_centring
 test_poison_self_doubt
 test_poison_outing
 test_premise_step1
