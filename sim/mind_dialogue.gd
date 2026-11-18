@@ -265,6 +265,29 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 		"secret_kind": "sleepwalker", "mod": "sleepwalker",
 		"text": "%s says they've been known to sleepwalk (at %s)." % [n.name, where]}}
 
+## "Fine, I was out", then why (Michael, Nov 18): a good NPC caught out of a home alibi in
+## private, who has an honest reason, gives it: the gift that took them out, or the secret
+## errand. {} when there's no honest reason to give (evil work, a gift kept back): they
+## stonewall. Never the lie branch: they've just owned the night.
+static func trapped_explanation(w, n, nd: int) -> Dictionary:
+	if n.is_evil():
+		return {}
+	var where: String = str(n.history.get(w.time_key(nd, C.NIGHT), ""))
+	if not where.begins_with("night:"):
+		return {}
+	if _honest_outing(w, n, nd) == "reveal":
+		return answer_night(w, n, nd)
+	if n.secret.is_empty():
+		return {}
+	var block: String = where.substr(6)
+	n.secret_known = true
+	var line: Dictionary = say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])})
+	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
+		"secret_kind": n.secret.get("kind", ""), "mod": "lovers" if n.secret.get("kind", "") == "lover" else "", "partner": str(n.secret.get("with", "")) if n.secret.get("kind", "") == "lover" else "",
+		"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}
+	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi: owns the night and explains it (secret: %s)." % n.secret.get("kind", "?"))
+	return {"lines": [line], "facts": [fact]}
+
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	if not n.claim_public and n.max_tier < 3 and (_gift_outing(w, n, night) or _bluff_outing(w, n, night)):
 		if night not in n.lied_nights: n.lied_nights.append(night)
