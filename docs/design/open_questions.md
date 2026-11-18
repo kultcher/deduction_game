@@ -141,7 +141,7 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
   versus the dead source; nested relays. Beadle for the social side.
 - **The sighter contest cap** and **an evil Medium's night-0 relay**: known bugs in the judge
   that move golden, waiting on a call (BACKLOG section 6). Lantern.
-- ~~**Trace weight**~~ (settled Nov 18: keep 3:1, Tally's #212); **the Seer's rise looks small**;
+- ~~**Trace weight**~~ (settled Nov 18: keep 3:1, Tally's #212); **the Seer's rise looks small** (later: a role-tuning pass, Nov 18);
   **situational credence modifiers** (early disclosure, a quiet night, admission against
   interest, consistency). Tally to measure, Lantern to build.
 - **Demon detours** exist in inference but not in movement: which is authoritative?
@@ -155,7 +155,7 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
 - **Lovers as an excuse** (evil faking a Lovers confession; the solver's proof must go if so,
   Quill).
 - **Good NPCs lie tactically** (stretch). **Lie severity.**
-- **NPC-to-NPC credibility** (liking versus believing). Lantern for the belief side.
+- ~~**NPC-to-NPC credibility**~~ Tabled Nov 18: NPC relationships are already hard to read.
 - **Throw a teammate under the bus**; **evil coordination you can see**; **trust dynamics
   around sources** (naming a source; evil tracing one).
 - **Storyteller-driven Medium visits.**
@@ -164,7 +164,7 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
 - **Locations as evidence, from both sides**; **passing through versus stopping**;
   **evidence chains**; **the demon lures a victim elsewhere**. Quill (evidence), Beadle
   (movement).
-- **Ways to discover and confront secrets**; **named corroborators in alibis**. Beadle,
+- **Ways to discover and confront secrets** (named corroborators in alibis: tabled Nov 18). Beadle,
   Quill.
 - **Role hints from workplaces and haunts.** Quill.
 - **Relationships** (Bonded, Unrequited, Feuding, Hater). Beadle, Lantern.

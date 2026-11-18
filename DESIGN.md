@@ -944,16 +944,17 @@ been known to sleepwalk"; two claimants prove a liar.
   unless the lie puts them near the crime; NPCs who accept a lie but won't hang should say
   so.
 - **Ways to discover and confront secrets** (sightings that don't fit, confidants,
-  personal items, a "you have a secret" card as leverage) **[open]**; **named
-  corroborators** in alibis ("I was with Jory"), word-against-word cards **[open]**.
+  personal items, a "you have a secret" card as leverage) **[open]**. Named corroborators
+  in alibis ("I was with Jory"): tabled (Michael, Nov 18); at night people are home or
+  walking alone, and walkers needn't see each other.
 - **Situational credence modifiers** still to settle: early disclosure, quiet night as a
   credence boost, admission against interest, consistency over time, role-specific
   confirmations. **[open]**
 - **Initial general skepticism** **[knob]**: only if the early game gets too decisive.
 - **Trust dynamics around sources:** a relayer naming their source at a cost; evil tracing
   an unnamed source. **[open]**
-- **NPC-to-NPC credibility:** split NPC-to-NPC trust into liking and believing, as the
-  player's is. **[open]**
+- **NPC-to-NPC credibility** (liking versus believing): tabled (Michael, Nov 18). NPC
+  relationships are already hard to read, and a second number would dilute them.
 - **NPC memory and recency bias.** Attention-level recency is on main (#96; `docs/premises_plan.md`,
   "Recency as built"). **[open]**
 

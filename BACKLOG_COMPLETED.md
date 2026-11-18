@@ -3,6 +3,23 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Tabled Nov 18, 2026 (Michael; recorded by Claude-Vicar)
+
+- **NPC-to-NPC credibility.** The player now has two numbers with each NPC (rapport and
+  credibility). Split NPC-to-NPC trust the same way, so liking someone and believing
+  their word can differ; source doubt is the natural place it plugs in. (Nov 1) [open]
+
+  > **Tabled Nov 18 (Michael):** the interpersonal side of NPC relationships is already a bit
+  > hard to read, and a second NPC-to-NPC number would dilute it further.
+
+- **Named corroborators in alibis** ("I was with Jory"), word-against-word cards; evil
+  fake secrets that name someone they really met. Michael (Nov 17): stays open; it
+  overlaps the backlogged secrets rework. [open]
+
+  > **Tabled Nov 18 (Michael):** at night everyone is either home or out walking, and walkers
+  > have no guarantee of seeing each other, so a named corroborator has no place as things
+  > stand.
+
 ## Settled Nov 18, 2026 (Michael; recorded by Claude-Vicar)
 
 - **Trace weight.** The trace likelihood ratio is 3:1. Compare 1.5:1, 2:1 and 3:1 across

@@ -410,10 +410,6 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **Evil reads as evil.** Evil casting aspersions with no information stands out. Largely
   addressed by the shadow self; revisit after playtests. (30294) [watch]
 
-- **NPC-to-NPC credibility.** The player now has two numbers with each NPC (rapport and
-  credibility). Split NPC-to-NPC trust the same way, so liking someone and believing
-  their word can differ; source doubt is the natural place it plugs in. (Nov 1) [open]
-
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
   - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
   - evil Wardens faking saves (an evil-strategy change, measured separately);
@@ -453,7 +449,8 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 - **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
   pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
   Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
-  Check against the current prior mapping. (Oct 30) [open]
+  Check against the current prior mapping. (Oct 30) Michael (Nov 18): saved for a dedicated
+  role-tuning pass. [later: role tuning pass]
 
 - **The vigil watches who leaves a block.** (Michael, Nov 17, with Claude-Vicar; design note
   [docs/design/vigil.md](docs/design/vigil.md)) Replaces "Unlimited vigil strength". A vigil
@@ -654,10 +651,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Ways to discover and confront secrets:** sightings that don't fit, confidants,
   personal items, a "you have a secret" card used as leverage. [open]
-
-- **Named corroborators in alibis** ("I was with Jory"), word-against-word cards; evil
-  fake secrets that name someone they really met. Michael (Nov 17): stays open; it
-  overlaps the backlogged secrets rework. [open]
 
 - **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
   (open since playtest 1) [open]
