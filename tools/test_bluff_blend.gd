@@ -14,6 +14,7 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Evil = preload("res://sim/evil.gd")
 const Registry = preload("res://sim/role_registry.gd")
+const Mind = preload("res://sim/mind.gd")
 
 var checks = 0
 var fails = 0
@@ -86,6 +87,9 @@ func _clerk() -> void:
 		var entry: Dictionary = {"role": "clerk", "day": 0, "fake": true, "shared": told, "true": false,
 			"data": {"pair": [mate.id if mate != null else d.id, w.living_good()[0].id], "role": "seer"}, "text": "cover", "why": "evil fabrication: cover"}
 		d.info_log = [entry]
+		var before: Dictionary = entry.duplicate(true)
+		d.shadow = null
+		Mind._shadow_own_info(w, d)
 		w.evil_plan["clerk_blend_" + d.id] = true
 		var g = w.living_good()[1]
 		g.claimed_role = g.role
@@ -98,6 +102,10 @@ func _clerk() -> void:
 			_check(now["text"] == "cover", "a Clerk reading already told stays the cover it was")
 		else:
 			_check(g.id in now["data"]["pair"] and now["data"]["role"] == g.role, "an untold one now confirms %s's claim to be the %s (%s)" % [g.name, g.role, now["text"]])
+			if d.shadow != null:
+				var sh_clerk: Array = d.shadow.info_log.filter(func(x): return x.get("fake", false) and x.get("role", "") == "clerk")
+				_check(sh_clerk.size() == 1 and sh_clerk[0]["data"] == now["data"], "its shadow takes the reading it will claim, not the cover (Codex on #269)")
+				_check(not d.shadow.ledger.has(Mind.info_eid(d.id, before)) and d.shadow.ledger.has(Mind.info_eid(d.id, now)), "and the shadow's evidence follows it")
 	# Only a Scion or Demon blends.
 	var blenders: int = 0
 	var minion_blends: int = 0

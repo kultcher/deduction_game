@@ -254,10 +254,12 @@ static func blend_clerk_readings(w) -> void:
 			continue
 		var pair: Array = w.shuffled([claimer.id, w.pick(others).id])
 		var role: String = claimer.claimed_role
+		var old_e: Dictionary = e.duplicate(true)
 		e["data"] = {"pair": pair, "role": role}
 		e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(role)]
 		e["why"] = "evil fabrication: " + named(w, "confirmed %s's early claim to be the %s, to pass as an honest Clerk" % [claimer.id, C.role_name(role)])
 		w.evil_plan.erase("clerk_blend_" + m.id)
+		load("res://sim/mind.gd").shadow_replace_own_info(w, m, old_e, e)
 		w.dlog.think(m.id, "lie", "Evil: blends in; its untold Clerk reading now confirms %s's claim to be the %s." % [claimer.name, C.role_name(role)], {"lie": true})
 		# The reveal lists what was told: the night's "prepares" entry becomes the reworked
 		# reading (it was never told as the cover).
