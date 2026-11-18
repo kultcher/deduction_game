@@ -47,6 +47,7 @@ func _init() -> void:
 	_pressed_first()
 	_home_alibi_ordinal()
 	_count_line()
+	_count_line_constructed()
 	print("Wording 89077: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -180,3 +181,24 @@ func _play(seed_v: int, day: int):
 			"night": g.command("sleep")
 			_: break
 	return g if g.state == "meeting" and g.w.day >= day else null
+
+## The count line itself, on a constructed reading (Herald, Nov 18): since #204 no natural
+## count reason arises in the seeds above, so the wording is checked on ReasonAttribution's
+## joint_whys directly. A Lamplighter's count names nobody; from its holder it reads "my
+## count of folk abroad...", from someone else "Agnes's count...", and as the town knows it
+## "the Lamplighter's count...". A reading that names someone still points at them.
+func _count_line_constructed() -> void:
+	var RA = preload("res://workshop/reason_attribution.gd")
+	var view: Dictionary = {"people": [{"id": "agnes", "name": "Agnes"}, {"id": "bart", "name": "Bart"}, {"id": "hollis", "name": "Hollis"}]}
+	var count: Dictionary = {"id": "c1", "kind": "report", "role": "lamplighter", "source": "agnes", "data": {"count": 2}}
+	var own: Dictionary = RA.joint_whys(view, count, "bart", "agnes", "agnes", "lamplighter", [count])
+	check(own.own == "my " + COUNT_LINE, "a Lamplighter's own count, as its holder says it: " + str(own.own))
+	check(own.public == "the Lamplighter's " + COUNT_LINE, "...and as the town knows it: " + str(own.public))
+	var other: Dictionary = RA.joint_whys(view, count, "bart", "agnes", "hollis", "lamplighter", [count])
+	check(other.own == "Agnes's " + COUNT_LINE, "...and from someone else: " + str(other.own))
+	for k in ["own", "public"]:
+		check(not ("among the likeliest" in str(own[k])) and not ("among the likeliest" in str(other[k])), "...never 'among the likeliest' (%s)" % k)
+	# A Night Watch reading that names them isn't a count: it points at them.
+	var seen: Dictionary = {"id": "c2", "kind": "report", "role": "nightwatch", "source": "agnes", "data": {"block": "hill", "seen": ["bart"]}}
+	var named: Dictionary = RA.joint_whys(view, seen, "bart", "agnes", "agnes", "nightwatch", [seen])
+	check("points at them" in str(named.own) and not (COUNT_LINE in str(named.own)), "a reading that names them isn't given the count line: " + str(named.own))
