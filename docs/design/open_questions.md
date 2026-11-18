@@ -50,6 +50,12 @@ These are the ones under discussion now, roughly by how much they shape other wo
   per-case hypothesis so the player can argue an unclaimed one.
 - **Backlogged** (Michael, Nov 17: smaller items first; BACKLOG section 4, "The secrets
   rework", [open]), with a staged plan in the note's section 9.
+- **Decided Nov 18 (Michael):**
+  - good NPCs may lie about their gift, with a reason (avoiding or drawing the Demon),
+    uncommonly, and only under pressure;
+  - every secret is unique;
+  - the hidden kinds (probably Delusional and Sleepwalker) are mutually exclusive by script.
+  - **Not yet decided:** plain folk and confidants (note section 10).
 - **Evidence:** `docs/design/secrets_rework.md` (the options, costs and the Saint and Baron
   examples); BACKLOG section 4 for the Muddler (#180).
 - **Builds:** Lantern and Quill (the judge), Beadle (claiming, hiding, bluffing), Herald
@@ -133,18 +139,16 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
 
 ### Evidence, cases and the judge (Quill unless noted)
 - ~~**Say what a card is offered for**~~ Settled Nov 18: covered by premise centring B.
-- **Withdraw or revise a case** believably, without scoring below the version it replaces.
-  Pairs with signposting the way back from a wrong "lying" call (`[decided: test later;
-  signposting open]`). Herald for the UI.
+- ~~**Withdraw or revise a case**~~ Decided and built Nov 18 (Quill #262, Herald #267). The "must not score below" rule became a warning instead ("This weakens your previous case"); its detection is built (Quill #275).
+  Pairs with the wrong-"lying"-call work and "poisoned, not lying".
 - **Quiet-night evidence argued by the player** (protection + quiet night + sighting).
 - **Misled versus lying strength** at equal weight.
-- **Medium relays:** who is blamed when a relay is challenged; challenging the transmission
-  versus the dead source; nested relays. Beadle for the social side.
+- ~~**Medium relays: later social consequences**~~ Tabled Nov 18, bundled with trust dynamics
+  around sources. (Nested relays stay with the gift adapters, `[watch]`.)
 - **The sighter contest cap** and **an evil Medium's night-0 relay**: known bugs in the judge
   that move golden, waiting on a call (BACKLOG section 6). Lantern.
 - ~~**Trace weight**~~ (settled Nov 18: keep 3:1, Tally's #212); **the Seer's rise looks small** (later: a role-tuning pass, Nov 18);
-  **situational credence modifiers** (early disclosure, a quiet night, admission against
-  interest, consistency). Tally to measure, Lantern to build.
+  ~~**situational credence modifiers**~~ (tabled Nov 18).
 - **Demon detours** exist in inference but not in movement: which is authoritative?
   Lantern (inference) and Beadle (movement).
 
@@ -157,8 +161,8 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
 - **Good NPCs lie tactically**, reframed Nov 18: may a good NPC lie about their role (a Veteran
   falsely claiming to draw the attack)? **Lie severity.**
 - ~~**NPC-to-NPC credibility**~~ Tabled Nov 18: NPC relationships are already hard to read.
-- **Throw a teammate under the bus**; **evil coordination you can see**; **trust dynamics
-  around sources** (naming a source; evil tracing one).
+- **Throw a teammate under the bus**; **evil coordination you can see**; ~~**trust dynamics
+  around sources**~~ (tabled Nov 18, with Medium relays).
 - **Storyteller-driven Medium visits**: folded into the Storyteller/director item (Nov 18).
 
 ### World, evidence types and structure
@@ -168,14 +172,16 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
 - **Ways to discover and confront secrets**: folded into the secrets rework (Nov 18; named
   corroborators tabled). Beadle,
   Quill.
-- **Role hints from workplaces and haunts.** Quill.
+- ~~**Role hints from workplaces and haunts.**~~ Tabled Nov 18.
+- **New role hint families** (Michael's new item, Nov 18, `[decided]`, design first): more
+  families so each holds fewer roles. Quill, Herald for wording; Michael names them.
 - **Relationships** (Bonded, Unrequited, Feuding, Hater). Beadle, Lantern.
 - **Roster expansion** (On Deck gifts, minions such as Framer/Forger and Blackmailer, the
   Debtor secret, Demon resilience). Each needs a hint package and solver support. Quill
   and Beadle.
 - **Player toolbox** (Autopsy, Séance, Scry, Binding circle; exorcism as an alternate
   win); **scoring**; **the Storyteller/director and solvability check**. Design first.
-- **Talking to a group** (3 questions per phase, split). Herald, Beadle.
+- ~~**Talking to a group**~~ Tabled Nov 18.
 
 ### Presentation (Herald)
 - **Case board visuals** (`[decided: needed; design open]`); a claims and reveals timeline;
@@ -194,13 +200,16 @@ Proposals for one unified social retuning, not approved (BACKLOG section 2, "Ten
 social tuning"; plus 1.4 and 1.5 above). Lantern for belief, Beadle for behaviour.
 
 - Privacy without compounding trust penalties (54875: three of three stonewalled on day 1).
-- Evidence building NPC-to-NPC trust.
-- Opinion strength and shared origins (several NPCs repeating one story aren't independent).
-- Martyr urgency from day 3.
-- Demon victims' earlier information read as sincere.
-- Dowser clearing only on a positive ping.
-- Expanded dialogue and trust management (requests spreading through chats, follow-through,
-  guilt, "what would change your mind", apologies). Herald for wording.
+- ~~Evidence building NPC-to-NPC trust~~ (folded Nov 18 into Beadle's "Backing a strong
+  case builds trust").
+- ~~Opinion strength and shared origins~~ (closed Nov 18: covered under connections).
+- Martyr urgency (moved to BACKLOG_WATCH Nov 18: in play the Martyr may act too early).
+- ~~Demon victims' earlier information~~ (closed Nov 18: covered by the "Demon victim is good" fact).
+- ~~Dowser clearing only on a positive ping~~ (moved Nov 18 to the role-tuning pass, with
+  the Seer's rise).
+- Expanded dialogue and trust management (requests spreading through chats, credit for
+  completing tasks, remorse after a bad hanging, "what would change your mind", explaining an
+  execution's purpose; apologies and confidentiality are built). Herald for wording.
 
 ---
 

@@ -991,12 +991,13 @@ been known to sleepwalk"; two claimants prove a liar.
   personal items, a "you have a secret" card as leverage) **[open]**. Named corroborators
   in alibis ("I was with Jory"): tabled (Michael, Nov 18); at night people are home or
   walking alone, and walkers needn't see each other.
-- **Situational credence modifiers** still to settle: early disclosure, quiet night as a
-  credence boost, admission against interest, consistency over time, role-specific
-  confirmations. **[open]**
+- **Situational credence modifiers** (early disclosure, quiet night as a credence boost,
+  admission against interest, consistency over time, role-specific confirmations): tabled
+  (Michael, Nov 18).
 - **Initial general skepticism** **[knob]**: only if the early game gets too decisive.
-- **Trust dynamics around sources:** a relayer naming their source at a cost; evil tracing
-  an unnamed source. **[open]**
+- **Trust dynamics around sources** (a relayer naming their source at a cost; evil tracing
+  an unnamed source), bundled with Medium relays' later social consequences: tabled
+  (Michael, Nov 18).
 - **NPC-to-NPC credibility** (liking versus believing): tabled (Michael, Nov 18). NPC
   relationships are already hard to read, and a second number would dilute them.
 - **NPC memory and recency bias:** built under the connections model; attention and recency
@@ -1004,8 +1005,9 @@ been known to sleepwalk"; two claimants prove a liar.
 
 **Social retuning** **[tentative]** (candidates for one unified retuning proposal; details
 in BACKLOG): Privacy without compounding trust penalties; evidence building NPC-to-NPC
-trust; diminishing trust changes near the extremes; opinion strength and shared origins;
-Martyr urgency; Demon victims' earlier readings.
+trust. Diminishing trust changes near the extremes and Martyr urgency are in BACKLOG_WATCH;
+opinion strength and shared origins, and Demon victims' earlier readings, were verified as
+covered and closed (Nov 18).
 
 **Expanded dialogue and trust management** **[tentative]**: suggest general requests that
 spread through town chats; responsibility and follow-through as small trust gains;
@@ -1262,7 +1264,8 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   sees world state or truth and draws no game RNG. All fifteen characters have voice packs;
   every voiced line keeps a canonical statement. Workshop: `ui/dialogue_lab.tscn`. Rules:
   `docs/DIALOGUE_DESIGN.md`.
-- **Talking to a group** (3 questions split among anyone at the spot). **[open]**
+- **Talking to a group** (3 questions split among anyone at the spot): tabled (Michael,
+  Nov 18).
 
 ---
 
