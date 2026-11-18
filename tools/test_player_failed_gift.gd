@@ -1,8 +1,10 @@
 ## The player's "failed gift" call as testimony ("Poisoned, not lying", option C, Michael,
 ## Nov 18; docs/design/poisoned_not_lying.md): a "failed gift" challenge in the player's
-## presented case is the player's word that the reading was poisoned. Each listener weighs it
-## as one witness as accurate as its trust in the player, against the chance that reader was
-## poisoned that night, as honest doubt (SourceDoubt.derive).
+## presented case is the player's word that the reading was poisoned. Each listener takes it at
+## its credibility in the player (SourceDoubt.call_doubt: FAILED_GIFT_DOUBT_LOW at the lowest
+## credibility to FAILED_GIFT_DOUBT_HIGH at the highest, Michael, Nov 18), or as one witness
+## against the chance that reader was poisoned that night where that is more, as honest doubt
+## (SourceDoubt.derive). Only where a Poisoner is possible.
 ##   godot --headless --path . --script res://tools/test_player_failed_gift.gd
 extends SceneTree
 
@@ -83,17 +85,21 @@ func _init() -> void:
 	if call.filed <= 0:
 		_finish()
 		return
-	# 1. The doubt is the one-witness weighing, at the listener's trust in the player.
+	# 1. The doubt is the call taken at the listener's credibility in the player, or the
+	#    one-witness weighing where that is more (here the poison chance is small, so the line).
 	var heard: Dictionary = _hear(call, 1, 0.7)
-	var want: float = SourceDoubt.witness_doubt(heard.prior, heard.c)
+	var want: float = maxf(SourceDoubt.call_doubt(heard.c), SourceDoubt.witness_doubt(heard.prior, heard.c))
 	print("trust 0.70: poison chance %.3f, credibility %.2f, doubt %.3f (want %.3f)" % [heard.prior, heard.c, heard.doubt, want])
-	check(heard.prior > 0.0 and absf(heard.doubt - want) < 1e-9 and heard.doubt > heard.prior, "the call is weighed as one witness at the listener's trust in the player, above the poison chance alone")
-	# 2. Even trust: the call makes the listener weigh poison at its plain chance, which it
-	#    otherwise doesn't apply to another's reading; more trust raises it further.
+	check(heard.prior > 0.0 and absf(heard.doubt - want) < 1e-9 and heard.doubt > SourceDoubt.witness_doubt(heard.prior, heard.c), "the call is taken at the listener's credibility in the player, above the one-witness weighing")
+	# 2. The line's ends and middle (Michael, Nov 18): FAILED_GIFT_DOUBT_LOW at the lowest
+	#    credibility, half at the starting one, FAILED_GIFT_DOUBT_HIGH at the highest.
 	var even: Dictionary = _hear(call, 1, 0.5)
-	check(absf(even.doubt - even.prior) < 1e-9, "at even trust in the player the call weighs poison at its plain chance (%.3f)" % even.doubt)
+	check(absf(even.doubt - 0.5) < 1e-9, "at the starting credibility in the player the call is a doubt of a half (%.3f)" % even.doubt)
+	check(absf(SourceDoubt.call_doubt(0.1) - 0.2) < 1e-9 and absf(SourceDoubt.call_doubt(0.9) - 0.8) < 1e-9 and absf(SourceDoubt.call_doubt(0.0) - 0.2) < 1e-9, "the line runs 0.2 at the lowest credibility to 0.8 at the highest, clamped outside")
 	var high: Dictionary = _hear(call, 1, 0.9)
 	check(high.doubt > heard.doubt and heard.doubt > even.doubt, "more trust in the player, more doubt (%.3f, %.3f, %.3f)" % [even.doubt, heard.doubt, high.doubt])
+	# Where the one-witness weighing is more (a likely poisoning, a trusted player), it wins.
+	check(SourceDoubt.witness_doubt(0.6, 0.9) > SourceDoubt.call_doubt(0.9), "a likely poisoning and a trusted player give more than the line (%.3f against %.3f)" % [SourceDoubt.witness_doubt(0.6, 0.9), SourceDoubt.call_doubt(0.9)])
 	# 3. The switch off: the call doesn't reach honest doubt.
 	SourceDoubt.player_failed_gift = false
 	var off: Dictionary = _hear(call, 1, 0.7)
@@ -173,7 +179,7 @@ func _init() -> void:
 	#    trust in the player, in game terms): the reader's chance of being evil with the call
 	#    weighed, against the same case with it left out of honest doubt.
 	#    Each from a fresh game, so neither hearing follows the other.
-	for trust in [0.5, 0.7, 0.9]:
+	for trust in [0.1, 0.5, 0.9]:
 		var with_call: Dictionary = _hear(_game(true), 1, trust)
 		SourceDoubt.player_failed_gift = false
 		var without: Dictionary = _hear(_game(true), 1, trust)

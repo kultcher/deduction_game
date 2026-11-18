@@ -156,8 +156,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CREDIBILITY_START` | `0.5` | Credibility (Oct 30): how much the player's word counts, from their track record. target = 0.5 + CRED_SPAN * mean agreement; moves CRED_STEP of the way each dawn. | `sim/npc.gd` |
 | `CRED_SPAN` | `0.4` |  | `game/credibility.gd` |
 | `CRED_STEP` | `0.5` |  | `game/credibility.gd` |
-| `CRED_MIN` | `0.1` |  | `game/credibility.gd`, `game/demon_declaration.gd` |
-| `CRED_MAX` | `0.9` |  | `game/credibility.gd`, `game/demon_declaration.gd` |
+| `CRED_MIN` | `0.1` |  | `game/credibility.gd`, `game/demon_declaration.gd`, `workshop/source_doubt.gd` |
+| `CRED_MAX` | `0.9` |  | `game/credibility.gd`, `game/demon_declaration.gd`, `workshop/source_doubt.gd` |
 | `CRED_CORROBORATION_MIN` | `0.06` | Minimum independent posterior movement from baseline prior before an NPC scores a recorded player claim at Dawn (unless public alignment proof already exists). | `game/credibility.gd` |
 | `CRED_WEIGHT_FORMAL` | `1.0` | Track-record weights: formal deductions/nominations vs bare meeting statements. | `game/credibility.gd`, `game/game_meeting.gd`, `game/game_presentation.gd`, `game/workshop_presentation.gd` |
 | `CRED_WEIGHT_STATEMENT` | `0.35` |  | `game/game_meeting.gd` |
@@ -628,6 +628,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
 | `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
+| `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |
+| `FAILED_GIFT_DOUBT_HIGH` | `0.8` |  | `workshop/source_doubt.gd` |
 | `CONNECTIONS` | `true` | The connections belief model (workshop/connections.gd; docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the connections model). Off: the earlier model, for comparisons (autoplay --legacy-model; tests that pin it set Connections.enabled themselves). | `tools/autoplay.gd`, `workshop/connections.gd` |
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |
 | `CONNECTIONS_FIXED` | `0.005` | A person the listener's standing view already puts this close to 0 or 1 is settled (the public record, the listener's own knowledge): cards don't move them. | `workshop/connections.gd` |

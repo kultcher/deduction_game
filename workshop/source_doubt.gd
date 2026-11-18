@@ -484,13 +484,23 @@ static func could_hold_secret(role: String, secret: String) -> bool:
 ## The player's "failed gift" calls as honest doubt, {"teller:night": doubt}: see derive.
 ## "Poisoned, not lying" (Michael, Nov 18, option C; docs/design/poisoned_not_lying.md): a
 ## "failed gift" challenge in one of the player's presented cases is the player's word that
-## R's reading that night was poisoned, not a lie. The listener weighs it as one witness as
-## accurate as its trust in the player, against the chance R was poisoned that night
-## (ReadingChallenges.poison_chance with R as the reader, so an unexplained outing near R's
-## home raises it). Honest doubt, so the clash reads as a broken gift rather than a lie, and
+## R's reading that night was poisoned, not a lie. The player is the expert, so the listener
+## takes the call at its credibility in the player: a doubt from FAILED_GIFT_DOUBT_LOW at the
+## lowest credibility to FAILED_GIFT_DOUBT_HIGH at the highest, in a straight line (Michael,
+## Nov 18), or, where that is more, the call weighed as one witness as accurate as its trust
+## in the player against the chance R was poisoned that night (ReadingChallenges.poison_chance
+## with R as the reader, so an unexplained outing near R's home still strengthens a call;
+## Quill). The call counts only where that chance isn't zero. Honest doubt, so the clash reads as a broken gift rather than a lie, and
 ## whatever the reading held up moves to whoever the rest of the evidence favours; nothing
 ## spreads it on purpose. Zero with no Poisoner possible. A wrong call costs the player
 ## through the track record ("R is good", Quill, game/credibility.gd), nothing more.
+## The doubt a "failed gift" call carries by the listener's credibility in the player, before
+## the one-witness weighing: FAILED_GIFT_DOUBT_LOW at Trust.CRED_MIN rising in a straight line
+## to FAILED_GIFT_DOUBT_HIGH at Trust.CRED_MAX (clamped outside them).
+static func call_doubt(c: float) -> float:
+	var t: float = clampf((c - Tuning.Trust.CRED_MIN) / (Tuning.Trust.CRED_MAX - Tuning.Trust.CRED_MIN), 0.0, 1.0)
+	return lerpf(Tuning.Workshop.FAILED_GIFT_DOUBT_LOW, Tuning.Workshop.FAILED_GIFT_DOUBT_HIGH, t)
+
 static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: Array, self_id: String) -> Dictionary:
 	var out: Dictionary = {}
 	if not player_failed_gift or not ReadingChallenges.poisoner_possible(view):
@@ -528,7 +538,7 @@ static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: A
 			var prior: float = ReadingChallenges.poison_chance(view, listener, r_night, r_id)
 			if prior <= 0.0:
 				continue
-			var w_doubt: float = witness_doubt(prior, c_player)
+			var w_doubt: float = maxf(call_doubt(c_player), witness_doubt(prior, c_player))
 			var k_r: String = "%s:%d" % [r_id, r_day]
 			out[k_r] = maxf(float(out.get(k_r, 0.0)), w_doubt)
 	return out
