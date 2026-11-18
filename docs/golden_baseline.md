@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
+### Current baseline (Nov 18, eleven hint families): `baseline_1dd16d5`
+
+`tools/golden/baseline_1dd16d5/` is the capture from `claude/hint-families` at `1dd16d5`
+(main `92a247a` merged in): eleven hint families with deliberate overlaps, and a gift in
+several families hints from the one with the most gifts on the script (`C.hint_package`).
+- **Divergence from `baseline_45b7506`:** only which family a hint names, its wording and
+  its role list. 692 from record 1 (Nisha hears a Medium's hint as night sight, not the
+  dead) and 900 from record 5 (Kiran hears a Psychologist's hint as light against the
+  dark, not reading people). With `--ignore engine,package,roles,text,reply,lines,statement`
+  every seed is identical: no belief, vote or execution changes.
+- **Outcomes:** all five unchanged; the end records are identical.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`
 
 `tools/golden/baseline_45b7506/` is the capture from `claude/poison-self-doubt` (#232) at
 `45b7506` (main `f947be6` merged in): with a Poisoner possible, each of a good listener's own

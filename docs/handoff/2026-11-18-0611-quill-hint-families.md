@@ -2,7 +2,7 @@
 
 - **Agent:** Claude-Quill
 - **Base:** origin/main at the branch point of `claude/hint-families`
-- **Status:** PR open; golden re-baselined to `baseline_ff5a811`.
+- **Status:** PR open; golden re-baselined to `baseline_1dd16d5`.
 - **Next actor:** Bailiff (golden-moving: merge one at a time). Herald follows up with
   voice lines for the new families.
 - **Decision:** Michael, Nov 18, via Seneschal. All eleven families stay, with first-pick
