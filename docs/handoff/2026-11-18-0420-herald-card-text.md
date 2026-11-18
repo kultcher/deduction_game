@@ -12,8 +12,7 @@
     - secrets: "Hollis sleepwalks", "Merrin meets Kiran in secret", "Agnes prays at night", "Fenwick smuggles", "Dorian pays a gambling debt".
   - **No more crude cut:** a kind with no short form used to cut at 57 characters with "...". It now hands the full text to the card, which cuts it to fit and ends it in "…".
 - **BACKLOG:** "Case board visuals" moves to `BACKLOG_COMPLETED.md`, built as #250 plus this PR.
-  - **The card-text item:** #253 adds it to BACKLOG. Whichever of #253 and this PR merges second closes that item too.
-  - **Merge note:** #253 inserts that item right after "Case board visuals", which this PR removes, so the second to merge resolves one small BACKLOG conflict by keeping the new item.
+  - **The card-text item** (added by #253) stays open, updated: built for the case board here; the Workshop canvas cards and a pass over the gift readings' short forms remain.
 
 ## Small calls made on Michael's behalf
 
