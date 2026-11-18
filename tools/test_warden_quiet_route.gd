@@ -14,7 +14,6 @@ const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
-const Caches = preload("res://workshop/caches.gd")
 
 var _checks: int = 0
 var _fails: int = 0
@@ -143,15 +142,18 @@ func _juror() -> void:
 	model.connect_cards(seen_id, premise)
 	var without = Live.test_juror(g, model.compile(premise))
 	model.connect_cards(guard_id, premise)
-	# The switch first: the judge caches by case, not by the diagnostic switch.
+	var with_guard = Live.test_juror(g, model.compile(premise))
+	# The compiled-case and factor keys carry the switch, so no cache needs clearing.
 	LiveActivity.quiet_guards_enabled = false
 	var off = Live.test_juror(g, model.compile(premise))
 	LiveActivity.quiet_guards_enabled = true
-	Caches.clear_all()
-	var with_guard = Live.test_juror(g, model.compile(premise))
 	_check(with_guard.get("ready", false), "a case citing the guard can be judged (%s)" % str(with_guard.get("issues", [])))
 	_check(with_guard.get("lr", 1.0) > without.get("lr", 1.0) * 1.05, "seen near the guarded door weighs more with the Warden's save (%.2f -> %.2f)" % [without.get("lr", 1.0), with_guard.get("lr", 1.0)])
 	_check(off.get("lr", 1.0) < with_guard.get("lr", 1.0), "and the rise is the guard's route (%.2f with the switch off)" % off.get("lr", 1.0))
+	var gr: Array = with_guard.get("guards", [])
+	_check(gr.size() == 1 and gr[0].warden == warden.id and gr[0].guarded == target.id and gr[0].night == 1 and gr[0].report != "" and float(gr[0].shift) > 0.0,
+		"the juror names the guard as a reason: Warden, guarded, night, card (%s)" % str(gr))
+	_check(not without.has("guards"), "and doesn't without the Warden's report")
 
 
 func _node(model, view, pick: Callable) -> String:

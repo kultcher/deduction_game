@@ -563,34 +563,41 @@ const QUIET_GUARD_MAX = 3
 ## turned the Demon instead (1 / (1 + Veteran claims), as the Warden's own belief). The
 ## kernel mixes the Demon's profile over which guards held (GuardedDemon). Returns
 ## {"items": [{source, target, night, r}], "alt": [the demon profile per subset]}, or {}.
-static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed: Dictionary, stride: int) -> Dictionary:
-	var events: Array = view.get("timeline", {}).get("events", [])
+## The guards in a card list that the route reads, as ids: {report (card id), source,
+## target, night, saved, r}.
+static func quiet_guard_cards(view: Dictionary, cards: Array) -> Array:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var d_map: Dictionary = view.get("timeline", {}).get("deaths", {})
 	var busy: Dictionary = {}
-	for ev in events:
+	for ev in view.get("timeline", {}).get("events", []):
 		if ev.get("kind", "") in ["demon_death", "demon_attack"]:
 			busy[int(ev.get("at", {}).get("day", -1))] = true
-	var deaths: PackedInt32Array = env.deaths
 	var vets: Array = []
 	for card in cards:
 		if card.get("kind", "") in ["claim", "report"] and str(card.get("role", "")) == "veteran" and not card.get("quoted", false) and str(card.get("source", "")) in ids and str(card.source) not in vets:
 			vets.append(str(card.source))
-	var items: Array = []
+	var out: Array = []
 	var seen: Dictionary = {}
 	for card in cards:
 		if card.get("kind", "") != "report" or str(card.get("role", "")) != "warden" or card.get("quoted", false) or card.has("relay_source") or card.get("duty_only", false):
 			continue
 		var night: int = int(card.get("night", -1))
-		var s_idx: int = ids.find(str(card.get("source", "")))
+		var src: String = str(card.get("source", ""))
 		var data = card.get("data", {})
-		var t_idx: int = ids.find(str(data.get("target", ""))) if data is Dictionary else -1
-		if night < 1 or s_idx < 0 or t_idx < 0 or s_idx == t_idx or busy.has(night) or night >= deaths[s_idx] or night >= deaths[t_idx]:
+		var tgt: String = str(data.get("target", "")) if data is Dictionary else ""
+		if night < 1 or src not in ids or tgt not in ids or src == tgt or busy.has(night) or night >= int(d_map.get(src, 2147483647)) or night >= int(d_map.get(tgt, 2147483647)):
 			continue
-		var key: String = "%d:%d" % [s_idx, night]
+		var key: String = "%s:%d" % [src, night]
 		if seen.has(key):
 			continue
 		seen[key] = true
-		var others: int = vets.filter(func(v): return v != ids[s_idx] and night < deaths[ids.find(v)]).size()
-		items.append({"source": s_idx, "target": t_idx, "night": night, "r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others)})
+		var others: int = vets.filter(func(v): return v != src and night < int(d_map.get(v, 2147483647))).size()
+		out.append({"report": str(card.get("id", "")), "source": src, "target": tgt, "night": night, "saved": bool(data.get("saved", false)),
+			"r": Tuning.Roles.WARDEN_SAVE_RELIABILITY / (1.0 + others)})
+	return out
+
+static func _quiet_guards(view: Dictionary, ids: Array, env: Dictionary, cards: Array, packed: Dictionary, stride: int) -> Dictionary:
+	var items: Array = quiet_guard_cards(view, cards).map(func(g): return {"source": ids.find(g.source), "target": ids.find(g.target), "night": g.night, "r": g.r})
 	if items.is_empty():
 		return {}
 	items.sort_custom(func(x, y): return x.night > y.night or (x.night == y.night and x.source < y.source))

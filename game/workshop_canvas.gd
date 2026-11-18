@@ -234,6 +234,7 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	result["ready"] = true
 	result["issues"] = []
 	feedback(prepared.view, judged, ev, result)
+	guard_reasons(prepared.view, judged, ev, result)
 	var aside: Array = juror.get("set_aside", [])
 	if not aside.is_empty():
 		var note: String = "Judged as if your challenge holds: %s set aside." % ("1 reading" if aside.size() == 1 else "%d readings" % aside.size())
@@ -649,6 +650,42 @@ static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, re
 		if float(mine.get("posterior", 0.0)) - float(mine.get("prior", 0.0)) > 0.05:
 			result["against"] = target
 			result["raises_text"] = "These cards make %s look more suspicious, not less." % Solver.person_name(view, target)
+
+## A Warden's guard on a quiet night that the case cites (LiveActivity.quiet_guard_cards):
+## where it moved the subject by at least a reason's weight (REASON_MIN_ITEM_CONTRIB),
+## result["guards"] lists {warden, guarded, night, saved, report (card id), quiet (the
+## night's quiet card id, or ""), shift (the subject's chance with the route, less without)}.
+## Judged once more with the guards switched off (LiveActivity.quiet_guards_enabled, which
+## the compiled-case and factor cache keys carry). Only when the case cites such a guard.
+static func guard_reasons(view: Dictionary, case_data: Dictionary, ev: Dictionary, result: Dictionary) -> void:
+	var Solver = preload("res://workshop/solver.gd")
+	var LiveActivity = preload("res://workshop/live_activity.gd")
+	var Tuning = preload("res://sim/tuning.gd")
+	var target: String = case_data.conclusion.get("target", "")
+	if target == "" or ev.get("impossible", false) or not ev.has("people") or not ev.people.has(target):
+		return
+	var guards: Array = LiveActivity.quiet_guard_cards(view, Solver.selected(view, case_data))
+	if guards.is_empty():
+		return
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var was: bool = LiveActivity.quiet_guards_enabled
+	LiveActivity.quiet_guards_enabled = false
+	var ev_off: Dictionary = CaseEval.evaluate(view, case_data)
+	LiveActivity.quiet_guards_enabled = was
+	if ev_off.get("impossible", false) or not ev_off.get("people", {}).has(target):
+		return
+	var shift: float = float(ev.people[target].posterior) - float(ev_off.people[target].posterior)
+	if absf(shift) < Tuning.Workshop.REASON_MIN_ITEM_CONTRIB:
+		return
+	var out: Array = []
+	for g in guards:
+		var quiet: String = ""
+		for card in view.cards:
+			if card.get("kind", "") == "quiet" and int(card.get("night", -1)) == int(g.night):
+				quiet = str(card.get("id", ""))
+				break
+		out.append({"warden": g.source, "guarded": g.target, "night": g.night, "saved": g.saved, "report": g.report, "quiet": quiet, "shift": shift})
+	result["guards"] = out
 
 ## "Connections" (Find Links, rebuilt on the shared model): board cards not yet in this
 ## case that bear on its premise, ranked by how far each would move the test juror, up
