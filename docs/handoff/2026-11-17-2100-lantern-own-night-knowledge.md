@@ -46,3 +46,7 @@
   `test_relay_bluff` (80, all pass). `test_own_night_knowledge` isn't added to the fast list:
   it takes a couple of minutes, mostly seed search, like `test_self_sighting`.
 - **Docs:** `docs/belief_model.md`, "A listener's own nights at home".
+- **Re-baselined on its turn (Nov 18):** main `65a41b4` merged in; golden `baseline_44073d9`
+  (two captures identical); beliefs diverge on all five seeds, outcomes unchanged. Fast list
+  plus `test_own_night_knowledge`, `test_self_sighting` and `test_relay_bluff`: 87, all pass.
+  Codex reviewed clean (Nov 18, 00:17).
