@@ -514,23 +514,40 @@ challenge counts as testimony that the reading was poisoned, not a lie.
 
 - **The pass** (`SourceDoubt.derive`): for each "failed gift" challenge in one of the player's
   presented cases, on someone else's reading, the listener sets an honest doubt on that
-  reader's night. It's one witness as accurate as the listener's trust in the player (c),
-  against the chance that reader was poisoned that night (π, Quill's
-  `ReadingChallenges.poison_chance` with the reader, so an unexplained outing near the
-  reader's home raises it): π·c / (π·c + (1 − π)(1 − c)). No new constant.
-- **Bounds:** zero with no Poisoner on the script; it never lowers a doubt (a max); a relayed
-  reading's transmission is the Medium's, keyed as the relay's reliability is. A listener
-  doesn't otherwise apply a poison chance to another person's reading, so at even trust the
-  call weighs poison at its plain chance, and more trust raises it.
+  reader's night.
+- **How strong (Michael, Nov 18, after the first build was too weak at default trust):** the
+  player is the expert, so the listener takes the call at its credibility in the player (c).
+  - The doubt runs in a straight line from `FAILED_GIFT_DOUBT_LOW` (0.2) at the lowest
+    credibility (`CRED_MIN`, 0.1) to `FAILED_GIFT_DOUBT_HIGH` (0.8) at the highest (`CRED_MAX`,
+    0.9). That's 0.5 at the starting credibility (`SourceDoubt.call_doubt`).
+  - Quill's refinement: the doubt is never less than the earlier one-witness weighing,
+    π·c / (π·c + (1 − π)(1 − c)), where π is the chance the reader was poisoned that night
+    (`ReadingChallenges.poison_chance` with the reader). So an unexplained outing near the
+    reader's home still strengthens a call.
+  - Target: one call removes about a fifth, half and four-fifths of what the reading costs its
+    reader at low, default and high trust.
+- **Bounds:**
+  - It counts only where π isn't zero: a Poisoner possible on the script, alive that night,
+    and the Demon not alone.
+  - It never lowers a doubt (a max).
+  - A relayed reading's transmission is the Medium's, keyed as the relay's reliability is.
 - **Nothing spreads on purpose:** honest doubt mixes the reading as genuine or broken, so what
   it held up moves to whoever the rest of the evidence favours.
 - **The cost of being wrong** is the track record only: the call records "R is good" (Quill,
-  #252).
-- **Measured** (`tools/test_player_failed_gift.gd`, seed 692, 7 NPCs, a good Archivist's
-  night-0 reading naming two good people, poison chance 5%): the reader's chance of being evil
-  with the call weighed against without it, 43% → 42% at even trust, 42% → 40% at trust 0.7,
-  42% → 35% at 0.9. One call moves a listener a few points, more for one who trusts the player
-  highly. Quill's 10-seed before/after with a clashing reading follows once this is on main.
+  #252). Dawn's check (`Credibility._agreement`) rebuilds the listener's view without the
+  player's ledger entries, so the call can't vouch for itself at any strength.
+- **Measured** (`tools/test_player_failed_gift.gd`: seed 692, 7 NPCs, a good Archivist's
+  night-0 reading naming two good people, π = 5%). The reader's chance of being evil without
+  → with the call; fully doubting the reading would remove 6.5–7.5 points here.
+
+  | Trust | Doubt | Without → with | Share of the reading's cost removed |
+  |---|---|---|---|
+  | 0.1 | 0.2 | 0.348 → 0.325 | 31% |
+  | 0.5 | 0.5 | 0.343 → 0.297 | 66% |
+  | 0.9 | 0.8 | 0.338 → 0.280 | 89% |
+
+  The first build (one witness only) gave 0.343 → 0.336 at 0.5. Quill's 10 seeds, where the
+  reading costs less, follow.
 
 ### Premise centring, option B (Lantern, Nov 18)
 
