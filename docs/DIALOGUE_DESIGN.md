@@ -304,6 +304,17 @@ The NPC's existing evaluator selects agreement/partial/rejection, cited support,
 
 For nominations, the decision is already made. Voice can affect ceremony and force (“I put forward X” vs “Put X to a vote”), not who is nominated or why. Silence and lack of speech must remain meaningful: do not create dialogue for a silenced NPC or fabricate speech from silent evaluation. The current prototype leaves voting silent pending separate meeting-flow work; do not present new vote dialogue as already integrated.
 
+### 7.6 Board and card text (standing rule, Michael, Nov 18)
+
+Card and board text uses the fewest words that carry the fact. Keep trimming as cards are touched.
+
+- **Drop what the board already shows.** The column gives the time; the row gives who it's about; tabs show "private", "in confidence" and "context"; the gutter icons show the kind and the gift. So the normal-zoom card reads "Kiran accused Greta", not "Kiran publicly accused Greta on the second day".
+- **Name, verb, object.** "Merrin: home, the Market"; "Edda killed, the Market"; "Isolde vouches for Merrin". There's no "says that" or "I learned that" on a card face.
+- **Full text at the detail zoom.** The card's full sentence shows only when the player zooms in to read, and in the hover tooltip, so nothing is lost.
+- **Cut text ends in "…"** rather than being clipped mid-word.
+
+The short forms live in `CardModel.short_text` (`game/card_model.gd`) and in each role's `short_text` for gift readings.
+
 ## 8. Serious mode and verbal defenses
 
 A defense mechanism is a habitual *style of handling discomfort*, not a guilt signal:

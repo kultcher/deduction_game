@@ -185,5 +185,36 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 				return "Town Hall: %s or %s" % [C.role_name(th_rs[0]), C.role_name(th_rs[1])]
 		"vote":
 			return "Vote on %s: %d for (%s)" % [nm.call(card.get("nominee", "")), card.get("yes", []).size(), card.get("outcome", "")]
+		# Board-card wording (Michael, Nov 18): the fewest words that carry the fact. The
+		# card's column already says when, so these leave the time out.
+		"accusation":
+			return "%s accused %s" % [src, _subjects(card, nm)]
+		"opinion":
+			return "%s %s %s" % [src, "vouches for" if str(card.get("text", "")).contains("vouches") else ("speaks up for" if card.get("stance", "for") == "for" else "speaks against"), _subjects(card, nm)]
+		"alibi":
+			if card.has("block"):
+				return "%s: home, %s" % [src, C.block_name(card.block)]
+		"sighting":
+			if card.has("loc"):
+				return "%s %sat %s" % [_subjects(card, nm), "working " if card.get("work_sighting", false) else "", C.loc_name(card.loc)]
+		"conversation":
+			if card.has("loc"):
+				return "%s talking at %s" % [_subjects(card, nm), C.loc_name(card.loc)]
+		"death":
+			return "%s killed%s" % [_subjects(card, nm), (", %s" % C.block_name(card.block)) if card.has("block") else ""]
+		"execution":
+			return "%s executed" % _subjects(card, nm)
+		"quiet":
+			return "Nobody died"
 	var t: String = card.get("text", "")
 	return t if t.length() <= 60 else t.substr(0, 57) + "..."
+
+## A card's subjects by name: "Greta", "Merrin and Isolde".
+static func _subjects(card: Dictionary, nm: Callable) -> String:
+	var subs = card.get("subject", [])
+	if subs is String:
+		return nm.call(subs)
+	var named: Array = subs.map(func(x): return nm.call(x))
+	if named.size() == 2:
+		return "%s and %s" % named
+	return ", ".join(PackedStringArray(named))
