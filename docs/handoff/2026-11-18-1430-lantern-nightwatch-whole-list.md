@@ -70,6 +70,11 @@
     words as often as an honest one would, from what an outsider could know (the sighting
     contests' balance). No new number.
   - Hand-built watcher: 0.51 before this fix, 0.44 after.
+- **Codex on #273, third review (fixed in `1ba5bfa`):**
+  - A list told while the curse could have converted its watcher now takes the evil-teller path
+    in the world where the watcher is the converted person, as the sighting contest does.
+  - Golden is identical to `baseline_2a2feab`: no golden seed has such a list.
+  - Fast list 116/116, `test_relay_bluff` 4/4.
 - **Speed:** whole golden capture, one machine, main `0670d55` and this branch alternating, two
   runs each.
 
@@ -79,7 +84,8 @@
   | 2 | 239 s | 246 s |
 
   - That's about 2–3% slower.
-  - Bailiff measured 211 s against 149–158 s from main runs earlier in the day, which is 35–40%.
-    The two figures disagree, and that difference isn't explained yet.
+  - Bailiff, back to back on his machine: main 201 s against 218 s on `e9aaac6` (about 8%), and
+    225 s on `7cb4c83`, which adds the outsider profiles (about 12%, one run). His first figure
+    (35–40%) compared against an older main.
   - Argon should look either way.
 - **Proposed for the backlog:** none.
