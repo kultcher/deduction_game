@@ -80,13 +80,9 @@ These are the ones under discussion now, roughly by how much they shape other wo
   purge pushes it.
 - **Builds:** Lantern.
 
-### 1.5 Spillover damping `[tentative]`
-- **Open:** whether a presented premise should shape its own cards' effect again (the
-  premise's target takes the full effect, bystanders 40–80% by Insight). Under connections a
-  case moves bystanders only through its own cards. Revisit if presentations move
-  bystanders too far in play; it would tie into 1.3 if Insight comes back.
-- **Evidence:** BACKLOG section 6 (#174); `docs/premises_plan.md` step 1.
-- **Builds:** Lantern.
+### 1.5 ~~Spillover damping~~ Settled (Nov 18)
+- **Michael (Nov 18):** closed; premise centring B at a share of 1/3 largely rebuilds it for
+  the connections model (`docs/design/premise_centring.md`). In BACKLOG_COMPLETED.md.
 
 ### 1.6 ~~Are unlimited vigils too strong?~~ Decided (Nov 17)
 - **Michael (Nov 17):** the vigil watches who *leaves* a block, not who arrives; no sweep
@@ -120,8 +116,9 @@ These are the ones under discussion now, roughly by how much they shape other wo
 ### 1.9 Smaller live calls
 | Question | Where | Builds |
 |---|---|---|
-| Centring a case on its premise: which of options A, B, C (Vicar recommends B, pending a misframed-case test), the share, and whether doubt in a contradiction moves onto the subject | `docs/design/premise_centring.md`; BACKLOG section 2 `[decided]`, option to choose | Lantern |
+| ~~Centring a case on its premise~~ Decided Nov 18: B at a bystander share of 1/3; no extra trust cost for a misframed case; the night-0 sighting lift goes to Lantern as a probable bug. | `docs/design/premise_centring.md`; BACKLOG section 2 `[decided]` | Lantern |
 | Honest mistakes against lies in challenges: "misled" lands 3–12% on honest mistakes, and to a listener the cards are the same. Pursue evidence that separates them (teller's history, signs of poisoning)? | BACKLOG section 6 `[open; Michael]` | Quill |
+| ~~"Poisoned, not lying"~~ Decided Nov 18: option C (the night-outing evidence link, and the player's call as testimony at credibility, costed through the track record) | `docs/design/poisoned_not_lying.md`; BACKLOG section 2 `[decided]` | Quill, Lantern |
 | Purge phase 6b: the four places attention still feeds belief on a refresh. Measured first, then Michael decides | `docs/connections_purge_plan.md` (#174) | Lantern |
 | The Hexer: the declaration's default ("walker"?) and the bot's Hexer call (54% right). On hold until Michael plays two-kind scripts | BACKLOG section 4; Bailiff's final handoff | Quill (bot), Herald (UI) |
 | Is the 10-NPC connections gain real? +5.7 on 300 seeds (z +1.9); a 1,000-seed cell would settle it | Bailiff's final handoff | Tally |
@@ -135,8 +132,7 @@ These are the ones under discussion now, roughly by how much they shape other wo
 Older open items, grouped. One line each; the BACKLOG entry has the detail.
 
 ### Evidence, cases and the judge (Quill unless noted)
-- **Say what a card is offered for** ("about Constance's alibi"), so a sighting's collateral
-  doesn't land on everyone it places. Changes how evidence counts.
+- ~~**Say what a card is offered for**~~ Settled Nov 18: covered by premise centring B.
 - **Withdraw or revise a case** believably, without scoring below the version it replaces.
   Pairs with signposting the way back from a wrong "lying" call (`[decided: test later;
   signposting open]`). Herald for the UI.
@@ -146,7 +142,7 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
   versus the dead source; nested relays. Beadle for the social side.
 - **The sighter contest cap** and **an evil Medium's night-0 relay**: known bugs in the judge
   that move golden, waiting on a call (BACKLOG section 6). Lantern.
-- **Trace weight** (3:1 against 1.5:1 and 2:1); **the Seer's rise looks small**;
+- ~~**Trace weight**~~ (settled Nov 18: keep 3:1, Tally's #212); **the Seer's rise looks small** (later: a role-tuning pass, Nov 18);
   **situational credence modifiers** (early disclosure, a quiet night, admission against
   interest, consistency). Tally to measure, Lantern to build.
 - **Demon detours** exist in inference but not in movement: which is authoritative?
@@ -157,19 +153,20 @@ Older open items, grouped. One line each; the BACKLOG entry has the detail.
   let one speaker voice unease without pressure. `[open; Michael to decide]`
 - **Kill-score pass on every role** (whom the Demon targets).
 - **The Gravedigger in a reluctant town** pushing for a hanging.
-- **Lovers as an excuse** (evil faking a Lovers confession; the solver's proof must go if so,
-  Quill).
-- **Good NPCs lie tactically** (stretch). **Lie severity.**
-- **NPC-to-NPC credibility** (liking versus believing). Lantern for the belief side.
+- **Lovers as an excuse**: folded into the secrets rework (Nov 18).
+- **Good NPCs lie tactically**, reframed Nov 18: may a good NPC lie about their role (a Veteran
+  falsely claiming to draw the attack)? **Lie severity.**
+- ~~**NPC-to-NPC credibility**~~ Tabled Nov 18: NPC relationships are already hard to read.
 - **Throw a teammate under the bus**; **evil coordination you can see**; **trust dynamics
   around sources** (naming a source; evil tracing one).
-- **Storyteller-driven Medium visits.**
+- **Storyteller-driven Medium visits**: folded into the Storyteller/director item (Nov 18).
 
 ### World, evidence types and structure
-- **Locations as evidence, from both sides**; **passing through versus stopping**;
-  **evidence chains**; **the demon lures a victim elsewhere**. Quill (evidence), Beadle
+- **Passing through versus stopping**; **the demon lures a victim elsewhere**. (Locations as
+  evidence: closed Nov 18. Evidence chains: tabled Nov 18.) Quill (evidence), Beadle
   (movement).
-- **Ways to discover and confront secrets**; **named corroborators in alibis**. Beadle,
+- **Ways to discover and confront secrets**: folded into the secrets rework (Nov 18; named
+  corroborators tabled). Beadle,
   Quill.
 - **Role hints from workplaces and haunts.** Quill.
 - **Relationships** (Bonded, Unrequited, Feuding, Hater). Beadle, Lantern.
