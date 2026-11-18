@@ -243,6 +243,33 @@ compile; a Night Watch list that wrongly names the listener clearing the rest of
 
 ### NPC behaviour
 
+- **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
+  The "it's the other one" defence (`pair_other`, `sim/mind_meeting.gd`) answers only
+  readings that name a two-person pair. Against a reading over a group (a Surveyor's
+  block, a Dowser's count), the nominee falls through to "my gift was turned" or
+  "misled". In 89077, Chapel Hill held only Hollis and Dorian, so Hollis's Surveyor case
+  was really a pair. The fix is a general defence for any group reading: "it's one of
+  the others in it", naming them where the group is small. Michael (Nov 17): approved.
+  Owner Beadle; Herald for the lines. [decided]
+- **Saying "my gift may have been turned".** (Michael, Nov 17) Owner Beadle; Herald for the
+  wording (the per-voice `doubt_own_gift` lines are approved). Both parts use the same
+  line, so the player can't tell them apart by wording.
+  - (a) A good NPC that holds significant doubt about its own readings says so in that
+    pass's dialogue. The doubt comes from the poison self-doubt (Lantern and Quill, being
+    built) or the Delusional self-doubt (#216). Michael's draft: "Something seems off
+    about those readings, I fear something might have turned my gift." This part waits
+    for the poison self-doubt signal.
+  - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
+    the fabrication check detects), uses the same line to explain the discrepancy. It
+    claims its gift was turned, rather than lying further or going silent.
+  - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
+    it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
+    far as they believe the line, rather than going through the challenge path, where a
+    claim with nothing cited does nothing (Quill and Lantern, Nov 17). Said only when a
+    Poisoner or Delusional could be in play. "Significant" should reuse the existing
+    doubt numbers if it can; a new constant goes to Michael.
+  - [decided]
+
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
   (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
   It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
@@ -526,19 +553,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Hide the dialogue options while the map is open in a conversation.** (Michael, Nov 17)
-  While the player is in a conversation but looking at the map, the conversation's options
-  are hidden; they return to the conversation view to carry on. Herald. [decided]
-
-- **A way back from the map.** (Michael, Nov 17) On the map during a conversation or a
-  meeting, a button at the top right of the map view: "Return to conversation" or "Return
-  to meeting" (Michael's wording). Herald. [decided]
-
-- **Workshop: left-drag pans again.** (Michael, Nov 17) Left-click and drag on empty space
-  pans the view, and shift+left-click and drag draws a selection box. Today left-drag on
-  empty space draws the box and the middle or right button pans; the canvas hint already
-  says "drag empty space to pan". Herald. [decided]
-
 - **Case board visuals.** (user, Oct 26) Board cards are crowded: text runs into the
   "heard" line, type and source icons stack in one corner, the context tag sits on the
   edge. Rework card sizing, text fitting and badge placement (a badge strip or corner
@@ -550,6 +564,12 @@ Candidates for a unified retuning proposal, not approved changes.
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
+
+- **Show carried answers when a case is filed.** (playtest 23973, Coroner's note 1) An
+  answer the player picks on a card (a Dowser card's "which of them is evil") stays on the
+  card for the next case, and is easy to miss: Bart's reply to case #78 clashed with what he
+  knew because of an answer carried over from case #38. The Workshop could list the answers
+  a new case carries when it's filed. Herald. [open]
 
 ### Performance
 

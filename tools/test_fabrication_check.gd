@@ -7,6 +7,7 @@ const Game = preload("res://game/game.gd")
 const FabricationCheck = preload("res://sim/fabrication_check.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
+const FixtureSeeds = preload("res://tools/fixture_seeds.gd")
 
 var checks = 0
 var fails = 0
@@ -26,6 +27,10 @@ func _init() -> void:
 	_better_lie()
 	_held_day_reading_keeps_phase()
 	_rework_can_ask_again()
+	_impossible_record_doesnt_block()
+	_reworked_reason_keeps_motive()
+	_reveal_lists_what_was_told()
+	_motives_use_names()
 	print("Fabrication check: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -164,3 +169,75 @@ func _held_day_reading_keeps_phase() -> void:
 	var night_e: Dictionary = {"role": "magistrate", "day": 2, "data": {"nominator": s.greta.id, "nominee": s.lian.id, "same": true}, "text": "probe"}
 	for a in Evil._alternatives(w, s.liar, C.role_def("magistrate"), w.evil_plan, s.liar, night_e, false).call():
 		_check(not a.entry.has("phase"), "a night reading's alternative stays a night reading")
+
+## Steward A1 (Nov 17): a public record that already fits no world says nothing about the
+## new lie, so it can't be judged and goes out; only a lie that itself can't stand beside
+## the record counts as the largest lift on the teller.
+func _impossible_record_doesnt_block() -> void:
+	var team: Array = ["e1", "e2"]
+	_check(FabricationCheck.lift_of({}, {"e1": 0.9}, team, "e1").is_empty(), "an impossible record before the lie: can't judge")
+	_check(FabricationCheck.lift_of({}, {}, team, "e1").is_empty(), "impossible before and after: still can't judge")
+	var imp: Dictionary = FabricationCheck.lift_of({"e1": 0.2, "e2": 0.3}, {}, team, "e1")
+	_check(imp.get("impossible", false) and float(imp.lift) == 1.0 and imp.who == "e1", "a lie that itself breaks the record is the largest lift on the teller")
+	var ok: Dictionary = FabricationCheck.lift_of({"e1": 0.2, "e2": 0.3}, {"e1": 0.25, "e2": 0.6}, team, "e1")
+	_check(ok.who == "e2" and is_equal_approx(float(ok.lift), 0.3), "otherwise the biggest rise on the team (%s)" % str(ok))
+
+## Steward A2-A3: a reworked reading keeps the motive it was made for, adds why it changed,
+## by name; the alternatives' own reasons (raw ids) don't replace it.
+func _reworked_reason_keeps_motive() -> void:
+	var s: Dictionary = _setup()
+	s.liar.traits["insight"] = 1.0
+	var mag = C.role_def("magistrate")
+	var first: Dictionary = _magistrate(s.greta.id, s.lian.id, true)
+	var got: Dictionary = {}
+	for sd in range(1, 21):
+		s.w.rng.seed = sd
+		var r: Dictionary = FabricationCheck.vet(s.w, s.liar, first.duplicate(true), func():
+			return mag.bluff_alternatives(s.w, s.liar, s.w.evil_plan, "", null, first).map(func(a): return {"entry": a.entry.merged({"role": "magistrate", "day": 2}, true), "why": a.why}), "")
+		if r.outcome == "reworked":
+			got = r
+			break
+	_check(not got.is_empty(), "a reworked case to look at")
+	if got.is_empty():
+		return
+	var note: String = str(got.get("note", ""))
+	_check(s.w.by_id[got.who].name in note and not (got.who in note.replace(s.w.by_id[got.who].name, "")), "the note names who it would have pointed at, by name (%s)" % note)
+	_check("so it told this one instead" in note, "the note says why it was changed (%s)" % note)
+
+## Steward A2: the end-of-game reveal lists the fabrications actually told. In played games,
+## every `fake_info` entry is one of the liar's readings as it went out (not a version held
+## back and later reworked), and none of their reasons carries the alternatives' raw ids.
+func _reveal_lists_what_was_told() -> void:
+	var listed: int = 0
+	var reworked: int = 0
+	for seed_v in range(FixtureSeeds.SEEDS_FROM, FixtureSeeds.SEEDS_FROM + 8):
+		var g = FixtureSeeds.play_to_meeting(seed_v, 4, 7)
+		if g == null:
+			continue
+		for e in g.w.dlog.entries:
+			if e["type"] != "fake_info":
+				continue
+			listed += 1
+			var m = g.w.by_id.get(e["actor"])
+			var text: String = str(e["data"].get("text", ""))
+			_check(m != null and m.info_log.any(func(x): return str(x.get("text", "")) == text), "seed %d: the reveal's '%s' is a reading %s told" % [seed_v, text, e["actor"]])
+			var why: String = str(e["data"].get("why", ""))
+			if "told this one instead" in why:
+				reworked += 1
+			_check(not ("names [" in why or "instead\"" in why), "seed %d: no raw-id reason in the reveal (%s)" % [seed_v, why])
+			var re := RegEx.new()
+			re.compile("\\b[a-z][a-z0-9_]*\\b")
+			var ids_left: Array = re.search_all(why).map(func(m): return m.get_string()).filter(func(t): return g.w.by_id.has(t) and t != g.w.by_id[t].name)
+			_check(ids_left.is_empty(), "seed %d: the motive names people, not ids (%s; ids %s)" % [seed_v, why, str(ids_left)])
+	print("  reveal: %d fabrications listed, %d of them reworked" % [listed, reworked])
+	_check(listed > 0, "some fabrications were told in these games")
+
+## Steward A3: a motive's ids become names, whole words only.
+func _motives_use_names() -> void:
+	var s: Dictionary = _setup()
+	var Evil = load("res://sim/evil.gd")
+	var a = s.goods[2]
+	var b = s.goods[3]
+	var got: String = Evil.named(s.w, "the dead Seer %s 'cleared' the demon %s; names [\"%s\", \"%s\"] instead" % [a.id, b.id, a.id, b.id])
+	_check(got == "the dead Seer %s 'cleared' the demon %s; names [\"%s\", \"%s\"] instead" % [a.name, b.name, a.name, b.name], "ids become names (%s)" % got)
+	_check(Evil.named(s.w, "the dead Seer reported same=true") == "the dead Seer reported same=true", "other words are left alone")

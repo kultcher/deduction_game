@@ -118,7 +118,9 @@ func _run() -> void:
 	buttons[0].pressed.emit()
 	assert(not scene.conversation_view.visible and g.state == "talk")
 	assert(scene.actions.get_children().any(func(c): return c is Button and c.text == "Look at conversation"))
-	assert(scene.actions.get_children().any(func(c): return c is Button and c.text == "Leave"))
+	# The conversation's options wait while the map is up (Michael, Nov 17).
+	assert(not scene.actions.get_children().any(func(c): return c is Button and c.text == "Leave"))
+	assert(scene.map_return.visible and scene.map_return.text == "Return to conversation")
 	scene.actions.get_children().filter(func(c): return c is Button and c.text == "Look at conversation")[0].pressed.emit()
 	assert(scene.conversation_view.visible)
 	scene._run("ask gift")

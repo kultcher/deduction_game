@@ -43,7 +43,7 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
 
 - **Every card counts alone,** at its single-card value, always. Nothing is ever out of view, so nothing can be evicted. Claims, confessed secrets and profile cards are context: they explain other cards without joining sets together.
 - **Built-in pairings:** cards that mean little alone are always read with their partner, for every NPC (a night's movement cards; an Augur reading with that day's sightings; a Psychologist reading with its statements; a trace with profile cards; two or more claims of one gift).
-- **The core:** each NPC weighs its firsthand knowledge together with whatever is worth more next to it than apart (threshold 0.4 at every town size).
+- **The core:** each NPC weighs its firsthand knowledge together with whatever is worth more next to it than apart. The bar follows Insight (Michael, Nov 17): 0.8 for the dullest NPC, 0.1 for the sharpest, in a straight line between, at every town size (it was 0.4 for everyone). See "Insight sets the core's bar" below.
   - The seed is its own readings, the night holding a Night Watch's or Lamplighter's own reports, and a night it was wrongly sighted ("he says he saw me out, and I wasn't").
   - Each candidate is tested against the seed only, so order can't matter and the core can't snowball.
   - Rebuilt at dawn. A newly heard card is tested when it arrives, so an NPC can catch a lie the day it hears it.
@@ -101,6 +101,24 @@ Nov 12 · read against main `9e69144`. Michael answered its four questions as re
 ### The core
 
 As in the design above. Membership is fixed within a day except for newly held cards and a change in the firsthand cards. What the firsthand cards prove alone (within 0.5% of 0 or 1) stays proved, and the others share what is left of the evil count.
+
+#### Insight sets the core's bar (Michael, Nov 17; Option A)
+
+A card or pairing joins when it is worth more next to the seed than apart by at least `Connections.join_bar(listener)`: 0.8 log-odds at Insight 0, 0.1 at Insight 1, in a straight line between (`Workshop.CONNECTIONS_CORE_JOIN_DULL`, `_SHARP`). Insight never connects public cards that don't touch the listener's own knowledge; only the core's bar moves. The judge doesn't read Insight, so it stays out of the judge's cache keys.
+
+Measured before the build (mock branch, 10-NPC towns, seeds 1-10, 10 passive and 10 bot games a setting, each NPC's last belief of each day):
+
+| Bar | Cards linked (passive) | Days with a link |
+|---|---|---|
+| 0.8 for everyone | 0.3 | 1 in 5 |
+| 0.4 for everyone (before) | 0.6 | 3 in 10 |
+| 0.1 for everyone | 1.8 | 1 in 2 |
+| 0.8 → 0.1 by Insight: dull NPCs (under 0.4) | 0.25 | 1 in 4 |
+| 0.8 → 0.1 by Insight: sharp NPCs (0.7 and over) | 1.0 | 2 in 5 |
+
+- **Borderline links:** at the loose end, about 45% of new links are under 0.25.
+- **Solving early:** no change at any setting. In passive games about 1 good NPC in 17 is fairly sure of the Demon (0.7) by the second day, and about 1 in 80 near-certain (0.9), at every bar.
+- **How well good NPCs pick out evil** doesn't move with the bar on average. A single loose bar lets dull NPCs catch up with sharp ones; the bar by Insight keeps them apart.
 
 ### Stored cases
 
