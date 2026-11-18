@@ -25,6 +25,7 @@ func _init() -> void:
 	_helper()
 	_presented(true)
 	_presented(false)
+	_walking_gift()
 	print("Trapped explanation: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -86,3 +87,21 @@ func _presented(open: bool) -> void:
 		_check(tier >= 2 and lines.size() == 2 and result.get("facts", []).any(func(f): return f.get("kind", "") == "secret"), "an open NPC (tier %d) then explains the night (%d lines)" % [tier, lines.size()])
 	else:
 		_check(tier == 1 and lines.size() == 1, "a closed one (tier %d) leaves it at that (%d lines)" % [tier, lines.size()])
+
+
+## Codex on #261: a good Night Watch, Warden or Lamplighter with no secret, out on its gift,
+## explains the night too (the gift answer, as a direct press would give it).
+func _walking_gift() -> void:
+	var g = _game()
+	var w = g.w
+	var C = preload("res://sim/content.gd")
+	var n = w.living_good()[0]
+	n.role = "nightwatch"
+	n.claimed_role = ""
+	n.claim_public = false
+	n.max_tier = 0
+	n.secret = {}
+	n.secret_mod = ""
+	_out(g, n)
+	var r: Dictionary = MindDialogue.trapped_explanation(w, n, 1)
+	_check(not r.get("lines", []).is_empty(), "a good Night Watch out on its gift explains the night (%s)" % str(r.get("lines", []).map(func(l): return l.get("statement", "") if l is Dictionary else str(l))))

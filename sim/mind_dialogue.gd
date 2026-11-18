@@ -277,6 +277,15 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 		return {}
 	if _honest_outing(w, n, nd) == "reveal":
 		return answer_night(w, n, nd)
+	if _gift_outing(w, n, nd):
+		# Out on gift business (a Night Watch, Warden, Lamplighter...), as a direct press would
+		# answer it: their claimed duty if they're already out with it, else the gift itself
+		# (Codex on #261: only the Sexton reached the reveal branch).
+		if n.claim_public:
+			return answer_night(w, n, nd)
+		if nd not in n.lied_nights:
+			n.lied_nights.append(nd)
+		return answer_gift(w, n, 3)
 	if n.secret.is_empty():
 		return {}
 	var block: String = where.substr(6)
