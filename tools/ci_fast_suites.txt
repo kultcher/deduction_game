@@ -7,6 +7,7 @@ test_ask_night_results
 test_attention_0b
 test_bare_compile
 test_beliefs
+test_bluff_blend
 test_bot_m4
 test_buildings_tavern_town_hall
 test_case_metrics_dead

@@ -166,7 +166,23 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 		return w.by_id[id].name if w.by_id.has(id) else id
 	var data: Dictionary = {}
 	var why: String = ""
-	if mate != null and mate != n and mate.alive and w.chance(0.6):
+	# Michael, Nov 18: a Minion tries to vouch for its Demon; a Demon or Scion tilts toward
+	# blending in, by vouching for a good soul the town already trusts.
+	# Each soul once: the same name night after night would give it away.
+	var Evil = load("res://sim/evil.gd")
+	var vouched: Array = []
+	for e in n.info_log:
+		if e.get("fake", false) and e.get("role", "") == "confessor" and e.get("data", {}).has("target"):
+			vouched.append(str(e["data"]["target"]))
+	var demon = w.by_id.get(w.demon_id)
+	var trusted = Evil.most_trusted_good(w, [n.id, s] + vouched)
+	if not Evil.blends_in(w, n) and demon != null and demon != n and demon.alive and not (demon.id in vouched):
+		data = {"target": demon.id, "good": true}
+		why = "cleared %s, its Demon, as good" % demon.id
+	elif Evil.blends_in(w, n) and trusted != null and w.chance(1.0 - Tuning.Evil.BLUFF_BLEND_PROB):
+		data = {"target": trusted.id, "good": true}
+		why = "vouched for %s, a good soul the town trusts, to pass as an honest Confessor" % trusted.id
+	elif mate != null and mate != n and mate.alive and not (mate.id in vouched):
 		data = {"target": mate.id, "good": true}
 		why = "cleared %s, a fellow evil, as good" % mate.id
 	elif w.chance(0.5):

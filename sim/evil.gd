@@ -154,6 +154,7 @@ static func review_scapegoat(w) -> void:
 ## and public log facts (never peeking at the player's private vigil or unshared Good info).
 static func plan_daily_frame(w) -> void:
 	ensure_scapegoat(w)
+	blend_clerk_readings(w)
 	var plan: Dictionary = w.evil_plan
 	plan["daily_planter"] = ""
 	plan["plants_today"] = 0
@@ -225,6 +226,46 @@ static func plan_daily_frame(w) -> void:
 		plan["fake_sightings"]["%s:%d" % [best_m.id, nd]] = best_sight.duplicate(true)
 		w.dlog.think(best_m.id, "evil_plan", "Daily planter %s prepares night-%d %s frame on scapegoat %s (%s)." % [
 			best_m.id, nd, best_sight["how"], sg_id, C.block_name(best_sight["block"])], best_sight.duplicate(true))
+
+## A Scion or Demon bluffing Clerk that chose to blend in (Clerk.generate_bluff_reading):
+## each morning, while its made-up Clerk reading is still untold, it turns the reading into
+## a "confirmation" of the earliest good townsperson's public claim. Nothing waits on it: a
+## reading already told stays the cover it was.
+static func blend_clerk_readings(w) -> void:
+	for m in w.evil_team():
+		if not m.alive or not bool(w.evil_plan.get("clerk_blend_" + m.id, false)):
+			continue
+		var e: Dictionary = _own_fake_reading(m, 0, "clerk")
+		if e.is_empty():
+			continue
+		if e.get("shared", false) or m.told_readings > 0 or m.told_to.keys().any(func(k): return str(k).ends_with("|reading:0:clerk")):
+			w.evil_plan.erase("clerk_blend_" + m.id)
+			continue
+		var claimer = null
+		for pc in w.public_claims:
+			var c = w.by_id.get(str(pc.get("who", "")))
+			if c != null and c != m and c.alive and not c.is_evil() and C.ROLES.get(str(pc.get("role", "")), {}).get("align", "") == "good":
+				claimer = c
+				break
+		if claimer == null:
+			continue
+		var others: Array = w.living().filter(func(x): return x != m and x != claimer)
+		if others.is_empty():
+			continue
+		var pair: Array = w.shuffled([claimer.id, w.pick(others).id])
+		var role: String = claimer.claimed_role
+		e["data"] = {"pair": pair, "role": role}
+		e["text"] = "I learned that one of %s is the %s" % [w._names(pair), C.role_name(role)]
+		e["why"] = "evil fabrication: " + named(w, "confirmed %s's early claim to be the %s, to pass as an honest Clerk" % [claimer.id, C.role_name(role)])
+		w.evil_plan.erase("clerk_blend_" + m.id)
+		w.dlog.think(m.id, "lie", "Evil: blends in; its untold Clerk reading now confirms %s's claim to be the %s." % [claimer.name, C.role_name(role)], {"lie": true})
+		# The reveal lists what was told: the night's "prepares" entry becomes the reworked
+		# reading (it was never told as the cover).
+		for le in w.dlog.entries:
+			if le["type"] == "fake_info" and le["actor"] == m.id and str(le["data"].get("role", "")) == "clerk" and int(le["data"].get("day", -1)) == 0:
+				le["data"] = e.duplicate(true)
+				le["reason"] = "%s (evil, bluffing clerk) prepares: %s [%s]" % [m.name, e["text"], str(e["why"]).trim_prefix("evil fabrication: ")]
+		w.dlog.add("fake_info_reworked", m.id, "", e, "%s (evil, bluffing clerk) reworks its untold reading: %s [%s]" % [m.name, e["text"], e["why"]])
 
 ## A fake Medium reading at dd's hearth. Drawn from the same menu a real Medium's
 ## readings fall into, so no single kind of answer gives it away:
@@ -468,6 +509,53 @@ static func caution(w, n) -> float:
 	if n.id == w.demon_id:
 		return maxf(Tuning.Evil.DEMON_CAUTION_FLOOR, C.EVIL_CAUTION_DEMON - Tuning.Evil.DEMON_CAUTION_DRIFT * (w.day - 1))
 	return maxf(C.MINION_CAUTION_FLOOR, C.EVIL_CAUTION_MINION - C.MINION_ID_DRIFT * maxi(0, w.day - 2))
+
+## Whether this liar leans toward blending in (Michael, Nov 18): the Demon and a Scion want to
+## pass as one more honest gift; a Minion leans toward disruption.
+static func blends_in(w, n) -> bool:
+	return n.id == w.demon_id or C.is_demon(n.role) or n.role == "scion"
+
+## Badly exposed: the town's talk, the player's suspicion and the block weigh more on it
+## than its caution (the same test that lets it break cover).
+static func badly_exposed(w, n) -> bool:
+	var parts: Dictionary = exposure(w, n)
+	var total: float = 0.0
+	for k in parts:
+		total += float(parts[k])
+	return total >= caution(w, n)
+
+## The chance this liar blends in on a reading where it could blend or disrupt. A Demon or
+## Scion leans toward blending on its first such reading and toward disruption after; a
+## Minion leans toward disruption unless badly exposed.
+static func blend_chance(w, n, first: bool) -> float:
+	var lean_blend: bool = (first if blends_in(w, n) else badly_exposed(w, n))
+	return 1.0 - Tuning.Evil.BLUFF_BLEND_PROB if lean_blend else Tuning.Evil.BLUFF_BLEND_PROB
+
+## The living good person the town trusts most (least public heat), or null.
+static func most_trusted_good(w, exclude: Array = []):
+	var best = null
+	var best_h: float = 2.0
+	for g in w.shuffled(w.living_good()):
+		if g.id in exclude:
+			continue
+		var h: float = public_heat(w, g)
+		if h < best_h:
+			best_h = h
+			best = g
+	return best
+
+## The living good person under the most public heat (the likeliest to hang), or null.
+static func hottest_good(w, exclude: Array = []):
+	var best = null
+	var best_h: float = -1.0
+	for g in w.shuffled(w.living_good()):
+		if g.id in exclude:
+			continue
+		var h: float = public_heat(w, g)
+		if h > best_h:
+			best_h = h
+			best = g
+	return best
 
 ## True when evil believes the Sexton's bell holds right now: a Sexton told the town of
 ## a toll (`evil_plan.bell_believed`) whose window (that night and the day after) is open.

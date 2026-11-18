@@ -830,6 +830,11 @@ class Evil:
 	# unsure one drifts. Draft numbers.
 	const FRAME_MEMORY_BASE = 0.2
 	const FRAME_MEMORY_TRAITS = 0.7
+	# Blending in versus disruption (Michael, Nov 18, on #264). A liar that leans one way
+	# takes the other this often: a Scion or Demon bluffing Clerk "confirms" an early good
+	# claimer rather than covering a teammate; a Rumormonger names two good townsfolk as
+	# possibly Delusional; a Gravedigger, Executor or Confessor takes its less-favoured choice.
+	const BLUFF_BLEND_PROB = 0.35
 	const CARELESS_BLUFF_INSIGHT_SCALE = 0.5
 	const EVIL_VOTE_TIE_BASE = 0.4
 	## An evil Gravedigger's report on a hanged good person (gravedigger.gd): call them a Minion,

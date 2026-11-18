@@ -66,9 +66,21 @@ func generate_bluff_reading(w, _n, plan: Dictionary, _s: String, _mate, _asked: 
 	var ex = w.by_id[w.executed_today]
 	var role = ""
 	var why = ""
-	if ex.is_evil():
+	# Blending in or disruption (Michael, Nov 18; Evil.blend_chance): blending reads the hanged
+	# as an honest Gravedigger would, a fellow evil's true role or a good soul's own claim;
+	# disruption covers the fellow evil's false claim or frames the good soul as a Minion.
+	var Evil = load("res://sim/evil.gd")
+	var first: bool = not _n.info_log.any(func(e): return e.get("fake", false) and e.get("role", "") == "gravedigger")
+	var blend: bool = w.chance(Evil.blend_chance(w, _n, first))
+	if ex.is_evil() and blend:
+		role = ex.role
+		why = "named their hanged fellow evil %s as the %s, to pass as an honest Gravedigger" % [ex.id, content().role_name(role)]
+	elif ex.is_evil():
 		role = plan["bluffs"][ex.id]
 		why = "covered for their hanged fellow evil as the %s they had claimed" % content().role_name(role)
+	elif blend:
+		role = ex.claimed_role if ex.claimed_role != "" and ex.claimed_role != "none" else w.pick(w.case_script.town)
+		why = "read the hanged %s as the %s, to pass as an honest Gravedigger" % [ex.id, content().role_name(role)]
 	else:
 		# What the town believed of them, from the vote that hanged them (public).
 		var sure: float = town_certainty(w, ex.id)
