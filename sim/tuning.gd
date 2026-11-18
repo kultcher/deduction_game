@@ -1134,6 +1134,12 @@ class Workshop:
 	## effect, from the lowest to the highest Insight. Remembered for every refresh.
 	const PREMISE_SPILLOVER_MIN = 0.4
 	const PREMISE_SPILLOVER_MAX = 0.8
+	## Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a
+	## card adds when only presented cases brought it, and what a stored case's cards add
+	## together, count in full on the case's target and at this share on everyone else. A
+	## listener hearing "X is evil" weighs how far the case proves that, and under-registers
+	## what it implies about the others.
+	const PREMISE_BYSTANDER_SHARE = 1.0 / 3.0
 	## Premise types whose target is an alignment question. Marked, secret, misled and
 	## conflict premises name no alignment target, so their cards spill over in full.
 	const PREMISE_SHAPING_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]

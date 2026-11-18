@@ -44,21 +44,36 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, bluffers blend in or disrupt by evil type): `baseline_b4e4201`
+### Current baseline (Nov 18, premise centring B): `baseline_a3fd022`
 
-`tools/golden/baseline_b4e4201/` is the capture from `claude/beadle-bluff-blend` (#269) at `b4e4201`
-(main `8737e29` merged in): the Rumormonger, Clerk, Martyr, Gravedigger, Executor and Confessor
-bluffs choose by evil type (Michael, Nov 18), with new rolls on the first night.
-- **Divergence from `baseline_45b7506`:** 54875, 692, 900 and 98933 from record 0 (the world's
-  random state after the first night's fabrications). 42 is identical.
+`tools/golden/baseline_a3fd022/` is the capture from `claude/premise-centre-b` (#246) at `a3fd022`
+(main `2430ea5` merged in). An item a case brings is judged against what the listener already
+held of it, so only what it adds by itself is centred on the case's premise. A stored case
+carries every person it argues about.
+- **Divergence from `baseline_1dd16d5`:**
+  - 42 from record 40 (Kiran's refresh on day 2).
+  - 692 from record 30 (Constance's cover on day 1).
+  - 900 from record 126 (Isolde's cover on day 2).
+  - 98933 from record 155 (Merrin's refresh on day 2).
+  - 54875 is identical.
 - **Outcomes:**
-  - **42:** unchanged (good on day 3).
-  - **54875:** was good on day 2 after hanging Constance. Now day 4 with no winner, after
-    hanging Greta on day 2 and Edda on day 3.
-  - **692:** hangs only Constance, on day 3. Merrin is no longer hanged on day 2.
-  - **900:** hangs Lian on day 3, not Constance on day 2.
-  - **98933:** now hangs Dorian on day 2 and Isolde on day 3 (none before).
-  - Every seed but 42 reaches day 4.
+  - The executions and winners are the same on every seed: 42 good on day 3, 54875 good on
+    day 2, and 692, 900 and 98933 reach day 4 with no winner.
+  - On 692, Bart rather than Nisha now nominates Constance for her hanging on day 3.
+  - Record counts are the same except 692 (296, was 277) and 98933 (387, was 386).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, eleven hint families): `baseline_1dd16d5`
+
+`tools/golden/baseline_1dd16d5/` is the capture from `claude/hint-families` at `1dd16d5`
+(main `92a247a` merged in): eleven hint families with deliberate overlaps, and a gift in
+several families hints from the one with the most gifts on the script (`C.hint_package`).
+- **Divergence from `baseline_45b7506`:** only which family a hint names, its wording and
+  its role list. 692 from record 1 (Nisha hears a Medium's hint as night sight, not the
+  dead) and 900 from record 5 (Kiran hears a Psychologist's hint as light against the
+  dark, not reading people). With `--ignore engine,package,roles,text,reply,lines,statement`
+  every seed is identical: no belief, vote or execution changes.
+- **Outcomes:** all five unchanged; the end records are identical.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, "was my reading poisoned?"): `baseline_45b7506`

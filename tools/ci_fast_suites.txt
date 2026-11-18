@@ -44,6 +44,7 @@ test_gravedigger_bluff
 test_haunt_learning
 test_headline
 test_held_signals
+test_hint_families
 test_joint_reasons
 test_juror_claims
 test_lie_severity
@@ -74,6 +75,7 @@ test_playtest_13910_dialogue
 test_playtest_23973
 test_playtest_89077
 test_poison_chance
+test_premise_centring
 test_poison_self_doubt
 test_poison_outing
 test_premise_step1
@@ -115,3 +117,4 @@ test_workshop_reading_challenges
 test_workshop_regressions
 test_workshop_vote_and_alibi
 test_workshop_why
+test_player_failed_gift

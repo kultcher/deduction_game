@@ -52,7 +52,9 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
   - They're re-weighed at every refresh, with no accepted or rejected state.
   - Old cases fade (× 0.5 a day) rather than being pushed out by a cap. Presenting a case again restores its weight, never above full.
   - A case overlapping the core merges with it, so one that clashes with the listener's own readings scores low by itself.
-  - A challenge acts only inside its own case.
+  - A challenge acts only inside its own case. The exception (Michael, Nov 18, option C): the
+    player's "failed gift" call also counts as testimony, an honest doubt on that reading
+    everywhere ("Poisoned, not lying" below).
 - **No per-teller bundles:** evil's stories are generated to cohere, so a bundle doesn't catch a liar.
 - **Combining:** each card counts once; a connection adds only its interaction (joint minus the parts). Then one common shift so P(evil) sums to the evil count ("A for sure, then B or C", never four people at 70% in a two-evil town).
 - **The demon-type declaration** is the player's call alone, at a meeting, at most once a day; single-demon scripts start declared.
@@ -504,6 +506,59 @@ trusted. Built (Nov 18) as the prior only:
 - **With Delusional too** (#216): the two are independent ways an own gift can fail, so a
   night that carries both takes 1 − (1 − poison)(1 − Delusional), as the Night Watch's
   broken chance does (a 5% poison chance and the 10% Delusional doubt give 14.5%).
+
+### "Poisoned, not lying": the player's failed-gift call (Lantern with Quill, Nov 18)
+
+Michael's decision (option C, `docs/design/poisoned_not_lying.md`): the player's "failed gift"
+challenge counts as testimony that the reading was poisoned, not a lie.
+
+- **The pass** (`SourceDoubt.derive`): for each "failed gift" challenge in one of the player's
+  presented cases, on someone else's reading, the listener sets an honest doubt on that
+  reader's night. It's one witness as accurate as the listener's trust in the player (c),
+  against the chance that reader was poisoned that night (π, Quill's
+  `ReadingChallenges.poison_chance` with the reader, so an unexplained outing near the
+  reader's home raises it): π·c / (π·c + (1 − π)(1 − c)). No new constant.
+- **Bounds:** zero with no Poisoner on the script; it never lowers a doubt (a max); a relayed
+  reading's transmission is the Medium's, keyed as the relay's reliability is. A listener
+  doesn't otherwise apply a poison chance to another person's reading, so at even trust the
+  call weighs poison at its plain chance, and more trust raises it.
+- **Nothing spreads on purpose:** honest doubt mixes the reading as genuine or broken, so what
+  it held up moves to whoever the rest of the evidence favours.
+- **The cost of being wrong** is the track record only: the call records "R is good" (Quill,
+  #252).
+- **Measured** (`tools/test_player_failed_gift.gd`, seed 692, 7 NPCs, a good Archivist's
+  night-0 reading naming two good people, poison chance 5%): the reader's chance of being evil
+  with the call weighed against without it, 43% → 42% at even trust, 42% → 40% at trust 0.7,
+  42% → 35% at 0.9. One call moves a listener a few points, more for one who trusts the player
+  highly. Quill's 10-seed before/after with a clashing reading follows once this is on main.
+
+### Premise centring, option B (Lantern, Nov 18)
+
+Michael's goal (Nov 17-18, `docs/design/premise_centring.md`): a listener hearing "X is evil"
+weighs how far the case proves that and under-registers what it implies about the others, so
+the player wins by making the right connections, not by supplying information.
+
+- **What's shaped:** what a card adds when only presented cases brought it, and what a
+  stored case's cards add together. Both count in full on the case's targets (every person it argues about) and at
+  `PREMISE_BYSTANDER_SHARE` (1/3, Michael's split of the measured 0.5 and 0.25) on everyone
+  else (`Connections.refresh` items, `Connections.cases`).
+- **Which cards** (`SharedLedger.brought_by_premise`, step 1's selection): a card is brought
+  while every owner of it is a presented case arguing someone's alignment. Held any other
+  way (the listener's own reading, hearsay, the public record) it isn't; it stays brought
+  after its case fades (the lens stays, Vicar); a withdrawn case owns nothing; a case with no
+  alignment target (Marked, conflict) shapes nothing.
+- **Measured** (`tools/measure_premise_frames.gd`, constructed on seed 692's 7-NPC deal;
+  the person the cards point at starts at 41%; their chance after the case, without B → with
+  B): presented as them, two Dowser readings 51% → 50%, sightings against their alibi
+  69% → 65%, mixed 58% → 56%; misframed as someone named in the cards or someone
+  unconnected, 51% → 43%, 69% → 50%, 58% → 46%. The wrongly named person doesn't rise in any
+  frame. The presenter's trust is unchanged by a misframe (Michael, Nov 18: the case not
+  landing is the cost).
+- **Tests:** `test_premise_centring` (frames, the selection, the lens after fading, every target of a direct presentation, and that the core and stored cases subtract raw item values);
+  `test_premise_step1`'s "a case moves its target more than the people it only mentions" and
+  "the shaping is remembered on a later refresh" still pass with it on.
+  `test_connections_cases`, which checks case arithmetic on chosen numbers, runs with it off
+  (`Connections.premise_centring`).
 
 ## Open items
 

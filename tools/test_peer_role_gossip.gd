@@ -94,7 +94,7 @@ func _good_pair(w, role_pref: Array) -> Array:
 	var picks: Array = []
 	for r in role_pref:
 		picks.append_array(goods.filter(func(n): return n.role == r))
-	picks.append_array(goods.filter(func(n): return C.package_of(n.role) != ""))
+	picks.append_array(goods.filter(func(n): return C.hint_package(w, n.role) != ""))
 	var s = picks[0]
 	var l = goods.filter(func(x): return x != s)[0]
 	return [s, l]
@@ -162,7 +162,7 @@ func _test_hint_only_at_moderate_bond() -> void:
 	var item = _pick_kind(w, s, l, "role_hint")
 	if item != null:
 		Social._deliver(w, s, l, item)
-		_check(not l.known_claims.has(s.id) and l.hearsay.any(func(h): return h["kind"] == "role_hint" and h["package"] == C.package_of(s.role)),
+		_check(not l.known_claims.has(s.id) and l.hearsay.any(func(h): return h["kind"] == "role_hint" and h["package"] == C.hint_package(w, s.role)),
 			"a hint is remembered by family, with no claim on record")
 	s.told_to.erase(l.id + "|role_hint:" + s.id)
 	l.hearsay = []

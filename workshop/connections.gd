@@ -111,6 +111,9 @@ static var held_together_rule: bool = true
 ## Buy-in fading (buy_in_rate). Off, every case keeps CASE_FADE a day (for measuring, and
 ## for arithmetic tests on chosen numbers).
 static var buy_in: bool = true
+## Premise centring, option B (Michael, Nov 18). Off for measuring and for tests that check
+## a case's arithmetic on chosen numbers.
+static var premise_centring: bool = true
 ## Developer capture (off): one record per judgement a refresh makes, for measuring what a
 ## cache would save. {"listener", "section" (baseline, items, core, cases), "key" (the set
 ## judged), "cards", "usec", "result" (a hash of the chances it gave)}. Read-only; the
@@ -127,6 +130,7 @@ const CORE_JOIN_SHARP: float = Tuning.Workshop.CONNECTIONS_CORE_JOIN_SHARP
 ## A stored case keeps CASE_FADE of its weight a day (more if the listener bought it:
 ## buy_in_rate), and stops counting below CASE_FLOOR.
 const CASE_FADE: float = Tuning.Workshop.CONNECTIONS_CASE_FADE
+const PREMISE_SHARE: float = Tuning.Workshop.PREMISE_BYSTANDER_SHARE
 const CASE_FLOOR: float = Tuning.Workshop.CONNECTIONS_CASE_FLOOR
 ## A case the listener bought fades slower: up to CASE_FADE_BOUGHT a day (buy_in_rate).
 const CASE_FADE_BOUGHT: float = Tuning.Workshop.CONNECTIONS_CASE_FADE_BOUGHT
@@ -912,9 +916,25 @@ static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionar
 	var values: Dictionary = {}
 	part = Profiler.open("items")
 	run["section"] = "items"
+	# Premise centring, option B: an item made only of cards presented cases brought counts
+	# in full on those cases' targets and at PREMISE_BYSTANDER_SHARE on everyone else.
+	# `values` keeps the raw value: the core and the stored cases subtract it from joint
+	# judgements, and a centred value there would turn the suppressed part into a false
+	# interaction that the core (in full) or a case would add back (Codex on #246).
+	var brought: Dictionary = core_state.get("brought", {}) if premise_centring else {}
 	for it in item_list:
 		var v: Dictionary = value(run, it)
 		values[it.key] = v
+		if not brought.is_empty() and not v.impossible and not it.ids.is_empty() and it.ids.all(func(id): return brought.has(id)):
+			var aimed: Array = []
+			for id in it.ids:
+				for t in brought[id]:
+					if t not in aimed:
+						aimed.append(t)
+			var centred: Dictionary = {}
+			for p in v.lean:
+				centred[p] = float(v.lean[p]) * (1.0 if p in aimed else PREMISE_SHARE)
+			v = {"lean": centred, "impossible": false}
 		var entry: Dictionary = {"key": it.key, "kind": it.kind, "cards": it.ids, "ctx": it.ctx, "lean": v.lean}
 		if v.impossible:
 			entry["impossible"] = true
@@ -1052,7 +1072,7 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 			continue
 		out.append({"key": str(cs.get("key", "")), "presenter": str(cs.get("presenter", "")), "day": int(cs.get("day", day)), "weight": w, "rate": rate,
 			"keys": keys, "extra": extra, "challenges": cs.get("challenges", {}), "replaces": [], "cited": cs.get("cards", []),
-			"suspicious": bool(cs.get("suspicious", false))})
+			"suspicious": bool(cs.get("suspicious", false)), "target": str(cs.get("target", "")), "targets": case_targets(cs)})
 	# Oldest first, so a later entry is a later case.
 	var kept: Array = []
 	for i in range(out.size()):
@@ -1072,6 +1092,17 @@ static func case_plan(case_list: Array, item_list: Array, listener: Dictionary, 
 		entry.erase("cited")
 	return kept
 
+
+## Every person a stored case argues about: a direct presentation can argue several
+## (premise_targets); an NPC nomination carries only its nominee as "target" (Codex on #246).
+static func case_targets(sc: Dictionary) -> Array:
+	var named: Array = []
+	for t in sc.get("targets", []):
+		if str(t) != "" and str(t) not in named:
+			named.append(str(t))
+	if named.is_empty() and str(sc.get("target", "")) != "":
+		named.append(str(sc.target))
+	return named
 
 ## Every reading some stored case challenges, counted or not: with the model on, those
 ## challenges act through their case alone.
@@ -1293,6 +1324,11 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 			state = step.next
 			for p in added:
 				var x: float = cs.weight * float(added[p])
+				# Premise centring, option B: the case's cards together count in full on its
+				# targets (every person it argues about) and at PREMISE_BYSTANDER_SHARE on
+				# everyone else.
+				if premise_centring and not cs.get("targets", []).is_empty() and p not in cs.targets:
+					x *= PREMISE_SHARE
 				if not is_zero_approx(x):
 					entry.lean[p] = x
 					total[p] = float(total.get(p, 0.0)) + x
