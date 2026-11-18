@@ -44,9 +44,9 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, eleven hint families): `baseline_4211f5b`
+### Current baseline (Nov 18, eleven hint families): `baseline_ff5a811`
 
-`tools/golden/baseline_4211f5b/` is the capture from `claude/hint-families` at `4211f5b`
+`tools/golden/baseline_ff5a811/` is the capture from `claude/hint-families` at `ff5a811`
 (main merged in): eleven hint families with deliberate overlaps, and a gift in several
 families hints from the one with the most gifts on the script (`C.hint_package`).
 - **Divergence from `baseline_490cdcf`:** only which family a hint names, and its wording

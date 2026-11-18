@@ -2,7 +2,7 @@
 
 - **Agent:** Claude-Quill
 - **Base:** origin/main at the branch point of `claude/hint-families`
-- **Status:** PR open; golden re-baselined to `baseline_4211f5b`.
+- **Status:** PR open; golden re-baselined to `baseline_ff5a811`.
 - **Next actor:** Bailiff (golden-moving: merge one at a time). Herald follows up with
   voice lines for the new families.
 - **Decision:** Michael, Nov 18, via Seneschal. All eleven families stay, with first-pick
@@ -26,10 +26,13 @@
 - **The guard:** a holder at the hint tier with no family to hint from gives the tier-1
   answer instead, refusing to say, so the gift stays hidden. The podium and gift talk
   already skip a hint when there's no family.
+- **Names and lines:** Michael's approved strings (Nov 18, via Herald), including Herald's
+  tavern topics in `social.gd`'s HINT_TOPICS for the six new families and a capitalised
+  "the Demon" for shelter. The card form ("Lian hints: the gallows") is Herald's follow-up.
 - **Voice lines:** the new families (affairs, justice, true_gifts, chosen, against_dark,
   conquer_death) use their base `text` through the existing `say_voiced` fallback, with no
-  `hint_pkg_*` keys. `test_dialogue_voices`' key list is unchanged. The base lines for the
-  dead and shelter are Herald's revised ones.
+  `hint_pkg_*` keys. `test_dialogue_voices`' key list is unchanged. Herald follows up with the
+  15 voices' shelter and reading-people lines, to match the new base lines.
 - **Tests:**
   - `tools/test_hint_families.gd` (28 checks, fast list): family sizes, coverage, the
     fullest-family pick following the script, a seed tie-break that is fixed and goes both
