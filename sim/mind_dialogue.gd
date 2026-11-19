@@ -316,7 +316,7 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 		# The same ladder (Michael, Nov 19): a claimed walking bluff tells its duty; an
 		# unclaimed one gets the soft tier, then the bluff; otherwise the line stands alone
 		# ("being out isn't wicked").
-		if n.claim_public and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, true):
+		if _disclosed(n) and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, true):
 			return _tag_duty_excuse(w, n, nd, answer_night(w, n, nd))
 		if not n.claim_public and n.max_tier < 3 and _bluff_outing(w, n, nd):
 			var soft_e: Dictionary = _soft_tier(w, n, nd)
@@ -333,7 +333,7 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 		# Out on gift business (a Night Watch, Warden, Lamplighter...), as a direct press would
 		# answer it: their claimed duty if they're already out with it, else the gift itself
 		# (Codex on #261: only the Sexton reached the reveal branch).
-		if n.claim_public:
+		if _disclosed(n):
 			return _tag_duty_excuse(w, n, nd, answer_night(w, n, nd))
 		var soft: Dictionary = _soft_tier(w, n, nd)
 		if not soft.is_empty():
@@ -387,6 +387,11 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
 	return {"lines": lines, "facts": facts}
 
+## Whether n has named its gift (or evil its bluff): publicly, or privately to the player
+## (`max_tier` 3, as the roles' duty checks read it; Codex on #368).
+static func _disclosed(n) -> bool:
+	return n.claimed_role != "" and (n.claim_public or n.max_tier >= 3)
+
 ## The fact an excuse leaves on the board, for the judge (Lantern, Nov 19): the owner, the
 ## night it excuses, and its kind: "admit" ("Fine, I was out", the gift kept back),
 ## "not_wicked" (out, no reason given) or "duty" (a claimed walking gift's night work; set by
@@ -415,7 +420,7 @@ static func _tag_duty_excuse(w, n, night: int, reply: Dictionary) -> Dictionary:
 ## failing that it owns the night and says only that being out isn't wicked, rather than
 ## standing by a home alibi the case has just broken.
 static func _evil_caught_out(w, n, night: int) -> Dictionary:
-	var claimed_walk: bool = n.claim_public and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, night, true)
+	var claimed_walk: bool = _disclosed(n) and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, night, true)
 	if claimed_walk or (not n.claim_public and n.max_tier < 3 and _bluff_outing(w, n, night)):
 		return {}
 	var excuse: Dictionary = sleepwalk_excuse(w, n, "night %d" % night)

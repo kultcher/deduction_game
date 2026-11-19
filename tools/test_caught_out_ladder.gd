@@ -29,6 +29,7 @@ func _init() -> void:
 	_evil_walking_bluff()
 	_evil_claimed_bluff()
 	_evil_nothing_to_claim()
+	_disclosed_privately()
 	print("Caught-out ladder: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -115,3 +116,20 @@ func _evil_nothing_to_claim() -> void:
 	var sleepwalk: bool = r.get("facts", []).any(func(f): return f.get("kind", "") == "secret" and f.get("secret_kind", "") == "sleepwalker")
 	_check(owned or sleepwalk, "evil caught out with nothing to claim: being out isn't wicked, or the sleepwalk bluff")
 	_check(not r.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and f.get("home", false)), "it doesn't stand by the broken home alibi")
+
+## Named privately to the player already (Codex on #368): no soft tier, the duty, for both.
+func _disclosed_privately() -> void:
+	var g = _game()
+	var n = _good(g)
+	n.claimed_role = "warden"
+	n.max_tier = 3
+	var r: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	_check(not _excuse(r, n, "admit") and not r.get("lines", []).is_empty(), "a good walker who told the player its gift: no soft tier")
+	var g2 = _game()
+	var e = _evil(g2, "lamplighter")
+	e.claimed_role = "lamplighter"
+	e.max_tier = 3
+	var r2: Dictionary = MindDialogue.trapped_explanation(g2.w, e, 1)
+	_check(_excuse(r2, e, "duty"), "evil that named its walking bluff privately tells its duty")
+	var contra: Dictionary = {"night": 1, "ruled_out_home_by": ["x"]}
+	_check(MindDialogue._pressed_caught_out(g2.w, e, 1, contra).is_empty(), "and pressed with a case, it's left to the duty answer, not 'being out isn't wicked'")
