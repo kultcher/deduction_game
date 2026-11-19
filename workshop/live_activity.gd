@@ -1939,14 +1939,17 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 		"sighting":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				var matches_block: bool = card.block == "" or (C.vigil_sees_path(card.block, path, _home_of(view, person)) if card.get("complete", false) else card.block in path)
+				var hw: float = float(card.get("hearing_weight", 1.0))
 				if card.get("admitted", false) and alignment != "good":
 					# An evil teller owns the outing but may lie about where (Codex on #372): a
 					# place it truly went, or one picked among the blocks. No one admits a night
-					# out they didn't take.
-					if not out:
-						return 0.0
-					return 1.0 if matches_block or card.block == "" else 1.0 / float(C.BLOCKS.size())
-				return 1.0 if out and matches_block else 1.0 - float(card.get("hearing_weight", 1.0))
+					# out they didn't take. Weighed, like any sighting, by how far the listener
+					# credits hearing it.
+					var told: float = 0.0
+					if out:
+						told = 1.0 if matches_block else 1.0 / float(C.BLOCKS.size())
+					return hw * told + (1.0 - hw)
+				return 1.0 if out and matches_block else 1.0 - hw
 			if card.get("complete", false) and person not in card.get("excluded", []):
 				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS
 		"evening":

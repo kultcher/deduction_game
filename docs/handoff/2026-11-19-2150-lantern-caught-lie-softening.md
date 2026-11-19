@@ -49,10 +49,11 @@
   with a killing on the Square, P(X evil) is 0.33 to start. X admitting the Docks puts it at 0.56,
   where a witness seeing X on the Docks puts it at 0.23. X admitting the Square puts it at 0.79,
   about the same as being seen there (0.78). A tunable rate for lying about the place would be a
-  new constant, so that's Michael's call.
-- **New `tools/test_caught_lie_softening.gd`** (9 checks, fast list): the admission read as an
+  new constant, so that's Michael's call. Like any sighting, it counts only as far as the
+  listener credits hearing it (Codex's second finding): one it doesn't credit moves nothing.
+- **New `tools/test_caught_lie_softening.gd`** (10 checks, fast list): the admission read as an
   outing; the marking; the softer judgement; a contradicted watch; the second caught lie; an
-  admitted place may be a lie.
+  admitted place may be a lie; an admission not credited moves nothing.
 - **Measured:**
   - **Golden:** identical to `baseline_7a10762` at `--tol 0`; two captures were identical. No
     golden seed has an NPC admit an outing or give an excuse yet.

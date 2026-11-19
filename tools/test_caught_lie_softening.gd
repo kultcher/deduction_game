@@ -154,6 +154,11 @@ func _admitted_place() -> void:
 	check(p_adm > p_seen + 0.1 and p_adm < p_adm_kill - 0.1,
 		"admitting a place away from the kill clears less than being seen there: the place may be a lie (%.3f against %.3f; admitting the kill block %.3f)" % [p_adm, p_seen, p_adm_kill])
 	check(absf(p_adm_kill - p_seen_kill) < 0.05, "admitting the kill block counts about as much as being seen there (%.3f against %.3f)" % [p_adm_kill, p_seen_kill])
+	# An admission the listener doesn't credit at all (Codex on #372) clears no one.
+	var unheard = at_kill.duplicate(true); unheard.id = "uh"; unheard.fact_id = "uh"; unheard.block = "docks"; unheard["hearing_weight"] = 0.0
+	var p_none: float = _p([])
+	var p_unheard: float = _p([unheard])
+	check(absf(p_unheard - p_none) < 0.005, "an admission the listener doesn't credit moves nothing (%.3f against %.3f with no cards)" % [p_unheard, p_none])
 
 
 ## P(a evil) on a hand-built town (as test_lie_severity): a killing on the Square on night 1.

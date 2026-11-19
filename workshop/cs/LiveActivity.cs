@@ -1060,9 +1060,11 @@ internal static class LiveActivityKernel
                     if ((flags & FlagAdmitted) != 0 && currentAlign != AlignGood)
                     {
                         // An evil teller owns the outing but may lie about where (Codex on #372):
-                        // a place it truly went, or one picked among the blocks.
-                        if (!isOut) return 0.0;
-                        return matchesBlock ? 1.0 : 1.0 / BlockCount;
+                        // a place it truly went, or one picked among the blocks, weighed by how
+                        // far the listener credits hearing it.
+                        double hw = cardDoubles[cardIdx * 2];
+                        double told = !isOut ? 0.0 : (matchesBlock ? 1.0 : 1.0 / BlockCount);
+                        return hw * told + (1.0 - hw);
                     }
                     return (isOut && matchesBlock) ? 1.0 : (1.0 - cardDoubles[cardIdx * 2]);
                 }
