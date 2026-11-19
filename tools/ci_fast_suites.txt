@@ -3,6 +3,7 @@
 # Keep the list sorted: add a new suite at its alphabetical place, not at the end, so two
 # PRs that each add a suite rarely touch the same line (Nov 17). CI deals the list out
 # to the four shards in this order (suite i goes to shard i mod 4).
+test_agreement_trust
 test_ask_night_results
 test_attention_0b
 test_bare_compile
@@ -108,6 +109,7 @@ test_too_clean_bluffs
 test_town_note
 test_town_vibe
 test_triage_nov16
+test_turned_premise
 test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge

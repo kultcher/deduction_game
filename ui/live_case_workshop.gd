@@ -42,15 +42,20 @@ var presenting = false
 ## Marked" is "holds a secret" with Marked; "bluffing" and "told the truth" were "evil" and
 ## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
 ## modifiers), not premises. Filed cases with the old types still evaluate.
-const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent"]
+## "turned" (the Revenant's curse turned this person) is offered in the type menu only once
+## a curse has been announced (Michael, Nov 19), or on a premise that already holds it; the
+## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
+## as it is for the older off-screen picker, which selects by index.
+const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent", "turned"]
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the Revenant's curse"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
 ## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
 const PREMISE_TYPE_HINTS = {
+	"turned": "Argue the curse turned them: good before it, evil while it held, good again once it lifted.",
 	"evil": "Argue they're on the Demon's side. A firm claim: it counts in full if the town buys it, and can carry a vote.",
 	"suspicious": "Put pressure on someone without necessarily getting them hanged. It counts for half, but leans on them to explain themselves. You pick the direction and drive it: the town won't sort out \"one of these two\" for you.",
 	"good": "Argue they're on the town's side: clear them.",
@@ -1120,11 +1125,13 @@ func _field_popup(id: String, field: String) -> void:
 					field_menu.add_item(text, values.size())
 				values.append(person.id)
 		"type":
+			# "Was turned by the curse" only once a curse has fallen, or where already chosen.
+			var cursed: bool = board.view.get("chronology", {}).has("curse")
 			# A hanged person's Demon premise is in the past tense, and only where a Scion
 			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
 			# A draft holds its person in `pick` until both fields are chosen (Codex on #305).
 			var p_target: String = str(node.get("pick", {}).get("target", "")) if node.get("draft", false) else str(node.get("conclusion", {}).get("target", ""))
-			var types: Array = premise_types().filter(func(t): return board.premise_offered(t, p_target))
+			var types: Array = premise_types().filter(func(t): return (t != "turned" or cursed or str(node.get("conclusion", {}).get("type", "")) == "turned") and board.premise_offered(t, p_target))
 			for i in range(types.size()):
 				field_menu.add_item(board.premise_text(types[i], p_target), values.size())
 				var hanged_demon: bool = types[i] == "demon" and board.premise_text(types[i], p_target) == board.HANGED_DEMON_TEXT

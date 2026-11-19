@@ -9,8 +9,9 @@
 ## presents it to every good listener who isn't one of its sources, at credibility 0.7 with
 ## suspicion reset to 0.25. Every gift reading comes from that gift's real (good) holder,
 ## or the seed is skipped for that case. The subject is the Demon unless the case says
-## otherwise. Recorded per case: the juror's category and strength (likelihood ratio), and
-## the town's mean change in suspicion of the subject.
+## otherwise; a "<case>_innocent" twin builds the same chain about an innocent, with any lie
+## told by a Minion. Recorded per case: the juror's category and strength (likelihood
+## ratio), and the town's mean change in suspicion of the subject.
 ##
 ##   godot --headless --path . --script res://tools/case_slate.gd -- [--cases N] [--out FILE] [--only a,b]
 ##   python3 tools/case_slate_report.py FILE [BASELINE]   (the report; against a baseline)
@@ -35,6 +36,19 @@ const CASES = {
 	"lamp_alibis": "The Lamplighter's \"1 other out\" + everyone else's home alibi (suspicious)",
 	"nw_nobody": "The Night Watch saw nobody on S's block + a sighting of S there",
 	"guard": "A sighting of S near the guarded door + the Warden's guard, on a quiet night",
+	# Misleading cases (Michael, Nov 19): the same chains about an innocent subject I (a
+	# good townsperson), built as they could really arise: an innocent out at night, true
+	# readings that name I beside the real evil, or a lie told by evil.
+	"pile_innocent": "Two sightings of I out at night",
+	"kill_sighting_innocent": "A sighting of I on the victim's block on the kill night",
+	"vigil_kill_innocent": "The player's vigil saw I leave home on the kill night",
+	"alibi_sighting_innocent": "I's home alibi + a Minion's false sighting of I out that night",
+	"converging_innocent": "The Seer's \"yes\" on I and the Demon + the Dowser's \"1 evil\" among I and a Minion",
+	"double_claim_innocent": "I, the real holder, and the Demon both claim I's gift",
+	"gravedigger_innocent": "A Minion's false Gravedigger reading that the hanged I was a Minion",
+	"lamp_alibis_innocent": "The Lamplighter's \"1 other out\" + everyone else's home alibi, the Demon's false (suspicious)",
+	"nw_nobody_innocent": "The Night Watch saw nobody on I's block + a Minion's false sighting of I there",
+	"guard_innocent": "A sighting of I near the guarded door + the Warden's guard, on a quiet night",
 }
 
 var _texts: Dictionary = {}
@@ -98,6 +112,21 @@ func _one(sd: int, name: String) -> Dictionary:
 	var w = g.w
 	var s = w.by_id[w.demon_id]
 	var goods: Array = w.living_good()
+	var dem = s
+	var min_ev = null
+	for n in w.npcs:
+		if n.alive and n.is_evil() and n.id != w.demon_id:
+			min_ev = n
+			break
+	# A misleading case is about an innocent: the last living good townsperson, kept out of
+	# the witnesses and gift holders the case draws on.
+	var innocent: bool = name.ends_with("_innocent")
+	var base: String = name.trim_suffix("_innocent")
+	if innocent:
+		if min_ev == null:
+			return {}
+		s = goods[-1]
+		goods = goods.filter(func(n): return n != s)
 	for p in w.npcs:
 		p.trust = 0.7
 		p.credibility = 0.7
@@ -109,7 +138,7 @@ func _one(sd: int, name: String) -> Dictionary:
 	var sources: Array = []
 	var premise := "evil"
 	var other := "market" if s.home_block != "market" else "docks"
-	match name:
+	match base:
 		"pile":
 			cited.append(_add(g, _sight(goods[0], s, other, 1)))
 			cited.append(_add(g, _sight(goods[1], s, "hill" if s.home_block != "hill" else "square", 2)))
@@ -133,18 +162,23 @@ func _one(sd: int, name: String) -> Dictionary:
 			sources += [goods[0]]
 		"alibi_sighting":
 			cited.append(_add(g, {"kind": "alibi", "subject": [s.id], "source": s.id, "day": 1, "phase": C.NIGHT, "home": true, "block": s.home_block, "text": "%s: at home on night 1" % s.name}))
-			cited.append(_add(g, _sight(goods[0], s, other, 1)))
-			sources += [goods[0]]
+			var a_wit = min_ev if innocent else goods[0]
+			cited.append(_add(g, _sight(a_wit, s, other, 1)))
+			sources += [a_wit]
 		"converging":
 			var seer = _holder(goods, "seer", [])
 			var dowser = _holder(goods, "dowser", [seer])
 			if seer == null or dowser == null:
 				return {}
 			var others: Array = goods.filter(func(n): return n != seer and n != dowser)
+			if innocent:
+				others = [dem, min_ev]
 			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, others[0].id], "yes": true}, "text": "%s's Seer: %s or %s is the Demon" % [seer.name, s.name, others[0].name]}))
 			cited.append(_add(g, {"kind": "info", "source": dowser.id, "role": "dowser", "day": 2, "phase": C.AFTERNOON, "data": {"group": [s.id, others[1].id], "count": 1}, "text": "%s's Dowser (day 2): 1 evil among %s and %s" % [dowser.name, s.name, others[1].name]}))
 			sources += [seer, dowser]
 		"impossible":
+			if innocent:
+				return {}  # a good teller can't give an impossible reading (short of poison)
 			cited.append(_add(g, {"kind": "info", "source": s.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": goods[0].id, "role": "seer"}, "text": "%s's Gravedigger: hanged %s was the Seer" % [s.name, goods[0].name]}))
 		"double_claim":
 			var holder = null
@@ -154,23 +188,42 @@ func _one(sd: int, name: String) -> Dictionary:
 					break
 			if holder == null:
 				return {}
-			cited.append(_add(g, {"kind": "claim", "subject": [s.id], "role": holder.role, "source": s.id, "text": "%s claims the %s" % [s.name, holder.role]}))
-			cited.append(_add(g, {"kind": "claim", "subject": [holder.id], "role": holder.role, "source": holder.id, "text": "%s claims the %s" % [holder.name, holder.role]}))
+			# The bluffer claims the holder's gift; the case is about the bluffer. In the
+			# misleading case the innocent is the real holder and the Demon bluffs.
+			var bluffer = s
+			if innocent:
+				s = holder
+				bluffer = dem
+			var gift: String = holder.role
+			cited.append(_add(g, {"kind": "claim", "subject": [bluffer.id], "role": gift, "source": bluffer.id, "text": "%s claims the %s" % [bluffer.name, gift]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [holder.id], "role": gift, "source": holder.id, "text": "%s claims the %s" % [holder.name, gift]}))
 			sources += [holder]
 		"gravedigger":
-			var gd = _holder(goods, "gravedigger", [])
+			if innocent:
+				# The innocent hanged; a Minion, bluffing the Gravedigger, calls them a Minion.
+				s.alive = false
+				s.death_cause = "executed"
+				w.public_log.append({"day": 2, "kind": "execution", "subjects": [s.id], "by": ""})
+				cited.append(_add(g, {"kind": "info", "source": min_ev.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": s.id, "role": min_ev.role}, "text": "%s's Gravedigger: hanged %s was the %s" % [min_ev.name, s.name, min_ev.role]}))
+				cited.append(_add(g, {"kind": "claim", "subject": [min_ev.id], "role": "gravedigger", "source": min_ev.id, "text": "%s claims the gravedigger" % min_ev.name}))
+				sources += [min_ev]
+				premise = "evil"
+			var gd = null if innocent else _holder(goods, "gravedigger", [])
 			var minion = null
 			for n in w.npcs:
 				if n.is_evil() and n.id != w.demon_id:
 					minion = n
 					break
-			if gd == null or minion == null:
+			if innocent:
+				pass
+			elif gd == null or minion == null:
 				return {}
-			minion.alive = false
-			w.public_log.append({"day": 2, "kind": "execution", "subjects": [minion.id], "by": ""})
-			cited.append(_add(g, {"kind": "info", "source": gd.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": minion.id, "role": minion.role}, "text": "%s's Gravedigger: hanged %s was the %s" % [gd.name, minion.name, minion.role]}))
-			sources += [gd]
-			s = minion
+			else:
+				minion.alive = false
+				w.public_log.append({"day": 2, "kind": "execution", "subjects": [minion.id], "by": ""})
+				cited.append(_add(g, {"kind": "info", "source": gd.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": minion.id, "role": minion.role}, "text": "%s's Gravedigger: hanged %s was the %s" % [gd.name, minion.name, minion.role]}))
+				sources += [gd]
+				s = minion
 		"lamp_alibis":
 			var lamp = _holder(goods, "lamplighter", [])
 			if lamp == null:
@@ -185,7 +238,7 @@ func _one(sd: int, name: String) -> Dictionary:
 			var nw = _holder(goods, "nightwatch", [])
 			if nw == null:
 				return {}
-			var wit = goods.filter(func(n): return n != nw)[0]
+			var wit = min_ev if innocent else goods.filter(func(n): return n != nw)[0]
 			cited.append(_add(g, {"kind": "info", "source": nw.id, "role": "nightwatch", "day": 1, "phase": C.NIGHT, "data": {"block": s.home_block, "seen": []}, "text": "%s watched %s: nobody passed" % [nw.name, s.home_block]}))
 			cited.append(_add(g, _sight(wit, s, s.home_block, 1)))
 			sources += [nw, wit]

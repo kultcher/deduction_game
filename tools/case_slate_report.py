@@ -22,8 +22,10 @@ import math
 import sys
 from collections import OrderedDict, defaultdict
 
-ORDER = ["pile", "kill_sighting", "vigil_kill", "alibi_sighting", "converging", "impossible",
-         "double_claim", "gravedigger", "lamp_alibis", "nw_nobody", "guard"]
+TRUE_CASES = ["pile", "kill_sighting", "vigil_kill", "alibi_sighting", "converging", "impossible",
+              "double_claim", "gravedigger", "lamp_alibis", "nw_nobody", "guard"]
+# Misleading cases: the same chains about an innocent ("<case>_innocent"); no impossible one.
+ORDER = TRUE_CASES + [c + "_innocent" for c in TRUE_CASES if c != "impossible"]
 BADGES = ["contradicts", "none", "weak", "moderate", "strong", "not ready"]
 # Lower edge, in points, of each band (the town's movement).
 TOWN_BANDS = [("strong", 25.0), ("moderate", 10.0), ("weak", 3.0), ("none", -2.0)]
@@ -104,24 +106,28 @@ def main():
     if blocked:
         out += ["", "**Listeners who couldn't assess the case** (left out of the town's movement): " + ", ".join(
             "%s seed %d (%d)" % b for b in blocked)]
-    out += ["", "Town movement by the juror's badge, across the slate:", "",
-            "| Badge | Cases | Town, mean | Median | Range | Cases by name |",
-            "|---|---|---|---|---|---|"]
-    by = defaultdict(list)
-    for c in names:
-        for r in run[c]:
-            by[r["category"]].append((100.0 * r["town"], c))
-    for b in BADGES:
-        if b not in by:
+    for title, kind in (("true cases (the subject is evil)", False), ("misleading cases (the subject is innocent)", True)):
+        kinds = [c for c in names if c.endswith("_innocent") == kind]
+        if not kinds:
             continue
-        pts = sorted(p for p, _ in by[b])
-        mid = pts[len(pts) // 2] if len(pts) % 2 else (pts[len(pts) // 2 - 1] + pts[len(pts) // 2]) / 2
-        cs = defaultdict(int)
-        for _, c in by[b]:
-            cs[c] += 1
-        out.append("| %s | %d | %+.1f | %+.1f | %+.1f to %+.1f | %s |" % (
-            b, len(pts), sum(pts) / len(pts), mid, pts[0], pts[-1],
-            ", ".join("%s %d" % (c, n) for c, n in cs.items())))
+        out += ["", "Town movement by the juror's badge, %s:" % title, "",
+                "| Badge | Cases | Town, mean | Median | Range | Cases by name |",
+                "|---|---|---|---|---|---|"]
+        by = defaultdict(list)
+        for c in kinds:
+            for r in run[c]:
+                by[r["category"]].append((100.0 * r["town"], c))
+        for b in BADGES:
+            if b not in by:
+                continue
+            pts = sorted(p for p, _ in by[b])
+            mid = pts[len(pts) // 2] if len(pts) % 2 else (pts[len(pts) // 2 - 1] + pts[len(pts) // 2]) / 2
+            cs = defaultdict(int)
+            for _, c in by[b]:
+                cs[c] += 1
+            out.append("| %s | %d | %+.1f | %+.1f | %+.1f to %+.1f | %s |" % (
+                b, len(pts), sum(pts) / len(pts), mid, pts[0], pts[-1],
+                ", ".join("%s %d" % (c, n) for c, n in cs.items())))
     out += ["", "Town bands used for category agreement (points): " + ", ".join(
         "%s from %+g" % (n, e) for n, e in TOWN_BANDS) + ", contradicts below."]
     print("\n".join(out))
