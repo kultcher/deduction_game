@@ -377,6 +377,26 @@ relay about the first victim naming night 0 (Beadle).
   Good NPCs with news for a trusted friend now get a similar bonus. Still open: let evil
   confer after the player commits (unseen, or seen only from that block), cap the evil
   bonus, add a pair cooldown. Keep good NPCs meeting often enough to cover. [decided]
+  - **Michael (Nov 18), through Seneschal:**
+    1. Visible meetings still happen. Dropping the bonus before the player chooses is fine,
+       but evil members must still sometimes be seen meeting. Aim for about one visible
+       evil meeting a day across the three phases, and measure the rate.
+       - Michael (Nov 19) clarified this. "Visible" means seen before the player chooses.
+         Keep today's rate, about 0.28 a day (one every 3 to 4 days on seeds 3000-3014).
+         "Don't add new meetings or anything, keep the same numbers of meetings."
+    2. Meetings go into the gossip network, every meeting and not only evil ones. Those at
+       the place where two people were talking learn it ("X and Y were talking at Z") and
+       report it when asked about either person. When the player hears it, it is a
+       hearsay location report for each, as "who did you see earlier" gives today.
+       Herald owns any new wording. Owner Beadle.
+  - **Dropping the evil bonus before the choice, and adding a pass where teammates confer
+    after the player leaves, was tried and set aside (Nov 19).** It halved the visible rate
+    (0.12 a day) and cut evil meetings from 21 to 12. Main's pairing already lets teammates
+    confer after the player leaves, when they are in the same place.
+  - **Built** (Nov 19, `claude/beadle-evil-confer`), with the pairing unchanged:
+    - those present at a meeting after the player's choice see it;
+    - witnesses pass it on in conversation (one step);
+    - asked about either person, an NPC reports it, first or second hand.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -557,6 +577,10 @@ Candidates for a unified retuning proposal, not approved changes.
   (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
   such as a private press, those lines must not appear there; use the generic fallback.
   The PR says where it can fire. Owner Beadle. [decided]
+  - Michael (Nov 19): approved Beadle's plan. The defence fires at a nomination when the
+    heaviest cited item is a daytime sighting, and names who else was there from the true
+    whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
+    there, the alone line. No evil lie for now: evil defenders use the same true lines.
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
@@ -1060,6 +1084,13 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
 
 - **Talking to a group:** 3 questions per phase, split among anyone at the spot. [open]
   Tabled (Michael, Nov 18).
+
+- **A false name in the daytime-whereabouts defence.** (Michael, Nov 19) An evil defender
+  answering a daytime-whereabouts case names someone who wasn't there. The place and time
+  stay true; only the names are false. It's a lie logged with its reason ("spread the
+  suspicion"), and anyone who was there can catch it. Waits until the true-line defence ("A
+  defence's answer to a daytime-whereabouts case") is built and played. Owner Beadle.
+  Tabled (Michael, Nov 19).
 
 ## Closed
 
