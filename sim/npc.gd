@@ -109,7 +109,7 @@ var beliefs: Array = []
 var info_log: Array = []
 var held_fakes: Array = []  # evil fabrications held back a day (FabricationCheck): {"entry", "until"}
 var bluff_frame: Dictionary = {}  # a bluffer's frame memory: {"sg": scapegoat when told, "implicated": [ids its told readings implicated]}
-var gift_doubt: Dictionary = {}  # "my gift may have been turned", waiting to be said: {"day", "role", "why"}; "said": the day it was
+var gift_doubt: Dictionary = {}  # "my gift may have been turned", waiting to be said: {"day", "role", "why", "first"}; "said": the day it was
 var warden_log = {}          # Warden only: "night" -> who they guarded
 var warden_saves = {}        # Warden only: "night" -> {target, belief}: quiet nights they take as their save
 

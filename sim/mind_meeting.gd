@@ -680,7 +680,11 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 		return
 	gd["said"] = w.day
 	var role: String = str(gd["role"])
-	lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
+	if gd.get("first", false):
+		# Only the one reading to doubt (its first for this gift): the singular line.
+		lines.append(say_voiced(n, "doubt_own_gift_one", "Something seems off about that reading. I fear something might have turned my gift."))
+	else:
+		lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
 	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
 	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
 	w.public_event("self_doubt", [n.id], n.id, {"role": role})
