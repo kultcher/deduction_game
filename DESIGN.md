@@ -627,7 +627,10 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
   suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, and "something doesn't add up" (conflict). Protect and spare are
+  unreliable, and "something doesn't add up" (conflict). "Is the Demon" about someone
+  already hanged means "was the Demon when hanged", so it holds where the Scion rose after
+  (a hanging with five or more alive and a Scion on the script); "Is not the Demon" is its
+  complement (Michael, Nov 19). Protect and spare are
   preferences, spoken as social speech. "Has a secret" and "red herring" can't be
   presented: nothing the town can weigh establishes them.
 - **Cards with inline answers** (who in this Seer pair? which blocks?); unknown answers
