@@ -8,7 +8,7 @@
 ##   - It counts in the track record as saying the reader is good.
 ##   - It's allowed only where a cause the script allows could have fooled that gift
 ##     (Michael, Nov 18): poison or Delusion reach any reading, a Red Herring only a Seer's,
-##     Marked only a reading that points someone toward evil. With none, no Mistaken.
+##     Marked any but a reading that only speaks for people. With none, no Mistaken.
 ## And the lie: a "lying" call, with grounds that contradict the reading, raises its teller's
 ## suspicion (the Nov 18 retune; before, listeners' agreement never passed the gate).
 ##   godot --headless --path . --script res://tools/test_honest_mistake.gd
@@ -207,7 +207,9 @@ func _init() -> void:
 	var dowse_some: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 1}}
 	var dowse_none: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 0}}
 	check(RC.cause_reaches("red_herring", seer_no) and not RC.cause_reaches("red_herring", dowse_some), "a Red Herring reaches a Seer's reading and no other gift")
-	check(RC.cause_reaches("marked", seer_yes) and RC.cause_reaches("marked", dowse_some) and not RC.cause_reaches("marked", dowse_none) and not RC.cause_reaches("marked", seer_no), "Marked reaches only a reading that points someone toward evil")
+	check(RC.cause_reaches("marked", seer_yes) and RC.cause_reaches("marked", dowse_some) and not RC.cause_reaches("marked", dowse_none) and not RC.cause_reaches("marked", seer_no), "Marked doesn't reach a reading that only speaks for people")
+	var parity: Dictionary = {"kind": "report", "role": "surveyor", "data": {"block": "square", "same": false}}
+	check(RC.cause_reaches("marked", parity), "Marked reaches a Surveyor's block parity, which names no one (Codex on #296)")
 	check(RC.cause_reaches("poison", dowse_none) and RC.cause_reaches("delusion", seer_no), "poison and Delusion reach any reading")
 	var bare: Dictionary = {"script_minions": ["scion"], "world_options": {"modifiers": ["lovers"]}}
 	check(not RC.honest_allowed(bare, dowse_some) and RC.honest_allowed(bare, seer_no), "with nothing on the script, no Mistaken, except a Seer's (its Red Herring)")

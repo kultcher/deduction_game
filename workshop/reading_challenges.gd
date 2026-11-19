@@ -52,8 +52,10 @@ static func game_honest_causes(case_script) -> Array:
 
 ## Whether `cause` could have made this reading wrong. Poison and Delusion break any gift,
 ## the Medium's passing-on included. A Red Herring fools only a gift that registers one, and
-## a Marked soul only a gift that registers it, on a reading that points someone toward
-## evil: one that clears or counts nobody can't come from a soul registering as evil.
+## a Marked soul only a gift that registers it, on any reading but one that only speaks for
+## people (a Dowser's nought, a Seer's "no"): a soul registering as evil can't make those.
+## A reading that names no one either way, such as a Surveyor's block parity, can come from
+## a Marked registration (Codex on #296).
 static func cause_reaches(cause: String, card: Dictionary, transmission: bool = false) -> bool:
 	if cause in ["poison", "delusion"]:
 		return true
@@ -65,7 +67,8 @@ static func cause_reaches(cause: String, card: Dictionary, transmission: bool = 
 	if cause == "red_herring":
 		return rdef.red_herring_registers
 	if cause == "marked":
-		return rdef.marked_registers and not rdef.implicated(card.get("data", {})).is_empty()
+		var data: Dictionary = card.get("data", {})
+		return rdef.marked_registers and (not rdef.implicated(data).is_empty() or rdef.clears(data).is_empty())
 	return false
 
 ## Whether a Mistaken call on this reading is allowed: some cause the case's world allows

@@ -66,8 +66,9 @@
   - Poison (a Poisoner possible) or Delusion reach any reading, the Medium's passing-on
     included.
   - A Red Herring reaches only a gift that registers one (the Seer).
-  - Marked reaches only a gift that registers it, on a reading that points someone
-    toward evil (`RoleDef.implicated`).
+  - Marked reaches only a gift that registers it, on any reading but one that only
+    speaks for people (a Dowser's nought, a Seer's "no"; `RoleDef.implicated` and
+    `clears`). A Surveyor's block parity, which names no one, counts (Codex on #296).
   - With none, there's no Mistaken: the canvas chip and the live-workshop option are
     disabled, and `CanvasModel.add_modifier` refuses with "Nothing in this town could
     have fooled that gift." (approved, Nov 19).
