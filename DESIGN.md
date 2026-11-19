@@ -1192,10 +1192,13 @@ log, never in `w.npcs`. Plan and history: `docs/archive/shadow_self_plan.md`.
      pleas and rival suggestions are speech. **Block safety:** while someone else is
      firmly on the block, defence reveals and confessions are damped. Evil uses its bluff
      and has no secret.
-   - **The player's statement:** accuse or defend, optionally citing a card, or Clemency.
+   - **The player's turn:** present one filed case about the nominee (it doesn't spend the
+     meeting's Present, and it's judged as a case at the podium), or Clemency. There is no
+     bare statement for or against: speaking without a case only nudged the town (Michael,
+     Nov 19).
    - **The vote**, silent, in BotC order: clockwise from the seat after the nominee,
      nominee last. Each voter compares suspicion + town pressure + execution priority +
-     the player's stance (scaled by credibility) + modifiers (relationship, a suspected
+     the player's own vote (scaled by credibility) + modifiers (relationship, a suspected
      nominator, a spare preference, a preference for whoever is already on the block, role
      reluctance) to a need: a base, lower for the confident, higher on Day 1, lower with
      paranoia and with each death. A nominator commits to their own nomination. Evil votes

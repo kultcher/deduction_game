@@ -200,6 +200,38 @@ static func already_public(g, card: Dictionary) -> bool:
 	return g.public_citations.has(int(card.get("n", 0))) or CardModel.disclosure_scope(card) == "public"
 
 
+## Is this filed case about `id`: does its headline name them, for or against? A conflict
+## names everyone in its group.
+static func case_about(card: Dictionary, id: String) -> bool:
+	var c: Dictionary = card.get("conclusion", {})
+	return str(c.get("a", "")) == id or str(c.get("b", "")) == id or id in c.get("group", [])
+
+
+## Which way a case about `id` speaks at their nomination: "defend" when its headline clears
+## them (the same split the Test juror reads), otherwise "accuse".
+static func case_direction(card: Dictionary, id: String) -> String:
+	var c: Dictionary = card.get("conclusion", {})
+	var clears: bool = str(c.get("type", "")) in preload("res://game/workshop_canvas.gd").PREMISE_CLEARS
+	return "defend" if clears and str(c.get("a", "")) == id else "accuse"
+
+
+## Why this card can't be put to the town on `id`'s nomination, or "" if it can.
+static func nomination_case_rejection(g, card: Dictionary, id: String) -> String:
+	if card.get("kind", "") != "deduction":
+		var press_open: bool = g.w.meeting.get("pending", {}).get("press", "") == "open"
+		return "Only a filed case can be put to the town on a nomination." + (" To put a card to them, press them with it." if press_open else "")
+	if card.get("deleted", false) or card.get("withdrawn", false) or int(card.get("superseded_by", 0)) > 0:
+		return "Case #%d is no longer live." % int(card.get("n", 0))
+	if not case_about(card, id):
+		return "Case #%d isn't about %s." % [int(card.get("n", 0)), g.w.by_id[id].name]
+	return ""
+
+
+## Every live case that could be put to the town on `id`'s nomination.
+static func nomination_cases(g, id: String) -> Array:
+	return g.board.filter(func(c): return nomination_case_rejection(g, c, id) == "")
+
+
 ## Informational only (never a confirmation): the town already has this.
 static func note_already_public(g, is_case: bool, with_voice: bool) -> void:
 	var what: String = "case" if is_case else "card"
@@ -277,56 +309,42 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 	var t = g.w.by_id[nm["nominee"]]
 	var r = rest.strip_edges().to_lower()
 	match verb:
-		"defend", "accuse":
+		"case":
+			# Option (b), Michael, Nov 19: the player's one word on a nomination is a filed case
+			# about the nominee, judged as at the podium. No free nudge to the vote, no trust
+			# change for speaking, and it doesn't spend the meeting's Present.
 			if g.statement_used:
-				g._err("You've already spoken on this nomination.")
+				g._err("You've already put a case on this nomination.")
+				return
+			var num = r.trim_prefix("#").to_int()
+			if num < 1 or num > g.board.size():
+				g._err("Which case? ('case <case#>')")
+				return
+			var card: Dictionary = g.board[num - 1]
+			var why: String = nomination_case_rejection(g, card, t.id)
+			if why != "":
+				g._err(why)
 				return
 			_run_supporters(g)
-			var card = {}
-			if r != "":
-				var num = r.trim_prefix("#").to_int()
-				if num < 1 or num > g.board.size():
-					g._err("No such card on your board. ('%s' alone, or '%s <card#>')" % [verb, verb])
-					return
-				card = g.board[num - 1]
-			if not card.is_empty() and not g._presentation_gate(card, g.w.living().filter(func(v): return v != t), [t.id], "deduction" if card.kind == "deduction" else verb, "nomination"):
+			if not g._presentation_gate(card, g.w.living().filter(func(v): return v != t), [t.id], "deduction", "nomination"):
 				return
 			g.statement_used = true
 			if nm.get("press", "") == "open":
-				nm["press"] = "closed"  # the statement is Step 5; the press (Step 3) is behind it
-			if not card.is_empty():
-				var was_public: bool = already_public(g, card)
-				if was_public:
-					note_already_public(g, card.get("kind", "") == "deduction", true)
-				if card.get("kind", "") == "deduction":
-					g.public_presentations[int(card.n)] = int(g.w.day)
-				else:
-					g.public_citations[int(card.n)] = true
-			var stmt_weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL if not card.is_empty() else Tuning.Trust.CRED_WEIGHT_STATEMENT
-			Credibility.record_public(g, "evil" if verb == "accuse" else "good", t.id, stmt_weight)
-			nm["statement"] = verb
-			if not card.is_empty():
-				g._narr("You lay card #%d before the town: %s" % [card["n"], card["text"]])
-				g._break_confidences([card["n"]] + Array(card.get("supports", [])))
-				if card["kind"] == "deduction":
-					g._secrets_used(card)
-					for v in g.w.living():
-						if v != t:
-							if progress.is_valid():
-								await progress.call(v.name)
-							g._evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
-				else:
-					Mind.public_case(g.w, t, card, verb)
-			if verb == "defend":
-				g._narr("You speak in %s's defence." % t.name)
-				Mind.set_trust(g.w, t, t.trust + Tuning.Trust.SPEAK_DEFEND_BONUS, "the Demonologist defended me")
-				if nm["by"] != "player":
-					var nb = g.w.by_id[nm["by"]]
-					Mind.set_trust(g.w, nb, nb.trust - Tuning.Trust.SPEAK_AGAINST_NOMINATOR_DROP, "the Demonologist spoke against my nomination")
-			else:
-				g._narr("You add your voice against %s." % t.name)
-				Mind.set_trust(g.w, t, t.trust - Tuning.Trust.SPEAK_AGAINST_NOMINEE_DROP, "the Demonologist spoke against me")
-			g.w.dlog.add("player_statement", "player", t.id, {"statement": verb, "card": card.get("n", 0)})
+				nm["press"] = "closed"  # the case is Step 5; the press (Step 3) is behind it
+			if already_public(g, card):
+				note_already_public(g, true, true)
+			g.public_presentations[int(card.n)] = int(g.w.day)
+			var direction: String = case_direction(card, t.id)
+			Credibility.record_public(g, "evil" if direction == "accuse" else "good", t.id, Tuning.Trust.CRED_WEIGHT_FORMAL)
+			g._narr("You lay case #%d before the town: %s" % [card["n"], card["text"]])
+			g._break_confidences([card["n"]] + Array(card.get("supports", [])))
+			g._secrets_used(card)
+			for v in g.w.living():
+				if v != t:
+					if progress.is_valid():
+						await progress.call(v.name)
+					g._evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
+			g.w.dlog.add("player_statement", "player", t.id, {"statement": direction, "card": int(card.n), "case": true})
 			g._prompt("'vote yes' or 'vote no'%s." % (", or 'clemency'" if g.w.tools["clemency"] > 0 and nm["by"] != "player" else ""))
 		"press":
 			_press(g, t, r)
@@ -386,12 +404,12 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			g._facts(res.get("resistance_facts", []))  # "their readings agree with what I know" cards
 			_after_vote(g)
 		_:
-			g._err("On this nomination: %sdefend | accuse | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
+			g._err("On this nomination: %scase <case#> | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
 
 
 ## Step 3, the podium press: one public question to the nominee before the town weighs in.
 ## 'press role' (or 'press readings' once they've claimed), 'press night [N]', 'press card <#>',
-## 'press skip'. Voting or speaking for/against without pressing simply skips it.
+## 'press skip'. Voting or putting a case without pressing simply skips it.
 static func _press(g, t, r: String) -> void:
 	var nm: Dictionary = g.w.meeting["pending"]
 	match nm.get("press", ""):
@@ -466,13 +484,14 @@ static func _press(g, t, r: String) -> void:
 	_player_turn_prompt(g)
 
 
-## Step 5, the player's turn: once the town has spoken, a statement (for or against, with a
-## card if you like), Clemency, or the vote.
+## Step 5, the player's turn: once the town has spoken, a filed case about the nominee
+## (once), Clemency, or the vote.
 static func _player_turn_prompt(g) -> void:
 	var nm: Dictionary = g.w.meeting["pending"]
 	var opts: Array = []
 	if not g.statement_used:
-		opts.append("'accuse' or 'defend' (optionally citing a card; one statement)")
+		if not nomination_cases(g, nm["nominee"]).is_empty():
+			opts.append("'case <case#>' (put a filed case about them to the town; once)")
 	if g.w.tools["clemency"] > 0 and nm["by"] != "player":
 		opts.append("'clemency'")
 	opts.append("'vote yes' or 'vote no'")

@@ -60,6 +60,10 @@ func _run() -> void:
 	check(int(reading.n) in ed.readings_for(reader, true), "FROM the reader includes their reading")
 	check(int(reading.n) in ed.readings_for(named, false), "ABOUT a person it names includes it")
 	check(not (int(reading.n) in ed.readings_for(named, true)) or named == reader, "FROM someone it only names doesn't")
+	var rid: String = ed.Live.Evidence.normalize_card(reading).id
+	var rcs: Array = ed.board.view.cards.filter(func(c): return c.id == rid)
+	if not rcs.is_empty() and str(reading.get("role", "")) != "medium" and not rcs[0].get("fallback", false):
+		check(rcs[0].get("support_note", "x") == "", "a weighable reading carries no note (%s)" % rcs[0].get("support_note", ""))
 
 	# Adding a card centres it and marks it fresh.
 	canvas.pan = Vector2(-5000, -5000)
@@ -97,7 +101,7 @@ func _run() -> void:
 	var want: Array = ed.readings_for(named, false)
 	ed._bg_add(ri, false)
 	var have: int = want.filter(func(n): return ed.board.nodes.has("e:" + ed.Live.Evidence.normalize_card(g.board[n - 1]).id)).size()
-	check(have == want.size() and ed.board.nodes.size() >= before, "\"Add all readings ABOUT\" puts each of them on the canvas (%d of %d)" % [have, want.size()])
+	check(have == want.size() and ed.board.nodes.size() >= before, "\"Add all readings about\" puts each of them on the canvas (%d of %d)" % [have, want.size()])
 	ed.bg_menu.hide()
 	# Several cards dropped at once come into view together (Codex, #323).
 	var several: Array = g.board.filter(func(c): return ed._usable(int(c.n))).map(func(c): return int(c.n)).slice(0, 4)
@@ -109,6 +113,14 @@ func _run() -> void:
 		if ed.board.nodes.has(nid) and Rect2(Vector2.ZERO, canvas.size).intersects(canvas._screen(canvas.world_rect(nid))):
 			in_view += 1
 	check(several.size() >= 2 and in_view == several.size(), "a drop of several cards brings them all into view (%d of %d)" % [in_view, several.size()])
+	# A card that leaves the board stays on the canvas, marked unweighable in plain words (Michael, Nov 19).
+	var gone_n: int = int(reading.n)
+	g.board[gone_n - 1].deleted = true
+	ed.refresh()
+	var gone: Dictionary = canvas._evidence_card(id) if ed.board.nodes.has(id) else {}
+	check(gone.get("off_board", false) and canvas._unsupported(gone), "a card no longer on the board is marked unsupported")
+	check(gone.get("support_note", "") == "This card has changed or is no longer on your board.", "and its note says so plainly (%s)" % gone.get("support_note", ""))
+	g.board[gone_n - 1].deleted = false
 	_done(scene)
 
 func _done(scene) -> void:

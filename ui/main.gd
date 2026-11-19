@@ -11,6 +11,7 @@ const TextTerms = preload("res://ui/text_terms.gd")
 const Mind = preload("res://sim/mind.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
 const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
@@ -1276,10 +1277,13 @@ func _refresh_actions() -> void:
 				var hear = _button(actions, "Hear the town", func(): _run("hear"))
 				hear.tooltip_text = "Let bystanders speak for or against them; then it's your turn."
 			elif not g.statement_used:
-				_button(actions, "Speak against them…", func(): _card_picker("Accuse, citing a card (optional)",
-					func(c): return true, func(num, _x): _run("accuse %d" % num if num > 0 else "accuse"), true))
-				_button(actions, "Speak in their defence…", func(): _card_picker("Defend, citing a card (optional)",
-					func(c): return true, func(num, _x): _run("defend %d" % num if num > 0 else "defend"), true))
+				# Option (b), Michael, Nov 19: one filed case about the nominee, judged as at the podium.
+				var nominee: String = nm["nominee"]
+				var cases: Array = GameMeeting.nomination_cases(g, nominee)
+				var put = _button(actions, "Present a case about them…", func(): _card_picker("Present a case about %s" % w.by_id[nominee].name,
+					func(c): return GameMeeting.nomination_case_rejection(g, c, nominee) == "", func(num, _x): _run("case %d" % num), false))
+				put.disabled = cases.is_empty()
+				put.tooltip_text = "Put one filed case about them to the town before the vote. It doesn't use your Present." if not cases.is_empty() else "You have no filed case about them. Build one in the Workshop."
 			if w.tools["clemency"] > 0 and nm["by"] != "player" and nm.get("supporters_done", false):
 				_button(actions, "Invoke Clemency (once per case)", func(): _run("clemency"))
 		"night":

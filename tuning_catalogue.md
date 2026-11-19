@@ -160,7 +160,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CRED_MAX` | `0.9` |  | `game/credibility.gd`, `game/demon_declaration.gd`, `workshop/source_doubt.gd` |
 | `CRED_CORROBORATION_MIN` | `0.06` | Minimum independent posterior movement from baseline prior before an NPC scores a recorded player claim at Dawn (unless public alignment proof already exists). | `game/credibility.gd` |
 | `CRED_WEIGHT_FORMAL` | `1.0` | Track-record weights: formal deductions/nominations vs bare meeting statements. | `game/credibility.gd`, `game/game_meeting.gd`, `game/game_presentation.gd`, `game/workshop_presentation.gd` |
-| `CRED_WEIGHT_STATEMENT` | `0.35` |  | `game/game_meeting.gd` |
+| `CRED_WEIGHT_STATEMENT` | `0.35` |  | (unused) |
 | `CRED_WEIGHT_BARE_NOMINATION` | `1.0` |  | `game/game_meeting.gd` |
 | `CRED_DECLARATION_CHANGE` | `0.1` | Changing the demon-type declaration (game/demon_declaration.gd): a straight cut to every NPC's credibility, kept in their track-record target. About one failed case among two claims: CRED_STEP * CRED_SPAN * 0.5. | `game/demon_declaration.gd` |
 | `DISTRUST_EXPLAIN_THRESHOLD` | `0.35` |  | `sim/mind.gd` |
@@ -225,9 +225,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CLEMENCY_TRUSTED_BONUS` | `0.06` |  | `sim/world.gd` |
 | `CLEMENCY_SUSPECTED_DROP` | `0.1` |  | `sim/world.gd` |
 | `VOTED_YES_ON_ME_DROP` | `0.08` |  | `sim/world.gd` |
-| `SPEAK_DEFEND_BONUS` | `0.06` |  | `game/game_meeting.gd` |
-| `SPEAK_AGAINST_NOMINATOR_DROP` | `0.04` |  | `game/game_meeting.gd` |
-| `SPEAK_AGAINST_NOMINEE_DROP` | `0.08` |  | `game/game_meeting.gd` |
 
 ## Social
 
@@ -443,8 +440,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd` |
 | `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_meeting.gd` |
-| `PLAYER_DEFEND_SLOPE` | `-0.25` |  | `sim/mind_meeting.gd` |
-| `PLAYER_ACCUSE_SLOPE` | `0.15` |  | `sim/mind_meeting.gd` |
 | `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_meeting.gd` |
 | `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_meeting.gd` |
 | `VOTE_SPARE_PREF_SLOPE` | `-0.5` |  | `sim/mind_meeting.gd` |
@@ -649,9 +644,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity.gd` |
 | `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity.gd` |
 | `BREATH_HUNT_REACH` | `0.7` | A hunting Breathstealer in a free phase: the chance it is on its victim's block, for the presence reasoning (workshop/day_presence.gd hunt_block; Nov 14). It seeks its preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where good people are working. | `workshop/day_presence.gd` |
-| `LR_WEAK` | `1.5` |  | `workshop/case_eval.gd` |
-| `LR_MODERATE` | `3.0` |  | `workshop/case_eval.gd` |
-| `LR_STRONG` | `10.0` |  | `workshop/case_eval.gd` |
+| `LR_WEAK` | `1.25` | The badge's cut points on a case's strength (the odds ratio on its premise), Michael Nov 19: from the case slate's vote measure (docs/case_slate/), a Weak case sways one or two good votes, a Moderate one about half, a Strong one most (it carries a nomination with the player's vote about 9 times in 10). Below Weak the badge reads Negligible. | `workshop/case_eval.gd` |
+| `LR_MODERATE` | `2.0` |  | `workshop/case_eval.gd` |
+| `LR_STRONG` | `3.5` |  | `workshop/case_eval.gd` |
+| `LR_DAMNING_CHANCE` | `0.9` | The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the Test juror's average listener at or above this, whatever the strength. On the slate it carries every good vote. | `workshop/case_eval.gd` |
 | `PRIOR_K` | `1.5` | Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x). | `workshop/case_eval.gd` |
 | `HEADLINE_WEIGHT` | `1.0` | Headline reading (`Jury._headline`): how far a listener takes a strong evil reading at its word, on top of the full model. Effect = model + HEADLINE_WEIGHT * (1 - Insight) * (headline - model) where the headline is higher. The per-role values are the chance each named person is evil "if the reading is simply true" (1.0 = full share). | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `HEADLINE_FULL_AT` | `0.1` | The blend toward the headline grows with the headline's strength, full at this value (about one Seer ping at default trust). Before Nov 6 any positive headline, however faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5. | `workshop/jury.gd` |

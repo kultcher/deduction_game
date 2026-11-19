@@ -48,7 +48,13 @@ func _init() -> void:
 	_check(absf(ra.posterior - rc.posterior) < 1e-9 and ra.theory_fit < 1.0, "answers change the theory's fit (%.2f), not the evidence" % ra.theory_fit)
 	# The Surveyor could be counting a Marked Bart: the single card can't be strong.
 	var mb = by_name["surveyor_could_be_marked"]
-	_check(CaseEval.evaluate(mb.view, mb.case).category in ["none", "weak", "contradicts"], "one Surveyor count alone is at most weak evidence about Constance")
+	# (×2.2: Weak under the old cut points, Moderate under Michael's of Nov 19; still not Strong.)
+	var mb_cat: String = CaseEval.evaluate(mb.view, mb.case).category
+	_check(mb_cat not in ["strong", "damning"], "one Surveyor count alone can't be strong evidence about Constance (%s)" % mb_cat)
+	# The badge's cut points (Michael, Nov 19): ×1.25 / ×2 / ×3.5, and the top tier at a 90% chance.
+	_check(CaseEval.category(1.2) == "none" and CaseEval.category(1.25) == "weak" and CaseEval.category(2.0) == "moderate"
+		and CaseEval.category(3.5) == "strong" and CaseEval.category(1.1, 0.9) == "damning" and CaseEval.category(50.0, 0.89) == "strong"
+		and CaseEval.category(0.7) == "contradicts", "the badge's tiers fall at x1.25, x2 and x3.5, and Damning at a 90% chance whatever the strength")
 	# A doubted source counts for less.
 	var doubt = core.listener.duplicate(true)
 	doubt["reading_reliability"] = {"report:bart:survey": 0.5, "report:merrin:rumor": 0.5, "report:fenwick:dowse": 0.5}
