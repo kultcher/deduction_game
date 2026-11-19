@@ -1375,8 +1375,10 @@ static func town_vibe(g) -> Dictionary:
 ## confirmation; kept with the NPC's beliefs, not `dialogue_memory`, which holds only speech) is kept for
 ## what the NPC says (MindDialogue / MindMeeting: "their readings agree with what I know"). An
 ## evil NPC's good self keeps the record too, so it can say so honestly; its own trust doesn't
-## move (the shadow copies the real NPC's).
-static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, chances: Dictionary) -> void:
+## move (the shadow copies the real NPC's). Returns whether any trust moved, so the refresh can
+## capture again and solve with the new trust (a repeated refresh then changes nothing).
+static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, chances: Dictionary) -> bool:
+	var moved: bool = false
 	var RC = load("res://workshop/reading_confirm.gd")
 	var seen: Dictionary = n.workshop_state.get("confirm_seen", {})
 	var record: Dictionary = n.workshop_state.get("confirmed_readings", {})
@@ -1400,8 +1402,11 @@ static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, 
 			record[src] = {"tier": tier, "card": cid, "day": w.day, "source": str(r.get("source", "")), "agreement": snappedf(float(r.get("agreement", 0.0)), 0.001)}
 		if n.is_shadow or n.is_evil():
 			continue
-		n.npc_trust[src] = clampf(n.npc_trust.get(src, 0.5) + float(size[tier]), 0.0, 1.0)
+		var was: float = n.npc_trust.get(src, 0.5)
+		n.npc_trust[src] = clampf(was + float(size[tier]), 0.0, 1.0)
+		moved = moved or not is_equal_approx(was, n.npc_trust[src])
 		w.dlog.add("npc_trust", n.id, src, {"to": snappedf(n.npc_trust[src], 0.001), "step": float(size[tier]), "confirmation": tier, "source": str(r.get("source", "")), "card": cid},
 			"%s's reading confirms what %s %s (%s)" % [src, n.id, "knows" if tier == "known" else "believes", tier])
 	n.workshop_state["confirm_seen"] = seen
 	n.workshop_state["confirmed_readings"] = record
+	return moved
