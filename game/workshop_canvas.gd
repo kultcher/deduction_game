@@ -218,7 +218,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		previous = g.board[previous - 1].superseded_by
 	var check = status(g, value)
 	if check.blocked:
-		g.last_error = "\n".join(PackedStringArray(check.issues))
+		g.last_error = "\n".join(PackedStringArray(player_issues(g, value, check.issues, previous)))
 		return -1
 	var roots = supports(g, value)
 	var conclusion = native_conclusion(g, value.conclusion)
@@ -426,6 +426,66 @@ static func _card_source(g, id: String) -> String:
 		if card.get("kind", "") != "deduction" and Evidence.normalize_card(card).id == id:
 			return str(Evidence.normalize_card(card).get("source", ""))
 	return ""
+
+## The way back from a wrong lie call (Michael, Nov 19). The refusal a second case meets when
+## it calls a reading Mistaken that an earlier case called a lie ("Conflicting reading
+## challenges…") becomes a signpost to revising that case.
+const CONFLICTING_CALLS = "Conflicting reading challenges need separate alternatives"
+const SIGNPOST_PRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, open case #%d in the Workshop, change the challenge to Mistaken, and present it again: it replaces the old case for everyone who hears it."
+const SIGNPOST_UNPRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, change the challenge in case #%d."
+
+## The live filed case (not `own`, nor any version of it) that calls a lie on a reading `value`
+## calls Mistaken: {number, teller}, or {}.
+static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictionary:
+	var RC = preload("res://workshop/reading_challenges.gd")
+	var mine: Dictionary = value.get("reading_challenges", {})
+	var lineage: Array = versions_of(g, own)
+	for i in range(g.board.size() - 1, -1, -1):
+		var c: Dictionary = g.board[i]
+		if c.get("kind", "") != "deduction" or c.get("deleted", false) or c.get("withdrawn", false) or int(c.get("superseded_by", 0)) > 0 or not c.has("workshop_case"):
+			continue
+		if int(c.n) in lineage:
+			continue
+		var theirs: Dictionary = c.workshop_case.get("reading_challenges", {})
+		for rid in mine:
+			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST:
+				return {"number": int(c.n), "teller": _card_source(g, str(rid))}
+	return {}
+
+## Case `number` and every version it revises.
+static func versions_of(g, number: int) -> Array:
+	var out: Array = []
+	var v: int = number
+	while v > 0 and v <= g.board.size() and not (v in out):
+		out.append(v)
+		v = int(g.board[v - 1].get("revises", 0))
+	return out
+
+## Has anyone heard case `number`, or a version it revises?
+static func was_presented(g, number: int) -> bool:
+	var lineage: Array = versions_of(g, number)
+	for v in lineage:
+		if g.public_presentations.has(v):
+			return true
+	for real in g.w.npcs:
+		var mind = real.shadow if real.is_evil() and real.shadow != null else real
+		for v in lineage:
+			if mind.workshop_state.get("presentations", {}).has(str(v)) or mind.ledger.has("arg:workshop:%d" % v):
+				return true
+	return false
+
+## The issues the player reads: the conflicting-calls refusal becomes the signpost when an
+## earlier case's lie call is the cause. Routing still matches the raw issue text, so this
+## is applied only where words reach the player.
+static func player_issues(g, value: Dictionary, issues: Array, own: int = 0) -> Array:
+	if not issues.any(func(i): return str(i).begins_with(CONFLICTING_CALLS)):
+		return issues
+	var other: Dictionary = lie_called_elsewhere(g, value, own)
+	if other.is_empty():
+		return issues
+	var who: String = g.w.by_id[other.teller].name if g.w.by_id.has(other.teller) else "the teller"
+	var line: String = (SIGNPOST_PRESENTED % [who, other.number, other.number]) if was_presented(g, other.number) else (SIGNPOST_UNPRESENTED % [who, other.number, other.number])
+	return issues.map(func(i): return line if str(i).begins_with(CONFLICTING_CALLS) else i)
 
 static func _logit(p: float) -> float:
 	p = clampf(p, 1e-6, 1.0 - 1e-6)
