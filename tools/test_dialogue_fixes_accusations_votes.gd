@@ -1,7 +1,8 @@
 ## Fixes from playtest 1709 (Nov 8): reason wording, no repeated accusations, vote lines that
 ## don't invent the Demonologist's case, the silenced in conversation, wards shown for free,
 ## and gossip / Town Hall results in the conversation view.
-##   godot --headless --path . --script res://tools/test_playtest_1709.gd
+##   godot --headless --path . --script res://tools/test_dialogue_fixes_accusations_votes.gd
+## Named test_playtest_1709 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
