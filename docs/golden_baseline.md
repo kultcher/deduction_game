@@ -55,21 +55,49 @@ opinion of them, with a card citing the confirmed reading. Wording only: no susp
 - **Outcomes:** all five unchanged.
 - **Stability:** two captures were identical.
 
-### Earlier baseline (Nov 19, trust from readings that confirm): `baseline_d61a22d`
+### Earlier baseline (Nov 19, trust from readings that confirm): `baseline_8d946e7`
 
-`tools/golden/baseline_d61a22d/` is the capture from `claude/beadle-reading-trust` at `d61a22d`
-(main `05d81a3` merged in, with #308). A good listener gains trust in a teller whose reading
+`tools/golden/baseline_8d946e7/` is the capture from `claude/beadle-reading-trust` at `8d946e7`
+(main with #320 merged in). The trust a confirming reading earns counts in the same refresh's
+solve (Bailiff's `test_workshop_action` catch), so it takes effect one refresh sooner than in
+the earlier captures of this branch. A good listener gains trust in a teller whose reading
 confirms what it knows or strongly believes (small 0.06, moderate 0.12, known 0.20), once per
 reading by its logical origin. The agreement step from #292 becomes 0.02 (Michael, Nov 19, set
 R3). The record of confirmations is kept in `workshop_state`.
-- **Divergence from `baseline_d6a93f1`:** every seed, from record 1 (the record's place in each
+- **Divergence from `baseline_6569929`:** every seed, from record 1 (the record's place in each
   NPC's `workshop_state`, and the first day's refreshes judging the night-0 readings).
 - **Outcomes:**
   - **42, 692 and 900:** unchanged.
   - **54875:** hanged Edda on day 3 with no winner by day 4. Now it hangs Edda on day 2 and
-    Constance on day 3, and good wins on day 3.
+    Hollis on day 3, still with no winner by day 4.
   - **98933:** good won on day 2, hanging Odette. Now it hangs Dorian on day 2 and Isolde on
     day 3, with no winner by day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, self-doubt from the judge): `baseline_6569929`
+
+`tools/golden/baseline_6569929/` is the capture from `claude/self-doubt-posterior` at `6569929`
+(main `aef2ff9` merged in). A good NPC's self-doubt is now the judge's chance each night's own
+reading was wrong (`OwnGiftDoubt`), computed when first read rather than stored; the poison and
+Delusional prior that `workshop_state.self_doubt` used to hold is stored as
+`workshop_state.self_doubt_prior`.
+- **Divergence from `baseline_659996a`:** every seed from record 1, only in those stored fields
+  (`self_doubt` gone, `self_doubt_prior` added). With `--ignore engine,self_doubt,self_doubt_prior`
+  all five seeds are identical: no belief, vote, nomination or execution moves, since nothing in
+  play reads self-doubt yet.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
+
+### Earlier baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
+
+`tools/golden/baseline_659996a/` is the capture from `claude/herald-hanged-refusals` (#312) at
+`659996a` (main `05d81a3` merged in). Michael approved capitalising "Demon" throughout (Nov 19):
+"the demon" becomes "the Demon" in readings, role descriptions, filed-case text, endings, logs and
+dialogue. #312 also carries Michael's two hanged-Demon refusal lines, which golden doesn't reach.
+- **Text only:** every record is identical to `baseline_d6a93f1` once case is ignored, on all five
+  seeds. No belief, vote or outcome moves, and the record counts are the same.
+- **First text difference:** 42 and 900 at record 1 (a Seer reading's text), 54875 and 98933 at
+  record 54, and 692 at record 25 (the evening reply).
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`

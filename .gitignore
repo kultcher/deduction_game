@@ -1,4 +1,7 @@
-logs/
+# Logs stay local, but logs/.gdignore is kept so Godot never parses old probe scripts
+# left in log folders (they reference removed code and show as errors on opening).
+logs/*
+!logs/.gdignore
 .godot/
 *.import
 export/

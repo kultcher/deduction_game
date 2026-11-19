@@ -74,7 +74,7 @@ static func _rebuild_reading_text(w, role: String, d: Dictionary, fallback_text:
 		"seer":
 			var p: Array = d.get("pair", [])
 			if p.size() == 2:
-				return "I looked at %s and %s: %s" % [nm.call(p[0]), nm.call(p[1]), "one of them is the demon" if d.get("yes", false) else "neither is the demon"]
+				return "I looked at %s and %s: %s" % [nm.call(p[0]), nm.call(p[1]), "one of them is the Demon" if d.get("yes", false) else "neither is the Demon"]
 		"clerk", "archivist":
 			var p2: Array = d.get("pair", [])
 			if p2.size() == 2:
@@ -123,7 +123,7 @@ static func _rebuild_reading_text(w, role: String, d: Dictionary, fallback_text:
 		"gravedigger":
 			return "when we buried %s, I saw they were the %s" % [nm.call(str(d.get("executed", ""))), C.role_name(str(d.get("role", "")))]
 		"veteran":
-			return "the demon came for me, and I drove it off; it came from %s" % C.block_name(str(d.get("block", "")))
+			return "the Demon came for me, and I drove it off; it came from %s" % C.block_name(str(d.get("block", "")))
 		"martyr":
 			if d.get("evil", false):
 				return "when %s went to the gallows, my gift did not stir: they were evil" % nm.call(str(d.get("target", "")))
@@ -133,7 +133,7 @@ static func _rebuild_reading_text(w, role: String, d: Dictionary, fallback_text:
 			if tr.size() == 3:
 				return "at the start of the case, among %s, %s, and %s, there was one ordinary townsfolk, one secret-holder, and one Minion" % [nm.call(tr[0]), nm.call(tr[1]), nm.call(tr[2])]
 		"augur":
-			return "someone who crossed my path in public today registered as the demon" if d.get("yes", false) else "nobody who crossed my path in public today registered as the demon"
+			return "someone who crossed my path in public today registered as the Demon" if d.get("yes", false) else "nobody who crossed my path in public today registered as the Demon"
 		"magistrate":
 			return "in the nomination of %s by %s, %s" % [nm.call(str(d.get("nominee", ""))), nm.call(str(d.get("nominator", ""))), "both shared the same alignment" if d.get("same", false) else "they did not share the same alignment"]
 		"executor":

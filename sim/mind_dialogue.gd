@@ -729,7 +729,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 				"text": "%s told you privately they have no gift." % n.name})
 		elif _afraid(w, n):
 			var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "fear": true,
-				"text": "%s won't say whether they have a gift: afraid it would make them the demon's next mark." % n.name}
+				"text": "%s won't say whether they have a gift: afraid it would make them the Demon's next mark." % n.name}
 			var ask: Dictionary = _protection_request(w, n, refusal)
 			if not ask.is_empty():
 				n.max_tier = maxi(n.max_tier, 1)
