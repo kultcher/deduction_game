@@ -560,5 +560,5 @@ static func _close_meeting(g) -> void:
 	if g.w.day == 1: g._narr(C.DEMON_NIGHT_RULE)
 	var opts = "'vigil <block>' (watch who goes out from a block at night)"
 	if g.w.tools["ward"] > 0:
-		opts = "'ward <name>' (shield them from the demon, once per case), " + opts
+		opts = "'ward <name>' (shield them from the Demon, once per case), " + opts
 	g._prompt("Choose your night work: %s, or 'sleep'." % opts)

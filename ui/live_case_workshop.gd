@@ -24,6 +24,10 @@ var _numbers: Array = []
 var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
+var bg_menu: PopupMenu
+var bg_from: PopupMenu
+var bg_about: PopupMenu
+var _bg_people: Array = []
 var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
 enum DebugItem { PREVIEW, SUPPORT, WITHDRAW, WHY, WHY_RECORD, WHY_SHOW }
 var files: Dictionary = {}
@@ -42,15 +46,20 @@ var presenting = false
 ## Marked" is "holds a secret" with Marked; "bluffing" and "told the truth" were "evil" and
 ## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
 ## modifiers), not premises. Filed cases with the old types still evaluate.
-const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent"]
+## "turned" (the Revenant's curse turned this person) is offered in the type menu only once
+## a curse has been announced (Michael, Nov 19), or on a premise that already holds it; the
+## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
+## as it is for the older off-screen picker, which selects by index.
+const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent", "turned"]
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the Revenant's curse"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
 ## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
 const PREMISE_TYPE_HINTS = {
+	"turned": "Argue the curse turned them: good before it, evil while it held, good again once it lifted.",
 	"evil": "Argue they're on the Demon's side. A firm claim: it counts in full if the town buys it, and can carry a vote.",
 	"suspicious": "Put pressure on someone without necessarily getting them hanged. It counts for half, but leans on them to explain themselves. You pick the direction and drive it: the town won't sort out \"one of these two\" for you.",
 	"good": "Argue they're on the town's side: clear them.",
@@ -157,6 +166,10 @@ func _ready() -> void:
 	for name_value in premise_names():
 		premise_type.add_item(name_value)
 	premise_type.select(-1)
+	# Hidden children, so they're freed with the page (orphans leaked their popups' viewports at exit).
+	for hidden in [premise_person, premise_type]:
+		hidden.visible = false
+		tools.add_child(hidden)
 	var add_button = _button(tools, "Add premise", _add_premise)
 	add_button.tooltip_text = "Adds a blank premise. Click its fields to choose who and what you're arguing."
 	var add_profile_btn = _button(tools, "Add Townsfolk Profile Info", _open_add_profile_menu)
@@ -199,6 +212,15 @@ func _ready() -> void:
 	field_menu = PopupMenu.new()
 	_add_subwindow(field_menu)
 	field_menu.id_pressed.connect(_field_chosen)
+	bg_menu = PopupMenu.new()
+	_add_subwindow(bg_menu)
+	bg_from = PopupMenu.new()
+	bg_about = PopupMenu.new()
+	bg_menu.add_child(bg_from)
+	bg_menu.add_child(bg_about)
+	bg_from.id_pressed.connect(func(i): _bg_add(i, true))
+	bg_about.id_pressed.connect(func(i): _bg_add(i, false))
+	canvas.background_context_requested.connect(_background_menu)
 	juror_timer = Timer.new()
 	juror_timer.one_shot = true
 	juror_timer.wait_time = 0.45
@@ -390,13 +412,13 @@ func add_whereabouts(question: Dictionary) -> String:
 		canvas.fit_case(true)
 	return id
 
-func add_evidence(number: int) -> void:
-	if number < 1 or number > g.board.size():
-		return
-	var receipt: Dictionary = g.board[number - 1]
-	if receipt.kind == "deduction" or receipt.get("deleted", false) or receipt.get("tavern_gossip", false) or not receipt.get("workshop_usable", true):
-		return
+## Add a board card. The view centres on it, and it glows softly until first moved
+## (Michael, Nov 19). Returns its node id, or "" if it can't go on the Workshop.
+func add_evidence(number: int, centre: bool = true) -> String:
+	if not _usable(number):
+		return ""
 	refresh()
+	var receipt: Dictionary = g.board[number - 1]
 	var card_id: String = Live.Evidence.normalize_card(receipt).id
 	var id: String = "e:" + card_id
 	if not board.nodes.has(id):
@@ -406,7 +428,73 @@ func add_evidence(number: int) -> void:
 		board.version += 1
 	board.selected = id
 	_session_changed()
-	canvas.fit_case(true)
+	canvas.fresh[id] = true
+	if centre:
+		canvas.centre_on([id])
+	return id
+
+## Several cards at once: each glows, and the view centres on the group.
+func add_evidence_many(numbers: Array) -> Array:
+	var ids: Array = []
+	for number in numbers:
+		var id: String = add_evidence(int(number), false)
+		if id != "":
+			ids.append(id)
+	if not ids.is_empty():
+		canvas.centre_on(ids)
+	return ids
+
+func _usable(number: int) -> bool:
+	if g == null or number < 1 or number > g.board.size():
+		return false
+	var receipt: Dictionary = g.board[number - 1]
+	return not (receipt.kind == "deduction" or receipt.get("deleted", false) or receipt.get("tavern_gossip", false) or not receipt.get("workshop_usable", true))
+
+## The readings on the board (gift results) that a person gave, or that name them, in
+## board order (Michael, Nov 19). `from`: the person who read them; otherwise anyone the
+## reading names (one of a pair or a group counts).
+func readings_for(person: String, from: bool) -> Array:
+	var out: Array = []
+	if g == null:
+		return out
+	for c in g.board:
+		if c.get("kind", "") != "info" or not _usable(int(c.n)):
+			continue
+		if from and str(c.get("source", "")) == person:
+			out.append(int(c.n))
+		elif not from and person in c.get("subject", []):
+			out.append(int(c.n))
+	return out
+
+## Right-click on empty canvas: add a person's readings, given or about them.
+func _background_menu(_at: Vector2) -> void:
+	if g == null:
+		return
+	bg_menu.clear()
+	for sub in [bg_from, bg_about]:
+		sub.clear()
+	var people: Array = g.w.npcs.duplicate()
+	people.sort_custom(func(a, b): return a.name < b.name)
+	_bg_people = people.map(func(n): return n.id)
+	for i in people.size():
+		var n = people[i]
+		var given: int = readings_for(n.id, true).size()
+		var named: int = readings_for(n.id, false).size()
+		bg_from.add_item("%s (%d)" % [n.name, given], i)
+		bg_from.set_item_disabled(bg_from.get_item_index(i), given == 0)
+		bg_about.add_item("%s (%d)" % [n.name, named], i)
+		bg_about.set_item_disabled(bg_about.get_item_index(i), named == 0)
+	bg_menu.add_submenu_node_item("Add readings FROM", bg_from)
+	bg_menu.add_submenu_node_item("Add all readings ABOUT", bg_about)
+	bg_menu.position = Vector2i(get_viewport().get_mouse_position())
+	bg_menu.popup()
+
+func _bg_add(index: int, from: bool) -> void:
+	if index < 0 or index >= _bg_people.size():
+		return
+	var person: String = _bg_people[index]
+	var ids: Array = add_evidence_many(readings_for(person, from))
+	status.text = "Added %d reading%s %s %s." % [ids.size(), "" if ids.size() == 1 else "s", "from" if from else "about", g.w.by_id[person].name]
 
 func _fit_after_layout() -> void:
 	await get_tree().process_frame
@@ -1120,11 +1208,13 @@ func _field_popup(id: String, field: String) -> void:
 					field_menu.add_item(text, values.size())
 				values.append(person.id)
 		"type":
+			# "Was turned by the curse" only once a curse has fallen, or where already chosen.
+			var cursed: bool = board.view.get("chronology", {}).has("curse")
 			# A hanged person's Demon premise is in the past tense, and only where a Scion
 			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
 			# A draft holds its person in `pick` until both fields are chosen (Codex on #305).
 			var p_target: String = str(node.get("pick", {}).get("target", "")) if node.get("draft", false) else str(node.get("conclusion", {}).get("target", ""))
-			var types: Array = premise_types().filter(func(t): return board.premise_offered(t, p_target))
+			var types: Array = premise_types().filter(func(t): return (t != "turned" or cursed or str(node.get("conclusion", {}).get("type", "")) == "turned") and board.premise_offered(t, p_target))
 			for i in range(types.size()):
 				field_menu.add_item(board.premise_text(types[i], p_target), values.size())
 				var hanged_demon: bool = types[i] == "demon" and board.premise_text(types[i], p_target) == board.HANGED_DEMON_TEXT

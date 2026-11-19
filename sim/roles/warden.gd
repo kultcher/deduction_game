@@ -13,7 +13,7 @@ func _init() -> void:
 	kind = "protect"
 	tags = ["protection", "night_walker", "kill_protection"]
 	night_walk = true
-	desc = "Each night, guards one other person's door against the demon."
+	desc = "Each night, guards one other person's door against the Demon."
 	shape = "NIGHT_EVENT"
 	can_cause_quiet_night = true
 	quiet_night_effect = Tuning.Roles.WARDEN.quiet_night_effect

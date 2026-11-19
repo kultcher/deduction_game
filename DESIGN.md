@@ -191,8 +191,9 @@ it means the game must teach its own way of thinking and make evidence very read
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`
   (0.1) doubt. A Night Watch list that wrongly names them is still set aside.
 - **Vigils see who leaves:** a player vigil on a block sees its residents leaving home, and
-  anyone doing the full Lamplighter or Sexton tour; not walkers arriving from another block
-  or passing through. So it tests suspects (watch the block of the people you doubt)
+  no one else: not walkers arriving from another block or passing through, nor the
+  Lamplighter or Sexton on their tour of every block, who are seen only from their own home
+  block (Michael, Nov 19). So it tests suspects (watch the block of the people you doubt)
   rather than catching the Demon at the scene, and an empty vigil clears that block's
   residents for the night. The Night Watch still sees all traffic. (Michael, Nov 17;
   `docs/design/vigil.md`. Before, a vigil saw walkers arriving.)
@@ -627,10 +628,15 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
   suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, and "something doesn't add up" (conflict). "Is the Demon" about someone
-  already hanged means "was the Demon when hanged", so it holds where the Scion rose after
-  (a hanging with five or more alive and a Scion on the script); "Is not the Demon" is its
-  complement (Michael, Nov 19). Protect and spare are
+  unreliable, "something doesn't add up" (conflict), and "was turned by the curse". The
+  last names the Revenant's turning itself: the person was good before the curse, evil only
+  while it held, and good again after it, so their earlier and later word stands. "Evil
+  during the curse" also allows that they were evil all along. It needs a public curse and
+  a surviving yes-voter, and it never shows who was turned: it's weighed over the worlds
+  like any premise. For someone already hanged, the Demon premise reads "was the Demon when
+  hanged", and holds where the Scion rose after (a hanging with five or more alive). It's
+  offered only with a Scion on the script, and never in the negative (Michael, Nov 19).
+  Protect and spare are
   preferences, spoken as social speech. "Has a secret" and "red herring" can't be
   presented: nothing the town can weigh establishes them.
 - **Cards with inline answers** (who in this Seer pair? which blocks?); unknown answers

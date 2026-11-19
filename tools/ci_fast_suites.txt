@@ -3,6 +3,7 @@
 # Keep the list sorted: add a new suite at its alphabetical place, not at the end, so two
 # PRs that each add a suite rarely touch the same line (Nov 17). CI deals the list out
 # to the four shards in this order (suite i goes to shard i mod 4).
+test_agreement_trust
 test_ask_night_results
 test_attention_0b
 test_bare_compile
@@ -22,6 +23,7 @@ test_connections_why
 test_control_flow
 test_conversation_nights
 test_csharp_slice_c0
+test_day_defence
 test_day_presence
 test_daytime_defence_lines
 test_defence_grounds
@@ -47,6 +49,7 @@ test_haunt_learning
 test_headline
 test_held_signals
 test_hint_families
+test_honest_forgetting
 test_honest_mistake
 test_joint_reasons
 test_juror_claims
@@ -62,6 +65,7 @@ test_mechanics_sightings
 test_medium_night0_frame
 test_medium_relay_challenge
 test_meeting_flow
+test_meeting_gossip
 test_meeting_m2a
 test_meeting_m2b
 test_meeting_m2c
@@ -84,6 +88,7 @@ test_poison_outing
 test_premise_step1
 test_premise_step2
 test_premise_step3
+test_press_contradiction
 test_public_revisions
 test_reading_confirm
 test_recency
@@ -108,6 +113,7 @@ test_too_clean_bluffs
 test_town_note
 test_town_vibe
 test_triage_nov16
+test_turned_premise
 test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge

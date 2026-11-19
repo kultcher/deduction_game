@@ -228,6 +228,31 @@ static func _pick_item(w, s, l):
 						"kind": "unease", "about": ut.id, "why": Mind.citable_reason(w, s, ut.id, "town"),
 						"from": s.id, "key": ukey,
 					}])
+	# Who they saw talking with whom by day (BACKLOG item 3, Michael, Nov 18: meetings feed
+	# the gossip network): the latest such meeting the listener isn't part of, passed on as
+	# "X and Y were talking at Z". Evil keeps its teammates' meetings to itself.
+	for idx in range(s.beliefs.size() - 1, -1, -1):
+		var mb: Dictionary = s.beliefs[idx]
+		if mb.get("kind", "") != "saw" or mb.get("phase", C.NIGHT) == C.NIGHT or str(mb.get("with", "")) == "" or str(mb.get("loc", "")) == "":
+			continue
+		if int(mb.get("day", -1)) < maxi(1, w.day - 1):
+			continue
+		var m_a: String = str(mb.get("who", ""))
+		var m_b: String = str(mb["with"])
+		if l.id in [m_a, m_b] or s.id in [m_a, m_b] or not w.by_id.has(m_a) or not w.by_id.has(m_b):
+			continue
+		if s.is_evil() and (Evil.is_teammate(w, s, m_a) or Evil.is_teammate(w, s, m_b)):
+			continue
+		var m_pair: Array = [m_a, m_b]
+		m_pair.sort()
+		var mkey: String = "meeting:%s:%s:%d:%d" % [m_pair[0], m_pair[1], int(mb["day"]), int(mb["phase"])]
+		if _told(s, l, mkey):
+			continue
+		cands.append([gos * Tuning.Social.DAY_RUMOR_WEIGHT, {
+			"kind": "meeting", "about": m_a, "with": m_b, "loc": str(mb["loc"]), "block": str(mb.get("block", "")),
+			"day": int(mb["day"]), "phase": int(mb["phase"]), "from": s.id, "witness": s.id, "key": mkey,
+		}])
+		break
 	# What a dead person told them is no longer someone else's to keep: readings from the
 	# dead are passed on readily, the more so the more they trusted the dead (Nov 5).
 	if not s.is_evil():
@@ -248,7 +273,7 @@ static func _pick_item(w, s, l):
 			dr["late"] = true
 			cands.append([gos * Tuning.Social.SHARE_RELAY_GOSSIP_SCALE + Tuning.Social.SHARE_DEAD_RELAY_SLOPE * s.npc_trust.get(src.id, 0.5), dr])
 	for h in s.hearsay.slice(-4):
-		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease", "role_hint", "role_claim"]:
+		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "meeting", "unease", "role_hint", "role_claim"]:
 			continue
 		if not s.is_evil() and str(h.get("kind", "")) == "reading" and w.by_id.has(str(h.get("from", ""))) and not w.by_id[str(h["from"])].alive:
 			continue # offered above
@@ -474,6 +499,10 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			# Witnessed daytime visits build social fabric and context
 			# without manufacturing night-movement suspicion in the listener's ledger.
 			l.hearsay.append(hs)
+		"meeting":
+			# Who was talking with whom: remembered, to pass on when asked about either of
+			# them (MindDialogue._meeting_note). Not evidence in the listener's ledger.
+			l.hearsay.append(hs)
 		"case":
 			var proof = w.workshop_roots.call(item["card"]) if w.workshop_roots.is_valid() else {"complete": false, "receipts": {}}
 			for receipt in proof.receipts.values():
@@ -530,6 +559,8 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "they distrust %s%s" % [w.by_id[item["about"]].name, via]
 		"unease":
 			return "they feel uneasy about %s%s" % [w.by_id[item["about"]].name, via]
+		"meeting":
+			return "%s and %s were talking at %s%s" % [w.by_id[item["about"]].name, w.by_id[item["with"]].name, w.loc_name(str(item["loc"])), via]
 		"day_sighting":
 			var dname: String = w.by_id[item["about"]].name
 			var dloc: String = str(item.get("loc", ""))
@@ -559,6 +590,44 @@ static func tavern_whispers(w) -> void:
 			var m = here[j]
 			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.decision_roll(d, "whisper_intelligence", Tuning.Social.TAVERN_WHISPER_CHANCE, {}, m.id):
 				Evil.share_intel(w, d, m, "whisper in the crowded tavern")
+
+# ---------------------------------------------------------------- agreement
+
+## Backing a case builds trust (BACKLOG, Michael, Nov 18): a good NPC warms a little to
+## someone who agrees with it, by the same small step a nominee gives those who vote to spare
+## it (Social.TRUST_VOTED_FOR), at most once a day for each ally: a day of agreeing votes is
+## one agreement, not one per ballot. Evil NPCs' own trust isn't moved (their shadow copies it).
+static func agreement_trust(w, l, ally_id: String, why: String) -> void:
+	if l == null or not l.alive or l.is_evil() or ally_id == l.id or not w.by_id.has(ally_id):
+		return
+	var agreed: Dictionary = l.dialogue_memory.get("agreed_on_day", {})
+	if int(agreed.get(ally_id, -1)) == w.day:
+		return
+	agreed[ally_id] = w.day
+	l.dialogue_memory["agreed_on_day"] = agreed
+	l.npc_trust[ally_id] = clampf(l.npc_trust.get(ally_id, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	w.dlog.add("npc_trust", l.id, ally_id, {"to": snappedf(l.npc_trust[ally_id], 0.001), "agreement": why}, "%s %s" % [ally_id, why])
+
+## Someone nominated or accused `target_id` in front of the town: every good NPC who already
+## suspects them about as much as it takes to nominate (Meeting.NOMINATION_FLOOR) agrees.
+static func backing_trust(w, target_id: String, backer_id: String, why: String) -> void:
+	for l in w.living():
+		if l.id == target_id or l.id == backer_id:
+			continue
+		if Mind.susp(l, target_id) >= Tuning.Meeting.NOMINATION_FLOOR:
+			agreement_trust(w, l, backer_id, why)
+
+## After a vote: each good voter warms to those who voted the same way (a no vote is how one
+## NPC stands up for another, so this covers defences too).
+static func vote_agreement_trust(w, nominee_id: String, yes: Array, no: Array) -> void:
+	for side in [[yes, "voted with me to hang %s" % nominee_id], [no, "voted with me to spare %s" % nominee_id]]:
+		var ids: Array = side[0]
+		for a in ids:
+			if a == nominee_id or not w.by_id.has(a):
+				continue
+			for b in ids:
+				if b != a and b != nominee_id:
+					agreement_trust(w, w.by_id[a], b, side[1])
 
 # ---------------------------------------------------------------- paranoia
 

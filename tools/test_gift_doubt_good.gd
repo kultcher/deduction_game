@@ -1,6 +1,6 @@
-## "My gift may have been turned", the good side (BACKLOG, Michael, Nov 17-18): a good public
-## claimant whose own doubt about a night of its readings reaches Meeting.GIFT_DOUBT_SAY (25%)
-## tells the town so, once a game, with the approved line; below it, or in private, it doesn't;
+## "My gift may have been turned", the good side (BACKLOG, Michael, Nov 17-19): a good public
+## claimant that doubts a night of its readings (SourceDoubt.doubts_own_gift: the judge's chance
+## the reading was wrong, at or above Workshop.SELF_DOUBT_TRIGGER, 30%) tells the town so, once a game, with the approved line; below it, or in private, it doesn't;
 ## an evil NPC never takes this route (its own is the boxed-in bluff).
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -40,14 +40,14 @@ func _claimant(doubt: float, public: bool = true):
 	n.claimed_role = n.role
 	n.claim_public = public
 	n.gift_doubt = {}
-	n.workshop_state["self_doubt"] = {1: doubt}
+	n.set_meta("own_gift_doubt", {"result": {1: doubt}})
 	return {"w": w, "n": n}
 
 func _said(lines: Array) -> bool:
 	return lines.any(func(x): return "gift" in str(x.get("text", "")).to_lower() or "reading" in str(x.get("text", "")).to_lower())
 
 func _cases() -> void:
-	var at: float = Tuning.Meeting.GIFT_DOUBT_SAY
+	var at: float = Tuning.Workshop.SELF_DOUBT_TRIGGER
 	var s = _claimant(at + 0.01)
 	_check(s != null, "a good reader to test")
 	if s == null:
@@ -58,7 +58,7 @@ func _cases() -> void:
 	_check(s.n.gift_doubt.has("said") and int(s.n.gift_doubt.get("night", -9)) == 1, "logged with the night it doubts")
 	_check(s.w.public_log.any(func(e): return e.kind == "self_doubt" and e.by == s.n.id), "and it reaches the public record, where listeners weigh it")
 	var again: Array = []
-	s.n.workshop_state["self_doubt"] = {1: 0.9}
+	s.n.set_meta("own_gift_doubt", {"result": {1: 0.9}})
 	MindMeeting._say_gift_doubt(s.w, s.n, again, [])
 	_check(again.is_empty(), "once a game")
 	var low = _claimant(at - 0.01)
@@ -70,7 +70,7 @@ func _cases() -> void:
 	MindMeeting._say_gift_doubt(priv.w, priv.n, priv_lines, [])
 	_check(priv_lines.is_empty() and priv.n.gift_doubt.is_empty(), "not for a gift it hasn't claimed in public")
 	var whole = _claimant(0.0)
-	whole.n.workshop_state["self_doubt"] = {-1: 0.4}
+	whole.n.set_meta("own_gift_doubt", {"result": {-1: 0.4}})
 	var whole_lines: Array = []
 	MindMeeting._say_gift_doubt(whole.w, whole.n, whole_lines, [])
 	_check(whole_lines.size() == 1 and "all its readings" in str(whole.n.gift_doubt.get("why", "")), "a doubt about all its readings (the Delusional one) counts too")
@@ -82,6 +82,6 @@ func _cases() -> void:
 	e.claim_public = true
 	e.claimed_role = e.role
 	e.gift_doubt = {}
-	e.workshop_state["self_doubt"] = {1: 0.9}
+	e.set_meta("own_gift_doubt", {"result": {1: 0.9}})
 	MindMeeting._good_gift_doubt(g.w, e)
 	_check(e.gift_doubt.is_empty(), "an evil NPC never takes the good route")

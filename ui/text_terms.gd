@@ -48,6 +48,27 @@ func _init(include_defaults: bool = true) -> void:
 		register_term({"id": "mechanic:" + term.id, "kind": "mechanic", "content_id": term.id,
 			"label": term.label, "tooltip": term.tooltip, "aliases": term.aliases})
 
+	# Mistaken: its tooltip lists the causes the case in play allows (honest_causes).
+	register_term({"id": MISTAKEN_ID, "kind": "mechanic", "content_id": TermDefs.MISTAKEN.id,
+		"label": TermDefs.MISTAKEN.label, "tooltip": TermDefs.mistaken_tip(causes()), "aliases": TermDefs.MISTAKEN.aliases})
+
+const MISTAKEN_ID = "mechanic:mistaken"
+
+## The honest-failure causes of the case in play, for the Mistaken tooltip; null (no case)
+## means every cause. Static because each surface builds its own registry before any case
+## starts; the UI sets it when a case starts (ui/main.gd), and the tooltip is read live.
+static var honest_causes = null
+
+static func set_honest_causes(list) -> void:
+	honest_causes = list.duplicate() if list is Array else null
+
+static func causes() -> Array:
+	return honest_causes if honest_causes is Array else preload("res://workshop/reading_challenges.gd").HONEST_CAUSES
+
+## A term's tooltip as it reads now (Mistaken's follows the case in play).
+static func _tooltip_now(term: Dictionary) -> String:
+	return TermDefs.mistaken_tip(causes()) if term.get("id", "") == MISTAKEN_ID else term.get("tooltip", "")
+
 ## Extend with any kind of term. Optional appearance: color (null inherits), icon_path,
 ## tooltip. Aliases are strings (case-insensitive) or {text, case_sensitive, role_only}.
 ## Reject duplicate IDs and incomplete definitions without altering the existing registry.
@@ -88,7 +109,10 @@ func register_term(definition: Dictionary) -> bool:
 
 ## Returns a copy, so a surface cannot accidentally change the other surfaces' terms.
 func lookup(id: String) -> Dictionary:
-	return _terms.get(id, {}).duplicate(true)
+	var term: Dictionary = _terms.get(id, {}).duplicate(true)
+	if not term.is_empty():
+		term["tooltip"] = _tooltip_now(term)
+	return term
 
 ## Non-overlapping ranges in original String character offsets, ordered left-to-right.
 ## Options: enabled=false opts out; kinds limits eligible types; role_context permits
@@ -110,7 +134,7 @@ func find_matches(text: String, options: Dictionary = {}) -> Array:
 			candidates.append({"start": m.get_start(), "end": m.get_end(), "text": m.get_string(),
 				"id": term["id"], "kind": term["kind"], "content_id": term.get("content_id", ""),
 				"color": term["color"], "bold": term["bold"],
-				"icon_path": term["icon_path"], "tooltip": term["tooltip"]})
+				"icon_path": term["icon_path"], "tooltip": _tooltip_now(term)})
 	candidates.sort_custom(func(a, b):
 		if a["start"] != b["start"]:
 			return a["start"] < b["start"]

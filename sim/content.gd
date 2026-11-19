@@ -90,13 +90,17 @@ static func third_person(text: String) -> String:
 		out = re.sub(out, pair[1], true)
 	return out
 
-## A player vigil on `block` spots residents of `block` leaving home (a night path starts at
-## the walker's home), and the Lamplighter making the full four-block tour; not walkers who
-## arrive from elsewhere or pass through (Michael, Nov 17, docs/design/vigil.md option A:
-## the vigil aims at suspects, not at the Demon's likely target). A Demon whose victim lives
-## on its own block still leaves home. Night Watch still sees all traffic (`block in path`).
-static func vigil_sees_path(block: String, path: Array) -> bool:
-	return not path.is_empty() and (path.front() == block or path.size() == BLOCKS.size())
+## A player vigil on `block` spots residents of `block` leaving home, and nothing else: not
+## walkers who arrive from elsewhere or pass through (Michael, Nov 17, docs/design/vigil.md
+## option A: the vigil aims at suspects, not at the Demon's likely target). The Lamplighter
+## and Sexton walk every block, but leave home only on their own, so only a vigil there sees
+## them (Michael, Nov 19). A Demon whose victim lives on its own block still leaves home.
+## Night Watch still sees all traffic (`block in path`).
+## `home` is the walker's home block. A route starts there, but a tour of every block runs in
+## the town's block order, so callers that know the walker pass it (Codex on #300); without
+## it, the path's first block stands in.
+static func vigil_sees_path(block: String, path: Array, home: String = "") -> bool:
+	return not path.is_empty() and (home if home != "" else str(path.front())) == block
 
 static func route(a: String, b: String) -> Array:
 	if a == b:
@@ -377,7 +381,7 @@ const ROLES = {
 	"archivist": {"name": "Archivist", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing that one of two people is a particular minion."},
 	"augur": {"name": "Augur", "align": "good", "kind": "info", "day": true,
-		"desc": "Each evening, learns whether they crossed paths with the demon in public on the same block earlier that day."},
+		"desc": "Each evening, learns whether they crossed paths with the Demon in public on the same block earlier that day."},
 	"chronicler": {"name": "Chronicler", "align": "good", "kind": "info",
 		"desc": "On night 3, learns three other people (living or dead): at case start, one was an ordinary townsfolk, one carried a secret, and one was a minion."},
 	"clerk": {"name": "Clerk", "align": "good", "kind": "info", "first_night": true,
@@ -405,19 +409,19 @@ const ROLES = {
 	"psychologist": {"name": "Psychologist", "align": "good", "kind": "info",
 		"desc": "Each night (not the first), learns either two statements they heard directly that day (at least one of which was a lie or misreading), or that none of the eligible statements they heard that day were false."},
 	"registrar": {"name": "Registrar", "align": "good", "kind": "info",
-		"desc": "Starts knowing three roles on the script (at most one minion, never the demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."},
+		"desc": "Starts knowing three roles on the script (at most one minion, never the Demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."},
 	"rumormonger": {"name": "Rumormonger", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing that one of two people carries a particular secret."},
 	"seer": {"name": "Seer", "align": "good", "kind": "info",
-		"desc": "Each night, picks two people and learns if either is the demon. One good soul reads falsely as the demon."},
+		"desc": "Each night, picks two people and learns if either is the Demon. One good soul reads falsely as the Demon."},
 	"sexton": {"name": "Sexton", "align": "good", "kind": "protect",
 		"desc": "Once per case (not night 0), at the start of night, may toll the church bell and walk through every parish: all minion abilities are suppressed until the next night."},
 	"surveyor": {"name": "Surveyor", "align": "good", "kind": "info", "first_night": true,
 		"desc": "Starts knowing whether or not all the residents on a random block (not their own) share the same alignment."},
 	"veteran": {"name": "Veteran", "align": "good", "kind": "passive",
-		"desc": "The first time the demon attacks the Veteran, they survive and learn the last block the attacker came through."},
+		"desc": "The first time the Demon attacks the Veteran, they survive and learn the last block the attacker came through."},
 	"warden": {"name": "Warden", "align": "good", "kind": "protect", "night_walk": true,
-		"desc": "Each night, guards one other person's door against the demon."},
+		"desc": "Each night, guards one other person's door against the Demon."},
 	"hearthwitch": {"name": "Hearthwitch", "align": "good", "kind": "info",
 		"desc": "Each night, learns how many of their two living lane-neighbours are evil. (Benched: not in the script.)"},
 	"demon": {"name": "Demon", "align": "evil", "kind": "evil",
@@ -431,9 +435,9 @@ const ROLES = {
 	"revenant": {"name": "Revenant", "align": "evil", "kind": "evil", "minion": true, "day": true,
 		"desc": "Hides a totem somewhere each day it has none in play. If hanged while a totem is hidden, a good soul who voted for it turns evil until the totem is found (not while the Sexton's bell suppresses minions)."},
 	"brute": {"name": "Brute", "align": "evil", "kind": "evil", "minion": true, "night_walk": true,
-		"desc": "While you are alive, you hunt and kill in place of the demon (dropping two traces); the demon stays home. You register as a minion, not the demon."},
+		"desc": "While you are alive, you hunt and kill in place of the Demon (dropping two traces); the Demon stays home. You register as a minion, not the Demon."},
 	"scion": {"name": "Scion", "align": "evil", "kind": "evil", "minion": true,
-		"desc": "If the demon is executed while five or more are alive, the Scion becomes the demon."},
+		"desc": "If the Demon is executed while five or more are alive, the Scion becomes the Demon."},
 }
 
 ## The script: what may be in play in a case. No duplicates.
@@ -482,7 +486,7 @@ static func is_minion(r: String) -> bool:
 ## their gift. Good townsfolk only.
 const SECRET_MODS = {
 	"delusional": {"name": "Delusional", "desc": "Their gift does not work and gives arbitrary information. They don't know."},
-	"marked": {"name": "Marked", "desc": "May register as evil, or as the demon, to gifts that read them."},
+	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them."},
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
 	"muddler": {"name": "Muddler", "desc": "Often muddles one detail when passing on someone else's reading or night sighting. They don't know."},

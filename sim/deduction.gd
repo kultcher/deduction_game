@@ -176,11 +176,16 @@ static func conclusion_text(w, c: Dictionary) -> String:
 		"evil":
 			return "%s is evil" % a
 		"demon":
-			return "%s is the demon" % a
+			# About someone the town hanged: "was the Demon when hanged", as the Workshop
+			# canvas reads it (CanvasModel.HANGED_DEMON_TEXT; Michael, Nov 19).
+			var who = w.by_id.get(c.get("a", ""), null) if w != null else null
+			if who != null and not who.alive and who.death_cause == "executed":
+				return "%s was the Demon when hanged" % a
+			return "%s is the Demon" % a
 		"good":
 			return "%s is good" % a
 		"notdemon":
-			return "%s is not the demon" % a
+			return "%s is not the Demon" % a
 		"role":
 			return "%s is the %s" % [a, C.role_name(c["role"])]
 		"notrole":
@@ -201,12 +206,14 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "Something doesn't add up: one of %s is misled or lying" % _names(w, c.get("group", []))
 		"suspicious":
 			return "%s is suspicious" % a
+		"turned":
+			return "%s was turned by the Revenant's curse" % a
 		"secret":
 			return "%s is hiding a secret (an innocent one)" % a
 		"marked":
 			return "%s is Marked (good, but may read as evil)" % a
 		"red_herring":
-			return "%s is the Seer's red herring (good, but reads as the demon)" % a
+			return "%s is the Seer's red herring (good, but reads as the Demon)" % a
 		"secret_mod":
 			match c.get("mod", ""):
 				"delusional":

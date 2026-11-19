@@ -13,7 +13,7 @@ func _init() -> void:
 	align = "good"
 	kind = "info"
 	tags = ["first_night_info", "ongoing_info", "role_id"]
-	desc = "Starts knowing three roles on the script (at most one minion, never the demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."
+	desc = "Starts knowing three roles on the script (at most one minion, never the Demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."
 	shape = "REGISTRAR"
 	marked_registers = true
 	public_threat_bonus = Tuning.Roles.SEER.public_threat_bonus * 0.75

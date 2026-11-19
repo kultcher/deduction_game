@@ -15,7 +15,7 @@ func _init() -> void:
 	tags = ["minion", "night_walker"]
 	minion = true
 	night_walk = true
-	desc = "While you are alive, you hunt and kill in place of the demon (dropping two traces); the demon stays home. You register as a minion, not the demon."
+	desc = "While you are alive, you hunt and kill in place of the Demon (dropping two traces); the Demon stays home. You register as a minion, not the Demon."
 	shape = "NONE"
 	# Experimental until the solver models a killer other than the Demon (night movement and
 	# traces assume the Demon walks to the victim): offered in the script editor and by playtest

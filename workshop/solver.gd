@@ -1727,6 +1727,10 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
 		"marked": return world.marked == index
+		# "X was turned by the Revenant's curse" (BACKLOG "Time-scoped Revenant possession
+		# premise"): X is the soul the curse turned, so good before and after it and evil
+		# only while it held. Never true with no public curse (no world is turned).
+		"turned": return int(world.get("converted", -1)) == index
 		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
 		"role", "notrole":
 			# A declaration question, not an extra hidden role assignment: the live

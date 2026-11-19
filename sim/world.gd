@@ -800,7 +800,22 @@ func _make_pair(a, b, when: String) -> void:
 	var evil_meet = a.is_evil() and b.is_evil()
 	dlog.add("npc_conversation", a.id, b.id, {"when": when, "loc": a.loc, "visible": when == "pre", "evil_meeting": evil_meet},
 		"%s and %s talk%s (content: stage 2)." % [a.name, b.name, " (evil meeting)" if evil_meet else ""])
+	if when != "pre":
+		_witness_meeting(a, b)
 	Social.converse(self, a, b, when)
+
+## Those at the place where two people talked after the player had gone see it (BACKLOG item
+## 3, Michael, Nov 18: every meeting feeds the gossip network). A meeting before the player's
+## choice is seen through the phase's day sightings (`_day_sightings`, the "with" field).
+func _witness_meeting(a, b) -> void:
+	if a.at_home() or a.loc != b.loc:
+		return
+	for x in living():
+		if x == a or x == b or x.at_home() or x.loc != a.loc:
+			continue
+		for pr in [[a, b], [b, a]]:
+			x.beliefs.append({"kind": "saw", "who": pr[0].id, "loc": a.loc, "block": loc_block(a.loc),
+				"day": day, "phase": phase, "with": pr[1].id})
 
 ## After the player's action: remaining idlers on the same location may pair off.
 func _post_pair(talked_id: String) -> void:
@@ -926,6 +941,7 @@ func open_nomination(by: String, nominee: String, reason: String = "") -> Dictio
 	else:
 		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - Tuning.Trust.NOMINATED_NPC_TRUST_DROP, 0.0, 1.0)
 		dlog.add("npc_trust", nominee, by, {"to": target.npc_trust[by]}, "%s nominated me" % by)
+		Social.backing_trust(self, nominee, by, "nominated %s, whom I suspect too" % nominee)
 	dlog.add("nomination", by, nominee, {"reason": reason, "on_block": meeting["block"], "block_count": meeting["block_count"]})
 	return nm
 
@@ -1009,6 +1025,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		for v in no:
 			if v != nid and by_id.has(v):
 				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	Social.vote_agreement_trust(self, nid, yes, no)
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":
@@ -1065,7 +1082,7 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 		if C.role_def("scion").can_promote_to_demon(sc, alive_before, self):
 			_scion_rises(sc)
 		else:
-			_finish("good", "The demon's host was executed.")
+			_finish("good", "The Demon's host was executed.")
 	else:
 		_check_parity()
 
@@ -1089,7 +1106,7 @@ func turn_evil(v, why: String) -> void:
 	for m in evil_team():
 		if m != v:
 			Evil.add_intel(self, m, "teammate", v.id, 0.0, "%s has joined us (%s)" % [v.name, why])
-	dlog.add("turned", "world", v.id, {"why": why, "role": v.role}, "%s turns evil (%s). Keeps their gift and claims; now works for the demon." % [v.name, why])
+	dlog.add("turned", "world", v.id, {"why": why, "role": v.role}, "%s turns evil (%s). Keeps their gift and claims; now works for the Demon." % [v.name, why])
 
 ## The totem is found: the curse breaks. Restore the pre-turn good snapshot, disown fake
 ## turned readings, carry forward only public receipts from the turned period, and refresh.
@@ -1213,7 +1230,7 @@ func _check_parity() -> void:
 	if game_over:
 		return
 	if demon().alive and living().size() <= 2:
-		_finish("evil", "Only two townsfolk remain and the demon still walks among them.")
+		_finish("evil", "Only two townsfolk remain and the Demon still walks among them.")
 	elif demon().alive and living_good().is_empty():
 		_finish("evil", "No good soul remains.")
 
@@ -1320,7 +1337,7 @@ func resolve_night() -> void:
 		else:
 			if outcome == "protected_player":
 				ward_saves.append({"target": kill_t, "night": day})
-			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The demon's attack on %s failed (%s)." % [v.name, outcome])
+			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The Demon's attack on %s failed (%s)." % [v.name, outcome])
 			if C.has_role_def(outcome):
 				C.role_def(outcome).on_survive_attack(self, v)
 
@@ -1548,7 +1565,7 @@ func _night_sightings() -> void:
 				var detail = "leaving_home" if (how == "window" and where == wn.home_block) else "street"
 				o.beliefs.append({"kind": "saw", "who": wn.id, "loc": "", "block": where, "day": day, "phase": C.NIGHT, "how": how, "detail": detail})
 				dlog.add("night_sighting", o.id, wn.id, {"block": where}, "%s glimpsed %s on %s at night." % [o.name, wn.name, C.block_name(where)])
-		if player_vigil != "" and C.vigil_sees_path(player_vigil, path) and wn.alive:
+		if player_vigil != "" and C.vigil_sees_path(player_vigil, path, wn.home_block) and wn.alive:
 			player_vigil_seen.append(wn.id)
 	# Neighbours at home sometimes notice each other going in for the night and not coming
 	# out again: a (true, if weak) alibi for those who stayed in.
@@ -1999,7 +2016,7 @@ func start_new_day() -> void:
 	_evening_chats_done_day = -1
 	if day > max_days and not game_over:
 		dlog.set_time(day, "Morning")
-		_finish("evil", "Time ran out: the demon survived %d days." % max_days)
+		_finish("evil", "Time ran out: the Demon survived %d days." % max_days)
 		return
 	dlog.set_time(day, "Morning")
 	if C.SHADOW_SELF:
