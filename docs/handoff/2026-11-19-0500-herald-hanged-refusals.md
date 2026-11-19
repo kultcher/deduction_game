@@ -16,7 +16,7 @@
 ## "Demon" capitalised (Michael, Nov 19)
 Michael approved capitalising "Demon" throughout. Every player-facing string in `sim/`, `game/`, `ui/` and `workshop/` that said "the demon", "a demon", "one demon" or "the demon's" now says "Demon": 65 strings in 21 files. That covers readings, role descriptions, filed-case and premise text, endings, logs and dialogue. The voices already used "the Demon".
 - **Left alone:** command tokens ("guess <name> demon"), counts beside minions ("1 demon", "%d demon"), ids and keys, and comments.
-- **Golden moves on text only:** the new baseline is `baseline_a91d12d`. Every record matches `baseline_e287b3d` once case is ignored, and the two captures were identical. See `docs/golden_baseline.md`.
+- **Golden moves on text only:** re-baselined at its turn in the queue to `baseline_659996a` (main `05d81a3` merged in). Every record matches `baseline_d6a93f1` once case is ignored, and the two captures were identical. See `docs/golden_baseline.md`.
 - **Conflict note:** Quill's #301 edits the `"demon"` branch of `Deduction.conclusion_text` next to these lines. Whoever merges second resolves it, keeping the capital D.
 
 ## Measured

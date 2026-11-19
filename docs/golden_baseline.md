@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`
+### Current baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
+
+`tools/golden/baseline_659996a/` is the capture from `claude/herald-hanged-refusals` (#312) at
+`659996a` (main `05d81a3` merged in). Michael approved capitalising "Demon" throughout (Nov 19):
+"the demon" becomes "the Demon" in readings, role descriptions, filed-case text, endings, logs and
+dialogue. #312 also carries Michael's two hanged-Demon refusal lines, which golden doesn't reach.
+- **Text only:** every record is identical to `baseline_d6a93f1` once case is ignored, on all five
+  seeds. No belief, vote or outcome moves, and the record counts are the same.
+- **First text difference:** 42 and 900 at record 1 (a Seer reading's text), 54875 and 98933 at
+  record 54, and 692 at record 25 (the evening reply).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`
 
 `tools/golden/baseline_d6a93f1/` is the capture from `claude/beadle-evil-confer` at `d6a93f1`
 (main `8801906` merged in). Those at the place where two people talked after the player had
