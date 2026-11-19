@@ -356,9 +356,10 @@ Candidates for a unified retuning proposal, not approved changes.
     - **Yes:** an evil NPC borrows the excuses. It claims a walking duty that fits its bluff
       ("I was keeping the watch"), or says "being out isn't wicked". Each gets a logged
       reason and a reveal line.
-    - **Yes, as the first line of defence:** "I had duties that night that aren't mine to
-      tell". It admits being out and keeps the gift hidden, for good and evil. It's the soft
-      version of backing into a claim.
+    - **Yes, as the first line of defence: own the night, keep the gift.** See the shared
+      ladder below. Michael: "duties that aren't mine to tell" isn't the right wording; the
+      default "I'm not ready to share my gift" line (`gift_refusal`) should work in most
+      cases. Herald's call on the final wording.
     - **After the secrets rework:** a vague errand of its own, which becomes "claim a
       knowing secret".
     - **No:** "I gave my word I wouldn't say why". It has no place in the current mechanics.
@@ -368,26 +369,41 @@ Candidates for a unified retuning proposal, not approved changes.
       lie's weight.
     - **Scope:** lies about being home only. Caught reading lies already have "my gift may
       have been turned".
-  - **Still to settle: when evil risks backing into a walking-gift claim.** Michael: the
-    Demon and a Scion should be more careful, and other Minions should lean into the chaos
-    of a double claim. Vicar's proposed ladder is with Michael.
-    - **Where the gift comes from matters most.** Evil's bluff list holds only gifts not in
-      play (`world.gd` `bluffs`). It has one spare beyond the gifts the team uses, so a
-      spare walking gift has no real holder to counter-claim.
-    - **The ladder:**
-      1. If its bluff already walks, it gives that duty.
-      2. Not yet claimed: "duties that aren't mine to tell".
-      3. Pressed again or nominated, it backs into a claim:
-         - the safe spare, for any evil type;
-         - an unknown gift, for the Demon or a Scion only when badly exposed, and for a
-           Minion when exposed, at the existing blend-or-disrupt odds;
-         - a gift already claimed: a Minion only, on the block.
-      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff,
-         or a stonewall. No retracting.
-    - **Michael's calls:**
-      - the ladder;
-      - whether a Minion deliberately counter-claims a gift someone has already claimed;
-      - whether a publicly claimed evil may retract its claim.
+  - **When to risk a walking-gift claim (Michael, Nov 19): one ladder for good and evil.**
+    A good walker who hides its gift should behave the same way, so the response isn't a
+    tell.
+    - **What exists (read from main):**
+      - **Evil whose planned bluff walks** already owns the outing with that duty, as a good
+        walker does (`MindDialogue._bluff_outing`).
+      - **A good hidden walker** asked about the night can refuse honestly, lie "home", or
+        stonewall (`lie_or_stonewall`).
+      - **Caught out of a home alibi in private,** a good hidden walker reveals its gift
+        outright (`trapped_explanation` to `answer_gift`). No tier sits between stonewalling
+        and revealing.
+    - **New soft tier, for both:** "Fine, I was out", then the default gift refusal. It
+      claims a night duty without saying which. This keeps 78148's fix: the night is owned
+      first, never a bare gift refusal to a whereabouts case.
+    - **The ladder**, for an NPC caught out of its home alibi:
+      1. If its gift (or evil's bluff) already walks and is claimed, it gives that duty.
+      2. Not yet claimed: the soft tier above.
+      3. Pressed again, in private by the player or at a nomination, it names a gift:
+         - a good walker reveals its real gift;
+         - evil takes the safe spare from its bluff list, if one walks (that list holds only
+           gifts not in play, with one spare beyond the gifts the team uses, `world.gd`
+           `bluffs`), for any evil type;
+         - evil takes an unknown walking gift: the Demon or a Scion only when badly exposed,
+           a Minion when exposed, at the existing blend-or-disrupt odds;
+         - a Minion takes a walking gift someone has already claimed: a deliberate double
+           claim, when confronted privately by the player or nominated. Michael widened this
+           from "nominated only".
+      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff, or
+         a stonewall.
+    - **New: a Minion entering a double claim unprompted.** There's a small chance that an
+      unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
+      it's caught out. The rate would be a new constant, for Beadle to propose with a
+      measurement.
+    - **Still open:** whether an evil NPC that has publicly claimed a gift may retract it to
+      back into a walker. Vicar's lean: no, for now.
 
   Owner Beadle; Herald for the lines.
 
