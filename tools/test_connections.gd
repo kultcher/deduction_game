@@ -31,12 +31,9 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
-	check(Tuning.Workshop.CONNECTIONS, "the model is on in Tuning (since Nov 16)")
-	check(Connections.enabled == Tuning.Workshop.CONNECTIONS, "the runtime switch starts from the Tuning value")
 	_arithmetic()
 	_game(900, 7, 3)
 	_game(902, 10, 3)
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	print("Connections: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -65,18 +62,7 @@ func _proposal(g, n) -> Dictionary:
 	return g._workshop_evaluations.get(n.id + ":good", {}).get("proposal", {}).duplicate(true)
 
 
-func _same_effects(a: Dictionary, b: Dictionary) -> bool:
-	if a.get("effects", {}).keys() != b.get("effects", {}).keys():
-		return false
-	for id in a.effects:
-		for field in ["requested", "prior", "posterior", "alignment_signal", "headline_signal", "route"]:
-			if a.effects[id].get(field) != b.effects[id].get(field):
-				return false
-	return true
-
-
 func _game(seed_v: int, npcs: int, day: int) -> void:
-	Connections.enabled = false
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(seed_v, npcs)
@@ -99,17 +85,10 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 	check(listeners.size() >= 2, "%s has good listeners to test (%d)" % [tag, listeners.size()])
 	var left_out_counted := 0
 	var held_total := 0
-	var headline_seen := 0
 	for n in listeners:
-		var off: Dictionary = _proposal(g, n)
-		if off.get("effects", {}).is_empty():
-			continue
-		check(not off.has("connections"), "%s %s: off, the refresh carries nothing of the model" % [tag, n.id])
-		Connections.enabled = true
 		var on: Dictionary = _proposal(g, n)
-		Connections.enabled = false
-		var again: Dictionary = _proposal(g, n)
-		check(_same_effects(off, again), "%s %s: off again, the refresh is exactly what it was" % [tag, n.id])
+		if on.get("effects", {}).is_empty():
+			continue
 		if not on.has("connections"):
 			check(false, "%s %s: on, the refresh carries the model's breakdown" % [tag, n.id])
 			continue
@@ -140,7 +119,6 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 		var sums_ok := true
 		var sum_base := 0.0
 		var sum_post := 0.0
-		var prior_ok := true
 		var effect_ok := true
 		var plain_ok := true
 		for id in c.posterior:
@@ -155,9 +133,6 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 			sum_post += float(c.posterior[id])
 			if absf(want - float(c.posterior[id])) > 1e-9:
 				sums_ok = false
-			# The "before" side is today's: the same standing view either way.
-			if off.effects.has(id) and absf(float(off.effects[id].prior) - float(c.prior[id])) > 1e-9:
-				prior_ok = false
 			if not on.effects.has(id):
 				continue
 			var e: Dictionary = on.effects[id]
@@ -165,17 +140,14 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 				continue
 			if absf(float(e.posterior) - float(c.posterior[id])) > 1e-9 or absf(float(e.prior) - float(c.prior[id])) > 1e-9:
 				effect_ok = false
-			if float(off.effects.get(id, {}).get("headline_signal", 0.0)) > float(off.effects.get(id, {}).get("alignment_signal", 0.0)):
-				headline_seen += 1
 			# (The public curse pins its executed Revenant, whose chance is 1 before and after.)
 			if float(e.prior) < 0.999 and absf(float(e.alignment_signal) - Tuning.Workshop.JURY_ALIGNMENT_COEFF * CaseEval.shift(float(e.prior), float(e.posterior))) > 1e-9:
 				plain_ok = false
 		check(sums_ok, "%s %s: each chance is the baseline plus every card's lean and the core's, plus the common shift" % [tag, n.id])
 		check(absf(sum_post - sum_base) < 1e-6, "%s %s: the chances still sum to the baseline's (%.4f; the town has %d evil)" % [tag, n.id, sum_post, int(g.w.by_id.values().filter(func(x): return x.is_evil()).size())])
-		check(prior_ok, "%s %s: the before side is today's standing view" % [tag, n.id])
 		check(effect_ok, "%s %s: the refresh's effects carry the model's chances" % [tag, n.id])
 		check(plain_ok, "%s %s: no headline reading is blended in" % [tag, n.id])
 	check(held_total > 0, "%s: listeners hold cards (%d)" % [tag, held_total])
-	print("NOTE: %s: %d cards attention left out were counted; headline reading applied today in %d listener-person pairs" % [tag, left_out_counted, headline_seen])
+	print("NOTE: %s: %d cards attention left out were counted" % [tag, left_out_counted])
 	if npcs >= 10:
 		check(left_out_counted > 0, "%s: cards attention left out still count" % tag)

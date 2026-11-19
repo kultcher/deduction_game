@@ -36,7 +36,15 @@ func _init() -> void:
 	var knowledge: Dictionary = {"self": "a", "good": ["a"], "own_outings": {"1": false}, "own_reports": []}
 	var res: Dictionary = Reasoner.direct_checks(view, case_data, knowledge)
 	check(not "seen" in res.rejected, "a sighting of me on a night I was home is kept")
-	check("nw" in res.rejected, "a Night Watch's list naming me on a night I was home is still set aside (SourceDoubt voids it)")
+	# Since #273 a list that could be broken (a Poisoner possible, as here) is kept and mixed as
+	# sound or broken as a whole (LiveActivity._list_mix); only where it can't be mixed is it
+	# still set aside, and SourceDoubt voids its night.
+	check(not "nw" in res.rejected, "a Night Watch's list naming me on a night I was home is kept where it could be broken (weighed as a whole, #273)")
+	var SourceDoubt = preload("res://workshop/source_doubt.gd")
+	var was_mix: bool = SourceDoubt.list_mix_enabled
+	SourceDoubt.list_mix_enabled = false
+	check("nw" in Reasoner.direct_checks(view, case_data, knowledge).rejected, "and set aside where it can't be (SourceDoubt voids it)")
+	SourceDoubt.list_mix_enabled = was_mix
 	check(not "relayed" in res.rejected, "a Medium's relay naming me on that night is kept (its relayer may be the liar)")
 	check(res.objections.size() == 3, "all three still raise an objection for dialogue (%d)" % res.objections.size())
 	knowledge.own_outings["1"] = true

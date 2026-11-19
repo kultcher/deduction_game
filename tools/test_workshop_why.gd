@@ -3,7 +3,6 @@
 ## report the solver's own numbers, and it must change nothing.
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -22,15 +21,12 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
-	# The earlier model's Why report (its chain and challenge fields); the connections Why is test_connections_why.
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
+	# The case breakdown (case_why.gd) and the report's menu and neutrality. The earlier
+	# model's presentation report (its chain, challenges and logged record) went with that
+	# model in purge phase 3; the report players see now is test_connections_why's.
 	_evidence()
 	_card_statuses()
-	_presentation()
-	_already_held()
-	_extras()
 	_vote_bar()
-	_recording()
 	_neutral_when_on()
 	_menu()
 	print("Workshop why: %d checks, %d failures" % [checks, fails])
@@ -196,119 +192,6 @@ func _card_statuses() -> void:
 
 ## The belief half for a real listener: it reproduces what the presentation did, and
 ## reading it changes nothing.
-func _presentation() -> void:
-	var g = _game()
-	var p: Array = g.w.npcs
-	var n = p[0]
-	Mind.refresh_beliefs(g.w, n, " (baseline)")
-	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
-	var number: int = Live.file(g, _value(g, "evil", p[3], [dowser]), 0)
-	check(number > 0, "the case files (%s)" % g.last_error)
-	var card: Dictionary = g.board[number - 1]
-	var missing: Dictionary = WorkshopWhy.presentation(g, n, card)
-	check(not missing.get("ready", true), "nothing to explain before the case is presented")
-	var was: Dictionary = WorkshopWhy.before(n)
-	var before: float = Mind.susp(n, p[3].id)
-	g._evaluate_deduction(n, card, 1.0, false, "meeting")
-	var after: float = Mind.susp(n, p[3].id)
-	var state_before: Dictionary = _state(g)
-	var b: Dictionary = WorkshopWhy.presentation(g, n, card, "meeting", was)
-	check(_state(g) == state_before, "reading the breakdown changes no mind, plan, cache switch, RNG or log")
-	check(b.get("ready", false), "the breakdown is ready (%s)" % str(b.get("issues", [])))
-	if not b.get("ready", false):
-		return
-	print(b.text)
-	var chain: Array = b.chain
-	var stages: Array = chain.map(func(s): return s.stage)
-	check(stages == ["certain", "face", "heard", "attention", "new", "resistance", "applied"], "the chain has every stage (%s)" % str(stages))
-	var by: Dictionary = {}
-	for s in chain:
-		by[s.stage] = float(s.move)
-	check(by.certain >= by.face - 1e-6, "settling it outright is the ceiling (%.3f >= %.3f)" % [by.certain, by.face])
-	check(by.face >= by.heard - 1e-6, "face value is at least what they hear (%.3f >= %.3f)" % [by.face, by.heard])
-	check(by.face > 0.0, "the Dowser count would raise p3 at face value")
-	check(absf(by.applied - (after - before)) < 0.03, "the applied step is what the presentation did (%.3f vs %.3f)" % [by.applied, after - before])
-	check(b.held == 0 and b.cards_n == 1, "nothing was already held")
-	check(is_equal_approx(by.attention, by["new"]), "with nothing held, attention and new agree")
-	check(not b.biggest_loss.is_empty(), "the biggest loss is named (%s)" % b.biggest_loss.get("label", ""))
-	check(b.evidence.cards.size() == 1 and b.evidence.cards[0].has("reliability") and float(b.evidence.cards[0].reliability) < 0.99, "this listener hears the reading below full weight (%.2f)" % float(b.evidence.cards[0].get("reliability", 1.0)))
-	check(b.evidence.chain[2].p > b.evidence.chain[3].p, "so hearing costs the premise something (%.3f -> %.3f)" % [b.evidence.chain[2].p, b.evidence.chain[3].p])
-	check(b.text.contains("Biggest loss") and b.text.contains("Action:"), "the readout names the loss and the vote bar")
-	# The subject of a case knows their own alignment.
-	var subject_was: Dictionary = WorkshopWhy.before(p[3])
-	if not p[3].is_evil():
-		g._evaluate_deduction(p[3], card, 1.0, false, "meeting")
-		var s: Dictionary = WorkshopWhy.presentation(g, p[3], card, "meeting", subject_was)
-		check(s.get("is_subject", false) and s.chain.is_empty(), "the subject gets no chain")
-
-## A card the listener already held adds nothing when it is presented again.
-func _already_held() -> void:
-	var g = _game()
-	var p: Array = g.w.npcs
-	var n = p[0]
-	Mind.refresh_beliefs(g.w, n, " (baseline)")
-	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
-	var first: int = Live.file(g, _value(g, "evil", p[3], [dowser]), 0)
-	g._evaluate_deduction(n, g.board[first - 1], 1.0, false, "meeting")
-	var second: int = Live.file(g, _value(g, "evil", p[4], [dowser]), 0)
-	var was: Dictionary = WorkshopWhy.before(n)
-	g._evaluate_deduction(n, g.board[second - 1], 1.0, false, "meeting")
-	var b: Dictionary = WorkshopWhy.presentation(g, n, g.board[second - 1], "meeting", was)
-	check(b.get("ready", false) and b.held == 1, "the reading is marked as already held")
-	if not b.get("ready", false):
-		return
-	check(b.evidence.cards[0].held and b.text.contains("already held"), "and the card row says so")
-	var by: Dictionary = {}
-	for s in b.chain:
-		by[s.stage] = float(s.move)
-	print("already held: face %+.3f, attention %+.3f, new %+.3f" % [by.face, by.attention, by["new"]])
-	check(by.face > by["new"] + 0.02, "as news it would have moved them; as a repeat it moves them less (%.3f vs %.3f)" % [by.face, by["new"]])
-
-## What a challenge, the citing and a change of view did, each against its own rerun.
-func _extras() -> void:
-	var g = _game()
-	var p: Array = g.w.npcs
-	var n = p[0]
-	Mind.refresh_beliefs(g.w, n, " (baseline)")
-	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
-	var other = _read(g, p[5], "dowser", 1, {"group": [p[3].id, p[4].id, p[6].id], "count": 0})
-	var first: int = Live.file(g, _value(g, "evil", p[3], [dowser, other]), 0)
-	g._evaluate_deduction(n, g.board[first - 1], 1.0, false, "meeting")
-	var value: Dictionary = _value(g, "evil", p[5], [dowser, other])
-	var other_id: String = preload("res://workshop/live_evidence.gd").normalize_card(g.board[other - 1]).id
-	value.reading_challenges[other_id] = {"mode": "lying", "supports": []}
-	var second: int = Live.file(g, value, 0)
-	check(second > 0, "a case with a challenge files (%s)" % g.last_error)
-	var was: Dictionary = WorkshopWhy.before(n)
-	g._evaluate_deduction(n, g.board[second - 1], 1.0, false, "meeting")
-	var state_before: Dictionary = _state(g)
-	var b: Dictionary = WorkshopWhy.presentation(g, n, g.board[second - 1], "meeting", was)
-	check(_state(g) == state_before, "the extra reruns change nothing either")
-	check(b.get("ready", false), "the breakdown is ready (%s)" % str(b.get("issues", [])))
-	if not b.get("ready", false):
-		return
-	print(b.text)
-	check(b.challenges.size() == 1 and b.challenges[0].card == other_id and b.challenges[0].mode == "lying" and b.challenges[0].source == p[5].id,
-		"the case's one challenge is listed (%s)" % str(b.challenges.map(func(c): return c.mode)))
-	if b.challenges.size() == 1:
-		var ch: Dictionary = b.challenges[0]
-		check(is_equal_approx(ch.target_with, b.effect.posterior), "its 'with' side is the applied belief")
-		check(ch.target_without >= 0.0 and ch.target_without <= 1.0 and ch.multiplier >= 0.0 and ch.multiplier <= 1.0, "its 'without' side and multiplier are in range")
-		check(b.text.contains("Challenge on #%d" % other) and b.text.contains("Without this challenge"), "and the readout prints it")
-	check(b.trust.has("cards"), "trust changes are reported (%d)" % b.trust.cards.size())
-	for t in b.trust.cards:
-		check(float(t.was) != float(t.now) and b.text.contains("Citing changed"), "a changed reliability is printed (%.2f -> %.2f)" % [t.was, t.now])
-	check(b.has("view_change"), "the view change is reported")
-	if not b.view_change.is_empty():
-		var vc: Dictionary = b.view_change
-		check(is_equal_approx(vc.target_now, b.effect.posterior) and is_equal_approx(vc.target_was, b.effect.posterior_without), "its before and after are the chain's")
-		check(vc.left.all(func(id): return id not in vc.entered), "no card both left and entered")
-		check(b.text.contains("Change of view") and b.text.contains("With their old view kept"), "and the readout prints it")
-	# No challenge, no before(): neither section claims anything.
-	var plain: Dictionary = WorkshopWhy.presentation(g, n, g.board[first - 1], "meeting")
-	check(plain.get("ready", false) and plain.challenges.is_empty() and plain.view_change.is_empty(), "a case without a challenge or a recorded view lists neither")
-
-## The vote bar in the readout is the one a real vote uses.
 func _vote_bar() -> void:
 	var g = _game()
 	var p: Array = g.w.npcs
@@ -330,30 +213,6 @@ func _vote_bar() -> void:
 		check(absf(float(real.margin) - float(b.action.vote_margin)) < 1e-6, "the readout's margin is the vote's (%.4f vs %.4f)" % [b.action.vote_margin, real.margin])
 
 ## g.workshop_why records one breakdown per listener; off (the default) records nothing.
-func _recording() -> void:
-	for on in [false, true]:
-		var g = _game()
-		var p: Array = g.w.npcs
-		g.workshop_why = on
-		for q in p:
-			Mind.refresh_beliefs(g.w, q, " (baseline)")
-		var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
-		var number: int = Live.file(g, _value(g, "evil", p[3], [dowser]), 0)
-		g._evaluate_deduction(p[0], g.board[number - 1], 1.0, false, "meeting")
-		var logged: Array = g.w.dlog.entries.filter(func(e): return e.type == "workshop_why")
-		if on:
-			check(g.workshop_whys.size() == 1 and logged.size() == 1, "recording on: one breakdown kept and one dev-log entry")
-			if logged.size() == 1:
-				var d: Dictionary = logged[0].data
-				check(d.has("chain") and d.has("cards") and d.has("alternatives") and str(logged[0].reason).begins_with("Why "), "the log entry carries the chain, the cards and a one-line reason")
-				check(d.cards[0].has("world_share") and d.cards[0].has("q_used") and d.cards[0].has("status"), "each logged card has its status, world share and q")
-			g._evaluate_deduction(p[0], g.board[number - 1], 1.0, false, "meeting")
-			check(g.workshop_whys.size() == 1, "an unchanged repeat records nothing more")
-		else:
-			check(g.workshop_whys.is_empty() and logged.is_empty(), "recording off: nothing is computed or logged")
-
-## Recording changes no belief: the same presentations with it on and off leave every mind
-## and the world RNG identical.
 func _neutral_when_on() -> void:
 	var states: Array = []
 	for on in [false, true]:

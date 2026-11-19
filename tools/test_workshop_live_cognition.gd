@@ -1,8 +1,6 @@
 ## Native profiles, committed union memory, scoped replies and reversible ownership.
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
-const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -15,13 +13,9 @@ func _init() -> void:
 	# The earlier model's Workshop theories across a day advance.
 	_insight()
 	_attention()
-	# Persistence Confidence on a belief refresh (a working theory biasing what the listener
-	# believes) is the earlier model's: the connections refresh doesn't read through a theory.
-	# Live play doesn't use persistence by default. Pinned until Michael decides whether the
-	# experiment goes with the purge (docs/connections_purge_plan.md).
-	Connections.enabled = false
-	_confidence()
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
+	# Persistence Confidence on a belief refresh (a working theory biasing belief) went with
+	# the earlier model in purge phase 3; the connections refresh doesn't read through a
+	# theory (BACKLOG, "Persistence Confidence"; the checks are on archive/legacy-belief-final).
 	_cover_and_fallback()
 	_registration()
 	print("Live Workshop cognition: %d checks, %d failures" % [checks, fails])
@@ -145,36 +139,6 @@ func _attention() -> void:
 	# Known testimony from other people is not firsthand gift experience.
 	Mind.apply_info(g.w, n, p[1], {"role": "dowser", "day": 1, "phase": 0, "data": {"group": [p[3].id], "count": 0}}, 1.0)
 	check(n.workshop_state.reasoning.considered.size() == cards.size() + 1, "independently learning an already presented report does not create a second attention slot")
-
-func _confidence() -> void:
-	# Hold source quality fixed and vary independent prior evidence about the
-	# target. A moderate contrary comparison should move the less committed mind.
-	var outcomes: Array = []
-	var initial: Array = []
-	var atoms: Array = []
-	for confidence in [0.1, 0.9]:
-		var g = _game()
-		var p: Array = g.w.npcs
-		var n = p[0]
-		n.traits.confidence = confidence
-		n.suspicion[p[3].id] = 0.6
-		var card = _read(g, p[1], "dowser", 1, {"group": [p[3].id], "count": 1})
-		var number = g.file_deduction({"type": "evil", "a": p[3].id}, [card])
-		var first = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
-		initial.append(n.workshop_state.requested.duplicate(true))
-		atoms.append(first.assessment.support_model.atoms)
-		var key: String = p[3].id + "|Original alignment"
-		var old: String = n.workshop_state.theories[key].position
-		Mind.adjust(g.w, n, p[3].id, 0.15 - n.workshop_state.outside[p[3].id], "independent contrary evidence", "", false)
-		Mind.refresh_beliefs(g.w, n, "changed independent evidence")
-		outcomes.append([old, n.workshop_state.theories[key].position, n.workshop_state.theories[key].decision.status])
-		if confidence > 0.5:
-			var clear = _read(g, p[1], "dowser", 2, {"group": [p[3].id], "count": 0})
-			var defence = g.file_deduction({"type": "good", "a": p[3].id}, [clear])
-			g._evaluate_deduction(n, g.board[defence - 1], 1.0, false)
-			check(n.workshop_state.theories[key].position == "good", "decisive contrary evidence can dislodge the live high-confidence theory")
-	check(outcomes[0] == ["evil", "good", "revised"] and outcomes[1] == ["evil", "evil", "retained"], "live low confidence revises while high confidence retains under the same moderate contrary evidence")
-	check(_close(initial[0], initial[1]) and atoms[0] == atoms[1], "initial evidence effects and source/accuracy weights are equal across confidence levels")
 
 func _cover_and_fallback() -> void:
 	var g = _game()

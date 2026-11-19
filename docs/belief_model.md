@@ -2,12 +2,12 @@
 
 Nov 10, 2026 · Claude-Lantern, Claude-Quill and Claude-Bailiff, with Michael · consolidated by Bailiff, Nov 13
 
-**Status (Nov 16):** built and on in play. Phases 0–6 are done: the connections model is
-`workshop/connections.gd`, switched by `Tuning.Workshop.CONNECTIONS`, which is `true` since
-#160 (Michael, Nov 16: "commit to the connections model"; golden `baseline_a713ca5`, then
-`baseline_bb6f01c` with #162). The earlier model stays available for comparisons:
-`autoplay.gd --legacy-model` (sweep cells get the `_legacy` suffix), and tests that check its
-mechanics pin it by setting `Connections.enabled` themselves.
+**Status (Nov 18):** built, and the only belief model. Phases 0–6 are done: the connections
+model is `workshop/connections.gd`, on in play since #160 (Michael, Nov 16: "commit to the
+connections model"; golden `baseline_a713ca5`, then `baseline_bb6f01c` with #162). Purge
+phase 3 (Nov 18) removed its switch and the earlier model with it
+(`docs/connections_purge_plan.md`); the earlier model is on the branch
+`archive/legacy-belief-final`, for comparisons.
 
 **Where this came from:** the claude.ai Project doc `belief-model-direction-2026-11-10`,
 moved into the repo on Nov 16 (Bailiff). Every earlier table, the Phase 4 prototype spec and
@@ -15,7 +15,7 @@ the dated decision logs are in `docs/archive/project-docs/belief-model-archive.m
 open items now live in BACKLOG.md, section 6; the handoff log has each step's PR notes.
 
 **Reading it:** the spec and results were written while the switch was off, so "today" and
-"today's model" below mean the earlier model, now `--legacy-model`.
+"today's model" below mean the earlier model, since removed.
 
 ## The problem
 
@@ -69,13 +69,13 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
 
 Nov 12 · read against main `9e69144`. Michael answered its four questions as recommended (Nov 12); the answers are folded in below.
 
-- **Switch off** (now `--legacy-model`): the earlier model. During the build golden stayed identical at every PR with the switch off; since #160 golden is captured with it on.
+- **Switch off** (removed in purge phase 3): the earlier model. During the build golden stayed identical at every PR with the switch off; since #160 golden is captured with it on.
 - **Switch on:** one number changes, the chance an NPC gives each person of being evil at a belief refresh. Everything after it is today's code: suspicion, votes, nominations, who to hang first, trust.
 - **Attention stops limiting belief.** The Insight card limit still decides what an NPC cites and explains.
 
 ### The switch
 
-`Tuning.Workshop.CONNECTIONS`, on since Nov 16 (#160). `autoplay.gd --legacy-model` (and the sweep's `_legacy` cells) turns it off for a run; `--connections` is still accepted and names the mode. Golden capture always runs the default. The model's memory exists only with the switch on.
+Was `Tuning.Workshop.CONNECTIONS`, on since Nov 16 (#160), and removed with the earlier model in purge phase 3 (Nov 18). `--connections` is still accepted, and ignored, by autoplay and the replay tools so old commands run; `--legacy-model` stops with a note. A log without `connections` in its `case_start` was played on the earlier model, and the replay tools stop on it.
 
 ### Single cards and pairings
 

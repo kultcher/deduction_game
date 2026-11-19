@@ -47,6 +47,9 @@ func _init() -> void:
 		label = log_path.get_file().get_basename()
 		var events: Array = Replay.load_events(log_path)
 		var res: Dictionary = Replay.replay(events, 1 << 30, {"before_command": func(g, e): _maybe_measure(g)})
+		if res.g == null:
+			quit(1)  # a log played on the earlier model (LogReplay.new_game printed why)
+			return
 		var votes: Array = Replay.votes(events, res.g)
 		print("REPLAY diverged=%s votes_match=%s" % [res.diverged, votes[0] == votes[1]])
 	else:

@@ -11,6 +11,17 @@ static func view(g) -> Dictionary:
 		numbers.append(pr.n)
 		profile_ids[Evidence.normalize_card(pr).id] = true
 	var snapshot = Bridge.capture(g, numbers)
+	# The board's short form for each card, for the canvas's evidence cards (Michael, Nov 18:
+	# the fewest words on a card, the full sentence on hover). Display only.
+	var CardModel = load("res://game/card_model.gd")
+	var names: Dictionary = {}
+	for p in g.w.npcs:
+		names[p.id] = p.name
+	var shorts: Dictionary = {}
+	for number in numbers:
+		if number >= 1 and number <= g.board.size():
+			var board_card: Dictionary = g.board[number - 1]
+			shorts[Evidence.normalize_card(board_card).id] = str(CardModel.short_text(board_card, names)).replace("\n", " ")
 	var cards: Array = []
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
@@ -47,7 +58,7 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
+			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; a challenge names its side (the passing-on or the original)" if activity.has("relay_source") else note
@@ -393,7 +404,7 @@ const NOTE_REFRESH_MIN: float = 0.01
 static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Meeting = preload("res://game/game_meeting.gd")
-	if not Connections.enabled or value.get("cards", []).is_empty():
+	if value.get("cards", []).is_empty():
 		return {}
 	# A reading challenge changes how the town weighs a case (SharedLedger.prepare), and the
 	# stored-case arithmetic below doesn't carry it: no note rather than a wrong one.

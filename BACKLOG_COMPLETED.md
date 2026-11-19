@@ -3,6 +3,22 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 19, 2026 (Claude-Herald, #256, #286, #294)
+
+- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
+  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
+  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
+  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
+  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
+  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
+  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
+  Owner Herald. [decided]
+  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
+  secrets have one now. **The Workshop canvas's evidence cards** show the same short form
+  (`claude/herald-canvas-card-text`, Nov 18), with the sentence still on hover. Still to do:
+  a pass over the gift readings' short forms (each role's `short_text`, with their leads).
+  **Gift readings done (#294, Nov 19):** each role's card face in Michael's shorthand, with the teller's portrait and role icon, and names in colour. Item complete.
+
 ## Built Nov 18, 2026 (Claude-Herald, `claude/herald-lie-reasons`)
 
 - **Evil's spoken-lie reasons in the reveal, in plain words.** (Herald, Nov 17; Michael

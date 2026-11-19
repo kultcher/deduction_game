@@ -19,7 +19,6 @@ const Seeds = preload("res://tools/fixture_seeds.gd")
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Tuning = preload("res://sim/tuning.gd")
 const Connections = preload("res://workshop/connections.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Ownership = preload("res://game/workshop_ownership.gd")
@@ -56,7 +55,6 @@ func _init() -> void:
 	_wrong_sighting()
 	_baseline_has_no_cards()
 	_in_game(900, 7, 3)
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.force_row = ""
 	Connections.seed_wrong_sightings = true
 	print("Connections core: %d checks, %d failures" % [checks, fails])
@@ -270,7 +268,6 @@ func _same(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
-	Connections.enabled = false
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(seed_v, npcs)
@@ -346,7 +343,6 @@ func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
 
 ## Seed 100034, day 2: the evil Constance says she saw Odette out; Odette was home.
 func _wrong_sighting() -> void:
-	Connections.enabled = false
 	LiveActivity.cache.clear()
 	Caches.clear_all()
 	# A planter's fake sighting of a good person, held by them (was seed 100034, Constance's
@@ -382,7 +378,6 @@ func _wrong_sighting() -> void:
 ## every day card on the view for "who was near each silencing" (DayPresence.bare_reads_view);
 ## if the model's baseline did too, each item's value would carry the day cards' pull.
 func _baseline_has_no_cards() -> void:
-	Connections.enabled = false
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(54875, 7)
@@ -434,8 +429,6 @@ func _refresh(g, n) -> Dictionary:
 
 
 func _in_game(seed_v: int, npcs: int, day: int) -> void:
-	# Played with the model on from the start.
-	Connections.enabled = true
 	LiveActivity.cache.clear()
 	Caches.clear_all()
 	var g = Game.new()
@@ -468,15 +461,3 @@ func _in_game(seed_v: int, npcs: int, day: int) -> void:
 		check(not redone.get("cache_hit", true) and (core.get("seed", []).is_empty() or not again.get("rebuilt", true)) and again.get("members", ["?"]) == memory.members,
 			"%s %s: redone the same day, the core's members stay" % [tag, n.id])
 	check(remembered >= 2 and dated == remembered, "%s: every good NPC's core memory is dated today (%d of %d)" % [tag, dated, remembered])
-	# The switch off: the memory isn't read, written or created.
-	Connections.enabled = false
-	var off_game = Game.new()
-	off_game.detailed_logging = false
-	LiveActivity.cache.clear()
-	Caches.clear_all()
-	off_game.new_case(seed_v, npcs)
-	_play(off_game, day)
-	check(off_game.w.npcs.all(func(x): return not x.workshop_state.has("connections")), "seed %d, model off: no NPC has any connections memory" % seed_v)
-	var listener = off_game.w.living().filter(func(x): return not x.is_evil())[0]
-	var input: Dictionary = Bridge.capture(off_game, [], listener.id, "private", listener)
-	check(not input.listener.has("connections"), "seed %d, model off: the listener carries nothing of the model" % seed_v)

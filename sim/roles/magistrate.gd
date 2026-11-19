@@ -35,10 +35,10 @@ func implicated(d: Dictionary) -> Array:
 	return []
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	var a: String = nm.call(str(d.get("nominator", "")))
 	var b: String = nm.call(str(d.get("nominee", "")))
-	return "%s Magistrate: %s -> %s (%s)" % [src, a, b, "same" if bool(d.get("same", false)) else "different"]
+	return "%s → %s: %s" % [a, b, "same side" if bool(d.get("same", false)) else "opposite sides"]
 
 
 func _spoken_text(w, nominator: String, nominee: String, same: bool) -> String:

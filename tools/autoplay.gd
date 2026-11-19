@@ -4,11 +4,11 @@
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
 ##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
-##         [--no-crosscheck] [--no-declare] [--connections] [--legacy-model]
+##         [--no-crosscheck] [--no-declare]
 ##
-## The connections belief model (workshop/connections.gd) is on in play since Nov 16.
-## --connections names it in the mode ("_connections"), as before; --legacy-model runs the
-## earlier model instead ("_legacy").
+## The connections belief model (workshop/connections.gd) is the only one since purge phase
+## 3 (Nov 18). --connections is accepted and ignored; --legacy-model stops with a note (the
+## earlier model is on the branch archive/legacy-belief-final).
 ##
 ## Phase 5 (belief-model plan): the bot seeds cases with cross-check pairs (Analyst
 ## build_case) and declares the demon type on two-kind scripts (_declaration_command).
@@ -114,8 +114,6 @@ var cross_cases_filed: int = 0   # Phase 5: cases seeded by a cross-check pair
 var declarations: Array = []     # Phase 5: [day, kind, right?] per declaration
 var no_crosscheck = false        # --no-crosscheck: the pre-Phase-5 case builder
 var no_declare = false           # --no-declare: never declare the demon type
-var connections = false          # --connections: NPC beliefs from the connections model (workshop/connections.gd)
-var legacy_model = false         # --legacy-model: the belief model before connections (sweep mode suffix _legacy)
 var _declare_tried_day: int = -1
 var rng = RandomNumberGenerator.new()
 var insight: float = 1.0
@@ -151,10 +149,10 @@ func _init() -> void:
 	present_and_vote = args.has("present-and-vote")
 	no_crosscheck = args.has("no-crosscheck")
 	no_declare = args.has("no-declare")
-	connections = args.has("connections")
-	legacy_model = args.has("legacy-model")
-	# --legacy-model: the belief model before connections (on by default since Nov 16).
-	preload("res://workshop/connections.gd").enabled = (connections or Tuning.Workshop.CONNECTIONS) and not args.has("legacy-model")
+	if args.has("legacy-model"):
+		push_error("autoplay: --legacy-model is gone (purge phase 3, Nov 18); the earlier belief model is on the branch archive/legacy-belief-final")
+		quit(1)
+		return
 	var jsonl = null
 	if args.has("results-jsonl"):
 		var jpath = ProjectSettings.globalize_path(args["results-jsonl"])
@@ -639,9 +637,6 @@ func _mode_name() -> String:
 	# A forced demon type is part of the cell too, so sweep records of a forced cell never
 	# merge with the same mode and seed dealt normally (Codex, #138).
 	var forced: String = "_force_" + force_demon if force_demon != "" else ""
-	# The connections switch is part of the cell, so on and off records never merge.
-	if connections: forced += "_connections"
-	elif legacy_model: forced += "_legacy"
 	if passive: return "passive" + forced
 	var base: String = "bot" if m4 else "bot_pre_m4"
 	if no_present: base = "no_present"

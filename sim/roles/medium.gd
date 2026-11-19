@@ -52,21 +52,21 @@ func clears(d: Dictionary) -> Array:
 	return []
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	var it: Dictionary = d.get("item", {})
-	var dead: String = nm.call(d.get("dead", ""))
+	var dead: String = "Late " + str(nm.call(d.get("dead", "")))
 	match it.get("type", ""):
 		"reading":
-			return "%s Medium (%s): %s" % [src, dead, _gifts().short_text(it["entry"]["role"], it["entry"]["data"], dead, nm)]
+			return "%s (%s): %s" % [dead, content().role_name(str(it["entry"]["role"])), _gifts().short_text(it["entry"]["role"], it["entry"]["data"], dead, nm)]
 		"sighting":
-			return "%s Medium: %s saw %s out" % [src, dead, nm.call(it.get("who", ""))]
+			return "%s saw %s out" % [dead, nm.call(it.get("who", ""))]
 		"suspicion":
-			return "%s Medium: %s suspected %s" % [src, dead, nm.call(it.get("about", ""))]
+			return "%s suspected %s" % [dead, nm.call(it.get("about", ""))]
 		"home":
-			return "%s Medium: %s was home on night %d" % [src, dead, it.get("night", 0)]
+			return "%s: home, night %d" % [dead, it.get("night", 0)]
 		"guard":
-			return "%s Medium: %s guarded %s's door on night %d" % [src, dead, nm.call(it.get("who", "")), it.get("night", 0)]
-	return "%s Medium: %s had nothing to tell" % [src, dead]
+			return "%s guarded %s, night %d" % [dead, nm.call(it.get("who", "")), it.get("night", 0)]
+	return "%s: nothing to tell" % dead
 
 
 ## Public hearth eligibility: Demon victims only; revisit the latest after all are visited.

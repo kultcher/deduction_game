@@ -218,7 +218,7 @@ Insight sets an **attention budget** for reasons: a low-Insight NPC (below 0.34)
 from at most 4 cards, a middling one 8, a sharp one 12. Under the connections model this
 decides only what an NPC can explain and cite, not what it believes.
 
-In the earlier model (`--legacy-model`) the budget also limited belief: cards outside it
+In the earlier model (removed in purge phase 3, Nov 18) the budget also limited belief: cards outside it
 didn't count for that NPC, and duller NPCs took strong readings at their word ("one of
 Kiran or Fenwick is the Demon", when the full model would add "or the red herring, or a
 poisoned Seer"). That's why a fake Seer "yes" used to hit a gullible town hard.
