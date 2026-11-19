@@ -44,15 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, trust from readings that confirm): `baseline_d61a22d`
+### Current baseline (Nov 19, trust from readings that confirm): `baseline_01f7635`
 
-`tools/golden/baseline_d61a22d/` is the capture from `claude/beadle-reading-trust` at `d61a22d`
-(main `05d81a3` merged in, with #308). A good listener gains trust in a teller whose reading
+`tools/golden/baseline_01f7635/` is the capture from `claude/beadle-reading-trust` at `01f7635`
+(main with #312 merged in; first recorded as `baseline_d61a22d` on main with #308). A good listener gains trust in a teller whose reading
 confirms what it knows or strongly believes (small 0.06, moderate 0.12, known 0.20), once per
 reading by its logical origin. The agreement step from #292 becomes 0.02 (Michael, Nov 19, set
 R3). The record of confirmations is kept in `workshop_state`.
-- **Divergence from `baseline_d6a93f1`:** every seed, from record 1 (the record's place in each
-  NPC's `workshop_state`, and the first day's refreshes judging the night-0 readings).
+- **Divergence from `baseline_659996a`:** every seed, from record 1 (the record's place in each
+  NPC's `workshop_state`, and the first day's refreshes judging the night-0 readings). Against
+  `baseline_d61a22d`, the only change is #312's "Demon" capitalisation.
 - **Outcomes:**
   - **42, 692 and 900:** unchanged.
   - **54875:** hanged Edda on day 3 with no winner by day 4. Now it hangs Edda on day 2 and
