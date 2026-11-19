@@ -224,8 +224,10 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				strength = minf(strength, quality(listener, ground.source))
 		# The player's call itself adds weight to its grounds' side (Michael, Nov 19): the
 		# listener's trust in the player's judgement, and a little for the Demonologist's
-		# expertise. Never an NPC's defence, and not when the player's own word is a ground.
-		if conflict and not challenge.get("npc_defence", false) and not grounds.any(func(gc): return str(gc.source) == "player"):
+		# expertise. Lie calls only (the other modes discount the reading, which Michael's
+		# decision doesn't cover; Codex on #352). Never an NPC's defence, and not when the
+		# player's own word is a ground.
+		if conflict and challenge.mode == "lying" and not challenge.get("npc_defence", false) and not grounds.any(func(gc): return str(gc.source) == "player"):
 			strength = maxf(strength, minf(strength * judgement_boost(listener), Tuning.Workshop.WITNESS_QUALITY_MAX))
 		# A clash says one side is wrong, not which. Before: the grounds were taken as true,
 		# so a challenge landed whichever side lied, on trust in the grounds alone.

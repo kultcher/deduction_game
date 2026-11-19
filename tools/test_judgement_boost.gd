@@ -2,7 +2,7 @@
 ## of the clash counts as x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE))
 ## (ReadingChallenges.judgement_boost), so a listener who trusts the player's judgement leans
 ## a little toward the player's side. It works for a misleading call as for a true one: the
-## listener can't tell them apart. Never for an NPC's own defence.
+## listener can't tell them apart. Lie calls only, and never for an NPC's own defence.
 ##   godot --headless --path . --script res://tools/test_judgement_boost.gd
 extends SceneTree
 
@@ -68,6 +68,16 @@ func _init() -> void:
 	npc_value.reading_challenges[t_id]["npc_defence"] = true
 	var npc_on: float = _agreement(g, npc_value, profile, f.gd.id)
 	check(is_equal_approx(npc_on, off), "an NPC's own defence gets no boost (%.3f, as with the switch off %.3f)" % [npc_on, off])
+	# Only lie calls: a Mistaken call on the same grounds discounts the reading exactly as before
+	# (Codex on #352).
+	var mistaken = value.duplicate(true)
+	mistaken.reading_challenges = {t_id: {"mode": RC.HONEST, "supports": [b_id]}}
+	var m_on: Dictionary = Connections.judge_for_profile(g, mistaken, profile)
+	RC.player_judgement = false
+	var m_off: Dictionary = Connections.judge_for_profile(g, mistaken, profile)
+	RC.player_judgement = true
+	check(m_on.get("ready", false) and m_on.get("posterior_after", {}) == m_off.get("posterior_after", {}),
+		"a Mistaken call on the same grounds is weighed exactly as without the boost")
 	_done()
 
 

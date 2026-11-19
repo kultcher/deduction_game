@@ -29,7 +29,7 @@
     - **Why it changed:** before, the call came out "unestablished" only because equal trust
       gave a share of exactly 0. Now it leans a little, a draw.
     - **The check now:** it presses no one either way.
-- **New `tools/test_judgement_boost.gd`** (7 checks, fast list):
+- **New `tools/test_judgement_boost.gd`** (8 checks, fast list; lie calls only, after Codex):
   - the factor, and the switch;
   - a misleading Gravedigger call leans toward the player (agreement 0.163 against 0.125), and
     more with credibility;
