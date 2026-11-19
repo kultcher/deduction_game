@@ -136,7 +136,12 @@ listener (#273), both Lantern's.
   **The rest is done:** Quill measured it on Nov 18. Since #296's Mistaken label, revising
   is a real way back. On the same 10 seeds, the reader's suspicion falls from 51 to 38 when
   the call is revised to Mistaken, and the player's trust stays at about 70. The full item
-  is in BACKLOG_COMPLETED.md. [open: signposting]
+  is in BACKLOG_COMPLETED.md.
+  **Built (Herald, Nov 19; Michael approved both options and their wording).** (a) The
+  refusal a second case meets becomes a signpost to revising the first. (b) "I was wrong:
+  call it a mistake" on a lie call in the Workshop, with Present then reading "Present the
+  revision (replaces case #N)". Presenting the revision costs what presenting costs (no free
+  public correction). [decided; built]
 
 - **The player's judgement in word-against-word lie calls.** (Michael, Nov 19, through
   Seneschal; it replaces the lie-call badge options (a) and (b).) When the player calls a
@@ -795,6 +800,13 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   was about 40% of own readings in the Nov 19 measurement. Their clash is weighed through
   movement, or not at all. Extending the doubt there would use the movement factor's own
   "this list or guard was broken" posterior. Owner Lantern. **[open]**
+- **Higher-Insight NPCs weigh more broken-reading combinations** (Michael, Nov 19, with the
+  Steward A3 fix). When a case holds several readings the listener doubts, the role check
+  now weighs them symmetrically: all genuine, or exactly one broken
+  (`CaseEval._doubted_role_fits`). The exact fix also weighs two or more broken at once,
+  at 2^k role checks instead of k. The idea: sharper NPCs take the exact fix, duller ones the
+  symmetric approximation. In 2 ten-NPC games (Nov 19), 43% of the role checks holding any
+  doubted reading held two or more, up to four. Owner Lantern. **[tentative]**
 - **Persistence Confidence: a working theory that colours new evidence** (connections purge,
   Nov 17; Michael asked for it to be kept on the backlog). An experiment for live NPCs: a
   listener committed to a theory about someone (high Confidence) read new evidence through
