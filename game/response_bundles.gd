@@ -3,8 +3,9 @@
 ## others appear as small portraits with a short agreement line. The log keeps every answer.
 ##
 ## Two answers match when they share the stance (accept / partial / reject), the kind of reply
-## (the voice pool key it was drawn from) and how far the case moved them on its target, in
-## four bands. The target, anyone with more than one line or a fact of their own, and any answer
+## (the voice pool key it was drawn from), whom the reply names as evil besides the target (two
+## answers pointing at different suspects don't agree), and how far the case moved them on its
+## target, in four bands. The target, anyone with more than one line or a fact of their own, and any answer
 ## with no reply kind speak alone.
 extends RefCounted
 
@@ -43,7 +44,7 @@ static func arrange(entries: Array, target: String) -> Array:
 		elif e.lines.size() != 1 or not e.facts.is_empty() or reply == "" or line.is_empty():
 			solo.append(e)
 		else:
-			var key: String = "%s|%s|%s" % [e.stance, reply, movement_band(float(e.delta))]
+			var key: String = "%s|%s|%s|%s" % [e.stance, reply, movement_band(float(e.delta)), ",".join(PackedStringArray(line.get("reply_named", [])))]
 			if not groups.has(key):
 				groups[key] = []
 				order.append(key)

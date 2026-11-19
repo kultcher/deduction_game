@@ -52,6 +52,19 @@ func _run() -> void:
 	check(reject.size() == 1 and reject[0].agree.size() == 1, "two who rejected alike are one bundle")
 	check(out.any(func(s): return s is Dictionary and s.has("facts") and not s.has("speaker")), "a solo speaker's fact still goes on the board")
 
+	# Alike in words but naming different suspects: not agreement (Codex, #373).
+	var alt: Array = [
+		_e("agnes", 0.2, "reject", "present_alt_reject_solo", 0.0, 0.5, 0),
+		_e("bart", 0.2, "reject", "present_alt_reject_solo", 0.0, 0.5, 1),
+		_e("constance", 0.2, "reject", "present_alt_reject_solo", 0.0, 0.5, 2),
+	]
+	alt[0].lines[0]["reply_named"] = ["dorian"]
+	alt[1].lines[0]["reply_named"] = ["edda"]
+	alt[2].lines[0]["reply_named"] = ["dorian"]
+	var alt_out: Array = Bundles.arrange(alt, "hollis")
+	var alt_rows: Array = alt_out.filter(func(s): return s is Dictionary and s.has("speaker") and not s.get("bundled", false))
+	check(alt_rows.size() == 2 and alt_rows.any(func(s): return s.speaker == "bart" and s.get("agree", []).is_empty()), "answers naming different suspects don't bundle; the two naming the same one do (%s)" % str(alt_rows.map(func(s): return s.speaker)))
+
 	# At most five small portraits, the rest counted.
 	var many: Array = []
 	for i in range(8):
