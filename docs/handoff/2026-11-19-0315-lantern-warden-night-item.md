@@ -25,6 +25,6 @@
   item and in the walker's movement connection. Both fail without the fix.
 - **Suites:** 122/122 pass (the fast list plus test_warden_quiet_route, test_warden_challenge and
   test_connections), before main was merged in.
-- **Golden:** see `docs/golden_baseline.md`, `baseline_3710796` (re-baselined on main `4248293`, after #296; first captured as `baseline_e1d1934`). Only 692 moves; its nominator
+- **Golden:** see `docs/golden_baseline.md`, `baseline_22733aa` (re-baselined on main `0670ba8`, after #296 and #292; earlier captures `baseline_e1d1934` and `baseline_3710796`). Only 692 moves; its nominator
   changes, the outcome doesn't.
 - **Proposed for the backlog:** none.
