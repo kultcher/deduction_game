@@ -253,8 +253,8 @@ patterns that can tip a close case but never carry one. Tavern rumours can't be 
 chooses a place (Night Watch, the Warden at the door it guards, the Medium, the
 Lamplighter) or whose secret takes them out (Lovers, Sleepwalker). Every block is joined to
 every other, so a walker is seen only on their own block (leaving home) or where they went;
-the Lamplighter walks every block. A vigil shows you who arrives on a block (and anyone
-doing the full lamp round). The town
+the Lamplighter walks every block. A vigil shows you who leaves home on its block, and no one
+else (not walkers arriving, nor the Lamplighter or Sexton on their tour). The town
 weighs a night sighting by how well it fits the killer's likely route: seen near the
 murder counts heavily, seen elsewhere argues strongly (not absolutely) against being the
 killer, and scattered sightings can back up a walking gift. Walkers

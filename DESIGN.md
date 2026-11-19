@@ -482,8 +482,9 @@ a frame or their gift shares every sighting they remember in that conversation.
 
 ### Night
 
-- **Vigil** at a block (default, unlimited): see who leaves home there, and anyone on the
-  full lamp route (Nov 17, `docs/design/vigil.md`). Offered vigils build trust only; they
+- **Vigil** at a block (default, unlimited): see who leaves home there, and no one else;
+  the Lamplighter and Sexton are seen only from their own home block (Nov 17 and Nov 19,
+  `docs/design/vigil.md`; see "Vigils see who leaves" above). Offered vigils build trust only; they
   don't deter the demon.
 - **Ward** (toolbox, below) or **sleep**.
 
