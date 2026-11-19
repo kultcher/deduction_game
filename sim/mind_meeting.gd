@@ -2270,6 +2270,48 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		w.meeting["vote_parts"][v.id] = {"parts": exact_parts, "margin": s - need, "yes": yes}
 	return yes
 
+## Measurement only (Michael, Nov 19: how a case moves votes; Quill's case slate): how the
+## good townsfolk would vote on `nominee` if it were nominated now, by `nominator` ("" for a
+## neutral nominator), with the player's vote and statement left out. Each good, living voter
+## other than the nominee runs the real vote (`_vote_impl`), including its reconsideration, so
+## its beliefs refresh as at a real meeting. Nothing else is left behind: no random draw, no
+## log entry (nor detailed trace event, nor live-feed record), and the meeting state as it was. Evil voters are left out.
+## Returns {yes: [ids], no: [ids], voters, threshold, crosses}. `voters` and `threshold` are
+## the real meeting's (World.vote_threshold, the player counted among the voters); `crosses`
+## is whether the good yes votes alone reach it.
+static func would_vote(w, nominee: String, nominator: String = "") -> Dictionary:
+	var rng_state = w.rng.state
+	var meeting_was: Dictionary = w.meeting.duplicate(true)
+	var log_size: int = w.dlog.entries.size()
+	var log_seq = w.dlog._seq
+	# The detailed trace and the live decision feed don't take these votes either (Codex on #347).
+	var was_detailed: bool = w.dlog.detailed
+	var was_feed = w.dlog.live_feed
+	var was_echo: bool = w.dlog.echo
+	w.dlog.detailed = false
+	w.dlog.live_feed = null
+	w.dlog.echo = false
+	if not w.meeting.has("block"):
+		w.meeting["block"] = ""
+	var yes: Array = []
+	var no: Array = []
+	for v in w.living():
+		if v.id == nominee or v.is_evil():
+			continue
+		if _vote_impl(w, v, nominee, nominator, false, "", 0, 0):
+			yes.append(v.id)
+		else:
+			no.append(v.id)
+	w.rng.state = rng_state
+	w.meeting = meeting_was
+	w.dlog.entries.resize(log_size)
+	w.dlog._seq = log_seq
+	w.dlog.detailed = was_detailed
+	w.dlog.live_feed = was_feed
+	w.dlog.echo = was_echo
+	var threshold: int = w.vote_threshold()
+	return {"yes": yes, "no": no, "voters": w.voter_count(), "threshold": threshold, "crosses": yes.size() >= threshold}
+
 ## Whether a case catches `target` in a home lie: among `ids`, their own "I was home"
 ## for a night and something that puts them out that night (a sighting, a Night Watch
 ## report, their own walking gift's reading). The judge's own dispute rule
