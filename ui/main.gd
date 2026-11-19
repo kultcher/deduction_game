@@ -36,6 +36,11 @@ var current_script = null
 var side: VBoxContainer
 var side_filter: LineEdit
 var side_list
+## Daytime sightings ("X saw Y at Z") crowd the card lists, so they're hidden unless asked
+## for (Michael, Nov 19): one setting for the side list and the "Present a card" picker,
+## kept for the case.
+var show_day_sightings: bool = false
+var side_sightings_check: CheckBox
 var profile                  # ui/profile_panel.gd: the same profile as on the case board
 var side_profile: RichTextLabel:
 	get: return profile.body
@@ -345,6 +350,8 @@ func _ready() -> void:
 	side_filter.placeholder_text = "filter: person, place, kind, d2, n1, text; join with + (greta+night)"
 	side_filter.text_changed.connect(func(_t): _refresh_side())
 	side.add_child(side_filter)
+	side_sightings_check = _day_sightings_check(func(): _refresh_side())
+	side.add_child(side_sightings_check)
 	side_list = CardList.new()
 	side_list.select_mode = Tree.SELECT_ROW
 	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -373,7 +380,7 @@ func _ready() -> void:
 		if g != null:
 			g.case_notes = notes_edit.text)
 	nv.add_child(notes_edit)
-	var rwin = _make_window("The script: what may be in play", Vector2i(1120, 960))
+	var rwin = _make_window("The script: what may be in play", Vector2i(1160, 960), [22, 4, 18, 12])
 	roles_win = rwin[0]
 	roles_window_box = rwin[1]
 	roles_content = VBoxContainer.new()
@@ -489,6 +496,9 @@ func _new_case() -> void:
 	inspect_pages.clear()
 	_case_seed = int(seed_box.value)
 	case_state.select_card(0)
+	show_day_sightings = false
+	if side_sightings_check != null:
+		side_sightings_check.set_pressed_no_signal(false)
 	g = Game.new()
 	g.debug_overlay = debug_check.button_pressed
 	g.decision_feed.console = roll_window.mirror.button_pressed
@@ -524,7 +534,9 @@ func _open_case_view() -> void:
 	case_view.visible = true
 
 ## A movable window on framed paper. Returns [window, content vbox].
-func _make_window(title: String, sz: Vector2i) -> Array:
+## `inset` pads the content further in from the frame's corner leaves (left, top, right,
+## bottom), for content that runs to the edges (the script's icons; Michael, Nov 19).
+func _make_window(title: String, sz: Vector2i, inset: Array = []) -> Array:
 	var win = Window.new()
 	win.title = title
 	win.size = sz
@@ -535,7 +547,14 @@ func _make_window(title: String, sz: Vector2i) -> Array:
 	panel.add_theme_stylebox_override("panel", UITheme.panel("paper"))
 	win.add_child(panel)
 	var v = VBoxContainer.new()
-	panel.add_child(v)
+	if inset.size() == 4:
+		var pad = MarginContainer.new()
+		for i in 4:
+			pad.add_theme_constant_override(["margin_left", "margin_top", "margin_right", "margin_bottom"][i], int(inset[i]))
+		panel.add_child(pad)
+		pad.add_child(v)
+	else:
+		panel.add_child(v)
 	add_child(win)
 	return [win, v]
 
@@ -982,6 +1001,18 @@ var _last_phase_key = ""
 var _day_pick: String = ""   # the person you clicked this phase (the profile panel's default doesn't count)
 
 func _refresh_all() -> void:
+	if conversation_finished:
+		# The talk's last answer has already ended the phase in the game, but the screen holds
+		# the old one (the clock, the map, the townsfolk and the cards) until the player
+		# leaves the conversation (Michael, Nov 19). Nothing the player does can come between,
+		# so this changes only when they see it.
+		_refresh_actions()
+		map_stage.visible = true
+		conversation_view.visible = true
+		meeting_view.visible = false
+		map_return.visible = false
+		input.editable = false
+		return
 	_sync_approach(not inspect_pages.is_empty())
 	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
 		_build_roles(roles_content.get_parent() == roles_dock)
@@ -1719,10 +1750,16 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 		var cs: Array = g.filter_cards(f.text)
 		cs.reverse()  # newest first
 		for c in cs:
+			if with_target and not show_day_sightings and is_day_sighting(c):
+				continue
 			if keep.call(c):
 				lst.add(CardList.line_for(c), c["n"], c["text"], CardList.color_for(c, Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else CardList.tint_for(c)))
 	fill.call()
 	f.text_changed.connect(func(_x): fill.call())
+	if with_target:
+		var sight_check: CheckBox = _day_sightings_check(func(): fill.call())
+		v.add_child(sight_check)
+		v.move_child(sight_check, f.get_index() + 1)
 	var mode: OptionButton = null
 	var who: OptionButton = null
 	if with_target:
@@ -1763,6 +1800,28 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 
 # ---------------------------------------------------------------- side panels
 
+## A sighting of someone else by day: not a night sighting, nor someone's own account of
+## where they were.
+static func is_day_sighting(c: Dictionary) -> bool:
+	if c.get("kind", "") != "sighting" or c.get("self_report", false) or c.get("phase") == null:
+		return false
+	return int(c["phase"]) != C.NIGHT
+
+## The "Show daytime sightings" box; toggling it updates the shared setting, then `refill`.
+func _day_sightings_check(refill: Callable) -> CheckBox:
+	var box = CheckBox.new()
+	box.text = "Show daytime sightings"
+	box.tooltip_text = "Sightings of people about town by day are hidden to keep the list short."
+	box.button_pressed = show_day_sightings
+	box.toggled.connect(func(on):
+		show_day_sightings = on
+		if side_sightings_check != null and side_sightings_check != box:
+			side_sightings_check.set_pressed_no_signal(on)
+		refill.call()
+		if box != side_sightings_check:
+			_refresh_side())
+	return box
+
 func _refresh_side() -> void:
 	if g == null or side_list == null:
 		return
@@ -1773,6 +1832,8 @@ func _refresh_side() -> void:
 	side_list.context_numbers = EvidenceContext.numbers(g)
 	var cards: Array = g.filter_cards(side_filter.text)
 	cards.reverse()
+	if not show_day_sightings:
+		cards = cards.filter(func(c): return not is_day_sighting(c))
 	for c in cards.slice(0, 60):
 		var col = null
 		if c.get("hidden", false):

@@ -162,6 +162,10 @@ func _ready() -> void:
 	for name_value in premise_names():
 		premise_type.add_item(name_value)
 	premise_type.select(-1)
+	# Hidden children, so they're freed with the page (orphans leaked their popups' viewports at exit).
+	for hidden in [premise_person, premise_type]:
+		hidden.visible = false
+		tools.add_child(hidden)
 	var add_button = _button(tools, "Add premise", _add_premise)
 	add_button.tooltip_text = "Adds a blank premise. Click its fields to choose who and what you're arguing."
 	var add_profile_btn = _button(tools, "Add Townsfolk Profile Info", _open_add_profile_menu)
