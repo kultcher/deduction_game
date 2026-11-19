@@ -23,12 +23,13 @@ The run is deterministic: on the same build, it reproduces the baseline exactly.
 - Every listener's trust and credibility are set to 0.7, every suspicion is reset to 0.25,
   and the day is set to 3.
 - The case's cards are added to the board. The player files the case about its subject,
-  citing them, and presents it to every good listener who isn't one of its sources.
+  citing them, and presents it to every living good townsperson but the subject, its
+  sources included (a presentation at a meeting reaches the whole town).
 - Every gift reading comes from that gift's real, good holder. A deal without one is
   skipped for that case. The one exception is a misleading case's lie, told by a Minion.
 - In a true case, the subject is the Demon unless the case says otherwise.
 - Each true case has a misleading twin, `<case>_innocent`, except the impossible reading
-  and the three Seer cases (seer_twice, vigil_seer, stack), which are built on the real
+  and the four Seer cases (seer_twice, vigil_seer, stack, two_kills_seer), which are built on the real
   Seer's true readings of the Demon and so have no innocent version.
   It's the same chain built about an innocent (the last living good townsperson), as it
   could really arise: an innocent out at night, true readings that name them beside the
@@ -53,6 +54,7 @@ The run is deterministic: on the same build, it reproduces the baseline exactly.
 | seer_twice | The Seer's "yes" on the Demon and one other on night 1, and on the Demon and a second other on night 2 |
 | vigil_seer | A night-1 killing, the player's vigil seeing the Demon go out that night, plus the Seer's "yes" on the Demon and one other |
 | stack | The vigil at the kill, a witness's sighting of the Demon on the victim's block, plus the Seer's "yes" twice (built to reach the Strong tier) |
+| two_kills_seer | Two killings, the player's vigil and a witness's sighting of the Demon at each, plus the Seer's "yes" on the Demon on both nights (built to sit between Strong and the top tier) |
 
 The misleading twins (the subject is the innocent):
 
@@ -79,21 +81,38 @@ averaged over the listeners.
 - **Juror's badges:** the badge each case got, and how often.
 - **Strength:** the juror's strength, as a geometric mean. Since the juror fix (Nov 19), it
   is how far an average listener's chance of the premise moves, as an odds ratio, against
-  a town that hasn't heard the case's cards. The badge is set by this number: Weak from 1.5,
-  Moderate from 3, Strong from 10, until Michael sets the new cut points.
+  a town that hasn't heard the case's cards. The badge is set by this number (#357): Weak from
+  ×1.25, Moderate from ×2, Strong from ×3.5, and Damning when an accusing premise's chance
+  reaches 90%.
 - **Chance before → after** (the rows' `chance_before` and `chance`): that listener's
   chance of the premise, and whether the subject becomes their top suspect (`top`,
   `margin`). These feed the fourth tier's measure.
 - **Town:** the mean movement, and its range across the deals.
 - **Sign:** how often the juror and the town point the same way.
 - **Category:** how often the badge matches the town's own band. The bands are the
-  report's own provisional reading of how far the town moved, not game numbers: Strong
-  from +25, Moderate from +10, Weak from +3, none from −2.
+  report's own provisional reading of how far the town moved, not game numbers: Damning
+  from +45, Strong from +25, Moderate from +10, Weak from +3, none from −2.
 - **By badge:** the town's movement for each badge, for the true cases and the misleading
   ones separately. These are the tables for revisiting the cut points.
 
 A case the juror can't judge is reported as "not ready", and the row carries the juror's
 issues. On the slate, that means the case or the judge is broken.
+
+## Votes
+
+Each row also records how the good townsfolk would vote on the subject if a neutral
+nominator put them up, with the player's vote left out (`yes_before`, `yes_after`,
+`voters_good`, `threshold`, `crosses`), through Beadle's `MindMeeting.would_vote` (#347). A
+vote refreshes each voter's beliefs as a real meeting would, so "before" is taken on a fresh
+build of the same deal with the same cards, never presented; the other columns are unchanged
+by it. Evil voters are left out (they vote by strategy). `crosses` is whether the good yes
+votes alone reach the hanging threshold, which counts the player's seat.
+
+A case's sources (its witnesses, readers and victims) hear it too, as at a real meeting.
+`heard_good` counts the good voters who heard the case, and `yes_heard` and
+`yes_heard_before` count their yes votes; the report shows them as "Heard it" and "Of
+those, yes". With every living good townsperson but the subject hearing, these match the
+whole-town columns; they are kept so a case presented to fewer listeners still reads right.
 
 ## Adding a case
 
@@ -105,7 +124,5 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built on claude/lamplighter-count (main at a6b674b with the Lamplighter
-count mix, Nov 19, Quill). It adds lamp_count, lamp_count_innocent and lamp_bluff_innocent.
-The Lamplighter-and-alibis cases move with the count mix; nothing else moves by more than 0.4
-of a point. See `baseline.md`.
+`baseline.jsonl`: built on claude/slate-gap (main at 17dd113, with each case presented to
+its sources too and the two_kills_seer case added, Nov 19, Quill). See `baseline.md`.

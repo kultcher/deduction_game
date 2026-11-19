@@ -49,6 +49,10 @@ static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind:
 	return clampf(maxf(float(source_doubt.get("%s:%d" % [src, night], 0.0)), star), 0.0, 1.0)
 
 
+## The listener's chance that `who` is evil, its suspicion of them (0.5 when it holds none).
+static func _evil_chance(listener: Dictionary, who: String) -> float:
+	return clampf(float(listener.get("suspicion", {}).get(who, 0.5)), 0.0, 1.0)
+
 static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.get("ready", false) or not plan.has("prepared"):
 		return {"pre_eval": seed_doubt.duplicate(true), "full": seed_doubt.duplicate(true), "settled_sincere": {}, "honest": {}}
@@ -168,10 +172,17 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if ckind == "alibi" and cnight >= 0:
 			for subj in card.get("subjects", [card.get("subject", "")]):
 				var s_id: String = str(subj)
-				if s_id != "" and own_saw.has("%s:%d" % [s_id, cnight]) and not sleepwalkers.has(s_id) and not settled_sincere.has(s_id):
+				if s_id != "" and own_saw.has("%s:%d" % [s_id, cnight]) and not settled_sincere.has(s_id):
+					# "I've been known to sleepwalk" excuses the false "I was home" only where its
+					# claimant is a good Sleepwalker; where they're evil it's a bluff and the lie
+					# stands (Michael, Nov 19). One doubt for every world, so weighed by the
+					# listener's chance they're evil. Before, the claim cancelled it outright, whoever
+					# made it. (Under the secrets rework a Sleepwalker stays self-unaware: then a
+					# claim is never a good holder's knowing one; docs/design/secrets_rework.md.)
+					var excused: float = 1.0 - _evil_chance(listener, s_id) if sleepwalkers.has(s_id) else 0.0
 					var nk_a: String = "%s:%d" % [s_id, cnight]
-					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
-					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
+					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT * (1.0 - excused))
+					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL * (1.0 - excused))
 
 	# A teller's own word that its gift may have been turned (BACKLOG "Saying 'my gift may
 	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading

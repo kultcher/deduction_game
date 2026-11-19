@@ -112,6 +112,7 @@ test_relay_bluff
 test_relay_challenge_menu
 test_relay_lie_attribution
 test_relayed_alibi
+test_response_bundles
 test_review_fixes
 test_role_check_doubt
 test_roles_dead
@@ -125,6 +126,7 @@ test_roles_shelter
 test_shared_model
 test_sighter_contest
 test_sighting_followup
+test_sleepwalk_bluff
 test_social
 test_state_digest
 test_too_clean_bluffs

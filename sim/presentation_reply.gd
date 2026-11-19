@@ -93,7 +93,9 @@ static func _evil(w, n, ded: Dictionary, board: Array, scale: float, c: Dictiona
 		if workshop_covered:
 			if approved.has("voiced_text"):
 				var v_shadow: String = Mind.Dialogue.apply_tics(n.id, str(approved["voiced_text"]), delivery_memory)
-				lines.append({"speaker": n.id, "name": n.name, "text": v_shadow, "statement": str(approved.get("special", v_shadow))})
+				lines.append({"speaker": n.id, "name": n.name, "text": v_shadow, "statement": str(approved.get("special", v_shadow)),
+					# The good shadow's reply kind, so the answer bundles like a good listener's (Codex, #373).
+					"reply_key": str(approved.get("voiced_reply_key", "")), "reply_named": approved.get("voiced_named", [])})
 			else:
 				var canon_ev: String = Mind.Dialogue.decision(n.id, approved, audience, delivery_memory.duplicate(true))["text"]
 				lines.append(Presentations.render_evil_override(w, n, c, str(approved.get("stance", "partial")), bool(approved.get("already", false)), times > 0 and delivery_memory.get("decisions", {}).has(JSON.stringify([audience, Deduction.conclusion_key(c)])), audience, canon_ev, delivery_memory))

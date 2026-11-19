@@ -17,6 +17,7 @@ const WorkshopOwnership = preload("res://game/workshop_ownership.gd")
 const WorkshopPresentation = preload("res://game/workshop_presentation.gd")
 const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
+const ResponseBundles = preload("res://game/response_bundles.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 const WorkshopProfiler = preload("res://workshop/profiler.gd")
 
@@ -617,11 +618,26 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)
 	_conflict_pressure(g, ded, 0.2, null)
+	# Every listener weighs the case, then the town's answers are given summarised: those who
+	# answered alike speak as one, a representative in full and the rest in a word (Michael,
+	# Nov 19; game/response_bundles.gd). The log keeps every answer.
+	var target: String = str(ded.get("conclusion", {}).get("a", ""))
+	var answers: Array = []
+	var seat: int = 0
 	for n in g.w.living():
 		if progress.is_valid():
 			await progress.call(n.name)
+		var mind = n.shadow if n.is_evil() and n.shadow != null else n
+		var before: float = float(mind.suspicion.get(target, 0.0))
 		var r: Dictionary = _evaluate_deduction(g, n, ded, Tuning.Workshop.VENUE_MULTS.meeting, true, "meeting")
-		g._lines(r["lines"])
-		# What a listener told the town in answer (a caught alibi explained) goes on the board
-		# too (Codex on #261).
-		g._facts(r.get("facts", []))
+		answers.append({"id": n.id, "name": n.name, "lines": r.get("lines", []), "facts": r.get("facts", []),
+			"agreement": float(r.get("agreement", 0.0)), "stance": str(r.get("dialogue", {}).get("stance", "")),
+			"delta": float(mind.suspicion.get(target, 0.0)) - before, "trust": float(n.trust), "seat": seat})
+		seat += 1
+	for said in ResponseBundles.arrange(answers, target):
+		if said is Dictionary and said.has("facts") and not said.has("speaker"):
+			# What a listener told the town in answer (a caught alibi explained) goes on the
+			# board too (Codex on #261).
+			g._facts(said.facts)
+		else:
+			g._line(said)
