@@ -161,6 +161,8 @@ func _juror() -> void:
 	var lines: Array = Live.guard_reason_lines(g, with_guard)
 	_check(lines.size() == 1 and lines[0].contains("%s guarded %s's door on the first night" % [warden.name, target.name]) and lines[0].contains("strengthens the case") and lines[0].begins_with("#"),
 		"the juror's reason line names the card, the Warden, the door and the night (%s)" % str(lines))
+	var flipped: Array = Live.guard_reason_lines(g, with_guard, {"conclusion": {"type": "good", "target": demon.id}})
+	_check(flipped.size() == 1 and flipped[0].contains("weakens the case"), "for a case that someone is good, the same guard weakens it (Codex on #299)")
 	_check(Live.guard_reason_lines(g, without).is_empty(), "and there's no line without a guard")
 
 

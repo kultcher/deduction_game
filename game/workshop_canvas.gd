@@ -767,7 +767,7 @@ static func guard_reasons(view: Dictionary, case_data: Dictionary, ev: Dictionar
 ## The Test juror's reason line for each quiet-night guard in `result["guards"]` (Herald,
 ## Nov 19; debug text, so Michael's Nov 18 rule needs no wording approval): which cards,
 ## what they argue, and how far they move the case. Card numbers are board numbers.
-static func guard_reason_lines(g, result: Dictionary) -> Array:
+static func guard_reason_lines(g, result: Dictionary, case_value: Dictionary = {}) -> Array:
 	var C = preload("res://sim/content.gd")
 	var number_of = func(id: String) -> int:
 		if id == "":
@@ -778,6 +778,9 @@ static func guard_reason_lines(g, result: Dictionary) -> Array:
 		return 0
 	var name_of = func(pid: String) -> String:
 		return g.w.by_id[pid].name if g.w.by_id.has(pid) else pid
+	# `shift` moves the subject's chance of being evil, so for a case that someone is good
+	# (or Marked, an innocent who registers evil) a rise works against it (Codex on #299).
+	var innocence: bool = str(case_value.get("conclusion", {}).get("type", "")) in ["good", "marked"]
 	var out: Array = []
 	for gd in result.get("guards", []):
 		var warden: String = name_of.call(str(gd.warden))
@@ -790,7 +793,8 @@ static func guard_reason_lines(g, result: Dictionary) -> Array:
 			line += ", and #%d no one died that night" % quiet_n
 		line += ": if %s is a working Warden, the Demon came to %s's door that night." % [warden, guarded]
 		var points: int = int(round(absf(float(gd.shift)) * 100.0))
-		line += " This %s the case %d point%s." % ["strengthens" if float(gd.shift) > 0.0 else "weakens", points, "" if points == 1 else "s"]
+		var helps: bool = (float(gd.shift) > 0.0) != innocence
+		line += " This %s the case %d point%s." % ["strengthens" if helps else "weakens", points, "" if points == 1 else "s"]
 		out.append(line)
 	return out
 
