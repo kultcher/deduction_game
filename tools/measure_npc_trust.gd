@@ -47,10 +47,16 @@ func _play(seed_v: int, npcs: int) -> void:
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(seed_v, npcs)
-	var last_day: int = g.w.day
+	# A day's end is sampled once, as night falls and before the night resolves (its kills and
+	# trust changes belong to the next day); a game that ends by day records its last day too
+	# (Codex on #292).
+	var recorded: Dictionary = {}
 	var guard := 0
 	while g.state != "over" and guard < 400:
 		guard += 1
+		if g.state == "night" and not recorded.has(g.w.day):
+			recorded[g.w.day] = true
+			_record(g.w.day, g.w)
 		match g.state:
 			"approach": g.command("decline")
 			"day": g.command("wait")
@@ -59,9 +65,8 @@ func _play(seed_v: int, npcs: int) -> void:
 			"nomination": g.command("vote no")
 			"night": g.command("sleep")
 			_: break
-		if g.w.day != last_day:
-			_record(last_day, g.w)  # the end of the day just finished
-			last_day = g.w.day
+	if not recorded.has(g.w.day):
+		_record(g.w.day, g.w)
 	at_end.append_array(_pairs(g.w))
 
 func _pct(vals: Array, q: float) -> float:

@@ -67,14 +67,17 @@ named constants of their own.
 
   | End of day | Main: pairs near full trust (0.85+) | Here |
   |---|---|---|
-  | 1 | 11 (1.0%), in 6 games | 13 (1.2%), in 6 games |
-  | 2 | 9 (1.3%), in 6 | 27 (4.0%), in 11 |
-  | 3 | 8 (2.5%), in 5 | 28 (8.3%), in 8 |
-  | 4 | 4 (3.2%), in 3 | 15 (10.1%), in 8 |
+  | 1 | 11 (0.8%), in 7 games | 13 (1.0%), in 7 games |
+  | 2 | 14 (1.6%), in 7 | 29 (3.3%), in 13 |
+  | 3 | 10 (1.8%), in 8 | 48 (8.6%), in 11 |
+  | 4 | 7 (3.2%), in 4 | 32 (12.6%), in 10 |
+  | 5 | 2 (2.4%), in 2 | 14 (12.1%), in 7 |
   | Game end: median / top tenth | 0.52 / 0.78 | 0.59 / 0.87 |
 
-  - **Distrust:** it isn't worn away. The lowest tenth stays near 0.3 on both through day 3.
-    On day 4 it's 0.08 on main and 0.26 here, from fewer games.
+  - **Distrust:** it isn't worn away. The lowest tenth is within 0.04 of main's through day 4
+    (0.24 here, 0.20 on main, on day 4).
+  - **When each day is sampled:** as night falls, before that night's kills (Codex on #292),
+    and a game's last day is counted once.
   - **Counts by day:** they cover only the games still running that day, and fewer games run
     as days pass.
   - **Pairs already near full trust on day 1:** these are friends set up at the start, the
