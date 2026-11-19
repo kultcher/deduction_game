@@ -47,9 +47,8 @@ listener (#273), both Lantern's.
     are untracked local files Michael can delete. The test file exists on main and passes,
     so its error is most likely a stale import on his side.
   - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
-    Herald (#322): the game has no control with gutters, so the error most likely comes
-    from Godot's own script editor while the game runs from it. Herald has asked Michael
-    where he sees it. Still open until he answers.
+    **Closed, not reproducible** (Michael, Nov 19): it no longer appears in a full game on
+    his machine. The game has no control with gutters (#322).
   - (c) RID leaks on exit. Owner Herald, low priority. **Done** (#322).
 
   [decided]
@@ -155,9 +154,15 @@ listener (#273), both Lantern's.
 
 - **The Test juror's badge tiers.** (Michael, Nov 19) A fourth tier for a premise at 90% or
   more ("Damning" or "Conclusive"), above Weak, Moderate and Strong. Quill's proposed cut
-  points, from the slate (#332), were ×1.25, ×2 and ×5. They wait on cut points set from
-  how the town votes, measured with the slate's vote hook (Beadle's #347, open). Owners:
-  Quill (the cut points), Herald (the badge). [decided: tiers; cut points open]
+  points, from the slate (#332), were ×1.25, ×2 and ×5. **Cut points set (Michael, Nov 19,
+  Quill #357):** Negligible below ×1.25, Weak from ×1.25, Moderate from ×2, Strong from
+  ×3.5, and the top tier at a premise chance of 90%. The top tier applies only where that
+  chance settles the premise: an accusing one, "is good" or "is not the Demon". On the slate's
+  vote measure (#355), Weak sways one or two good votes, Moderate about half, and Strong
+  most, carrying the nomination with the player's vote 9 times in 10. Herald builds the badge
+  text (#358). **Gap to fill:** nothing on the slate falls between Strong (about 4 of 6 good
+  votes) and the top tier (all 7); a possible slate case to add there. Owners: Quill (the cut
+  points), Herald (the badge). [decided]
 
 - **The Lamplighter's count, in two steps.** (Michael, Nov 19, with Quill's plan in #346.)
   - **Step 1:** a count can be broken. Like a Night Watch list (#273), a listener allows that
@@ -186,12 +191,14 @@ listener (#273), both Lantern's.
     Michael (Nov 19): the signal is now the judge's posterior that the own reading was
     wrong, and the threshold is `Workshop.SELF_DOUBT_TRIGGER`, 0.30
     (`SourceDoubt.doubts_own_gift(n)`; see "Was my reading poisoned?" below).
+    **Built** (Nov 19, `claude/beadle-gift-doubt-good`, rewired on #320): a good public
+    claimant says it once a game, from the first night in `SourceDoubt.doubts_own_gift(n)`.
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
     (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
     twice running; no new number; logged with its reason. **Built** (Nov 18, #245), with
-    the listener side below. (a) is being built in #316 (open; Michael approved it at the
+    the listener side below. (a) is built in #316 (Michael approved it at the
     0.30 trigger on Nov 19), on Lantern's signal from #320.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
@@ -642,18 +649,6 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   **[deferred, Michael, Nov 13: promising, after the connections build]**
 - **Presenting a card to one NPC** (triage 5.8): see "Secret awareness and bluffing" in
   section 2. **[design]**
-- **A bluffer's frame memory** (triage section 6). The scapegoat is one team-wide choice
-  (`evil_plan.scapegoat`), reconsidered each morning with a bonus for keeping it. A
-  bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
-  readings can drift away from the frame. Proposal: a bluffer's later readings stay
-  consistent with the people its earlier ones implicated, unless the team has switched
-  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
-  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
-  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
-  memory drops when the team switches scapegoat. It's another preference at the better-lie
-  choice point ("consistent with my earlier readings"). One or two new tuning constants
-  are approved. Owner Beadle. **[decided]** Built in #255 (Beadle); the reveal's wording
-  for it is in #350 (open). Close once Beadle confirms nothing else is left.
 - **One pass over every bluffer** for the "too clean when an ally is involved" tell that
   gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
   guidelines: within about 1 of the truth, the group size setting the room). For

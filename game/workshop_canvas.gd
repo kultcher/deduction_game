@@ -26,9 +26,13 @@ static func view(g) -> Dictionary:
 	var cards: Array = []
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
-		var note = "FALLBACK: this evidence has no live Workshop evaluator"
+		# The note under a Workshop card, in the player's words (Michael, Nov 19). Whether the
+		# Workshop can weigh the card is the `fallback` flag, not the note's wording.
+		var note = "The Workshop can't weigh this card yet."
+		var fallback: bool = true
 		if (receipt.kind == "claim" and content.get("role") in Assess.C.GOOD_ROLES) or (receipt.kind in ["sighting", "alibi"] and receipt.observed_at.phase == "night"):
-			note = "Adapter available · testimony and circumstances, not proof of evil"
+			note = "Testimony and circumstance: not proof of evil."
+			fallback = false
 		var activity = Assess.activity_card(receipt, snapshot)
 		if receipt.kind == "info" and content.get("role") == "medium":
 			activity = Assess.medium_card(receipt, snapshot)
@@ -37,20 +41,25 @@ static func view(g) -> Dictionary:
 		elif receipt.kind == "info" and content.get("anonymous", false):
 			activity = Assess.testimony_card(receipt, snapshot)
 		if not activity.is_empty():
-			note = "Adapter available · experimental joint activity/trace comparison"
+			note = ""
+			fallback = false
 			if activity.kind == "town_hall":
-				note = "Adapter available · Town Hall census (exactly 1 of these 2 good roles is in play)"
+				note = "Town Hall records: exactly one of these two gifts is in play."
 			elif activity.kind in ["context", "location"]:
-				note = "Adapter available · location context; this does not establish guilt"
+				note = "Where someone was: not a sign of guilt on its own."
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
-			note = "Reading adapter available · check whole-case support"
+			note = ""
+			fallback = false
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
-				note = "FALLBACK: this reading time is outside the live adapter"
+				note = "The Workshop can't weigh a reading from this time yet."
+				fallback = true
 			var ids: Array = snapshot.people.map(func(p): return p.id)
 			if not Assess.reading_valid(receipt, ids, snapshot.rules.modifier_options):
-				note = "FALLBACK: reading payload is incomplete or invalid"
+				note = "This reading is missing details, so the Workshop can't weigh it."
+				fallback = true
 			if content.role == "medium" and activity.is_empty():
-				note = "FALLBACK: this Medium item needs supported original evidence, its observation time, and a known deceased source"
+				note = "The Workshop needs the original reading, when it was taken and whose it was before it can weigh this."
+				fallback = true
 		cards.append({"id": receipt.id, "fact_id": receipt.id, "kind": "report" if receipt.kind == "info" else receipt.kind,
 			"source": receipt.source, "subject": receipt.subjects[0] if not receipt.subjects.is_empty() else "", "subjects": receipt.subjects.duplicate(),
 			"role": content.get("role", ""), "data": content.get("data", {}).duplicate(true),
@@ -59,12 +68,16 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
+			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "fallback": fallback, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
-			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; a challenge names its side (the passing-on or the original)" if activity.has("relay_source") else note
+			cards[-1].support_note = "A passed-on reading: a challenge says which part failed, the passing-on or the original." if activity.has("relay_source") else note
+			# An adapted relay or teller's testimony is weighable even where the outer reading
+			# alone isn't (Codex, #348): the old note override made these supported.
+			if activity.has("relay_source") or activity.get("testimony_only", false):
+				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
-				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
+				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"profile_facets": _profile_facets(g),
@@ -264,7 +277,11 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
 	if not ev.get("impossible", false):
 		ev.lr = heard.lr
-		ev.category = CaseEval.category(heard.lr)
+		# The top tier reads the listener's chance only where that chance is the premise's own
+		# (Herald and Codex on #358): an accusing premise (would the town vote for them), "is
+		# good" and "is not the Demon". Elsewhere it's the target's chance of being good or evil,
+		# which doesn't settle "holds their gift", "was misled" and the like, nor a conflict.
+		ev.category = CaseEval.category(heard.lr, top_tier_chance(str(value.get("conclusion", {}).get("type", "")), float(heard.chance)))
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
@@ -299,6 +316,15 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 ## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
 ## no single subject: it is read through whoever it moves most, upward (one of them lied).
 const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+## The clearing premises a listener's chance of the target being good settles outright, for
+## the badge's top tier (Conclusive): test_juror.
+const TOP_TIER_CLEARS = ["good", "notdemon"]
+
+## The listener's chance as the badge's top tier reads it for a premise of `type`: the chance
+## itself where it settles the premise, else -1 (no top tier).
+static func top_tier_chance(type: String, chance: float) -> float:
+	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
+	return chance if settles else -1.0
 
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
