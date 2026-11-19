@@ -776,6 +776,14 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   part was done in #149: the curse "When" field shows only on is evil / suspicious /
   good. The Scion part is new work: a premise time option that means "before / after
   the Scion rose". **[decided: direction]**
+  **Built (Quill, Nov 19), in the form Michael chose:** no new option. A world's Demon is
+  the Demon now, so a hanged Demon whose Scion rose sits in it as an evil non-Demon. The
+  movement model and the role constraints already read it so. "X is the Demon" about
+  someone already hanged now means "X was the Demon when hanged": the world's Demon, or an
+  evil X whose world's Demon was alive at a hanging with five or more alive and a Scion on
+  the script. "Is not the Demon" is its complement. A plain "Y is the Demon" about the
+  risen Scion already worked. Herald: optional wording for a hanged person's premise ("was
+  the Demon when hanged").
 - **The Test juror reporting a condition separately** (triage 5.1, the full version). #159
   built the cheap version: a premise → card link means "this card's line runs through that
   premise", labelled "given <premise>". The full version would have the juror say "if
