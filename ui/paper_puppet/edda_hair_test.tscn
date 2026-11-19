@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://ui/paper_puppet.gd" id="1_fi5fa"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/body.png" id="2_nqhmm"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/eyes.png" id="3_a3avs"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/hair_under.png" id="4_yei3s"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/hair_mass.png" id="5_2nfv2"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/ear.png" id="6_q8b6u"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/hair_waves.png" id="7_uh1uy"]
+[ext_resource type="Texture2D" path="res://assets/art/paper_puppet_poc/edda_hair_test/hair_swoop.png" id="8_cpntj"]
+
+[node name="EddaHairTest" type="Node2D" unique_id=307563364]
+script = ExtResource("1_fi5fa")
+
+[node name="Body" type="Node2D" parent="." unique_id=2122953666]
+position = Vector2(512, 1536)
+
+[node name="Body" type="Sprite2D" parent="Body" unique_id=1812615]
+z_index = 2
+position = Vector2(-512, -1536)
+texture = ExtResource("2_nqhmm")
+centered = false
+metadata/depth = 0
+
+[node name="Eyes" type="Sprite2D" parent="Body" unique_id=1609353658]
+z_index = 4
+position = Vector2(-512, -1536)
+texture = ExtResource("3_a3avs")
+centered = false
+metadata/depth = 0
+
+[node name="HairUnder" type="Sprite2D" parent="Body" unique_id=1644196710]
+z_index = 6
+position = Vector2(-512, -1536)
+texture = ExtResource("4_yei3s")
+centered = false
+metadata/depth = 0
+
+[node name="HairMass" type="Sprite2D" parent="Body" unique_id=789065311]
+z_index = 8
+position = Vector2(48, -1306)
+texture = ExtResource("5_2nfv2")
+centered = false
+offset = Vector2(-560, -230)
+metadata/depth = 3
+metadata/sway = 1.2
+metadata/phase = 0.0
+
+[node name="Ear" type="Sprite2D" parent="Body" unique_id=800849327]
+z_index = 10
+position = Vector2(-512, -1536)
+texture = ExtResource("6_q8b6u")
+centered = false
+metadata/depth = 1
+
+[node name="HairWaves" type="Sprite2D" parent="Body" unique_id=375182927]
+z_index = 12
+position = Vector2(-112, -1371)
+texture = ExtResource("7_uh1uy")
+centered = false
+offset = Vector2(-400, -165)
+metadata/depth = 2
+metadata/sway = 2.0
+metadata/phase = 1.4
+
+[node name="HairSwoop" type="Sprite2D" parent="Body" unique_id=253787125]
+z_index = 14
+position = Vector2(-117, -1416)
+texture = ExtResource("8_cpntj")
+centered = false
+offset = Vector2(-395, -120)
+metadata/depth = 3
+metadata/sway = 2.5
+metadata/phase = 2.6

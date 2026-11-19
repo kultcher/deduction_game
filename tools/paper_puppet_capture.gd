@@ -1,11 +1,11 @@
 ## Records the paper-puppet test (ui/paper_puppet.gd) in the conversation view, as PNG frames.
 ##   xvfb-run -a godot --path . --rendering-driver opengl3 --script res://tools/paper_puppet_capture.gd -- \
-##       <out_dir> [stepped|smooth|still] [seconds]
+##       <out_dir> [stepped|smooth|still] [seconds] [scene]
 ## She talks from 1 s to 4 s and from 5.5 s to 7.5 s. Deterministic: 1/30 s a frame. No simulation.
 extends SceneTree
 
 const ConversationView = preload("res://ui/day_conversation_view.gd")
-const PUPPET = preload("res://ui/paper_puppet/edda_puppet.tscn")
+const DEFAULT_SCENE = "res://ui/paper_puppet/edda_puppet.tscn"
 const SIZE = Vector2i(1600, 900)
 const FPS = 30.0
 const RENDER_SCALE = 0.6
@@ -20,6 +20,7 @@ func _run() -> void:
 	var out_dir: String = args[0] if args.size() > 0 else "user://paper_puppet_frames"
 	var mode: String = args[1] if args.size() > 1 else "stepped"
 	var seconds: float = float(args[2]) if args.size() > 2 else 9.0
+	var scene: String = args[3] if args.size() > 3 else DEFAULT_SCENE
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	root.size = SIZE
 	var view = ConversationView.new()
@@ -34,7 +35,7 @@ func _run() -> void:
 	vp.transparent_bg = true
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(vp)
-	var puppet = PUPPET.instantiate()
+	var puppet = load(scene).instantiate()
 	puppet.scale = Vector2.ONE * RENDER_SCALE
 	puppet.set_process(false)
 	vp.add_child(puppet)
