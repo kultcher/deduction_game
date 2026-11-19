@@ -201,6 +201,8 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "Something doesn't add up: one of %s is misled or lying" % _names(w, c.get("group", []))
 		"suspicious":
 			return "%s is suspicious" % a
+		"turned":
+			return "%s was turned by the curse" % a
 		"secret":
 			return "%s is hiding a secret (an innocent one)" % a
 		"marked":

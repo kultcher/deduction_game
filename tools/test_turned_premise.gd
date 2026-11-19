@@ -92,5 +92,12 @@ func _init() -> void:
 	c_val.conclusion.target = "a"
 	check(Assess.conclusion_issues(view, c_val).is_empty(), "a surviving yes-voter can be argued turned")
 	check("turned" in Assess.CONCLUSIONS, "the live Workshop accepts the premise type")
+	# A filed case's card and the listeners' memories name the claim (Codex on #301).
+	var Game = preload("res://game/game.gd")
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(1, 7)
+	var who = g.w.npcs[0]
+	check(g.Deduction.conclusion_text(g.w, {"type": "turned", "a": who.id}) == "%s was turned by the curse" % who.name, "a filed turned case reads with the person's name")
 	print("Turned premise: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
