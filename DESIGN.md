@@ -651,7 +651,10 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   about a person, not a reading: it doubts all their readings and, the secret being
   good-only, clears them. "misled" stays a valid name for Mistaken in saved cases and NPC
   defences (`ReadingChallenges.canonical`); its label and tip are `HONEST_LABEL` and
-  `HONEST_TIP` there.
+  `HONEST_TIP` there. Mistaken is allowed only where a cause the script allows could have
+  fooled that gift (`honest_allowed`): poison or Delusion any reading, a Red Herring only
+  the Seer's, Marked only a reading that points someone toward evil. With none, the option
+  is off.
 - **Premise → card links** mean "this card's line runs through that premise", and the
   canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.

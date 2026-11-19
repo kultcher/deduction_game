@@ -632,7 +632,8 @@ func evidence_layout(id: String) -> Dictionary:
 			var label: String = {"lying": "Lying", RCh.HONEST: RCh.HONEST_LABEL, "unlikely": "Unlikely"}[mode]
 			var w: float = 84.0
 			var disabled: bool = (mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
-				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES)
+				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES) \
+				or (mode == RCh.HONEST and not RCh.honest_allowed(model.view, card, side))
 			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": preload("res://workshop/reading_challenges.gd").canonical(node.mode) == mode, "disabled": disabled, "field": "mode:" + mode,
 				"tip": {"lying": "The reader is lying about this result.", RCh.HONEST: RCh.HONEST_TIP, "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0

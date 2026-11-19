@@ -436,6 +436,9 @@ func add_modifier(id: String, mode: String, attribution: String = "") -> String:
 		attribution = ""
 	if report.kind != "report" or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
 		return "This modifier is not supported for that evidence type."
+	# Mistaken needs a cause the script allows that could have fooled this gift (Nov 18).
+	if RC.canonical(mode) == RC.HONEST and not RC.honest_allowed(view, report, attribution):
+		return "Nothing in this town could have fooled that gift."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
 			node.mode = mode

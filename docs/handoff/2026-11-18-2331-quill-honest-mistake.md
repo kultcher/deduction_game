@@ -46,8 +46,10 @@
   - `JURY_CHALLENGE_LYING_SCALE`: 0.12 → 0.4.
   - `tuning_catalogue.md` is regenerated.
 - **UI wording:**
-  - The label is "Mistaken" and the tip is Herald's, both approved by Michael: "The reading was wrong, but honestly told: something fooled the gift, such
-    as poison, delusion, a Red Herring or a Marked soul."
+  - The label is "Mistaken". The tip is Herald's short form, both approved by Michael
+    (Nov 19): "The reading was wrong, but honestly told: something fooled the gift." It
+    lists no causes, since more may come. Herald's term tooltip will list the causes this
+    script allows, from `game_honest_causes`.
   - Both live in `ReadingChallenges.HONEST_LABEL` and `HONEST_TIP`
     (`workshop/reading_challenges.gd`), and the canvas and live workshop read them.
   - The canvas offers "Mistaken", "Lying" and "Unlikely"; the live workshop "Mistaken",
@@ -56,13 +58,32 @@
     "misled (honest but wrong)" becomes "mistaken". The modifier title is "Mistaken
     reading", and the theory error reads "…conflicts with the Mistaken explanation." All of
     these are built from `HONEST_LABEL` (Herald's request).
-  - One NPC reply note is unchanged here: "An honest mistake can be a failed gift or a
-    misleading registration; it does not establish poisoning." Herald's draft, awaiting
-    Michael: "A mistaken reading can come from poison, delusion, a Red Herring or a Marked
-    soul; it doesn't show which, nor that anyone lied."
+  - The NPC reply note on an accepted Mistaken call (approved, Nov 19): "A mistaken
+    reading doesn't show what fooled the gift, nor that anyone lied."
+- **The gate** (Michael, Nov 18, via Seneschal; it closes Lantern's "washing a lie"
+  question). A Mistaken call is allowed only where a cause the script allows could have
+  fooled that gift:
+  - Poison (a Poisoner possible) or Delusion reach any reading, the Medium's passing-on
+    included.
+  - A Red Herring reaches only a gift that registers one (the Seer).
+  - Marked reaches only a gift that registers it, on a reading that points someone
+    toward evil (`RoleDef.implicated`).
+  - With none, there's no Mistaken: the canvas chip and the live-workshop option are
+    disabled, and `CanvasModel.add_modifier` refuses with "Nothing in this town could
+    have fooled that gift." (approved, Nov 19).
+  - `ReadingChallenges.valid` and the honest-doubt route enforce it too, so a saved or
+    NPC call on such a reading counts for nothing.
+  - One source, shared with Herald's tooltip: `HONEST_CAUSES`, `script_honest_causes`,
+    `game_honest_causes(case_script)`, `cause_reaches` and `honest_allowed`.
+  - The canvas view now carries the script's minions (`script_minions`), as a listener's
+    view already did, so it knows when a Poisoner is possible.
+- **Codex on #296:** `SharedLedger.challenges_conflict` compares canonical modes, so a
+  stored "misled" and a new "impaired" call on one reading no longer conflict and block
+  the listener's plan.
 - **Docs:** the DESIGN "Challenges" bullet now describes the three labels.
 - **Tests:**
-  - New `tools/test_honest_mistake.gd` (14 checks, fast list). Both names carry the same
+  - New `tools/test_honest_mistake.gd` (22 checks, fast list), including the gate, the
+    cause order and the alias conflict. Both names carry the same
     doubt and map to one mode. Both record "the reader is good". With no Poisoner the call
     carries the credibility doubt alone and points at no one. A lie call against a
     contradicted reading raises the teller's suspicion. That last check fails on the old

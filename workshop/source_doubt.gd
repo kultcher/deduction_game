@@ -523,6 +523,10 @@ static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: A
 			var rc: Dictionary = by_id.get(str(rid), {})
 			if rc.is_empty() or str(rc.get("kind", "")) != "report" or rc.get("quoted", false):
 				continue
+			# Only where some cause the script allows could have fooled this gift (Nov 18): with
+			# none, a Mistaken call would wash a lie at no cost to the teller.
+			if not ReadingChallenges.honest_allowed(view, rc, str(ch.get("attribution", ""))):
+				continue
 			# Whose gift: a challenge on a relayed reading names its side (ReadingChallenges.
 			# RELAY_ATTRIBUTIONS). Its transmission is the Medium's, keyed as the relay's
 			# reliability is; the original, and any unrelayed reading, is the teller's, by the

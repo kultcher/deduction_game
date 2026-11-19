@@ -61,8 +61,11 @@ static func ordinary(target: String) -> bool:
 ## Two presented challenges on the same reading that can't be read as one: a different mode,
 ## or, on a Medium's relay, a different side (Codex, #195). They need separate alternatives,
 ## never one silently replacing the other.
+## Two calls on one reading conflict when they name different causes or sides. "misled" and
+## "impaired" are one Mistaken call (Nov 18; Codex on #296), so they never conflict.
 static func challenges_conflict(a: Dictionary, b: Dictionary) -> bool:
-	return a.get("mode") != b.get("mode") or str(a.get("attribution", "")) != str(b.get("attribution", ""))
+	var RC = preload("res://workshop/reading_challenges.gd")
+	return RC.canonical(a.get("mode", "")) != RC.canonical(b.get("mode", "")) or str(a.get("attribution", "")) != str(b.get("attribution", ""))
 
 static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}, focus: Array = []) -> Dictionary:
 	if not SolverBackend.profiling_enabled:

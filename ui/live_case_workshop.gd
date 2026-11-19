@@ -595,6 +595,7 @@ func _refresh_case() -> void:
 		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named in ReadingChallenges.
 		var option = _option(case_box, [preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "Suspected lie", "Unlikely reading"])
 		option.select(["impaired", "lying", "unlikely"].find(preload("res://workshop/reading_challenges.gd").canonical(node.mode)))
+		option.set_item_disabled(0, not preload("res://workshop/reading_challenges.gd").honest_allowed(board.view, _report(node.card), str(node.get("attribution", ""))))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		if relay and str(node.get("attribution", "")) == "transmission":
 			option.set_item_disabled(2, true)

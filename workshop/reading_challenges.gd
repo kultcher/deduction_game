@@ -14,14 +14,74 @@ const MODES = ["misled", "lying", "unlikely", "impaired", "delusional"]
 ## candidates only where a Poisoner is possible. "misled" stays a valid name for it (saved
 ## cases, NPC defences); canonical() turns it into the one mode every rule reads.
 const HONEST = "impaired"
-## Its player-facing name and tip (Michael approved "Mistaken", Nov 18; Herald's tip). It
+## Its player-facing name and tip (Michael approved "Mistaken", Nov 18, and the short tip, Nov 19). It
 ## covers any unreliable reading: poison, Delusion, a Marked soul, a Red Herring, and
 ## whatever comes later. The UI reads these, so the wording changes in one place.
 const HONEST_LABEL = "Mistaken"
-const HONEST_TIP = "The reading was wrong, but honestly told: something fooled the gift, such as poison, delusion, a Red Herring or a Marked soul."
+const HONEST_TIP = "The reading was wrong, but honestly told: something fooled the gift."
 
 static func canonical(mode) -> String:
 	return HONEST if str(mode) == "misled" else str(mode)
+
+## What can make a reading honestly wrong, in order (Michael, Nov 18, via Seneschal): a
+## Mistaken call is allowed only where the script allows one of these, and only on a reading
+## that cause could reach. The UI's term tooltip lists the same causes (Herald).
+const HONEST_CAUSES = ["poison", "delusion", "red_herring", "marked"]
+
+## The honest-failure causes a script allows, in HONEST_CAUSES order: poison with a
+## Poisoner among its minions (or no minion list: an unknown script), Delusion and Marked
+## among its secrets, a Red Herring with a town gift that registers one (the Seer).
+static func script_honest_causes(minions: Array, secrets: Array, town: Array) -> Array:
+	var out: Array = []
+	if minions.is_empty() or "poisoner" in minions:
+		out.append("poison")
+	if "delusional" in secrets:
+		out.append("delusion")
+	if town.any(func(r): var d = Solver.C.role_def(str(r)); return d != null and d.red_herring_registers):
+		out.append("red_herring")
+	if "marked" in secrets:
+		out.append("marked")
+	return out
+
+## The same for a case's script (sim/script_def.gd), for the UI; every cause when there is
+## no script.
+static func game_honest_causes(case_script) -> Array:
+	if case_script == null:
+		return HONEST_CAUSES.duplicate()
+	return script_honest_causes(case_script.minions, case_script.secrets, case_script.town)
+
+## Whether `cause` could have made this reading wrong. Poison and Delusion break any gift,
+## the Medium's passing-on included. A Red Herring fools only a gift that registers one, and
+## a Marked soul only a gift that registers it, on a reading that points someone toward
+## evil: one that clears or counts nobody can't come from a soul registering as evil.
+static func cause_reaches(cause: String, card: Dictionary, transmission: bool = false) -> bool:
+	if cause in ["poison", "delusion"]:
+		return true
+	if transmission:
+		return false
+	var rdef = Solver.C.role_def(str(card.get("role", "")))
+	if rdef == null:
+		return false
+	if cause == "red_herring":
+		return rdef.red_herring_registers
+	if cause == "marked":
+		return rdef.marked_registers and not rdef.implicated(card.get("data", {})).is_empty()
+	return false
+
+## Whether a Mistaken call on this reading is allowed: some cause the case's world allows
+## reaches it. The view knows the script's minions and secrets; a Red Herring is judged by
+## the reading itself, since a Seer's reading means a Seer is on the script.
+static func honest_allowed(view: Dictionary, card: Dictionary, attribution: String = "") -> bool:
+	var transmission: bool = card.has("relay_source") and attribution == "transmission"
+	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
+	var causes: Array = ["red_herring"]
+	if poisoner_possible(view):
+		causes.append("poison")
+	if "delusional" in mods:
+		causes.append("delusion")
+	if "marked" in mods:
+		causes.append("marked")
+	return causes.any(func(cause): return cause_reaches(cause, card, transmission))
 
 ## How a clash between the grounds and the reading is settled (belief model, challenge
 ## sides). "contest": the clash shows one side is wrong, not which, so the reading is
@@ -60,6 +120,9 @@ static func valid(view: Dictionary, id: String, value) -> bool:
 		var attribution: String = str(value.get("attribution", "")) if value is Dictionary else ""
 		if attribution not in RELAY_ATTRIBUTIONS or (attribution == "transmission" and str(value.get("mode", "")) not in TRANSMISSION_MODES):
 			return false
+	# A Mistaken call needs a cause the script allows that could reach this reading (Nov 18).
+	if value is Dictionary and canonical(value.get("mode", "")) == HONEST and not honest_allowed(view, card, str(value.get("attribution", ""))):
+		return false
 	return value is Dictionary and value.get("mode") in MODES and card.get("kind") == "report" and not card.get("testimony_only", false) and (value.mode != "unlikely" or (card.get("role") == "surveyor" and card.get("data", {}).has("count"))) and value.get("supports", []) is Array and value.get("supports", []).all(func(root): return root != id and not Solver.card_by_id(view, root).is_empty())
 
 static func quality(listener: Dictionary, source: String) -> float:
@@ -220,7 +283,7 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 			else:
 				note += " I am not convinced the reader deliberately lied."
 		elif challenge.mode == HONEST and supported:
-			note += " An honest mistake can be a failed gift or a misleading registration; it does not establish poisoning."
+			note += " A mistaken reading doesn't show what fooled the gift, nor that anyone lied."
 		# Premises step 3: graded scoring. The hard cases above stay as floors; the graded
 		# test asks how far the rest of the attended evidence, against chance, says the
 		# reading (or the source's readings together) is wrong, and how well the named cause

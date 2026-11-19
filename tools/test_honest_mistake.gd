@@ -6,6 +6,9 @@
 ##   - With no Poisoner on the script the call still doubts the reading, at the credibility
 ##     doubt alone, and points at no one.
 ##   - It counts in the track record as saying the reader is good.
+##   - It's allowed only where a cause the script allows could have fooled that gift
+##     (Michael, Nov 18): poison or Delusion reach any reading, a Red Herring only a Seer's,
+##     Marked only a reading that points someone toward evil. With none, no Mistaken.
 ## And the lie: a "lying" call, with grounds that contradict the reading, raises its teller's
 ## suspicion (the Nov 18 retune; before, listeners' agreement never passed the gate).
 ##   godot --headless --path . --script res://tools/test_honest_mistake.gd
@@ -42,12 +45,16 @@ func _seed() -> int:
 
 ## A case that goods[2] is good, citing a good Archivist's night-0 reading that one of
 ## goods[2] and goods[3] is the Poisoner, with the reading called `mode` (or not called).
-func _game(sd: int, mode: String, poisoner: bool = true) -> Dictionary:
+## `poisoner` false takes the Poisoner off the script; `causes` false takes every honest
+## failure off it (the Poisoner, Delusional and Marked; an Archivist registers no Red Herring).
+func _game(sd: int, mode: String, poisoner: bool = true, causes: bool = true) -> Dictionary:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, 7)
-	if not poisoner:
+	if not poisoner or not causes:
 		g.w.case_script.minions = g.w.case_script.minions.filter(func(m): return m != "poisoner")
+	if not causes:
+		g.w.case_script.secrets = g.w.case_script.secrets.filter(func(m): return m not in ["delusional", "marked"])
 	var goods: Array = g.w.living_good()
 	var reader = goods[0]
 	g.w.day = 2
@@ -62,11 +69,12 @@ func _game(sd: int, mode: String, poisoner: bool = true) -> Dictionary:
 		if model.nodes[id].kind == "evidence" and Solver.card_by_id(view, model.nodes[id].card).get("text", "") == text:
 			node = id
 	var premise: String = model.add_premise(goods[2].id, "good", Vector2(400, 40))
+	var refused: String = ""
 	if mode != "":
-		model.add_modifier(node, mode)
+		refused = model.add_modifier(node, mode)
 	model.connect_cards(model.selected, premise)
 	var filed: int = Live.file(g, model.compile(premise))
-	return {"g": g, "goods": goods, "reader": reader, "filed": filed}
+	return {"g": g, "goods": goods, "reader": reader, "filed": filed, "refused": refused}
 
 
 ## What listener goods[1] makes of the case at credibility `trust` in the player.
@@ -171,6 +179,8 @@ func _init() -> void:
 	check(m.doubt > 0.0 and is_equal_approx(m.doubt, i.doubt), "'misled' carries the same honest doubt as a failed gift (%.3f, %.3f)" % [m.doubt, i.doubt])
 	check(m.doubt >= SourceDoubt.call_doubt(m.c) - 1e-9, "the doubt is at least the call taken at the player's credibility (%.3f)" % SourceDoubt.call_doubt(m.c))
 	check(RC.canonical("misled") == RC.HONEST and RC.canonical("impaired") == RC.HONEST and RC.canonical("lying") == "lying", "both names map to one mode, and a lie stays a lie")
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	check(not Shared.challenges_conflict({"mode": "misled"}, {"mode": "impaired"}) and Shared.challenges_conflict({"mode": "misled"}, {"mode": "lying"}), "stored 'misled' and 'impaired' calls on one reading don't conflict; a lie still does (Codex on #296)")
 	# 2. Both record "the reader is good" in the track record.
 	for mode in ["misled", "impaired"]:
 		var made2: Dictionary = by_name[mode].made
@@ -189,7 +199,23 @@ func _init() -> void:
 		for r in h.results:
 			cands += r.get("candidates", {}).size()
 		check(not h.results.is_empty() and cands == 0, "with no Poisoner no one is pointed at (%d results, %d candidates)" % [h.results.size(), cands])
-	# 4. The lie.
+	# 4. The gate: which causes reach which readings, and no Mistaken with none.
+	check(RC.script_honest_causes(["poisoner", "scion"], ["marked", "delusional"], ["seer", "dowser"]) == ["poison", "delusion", "red_herring", "marked"], "a script's causes come in order")
+	check(RC.script_honest_causes(["scion"], ["lovers"], ["dowser"]).is_empty(), "a script with no Poisoner, Delusional, Marked or Seer allows none")
+	var seer_yes: Dictionary = {"kind": "report", "role": "seer", "data": {"pair": ["a", "b"], "yes": true}}
+	var seer_no: Dictionary = {"kind": "report", "role": "seer", "data": {"pair": ["a", "b"], "yes": false}}
+	var dowse_some: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 1}}
+	var dowse_none: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 0}}
+	check(RC.cause_reaches("red_herring", seer_no) and not RC.cause_reaches("red_herring", dowse_some), "a Red Herring reaches a Seer's reading and no other gift")
+	check(RC.cause_reaches("marked", seer_yes) and RC.cause_reaches("marked", dowse_some) and not RC.cause_reaches("marked", dowse_none) and not RC.cause_reaches("marked", seer_no), "Marked reaches only a reading that points someone toward evil")
+	check(RC.cause_reaches("poison", dowse_none) and RC.cause_reaches("delusion", seer_no), "poison and Delusion reach any reading")
+	var bare: Dictionary = {"script_minions": ["scion"], "world_options": {"modifiers": ["lovers"]}}
+	check(not RC.honest_allowed(bare, dowse_some) and RC.honest_allowed(bare, seer_no), "with nothing on the script, no Mistaken, except a Seer's (its Red Herring)")
+	var none: Dictionary = _game(sd, "misled", true, false)
+	var nv: Dictionary = Live.view(none.g)
+	print("no causes: refused '%s', minions %s, modifiers %s" % [none.refused, nv.get("script_minions"), nv.get("world_options")])
+	check(none.refused != "", "with no cause on the script, the canvas refuses a Mistaken call on an Archivist reading")
+	# 5. The lie.
 	_lie(sd)
 	_finish()
 
