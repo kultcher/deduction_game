@@ -1,10 +1,10 @@
 # "Their readings agree with what I know"
 
 - **Agent:** Claude-Beadle
-- **Base:** `claude/beadle-reading-trust` (#319), which this builds on
+- **Base:** main with #319 (`baseline_8d946e7`)
 - **Branch:** `claude/beadle-readings-agree`
-- **Status:** PR open, with #319 merged in. It moves golden and re-baselines to
-  `baseline_ecfbe7f` (Codex on #321): lines and cards only, no outcome changes. It merges after
+- **Status:** PR open, on main with #319. It moves golden and re-baselines to
+  `baseline_2829999` (Codex on #321): lines and cards only, no outcome changes. It merges after
   #319.
 - **Next actor:** Bailiff, after #319.
 - **BACKLOG item:** "Trust from readings that confirm what I know or strongly believe". This is
@@ -44,7 +44,7 @@ enough.
     the kind.
 - **Suites that pass:** test_dialogue_voices, test_dialogue_opinion_pass, test_meeting_m2d,
   test_meeting_flow and test_reading_trust.
-- **Golden:** `baseline_ecfbe7f`, against #319's `baseline_d61a22d`; two captures identical:
+- **Golden:** `baseline_2829999`, against main's `baseline_8d946e7` (with #319); two captures identical:
   - 54875, 692 and 98933 diverge at day 2's vote;
   - in each, the new card and line appear after a failed vote. In 98933, one NPC's reasons are
     then marked for a refresh;
