@@ -44,23 +44,17 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1): `baseline_d33fdae`
+### Current baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`
 
-`tools/golden/baseline_d33fdae/` is the capture from `claude/lamplighter-count` at `d33fdae`
-(main with #344 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night
-Watch list: a listener weighs the chance that the Lamplighter is evil, poisoned or Delusional, and
-a broken count says nothing. Before, every count was taken as sound.
-- **Divergence from `baseline_ee15238`:** 42 from record 1 (a reading's vetting lift on the
-  first day, 0.003 to 0.001), 54875 from record 79 (Jory's refresh on day 2), 900 from record 52
-  (Isolde's cover on day 2) and 98933 from record 82 (Nisha's refresh on day 2). 692 is identical.
-- **Outcomes:** the winner and the last day are unchanged on all five. 98933's hangings change:
-  day 2 hangs Merrin (good, the Surveyor) instead of Dorian (good, the Clerk), and day 3 hangs no
-  one instead of Isolde (the Revenant). 98933's Lamplighter, Bart, votes no on Merrin. 42's
-  day-3 hanging of Agnes (the Demon) is unchanged, but Isolde nominates her instead of Kiran.
-  54875, 692 and 900 hang the same people.
+`tools/golden/baseline_7a10762/` is the capture from `claude/a3-doubted-symmetric` at `7a10762`.
+When a judged set holds several readings the listener doubts, the role check weighs them
+symmetrically (all genuine, or exactly one broken), not one after another in card order.
+- **Divergence from `baseline_ee15238`:** every seed, at the first night's refreshes (42 at
+  record 9, 54875 at 59, 692 at 28, 900 at 17, 98933 at 58), in belief values only.
+  - **Step records:** on 54875, 692 and 98933, every NPC's suspicion is identical. On 42, 102 of
+    966 suspicion values move, by at most 0.004; on 900, 138 of 1,260, by at most 0.009.
+- **Outcomes:** all five unchanged: the same hangings on the same days and the same winner.
 - **Stability:** two captures were identical.
-- **Re-checked on main at 74e6e74** (with the review fixes): two fresh captures are identical to
-  this baseline, so it stands.
 
 ### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
 
