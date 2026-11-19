@@ -505,6 +505,10 @@ static func _factors_dispatch(view: Dictionary, cards: Array, value: Dictionary)
 	var mixed: Array = cards.filter(func(c): return float(c.get("broken_chance", 0.0)) > 0.0 or c.get("count_mix", false)).map(func(c): return [c.get("id", ""), float(c.get("broken_chance", 0.0)), c.get("count_mix", false)])
 	if not mixed.is_empty():
 		input.append({"list_mix": mixed})
+		if mixed.any(func(m): return m[2]):
+			# A count's impossibility reads the listener's own sightings (certain_for_count;
+			# Codex on #346): key on who is listening, even with no home nights in the input.
+			input.append(str(view.get("own_home", {}).get("self", "")))
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result

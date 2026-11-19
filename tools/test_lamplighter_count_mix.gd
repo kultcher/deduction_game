@@ -35,6 +35,7 @@ func _init() -> void:
 	_count_with_alibis(f)
 	_impossible_count(_deal())
 	_testimony_clash(_deal())
+	_listener_keyed(_deal())
 	_done()
 
 
@@ -99,6 +100,33 @@ func _testimony_clash(f: Dictionary) -> void:
 	var d: Dictionary = Live.shape_reading(g, _case(g, f.subject.id, "evil", [count1] + alibis))
 	check(r.get("ready", false) and float(r.lr) < 1.5,
 		"a true count against a lying alibi doesn't convict the Lamplighter (x%.2f; the Demon x%.2f)" % [float(r.get("lr", 0.0)), float(d.get("lr", 0.0))])
+
+
+## The same cards for two listeners with no home nights of their own (Codex on #346): the
+## witness's own sighting rules the count out for the witness only, so the cached movement
+## factor must not be shared between them.
+func _listener_keyed(f: Dictionary) -> void:
+	var g = f.g
+	var lamp = f.lamp
+	var out_one = f.subject
+	var seen: int = g.add_card({"kind": "sighting", "subject": [out_one.id], "block": "market" if out_one.home_block != "market" else "docks", "source": f.witness.id, "day": 1, "phase": C.NIGHT, "text": "W saw X out (keyed)"})
+	var count0: int = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 0}, "text": "L: nobody out (keyed)"})
+	var view: Dictionary = Live.view(g)
+	var cards: Array = view.cards.filter(func(c): return str(c.get("text", "")).ends_with("(keyed)")).map(func(c): return c.duplicate(true))
+	for c in cards:
+		if c.get("kind", "") == "report":
+			c["count_mix"] = true
+			c["broken_chance"] = 0.05
+	var zero_for: Callable = func(me: String) -> bool:
+		var v: Dictionary = view.duplicate(false)
+		v["own_home"] = {"self": me, "block": "", "nights": {}}
+		var fs: Array = LiveActivity.factors(v, cards, {})
+		return not fs.is_empty() and bool(fs[0].get("list_mix", {}).get("sound_zero", false))
+	var witness_zero: bool = zero_for.call(f.witness.id)
+	var other_zero: bool = zero_for.call(lamp.id)
+	var witness_again: bool = zero_for.call(f.witness.id)
+	check(cards.size() == 2 and witness_zero and not other_zero and witness_again,
+		"the witness's own sighting rules the count out for the witness only, cached or not (witness %s, other %s, witness again %s)" % [witness_zero, other_zero, witness_again])
 
 
 func _case(g, target: String, type: String, nums: Array) -> Dictionary:
