@@ -40,6 +40,7 @@ test_execution_aftermath
 test_fabrication_check
 test_framed_defence
 test_gift_doubt
+test_gift_doubt_good
 test_gravedigger_bluff
 test_haunt_learning
 test_headline

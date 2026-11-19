@@ -641,6 +641,10 @@ class Meeting:
 	const NOMINATION_BASE = 0.65
 	const NOMINATION_DAY_SLOPE = 0.05
 	const NOMINATION_FLOOR = 0.40
+	## "My gift may have been turned", the good side (BACKLOG, Michael, Nov 17-18): a good public
+	## claimant whose own doubt about any night of its readings (the poison or Delusional
+	## self-doubt) reaches this tells the town so, once. Michael set 25% and will judge it in play.
+	const GIFT_DOUBT_SAY = 0.25
 	const NOMINATION_CONFIDENCE_SCALE = 0.20
 	const NOMINATION_PARANOIA_SCALE = 0.5
 	const NOMINATION_OWN_CLEAR_RELIEF = 0.2

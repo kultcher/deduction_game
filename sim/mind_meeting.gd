@@ -675,6 +675,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 ## (Evil._boxed_in_gift_doubt). It is the teller's own word that its gift may have failed;
 ## listeners read it as honest doubt about all of that teller's readings.
 static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
+	_good_gift_doubt(w, n)
 	var gd: Dictionary = n.gift_doubt
 	if gd.is_empty() or gd.has("said") or not n.claim_public or n.claimed_role != str(gd.get("role", "")):
 		return
@@ -696,6 +697,30 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 		w.dlog.think(n.id, "lie", "Claimed its gift as the %s might have been turned, to explain away a made-up reading." % C.role_name(role), {"lie": true, "why": why})
 	else:
 		w.dlog.think(n.id, "self_doubt", "Tells the town its %s gift may have been turned (%s)." % [role, why])
+
+## The good side (BACKLOG "Saying 'my gift may have been turned'" (a), Michael, Nov 17-18): a
+## good public claimant whose own doubt about a night of its readings (SourceDoubt.self_doubt,
+## from its last refresh: the poison or the Delusional self-doubt) reaches
+## Meeting.GIFT_DOUBT_SAY has it waiting to say, once a game, by the same route as the boxed-in
+## liar. Night -1 is a doubt about all its readings (the Delusional one); any other night is a
+## night a Poisoner could have acted.
+static func _good_gift_doubt(w, n) -> void:
+	if n.is_evil() or not n.claim_public or n.claimed_role != n.role or not n.gift_doubt.is_empty() or not C.has_readings(n.role):
+		return
+	var doubts: Dictionary = load("res://workshop/source_doubt.gd").self_doubt(n)
+	var worst: float = 0.0
+	var worst_night: int = -2
+	for nt in doubts:
+		if float(doubts[nt]) > worst:
+			worst = float(doubts[nt])
+			worst_night = int(nt)
+	if worst < Tuning.Meeting.GIFT_DOUBT_SAY:
+		return
+	var why: String = ("%d%% doubt about all its readings" % int(round(worst * 100.0))) if worst_night == -1 \
+		else ("%d%% doubt about its reading for %s" % [int(round(worst * 100.0)), C.night_name(worst_night)])
+	n.gift_doubt = {"day": w.day, "role": n.role, "why": why, "night": worst_night, "doubt": worst}
+	w.dlog.add("gift_doubt_planned", n.id, "", {"night": worst_night, "doubt": snappedf(worst, 0.001), "good": true},
+		"%s (good, the %s) doubts its own readings enough to say so [%s]" % [n.name, C.role_name(n.role), why])
 
 ## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
 ## Reuse ordinary public claiming without adding the speaker's reading backlog.
