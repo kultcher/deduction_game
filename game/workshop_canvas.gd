@@ -437,12 +437,15 @@ const SIGNPOST_UNPRESENTED = "You called %s's reading a lie in case #%d. To call
 ## The live filed case (not `own`, nor any version of it) that calls a lie on a reading `value`
 ## calls Mistaken: {number, teller}, or {}. A case someone has heard comes first: only a heard
 ## case can refuse the new one, so a newer unheard draft with the same call isn't the one to
-## revise (Codex, #363).
+## revise. With two or more heard cases making the call, revising one leaves the others' call
+## standing, so there's no single case to name and the plain refusal stays (Codex, #363).
 static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictionary:
 	var found: Array = _lie_calls_elsewhere(g, value, own)
-	for f in found:
-		if was_presented(g, f.number):
-			return f
+	var heard: Array = found.filter(func(f): return was_presented(g, f.number))
+	if heard.size() > 1:
+		return {}
+	if heard.size() == 1:
+		return heard[0]
 	return found[0] if not found.is_empty() else {}
 
 ## Every such case, newest first.

@@ -50,3 +50,7 @@ None.
   - **The bug:** a lie call on one side of a Medium's relay (the passing-on) and a Mistaken call on the other side (the original reading) also conflict. Switching the mode can't settle that.
   - **The fix:** the signpost now applies only when both calls are on the same side. Otherwise the plain refusal stands. A line explaining the sides would be new wording, for Michael if wanted.
   - **The check:** `test_mistake_signpost`, now 24 checks, covers it. The check fails without the fix.
+- **Codex, third finding (several heard cases):**
+  - **The bug:** when two or more heard cases call the same reading a lie, revising one leaves the others' call standing, so no single case is the way back.
+  - **The fix:** in that case there's no signpost, and the plain refusal stays. A line covering several cases, such as "take back case #A at the meeting first", would be new wording, so I've offered Michael a draft through Seneschal.
+  - **The check:** `test_mistake_signpost`, now 25 checks, covers it. The check fails without the fix.

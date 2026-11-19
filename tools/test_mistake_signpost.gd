@@ -89,6 +89,10 @@ func _game_side(sd: int) -> void:
 	var draft: int = Live.file(g, _case(g, text, goods[4].id, "lying").value)
 	check(draft > a and not Live.was_presented(g, draft), "a newer, unheard case calls the same lie (#%d)" % draft)
 	check(Live.player_issues(g, honest.value, raw) == [want], "the signpost still names the heard case #%d" % a)
+	# Two heard cases making the call: revising one wouldn't clear the refusal, so no signpost.
+	g._evaluate_deduction(goods[1], g.board[draft - 1], 1.0)
+	check(Live.was_presented(g, draft) and Live.player_issues(g, honest.value, raw) == raw, "two heard cases calling the lie keep the plain refusal")
+	g._workshop_retract(draft, goods[1].id)
 	g.board[draft - 1].deleted = true
 	# A call on the other side of a Medium's relay isn't settled by switching the mode: no signpost.
 	var other_side: Dictionary = honest.value.duplicate(true)
