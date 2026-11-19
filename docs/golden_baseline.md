@@ -61,6 +61,23 @@ knows or strongly believes (small 0.06, moderate 0.12, known 0.20). The agreemen
     day 3, with no winner by day 4.
 - **Stability:** two captures were identical.
 
+### Earlier baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`
+
+`tools/golden/baseline_d6a93f1/` is the capture from `claude/beadle-evil-confer` at `d6a93f1`
+(main `8801906` merged in). Those at the place where two people talked after the player had
+gone see it. A witness passes on a meeting in conversation, and asked about either person an
+NPC reports it, first or second hand (BACKLOG item 3, Michael, Nov 18-19). The pairing itself is
+unchanged.
+- **Divergence from `baseline_22733aa`:**
+  - 54875 from record 84 (day 2: a meeting seen after the player had gone);
+  - 692 from record 40 (Bart's refresh on day 2, after hearing of a meeting);
+  - 98933 from record 82 (Dorian's refresh on day 2);
+  - 42 and 900 are identical.
+- **Outcomes:**
+  - **692:** hanged Constance on day 3; now also hangs Greta on day 2. No winner by day 4.
+  - **42, 54875, 900 and 98933:** unchanged.
+- **Stability:** two captures were identical.
+
 ### Earlier baseline (Nov 19, a Warden's guard read with its night): `baseline_22733aa`
 
 `tools/golden/baseline_22733aa/` is the capture from `claude/warden-night-item` at `22733aa`
