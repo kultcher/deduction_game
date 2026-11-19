@@ -270,10 +270,11 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance}
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
+	# A challenge is weighed as the listener weighs it (its grounds decide whether it's
+	# accepted), no longer assumed to hold; the readings it questions are still listed, for the
+	# words around the badge. (Herald drafts a line for an ungrounded challenge.)
 	var aside: Array = juror.get("set_aside", [])
 	if not aside.is_empty():
-		var note: String = "Judged as if your challenge holds: %s set aside." % ("1 reading" if aside.size() == 1 else "%d readings" % aside.size())
-		result["reason"] = (str(result.get("reason", "")) + " " + note).strip_edges()
 		result["set_aside"] = aside
 	return result
 
@@ -303,7 +304,9 @@ const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marke
 ## lr (the odds ratio of chance over chance_before)}.
 static func listener_reading(g, value: Dictionary) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
-	var pj: Dictionary = Connections.judge_for_profile(g, value)
+	# The case against a town that hasn't heard its cards (Lantern's "without_cards"): how strong
+	# the case is as heard, not what presenting it adds (that's the town note's question).
+	var pj: Dictionary = Connections.judge_for_profile(g, value, {"baseline": "without_cards"})
 	if not pj.get("ready", false):
 		return {"ready": false, "issues": pj.get("issues", ["This case can't be weighed as the town would hear it."])}
 	var conclusion: Dictionary = value.get("conclusion", {})
@@ -599,6 +602,19 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		people[p] = true
 	for p in people:
 		adds = maxf(adds, absf(float(res.lean.get(p, 0.0)) - float(before.lean.get(p, 0.0))) / maxf(0.001, float(entry.get("weight", 1.0))))
+	# The same question through the listener path (Michael, Nov 19, juror fix (a)): what
+	# presenting it would change for an average listener, each card as heard
+	# (Connections.judge_for_profile, its "marginal" default), at the case's full weight as
+	# the threshold reads it. The note and the badge then come from one entry point.
+	var heard: Dictionary = Connections.judge_for_profile(g, value)
+	if heard.get("ready", false):
+		var w: float = maxf(0.001, float(heard.get("case", {}).get("weight", 1.0)))
+		var moved: float = 0.0
+		for p in heard.get("posterior_after", {}):
+			var b: float = float(heard.get("posterior_before", {}).get(p, -1.0))
+			if b >= 0.0:
+				moved = maxf(moved, absf(_logit(float(heard.posterior_after[p])) - _logit(b)) / w)
+		adds = moved
 	# Earlier arguments of yours that hold all of these cards and still count today.
 	var counting: Dictionary = {}
 	for e in before.entries:
