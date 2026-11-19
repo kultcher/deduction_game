@@ -62,3 +62,7 @@ None.
   - **The bug:** for a call on the original side of a Medium's relay, the signpost named the Medium instead of the dead reader.
   - **The fix:** `_challenged_teller` names the dead reader on the original side and the Medium on the passing-on side.
   - **The check:** `test_mistake_signpost`, now 26 checks, covers both sides.
+- **Codex, sixth finding (cases heard in private):**
+  - **The bug:** `was_presented` missed a case heard through a private accusation or defence, which is held under a "direct:<n>:…" key. The withdrawal code already counted those keys.
+  - **The fix:** `was_presented` now counts them too.
+  - **The check:** `test_mistake_signpost`, now 28 checks, covers it.

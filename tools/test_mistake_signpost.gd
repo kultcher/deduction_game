@@ -77,6 +77,13 @@ func _game_side(sd: int) -> void:
 	check(not Live.was_presented(g, a), "nobody has heard it yet")
 	g._evaluate_deduction(goods[1], g.board[a - 1], 1.0)
 	check(Live.was_presented(g, a), "once presented, it has been heard")
+	# A case put in a private accusation or defence is held under a "direct:" key (Codex, #363).
+	var direct: int = Live.file(g, _case(g, text, goods[3].id, "lying").value)
+	check(not Live.was_presented(g, direct), "a second lie-call case nobody has heard (#%d)" % direct)
+	goods[1].workshop_state.get("presentations", {})["direct:%d:accuse:%s" % [direct, goods[3].id]] = {}
+	check(Live.was_presented(g, direct), "heard through a private accusation, it counts as heard")
+	goods[1].workshop_state.presentations.erase("direct:%d:accuse:%s" % [direct, goods[3].id])
+	g.board[direct - 1].deleted = true
 
 	# (a) A second case calling the same reading Mistaken.
 	var honest: Dictionary = _case(g, text, goods[3].id, RC.HONEST)

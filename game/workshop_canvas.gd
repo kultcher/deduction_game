@@ -514,9 +514,14 @@ static func was_presented(g, number: int) -> bool:
 			return true
 	for real in g.w.npcs:
 		var mind = real.shadow if real.is_evil() and real.shadow != null else real
+		var held: Dictionary = mind.workshop_state.get("presentations", {})
 		for v in lineage:
-			if mind.workshop_state.get("presentations", {}).has(str(v)) or mind.ledger.has("arg:workshop:%d" % v):
+			if held.has(str(v)) or mind.ledger.has("arg:workshop:%d" % v):
 				return true
+			# A case put in a private accusation or defence is held as "direct:<n>:…" (Codex, #363).
+			for key in held:
+				if str(key).begins_with("direct:%d:" % v):
+					return true
 	return false
 
 ## The issues the player reads: the conflicting-calls refusal becomes the signpost when an
