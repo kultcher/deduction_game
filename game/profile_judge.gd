@@ -64,8 +64,11 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 			_ancestors(g, int(card.get("revises", 0)), draft_replaces)
 	var earlier: Dictionary = {}
 	var same_key: String = ""
+	var kept: Dictionary = {}
 	for number in numbers:
 		var filed: Dictionary = g.board[number - 1]
+		if filed.get("kind", "") == "deduction" and filed.has("workshop_case") and filed.get("withdrawn", false):
+			_kept_receipts(g, number, listener, kept)
 		if filed.get("kind", "") != "deduction" or not filed.has("workshop_case") or filed.get("withdrawn", false) or replaced.has(number):
 			continue
 		if filed.workshop_case == value:
@@ -85,16 +88,25 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	current.listener = listener.duplicate(true)
 	current["watched"] = []  # the player's own watch record: never heard by the town (Codex on #326)
 	var ledger: Dictionary = _public_hearing(g, value)
+	ledger.merge(kept)
 	var before_ledger: Dictionary = ledger
+	var before_cases: Dictionary = earlier
 	if str(p.get("baseline", "marginal")) == "without_cards":
-		var own: Dictionary = {}
-		for id in value.get("cards", []):
-			own["tell:public:%s" % str(id)] = true
+		# Without the case's cards at all: neither heard in public, nor kept from a withdrawn
+		# case, nor through any stored case, this one included (Codex on #326).
+		var own: Array = value.get("cards", []).map(func(x): return str(x))
 		before_ledger = {}
 		for eid in ledger:
-			if not own.has(eid):
+			if not (str(ledger[eid].get("meta", {}).get("workshop_card", {}).get("id", "")) in own):
 				before_ledger[eid] = ledger[eid]
-	var before: Dictionary = _evaluate(current, earlier, before_ledger, [])
+		before_cases = {}
+		for key in earlier:
+			if key == same_key:
+				continue
+			var snap: Dictionary = earlier[key].duplicate(true)
+			snap.selected = snap.selected.filter(func(id): return not (str(id) in own))
+			before_cases[key] = snap
+	var before: Dictionary = _evaluate(current, before_cases, before_ledger, [])
 	var after: Dictionary = _evaluate(current, with_case, ledger, draft.selected)
 	if not after.ready:
 		return fail.call(after.issues)
@@ -119,6 +131,22 @@ static func _as_heard(snap: Dictionary, listener: Dictionary) -> Dictionary:
 	snap["watched"] = []
 	snap.listener = listener.duplicate(true)
 	return snap
+
+
+## The cards a case withdrawn in public introduced stay with each listener as testimony the
+## player passed on, though the argument is taken back (GamePresentation._keep_receipts,
+## the same entries; Codex on #326).
+static func _kept_receipts(g, number: int, listener: Dictionary, into: Dictionary) -> void:
+	var Canvas = preload("res://game/workshop_canvas.gd")
+	var snap: Dictionary = _as_heard(Canvas.snapshot(g, g.board[number - 1].workshop_case, "", "meeting"), listener)
+	var endorsed: Array = Shared.endorsed_facts(snap, snap.root)
+	var day: int = int(g.board[number - 1].get("withdrawn_day", g.w.day))
+	for receipt in snap.get("evidence", []):
+		if receipt.id in snap.get("selected", []) and receipt.id in endorsed:
+			var eid: String = "tell:kept:%d:%s" % [number, str(receipt.id)]
+			into[eid] = {"eid": eid, "effects": [], "weight": 0.0, "rel": ["player", day, "tell"], "day": day, "times": 1,
+				"justs": [], "meta": {"kind": "tell", "workshop_card": receipt.duplicate(true),
+				"text": str(receipt.get("text", "")), "kept_from_case": number}}
 
 
 ## Every earlier version `number` and its own ancestors revise, into `into`.
