@@ -594,9 +594,9 @@ static func tavern_whispers(w) -> void:
 # ---------------------------------------------------------------- agreement
 
 ## Backing a case builds trust (BACKLOG, Michael, Nov 18): a good NPC warms a little to
-## someone who agrees with it, by the same small step a nominee gives those who vote to spare
-## it (Social.TRUST_VOTED_FOR), at most once a day for each ally: a day of agreeing votes is
-## one agreement, not one per ballot. Evil NPCs' own trust isn't moved (their shadow copies it).
+## someone who agrees with it (Trust.AGREEMENT_STEP, rebalanced Nov 19 so that confirming
+## readings carry more of how trust builds), at most once a day for each ally: a day of
+## agreeing votes is one agreement, not one per ballot. Evil NPCs' own trust isn't moved (their shadow copies it).
 static func agreement_trust(w, l, ally_id: String, why: String) -> void:
 	if l == null or not l.alive or l.is_evil() or ally_id == l.id or not w.by_id.has(ally_id):
 		return
@@ -605,7 +605,7 @@ static func agreement_trust(w, l, ally_id: String, why: String) -> void:
 		return
 	agreed[ally_id] = w.day
 	l.dialogue_memory["agreed_on_day"] = agreed
-	l.npc_trust[ally_id] = clampf(l.npc_trust.get(ally_id, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	l.npc_trust[ally_id] = clampf(l.npc_trust.get(ally_id, 0.5) + Tuning.Trust.AGREEMENT_STEP, 0.0, 1.0)
 	w.dlog.add("npc_trust", l.id, ally_id, {"to": snappedf(l.npc_trust[ally_id], 0.001), "agreement": why}, "%s %s" % [ally_id, why])
 
 ## Someone nominated or accused `target_id` in front of the town: every good NPC who already
@@ -657,7 +657,7 @@ static func approach_candidate(w, skip_id: String = ""):
 			var sg: String = w.evil_plan.get("scapegoat", "")
 			var fresh = 0
 			for i in range(n.told_readings, n.info_log.size()):
-				if not n.info_log[i]["shared"]:
+				if not n.info_log[i]["shared"] and not n.told_to.has("player|approached:%d" % i):
 					fresh += 1
 			if fresh > 0 and n.trust >= Tuning.Social.APPROACH_NEWS_MIN_TRUST and sg != "" and w.by_id[sg].alive:
 				s = (1.0 - trait_of(n, "privacy")) + n.trust - Tuning.Social.APPROACH_NEWS_OFFSET
@@ -666,7 +666,7 @@ static func approach_candidate(w, skip_id: String = ""):
 			var unshared = n.info_log.size() - n.told_readings
 			var hidden_new = 0
 			for i in range(n.told_readings, n.info_log.size()):
-				if not n.info_log[i]["shared"]:
+				if not n.info_log[i]["shared"] and not n.told_to.has("player|approached:%d" % i):
 					hidden_new += 1
 			if hidden_new > 0 and n.trust >= Tuning.Social.APPROACH_NEWS_MIN_TRUST and unshared > 0:
 				s = (1.0 - trait_of(n, "privacy")) + n.trust - Tuning.Social.APPROACH_NEWS_OFFSET
@@ -725,6 +725,11 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 	var facts: Array = []
 	match agenda:
 		"news", "frame":
+			# Never twice for the same reading (Michael, Nov 19): every reading this approach was
+			# about is marked, so a reading held back from the answer (the disclosure gate kept it,
+			# and told_readings didn't move) can't bring them back with the same news.
+			for i in range(n.told_readings, n.info_log.size()):
+				n.told_to["player|approached:%d" % i] = true
 			var r: Dictionary = Mind.answer_gift(w, n, 4)
 			n.pressed_today -= 1
 			lines.append(Mind.say_voiced(n, "approach_open_gift", "I've been meaning to find you."))
@@ -1364,3 +1369,64 @@ static func town_vibe(g) -> Dictionary:
 	w.dlog.add("town_vibe", "player", "", {"rapport": snappedf(rap, 0.001), "credibility": snappedf(cred, 0.001),
 		"rapport_band": rb, "credibility_band": cb, "trend": trend, "low": snappedf(low, 0.001)}, line)
 	return {"line": line, "rapport": rap, "credibility": cred, "rapport_band": rb, "credibility_band": cb, "trend": trend}
+
+
+# ---------------------------------------------------------------- confirming readings
+
+## Trust from a reading that confirms what I know or strongly believe (BACKLOG, Michael, Nov 19,
+## set R3): each reading a good listener holds is judged once (ReadingConfirm.assess, on the
+## listener's chances before it heard it), and a confirmation raises its trust in the teller by
+## the tier's size. The record (`workshop_state.confirmed_readings`: teller -> its best
+## confirmation; kept with the NPC's beliefs, not `dialogue_memory`, which holds only speech) is kept for
+## what the NPC says (MindDialogue / MindMeeting: "their readings agree with what I know"). An
+## evil NPC's good self keeps the record too, so it can say so honestly; its own trust doesn't
+## move (the shadow copies the real NPC's). Returns whether any trust moved, so the refresh can
+## capture again and solve with the new trust (a repeated refresh then changes nothing).
+static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, chances: Dictionary) -> bool:
+	var moved: bool = false
+	var RC = load("res://workshop/reading_confirm.gd")
+	var seen: Dictionary = n.workshop_state.get("confirm_seen", {})
+	var record: Dictionary = n.workshop_state.get("confirmed_readings", {})
+	var rank: Dictionary = {"small": 1, "moderate": 2, "known": 3}
+	var size: Dictionary = {"small": Tuning.Trust.READING_TRUST_SMALL, "moderate": Tuning.Trust.READING_TRUST_MODERATE, "known": Tuning.Trust.READING_TRUST_KNOWN}
+	for c in view.get("cards", []):
+		var src: String = str(c.get("source", ""))
+		var cid: String = str(c.get("id", ""))
+		# Once for each reading: a Medium's relay of a reading already heard is the same reading
+		# (its logical origin), though its receipt has an id of its own (Codex on #319).
+		var origin: String = str(c.get("logical_origin", cid))
+		if str(c.get("kind", "")) != "report" or src == n.id or seen.has(origin) or not w.by_id.has(src):
+			continue
+		seen[origin] = true
+		var r: Dictionary = RC.assess(view, c, listener, chances)
+		var tier: String = str(r.get("tier", "none"))
+		if not rank.has(tier):
+			continue
+		var best: Dictionary = record.get(src, {})
+		if best.is_empty() or int(rank[tier]) > int(rank.get(str(best.get("tier", "")), 0)):
+			record[src] = {"tier": tier, "card": cid, "day": w.day, "source": str(r.get("source", "")), "agreement": snappedf(float(r.get("agreement", 0.0)), 0.001)}
+		if n.is_shadow or n.is_evil():
+			continue
+		var was: float = n.npc_trust.get(src, 0.5)
+		n.npc_trust[src] = clampf(was + float(size[tier]), 0.0, 1.0)
+		moved = moved or not is_equal_approx(was, n.npc_trust[src])
+		w.dlog.add("npc_trust", n.id, src, {"to": snappedf(n.npc_trust[src], 0.001), "step": float(size[tier]), "confirmation": tier, "source": str(r.get("source", "")), "card": cid},
+			"%s's reading confirms what %s %s (%s)" % [src, n.id, "knows" if tier == "known" else "believes", tier])
+	n.workshop_state["confirm_seen"] = seen
+	n.workshop_state["confirmed_readings"] = record
+	return moved
+
+## "Their readings agree with what I know" (Michael, Nov 19): the speaker's best confirmation of
+## `t_id`'s readings, when it's moderate or known, else {}. An evil speaker answers from its good
+## self's record, so it only ever says this when it's true from that view.
+static func readings_agree_record(n, t_id: String) -> Dictionary:
+	var mind = n.shadow if n.is_evil() and n.shadow != null else n
+	var rec: Dictionary = mind.workshop_state.get("confirmed_readings", {}).get(t_id, {})
+	if str(rec.get("tier", "")) in ["moderate", "known"]:
+		return rec
+	return {}
+
+## The player's card for it: the speaker speaks up for `t`, citing the reading.
+static func readings_agree_fact(n, t, rec: Dictionary) -> Dictionary:
+	return {"kind": "opinion", "subject": [t.id], "source": n.id, "stance": "for", "reason": "readings_agree", "cites": str(rec.get("card", "")),
+		"text": "%s says %s's readings agree with what they know." % [n.name, t.name]}

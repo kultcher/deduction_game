@@ -1,6 +1,7 @@
 ## Playtest triage items from Nov 16: a far sighting's crowd count (8.2), the Augur's
 ## sightings hint (5.10), a Lovers confession proving the partner (5.9), the canvas's
 ## shift+left-drag box, and left- or right-drag pan (8.1, changed by Michael Nov 17).
+## Named test_triage_nov16 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -162,7 +163,7 @@ func _lovers() -> void:
 		for id in m.nodes:
 			if m.nodes[id].kind == "evidence" and m.nodes[id].card == card.id:
 				m.connect_cards(id, prem)
-		cases[who.id] = Live.test_juror(g, m.compile(prem), false)
+		cases[who.id] = Live.shape_reading(g, m.compile(prem), false)
 	var on_partner: Dictionary = cases[partner.id]
 	var other_id: String = cases.keys().filter(func(k): return k != partner.id)[0]
 	check(on_partner.get("ready", false) and str(on_partner.get("category", "")) == "strong" and float(on_partner.get("lr", 0.0)) > 1000.0, "the confession proves the partner holds the Lovers secret (%s)" % str(on_partner))

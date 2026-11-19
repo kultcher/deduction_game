@@ -1,6 +1,7 @@
 ## Live canvas boundary. Only player board receipts cross into the editor.
 extends RefCounted
 const Bridge = preload("res://game/workshop_bridge.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 
@@ -241,28 +242,148 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.w.dlog.add("state_digest", "", "", g.w.state_digest())
 	return number
 
-## The test juror: public facts and default trust, no private knowledge. Says how well
-## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
-## One evaluation; the Workshop runs it after a pause in editing.
+## The test juror: how an average listener would take the case, put to the town today
+## (Michael, Nov 19, juror fix (a), option (i)): the full listener path
+## (Connections.judge_for_profile: credibility 0.5, trust 0.5, nothing first-hand, each card
+## weighed as heard and the case's own joining at the filing day's weight). Its strength
+## (`lr`) is how far that listener's chance of the premise moves, as an odds ratio; the badge
+## is cut from it (CaseEval.category). No full-weight figure is kept. CaseEval still reads the
+## case's shape for the words around the badge (cards that clash, what it rests on, guards).
+## Says why a case can't be judged yet when it can't. The Workshop runs it after a pause in
+## editing.
 static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
 	var juror: Dictionary = juror_case(g, value, hear_claims)
 	if not juror.ready:
 		return {"ready": false, "issues": juror.issues}
+	var heard: Dictionary = listener_reading(g, value)
+	if not heard.ready:
+		return {"ready": false, "issues": heard.issues}
 	var prepared = juror.prepared
 	var judged: Dictionary = juror.case
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
+	if not ev.get("impossible", false):
+		ev.lr = heard.lr
+		ev.category = CaseEval.category(heard.lr)
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
+	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance, "presses": heard.presses, "challenges": heard.challenges}
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
+	# A challenge is weighed as the listener weighs it (its grounds decide whether it's
+	# accepted), no longer assumed to hold; the readings it questions are still listed, for the
+	# words around the badge. (Herald drafts a line for an ungrounded challenge.)
 	var aside: Array = juror.get("set_aside", [])
 	if not aside.is_empty():
-		var note: String = "Judged as if your challenge holds: %s set aside." % ("1 reading" if aside.size() == 1 else "%d readings" % aside.size())
-		result["reason"] = (str(result.get("reason", "")) + " " + note).strip_edges()
 		result["set_aside"] = aside
 	return result
+
+## The judge's own reading of how the case's cards fit together (CaseEval over the juror's
+## case, every card at full weight): {ready, issues, lr, category}. Never shown to the player
+## as a strength (Michael, Nov 19: no full-weight figure); it's what the words around the
+## badge describe, and what tests of the judge's mechanisms read.
+static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
+	var juror: Dictionary = juror_case(g, value, hear_claims)
+	if not juror.ready:
+		return {"ready": false, "issues": juror.issues}
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var ev: Dictionary = CaseEval.evaluate(juror.prepared.view, juror.case)
+	var result: Dictionary = CaseEval.strength_from(ev)
+	result["ready"] = true
+	result["issues"] = []
+	return result
+
+## Which way each premise points an average listener's suspicion of its subject: up for an
+## accusation, down for one that clears them. The listener weighs every case through its
+## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
+## no single subject: it is read through whoever it moves most, upward (one of them lied).
+const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+
+## How an average listener takes `value`: {ready, issues, before, after (the subject's
+## chance of being evil), chance_before, chance (the premise's chance, its side of that),
+## lr (the odds ratio of chance over chance_before)}.
+static func listener_reading(g, value: Dictionary) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	# The case against a town that hasn't heard its cards (Lantern's "without_cards"): how strong
+	# the case is as heard, not what presenting it adds (that's the town note's question).
+	var pj: Dictionary = Connections.judge_for_profile(g, value, {"baseline": "without_cards"})
+	if not pj.get("ready", false):
+		return {"ready": false, "issues": pj.get("issues", ["This case can't be weighed as the town would hear it."])}
+	var conclusion: Dictionary = value.get("conclusion", {})
+	var type: String = str(conclusion.get("type", ""))
+	var target: String = str(pj.get("target", ""))
+	var before: float = float(pj.get("before", -1.0))
+	var after: float = float(pj.get("after", -1.0))
+	if type == "conflict" or before < 0.0 or after < 0.0:
+		# The person the case moves most, upward.
+		var best: float = 0.0
+		for id in pj.get("posterior_after", {}):
+			var b: float = float(pj.get("posterior_before", {}).get(id, -1.0))
+			var a: float = float(pj.posterior_after[id])
+			if b >= 0.0 and _logit(a) - _logit(b) > best:
+				best = _logit(a) - _logit(b)
+				target = id
+				before = b
+				after = a
+		if before < 0.0 or after < 0.0:
+			before = 0.5
+			after = 0.5
+	var clears: bool = type in PREMISE_CLEARS
+	var chance_before: float = 1.0 - before if clears else before
+	var chance: float = 1.0 - after if clears else after
+	var lr: float = exp(_logit(chance) - _logit(chance_before))
+	# An accepted lie call presses its teller as the liar rather than moving the odds (the
+	# clash is in the worlds already): the badge's words name it (Herald words the line).
+	var presses: Array = []
+	# `floors` lists every lie call assessed; one presses its teller exactly as the refresh
+	# applies it (Jury): agreement at or over the bar (Lantern, Nov 19).
+	for f in pj.get("floors", []):
+		if str(f.get("mode", "")) == "lying" and float(f.get("agreement", 0.0)) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+			presses.append({"source": str(f.get("source", "")), "reading": str(f.get("card", "")), "agreement": float(f.get("agreement", 0.0))})
+	# Each lie call's outcome for this listener, for the badge's words (Herald, Nov 19; Lantern's
+	# review of #332), read from its own assessment (the `floors` entry for that reading):
+	# "pressed": accepted (agreement at the bar): the town presses the teller as the liar;
+	# "draw": its grounds clash with the reading, but not enough (your word against theirs);
+	# "unestablished": grounds are cited, but they don't contradict the reading;
+	# "bare": no grounds on the case. `witnesses`: the tellers of its grounds.
+	var by_card: Dictionary = {}
+	for f in pj.get("floors", []):
+		if str(f.get("mode", "")) == "lying":
+			by_card[str(f.get("card", ""))] = f
+	var outcomes: Array = []
+	var challenges: Dictionary = value.get("reading_challenges", {})
+	for rid in challenges:
+		var ch: Dictionary = challenges[rid]
+		if str(ch.get("mode", "")) != "lying":
+			continue
+		var teller: String = _card_source(g, str(rid))
+		var witnesses: Array = []
+		for sid in ch.get("supports", []):
+			var w: String = _card_source(g, str(sid))
+			if w != "" and w != "player" and w not in witnesses:
+				witnesses.append(w)
+		var f: Dictionary = by_card.get(str(rid), {})
+		var kind: String = "bare"
+		if float(f.get("agreement", 0.0)) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+			kind = "pressed"
+		elif not ch.get("supports", []).is_empty():
+			var clash: bool = float(f.get("accuracy_agreement", 0.0)) > 0.0 or str(f.get("note", "")).begins_with("The report conflicts")
+			kind = "draw" if clash else "unestablished"
+		outcomes.append({"reading": str(rid), "teller": teller, "kind": kind, "witnesses": witnesses})
+	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
+		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses, "challenges": outcomes}
+
+## The teller of the board card whose Workshop id is `id`, or "".
+static func _card_source(g, id: String) -> String:
+	for card in g.board:
+		if card.get("kind", "") != "deduction" and Evidence.normalize_card(card).id == id:
+			return str(Evidence.normalize_card(card).get("source", ""))
+	return ""
+
+static func _logit(p: float) -> float:
+	p = clampf(p, 1e-6, 1.0 - 1e-6)
+	return log(p / (1.0 - p))
 
 ## "This weakens your previous case" (Michael, Nov 18; BACKLOG "Believable public
 ## revisions"): would `value`, filed as a revision of case `previous`, leave its premise
@@ -298,11 +419,11 @@ static func _premise_chance(g, value: Dictionary, listener_id: String) -> float:
 	var judged: Dictionary
 	var listener: Dictionary = {}
 	if listener_id == "":
-		var juror: Dictionary = juror_case(g, value)
-		if not juror.ready:
+		# The Test juror: an average listener's chance of the premise (listener_reading).
+		if not juror_case(g, value).ready:
 			return -1.0
-		prepared = juror.prepared
-		judged = juror.case
+		var heard: Dictionary = listener_reading(g, value)
+		return float(heard.chance) if heard.ready else -1.0
 	else:
 		prepared = Assess.prepare(snapshot(g, value, listener_id))
 		if not prepared.ready:
@@ -527,6 +648,21 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		people[p] = true
 	for p in people:
 		adds = maxf(adds, absf(float(res.lean.get(p, 0.0)) - float(before.lean.get(p, 0.0))) / maxf(0.001, float(entry.get("weight", 1.0))))
+	# The same question through the listener path (Michael, Nov 19, juror fix (a)): what
+	# presenting it would change for an average listener, each card as heard
+	# (Connections.judge_for_profile, its "marginal" default), at the case's full weight as
+	# the threshold reads it: the logit move divided by the case's weight, an approximation
+	# (the posterior isn't quite linear in the weight; Lantern, #332). The note and the badge
+	# then come from one entry point.
+	var heard: Dictionary = Connections.judge_for_profile(g, value)
+	if heard.get("ready", false):
+		var w: float = maxf(0.001, float(heard.get("case", {}).get("weight", 1.0)))
+		var moved: float = 0.0
+		for p in heard.get("posterior_after", {}):
+			var b: float = float(heard.get("posterior_before", {}).get(p, -1.0))
+			if b >= 0.0:
+				moved = maxf(moved, absf(_logit(float(heard.posterior_after[p])) - _logit(b)) / w)
+		adds = moved
 	# Earlier arguments of yours that hold all of these cards and still count today.
 	var counting: Dictionary = {}
 	for e in before.entries:
@@ -795,9 +931,10 @@ static func guard_reason_lines(g, result: Dictionary, case_value: Dictionary = {
 		if quiet_n > 0:
 			line += ", and #%d no one died that night" % quiet_n
 		line += ": if %s is a working Warden, the Demon came to %s's door that night." % [warden, guarded]
-		var points: int = int(round(absf(float(gd.shift)) * 100.0))
 		var helps: bool = (float(gd.shift) > 0.0) != innocence
-		line += " This %s the case %d point%s." % ["strengthens" if helps else "weakens", points, "" if points == 1 else "s"]
+		# No points (Herald, Nov 19): the badge is an average listener's, and the judge's
+		# per-guard share would be a full-weight figure.
+		line += " This %s the case." % ("strengthens" if helps else "weakens")
 		out.append(line)
 	return out
 

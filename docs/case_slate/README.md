@@ -27,7 +27,9 @@ The run is deterministic: on the same build, it reproduces the baseline exactly.
 - Every gift reading comes from that gift's real, good holder. A deal without one is
   skipped for that case. The one exception is a misleading case's lie, told by a Minion.
 - In a true case, the subject is the Demon unless the case says otherwise.
-- Each true case except the impossible reading has a misleading twin, `<case>_innocent`.
+- Each true case has a misleading twin, `<case>_innocent`, except the impossible reading
+  and the three Seer cases (seer_twice, vigil_seer, stack), which are built on the real
+  Seer's true readings of the Demon and so have no innocent version.
   It's the same chain built about an innocent (the last living good townsperson), as it
   could really arise: an innocent out at night, true readings that name them beside the
   real evil, or a lie told by evil. The juror judges only what's on the board, so a twin
@@ -47,6 +49,9 @@ The run is deterministic: on the same build, it reproduces the baseline exactly.
 | lamp_alibis | The Lamplighter's "1 other out", plus a home alibi from everyone else alive (premise: suspicious) |
 | nw_nobody | The Night Watch "saw nobody" on the Demon's block, plus a sighting of the Demon there |
 | guard | A quiet night: a sighting of the Demon near a guarded door, plus the Warden's guard report |
+| seer_twice | The Seer's "yes" on the Demon and one other on night 1, and on the Demon and a second other on night 2 |
+| vigil_seer | A night-1 killing, the player's vigil seeing the Demon go out that night, plus the Seer's "yes" on the Demon and one other |
+| stack | The vigil at the kill, a witness's sighting of the Demon on the victim's block, plus the Seer's "yes" twice (built to reach the Strong tier) |
 
 The misleading twins (the subject is the innocent):
 
@@ -69,8 +74,13 @@ Town movement is in points: one point is 0.01 of a listener's suspicion of the s
 averaged over the listeners.
 
 - **Juror's badges:** the badge each case got, and how often.
-- **Strength:** the juror's likelihood ratio, as a geometric mean. The badge is set by
-  this number: Weak from 1.5, Moderate from 3, Strong from 10.
+- **Strength:** the juror's strength, as a geometric mean. Since the juror fix (Nov 19), it
+  is how far an average listener's chance of the premise moves, as an odds ratio, against
+  a town that hasn't heard the case's cards. The badge is set by this number: Weak from 1.5,
+  Moderate from 3, Strong from 10, until Michael sets the new cut points.
+- **Chance before → after** (the rows' `chance_before` and `chance`): that listener's
+  chance of the premise, and whether the subject becomes their top suspect (`top`,
+  `margin`). These feed the fourth tier's measure.
 - **Town:** the mean movement, and its range across the deals.
 - **Sign:** how often the juror and the town point the same way.
 - **Category:** how often the badge matches the town's own band. The bands are the
@@ -92,6 +102,7 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built from main at 9c5eaf0 (Nov 19, Quill). Since b856819, only the
-Warden's guard (#306) and the player's vigil (#300) cases moved, both slightly; see
-`baseline.md`.
+`baseline.jsonl`: built on claude/slate-strong (main at 4cf1d73, Nov 19, Quill). It adds
+seer_twice, vigil_seer and stack, 30 new rows. Of the 209 earlier rows, 22 changed, and
+only in the town's movement, by at most 0.3 of a point; no badge, strength or category
+moved. See `baseline.md`.

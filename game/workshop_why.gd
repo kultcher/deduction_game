@@ -36,7 +36,17 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	var b: Dictionary = Why.evidence(prepared.view, juror.case)
 	b["ready"] = true
 	b["listener"] = "test juror"
-	b["text"] = "Test juror: public facts and default trust. It hears every card at full weight; a real listener discounts what they're told (tick \"Record why each listener moved\" and present to see theirs).\n" + Why.describe(prepared.view, b, _numbers(g))
+	# The badge's own reading first (juror fix (a), Nov 19): an average listener, each card as
+	# heard. The breakdown under it is the judge's full-weight diagnostic of how the cards
+	# fit, labelled as such: the badge doesn't use its numbers (Codex on #332).
+	var heard: Dictionary = Canvas.listener_reading(g, value)
+	var head: String = "Test juror: an average listener (credibility 0.5, trust 0.5, nothing first-hand), hearing the cards from you."
+	if heard.get("ready", false):
+		head += "\nThe premise's chance for that listener: %d%% without these cards, %d%% with the case (strength x%.2f)." % [int(round(100.0 * float(heard.chance_before))), int(round(100.0 * float(heard.chance))), float(heard.lr)]
+		for c in heard.get("challenges", []):
+			head += "\nLie call on %s's reading: %s." % [Solver.person_name(prepared.view, str(c.teller)), str(c.kind)]
+		b["heard"] = heard
+	b["text"] = head + "\n\nDiagnostic, not the badge: how the cards fit, each at full weight.\n" + Why.describe(prepared.view, b, _numbers(g))
 	return b
 
 ## Board number of each fact id, for the readout.

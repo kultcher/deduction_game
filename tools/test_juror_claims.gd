@@ -69,6 +69,14 @@ func _init() -> void:
 	check(named_deep.has(p[5].id) and named_deep.has(p[6].id), "people named inside nested statements are found (%s)" % str(named_deep.keys()))
 	var r: Dictionary = Live.test_juror(g, value)
 	check(r.get("ready", false), "the juror still runs (%s)" % str(r.get("issues", [])))
+	# A challenge is weighed as the average listener weighs it (SharedLedger.prepare): one with
+	# no grounds isn't accepted, so the verdict stands (Lantern, Nov 19). The old juror set the
+	# reading aside as if the challenge held: the full-weight shortcut Michael ruled out.
+	var early_challenged: Dictionary = value.duplicate(true)
+	early_challenged["reading_challenges"] = {value.cards[0]: {"mode": "impaired", "supports": []}}
+	var early_chal: Dictionary = Live.test_juror(g, early_challenged)
+	check(early_chal.get("ready", false) and is_equal_approx(float(early_chal.get("lr", 0.0)), float(r.get("lr", 0.0))) and not ("challenge holds" in str(early_chal.get("reason", ""))),
+		"a challenge with no grounds isn't accepted by the average listener, and the badge no longer says it holds (x%.2f against x%.2f)" % [float(early_chal.get("lr", 0.0)), float(r.get("lr", 0.0))])
 	# And it weighs them: the reading's teller and its subject both publicly claim the Seer,
 	# so one of them is lying, and the reading itself names the subject.
 	g.state = "meeting"
@@ -76,11 +84,13 @@ func _init() -> void:
 	g.add_card({"kind": "claim", "subject": [p[3].id], "source": p[3].id, "role": "seer", "day": 2, "phase": 3, "text": "%s claims to be the Seer too." % p[3].name})
 	g.state = was
 	var heard: Dictionary = Live.test_juror(g, value)
-	var deaf: Dictionary = Live.test_juror(g, value, false)
+	# The juror is an average listener, who always hears the public claims (Michael, Nov 19):
+	# the verdict before those claims were made is the comparison.
+	var deaf: Dictionary = r
 	var why: Dictionary = preload("res://game/workshop_why.gd").test_juror(g, value)
 	var why_cards: Array = why.get("cards", why.get("evidence", []))
 	check(why.get("ready", false) and str(why.get("text", "")).length() > 0 and Live.juror_case(g, value).case.cards.size() > value.cards.size(), "the \"why\" readout explains the same claim-aware case the badge judges (Codex on #159)")
-	check(heard.get("ready", false) and deaf.get("ready", false) and float(heard.lr) > float(deaf.lr), "the claims change the juror's verdict: x%.2f with them, x%.2f without" % [float(heard.get("lr", 0.0)), float(deaf.get("lr", 0.0))])
+	check(heard.get("ready", false) and deaf.get("ready", false) and float(heard.listener.before) > float(deaf.listener.before), "the claims are heard: the listener holds the subject more suspect before the case (%.2f with them, %.2f without)" % [float(heard.get("listener", {}).get("before", 0.0)), float(deaf.get("listener", {}).get("before", 0.0))])
 	# Triage 5.4: a challenge applies. Judged as if it holds, the challenged reading is set aside.
 	var dowser: int = g.add_card({"kind": "info", "source": p[5].id, "role": "dowser", "day": 1, "phase": 1,
 		"data": {"group": [p[4].id], "count": 0}, "text": "%s dowser day 1: no evil in %s" % [p[5].id, p[4].id]})
@@ -104,7 +114,7 @@ func _init() -> void:
 	var plain_r: Dictionary = Live.test_juror(g, both, false)
 	var chal_r: Dictionary = Live.test_juror(g, challenged, false)
 	check(seer_id != "" and chal_r.get("set_aside", []) == [seer_id], "a challenged reading is set aside (%s)" % str(chal_r.get("set_aside", [])))
-	check(float(chal_r.get("lr", 0.0)) != float(plain_r.get("lr", 0.0)) and "challenge holds" in str(chal_r.get("reason", "")), "and the verdict changes, saying so (x%.2f against x%.2f; %s)" % [float(chal_r.get("lr", 0.0)), float(plain_r.get("lr", 0.0)), str(chal_r.get("reason", ""))])
+	check(not ("challenge holds" in str(chal_r.get("reason", ""))), "and the verdict doesn't pretend it holds (%s)" % str(chal_r.get("reason", "")))
 	var only: Dictionary = both.duplicate(true)
 	only.cards = [seer_id]
 	only.lines = []

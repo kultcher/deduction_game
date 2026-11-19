@@ -36,6 +36,11 @@ const CASES = {
 	"lamp_alibis": "The Lamplighter's \"1 other out\" + everyone else's home alibi (suspicious)",
 	"nw_nobody": "The Night Watch saw nobody on S's block + a sighting of S there",
 	"guard": "A sighting of S near the guarded door + the Warden's guard, on a quiet night",
+	# Strong-tier cases (Seneschal, Nov 19): nothing above landed between Moderate and the
+	# impossible reading.
+	"seer_twice": "The Seer's \"yes\" on S and one other on night 1, and on S and another on night 2",
+	"vigil_seer": "The player's vigil saw S leave home on the kill night + the Seer's \"yes\" on S and one other",
+	"stack": "The vigil at the kill + a witness's sighting of S on the victim's block + the Seer's \"yes\" on S twice",
 	# Misleading cases (Michael, Nov 19): the same chains about an innocent subject I (a
 	# good townsperson), built as they could really arise: an innocent out at night, true
 	# readings that name I beside the real evil, or a lie told by evil.
@@ -242,6 +247,45 @@ func _one(sd: int, name: String) -> Dictionary:
 			cited.append(_add(g, {"kind": "info", "source": nw.id, "role": "nightwatch", "day": 1, "phase": C.NIGHT, "data": {"block": s.home_block, "seen": []}, "text": "%s watched %s: nobody passed" % [nw.name, s.home_block]}))
 			cited.append(_add(g, _sight(wit, s, s.home_block, 1)))
 			sources += [nw, wit]
+		"seer_twice":
+			if innocent:
+				return {}
+			var seer2 = _holder(goods, "seer", [])
+			if seer2 == null:
+				return {}
+			var others2: Array = goods.filter(func(n): return n != seer2)
+			cited.append(_add(g, {"kind": "info", "source": seer2.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, others2[0].id], "yes": true}, "text": "%s's Seer (night 1): %s or %s is the Demon" % [seer2.name, s.name, others2[0].name]}))
+			cited.append(_add(g, {"kind": "info", "source": seer2.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [s.id, others2[1].id], "yes": true}, "text": "%s's Seer (night 2): %s or %s is the Demon" % [seer2.name, s.name, others2[1].name]}))
+			sources += [seer2]
+		"vigil_seer":
+			if innocent:
+				return {}
+			var seer3 = _holder(goods, "seer", [])
+			if seer3 == null:
+				return {}
+			var rest3: Array = goods.filter(func(n): return n != seer3)
+			_kill(w, rest3[0], 1)
+			cited.append(_add(g, {"kind": "sighting", "subject": [s.id], "block": s.home_block, "source": "player", "day": 1, "phase": C.NIGHT, "vigil": true,
+				"text": "Night 1 vigil on %s: you saw %s go out." % [C.block_name(s.home_block), s.name]}))
+			cited.append(_add(g, {"kind": "info", "source": seer3.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, rest3[1].id], "yes": true}, "text": "%s's Seer: %s or %s is the Demon" % [seer3.name, s.name, rest3[1].name]}))
+			sources += [seer3, rest3[0]]
+		"stack":
+			if innocent:
+				return {}
+			var seer4 = _holder(goods, "seer", [])
+			if seer4 == null:
+				return {}
+			var rest4: Array = goods.filter(func(n): return n != seer4 and n.home_block != s.home_block)
+			if rest4.size() < 4:
+				return {}
+			var victim4 = rest4[0]
+			_kill(w, victim4, 1)
+			cited.append(_add(g, {"kind": "sighting", "subject": [s.id], "block": s.home_block, "source": "player", "day": 1, "phase": C.NIGHT, "vigil": true,
+				"text": "Night 1 vigil on %s: you saw %s go out." % [C.block_name(s.home_block), s.name]}))
+			cited.append(_add(g, _sight(rest4[1], s, victim4.home_block, 1)))
+			cited.append(_add(g, {"kind": "info", "source": seer4.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, rest4[2].id], "yes": true}, "text": "%s's Seer (night 1): %s or %s is the Demon" % [seer4.name, s.name, rest4[2].name]}))
+			cited.append(_add(g, {"kind": "info", "source": seer4.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [s.id, rest4[3].id], "yes": true}, "text": "%s's Seer (night 2): %s or %s is the Demon" % [seer4.name, s.name, rest4[3].name]}))
+			sources += [seer4, victim4, rest4[1]]
 		"guard":
 			var target = null
 			for n in goods:
@@ -289,6 +333,22 @@ func _one(sd: int, name: String) -> Dictionary:
 			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
 		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
+	# The average listener's reading behind the badge (Michael, Nov 19): the premise's chance
+	# before and after, and whether the subject becomes that listener's top suspect, by what
+	# margin (for the fourth tier's measure).
+	var lis: Dictionary = tj.get("listener", {})
+	if not lis.is_empty():
+		row["chance_before"] = float(lis.chance_before)
+		row["chance"] = float(lis.chance)
+		var pj: Dictionary = preload("res://workshop/connections.gd").judge_for_profile(g, value, {"baseline": "without_cards"})
+		var post: Dictionary = pj.get("posterior_after", {})
+		var mine: float = float(post.get(s.id, -1.0))
+		var rival: float = 0.0
+		for id in post:
+			if id != s.id and g.w.by_id.has(id) and g.w.by_id[id].alive:
+				rival = maxf(rival, float(post[id]))
+		row["top"] = mine > rival
+		row["margin"] = mine - rival
 	if not blocked.is_empty():
 		row["blocked"] = blocked
 		print("  %s seed %d: %d listeners blocked: %s" % [name, sd, blocked.size(), blocked[0]])

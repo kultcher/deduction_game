@@ -1,8 +1,9 @@
 ## Backing a case builds trust (BACKLOG, Michael, Nov 18):
 ## - a good NPC warms a little to those who vote the same way it does;
 ## - and to someone who nominates or accuses a person it already suspects;
-## - (the reading-based steps moved to "Trust from readings that confirm what I know or
-##   strongly believe", Michael, Nov 19; a plain reading changes no trust here);
+## - (trust from readings is "Trust from readings that confirm what I know or strongly
+##   believe", Michael, Nov 19, judged at the listener's next refresh: tools/test_reading_trust.gd;
+##   merely hearing one changes no trust);
 ## - evil NPCs' own trust isn't moved, and nothing changes for an NPC that doesn't agree.
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -44,7 +45,7 @@ func _votes() -> void:
 	for x in [a, b, c, evil]:
 		x.npc_trust = {}
 	Social.vote_agreement_trust(w, nominee.id, [a.id, b.id, evil.id], [c.id])
-	var step: float = Tuning.Social.TRUST_VOTED_FOR
+	var step: float = Tuning.Trust.AGREEMENT_STEP
 	_check(is_equal_approx(a.npc_trust.get(b.id, 0.5), 0.5 + step), "a good voter warms to another who voted the same way (%.3f)" % a.npc_trust.get(b.id, 0.5))
 	_check(is_equal_approx(a.npc_trust.get(evil.id, 0.5), 0.5 + step), "including an evil one, who looks like an ally")
 	_check(not a.npc_trust.has(c.id), "not to one who voted the other way")
@@ -80,4 +81,4 @@ func _readings_unchanged() -> void:
 	var teller = goods[1]
 	l.npc_trust = {}
 	Mind.apply_info(w, l, teller, {"day": 1, "role": "seer", "data": {"pair": [l.id, goods[2].id], "yes": false}, "text": "clears me"}, 1.0)
-	_check(not l.npc_trust.has(teller.id), "a reading that clears me changes no trust here (that's the later confirmation item)")
+	_check(not l.npc_trust.has(teller.id), "hearing a reading changes no trust by itself (its refresh judges it: test_reading_trust)")

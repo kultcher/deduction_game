@@ -470,9 +470,7 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 	var target_id: String = str(root.conclusion.get("a", root.conclusion.get("target", "")))
 	if target_id == "" or target_id == n.id or not g.w.by_id.has(target_id):
 		return
-	var effect: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("effects", {}).get(target_id, {})
-	var rise: float = maxf(0.0, float(effect.get("suspicious_case_full", 0.0)))
-	rise = _connections_rise(g, listener_key, key, target_id)
+	var rise: float = _connections_rise(g, listener_key, key, target_id)
 	var ids: Array = snapshot.selected.duplicate()
 	ids.sort()
 	var filing: String = target_id + "|" + ",".join(PackedStringArray(ids))
