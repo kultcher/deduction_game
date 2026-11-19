@@ -1681,12 +1681,8 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	var place: String = w.loc_name(at)
 	var when: String = _day_when(w, sd, sp)
 	var slots: Dictionary = {"place": place, "when": when, "Place": place.capitalize() if place.length() > 0 else place, "When": when.capitalize() if when.length() > 0 else when}
-	var facts: Array = [{"kind": "sighting", "subject": [d.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp, "self_report": true,
-		"text": "%s says they were at %s, day %d %s." % [d.name, place, sd, C.PHASES[sp]]}]
-	for x in present.slice(0, 3):
-		facts.append({"kind": "sighting", "subject": [x.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp,
-			"text": "%s says %s was at %s too, day %d %s." % [d.name, x.name, place, sd, C.PHASES[sp]]})
 	var line: Dictionary
+	var named: Array = []  # who the spoken line names (Codex on #318: the cards follow the words)
 	if present.is_empty():
 		line = say_voiced(d, "defence_day_alone", "I was at %s %s. Being seen in the open is no crime." % [place, when], slots)
 	else:
@@ -1699,12 +1695,19 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 				suspect = x
 		if suspect != null:
 			slots["suspect"] = suspect.name
+			named = [suspect]
 			line = say_voiced(d, "defence_day_others_pointed_stand", "I was at %s %s. So was %s, if it's company you're weighing." % [place, when, suspect.name], slots)
 		else:
-			var names: Array = present.slice(0, 3).map(func(x): return x.name)
+			named = present.slice(0, 3)
+			var names: Array = named.map(func(x): return x.name)
 			var others: String = names[0] if names.size() == 1 else ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
 			slots["others"] = others
 			line = say_voiced(d, "defence_day_others", "I was at %s %s, and so were %s. Ask any of them what they saw." % [place, when, others], slots)
+	var facts: Array = [{"kind": "sighting", "subject": [d.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp, "self_report": true,
+		"text": "%s says they were at %s, day %d %s." % [d.name, place, sd, C.PHASES[sp]]}]
+	for x in named:
+		facts.append({"kind": "sighting", "subject": [x.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp,
+			"text": "%s says %s was at %s too, day %d %s." % [d.name, x.name, place, sd, C.PHASES[sp]]})
 	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, present.size()])
 	return {"line": line, "facts": facts}
 

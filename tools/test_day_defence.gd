@@ -68,6 +68,16 @@ func _cases() -> void:
 	d.suspicion[b.id] = Tuning.Meeting.NOMINATION_FLOOR + 0.1
 	var r2: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, [a, b]), false)
 	_check(b.name in _text(r2) and not (a.name in _text(r2)), "with a suspect there, it points at them (%s)" % _text(r2))
+	var c2: Array = r2.facts.filter(func(f): return not f.get("self_report", false)).map(func(f): return f.subject[0])
+	_check(c2 == [b.id], "and the player's cards are for the person named, the suspect, not the others there (%s)" % str(c2))
+	# A suspect beyond the first three present still gets the card (Codex on #318).
+	var crowd: Array = [a, goods[3], goods[4], goods[5], b]
+	for x in crowd:
+		if x != b:
+			d.suspicion[x.id] = 0.1
+	var r5: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, crowd), false)
+	var c5: Array = r5.facts.filter(func(f): return not f.get("self_report", false)).map(func(f): return f.subject[0])
+	_check(c5 == [b.id] and b.name in _text(r5), "a suspect fifth among those present is named and carded (%s)" % str(c5))
 	# Nobody else there.
 	var r3: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, []), false)
 	_check(not r3.is_empty() and r3.facts.size() == 1, "with nobody else there, it says so (%s)" % _text(r3))
