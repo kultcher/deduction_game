@@ -472,6 +472,16 @@ Candidates for a unified retuning proposal, not approved changes.
   (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
   such as a private press, those lines must not appear there; use the generic fallback.
   The PR says where it can fire. Owner Beadle. [decided]
+  - Michael (Nov 19): approved Beadle's plan. The defence fires at a nomination when the
+    heaviest cited item is a daytime sighting, and names who else was there from the true
+    whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
+    there, the alone line. No evil lie for now: evil defenders use the same true lines.
+
+- **A false name in the daytime-whereabouts defence.** (Michael, Nov 19) An evil defender
+  answering a daytime-whereabouts case names someone who wasn't there. The place and time
+  stay true; only the names are false. It's a lie logged with its reason ("spread the
+  suspicion"), and anyone who was there can catch it. Tabled while the true-line defence
+  above is built and played. Owner Beadle. [tabled]
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
