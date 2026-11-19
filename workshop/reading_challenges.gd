@@ -57,7 +57,9 @@ static func game_honest_causes(case_script) -> Array:
 ## A reading that names no one either way, such as a Surveyor's block parity, can come from
 ## a Marked registration (Codex on #296).
 static func cause_reaches(cause: String, card: Dictionary, transmission: bool = false) -> bool:
-	if cause in ["poison", "delusion"]:
+	if cause == "poison":
+		return poison_reaches(card, transmission)
+	if cause == "delusion":
 		return true
 	if transmission:
 		return false
@@ -70,6 +72,15 @@ static func cause_reaches(cause: String, card: Dictionary, transmission: bool = 
 		var data: Dictionary = card.get("data", {})
 		return rdef.marked_registers and (not rdef.implicated(data).is_empty() or rdef.clears(data).is_empty())
 	return false
+
+## Whether poison could have reached this reading (Steward A10): every gift but a Registrar's
+## night-0 register, which can't be poisoned (sim/roles/registrar.gd; the same rule as
+## SourceDoubt's). A Medium's transmission of it can be.
+static func poison_reaches(card: Dictionary, transmission: bool = false) -> bool:
+	if transmission:
+		return true
+	var day: int = int(card.get("observed_at", {}).get("day", card.get("night", -1)))
+	return not (str(card.get("role", "")) == "registrar" and day == 0 and not card.has("relay_source"))
 
 ## Whether a Mistaken call on this reading is allowed: some cause the case's world allows
 ## reaches it. The view knows the script's minions and secrets; a Red Herring is judged by
