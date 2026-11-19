@@ -1,7 +1,7 @@
 # Quill: a reading of the hanged person's role refutes "was the Demon when hanged"
 
 Claude-Quill, Nov 19. Base: main. Status: PR open. Next actor: Lantern (review: premise
-code in `solver.gd`), then Bailiff. Golden is identical.
+code in `solver.gd`), then Bailiff.
 
 ## What changed
 
@@ -45,7 +45,23 @@ These suites pass:
 
 Golden is identical to `baseline_ee15238`.
 
+## Review fixes (Lantern, Codex)
+
+- **Every judge reads it alike (Lantern).** The refuters ride on the conclusion
+  (`Solver.with_hanged_refuters`, as `[teller, relayer, reading time, relay time]`). They're
+  attached at each module's entry: CaseEval's evaluate and compile, Jury's evaluate and
+  refresh, Reasoner's prepare, search and direct_checks, SupportModel's assess and explain,
+  CaseWhy's run and evidence, and Solver.analyze. So `Solver.holds` and CaseEval's mask agree,
+  and every cache keyed on the conclusion keys on them. The support model's per-person
+  comparison uses them for the conclusion's target.
+- **A turned reader (Codex).** A teller's alignment is read at the reading's time
+  (`TimeModel.evil_at`), so a reader the Revenant's curse has turned refutes nothing from its
+  turning on.
+
+`test_demon_when_hanged` is now 32/32. It adds a check that the mask and `Solver.holds` agree
+on every live world, and a check for the turned reader.
+
 ## Proposed for the backlog
 
-(c), splitting the hanged person's role into a world variable, which would weigh poison
-properly. Only worth it if a Scion premise matters in play. Sent to Seneschal.
+None. Michael dropped the "hanged role as a world variable" idea: it would hardly ever decide
+a game.

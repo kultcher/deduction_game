@@ -47,6 +47,7 @@ const CLEARING = ["good", "notdemon", "truthful"]
 ## switch is a developer flag on CaseEval; it is restored, so a tool that has it on keeps
 ## its own captures.
 static func run(view: Dictionary, case_data: Dictionary, listener: Dictionary, want_worlds: bool = false) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	var was: bool = CaseEval.capture_worlds
 	var kept: Array = CaseEval.captured
 	CaseEval.capture_worlds = want_worlds
@@ -220,6 +221,7 @@ static func _log_ratio(a: float, b: float) -> float:
 ##   held       ids it already held before this case was put to it
 ##   per_card   false to skip the per-card runs (world share and leave-one-out)
 static func evidence(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}, opts: Dictionary = {}) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	var started: int = Time.get_ticks_msec()
 	if listener.is_empty():
 		listener = CaseEval.neutral_listener(view)

@@ -278,25 +278,21 @@ static func neutral_listener(view: Dictionary) -> Dictionary:
 
 static var _premise_cache: Dictionary = {}
 
-static func _premise_mask(view: Dictionary, conclusion: Dictionary, cards: Array = []) -> PackedByteArray:
+## The conclusion carries any readings that refute "was the Demon when hanged" (`refuters`,
+## Solver.with_hanged_refuters), so the key below (question_inputs holds the conclusion) keys
+## on them too.
+static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
 	var ref: Array = [Solver._universe_key(view), Solver.question_inputs(view, conclusion), view.get("timeline", {})]
-	var refuters: Array = Solver.hanged_refuters(view, cards, str(conclusion.get("target", ""))) if conclusion.type in ["demon", "notdemon"] and not cards.is_empty() else []
-	if not refuters.is_empty():
-		ref.append(refuters)  # the case's readings that can refute "was the Demon when hanged"
 	var key: int = hash(ref)
 	if _premise_cache.has(key) and _premise_cache[key].ref == ref:
 		return _premise_cache[key].out
 	if _premise_cache.size() > 256:
 		_premise_cache.clear()
-	var out: PackedByteArray = _build_premise_mask(view, conclusion, refuters_cards(refuters, cards))
+	var out: PackedByteArray = _build_premise_mask(view, conclusion)
 	_premise_cache[key] = {"ref": ref.duplicate(true), "out": out}
 	return out
 
-## Only the judged cards matter to the premise when some of them refute it (hanged_refuters).
-static func refuters_cards(refuters: Array, cards: Array) -> Array:
-	return cards if not refuters.is_empty() else []
-
-static func _build_premise_mask(view: Dictionary, conclusion: Dictionary, cards: Array = []) -> PackedByteArray:
+static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
 	if conclusion.type in ["misled", "unreliable"]:
 		return Solver.question_table(view, conclusion)
 	if conclusion.type == "holds":
@@ -310,7 +306,7 @@ static func _build_premise_mask(view: Dictionary, conclusion: Dictionary, cards:
 		for i in range(t_worlds.size()):
 			t_out[i] = 1 if t_idx >= 0 and int(t_worlds[i].get("converted", -1)) == t_idx else 0
 		return t_out
-	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", "")), cards) if conclusion.type in ["demon", "notdemon"] else {}
+	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", "")), conclusion.get("refuters", [])) if conclusion.type in ["demon", "notdemon"] else {}
 	if not h_ctx.is_empty():
 		# Someone already hanged: "was the Demon when hanged" (Solver.hanged_demon), the
 		# Scion's succession included. One byte per world, in GDScript.
@@ -429,6 +425,7 @@ static var capture_worlds: bool = false
 static var captured: Array = []
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)
 	if not SolverBackend.profiling_enabled:
 		return _evaluate_impl(view, case_data, listener)
 	var _st: int = SolverBackend.begin_stage("channel_sum_product")
@@ -703,6 +700,7 @@ const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusa
 ## the premise. Listener-specific work is then per class, not per world.
 ## known: the listener's own readings, which can complete a test factor's route.
 static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data, cards)
 	if not SolverBackend.profiling_enabled:
 		return _compile_impl(view, cards, case_data, known)
 	var _st: int = SolverBackend.begin_stage("case_eval_compile")
@@ -794,7 +792,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		for i in range(n):
 			if not Solver.lovers_ok(universe[i], int(need)):
 				dead[i] = 1
-	var premise = _premise_mask(view, conclusion, cards)
+	var premise = _premise_mask(view, conclusion)
 	var live: bool = Domain.live(view)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(PublicEvidence.factors(view))

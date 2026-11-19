@@ -142,6 +142,7 @@ static func semantic_key(card: Dictionary) -> String:
 	return JSON.stringify([card.get("kind"), card.get("source"), card.get("role"), card.get("observed_at"), data, card.get("subject"), card.get("block")])
 
 static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}, include_conflicts: bool = true) -> Dictionary:
+	case_data = with_hanged_refuters(view, case_data)
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
 	if case_data.conclusion.type == "conflict":
@@ -1685,13 +1686,14 @@ static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, kn
 ## the hanging had five or more alive, a Scion is possible on the script, and the world's
 ## Demon was alive at it (the succession; LiveActivity's SuccessionApplies and the role
 ## constraints' Scion mask read it the same way). -1 when X wasn't hanged: the plain question.
-static func hanged_demon(view: Dictionary, world: Dictionary, target: String) -> int:
-	var ctx: Dictionary = hanged_context(view, target)
+static func hanged_demon(view: Dictionary, world: Dictionary, target: String, refuters: Array = []) -> int:
+	var ctx: Dictionary = hanged_context(view, target, refuters)
 	return -1 if ctx.is_empty() else hanged_demon_in(world, ctx)
 
 ## The world-independent part, computed once per question: {} when the target wasn't hanged.
-## `cards`, the case's judged cards, supply the readings that can refute it (hanged_refuters).
-static func hanged_context(view: Dictionary, target: String, cards: Array = []) -> Dictionary:
+## `refuters` are the case's readings that can refute it (hanged_refuters; carried on the
+## conclusion by with_hanged_refuters).
+static func hanged_context(view: Dictionary, target: String, refuters: Array = []) -> Dictionary:
 	var index: int = person_index(view, target)
 	if index < 0:
 		return {}
@@ -1704,11 +1706,11 @@ static func hanged_context(view: Dictionary, target: String, cards: Array = []) 
 	var minions: Array = view.get("script_minions", [])
 	var scion: bool = minions.is_empty() or "scion" in minions
 	return {"index": index, "alive_mask": Roles._scion_exec_alive_demon_mask(view, person_ids(view), target) if scion else 0,
-		"refuters": hanged_refuters(view, cards, target) if scion else []}
+		"refuters": _refuter_indices(view, refuters) if scion else [], "view": view}
 
 ## The judged readings that name the hanged `target`'s role as something other than a Demon (a
-## Gravedigger's of the hanging, an Executor's of its target; Michael, Nov 19): [source index,
-## relayer index or -1] each, sorted. In a world where its teller (and any relayer) is good,
+## Gravedigger's of the hanging, an Executor's of its target; Michael, Nov 19): [source id,
+## relayer id or ""] each, sorted. In a world where its teller (and any relayer) is good,
 ## such a reading says the target wasn't the Demon, so "was the Demon when hanged" fails there
 ## (hanged_demon_in). Like every premise test, a good teller's reading is taken as healthy here:
 ## poison and Delusion come in through reliability, so in those worlds the premise loses the
@@ -1731,14 +1733,35 @@ static func hanged_refuters(view: Dictionary, cards: Array, target: String) -> A
 		var named: String = str(data.get("role", ""))
 		if about != target or named == "" or named in demons or C.is_demon(named):
 			continue
-		var src: int = person_index(view, str(c.get("source", "")))
-		if src < 0 or str(c.get("source", "")) == target:
+		var src: String = str(c.get("source", ""))
+		if person_index(view, src) < 0 or src == target:
 			continue
-		var relay: int = person_index(view, str(c.get("relay_source", ""))) if c.has("relay_source") else -1
-		var entry: Array = [src, relay]
+		# With the times the tellers' alignment is read at (a Revenant's turned reader is evil
+		# from its turning, Codex on #356): the reading's, and the relay's statement.
+		var entry: Array = [src, str(c.get("relay_source", "")) if c.has("relay_source") else "", c.get("observed_at", {}), TimeModel.statement_time(c) if c.has("relay_source") else {}]
 		if entry not in out:
 			out.append(entry)
-	out.sort()
+	out.sort_custom(func(a, b): return str(a) < str(b))
+	return out
+
+static func _refuter_indices(view: Dictionary, refuters: Array) -> Array:
+	return refuters.filter(func(r): return person_index(view, str(r[0])) >= 0)
+
+## `case_data` with its conclusion carrying `refuters` (hanged_refuters of the case's cards),
+## so that every judge of "was the Demon when hanged" (CaseEval's mask, Solver.holds in the
+## Jury, the Reasoner and the support model, the Why) refutes it alike, and every cache keyed
+## on the conclusion keys on them too (Lantern on the design). Unchanged when there are none.
+static func with_hanged_refuters(view: Dictionary, case_data: Dictionary, cards: Array = []) -> Dictionary:
+	var conclusion: Dictionary = case_data.get("conclusion", {})
+	if conclusion.has("refuters") or str(conclusion.get("type", "")) not in ["demon", "notdemon"]:
+		return case_data
+	var held: Array = cards if not cards.is_empty() else case_data.get("cards", []).map(func(id): return card_by_id(view, str(id)))
+	var refuters: Array = hanged_refuters(view, held.filter(func(c): return c is Dictionary and not c.is_empty()), str(conclusion.get("target", "")))
+	if refuters.is_empty():
+		return case_data
+	var out: Dictionary = case_data.duplicate(false)
+	out["conclusion"] = conclusion.duplicate(true)
+	out.conclusion["refuters"] = refuters
 	return out
 
 static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
@@ -1751,7 +1774,9 @@ static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
 	if (int(ctx.alive_mask) & (1 << demon)) == 0:
 		return 0
 	for r in ctx.get("refuters", []):
-		if (int(world.evil) & (1 << int(r[0]))) == 0 and (int(r[1]) < 0 or (int(world.evil) & (1 << int(r[1]))) == 0):
+		var good_teller: bool = not TimeModel.evil_at(ctx.view, world, str(r[0]), r[2] if r.size() > 2 else {})
+		var good_relay: bool = str(r[1]) == "" or not TimeModel.evil_at(ctx.view, world, str(r[1]), r[3] if r.size() > 3 else {})
+		if good_teller and good_relay:
 			return 0  # a good teller names a non-Demon role: X was a Minion, not the Demon
 	return 1
 
@@ -1760,7 +1785,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 	if index < 0:
 		return false
 	if conclusion.type in ["demon", "notdemon"]:
-		var hd: int = hanged_demon(view, world, conclusion.target)
+		var hd: int = hanged_demon(view, world, conclusion.target, conclusion.get("refuters", []))
 		if hd >= 0:
 			return (hd == 1) == (conclusion.type == "demon")
 	match conclusion.type:

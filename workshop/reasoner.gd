@@ -35,6 +35,7 @@ static var capture_attention: bool = false
 static var captured: Array = []
 
 static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
+	value = Solver.with_hanged_refuters(view, value)  # "was the Demon when hanged" refuted alike (Lantern)
 	var inputs = [view, value, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
 		listener.get("npc_trust", {}), listener.get("suspicion", {}), listener.get("knowledge", {})]
 	var key = hash(inputs)
@@ -284,6 +285,7 @@ static func _group_score(view: Dictionary, ids: Array, focus: Dictionary, listen
 	return score
 
 static func search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	var span = Profiler.open("candidate_search")
 	var result = _search(view, case_data, cards, listener, limits)
 	Profiler.count("candidates_tested", result.tested)
@@ -785,6 +787,7 @@ static func _finish_live(key: int, query_key: String, world: Dictionary, tested:
 	return result
 
 static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Dictionary) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	var objections: Array = []
 	var rejected: Array = []
 	var fatal = false

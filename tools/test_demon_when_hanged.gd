@@ -84,7 +84,7 @@ func _refuted() -> void:
 	var view: Dictionary = _view(["scion", "poisoner"])
 	var i: Callable = func(id): return 1 << Solver.person_index(view, id)
 	var gd: Dictionary = {"id": "gd1", "kind": "report", "role": "gravedigger", "source": "b", "data": {"executed": "g", "role": "poisoner"}}
-	var ctx: Dictionary = Solver.hanged_context(view, "g", [gd])
+	var ctx: Dictionary = Solver.hanged_context(view, "g", Solver.hanged_refuters(view, [gd], "g"))
 	var rose_b_good: Dictionary = {"evil": i.call("g") | i.call("a"), "demon": Solver.person_index(view, "a")}
 	var rose_b_evil: Dictionary = {"evil": i.call("g") | i.call("a") | i.call("b"), "demon": Solver.person_index(view, "a")}
 	var demon_g: Dictionary = {"evil": i.call("g") | i.call("a"), "demon": Solver.person_index(view, "g")}
@@ -93,16 +93,30 @@ func _refuted() -> void:
 	check(Solver.hanged_demon_in(demon_g, ctx) == 1, "where g is still the world's Demon, it holds")
 	check(Solver.hanged_demon_in(rose_b_good, Solver.hanged_context(view, "g", [])) == 1, "without the reading, the Scion's succession holds as before")
 	var relayed: Dictionary = {"id": "gd2", "kind": "report", "role": "gravedigger", "source": "b", "relay_source": "d", "data": {"executed": "g", "role": "poisoner"}}
-	var rctx: Dictionary = Solver.hanged_context(view, "g", [relayed])
+	var rctx: Dictionary = Solver.hanged_context(view, "g", Solver.hanged_refuters(view, [relayed], "g"))
 	check(Solver.hanged_demon_in(rose_b_good, rctx) == 0 and Solver.hanged_demon_in({"evil": i.call("g") | i.call("a") | i.call("d"), "demon": Solver.person_index(view, "a")}, rctx) == 1,
 		"a relayed reading refutes it only where both the reader and the Medium are good")
+	# A reader the Revenant's curse has turned is evil from its turning (Codex on #356): its
+	# reading during the curse doesn't refute the premise; one from before the curse does.
+	var cursed: Dictionary = view.duplicate(true)
+	cursed["chronology"] = {"curse": {"from": 4, "until": 99}, "epochs": {}}
+	var turned_b: Dictionary = {"evil": i.call("g") | i.call("a"), "demon": Solver.person_index(view, "a"), "converted": Solver.person_index(view, "b")}
+	var during: Dictionary = gd.duplicate(true)
+	during["observed_at"] = {"day": 2, "phase": "night"}
+	var before: Dictionary = gd.duplicate(true)
+	before["observed_at"] = {"day": 0, "phase": "morning"}
+	var t_during: int = preload("res://workshop/chronology.gd").tick(during.observed_at)
+	var t_before: int = preload("res://workshop/chronology.gd").tick(before.observed_at)
+	check(t_before < 4 and t_during >= 4 and Solver.hanged_demon_in(turned_b, Solver.hanged_context(cursed, "g", Solver.hanged_refuters(cursed, [during], "g"))) == 1
+		and Solver.hanged_demon_in(turned_b, Solver.hanged_context(cursed, "g", Solver.hanged_refuters(cursed, [before], "g"))) == 0,
+		"a reader turned by the curse refutes it only with a reading from before its turning (ticks %d, %d)" % [t_before, t_during])
 	var ex: Dictionary = {"id": "ex1", "kind": "report", "role": "executor", "source": "b", "data": {"target": "g", "role": "poisoner"}}
-	check(Solver.hanged_demon_in(rose_b_good, Solver.hanged_context(view, "g", [ex])) == 0, "an Executor's reading of its target refutes it too")
+	check(Solver.hanged_demon_in(rose_b_good, Solver.hanged_context(view, "g", Solver.hanged_refuters(view, [ex], "g"))) == 0, "an Executor's reading of its target refutes it too")
 	var names_demon: Dictionary = {"id": "gd3", "kind": "report", "role": "gravedigger", "source": "b", "data": {"executed": "g", "role": "demon"}}
 	var quoted: Dictionary = {"id": "gd4", "kind": "report", "role": "gravedigger", "source": "b", "quoted": true, "data": {"executed": "g", "role": "poisoner"}}
 	var own: Dictionary = {"id": "gd5", "kind": "report", "role": "gravedigger", "source": "g", "data": {"executed": "g", "role": "poisoner"}}
 	check(Solver.hanged_refuters(view, [names_demon, quoted, own], "g").is_empty(), "a reading naming a Demon, a quoted one and the hanged person's own don't refute it")
-	check(Solver.hanged_refuters(_view(["poisoner"]), [gd], "g") == [[Solver.person_index(view, "b"), -1]] and Solver.hanged_context(_view(["poisoner"]), "g", [gd]).refuters.is_empty(),
+	check(Solver.hanged_refuters(_view(["poisoner"]), [gd], "g").map(func(r): return r[0]) == ["b"] and Solver.hanged_context(_view(["poisoner"]), "g", [["b", "", {}, {}]]).refuters.is_empty(),
 		"with no Scion on the script there is no succession to refute")
 
 
@@ -135,13 +149,17 @@ func _live() -> void:
 	# the case's own cards (its cache key carries them), and holds in fewer worlds.
 	var teller: String = view.people[1].id
 	var gd: Dictionary = {"id": "gd-live", "kind": "report", "role": "gravedigger", "source": teller, "data": {"executed": x, "role": "poisoner"}}
-	var with_gd: PackedByteArray = Eval._premise_mask(view, q, [gd])
+	var refuted: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": q, "cards": []}, [gd]).conclusion
+	var with_gd: PackedByteArray = Eval._premise_mask(view, refuted)
 	var held_with := 0
+	var agree_gd: bool = with_gd.size() == worlds.size()
 	for i in range(with_gd.size()):
 		held_with += int(with_gd[i])
-	check(with_gd.size() == worlds.size() and held_with < held and held_with >= plain,
+		agree_gd = agree_gd and (with_gd[i] == 1) == Solver.holds(view, worlds[i], refuted)
+	check(refuted.get("refuters", []).map(func(r): return r[0]) == [teller] and with_gd.size() == worlds.size() and held_with < held and held_with >= plain,
 		"with a Gravedigger's reading of a Minion role in the case, it holds in fewer worlds (%d against %d; %d plain)" % [held_with, held, plain])
-	check(Eval._premise_mask(view, q, []) == mask, "and the mask without it is unchanged, cached or not")
+	check(agree_gd, "the judge's mask and Solver.holds (the Jury, the Reasoner, the support model) agree with the reading in the case")
+	check(Eval._premise_mask(view, q) == mask, "and the mask without it is unchanged, cached or not")
 
 
 ## What the Workshop offers for a hanged person (Michael, Nov 19): "was the Demon when

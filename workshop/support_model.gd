@@ -49,6 +49,7 @@ static func dimensions(cards: Array, listener: Dictionary, challenges: Dictionar
 	return count
 
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}, shared: Dictionary = {}) -> Dictionary:
+	value = Solver.with_hanged_refuters(view, value)  # "was the Demon when hanged" refuted alike (Lantern)
 	var span = Profiler.open("support")
 	var result = _assess(view, value, listener, bias, prepared, shared)
 	Profiler.close(span)
@@ -375,6 +376,7 @@ static func _contributing(view: Dictionary, active: Array) -> Array:
 	return result
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
+	value = Solver.with_hanged_refuters(view, value)  # "was the Demon when hanged" refuted alike (Lantern)
 	var span = Profiler.open("explain")
 	# These are the inputs read by attention, bounded search, source quality and
 	# prior ranking. Theory memory/receipt bookkeeping do not enter this operation.
@@ -604,7 +606,8 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 		var hanged: Array = []
 		if view.get("world_options", {}).get("identities", false):
 			for person in view.people:
-				hanged.append(Solver.hanged_context(view, person.id))
+				# The case's readings that refute it about its own target (conclusion.refuters).
+				hanged.append(Solver.hanged_context(view, person.id, conclusion.get("refuters", []) if person.id == str(conclusion.get("target", "")) else []))
 		for world in worlds:
 			if world.is_empty():
 				continue
