@@ -129,20 +129,17 @@ func _test_repeat_notes() -> void:
 	_check(not _notes(g).any(func(e): return "voice still carries weight" in str(e.text)), "the nomination note doesn't claim a statement's voice")
 	var g2 = _meeting_game(8105)
 	var t2 = g2.w.living_good()[0]
+	var c2: int = _file_case(g2, t2.id, _evidence_cards(g2, 2))
+	g2.public_presentations[c2] = g2.w.day
 	g2.command("nominate %s raw" % t2.name.to_lower())
-	var c0: int = _evidence_cards(g2, 1)[0]
-	g2.public_citations[c0] = true
-	g2.command("accuse %d" % c0)
-	_check(_notes(g2).any(func(e): return "your voice still carries weight" in str(e.text)), "accusing with a card already cited notes it, and that the voice still counts")
+	g2.command("case %d" % c2)
+	_check(g2.statement_used and _notes(g2).any(func(e): return "your voice still carries weight" in str(e.text)), "putting a case already presented notes it, and that the voice still counts")
 	var g3 = _meeting_game(8110)
 	var t3 = g3.w.living_good()[0]
+	var c3: int = _file_case(g3, t3.id, _evidence_cards(g3, 2))
 	g3.command("nominate %s raw" % t3.name.to_lower())
-	var fresh: Array = g3.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "alibi"] and not GameMeeting.already_public(g3, c))
-	if not fresh.is_empty():
-		g3.command("accuse %d" % int(fresh[0].n))
-		_check(not _notes(g3).any(func(e): return "already public" in str(e.text)), "a card cited for the first time, never heard at a meeting, carries no note")
-	else:
-		_check(false, "case 8110 has a card never heard at a meeting (Steward Nov 19 silent skip)")
+	g3.command("case %d" % c3)
+	_check(g3.statement_used and not _notes(g3).any(func(e): return "already public" in str(e.text)), "a case put for the first time carries no note")
 
 
 func _test_already_weighed_skip() -> void:

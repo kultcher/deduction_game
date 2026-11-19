@@ -401,9 +401,6 @@ class Trust:
 	const CLEMENCY_TRUSTED_BONUS = 0.06
 	const CLEMENCY_SUSPECTED_DROP = 0.1
 	const VOTED_YES_ON_ME_DROP = 0.08
-	const SPEAK_DEFEND_BONUS = 0.06
-	const SPEAK_AGAINST_NOMINATOR_DROP = 0.04
-	const SPEAK_AGAINST_NOMINEE_DROP = 0.08
 
 
 # ---------------------------------------------------------------- 5. Background Social Gossip & Approaches
@@ -687,8 +684,6 @@ class Meeting:
 	const VOTE_URGENCY_PER_DEATH = 0.02
 	const PLAYER_VOTE_YES_SLOPE = 0.18
 	const PLAYER_VOTE_YES_OFFSET = -0.04
-	const PLAYER_DEFEND_SLOPE = -0.25
-	const PLAYER_ACCUSE_SLOPE = 0.15
 	const VOTE_DISTRUST_NOMINATOR_MIN_SUSP = 0.7
 	const VOTE_DISTRUST_NOMINATOR_OFFSET = -0.15
 	const VOTE_SPARE_PREF_SLOPE = -0.5
@@ -1312,7 +1307,6 @@ static func fingerprint() -> String:
 			Meeting.VOTE_PARANOIA_WEIGHT,
 			Meeting.VOTE_URGENCY_PER_DEATH,
 			Meeting.PLAYER_VOTE_YES_SLOPE,
-			Meeting.PLAYER_ACCUSE_SLOPE,
 			Workshop.EXECUTION_PRIORITY_TOP_MARGIN,
 			Workshop.EXECUTION_PRIORITY_TOP_BONUS,
 			Social.PLANTER_WHISPER_BONUS,
