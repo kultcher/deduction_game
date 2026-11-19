@@ -122,3 +122,19 @@ func _asked() -> void:
 	g2[0].beliefs = [_meeting_belief(w2, g2[2], g2[3])]
 	var r3: Dictionary = MindDialogue.answer_opinion(w2, g2[0], g2[2])
 	_check(r3.facts.filter(func(f): return f.get("kind", "") == "conversation").is_empty(), "not a meeting the player can see for themselves")
+	# An older meeting seen first hand doesn't block newer word of another (Codex on #308).
+	var w4 = _world()
+	var g4: Array = w4.living_good()
+	w4.player_loc = "tavern"
+	w4.day = 2
+	var old_b: Dictionary = _meeting_belief(w4, g4[2], g4[3])
+	old_b.day = 1
+	g4[0].beliefs = [old_b]
+	g4[0].hearsay = [{"kind": "meeting", "about": g4[2].id, "with": g4[4].id, "loc": "wharf", "block": w4.loc_block("wharf"), "day": 2, "phase": C.MORNING,
+		"from": g4[1].id, "witness": g4[1].id, "via": g4[1].id, "key": "meeting:y"}]
+	var r4: Dictionary = MindDialogue.answer_opinion(w4, g4[0], g4[2])
+	var c4: Array = r4.facts.filter(func(f): return f.get("kind", "") == "conversation")
+	_check(c4.size() == 1 and g4[4].id in c4[0].subject, "the latest meeting is told first, even when an older one was seen first hand")
+	var r5: Dictionary = MindDialogue.answer_opinion(w4, g4[0], g4[2])
+	var c5: Array = r5.facts.filter(func(f): return f.get("kind", "") == "conversation")
+	_check(c5.size() == 1 and g4[3].id in c5[0].subject, "and asked again, the older one, rather than nothing")

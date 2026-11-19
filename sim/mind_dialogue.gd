@@ -1515,33 +1515,39 @@ static func answer_opinion(w, n, t) -> Dictionary:
 ## two, at second hand when the speaker only heard of it. Evil keeps quiet about its
 ## teammates' meetings; nobody repeats one the player can see for themselves.
 static func _meeting_note(w, n, t, lines: Array, facts: Array) -> void:
-	var got: Dictionary = {}
-	for i in range(n.beliefs.size() - 1, -1, -1):
-		var b: Dictionary = n.beliefs[i]
+	# Every meeting of theirs it saw or heard of, from today or yesterday; the latest one not yet
+	# told wins, first or second hand alike (Codex on #308: an old memory mustn't block newer word).
+	var cands: Array = []
+	for b in n.beliefs:
 		if b.get("kind", "") == "saw" and b.get("phase", C.NIGHT) != C.NIGHT and str(b.get("with", "")) != "" and str(b.get("loc", "")) != "" \
 				and t.id in [str(b.get("who", "")), str(b["with"])] and int(b.get("day", -1)) >= w.day - 1:
-			got = {"a": str(b["who"]), "b": str(b["with"]), "loc": str(b["loc"]), "block": str(b.get("block", "")), "day": int(b["day"]), "phase": int(b["phase"]), "witness": n.id}
-			break
+			cands.append({"a": str(b["who"]), "b": str(b["with"]), "loc": str(b["loc"]), "block": str(b.get("block", "")), "day": int(b["day"]), "phase": int(b["phase"]), "witness": n.id})
+	for h in n.hearsay:
+		if str(h.get("kind", "")) == "meeting" and t.id in [str(h.get("about", "")), str(h.get("with", ""))] and int(h.get("day", -1)) >= w.day - 1 \
+				and w.by_id.has(str(h.get("witness", ""))):
+			cands.append({"a": str(h["about"]), "b": str(h["with"]), "loc": str(h["loc"]), "block": str(h.get("block", "")), "day": int(h["day"]), "phase": int(h["phase"]), "witness": str(h["witness"])})
+	var got: Dictionary = {}
+	var other_id: String = ""
+	var key: String = ""
+	for c in cands:
+		var oid: String = c.b if c.a == t.id else c.a
+		if oid == n.id or not w.by_id.has(oid):
+			continue
+		if n.is_evil() and (Evil.is_teammate(w, n, t.id) or Evil.is_teammate(w, n, oid)):
+			continue
+		if c.day == w.day and c.phase == w.phase and c.loc == w.player_loc:
+			continue
+		var pair: Array = [t.id, oid]
+		pair.sort()
+		var k: String = "player|meeting:%s:%s:%d:%d" % [pair[0], pair[1], c.day, c.phase]
+		if n.told_to.has(k):
+			continue
+		# The latest; on a tie, what they saw themselves.
+		if got.is_empty() or c.day * 3 + c.phase > got.day * 3 + got.phase or (c.day * 3 + c.phase == got.day * 3 + got.phase and c.witness == n.id and got.witness != n.id):
+			got = c
+			other_id = oid
+			key = k
 	if got.is_empty():
-		for i in range(n.hearsay.size() - 1, -1, -1):
-			var h: Dictionary = n.hearsay[i]
-			if str(h.get("kind", "")) == "meeting" and t.id in [str(h.get("about", "")), str(h.get("with", ""))] and int(h.get("day", -1)) >= w.day - 1 \
-					and w.by_id.has(str(h.get("witness", ""))):
-				got = {"a": str(h["about"]), "b": str(h["with"]), "loc": str(h["loc"]), "block": str(h.get("block", "")), "day": int(h["day"]), "phase": int(h["phase"]), "witness": str(h["witness"])}
-				break
-	if got.is_empty():
-		return
-	var other_id: String = got.b if got.a == t.id else got.a
-	if other_id == n.id or not w.by_id.has(other_id):
-		return
-	if n.is_evil() and (Evil.is_teammate(w, n, t.id) or Evil.is_teammate(w, n, other_id)):
-		return
-	if got.day == w.day and got.phase == w.phase and got.loc == w.player_loc:
-		return
-	var pair: Array = [t.id, other_id]
-	pair.sort()
-	var key: String = "player|meeting:%s:%s:%d:%d" % [pair[0], pair[1], got.day, got.phase]
-	if n.told_to.has(key):
 		return
 	n.told_to[key] = true
 	var other = w.by_id[other_id]
