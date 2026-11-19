@@ -482,6 +482,10 @@ Candidates for a unified retuning proposal, not approved changes.
   [open]
   Michael (Nov 18): being handled now, with "Recovering from a wrong 'lying' call" and
   "The player's 'poisoned, not lying' call" (section 2, Cases and the Workshop).
+  Quill (Nov 18): Michael chose three labels after the label audit. "Misled" and "failed
+  gift" are now one honest mistake (honest doubt at the player's credibility, "the reader is
+  good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
+  `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
 
 - **Signal honest forgetting.** When memory limits drop people from a report,
   acknowledge it ("There were others, but I can't place them"), distinct from Gossip

@@ -656,8 +656,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEADLINE_REPEAT_BUMP` | `0.15` | Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline. | `workshop/jury.gd` |
 | `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
-| `JURY_CHALLENGE_LYING_MIN_AGR` | `0.6` |  | `workshop/jury.gd`, `workshop/reading_challenges.gd` |
-| `JURY_CHALLENGE_LYING_SCALE` | `0.12` |  | `workshop/jury.gd` |
+| `JURY_CHALLENGE_LYING_MIN_AGR` | `0.3` | A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by the listener's agreement and the case's weight), and the gate it must pass, shared with the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good reader's suspicion about 3 points from a middling player and 11 from a trusted one. | `workshop/jury.gd`, `workshop/reading_challenges.gd` |
+| `JURY_CHALLENGE_LYING_SCALE` | `0.4` |  | `workshop/jury.gd` |
 | `SOURCE_REL_BASE` | `0.50` | Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]). | `workshop/shared_ledger.gd` |
 | `SOURCE_REL_SLOPE` | `0.50` |  | `workshop/shared_ledger.gd` |
 | `SIGHTING_TRUST_BASE` | `0.35` |  | `workshop/shared_ledger.gd` |

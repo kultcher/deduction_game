@@ -643,8 +643,21 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   and is a separate retractable contribution.
 - **Links** between evidence and the premise; contradicting statements merge into a
   contradiction card that offers the challenges.
-- **Challenges** on a card: unlikely, misled or lying. A gift reading against an alibi
-  offers both explanations ("the alibi is false" / "the report is false").
+- **Challenges** on a card: Mistaken, Lying, or (Surveyor counts only) Unlikely. A
+  gift reading against an alibi offers both explanations ("the alibi is false" / "the report
+  is false"). The reading labels (Michael, Nov 18): **Mistaken**, an honest mistake (the old
+  "misled" and "failed gift", merged, since the town can rarely prove a Poisoner; it covers any
+  unreliable reading: poison, Delusion, a Marked soul, a Red Herring), doubts the reading
+  as the player's word at their credibility (the failed-gift strength), counts as saying the
+  reader is good, and points a little at the Poisoner candidates only where a Poisoner is
+  possible. A **lie** doubts the reading and puts suspicion on the reader. **Delusional** is
+  about a person, not a reading: it doubts all their readings and, the secret being
+  good-only, clears them. "misled" stays a valid name for Mistaken in saved cases and NPC
+  defences (`ReadingChallenges.canonical`); its label and tip are `HONEST_LABEL` and
+  `HONEST_TIP` there. Mistaken is allowed only where a cause the script allows could have
+  fooled that gift (`honest_allowed`): poison or Delusion any reading, a Red Herring only
+  the Seer's, Marked any of its gifts' readings but one that only speaks for people. With none, the option
+  is off.
 - **Premise → card links** mean "this card's line runs through that premise", and the
   canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.
