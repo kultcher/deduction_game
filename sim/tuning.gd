@@ -992,9 +992,17 @@ class Workshop:
 	## preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where
 	## good people are working.
 	const BREATH_HUNT_REACH = 0.7
-	const LR_WEAK = 1.5
-	const LR_MODERATE = 3.0
-	const LR_STRONG = 10.0
+	## The badge's cut points on a case's strength (the odds ratio on its premise), Michael Nov 19:
+	## from the case slate's vote measure (docs/case_slate/), a Weak case sways one or two good
+	## votes, a Moderate one about half, a Strong one most (it carries a nomination with the
+	## player's vote about 9 times in 10). Below Weak the badge reads Negligible.
+	const LR_WEAK = 1.25
+	const LR_MODERATE = 2.0
+	const LR_STRONG = 3.5
+	## The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the
+	## Test juror's average listener at or above this, whatever the strength. On the slate it
+	## carries every good vote.
+	const LR_DAMNING_CHANCE = 0.9
 	## Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a
 	## relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a
 	## probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x).

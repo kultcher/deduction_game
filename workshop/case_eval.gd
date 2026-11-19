@@ -43,6 +43,7 @@ const OWN_ERR = Tuning.Workshop.OWN_ERR
 const LR_WEAK = Tuning.Workshop.LR_WEAK
 const LR_MODERATE = Tuning.Workshop.LR_MODERATE
 const LR_STRONG = Tuning.Workshop.LR_STRONG
+const LR_DAMNING_CHANCE = Tuning.Workshop.LR_DAMNING_CHANCE
 
 static var _cc_handles: Dictionary = {}
 static var _cc_handles_epoch: int = -1
@@ -385,8 +386,12 @@ static func _odds(p: float) -> float:
 	p = clampf(p, 1e-9, 1.0 - 1e-9)
 	return p / (1.0 - p)
 
-## Strength category from a likelihood ratio on the premise.
-static func category(lr: float) -> String:
+## Strength category from a likelihood ratio on the premise. With `chance`, the premise's
+## chance after the case for the listener the badge speaks for, the top tier ("damning")
+## applies at LR_DAMNING_CHANCE or above (Michael, Nov 19), whatever the strength.
+static func category(lr: float, chance: float = -1.0) -> String:
+	if chance >= LR_DAMNING_CHANCE:
+		return "damning"
 	if lr < 1.0 / LR_WEAK:
 		return "contradicts"
 	if lr < LR_WEAK:
@@ -404,6 +409,7 @@ static func category_text(cat: String) -> String:
 		"weak": return "This case weakly supports the premise."
 		"moderate": return "This case moderately supports the premise."
 		"strong": return "This case strongly supports the premise."
+		"damning": return "This case strongly supports the premise."  # Herald's wording to come
 	return ""
 
 ## Evaluate a case for one listener. Returns:
@@ -1768,7 +1774,7 @@ static func _pivotal(cc: Dictionary, base: PackedFloat64Array, ns: int, err_for:
 	return out
 
 static func _rank(cat: String) -> int:
-	return ["contradicts", "none", "weak", "moderate", "strong"].find(cat)
+	return ["contradicts", "none", "weak", "moderate", "strong", "damning"].find(cat)
 
 ## The case-strength label for the board: the neutral reference listener's category plus a
 ## one-line reason. Describes the case, not any particular NPC.
@@ -1780,7 +1786,7 @@ static func strength_from(r: Dictionary) -> Dictionary:
 	var reason = ""
 	if r.impossible:
 		reason = "These cards can't all be true together; something here is false."
-	elif r.category in ["weak", "moderate", "strong"]:
+	elif r.category in ["weak", "moderate", "strong", "damning"]:
 		if r.pivotal.size() == 1:
 			reason = "It rests on one card."
 		elif r.pivotal.is_empty():

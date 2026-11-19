@@ -154,9 +154,15 @@ listener (#273), both Lantern's.
 
 - **The Test juror's badge tiers.** (Michael, Nov 19) A fourth tier for a premise at 90% or
   more ("Damning" or "Conclusive"), above Weak, Moderate and Strong. Quill's proposed cut
-  points, from the slate (#332), were ×1.25, ×2 and ×5. They wait on cut points set from
-  how the town votes, measured with the slate's vote hook (Beadle's #347, open). Owners:
-  Quill (the cut points), Herald (the badge). [decided: tiers; cut points open]
+  points, from the slate (#332), were ×1.25, ×2 and ×5. **Cut points set (Michael, Nov 19,
+  Quill #357):** Negligible below ×1.25, Weak from ×1.25, Moderate from ×2, Strong from
+  ×3.5, and the top tier at a premise chance of 90%. The top tier applies only where that
+  chance settles the premise: an accusing one, "is good" or "is not the Demon". On the slate's
+  vote measure (#355), Weak sways one or two good votes, Moderate about half, and Strong
+  most, carrying the nomination with the player's vote 9 times in 10. Herald builds the badge
+  text (#358). **Gap to fill:** nothing on the slate falls between Strong (about 4 of 6 good
+  votes) and the top tier (all 7); a possible slate case to add there. Owners: Quill (the cut
+  points), Herald (the badge). [decided]
 
 - **The Lamplighter's count, in two steps.** (Michael, Nov 19, with Quill's plan in #346.)
   - **Step 1:** a count can be broken. Like a Night Watch list (#273), a listener allows that

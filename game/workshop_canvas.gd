@@ -277,7 +277,11 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
 	if not ev.get("impossible", false):
 		ev.lr = heard.lr
-		ev.category = CaseEval.category(heard.lr)
+		# The top tier reads the listener's chance only where that chance is the premise's own
+		# (Herald and Codex on #358): an accusing premise (would the town vote for them), "is
+		# good" and "is not the Demon". Elsewhere it's the target's chance of being good or evil,
+		# which doesn't settle "holds their gift", "was misled" and the like, nor a conflict.
+		ev.category = CaseEval.category(heard.lr, top_tier_chance(str(value.get("conclusion", {}).get("type", "")), float(heard.chance)))
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
@@ -312,6 +316,15 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 ## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
 ## no single subject: it is read through whoever it moves most, upward (one of them lied).
 const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+## The clearing premises a listener's chance of the target being good settles outright, for
+## the badge's top tier (Conclusive): test_juror.
+const TOP_TIER_CLEARS = ["good", "notdemon"]
+
+## The listener's chance as the badge's top tier reads it for a premise of `type`: the chance
+## itself where it settles the premise, else -1 (no top tier).
+static func top_tier_chance(type: String, chance: float) -> float:
+	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
+	return chance if settles else -1.0
 
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
