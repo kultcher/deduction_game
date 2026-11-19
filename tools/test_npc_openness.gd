@@ -118,8 +118,13 @@ func _no_self_agreement() -> void:
 	w.meeting["accusations"] = [{"by": n.id, "target": t.id}]
 	n.suspicion[t.id] = 1.2
 	n.traits["confidence"] = 1.0
+	# Having accused t at this meeting, n doesn't speak against t again (MindMeeting.already_accused),
+	# so it can never agree with itself. Before Steward's Nov 19 sweep this looped for an accusation
+	# that never came and passed on nothing.
+	var spoke: int = 0
 	for i in range(20):
 		var r = MindMeeting._public_accusation(w, n)
 		if r != null:
+			spoke += 1
 			_check(not ("%s" % n.name in str(r.line.get("statement", "")).split(" about ")[0] and "agree" in str(r.line.get("statement", ""))), "no agreeing with yourself: %s" % r.line.get("statement", ""))
-			return
+	_check(spoke == 0 and MindMeeting.already_accused(w, n, t.id), "having accused at this meeting, it doesn't accuse the same person again (%d of 20)" % spoke)

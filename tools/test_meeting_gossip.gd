@@ -91,6 +91,8 @@ func _relay() -> void:
 			if it3 != null and it3.get("kind", "") == "meeting":
 				evil_passed += 1
 		_check(evil_passed == 0, "an evil witness never passes on a teammate's meeting")
+	else:
+		_check(false, "a deal with two evil to test the teammate case (Steward Nov 19 silent skip)")
 
 func _asked() -> void:
 	var w = _world()

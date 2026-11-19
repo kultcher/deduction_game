@@ -593,8 +593,12 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 ## _list_mix): the count itself, the listener's (me) own nights and own sightings, or a trace or
 ## dropped item seen for itself, not someone's report of it. Anyone else's word can be a lie.
 static func certain_for_count(c: Dictionary, count_id: String, me: String) -> bool:
-	if str(c.get("id", "")) == count_id or bool(c.get("known_self", false)):
+	if str(c.get("id", "")) == count_id:
 		return true
+	if bool(c.get("known_self", false)):
+		# A night the listener knows it spent at home, unless it may have sleepwalked (Lantern
+		# on #346): only the tiny own-reading error, not a Sleepwalker's self-doubt.
+		return float(c.get("self_doubt", 0.0)) <= Tuning.Workshop.OWN_ERR
 	if bool(c.get("quoted", false)) or c.has("relay_source"):
 		return false
 	match str(c.get("kind", "")):

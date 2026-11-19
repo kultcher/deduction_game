@@ -53,4 +53,4 @@ func _day_case_still_gift() -> void:
 	var reading = {"kind": "info", "subject": [n.id], "source": w.living_good()[1].id, "role": "seer", "day": 1, "data": {"pair": [n.id, w.living_good()[2].id], "yes": true}, "text": "One of them"}
 	var case = {"kind": "deduction", "conclusion": {"type": "suspicious", "a": n.id}, "subject": [n.id], "support_cards": [reading], "text": "A case"}
 	var r: Dictionary = MindDialogue.press(w, n, case)
-	_check(str(r.get("dialogue_exchange", {}).get("action", "")) != "challenge_night", "a case with no night evidence still goes to the gift answer")
+	_check(str(r.get("dialogue_exchange", {}).get("action", "")) == "challenge_gift" and not r.get("lines", []).is_empty(), "a case with no night evidence still goes to the gift answer (%s; Steward Nov 19 E1a: not just 'not the night one')" % str(r.get("dialogue_exchange", {})))

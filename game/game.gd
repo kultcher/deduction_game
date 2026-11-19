@@ -52,7 +52,7 @@ var _profile_fact_keys = {}
 var case_notes = ""       # the player's free-form notes on the case
 var town_quiet = false     # the town has had its say since the last nomination (allows 'done')
 var talk_approached = false  # this conversation began with them approaching you (it costs the phase)
-var statement_used = false # player's one statement on the pending nomination
+var statement_used = false # the player has put their one case on the pending nomination
 var presented_today = false # player has had the meeting floor today
 var public_presentations = {} # card number -> the day you last put that case to the town (floor, nomination, statement)
 var public_citations = {}     # card numbers of plain cards you've cited at a meeting
@@ -371,7 +371,7 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
 	var parts = line.split(" ", false, 1)
-	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] in ["accuse", "defend"])):
+	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] == "case")):
 		return command(line)
 	workshop_presenting = true
 	_workshop_native_submission = false

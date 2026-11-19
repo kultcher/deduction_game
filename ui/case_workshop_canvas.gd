@@ -433,7 +433,7 @@ func _context(id: String) -> void:
 		else:
 			for entry in [[200, preload("res://workshop/reading_challenges.gd").HONEST_LABEL.to_lower(), "misled"], [201, "lying", "lying"], [202, "unlikely reading", "unlikely"]]:
 				context_menu.add_item("Challenge: " + entry[1], entry[0])
-				context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("support_note", "").begins_with("FALLBACK") or (entry[2] == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))))
+				context_menu.set_item_disabled(context_menu.get_item_index(entry[0]), report.kind != "report" or report.get("fallback", false) or (entry[2] == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))))
 	if board.nodes[id].kind == "modifier":
 		context_menu.add_item("Remove modifier (keep evidence and links)", 203)
 	if board.nodes[id].kind == "contradiction":
