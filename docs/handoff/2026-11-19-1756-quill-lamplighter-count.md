@@ -1,7 +1,7 @@
 # Quill: Lamplighter fix (b) step 1, a count can be broken
 
 Claude-Quill, Nov 19. Base: main at a6b674b (with #344). Status: PR open. Next actor: Lantern
-(review), then Bailiff. **Golden moves**, so it re-baselines to `baseline_d33fdae`. Follows
+(review), then Bailiff. **Golden moves**, so it re-baselines to `baseline_652298a` (first `baseline_d33fdae`, re-made on top of #349; see the end). Follows
 `2026-11-19-1510-quill-lamplighter-parked.md`.
 
 ## What changed
@@ -80,3 +80,10 @@ one without an alibi out, inside the sound branch only.
 ## Proposed for the backlog
 
 None.
+
+## Re-baseline on top of #349 (Nov 19, 21:20 UTC)
+
+I merged main (with Lantern's #349) in and captured twice; the two captures were identical. The
+result is `baseline_652298a`, which replaces `baseline_d33fdae` (now removed). It diverges from
+main's `baseline_7a10762` at the same records as before, with the same outcomes: only 98933's
+hangings change (see `docs/golden_baseline.md`).
