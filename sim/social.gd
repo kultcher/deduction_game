@@ -228,6 +228,31 @@ static func _pick_item(w, s, l):
 						"kind": "unease", "about": ut.id, "why": Mind.citable_reason(w, s, ut.id, "town"),
 						"from": s.id, "key": ukey,
 					}])
+	# Who they saw talking with whom by day (BACKLOG item 3, Michael, Nov 18: meetings feed
+	# the gossip network): the latest such meeting the listener isn't part of, passed on as
+	# "X and Y were talking at Z". Evil keeps its teammates' meetings to itself.
+	for idx in range(s.beliefs.size() - 1, -1, -1):
+		var mb: Dictionary = s.beliefs[idx]
+		if mb.get("kind", "") != "saw" or mb.get("phase", C.NIGHT) == C.NIGHT or str(mb.get("with", "")) == "" or str(mb.get("loc", "")) == "":
+			continue
+		if int(mb.get("day", -1)) < maxi(1, w.day - 1):
+			continue
+		var m_a: String = str(mb.get("who", ""))
+		var m_b: String = str(mb["with"])
+		if l.id in [m_a, m_b] or s.id in [m_a, m_b] or not w.by_id.has(m_a) or not w.by_id.has(m_b):
+			continue
+		if s.is_evil() and (Evil.is_teammate(w, s, m_a) or Evil.is_teammate(w, s, m_b)):
+			continue
+		var m_pair: Array = [m_a, m_b]
+		m_pair.sort()
+		var mkey: String = "meeting:%s:%s:%d:%d" % [m_pair[0], m_pair[1], int(mb["day"]), int(mb["phase"])]
+		if _told(s, l, mkey):
+			continue
+		cands.append([gos * Tuning.Social.DAY_RUMOR_WEIGHT, {
+			"kind": "meeting", "about": m_a, "with": m_b, "loc": str(mb["loc"]), "block": str(mb.get("block", "")),
+			"day": int(mb["day"]), "phase": int(mb["phase"]), "from": s.id, "witness": s.id, "key": mkey,
+		}])
+		break
 	# What a dead person told them is no longer someone else's to keep: readings from the
 	# dead are passed on readily, the more so the more they trusted the dead (Nov 5).
 	if not s.is_evil():
@@ -248,7 +273,7 @@ static func _pick_item(w, s, l):
 			dr["late"] = true
 			cands.append([gos * Tuning.Social.SHARE_RELAY_GOSSIP_SCALE + Tuning.Social.SHARE_DEAD_RELAY_SLOPE * s.npc_trust.get(src.id, 0.5), dr])
 	for h in s.hearsay.slice(-4):
-		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease", "role_hint", "role_claim"]:
+		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "meeting", "unease", "role_hint", "role_claim"]:
 			continue
 		if not s.is_evil() and str(h.get("kind", "")) == "reading" and w.by_id.has(str(h.get("from", ""))) and not w.by_id[str(h["from"])].alive:
 			continue # offered above
@@ -474,6 +499,10 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			# Witnessed daytime visits build social fabric and context
 			# without manufacturing night-movement suspicion in the listener's ledger.
 			l.hearsay.append(hs)
+		"meeting":
+			# Who was talking with whom: remembered, to pass on when asked about either of
+			# them (MindDialogue._meeting_note). Not evidence in the listener's ledger.
+			l.hearsay.append(hs)
 		"case":
 			var proof = w.workshop_roots.call(item["card"]) if w.workshop_roots.is_valid() else {"complete": false, "receipts": {}}
 			for receipt in proof.receipts.values():
@@ -530,6 +559,8 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "they distrust %s%s" % [w.by_id[item["about"]].name, via]
 		"unease":
 			return "they feel uneasy about %s%s" % [w.by_id[item["about"]].name, via]
+		"meeting":
+			return "%s and %s were talking at %s%s" % [w.by_id[item["about"]].name, w.by_id[item["with"]].name, w.loc_name(str(item["loc"])), via]
 		"day_sighting":
 			var dname: String = w.by_id[item["about"]].name
 			var dloc: String = str(item.get("loc", ""))
@@ -1340,22 +1371,26 @@ static func town_vibe(g) -> Dictionary:
 ## Trust from a reading that confirms what I know or strongly believe (BACKLOG, Michael, Nov 19,
 ## set R3): each reading a good listener holds is judged once (ReadingConfirm.assess, on the
 ## listener's chances before it heard it), and a confirmation raises its trust in the teller by
-## the tier's size. The record (`confirmed_readings`: teller -> its best confirmation) is kept for
+## the tier's size. The record (`workshop_state.confirmed_readings`: teller -> its best
+## confirmation; kept with the NPC's beliefs, not `dialogue_memory`, which holds only speech) is kept for
 ## what the NPC says (MindDialogue / MindMeeting: "their readings agree with what I know"). An
 ## evil NPC's good self keeps the record too, so it can say so honestly; its own trust doesn't
 ## move (the shadow copies the real NPC's).
 static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, chances: Dictionary) -> void:
 	var RC = load("res://workshop/reading_confirm.gd")
-	var seen: Dictionary = n.dialogue_memory.get("confirm_seen", {})
-	var record: Dictionary = n.dialogue_memory.get("confirmed_readings", {})
+	var seen: Dictionary = n.workshop_state.get("confirm_seen", {})
+	var record: Dictionary = n.workshop_state.get("confirmed_readings", {})
 	var rank: Dictionary = {"small": 1, "moderate": 2, "known": 3}
 	var size: Dictionary = {"small": Tuning.Trust.READING_TRUST_SMALL, "moderate": Tuning.Trust.READING_TRUST_MODERATE, "known": Tuning.Trust.READING_TRUST_KNOWN}
 	for c in view.get("cards", []):
 		var src: String = str(c.get("source", ""))
 		var cid: String = str(c.get("id", ""))
-		if str(c.get("kind", "")) != "report" or src == n.id or seen.has(cid) or not w.by_id.has(src):
+		# Once for each reading: a Medium's relay of a reading already heard is the same reading
+		# (its logical origin), though its receipt has an id of its own (Codex on #319).
+		var origin: String = str(c.get("logical_origin", cid))
+		if str(c.get("kind", "")) != "report" or src == n.id or seen.has(origin) or not w.by_id.has(src):
 			continue
-		seen[cid] = true
+		seen[origin] = true
 		var r: Dictionary = RC.assess(view, c, listener, chances)
 		var tier: String = str(r.get("tier", "none"))
 		if not rank.has(tier):
@@ -1368,15 +1403,15 @@ static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, 
 		n.npc_trust[src] = clampf(n.npc_trust.get(src, 0.5) + float(size[tier]), 0.0, 1.0)
 		w.dlog.add("npc_trust", n.id, src, {"to": snappedf(n.npc_trust[src], 0.001), "step": float(size[tier]), "confirmation": tier, "source": str(r.get("source", "")), "card": cid},
 			"%s's reading confirms what %s %s (%s)" % [src, n.id, "knows" if tier == "known" else "believes", tier])
-	n.dialogue_memory["confirm_seen"] = seen
-	n.dialogue_memory["confirmed_readings"] = record
+	n.workshop_state["confirm_seen"] = seen
+	n.workshop_state["confirmed_readings"] = record
 
 ## "Their readings agree with what I know" (Michael, Nov 19): the speaker's best confirmation of
 ## `t_id`'s readings, when it's moderate or known, else {}. An evil speaker answers from its good
 ## self's record, so it only ever says this when it's true from that view.
 static func readings_agree_record(n, t_id: String) -> Dictionary:
 	var mind = n.shadow if n.is_evil() and n.shadow != null else n
-	var rec: Dictionary = mind.dialogue_memory.get("confirmed_readings", {}).get(t_id, {})
+	var rec: Dictionary = mind.workshop_state.get("confirmed_readings", {}).get(t_id, {})
 	if str(rec.get("tier", "")) in ["moderate", "known"]:
 		return rec
 	return {}

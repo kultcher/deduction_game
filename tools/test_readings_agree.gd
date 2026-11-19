@@ -51,27 +51,27 @@ func _opinion() -> void:
 	n.friends = []
 	n.rivals = []
 	n.npc_trust[t.id] = 0.5
-	n.dialogue_memory["confirmed_readings"] = {t.id: _rec("moderate")}
+	n.workshop_state["confirmed_readings"] = {t.id: _rec("moderate")}
 	var r: Dictionary = MindDialogue.answer_opinion(w, n, t)
 	_check("readings agree with what I know" in _said(r), "asked about someone whose readings it confirms, it says so (%s)" % _said(r))
 	_check(_cards(r).size() == 1 and _cards(r)[0].stance == "for" and _cards(r)[0].subject == [t.id], "and the player gets a card: it speaks up for them")
-	n.dialogue_memory["confirmed_readings"] = {t.id: _rec("small")}
+	n.workshop_state["confirmed_readings"] = {t.id: _rec("small")}
 	var r2: Dictionary = MindDialogue.answer_opinion(w, n, t)
 	_check(not ("readings agree" in _said(r2)) and _cards(r2).is_empty(), "a small confirmation isn't enough")
-	n.dialogue_memory["confirmed_readings"] = {}
+	n.workshop_state["confirmed_readings"] = {}
 	var r3: Dictionary = MindDialogue.answer_opinion(w, n, t)
 	_check(not ("readings agree" in _said(r3)), "no record, no such reason")
 	# Evil: only its good self's record counts.
 	var e = w.evil_team()[0]
 	var tgt = goods[2]
-	e.dialogue_memory["confirmed_readings"] = {tgt.id: _rec("known")}
+	e.workshop_state["confirmed_readings"] = {tgt.id: _rec("known")}
 	if e.shadow != null:
-		e.shadow.dialogue_memory["confirmed_readings"] = {}
+		e.shadow.workshop_state["confirmed_readings"] = {}
 		e.shadow.suspicion[tgt.id] = 0.05
 	var r4: Dictionary = MindDialogue.answer_opinion(w, e, tgt)
 	_check(not ("readings agree" in _said(r4)), "an evil speaker can't say it from a record its good self doesn't hold")
 	if e.shadow != null:
-		e.shadow.dialogue_memory["confirmed_readings"] = {tgt.id: _rec("known")}
+		e.shadow.workshop_state["confirmed_readings"] = {tgt.id: _rec("known")}
 		var r5: Dictionary = MindDialogue.answer_opinion(w, e, tgt)
 		_check("readings agree with what I know" in _said(r5) or not ("I don't take" in _said(r5)), "and says it when its good self's record does hold it, if it clears them (%s)" % _said(r5))
 
@@ -80,7 +80,7 @@ func _vote() -> void:
 	var goods: Array = w.living_good()
 	var v = goods[0]
 	var t = goods[1]
-	v.dialogue_memory["confirmed_readings"] = {t.id: _rec("known")}
+	v.workshop_state["confirmed_readings"] = {t.id: _rec("known")}
 	var res: Dictionary = {"nominee": t.id, "no": [v.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id}
 	var lines: Array = MindMeeting.vote_resistance_lines(w, res)
 	var said: String = " ".join(PackedStringArray(lines.map(func(x): return str(x.get("statement", x.get("text", ""))))))
@@ -88,5 +88,5 @@ func _vote() -> void:
 	_check(res.get("resistance_facts", []).size() == 1, "with a card for the player")
 	var v2 = goods[3]
 	var res2: Dictionary = {"nominee": t.id, "no": [v2.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id}
-	v2.dialogue_memory["confirmed_readings"] = {}
+	v2.workshop_state["confirmed_readings"] = {}
 	_check(MindMeeting.vote_resistance_lines(w, res2).filter(func(x): return "readings agree" in str(x.get("statement", ""))).is_empty(), "no record, nothing said")

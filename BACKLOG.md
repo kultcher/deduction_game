@@ -42,6 +42,19 @@ Night Watch list that wrongly names the listener clearing the rest of the watch.
 (Nov 17–18): a case with no cards answered from an older compile (#192), and an evil Medium's
 relay about the first victim naming night 0 (Beadle).
 
+- **The phase advances while the player is still reading an NPC's last lines.** The phase
+  must not move on until the player clicks "Leave conversation". (Michael, Nov 19) Owner
+  Herald. [decided]
+- **An NPC waves the player down twice with the same information.** It must never do that
+  with exactly the same information. (Michael, Nov 19) Owner Beadle. [decided]
+- **Cleanup and errors** (Michael, Nov 19):
+  - (a) stale scripts in `logs/`, and `tools/test_ask_night_results.gd` failing to parse.
+    Owner Lantern.
+  - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
+  - (c) RID leaks on exit. Owner Herald, low priority.
+
+  [decided]
+
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
@@ -272,6 +285,18 @@ relay about the first victim naming night 0 (Beadle).
   (`<case>_innocent`; the impossible reading has none) in the same baseline, reported
   separately. [decided]
 
+- **Daytime sightings hidden by default** in the daytime Present window and the main card
+  list, with a checkbox to show them. (Michael, Nov 19) Owner Herald. [decided]
+
+- **Workshop: centre on a new card.** Adding a card centres the view on it, with a subtle
+  highlight until it's moved. (Michael, Nov 19) Owner Herald. [decided]
+
+- **Workshop: edge indicators for off-screen cards,** one per direction or cluster.
+  (Michael, Nov 19) Owner Herald. [decided]
+
+- **Workshop right-click menu:** "Add readings FROM > <person>" and "Add all readings
+  ABOUT > <person>". (Michael, Nov 19) Owner Herald. [decided]
+
 ### NPC behaviour
 
 - **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
@@ -352,6 +377,26 @@ relay about the first victim naming night 0 (Beadle).
   Good NPCs with news for a trusted friend now get a similar bonus. Still open: let evil
   confer after the player commits (unseen, or seen only from that block), cap the evil
   bonus, add a pair cooldown. Keep good NPCs meeting often enough to cover. [decided]
+  - **Michael (Nov 18), through Seneschal:**
+    1. Visible meetings still happen. Dropping the bonus before the player chooses is fine,
+       but evil members must still sometimes be seen meeting. Aim for about one visible
+       evil meeting a day across the three phases, and measure the rate.
+       - Michael (Nov 19) clarified this. "Visible" means seen before the player chooses.
+         Keep today's rate, about 0.28 a day (one every 3 to 4 days on seeds 3000-3014).
+         "Don't add new meetings or anything, keep the same numbers of meetings."
+    2. Meetings go into the gossip network, every meeting and not only evil ones. Those at
+       the place where two people were talking learn it ("X and Y were talking at Z") and
+       report it when asked about either person. When the player hears it, it is a
+       hearsay location report for each, as "who did you see earlier" gives today.
+       Herald owns any new wording. Owner Beadle.
+  - **Dropping the evil bonus before the choice, and adding a pass where teammates confer
+    after the player leaves, was tried and set aside (Nov 19).** It halved the visible rate
+    (0.12 a day) and cut evil meetings from 21 to 12. Main's pairing already lets teammates
+    confer after the player leaves, when they are in the same place.
+  - **Built** (Nov 19, `claude/beadle-evil-confer`), with the pairing unchanged:
+    - those present at a meeting after the player's choice see it;
+    - witnesses pass it on in conversation (one step);
+    - asked about either person, an NPC reports it, first or second hand.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -476,6 +521,10 @@ relay about the first victim naming night 0 (Beadle).
 
   [decided: direction]
 
+- **A daily nudge to share a gift privately.** Each day past day 1, NPCs who haven't claimed
+  a gift publicly get a small boost towards sharing it privately, to feed the gossip
+  network. (Michael, Nov 19) Owner Beadle, who proposes the size. [decided]
+
 ### Numbers
 
 - **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on
@@ -544,6 +593,10 @@ Candidates for a unified retuning proposal, not approved changes.
   (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
   such as a private press, those lines must not appear there; use the generic fallback.
   The PR says where it can fire. Owner Beadle. [decided]
+  - Michael (Nov 19): approved Beadle's plan. The defence fires at a nomination when the
+    heaviest cited item is a daytime sighting, and names who else was there from the true
+    whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
+    there, the alone line. No evil lie for now: evil defenders use the same true lines.
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
@@ -565,6 +618,15 @@ Candidates for a unified retuning proposal, not approved changes.
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
+
+- **Remove the player's "Speak against" / "Speak in their defence" meeting action.** It
+  mostly adds no information and just nudges the town. It may come back later as a small
+  extra nudge from the player's vote. (Michael, Nov 19) Owner Herald, with Beadle and
+  Quill (today it moves trust: `game/game_meeting.gd`, `SPEAK_AGAINST_*` in
+  `sim/tuning.gd`). [decided]
+
+- **Script window: the curtain and frame art cover text.** Widen or pad it. (Michael,
+  Nov 19) Owner Herald. [decided]
 
 ### Performance
 
@@ -1038,6 +1100,13 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
 
 - **Talking to a group:** 3 questions per phase, split among anyone at the spot. [open]
   Tabled (Michael, Nov 18).
+
+- **A false name in the daytime-whereabouts defence.** (Michael, Nov 19) An evil defender
+  answering a daytime-whereabouts case names someone who wasn't there. The place and time
+  stay true; only the names are false. It's a lie logged with its reason ("spread the
+  suspicion"), and anyone who was there can catch it. Waits until the true-line defence ("A
+  defence's answer to a daytime-whereabouts case") is built and played. Owner Beadle.
+  Tabled (Michael, Nov 19).
 
 - **A false "their readings agree with what I know".** (Michael, Nov 19) An evil NPC says it of
   a teammate with no such confirmation behind it, to save them at a vote. It would be a lie

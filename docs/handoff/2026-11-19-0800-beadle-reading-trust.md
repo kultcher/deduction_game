@@ -17,7 +17,8 @@ or strongly believes.
 - **How it's judged:** Lantern's `ReadingConfirm.assess` (#309), on the listener's chances from
   its previous refresh, so a reading is judged on what the listener believed before hearing it.
 - **When:** each reading is judged once for each listener, at its first refresh holding the
-  reading (`Social.reading_confirm_trust`, called from `WorkshopOwnership._refresh`).
+  reading (`Social.reading_confirm_trust`, called from `WorkshopOwnership._refresh`). A Medium's
+  relay of a reading already heard is the same reading, by its logical origin (Codex on #319).
 
 | Tier (`ReadingConfirm`) | When | Trust (`Tuning.Trust`) |
 |---|---|---|
@@ -29,7 +30,7 @@ or strongly believes.
 someone already suspected) is now its own constant, `Trust.AGREEMENT_STEP` = 0.02, down from 0.03.
 `Social.TRUST_VOTED_FOR` stays 0.03, the nominee's thanks to those who spared it.
 
-**The record.** Each NPC keeps `dialogue_memory.confirmed_readings`: for each teller, its best
+**The record.** Each NPC keeps `workshop_state.confirmed_readings`: for each teller, its best
 confirmation (tier, card, day, fact or belief). It's for the next PR, "their readings agree with
 what I know", already approved.
 - **Evil NPCs:** an evil NPC's good self keeps a record too, so the evil NPC can say it honestly.
