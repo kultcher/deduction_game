@@ -219,7 +219,8 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 			return "Nobody died"
 		"hint":
 			var pkg: String = str(card.get("package", ""))
-			var gist: String = {"official": "records", "night_sight": "night sight", "the_dead": "the dead", "shelter": "shelter", "people": "reading people"}.get(pkg, "")
+			# The family's card form (Michael's names, Nov 18; sim/content.gd HINT_PACKAGES).
+			var gist: String = str(C.HINT_PACKAGES.get(pkg, {}).get("card", ""))
 			if gist != "":
 				# Tavern gossip isn't the person's own hint, so it keeps its "Rumour:" (Codex on #256).
 				return ("Rumour: %s, %s" if _rumour(card) else "%s hints: %s") % [_subjects(card, nm), gist]

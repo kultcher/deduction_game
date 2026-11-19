@@ -81,3 +81,10 @@ to reach for only if needed.
 
 - **NPC nominators' cases:** no faster fade or cap. Revisit if up to nine live cases per
   listener shows up as a problem in play (Nov 11). **[watch]**
+
+## From "3. Medium features (several days; touch a few systems)"
+
+- **The Revenant can hide a new totem each day.** The burned-totem notice now warns that
+  the spirit will seek a new hiding place; whether the totem search can keep pace is a
+  balance question. (54875) [watch]
+  Verified Nov 18: built; only the balance check (can the totem search keep pace?) is left.

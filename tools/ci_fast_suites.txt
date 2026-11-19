@@ -104,6 +104,7 @@ test_too_clean_bluffs
 test_town_note
 test_town_vibe
 test_triage_nov16
+test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge
 test_warden_quiet_route
@@ -119,4 +120,5 @@ test_workshop_vote_and_alibi
 test_workshop_why
 test_player_failed_gift
 test_nightwatch_whole_list
+test_state_digest
 test_relay_bluff

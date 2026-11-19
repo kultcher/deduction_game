@@ -389,12 +389,18 @@ func workshop_command(line: String, progress: Callable) -> String:
 		_ending()
 	return _finish_command("command", line)
 
+## Write World.state_digest after every command and Workshop filing (the replay compares
+## them, tools/log_replay.gd). Developer switch; on by default.
+var state_digests: bool = true
+
 func _finish_command(kind: String, cmd: String) -> String:
 	last_events = events.duplicate()
 	var out = render(events)
 	if w != null:
 		w.set_log_time()
 		w.dlog.add("player_" + kind, "player", "", {"cmd": cmd, "output": out})
+		if state_digests:
+			w.dlog.add("state_digest", "", "", w.state_digest())
 		w.trace_capture("after_" + kind)
 		w.dlog.end_action()
 		# Endings/manual exports can occur inside dispatch. Flush again only after
