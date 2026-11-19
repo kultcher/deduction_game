@@ -657,7 +657,7 @@ static func approach_candidate(w, skip_id: String = ""):
 			var sg: String = w.evil_plan.get("scapegoat", "")
 			var fresh = 0
 			for i in range(n.told_readings, n.info_log.size()):
-				if not n.info_log[i]["shared"]:
+				if not n.info_log[i]["shared"] and not n.told_to.has("player|approached:%d" % i):
 					fresh += 1
 			if fresh > 0 and n.trust >= Tuning.Social.APPROACH_NEWS_MIN_TRUST and sg != "" and w.by_id[sg].alive:
 				s = (1.0 - trait_of(n, "privacy")) + n.trust - Tuning.Social.APPROACH_NEWS_OFFSET
@@ -666,7 +666,7 @@ static func approach_candidate(w, skip_id: String = ""):
 			var unshared = n.info_log.size() - n.told_readings
 			var hidden_new = 0
 			for i in range(n.told_readings, n.info_log.size()):
-				if not n.info_log[i]["shared"]:
+				if not n.info_log[i]["shared"] and not n.told_to.has("player|approached:%d" % i):
 					hidden_new += 1
 			if hidden_new > 0 and n.trust >= Tuning.Social.APPROACH_NEWS_MIN_TRUST and unshared > 0:
 				s = (1.0 - trait_of(n, "privacy")) + n.trust - Tuning.Social.APPROACH_NEWS_OFFSET
@@ -725,6 +725,11 @@ static func approach_open(w, n, agenda: String) -> Dictionary:
 	var facts: Array = []
 	match agenda:
 		"news", "frame":
+			# Never twice for the same reading (Michael, Nov 19): every reading this approach was
+			# about is marked, so a reading held back from the answer (the disclosure gate kept it,
+			# and told_readings didn't move) can't bring them back with the same news.
+			for i in range(n.told_readings, n.info_log.size()):
+				n.told_to["player|approached:%d" % i] = true
 			var r: Dictionary = Mind.answer_gift(w, n, 4)
 			n.pressed_today -= 1
 			lines.append(Mind.say_voiced(n, "approach_open_gift", "I've been meaning to find you."))
