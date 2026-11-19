@@ -60,7 +60,9 @@ func _vigil_against_walker() -> void:
 	var claim: Dictionary = {"id": "claim", "fact_id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "lamplighter", "data": {}}
 	var duty: Dictionary = _report("duty", "a", "lamplighter", 1, {"count": 1})
 	duty["duty_only"] = true
-	var empty: Dictionary = {"id": "empty", "fact_id": "empty", "kind": "coverage", "source": "player", "night": 1, "block": "market", "excluded": ["g"],
+	# The vigil watches a's own block, the Hill: since Nov 19 a tour is seen only where its
+	# walker leaves home.
+	var empty: Dictionary = {"id": "empty", "fact_id": "empty", "kind": "coverage", "source": "player", "night": 1, "block": "hill", "excluded": ["g"],
 		"observed_at": {"day": 1, "phase": "night"}}
 	var base: float = Activity._likelihood(view, [claim, duty], a, "good")
 	var missed: float = Activity._likelihood(view, [claim, duty, empty], a, "good")
@@ -70,6 +72,12 @@ func _vigil_against_walker() -> void:
 	var evil_base: float = Activity._likelihood(view, [claim, duty], a, "demon")
 	var evil_missed: float = Activity._likelihood(view, [claim, duty, empty], a, "demon")
 	check(evil_base <= 0.0 or evil_missed / evil_base > ratio, "a Demon bluffing the Lamplighter loses less to the same vigil than an honest one would")
+	var elsewhere: Dictionary = empty.duplicate(true)
+	elsewhere.id = "elsewhere"
+	elsewhere.fact_id = "elsewhere"
+	elsewhere.block = "market"
+	var far: float = Activity._likelihood(view, [claim, duty, elsewhere], a, "good") / maxf(base, 1e-12)
+	check(absf(far - 1.0) < 1e-6, "an empty vigil on another block says nothing about the Lamplighter's tour (x%.3f)" % far)
 
 
 func _medium_hearths() -> void:

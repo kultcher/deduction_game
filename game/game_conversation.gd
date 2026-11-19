@@ -13,6 +13,39 @@ const Dialogue = preload("res://sim/dialogue.gd")
 const RecentSightings = preload("res://game/recent_sightings.gd")
 
 
+## BACKLOG "A whereabouts contradiction gets an irrelevant gift refusal" (78148; Quill, with
+## Beadle choosing the answer): when a pressed case's cited cards place its subject out on a
+## night, the press is told so. {} when no cited card does, or when they place them out on
+## different nights (never merged).
+##   night: the night number the cards use (the `nd` of answer_night and trapped_explanation)
+##   block: where they were placed, or "" when no block is named
+##   ruled_out_home_by: board numbers of the cards that place them out: a night sighting of
+##     them (a vigil that saw them leave is one), or a Night Watch report naming them
+##   against_alibi: they had given their own home alibi for that night
+static func press_contradiction(g, n, pc: Dictionary) -> Dictionary:
+	var nights: Dictionary = {}
+	for x in pc.get("support_cards", []):
+		var nd: int = -1
+		var blk: String = ""
+		if x.get("kind", "") == "sighting" and int(x.get("phase", -1)) == C.NIGHT and n.id in x.get("subject", []) and x.get("source", "") != n.id:
+			nd = int(x.get("day", -1))
+			blk = str(x.get("block", ""))
+		elif x.get("kind", "") == "info" and x.get("role", "") == "nightwatch" and n.id in x.get("data", {}).get("seen", []) and x.get("source", "") != n.id:
+			nd = int(x.get("day", -1))
+			blk = str(x.get("data", {}).get("block", ""))
+		if nd < 0:
+			continue
+		if not nights.has(nd):
+			nights[nd] = {"block": blk, "cards": []}
+		if nights[nd].block == "":
+			nights[nd].block = blk
+		nights[nd].cards.append(int(x.get("n", 0)))
+	if nights.size() != 1:
+		return {}
+	var night: int = int(nights.keys()[0])
+	var alibi: bool = g.all_receipts().any(func(x): return x.get("kind", "") == "alibi" and x.get("home", false) and x.get("source", "") == n.id and n.id in x.get("subject", []) and int(x.get("day", -1)) == night)
+	return {"night": night, "block": nights[night].block, "ruled_out_home_by": nights[night].cards, "against_alibi": alibi}
+
 static func _maybe_approach(g, skip_id: String = "") -> void:
 	g.approached_id = ""
 	g.approached_loc = ""
@@ -458,6 +491,9 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			if pc["kind"] == "deduction":
 				pc["support_cards"] = g.all_receipts().filter(func(x): return x["n"] in pc["supports"])
 				g._secrets_used(pc)
+				var contra: Dictionary = press_contradiction(g, n, pc)
+				if not contra.is_empty():
+					pc["contradiction"] = contra
 			r = Mind.press(g.w, n, pc, g.known_haunts)
 		"defend", "vouch":
 			var pd = rest.split(" ", false)
