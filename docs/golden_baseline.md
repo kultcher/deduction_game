@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
+### Current baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1): `baseline_d33fdae`
+
+`tools/golden/baseline_d33fdae/` is the capture from `claude/lamplighter-count` at `d33fdae`
+(main with #344 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night
+Watch list: a listener weighs the chance that the Lamplighter is evil, poisoned or Delusional, and
+a broken count says nothing. Before, every count was taken as sound.
+- **Divergence from `baseline_ee15238`:** 42 from record 1 (a reading's vetting lift on the
+  first day, 0.003 to 0.001), 54875 from record 79 (Jory's refresh on day 2), 900 from record 52
+  (Isolde's cover on day 2) and 98933 from record 82 (Nisha's refresh on day 2). 692 is identical.
+- **Outcomes:** the winner and the last day are unchanged on all five. 98933's hangings change:
+  day 2 hangs Merrin (good, the Surveyor) instead of Dorian (good, the Clerk), and day 3 hangs no
+  one instead of Isolde (the Revenant). 98933's Lamplighter, Bart, votes no on Merrin. 42's
+  day-3 hanging of Agnes (the Demon) is unchanged, but Isolde nominates her instead of Kiran.
+  54875, 692 and 900 hang the same people.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
 
 `tools/golden/baseline_ee15238/` is the capture from `claude/factor-norm-handles` at `ee15238`
 (main with #345 merged in). A movement factor's compiled handle is now shared only between uses
