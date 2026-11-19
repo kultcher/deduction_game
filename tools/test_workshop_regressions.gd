@@ -465,10 +465,18 @@ func _test_caches_clear_all_and_constance_inquiry_gate() -> void:
 	_check(TraceSolver._compiled_cache.is_empty() and GhostJuror._live_cache.is_empty(), "Caches.clear_all empties TraceSolver._compiled_cache and GhostJuror._live_cache")
 
 	# Constance Day 1 Afternoon with 1 prior question still uses private_reveal_early; after 2 prior questions uses private_reveal.
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(42, 10)
-	var constance = g.w.by_id.get("constance")
+	# Any deal with Constance in it will do: look for one rather than naming a seed, which
+	# had stopped dealing her and skipped these checks (Steward's silent-skip sweep, Nov 19).
+	var g = null
+	var constance = null
+	for seed_v in range(42, 142):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(seed_v, 10)
+		constance = g.w.by_id.get("constance")
+		if constance != null:
+			break
+	_check(constance != null, "a deal with Constance is found")
 	if constance != null:
 		constance.alignment = "good"
 		constance.role = "surveyor"
@@ -491,7 +499,10 @@ func _test_caches_clear_all_and_constance_inquiry_gate() -> void:
 		constance.pressed_today = 2 # 2 prior questions asked before this gift question
 		var r_proper: Dictionary = Mind.answer_gift(g.w, constance)
 		var txt_proper: String = str(r_proper["lines"][0].get("text", ""))
-		_check("conducted this inquiry properly" in txt_proper, "Constance after 2 prior questions uses standard private_reveal (%s)" % txt_proper)
+		# Her standard reveal, read from her voice (its wording has changed since this test was
+		# written, which went unseen while the check was skipped).
+		var standard: String = str(Voices.VOICES["constance"]["private_reveal"]).replace("{role}", "Surveyor")
+		_check(txt_proper == standard, "Constance after 2 prior questions uses standard private_reveal (%s)" % txt_proper)
 
 
 func _test_jury_persuasion_tail_helper() -> void:

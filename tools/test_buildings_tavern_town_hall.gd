@@ -159,8 +159,17 @@ func _test_tavern_gossip_rework() -> void:
 	_check(rumour_cards.all(func(c): return c.get("source", "") == "rumour" and not c.get("workshop_usable", true) and not c.get("pressable", true)),
 		"Tavern gossip board cards carry source=rumour, workshop_usable=false, pressable=false")
 
-	# Dotted timeline marker & attributed non-collision check:
+	# Dotted timeline marker & attributed non-collision check. The evening's draw may hold no
+	# sighting rumour; then one in the gossip's own shape stands in, so these checks always
+	# run (Steward's silent-skip sweep, Nov 19: they had been skipped on every run).
 	var sight_rumours: Array = rumour_cards.filter(func(c): return c.get("kind", "") == "sighting")
+	if sight_rumours.is_empty():
+		g._facts([{"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
+			"source": "rumour", "tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
+			"text": "Tavern rumour: %s was out on the Docks." % target_c.name}])
+		rumour_cards = g.board.filter(func(c): return c.get("tavern_gossip", false))
+		sight_rumours = rumour_cards.filter(func(c): return c.get("kind", "") == "sighting")
+	_check(not sight_rumours.is_empty(), "a tavern sighting rumour is on the board")
 	if not sight_rumours.is_empty():
 		var rc: Dictionary = sight_rumours[0]
 		var markers: Array = CardModel.place_markers(rc)

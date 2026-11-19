@@ -667,6 +667,7 @@ func _test_vn_greetings_expressions_and_rng_parity() -> void:
 		if not p.at_home() and p.busy_with == "":
 			target_npc = p
 			break
+	_check(target_npc != null, "precondition: seed 5606 has someone out and free to talk to")
 	if target_npc != null:
 		g_live.command("go " + target_npc.loc)
 		g_live.command("talk " + target_npc.name)

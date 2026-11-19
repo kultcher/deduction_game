@@ -43,10 +43,12 @@ func _stems(id: String) -> Array:
 ## looking at" opener; with their own sighting restated, the visual opener is allowed.
 func _visual_opener_only_for_own_sighting() -> void:
 	var g = _game()
+	var voiced: int = 0
 	for n in g.w.npcs:
 		var stems: Array = _stems(n.id)
 		if stems.is_empty():
 			continue
+		voiced += 1
 		for card in [{"kind": "vigil", "source": "player", "subject": [n.id], "day": 1},
 				{"kind": "sighting", "source": "player", "subject": [n.id], "day": 1},
 				{"kind": "sighting", "source": "someone_else", "subject": [n.id], "day": 1}]:
@@ -55,6 +57,7 @@ func _visual_opener_only_for_own_sighting() -> void:
 			Mind._challenged(n, resp, card)
 			var text: String = str(resp.lines[0].get("text", ""))
 			_check(not stems.any(func(st): return str(st) in text), "%s: no 'my own eyes' opener against a %s from %s (%s)" % [n.id, card.kind, card.source, text])
+	_check(voiced > 0, "precondition: some voice in this town has a 'my own eyes' opener to test")
 
 func _no_premise_line_after_a_spoken_sighting() -> void:
 	var g = _game()
