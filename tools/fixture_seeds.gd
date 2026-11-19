@@ -94,7 +94,7 @@ static func was_out(w, n, nd: int) -> bool:
 ## seen leaving home), or any. `bystander_doubt`: a bystander must hold the sighter at least
 ## this suspect, so it isn't one who already clears the sighter outright (it would believe
 ## the sighting, rightly by its own lights).
-static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0) -> Dictionary:
+static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0, from: int = SEEDS_FROM) -> Dictionary:
 	return search(day, func(g):
 		var w = g.w
 		for key in w.evil_plan.get("fake_sightings", {}):
@@ -118,7 +118,7 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 			if need_bystander and bystander == "":
 				continue
 			return {"sighter": sighter.id, "subject": subject.id, "bystander": bystander}
-		return {})
+		return {}, 7, from, SEEDS_FROM + SEEDS_COUNT - from)
 
 
 ## A good person's honest sighting of a real Sleepwalker, out on a night they believe they

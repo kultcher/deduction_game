@@ -250,6 +250,28 @@ func _known_game(seed_v: int, day: int):
 	return g
 
 
+## The first framed-sighting fixture whose subject, without the fake card, isn't already near
+## sure the sighter is evil (below 0.9): near that ceiling the town's fixed evil count lets
+## the card lift the other evil person instead (seed 100022 with #292: the Demon sighter at
+## 0.97 for her subject, and the subject's Revenant teammate rose), so its own direction
+## can't show. {} if no seed searched has one.
+func _framed_case() -> Dictionary:
+	var from: int = Seeds.SEEDS_FROM
+	while from < Seeds.SEEDS_FROM + Seeds.SEEDS_COUNT:
+		var fc: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1, from)
+		if fc.is_empty():
+			return {}
+		Connections.force_row = "none"
+		var sg: String = fc.sighter
+		var sub: String = fc.subject
+		var eff: Dictionary = Seeds.cards_effect(fc.g, sub, [sg], func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sg and sub in c.get("subjects", [c.get("subject", "")]) and not c.has("relay_source"))
+		Connections.force_row = ""
+		if not eff.is_empty() and float(eff.without[sg]) < 0.9:
+			return fc
+		print("NOTE: seed %d skipped for the framed-sighting checks: %s already holds %s at %.2f without the fake card" % [int(fc.seed), sub, sg, float(eff.get("without", {}).get(sg, -1.0))])
+		from = int(fc.seed) + 1
+	return {}
+
 func _chance(g, listener: String, person: String) -> Dictionary:
 	var n = g.w.by_id.get(listener)
 	if n == null or not n.alive:
@@ -271,7 +293,7 @@ func _fixes_inside_a_night() -> void:
 	# (A "street" sighting, as 100034's: a "window" sighting of someone leaving home argues
 	# less. The bystander holds the sighter at least 0.1, so it isn't one that already clears
 	# them outright and so believes the sighting.)
-	var framed_case: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1)
+	var framed_case: Dictionary = _framed_case()
 	var sleep_case: Dictionary = Seeds.sleepwalker_sighting(2)
 	var relay_case: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
 	Connections.force_row = "none"
