@@ -517,6 +517,11 @@ relay about the first victim naming night 0 (Beadle).
 - **A daily nudge to share a gift privately.** Each day past day 1, NPCs who haven't claimed
   a gift publicly get a small boost towards sharing it privately, to feed the gossip
   network. (Michael, Nov 19) Owner Beadle, who proposes the size. [decided]
+  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
+  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1)
+  (`Tuning.Social.SHARE_UNCLAIMED_DAY_BOOST`, a new constant pending Michael). Small calls by
+  Seneschal for Michael: NPC-to-NPC only; evil's bluffed gift and fake readings get the same.
+  Measured on 40 games: see the PR's handoff.
 
 ### Numbers
 

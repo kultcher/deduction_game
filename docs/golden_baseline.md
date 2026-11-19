@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
+### Current baseline (Nov 19, private sharing grows each day): `baseline_d46654d`
+
+`tools/golden/baseline_d46654d/` is the capture from `claude/beadle-private-share` at `d46654d`
+(main with #312 merged in). An NPC who hasn't claimed a gift publicly brings up its gift and its
+readings in private talk a little more often each day past day 1 (`SHARE_UNCLAIMED_DAY_BOOST`
+0.15, new, pending Michael).
+- **Divergence from `baseline_659996a`:** 54875 from record 84 and 98933 from record 85 (both
+  day 2, the first private-talk draw of the day); 42, 692 and 900 are identical.
+- **Outcomes:**
+  - **98933:** good won on day 2, hanging Odette. Now it hangs Merrin on day 2, with no winner
+    by day 4.
+  - **42, 54875, 692 and 900:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
 
 `tools/golden/baseline_659996a/` is the capture from `claude/herald-hanged-refusals` (#312) at
 `659996a` (main `05d81a3` merged in). Michael approved capitalising "Demon" throughout (Nov 19):
