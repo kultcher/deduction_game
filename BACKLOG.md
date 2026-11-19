@@ -352,6 +352,44 @@ Candidates for a unified retuning proposal, not approved changes.
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
   false need not concede evil. Evil gets the same excuses, open to later corroboration;
   the caught lie itself stays. [decided; options open]
+  - **Michael (Nov 19), on Beadle's options:**
+    - **Yes:** an evil NPC borrows the excuses. It claims a walking duty that fits its bluff
+      ("I was keeping the watch"), or says "being out isn't wicked". Each gets a logged
+      reason and a reveal line.
+    - **Yes, as the first line of defence:** "I had duties that night that aren't mine to
+      tell". It admits being out and keeps the gift hidden, for good and evil. It's the soft
+      version of backing into a claim.
+    - **After the secrets rework:** a vague errand of its own, which becomes "claim a
+      knowing secret".
+    - **No:** "I gave my word I wouldn't say why". It has no place in the current mechanics.
+    - **How much an excuse softens the caught lie:** a little, until something contradicts
+      the excuse, such as a claimed watch with no watch report. Then the excuse counts as a
+      second caught lie. This needs a new constant; Beadle proposes about half a caught
+      lie's weight.
+    - **Scope:** lies about being home only. Caught reading lies already have "my gift may
+      have been turned".
+  - **Still to settle: when evil risks backing into a walking-gift claim.** Michael: the
+    Demon and a Scion should be more careful, and other Minions should lean into the chaos
+    of a double claim. Vicar's proposed ladder is with Michael.
+    - **Where the gift comes from matters most.** Evil's bluff list holds only gifts not in
+      play (`world.gd` `bluffs`). It has one spare beyond the gifts the team uses, so a
+      spare walking gift has no real holder to counter-claim.
+    - **The ladder:**
+      1. If its bluff already walks, it gives that duty.
+      2. Not yet claimed: "duties that aren't mine to tell".
+      3. Pressed again or nominated, it backs into a claim:
+         - the safe spare, for any evil type;
+         - an unknown gift, for the Demon or a Scion only when badly exposed, and for a
+           Minion when exposed, at the existing blend-or-disrupt odds;
+         - a gift already claimed: a Minion only, on the block.
+      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff,
+         or a stonewall. No retracting.
+    - **Michael's calls:**
+      - the ladder;
+      - whether a Minion deliberately counter-claims a gift someone has already claimed;
+      - whether a publicly claimed evil may retract its claim.
+
+  Owner Beadle; Herald for the lines.
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -436,13 +474,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Minion distancing itself under pressure, the Demon going along with the town even
   against a Minion), and report what happens and what's missing before building the gaps.
   Owner Beadle. [decided: survey first]
-
-- **Observable actions as evidence (Stage 1B).** Votes, nominations, who defended whom
-  and tie-breaks as soft per-world likelihood factors: "voted to execute someone who is
-  good in this world" needs only each world's evil mask, so it adds no hidden dimension.
-  Each action's rates for evil and good actors come from bot runs, not hand-set values.
-  Votes are procedural public events today; the Stage 2 circumstantial hub is built.
-  (user, Oct 24) [decided: the split; details open]
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -698,6 +729,21 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   refresh never read through a theory and live play didn't use it by default, so it is
   deleted with the purge. Revisit for the connections model. The code survives on the
   branch `archive/legacy-belief-final`. **[tentative]**
+- **Observable actions as evidence (Stage 1B)** (may scale with Insight, like the exact
+  broken-reading weighing from Steward A3). Votes, nominations, who defended whom and
+  tie-breaks as soft per-world likelihood factors: "voted to execute someone who is good in
+  this world" needs only each world's evil mask, so it adds no hidden dimension. Each
+  action's rates for evil and good actors come from bot runs, not hand-set values. (user,
+  Oct 24)
+  - **Michael (Nov 19): don't build it now.** Reading the vote, nomination and defence record
+    as evidence is left to the player, who cites votes in cases through the circumstantial
+    hub. Later, high-Insight NPCs might read the public record themselves, softly, from
+    bot-measured rates.
+  - **Today (Quill's report, Nov 19):** NPCs' actions move trust and inclination, not
+    suspicion. The exception is votes the player cites through the hub. Quill is fixing a
+    double count in the hub.
+
+  **[tentative]**
 
 ## Tabled
 
