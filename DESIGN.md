@@ -627,10 +627,15 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
   suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, and "something doesn't add up" (conflict). "Is the Demon" about someone
-  already hanged means "was the Demon when hanged", so it holds where the Scion rose after
-  (a hanging with five or more alive and a Scion on the script); "Is not the Demon" is its
-  complement (Michael, Nov 19). Protect and spare are
+  unreliable, "something doesn't add up" (conflict), and "was turned by the curse". The
+  last names the Revenant's turning itself: the person was good before the curse, evil only
+  while it held, and good again after it, so their earlier and later word stands. "Evil
+  during the curse" also allows that they were evil all along. It needs a public curse and
+  a surviving yes-voter, and it never shows who was turned: it's weighed over the worlds
+  like any premise. For someone already hanged, the Demon premise reads "was the Demon when
+  hanged", and holds where the Scion rose after (a hanging with five or more alive). It's
+  offered only with a Scion on the script, and never in the negative (Michael, Nov 19).
+  Protect and spare are
   preferences, spoken as social speech. "Has a secret" and "red herring" can't be
   presented: nothing the town can weigh establishes them.
 - **Cards with inline answers** (who in this Seer pair? which blocks?); unknown answers
@@ -643,8 +648,21 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   and is a separate retractable contribution.
 - **Links** between evidence and the premise; contradicting statements merge into a
   contradiction card that offers the challenges.
-- **Challenges** on a card: unlikely, misled or lying. A gift reading against an alibi
-  offers both explanations ("the alibi is false" / "the report is false").
+- **Challenges** on a card: Mistaken, Lying, or (Surveyor counts only) Unlikely. A
+  gift reading against an alibi offers both explanations ("the alibi is false" / "the report
+  is false"). The reading labels (Michael, Nov 18): **Mistaken**, an honest mistake (the old
+  "misled" and "failed gift", merged, since the town can rarely prove a Poisoner; it covers any
+  unreliable reading: poison, Delusion, a Marked soul, a Red Herring), doubts the reading
+  as the player's word at their credibility (the failed-gift strength), counts as saying the
+  reader is good, and points a little at the Poisoner candidates only where a Poisoner is
+  possible. A **lie** doubts the reading and puts suspicion on the reader. **Delusional** is
+  about a person, not a reading: it doubts all their readings and, the secret being
+  good-only, clears them. "misled" stays a valid name for Mistaken in saved cases and NPC
+  defences (`ReadingChallenges.canonical`); its label and tip are `HONEST_LABEL` and
+  `HONEST_TIP` there. Mistaken is allowed only where a cause the script allows could have
+  fooled that gift (`honest_allowed`): poison or Delusion any reading, a Red Herring only
+  the Seer's, Marked any of its gifts' readings but one that only speaks for people. With none, the option
+  is off.
 - **Premise → card links** mean "this card's line runs through that premise", and the
   canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.

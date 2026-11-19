@@ -152,6 +152,9 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	var challenge_errors: Array = []
 	for id in case_data.get("reading_challenges", {}):
 		var mode: String = case_data.reading_challenges[id].get("mode", "")
+		# One honest-mistake label (Nov 18): "impaired" is "misled"'s merged name.
+		if mode == "impaired":
+			mode = "misled"
 		if mode in ["misled", "lying"]:
 			var ch_card: Dictionary = card_by_id(view, id)
 			# A Medium relay's challenge names whose word is doubted (Codex, #195): the
@@ -160,7 +163,7 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 			var assumed: String = "good" if mode == "misled" else "evil"
 			var allowed: Array = ["good", "marked"] if mode == "misled" else ["evil", "demon", "minion"]
 			if positions.get(source, assumed) not in allowed:
-				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % mode.capitalize())
+				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % ("Lying" if mode == "lying" else preload("res://workshop/reading_challenges.gd").HONEST_LABEL))
 			else:
 				positions[source] = positions.get(source, assumed)
 	for pcard in cards:
@@ -1724,6 +1727,10 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
 		"marked": return world.marked == index
+		# "X was turned by the Revenant's curse" (BACKLOG "Time-scoped Revenant possession
+		# premise"): X is the soul the curse turned, so good before and after it and evil
+		# only while it held. Never true with no public curse (no world is turned).
+		"turned": return int(world.get("converted", -1)) == index
 		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
 		"role", "notrole":
 			# A declaration question, not an extra hidden role assignment: the live

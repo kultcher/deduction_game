@@ -1367,6 +1367,21 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 	var reports = Dialogue.compose_turn(n.id, parts, {"audience": "player", "speech_act": "answer",
 		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, was_s != "")
 	var spoken: String = " ".join(PackedStringArray(reports.map(func(r): return r.text)))
+	# Honest forgetting (Michael, Nov 19): when memory, not discretion, dropped people they
+	# saw, they say so without naming anyone. Never when Gossip held anyone back, so it
+	# can't stand in for discretion; an evil speaker's teammates never count (skipped above).
+	if recalled.size() <= limit:
+		var forgotten: int = 0
+		var counted = {}
+		for b in seen:
+			var who_id: String = b["who"]
+			if people.has(who_id) or counted.has(who_id) or (n.is_evil() and Evil.is_teammate(w, n, who_id)):
+				continue
+			counted[who_id] = true
+			forgotten += 1
+		if forgotten > 0:
+			w.dlog.think(n.id, "forgot", "Can't place %d more seen in that time (memory %d)." % [forgotten, memory])
+			spoken += " " + Dialogue.voice_line(n.id, "day_forgot_others", "There were others, but I can't place them.")
 	lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + spoken))
 	return {"lines": lines, "facts": facts}
 
@@ -1506,7 +1521,64 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
 	_second_hand_gift_note(w, n, t, lines, facts)
+	_meeting_note(w, n, t, lines, facts)
 	return {"lines": lines, "facts": facts}
+
+## Asked about someone, the speaker mentions the latest meeting of theirs it saw or heard of,
+## from today or yesterday (BACKLOG item 3, Michael, Nov 18: meetings feed the gossip
+## network). Once for each meeting. The player takes it as a location report for each of the
+## two, at second hand when the speaker only heard of it. Evil keeps quiet about its
+## teammates' meetings; nobody repeats one the player can see for themselves.
+static func _meeting_note(w, n, t, lines: Array, facts: Array) -> void:
+	# Every meeting of theirs it saw or heard of, from today or yesterday; the latest one not yet
+	# told wins, first or second hand alike (Codex on #308: an old memory mustn't block newer word).
+	var cands: Array = []
+	for b in n.beliefs:
+		if b.get("kind", "") == "saw" and b.get("phase", C.NIGHT) != C.NIGHT and str(b.get("with", "")) != "" and str(b.get("loc", "")) != "" \
+				and t.id in [str(b.get("who", "")), str(b["with"])] and int(b.get("day", -1)) >= w.day - 1:
+			cands.append({"a": str(b["who"]), "b": str(b["with"]), "loc": str(b["loc"]), "block": str(b.get("block", "")), "day": int(b["day"]), "phase": int(b["phase"]), "witness": n.id})
+	for h in n.hearsay:
+		if str(h.get("kind", "")) == "meeting" and t.id in [str(h.get("about", "")), str(h.get("with", ""))] and int(h.get("day", -1)) >= w.day - 1 \
+				and w.by_id.has(str(h.get("witness", ""))):
+			cands.append({"a": str(h["about"]), "b": str(h["with"]), "loc": str(h["loc"]), "block": str(h.get("block", "")), "day": int(h["day"]), "phase": int(h["phase"]), "witness": str(h["witness"])})
+	var got: Dictionary = {}
+	var other_id: String = ""
+	var key: String = ""
+	for c in cands:
+		var oid: String = c.b if c.a == t.id else c.a
+		if oid == n.id or not w.by_id.has(oid):
+			continue
+		if n.is_evil() and (Evil.is_teammate(w, n, t.id) or Evil.is_teammate(w, n, oid)):
+			continue
+		if c.day == w.day and c.phase == w.phase and c.loc == w.player_loc:
+			continue
+		var pair: Array = [t.id, oid]
+		pair.sort()
+		var k: String = "player|meeting:%s:%s:%d:%d" % [pair[0], pair[1], c.day, c.phase]
+		if n.told_to.has(k):
+			continue
+		# The latest; on a tie, what they saw themselves.
+		if got.is_empty() or c.day * 3 + c.phase > got.day * 3 + got.phase or (c.day * 3 + c.phase == got.day * 3 + got.phase and c.witness == n.id and got.witness != n.id):
+			got = c
+			other_id = oid
+			key = k
+	if got.is_empty():
+		return
+	n.told_to[key] = true
+	var other = w.by_id[other_id]
+	var where: String = w.loc_name(got.loc)
+	var when_s: String = "%s %s" % ["yesterday" if got.day < w.day else "this", C.PHASES[got.phase].to_lower()]
+	var fact: Dictionary = {"kind": "conversation", "subject": [t.id, other_id], "block": got.block, "loc": got.loc, "day": got.day, "phase": got.phase,
+		"source": got.witness, "text": "%s saw %s and %s talking at %s, day %d %s." % [w.by_id[got.witness].name, t.name, other.name, where, got.day, C.PHASES[got.phase]]}
+	if got.witness == n.id:
+		lines.append(say(n, "I saw %s at %s, talking with %s, %s." % [t.name, where, other.name, when_s]))
+	else:
+		# Heard of it: second hand, through this speaker.
+		fact["via"] = n.id
+		fact["text"] = "Via %s: %s" % [n.name, fact["text"]]
+		var heard_fallback: String = "%s told me they saw %s and %s talking at %s, %s." % [w.by_id[got.witness].name, t.name, other.name, where, when_s]
+		lines.append(say_voiced(n, "gossip_meeting", heard_fallback, {"source": w.by_id[got.witness].name, "a": t.name, "b": other.name, "place": where, "when": when_s}))
+	facts.append(fact)
 
 ## Meeting plan M1: asked about someone, a willing good speaker passes on a private gift
 ## claim or hint that person made to them (once; shares the keys gossip_item uses).

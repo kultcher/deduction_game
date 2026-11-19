@@ -178,6 +178,18 @@ A Minion whose presence adds secrets to the town. Can the extras come from the f
 ## 7. What changes for what exists
 
 - **Delusional, Marked, Sleepwalker:** unchanged. They remain the one enumerated slot.
+- **Marked may change** (Michael, Nov 19, relayed by Seneschal): probably, possibly no longer
+  a hidden state. Whoever builds its new form revisits a knock-on effect with premise
+  centring, which Michael is holding until the rework.
+  - **The problem today:** a case that argues no one's alignment ("Merrin is Marked", or
+    "these readings conflict") leaves the cards it shares with other cases unshaped
+    (`SharedLedger.brought_by_premise`). Lantern's example: present "Merrin is Marked" with
+    cards from an earlier "Odette is evil" case, and that case's centring is undone. Its
+    readings count in full against everyone again, so Merrin and Lian each rise by about
+    22 to 34 points of suspicion. Asking "is she Marked?" makes the town think she's
+    likelier evil.
+  - **Lantern's recommendation:** a case with no alignment target should leave the
+    centring alone, rather than undo it.
 - **The Lovers become a knowing kind.**
   - Evil can claim to be a Lover, so `Solver.lovers_needs` (confession as proof) must go.
     Bailiff's #162 note flags this as a landmine.
@@ -315,7 +327,7 @@ if "not dealt this game" is allowed. That is about a sixth of today, before Mini
 or larger towns spend the room. As section 4 says, the real speed-up is smaller than the
 count; Argon would measure it.
 
-Still open: whether Marked stays as a hidden kind in the same exclusive group, becomes
+Still open: whether Marked (likely to change, Michael Nov 19; see section 7) stays as a hidden kind in the same exclusive group, becomes
 something else, or goes.
 
 ### 10.4 Confidants: secrets known to others (not decided)

@@ -436,6 +436,9 @@ func add_modifier(id: String, mode: String, attribution: String = "") -> String:
 		attribution = ""
 	if report.kind != "report" or report.get("testimony_only", false) or mode not in ["misled", "lying", "unlikely", "impaired"] or (mode == "unlikely" and (report.get("role", "") != "surveyor" or not report.get("data", {}).has("count"))):
 		return "This modifier is not supported for that evidence type."
+	# Mistaken needs a cause the script allows that could have fooled this gift (Nov 18).
+	if RC.canonical(mode) == RC.HONEST and not RC.honest_allowed(view, report, attribution):
+		return "Nothing in this town could have fooled that gift."
 	for node in nodes.values():
 		if node.kind == "modifier" and node.card == report.id:
 			node.mode = mode
@@ -890,7 +893,7 @@ func premise_offered(type: String, target: String) -> bool:
 
 const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
 	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
-	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "role": "holds their claimed gift",
+	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "turned": "was turned by the Revenant's curse", "role": "holds their claimed gift",
 	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
 	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading", "inconsistent": "has readings that don't fit together"}
 
@@ -907,7 +910,7 @@ func title(id: String) -> String:
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":
-		var mode_title: String = {"misled": "Misled reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": "Failed gift"}[node.mode]
+		var mode_title: String = {"misled": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + " reading", "lying": "Suspected lie", "unlikely": "Unlikely reading", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL + " reading"}[node.mode]
 		return mode_title + (" · " + RELAY_SIDE_TEXT.get(node.attribution, "") if node.has("attribution") else "")
 	if node.kind == "profile_info":
 		return "%s's Profile" % Solver.person_name(view, node.get("person", ""))

@@ -176,6 +176,11 @@ static func conclusion_text(w, c: Dictionary) -> String:
 		"evil":
 			return "%s is evil" % a
 		"demon":
+			# About someone the town hanged: "was the Demon when hanged", as the Workshop
+			# canvas reads it (CanvasModel.HANGED_DEMON_TEXT; Michael, Nov 19).
+			var who = w.by_id.get(c.get("a", ""), null) if w != null else null
+			if who != null and not who.alive and who.death_cause == "executed":
+				return "%s was the Demon when hanged" % a
 			return "%s is the Demon" % a
 		"good":
 			return "%s is good" % a
@@ -201,6 +206,8 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "Something doesn't add up: one of %s is misled or lying" % _names(w, c.get("group", []))
 		"suspicious":
 			return "%s is suspicious" % a
+		"turned":
+			return "%s was turned by the Revenant's curse" % a
 		"secret":
 			return "%s is hiding a secret (an innocent one)" % a
 		"marked":

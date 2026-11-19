@@ -103,13 +103,14 @@ func _init() -> void:
 	var off: Dictionary = _hear(call, 1, 0.7)
 	SourceDoubt.player_failed_gift = true
 	check(off.doubt == 0.0, "with the switch off the call doesn't reach honest doubt (%.3f)" % off.doubt)
-	# 4. No Poisoner on the script: the call carries nothing (the "failed gift" cause is zero).
+	# 4. No Poisoner on the script: the one honest-mistake call (Nov 18) still carries the
+	# credibility doubt, with no poison chance to weigh on top.
 	var g4 = call.g
 	var mins: Array = g4.w.case_script.minions.duplicate()
 	g4.w.case_script.minions = mins.filter(func(m): return m != "poisoner")
 	var nopo: Dictionary = _hear(call, 1, 0.9)
 	g4.w.case_script.minions = mins
-	check(nopo.doubt == 0.0, "with no Poisoner on the script the call carries nothing (%.3f)" % nopo.doubt)
+	check(is_equal_approx(nopo.doubt, SourceDoubt.call_doubt(0.9)), "with no Poisoner on the script the call carries the credibility doubt alone (%.3f against %.3f)" % [nopo.doubt, SourceDoubt.call_doubt(0.9)])
 	# 4b. Codex on #270: the challenged card as a Registrar's night-0 register (never poisoned)
 	#     carries nothing; as a relayed reading, the call lands on whichever side it names.
 	var call5: Dictionary = _game(true)
@@ -140,7 +141,9 @@ func _init() -> void:
 	var reader_key: String = "%s:0" % call5.reader.id
 	var medium_key: String = "%s:1" % medium_id
 	check(float(SourceDoubt.derive(plan5, lis.ledger, {}).honest.get(reader_key, 0.0)) > 0.0, "the unchanged call does carry a doubt (so the checks below test something)")
-	check(float(doubts.registrar.get(reader_key, 0.0)) == 0.0, "a call on a Registrar's night-0 register carries no poison doubt (%.3f)" % float(doubts.registrar.get(reader_key, 0.0)))
+	var reg_d: float = float(doubts.registrar.get(reader_key, 0.0))
+	var unchanged_d: float = float(SourceDoubt.derive(plan5, lis.ledger, {}).honest.get(reader_key, 0.0))
+	check(reg_d > 0.0 and reg_d <= unchanged_d + 1e-9, "a call on a Registrar's night-0 register carries the call's doubt but no poison chance (%.3f, at most %.3f)" % [reg_d, unchanged_d])
 	check(float(doubts.original.get(reader_key, 0.0)) > 0.0 and float(doubts.original.get(medium_key, 0.0)) == 0.0, "a call on a relayed reading's original doubts the dead reader, not the Medium")
 	check(float(doubts.transmission.get(medium_key, 0.0)) > 0.0 and float(doubts.transmission.get(reader_key, 0.0)) == 0.0, "a call on its transmission doubts the Medium's night, not the reader")
 	# 4c. A Gravedigger verdict called poisoned proves less (Codex on #270): the doubt goes in

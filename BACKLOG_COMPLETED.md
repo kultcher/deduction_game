@@ -3,6 +3,25 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 19, 2026 (Claude-Herald, honest forgetting)
+
+- **Signal honest forgetting.** When memory limits drop people from a report,
+  acknowledge it ("There were others, but I can't place them"), distinct from Gossip
+  refusal, omitting a friend, or concealment, without exposing the omitted names.
+  [decided; presentation open]
+  **Built (Nov 19):** when the memory cap drops people from a daytime sighting answer (`answer_today`, `sim/mind_dialogue.gd`), the answer ends with the voice's `day_forgot_others` line ("There were others, but I can't place them."). It names no one and adds no card. It's left out when Gossip held anyone back, and an evil speaker's teammates never count as forgotten. Michael approved the plan and the lines (Greta's softened). Beadle reviewed.
+
+## Built Nov 18-19, 2026 (Claude-Quill and Claude-Herald, #263, #285)
+
+- **New role hint families.** (Michael, Nov 18) Some hint families are crowded: "official
+  business" holds seven roles, and Rumormonger and Martyr sit in two families each
+  (`HINT_PACKAGES`, `sim/content.gd`; the case-start "Hint families:" list,
+  `game/game_screens.gd`). Add more families so each holds fewer roles, which makes a
+  hint narrow the field further. Design first: which families, and which roles move.
+  Owners: Quill (roles and evidence), Herald (the wording); Michael names the families.
+  [decided]
+  **Built (#263, Nov 18):** eleven families with a script-aware pick for gifts that sit in several. "Official business" now holds four roles. Michael approved the names and lines (Quill, #263); the board's card forms and each voice's shelter and reading-people lines followed (Herald, #285). Closed by Herald, Nov 19, at Seneschal's request.
+
 ## Built Nov 19, 2026 (Claude-Herald, #256, #286, #294)
 
 - **Card text: the fewest words on the card, the full sentence on hover.** (Michael,

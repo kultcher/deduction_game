@@ -44,16 +44,71 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_a91d12d`
+### Current baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`
 
-`tools/golden/baseline_a91d12d/` is the capture from `claude/herald-hanged-refusals` (#312) at
-`a91d12d` (main `b856819`). Michael approved capitalising "Demon" throughout (Nov 19): "the demon"
-becomes "the Demon" in readings, role descriptions, filed-case text, logs and dialogue.
-- **Text only:** every record is identical to `baseline_e287b3d` once case is ignored, on all
-  five seeds. No belief, vote or outcome moves.
-- **First text difference:** 42 and 900 at record 1 (a Seer reading's text), 54875 and 98933 at
-  record 54, and 692 at record 25 (the evening reply).
-- **Outcomes unchanged:** the same as `baseline_e287b3d` on every seed, with the same record counts.
+`tools/golden/baseline_d6a93f1/` is the capture from `claude/beadle-evil-confer` at `d6a93f1`
+(main `8801906` merged in). Those at the place where two people talked after the player had
+gone see it. A witness passes on a meeting in conversation, and asked about either person an
+NPC reports it, first or second hand (BACKLOG item 3, Michael, Nov 18-19). The pairing itself is
+unchanged.
+- **Divergence from `baseline_22733aa`:**
+  - 54875 from record 84 (day 2: a meeting seen after the player had gone);
+  - 692 from record 40 (Bart's refresh on day 2, after hearing of a meeting);
+  - 98933 from record 82 (Dorian's refresh on day 2);
+  - 42 and 900 are identical.
+- **Outcomes:**
+  - **692:** hanged Constance on day 3; now also hangs Greta on day 2. No winner by day 4.
+  - **42, 54875, 900 and 98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, a Warden's guard read with its night): `baseline_22733aa`
+
+`tools/golden/baseline_22733aa/` is the capture from `claude/warden-night-item` at `22733aa`
+(main `0670ba8` merged in). A Warden's guard report now sits in its night's movement item with
+that night's sightings and alibis (`Connections.NIGHT_ROLES`), so a quiet-night guard is weighed
+together with who was seen near the guarded door, instead of alone.
+- **Divergence from `baseline_74eb971`:** 692 from record 32 (Nisha's refresh on day 2, the
+  first refresh that holds a Warden's guard). 42, 54875, 900 and 98933 are identical.
+- **Outcomes:** 692 hangs the same person, Constance, on day 3, with the same eight yes votes.
+  Nisha now nominates her instead of Fenwick. It still reaches day 4 with no winner, in 249
+  records (was 251). Every other seed is unchanged.
+- **Stability:** two captures were identical. The same divergence and outcome as this branch's
+  earlier captures on older mains (`baseline_e1d1934`, `baseline_3710796`, never on main).
+
+### Earlier baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
+
+`tools/golden/baseline_74eb971/` is the capture from `claude/beadle-agreement-trust` at `74eb971`
+(main `4248293` merged in, with #296). A good NPC warms a little to those who vote
+the same way, and to someone who nominates or accuses a person it already suspects (Michael,
+Nov 18). The reading steps were taken out on Nov 19 and moved to their own item, so readings
+change no trust here. It replaces this PR's earlier `baseline_6c45840`, which was on main before
+#296; against it, only 98933 moves (from its day-2 nomination, under #296's retuned lie call),
+with the same outcome.
+- **Divergence from `baseline_21df80d`:** every seed, at the first ballot or the refresh after
+  it. 54875 and 98933 from record 52 (day 1's vote), 42 from 55 and 900 from 74 (day 2's vote),
+  692 from 62 (Nisha's refresh on day 2).
+- **Outcomes:**
+  - **42:** unchanged (good on day 3, hanging Agnes).
+  - **692:** unchanged (Constance hanged on day 3, no winner by day 4).
+  - **900:** unchanged (Lian hanged on day 3, no winner by day 4).
+  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs only Edda, on day 3.
+  - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, the Mistaken label): `baseline_21df80d`
+
+`tools/golden/baseline_21df80d/` is the capture from `claude/honest-mistake` at `21df80d`
+(main `678838f`). "misled" and "failed gift" become one honest-mistake label, Mistaken, and a
+lie call's gate and floor are retuned so it moves suspicion.
+- **Divergence from `baseline_e287b3d`:**
+  - 98933 from record 147, 900 from record 138 and 54875 from record 295. Each is only the
+    stored mode of an NPC's "misled" defence challenge, now "impaired", the merged mode's
+    code name.
+  - 42 and 692 are identical.
+  - With `--ignore engine,mode`, all five seeds are identical, so no belief, vote or
+    execution moves. Nothing in an autoplay game makes a player lie call.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`

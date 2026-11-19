@@ -204,8 +204,10 @@ func _script_without_poisoner() -> void:
 	var d2 = _remember(g, _read(g, p[6], "dowser", 1, {"group": [p[4].id], "count": 0}))
 	var res: Dictionary = _present(g, "evil", p[2].id, [seer, d1, d2], seer, "impaired", [d1, d2])
 	var ir: Dictionary = _result_for(res.results, "impaired")
-	check(not ir.is_empty() and float(ir.get("graded", {}).get("cause", 1.0)) == 0.0 and float(ir.get("agreement", 1.0)) == 0.0,
-		"with no Poisoner on the script, a failed-gift challenge carries no blame (%s)" % ir.get("graded", {}))
+	# The one honest-mistake label (Nov 18): with no Poisoner the call is still an honest
+	# mistake (its cause is the share a lie doesn't carry), but it points at no one.
+	check(not ir.is_empty() and float(ir.get("graded", {}).get("cause", 0.0)) > 0.0 and ir.get("candidates", {}).is_empty(),
+		"with no Poisoner on the script, an honest-mistake challenge still doubts the reading but blames no one (%s, candidates %s)" % [ir.get("graded", {}), ir.get("candidates", {})])
 
 ## Review fix (Codex, PR #95): "the content holds" is about the content, not the source.
 ## A Dowser's clear holds wherever its subject is good, even if the Dowser is evil, and

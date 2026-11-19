@@ -10,7 +10,7 @@ const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
@@ -790,6 +790,13 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 			return [HANGED_NO_SCION_ISSUE]
 	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
 		return ["Choose a supported modifier for the secret premise."]
+	# "X was turned by the curse" needs a public curse, and X among the souls it could turn.
+	if c.type == "turned":
+		var curse: Dictionary = view.get("chronology", {}).get("curse", {})
+		if curse.is_empty():
+			return ["No curse has fallen on the town, so no one has been turned."]
+		if str(c.get("target", "")) not in curse.get("yes_voters", []) or str(c.get("target", "")) == str(curse.get("executed", "")):
+			return ["Only those who voted to hang the Revenant, and lived, could have been turned."]
 	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
 		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
 	if c.type == "inconsistent":

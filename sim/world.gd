@@ -800,7 +800,22 @@ func _make_pair(a, b, when: String) -> void:
 	var evil_meet = a.is_evil() and b.is_evil()
 	dlog.add("npc_conversation", a.id, b.id, {"when": when, "loc": a.loc, "visible": when == "pre", "evil_meeting": evil_meet},
 		"%s and %s talk%s (content: stage 2)." % [a.name, b.name, " (evil meeting)" if evil_meet else ""])
+	if when != "pre":
+		_witness_meeting(a, b)
 	Social.converse(self, a, b, when)
+
+## Those at the place where two people talked after the player had gone see it (BACKLOG item
+## 3, Michael, Nov 18: every meeting feeds the gossip network). A meeting before the player's
+## choice is seen through the phase's day sightings (`_day_sightings`, the "with" field).
+func _witness_meeting(a, b) -> void:
+	if a.at_home() or a.loc != b.loc:
+		return
+	for x in living():
+		if x == a or x == b or x.at_home() or x.loc != a.loc:
+			continue
+		for pr in [[a, b], [b, a]]:
+			x.beliefs.append({"kind": "saw", "who": pr[0].id, "loc": a.loc, "block": loc_block(a.loc),
+				"day": day, "phase": phase, "with": pr[1].id})
 
 ## After the player's action: remaining idlers on the same location may pair off.
 func _post_pair(talked_id: String) -> void:
@@ -926,6 +941,7 @@ func open_nomination(by: String, nominee: String, reason: String = "") -> Dictio
 	else:
 		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - Tuning.Trust.NOMINATED_NPC_TRUST_DROP, 0.0, 1.0)
 		dlog.add("npc_trust", nominee, by, {"to": target.npc_trust[by]}, "%s nominated me" % by)
+		Social.backing_trust(self, nominee, by, "nominated %s, whom I suspect too" % nominee)
 	dlog.add("nomination", by, nominee, {"reason": reason, "on_block": meeting["block"], "block_count": meeting["block_count"]})
 	return nm
 
@@ -1009,6 +1025,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		for v in no:
 			if v != nid and by_id.has(v):
 				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	Social.vote_agreement_trust(self, nid, yes, no)
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":
