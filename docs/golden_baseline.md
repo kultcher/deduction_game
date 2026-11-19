@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, self-doubt from the judge): `baseline_6569929`
+### Current baseline (Nov 19, trust from readings that confirm): `baseline_8d946e7`
+
+`tools/golden/baseline_8d946e7/` is the capture from `claude/beadle-reading-trust` at `8d946e7`
+(main with #320 merged in). The trust a confirming reading earns counts in the same refresh's
+solve (Bailiff's `test_workshop_action` catch), so it takes effect one refresh sooner than in
+the earlier captures of this branch. A good listener gains trust in a teller whose reading
+confirms what it knows or strongly believes (small 0.06, moderate 0.12, known 0.20), once per
+reading by its logical origin. The agreement step from #292 becomes 0.02 (Michael, Nov 19, set
+R3). The record of confirmations is kept in `workshop_state`.
+- **Divergence from `baseline_6569929`:** every seed, from record 1 (the record's place in each
+  NPC's `workshop_state`, and the first day's refreshes judging the night-0 readings).
+- **Outcomes:**
+  - **42, 692 and 900:** unchanged.
+  - **54875:** hanged Edda on day 3 with no winner by day 4. Now it hangs Edda on day 2 and
+    Hollis on day 3, still with no winner by day 4.
+  - **98933:** good won on day 2, hanging Odette. Now it hangs Dorian on day 2 and Isolde on
+    day 3, with no winner by day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, self-doubt from the judge): `baseline_6569929`
 
 `tools/golden/baseline_6569929/` is the capture from `claude/self-doubt-posterior` at `6569929`
 (main `aef2ff9` merged in). A good NPC's self-doubt is now the judge's chance each night's own
@@ -57,7 +76,6 @@ Delusional prior that `workshop_state.self_doubt` used to hold is stored as
   play reads self-doubt yet.
 - **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
   seed.
-- **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
 
