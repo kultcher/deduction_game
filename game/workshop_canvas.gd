@@ -340,15 +340,18 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	# applies it (Jury): agreement at or over the bar (Lantern, Nov 19).
 	for f in pj.get("floors", []):
 		if str(f.get("mode", "")) == "lying" and float(f.get("agreement", 0.0)) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
-			presses.append({"source": str(f.get("source", "")), "agreement": float(f.get("agreement", 0.0))})
-	# Each lie call's outcome for this listener, for the badge's words (Herald, Nov 19):
-	# "pressed" (accepted: the town presses the teller as the liar), "draw" (grounded on
-	# another townsperson's word, which this listener trusts no more than the teller's) or
-	# "bare" (no grounds on the case). `witnesses`: the tellers of its grounds.
+			presses.append({"source": str(f.get("source", "")), "reading": str(f.get("card", "")), "agreement": float(f.get("agreement", 0.0))})
+	# Each lie call's outcome for this listener, for the badge's words (Herald, Nov 19; Lantern's
+	# review of #332), read from its own assessment (the `floors` entry for that reading):
+	# "pressed": accepted (agreement at the bar): the town presses the teller as the liar;
+	# "draw": its grounds clash with the reading, but not enough (your word against theirs);
+	# "unestablished": grounds are cited, but they don't contradict the reading;
+	# "bare": no grounds on the case. `witnesses`: the tellers of its grounds.
+	var by_card: Dictionary = {}
+	for f in pj.get("floors", []):
+		if str(f.get("mode", "")) == "lying":
+			by_card[str(f.get("card", ""))] = f
 	var outcomes: Array = []
-	var pressed: Dictionary = {}
-	for f in presses:
-		pressed[f.source] = true
 	var challenges: Dictionary = value.get("reading_challenges", {})
 	for rid in challenges:
 		var ch: Dictionary = challenges[rid]
@@ -360,7 +363,13 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 			var w: String = _card_source(g, str(sid))
 			if w != "" and w != "player" and w not in witnesses:
 				witnesses.append(w)
-		var kind: String = "pressed" if pressed.has(teller) else ("draw" if not ch.get("supports", []).is_empty() else "bare")
+		var f: Dictionary = by_card.get(str(rid), {})
+		var kind: String = "bare"
+		if float(f.get("agreement", 0.0)) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+			kind = "pressed"
+		elif not ch.get("supports", []).is_empty():
+			var clash: bool = float(f.get("accuracy_agreement", 0.0)) > 0.0 or str(f.get("note", "")).begins_with("The report conflicts")
+			kind = "draw" if clash else "unestablished"
 		outcomes.append({"reading": str(rid), "teller": teller, "kind": kind, "witnesses": witnesses})
 	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
 		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses, "challenges": outcomes}
@@ -642,7 +651,9 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	# The same question through the listener path (Michael, Nov 19, juror fix (a)): what
 	# presenting it would change for an average listener, each card as heard
 	# (Connections.judge_for_profile, its "marginal" default), at the case's full weight as
-	# the threshold reads it. The note and the badge then come from one entry point.
+	# the threshold reads it: the logit move divided by the case's weight, an approximation
+	# (the posterior isn't quite linear in the weight; Lantern, #332). The note and the badge
+	# then come from one entry point.
 	var heard: Dictionary = Connections.judge_for_profile(g, value)
 	if heard.get("ready", false):
 		var w: float = maxf(0.001, float(heard.get("case", {}).get("weight", 1.0)))

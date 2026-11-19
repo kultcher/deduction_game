@@ -129,6 +129,13 @@ func _draw_and_bare() -> void:
 	var a: Array = Live.listener_reading(g, alone).get("challenges", [])
 	check(u.size() == 1 and u[0].kind == "pressed", "a lie call is weighed against the whole case: with the contradicting reading on it, it's accepted uncited (%s)" % str(u))
 	check(a.size() == 1 and a[0].kind == "bare", "a bare call on a reading nothing argues against presses no one (%s)" % str(a))
+	# Grounds that agree with the reading don't establish anything (Lantern's review of #332).
+	var agreeing = value.duplicate(true)
+	agreeing.conclusion = {"type": "good", "target": f.innocent.id, "at": view.alignment_epoch}
+	agreeing.cards = [n_id, t_id]
+	agreeing.reading_challenges = {n_id: {"mode": "lying", "supports": [t_id]}}
+	var e: Array = Live.listener_reading(g, agreeing).get("challenges", [])
+	check(e.size() == 1 and e[0].kind == "unestablished", "a call whose cited grounds agree with the reading is not established (%s)" % str(e))
 
 
 func _done() -> void:
