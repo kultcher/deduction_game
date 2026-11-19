@@ -908,7 +908,7 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 			# Keeps the motive it was made for, and says why it was changed, as the rework path
 			# does (Steward Nov 19 A4: the alternative's own reason replaced the motive).
 			entry = kept["entry"]
-			kept_note = "its first version would have cleared someone its earlier readings pointed at, so it told this one instead"
+			kept_note = "The first version would have cleared someone its own earlier readings had pointed at, so it changed the story."
 		# Checked against what's already public: a self-incriminating one may be noticed,
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
@@ -918,7 +918,8 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		why = named(w, why)
 		entry["why"] = "evil fabrication: " + why
 		if kept_note != "":
-			entry["why"] += "; " + kept_note
+			# Michael's wording (Nov 19), from Herald's draft.
+			entry["why"] += ". " + kept_note
 		if vetted["outcome"] == "reworked":
 			# Keeps the motive it was made for, and says why it was changed (Steward A2-A3:
 			# the alternative's own reason replaced the motive, and named ids).
@@ -943,7 +944,10 @@ static func _boxed_in_gift_doubt(w, m, entry: Dictionary) -> bool:
 	if not m.claim_public or m.claimed_role != role or not m.gift_doubt.is_empty() or not gift_turn_possible(w):
 		return false
 	var why: String = "it had held back its made-up %s reading twice, and every way of telling it would have turned the town on itself or a fellow evil" % C.role_name(role)
-	m.gift_doubt = {"day": w.day, "role": role, "why": why}
+	# Whether the held-back reading was its first for this gift: then it speaks of "that reading",
+	# not "those readings" (Steward Nov 19; Michael approved the lines).
+	var told_before: int = m.info_log.filter(func(e): return str(e.get("role", "")) == role).size()
+	m.gift_doubt = {"day": w.day, "role": role, "why": why, "first": told_before == 0}
 	w.dlog.think(m.id, "plan", "Evil: boxed in on its %s reading; drops it and will say its gift may have been turned (%s)." % [role, why])
 	w.dlog.add("gift_doubt_planned", m.id, "", entry, "%s (evil, bluffing %s) drops a reading it can't tell safely and will claim its gift was turned [%s]" % [m.name, role, why])
 	return true

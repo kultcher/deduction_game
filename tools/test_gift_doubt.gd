@@ -31,6 +31,7 @@ func check(ok: bool, label: String) -> void:
 
 func _init() -> void:
 	_trigger()
+	_one_or_many()
 	_gate()
 	_listener()
 	_retracted_gravedigger()
@@ -88,6 +89,39 @@ func _trigger() -> void:
 	facts.clear()
 	MindMeeting._say_gift_doubt(w, m, lines, facts)
 	check(lines.is_empty() and facts.is_empty(), "said once only")
+
+
+## "That reading", not "those readings", when the held-back one was its first for the gift
+## (Steward Nov 19; Michael approved the lines): the singular line then, the plural otherwise.
+func _one_or_many() -> void:
+	for told in [0, 1]:
+		var g = Game.new()
+		g.detailed_logging = false
+		g.new_case(9503, 10)
+		var w = g.w
+		var fs := FakeScript.new()
+		fs.minions = ["poisoner"]
+		w.case_script = fs
+		var m = _liar(g)
+		var role: String = w.evil_plan["bluffs"][m.id]
+		m.claimed_role = role
+		m.claim_public = true
+		m.info_log = m.info_log.filter(func(e): return str(e.get("role", "")) != role)
+		if told == 1:
+			m.info_log.append({"role": role, "day": 1, "text": "an earlier one", "data": {}, "fake": true, "shared": true})
+		Evil._boxed_in_gift_doubt(w, m, {"role": role, "day": w.day, "text": "x", "data": {}})
+		var lines: Array = []
+		# The listeners' refreshes are held, as in _trigger: the stand-in script isn't a real one.
+		w.defer_beliefs = true
+		w.pending_beliefs = []
+		MindMeeting._say_gift_doubt(w, m, lines, [])
+		w.pending_beliefs = []
+		w.defer_beliefs = false
+		var said: String = str(lines[0].get("statement", "")) if not lines.is_empty() else ""
+		if told == 0:
+			check(m.gift_doubt.get("first", false) and said == "Something seems off about that reading. I fear something might have turned my gift.", "its first reading for the gift: the singular line (%s)" % said)
+		else:
+			check(not m.gift_doubt.get("first", true) and said.begins_with("Something seems off about those readings"), "with an earlier reading told: the plural line (%s)" % said)
 
 
 func _gate() -> void:
