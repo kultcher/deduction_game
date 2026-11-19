@@ -280,8 +280,8 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 
 ## The caught-out ladder's soft tier (Michael, Nov 19: one ladder for good and evil, so the
 ## answer isn't a tell). A walker whose gift (or evil's bluff) would explain the night, not
-## yet claimed, owns the night and keeps the gift: "Fine, I was out", then the default gift
-## refusal. It names a gift only when pressed again about that night, or once nominated.
+## yet claimed, owns the night and keeps the gift: "Fine, I was out", then the default
+## whereabouts refusal ("Where I go at night is my own business"). It names a gift only when pressed again about that night, or once nominated.
 ## {} when it's already given the soft tier for that night, or is nominated: the caller
 ## names the gift (a good walker its own, evil its planned walking bluff).
 static func _soft_tier(w, n, night: int) -> Dictionary:
@@ -296,7 +296,9 @@ static func _soft_tier(w, n, night: int) -> Dictionary:
 	if night not in n.lied_nights:
 		n.lied_nights.append(night)
 	_own_night_account(w, n, night, where.substr(6))
-	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong."), gift_refusal(n)]
+	# The reason kept back with the whereabouts refusal, not the gift refusal: some voices'
+	# gift refusals name a gift the player never asked about (Herald, Nov 19).
+	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong."), whereabouts_refusal(n, night)]
 	var facts: Array = [_excuse_fact(w, n, night, "admit")]
 	if n.is_evil():
 		w.dlog.think(n.id, "admit_out", "Caught out on night %d: owns the night and keeps its planned %s bluff back for now." % [night, C.role_name(str(w.evil_plan["bluffs"].get(n.id, "")))], {"why": "caught out of a home alibi; a walking bluff would explain the night"})

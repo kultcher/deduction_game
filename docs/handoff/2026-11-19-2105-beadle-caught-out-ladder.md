@@ -19,11 +19,14 @@ alibi, now answers on one ladder, whether it is good or evil.
    - **New:** evil now does this when shown a case too (`trapped_explanation`). Before, it
      said only "Fine, I was out".
 2. **An unclaimed walking gift or bluff gets the soft tier (new).** "Fine, I was out", then
-   the NPC's default gift refusal. It owns the night, but keeps the gift.
+   the NPC's default whereabouts refusal ("Where I go at night is my own business"). It owns
+   the night, but keeps the gift.
    - **Before:** a good hidden walker revealed its gift outright, and evil with a planned
      walking bluff claimed the bluff outright.
-   - **Lines:** it uses the existing `trapped_night_out` and `gift_refusal` lines; Michael
-     rejected "duties not mine to tell". Herald has the final say on wording.
+   - **Lines:** it uses the existing `trapped_night_out` line and the whereabouts refusal.
+     Michael rejected "duties not mine to tell" and suggested the gift refusal. Herald, who
+     has the final say on wording, chose the whereabouts refusal instead: some voices' gift
+     refusals name a gift the player never asked about.
 3. **Pressed again about that night, or once nominated,** it names the gift: a good walker
    its own, evil its planned walking bluff. This is the old reveal, one step later.
 4. **Evil with nothing to claim** (a non-walking bluff, or none), caught out by a case, owns

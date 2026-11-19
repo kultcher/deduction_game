@@ -3,7 +3,7 @@
 ##   1. with a claimed walking gift (or evil's claimed walking bluff) tells that duty, and
 ##      its facts are marked as a "duty" excuse;
 ##   2. with an unclaimed walking gift or bluff, owns the night and keeps the gift ("Fine, I
-##      was out" and the gift refusal, an "admit" excuse);
+##      was out" and the whereabouts refusal, an "admit" excuse);
 ##   3. pressed again, or nominated, names the gift: a good walker its own, evil its bluff;
 ##   4. evil with nothing to claim owns the night and says only that being out isn't wicked
 ##      (a "not_wicked" excuse), or offers the sleepwalk bluff.
