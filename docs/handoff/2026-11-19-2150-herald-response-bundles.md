@@ -28,8 +28,8 @@ Michael approved this on Nov 19, through Seneschal. When a case is presented at 
 - **Voice lines:** `agree_short_a` / `agree_short_b` in all 15 voices, as approved. `test_dialogue_voices`' key count is 256 with the Augur lines from #371.
 
 ## Measured
-- **`test_response_bundles`** (new, 17 checks, on the fast list) covers the bands, the bundling, the representative, the order, the target last, a solo speaker's fact, five shown plus "+2 more", and the alternating agreement lines, answers naming different suspects kept apart, and evil listeners joining the bundles.
-- **A real meeting** (seed 692, 10 NPCs): every listener's answer is in the log. with evil listeners now bundling too, a row hits the five-portrait cap; those shown agreeing plus "+N more" are exactly the bundled log lines, and all three evil listeners are in rows. The stage brings forward only the representative and draws the row, with the own words on hover.
+- **`test_response_bundles`** (new, 17 checks, on the fast list) covers the bands, the bundling, the representative, the order, the target last, a solo speaker's fact, five shown plus "+2 more", the alternating agreement lines, answers naming different suspects kept apart, and evil listeners joining the bundles.
+- **A real meeting** (seed 692, 10 NPCs): every listener's answer is in the log. With evil listeners now bundling too, a row hits the five-portrait cap; those shown agreeing plus "+N more" are exactly the bundled log lines, and all three evil listeners are in rows. The stage brings forward only the representative and draws the row, with the own words on hover.
 - **Suites passing:** test_dialogue_voices, test_meeting_stage, test_meeting_flow, test_meeting_m2a, test_workshop_live_canvas, test_presentation_contracts, test_workshop_presentation, test_evil_play, test_meeting_stream, test_ui, test_dialogue_fixes_accusations_votes, test_lie_severity_votes, test_shadow, test_evil_owned_lie, test_roles_evil and test_augur_wording.
 - **Golden:** identical at `--tol 0` on all five seeds. Only the order and display of answers change.
 - **Screenshot:** a five-portrait row with "+2 more", checked by eye.
