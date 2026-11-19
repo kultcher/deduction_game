@@ -186,8 +186,8 @@ static func _cast(g) -> String:
 			claim = "  claims: %s" % C.role_name(n.claimed_role)
 		elif n.max_tier >= 3:
 			claim = "  told you: %s" % C.role_name(n.claimed_role)
-		elif n.max_tier == 2:
-			claim = "  hinted: %s" % C.hint_package(g.w, g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
+		elif n.max_tier == 2 and _hinted(g, n) != "":
+			claim = "  hinted: %s" % _hinted(g, n)
 		elif n.claimed_role == "none":
 			claim = "  told you: no gift"
 		out.append("  %-12s %-13s works %s at %s; lives on %s.%s%s" % [n.name, n.occupation, C.phase_list(n.work_phases),
@@ -641,8 +641,8 @@ static func _claim_text(g, n) -> String:
 		return "claims (public): " + C.role_name(n.claimed_role)
 	elif n.max_tier >= 3:
 		return "told you: " + C.role_name(n.claimed_role)
-	elif n.max_tier == 2:
-		return "hinted: " + C.hint_package(g.w, g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
+	elif n.max_tier == 2 and _hinted(g, n) != "":
+		return "hinted: " + _hinted(g, n)
 	elif n.claimed_role == "none":
 		return "told you: no gift"
 	return ""
@@ -664,3 +664,8 @@ static func profile_data(g, id: String) -> Dictionary:
 		"home": C.block_name(n.home_block), "status": status, "traits": traits, "claim": claim,
 		"guess": g.guesses.get(id, {}), "note": g.notes.get(id, ""), "cards": g.filter_cards(id).map(func(c): return c["n"]),
 		"named": named_in(g, id)}
+
+## The hint family someone gave, or "" when none applies (one gift of the family on the
+## script; Steward, Nov 19), so a bare "hinted: " is never shown.
+static func _hinted(g, n) -> String:
+	return C.hint_package(g.w, g.w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role).replace("_", " ")
