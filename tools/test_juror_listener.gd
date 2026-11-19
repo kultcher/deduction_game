@@ -75,7 +75,18 @@ func _init() -> void:
 	var r_grounded: Dictionary = Live.test_juror(g, grounded)
 	var r_truth: Dictionary = Live.test_juror(g, with_truth)
 	print("  plain x%.3f, bare challenge x%.3f, with the true reading x%.3f, challenge grounded on it x%.3f" % [float(r.get("lr", 0)), float(r_bare.get("lr", 0)), float(r_truth.get("lr", 0)), float(r_grounded.get("lr", 0))])
-	check(r_grounded.get("ready", false) and float(r_grounded.lr) < float(r_truth.lr), "a lie call grounded on the contradicting reading weakens the case further than the reading alone does (x%.3f against x%.3f)" % [float(r_grounded.get("lr", 0.0)), float(r_truth.get("lr", 0.0))])
+	# The challenge reaches the case, but a clash between two tellers says one is wrong, not
+	# which (ReadingChallenges.assess): an average listener trusts both Seers alike, so a lie
+	# call grounded on the other's reading moves nothing for it (Lantern, Nov 19).
+	check(r_grounded.get("ready", false) and absf(float(r_grounded.lr) - float(r_truth.lr)) < 1e-6, "for an average listener, a lie call grounded on another teller's word is your word against theirs (x%.3f either way)" % float(r_grounded.get("lr", 0.0)))
+	# A listener who trusts the real Seer more does take the challenge: it's wired through.
+	var Connections = preload("res://workshop/connections.gd")
+	var trusting: Dictionary = {"baseline": "without_cards", "npc_trust": {seer.id: 0.9, minion.id: 0.3}}
+	var plain_t: Dictionary = Connections.judge_for_profile(g, with_truth, trusting)
+	var chal_t: Dictionary = Connections.judge_for_profile(g, grounded, trusting)
+	print("  PROBE minion %s -> %s; innocent %s -> %s" % [plain_t.get("posterior_after", {}).get(minion.id), chal_t.get("posterior_after", {}).get(minion.id), plain_t.get("after"), chal_t.get("after")])
+	check(plain_t.get("ready", false) and chal_t.get("ready", false) and absf(float(chal_t.after) - float(plain_t.after)) > 1e-4,
+		"a listener who trusts the real Seer more weighs the grounded challenge (%.4f against %.4f)" % [float(chal_t.get("after", 0.0)), float(plain_t.get("after", 0.0))])
 	check(not ("challenge holds" in str(r_grounded.get("reason", ""))), "and the badge never claims the challenge simply holds")
 	_done()
 

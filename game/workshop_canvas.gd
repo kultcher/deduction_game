@@ -883,9 +883,10 @@ static func guard_reason_lines(g, result: Dictionary, case_value: Dictionary = {
 		if quiet_n > 0:
 			line += ", and #%d no one died that night" % quiet_n
 		line += ": if %s is a working Warden, the Demon came to %s's door that night." % [warden, guarded]
-		var points: int = int(round(absf(float(gd.shift)) * 100.0))
 		var helps: bool = (float(gd.shift) > 0.0) != innocence
-		line += " This %s the case %d point%s." % ["strengthens" if helps else "weakens", points, "" if points == 1 else "s"]
+		# No points (Herald, Nov 19): the badge is an average listener's, and the judge's
+		# per-guard share would be a full-weight figure.
+		line += " This %s the case." % ("strengthens" if helps else "weakens")
 		out.append(line)
 	return out
 
