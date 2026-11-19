@@ -62,6 +62,7 @@ test_judge_for_profile
 test_judgement_boost
 test_juror_claims
 test_juror_listener
+test_lamplighter_count_mix
 test_lie_severity
 test_lie_severity_votes
 test_location_solver

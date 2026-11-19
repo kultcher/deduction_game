@@ -174,9 +174,12 @@ listener (#273), both Lantern's.
     the Lamplighter is evil, poisoned or Delusional, and a broken count says nothing. A
     Lamplighter case moves the town less, and a Minion bluffing the Lamplighter loses the
     most. Quill, #346 (open; it moves golden).
-  - **Step 2, after step 1:** weigh the count against each possible world (a
-    Poisson-binomial term), so that "1 other out" with everyone else home points at the one
-    without an alibi. This should raise the Lamplighter-and-alibis case again.
+  - **Step 2: tried and dropped (Michael, Nov 19).** Weighing the count against each world
+    (a Poisson-binomial over each person's chance of being out) went the wrong way in a
+    first build: the Lamplighter-and-alibis case fell from ×1.81 to ×1.13, and a witness's
+    sighting against "nobody out" convicted the Lamplighter again (×6.01). Each person's
+    chance of being out is taken across all worlds, so it counts lies like truths. An exact
+    version needs a per-world profile pass; no item for it. Step 1 ships alone.
   [decided]
 
 ### NPC behaviour
