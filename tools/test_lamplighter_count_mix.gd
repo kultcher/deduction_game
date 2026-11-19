@@ -2,8 +2,9 @@
 ## fix (b), step 1; Lantern's conditions): in a world where the Lamplighter is good the count is
 ## sound (the routes gate and the people it forces out) with chance 1 - b, or broken (it says
 ## nothing) with chance b, from its poison and Delusional priors; in a world where it is evil
-## it says nothing at all. A count that no route mask fits makes the sound branch impossible,
-## so it tells against the Lamplighter. Night Watch lists are unchanged.
+## it says nothing at all. A count that no route mask of the certain evidence fits (the
+## listener's own nights and sightings, physical traces) makes the sound branch impossible, so
+## it tells against the Lamplighter. Night Watch lists are unchanged.
 ##   godot --headless --path . --script res://tools/test_lamplighter_count_mix.gd
 extends SceneTree
 
@@ -13,6 +14,7 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const C = preload("res://sim/content.gd")
+const LiveActivity = preload("res://workshop/live_activity.gd")
 
 var checks = 0
 var fails = 0
@@ -56,10 +58,10 @@ func _count_with_alibis(f: Dictionary) -> void:
 		"mixed, the count still supports the case but less than taken as certain (x%.2f against x%.2f)" % [float(mixed.get("lr", 0.0)), float(certain.get("lr", 0.0))])
 
 
-## A count of nobody out, against a sighting of someone out that night: no route mask fits, so
-## the sound branch is impossible and only a broken or evil Lamplighter explains it. "The
-## Lamplighter is evil" is then better supported with the count than without it. Before, an
-## impossible count silently did nothing.
+## A count of nobody out, against a witness's sighting of someone out that night, heard by a
+## third party (Lantern on #346): either the witness or the Lamplighter could be lying, so the
+## count isn't impossible to them and mustn't convict the Lamplighter. Only the listener's own
+## sightings and nights, and physical traces, can rule a count out (certain_for_count below).
 func _impossible_count(f: Dictionary) -> void:
 	var g = f.g
 	var lamp = f.lamp
@@ -67,9 +69,19 @@ func _impossible_count(f: Dictionary) -> void:
 	var seen: int = g.add_card({"kind": "sighting", "subject": [out_one.id], "block": "market" if out_one.home_block != "market" else "docks", "source": f.witness.id, "day": 1, "phase": C.NIGHT, "text": "W saw X out"})
 	var count0: int = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 0}, "text": "L: nobody out"})
 	var with_count: Dictionary = Live.shape_reading(g, _case(g, lamp.id, "evil", [seen, count0]))
-	var without: Dictionary = Live.shape_reading(g, _case(g, lamp.id, "evil", [seen]))
-	check(with_count.get("ready", false) and without.get("ready", false) and float(with_count.lr) > float(without.lr) * 1.1,
-		"a count that fits no route tells against the Lamplighter (x%.2f with it, x%.2f without)" % [float(with_count.get("lr", 0.0)), float(without.get("lr", 0.0))])
+	var witness: Dictionary = Live.shape_reading(g, _case(g, f.witness.id, "evil", [seen, count0]))
+	check(with_count.get("ready", false) and float(with_count.lr) < 1.5,
+		"a third party hearing a sighting against the count doesn't convict the Lamplighter (x%.2f; the witness x%.2f)" % [float(with_count.get("lr", 0.0)), float(witness.get("lr", 0.0))])
+	# Which cards can rule a count out.
+	var cnt := {"id": "c1", "kind": "report", "source": lamp.id}
+	check(LiveActivity.certain_for_count(cnt, "c1", "me"), "the count itself is in its own check")
+	check(LiveActivity.certain_for_count({"id": "s1", "kind": "sighting", "source": "me"}, "c1", "me"), "the listener's own sighting can rule a count out")
+	check(not LiveActivity.certain_for_count({"id": "s2", "kind": "sighting", "source": f.witness.id}, "c1", "me"), "another's sighting can't (it could be the lie)")
+	check(not LiveActivity.certain_for_count({"id": "s3", "kind": "sighting", "source": f.witness.id}, "c1", ""), "nor can any sighting for a listener with no nights of its own")
+	check(not LiveActivity.certain_for_count({"id": "a1", "kind": "alibi", "source": f.witness.id}, "c1", "me"), "nor anyone's alibi")
+	check(LiveActivity.certain_for_count({"id": "h1", "kind": "alibi", "known_self": true}, "c1", "me"), "the listener's own night can")
+	check(LiveActivity.certain_for_count({"id": "t1", "kind": "trace"}, "c1", "me") and not LiveActivity.certain_for_count({"id": "t2", "kind": "trace", "quoted": true}, "c1", "me"),
+		"a trace seen for itself can, a report of one can't")
 
 
 ## A true count of 1 (the Demon was out) against everyone else's "home", the Demon's a lie
