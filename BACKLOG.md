@@ -238,8 +238,11 @@ relay about the first victim naming night 0 (Beadle).
   **Judge side built (Quill, Nov 18):** a Warden's guard report
   on a quiet night sets the Demon's route to the guarded door, where the Warden and the
   guarded person are good. The player's ward already did this through the scorched sigil.
-  The Test juror's result carries `guards` for Herald's reason line. Herald: the UI and
-  wording.
+  The Test juror's result carries `guards` for Herald's reason line. **Reason line built
+  (Herald, Nov 19, `claude/herald-guard-reason`):** the Test juror's tooltip names each
+  guard that moved the case ("#7 Merrin guarded Fenwick's door on the first night: if Merrin
+  is a working Warden, the Demon came to Fenwick's door that night. This strengthens the
+  case 15 points."), with the quiet night's card when the case cites it.
 
 ### NPC behaviour
 
