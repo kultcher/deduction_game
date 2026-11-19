@@ -700,7 +700,7 @@ const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusa
 ## the premise. Listener-specific work is then per class, not per world.
 ## known: the listener's own readings, which can complete a test factor's route.
 static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
-	case_data = Solver.with_hanged_refuters(view, case_data, cards)
+	case_data = Solver.with_hanged_refuters(view, case_data, cards, true)
 	if not SolverBackend.profiling_enabled:
 		return _compile_impl(view, cards, case_data, known)
 	var _st: int = SolverBackend.begin_stage("case_eval_compile")

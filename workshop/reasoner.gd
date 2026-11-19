@@ -142,7 +142,7 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 	attended.cards = keep
 	# The refuters of "was the Demon when hanged" from the readings this listener attends to
 	# (Codex on #356): a dropped Gravedigger reading refutes nothing.
-	attended = Solver.with_hanged_refuters(view, attended, Solver.selected(view, attended))
+	attended = Solver.with_hanged_refuters(view, attended, Solver.selected(view, attended), true)
 	attended.lines = []
 	return {"case": attended, "profile": limits.name if bounded else "Full",
 		"limits": limits, "considered": keep, "ignored": cards.filter(func(c): return c.id not in keep).map(func(c): return c.id),
@@ -288,7 +288,8 @@ static func _group_score(view: Dictionary, ids: Array, focus: Dictionary, listen
 	return score
 
 static func search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
-	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
+	# From the cards the search is given: the listener's accepted ones (Codex on #356).
+	case_data = Solver.with_hanged_refuters(view, case_data, cards, true)
 	var span = Profiler.open("candidate_search")
 	var result = _search(view, case_data, cards, listener, limits)
 	Profiler.count("candidates_tested", result.tested)

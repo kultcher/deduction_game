@@ -144,7 +144,7 @@ static func semantic_key(card: Dictionary) -> String:
 static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}, include_conflicts: bool = true) -> Dictionary:
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
-	case_data = with_hanged_refuters(view, case_data, cards)
+	case_data = with_hanged_refuters(view, case_data, cards, true)
 	if case_data.conclusion.type == "conflict":
 		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope) or c.id in knowledge.get("own_reports", []))
 	var base = solve(view, cards, {}, {}, knowledge)
@@ -1755,14 +1755,16 @@ static func _refuter_indices(view: Dictionary, refuters: Array) -> Array:
 ## judges, else from the case's own compiled, selected cards (Graph.compile_case drops lines
 ## that don't support it; Solver.selected marks quoted ones), so an excluded, quoted or
 ## unattended reading refutes nothing. Unchanged when the refuters are.
-static func with_hanged_refuters(view: Dictionary, case_data: Dictionary, cards: Array = []) -> Dictionary:
+## `explicit`: `cards` are the cards judged even when empty (Reasoner.search's accepted cards,
+## Codex on #356), never the case's own.
+static func with_hanged_refuters(view: Dictionary, case_data: Dictionary, cards: Array = [], explicit: bool = false) -> Dictionary:
 	var conclusion: Dictionary = case_data.get("conclusion", {})
 	if str(conclusion.get("type", "")) not in ["demon", "notdemon"]:
 		return case_data
 	var target: String = str(conclusion.get("target", ""))
 	var held: Array = cards
 	# Derived questions cite their supports (Graph.roots), the reading among them (Codex on #356).
-	if held.is_empty() and _may_refute(view, Graph.roots(case_data, case_data.get("cards", [])), target):
+	if not explicit and held.is_empty() and _may_refute(view, Graph.roots(case_data, case_data.get("cards", [])), target):
 		var bare: Dictionary = case_data.duplicate(false)
 		bare["conclusion"] = conclusion.duplicate(true)
 		bare.conclusion.erase("refuters")
