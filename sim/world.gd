@@ -1065,7 +1065,7 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 		if C.role_def("scion").can_promote_to_demon(sc, alive_before, self):
 			_scion_rises(sc)
 		else:
-			_finish("good", "The demon's host was executed.")
+			_finish("good", "The Demon's host was executed.")
 	else:
 		_check_parity()
 
@@ -1089,7 +1089,7 @@ func turn_evil(v, why: String) -> void:
 	for m in evil_team():
 		if m != v:
 			Evil.add_intel(self, m, "teammate", v.id, 0.0, "%s has joined us (%s)" % [v.name, why])
-	dlog.add("turned", "world", v.id, {"why": why, "role": v.role}, "%s turns evil (%s). Keeps their gift and claims; now works for the demon." % [v.name, why])
+	dlog.add("turned", "world", v.id, {"why": why, "role": v.role}, "%s turns evil (%s). Keeps their gift and claims; now works for the Demon." % [v.name, why])
 
 ## The totem is found: the curse breaks. Restore the pre-turn good snapshot, disown fake
 ## turned readings, carry forward only public receipts from the turned period, and refresh.
@@ -1213,7 +1213,7 @@ func _check_parity() -> void:
 	if game_over:
 		return
 	if demon().alive and living().size() <= 2:
-		_finish("evil", "Only two townsfolk remain and the demon still walks among them.")
+		_finish("evil", "Only two townsfolk remain and the Demon still walks among them.")
 	elif demon().alive and living_good().is_empty():
 		_finish("evil", "No good soul remains.")
 
@@ -1320,7 +1320,7 @@ func resolve_night() -> void:
 		else:
 			if outcome == "protected_player":
 				ward_saves.append({"target": kill_t, "night": day})
-			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The demon's attack on %s failed (%s)." % [v.name, outcome])
+			dlog.add("kill_failed", demon_id, kill_t, {"why": outcome}, "The Demon's attack on %s failed (%s)." % [v.name, outcome])
 			if C.has_role_def(outcome):
 				C.role_def(outcome).on_survive_attack(self, v)
 
@@ -1999,7 +1999,7 @@ func start_new_day() -> void:
 	_evening_chats_done_day = -1
 	if day > max_days and not game_over:
 		dlog.set_time(day, "Morning")
-		_finish("evil", "Time ran out: the demon survived %d days." % max_days)
+		_finish("evil", "Time ran out: the Demon survived %d days." % max_days)
 		return
 	dlog.set_time(day, "Morning")
 	if C.SHADOW_SELF:
