@@ -69,6 +69,7 @@ func _grouping() -> void:
 		{"id": "s1", "kind": "sighting", "source": "c", "subject": "a", "subjects": ["a"], "night": 1},
 		{"id": "al1", "kind": "alibi", "source": "a", "subject": "a", "subjects": ["a"], "night": 1},
 		{"id": "lamp1", "kind": "report", "role": "lamplighter", "source": "d", "night": 1, "data": {}},
+		{"id": "guard1", "kind": "report", "role": "warden", "source": "g", "night": 1, "block": "hill", "data": {"target": "d", "saved": true}},
 		{"id": "ev1", "kind": "evening", "source": "b", "subject": "a", "subjects": ["a"], "night": 1},
 		{"id": "s2", "kind": "sighting", "source": "b", "subject": "e", "subjects": ["e"], "night": 2},
 		{"id": "tr", "kind": "trace", "source": "evidence", "data": {}},
@@ -93,7 +94,9 @@ func _grouping() -> void:
 	var none: Array = Connections.items(by_id, held, people, "none")
 	check(_once(none, held), "no declaration: every held card is in exactly one item")
 	var n1: Dictionary = _item(none, "night:1")
-	check(n1.get("kind", "") == "unit" and n1.get("ids", []) == ["s1", "al1", "lamp1", "ev1"], "a night's sighting, alibi, Lamplighter count and evening card are one item (%s)" % str(n1.get("ids", [])))
+	# A Warden's guard too: on a quiet night it says the Demon came to that door, which means
+	# something only beside who was seen near it (Quill, Nov 19: weighed alone it moved no one).
+	check(n1.get("kind", "") == "unit" and n1.get("ids", []) == ["s1", "al1", "lamp1", "guard1", "ev1"], "a night's sighting, alibi, Lamplighter count, Warden guard and evening card are one item (%s)" % str(n1.get("ids", [])))
 	check(n1.get("ctx", []) == ["claim_a"], "its context is the named people's claims, not everyone's (%s)" % str(n1.get("ctx", [])))
 	var n2: Dictionary = _item(none, "night:2")
 	check(n2.get("ids", []) == ["s2"] and n2.get("ctx", []) == ["secret_e"], "another night is its own item, with a named person's confessed secret as context")
@@ -123,7 +126,7 @@ func _grouping() -> void:
 	var walker: Array = Connections.items(by_id, held, people, "walker")
 	var mv: Dictionary = _item(walker, "movement")
 	check(_once(walker, held), "walker: every held card is in exactly one item")
-	check(mv.get("ids", []) == ["s1", "al1", "lamp1", "ev1", "s2", "tr"], "walker: every night and the trace are one movement connection (%s)" % str(mv.get("ids", [])))
+	check(mv.get("ids", []) == ["s1", "al1", "lamp1", "guard1", "ev1", "s2", "tr"], "walker: every night and the trace are one movement connection (%s)" % str(mv.get("ids", [])))
 	check(not walker.any(func(it): return it.key.begins_with("night:") or it.key.begins_with("trace:")), "walker: no night or trace stands alone")
 	check("home_a" in mv.get("ctx", []) and "claim_a" in mv.get("ctx", []) and "secret_e" in mv.get("ctx", []), "walker: profiles and the named people's claims and secrets are its context")
 
