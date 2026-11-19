@@ -36,14 +36,18 @@ func _init() -> void:
 	var knowledge: Dictionary = {"self": "a", "good": ["a"], "own_outings": {"1": false}, "own_reports": []}
 	var res: Dictionary = Reasoner.direct_checks(view, case_data, knowledge)
 	check(not "seen" in res.rejected, "a sighting of me on a night I was home is kept")
-	# Since #273 a list that could be broken (a Poisoner possible, as here) is kept and mixed as
-	# sound or broken as a whole (LiveActivity._list_mix); only where it can't be mixed is it
-	# still set aside, and SourceDoubt voids its night.
-	check(not "nw" in res.rejected, "a Night Watch's list naming me on a night I was home is kept where it could be broken (weighed as a whole, #273)")
+	# Since #273, on a view the live movement model reads, a list that could be broken (a
+	# Poisoner possible, as here) is kept and mixed as sound or broken as a whole
+	# (LiveActivity._list_mix). Where it can't be mixed (no live movement model, or the mix
+	# off) it is still set aside, and SourceDoubt voids its night.
+	check("nw" in res.rejected, "a Night Watch's list naming me on a night I was home is set aside where nothing mixes it (no live movement model)")
+	var live: Dictionary = view.duplicate(true)
+	live["live_activity"] = true
+	check(not "nw" in Reasoner.direct_checks(live, case_data, knowledge).rejected, "and kept where the live movement model weighs it as a whole (#273)")
 	var SourceDoubt = preload("res://workshop/source_doubt.gd")
 	var was_mix: bool = SourceDoubt.list_mix_enabled
 	SourceDoubt.list_mix_enabled = false
-	check("nw" in Reasoner.direct_checks(view, case_data, knowledge).rejected, "and set aside where it can't be (SourceDoubt voids it)")
+	check("nw" in Reasoner.direct_checks(live, case_data, knowledge).rejected, "and set aside there too with the mix off")
 	SourceDoubt.list_mix_enabled = was_mix
 	check(not "relayed" in res.rejected, "a Medium's relay naming me on that night is kept (its relayer may be the liar)")
 	check(res.objections.size() == 3, "all three still raise an objection for dialogue (%d)" % res.objections.size())

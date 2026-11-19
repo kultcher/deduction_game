@@ -238,8 +238,11 @@ relay about the first victim naming night 0 (Beadle).
   **Judge side built (Quill, Nov 18):** a Warden's guard report
   on a quiet night sets the Demon's route to the guarded door, where the Warden and the
   guarded person are good. The player's ward already did this through the scorched sigil.
-  The Test juror's result carries `guards` for Herald's reason line. Herald: the UI and
-  wording.
+  The Test juror's result carries `guards` for Herald's reason line. **Reason line built
+  (Herald, Nov 19, `claude/herald-guard-reason`):** the Test juror's tooltip names each
+  guard that moved the case ("#7 Merrin guarded Fenwick's door on the first night: if Merrin
+  is a working Warden, the Demon came to Fenwick's door that night. This strengthens the
+  case 15 points."), with the quiet night's card when the case cites it.
 
 ### NPC behaviour
 
@@ -473,19 +476,6 @@ Candidates for a unified retuning proposal, not approved changes.
   [decided; presentation open]
 
 ### UI
-
-- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
-  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
-  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
-  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
-  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
-  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
-  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
-  Owner Herald. [decided]
-  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
-  secrets have one now. **The Workshop canvas's evidence cards** show the same short form
-  (`claude/herald-canvas-card-text`, Nov 18), with the sentence still on hover. Still to do:
-  a pass over the gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking

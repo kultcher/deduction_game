@@ -21,7 +21,7 @@ static func view(g) -> Dictionary:
 	for number in numbers:
 		if number >= 1 and number <= g.board.size():
 			var board_card: Dictionary = g.board[number - 1]
-			shorts[Evidence.normalize_card(board_card).id] = str(CardModel.short_text(board_card, names))
+			shorts[Evidence.normalize_card(board_card).id] = str(CardModel.short_text(board_card, names)).replace("\n", " ")
 	var cards: Array = []
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
@@ -763,6 +763,40 @@ static func guard_reasons(view: Dictionary, case_data: Dictionary, ev: Dictionar
 		out.append({"warden": g.source, "guarded": g.target, "night": g.night, "saved": g.saved, "report": g.report, "quiet": quiet, "shift": shift})
 	if not out.is_empty():
 		result["guards"] = out
+
+## The Test juror's reason line for each quiet-night guard in `result["guards"]` (Herald,
+## Nov 19; debug text, so Michael's Nov 18 rule needs no wording approval): which cards,
+## what they argue, and how far they move the case. Card numbers are board numbers.
+static func guard_reason_lines(g, result: Dictionary, case_value: Dictionary = {}) -> Array:
+	var C = preload("res://sim/content.gd")
+	var number_of = func(id: String) -> int:
+		if id == "":
+			return 0
+		for c in g.board:
+			if c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id:
+				return int(c.n)
+		return 0
+	var name_of = func(pid: String) -> String:
+		return g.w.by_id[pid].name if g.w.by_id.has(pid) else pid
+	# `shift` moves the subject's chance of being evil, so for a case that someone is good
+	# (or Marked, an innocent who registers evil) a rise works against it (Codex on #299).
+	var innocence: bool = str(case_value.get("conclusion", {}).get("type", "")) in ["good", "marked"]
+	var out: Array = []
+	for gd in result.get("guards", []):
+		var warden: String = name_of.call(str(gd.warden))
+		var guarded: String = name_of.call(str(gd.guarded))
+		var night: String = C.spoken_night(int(gd.night), -1)
+		var report_n: int = number_of.call(str(gd.report))
+		var quiet_n: int = number_of.call(str(gd.get("quiet", "")))
+		var line: String = "%s%s guarded %s's door on %s" % ["#%d " % report_n if report_n > 0 else "", warden, guarded, night]
+		if quiet_n > 0:
+			line += ", and #%d no one died that night" % quiet_n
+		line += ": if %s is a working Warden, the Demon came to %s's door that night." % [warden, guarded]
+		var points: int = int(round(absf(float(gd.shift)) * 100.0))
+		var helps: bool = (float(gd.shift) > 0.0) != innocence
+		line += " This %s the case %d point%s." % ["strengthens" if helps else "weakens", points, "" if points == 1 else "s"]
+		out.append(line)
+	return out
 
 ## "Connections" (Find Links, rebuilt on the shared model): board cards not yet in this
 ## case that bear on its premise, ranked by how far each would move the test juror, up

@@ -25,8 +25,8 @@ func gift_live_tonight(_w, _n) -> bool:
 	return false # only worth it as part of an attack (see poison_for_kill)
 
 
-func short_text(d: Dictionary, src: String, _nm: Callable) -> String:
-	return "%s Veteran: attacked, from %s" % [src, content().block_name(d.get("block", ""))]
+func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
+	return "Attacked; came by %s" % content().block_name(d.get("block", ""))
 
 
 func survives_demon_attack(v) -> bool:
