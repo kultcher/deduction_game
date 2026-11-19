@@ -330,6 +330,12 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 	var why: Dictionary = trapped_explanation(w, n, night) if tier >= 2 else {}
 	lines.append_array(why.get("lines", []))
 	facts.append_array(why.get("facts", []))
+	if why.is_empty():
+		# The reason kept back, the night is still owned: a later question about it gets the
+		# plain "I was out" account, not the home alibi it replaced (Codex on #330).
+		_own_night_account(w, n, night, str(n.history.get(w.time_key(night, C.NIGHT), "")).substr(6))
+		facts.append({"kind": "alibi", "subject": [n.id], "home": false, "day": night, "phase": C.NIGHT, "source": n.id,
+			"text": "%s admits they were out %s." % [n.name, C.spoken_when(night, w.day)]})
 	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
 	return {"lines": lines, "facts": facts}
 

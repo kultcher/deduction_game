@@ -19,7 +19,10 @@ night. `MindDialogue.press` now reads it (`_pressed_caught_out`):
     `trapped_night_out`, the line a presented case already gets in `WorkshopPresentation`;
   - at disclosure tier 2 or above, it then says why (`trapped_explanation`: its secret, owned
     for that night);
-  - closed, it says only the first line. Either way, it no longer says it was home.
+  - closed, it says only the first line. The night is still owned: the player gets a card
+    saying it admits being out, and a later question about that night gets the plain "I was
+    out" account, not the home alibi (Codex on #330).
+  - Either way, it no longer says it was home.
 - **Unchanged:**
   - the truly home stand by being home;
   - an unaware Sleepwalker remembers being home and may offer the sleepwalking excuse;
@@ -31,7 +34,7 @@ No new lines and no new constants.
 
 ## Measured
 
-- **New suite:** `tools/test_press_caught_out.gd` (8 checks), on the fast list. It covers the
+- **New suite:** `tools/test_press_caught_out.gd` (10 checks), on the fast list. It covers the
   open and the closed errand-walker, the same press without the context (which still says "I
   was at home", the old answer), the truly home, an unaware Sleepwalker, and evil.
 - **Also pass:** test_press_contradiction, test_press_night_case, test_conversation_nights,
