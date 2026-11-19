@@ -86,6 +86,9 @@ relay about the first victim naming night 0 (Beadle).
   remove the detour from inference: drop it from what NPCs assume and from the
   explanatory dialogue (Herald for any wording), and compare inference and votes on fixed
   replays. Owner Beadle. [decided]
+  > **Built Nov 19 (Claude-Beadle, `claude/beadle-demon-detour`):** the movement model's
+  > Demon takes only the direct way, and the "Seen elsewhere" note no longer says a detour
+  > remains possible. Close once merged.
 
 - **Challenge a Night Watch report using a conflicting player vigil.** Let the player
   target the dated report as lying or misled with a vigil as grounds, reusing the existing

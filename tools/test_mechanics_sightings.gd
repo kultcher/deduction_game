@@ -19,8 +19,8 @@ func _init() -> void:
 			var sum = 0.0
 			for route in Activity.demon_routes(home, destination):
 				sum += route.weight
-				check(route.path[0] == home and route.path.back() == destination and route.weight > 0, "a detour preserves its actual endpoints")
-			check(is_equal_approx(sum, 1.0), "detours redistribute rather than add path probability")
+				check(route.path == Activity.C.route(home, destination) and route.weight == 1.0, "the Demon's only route is the direct one")
+			check(is_equal_approx(sum, 1.0) and Activity.demon_routes(home, destination).size() == 1, "one route, carrying all the path probability")
 	var people: Array = []
 	for id in ["a", "b", "c", "d", "e", "f", "g"]:
 		people.append({"id": id, "name": id, "home": "hill" if id == "a" else "square"})
@@ -33,7 +33,7 @@ func _init() -> void:
 	at_scene.block = "square"
 	var off_like: float = Activity._likelihood(view, [elsewhere], people[0], "demon")
 	var scene_like: float = Activity._likelihood(view, [at_scene], people[0], "demon")
-	check(off_like > 0 and off_like < scene_like * 0.1, "off-route sighting is strong finite evidence against the killer")
+	check(off_like == 0.0 and scene_like > 0.0, "an honest off-route sighting rules out that night's killer: the Demon never detours (Michael, Nov 17)")
 	var claim = {"id": "claim", "kind": "claim", "source": "a", "subject": "a", "role": "warden", "data": {}, "observed_at": {"day": 1, "phase": "morning"}}
 	var cards: Array = [elsewhere, at_scene, claim]
 	view.cards = cards

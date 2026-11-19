@@ -455,12 +455,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeSingleLikelihood(
             personIdx, alignCode, personHomes, personDeathBeforeNight, demonAttackEvents,
-            hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static double[] LiveAllProfiles(
         bool includeConverted,
@@ -470,12 +469,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeAllProfiles(
             includeConverted, personHomes, personDeathBeforeNight, demonAttackEvents,
-            hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static double LiveCrossingProbability(
         int personIdx,
@@ -488,12 +486,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeCrossingProbability(
             personIdx, night, alignCode, sceneBlockCode, personHomes, personDeathBeforeNight,
-            demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static double[] LiveSceneCrossings(
         int night,
@@ -505,12 +502,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeSceneCrossings(
             night, sceneBlockCode, includeConverted, personHomes, personDeathBeforeNight,
-            demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static int CaseEvalRegisterPresenceWeights(double[] weights) =>
         SolverContext.RegisterPresenceWeights(weights);
