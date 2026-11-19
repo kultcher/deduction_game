@@ -11,7 +11,6 @@ const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Social = preload("res://sim/social.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
@@ -399,10 +398,9 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		"coverage": "milestone_2_state_and_structured_decisions"})
 	var start: Dictionary = {"seed": seed_in, "npcs": npc_count, "build": build_id,
 		"tuning": tuning_id, "shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT}
-	# The connections belief model changes every belief, so a log played with it on says so
-	# (the replay tools turn it on from this). Off: the record is as it always was.
-	if Connections.enabled:
-		start["connections"] = true
+	# Every log since #160 is played on the connections belief model and says so; the replay
+	# tools stop on a log without it (one played on the earlier model, purge phase 3).
+	start["connections"] = true
 	dlog.add("case_start", "world", "", start)
 	if case_script == null:
 		case_script = ScriptDef.default_script()
@@ -2036,6 +2034,21 @@ func snapshot(tag: String) -> void:
 
 ## Capture boundaries catch direct assignments, including death/conversion resets.
 ## Does not create/sync shadow minds or mutate any gameplay state.
+## A fingerprint of everything the minds hold and the world's random stream, at full
+## precision, for the dev log (Game._finish_command; the 16010 replay drift, Nov 18: play and
+## replay parted below anything the log recorded). Per NPC, a hash of its suspicion, trust,
+## credibility, NPC trust and Workshop state (the connections memory, presentations and
+## cached reasoning), real mind and shadow; and the world's RNG state. Strings, so a JSON
+## round trip keeps them exact. The replay compares them (LogReplay.digest_hooks).
+func state_digest() -> Dictionary:
+	var minds: Dictionary = {}
+	for n in npcs:
+		var parts: Array = [n.suspicion, n.trust, n.credibility, n.npc_trust, n.workshop_state]
+		if n.shadow != null:
+			parts.append([n.shadow.suspicion, n.shadow.trust, n.shadow.credibility, n.shadow.npc_trust, n.shadow.workshop_state])
+		minds[n.id] = str(hash(parts))
+	return {"rng": str(rng.state), "minds": minds}
+
 func trace_capture(tag: String, checkpoint: bool = false) -> void:
 	if not detailed_logging:
 		return

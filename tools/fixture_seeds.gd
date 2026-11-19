@@ -40,9 +40,6 @@ static func play_to_meeting(seed_v: int, day: int, npcs: int = 7):
 ## The first seed whose game, at the day-`day` meeting, `pick.call(g)` finds the scenario
 ## in: {"seed", "g", ...what pick returned}, or {}.
 static func search(day: int, pick: Callable, npcs: int = 7, from: int = SEEDS_FROM, count: int = SEEDS_COUNT) -> Dictionary:
-	var Connections = preload("res://workshop/connections.gd")
-	var was: bool = Connections.enabled
-	Connections.enabled = false
 	var found: Dictionary = {}
 	for seed_v in range(from, from + count):
 		var g = play_to_meeting(seed_v, day, npcs)
@@ -53,7 +50,6 @@ static func search(day: int, pick: Callable, npcs: int = 7, from: int = SEEDS_FR
 			found["seed"] = seed_v
 			found["g"] = g
 			break
-	Connections.enabled = was
 	return found
 
 

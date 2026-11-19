@@ -5,10 +5,6 @@ extends RefCounted
 const Game = preload("res://game/game.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
-const Connections = preload("res://workshop/connections.gd")
-
-## A tool's explicit belief-model choice for the replay: -1 the log's own, 0 off, 1 on.
-static var model_override: int = -1
 
 static func load_events(path: String) -> Array:
 	var events: Array = []
@@ -30,16 +26,12 @@ static func new_game(events: Array):
 		print("NOTE: this log was played on commit %s; this checkout is %s. To replay it exactly: git worktree add ../replay_%s %s" % [logged.substr(0, 12), here.substr(0, 12), logged.substr(0, 7), logged.substr(0, 12)])
 	elif logged == "" or logged == "dev":
 		print("NOTE: this log doesn't record its commit (logs before Nov 6); if the replay diverges, replay it on the commit it was played on.")
-	# A log played with the connections belief model on says so (sim/world.gd, case_start), and
-	# one without the field was played with it off (the earlier model, or --legacy-model since
-	# it went on by default, Nov 16): the replay uses the recorded model (Codex on #160). A
-	# tool's explicit choice (`model_override`: replay_log --connections, for logs from before
-	# the field was recorded) wins.
-	var recorded: bool = bool(setup.data.get("connections", false))
-	var use: bool = recorded if model_override < 0 else model_override == 1
-	if use != Connections.enabled:
-		Connections.enabled = use
-		print("NOTE: this log was played with the connections model %s; it is %s for this replay." % ["on" if recorded else "off", "on" if use else "off"])
+	# Every log played on the connections belief model says so (sim/world.gd, case_start). One
+	# without the field was played on the earlier model, which purge phase 3 removed (Nov 18):
+	# it can't be replayed here, so stop rather than replay it wrongly.
+	if not bool(setup.data.get("connections", false)):
+		print("STOP: this log was played on the earlier belief model (before #160, or with --legacy-model), which this build no longer has. Replay it on the branch archive/legacy-belief-final, or on the commit it was played on.")
+		return null
 	var script = null
 	for e in events:
 		if e.type == "case_script":
@@ -55,9 +47,12 @@ static func new_game(events: Array):
 ##   on_diverge(e, step, out)  the first command whose output lacks the logged text
 ##   on_filed(e, n)  after each Workshop filing
 ##   after_command(g, e, msec)  after each player command, with how long it took
-## Returns {"g", "steps", "diverged"}.
+## Returns {"g", "steps", "diverged"}; "g" is null (and "stopped" true) for a log played on
+## the earlier belief model (new_game).
 static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {}) -> Dictionary:
 	var g = new_game(events)
+	if g == null:
+		return {"g": null, "steps": 0, "diverged": true, "stopped": true}
 	var diverged := false
 	var step := 0
 	for e in events:
@@ -79,13 +74,77 @@ static func replay(events: Array, stop_seq: int = 1 << 30, hooks: Dictionary = {
 				if hooks.has("on_diverge"):
 					hooks.on_diverge.call(e, step, out)
 		elif e.type == "workshop_canvas_filed":
-			var n = Canvas.file(g, e.data.case, 0)
+			# JSON reads every number back as a float; the case was filed with ints (versions,
+			# board numbers), and the argument's key hashes them, so 29 and 29.0 made a
+			# different key in the replay (playtest 16010). The log names the case a filing
+			# replaces ("revises"); logs from before Nov 18 don't, so they replay every filing
+			# as a new case.
+			var n = Canvas.file(g, _ints(e.data.case), int(e.data.get("revises", 0)))
 			if hooks.has("on_filed"):
 				hooks.on_filed.call(e, n)
 	return {"g": g, "steps": step, "diverged": diverged}
+
+## The state digests (World.state_digest, logged after each command and Workshop filing)
+## against the replay's: `hooks` wrapped so that after each replayed command or filing the
+## replay's digest is compared with the one logged after it. `report` gets "checked" (how
+## many compared) and, at the first difference, "first": {"seq", "what", "minds" (whose
+## state differs), "rng" (whether the world's random stream does)}. Logs from before Nov 18
+## have no digests, and nothing is compared.
+static func digest_hooks(events: Array, hooks: Dictionary, report: Dictionary) -> Dictionary:
+	var logged: Dictionary = {}
+	var last: int = -1
+	for e in events:
+		if e.type == "state_digest":
+			if last >= 0:
+				logged[last] = e.data
+		else:
+			last = int(e.seq)
+	report["checked"] = 0
+	var held := {"g": null}
+	var compare := func(g, e, what: String) -> void:
+		if g == null or report.has("first") or not logged.has(int(e.seq)):
+			return
+		report.checked += 1
+		var now: Dictionary = g.w.state_digest()
+		var want: Dictionary = logged[int(e.seq)]
+		if now == want:
+			return
+		var minds: Array = []
+		for id in now.minds:
+			if str(now.minds[id]) != str(want.get("minds", {}).get(id, "")):
+				minds.append(id)
+		report["first"] = {"seq": int(e.seq), "what": what, "minds": minds, "rng": str(now.rng) != str(want.get("rng", ""))}
+	var out: Dictionary = hooks.duplicate()
+	out["before_command"] = func(g, e):
+		held.g = g
+		if hooks.has("before_command"):
+			hooks.before_command.call(g, e)
+	out["after_command"] = func(g, e, msec: int):
+		held.g = g
+		if hooks.has("after_command"):
+			hooks.after_command.call(g, e, msec)
+		compare.call(g, e, "command " + str(e.data.get("cmd", "")))
+	out["on_filed"] = func(e, n):
+		if hooks.has("on_filed"):
+			hooks.on_filed.call(e, n)
+		compare.call(held.g, e, "filing of case #%d" % int(e.data.get("card", 0)))
+	return out
 
 ## The log's vote tallies against the replay's: [logged, replayed], as "nominee:yes,yes".
 static func votes(events: Array, g, stop_seq: int = 1 << 30) -> Array:
 	var logged: Array = events.filter(func(e): return e.type == "vote_tally" and int(e.seq) < stop_seq).map(func(e): return "%s:%s" % [e.target, ",".join(e.data.yes)])
 	var replayed: Array = g.w.dlog.entries.filter(func(e): return e["type"] == "vote_tally").map(func(e): return "%s:%s" % [e["target"], ",".join(e["data"]["yes"])])
 	return [logged, replayed]
+
+## A logged value with its whole-number floats back as ints, as the game held them.
+static func _ints(v):
+	if v is float and v == floorf(v) and absf(v) < 1e15:
+		return int(v)
+	if v is Dictionary:
+		var out := {}
+		for k in v:
+			out[k] = _ints(v[k])
+		return out
+	if v is Array:
+		return v.map(func(x): return _ints(x))
+	return v

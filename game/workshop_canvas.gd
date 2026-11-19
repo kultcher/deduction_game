@@ -11,6 +11,17 @@ static func view(g) -> Dictionary:
 		numbers.append(pr.n)
 		profile_ids[Evidence.normalize_card(pr).id] = true
 	var snapshot = Bridge.capture(g, numbers)
+	# The board's short form for each card, for the canvas's evidence cards (Michael, Nov 18:
+	# the fewest words on a card, the full sentence on hover). Display only.
+	var CardModel = load("res://game/card_model.gd")
+	var names: Dictionary = {}
+	for p in g.w.npcs:
+		names[p.id] = p.name
+	var shorts: Dictionary = {}
+	for number in numbers:
+		if number >= 1 and number <= g.board.size():
+			var board_card: Dictionary = g.board[number - 1]
+			shorts[Evidence.normalize_card(board_card).id] = str(CardModel.short_text(board_card, names))
 	var cards: Array = []
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
@@ -47,7 +58,7 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
+			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; a challenge names its side (the passing-on or the original)" if activity.has("relay_source") else note
@@ -213,11 +224,19 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.board[previous - 1].text += " (Superseded by case #%d.)" % number
 	# The native filer may have returned a pre-existing flat deduction. Never
 	# overwrite that card or turn another draft into this graph.
+	# The log says which case this one replaces ("revises", 0 for a new case): a replay
+	# files it the same way, or the superseded case would still stand (case 16010, Nov 18).
+	var revises: int = int(card.get("revises", 0))
 	if number > old_size:
 		g.board[number - 1] = card
-		g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": false, "case": value, "supports": roots.numbers})
+	else:
+		number = g.add_card(card)
+	if number < 1:
 		return number
-	return g.add_card(card)
+	g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": revises > 0, "revises": revises, "case": value, "supports": roots.numbers})
+	if g.state_digests:
+		g.w.dlog.add("state_digest", "", "", g.w.state_digest())
+	return number
 
 ## The test juror: public facts and default trust, no private knowledge. Says how well
 ## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
@@ -385,7 +404,7 @@ const NOTE_REFRESH_MIN: float = 0.01
 static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Meeting = preload("res://game/game_meeting.gd")
-	if not Connections.enabled or value.get("cards", []).is_empty():
+	if value.get("cards", []).is_empty():
 		return {}
 	# A reading challenge changes how the town weighs a case (SharedLedger.prepare), and the
 	# stored-case arithmetic below doesn't carry it: no note rather than a wrong one.

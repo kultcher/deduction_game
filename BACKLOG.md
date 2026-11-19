@@ -8,8 +8,8 @@ still being shaped) live in role_exploration.md. Items being watched, and knobs 
 only if needed (`[watch]`, `[knob]`), live in [BACKLOG_WATCH.md](BACKLOG_WATCH.md); tabled items are
 in the Tabled section at the bottom.
 
-**State of play (Nov 16):** the connections belief model is on in play
-(`Tuning.Workshop.CONNECTIONS`; design and spec in [docs/belief_model.md](docs/belief_model.md)).
+**State of play (Nov 16):** the connections belief model is on in play, and since purge
+phase 3 (Nov 18) it's the only one (design and spec in [docs/belief_model.md](docs/belief_model.md)).
 The Nov 13 playtest triage is closed: what's left of it is in
 [section 5](#5-from-the-nov-13-playtest-triage-moved-nov-16), and the connections build's
 own open items are in [section 6](#6-the-connections-model-open-items). The full triage
@@ -67,6 +67,16 @@ relay about the first victim naming night 0 (Beadle).
   reading-challenge path. Same night and block, complete versus incidental coverage, and
   the watcher excluding themselves matter. A contradiction alone doesn't say which source
   lied, or that impairment caused it. [decided: capability; evaluator details open]
+  **Built, by the existing model** (Quill, Nov 18; measured and pinned in
+  `tools/test_vigil_nightwatch.gd`, no new rule). A vigil watches a block's doors: it sees
+  everyone who leaves home there, not people passing through, the same rule the night uses.
+  - **It answers "I saw X pass" when X lives on the watched block,** and a Night Watch who
+    watched their own block, since they had to leave home. That's about +16 and +44 points
+    of suspicion of the Night Watch in the suite's deals; one on another block adds nothing.
+  - **A vigil that saw someone else leave counts the same,** being complete coverage.
+  - **It works as the grounds of a "lying" challenge**, about +6 points.
+  - **"Misled" lands like "lying"** until "misled" counts as honest doubt (proposed to
+    Michael).
 
 - **Challenge a Warden's particular failed protection claim.** Target "On Night X I
   protected <NPC>" against that night's Demon death, supporting the explanation that a
@@ -76,6 +86,11 @@ relay about the first victim naming night 0 (Beadle).
   be misled.** This is specific to this claim, not a general rule that every good
   statement is true. Allow an honest impaired Warden; neither failure nor a misled
   accusation proves poisoning or alignment. [decided: capability and lying implication]
+  **Built** (Nov 4, #81; pinned by `tools/test_warden_challenge.gd`, re-checked Nov 18).
+  A guard report on someone the Demon killed that night is never a true, healthy reading.
+  A "lying" challenge and a "failed gift" challenge are both supported against it. A
+  neutral listener lays most of it on a lie, a failed-gift call doesn't prove poisoning,
+  and someone else's death that night says nothing about the guard.
 
   Already built (Nov 4, #81 era, the report table in `Solver`): a guard on a door the Demon
   killed that night is never a true, healthy reading, so the challenge lands as a lie or a
@@ -388,7 +403,11 @@ relay about the first victim naming night 0 (Beadle).
   is true with probability t, noise otherwise. Correct readings then exonerate less;
   false readings still implicate strongly. Same cost. Set t from the simulation (how often
   fake readings happen to be true in a bot run), not by hand, and re-measure whenever
-  evil's reading strategy changes. [decided: add; t measured]
+  evil's reading strategy changes. Quill (Nov 18, 40 bot games): fakes are true 38% of the
+  time against 45% by chance, so the judge's side changes nothing today. Michael (Nov 18)
+  wants evil smarter about *when* it lies; options in
+  [docs/design/evil_truth_timing.md](docs/design/evil_truth_timing.md), awaiting his call.
+  [decided: add; t measured]
 
 - **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
   pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
@@ -464,9 +483,9 @@ Candidates for a unified retuning proposal, not approved changes.
   votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
   Owner Herald. [decided]
   **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
-  secrets have one now. Still to do: the Workshop canvas's evidence cards
-  (`ui/workshop_canvas_view.gd`), which print the full sentence, and a pass over the
-  gift readings' short forms (each role's `short_text`, with their leads).
+  secrets have one now. **The Workshop canvas's evidence cards** show the same short form
+  (`claude/herald-canvas-card-text`, Nov 18), with the sentence still on hover. Still to do:
+  a pass over the gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking

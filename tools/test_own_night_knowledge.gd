@@ -74,7 +74,6 @@ func _missing(label: String) -> void:
 
 
 func _init() -> void:
-	Connections.enabled = true
 	# 1. An evil planter's fake street sighting of a good person who was home (a sighting
 	# on their own block, "seen leaving home", barely clashes with being home).
 	var f: Dictionary = Seeds.framed_sighting(2, false, "street")

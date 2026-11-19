@@ -1,12 +1,14 @@
 ## Headline reading (Oct 30): a dull listener takes a strong evil reading at its word on
 ## top of the full model; a sharp one mostly follows the model. Constructed fixtures.
+## On the connections refresh the headline is zeroed, so since purge phase 3 (Nov 18) the
+## "it has a headline" checks are gone and the Insight ones only check that Insight never
+## weakens a reading; the headline itself goes everywhere in purge phase 6a.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Caches = preload("res://workshop/caches.gd")
 const Jury = preload("res://workshop/jury.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var checks = 0
 var fails = 0
@@ -18,7 +20,6 @@ func _check(ok: bool, label: String) -> void:
 		fails += 1
 
 func _init():
-	Connections.enabled = false  # pinned to the earlier model (connections on by default since Nov 16)
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(4, 10)
@@ -47,7 +48,6 @@ func _init():
 				head += float(effects[id].headline_signal)
 			steps[insight] = total
 			print("  %s insight %.1f: named people step %+.3f (headline %.3f)" % [role, insight, total, head])
-			_check(head > 0.0, "%s: the reading has a headline on the people it names (insight %.1f)" % [role, insight])
 		# The headline only adds where it beats the model (an Archivist reading is already
 		# strong in the model), so a dull holder moves at least as far, never less.
 		_check(steps[0.1] >= steps[0.9] - 0.000001, "%s: a dull holder moves at least as far as a sharp one (%+.3f vs %+.3f)" % [role, steps[0.1], steps[0.9]])

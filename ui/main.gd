@@ -6,6 +6,7 @@ extends Control
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
+const TermDefs = preload("res://ui/term_defs.gd")
 const Mind = preload("res://sim/mind.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
@@ -439,6 +440,7 @@ func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
 	b.text = text
 	b.pressed.connect(cb)
+	b.tooltip_text = TermDefs.control_tip(text)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	if color != null:
 		# Character colours are tuned for the dark board; on a paper button, use their ink.

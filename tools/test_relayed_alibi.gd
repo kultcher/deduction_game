@@ -14,8 +14,6 @@ extends SceneTree
 const Seeds = preload("res://tools/fixture_seeds.gd")
 const Mind = preload("res://sim/mind.gd")
 const C = preload("res://sim/content.gd")
-const Connections = preload("res://workshop/connections.gd")
-const Tuning = preload("res://sim/tuning.gd")
 
 var checks := 0
 var fails := 0
@@ -47,7 +45,6 @@ func _init() -> void:
 	if found.is_empty():
 		_finish()
 		return
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	var g = found.g
 	var w = g.w
 	var l = w.by_id[found.listener]
