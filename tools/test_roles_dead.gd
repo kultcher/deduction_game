@@ -219,6 +219,7 @@ func _run() -> void:
 	var told = Solver.card_by_id(Live.view(g2), Live.Evidence.normalize_card(g2.board[n2 - 1]).id)
 	check(told.get("testimony_only", false) and not told.has("relay_source"), "without the public death the Medium item is teller testimony")
 	check(not told.get("fallback", true), "and that testimony is weighable, not marked fallback (Codex, #348)")
+	check(told.get("support_note", "") == "Hearsay: the teller can't say whose reading it was, or prove the gift.", "and its note calls it hearsay (%s)" % told.get("support_note", ""))
 	var serialized = JSON.stringify(Live.Evidence.normalize_card(g.board[number - 1]))
 	check(not serialized.contains("HIDDEN CAUSE") and not serialized.contains('"fake"') and not serialized.contains('"lie"'), "nested referee cause fields do not cross the evidence boundary")
 	var board = Canvas.new(view)

@@ -42,16 +42,11 @@ Night Watch list that wrongly names the listener clearing the rest of the watch.
 (Nov 17–18): a case with no cards answered from an older compile (#192), and an evil Medium's
 relay about the first victim naming night 0 (Beadle).
 
-- **The phase advances while the player is still reading an NPC's last lines.** The phase
-  must not move on until the player clicks "Leave conversation". (Michael, Nov 19) Owner
-  Herald. [decided]
 - **An NPC waves the player down twice with the same information.** It must never do that
   with exactly the same information. (Michael, Nov 19) Owner Beadle. [decided]
 - **Cleanup and errors** (Michael, Nov 19):
   - (a) stale scripts in `logs/`, and `tools/test_ask_night_results.gd` failing to parse.
     Owner Lantern.
-  - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
-  - (c) RID leaks on exit. Owner Herald, low priority.
 
   [decided]
 

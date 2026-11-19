@@ -326,7 +326,8 @@ func refresh() -> void:
 	for old in board.view.cards:
 		if (board.nodes.has("e:" + old.id) or referenced_profile_ids.has(old.id)) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
-			missing.support_note = "BLOCKED: original evidence is missing or changed"
+			missing.support_note = "This card has changed or is no longer on your board."
+			missing["off_board"] = true
 			next_view.cards.append(missing)
 	board.view = next_view
 	session.scenario = {"public_view": next_view}

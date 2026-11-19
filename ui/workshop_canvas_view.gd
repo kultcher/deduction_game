@@ -665,7 +665,7 @@ func _evidence_card(id: String) -> Dictionary:
 	return Solver.card_by_id(model.view, node.card) if node.kind in ["evidence", "modifier"] else {}
 
 func _unsupported(card: Dictionary) -> bool:
-	return card.get("fallback", false) or str(card.get("support_note", "")).begins_with("BLOCKED")
+	return card.get("fallback", false) or card.get("off_board", false)
 
 func _time_text(card: Dictionary) -> String:
 	var at: Dictionary = card.get("observed_at", {})

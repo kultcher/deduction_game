@@ -43,3 +43,15 @@ Three notes of the same kind weren't in Steward's list. They still read as devel
 or a teller's testimony kept `fallback = true` from the outer reading's checks (the old note
 override had cleared it). Both now clear the flag after the adapted card merges.
 `test_roles_dead` checks the relay and the testimony path; both checks fail without the fix.
+
+**The last three Workshop notes (Michael approved, Nov 19, via Seneschal).**
+- A weighable reading carries no note (was "Reading adapter available · check whole-case support").
+- Teller testimony: "Hearsay: the teller can't say whose reading it was, or prove the gift."
+- A card that left the board: "This card has changed or is no longer on your board." Whether
+  it can be weighed is now an `off_board` flag on the card, not the note's "BLOCKED" prefix.
+- Checks: `test_workshop_nav` (no note on a weighable reading; the off-board card is marked
+  unsupported and says so) and `test_roles_dead` (the hearsay note).
+
+**BACKLOG.** Closed three items of mine: the phase moving on mid-conversation and the RID
+leaks (both fixed in #322), and the TextEdit gutter error, which Michael no longer sees in a
+full game (closed as not reproducible).

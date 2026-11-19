@@ -48,7 +48,7 @@ static func view(g) -> Dictionary:
 			elif activity.kind in ["context", "location"]:
 				note = "Where someone was: not a sign of guilt on its own."
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
-			note = "Reading adapter available · check whole-case support"
+			note = ""
 			fallback = false
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
 				note = "The Workshop can't weigh a reading from this time yet."
@@ -77,7 +77,7 @@ static func view(g) -> Dictionary:
 			if activity.has("relay_source") or activity.get("testimony_only", false):
 				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
-				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
+				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"profile_facets": _profile_facets(g),
