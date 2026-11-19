@@ -260,8 +260,17 @@ relay about the first victim naming night 0 (Beadle).
   it after any change to the judge or to how listeners weigh a case, and compare.
   `tools/case_slate.gd`, `tools/case_slate_report.py`, baseline in `docs/case_slate/`.
   Owners: Quill, with Lantern. **Built (Quill, Nov 19).** Next: re-run after the juror fix
-  (hearsay weight and the Lamplighter count), and when Michael revisits the badge cut points.
+  (the juror hears as an average listener: Michael, Nov 19; the Lamplighter count is on hold),
+  and propose new badge cut points from it.
   [decided]
+
+- **Misleading cases on the slate.** (Michael, Nov 19, approved through Seneschal.) The
+  slate's chains built about an innocent subject, as they could really arise: an innocent
+  out at night, true readings naming them beside the real evil, or a lie told by evil. Then
+  a change can be checked for making the town easier to mislead, as well as easier to
+  convince. Owners: Quill, with Lantern. **Built (Quill, Nov 19):** ten misleading cases
+  (`<case>_innocent`; the impossible reading has none) in the same baseline, reported
+  separately. [decided]
 
 ### NPC behaviour
 
