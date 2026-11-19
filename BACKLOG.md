@@ -337,7 +337,7 @@ relay about the first victim naming night 0 (Beadle).
     after the player leaves, was tried and set aside (Nov 19).** It halved the visible rate
     (0.12 a day) and cut evil meetings from 21 to 12. Main's pairing already lets teammates
     confer after the player leaves, when they are in the same place.
-  - **Being built** on `claude/beadle-evil-confer`, with the pairing unchanged:
+  - **Built** (Nov 19, `claude/beadle-evil-confer`), with the pairing unchanged:
     - those present at a meeting after the player's choice see it;
     - witnesses pass it on in conversation (one step);
     - asked about either person, an NPC reports it, first or second hand.

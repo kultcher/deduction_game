@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+### Current baseline (Nov 19, meetings feed the gossip network): `baseline_eb98b79`
+
+`tools/golden/baseline_eb98b79/` is the capture from `claude/beadle-evil-confer` at `eb98b79`
+(main `2823c17` merged in). Those at the place where two people talked after the player had
+gone see it. A witness passes on a meeting in conversation, and asked about either person an
+NPC reports it, first or second hand (BACKLOG item 3, Michael, Nov 18-19). The pairing itself is
+unchanged.
+- **Divergence from `baseline_e287b3d`:**
+  - 54875 from record 80 (day 2: Edda sees Jory and Isolde talking after the player had gone);
+  - 692 from record 40 (Bart's refresh on day 2, after hearing of a meeting);
+  - 98933 from record 82 (Dorian's refresh on day 2);
+  - 42 and 900 are identical.
+- **Outcomes:**
+  - **692:** hanged Constance on day 3; now also hangs Greta on day 2. No winner by day 4.
+  - **42, 54875, 900 and 98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
