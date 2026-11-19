@@ -1,13 +1,15 @@
 # Backing a case builds trust
 
 - **Agent:** Claude-Beadle
-- **Base:** main at 6fcdc32
+- **Base:** main at 44a9962
 - **Branch:** claude/beadle-agreement-trust
-- **Status:** PR open. It moves golden and re-baselines to `baseline_e881c2f` in the PR.
+- **Status:** PR open. It moves golden and re-baselines to `baseline_6c45840` in the PR.
+  Narrowed on Nov 19 to votes and nominations (Michael).
 - **Next actor:** Bailiff (review and merge). Michael, through Seneschal, for the reused
   numbers below.
-- **BACKLOG item:** "Backing a strong case builds trust" (Michael, Nov 18; owner Beadle).
-  BACKLOG isn't edited while Vicar restructures it.
+- **BACKLOG item:** "Backing a strong case builds trust" (Michael, Nov 18; owner Beadle),
+  narrowed Nov 19. The reading steps became "Trust from readings that confirm what I know or
+  strongly believe" (Lantern and Beadle, sized tiers), recorded in #293.
 
 ## What changed
 
@@ -23,15 +25,9 @@ own trust doesn't move, and their shadow copies it as before.
     nominate them itself.
 
   It's at most once a day for each ally, so a day of agreeing ballots counts as one agreement.
-- **Confirmation.** The first time a good NPC hears a reading, it gains trust in the teller if
-  the reading:
-  - clears the NPC itself (it knows it's good). This is the larger step, a teller vouching for
-    it;
-  - agrees with the NPC's own reading, pointing at someone it pointed at or clearing someone it
-    cleared. This is the smaller step.
 
-  An evil teller who clears someone buys that person's trust too. That's a realistic lie with
-  a reason, and it's in the log.
+Readings change no trust here. Michael (Nov 19) moved trust from readings to its own item,
+with tiers by how sure the listener already is; it waits on Lantern's API.
 
 ## Numbers (existing constants, reused, flagged for Michael)
 
@@ -39,8 +35,6 @@ own trust doesn't move, and their shadow copies it as before.
 |---|---|---|---|
 | Agreement (a vote, a nomination, an accusation) | `Social.TRUST_VOTED_FOR` | 0.03 | A nominee's thanks to a voter who spared it |
 | "Suspects them too" | `Meeting.NOMINATION_FLOOR` | 0.40 | The lowest suspicion an NPC nominates on |
-| A reading that clears me | `Roles.WARDEN_SAVE_TRUST` | 0.1 | A protectee's trust in the Warden who says it guarded them |
-| A reading that agrees with mine | `Social.TRUST_VOTED_FOR` | 0.03 | As above |
 
 No new constant. If Michael wants these tuned apart from their original uses, they'd become
 named constants of their own.
@@ -54,27 +48,39 @@ named constants of their own.
 
 ## Measured
 
-- **New suite:** `tools/test_agreement_trust.gd`, 15 checks, on the fast list.
-- **Suites that pass:** test_execution_aftermath, test_evil_play, test_lie_severity_votes,
-  test_meeting_flow, test_meeting_m2c, test_npc_chatter, test_mechanics_sharing,
-  test_roles_people, test_peer_role_gossip, test_held_signals, test_social,
-  test_social_credibility, test_dialogue_opinion_pass, test_conversation_gifts and
-  test_gift_doubt.
-- **In play:** 15 passive 10-NPC games, seeds 3000-3014, main 6fcdc32 against this branch with
-  the cap.
+- **New suite:** `tools/test_agreement_trust.gd` (votes and the daily cap, backing, and a
+  reading that clears the listener changing no trust), on the fast list.
+- **Suites that pass:** test_agreement_trust, test_connections_pairings, test_meeting_flow,
+  test_social, test_evil_play, test_held_signals and test_lie_severity_votes (earlier, before
+  the narrowing, also the rest listed in the first version of this PR).
+- **In play:** 15 passive 10-NPC games, seeds 3000-3014, main 6fcdc32 against this branch.
 
 | | Main | Here |
 |---|---|---|
-| Winners | 9 good, 6 evil | 8 good, 7 evil |
-| Hangings (good hanged) | 42 (14) | 38 (14) |
-| Agreement gains a game: votes / accusations / nominations | — | 87.5 / 11.4 / 4.3 |
-| Confirmation gains a game: cleared me / agrees with mine | — | 4.2 / 2.7 |
-| A typical pair's total gain over a game (median) | — | 0.06 (0.03 to 0.09 by game) |
-| The largest pair's gain in a game | — | median 0.22, at most 0.36 |
-| Share of gains toward evil NPCs | — | 33% (evil is 30% of the town) |
+| Winners | 9 good, 6 evil | 9 good, 6 evil |
+| Hangings (good hanged) | 42 (14) | 41 (12) |
+| Agreement gains a game: votes / accusations / nominations | — | 88.1 / 11.1 / 3.9 |
 
+- **Trust distribution:** `tools/measure_npc_trust.gd` (new) records every living pair's trust
+  at each day's end. It was run on the same 15 seeds, on main 634332e and on this branch.
+  Michael's soft goal is some NPCs near full trust with some others by about day 4.
+
+  | End of day | Main: pairs near full trust (0.85+) | Here |
+  |---|---|---|
+  | 1 | 11 (1.0%), in 6 games | 13 (1.2%), in 6 games |
+  | 2 | 9 (1.3%), in 6 | 27 (4.0%), in 11 |
+  | 3 | 8 (2.5%), in 5 | 28 (8.3%), in 8 |
+  | 4 | 4 (3.2%), in 3 | 15 (10.1%), in 8 |
+  | Game end: median / top tenth | 0.52 / 0.78 | 0.59 / 0.87 |
+
+  - **Distrust:** it isn't worn away. The lowest tenth stays near 0.3 on both through day 3.
+    On day 4 it's 0.08 on main and 0.26 here, from fewer games.
+  - **Counts by day:** they cover only the games still running that day, and fewer games run
+    as days pass.
+  - **Pairs already near full trust on day 1:** these are friends set up at the start, the
+    same on both.
 - **Golden:** two captures were identical, and every seed diverges. 42, 692 and 900 keep their
-  outcomes. 54875 now hangs only Jory, on day 3. 98933 is a good win on day 2. Details are in
+  outcomes. 54875 now hangs only Edda, on day 3. 98933 is a good win on day 2. Details are in
   `docs/golden_baseline.md`.
 
 ## Proposed for the backlog

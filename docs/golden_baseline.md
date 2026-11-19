@@ -44,20 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, backing a case builds trust): `baseline_e881c2f`
+### Current baseline (Nov 19, backing a case builds trust): `baseline_6c45840`
 
-`tools/golden/baseline_e881c2f/` is the capture from `claude/beadle-agreement-trust` at `37b9ba5` (main
-`6fcdc32` merged in): a good NPC warms a little to those who vote the same way, to someone who
-nominates or accuses a person it already suspects, and to a teller whose reading clears it or
-agrees with its own (Michael, Nov 18).
-- **Divergence from `baseline_e287b3d`:** every seed. 54875 from record 1, 98933 from record 5,
-  42 from 27, 900 from 46, 692 from 52: refreshes where trust in an agreeing teller or voter
-  had moved.
+`tools/golden/baseline_6c45840/` is the capture from `claude/beadle-agreement-trust` at `6c45840`
+(main `44a9962` merged in). A good NPC warms a little to those who vote the same way, and to
+someone who nominates or accuses a person it already suspects (Michael, Nov 18). The reading
+steps were taken out on Nov 19 and moved to their own item, so readings change no trust here.
+- **Divergence from `baseline_e287b3d`:** every seed, at the first ballot or the refresh after
+  it. 54875 and 98933 from record 52 (day 1's vote), 42 from 55 and 900 from 74 (day 2's vote),
+  692 from 62 (Nisha's refresh on day 2).
 - **Outcomes:**
   - **42:** unchanged (good on day 3, hanging Agnes).
   - **692:** unchanged (Constance hanged on day 3, no winner by day 4).
   - **900:** unchanged (Lian hanged on day 3, no winner by day 4).
-  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs only Jory, on day 3.
+  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs only Edda, on day 3.
   - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
 - **Stability:** two captures were identical.
 
