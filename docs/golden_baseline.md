@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, trust from readings that confirm): `baseline_8d946e7`
+### Current baseline (Nov 19, "their readings agree with what I know"): `baseline_2829999`
+
+`tools/golden/baseline_2829999/` is the capture from `claude/beadle-readings-agree` at `2829999`
+(main with #319 merged in). A good listener whose record holds a moderate or known
+confirmation of someone's readings gives it as its reason, in a vote against them or asked its
+opinion of them, with a card citing the confirmed reading. Wording only: no suspicion moves.
+- **Divergence from `baseline_8d946e7`:** 54875, 692 and 98933 at day 2's vote, where a no-voter
+  gives the new reason; 42 and 900 are identical.
+- **Outcomes:** all five unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, trust from readings that confirm): `baseline_8d946e7`
 
 `tools/golden/baseline_8d946e7/` is the capture from `claude/beadle-reading-trust` at `8d946e7`
 (main with #320 merged in). The trust a confirming reading earns counts in the same refresh's
