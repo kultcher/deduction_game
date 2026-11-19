@@ -44,19 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, trust from readings that confirm): `baseline_f2e5532`
+### Current baseline (Nov 19, trust from readings that confirm): `baseline_d61a22d`
 
-`tools/golden/baseline_f2e5532/` is the capture from `claude/beadle-reading-trust` at `f2e5532`
-(main `68e4f85` merged in). A good listener gains trust in a teller whose reading confirms what it
-knows or strongly believes (small 0.06, moderate 0.12, known 0.20). The agreement step from
-#292 becomes 0.02 (Michael, Nov 19, set R3).
-- **Divergence from `baseline_22733aa`:** every seed. 54875 and 692 from record 1 (the first
-  day's refreshes judge the night-0 readings), 98933 from record 4, 42 from record 26, and 900
-  from record 40.
+`tools/golden/baseline_d61a22d/` is the capture from `claude/beadle-reading-trust` at `d61a22d`
+(main `05d81a3` merged in, with #308). A good listener gains trust in a teller whose reading
+confirms what it knows or strongly believes (small 0.06, moderate 0.12, known 0.20), once per
+reading by its logical origin. The agreement step from #292 becomes 0.02 (Michael, Nov 19, set
+R3). The record of confirmations is kept in `workshop_state`.
+- **Divergence from `baseline_d6a93f1`:** every seed, from record 1 (the record's place in each
+  NPC's `workshop_state`, and the first day's refreshes judging the night-0 readings).
 - **Outcomes:**
   - **42, 692 and 900:** unchanged.
-  - **54875:** hanged Edda on day 3 with no winner by day 4. Now good wins on day 3, hanging
-    Constance.
+  - **54875:** hanged Edda on day 3 with no winner by day 4. Now it hangs Edda on day 2 and
+    Constance on day 3, and good wins on day 3.
   - **98933:** good won on day 2, hanging Odette. Now it hangs Dorian on day 2 and Isolde on
     day 3, with no winner by day 4.
 - **Stability:** two captures were identical.
