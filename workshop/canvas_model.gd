@@ -868,7 +868,7 @@ func _evidence(ids: Array) -> Array:
 ## How each premise type reads after the person's name (the Workshop's claim menu).
 const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
 	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
-	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "role": "holds their claimed gift",
+	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "turned": "was turned by the curse", "role": "holds their claimed gift",
 	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
 	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading", "inconsistent": "has readings that don't fit together"}
 

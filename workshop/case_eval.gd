@@ -294,6 +294,15 @@ static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> Pac
 		return Solver.question_table(view, conclusion)
 	if conclusion.type == "holds":
 		return _holds_mask(view, Solver.card_by_id(view, str(conclusion.get("report", ""))))
+	if conclusion.type == "turned":
+		# The soul the Revenant's curse turned (Solver.holds): one byte per world.
+		var t_idx: int = Solver.person_index(view, str(conclusion.get("target", "")))
+		var t_worlds: Array = Solver.universe(view)
+		var t_out := PackedByteArray()
+		t_out.resize(t_worlds.size())
+		for i in range(t_worlds.size()):
+			t_out[i] = 1 if t_idx >= 0 and int(t_worlds[i].get("converted", -1)) == t_idx else 0
+		return t_out
 	if conclusion.type == "inconsistent":
 		# The source's readings can't all hold: not every one of them fits the world.
 		var n_w: int = Solver.universe(view).size()
