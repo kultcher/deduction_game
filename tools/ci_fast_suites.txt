@@ -58,6 +58,7 @@ test_honest_forgetting
 test_honest_mistake
 test_joint_reasons
 test_judge_for_profile
+test_judgement_boost
 test_juror_claims
 test_juror_listener
 test_lie_severity
