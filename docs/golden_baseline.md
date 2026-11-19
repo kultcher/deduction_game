@@ -44,19 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, a Warden's guard read with its night): `baseline_3710796`
+### Current baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
 
-`tools/golden/baseline_3710796/` is the capture from `claude/warden-night-item` at `3710796`
-(main `4248293` merged in). A Warden's guard report now sits in its night's movement item with
-that night's sightings and alibis (`Connections.NIGHT_ROLES`), so a quiet-night guard is weighed
-together with who was seen near the guarded door, instead of alone.
-- **Divergence from `baseline_21df80d`:** 692 from record 32 (Nisha's refresh on day 2, the
-  first refresh that holds a Warden's guard). 42, 54875, 900 and 98933 are identical.
-- **Outcomes:** 692 hangs the same person, Constance, on day 3, with the same eight yes votes.
-  Nisha now nominates her instead of Fenwick. It still reaches day 4 with no winner, in 252
-  records (was 251). Every other seed is unchanged.
-- **Stability:** two captures were identical. With `--ignore engine,mode` they are also
-  identical to this branch's capture before #296 was merged in (`baseline_e1d1934`, never on main).
+`tools/golden/baseline_74eb971/` is the capture from `claude/beadle-agreement-trust` at `74eb971`
+(main `4248293` merged in, with #296). A good NPC warms a little to those who vote
+the same way, and to someone who nominates or accuses a person it already suspects (Michael,
+Nov 18). The reading steps were taken out on Nov 19 and moved to their own item, so readings
+change no trust here. It replaces this PR's earlier `baseline_6c45840`, which was on main before
+#296; against it, only 98933 moves (from its day-2 nomination, under #296's retuned lie call),
+with the same outcome.
+- **Divergence from `baseline_21df80d`:** every seed, at the first ballot or the refresh after
+  it. 54875 and 98933 from record 52 (day 1's vote), 42 from 55 and 900 from 74 (day 2's vote),
+  692 from 62 (Nisha's refresh on day 2).
+- **Outcomes:**
+  - **42:** unchanged (good on day 3, hanging Agnes).
+  - **692:** unchanged (Constance hanged on day 3, no winner by day 4).
+  - **900:** unchanged (Lian hanged on day 3, no winner by day 4).
+  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs only Edda, on day 3.
+  - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
+- **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, the Mistaken label): `baseline_21df80d`
 
