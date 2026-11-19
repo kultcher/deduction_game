@@ -289,9 +289,13 @@ relay about the first victim naming night 0 (Beadle).
   Like golden, a script and a stored baseline report, run on demand; not a CI suite. Re-run
   it after any change to the judge or to how listeners weigh a case, and compare.
   `tools/case_slate.gd`, `tools/case_slate_report.py`, baseline in `docs/case_slate/`.
-  Owners: Quill, with Lantern. **Built (Quill, Nov 19).** Next: re-run after the juror fix
-  (the juror hears as an average listener: Michael, Nov 19; the Lamplighter count is on hold),
-  and propose new badge cut points from it.
+  Owners: Quill, with Lantern. **Built (Quill, Nov 19).** Re-run after the juror fix, with
+  Strong-tier cases (#342) and the vote measure (#355): how many good votes a case sways.
+  **Cut points set (Michael, Nov 19, `claude/badge-cut-points`):** Negligible below ×1.25,
+  Weak from ×1.25, Moderate from ×2, Strong from ×3.5, Damning / Conclusive at a premise
+  chance of 90%; Herald builds the badge text. **Gap to fill:** nothing on the slate falls
+  between Strong (about 4 of 6 good votes) and Damning (all 7); a possible slate case to add
+  there.
   [decided]
 
 - **Misleading cases on the slate.** (Michael, Nov 19, approved through Seneschal.) The

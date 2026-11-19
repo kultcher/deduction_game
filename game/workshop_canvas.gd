@@ -264,7 +264,7 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
 	if not ev.get("impossible", false):
 		ev.lr = heard.lr
-		ev.category = CaseEval.category(heard.lr)
+		ev.category = CaseEval.category(heard.lr, float(heard.chance))
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
