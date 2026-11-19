@@ -2,6 +2,9 @@
 ## A good walker caught out by a sighting reveals its gift and owns the earlier "home"
 ## story. Evil with a planned walking bluff does the same, so neither the reveal nor the
 ## owned-lie line is a tell; nights its bluffed duty wouldn't cover keep the old story.
+## The caught-out ladder (Michael, Nov 19): the first press only owns the night and keeps
+## the gift ("Fine, I was out" and the gift refusal), for good and evil alike; the gift is
+## named when pressed again.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -64,6 +67,9 @@ func _pressed_backs_into_bluff(bluff: String) -> void:
 	# They told the player they were home that night.
 	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi", "home": true, "source": n.id}}
 	n.lied_nights = [1]
+	var soft = Mind.press(g.w, n, _sighting(n))
+	_check(n.claimed_role != bluff and not soft.facts.any(func(f): return f.kind == "claim") and soft.facts.any(func(f): return f.kind == "alibi" and not f.get("home", true) and f.get("excuse", "") == "admit"),
+		"%s bluff: first pressed, evil owns the night and keeps the bluff back (%s)" % [bluff, _joined(soft)])
 	var reply = Mind.press(g.w, n, _sighting(n))
 	var said: String = _joined(reply)
 	_check(n.claimed_role == bluff and n.max_tier >= 3 and reply.facts.any(func(f): return f.kind == "claim" and f.role == bluff),
@@ -121,8 +127,10 @@ func _good_walker_unchanged() -> void:
 	n.history[g.w.time_key(1, C.NIGHT)] = "night:market"
 	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi"}}
 	_check(not MindDialogue._bluff_outing(g.w, n, 1), "a good NPC never takes the evil path")
+	var soft = Mind.press(g.w, n, _sighting(n))
+	_check(n.claimed_role == "" and soft.facts.any(func(f): return f.kind == "alibi" and not f.get("home", true) and f.get("excuse", "") == "admit"), "good walker: first pressed, owns the night and keeps the gift, as evil does (%s)" % _joined(soft))
 	var reply = Mind.press(g.w, n, _sighting(n))
-	_check(n.claimed_role == "warden" and "whatever I told you" in _joined(reply) and n.lied_nights.is_empty(), "good walker: reveal and owned lie as before")
+	_check(n.claimed_role == "warden" and "whatever I told you" in _joined(reply) and n.lied_nights.is_empty(), "good walker: pressed again, reveal and owned lie as before")
 
 ## Night 0, before the Warden's gift works: its duty story is "home", so evil doesn't back
 ## into the bluff for it, and naming the bluff later doesn't own it. A Confessor bluff's
