@@ -47,9 +47,8 @@ listener (#273), both Lantern's.
     are untracked local files Michael can delete. The test file exists on main and passes,
     so its error is most likely a stale import on his side.
   - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
-    Herald (#322): the game has no control with gutters, so the error most likely comes
-    from Godot's own script editor while the game runs from it. Herald has asked Michael
-    where he sees it. Still open until he answers.
+    **Closed, not reproducible** (Michael, Nov 19): it no longer appears in a full game on
+    his machine. The game has no control with gutters (#322).
   - (c) RID leaks on exit. Owner Herald, low priority. **Done** (#322).
 
   [decided]

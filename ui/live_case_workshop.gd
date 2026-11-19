@@ -326,7 +326,8 @@ func refresh() -> void:
 	for old in board.view.cards:
 		if (board.nodes.has("e:" + old.id) or referenced_profile_ids.has(old.id)) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
-			missing.support_note = "BLOCKED: original evidence is missing or changed"
+			missing.support_note = "This card has changed or is no longer on your board."
+			missing["off_board"] = true
 			next_view.cards.append(missing)
 	board.view = next_view
 	session.scenario = {"public_view": next_view}
@@ -484,8 +485,8 @@ func _background_menu(_at: Vector2) -> void:
 		bg_from.set_item_disabled(bg_from.get_item_index(i), given == 0)
 		bg_about.add_item("%s (%d)" % [n.name, named], i)
 		bg_about.set_item_disabled(bg_about.get_item_index(i), named == 0)
-	bg_menu.add_submenu_node_item("Add readings FROM", bg_from)
-	bg_menu.add_submenu_node_item("Add all readings ABOUT", bg_about)
+	bg_menu.add_submenu_node_item("Add readings from", bg_from)
+	bg_menu.add_submenu_node_item("Add all readings about", bg_about)
 	bg_menu.position = Vector2i(get_viewport().get_mouse_position())
 	bg_menu.popup()
 
@@ -573,11 +574,12 @@ func _refresh_case() -> void:
 	if node.kind == "evidence":
 		_clear(case_box)
 		var card: Dictionary = _report(node.card)
-		_label(case_box, card.support_note.replace("FALLBACK:", "UNSUPPORTED:"), 17, "accent")
+		if str(card.get("support_note", "")) != "":
+			_label(case_box, card.support_note, 17, "accent")
 		var editable: bool = (card.kind == "report" and card.role in Live.Assess.ROLES) or card.kind in ["sighting", "secret_claim"] or card.get("context_kind", "") == "psychologist"
-		if editable and not card.support_note.begins_with("FALLBACK"):
+		if editable and not card.get("fallback", false):
 			_question(card)
-		elif not card.support_note.begins_with("FALLBACK"):
+		elif not card.get("fallback", false):
 			_label(case_box, card.text, 18)
 			_label(case_box, "Link this testimony into your argument. Role claims remain conditional on honesty; sightings and alibi discrepancies are circumstantial.", 16)
 		else:

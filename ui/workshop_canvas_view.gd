@@ -87,8 +87,8 @@ func body(id: String) -> Array:
 		return [Solver.card_by_id(model.view, node.card).text, "Player hypothesis: " + node.mode, "Link supporting evidence here. The jury may reject your explanation."]
 	var card = Solver.card_by_id(model.view, node.card)
 	var result: Array = [card.text]
-	if card.has("support_note"):
-		result.append(str(card.support_note).replace("FALLBACK:", "UNSUPPORTED:"))
+	if str(card.get("support_note", "")) != "":
+		result.append(str(card.support_note))
 	if card.kind == "event" and card.get("event") == "curse":
 		var chosen: Array = node.answers.get(card.id, {}).get("positive", [])
 		result.append("Converted voter: " + ("?" if chosen.is_empty() else Solver.person_name(model.view, chosen[0])))
@@ -665,8 +665,7 @@ func _evidence_card(id: String) -> Dictionary:
 	return Solver.card_by_id(model.view, node.card) if node.kind in ["evidence", "modifier"] else {}
 
 func _unsupported(card: Dictionary) -> bool:
-	var note: String = card.get("support_note", "")
-	return note.begins_with("FALLBACK") or note.begins_with("BLOCKED")
+	return card.get("fallback", false) or card.get("off_board", false)
 
 func _time_text(card: Dictionary) -> String:
 	var at: Dictionary = card.get("observed_at", {})
@@ -1228,7 +1227,7 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 		var chip = Rect2(rect.position + Vector2(WIDTH - tw - 8, 10) * zoom, Vector2(tw, 20) * zoom)
 		draw_style_box(CanvasSkin.flat(Color("f1e9d6"), Color("8c795c"), 1, 8, 0), chip)
 		draw_string(font, chip.position + Vector2(7, 15) * zoom, time_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(12), ink)
-	var note: String = str(card.get("support_note", "")).replace("FALLBACK:", "UNSUPPORTED:")
+	var note: String = str(card.get("support_note", ""))
 	tips.append({"rect": head, "text": card.get("text", "") + ("\n" + note if note != "" else "")})
 	if _unsupported(card):
 		var bad = Rect2(rect.position + Vector2(0, 40) * zoom, Vector2(rect.size.x, 4) * zoom)
