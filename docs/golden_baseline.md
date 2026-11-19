@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+### Current baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_a91d12d`
+
+`tools/golden/baseline_a91d12d/` is the capture from `claude/herald-hanged-refusals` (#312) at
+`a91d12d` (main `b856819`). Michael approved capitalising "Demon" throughout (Nov 19): "the demon"
+becomes "the Demon" in readings, role descriptions, filed-case text, logs and dialogue.
+- **Text only:** every record is identical to `baseline_e287b3d` once case is ignored, on all
+  five seeds. No belief, vote or outcome moves.
+- **First text difference:** 42 and 900 at record 1 (a Seer reading's text), 54875 and 98933 at
+  record 54, and 692 at record 25 (the evening reply).
+- **Outcomes unchanged:** the same as `baseline_e287b3d` on every seed, with the same record counts.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
