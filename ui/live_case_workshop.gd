@@ -1159,6 +1159,38 @@ func set_premise_field(id: String, field: String, value) -> void:
 	board.selected = id
 	_edit()
 
+## Opened from the nomination flow, the Workshop starts the case for you (Michael, Nov 19): the
+## blank premise becomes "<target> is <type>". An existing premise saying just that is
+## selected instead; with no blank premise, a new one is added in view. Returns its id.
+func prefill_premise(target: String, type: String = "evil") -> String:
+	if board == null:
+		return ""
+	for id in board.nodes:
+		var node: Dictionary = board.nodes[id]
+		# The same claim about the same alignment: after a curse, a premise about someone's
+		# original alignment isn't the one to reuse (Codex, #370).
+		var c: Dictionary = node.get("conclusion", {})
+		if node.kind == "premise" and str(c.get("type", "")) == type and str(c.get("target", "")) == target \
+				and (not (type in EPOCH_TYPES) or str(c.get("at", board.view.alignment_epoch)) == str(board.view.alignment_epoch)):
+			board.selected = id
+			case_root = id
+			canvas.centre_on([id])
+			_edit()
+			return id
+	var blank: String = ""
+	for id in board.nodes:
+		var node: Dictionary = board.nodes[id]
+		if node.kind == "premise" and node.get("draft", false) and node.get("pick", {}).is_empty():
+			blank = id
+			break
+	if blank == "":
+		var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / canvas.zoom - Vector2(150, 110)
+		blank = board.add_blank_premise(at)
+	set_premise_field(blank, "person", target)
+	set_premise_field(blank, "type", type)
+	canvas.centre_on([blank])
+	return blank
+
 func _default_detail(node: Dictionary) -> void:
 	var conclusion: Dictionary = node.conclusion
 	match conclusion.get("type", ""):

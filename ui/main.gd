@@ -1515,7 +1515,8 @@ func _nomination_menu(anchor: Control, id: String) -> void:
 	if deck.is_empty():
 		_button(v, "File a case against %s in the Workshop" % who.name, func():
 			popup.hide()
-			_open_live_workshop())
+			_open_live_workshop()
+			case_view.workshop.editor.prefill_premise(id, "evil"))
 	var raw = _button(v, "Nominate without a case", func():
 		popup.hide()
 		_run("nominate %s raw" % id))
