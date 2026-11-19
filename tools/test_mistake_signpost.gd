@@ -85,6 +85,11 @@ func _game_side(sd: int) -> void:
 	var want: String = Live.SIGNPOST_PRESENTED % [goods[0].name, a, a]
 	check(shown == [want], "the refusal becomes the signpost (%s)" % str(shown))
 	check(Live.player_issues(g, honest.value, ["Some other issue."]) == ["Some other issue."], "other issues are untouched")
+	# A newer case with the same lie call that nobody has heard isn't the one to revise (Codex, #363).
+	var draft: int = Live.file(g, _case(g, text, goods[4].id, "lying").value)
+	check(draft > a and not Live.was_presented(g, draft), "a newer, unheard case calls the same lie (#%d)" % draft)
+	check(Live.player_issues(g, honest.value, raw) == [want], "the signpost still names the heard case #%d" % a)
+	g.board[draft - 1].deleted = true
 	var b: int = Live.file(g, honest.value)
 	check(b > 0, "the second case files (#%d)" % b)
 	g.events = []

@@ -435,8 +435,19 @@ const SIGNPOST_PRESENTED = "You called %s's reading a lie in case #%d. To call i
 const SIGNPOST_UNPRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, change the challenge in case #%d."
 
 ## The live filed case (not `own`, nor any version of it) that calls a lie on a reading `value`
-## calls Mistaken: {number, teller}, or {}.
+## calls Mistaken: {number, teller}, or {}. A case someone has heard comes first: only a heard
+## case can refuse the new one, so a newer unheard draft with the same call isn't the one to
+## revise (Codex, #363).
 static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictionary:
+	var found: Array = _lie_calls_elsewhere(g, value, own)
+	for f in found:
+		if was_presented(g, f.number):
+			return f
+	return found[0] if not found.is_empty() else {}
+
+## Every such case, newest first.
+static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
+	var out: Array = []
 	var RC = preload("res://workshop/reading_challenges.gd")
 	var mine: Dictionary = value.get("reading_challenges", {})
 	var lineage: Array = versions_of(g, own)
@@ -449,8 +460,9 @@ static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictiona
 		var theirs: Dictionary = c.workshop_case.get("reading_challenges", {})
 		for rid in mine:
 			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST:
-				return {"number": int(c.n), "teller": _card_source(g, str(rid))}
-	return {}
+				out.append({"number": int(c.n), "teller": _card_source(g, str(rid))})
+				break
+	return out
 
 ## Case `number` and every version it revises.
 static func versions_of(g, number: int) -> Array:

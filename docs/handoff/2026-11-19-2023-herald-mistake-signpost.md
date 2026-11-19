@@ -41,3 +41,8 @@ Michael approved both options on Nov 19, through Seneschal. BACKLOG: "Recovering
 
 ## Proposed for the backlog
 None.
+
+## Codex fix (#363)
+- **The bug:** the signpost took the newest filed case with the same lie call. If that was an unheard draft, it sent the player to revise a case that couldn't be what refused them, since only a heard case's call blocks the new one.
+- **The fix:** a heard case now comes first, and an unheard one is named only when none is heard.
+- **The check:** `test_mistake_signpost` (23 checks) adds a newer unheard draft with the same call. The check fails without the fix.
