@@ -275,6 +275,7 @@ func refusal_privacy():
 		if blocked and slipped and pressed: break
 	check(blocked and slipped and pressed, "privacy fixture covers withholding, slips and pressed refusals")
 	# Own-street observations don't reveal an extra location or require a new roll.
+	var street_checked: int = 0
 	for seed_value in range(1, 50):
 		n.dialogue_memory = {}
 		n.pressed_today = 0
@@ -287,8 +288,10 @@ func refusal_privacy():
 		var reply = Mind.answer_night(w, n, 1)
 		if reply.facts.any(func(f): return f.kind == "refusal"):
 			if probe.randf() >= 0.95: continue
+			street_checked += 1
 			check(reply.facts.any(func(f): return f.kind == "sighting" and f.block == "square") and w.rng.state == probe.state, "a home-street report needs only the approved willingness roll, not a privacy roll")
 			break
+	check(street_checked > 0, "some seed reached the home-street check (%d; Steward Nov 19 silent skip)" % street_checked)
 	# Claimed-walker fake watch reports retain their original branch and RNG.
 	n.claimed_role = "nightwatch"
 	n.max_tier = 3
@@ -321,6 +324,7 @@ func refusal_privacy():
 	n.info_log = []
 	n.traits.gossip = 0.0
 	n.beliefs = [{"kind": "saw", "who": target.id, "block": "market", "day": 1, "phase": C.NIGHT, "how": "street"}]
+	var gossip_checked := false
 	for seed_value in range(1, 60):
 		n.dialogue_memory = {}
 		n.pressed_today = 0
@@ -333,7 +337,9 @@ func refusal_privacy():
 		if reply.facts.any(func(f): return f.kind == "refusal"):
 			if probe.randf() < 0.25: probe.randf()
 			check(w.rng.state == probe.state and (not reply.facts.any(func(f): return f.kind == "sighting") or reply.lines.any(func(line): return "not that I was there" in line.text)), "low Gossip no longer vetoes direct answers, but the existing privacy slip gate still applies")
+			gossip_checked = true
 			break
+	check(gossip_checked, "some seed reached the low-Gossip check (Steward Nov 19 silent skip)")
 	var sleeper = w.living_good()[1]
 	sleeper.role = "clerk"
 	sleeper.secret_mod = "sleepwalker"

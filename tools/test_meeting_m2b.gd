@@ -151,7 +151,7 @@ func _test_press_role() -> void:
 				_check(t.max_tier >= 2 and _heard_by_town(g, t), "press role: a hint is public and every listener hears it")
 			"refusal":
 				_check(t.pressure > p0 and _heard_by_town(g, t), "press role: a refusal raises their pressure and the town hears it")
-	_check(seen.has("claim") and seen.has("refusal"), "press role produces claims and refusals across the sample (%s)" % ", ".join(PackedStringArray(seen.keys())))
+	_check(seen.has("claim") and seen.has("hint") and seen.has("refusal"), "press role produces claims, hints and refusals across the sample (%s)" % ", ".join(PackedStringArray(seen.keys())))
 	# Once claimed, the gift press asks for readings instead.
 	var g = _meeting_game(8441)
 	var claimed: Array = g.w.living().filter(func(n): return n.claim_public and g.w.can_nominate("player", n.id) == "")
@@ -159,6 +159,8 @@ func _test_press_role() -> void:
 		var c = claimed[0]
 		var opts: Dictionary = MindPodium.options(g.w, c)
 		_check(opts.gift in ["readings", ""], "a claimed nominee is pressed for readings, not their gift (%s)" % opts.gift)
+	else:
+		_check(false, "case 8441 has a claimed nominee to press (Steward Nov 19 silent skip)")
 
 
 func _test_press_night_public() -> void:
@@ -184,12 +186,14 @@ func _test_press_night_public() -> void:
 
 
 func _test_evil_walker() -> void:
+	var ran: int = 0
 	for sd in [8301, 8305]:
 		var g = _played_game(sd, 3)
 		var nd: int = g.w.day - 1
 		var t = g.w.demon()
 		if g.state != "meeting" or not t.alive or g.w.can_nominate("player", t.id) != "":
 			continue
+		ran += 1
 		var was_out: bool = str(t.history.get(g.w.time_key(nd, C.NIGHT), "home")).begins_with("night:")
 		g.command("nominate %s raw" % t.name.to_lower())
 		var before: int = g.board.size()
@@ -197,6 +201,7 @@ func _test_evil_walker() -> void:
 		_check(was_out and res.outcome in ["lie", "refusal", "duty"], "case %d: the demon out last night lies, refuses or tells its bluff's duty (%s)" % [sd, res.outcome])
 		_check(not res.facts.any(func(f): return f.get("kind", "") == "secret" or (f.get("kind", "") == "alibi" and not f.get("home", true) and not f.get("duty_claim", false))),
 			"case %d: and never gives away where it really was" % sd)
+	_check(ran == 2, "both evil-walker cases reach a meeting with the Demon nominable (%d of 2; Steward Nov 19 silent skip)" % ran)
 
 
 func _test_cards() -> void:
