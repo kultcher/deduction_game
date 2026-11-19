@@ -11,7 +11,7 @@
 ## What changed
 
 Each check that could pass on nothing now fails if its precondition doesn't hold, or counts that
-it ran. Three of them weren't running at all.
+it ran. Two of them weren't running at all.
 
 | Suite | Site | Now |
 |---|---|---|
