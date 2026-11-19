@@ -866,6 +866,28 @@ func _evidence(ids: Array) -> Array:
 	return result
 
 ## How each premise type reads after the person's name (the Workshop's claim menu).
+## A hanged person's Demon premise (Michael, Nov 19): "was the Demon when hanged", offered
+## only where a Scion is possible on the script, and never in the negative (a player who
+## argued someone else was the Demon withdraws that case instead). The judge's rule is
+## Solver.hanged_demon.
+const HANGED_DEMON_TEXT = "was the Demon when hanged"
+const HANGED_DEMON_HINT = "Argue they were the Demon when the town hanged them. A Scion may have risen in their place."
+
+## The premise's words for this target: the past tense for a hanged person's Demon premise.
+func premise_text(type: String, target: String) -> String:
+	if type == "demon" and target != "" and not Solver.hanged_context(view, target).is_empty():
+		return HANGED_DEMON_TEXT
+	return PREMISE_TEXT.get(type, "is " + type)
+
+## Whether the type menu offers this premise for this target.
+func premise_offered(type: String, target: String) -> bool:
+	if type not in ["demon", "notdemon"] or target == "" or Solver.hanged_context(view, target).is_empty():
+		return true
+	if type == "notdemon":
+		return false
+	var minions: Array = view.get("script_minions", [])
+	return minions.is_empty() or "scion" in minions
+
 const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
 	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
 	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "role": "holds their claimed gift",
@@ -881,7 +903,7 @@ func title(id: String) -> String:
 			return "Supporting evidence"
 		if node.conclusion.type == "conflict":
 			return "These reports conflict"
-		return "%s %s" % [Solver.person_name(view, node.conclusion.target), PREMISE_TEXT.get(node.conclusion.type, "is " + node.conclusion.type)]
+		return "%s %s" % [Solver.person_name(view, node.conclusion.target), premise_text(str(node.conclusion.type), str(node.conclusion.get("target", "")))]
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
 	if node.kind == "modifier":

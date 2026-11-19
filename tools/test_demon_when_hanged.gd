@@ -11,6 +11,7 @@ const Eval = preload("res://workshop/case_eval.gd")
 const History = preload("res://workshop/live_history.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
+const CanvasModel = preload("res://workshop/canvas_model.gd")
 
 var checks = 0
 var fails = 0
@@ -63,6 +64,7 @@ func _init() -> void:
 	var rose_small: Dictionary = {"evil": (1 << e_i) | (1 << a_i), "demon": a_i}
 	check(Solver.hanged_demon(small, rose_small, "e") == 0, "with four alive at the hanging the Scion can't rise, so a hanged Minion was only a Minion")
 	_live()
+	_menu()
 	print("Demon when hanged: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -95,3 +97,14 @@ func _live() -> void:
 	print("live: %d worlds, %d plain, %d when hanged" % [worlds.size(), plain, held])
 	check(agree, "the judge's mask and the solver agree in every live world")
 	check(held > plain and plain > 0, "\"was the Demon when hanged\" holds in the plain worlds and the succession worlds too (%d > %d)" % [held, plain])
+
+
+## What the Workshop offers for a hanged person (Michael, Nov 19): "was the Demon when
+## hanged" only where a Scion is possible, never the negative; the living keep both.
+func _menu() -> void:
+	var with_scion = CanvasModel.new(_view(["scion", "poisoner"]))
+	var no_scion = CanvasModel.new(_view(["poisoner"]))
+	check(with_scion.premise_offered("demon", "g") and not with_scion.premise_offered("notdemon", "g"), "a hanged person: \"was the Demon\" is offered with a Scion on the script, \"is not the Demon\" never")
+	check(not no_scion.premise_offered("demon", "g") and not no_scion.premise_offered("notdemon", "g"), "with no Scion on the script, no Demon premise is offered on a hanged person")
+	check(with_scion.premise_offered("demon", "a") and with_scion.premise_offered("notdemon", "a") and no_scion.premise_offered("demon", "a"), "the living keep both Demon premises")
+	check(with_scion.premise_text("demon", "g") == CanvasModel.HANGED_DEMON_TEXT and with_scion.premise_text("demon", "a") == CanvasModel.PREMISE_TEXT.demon, "a hanged person's premise reads in the past tense; the living's doesn't")

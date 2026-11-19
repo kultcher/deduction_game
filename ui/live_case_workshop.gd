@@ -1119,10 +1119,16 @@ func _field_popup(id: String, field: String) -> void:
 					field_menu.add_item(text, values.size())
 				values.append(person.id)
 		"type":
-			var types: Array = premise_types()
+			# A hanged person's Demon premise is in the past tense, and only where a Scion
+			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
+			var p_target: String = str(node.get("conclusion", {}).get("target", ""))
+			var types: Array = premise_types().filter(func(t): return board.premise_offered(t, p_target))
 			for i in range(types.size()):
-				field_menu.add_item(board.PREMISE_TEXT.get(types[i], types[i]), values.size())
-				if PREMISE_TYPE_HINTS.has(types[i]):
+				field_menu.add_item(board.premise_text(types[i], p_target), values.size())
+				var hanged_demon: bool = types[i] == "demon" and board.premise_text(types[i], p_target) == board.HANGED_DEMON_TEXT
+				if hanged_demon:
+					field_menu.set_item_tooltip(field_menu.item_count - 1, board.HANGED_DEMON_HINT)
+				elif PREMISE_TYPE_HINTS.has(types[i]):
 					field_menu.set_item_tooltip(field_menu.item_count - 1, PREMISE_TYPE_HINTS[types[i]])
 				values.append(types[i])
 		"role":

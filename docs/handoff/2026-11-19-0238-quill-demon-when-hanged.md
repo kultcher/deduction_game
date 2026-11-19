@@ -3,7 +3,7 @@
 - **Agent:** Claude-Quill
 - **Base:** origin/main at 2823c17
 - **Status:** PR open; zero drift.
-- **Next actor:** Bailiff to review and merge. Herald for the optional wording.
+- **Next actor:** Bailiff to review and merge.
 - **Item:** BACKLOG "The Demon before/after premise for the Scion transfer" (triage 1.6,
   [decided: direction]), in the form Michael chose on Nov 19, via Seneschal: no new
   option; the existing premise changes meaning for a hanged person.
@@ -26,8 +26,20 @@ impossible. A plain "Y is the Demon" about the risen Scion already worked.
   "Is not the Demon" is its complement. Anyone not hanged keeps the plain question.
 - **`CaseEval._build_premise_mask`:** the same, built in GDScript, one byte per world, with the
   hanging's context computed once. `position_holds` and the C# kernel are untouched.
+- **What the Workshop offers** (Michael, Nov 19, via Seneschal):
+  - For a hanged person, only "was the Demon when hanged", and only where a Scion is possible
+    on the script. There's no negative form: a player who argued someone else was the Demon
+    withdraws that case instead.
+  - With no Scion on the script, no Demon premise is offered on a hanged person.
+  - The hover is Michael's choice, Herald's A: "Argue they were the Demon when the town
+    hanged them. A Scion may have risen in their place."
+  - `CanvasModel.premise_text` / `premise_offered` (with `HANGED_DEMON_TEXT` /
+    `HANGED_DEMON_HINT`) feed the type menu, the canvas claim and the card title.
+  - The canvas view now carries `script_minions`, the same line as #296.
+  - The judge keeps the complement for "is not the Demon", for saved cases.
 - **Docs:** DESIGN's premise list, and the BACKLOG item marked built.
-- **Tests:** new `tools/test_demon_when_hanged.gd` (10 checks, fast list):
+- **Tests:** new `tools/test_demon_when_hanged.gd` (14 checks, fast list, including what
+  the menu offers and the wording):
   - a hanged Demon, a hanged Demon whose Scion rose, and a hanged good person;
   - someone not hanged keeps the plain question;
   - with no Scion on the script, or four alive at the hanging, there's no succession;
