@@ -17,7 +17,7 @@ is 0.01 of suspicion, and listeners start at 25.
 | double_claim | 10 | weak 10 | 2.95 | +22.8 (+17.3 to +29.3) | 100% | 0% |
 | gravedigger | 10 | moderate 10 | 3.37 | +20.0 (+15.0 to +26.6) | 100% | 90% |
 | lamp_alibis | 10 | weak 10 | 2.23 | +18.2 (+12.1 to +23.7) | 100% | 0% |
-| nw_nobody | 10 | none 8, weak 2 | 1.39 | -3.0 (-6.1 to +2.7) | 100% | 0% |
+| nw_nobody | 10 | none 8, weak 2 | 1.39 | -3.0 (-6.1 to +2.7) | 20% | 0% |
 | guard | 10 | weak 10 | 2.23 | +2.3 (+1.2 to +5.1) | 100% | 10% |
 
 Town movement by the juror's badge, across the slate:
@@ -36,7 +36,8 @@ Town bands used for category agreement (points): strong from +25, moderate from 
 - **At the ends, the badge and the town agree.**
   - The impossible reading is the only Strong case, and it moves the town about +59.
   - The Night Watch "nobody" chain gets no badge, and it moves the town slightly away
-    from the subject (about −3).
+    from the subject (about −3). But the juror still leans slightly toward the premise
+    (1.39), so on direction they agree in only 2 of the 10 cases.
 - **In the middle, the badge doesn't separate how far the town moves.** Weak cases move it
   about +12 on average, Moderate cases about +13. Each badge spans most of the range:
   Weak from +1 to +29, Moderate from +3 to +27.

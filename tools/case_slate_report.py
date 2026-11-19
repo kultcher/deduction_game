@@ -6,9 +6,10 @@
 Per case: the Test juror's badge (and how often each), its strength (the likelihood ratio,
 geometric mean), the town's mean change in suspicion of the subject (in points: 0.01 of
 suspicion is 1 point) with its range, and two agreement figures:
-  sign: the share of cases where the juror and the town point the same way (the juror
-        above "no support" and the town rising, or the juror at or below it and the town
-        not rising by more than a point);
+  sign: the share of cases where the juror and the town point the same way. The juror's
+        direction is its likelihood ratio's side of 1 (within 1% of 1 is neutral); the
+        town's is its movement's side of zero (within a point is neutral). Cases the juror
+        couldn't judge ("not ready") are left out; with none left, the figure is "n/a";
   category: the share where the juror's badge matches the town's own band (TOWN_BANDS).
 Then the town's movement by badge across the whole slate, for revisiting the cut points.
 With a baseline, each case's town mean and strength are shown against it.
@@ -35,6 +36,18 @@ def band(points):
     return "contradicts"
 
 
+def juror_way(lr):
+    return 1 if lr > 1.01 else (-1 if lr < 1 / 1.01 else 0)
+
+
+def town_way(points):
+    return 1 if points > 1.0 else (-1 if points < -1.0 else 0)
+
+
+def pct(x):
+    return "n/a" if x is None else "%d%%" % round(100 * x)
+
+
 def load(path):
     rows = defaultdict(list)
     with open(path) as f:
@@ -54,8 +67,8 @@ def gmean(xs):
 def summary(rs):
     pts = [100.0 * r["town"] for r in rs]
     cats = [r["category"] for r in rs]
-    sign = sum(1 for r, p in zip(rs, pts)
-               if (r["category"] in ("weak", "moderate", "strong")) == (p > 1.0)) / len(rs)
+    judged = [(r, p) for r, p in zip(rs, pts) if r["category"] != "not ready" and r["lr"] > 0]
+    sign = (sum(1 for r, p in judged if juror_way(r["lr"]) == town_way(p)) / len(judged)) if judged else None
     cat = sum(1 for r, p in zip(rs, pts) if r["category"] == band(p)) / len(rs)
     return {"n": len(rs), "lr": gmean([r["lr"] for r in rs]), "mean": sum(pts) / len(pts),
             "lo": min(pts), "hi": max(pts), "sign": sign, "cat": cat,
@@ -77,9 +90,9 @@ def main():
         out[1] += "---|"
     for c in names:
         s = summary(run[c])
-        line = "| %s | %d | %s | %.2f | %+.1f (%+.1f to %+.1f) | %d%% | %d%% |" % (
+        line = "| %s | %d | %s | %.2f | %+.1f (%+.1f to %+.1f) | %s | %s |" % (
             c, s["n"], badge_text(s["badges"]), s["lr"], s["mean"], s["lo"], s["hi"],
-            round(100 * s["sign"]), round(100 * s["cat"]))
+            pct(s["sign"]), pct(s["cat"]))
         if base:
             if c in base:
                 b = summary(base[c])
