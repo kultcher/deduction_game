@@ -1,6 +1,7 @@
 ## Playtest triage items from Nov 16: a far sighting's crowd count (8.2), the Augur's
 ## sightings hint (5.10), a Lovers confession proving the partner (5.9), the canvas's
 ## shift+left-drag box, and left- or right-drag pan (8.1, changed by Michael Nov 17).
+## Named test_triage_nov16 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")

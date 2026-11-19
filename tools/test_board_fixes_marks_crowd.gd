@@ -1,6 +1,7 @@
 ## Nov 9 small fixes (case 12926 follow-ups): board marks for alibis, Dowser readings and
 ## tavern gossip; the Breathstealer's crowd boost.
-##   godot --headless --path . --script res://tools/test_small_fixes_1109.gd
+##   godot --headless --path . --script res://tools/test_board_fixes_marks_crowd.gd
+## Named test_small_fixes_1109 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const C = preload("res://sim/content.gd")

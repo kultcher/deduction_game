@@ -1,6 +1,7 @@
 ## Case 12926 (a Hexer playtest): the Muddler is a fair gossip, and a reading about someone
 ## else is named when it's the reason for an accusation.
-##   godot --headless --path . --script res://tools/test_playtest_12926.gd
+##   godot --headless --path . --script res://tools/test_dialogue_fixes_gossip_reasons.gd
+## Named test_playtest_12926 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
