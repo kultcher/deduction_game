@@ -401,9 +401,6 @@ class Trust:
 	const CLEMENCY_TRUSTED_BONUS = 0.06
 	const CLEMENCY_SUSPECTED_DROP = 0.1
 	const VOTED_YES_ON_ME_DROP = 0.08
-	const SPEAK_DEFEND_BONUS = 0.06
-	const SPEAK_AGAINST_NOMINATOR_DROP = 0.04
-	const SPEAK_AGAINST_NOMINEE_DROP = 0.08
 
 
 # ---------------------------------------------------------------- 5. Background Social Gossip & Approaches

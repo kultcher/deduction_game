@@ -271,9 +271,9 @@ func _flow() -> void:
 	g.command("nominate " + target.id)
 	check(g.state == "nomination", "ordinary nomination follows the case presentation")
 	g.workshop_deliveries.clear()
-	await g.workshop_command("accuse %d" % number, func(_name): await process_frame)
-	check(g.statement_used and g.workshop_deliveries.size() == g.w.living().size() - 1, "nomination statement evaluates the graph for eligible listeners")
-	g.command("accuse %d" % number)
+	await g.workshop_command("case %d" % number, func(_name): await process_frame)
+	check(g.statement_used and g.workshop_deliveries.size() == g.w.living().size() - 1, "a case put on the nomination evaluates the graph for eligible listeners")
+	g.command("case %d" % number)
 	check(g.workshop_deliveries.size() == g.w.living().size() - 1, "canvas cannot bypass the one-statement nomination limit")
 	g.command("vote no")
 	if g.state == "meeting":

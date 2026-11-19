@@ -9,6 +9,7 @@ signal location_solver_requested(question: Dictionary)
 signal fullscreen_toggled
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
 var g
 var case_world
 var support_label: Label
@@ -528,12 +529,12 @@ func _sync() -> void:
 		var reasons: String = "\n".join(PackedStringArray(issues.map(func(i): return "• " + i)))
 		support_label.tooltip_text = (reasons + "\n\n" if reasons != "" else "") + _support_warning(check)
 		support_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		present_button.disabled = check.blocked or g.state not in ["talk", "meeting", "nomination"] or g.w.game_over
+		present_button.disabled = check.blocked or g.state not in ["talk", "meeting", "nomination"] or g.w.game_over or (g.state == "nomination" and g.statement_used)
 	else:
 		support_label.text = ""
 		support_label.tooltip_text = ""
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
-	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Speak on nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
+	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Present on the nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
 	debug_menu.visible = g.debug_overlay
 	var why_i: int = debug_menu.get_popup().get_item_index(DebugItem.WHY_RECORD)
 	if why_i >= 0:
@@ -814,17 +815,12 @@ func _present() -> void:
 	if number < 1:
 		return
 	if g.state == "nomination":
-		var window = ConfirmationDialog.new()
-		window.title = "Speak on this nomination"
-		window.dialog_text = "Use your one statement to accuse or defend the current nominee. The case's headline stays as written; this choice also has the usual social effects."
-		window.ok_button_text = "Accuse"
-		window.cancel_button_text = "Cancel"
-		window.add_button("Defend", true, "defend")
-		window.confirmed.connect(func(): _send("accuse %d" % number); window.queue_free())
-		window.custom_action.connect(func(_action): _send("defend %d" % number); window.queue_free())
-		window.canceled.connect(window.queue_free)
-		_add_subwindow(window)
-		window.popup_centered_clamped()
+		# Option (b), Michael, Nov 19: the case itself is the player's one word on the nomination.
+		var why: String = GameMeeting.nomination_case_rejection(g, g.board[number - 1], g.w.meeting["pending"]["nominee"])
+		if why != "":
+			status.text = why
+			return
+		_send("case %d" % number)
 	else:
 		_send(("convince %d" if g.state == "talk" else "present %d") % number)
 

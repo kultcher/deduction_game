@@ -81,6 +81,7 @@ test_meeting_stream
 test_new_case_memory
 test_night0_fake_sightings
 test_nightwatch_whole_list
+test_nomination_case
 test_npc_fixes_shifts_dead_haunt
 test_npc_openness
 test_peer_role_gossip
