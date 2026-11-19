@@ -2200,9 +2200,17 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 		# Granted today that the nominee lied about being home (lie severity, the vote side).
 		var grant: Dictionary = v.dialogue_memory.get("granted_lies", {}).get(nominee, {})
 		var lie: bool = int(grant.get("day", -1)) == w.day and not mind.workshop_state.get("withdrawn", {}).has(str(grant.get("key", "")))
-		if not accepted and not lie:
+		var agree: Dictionary = load("res://sim/social.gd").readings_agree_record(v, nominee)
+		if not accepted and not lie and agree.is_empty():
 			continue
-		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie)
+		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie) if (accepted or lie) else ""
+		# Their readings confirm what I know (Michael, Nov 19): the reason, ahead of the
+		# generic ones; a card for the player (res.resistance_facts).
+		if not agree.is_empty() and key in ["", "vote_no_reluctant", "vote_no_short_of_rope"]:
+			key = "vote_resist_readings_agree"
+			var rf: Array = res.get("resistance_facts", [])
+			rf.append(load("res://sim/social.gd").readings_agree_fact(v, t, agree))
+			res["resistance_facts"] = rf
 		if key == "":
 			continue
 		out.append(_resistance_line(w, v, t, key, res))
@@ -2255,6 +2263,8 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 	var nom_id: String = str(res.get("by", ""))
 	var nom_name: String = "the Demonologist" if nom_id == "player" else (w.by_id[nom_id].name if w.by_id.has(nom_id) else "")
 	match key:
+		"vote_resist_readings_agree":
+			return say_voiced(v, key, "I won't hang %s: their readings agree with what I know." % t.name, {"nominee": t.name})
 		"vote_no_prefers_block":
 			return say_voiced(v, key, "I take your point about %s, truly, but %s is already on the block and I'd sooner hang %s tonight." % [t.name, block_name, block_name],
 				{"nominee": t.name, "block": block_name})

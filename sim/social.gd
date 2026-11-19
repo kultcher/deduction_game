@@ -1370,3 +1370,18 @@ static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, 
 			"%s's reading confirms what %s %s (%s)" % [src, n.id, "knows" if tier == "known" else "believes", tier])
 	n.dialogue_memory["confirm_seen"] = seen
 	n.dialogue_memory["confirmed_readings"] = record
+
+## "Their readings agree with what I know" (Michael, Nov 19): the speaker's best confirmation of
+## `t_id`'s readings, when it's moderate or known, else {}. An evil speaker answers from its good
+## self's record, so it only ever says this when it's true from that view.
+static func readings_agree_record(n, t_id: String) -> Dictionary:
+	var mind = n.shadow if n.is_evil() and n.shadow != null else n
+	var rec: Dictionary = mind.dialogue_memory.get("confirmed_readings", {}).get(t_id, {})
+	if str(rec.get("tier", "")) in ["moderate", "known"]:
+		return rec
+	return {}
+
+## The player's card for it: the speaker speaks up for `t`, citing the reading.
+static func readings_agree_fact(n, t, rec: Dictionary) -> Dictionary:
+	return {"kind": "opinion", "subject": [t.id], "source": n.id, "stance": "for", "reason": "readings_agree", "cites": str(rec.get("card", "")),
+		"text": "%s says %s's readings agree with what they know." % [n.name, t.name]}

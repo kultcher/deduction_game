@@ -1447,9 +1447,16 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
 	var bond: String = "friend" if (t.id in n.friends or close) else ("rival" if t.id in n.rivals else "")
 	var combined: bool = false   # the line itself states the bond
+	var agree: Dictionary = {}
 	if level < 0.25:
 		text = "I don't take %s for one of the evil ones." % t.name
 		opinion_key = "opinion_clear"
+		# Their readings confirm what I know (Michael, Nov 19): said as the reason, from a
+		# moderate or known confirmation; evil only from its good self's record.
+		agree = load("res://sim/social.gd").readings_agree_record(n, t.id)
+		if not agree.is_empty():
+			text = "%s's readings agree with what I know, so I don't take them for one of the wicked." % t.name
+			opinion_key = "opinion_readings_agree"
 	elif level < 0.45:
 		if w.decision_roll(n, "neutral_opinion_suspicion", 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n), {"insight": trait_of(n, "insight"), "paranoia": paranoia(w, n)}, t.id):
 			text = "I can't put my finger on it, but something's off about %s." % t.name
@@ -1520,6 +1527,8 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
+	if not agree.is_empty():
+		facts.append(load("res://sim/social.gd").readings_agree_fact(n, t, agree))
 	_second_hand_gift_note(w, n, t, lines, facts)
 	return {"lines": lines, "facts": facts}
 

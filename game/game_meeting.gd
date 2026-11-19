@@ -383,6 +383,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 					g._narr("The nomination fails.")
 			# Step 6: a voter or two who might surprise you say why (meeting plan M2d).
 			g._lines(Mind.vote_resistance_lines(g.w, res))
+			g._facts(res.get("resistance_facts", []))  # "their readings agree with what I know" cards
 			_after_vote(g)
 		_:
 			g._err("On this nomination: %sdefend | accuse | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
