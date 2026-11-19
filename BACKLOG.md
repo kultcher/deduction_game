@@ -530,14 +530,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   what they know, allow legitimate changes such as succession, and keep suspicion of
   misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
 
-- **New role hint families.** (Michael, Nov 18) Some hint families are crowded: "official
-  business" holds seven roles, and Rumormonger and Martyr sit in two families each
-  (`HINT_PACKAGES`, `sim/content.gd`; the case-start "Hint families:" list,
-  `game/game_screens.gd`). Add more families so each holds fewer roles, which makes a
-  hint narrow the field further. Design first: which families, and which roles move.
-  Owners: Quill (roles and evidence), Herald (the wording); Michael names the families.
-  [decided]
-
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
 
