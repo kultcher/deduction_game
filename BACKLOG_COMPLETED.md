@@ -3,6 +3,152 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 17-19, 2026 (Claude-Beadle, closed Nov 19)
+
+- **An NPC waves the player down twice with the same information.** It must never do that
+  with exactly the same information. (Michael, Nov 19) Owner Beadle. [decided]
+  **Closed (Nov 19, Claude-Beadle):** Built in #324 (Nov 19): an approach marks every reading it was about, so the same news never brings the NPC back.
+
+- **A whereabouts contradiction gets an irrelevant gift refusal.** (78148, Kiran)
+  Presenting "Kiran is suspicious" from alibi/vigil evidence produced "Whether I have a
+  gift is my own business." Carry the dated contradiction through the press so a knowing
+  walker who withholds their purpose can say "Fine, I was out last night, but what I was
+  doing is my own business." Keep distinct responses for the truly home, unaware
+  Sleepwalkers and evil cover. [decided]
+  **Progress (Nov 18-19):**
+  - Beadle's d046d6a routed a pressed case resting on night evidence to the night answer,
+    not the gift one, which fixes Kiran's symptom. #261 added "Fine, I was out"
+    (`trapped_explanation`).
+  - Quill: a pressed case whose cards place its subject out now carries a `contradiction`
+    context to the press (`GameConversation.press_contradiction`): the night, the block,
+    the cards, and whether it breaks their own home alibi.
+  - Beadle (Nov 19, `claude/beadle-press-contradiction`): the press answers from it
+    (`MindDialogue._pressed_caught_out`). A good NPC out on its own business says "Fine, I
+    was out" and, open enough, why; it no longer says it was home. The truly home, an
+    unaware Sleepwalker, a gift walker and evil keep their answers. No new lines: it reuses
+    `trapped_night_out`, which a presented case already says. Built; close once merged.
+  **Closed (Nov 19, Claude-Beadle):** Built: Quill's context in #303, Beadle's press answer in #330 (Nov 19).
+
+- **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
+  The "it's the other one" defence (`pair_other`, `sim/mind_meeting.gd`) answers only
+  readings that name a two-person pair. Against a reading over a group (a Surveyor's
+  block, a Dowser's count), the nominee falls through to "my gift was turned" or
+  "misled". In 89077, Chapel Hill held only Hollis and Dorian, so Hollis's Surveyor case
+  was really a pair. The fix is a general defence for any group reading: "it's one of
+  the others in it", naming them where the group is small. Michael (Nov 17): approved.
+  Owner Beadle; Herald for the lines. [decided]
+  **Closed (Nov 19, Claude-Beadle):** Built in #249 (Beadle) with Herald's voices in #253.
+
+- **Trust from readings that confirm what I know or strongly believe.** A listener gains
+  trust in a teller whose reading it knows, or strongly believes, to be true. Owners:
+  Lantern (the "confirmed from my view" test) and Beadle (the trust gain). Build after the
+  pause. Michael (Nov 19):
+  - **Hard facts:** the reading must be true given the listener's private knowledge: its
+    role, its alignment, where it was each night, and its own readings.
+  - **Strongly held beliefs** count too. Bart strongly believes Edda is evil. Edda is hanged,
+    and next day the Gravedigger Merrin reports she was the Poisoner. Bart can't know it for
+    sure, but it confirms what he strongly believed, so he gains trust in Merrin.
+  - **A cutoff or tiers,** not a gain scaled continuously by how strongly the belief is held.
+  - **Examples:**
+    - Merrin, the Gravedigger, hears the Clerk name "Merrin or Agnes" as the Gravedigger.
+    - A Dowser count that's true given that the listener knows it's good.
+    - A Night Watch hears the Monitor report a Night Watch on the Square, where it walked.
+  - **It absorbs** the "a reading clears me" and "a reading agrees with mine" steps taken out
+    of #292. It also absorbs the earlier note "Evidence can build NPC-to-NPC trust" (Nov 18):
+    a Clerk reading matching the listener's own role (about +0.20, provisional), or a Seer
+    "no" on someone building that person's trust in the Seer. That note said to base it on
+    the listener's knowledge and deduplicate the underlying fact.
+  - **Tiers (Michael, Nov 19).** "Agreement" is how strongly the listener believes the
+    reading is true, from its own view:
+    - 70%+ agreement: a small boost, in line with the shared-voting step;
+    - 85%+ agreement: a moderate boost;
+    - 100% (a known fact from private knowledge): a significant boost.
+
+    The sizes are to be proposed, reusing existing steps where they fit (new constants are
+    Michael's call), together with a measurement.
+  - **Measurement (Michael, Nov 19).** It covers the whole trust system, not just this
+    feature:
+    - track where trust between NPCs ends up: the distribution of pairwise trust at the end of
+      each day and at game end, and how many pairs are near full trust;
+    - soft goal: some NPCs end up near full trust with some others by about day 4 (a guide,
+      not a gate);
+    - first a baseline run on #292 (votes and nominations only); then the tier proposal comes
+      with before-and-after numbers in game terms;
+    - use a probe or sweep script, not a CI suite.
+  - **Open, for a proposal before building:**
+    - the tier sizes;
+    - whether surprise from the public record still scales the gain within a tier;
+    - what happens when a strongly believed reading is later contradicted.
+  - **Sizes (Michael, Nov 19, set R3):**
+    - small (70%+): +0.06;
+    - moderate (85%+): +0.12;
+    - known (a fact): +0.20.
+    - #292's agreement step goes down to 0.02, as its own constant (`Trust.AGREEMENT_STEP`), so
+      that readings carry more of how trust builds.
+    - Each reading counts once for each listener, judged on its beliefs from before hearing it.
+  - **Built** (Nov 19, `claude/beadle-reading-trust`). On 40 passive games:
+    - readings carry about 42% of the trust gained;
+    - evil gets 31% of it;
+    - day-4 trust is as before: 12.2% of pairs near full trust, against 12.6%.
+  - **Next, approved (Michael, Nov 19):** "Their readings agree with what I know" as a reason
+    given out loud. A no-voter explains sparing someone after a vote, and an opinion clears
+    someone, both from a moderate or known confirmation. Evil says it honestly only, from its
+    good self's record. It shifts no suspicion directly: it's a card for the player, and NPCs
+    re-weigh the reading cited. Herald's lines are approved. Owner Beadle.
+
+  [decided: direction]
+  **Closed (Nov 19, Claude-Beadle):** Built in #319 (the trust) and #321 ("their readings agree with what I know") (Nov 19). The false version stays in Tabled.
+
+- **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
+  the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
+  Michael (Nov 17): as written. Quill owns the weighting in the judge and goes first;
+  Beadle owns the votes and the "won't hang" behaviour; Herald drafts the new lines for
+  Michael. Coordinate through the handoff log. [decided]
+  - **Judge side (Quill, `claude/lie-severity`):** a good person's own "I was home" stops
+    being certain. New number `Tuning.Workshop.GOOD_OWN_ALIBI_OUT` (0.2): the chance a
+    good person who was out still says "home". Measured Nov 17 on 40 passive 10-NPC games:
+    26% of good people who were out told the player "home" (hiding a night gift or a
+    secret, or a Sleepwalker). "Near the crime" is left to the existing scene reasoning. A
+    caught false reading is unchanged (still near proof when impossible).
+  - **Vote side (Beadle):** how the judge's lighter reading of a caught whereabouts lie
+    reaches votes, and "accepts the lie but won't hang, and says so" (Herald drafts the
+    lines). Follows the judge side.
+  **Closed (Nov 19, Claude-Beadle):** Built: the judge side in Quill's `claude/lie-severity`, the vote side in #215 (Beadle).
+
+- **A defence's answer to a daytime-whereabouts case.** (26532, #171) A case resting on
+  where someone was by day gets no answer of its own; since #171 the defence frames itself
+  on the next reading or night it can answer. Michael (Nov 16): build an answer that names
+  others present, from public schedules ("I was at the mill that evening, and so were
+  Greta and Jory"); evil can use it too, honestly or with a logged lie. Herald writes the
+  wording; Michael approved Herald's drafts (Nov 16), and Herald commits the voice lines
+  with the build. Constraint (Michael, Nov
+  16): `defend_self` runs only at a nomination today, and some voice lines assume a meeting
+  (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
+  such as a private press, those lines must not appear there; use the generic fallback.
+  The PR says where it can fire. Owner Beadle. [decided]
+  - Michael (Nov 19): approved Beadle's plan. The defence fires at a nomination when the
+    heaviest cited item is a daytime sighting, and names who else was there from the true
+    whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
+    there, the alone line. No evil lie for now: evil defenders use the same true lines.
+  - **Built** (Nov 19, `claude/beadle-day-defence`). It fires only at a nomination
+    (`defend_self`), when the heaviest item cited against the nominee is a daytime sighting,
+    and uses the `_stand` lines. Evil defenders tell it truthfully. Each person named becomes a
+    sighting card for the player.
+  **Closed (Nov 19, Claude-Beadle):** Built in #318 (Nov 19), with Steward's A5/A6 follow-ups in #339.
+
+- **A bluffer's frame memory** (triage section 6). The scapegoat is one team-wide choice
+  (`evil_plan.scapegoat`), reconsidered each morning with a bonus for keeping it. A
+  bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
+  readings can drift away from the frame. Proposal: a bluffer's later readings stay
+  consistent with the people its earlier ones implicated, unless the team has switched
+  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
+  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
+  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
+  memory drops when the team switches scapegoat. It's another preference at the better-lie
+  choice point ("consistent with my earlier readings"). One or two new tuning constants
+  are approved. Owner Beadle. **[decided]**
+  **Closed (Nov 19, Claude-Beadle):** Built in #255 (Nov 17-18), with the reveal-note fix in #339 and #350.
+
 ## Built Nov 19, 2026 (Claude-Herald, honest forgetting)
 
 - **Signal honest forgetting.** When memory limits drop people from a report,
@@ -1615,7 +1761,6 @@ Oct 25 after review. Full suite at merge: 78/79 suites passed, the one failure b
   > does not generally maximize Privacy/minimize Gossip. Decide persistent traits and visibility
   > separately; a visible bereavement shift should be a clue, not guaranteed hidden-Lover verification.
 
-
 ## Verified Oct 25, 2026
 
 Fixed in Codex's small-fixes session (`codex/backlog-small-fixes`, merged into main) or found already
@@ -1702,7 +1847,6 @@ developer tool in the Debug menu, not a player-facing retraction. Also not close
     > already addresses reversibility. Death is finite evidence in
     > `workshop/live_assessment.gd::activity_card`, consistent with the agreed 95:5 interpretation; the
     > old certainty assumption is stale.
-
 
   - **Real fix:** the check exists because suspicion is a clamped running sum: each
     recompute applies differences to a value clamped to [0, 1.5], so removing an entry
@@ -1949,7 +2093,6 @@ developer tool in the Debug menu, not a player-facing retraction. Also not close
 
 ## Closed earlier
 
-
 - **Case 22485 quick fixes (Oct 25, Claude).**
   - **Breathstealer:** she must be out in a public place to use the ability; the
     target can be anywhere on the same block (`Evil.breath_target`). In 22485 Odette did
@@ -1966,7 +2109,6 @@ developer tool in the Debug menu, not a player-facing retraction. Also not close
   - **Belief refreshes have no placeholder target** (`Jury.refresh` clears it), so
     attention ranks cards neutrally and no "you're accusing me" check fires on whoever
     is first in the town list.
-
 
 - **Player-nominated NPCs already defend themselves (verified Oct 21).**
   Player nominations call `Game._defend_pending` before voting, just as NPC
