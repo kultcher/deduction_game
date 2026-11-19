@@ -9,8 +9,6 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Connections = preload("res://workshop/connections.gd")
-const Tuning = preload("res://sim/tuning.gd")
 
 var checks = 0
 var fails = 0
@@ -52,7 +50,6 @@ func _dowse(t: Dictionary, who: String, count: int) -> void:
 	Mind.apply_info(t.w, t.L, t.D, {"day": 1, "phase": 0, "role": "dowser", "data": {"group": [who, t.L.id], "count": count}, "text": "dowser test"}, 0.8)
 
 func _init() -> void:
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	# 1. One claim alone, then a rival claim: both claimants rise.
 	var t: Dictionary = _setup(5512)
 	var s0: Array = _susp(t)

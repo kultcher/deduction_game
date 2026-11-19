@@ -13,7 +13,6 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
 const Mind = preload("res://sim/mind.gd")
-const Tuning = preload("res://sim/tuning.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Connections = preload("res://workshop/connections.gd")
@@ -40,8 +39,6 @@ func _init() -> void:
 	_cache_collision_safety()
 	_role_constraints_key_and_parity()
 	_drop_card_posterior_parity()
-	_off()
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.cache_enabled = true
 	CaseEval.cache_enabled = true
 	Connections.cache_verify = false
@@ -76,7 +73,6 @@ func _play(game_seed: int, npcs: int, days: int) -> Dictionary:
 
 
 func _games() -> void:
-	Connections.enabled = true
 	for spec in [[900, 7, 3], [692, 10, 1]]:
 		Connections.cache_enabled = false
 		CaseEval.cache_enabled = false
@@ -94,7 +90,6 @@ func _games() -> void:
 		check(checked.stats.wrong == 0 and checked.stats.hits == kept.stats.hits, "seed %d: every kept answer equals a fresh one (%d checked)" % [spec[0], checked.stats.hits])
 		check(checked.suspicion == plain.suspicion, "seed %d: and checking changes nothing" % spec[0])
 		Connections.cache_verify = false
-	Connections.enabled = false
 
 
 func _play_magistrate_presentations(game_seed: int) -> Dictionary:
@@ -230,7 +225,6 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 
 
 func _presentations_and_magistrate() -> void:
-	Connections.enabled = true
 	Connections.cache_enabled = false
 	CaseEval.cache_enabled = false
 	Connections.cache_verify = false
@@ -245,12 +239,10 @@ func _presentations_and_magistrate() -> void:
 	check(kept.stats.wrong == 0 and kept.stats.hits > 0, "magistrate presentation game: kept judgements and fast keys match fresh ones (%d hits)" % kept.stats.hits)
 	check(kept.suspicion == plain.suspicion, "magistrate presentation game: suspicions match with CaseEval and Connections caches on vs off")
 	check(kept.log == plain.log, "magistrate presentation game: dev log matches with CaseEval and Connections caches on vs off (%d records)" % kept.log.size())
-	Connections.enabled = false
 
 
 ## The key, on one listener's real inputs.
 func _key() -> void:
-	Connections.enabled = true
 	Connections.cache_enabled = true
 	var played: Dictionary = _play(900, 7, 2)
 	var g = played.g
@@ -399,11 +391,9 @@ func _key() -> void:
 		if str(k).ends_with("|connections_kept"):
 			kept += int(profile.counters[k])
 	check(kept > 0, "the profiler counts the judgements handed back (%d)" % kept)
-	Connections.enabled = false
 
 
 func _cache_collision_safety() -> void:
-	Connections.enabled = true
 	Connections.cache_enabled = true
 	CaseEval.cache_enabled = true
 	var played: Dictionary = _play(900, 7, 2)
@@ -412,7 +402,6 @@ func _cache_collision_safety() -> void:
 	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
 	check(not plan.is_empty(), "collision safety: fixture has a listener with a plan")
 	if plan.is_empty():
-		Connections.enabled = false
 		return
 	var view: Dictionary = plan.prepared.view.duplicate(true)
 	var listener: Dictionary = preload("res://workshop/jury.gd")._eval_listener(plan.prepared.listener, plan.prepared.listener.knowledge.get("own_reports", [])).duplicate(true)
@@ -421,7 +410,6 @@ func _cache_collision_safety() -> void:
 	var reports: Array = view.cards.filter(func(c): return c.kind == "report" and c.id not in listener.knowledge.get("own_reports", []))
 	check(not reports.is_empty(), "collision safety: fixture holds at least one report card")
 	if reports.is_empty():
-		Connections.enabled = false
 		return
 	var card_rep: Dictionary = reports[0]
 	var live: bool = CaseEval.Domain.live(view)
@@ -474,11 +462,9 @@ func _cache_collision_safety() -> void:
 	var h_small_repeat: int = SolverBackend.get_sub_universe_handle("cc_reps:forced_collision", base_h, PackedInt32Array([0, 1]))
 	check(h_small >= 0 and h_large >= 0 and h_small != h_large and h_small == h_small_repeat,
 		"get_sub_universe_handle disambiguates colliding sub_keys with different index arrays")
-	Connections.enabled = false
 
 
 func _role_constraints_key_and_parity() -> void:
-	Connections.enabled = true
 	Connections.cache_enabled = true
 	CaseEval.cache_enabled = true
 	var played: Dictionary = _play(900, 7, 2)
@@ -487,7 +473,6 @@ func _role_constraints_key_and_parity() -> void:
 	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
 	check(not plan.is_empty(), "role_constraints key test: fixture has a plan")
 	if plan.is_empty():
-		Connections.enabled = false
 		return
 	var view: Dictionary = plan.prepared.view.duplicate(true)
 	var listener: Dictionary = preload("res://workshop/jury.gd")._eval_listener(plan.prepared.listener, plan.prepared.listener.knowledge.get("own_reports", [])).duplicate(true)
@@ -495,7 +480,6 @@ func _role_constraints_key_and_parity() -> void:
 	var reports: Array = view.cards.filter(func(c): return c.kind == "report" and c.id not in listener.knowledge.get("own_reports", []))
 	check(not reports.is_empty(), "role_constraints key test: fixture has report cards")
 	if reports.is_empty():
-		Connections.enabled = false
 		return
 	var Roles = CaseEval.Solver.Roles
 	var universe: Array = CaseEval.Solver.universe(view)
@@ -538,11 +522,9 @@ func _role_constraints_key_and_parity() -> void:
 	var ev_with_h: Dictionary = CaseEval.evaluate(view, case_r, listener)
 	check(ev_with_h.people == ev_no_h.people,
 		"CaseEval._fits_over matches with cc_reps_handle forced off vs on")
-	Connections.enabled = false
 
 
 func _drop_card_posterior_parity() -> void:
-	Connections.enabled = true
 	Connections.cache_enabled = true
 	CaseEval.cache_enabled = true
 	Connections.cache_verify = true
@@ -586,11 +568,3 @@ func _drop_card_posterior_parity() -> void:
 	check(checked_drops > 0 and play_wrong == 0 and Connections.cache_stats.wrong == 0 and max_diff < 1e-12,
 		"Connections.drop_card_posterior matches full refresh across %d card drops (max diff %.12f, wrong=%d)" % [checked_drops, max_diff, Connections.cache_stats.wrong])
 	Connections.cache_verify = false
-	Connections.enabled = false
-
-
-func _off() -> void:
-	Connections.enabled = false
-	Connections.cache_enabled = true
-	var off: Dictionary = _play(900, 7, 2)
-	check(off.stats.hits == 0 and off.stats.misses == 0 and Connections._kept.is_empty(), "with the model off nothing is judged or kept")

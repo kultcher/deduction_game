@@ -101,10 +101,6 @@ static func _refresh(g, n, phase: String) -> void:
 		# Premises pass step 1: remembered presentations shape their own cards' effect.
 		var shaping: Dictionary = Shared.premise_shaping(plan, state.get("presentations", {}), state.get("withdrawn", {}), float(plan.prepared.listener.get("insight", 0.5)))
 		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, shaping, doubt_bundle.get("honest", {})]
-		if Connections.enabled:
-			# A result of the other model must not be reused if the switch is flipped mid-run
-			# (tests and tools do that). With the switch off the inputs are as they always were.
-			inputs.append("connections")
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary

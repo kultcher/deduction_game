@@ -108,7 +108,6 @@ func _posteriors(g, n) -> Dictionary:
 
 
 func _run(kind: String, frame: String, rule: Array) -> Dictionary:
-	Connections.enabled = true
 	Connections.premise_centring = rule[1]
 	_texts = {}
 	var g = _game()
