@@ -432,6 +432,21 @@ Candidates for a unified retuning proposal, not approved changes.
         existing pairing and counter-claim reactions.
       - **Evil whose planned bluff is claimed by someone else** drops that bluff for a spare,
         rather than counterclaiming. A Minion may instead take the active double claim above.
+    - **Michael (Nov 19):**
+      - **Immediately, where possible.** A silenced holder counterclaims at its first chance,
+        the next meeting. That's the same rule as for a claim heard outside a meeting.
+      - **Heat lowers a Minion's willingness to risk a double claim,** both the active one and
+        backing into a claimed or unknown gift. Heat here means already being implicated as
+        evil (mainly a Dowser reading, possibly a Surveyor's). Use the general "heat on me"
+        calculation, not special logic: `Evil.exposure`, whose public talk includes the
+        town's reading of those claims.
+      - **A note for the build:** in the ladder, being pressed or nominated is what makes
+        evil answer. The heat already on it is what makes a double claim a poor bet. So the
+        same exposure parts play two roles: the pressure and on-the-block parts push it to
+        answer, and the public-talk part holds it back from a double claim. Beadle to propose
+        how they combine.
+    - **Not yet answered:** whether evil whose planned bluff is claimed first switches to a
+      spare.
     - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
