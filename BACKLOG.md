@@ -1032,10 +1032,11 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   given everything else it holds (`OwnGiftDoubt.posterior`). The prior above is still its
   starting point, inside the judge, and stays readable as `SourceDoubt.self_doubt_prior`. It
   doubts its gift on a night at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30, a new constant
-  Michael approved; `SourceDoubt.doubts_own_gift(n)`). Measured beforehand on 42 ten-NPC
-  games at the day-4 meeting: it fires about once in 5 games, for about 4 in 10 poisoned or
-  Delusional readings and about 1 in 17 sound ones (often a true Gravedigger reading after
-  the town hanged a good person). Readings whose content the judge doesn't check (a Warden's
+  Michael approved; `SourceDoubt.doubts_own_gift(n)`). Measured as built on seeds 3032-3095
+  (ten NPCs, the day-4 meeting): it fires in about 1 game in 4, for about 2 in 3 poisoned or
+  Delusional readings and about 1 in 20 sound ones (often a true Gravedigger reading after
+  the town hanged a good person). Michael decided on an earlier measurement that left the
+  prior out of the role check (about 1 game in 5, 4 in 10, 1 in 17; fixed on Codex's review). Readings whose content the judge doesn't check (a Warden's
   quiet night, a Lamplighter, a Night Watch list, a Psychologist, a Sexton, a Medium's
   relays) never fire; the follow-up below covers them. Behaviour doesn't change until
   something reads it (Beadle's #316).

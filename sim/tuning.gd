@@ -930,8 +930,8 @@ class Workshop:
 	## failed, from the reading clashing with what else it holds, starting from the poison and
 	## Delusional self-doubt) at or above which it doubts its gift for that night
 	## (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4
-	## meeting: it fires about once in 5 games, for about 4 in 10 poisoned or Delusional
-	## readings and about 1 in 17 sound ones.
+	## meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings
+	## and about 1 in 20 sound ones.
 	const SELF_DOUBT_TRIGGER = 0.30
 	## The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the
 	## expert, so a listener takes a call at its credibility in the player. The doubt runs in a

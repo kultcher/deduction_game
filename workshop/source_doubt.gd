@@ -428,7 +428,8 @@ static func own_doubt(self_id: String, honest: Dictionary) -> Dictionary:
 ## (OwnGiftDoubt.posterior; Michael, Nov 19). For dialogue ("something seems off about my
 ## readings") and tools. A night whose readings the judge can't check has no entry.
 static func self_doubt(n) -> Dictionary:
-	return n.workshop_state.get("self_doubt", {}).duplicate()
+	# Loaded here, not preloaded: OwnGiftDoubt asks CaseEval, which preloads this script.
+	return load("res://workshop/own_gift_doubt.gd").of(n)
 
 ## The prior the judge starts from: the poison and Delusional self-doubt alone, by night
 ## (own_doubt of the honest doubt SourceDoubt.derive gives the NPC's own readings).

@@ -670,8 +670,10 @@ readings, the judge's chance that reading was wrong: CaseEval's "holds" question
 every card the NPC's connections refresh held. For one's own reading, wrong means the gift
 failed. The poison and Delusional prior (above) is its starting point, inside the judge, so a
 reading that fits the rest falls below the prior and one that fights it rises.
-`WorkshopOwnership` stores it with the refresh's evaluation, so a refresh that reuses the
-evaluation reuses it. `SourceDoubt.self_doubt(n)` reads it, `self_doubt_prior(n)` the prior, and
+`WorkshopOwnership` keeps only its inputs from each applied refresh (the cards held, and the
+doubt-adjusted view and listener the evaluation started from, so the prior reaches the role check
+as it did there; Codex on #320), and the judge is asked when something first reads it, at most
+once per refresh. Until something reads it, it costs nothing. `SourceDoubt.self_doubt(n)` reads it, `self_doubt_prior(n)` the prior, and
 `doubts_own_gift(n)` lists the nights at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30).
 
 Measured before the build (42 ten-NPC games, seeds 3032-3095, the day-4 meeting; 105 own
@@ -683,7 +685,13 @@ readings the judge checks, 10 of them false):
 | some (a third to two thirds) | 6 | 2 | 3 | 0.15 |
 | none | 90 | 4 | 75 | 0.01 |
 
-- At 0.30 it fires about once in 5 games: 4 of the 10 false readings, 5 of the 83 true ones.
+- At 0.30 that measurement fired about once in 5 games: 4 of the 10 false readings, 5 of the
+  83 true ones. It left the prior out of the role check (Seer, Archivist, Gravedigger); the
+  build weighs with the refresh's doubt-adjusted listener (Codex on #320). **As built**, read
+  from the stored self-doubt on the same seeds (104 nights in 39 games): it fires on 13 nights
+  in 10 games (about 1 game in 4), for 6 of 9 false readings and 4 of 86 true ones. The median
+  for a false reading is 0.49, for a true one 0.03, and 78 of the 104 nights sit below their
+  prior.
 - Half the false readings clash with nothing (a broken Seer's "no" looks plausible), so no
   trigger catches them.
 - The commonest true reading it doubts is Michael's own example turned round: a Gravedigger

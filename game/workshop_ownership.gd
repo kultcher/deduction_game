@@ -98,7 +98,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.source_doubt = doubt_bundle.full.duplicate(true)
 		# Its starting doubt about each night of its own readings (poison and Delusional), the
 		# prior the judge starts from (SourceDoubt.self_doubt_prior). What it says aloud reads the
-		# judge's posterior, set once the evaluation is in (SourceDoubt.self_doubt).
+		# judge's posterior, asked when first read (SourceDoubt.self_doubt; OwnGiftDoubt).
 		state["self_doubt_prior"] = SourceDoubt.own_doubt(n.id, doubt_bundle.get("honest", {}))
 		var started = Time.get_ticks_msec()
 		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, doubt_bundle.get("honest", {})]
@@ -106,6 +106,7 @@ static func _refresh(g, n, phase: String) -> void:
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
 		var reason_ctx: Dictionary = {}
+		var adjusted: Dictionary = {}
 		if cache_hit:
 			Profiler.count("union_cache_hit")
 			proposal = cached.proposal
@@ -113,7 +114,12 @@ static func _refresh(g, n, phase: String) -> void:
 		else:
 			Profiler.count("union_cache_miss")
 			var union_span = Profiler.open("joint_effects")
+			Shared.last_adjusted = {}
+			Shared.keep_adjusted = not (n.is_shadow or n.is_evil())
 			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, doubt_bundle.get("honest", {}))
+			Shared.keep_adjusted = false
+			adjusted = Shared.last_adjusted
+			Shared.last_adjusted = {}
 			Profiler.close(union_span)
 			# Deferred attribution inputs ride beside the proposal, never inside it (purge 2a).
 			reason_ctx = Shared.last_reason_ctx
@@ -146,19 +152,17 @@ static func _refresh(g, n, phase: String) -> void:
 			state.connections["core"] = proposal.connections.get("core_memory", {}).duplicate(true)
 			committed_inputs[0].listener.connections.core = state.connections.core.duplicate(true)
 		# "Was my gift turned?" (Michael, Nov 19): the judge's chance each night's own reading was
-		# wrong, from its clash with every card this refresh held. Kept with the evaluation, so a
-		# refresh that reuses the evaluation reuses it.
+		# wrong, from its clash with every card this refresh held. Only its inputs are kept here
+		# (OwnGiftDoubt.stage); the judge is asked when something first reads it
+		# (SourceDoubt.self_doubt), at most once per refresh, so a refresh nothing asks about
+		# costs nothing. A refresh that reuses the evaluation keeps the inputs it had.
 		# Only a good NPC's own mind asks it: an evil NPC knows whether it lied, and its cover
 		# mind (the good self it plays) never speaks it.
-		var own_doubt: Dictionary = {}
 		if n.is_shadow or n.is_evil():
-			pass
-		elif cache_hit and cached.has("self_doubt"):
-			own_doubt = cached.self_doubt
-		else:
-			own_doubt = _own_gift_doubt(plan, proposal, Shared._doubt_adjusted(plan, state.outside, doubt_bundle.pre_eval, doubt_bundle.full, doubt_bundle.get("honest", {})))
-		state["self_doubt"] = own_doubt.duplicate()
-		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit, "self_doubt": own_doubt}
+			OwnGiftDoubt.clear(n)
+		elif not cache_hit:
+			_stage_own_gift_doubt(n, proposal, adjusted)
+		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit}
 		state.requested = {}
 		state.applied = {}
 		for id in proposal.effects:
@@ -304,15 +308,15 @@ static func _visibility(n, facts: Array) -> String:
 	return "shared_private"
 
 
-## {night: the judge's chance the NPC's own reading that night was wrong} (OwnGiftDoubt), with
-## every card the connections refresh held. {} for a listener with no connections refresh.
-## `adjusted`: the doubt-adjusted view and listener the refresh's evaluation used
-## (Shared._doubt_adjusted), so the poison and Delusional prior reaches the role check and the
-## readings' weight here as it did there (Codex on #320).
-static func _own_gift_doubt(plan: Dictionary, proposal: Dictionary, adjusted: Dictionary) -> Dictionary:
+## Keeps what OwnGiftDoubt needs to answer, for this refresh: every card the connections
+## refresh held, and the doubt-adjusted view and listener the evaluation started from
+## (Shared.last_adjusted), so the poison and Delusional prior reaches the role check and the
+## readings' weight there as it did here (Codex on #320). None without a connections refresh.
+static func _stage_own_gift_doubt(n, proposal: Dictionary, adjusted: Dictionary) -> void:
 	var cx: Dictionary = proposal.get("connections", {})
-	if cx.is_empty():
-		return {}
+	if cx.is_empty() or adjusted.is_empty():
+		OwnGiftDoubt.clear(n)
+		return
 	var held: Array = []
 	for it in cx.get("items", []):
 		for id in it.get("cards", []):
@@ -322,4 +326,4 @@ static func _own_gift_doubt(plan: Dictionary, proposal: Dictionary, adjusted: Di
 	var weigher: Dictionary = Jury._eval_listener(listener, listener.get("knowledge", {}).get("own_reports", []))
 	weigher["trust"] = listener.get("trust", 0.5)
 	weigher["insight"] = listener.get("insight", 0.5)
-	return OwnGiftDoubt.posterior(adjusted.view, weigher, held)
+	OwnGiftDoubt.stage(n, adjusted.view, weigher, held)

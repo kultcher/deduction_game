@@ -6,9 +6,9 @@
 ## and Delusional self-doubt (SourceDoubt.derive) are its starting point, inside the judge, as
 ## the reading's honest doubt; the clash does the rest. So a reading that fits the rest stays
 ## near 0, and one that fights what the NPC otherwise believes can rise well past the prior.
-## Measured Nov 19 (42 ten-NPC games, seeds 3032-3095, the day-4 meeting): at
-## Tuning.Workshop.SELF_DOUBT_TRIGGER (0.30) it reached about 4 in 10 false readings and about
-## 1 in 17 true ones, about once in 5 games.
+## Measured Nov 19 (seeds 3032-3095, ten NPCs, the day-4 meeting; 104 nights in 39 games): at
+## Tuning.Workshop.SELF_DOUBT_TRIGGER (0.30) it fired on 13 nights in 10 games, for 6 of 9
+## false readings and 4 of 86 true ones; 78 of the 104 nights sat below their prior.
 ## Readings whose content the "holds" question doesn't check (a reading that holds in every
 ## world: a Warden's quiet night, a Lamplighter's count, a Night Watch list, a Psychologist's
 ## or Sexton's reading) carry no entry, nor does a Medium's relayed transmission (a sighting,
@@ -45,6 +45,25 @@ static func posterior(view: Dictionary, listener: Dictionary, held: Array) -> Di
 		out[night] = maxf(float(out.get(night, 0.0)), wrong)
 	return out
 
+
+## The refresh's inputs, kept on the NPC (as metadata, outside its saved state) until asked.
+static func stage(n, view: Dictionary, listener: Dictionary, held: Array) -> void:
+	n.set_meta(META, {"view": view, "listener": listener, "held": held})
+
+static func clear(n) -> void:
+	if n.has_meta(META):
+		n.remove_meta(META)
+
+## The NPC's {night: doubt} from its last applied refresh, asked of the judge the first time.
+static func of(n) -> Dictionary:
+	if not n.has_meta(META):
+		return {}
+	var staged: Dictionary = n.get_meta(META)
+	if not staged.has("result"):
+		staged["result"] = posterior(staged.view, staged.listener, staged.held)
+	return staged.result.duplicate()
+
+const META = "own_gift_doubt"
 
 ## Whether some world could make the reading's content wrong (Solver.reading_holds_table has
 ## a world it fails in). One that holds in every world says nothing the judge can weigh.
