@@ -131,8 +131,8 @@ listener (#273), both Lantern's.
 
   No measurement first (Michael). It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the
   same PR (see "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side.
-  **Back with Michael:** whether `search` stays at the eight town locations once there's
-  nothing dropped to find. [decided]
+  **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
+  Revenant's totem and the place's regulars. [decided]
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger

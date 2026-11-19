@@ -3,8 +3,7 @@
 - **Agent:** Claude-Vicar
 - **Base:** main
 - **Status:** docs only, ready for Bailiff
-- **Next actor:** Quill builds it. Michael answers whether `search` stays at the eight town
-  locations.
+- **Next actor:** Quill builds it.
 
 ## What changed and why
 
@@ -15,7 +14,8 @@ items and the already-dead home-block material drops alike, with no measurement 
   items that point to it ("NPCs find evidence" and the audit cleanup) follow the new name.
 - **DESIGN:** the Drops paragraph says drops are to be removed, and the Framer line goes
   with them.
-- **Back with Michael:** whether `search` stays at the eight town locations.
+- **Settled by Michael:** `search` stays at the eight town locations. It still finds the
+  Revenant's totem and the place's regulars.
 
 ## Checked
 
