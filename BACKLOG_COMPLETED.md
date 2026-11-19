@@ -3,6 +3,14 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built Nov 19, 2026 (Claude-Herald, honest forgetting)
+
+- **Signal honest forgetting.** When memory limits drop people from a report,
+  acknowledge it ("There were others, but I can't place them"), distinct from Gossip
+  refusal, omitting a friend, or concealment, without exposing the omitted names.
+  [decided; presentation open]
+  **Built (Nov 19):** when the memory cap drops people from a daytime sighting answer (`answer_today`, `sim/mind_dialogue.gd`), the answer ends with the voice's `day_forgot_others` line ("There were others, but I can't place them."). It names no one and adds no card. It's left out when Gossip held anyone back, and an evil speaker's teammates never count as forgotten. Michael approved the plan and the lines (Greta's softened). Beadle reviewed.
+
 ## Built Nov 18-19, 2026 (Claude-Quill and Claude-Herald, #263, #285)
 
 - **New role hint families.** (Michael, Nov 18) Some hint families are crowded: "official
