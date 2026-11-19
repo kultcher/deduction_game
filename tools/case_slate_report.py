@@ -23,11 +23,11 @@ import sys
 from collections import OrderedDict, defaultdict
 
 TRUE_CASES = ["pile", "kill_sighting", "vigil_kill", "alibi_sighting", "converging", "impossible",
-              "double_claim", "gravedigger", "lamp_alibis", "nw_nobody", "guard", "seer_twice", "vigil_seer", "stack"]
+              "double_claim", "gravedigger", "lamp_alibis", "lamp_count", "nw_nobody", "guard", "seer_twice", "vigil_seer", "stack"]
 # Misleading cases: the same chains about an innocent ("<case>_innocent"); none for the
 # impossible reading or the Strong-tier cases.
 NO_TWIN = ["impossible", "seer_twice", "vigil_seer", "stack"]
-ORDER = TRUE_CASES + [c + "_innocent" for c in TRUE_CASES if c not in NO_TWIN]
+ORDER = TRUE_CASES + [c + "_innocent" for c in TRUE_CASES if c not in NO_TWIN] + ["lamp_bluff_innocent"]
 BADGES = ["contradicts", "none", "weak", "moderate", "strong", "not ready"]
 # Lower edge, in points, of each band (the town's movement).
 TOWN_BANDS = [("strong", 25.0), ("moderate", 10.0), ("weak", 3.0), ("none", -2.0)]

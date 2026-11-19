@@ -47,6 +47,7 @@ The run is deterministic: on the same build, it reproduces the baseline exactly.
 | double_claim | The Demon claims a gift its real holder also claims |
 | gravedigger | A Minion hanged on day 2, plus the real Gravedigger's reading of the Minion's role (the subject is the Minion) |
 | lamp_alibis | The Lamplighter's "1 other out", plus a home alibi from everyone else alive (premise: suspicious) |
+| lamp_count | The Lamplighter's "1 other out", alone (premise: suspicious) |
 | nw_nobody | The Night Watch "saw nobody" on the Demon's block, plus a sighting of the Demon there |
 | guard | A quiet night: a sighting of the Demon near a guarded door, plus the Warden's guard report |
 | seer_twice | The Seer's "yes" on the Demon and one other on night 1, and on the Demon and a second other on night 2 |
@@ -64,7 +65,9 @@ The misleading twins (the subject is the innocent):
 | converging_innocent | The Seer's "yes" on the innocent and the Demon, plus the Dowser's "1 evil" among the innocent and a Minion |
 | double_claim_innocent | The innocent, the real holder, and the Demon both claim the innocent's gift |
 | gravedigger_innocent | The innocent hanged on day 2, plus a Minion's claimed Gravedigger reading that they were a Minion |
-| lamp_alibis_innocent | The Lamplighter's "1 other out", plus everyone else's home alibi, the Demon's false (premise: suspicious) |
+| lamp_alibis_innocent | The Lamplighter's "1 other out", plus everyone else's home alibi, the Demon's false (premise: suspicious). The same board a poisoned or Delusional Lamplighter's false count gives, with every alibi true |
+| lamp_count_innocent | The Lamplighter's "1 other out", alone, filed against the innocent |
+| lamp_bluff_innocent | A Minion bluffing the Lamplighter: "1 other out", plus everyone else's true home alibi (no true twin) |
 | nw_nobody_innocent | The Night Watch "saw nobody" on the innocent's block, plus a Minion's false sighting of them there |
 | guard_innocent | A quiet night: a sighting of the innocent near a guarded door, plus the Warden's guard report |
 
@@ -102,7 +105,7 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built on claude/slate-strong (main at 4cf1d73, Nov 19, Quill). It adds
-seer_twice, vigil_seer and stack, 30 new rows. Of the 209 earlier rows, 22 changed, and
-only in the town's movement, by at most 0.3 of a point; no badge, strength or category
-moved. See `baseline.md`.
+`baseline.jsonl`: built on claude/lamplighter-count (main at a6b674b with the Lamplighter
+count mix, Nov 19, Quill). It adds lamp_count, lamp_count_innocent and lamp_bluff_innocent.
+The Lamplighter-and-alibis cases move with the count mix; nothing else moves by more than 0.4
+of a point. See `baseline.md`.

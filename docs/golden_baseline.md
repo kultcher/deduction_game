@@ -57,6 +57,21 @@ Every belief that weighs a sighting or trace against the Demon's route moves a l
   - 54875: Greta is hanged on day 2 and nobody on day 3, instead of Edda on day 2 and Hollis
     on day 3. No winner by day 4 either way.
   - 900: Isolde is hanged on day 3 instead of Lian. No winner by day 4 either way.
+
+### Earlier baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1, #346): `baseline_652298a`
+
+`tools/golden/baseline_652298a/` is the capture from `claude/lamplighter-count` at `652298a`
+(main with #349 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night
+Watch list: a listener weighs the chance that the Lamplighter is evil, poisoned or Delusional, and
+a broken count says nothing. Before, every count was taken as sound. (It replaces
+`baseline_d33fdae`, made for this PR before #349 landed; the divergence is the same.)
+- **Divergence from `baseline_7a10762`:** 42 from record 1 (a reading's vetting lift on the
+  first day, 0.003 to 0.001), 54875 from record 79 (Jory's refresh on day 2), 900 from record 52
+  (Isolde's cover on day 2) and 98933 from record 82 (Nisha's refresh on day 2). 692 is identical.
+- **Outcomes:** the winner and the last day are unchanged on all five, and 42, 54875, 692 and 900
+  hang the same people. 98933's hangings change: day 2 hangs Merrin (good, the Surveyor, nominated
+  by Dorian) instead of Dorian (good, the Clerk), and day 3 hangs no one instead of Isolde (the
+  Revenant).
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`
