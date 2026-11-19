@@ -9,6 +9,7 @@ signal cards_dropped(numbers: Array)     # board cards dragged onto the Workshop
 signal removal_requested(id: String)     # a card dragged out past the left edge
 signal field_requested(id: String, field: String)  # a field on a card was clicked
 signal group_removal_requested(ids: Array)   # Delete with a box selection (Nov 10)
+signal background_context_requested(at: Vector2)   # a right-click (not a drag) on empty canvas
 const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -32,6 +33,12 @@ var drag_out = false   # the dragged card is past the left edge: release removes
 var group: Array = []
 var box_from = null     # screen point where the box started, or null
 var box_to: Vector2 = Vector2.ZERO
+## Cards just added (Michael, Nov 19): a soft glow until each is first moved.
+var fresh: Dictionary = {}
+## Where a right press on empty canvas began: released without dragging, it opens the menu.
+var _right_from = null
+## The off-screen markers drawn this frame: [{rect, ids}], one per direction.
+var edge_marks: Array = []
 var fields: Dictionary = {}   # id -> [{rect, field}] clickable fields, in screen space
 var tips: Array = []          # [{rect, text}] tooltips for drawn badges and fields
 var answer_buttons: Dictionary = {}   # id -> screen rect of the card's Details/Assume button
@@ -202,6 +209,11 @@ func _draw() -> void:
 	for gid in group:
 		if hit.has(gid):
 			draw_rect(hit[gid].grow(5.0), Color("7fc4ff"), false, 2.0)
+	for fid in fresh:
+		if hit.has(fid):
+			draw_rect(hit[fid].grow(7.0), Color(0.96, 0.83, 0.45, 0.22), false, 6.0)
+			draw_rect(hit[fid].grow(4.0), Color(0.96, 0.83, 0.45, 0.75), false, 1.5)
+	_draw_edge_marks()
 	if box_from != null:
 		var br := Rect2(box_from, Vector2.ZERO).expand(box_to)
 		draw_rect(br, Color(0.5, 0.77, 1.0, 0.12))
@@ -415,6 +427,56 @@ func _answer_rect(rect: Rect2) -> Rect2:
 func _link_rect(rect: Rect2) -> Rect2:
 	return Rect2(rect.position + Vector2(rect.size.x - 98 * zoom, rect.size.y - 39 * zoom), Vector2(82, 28) * zoom)
 
+## Cards wholly off-screen, gathered by direction from the view's centre (eight ways), each
+## direction drawn once at the edge with a count: not one marker per card (Michael, Nov 19).
+## Clicking a marker brings those cards into view.
+func _draw_edge_marks() -> void:
+	edge_marks = []
+	var view := Rect2(Vector2.ZERO, size)
+	var centre: Vector2 = size / 2.0
+	var buckets: Dictionary = {}
+	for id in hit:
+		if view.intersects(hit[id]):
+			continue
+		var d: Vector2 = hit[id].get_center() - centre
+		var b: int = posmod(int(round(d.angle() / (PI / 4.0))), 8)
+		buckets[b] = buckets.get(b, []) + [id]
+	var inner := view.grow(-22.0)
+	for b in buckets:
+		var dir := Vector2.from_angle(b * PI / 4.0)
+		# Where the ray from the centre leaves the inner rectangle.
+		var tx: float = INF if is_zero_approx(dir.x) else (inner.size.x / 2.0) / absf(dir.x)
+		var ty: float = INF if is_zero_approx(dir.y) else (inner.size.y / 2.0) / absf(dir.y)
+		var at: Vector2 = centre + dir * minf(tx, ty)
+		var ink := Color(0.96, 0.83, 0.45, 0.85)
+		var tip: Vector2 = at + dir * 12.0
+		draw_circle(at, 14.0, Color(0.09, 0.12, 0.16, 0.85))
+		draw_colored_polygon(PackedVector2Array([tip, at - dir * 4.0 + dir.orthogonal() * 8.0, at - dir * 4.0 - dir.orthogonal() * 8.0]), ink)
+		var n: int = buckets[b].size()
+		if n > 1:
+			draw_string(font, at - dir * 22.0 + Vector2(-6, 5), str(n), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, ink)
+		var r := Rect2(at - Vector2(16, 16), Vector2(32, 32))
+		edge_marks.append({"rect": r, "ids": buckets[b]})
+		tips.append({"rect": r, "text": "%d card%s this way. Click to look." % [n, "" if n == 1 else "s"]})
+
+## Bring these cards into view, centred, keeping the zoom unless they won't fit.
+func centre_on(ids: Array) -> void:
+	var bounds = Rect2()
+	var first = true
+	for id in ids:
+		if not model.nodes.has(id) or model.nodes[id].has("merged"):
+			continue
+		bounds = world_rect(id) if first else bounds.merge(world_rect(id))
+		first = false
+	if first:
+		return
+	if size.x > 0.0 and size.y > 0.0:
+		var fit: float = minf((size.x - 100) / bounds.size.x, (size.y - 60) / bounds.size.y)
+		if fit < zoom:
+			zoom = clampf(fit, 0.35, 1.5)
+	pan = size / 2.0 - bounds.get_center() * zoom
+	queue_redraw()
+
 func _gui_input(event: InputEvent) -> void:
 	if model == null:
 		return
@@ -439,6 +501,14 @@ func _gui_input(event: InputEvent) -> void:
 			queue_redraw()
 			accept_event()
 			return
+		if not event.pressed and event.button_index == MOUSE_BUTTON_RIGHT and _right_from != null:
+			var still: bool = (event.position - _right_from).length() < 5.0
+			_right_from = null
+			if still:
+				panning = false
+				background_context_requested.emit(event.position)
+				accept_event()
+				return
 		if not event.pressed:
 			var removing: String = drag if drag_out and event.button_index == MOUSE_BUTTON_LEFT else ""
 			if drag != "" or panning:
@@ -458,6 +528,13 @@ func _gui_input(event: InputEvent) -> void:
 			if hit[id].has_point(event.position):
 				chosen = id
 				break
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			# Markers are drawn over the cards, so they take the click first.
+			for mark in edge_marks:
+				if mark.rect.has_point(event.position):
+					centre_on(mark.ids)
+					accept_event()
+					return
 		# Empty space: left-drag pans, shift+left-drag draws a selection box (Michael, Nov 17).
 		if event.button_index == MOUSE_BUTTON_LEFT and chosen == "":
 			if event.shift_pressed:
@@ -475,6 +552,8 @@ func _gui_input(event: InputEvent) -> void:
 			context_requested.emit(chosen)
 		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			panning = true
+			if event.button_index == MOUSE_BUTTON_RIGHT:
+				_right_from = event.position
 		elif event.button_index == MOUSE_BUTTON_LEFT and chosen != "":
 			var was_linking: bool = linking != ""
 			selected.emit(chosen)
@@ -500,6 +579,7 @@ func _gui_input(event: InputEvent) -> void:
 		elif drag != "":
 			var movers: Array = group if drag in group else [drag]
 			for mid in movers:
+				fresh.erase(mid)
 				if not model.nodes.has(mid):
 					continue
 				var node: Dictionary = model.nodes[mid]
