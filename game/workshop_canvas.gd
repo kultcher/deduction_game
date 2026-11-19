@@ -459,7 +459,10 @@ static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
 			continue
 		var theirs: Dictionary = c.workshop_case.get("reading_challenges", {})
 		for rid in mine:
-			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST:
+			# Same side of a Medium's relay only: switching the mode can't settle calls on
+			# different sides (the passing-on and the original; Codex, #363).
+			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST \
+					and str(theirs[rid].get("attribution", "")) == str(mine[rid].get("attribution", "")):
 				out.append({"number": int(c.n), "teller": _card_source(g, str(rid))})
 				break
 	return out

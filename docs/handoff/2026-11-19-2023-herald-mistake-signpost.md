@@ -46,3 +46,7 @@ None.
 - **The bug:** the signpost took the newest filed case with the same lie call. If that was an unheard draft, it sent the player to revise a case that couldn't be what refused them, since only a heard case's call blocks the new one.
 - **The fix:** a heard case now comes first, and an unheard one is named only when none is heard.
 - **The check:** `test_mistake_signpost` (23 checks) adds a newer unheard draft with the same call. The check fails without the fix.
+- **Codex, second finding (the relay side):**
+  - **The bug:** a lie call on one side of a Medium's relay (the passing-on) and a Mistaken call on the other side (the original reading) also conflict. Switching the mode can't settle that.
+  - **The fix:** the signpost now applies only when both calls are on the same side. Otherwise the plain refusal stands. A line explaining the sides would be new wording, for Michael if wanted.
+  - **The check:** `test_mistake_signpost`, now 24 checks, covers it. The check fails without the fix.

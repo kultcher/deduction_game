@@ -90,6 +90,11 @@ func _game_side(sd: int) -> void:
 	check(draft > a and not Live.was_presented(g, draft), "a newer, unheard case calls the same lie (#%d)" % draft)
 	check(Live.player_issues(g, honest.value, raw) == [want], "the signpost still names the heard case #%d" % a)
 	g.board[draft - 1].deleted = true
+	# A call on the other side of a Medium's relay isn't settled by switching the mode: no signpost.
+	var other_side: Dictionary = honest.value.duplicate(true)
+	for rid in other_side.reading_challenges:
+		other_side.reading_challenges[rid]["attribution"] = "original"
+	check(Live.player_issues(g, other_side, raw) == raw, "calls on different sides of a relay keep the plain refusal")
 	var b: int = Live.file(g, honest.value)
 	check(b > 0, "the second case files (#%d)" % b)
 	g.events = []
