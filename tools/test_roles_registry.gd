@@ -211,7 +211,7 @@ func _test_seer_hooks() -> void:
 	var no_entry = {"role": "seer", "day": 1, "data": {"pair": [a.id, b.id], "yes": false}}
 	_check(Gifts.implicated(yes_entry) == [a.id, b.id] and Gifts.clears(yes_entry).is_empty(), "Gifts.implicated/clears delegates Seer YES reading via PING shape")
 	_check(Gifts.implicated(no_entry).is_empty() and Gifts.clears(no_entry) == [a.id, b.id], "Gifts.implicated/clears delegates Seer NO reading via PING shape")
-	_check("YES" in Gifts.short_text("seer", yes_entry["data"], seer.name, func(id): return w.by_id[id].name), "Gifts.short_text formats Seer reading via RoleDef")
+	_check(Gifts.short_text("seer", yes_entry["data"], seer.name, func(id): return w.by_id[id].name).contains("Demon? YES\n(Marked or Red Herring?)") and Gifts.short_text("seer", no_entry["data"], seer.name, func(id): return w.by_id[id].name).ends_with("Demon? NO"), "Seer card: Demon? YES with the Marked or Red Herring reminder; NO without")
 
 	C.role_def("seer").on_reading_heard(seer, seer, no_entry, true)
 	_check(not C.role_def("seer").has_method("info_effects") and seer.cleared.has(a.id) and seer.cleared.has(b.id), "Seer on_reading_heard clears both subjects on own fresh NO reading without legacy info_effects")

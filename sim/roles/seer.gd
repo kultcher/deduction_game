@@ -28,7 +28,12 @@ func setup_world(w, holder) -> void:
 
 
 func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
-	return "%s: Demon or Red Herring? %s" % [_names(d.get("pair", []), nm), "YES" if d.get("yes", false) else "NO"]
+	# Michael's form (Nov 19): what the Seer is for, and the reminder only when it matters.
+	# A NO rules out the Demon and the Red Herring (a Marked soul may still read NO).
+	var pair: String = " or ".join(PackedStringArray(d.get("pair", []).map(nm)))
+	if d.get("yes", false):
+		return "%s: Demon? YES\n(Marked or Red Herring?)" % pair
+	return "%s: Demon? NO" % pair
 
 
 func on_reading_heard(listener, source, entry: Dictionary, fresh: bool) -> void:

@@ -412,7 +412,18 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var width: float = r.size.x - 20 * zoom - gutter
 	var top: float = r.position.y + pad + bar_h * 0.5
 	var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / _font.get_height(fs))))
-	_draw_fitted(text, Vector2(tx, top), width, fs, max_lines, _ink * fade)
+	# A second line after "\n" is a reminder (the Seer's "(Marked or Red Herring?)"), in the
+	# small type below the main text, so it fits beside the gutter (Michael, Nov 19).
+	var note: String = ""
+	if text.contains("\n"):
+		note = text.get_slice("\n", 1)
+		text = text.get_slice("\n", 0)
+	var main_lines: int = mini(max_lines, 2) if note != "" else max_lines
+	_draw_fitted(text, Vector2(tx, top), width, fs, main_lines, _ink * fade)
+	if note != "":
+		var note_top: float = top + main_lines * _font.get_height(fs)
+		var note_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - note_top) / _font.get_height(small))))
+		_draw_fitted(note, Vector2(tx, note_top), width, small, note_lines, UITheme.color("ink_soft") * fade)
 	if heard != "":
 		_draw_fitted(heard, Vector2(tx, r.end.y - pad - _font.get_height(small)), width, small, 1, UITheme.color("ink_soft") * fade)
 	if it["mark"] == "nominated":
