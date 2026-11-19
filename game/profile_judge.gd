@@ -21,9 +21,14 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const AVERAGE = {"credibility": 0.5, "npc_trust": 0.5, "confidence": 0.5, "insight": 0.5}
 
 ## {"ready", "issues", "target", "before", "after", "shift", "posterior_before",
-## "posterior_after", "case"}: the target's chance of being evil without and with the case,
-## each person's chance both ways, and the case's own entry among the stored cases (its
-## weight on the filing day and its lean). `profile` overrides AVERAGE's fields; npc_trust
+## "posterior_after", "case", "floors", "requested_before", "requested_after"}: the target's
+## chance of being evil without and with the case, each person's chance both ways, and the
+## case's own entry among the stored cases (its weight on the filing day and its lean).
+## An accepted "lying" challenge doesn't move these chances (the clash is already in the
+## worlds; ReadingChallenges.assess): it floors the teller's suspicion through the refresh's
+## effects (Jury), returned as `floors` (the stored cases' accepted challenges, with their
+## agreement and weight) and `requested_*` (each person's requested suspicion change, as the
+## refresh would apply it). `profile` overrides AVERAGE's fields; npc_trust
 ## may be one number for everyone or a map. `profile.baseline`:
 ##   "marginal" (the default): `before` is the listener as it stands, having heard the case's
 ##     public cards from their tellers; what presenting it would change (the town note).
@@ -122,7 +127,9 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	var a: float = float(after.posterior.get(target, after.prior.get(target, -1.0)))
 	return {"ready": true, "issues": [], "target": target, "before": b, "after": a,
 		"shift": a - b if a >= 0.0 and b >= 0.0 else 0.0,
-		"posterior_before": before.posterior, "posterior_after": after.posterior, "case": entry}
+		"posterior_before": before.posterior, "posterior_after": after.posterior, "case": entry,
+		"floors": after.cases.get("floors", []).duplicate(true),
+		"requested_before": before.get("requested", {}), "requested_after": after.get("requested", {})}
 
 
 ## A presentation snapshot as this listener hears it: nothing private of its own.
@@ -230,4 +237,7 @@ static func _evaluate(current: Dictionary, presentations: Dictionary, ledger: Di
 	# A person nothing held touches keeps the prior (the model reports no posterior for them).
 	var post: Dictionary = cx.get("prior", {}).duplicate()
 	post.merge(cx.get("posterior", {}), true)
-	return {"ready": true, "issues": [], "posterior": post, "prior": cx.get("prior", {}), "cases": cx.get("cases", {})}
+	var requested: Dictionary = {}
+	for id in proposal.get("effects", {}):
+		requested[id] = float(proposal.effects[id].get("requested", 0.0))
+	return {"ready": true, "issues": [], "posterior": post, "prior": cx.get("prior", {}), "cases": cx.get("cases", {}), "requested": requested}
