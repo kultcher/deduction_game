@@ -99,7 +99,7 @@ func _init() -> void:
 	g.new_case(1, 7)
 	var who = g.w.npcs[0]
 	check(g.Deduction.conclusion_text(g.w, {"type": "turned", "a": who.id}) == "%s was turned by the Revenant's curse" % who.name, "a filed turned case reads with the person's name")
-	check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == "%s is the demon" % who.name, "the living keep \"is the demon\"")
+	check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == "%s is the Demon" % who.name, "the living keep \"is the Demon\"")
 	who.alive = false
 	who.death_cause = "executed"
 	check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == "%s was the Demon when hanged" % who.name, "a hanged person's filed Demon case reads as the canvas does")

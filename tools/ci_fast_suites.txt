@@ -23,6 +23,7 @@ test_connections_why
 test_control_flow
 test_conversation_nights
 test_csharp_slice_c0
+test_day_defence
 test_day_presence
 test_daytime_defence_lines
 test_defence_grounds
@@ -86,6 +87,7 @@ test_poison_outing
 test_premise_step1
 test_premise_step2
 test_premise_step3
+test_press_contradiction
 test_public_revisions
 test_reading_confirm
 test_recency

@@ -44,19 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, self-doubt from the judge): `baseline_22efa2f`
+### Current baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
 
-`tools/golden/baseline_22efa2f/` is the capture from `claude/self-doubt-posterior` at `22efa2f`
-(main `05d81a3` merged in). A good NPC's self-doubt is now the judge's chance each night's own
-reading was wrong (`OwnGiftDoubt`), computed when first read rather than stored; the poison and
-Delusional prior that `workshop_state.self_doubt` used to hold is stored as
-`workshop_state.self_doubt_prior`.
-- **Divergence from `baseline_d6a93f1`:** every seed from record 1, only in those stored fields
-  (`self_doubt` gone, `self_doubt_prior` added). With `--ignore engine,self_doubt,self_doubt_prior`
-  all five seeds are identical: no belief, vote, nomination or execution moves, since nothing in
-  play reads self-doubt yet.
-- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
-  seed.
+`tools/golden/baseline_659996a/` is the capture from `claude/herald-hanged-refusals` (#312) at
+`659996a` (main `05d81a3` merged in). Michael approved capitalising "Demon" throughout (Nov 19):
+"the demon" becomes "the Demon" in readings, role descriptions, filed-case text, endings, logs and
+dialogue. #312 also carries Michael's two hanged-Demon refusal lines, which golden doesn't reach.
+- **Text only:** every record is identical to `baseline_d6a93f1` once case is ignored, on all five
+  seeds. No belief, vote or outcome moves, and the record counts are the same.
+- **First text difference:** 42 and 900 at record 1 (a Seer reading's text), 54875 and 98933 at
+  record 54, and 692 at record 25 (the evening reply).
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`

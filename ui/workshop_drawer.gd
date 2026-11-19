@@ -270,7 +270,18 @@ func _can_drop(_at: Vector2, data) -> bool:
 func _drop(_at: Vector2, data) -> void:
 	_drop_cards(data["cards"])
 
+## Several cards dropped at once go in together, so the view centres on the whole group
+## rather than the last card (Codex, #323).
 func _drop_cards(numbers: Array) -> void:
-	for n in numbers:
-		if n is int:
-			add_card(n)
+	if g == null or editor == null:
+		return
+	var nums: Array = numbers.filter(func(n): return n is int)
+	if nums.size() == 1:
+		add_card(nums[0])
+		return
+	if editor.add_evidence_many(nums).is_empty():
+		return
+	_flash = 1.0
+	handle.queue_redraw()
+	if is_collapsed():
+		_pulse()

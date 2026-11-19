@@ -195,11 +195,11 @@ func check(count: int = 0) -> Dictionary:
 		if forced_in(minions).size() > cfg.minions:
 			errors.append("%d minions are forced into play, but a %d-person town only deals %d." % [forced_in(minions).size(), n, cfg.minions])
 	if demons.is_empty():
-		errors.append("The script needs a demon.")
+		errors.append("The script needs a Demon.")
 	if secrets.is_empty():
 		errors.append("The script needs a secret.")
 	if forced_in(demons).size() > 1:
-		errors.append("Only one demon is dealt; force at most one.")
+		errors.append("Only one Demon is dealt; force at most one.")
 	if forced_in(secrets).size() > 1:
 		errors.append("Only one secret is dealt; force at most one.")
 	for id in forced:
