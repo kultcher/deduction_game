@@ -717,7 +717,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	if cards.any(func(c): return c.has("route_trust")):
 		key_input.append(cards.map(func(c): return c.get("route_trust", 1.0)))
 	if cards.any(func(c): return c.has("broken_chance")):
-		key_input.append(cards.map(func(c): return c.get("broken_chance", 0.0)))
+		# A count mixed with no broken chance is still mixed (its evil teller says nothing).
+		key_input.append(cards.map(func(c): return [c.get("broken_chance", 0.0), c.get("count_mix", false)]))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
@@ -1281,15 +1282,19 @@ static func _route_trusted(cards: Array, listener: Dictionary) -> Array:
 static func _list_broken(view: Dictionary, cards: Array, listener: Dictionary) -> Array:
 	var SourceDoubt = preload("res://workshop/source_doubt.gd")
 	var out: Array = []
+	# Counts take the mix slots the lists leave (SourceDoubt.LIST_MIX_MAX, shared), the latest
+	# nights first, chosen among these judged cards only.
+	var lists_mixed: int = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and SourceDoubt.list_broken_chance(view, listener, c) > 0.0).size()
+	var counts: Array = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "lamplighter" and SourceDoubt.count_mixable(view, listener, c))
+	counts.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
+	var count_ids: Array = counts.slice(0, maxi(0, SourceDoubt.LIST_MIX_MAX - lists_mixed)).map(func(c): return str(c.get("id", "")))
 	for card in cards:
-		if card.get("kind", "") == "report" and str(card.get("role", "")) == "lamplighter":
-			var cb: float = SourceDoubt.count_broken_chance(view, listener, card)
-			if cb >= 0.0:
-				var mixed: Dictionary = card.duplicate()
-				mixed["broken_chance"] = cb
-				mixed["count_mix"] = true
-				out.append(mixed)
-				continue
+		if str(card.get("id", "")) in count_ids:
+			var mixed: Dictionary = card.duplicate()
+			mixed["broken_chance"] = SourceDoubt.count_broken_chance(view, listener, card)
+			mixed["count_mix"] = true
+			out.append(mixed)
+			continue
 		if card.get("kind", "") == "report" and str(card.get("role", "")) == "nightwatch":
 			var b: float = SourceDoubt.list_broken_chance(view, listener, card)
 			if b > 0.0:

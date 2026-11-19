@@ -473,11 +473,12 @@ static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dic
 		return 0.0
 	return b if _mix_selected(view, listener, card) else 0.0
 
-## Whether `card` is among the LIST_MIX_MAX mixed cards of the view (latest nights first):
-## Night Watch lists with a broken chance and Lamplighter counts (count_mixable) share the cap
-## (Lantern, Nov 19), so a town with both roles mixes no more subsets than before.
+## Whether a Night Watch list is among the LIST_MIX_MAX mixed lists of the view (latest
+## nights first). Counts take only the slots the lists leave, chosen among the judged cards
+## (CaseEval._list_broken), so a town with both roles mixes no more subsets than before
+## (Lantern, Nov 19) and the choice depends only on what's judged (the connections cache).
 static func _mix_selected(view: Dictionary, listener: Dictionary, card: Dictionary) -> bool:
-	var mixable: Array = view.get("cards", []).filter(func(c): return (str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0) or count_mixable(view, listener, c))
+	var mixable: Array = view.get("cards", []).filter(func(c): return str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0)
 	mixable.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
 	var keep: Array = mixable.slice(0, LIST_MIX_MAX).map(func(c): return str(c.get("id", "")))
 	if not view.get("cards", []).any(func(c): return str(c.get("id", "")) == str(card.get("id", ""))):
@@ -496,9 +497,9 @@ static func count_mixable(view: Dictionary, listener: Dictionary, card: Dictiona
 	return src != "" and src != me and src not in ["player", "evidence", "town"]
 
 ## The chance a mixable count was broken that night: as a list's (_list_broken_base), for the
-## Lamplighter's gift. Only for a count that count_mixable and the shared cap keep; -1 if not.
+## Lamplighter's gift; -1 for a count that isn't mixable. The cap is CaseEval._list_broken's.
 static func count_broken_chance(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
-	if not count_mixable(view, listener, card) or not _mix_selected(view, listener, card):
+	if not count_mixable(view, listener, card):
 		return -1.0
 	var night: int = int(card.get("night", card.get("observed_at", {}).get("day", -1)))
 	var src: String = str(card.get("source", ""))
