@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
+### Current baseline (Nov 19, the Demon never detours in inference): `baseline_f70482e`
+
+`tools/golden/baseline_f70482e/` is the capture from `claude/beadle-demon-detour` at `f70482e`
+(main at `74e6e74`, with #361, merged in). The movement model's Demon now walks only the direct
+way to its victim, as the live Demon does (Michael, Nov 17), instead of a 5% detour allowance.
+Every belief that weighs a sighting or trace against the Demon's route moves a little.
+- **Divergence from `baseline_ee15238`:** every seed, from the first day's belief refreshes
+  (42 at record 21, 54875 at 9, 692 at 14, 900 at 5, 98933 at 13). On seed 42 the change is at
+  rounding level (it matches at `--tol 1e-9`).
+- **Outcomes:**
+  - 42, 692 and 98933: unchanged.
+  - 54875: Greta is hanged on day 2 and nobody on day 3, instead of Edda on day 2 and Hollis
+    on day 3. No winner by day 4 either way.
+  - 900: Isolde is hanged on day 3 instead of Lian. No winner by day 4 either way.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
 
 `tools/golden/baseline_ee15238/` is the capture from `claude/factor-norm-handles` at `ee15238`
 (main with #345 merged in). A movement factor's compiled handle is now shared only between uses
