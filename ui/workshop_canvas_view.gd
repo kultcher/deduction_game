@@ -13,6 +13,7 @@ signal background_context_requested(at: Vector2)   # a right-click (not a drag) 
 const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
+const Live = preload("res://game/workshop_canvas.gd")
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
@@ -46,8 +47,16 @@ var badges: Dictionary = {}   # id -> {category, text, reason, ready, issues} fr
 var clashing: Dictionary = {} # card ids the test juror says clash with the chosen explanation
 var detail_label: Callable    # (node) -> {text, icon}: the premise's extra field, if any
 const PREMISE_H = 236.0
-const STRENGTH_COLORS = {"empty": Color("8a8378"), "contradicts": Color("b55a4c"), "none": Color("8a8378"), "weak": Color("c98a3d"), "moderate": Color("c9b03d"), "strong": Color("5f9a55")}
-const STRENGTH_TEXT = {"empty": "No evidence", "contradicts": "Argues against", "none": "Doesn't support", "weak": "Weak", "moderate": "Moderate", "strong": "Strong"}
+const STRENGTH_COLORS = {"empty": Color("8a8378"), "contradicts": Color("b55a4c"), "none": Color("8a8378"), "weak": Color("c98a3d"), "moderate": Color("c9b03d"), "strong": Color("5f9a55"), "damning": Color("3e7f47")}
+const STRENGTH_TEXT = {"empty": "No evidence", "contradicts": "Argues against", "none": "Negligible", "weak": "Weak", "moderate": "Moderate", "strong": "Strong", "damning": "Damning"}
+## The top tier (Michael, Nov 19): "Damning" on an accusing premise, "Conclusive" on any other,
+## a deeper green with the gold of the portrait ring around it.
+const TOP_RING = Color("c9a24a")
+const DAMNING_LINE = "This case is damning: an ordinary townsperson would vote for %s over anyone else."
+const CONCLUSIVE_LINE = "This case is conclusive: an ordinary townsperson would take it as settled that %s."
+## A lie call the town weighs as one word against another (Lantern's draw; Michael, Nov 19).
+const STAND_OFF = "Stand-off"
+const STAND_OFF_TIP = "One word against another. Most will wait for more, but a few may take your side."
 var font: Font = CanvasSkin.serif()
 const WIDTH = 300.0
 
@@ -291,6 +300,7 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 	if not conclusion.is_empty():
 		var chip_text: String = "…"
 		var chip_color = Color("8a8378")
+		var ring = null
 		var tip: String = "The test juror (public facts, default trust) is judging this case…"
 		if badge.get("ready", true) == false:
 			chip_text = "Can't judge"
@@ -299,12 +309,28 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 		elif badge.has("category"):
 			chip_text = STRENGTH_TEXT.get(badge.category, badge.category)
 			chip_color = STRENGTH_COLORS.get(badge.category, chip_color)
+			var juror_text: String = badge.get("text", "")
+			if badge.category == "damning":
+				var top: Dictionary = top_tier(id)
+				if top.is_empty():
+					# The tier the evidence itself earns, without the top tier's chance cut.
+					var CaseEval = preload("res://workshop/case_eval.gd")
+					var earned: String = CaseEval.category(float(badge.get("lr", 1.0)))
+					chip_text = STRENGTH_TEXT.get(earned, earned)
+					chip_color = STRENGTH_COLORS.get(earned, chip_color)
+					juror_text = CaseEval.category_text(earned)
+				else:
+					chip_text = top.label
+					juror_text = top.line
+					ring = TOP_RING
 			var notes: Array = []
 			if badge.get("headline", "") != "":
 				chip_text = "Doesn't fit"
 				chip_color = Color("b55a4c")
 				notes.append(badge.headline + " The clashing cards are outlined in red.")
-			notes.append("Test juror: " + badge.get("text", "") + ("\n" + badge.reason if badge.get("reason", "") != "" else ""))
+			notes.append("Test juror: " + juror_text + ("\n" + badge.reason if badge.get("reason", "") != "" else ""))
+			for c in badge.get("listener", {}).get("challenges", []):
+				notes.append(Live.lie_call_line(c, func(pid): return Solver.person_name(model.view, pid)))
 			if badge.get("change", "") != "":
 				notes.append(badge.change)
 			if badge.get("town_note", "") != "":
@@ -321,7 +347,7 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 			tip = "\n".join(PackedStringArray(notes))
 		var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 18
 		var chip = Rect2(rect.position + Vector2(rect.size.x - (cw + 10) * zoom, 7 * zoom), Vector2(cw, 24) * zoom)
-		draw_style_box(CanvasSkin.flat(chip_color, chip_color.darkened(0.3), 1, 10, 0), chip)
+		draw_style_box(CanvasSkin.flat(chip_color, ring if ring != null else chip_color.darkened(0.3), 2 if ring != null else 1, 10, 0), chip)
 		draw_string(font, chip.position + Vector2(9, 17) * zoom, chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(13), Color("fbf6ea"))
 		tips.append({"rect": chip, "text": tip})
 	var rows: Array = []
@@ -663,6 +689,33 @@ const FACE_STEP = 54.0
 func _evidence_card(id: String) -> Dictionary:
 	var node: Dictionary = model.nodes[id]
 	return Solver.card_by_id(model.view, node.card) if node.kind in ["evidence", "modifier"] else {}
+
+## Clearing premises the top tier can call settled: the juror's chance is the target's chance
+## of being good, which settles these and no other clearing premise (Codex, #358). Being good
+## doesn't settle "holds their claimed gift", "is Marked" and the like.
+const CONCLUSIVE_TYPES = ["good", "notdemon"]
+
+## The top tier's chip and reason line for premise `id`: Damning when it accuses someone by
+## name, Conclusive on a premise their being good settles ({label, line}), or {} where the
+## top tier can't be claimed and the chip stays at Strong.
+func top_tier(id: String) -> Dictionary:
+	var conclusion: Dictionary = model.nodes[id].get("conclusion", {})
+	var type: String = str(conclusion.get("type", ""))
+	var target: String = str(conclusion.get("target", ""))
+	if target != "" and type != "conflict" and type not in Live.PREMISE_CLEARS:
+		return {"label": "Damning", "line": DAMNING_LINE % Solver.person_name(model.view, target)}
+	if type in CONCLUSIVE_TYPES:
+		return {"label": "Conclusive", "line": CONCLUSIVE_LINE % model.title(id)}
+	return {}
+
+## How the test juror weighed a lie call on the card with Workshop id `card_id`, from any
+## premise's badge ({} when no badge carries it).
+func lie_call(card_id: String) -> Dictionary:
+	for b in badges.values():
+		for c in b.get("listener", {}).get("challenges", []):
+			if str(c.get("reading", "")) == card_id:
+				return c
+	return {}
 
 func _unsupported(card: Dictionary) -> bool:
 	return card.get("fallback", false) or card.get("off_board", false)
@@ -1209,6 +1262,11 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 		draw_style_box(CanvasSkin.flat(Color("c0392b"), Color("7d2a20"), 1, 6, 0), tag)
 		draw_string(font, tag.position + Vector2(8, 16) * zoom, tag_text, HORIZONTAL_ALIGNMENT_LEFT, tag.size.x - 16 * zoom, _fs(13), Color("fbf6ea"))
 		tips.append({"rect": tag, "text": tag_text + ". If that card is accurate, this one is false. Inspect this card to doubt the other instead, or to remove the contradiction."})
+	if node.kind == "modifier" and str(lie_call(str(card.get("id", ""))).get("kind", "")) == "draw" and contradicted_by == "":
+		var so = Rect2(rect.position + Vector2(0, -24) * zoom, Vector2(rect.size.x, 22) * zoom)
+		draw_style_box(CanvasSkin.flat(Color("8c795c"), TOP_RING, 1, 6, 0), so)
+		draw_string(font, so.position + Vector2(8, 16) * zoom, STAND_OFF, HORIZONTAL_ALIGNMENT_LEFT, so.size.x - 16 * zoom, _fs(13), Color("fbf6ea"))
+		tips.append({"rect": so, "text": STAND_OFF_TIP})
 	var x: float = 10.0
 	if model.view.people.any(func(p): return p.id == card.get("source", "")):
 		_draw_face(card.source, rect.position + Vector2(24, 20) * zoom, 14 * zoom)
