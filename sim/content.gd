@@ -91,12 +91,14 @@ static func third_person(text: String) -> String:
 	return out
 
 ## A player vigil on `block` spots residents of `block` leaving home (a night path starts at
-## the walker's home), and the Lamplighter making the full four-block tour; not walkers who
-## arrive from elsewhere or pass through (Michael, Nov 17, docs/design/vigil.md option A:
-## the vigil aims at suspects, not at the Demon's likely target). A Demon whose victim lives
-## on its own block still leaves home. Night Watch still sees all traffic (`block in path`).
+## the walker's home), and nothing else: not walkers who arrive from elsewhere or pass
+## through (Michael, Nov 17, docs/design/vigil.md option A: the vigil aims at suspects, not
+## at the Demon's likely target). The Lamplighter and Sexton walk every block, but leave home
+## only on their own, so only a vigil there sees them (Michael, Nov 19). A Demon whose victim
+## lives on its own block still leaves home. Night Watch still sees all traffic
+## (`block in path`).
 static func vigil_sees_path(block: String, path: Array) -> bool:
-	return not path.is_empty() and (path.front() == block or path.size() == BLOCKS.size())
+	return not path.is_empty() and path.front() == block
 
 static func route(a: String, b: String) -> Array:
 	if a == b:

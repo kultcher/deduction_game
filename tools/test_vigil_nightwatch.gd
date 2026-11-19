@@ -5,7 +5,8 @@
 ## when that person lives on the watched block, and a Night Watch who watched their own
 ## block (they had to leave home to keep watch). The world model already weighs both; this
 ## pins it: the same night and block against another block, the challenge route, a vigil
-## that saw someone else (complete coverage), and the watcher's own walk.
+## that saw someone else (complete coverage), the watcher's own walk, and a four-block
+## tour seen only from its walker's home block.
 ##   godot --headless --path . --script res://tools/test_vigil_nightwatch.gd
 extends SceneTree
 
@@ -42,6 +43,12 @@ func _init() -> void:
 	var own_missing: float = _mean("nobody", "same", "plain", [], "nw")
 	var own_seen: float = _mean("saw_nw", "same", "plain", [], "nw")
 	check(own_missing > own_seen + 0.05, "a watcher on their own block whom the vigil never saw leave wasn't keeping watch (%+.3f vs %+.3f)" % [own_missing, own_seen])
+	# A tour of every block (the Lamplighter's, the Sexton's) leaves home on one block only:
+	# a vigil sees it from that block and no other (Michael, Nov 19).
+	var C = preload("res://sim/content.gd")
+	var tour: Array = ["hill", "square", "market", "docks"]
+	check(C.vigil_sees_path("hill", tour) and not C.vigil_sees_path("market", tour) and not C.vigil_sees_path("docks", tour),
+		"a vigil sees a four-block tour only from the walker's own home block")
 	print("Vigil and Night Watch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 

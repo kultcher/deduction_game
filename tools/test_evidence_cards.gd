@@ -596,8 +596,10 @@ func _vigil_leavers_only() -> void:
 	w.player_vigil = "docks"
 	w._night_sightings()
 	# Since Nov 17 the vigil watches who leaves the block (docs/design/vigil.md option A).
-	_check((a.id in w.player_vigil_seen) and not (b.id in w.player_vigil_seen) and (lamp.id in w.player_vigil_seen),
-		"player vigil spots residents leaving the block and the Lamplighter, not visitors arriving from another block")
+	# Since Nov 19 a tour of every block is seen only from its walker's home block: the
+	# Lamplighter lives on the Square, so a vigil on the Docks misses it.
+	_check((a.id in w.player_vigil_seen) and not (b.id in w.player_vigil_seen) and not (lamp.id in w.player_vigil_seen),
+		"player vigil spots residents leaving the block, not visitors arriving from another block nor the Lamplighter's tour from elsewhere")
 	var watch_def = C.role_def("nightwatch")
 	var watch_reading: Dictionary = watch_def.generate_reading(w, w.npcs[3], {"watch_block": "docks"}, Mind)
 	_check(a.id in watch_reading["data"]["seen"] and b.id in watch_reading["data"]["seen"],
