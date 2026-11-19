@@ -81,16 +81,17 @@ averaged over the listeners.
 - **Juror's badges:** the badge each case got, and how often.
 - **Strength:** the juror's strength, as a geometric mean. Since the juror fix (Nov 19), it
   is how far an average listener's chance of the premise moves, as an odds ratio, against
-  a town that hasn't heard the case's cards. The badge is set by this number: Weak from 1.5,
-  Moderate from 3, Strong from 10, until Michael sets the new cut points.
+  a town that hasn't heard the case's cards. The badge is set by this number (#357): Weak from
+  ×1.25, Moderate from ×2, Strong from ×3.5, and Damning when an accusing premise's chance
+  reaches 90%.
 - **Chance before → after** (the rows' `chance_before` and `chance`): that listener's
   chance of the premise, and whether the subject becomes their top suspect (`top`,
   `margin`). These feed the fourth tier's measure.
 - **Town:** the mean movement, and its range across the deals.
 - **Sign:** how often the juror and the town point the same way.
 - **Category:** how often the badge matches the town's own band. The bands are the
-  report's own provisional reading of how far the town moved, not game numbers: Strong
-  from +25, Moderate from +10, Weak from +3, none from −2.
+  report's own provisional reading of how far the town moved, not game numbers: Damning
+  from +45, Strong from +25, Moderate from +10, Weak from +3, none from −2.
 - **By badge:** the town's movement for each badge, for the true cases and the misleading
   ones separately. These are the tables for revisiting the cut points.
 
@@ -123,5 +124,5 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built on claude/slate-gap (claude/slate-votes, with each case presented to
+`baseline.jsonl`: built on claude/slate-gap (main at 17dd113, with each case presented to
 its sources too and the two_kills_seer case added, Nov 19, Quill). See `baseline.md`.

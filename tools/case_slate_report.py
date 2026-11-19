@@ -29,9 +29,9 @@ TRUE_CASES = ["pile", "kill_sighting", "vigil_kill", "alibi_sighting", "convergi
 # impossible reading or the Strong-tier cases.
 NO_TWIN = ["impossible", "seer_twice", "vigil_seer", "stack", "two_kills_seer"]
 ORDER = TRUE_CASES + [c + "_innocent" for c in TRUE_CASES if c not in NO_TWIN] + ["lamp_bluff_innocent"]
-BADGES = ["contradicts", "none", "weak", "moderate", "strong", "not ready"]
+BADGES = ["contradicts", "none", "weak", "moderate", "strong", "damning", "not ready"]
 # Lower edge, in points, of each band (the town's movement).
-TOWN_BANDS = [("strong", 25.0), ("moderate", 10.0), ("weak", 3.0), ("none", -2.0)]
+TOWN_BANDS = [("damning", 45.0), ("strong", 25.0), ("moderate", 10.0), ("weak", 3.0), ("none", -2.0)]
 
 
 def band(points):

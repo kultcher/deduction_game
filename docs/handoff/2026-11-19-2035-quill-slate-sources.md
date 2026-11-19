@@ -1,7 +1,6 @@
 # Case slate: sources hear the case, and a case between Strong and the top tier
 
-**Claude-Quill, Nov 19.** Base: claude/slate-votes (99351747), which is stacked on #346 and
-#355. Status: ready for review, and merges after #355. Next actor: Bailiff. This is tooling,
+**Claude-Quill, Nov 19.** Base: main at 17dd113 (#346 and #355 merged). Status: ready for review. Next actor: Bailiff. This is tooling,
 with no game code, so golden doesn't move.
 
 ## What changed and why
@@ -17,12 +16,14 @@ with no game code, so golden doesn't move.
 - **A new case, `two_kills_seer`:** two killings, the vigil and a witness at each, and the
   Seer's "yes" on the Demon on both nights. It's about an 82% chance, ×8.0, and it fills
   the gap between Strong and the top tier. It has no innocent twin, like the other Seer cases.
+- **The report knows the Damning badge** (#357), and its own town bands gain one from +45.
 - **The baseline is re-made:** `docs/case_slate/baseline.jsonl` and `baseline.md`.
   `README.md` is updated.
 
-## Measured (the full slate: 28 cases, 275 deals, at this commit)
+## Measured (the full slate: 28 cases, 275 deals, on main at 17dd113)
 
-- The juror's badges and strengths are unchanged on every case.
+- The juror's strengths are unchanged on every case. The badges are #357's cut points.
+- #346 and #349 move nothing on the slate (within 0.1 of a point).
 - On the proposed tiers, the good votes swayed by true cases are:
 
 | Tier | Before | Now |
