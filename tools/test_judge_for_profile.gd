@@ -105,6 +105,17 @@ func _init() -> void:
 	print("a withdrawn case's card: before %.4f (never put: %.4f)" % [float(after_withdrawal.get("before", -1.0)), float(never.get("before", -1.0))])
 	check(absf(float(after_withdrawal.get("before", -1.0)) - float(never.get("before", -1.0))) > 1e-6, "after a public withdrawal the town still holds the cards the case brought")
 	g.public_presentations.erase(tnum)
+	# A revision filed and withdrawn before it was put takes back the heard original too, whose
+	# cards stay (Codex on #326).
+	var orig2: int = Live.file(g, tcase)
+	g.public_presentations[orig2] = int(g.w.day)
+	var held_orig: Dictionary = Connections.judge_for_profile(g, both)
+	var rev2: int = Live.file(g, _value(g, "good", p[1].id, [third, seer]), orig2)
+	g.board[rev2 - 1]["withdrawn"] = true
+	var after_rev_withdrawn: Dictionary = Connections.judge_for_profile(g, both)
+	print("original #%d held: before %.4f; after its unput revision #%d is withdrawn: before %.4f" % [orig2, float(held_orig.get("before", -1.0)), rev2, float(after_rev_withdrawn.get("before", -1.0))])
+	check(absf(float(after_rev_withdrawn.get("before", -1.0)) - float(held_orig.get("before", -1.0))) > 1e-6, "withdrawing an unput revision takes back the heard original as well")
+	g.public_presentations.erase(orig2)
 	# 4. Reads only.
 	g.public_presentations.erase(filed)
 	g.public_citations.erase(seer)

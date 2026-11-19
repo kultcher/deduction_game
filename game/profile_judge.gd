@@ -70,6 +70,19 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	var earlier: Dictionary = {}
 	var same_key: String = ""
 	var kept: Dictionary = {}
+	# A withdrawal in public takes back every version in the withdrawn case's line, heard or
+	# not (GamePresentation.workshop_withdraw_public), keeping the cards each heard version
+	# brought (Codex on #326).
+	for i in range(g.board.size()):
+		var w_card: Dictionary = g.board[i]
+		if w_card.get("kind", "") != "deduction" or not w_card.get("withdrawn", false):
+			continue
+		var line: Dictionary = {}
+		_ancestors(g, i + 1, line)
+		for v in line:
+			if v != i + 1 and g.public_presentations.has(v) and g.board[v - 1].has("workshop_case") and not replaced.has(v):
+				_kept_receipts(g, v, listener, kept)
+			replaced[v] = true
 	for number in numbers:
 		var filed: Dictionary = g.board[number - 1]
 		if filed.get("kind", "") == "deduction" and filed.has("workshop_case") and filed.get("withdrawn", false):
