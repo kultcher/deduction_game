@@ -99,7 +99,11 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 			var private_solved: Dictionary = subset.private_solved
 			var private_worlds: Array = private_solved.worlds
 			var solved: Dictionary = subset.solved
-			var conclusion: Dictionary = subset.conclusion
+			# The refuters of "was the Demon when hanged" come from the cards this state accepts, and
+			# the private reference's from the listener's own (Codex on #356). Derived here, not in
+			# the plan, which assessments of other questions share.
+			var conclusion: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": case_data.conclusion}, active, true).conclusion
+			var private_conclusion: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": case_data.conclusion}, private_cards, true).conclusion
 			var searched = {}
 			if bounded:
 				searched = Reasoner.search(view, case_data, active, listener, attention.limits)
@@ -172,7 +176,7 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 						Profiler.count("private_comparison_reuse")
 						prior = private_comparisons[private_key]
 					else:
-						prior = _comparison(view, private_worlds, subset.private_conclusion, [], ranks, int(private_solved.get("__id", 0)))
+						prior = _comparison(view, private_worlds, private_conclusion, [], ranks, int(private_solved.get("__id", 0)))
 						private_comparisons[private_key] = prior
 					if prior.support > 0 and prior.rival == 0:
 						reference = 1.0
@@ -351,12 +355,8 @@ static func _mixture(view: Dictionary, case_data: Dictionary, listener: Dictiona
 		factors.append_array(Movement.factors(view, active, case_data))
 		for factor in factors:
 			factor["epoch"] = case_data.conclusion.at
-		# The refuters of "was the Demon when hanged" come from the cards this state accepts, and
-		# the private reference's from the listener's own (Codex on #356).
-		var subset_conclusion: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": case_data.conclusion}, active, true).conclusion
-		var private_conclusion: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": case_data.conclusion}, private_cards, true).conclusion
 		subsets[card_mask] = {"active": active, "private_cards": private_cards, "private_solved": private_solved,
-			"solved": solved, "factors": factors, "conclusion": subset_conclusion, "private_conclusion": private_conclusion,
+			"solved": solved, "factors": factors,
 			"contributing": _contributing(view, active)}
 	var plan = {"cards": cards, "atoms": atoms, "fault_controls": fault_controls,
 		"presented_reading": presented_reading, "schedule": schedule, "subsets": subsets}
