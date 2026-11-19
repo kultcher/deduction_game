@@ -1367,6 +1367,21 @@ static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pa
 	var reports = Dialogue.compose_turn(n.id, parts, {"audience": "player", "speech_act": "answer",
 		"trust": n.trust, "pressure": n.pressure}, n.dialogue_memory, was_s != "")
 	var spoken: String = " ".join(PackedStringArray(reports.map(func(r): return r.text)))
+	# Honest forgetting (Michael, Nov 19): when memory, not discretion, dropped people they
+	# saw, they say so without naming anyone. Never when Gossip held anyone back, so it
+	# can't stand in for discretion; an evil speaker's teammates never count (skipped above).
+	if recalled.size() <= limit:
+		var forgotten: int = 0
+		var counted = {}
+		for b in seen:
+			var who_id: String = b["who"]
+			if people.has(who_id) or counted.has(who_id) or (n.is_evil() and Evil.is_teammate(w, n, who_id)):
+				continue
+			counted[who_id] = true
+			forgotten += 1
+		if forgotten > 0:
+			w.dlog.think(n.id, "forgot", "Can't place %d more seen in that time (memory %d)." % [forgotten, memory])
+			spoken += " " + Dialogue.voice_line(n.id, "day_forgot_others", "There were others, but I can't place them.")
 	lines.append(say(n, ((was_s + ". ") if was_s != "" else "") + spoken))
 	return {"lines": lines, "facts": facts}
 
