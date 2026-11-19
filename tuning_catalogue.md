@@ -440,8 +440,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd` |
 | `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_meeting.gd` |
-| `PLAYER_DEFEND_SLOPE` | `-0.25` |  | `sim/mind_meeting.gd` |
-| `PLAYER_ACCUSE_SLOPE` | `0.15` |  | `sim/mind_meeting.gd` |
 | `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_meeting.gd` |
 | `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_meeting.gd` |
 | `VOTE_SPARE_PREF_SLOPE` | `-0.5` |  | `sim/mind_meeting.gd` |

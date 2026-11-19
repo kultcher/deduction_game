@@ -2117,7 +2117,9 @@ static func defence_line(w, n) -> Dictionary:
 		fallback = "P-please. I've done nothing."
 	return say_voiced(n, "defence_line", fallback)
 
-## One NPC's vote on a nomination. statement: "", "defend" or "accuse" (the player's).
+## One NPC's vote on a nomination. statement is always "" since Speak against / in defence
+## was replaced by presenting a case (Michael, option (b), Nov 19): a case moves a voter through
+## what it believes, not through a free nudge on the vote. Kept as a parameter for the callers.
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
 	var id = w.dlog.decision(v.id, "vote", "start", null, {"nominator": nominator,
 		"player_yes": player_yes, "statement": statement, "yes_so_far": yes_so_far,
@@ -2202,10 +2204,6 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		parts["resentment"] = v_resent
 	if player_yes:
 		parts["player_votes_yes"] = Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET
-	if statement == "defend":
-		parts["player_defends"] = Tuning.Meeting.PLAYER_DEFEND_SLOPE * v.credibility
-	elif statement == "accuse":
-		parts["player_accuses"] = Tuning.Meeting.PLAYER_ACCUSE_SLOPE * v.credibility
 	if nominator != "player" and susp(v, nominator) > Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_MIN_SUSP:
 		parts["distrusts_nominator"] = Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_OFFSET
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
@@ -2342,8 +2340,8 @@ static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: 
 	# believe the lie and say it isn't enough to hang (lie severity, the vote side).
 	if granted_lie:
 		return "vote_no_lie_not_rope"
-	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes", "player_defends",
-		"player_accuses", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
+	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes",
+		"distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
 	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
 		return "vote_no_reluctant"
 	if float(parts.get("distrusts_nominator", 0.0)) < 0.0 and str(res.get("by", "")) != "player":
