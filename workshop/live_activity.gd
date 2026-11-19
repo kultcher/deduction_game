@@ -20,6 +20,7 @@ static var _factor_handles: Dictionary = {}
 static var _mru_factor = null
 static var _mru_handle: int = -1
 static var _mru_epoch: int = -1
+static var _mru_norm: int = 0
 static var _env_cache: Dictionary = {}
 
 const _CARD_STRIDE = 20
@@ -1059,10 +1060,19 @@ static func _append_scene_packed(n: int, st: Dictionary, meta_ints: PackedInt32A
 			for v in cc:
 				meta_doubles.append(float(v))
 
-static func _ensure_factor_handle(factor: Dictionary) -> int:
+## `norm`: the scale the kernel scores this factor on, when it is the broken branch of a
+## mixed list or count, or sits under one (0: its own). AttachListMix's SetListNorm writes the
+## sound branch's scale into the broken branch's compiled factor and everything under it, so
+## a handle is shared only between uses on the same scale. Before Nov 19 the handle was keyed
+## by content alone: a broken branch identical to a factor used on its own (a broken
+## Lamplighter count says nothing, so its branch is the case's factor without the count)
+## rewrote that factor's scale, and whichever mix attached last decided how it scored, so
+## beliefs depended on judgement order and the caches changed them (Lantern, Nov 19; Quill's
+## seed-900 cache parity). Correctness, not speed.
+static func _ensure_factor_handle(factor: Dictionary, norm: int = 0) -> int:
 	var bridge = SolverBackend._bridge()
 	var epoch: int = int(bridge.GetContextEpoch())
-	if _mru_epoch == epoch and _mru_factor != null and is_same(_mru_factor, factor):
+	if _mru_epoch == epoch and _mru_factor != null and is_same(_mru_factor, factor) and _mru_norm == norm:
 		return _mru_handle
 	if _mru_epoch != epoch:
 		_factor_handles.clear()
@@ -1071,11 +1081,17 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 	var mix_key: String = str(factor.get("list_mix", {}).get("key", ""))
 	var fkey: int = hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), factor.get("contests", []), factor.get("guards", {}), mix_key]) if day_share <= 0.0 \
 		else hash([factor.get("profiles", []), factor.get("scene_tables", []), factor.get("scion_splits", []), day_share, factor.get("hex_kills", []), factor.get("hex_successions", []), factor.get("contests", []), factor.get("guards", {}), mix_key])
+	# Its own scale: what a broken branch under it is normed to (unless an outer mix norms
+	# this one, whose scale then reaches everything under it: SetListNorm runs outermost last).
+	var own_scale: int = fkey
+	if norm != 0:
+		fkey = hash([fkey, norm])
 	if _factor_handles.has(fkey):
 		var hit: Dictionary = _factor_handles[fkey]
-		if hit.factor == factor:
+		if hit.factor == factor and int(hit.get("norm", 0)) == norm:
 			_mru_factor = factor
 			_mru_handle = int(hit.handle)
+			_mru_norm = norm
 			return _mru_handle
 
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
@@ -1214,14 +1230,17 @@ static func _ensure_factor_handle(factor: Dictionary) -> int:
 		bridge.LiveAttachGuards(h, g_ints, g_doubles)
 	var mix: Dictionary = factor.get("list_mix", {})
 	if not mix.is_empty():
-		var next_h: int = _ensure_factor_handle(mix.next)
-		var alt_h: int = _ensure_factor_handle(mix.alt)
+		# The sound branch keeps this factor's scale; the broken branch takes the sound
+		# branch's (SetListNorm), or an outer mix's when this factor is itself normed.
+		var next_h: int = _ensure_factor_handle(mix.next, norm)
+		var alt_h: int = _ensure_factor_handle(mix.alt, norm if norm != 0 else own_scale)
 		bridge.LiveAttachListMix(h, int(mix.watcher), float(mix.broken), float(mix.get("scale", 1.0)), bool(mix.get("cursed", false)), next_h, alt_h)
 	if _factor_handles.size() >= 2048:
 		_factor_handles.clear()
-	_factor_handles[fkey] = {"factor": factor, "handle": h}
+	_factor_handles[fkey] = {"factor": factor, "handle": h, "norm": norm}
 	_mru_factor = factor
 	_mru_handle = h
+	_mru_norm = norm
 	return h
 
 static func score(world: Dictionary, factor: Dictionary) -> float:
