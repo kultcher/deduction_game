@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
+### Current baseline (Nov 19, a Warden's guard read with its night): `baseline_22733aa`
+
+`tools/golden/baseline_22733aa/` is the capture from `claude/warden-night-item` at `22733aa`
+(main `0670ba8` merged in). A Warden's guard report now sits in its night's movement item with
+that night's sightings and alibis (`Connections.NIGHT_ROLES`), so a quiet-night guard is weighed
+together with who was seen near the guarded door, instead of alone.
+- **Divergence from `baseline_74eb971`:** 692 from record 32 (Nisha's refresh on day 2, the
+  first refresh that holds a Warden's guard). 42, 54875, 900 and 98933 are identical.
+- **Outcomes:** 692 hangs the same person, Constance, on day 3, with the same eight yes votes.
+  Nisha now nominates her instead of Fenwick. It still reaches day 4 with no winner, in 249
+  records (was 251). Every other seed is unchanged.
+- **Stability:** two captures were identical. The same divergence and outcome as this branch's
+  earlier captures on older mains (`baseline_e1d1934`, `baseline_3710796`, never on main).
+
+### Earlier baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
 
 `tools/golden/baseline_74eb971/` is the capture from `claude/beadle-agreement-trust` at `74eb971`
 (main `4248293` merged in, with #296). A good NPC warms a little to those who vote
