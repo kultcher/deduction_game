@@ -174,6 +174,9 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		facts += r["facts"]
 		if reveal:
 			return {"lines": lines, "facts": facts, "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
+		var witness_lying: Dictionary = _witness_lying(w, n, card, night, r)
+		if not witness_lying.is_empty():
+			lines.append(witness_lying)
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
 		return pressed
@@ -338,6 +341,27 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 			"text": "%s admits they were out %s." % [n.name, C.spoken_when(night, w.day)]})
 	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
 	return {"lines": lines, "facts": facts}
+
+## "<witness> is lying about seeing me" in private (Michael, Nov 19), as the meeting defence
+## says it: pressed with another NPC's sighting of it, an NPC standing by "home" may call the
+## witness a liar, with Confidence over the same gate. Evil uses it freely; a good NPC says it
+## only if it really was home (one who knows the sighting is true doesn't). A line only: it
+## adds no doubt of the witness. {} when it doesn't apply.
+static func _witness_lying(w, n, card: Dictionary, night: int, reply: Dictionary) -> Dictionary:
+	# The meeting defence's Confidence gate (MindMeeting, "is lying, and you should ask...").
+	if str(card.get("kind", "")) != "sighting" or trait_of(n, "confidence") <= 0.6:
+		return {}
+	var src: String = str(card.get("relay_source", card.get("source", "")))
+	if src == "" or src == n.id or not w.by_id.has(src):
+		return {}
+	if not reply.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and f.get("home", false) and f.get("source", "") == n.id):
+		return {}
+	if not n.is_evil() and str(n.history.get(w.time_key(night, C.NIGHT), "home")).begins_with("night:"):
+		return {}
+	var witness = w.by_id[src]
+	if n.is_evil() and str(n.history.get(w.time_key(night, C.NIGHT), "home")).begins_with("night:"):
+		w.dlog.think(n.id, "lie", "Called %s a liar for seeing it out on night %d." % [witness.name, night], {"lie": true, "why": "denying a true sighting of its night's work"})
+	return say_voiced(n, "press_witness_lying", "%s is lying about seeing me." % witness.name, {"witness": witness.name})
 
 ## The night is owned now: a later question about it, in private or at the podium, gets the
 ## plain "I was out" account rather than the home alibi it replaced (Codex on #261).

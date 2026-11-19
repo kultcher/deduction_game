@@ -801,6 +801,11 @@ class Evil:
 	const EXPOSURE_PLAYER_SUSPECTS = 0.3
 	const EXPOSURE_PRESSURE_SCALE = 0.5
 	const EXPOSURE_ON_BLOCK = 0.2
+	## An unclaimed Minion (never the Demon or a Scion) that hears someone claim a gift may
+	## claim the same gift itself, a deliberate double claim (Michael, Nov 19). This is its
+	## chance each time, before heat: already being implicated as evil (Evil.exposure's
+	## public talk) scales it down, to nothing at full heat.
+	const MINION_DOUBLE_CLAIM_CHANCE = 0.15
 	const TEAMMATE_VALUE_DEMON = 2.0
 	const TEAMMATE_VALUE_DEMON_WITH_SCION = 1.1
 	const TEAMMATE_VALUE_SCION_ACTIVE = 1.45

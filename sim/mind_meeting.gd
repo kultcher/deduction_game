@@ -128,6 +128,10 @@ static func _queue_reactions(w, st: Dictionary, s, facts: Array) -> void:
 		var my_role: String = str(w.evil_plan.get("bluffs", {}).get(l.id, "")) if l.is_evil() else str(l.role)
 		var trigger: int = 0
 		var subject: String = ""
+		if l.is_evil() and my_role in claimed and switch_taken_bluff(w, l):
+			my_role = str(w.evil_plan["bluffs"][l.id])  # its bluff was just taken: no rival claim to answer
+		elif l.is_evil() and not claimed.is_empty() and not (my_role in claimed) and choose_double_claim(w, l, s, str(claimed[0])):
+			my_role = str(claimed[0])
 		if my_role != "" and my_role in claimed:
 			trigger = 1
 		elif l.id in named:
@@ -300,8 +304,87 @@ static func _volunteer_night_sightings(w, n, lines: Array, facts: Array) -> void
 		w.dlog.add("volunteer_sighting", n.id, b.who, {"night": b.day, "block": b.block, "score": score, "threshold": threshold})
 	lines.append_array(_observation_lines(n, groups, "town", "volunteer", not lines.is_empty()))
 
+## Who else, as far as n knows, claims `role`: a public claim, or one n heard of (gossip, a
+## private claim passed on). Living only.
+static func rival_claimants(w, n, role: String) -> Array:
+	var out: Array = []
+	if role == "":
+		return out
+	for o in w.living():
+		if o == n:
+			continue
+		var heard: bool = n.known_claims.has(o.id) and str(n.known_claims[o.id].get("role", "")) == role
+		if (o.claim_public and o.claimed_role == role) or heard:
+			out.append(o.id)
+	return out
+
+## Evil whose planned bluff someone else has claimed first, before it has claimed anything,
+## drops it for a spare from evil's bluff list (Michael, Nov 19), rather than counterclaim.
+## Not if it has already told a fake reading of the old bluff: that's committed. Returns
+## whether it switched.
+static func switch_taken_bluff(w, n) -> bool:
+	if not n.is_evil() or n.claim_public or n.claimed_role != "":
+		return false
+	var bluff: String = str(w.evil_plan["bluffs"].get(n.id, ""))
+	if str(n.dialogue_memory.get("double_claim", {}).get("role", "")) == bluff:
+		return false  # a double claim it chose: the rival is the point
+	var rivals: Array = rival_claimants(w, n, bluff)
+	if rivals.is_empty():
+		return false
+	if n.info_log.any(func(e): return e.get("fake", false) and e.get("role", "") == bluff and e.get("shared", false)):
+		return false
+	var used: Array = w.evil_plan["bluffs"].values()
+	var spares: Array = w.bluffs.filter(func(r): return r not in used and rival_claimants(w, n, r).is_empty())
+	if spares.is_empty():
+		return false
+	var spare: String = str(spares[0])
+	n.info_log = n.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == bluff))
+	w.evil_plan["bluffs"][n.id] = spare
+	w.dlog.think(n.id, "bluff_switch", "Bluff taken (%s claimed the %s); switched to the %s." % [w.by_id[rivals[0]].name, C.role_name(bluff), C.role_name(spare)],
+		{"from": bluff, "to": spare, "rival": rivals[0], "why": "bluff taken; switched to %s" % spare})
+	return true
+
+## A Minion that hears a claim may take that gift as its own bluff: a deliberate double
+## claim (Michael, Nov 19). Never the Demon or a Scion, never once it has claimed, nor if a
+## told fake reading commits it to its bluff. Heat (being already implicated, Evil.exposure's
+## public talk) makes it a poorer bet. Returns whether it chose to.
+static func choose_double_claim(w, l, rival, role: String) -> bool:
+	if not l.is_evil() or l.id == w.demon_id or l.role == "scion" or l.claim_public or l.claimed_role != "" or l.silenced:
+		return false
+	if role == "" or C.ROLES.get(role, {}).get("kind", "") == "evil":
+		return false
+	if l.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
+		return false
+	var heat: float = float(Evil.exposure(w, l).get("public_talk", 0.0))
+	var p: float = Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE * clampf(1.0 - heat, 0.0, 1.0)
+	if not w.decision_roll(l, "minion_double_claim", p, {"base": Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE, "public_talk": heat}, rival.id):
+		return false
+	var old: String = str(w.evil_plan["bluffs"].get(l.id, ""))
+	l.info_log = l.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == old))
+	w.evil_plan["bluffs"][l.id] = role
+	l.dialogue_memory["double_claim"] = {"day": w.day, "rival": rival.id, "role": role}
+	w.dlog.think(l.id, "plan", "Will claim the %s too, the gift %s just claimed: a deliberate double claim (heat %.2f)." % [C.role_name(role), rival.name, heat], {"from": old, "to": role, "rival": rival.id})
+	return true
+
 static func _public_claim_decision(w, n) -> String:
+	if n.is_evil():
+		switch_taken_bluff(w, n)
 	var role: String = w.evil_plan["bluffs"][n.id] if n.is_evil() else n.role
+	# Someone else claims my gift: the true holder counterclaims at its first chance, this
+	# meeting or (silenced, or it heard of the claim elsewhere) the next (Michael, Nov 19).
+	if not n.is_evil():
+		var rivals: Array = rival_claimants(w, n, role)
+		if not rivals.is_empty():
+			w.dlog.think(n.id, "counterclaim", "%s claimed my gift (the %s): I come out with it at once." % [", ".join(PackedStringArray(rivals.map(func(r): return w.by_id[r].name))), C.role_name(role)], {"rivals": rivals})
+			w.observe_decision(n, "claim", true, {"gate": "counterclaim", "rivals": rivals})
+			return role
+	# A Minion's deliberate double claim, chosen when it heard the rival's claim.
+	var dc: Dictionary = n.dialogue_memory.get("double_claim", {}) if n.is_evil() else {}
+	if not dc.is_empty() and int(dc.get("day", -1)) == w.day and str(dc.get("role", "")) == role:
+		w.dlog.think(n.id, "lie", "Claimed before the town to be the %s, the gift %s had just claimed: a deliberate double claim." % [C.role_name(role), w.by_id[str(dc.rival)].name],
+			{"bluff": role, "true_role": n.role, "lie": true, "why": "a double claim casts doubt on the rival, and it wasn't yet implicated"})
+		w.observe_decision(n, "claim", true, {"gate": "double_claim", "rival": dc.rival})
+		return role
 	var kind: String = C.ROLES[role]["kind"]
 	var parts = {
 		"openness": (0.5 - trait_of(n, "privacy")) * Tuning.Meeting.PUBLIC_CLAIM_OPENNESS_SLOPE,
