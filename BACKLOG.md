@@ -1084,6 +1084,13 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   was about 40% of own readings in the Nov 19 measurement. Their clash is weighed through
   movement, or not at all. Extending the doubt there would use the movement factor's own
   "this list or guard was broken" posterior. Owner Lantern. **[open]**
+- **Higher-Insight NPCs weigh more broken-reading combinations** (Michael, Nov 19, with the
+  Steward A3 fix). When a case holds several readings the listener doubts, the role check
+  now weighs them symmetrically: all genuine, or exactly one broken
+  (`CaseEval._doubted_role_fits`). The exact fix also weighs two or more broken at once,
+  at 2^k role checks instead of k. The idea: sharper NPCs take the exact fix, duller ones the
+  symmetric approximation. In 2 ten-NPC games (Nov 19), 43% of the role checks holding any
+  doubted reading held two or more, up to four. Owner Lantern. **[tentative]**
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
