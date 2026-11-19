@@ -324,18 +324,21 @@ relay about the first victim naming night 0 (Beadle).
   - **Michael (Nov 18), through Seneschal:**
     1. Visible meetings still happen. Dropping the bonus before the player chooses is fine,
        but evil members must still sometimes be seen meeting. Aim for about one visible
-       evil meeting a day across the three phases, and measure the rate. (Nov 19: main
-       measured about one every 3 to 4 days; whether that is a ceiling or a target is
-       with Michael.)
+       evil meeting a day across the three phases, and measure the rate.
+       - Michael (Nov 19) clarified this. "Visible" means seen before the player chooses.
+         Keep today's rate, about 0.28 a day (one every 3 to 4 days on seeds 3000-3014).
+         "Don't add new meetings or anything, keep the same numbers of meetings."
     2. Meetings go into the gossip network, every meeting and not only evil ones. Those at
        the place where two people were talking learn it ("X and Y were talking at Z") and
        report it when asked about either person. When the player hears it, it is a
        hearsay location report for each, as "who did you see earlier" gives today.
        Herald owns any new wording. Owner Beadle.
-  - **Being built** on `claude/beadle-evil-confer`:
-    - no evil bonus before the player chooses;
-    - teammates confer after the player has gone, where they both are;
-    - those present at any meeting after the player's choice see it;
+  - **Dropping the evil bonus before the choice, and adding a pass where teammates confer
+    after the player leaves, was tried and set aside (Nov 19).** It halved the visible rate
+    (0.12 a day) and cut evil meetings from 21 to 12. Main's pairing already lets teammates
+    confer after the player leaves, when they are in the same place.
+  - **Being built** on `claude/beadle-evil-confer`, with the pairing unchanged:
+    - those present at a meeting after the player's choice see it;
     - witnesses pass it on in conversation (one step);
     - asked about either person, an NPC reports it, first or second hand.
 
