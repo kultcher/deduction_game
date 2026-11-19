@@ -7,6 +7,7 @@ extends Control
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const TermDefs = preload("res://ui/term_defs.gd")
+const TextTerms = preload("res://ui/text_terms.gd")
 const Mind = preload("res://sim/mind.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
@@ -497,6 +498,8 @@ func _new_case() -> void:
 	_print(g.new_case(int(seed_box.value), int(size_opt.get_item_metadata(size_opt.selected)),
 		current_script.duplicate_script() if current_script != null else null))
 	_consume_headlines()
+	# The Mistaken term's tooltip names only the causes this case's script allows.
+	TextTerms.set_honest_causes(preload("res://workshop/reading_challenges.gd").game_honest_causes(g.w.case_script))
 	case_view.set_game(g)
 	profile.setup(g, case_state)
 	cast_list.setup(g)

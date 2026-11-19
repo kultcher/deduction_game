@@ -157,6 +157,13 @@ func _juror() -> void:
 	_check(gr.size() == 1 and gr[0].warden == warden.id and gr[0].guarded == target.id and gr[0].night == 1 and gr[0].report != "" and float(gr[0].shift) > 0.0,
 		"the juror names the guard as a reason: Warden, guarded, night, card (%s)" % str(gr))
 	_check(not without.has("guards"), "and doesn't without the Warden's report")
+	# Herald's reason line for the Test juror readout (Nov 19).
+	var lines: Array = Live.guard_reason_lines(g, with_guard)
+	_check(lines.size() == 1 and lines[0].contains("%s guarded %s's door on the first night" % [warden.name, target.name]) and lines[0].contains("strengthens the case") and lines[0].begins_with("#"),
+		"the juror's reason line names the card, the Warden, the door and the night (%s)" % str(lines))
+	var flipped: Array = Live.guard_reason_lines(g, with_guard, {"conclusion": {"type": "good", "target": demon.id}})
+	_check(flipped.size() == 1 and flipped[0].contains("weakens the case"), "for a case that someone is good, the same guard weakens it (Codex on #299)")
+	_check(Live.guard_reason_lines(g, without).is_empty(), "and there's no line without a guard")
 
 
 func _node(model, view, pick: Callable) -> String:

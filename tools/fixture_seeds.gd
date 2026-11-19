@@ -91,8 +91,10 @@ static func was_out(w, n, nd: int) -> bool:
 ## {"sighter", "subject", "bystander"} (bystander: another living good person who holds
 ## it too, or "" when need_bystander is false and there's none).
 ## `how`: only fake sightings told that way ("street": seen out in the street; "window":
-## seen leaving home), or any.
-static func framed_sighting(day: int, need_bystander: bool = false, how: String = "") -> Dictionary:
+## seen leaving home), or any. `bystander_doubt`: a bystander must hold the sighter at least
+## this suspect, so it isn't one who already clears the sighter outright (it would believe
+## the sighting, rightly by its own lights).
+static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0, from: int = SEEDS_FROM) -> Dictionary:
 	return search(day, func(g):
 		var w = g.w
 		for key in w.evil_plan.get("fake_sightings", {}):
@@ -110,13 +112,13 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 				continue
 			var bystander: String = ""
 			for m in w.living_good():
-				if m != subject and not held_cards(m, about).is_empty():
+				if m != subject and not held_cards(m, about).is_empty() and float(m.suspicion.get(sighter.id, 0.0)) >= bystander_doubt:
 					bystander = m.id
 					break
 			if need_bystander and bystander == "":
 				continue
 			return {"sighter": sighter.id, "subject": subject.id, "bystander": bystander}
-		return {})
+		return {}, 7, from, SEEDS_FROM + SEEDS_COUNT - from)
 
 
 ## A good person's honest sighting of a real Sleepwalker, out on a night they believe they
@@ -157,7 +159,30 @@ static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, 
 ## connections: {"with", "without"}, the teller's chance with every held card, and with the
 ## cards the teller relayed left out. Both from one refresh's own inputs (the jury's
 ## weigher), so the difference is the relays' alone. {} if the listener has no plan.
+## "firsthand": the teller's chance with the relays recast as the teller's own sightings (the
+## same cards, told by them, no dead in between), so a relay can be held to what its relayer's
+## own word would do.
 static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionary:
+	var recast = func(c: Dictionary) -> void:
+		c.erase("relay_source")
+		c.erase("relay_role")
+		c.erase("relay_observed_at")
+		c["source"] = teller_id
+	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], func(c): return str(c.get("relay_source", "")) == teller_id, recast)
+	if eff.is_empty():
+		return {}
+	return {"with": float(eff.with[teller_id]), "without": float(eff.without[teller_id]), "firsthand": float(eff.recast[teller_id]), "relayed": int(eff.dropped)}
+
+
+## What some of a listener's held cards do, under connections: {"with": {id: chance},
+## "without": {id: chance}, "dropped": how many cards `drop` picked}, each person in `ids`
+## with every held card and with the cards `drop.call(card)` picks left out. Both from one
+## refresh's own inputs (the jury's weigher), so the difference is those cards' alone, whatever
+## else the game gave the listener. The model's kept answers are bypassed, so a switch a test
+## flips between calls (LiveActivity.sighter_contests_enabled) takes effect. {} if the
+## listener has no plan. With `recast`, also "recast": {id: chance} with every held card and
+## `recast.call(card)` applied to a copy of each card `drop` picks.
+static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, recast: Callable = Callable()) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Jury = preload("res://workshop/jury.gd")
 	var Mind = preload("res://sim/mind.gd")
@@ -185,8 +210,28 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 		for id in it.cards:
 			if id not in held:
 				held.append(id)
-	var relayed: Array = plan.prepared.view.cards.filter(func(c): return str(c.get("relay_source", "")) == teller_id).map(func(c): return c.id)
+	var dropped: Array = plan.prepared.view.cards.filter(func(c): return drop.call(c)).map(func(c): return c.id)
 	var state: Dictionary = baseline.get("connections", {})
+	var was_cache: bool = Connections.cache_enabled
+	Connections.cache_enabled = false
+	preload("res://workshop/caches.gd").clear_all()
 	var with_: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held, state)
-	var without: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held.filter(func(id): return id not in relayed), state)
-	return {"with": float(with_.posterior.get(teller_id, -1.0)), "without": float(without.posterior.get(teller_id, -1.0)), "relayed": relayed.size()}
+	var without: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held.filter(func(id): return id not in dropped), state)
+	var recast_r: Dictionary = {}
+	if recast.is_valid():
+		preload("res://workshop/caches.gd").clear_all()
+		var view: Dictionary = plan.prepared.view.duplicate(true)
+		for c in view.cards:
+			if c.id in dropped:
+				recast.call(c)
+		recast_r = Connections.refresh(view, plan.prepared.case, weigher, held, state)
+	Connections.cache_enabled = was_cache
+	var out: Dictionary = {"with": {}, "without": {}, "dropped": dropped.filter(func(id): return id in held).size()}
+	if recast.is_valid():
+		out["recast"] = {}
+	for id in ids:
+		out.with[id] = float(with_.posterior.get(id, -1.0))
+		out.without[id] = float(without.posterior.get(id, -1.0))
+		if recast.is_valid():
+			out.recast[id] = float(recast_r.posterior.get(id, -1.0))
+	return out

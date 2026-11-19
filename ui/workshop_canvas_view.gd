@@ -13,6 +13,7 @@ const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
+const UITheme = preload("res://ui/theme.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
 const LocationSolver = preload("res://workshop/location_solver.gd")
 const TraceTooltip = preload("res://ui/trace_tooltip.gd")
@@ -300,6 +301,8 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 				notes.append(badge.town_note)
 			if badge.get("raises_text", "") != "":
 				notes.append(badge.raises_text)
+			for gl in badge.get("guard_lines", []):
+				notes.append(gl)
 			for who in badge.get("idle", []):
 				notes.append("Assuming %s %s isn't changing anything in this case." % [Solver.person_name(model.view, who), node.positions.get(who, "")])
 			notes.append("Public facts and default trust: how well the case holds together, not how any one person will react.")
@@ -333,7 +336,7 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 	var what = Rect2(rect.position + Vector2(12, 114) * zoom, Vector2(WIDTH - 24, 34) * zoom)
 	_field_box(what, false)
 	var picked_type: String = shown.get("type", "")
-	var claim_text: String = ("Choose a claim" if picked_type == "" else model.PREMISE_TEXT.get(picked_type, picked_type)) if draft else ("Supporting evidence (no claim)" if conclusion.is_empty() else model.PREMISE_TEXT.get(conclusion.type, conclusion.type))
+	var claim_text: String = ("Choose a claim" if picked_type == "" else model.premise_text(picked_type, str(shown.get("target", "")))) if draft else ("Supporting evidence (no claim)" if conclusion.is_empty() else model.premise_text(str(conclusion.type), str(conclusion.get("target", ""))))
 	draw_string(font, what.position + Vector2(12, 23) * zoom, claim_text, HORIZONTAL_ALIGNMENT_LEFT, what.size.x - 40 * zoom, _fs(16), muted if draft and picked_type == "" else ink)
 	_caret(what)
 	fields[id].append({"rect": what, "field": "type"})
@@ -625,13 +628,17 @@ func evidence_layout(id: String) -> Dictionary:
 					"tip": {"transmission": "The Medium heard the dead correctly but passed it on wrong: a lie, or a failed gift.", "original": "The Medium passed it on faithfully, but the dead person's own reading was wrong."}[s]})
 				y += 32.0
 			y += 4.0
-		for mode in ["misled", "lying", "impaired", "unlikely"]:
-			var label: String = {"misled": "Misled", "lying": "Lying", "impaired": "Poisoned", "unlikely": "Unlikely"}[mode]
+		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named and tipped
+		# in ReadingChallenges.
+		var RCh = preload("res://workshop/reading_challenges.gd")
+		for mode in [RCh.HONEST, "lying", "unlikely"]:
+			var label: String = {"lying": "Lying", RCh.HONEST: RCh.HONEST_LABEL, "unlikely": "Unlikely"}[mode]
 			var w: float = 84.0
 			var disabled: bool = (mode == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
-				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES)
-			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": node.mode == mode, "disabled": disabled, "field": "mode:" + mode,
-				"tip": {"misled": "Honest but wrong: a misleading registration (Red Herring, Marked).", "lying": "The reader is lying about this result.", "impaired": "Their gift failed that night: a Poisoner. Points at whoever was seen out that night without a reason.", "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
+				or (side == "transmission" and mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES) \
+				or (mode == RCh.HONEST and not RCh.honest_allowed(model.view, card, side))
+			els.append({"t": "chip", "rect": Rect2(x, y, w, 26), "text": label, "on": preload("res://workshop/reading_challenges.gd").canonical(node.mode) == mode, "disabled": disabled, "field": "mode:" + mode,
+				"tip": {"lying": "The reader is lying about this result.", RCh.HONEST: RCh.HONEST_TIP, "unlikely": "The reading is possible but unlikely as stated (Surveyor counts)."}[mode]})
 			x += w + 8.0
 		y += 36.0
 		return {"h": y + 44.0, "els": els, "text": text_lines, "details": false}
@@ -1152,7 +1159,7 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 		tips.append({"rect": badge, "text": "The shared model can't read this card yet, so a case that uses it can't be presented:\n" + note})
 	var y: float = 50.0
 	for line in lay.text:
-		draw_string(font, rect.position + Vector2(16, y + 12) * zoom, line, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(14), ink)
+		_draw_named(line, rect.position + Vector2(16, y + 12) * zoom, _fs(14), ink)
 		y += 18.0
 	tips.append({"rect": Rect2(rect.position + Vector2(0, 46) * zoom, Vector2(WIDTH, maxf(y - 46, 4)) * zoom), "text": card.get("text", "")})
 	fields[id] = []
@@ -1229,3 +1236,38 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 ## live editor, premises step 2).
 func _again_clause() -> String:
 	return "; again for \"registered as Marked\"; again to clear" if model.marked_answers else "; again to clear"
+
+## One line of card text with each townsperson's name in their colour, ink-darkened for
+## the parchment as on the case board (Michael, Nov 19).
+func _draw_named(line: String, at: Vector2, size: int, ink: Color) -> void:
+	var spans: Array = []
+	for p in model.view.get("people", []):
+		var nm: String = str(p.get("name", ""))
+		if nm == "":
+			continue
+		var from: int = 0
+		while true:
+			var i: int = line.find(nm, from)
+			if i < 0:
+				break
+			var e: int = i + nm.length()
+			if (i == 0 or not line[i - 1].is_valid_identifier()) and (e >= line.length() or not line[e].is_valid_identifier()):
+				spans.append([i, e, UITheme.ink_of(C.npc_color(str(p.id)))])
+			from = e
+	if spans.is_empty():
+		draw_string(font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
+		return
+	spans.sort_custom(func(a, b): return a[0] < b[0])
+	var x: float = 0.0
+	var pos: int = 0
+	for sp in spans:
+		if sp[0] < pos:
+			continue
+		var plain: String = line.substr(pos, sp[0] - pos)
+		draw_string(font, at + Vector2(x, 0), plain, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
+		x += font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var named: String = line.substr(sp[0], sp[1] - sp[0])
+		draw_string(font, at + Vector2(x, 0), named, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(sp[2], ink.a))
+		x += font.get_string_size(named, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		pos = sp[1]
+	draw_string(font, at + Vector2(x, 0), line.substr(pos), HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)

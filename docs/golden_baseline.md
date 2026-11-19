@@ -44,7 +44,43 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+### Current baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
+
+`tools/golden/baseline_74eb971/` is the capture from `claude/beadle-agreement-trust` at `74eb971`
+(main `4248293` merged in, with #296). A good NPC warms a little to those who vote
+the same way, and to someone who nominates or accuses a person it already suspects (Michael,
+Nov 18). The reading steps were taken out on Nov 19 and moved to their own item, so readings
+change no trust here. It replaces this PR's earlier `baseline_6c45840`, which was on main before
+#296; against it, only 98933 moves (from its day-2 nomination, under #296's retuned lie call),
+with the same outcome.
+- **Divergence from `baseline_21df80d`:** every seed, at the first ballot or the refresh after
+  it. 54875 and 98933 from record 52 (day 1's vote), 42 from 55 and 900 from 74 (day 2's vote),
+  692 from 62 (Nisha's refresh on day 2).
+- **Outcomes:**
+  - **42:** unchanged (good on day 3, hanging Agnes).
+  - **692:** unchanged (Constance hanged on day 3, no winner by day 4).
+  - **900:** unchanged (Lian hanged on day 3, no winner by day 4).
+  - **54875:** hanged Greta on day 2 and Edda on day 3; now hangs only Edda, on day 3.
+  - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, the Mistaken label): `baseline_21df80d`
+
+`tools/golden/baseline_21df80d/` is the capture from `claude/honest-mistake` at `21df80d`
+(main `678838f`). "misled" and "failed gift" become one honest-mistake label, Mistaken, and a
+lie call's gate and floor are retuned so it moves suspicion.
+- **Divergence from `baseline_e287b3d`:**
+  - 98933 from record 147, 900 from record 138 and 54875 from record 295. Each is only the
+    stored mode of an NPC's "misled" defence challenge, now "impaired", the merged mode's
+    code name.
+  - 42 and 692 are identical.
+  - With `--ignore engine,mode`, all five seeds are identical, so no belief, vote or
+    execution moves. Nothing in an autoplay game makes a player lie call.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
