@@ -24,10 +24,10 @@ import sys
 from collections import OrderedDict, defaultdict
 
 TRUE_CASES = ["pile", "kill_sighting", "vigil_kill", "alibi_sighting", "converging", "impossible",
-              "double_claim", "gravedigger", "lamp_alibis", "lamp_count", "nw_nobody", "guard", "seer_twice", "vigil_seer", "stack"]
+              "double_claim", "gravedigger", "lamp_alibis", "lamp_count", "nw_nobody", "guard", "seer_twice", "vigil_seer", "stack", "two_kills_seer"]
 # Misleading cases: the same chains about an innocent ("<case>_innocent"); none for the
 # impossible reading or the Strong-tier cases.
-NO_TWIN = ["impossible", "seer_twice", "vigil_seer", "stack"]
+NO_TWIN = ["impossible", "seer_twice", "vigil_seer", "stack", "two_kills_seer"]
 ORDER = TRUE_CASES + [c + "_innocent" for c in TRUE_CASES if c not in NO_TWIN] + ["lamp_bluff_innocent"]
 BADGES = ["contradicts", "none", "weak", "moderate", "strong", "not ready"]
 # Lower edge, in points, of each band (the town's movement).
@@ -135,9 +135,10 @@ def main():
     if voted:
         out += ["", "Votes: the subject nominated by a neutral nominator, the player's vote left out. Good",
                 "voters only (evil voters vote by strategy and are left out). \"Reaches\" is how often the good",
-                "yes votes alone reach the hanging threshold, which counts the player's seat.", "",
-                "| Case | Good yes before | Good yes after | Share of good voters after | Threshold | Reaches |",
-                "|---|---|---|---|---|---|"]
+                "yes votes alone reach the hanging threshold, which counts the player's seat. \"Heard it\" counts",
+                "the good who heard the case: its sources (witnesses, readers, victims) vote without hearing it.", "",
+                "| Case | Good yes before | Good yes after | Share of good voters after | Heard it | Of those, yes | Threshold | Reaches |",
+                "|---|---|---|---|---|---|---|---|"]
         for c in voted:
             rs = run[c]
             n = len(rs)
@@ -146,7 +147,9 @@ def main():
             share = sum(r["yes_after"] / r["voters_good"] for r in rs if r["voters_good"]) / n
             thr = sorted({r["threshold"] for r in rs})
             reach = sum(1 for r in rs if r["crosses"]) / n
-            out.append("| %s | %.1f | %.1f | %s | %s | %s |" % (c, yb, ya, pct(share), "/".join(str(t) for t in thr), pct(reach)))
+            heard_n = sum(r.get("heard_good", 0) for r in rs) / n
+            heard_yes = sum(r.get("yes_heard", 0) / r["heard_good"] for r in rs if r.get("heard_good")) / n
+            out.append("| %s | %.1f | %.1f | %s | %.1f | %s | %s | %s |" % (c, yb, ya, pct(share), heard_n, pct(heard_yes), "/".join(str(t) for t in thr), pct(reach)))
     out += ["", "Town bands used for category agreement (points): " + ", ".join(
         "%s from %+g" % (n, e) for n, e in TOWN_BANDS) + ", contradicts below."]
     print("\n".join(out))
