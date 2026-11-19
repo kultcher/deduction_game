@@ -1282,6 +1282,14 @@ static func _list_broken(view: Dictionary, cards: Array, listener: Dictionary) -
 	var SourceDoubt = preload("res://workshop/source_doubt.gd")
 	var out: Array = []
 	for card in cards:
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "lamplighter":
+			var cb: float = SourceDoubt.count_broken_chance(view, listener, card)
+			if cb >= 0.0:
+				var mixed: Dictionary = card.duplicate()
+				mixed["broken_chance"] = cb
+				mixed["count_mix"] = true
+				out.append(mixed)
+				continue
 		if card.get("kind", "") == "report" and str(card.get("role", "")) == "nightwatch":
 			var b: float = SourceDoubt.list_broken_chance(view, listener, card)
 			if b > 0.0:

@@ -53,6 +53,7 @@ test_honest_mistake
 test_joint_reasons
 test_juror_claims
 test_juror_listener
+test_lamplighter_count_mix
 test_lie_severity
 test_lie_severity_votes
 test_location_solver

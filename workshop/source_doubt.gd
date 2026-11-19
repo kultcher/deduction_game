@@ -471,12 +471,40 @@ static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dic
 	var b: float = _list_broken_base(view, listener, card)
 	if b <= 0.0:
 		return 0.0
-	var mixable: Array = view.get("cards", []).filter(func(c): return str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0)
+	return b if _mix_selected(view, listener, card) else 0.0
+
+## Whether `card` is among the LIST_MIX_MAX mixed cards of the view (latest nights first):
+## Night Watch lists with a broken chance and Lamplighter counts (count_mixable) share the cap
+## (Lantern, Nov 19), so a town with both roles mixes no more subsets than before.
+static func _mix_selected(view: Dictionary, listener: Dictionary, card: Dictionary) -> bool:
+	var mixable: Array = view.get("cards", []).filter(func(c): return (str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0) or count_mixable(view, listener, c))
 	mixable.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
 	var keep: Array = mixable.slice(0, LIST_MIX_MAX).map(func(c): return str(c.get("id", "")))
 	if not view.get("cards", []).any(func(c): return str(c.get("id", "")) == str(card.get("id", ""))):
-		return b
-	return b if str(card.get("id", "")) in keep else 0.0
+		return true
+	return str(card.get("id", "")) in keep
+
+## A Lamplighter's count mixed as sound or broken as a whole (Michael, Nov 19, the Lamplighter
+## fix (b), step 1): another's count card, in a view the live movement model reads. It's mixed
+## even with no broken chance, because in a world where its teller is evil it says nothing.
+static func count_mixable(view: Dictionary, listener: Dictionary, card: Dictionary) -> bool:
+	if not list_mix_enabled or not view.get("live_activity", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "lamplighter" \
+		or card.get("quoted", false) or card.get("duty_only", false) or not card.get("data", {}).has("count"):
+		return false
+	var src: String = str(card.get("source", ""))
+	var me: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))
+	return src != "" and src != me and src not in ["player", "evidence", "town"]
+
+## The chance a mixable count was broken that night: as a list's (_list_broken_base), for the
+## Lamplighter's gift. Only for a count that count_mixable and the shared cap keep; -1 if not.
+static func count_broken_chance(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
+	if not count_mixable(view, listener, card) or not _mix_selected(view, listener, card):
+		return -1.0
+	var night: int = int(card.get("night", card.get("observed_at", {}).get("day", -1)))
+	var src: String = str(card.get("source", ""))
+	var poison: float = ReadingChallenges.poison_chance(view, listener, night, src)
+	var delusional: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT if "delusional" in view.get("world_options", {}).get("modifiers", []) and could_hold_secret("lamplighter", "delusional") else 0.0
+	return 1.0 - (1.0 - poison) * (1.0 - delusional)
 
 static func _list_broken_base(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
 	if not list_mix_enabled or not view.get("live_activity", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
