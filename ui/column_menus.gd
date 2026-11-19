@@ -41,7 +41,7 @@ static func groups(menu: PopupMenu) -> Array:
 						role = key
 						break
 			if role is String and role in C.ROLES:
-				category = "Gifts of the town" if C.ROLES[role].align == "good" else "The demon's side"
+				category = "Gifts of the town" if C.ROLES[role].align == "good" else "The Demon's side"
 		if not indices.has(category):
 			titles.append(category)
 			indices[category] = []

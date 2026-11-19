@@ -9,7 +9,7 @@ func _init() -> void:
 	kind = "evil"
 	tags = ["execution"]
 	minion = true
-	desc = "If the demon is executed while five or more are alive, the Scion becomes the demon."
+	desc = "If the Demon is executed while five or more are alive, the Scion becomes the Demon."
 	shape = "NONE"
 
 
@@ -28,5 +28,5 @@ func promote_to_demon(w, sc) -> void:
 	w.minion_ids.erase(sc.id)
 	if w.minion_id == sc.id and not w.minion_ids.is_empty():
 		w.minion_id = w.minion_ids[0]
-	w.dlog.add("scion", sc.id, old, {}, "The demon is hanged, but %s, the Scion, becomes the demon." % sc.name)
+	w.dlog.add("scion", sc.id, old, {}, "The Demon is hanged, but %s, the Scion, becomes the Demon." % sc.name)
 	w._check_parity()
