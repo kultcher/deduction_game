@@ -1121,7 +1121,8 @@ func _field_popup(id: String, field: String) -> void:
 		"type":
 			# A hanged person's Demon premise is in the past tense, and only where a Scion
 			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
-			var p_target: String = str(node.get("conclusion", {}).get("target", ""))
+			# A draft holds its person in `pick` until both fields are chosen (Codex on #305).
+			var p_target: String = str(node.get("pick", {}).get("target", "")) if node.get("draft", false) else str(node.get("conclusion", {}).get("target", ""))
 			var types: Array = premise_types().filter(func(t): return board.premise_offered(t, p_target))
 			for i in range(types.size()):
 				field_menu.add_item(board.premise_text(types[i], p_target), values.size())

@@ -774,8 +774,20 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 			result.reading_challenges[id] = {"mode": "lying" if result.conclusion.type == "lied" else "misled", "supports": result.cards.filter(func(root): return root != id)}
 	return result
 
+## A hanged person's Demon premises (Michael, Nov 19): the Workshop offers "was the Demon
+## when hanged" only where a Scion is on the script, and never "is not the Demon". A saved
+## case that already uses one is refused here, as any unsupported premise is.
+const HANGED_NOT_DEMON_ISSUE = "Someone the town hanged can't be argued not to be the Demon."
+const HANGED_NO_SCION_ISSUE = "With no Scion on this script, a hanged Demon would have ended the game."
+
 static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 	var c: Dictionary = value.conclusion
+	if c.type in ["demon", "notdemon"] and not Solver.hanged_context(view, str(c.get("target", ""))).is_empty():
+		if c.type == "notdemon":
+			return [HANGED_NOT_DEMON_ISSUE]
+		var minions: Array = view.get("script_minions", [])
+		if not minions.is_empty() and "scion" not in minions:
+			return [HANGED_NO_SCION_ISSUE]
 	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
 		return ["Choose a supported modifier for the secret premise."]
 	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):

@@ -12,6 +12,7 @@ const History = preload("res://workshop/live_history.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
+const Assess = preload("res://workshop/live_assessment.gd")
 
 var checks = 0
 var fails = 0
@@ -65,6 +66,7 @@ func _init() -> void:
 	check(Solver.hanged_demon(small, rose_small, "e") == 0, "with four alive at the hanging the Scion can't rise, so a hanged Minion was only a Minion")
 	_live()
 	_menu()
+	_refusals()
 	print("Demon when hanged: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -108,3 +110,15 @@ func _menu() -> void:
 	check(not no_scion.premise_offered("demon", "g") and not no_scion.premise_offered("notdemon", "g"), "with no Scion on the script, no Demon premise is offered on a hanged person")
 	check(with_scion.premise_offered("demon", "a") and with_scion.premise_offered("notdemon", "a") and no_scion.premise_offered("demon", "a"), "the living keep both Demon premises")
 	check(with_scion.premise_text("demon", "g") == CanvasModel.HANGED_DEMON_TEXT and with_scion.premise_text("demon", "a") == CanvasModel.PREMISE_TEXT.demon, "a hanged person's premise reads in the past tense; the living's doesn't")
+
+
+## A saved case that already uses a premise the menu no longer offers is refused, not
+## judged (Herald, Nov 19): the judge's issues name why. The living keep both forms.
+func _refusals() -> void:
+	var with_scion: Dictionary = _view(["scion", "poisoner"])
+	var no_scion: Dictionary = _view(["poisoner"])
+	var case_of = func(type, target): return {"conclusion": {"type": type, "target": target, "at": ""}, "cards": []}
+	check(Assess.conclusion_issues(with_scion, case_of.call("notdemon", "g")) == [Assess.HANGED_NOT_DEMON_ISSUE], "a saved \"is not the Demon\" about a hanged person is refused")
+	check(Assess.conclusion_issues(no_scion, case_of.call("demon", "g")) == [Assess.HANGED_NO_SCION_ISSUE], "a saved \"was the Demon\" about a hanged person with no Scion on the script is refused")
+	check(Assess.conclusion_issues(with_scion, case_of.call("demon", "g")).is_empty(), "with a Scion on the script, \"was the Demon when hanged\" is judged")
+	check(Assess.conclusion_issues(no_scion, case_of.call("demon", "a")).is_empty() and Assess.conclusion_issues(no_scion, case_of.call("notdemon", "a")).is_empty(), "the living keep both Demon premises")
