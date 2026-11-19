@@ -565,4 +565,57 @@ Seer's registration path.
 - **Double-claim friction:** the counter-claim card ("X: Y's claim is false", #335) shouldn't
   imply one side is evil once good can lie.
 
-**Beadle (disclosure and bluffing):** awaited.
+**Beadle (NPC behaviour).** Beadle's cost guess: the carry-over is moderate, since
+disclosure, confession and gossip are reusable once they take a lie flag. Evil's bluff, its
+fear of a collision and lie tracking through gossip are the bulk of it, comparable to the
+evil gift-bluff work.
+- **A correction, checked against main.** Beadle wrote that evil does nothing with secrets
+  today. The code has the two bluffs in 11.1, both live: `sim/roles/rumormonger.gd`
+  (`generate_bluff_reading`) and `MindDialogue.sleepwalk_excuse`, which lets an evil NPC
+  claim to sleepwalk, a logged lie that writes a `secret` fact. The "honest forgetting" of
+  secrets in Seneschal's earlier list doesn't exist.
+- **What exists, all good-only:**
+  - **A private confession when caught out** (`MindDialogue`): "...I wasn't home. I
+    <secret>. Please, keep it quiet." It writes a `secret` fact (with the partner, for the
+    Lovers) and sets `secret_known`. #330's pressed path feeds the same account. Hard-coded
+    to good NPCs.
+  - **A public confession in the meeting defence** (`defence_confess`). It only explains a
+    night out. Confessing under nomination for a secret with a consequence (the Saint) is new
+    behaviour.
+  - **Hiding:** a night out on a secret is hidden through the same gate as a hidden walking
+    gift. That makes the hide-a-gift disclosure model (pressure, trust, Privacy against a
+    reveal cost) the natural carry-over for knowing secrets.
+  - **Gossip of secrets** (`sim/social.gd`): an NPC confides its own secret by bond and
+    Privacy; listeners store it (`known_secrets[owner] = teller`) and relay it by Gossip and
+    low Composure; busybodies offer it to the player. A Lovers' secret that names the teller
+    isn't relayed.
+  - **Sleepwalker exceptions,** scattered through `social.gd`, `mind_dialogue.gd` and
+    `mind_meeting.gd`. They stay if the Sleepwalker stays hidden.
+  - **The player's secret claims** go into the track record (`Credibility.record_secret`).
+    Once evil can bluff, "the player said X is a Lover" can't be checked against the truth in
+    the same way.
+- **Missing from Argon's list, and a real cost: gossip assumes a secret is true.**
+  `known_secrets` is keyed by the real holder with no lie flag. A bluffed secret relayed by a
+  good gossip would launder into a true one. It has to travel as a claim with lie tracking,
+  as fake readings and bluffed gifts do (`lie`, `fake`, the relay chain). The evil
+  sleepwalk bluff's fact may already have this gap; Beadle to check.
+- **What evil would need, all new:**
+  - **Choosing a bluff:** which secret, when and why, with a logged reason and a reveal
+    entry, like bluff planning for gifts.
+  - **A collision check:** evil knows its team, not who holds a secret. It weighs unique
+    secrets, whether anyone has claimed it, and a Baron raising the odds of a real holder,
+    mirroring the gift double-claim fear.
+  - **Faking the confession card:** the same `secret` fact with `lie`, which the judge must
+    stop treating as proof (`lovers_needs`, #162).
+  - **The scapegoat plan:** framing a real holder interacts with 3a.
+  - **Teammate cover:** "she's a Lover, that's why she was out", a made-up secret about
+    someone else, is a new kind of lie with its own reason and reveal line.
+- **Votes:** for the Saint or any secret with a hanging consequence, weighing what a hanging
+  costs is new vote machinery. It belongs to the general hanging-consequence item, not to
+  secrets alone.
+- **Double claims** should reuse the existing counter-claim reactions. A real holder calling
+  out a bluff falls under "More rebuttals after a caught lie", which Beadle is drafting
+  options for.
+- **The night-outing rate gated by the claimed secret** (Argon): agreed. The movement side is
+  `world.gd` `_night_movement` with the secret out-rate (0.55); the judge side is
+  `live_activity`.
