@@ -111,12 +111,14 @@ static func _pick_item(w, s, l):
 	var priv = trait_of(s, "privacy")
 	var gos = trait_of(s, "gossip")
 	var bond: float = s.npc_trust.get(l.id, 0.5)
+	# Unclaimed NPCs share their gift and readings privately a little more each day (Nov 19).
+	var unclaimed_mult: float = 1.0 if s.claim_public else 1.0 + Tuning.Social.SHARE_UNCLAIMED_DAY_BOOST * maxf(0.0, float(w.day - 1))
 	if s.is_evil():
 		var sg: String = w.evil_plan.get("scapegoat", "")
 		for e in s.info_log:
 			if e.get("fake", false) and not e["shared"] and not _told(s, l, "reading:%d:%s" % [e["day"], e["role"]]):
 				# Same willingness formula as a good NPC sharing a real reading.
-				var wgt = _reading_weight(s, priv, bond)
+				var wgt = _reading_weight(s, priv, bond) * unclaimed_mult
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": "reading:%d:%s" % [e["day"], e["role"]], "lie": true}])
 		var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
 		# With a planter today, only the planter frames the scapegoat (anti-collusion). With no
@@ -137,7 +139,7 @@ static func _pick_item(w, s, l):
 			if C.has_role_def(str(e.get("role", ""))) and not C.role_def(str(e.get("role", ""))).may_share_reading(w, s, e):
 				continue
 			if not e["shared"] and not _told(s, l, key):
-				var wgt = _reading_weight(s, priv, bond)
+				var wgt = _reading_weight(s, priv, bond) * unclaimed_mult
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])
 		if not s.secret.is_empty() and not l.known_secrets.has(s.id):
 			cands.append([(1.0 - priv) * maxf(0.0, bond - Tuning.Social.SHARE_SECRET_BOND_FLOOR) * Tuning.Social.SHARE_SECRET_SLOPE, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id}])
@@ -164,7 +166,7 @@ static func _pick_item(w, s, l):
 		var can_hint: bool = pkg != "" and not _told(s, l, hint_key) and not l.known_claims.has(s.id)
 		var can_claim: bool = not s.protect_lock and not _told(s, l, claim_key) and str(l.known_claims.get(s.id, {}).get("role", "")) != my_role
 		if can_hint or can_claim:
-			var topic_w: float = Tuning.Social.SHARE_GIFT_TOPIC_BASE + (1.0 - priv) * Tuning.Social.SHARE_GIFT_TOPIC_OPENNESS + gos * Tuning.Social.SHARE_GIFT_TOPIC_GOSSIP
+			var topic_w: float = (Tuning.Social.SHARE_GIFT_TOPIC_BASE + (1.0 - priv) * Tuning.Social.SHARE_GIFT_TOPIC_OPENNESS + gos * Tuning.Social.SHARE_GIFT_TOPIC_GOSSIP) * unclaimed_mult
 			cands.append([topic_w, {"kind": "gift_topic", "about": s.id, "from": s.id, "role": my_role, "package": pkg, "key": "gift_topic:" + s.id,
 				"can_hint": can_hint, "can_claim": can_claim, "lie": s.is_evil()}])
 	# Things anyone might pass on: what they saw at night, what they've heard, others' secrets.
