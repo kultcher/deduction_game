@@ -980,8 +980,15 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   Delusional readings and about 1 in 17 sound ones (often a true Gravedigger reading after
   the town hanged a good person). Readings whose content the judge doesn't check (a Warden's
   quiet night, a Lamplighter, a Night Watch list, a Psychologist, a Sexton, a Medium's
-  relays) never fire; a follow-up for those is proposed to Seneschal. Behaviour doesn't
-  change until something reads it (Beadle's #316).
+  relays) never fire; the follow-up below covers them. Behaviour doesn't change until
+  something reads it (Beadle's #316).
+- **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
+  Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
+  readings that hold in every world: a Warden's quiet night, a Lamplighter's count, a Night
+  Watch list, a Psychologist's or Sexton's reading, or a Medium's relayed transmission. That
+  was about 40% of own readings in the Nov 19 measurement. Their clash is weighed through
+  movement, or not at all. Extending the doubt there would use the movement factor's own
+  "this list or guard was broken" posterior. Owner Lantern. **[open]**
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

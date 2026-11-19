@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, a Warden's guard read with its night): `baseline_22733aa`
+### Current baseline (Nov 19, self-doubt from the judge): `baseline_d332abe`
+
+`tools/golden/baseline_d332abe/` is the capture from `claude/self-doubt-posterior` at `d332abe`
+(main `64aa1e9` merged in). A good NPC's stored self-doubt (`workshop_state.self_doubt`) is now
+the judge's chance each night's own reading was wrong (`OwnGiftDoubt`), and the poison and
+Delusional prior it used to hold moves to `workshop_state.self_doubt_prior`.
+- **Divergence from `baseline_22733aa`:** every seed from record 1, only in those two stored
+  fields. With `--ignore engine,self_doubt,self_doubt_prior` all five seeds are identical: no
+  belief, vote, nomination or execution moves, since nothing in play reads self-doubt yet.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, a Warden's guard read with its night): `baseline_22733aa`
 
 `tools/golden/baseline_22733aa/` is the capture from `claude/warden-night-item` at `22733aa`
 (main `0670ba8` merged in). A Warden's guard report now sits in its night's movement item with

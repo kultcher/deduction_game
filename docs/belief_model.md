@@ -693,6 +693,7 @@ readings the judge checks, 10 of them false):
 - **Not covered:** readings that hold in every world (a Warden's quiet night, a Lamplighter's
   count, a Night Watch list, a Psychologist's or Sexton's reading) and a Medium's relays never
   get an entry: their clash is weighed through movement, or not at all. About 40% of own
-  readings in the measurement.
+  readings in the measurement. BACKLOG "Gift doubt for readings the judge doesn't check"
+  ([open]) is the follow-up.
 - **Behaviour:** nothing reads it yet besides tools; beliefs, votes and hangings don't move
   (golden identical apart from the stored doubt). Beadle's #316 makes it speak.
