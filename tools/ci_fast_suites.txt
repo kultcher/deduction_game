@@ -80,6 +80,7 @@ test_meeting_m2d
 test_meeting_reasons
 test_meeting_stage
 test_meeting_stream
+test_mistake_signpost
 test_new_case_memory
 test_night0_fake_sightings
 test_nightwatch_whole_list

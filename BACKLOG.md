@@ -136,7 +136,12 @@ listener (#273), both Lantern's.
   **The rest is done:** Quill measured it on Nov 18. Since #296's Mistaken label, revising
   is a real way back. On the same 10 seeds, the reader's suspicion falls from 51 to 38 when
   the call is revised to Mistaken, and the player's trust stays at about 70. The full item
-  is in BACKLOG_COMPLETED.md. [open: signposting]
+  is in BACKLOG_COMPLETED.md.
+  **Built (Herald, Nov 19; Michael approved both options and their wording).** (a) The
+  refusal a second case meets becomes a signpost to revising the first. (b) "I was wrong:
+  call it a mistake" on a lie call in the Workshop, with Present then reading "Present the
+  revision (replaces case #N)". Presenting the revision costs what presenting costs (no free
+  public correction). [decided; built]
 
 - **The player's judgement in word-against-word lie calls.** (Michael, Nov 19, through
   Seneschal; it replaces the lie-call badge options (a) and (b).) When the player calls a
