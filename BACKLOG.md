@@ -459,8 +459,11 @@ Candidates for a unified retuning proposal, not approved changes.
         how they combine.
     - **Evil whose planned bluff is claimed first switches to a spare** (Michael, Nov 19:
       yes). See "Evil backs into a bluff", whose hold is lifted for this case.
-    - **The private "they're lying" refutation:** approved, line only (Michael, Nov 19,
-      relayed by Seneschal).
+    - **The private "they're lying" refutation** (Michael, Nov 19): a caught-out NPC may call
+      the witness against it a liar in a private press too. Today it does so only in the
+      meeting defence (`mind_meeting.gd`, for Confidence above 0.6). It's a line only, with
+      no extra doubt on the witness. Owner Beadle; Herald's `press_witness_lying` lines are
+      approved.
     - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
