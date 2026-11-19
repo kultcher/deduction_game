@@ -118,6 +118,10 @@ listener (#273), both Lantern's.
   [docs/archive/CASE_WORKSHOP_FINDINGS.md](docs/archive/CASE_WORKSHOP_FINDINGS.md) for the
   expansion checkpoints. [watch; broader adapters open]
 
+- **Summarised answers at a nomination.** A case presented at a nomination gets
+  summarised answers, the same as at the meeting (#373). (Michael, Nov 19) Owner Herald.
+  [decided]
+
 ### NPC behaviour
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
@@ -326,6 +330,9 @@ Candidates for a unified retuning proposal, not approved changes.
       unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
       it's caught out. The rate would be a new constant, for Beadle to propose with a
       measurement.
+      - **Michael (Nov 19):** about 0.05 if it's a deliberate opt-in to a double claim, or
+        about 0.15 if it's a Minion accepting the risk that its bluff ends in one. Beadle is
+        confirming which applies, and the value follows from that.
     - **Retracting a public claim to back into a walker:** Michael (Nov 19) moves it to "Good
       NPCs lie tactically", since the two share the same space.
   - **The town's response to a double claim (Michael, Nov 19).** The true holder counterclaims
