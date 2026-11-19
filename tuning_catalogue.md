@@ -300,7 +300,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `GOSSIP_BELIEVED_BELOW` | `0.4` |  | `sim/mind.gd`, `sim/social.gd` |
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
-| `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
+| `TRUST_VOTED_FOR` | `0.03` |  | `sim/social.gd`, `sim/world.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
 | `PARANOIA_DRIFT_RATE` | `0.06` | unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH) | (unused) |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
@@ -417,7 +417,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_meeting.gd` |
 | `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_DAY_SLOPE` | `0.05` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd`, `tools/autoplay.gd` |
 | `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_OWN_CLEAR_RELIEF` | `0.2` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
@@ -630,6 +630,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
 | `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
+| `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires about once in 5 games, for about 4 in 10 poisoned or Delusional readings and about 1 in 17 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_HIGH` | `0.8` |  | `workshop/source_doubt.gd` |
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |

@@ -926,6 +926,13 @@ class Workshop:
 	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
 	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
 	const DELUSIONAL_SELF_DOUBT = 0.1
+	## The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift
+	## failed, from the reading clashing with what else it holds, starting from the poison and
+	## Delusional self-doubt) at or above which it doubts its gift for that night
+	## (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4
+	## meeting: it fires about once in 5 games, for about 4 in 10 poisoned or Delusional
+	## readings and about 1 in 17 sound ones.
+	const SELF_DOUBT_TRIGGER = 0.30
 	## The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the
 	## expert, so a listener takes a call at its credibility in the player. The doubt runs in a
 	## straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to

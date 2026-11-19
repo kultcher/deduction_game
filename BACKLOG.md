@@ -294,6 +294,9 @@ relay about the first victim naming night 0 (Beadle).
     standing doubt. Michael (Nov 18): the threshold starts at 25% self-doubt, as a new
     named constant in `sim/tuning.gd`. He thinks that may be low and will judge it in
     playtesting; the PR says how often it fires in its tests (no separate sweep).
+    Michael (Nov 19): the signal is now the judge's posterior that the own reading was
+    wrong, and the threshold is `Workshop.SELF_DOUBT_TRIGGER`, 0.30
+    (`SourceDoubt.doubts_own_gift(n)`; see "Was my reading poisoned?" below).
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
@@ -924,6 +927,19 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   extra refresh, no new number; the own-against-own split isn't needed (the judge weighs
   which own reading fits worse). `SourceDoubt.self_doubt(n)` gives the per-night doubt for
   the dialogue item.
+  **Revised (Michael, Nov 19; Lantern):** a prior-only doubt climbs night by night for every
+  reader alike, so it says nothing about any one reading. What the NPC says now reads the
+  judge's posterior: for each night of its own readings, the chance that reading was wrong
+  given everything else it holds (`OwnGiftDoubt.posterior`). The prior above is still its
+  starting point, inside the judge, and stays readable as `SourceDoubt.self_doubt_prior`. It
+  doubts its gift on a night at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30, a new constant
+  Michael approved; `SourceDoubt.doubts_own_gift(n)`). Measured beforehand on 42 ten-NPC
+  games at the day-4 meeting: it fires about once in 5 games, for about 4 in 10 poisoned or
+  Delusional readings and about 1 in 17 sound ones (often a true Gravedigger reading after
+  the town hanged a good person). Readings whose content the judge doesn't check (a Warden's
+  quiet night, a Lamplighter, a Night Watch list, a Psychologist, a Sexton, a Medium's
+  relays) never fire; a follow-up for those is proposed to Seneschal. Behaviour doesn't
+  change until something reads it (Beadle's #316).
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

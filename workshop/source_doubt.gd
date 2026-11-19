@@ -423,9 +423,25 @@ static func own_doubt(self_id: String, honest: Dictionary) -> Dictionary:
 
 
 ## An NPC's current doubt about each night of its own readings ({night: doubt}), as its last
-## applied refresh left it: for dialogue ("something seems off about my readings") and tools.
+## applied refresh left it: the judge's chance that night's own reading was wrong, from its
+## clash with everything else the NPC holds, starting from the poison and Delusional prior
+## (OwnGiftDoubt.posterior; Michael, Nov 19). For dialogue ("something seems off about my
+## readings") and tools. A night whose readings the judge can't check has no entry.
 static func self_doubt(n) -> Dictionary:
 	return n.workshop_state.get("self_doubt", {}).duplicate()
+
+## The prior the judge starts from: the poison and Delusional self-doubt alone, by night
+## (own_doubt of the honest doubt SourceDoubt.derive gives the NPC's own readings).
+static func self_doubt_prior(n) -> Dictionary:
+	return n.workshop_state.get("self_doubt_prior", {}).duplicate()
+
+## The nights, earliest first, on which the NPC doubts its own gift: its self_doubt at or above
+## Tuning.Workshop.SELF_DOUBT_TRIGGER (Michael, Nov 19).
+static func doubts_own_gift(n) -> Array:
+	var d: Dictionary = self_doubt(n)
+	var out: Array = d.keys().filter(func(k): return float(d[k]) >= Tuning.Workshop.SELF_DOUBT_TRIGGER)
+	out.sort()
+	return out
 
 ## Whether the deal's placement rules (ScriptDef.PLACEMENT_RULES) let a holder of `role`
 ## carry `secret`: a Chronicler or Rumormonger never holds the Delusional secret, so knowing
