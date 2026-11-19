@@ -72,6 +72,10 @@ static func view(g) -> Dictionary:
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "A passed-on reading: a challenge says which part failed, the passing-on or the original." if activity.has("relay_source") else note
+			# An adapted relay or teller's testimony is weighable even where the outer reading
+			# alone isn't (Codex, #348): the old note override made these supported.
+			if activity.has("relay_source") or activity.get("testimony_only", false):
+				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)

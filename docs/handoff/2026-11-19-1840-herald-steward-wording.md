@@ -38,3 +38,8 @@ Three notes of the same kind weren't in Steward's list. They still read as devel
 ## Measured
 - **Suites:** test_roles_night_sight, test_workshop_live_activity, test_withdraw_ui, test_workshop_nav, test_workshop_live_ui, test_workshop_ui, test_workshop_remaining, test_workshop_live_canvas, test_ui, test_canvas_card_text, test_workshop_why and test_connections_why pass.
 - **Golden:** identical at `--tol 0` on all five seeds.
+
+**Codex fix (#348).** With the note no longer carrying the verdict, a supported Medium relay
+or a teller's testimony kept `fallback = true` from the outer reading's checks (the old note
+override had cleared it). Both now clear the flag after the adapted card merges.
+`test_roles_dead` checks the relay and the testimony path; both checks fail without the fix.
