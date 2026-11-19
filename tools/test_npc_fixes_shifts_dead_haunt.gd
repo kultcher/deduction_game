@@ -1,6 +1,7 @@
 ## Nov 10 NPC behaviour: one work shift each; asking about the dead; the haunt roll's bonus
 ## when nothing is known; the day-1 ongoing-info penalty.
-##   godot --headless --path . --script res://tools/test_npc_behaviour_1110.gd
+##   godot --headless --path . --script res://tools/test_npc_fixes_shifts_dead_haunt.gd
+## Named test_npc_behaviour_1110 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
