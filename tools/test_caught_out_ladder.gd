@@ -12,6 +12,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const C = preload("res://sim/content.gd")
+const CardModel = preload("res://game/card_model.gd")
 
 var checks = 0
 var fails = 0
@@ -77,6 +78,13 @@ func _good_walker() -> void:
 	var n = _good(g)
 	var first: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
 	_check(not _claims(first) and n.claimed_role == "" and _excuse(first, n, "admit"), "good hidden walker, first caught: owns the night, keeps the gift")
+	# On the board it names no place (Lantern on #368: a blank block crashed the card text).
+	var card: Dictionary = first.facts[0].duplicate(true)
+	card["block"] = ""
+	var names: Dictionary = {}
+	for p in g.w.npcs:
+		names[p.id] = p.name
+	_check(CardModel.short_text(card, names).ends_with("out that night"), "the admission's card reads 'out that night' (%s)" % CardModel.short_text(card, names))
 	var second: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
 	_check(_claims(second) and n.claimed_role == "warden", "good hidden walker, caught again: names its gift")
 
