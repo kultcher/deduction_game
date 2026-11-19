@@ -604,7 +604,8 @@ func evidence_layout(id: String) -> Dictionary:
 	var card: Dictionary = _evidence_card(id)
 	var els: Array = []
 	var y: float = 50.0
-	var all_lines: Array = _lines(card.get("text", ""), WIDTH - 32, 14)
+	# The fewest words on the card; the full sentence is in the hover (Michael, Nov 18).
+	var all_lines: Array = _lines(str(card.get("short", card.get("text", ""))), WIDTH - 32, 14)
 	var text_lines: Array = all_lines.slice(0, 3)
 	if all_lines.size() > 3:
 		var last: String = text_lines[2]

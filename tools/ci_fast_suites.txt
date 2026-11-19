@@ -105,6 +105,7 @@ test_too_clean_bluffs
 test_town_note
 test_town_vibe
 test_triage_nov16
+test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge
 test_warden_quiet_route

@@ -655,7 +655,11 @@ func _file() -> int:
 		status.text = "Select a premise with a claim to file."
 		return -1
 	var value = board.compile(board.selected)
-	var number = Live.file(g, value, files.get(board.selected, 0))
+	var previous: int = files.get(board.selected, 0)
+	# A revision the Test juror finds weaker than the case it replaces says so; it still files
+	# (Michael's wording, Nov 18; Quill's detection, #275).
+	var weakens: Dictionary = Live.revision_weakens(g, value, previous) if previous > 0 else {}
+	var number = Live.file(g, value, previous)
 	if number > 0:
 		files[board.selected] = number
 		var originals: Array = Live.supports(g, value).numbers
@@ -665,6 +669,11 @@ func _file() -> int:
 		_carried_note = carried_note(carried) if not carried.is_empty() else ""
 		if _carried_note != "":
 			status.text += " " + _carried_note
+		if not weakens.is_empty():
+			status.text = str(weakens.text) + ". " + status.text
+			# Presenting files first and then replaces the status line, so the warning also
+			# heads the presentation's feedback, like the carried-answers note (Codex on #285).
+			_carried_note = (str(weakens.text) + ". " + _carried_note).strip_edges()
 		_store()
 		filed.emit()
 	else:
