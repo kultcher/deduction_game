@@ -69,6 +69,8 @@ func _mean(vigil: String, where: String, mode: String, seen: Array, on: String) 
 		if d != null:
 			total += d
 			n += 1
+	# A mean over no data would let the comparison it feeds pass on nothing (Steward E1b).
+	check(n > 0, "(fixture) the %s / %s / %s case was built on at least one seed (%d of %d)" % [vigil, where, mode, n, SEEDS.size()])
 	return total / maxf(1.0, n)
 
 func _one(sd: int, vigil: String, where: String, mode: String, seen_spec: Array, on: String):

@@ -121,6 +121,7 @@ func _public_withdrawal() -> void:
 	var ls2: Array = g2.w.living().filter(func(p): return p != r2 and p != a2)
 	var d2: int = _read(g2, r2, "dowser", 1, {"group": [a2.id], "count": 1})
 	var c2: int = _file(g2, "evil", a2.id, [d2])
+	check(c2 > 0, "(fixture) the case to restate files (%d)" % c2)  # fail loudly, not skip (Steward E1b)
 	if c2 > 0:
 		_present(g2, ls2, c2)
 		g2.workshop_withdraw_public(c2)
@@ -174,6 +175,7 @@ func _revisions() -> void:
 	var h1: int = _read(g3, goods3[0], "dowser", 1, {"group": [goods3[1].id], "count": 1})
 	var h2: int = _read(g3, goods3[0], "dowser", 2, {"group": [goods3[2].id], "count": 1})
 	var f3: int = _file(g3, "evil", goods3[1].id, [h1])
+	check(f3 > 0, "(fixture) the case to revise files (%d)" % f3)
 	if f3 > 0:
 		_present(g3, ls3, f3)
 		var rev3: int = _file(g3, "evil", goods3[2].id, [h2], f3)

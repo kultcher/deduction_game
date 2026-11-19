@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, Argon's single end-of-night belief flush, #289): `baseline_2ac19a1`
+### Current baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
+
+`tools/golden/baseline_ee15238/` is the capture from `claude/factor-norm-handles` at `ee15238`
+(main with #345 merged in). A movement factor's compiled handle is now shared only between uses
+scored on the same scale. Before, a mixed Night Watch list's broken branch could share a handle
+with an identical factor used on its own and rewrite that factor's scale; the last mix to attach
+decided how it scored.
+- **Divergence from `baseline_2ac19a1`:** seed 42 only, in 2 values at rounding level (the
+  first at record 67, Fenwick's raw posterior on Kiran: 0.07560079988852052 to
+  0.07560079988852055). That's one such collision on main, between two scales that differed only
+  in the last digit. The other four seeds are identical, and seed 42 matches at `--tol 1e-12`.
+- **Outcomes:** all five unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, Argon's single end-of-night belief flush, #289): `baseline_2ac19a1`
 
 `tools/golden/baseline_2ac19a1/` is the capture from `claude/nice-mayer-naok85` at `2ac19a1`
 (Argon's `argon/dawn-belief-flush` at `72be00b` with main `7d9246f` merged in, by Bailiff on

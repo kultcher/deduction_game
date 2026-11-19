@@ -188,6 +188,12 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 		# Board-card wording (Michael, Nov 18): the fewest words that carry the fact. The
 		# card's column already says when, so these leave the time out.
 		"accusation":
+			# Two kinds of card share the kind but aren't accusations (Steward, Nov 19): a
+			# relayed reading, and a counter-claim to someone's gift.
+			if card.get("relay", false):
+				return "%s relays a %s reading: %s" % [src, C.role_name(card.get("role", "")), _subjects(card, nm)]
+			if str(card.get("text", "")).contains("'s claim of the ") and str(card.get("text", "")).contains(" is false"):
+				return "%s: %s's claim is false" % [src, _subjects(card, nm)]
 			return "%s accused %s" % [src, _subjects(card, nm)]
 		"opinion":
 			# Only a known stance is shortened: "distrusts" and "warned you about" cards carry
