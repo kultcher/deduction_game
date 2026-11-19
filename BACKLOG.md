@@ -376,9 +376,25 @@ relay about the first victim naming night 0 (Beadle).
     a Clerk reading matching the listener's own role (about +0.20, provisional), or a Seer
     "no" on someone building that person's trust in the Seer. That note said to base it on
     the listener's knowledge and deduplicate the underlying fact.
+  - **Tiers (Michael, Nov 19).** "Agreement" is how strongly the listener believes the
+    reading is true, from its own view:
+    - 70%+ agreement: a small boost, in line with the shared-voting step;
+    - 85%+ agreement: a moderate boost;
+    - 100% (a known fact from private knowledge): a significant boost.
+
+    The sizes are to be proposed, reusing existing steps where they fit (new constants are
+    Michael's call), together with a measurement.
+  - **Measurement (Michael, Nov 19).** It covers the whole trust system, not just this
+    feature:
+    - track where trust between NPCs ends up: the distribution of pairwise trust at the end of
+      each day and at game end, and how many pairs are near full trust;
+    - soft goal: some NPCs end up near full trust with some others by about day 4 (a guide,
+      not a gate);
+    - first a baseline run on #292 (votes and nominations only); then the tier proposal comes
+      with before-and-after numbers in game terms;
+    - use a probe or sweep script, not a CI suite.
   - **Open, for a proposal before building:**
-    - the tier cutoffs and sizes: reuse existing steps, or new constants, which are Michael's
-      call;
+    - the tier sizes;
     - whether surprise from the public record still scales the gain within a tier;
     - what happens when a strongly believed reading is later contradicted.
 
