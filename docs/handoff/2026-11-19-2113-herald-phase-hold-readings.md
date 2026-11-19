@@ -25,3 +25,8 @@ Michael reported this bug on Nov 19, through Seneschal. After Town Hall records,
 
 ## Proposed for the backlog
 None.
+
+## Codex fix (#369)
+- **The bug:** commands from the menus (Cast or Timeline in text, the dev log) still ran while a reading held the phase. They cleared the page without releasing the hold, leaving the screen frozen with no Done to press.
+- **The fix:** `_run` and `_run_workshop` now refuse commands while the phase is held, as they already did for a finished conversation.
+- **The check:** `test_control_flow` (48 checks) covers it. The check fails without the fix.

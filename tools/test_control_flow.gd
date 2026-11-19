@@ -219,6 +219,9 @@ func _test_reading_holds_phase(scene) -> void:
 	_check(scene._phase_held and not scene.inspect_pages.is_empty(), "and the records page is up, holding the phase")
 	_check(scene.day_label.text == label_before, "the clock still shows the morning (%s)" % scene.day_label.text)
 	_check(scene.cast_list._frozen != null, "the townsfolk list holds its lines")
+	# A command from the menus (the cast in text, say) waits too: it would clear the page (Codex, #369).
+	scene._run("cast")
+	_check(scene._phase_held and not scene.inspect_pages.is_empty(), "a menu command doesn't clear the page or strand the hold")
 	scene._inspect_next()
 	scene.finish_streaming()
 	_check(not scene._phase_held and scene.day_label.text != label_before, "Done moves the clock on (%s)" % scene.day_label.text)

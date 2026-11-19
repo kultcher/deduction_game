@@ -745,7 +745,7 @@ func _open_live_workshop(number: int = 0) -> void:
 	case_view.open_workshop(number)
 
 func _run_workshop(cmd: String, progress: Callable) -> void:
-	if conversation_finished:
+	if conversation_finished or _phase_held:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -776,7 +776,9 @@ func _on_submit(text: String) -> void:
 	_run(t)
 
 func _run(cmd: String) -> void:
-	if conversation_finished:
+	# While a finished conversation or a reading holds the old phase, nothing runs until the
+	# player leaves or presses Done: a command would clear the page and strand the hold (Codex, #369).
+	if conversation_finished or _phase_held:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
