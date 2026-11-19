@@ -384,3 +384,78 @@ a real one.
   slot; Quill and Argon to confirm.
 - **Michael (Nov 18):** not ready to decide; possibly a messy can of worms.
 
+
+## 11. Argon review: gaps
+
+Michael asked Argon (Nov 19) how this note's direction would hit the solver and the systems
+around it. Argon's report went to the leads through Seneschal. In short:
+- **The solver survives** if Marked stays in the one hidden slot, or gets a clean claim-based
+  replacement.
+- **Rumormonger and Chronicler, and `Solver.lovers_needs`,** are the only evaluators that
+  depend on every secret being enumerated.
+- **Most of the cost is social:** good NPCs claiming knowing secrets, evil bluffing them, and
+  handling double claims of a unique secret.
+
+This section lists what the report misses. The leads' replies are collated below as they
+arrive. Nothing here is decided.
+
+### 11.1 Seneschal's first read
+
+- **Evil already lending a teammate a harmless secret,** so secret bluffing may partly exist.
+  I couldn't find this in `sim/evil.gd` on main: evil's night excuses are "evil work"
+  (`MindDialogue`), and a confession needs a good NPC. Beadle to confirm, or to point to it.
+- **Medium relays of secrets:** what a Medium relays about a dead secret holder, and whether
+  a relayed secret can be bluffed.
+- **The Lamplighter count and the Night Watch list against Sleepwalkers:** an unaware walker
+  inflates a count or appears on a list. This is more pressing once Lamplighter step 2
+  (#346) weighs counts against each world.
+- **The Marked premise-centring knock-on** (section 7).
+- **The Mistaken gate's causes** (`ReadingChallenges.game_honest_causes`, with "marked" among
+  `HONEST_CAUSES`), and the self-doubt clash signal, if Marked leaves the enumeration.
+- **The case slate and its badge** need secret cases: a Lovers' alibi, a Sleepwalker caught
+  out, a Marked false ping.
+- **Hint families and secret hints** ("New role hint families", Herald's #315), and the
+  Rumormonger's hint.
+- **The end-of-game reveal:** how a bluffed secret, an unclaimed knowing secret and a good
+  liar's reason are shown.
+- **Test fixtures that pin secrets:** suites and `tools/fixture_seeds.gd` lookups that expect
+  today's secret deal, and golden.
+
+### 11.2 Design-side gaps (Vicar)
+
+- **Good NPCs lying about their gift** (decided Nov 18, section 10.1). The report doesn't
+  cover it, and it's a judge change, not only a social one. Today a good, healthy teller's
+  gift claim is taken as true, and no two people hold one claimed gift
+  (`WorldDomainKernel.ClaimsCompatible`, the role check in `ReadingFraction`). A good liar
+  needs an allowance there, and a double claim stops meaning "one is evil". Whether that is a
+  rate (cheap) or enumerated (costly) is the question for Argon.
+- **The general allowance for quiet reasons** (section 3, open question 3). Once the Lovers
+  leave the enumeration, the judge no longer explains their nights out. Night sightings of
+  good people get more damning unless an allowance replaces it. That ties in with "Night
+  sightings are too decisive" (BACKLOG, the balance pass).
+- **Unique secrets in the judge.** "At most one holder of each kind" is a new claim rule,
+  like gifts' one-person-per-gift. The report names double-claim handling on the social
+  side, but not the judge's side.
+- **One hidden kind per script.** The arrangement count falls (section 10.3, about 840 at
+  10 NPCs instead of 5,040 if the Lovers leave). The report doesn't time it, or say where
+  the freed room goes: Minion identities for the Breathstealer overhaul, larger towns, or
+  speed.
+- **A Baron, Minion identity and secret counts.** Several secret claims as evidence of a
+  Baron (section 6) needs the judge to know a Baron may be in play, which is part of telling
+  Minions apart.
+- **Hanging consequences** (the Saint, section 5). Votes would need to weigh what a hanging
+  costs, not only how suspicious someone is. That's a new input to `MindMeeting`, and to the
+  judge if the outcome is public evidence.
+- **Not yet decided, but costly if chosen:**
+  - **Plain folk** (section 10.5): a non-unique claim with a public count, a new check on
+    claims.
+  - **Confidants** (section 10.4): hearsay cards about a secret, weighed like relays.
+- **Credibility and the track record.** "X holds secret S" is judged at dawn against the
+  enumerated universe (`Credibility.dawn`). The report covers this. Add that a player who
+  argues an unclaimed knowing secret correctly should still earn credit, so the
+  either/or of 3a, if built, must reach the dawn check.
+
+### 11.3 The leads' replies
+
+To be collated as they arrive: Lantern (the belief side), Quill (the judge, the slate and
+the badge), Beadle (disclosure and bluffing), Herald (wording, cards, the reveal).
