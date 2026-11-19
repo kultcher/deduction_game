@@ -61,6 +61,22 @@ steps were taken out on Nov 19 and moved to their own item, so readings change n
   - **98933:** hanged Dorian on day 2 and Isolde on day 3; now good wins on day 2, hanging Odette.
 - **Stability:** two captures were identical.
 
+### Earlier baseline (Nov 18, the Mistaken label): `baseline_21df80d`
+
+`tools/golden/baseline_21df80d/` is the capture from `claude/honest-mistake` at `21df80d`
+(main `678838f`). "misled" and "failed gift" become one honest-mistake label, Mistaken, and a
+lie call's gate and floor are retuned so it moves suspicion.
+- **Divergence from `baseline_e287b3d`:**
+  - 98933 from record 147, 900 from record 138 and 54875 from record 295. Each is only the
+    stored mode of an NPC's "misled" defence challenge, now "impaired", the merged mode's
+    code name.
+  - 42 and 692 are identical.
+  - With `--ignore engine,mode`, all five seeds are identical, so no belief, vote or
+    execution moves. Nothing in an autoplay game makes a player lie call.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
+- **Stability:** two captures were identical.
+
 ### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`

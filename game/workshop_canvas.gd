@@ -69,6 +69,9 @@ static func view(g) -> Dictionary:
 		"profile_facets": _profile_facets(g),
 		"evil_count": snapshot.rules.initial_evil_count, "alignment_epoch": "Original alignment",
 		"world_options": {"modifiers": snapshot.rules.modifier_options}, "live": true, "live_activity": true,
+		# The script's minions, as a listener's view carries them, so the canvas knows when a
+		# Mistaken call has a Poisoner to blame (ReadingChallenges.honest_allowed; Nov 18).
+		"script_minions": snapshot.rules.get("minions", []).duplicate(),
 		"timeline": Assess.History.from_events(snapshot.public_events)}
 	if not history.value.is_empty():
 		result["chronology"] = history.value

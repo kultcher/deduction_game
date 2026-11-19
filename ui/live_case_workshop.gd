@@ -58,7 +58,7 @@ const PREMISE_TYPE_HINTS = {
 	"minion": "Argue they're one of the Demon's Minions.",
 }
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
-const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": "Poisoned that night", "delusional": "They're Delusional"}
+const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "delusional": "They're Delusional"}
 
 func premise_types() -> Array:
 	return LIVE_TYPES
@@ -592,13 +592,14 @@ func _refresh_case() -> void:
 			var side_option = _option(case_box, sides.map(func(s): return board.RELAY_SIDE_TEXT[s]))
 			side_option.select(maxi(0, sides.find(str(node.get("attribution", "original")))))
 			side_option.item_selected.connect(func(i): set_evidence_field(mod_id, "side:" + sides[i]))
-		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading", "Failed gift (poisoned)"])
-		option.select(["misled", "lying", "unlikely", "impaired"].find(node.mode))
+		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named in ReadingChallenges.
+		var option = _option(case_box, [preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "Suspected lie", "Unlikely reading"])
+		option.select(["impaired", "lying", "unlikely"].find(preload("res://workshop/reading_challenges.gd").canonical(node.mode)))
+		option.set_item_disabled(0, not preload("res://workshop/reading_challenges.gd").honest_allowed(board.view, _report(node.card), str(node.get("attribution", ""))))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		if relay and str(node.get("attribution", "")) == "transmission":
-			option.set_item_disabled(0, true)
 			option.set_item_disabled(2, true)
-		option.item_selected.connect(func(i): set_evidence_field(mod_id, "mode:" + ["misled", "lying", "unlikely", "impaired"][i]))
+		option.item_selected.connect(func(i): set_evidence_field(mod_id, "mode:" + ["impaired", "lying", "unlikely"][i]))
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)
@@ -1119,10 +1120,17 @@ func _field_popup(id: String, field: String) -> void:
 					field_menu.add_item(text, values.size())
 				values.append(person.id)
 		"type":
-			var types: Array = premise_types()
+			# A hanged person's Demon premise is in the past tense, and only where a Scion
+			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
+			# A draft holds its person in `pick` until both fields are chosen (Codex on #305).
+			var p_target: String = str(node.get("pick", {}).get("target", "")) if node.get("draft", false) else str(node.get("conclusion", {}).get("target", ""))
+			var types: Array = premise_types().filter(func(t): return board.premise_offered(t, p_target))
 			for i in range(types.size()):
-				field_menu.add_item(board.PREMISE_TEXT.get(types[i], types[i]), values.size())
-				if PREMISE_TYPE_HINTS.has(types[i]):
+				field_menu.add_item(board.premise_text(types[i], p_target), values.size())
+				var hanged_demon: bool = types[i] == "demon" and board.premise_text(types[i], p_target) == board.HANGED_DEMON_TEXT
+				if hanged_demon:
+					field_menu.set_item_tooltip(field_menu.item_count - 1, board.HANGED_DEMON_HINT)
+				elif PREMISE_TYPE_HINTS.has(types[i]):
 					field_menu.set_item_tooltip(field_menu.item_count - 1, PREMISE_TYPE_HINTS[types[i]])
 				values.append(types[i])
 		"role":
