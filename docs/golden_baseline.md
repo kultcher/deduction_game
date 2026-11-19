@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, "their readings agree with what I know"): `baseline_2829999`
+### Current baseline (Nov 19, movement factor handles on their own scale): `baseline_1089dd9`
+
+`tools/golden/baseline_1089dd9/` is the capture from `claude/factor-norm-handles` at `1089dd9`.
+A movement factor's compiled handle is now shared only between uses scored on the same scale.
+Before, a mixed Night Watch list's broken branch could share a handle with an identical factor
+used on its own and rewrite that factor's scale; the last mix to attach decided how it scored.
+- **Divergence from `baseline_2829999`:** seed 42 only, in 2 values at rounding level (the
+  first at record 72, Fenwick's raw posterior on Kiran: 0.07560079988852052 to
+  0.07560079988852055). That's one such collision on main, between two scales that differed only
+  in the last digit. The other four seeds are identical, and seed 42 matches at `--tol 1e-12`.
+- **Outcomes:** all five unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, "their readings agree with what I know"): `baseline_2829999`
 
 `tools/golden/baseline_2829999/` is the capture from `claude/beadle-readings-agree` at `2829999`
 (main with #319 merged in). A good listener whose record holds a moderate or known
