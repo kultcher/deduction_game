@@ -37,6 +37,24 @@ const MECHANICS = [
 		"tooltip": "Composure: how much their face gives away."},
 ]
 
+## Mistaken (Michael, Nov 19): the honest-failure label for a reading. Its tooltip names
+## only the causes this town's script allows (ReadingChallenges.game_honest_causes), so it
+## is built per game: TextTerms.set_honest_causes.
+const MISTAKEN = {"id": "mistaken", "label": "Mistaken", "aliases": [{"text": "Mistaken", "case_sensitive": true}]}
+const CAUSE_NAMES = {"poison": "poison", "delusion": "delusion", "red_herring": "a Red Herring", "marked": "a Marked soul"}
+
+## The Mistaken tooltip for these causes (ReadingChallenges.HONEST_CAUSES ids, in order).
+static func mistaken_tip(causes: Array) -> String:
+	var names: Array = []
+	for c in causes:
+		if CAUSE_NAMES.has(c):
+			names.append(CAUSE_NAMES[c])
+	var head = "Mistaken: a reading that was wrong but honestly told."
+	if names.is_empty():
+		return head + " Nothing in this town can fool a gift."
+	var listed: String = names[0] if names.size() == 1 else "%s or %s" % [", ".join(PackedStringArray(names.slice(0, names.size() - 1))), names[-1]]
+	return head + " Something fooled the gift; in this town that could be %s." % listed
+
 ## Tooltips for action buttons, by the start of the button's label.
 const CONTROLS = [
 	["Let the town speak", "Let the next townsperson have their say. It costs you nothing."],
