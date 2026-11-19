@@ -680,7 +680,11 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 		return
 	gd["said"] = w.day
 	var role: String = str(gd["role"])
-	lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
+	if gd.get("first", false):
+		# Only the one reading to doubt (its first for this gift): the singular line.
+		lines.append(say_voiced(n, "doubt_own_gift_one", "Something seems off about that reading. I fear something might have turned my gift."))
+	else:
+		lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
 	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
 	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
 	w.public_event("self_doubt", [n.id], n.id, {"role": role})
@@ -1674,13 +1678,19 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	var at: String = str(d.history.get(w.time_key(sd, sp), ""))
 	if at == "" or at.begins_with("home") or at.begins_with("night") or at == "dead":
 		return {}
+	# Who it can name: the living who were there (no use asking the dead; Steward Nov 19 A6), and
+	# for an evil defender not its own teammates, whom it won't point at or call as witnesses
+	# (Steward A5: that would be a tell). Leaving them out is no lie: it never says it was alone.
 	var present: Array = []
+	var others_there: int = 0
 	for x in w.npcs:
 		if x != d and str(x.history.get(w.time_key(sd, sp), "")) == at:
-			present.append(x)
+			others_there += 1
+			if x.alive and not (d.is_evil() and x.is_evil()):
+				present.append(x)
 	var place: String = w.loc_name(at)
 	var when: String = _day_when(w, sd, sp)
-	var slots: Dictionary = {"place": place, "when": when, "Place": place.capitalize() if place.length() > 0 else place, "When": when.capitalize() if when.length() > 0 else when}
+	var slots: Dictionary = {"place": place, "when": when, "Place": _first_upper(place), "When": _first_upper(when)}
 	var line: Dictionary
 	var named: Array = []  # who the spoken line names (Codex on #318: the cards follow the words)
 	if present.is_empty():
@@ -1688,8 +1698,6 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	else:
 		var suspect = null
 		for x in present:
-			if not x.alive:
-				continue
 			var heat: float = Evil.town_view(w, x) if d.is_evil() else susp(d, x.id)
 			if heat >= Tuning.Meeting.NOMINATION_FLOOR and (suspect == null or heat > (Evil.town_view(w, suspect) if d.is_evil() else susp(d, suspect.id))):
 				suspect = x
@@ -1713,8 +1721,13 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	for x in named:
 		facts.append({"kind": "sighting", "subject": [x.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp,
 			"text": "%s says %s was at %s too, day %d %s." % [d.name, x.name, place, sd, C.PHASES[sp]]})
-	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, present.size()])
+	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, others_there])
 	return {"line": line, "facts": facts}
+
+## A slot's sentence-start form: only the first letter raised ("Yesterday afternoon", not
+## String.capitalize()'s "Yesterday Afternoon"; Steward Nov 19 A6).
+static func _first_upper(t: String) -> String:
+	return t if t.is_empty() else t.substr(0, 1).to_upper() + t.substr(1)
 
 ## "this morning", "yesterday afternoon", "the first evening": a day phase, as said on w.day.
 static func _day_when(w, sd: int, sp: int) -> String:

@@ -102,6 +102,7 @@ func _clerk() -> void:
 			_check(now["text"] == "cover", "a Clerk reading already told stays the cover it was")
 		else:
 			_check(g.id in now["data"]["pair"] and now["data"]["role"] == g.role, "an untold one now confirms %s's claim to be the %s (%s)" % [g.name, g.role, now["text"]])
+			_check(d.shadow != null, "the Demon has a shadow to follow the reading (Steward Nov 19 silent skip)")
 			if d.shadow != null:
 				var sh_clerk: Array = d.shadow.info_log.filter(func(x): return x.get("fake", false) and x.get("role", "") == "clerk")
 				_check(sh_clerk.size() == 1 and sh_clerk[0]["data"] == now["data"], "its shadow takes the reading it will claim, not the cover (Codex on #269)")
@@ -109,6 +110,7 @@ func _clerk() -> void:
 	# Only a Scion or Demon blends.
 	var blenders: int = 0
 	var minion_blends: int = 0
+	var minions: int = 0
 	for sd in range(60):
 		var w = _world(9900 + sd)
 		w.day = 0
@@ -119,12 +121,14 @@ func _clerk() -> void:
 				continue
 			var mate = Evil.mate(w, who)
 			Registry.get_def("clerk").generate_bluff_reading(w, who, w.evil_plan, "", mate if mate != null else who, [])
+		if m != null:
+			minions += 1
 		if m != null and w.evil_plan.get("clerk_blend_" + m.id, false):
 			minion_blends += 1
 		if w.evil_plan.get("clerk_blend_" + d.id, false):
 			blenders += 1
 	print("  Clerk: in 60 deals the Demon chose to blend %d times, a Minion %d" % [blenders, minion_blends])
-	_check(minion_blends == 0, "a Minion bluffing Clerk always covers a teammate")
+	_check(minions > 0 and minion_blends == 0, "a Minion bluffing Clerk always covers a teammate (%d deals with a Minion)" % minions)
 	_check(blenders >= 10 and blenders <= 32, "a Demon bluffing Clerk blends about a third of the time (%d of 60)" % blenders)
 
 func _martyr() -> void:
@@ -226,4 +230,4 @@ func _confessor() -> void:
 		if t != "" and not w2.by_id[t].is_evil():
 			trusted += 1
 	print("  Confessor: the Demon vouched for a good soul %d of %d times" % [trusted, ran])
-	_check(trusted >= ran / 2, "a Demon bluffing Confessor mostly vouches for a good soul (%d of %d)" % [trusted, ran])
+	_check(ran > 0 and trusted >= ran / 2, "a Demon bluffing Confessor mostly vouches for a good soul (%d of %d)" % [trusted, ran])

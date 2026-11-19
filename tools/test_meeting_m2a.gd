@@ -141,6 +141,8 @@ func _test_repeat_notes() -> void:
 	if not fresh.is_empty():
 		g3.command("accuse %d" % int(fresh[0].n))
 		_check(not _notes(g3).any(func(e): return "already public" in str(e.text)), "a card cited for the first time, never heard at a meeting, carries no note")
+	else:
+		_check(false, "case 8110 has a card never heard at a meeting (Steward Nov 19 silent skip)")
 
 
 func _test_already_weighed_skip() -> void:
