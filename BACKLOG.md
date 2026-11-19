@@ -268,6 +268,8 @@ listener (#273), both Lantern's.
     reason (avoiding or drawing the Demon's attention), fairly uncommon, possibly tied to
     Confidence. It doesn't volunteer the lie and picks the most harmless one available.
     Part of the secrets rework (`docs/design/secrets_rework.md`, sections 2 and 10.1).
+  - **Retracting a public claim** to back into another gift, for good and evil, belongs here
+    (Michael, Nov 19; see "More rebuttals after a caught lie").
   A caught lie still implicates strongly, so both need care. [open]
 
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
@@ -352,6 +354,102 @@ Candidates for a unified retuning proposal, not approved changes.
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
   false need not concede evil. Evil gets the same excuses, open to later corroboration;
   the caught lie itself stays. [decided; options open]
+  - **Michael (Nov 19), on Beadle's options:**
+    - **Yes:** an evil NPC borrows the excuses. It claims a walking duty that fits its bluff
+      ("I was keeping the watch"), or says "being out isn't wicked". Each gets a logged
+      reason and a reveal line.
+    - **Yes, as the first line of defence: own the night, keep the gift.** See the shared
+      ladder below. Michael: "duties that aren't mine to tell" isn't the right wording; the
+      default "I'm not ready to share my gift" line (`gift_refusal`) should work in most
+      cases. Herald's call on the final wording.
+    - **After the secrets rework:** a vague errand of its own, which becomes "claim a
+      knowing secret".
+    - **No:** "I gave my word I wouldn't say why". It has no place in the current mechanics.
+    - **How much an excuse softens the caught lie:** a little, until something contradicts
+      the excuse, such as a claimed watch with no watch report. Then the excuse counts as a
+      second caught lie. This needs a new constant; Beadle proposes about half a caught
+      lie's weight.
+    - **Scope:** lies about being home only. Caught reading lies already have "my gift may
+      have been turned".
+  - **When to risk a walking-gift claim (Michael, Nov 19): one ladder for good and evil.**
+    A good walker who hides its gift should behave the same way, so the response isn't a
+    tell.
+    - **What exists (read from main):**
+      - **Evil whose planned bluff walks** already owns the outing with that duty, as a good
+        walker does (`MindDialogue._bluff_outing`).
+      - **A good hidden walker** asked about the night can refuse honestly, lie "home", or
+        stonewall (`lie_or_stonewall`).
+      - **Caught out of a home alibi in private,** a good hidden walker reveals its gift
+        outright (`trapped_explanation` to `answer_gift`). No tier sits between stonewalling
+        and revealing.
+    - **New soft tier, for both:** "Fine, I was out", then the default gift refusal. It
+      claims a night duty without saying which. This keeps 78148's fix: the night is owned
+      first, never a bare gift refusal to a whereabouts case.
+    - **The ladder**, for an NPC caught out of its home alibi:
+      1. If its gift (or evil's bluff) already walks and is claimed, it gives that duty.
+      2. Not yet claimed: the soft tier above.
+      3. Pressed again, in private by the player or at a nomination, it names a gift:
+         - a good walker reveals its real gift;
+         - evil takes the safe spare from its bluff list, if one walks (that list holds only
+           gifts not in play, with one spare beyond the gifts the team uses, `world.gd`
+           `bluffs`), for any evil type;
+         - evil takes an unknown walking gift: the Demon or a Scion only when badly exposed,
+           a Minion when exposed, at the existing blend-or-disrupt odds;
+         - a Minion takes a walking gift someone has already claimed: a deliberate double
+           claim, when confronted privately by the player or nominated. Michael widened this
+           from "nominated only".
+      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff, or
+         a stonewall.
+    - **New: a Minion entering a double claim unprompted.** There's a small chance that an
+      unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
+      it's caught out. The rate would be a new constant, for Beadle to propose with a
+      measurement.
+    - **Retracting a public claim to back into a walker:** Michael (Nov 19) moves it to "Good
+      NPCs lie tactically", since the two share the same space.
+  - **The town's response to a double claim (Michael, Nov 19).** The true holder counterclaims
+    immediately. A Minion's active double claim works in the same framework.
+    - **What exists (read from main):**
+      - **At a meeting,** a public claim of someone's gift moves that person up to speak next,
+        with an openness bonus (`MindMeeting._queue_reactions`, trigger 1;
+        `REACTIVE_OPENNESS_BONUS`). Whether they then claim is still the ordinary
+        `_public_claim_decision` roll, so it isn't certain. An evil NPC whose planned bluff
+        was just claimed gets the same trigger.
+      - **At a nomination,** a hidden holder of the gift the nominee claims comes out: "X is
+        lying. That gift is mine." (`MindSupport`, `counter_claim`).
+      - **Pressed in private** with a rival's claim, a claimant answers "I am the X. If Y says
+        otherwise, Y is lying."
+      - **Belief:** the two claims of one gift are one pairing that raises both claimants and
+        shifts onto the other when one is shown good (#198).
+    - **Proposed (Vicar), for Michael:**
+      - **The true holder counterclaims at once:** at the same meeting, as the next speaker,
+        unless silenced. The trigger-1 reaction becomes a claim, not a roll. If the claim
+        reached it outside a meeting (in private, or through gossip), it counterclaims at the
+        next meeting. A holder hiding its gift for a reason is "Good NPCs lie tactically"
+        territory, not an exception here.
+      - **The Minion's active double claim uses the same trigger:** when a good NPC claims a
+        gift, an unclaimed non-Scion Minion may treat it as "a rival claim on my gift" and
+        counterclaim with the same line, at the small new rate. The rest follows the
+        existing pairing and counter-claim reactions.
+      - **Evil whose planned bluff is claimed by someone else** drops that bluff for a spare,
+        rather than counterclaiming. A Minion may instead take the active double claim above.
+    - **Michael (Nov 19):**
+      - **Immediately, where possible.** A silenced holder counterclaims at its first chance,
+        the next meeting. That's the same rule as for a claim heard outside a meeting.
+      - **Heat lowers a Minion's willingness to risk a double claim,** both the active one and
+        backing into a claimed or unknown gift. Heat here means already being implicated as
+        evil (mainly a Dowser reading, possibly a Surveyor's). Use the general "heat on me"
+        calculation, not special logic: `Evil.exposure`, whose public talk includes the
+        town's reading of those claims.
+      - **A note for the build:** in the ladder, being pressed or nominated is what makes
+        evil answer. The heat already on it is what makes a double claim a poor bet. So the
+        same exposure parts play two roles: the pressure and on-the-block parts push it to
+        answer, and the public-talk part holds it back from a double claim. Beadle to propose
+        how they combine.
+    - **Not yet answered:** whether evil whose planned bluff is claimed first switches to a
+      spare.
+    - Owner Beadle; Herald for any new lines.
+
+  Owner Beadle; Herald for the lines.
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -436,13 +534,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Minion distancing itself under pressure, the Demon going along with the town even
   against a Minion), and report what happens and what's missing before building the gaps.
   Owner Beadle. [decided: survey first]
-
-- **Observable actions as evidence (Stage 1B).** Votes, nominations, who defended whom
-  and tie-breaks as soft per-world likelihood factors: "voted to execute someone who is
-  good in this world" needs only each world's evil mask, so it adds no hidden dimension.
-  Each action's rates for evil and good actors come from bot runs, not hand-set values.
-  Votes are procedural public events today; the Stage 2 circumstantial hub is built.
-  (user, Oct 24) [decided: the split; details open]
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -698,6 +789,21 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   refresh never read through a theory and live play didn't use it by default, so it is
   deleted with the purge. Revisit for the connections model. The code survives on the
   branch `archive/legacy-belief-final`. **[tentative]**
+- **Observable actions as evidence (Stage 1B)** (may scale with Insight, like the exact
+  broken-reading weighing from Steward A3). Votes, nominations, who defended whom and
+  tie-breaks as soft per-world likelihood factors: "voted to execute someone who is good in
+  this world" needs only each world's evil mask, so it adds no hidden dimension. Each
+  action's rates for evil and good actors come from bot runs, not hand-set values. (user,
+  Oct 24)
+  - **Michael (Nov 19): don't build it now.** Reading the vote, nomination and defence record
+    as evidence is left to the player, who cites votes in cases through the circumstantial
+    hub. Later, high-Insight NPCs might read the public record themselves, softly, from
+    bot-measured rates.
+  - **Today (Quill's report, Nov 19):** NPCs' actions move trust and inclination, not
+    suspicion. The exception is votes the player cites through the hub. Quill is fixing a
+    double count in the hub.
+
+  **[tentative]**
 
 ## Tabled
 
