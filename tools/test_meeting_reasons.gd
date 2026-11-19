@@ -274,7 +274,11 @@ func _test_elimination_residual_reason() -> void:
 		w.public_event("demon_death", [v.id], "town")
 	w.day = 4
 	Mind.refresh_beliefs(w, listener, " (elimination test)")
-	if float(listener.workshop_state.get("requested", {}).get(suspect.id, 0.0)) >= 0.15:
+	# The precondition is checked, not assumed: a fixture that stops reaching it fails here
+	# rather than skipping the reason check silently (Steward DEEP, Nov 19).
+	var suspicion: float = float(listener.workshop_state.get("requested", {}).get(suspect.id, 0.0))
+	_check(suspicion >= 0.15, "elimination fixture: four demon deaths raise suspicion of the suspect to 0.15 or more (%.3f)" % suspicion)
+	if suspicion >= 0.15:
 		var rs: Dictionary = Mind.reason_status(w, listener, suspect.id)
 		_check(rs["kind"] == "public" and rs["why"] != "",
 			"process-of-elimination suspicion >= 0.15 produces a citable elimination reason (%s)" % str(rs))
