@@ -168,6 +168,9 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		# Caught out on gift business, they explain rather than defend what they saw: the
 		# "you doubt my account" opener only fits a restated sighting or alibi.
 		var reveal: bool = r["facts"].any(func(f): return f.get("kind", "") == "claim" and f.get("source", "") == n.id)
+		if r.get("soft", false):
+			# The soft tier owns the night: it answers the sighting, not "you doubt my account".
+			return {"lines": lines + r["lines"], "facts": facts + r["facts"], "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
 		if reveal:
 			lines.append(say_voiced(n, "pressed_caught_out", "All right, you saw me. Here's why I was out."))
 		lines += r["lines"]
@@ -275,24 +278,66 @@ static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
 		"secret_kind": "sleepwalker", "mod": "sleepwalker",
 		"text": "%s says they've been known to sleepwalk (at %s)." % [n.name, where]}}
 
+## The caught-out ladder's soft tier (Michael, Nov 19: one ladder for good and evil, so the
+## answer isn't a tell). A walker whose gift (or evil's bluff) would explain the night, not
+## yet claimed, owns the night and keeps the gift: "Fine, I was out", then the default gift
+## refusal. It names a gift only when pressed again about that night, or once nominated.
+## {} when it's already given the soft tier for that night, or is nominated: the caller
+## names the gift (a good walker its own, evil its planned walking bluff).
+static func _soft_tier(w, n, night: int) -> Dictionary:
+	var nominated: bool = n.id in w.meeting.get("nominated", []) or str(w.meeting.get("block", "")) == n.id
+	var soft: Dictionary = n.dialogue_memory.get("caught_soft", {})
+	if nominated or soft.has(str(night)):
+		return {}
+	soft[str(night)] = w.day
+	n.dialogue_memory["caught_soft"] = soft
+	on_question(w, n)
+	var where: String = str(n.history.get(w.time_key(night, C.NIGHT), ""))
+	if night not in n.lied_nights:
+		n.lied_nights.append(night)
+	_own_night_account(w, n, night, where.substr(6))
+	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong."), gift_refusal(n)]
+	var facts: Array = [_excuse_fact(w, n, night, "admit")]
+	if n.is_evil():
+		w.dlog.think(n.id, "admit_out", "Caught out on night %d: owns the night and keeps its planned %s bluff back for now." % [night, C.role_name(str(w.evil_plan["bluffs"].get(n.id, "")))], {"why": "caught out of a home alibi; a walking bluff would explain the night"})
+	else:
+		w.dlog.think(n.id, "admit_out", "Caught out on night %d: owns the night and keeps its %s gift back for now." % [night, C.role_name(n.role)])
+	return {"lines": lines, "facts": facts, "soft": true}
+
 ## "Fine, I was out", then why (Michael, Nov 18): a good NPC caught out of a home alibi in
 ## private, who has an honest reason, gives it: the gift that took them out, or the secret
 ## errand. {} when there's no honest reason to give (evil work, a gift kept back): they
 ## stonewall. Never the lie branch: they've just owned the night.
 static func trapped_explanation(w, n, nd: int) -> Dictionary:
-	if n.is_evil():
-		return {}
 	var where: String = str(n.history.get(w.time_key(nd, C.NIGHT), ""))
 	if not where.begins_with("night:"):
 		return {}
+	if n.is_evil():
+		# The same ladder (Michael, Nov 19): a claimed walking bluff tells its duty; an
+		# unclaimed one gets the soft tier, then the bluff; otherwise the line stands alone
+		# ("being out isn't wicked").
+		if n.claim_public and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, nd, true):
+			return _tag_duty_excuse(w, n, nd, answer_night(w, n, nd))
+		if not n.claim_public and n.max_tier < 3 and _bluff_outing(w, n, nd):
+			var soft_e: Dictionary = _soft_tier(w, n, nd)
+			if not soft_e.is_empty():
+				return soft_e
+			if nd not in n.lied_nights:
+				n.lied_nights.append(nd)
+			_own_night_account(w, n, nd, where.substr(6))
+			return answer_gift(w, n, 3)
+		return {}
 	if _honest_outing(w, n, nd) == "reveal":
-		return answer_night(w, n, nd)
+		return _tag_duty_excuse(w, n, nd, answer_night(w, n, nd))
 	if _gift_outing(w, n, nd):
 		# Out on gift business (a Night Watch, Warden, Lamplighter...), as a direct press would
 		# answer it: their claimed duty if they're already out with it, else the gift itself
 		# (Codex on #261: only the Sexton reached the reveal branch).
 		if n.claim_public:
-			return answer_night(w, n, nd)
+			return _tag_duty_excuse(w, n, nd, answer_night(w, n, nd))
+		var soft: Dictionary = _soft_tier(w, n, nd)
+		if not soft.is_empty():
+			return soft
 		if nd not in n.lied_nights:
 			n.lied_nights.append(nd)
 		_own_night_account(w, n, nd, where.substr(6))
@@ -319,9 +364,13 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Dictionary:
 	if contra.is_empty() or contra.get("ruled_out_home_by", []).is_empty() or int(contra.get("night", -1)) != night:
 		return {}
-	if n.is_evil() or n.secret_mod == "sleepwalker" or n.silenced:
+	if n.secret_mod == "sleepwalker" or n.silenced:
 		return {}
-	if not str(n.history.get(w.time_key(night, C.NIGHT), "")).begins_with("night:") or _gift_outing(w, n, night):
+	if not str(n.history.get(w.time_key(night, C.NIGHT), "")).begins_with("night:"):
+		return {}
+	if n.is_evil():
+		return _evil_caught_out(w, n, night)
+	if _gift_outing(w, n, night):
 		return {}
 	on_question(w, n)
 	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")]
@@ -334,10 +383,50 @@ static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Diction
 		# The reason kept back, the night is still owned: a later question about it gets the
 		# plain "I was out" account, not the home alibi it replaced (Codex on #330).
 		_own_night_account(w, n, night, str(n.history.get(w.time_key(night, C.NIGHT), "")).substr(6))
-		facts.append({"kind": "alibi", "subject": [n.id], "home": false, "day": night, "phase": C.NIGHT, "source": n.id,
-			"text": "%s admits they were out %s." % [n.name, C.spoken_when(night, w.day)]})
+		facts.append(_excuse_fact(w, n, night, "not_wicked"))
 	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
 	return {"lines": lines, "facts": facts}
+
+## The fact an excuse leaves on the board, for the judge (Lantern, Nov 19): the owner, the
+## night it excuses, and its kind: "admit" ("Fine, I was out", the gift kept back),
+## "not_wicked" (out, no reason given) or "duty" (a claimed walking gift's night work; set by
+## `_tag_duty_excuse`). Neither "admit" nor "not_wicked" names anything that could be
+## contradicted.
+static func _excuse_fact(w, n, night: int, kind: String) -> Dictionary:
+	return {"kind": "alibi", "subject": [n.id], "home": false, "day": night, "phase": C.NIGHT, "source": n.id,
+		"excuse": kind, "excuses_night": night,
+		"text": "%s admits they were out %s." % [n.name, C.spoken_when(night, w.day)]}
+
+## A claimed walking gift's duty account given as the excuse for a broken home alibi: its
+## facts are marked "duty", with the claimed role and the block, for the judge.
+static func _tag_duty_excuse(w, n, night: int, reply: Dictionary) -> Dictionary:
+	for f in reply.get("facts", []):
+		if f is Dictionary and str(f.get("source", "")) == n.id and str(f.get("kind", "")) != "claim" and int(f.get("day", -1)) == night:
+			f["excuse"] = "duty"
+			f["excuses_night"] = night
+			f["duty_role"] = n.claimed_role
+			if not f.has("block"):
+				f["block"] = str(n.history.get(w.time_key(night, C.NIGHT), "")).trim_prefix("night:")
+	return reply
+
+## Evil caught out of its home alibi by a case, in private (Michael, Nov 19: the same ladder).
+## A walking bluff, claimed or not, is answered downstream as a good walker's gift is (its
+## duty, or the soft tier, then the bluff): {}. Otherwise it may offer the sleepwalk bluff;
+## failing that it owns the night and says only that being out isn't wicked, rather than
+## standing by a home alibi the case has just broken.
+static func _evil_caught_out(w, n, night: int) -> Dictionary:
+	var claimed_walk: bool = n.claim_public and C.has_role_def(n.claimed_role) and C.role_def(n.claimed_role).uses_night_duty_alibi(w, n, night, true)
+	if claimed_walk or (not n.claim_public and n.max_tier < 3 and _bluff_outing(w, n, night)):
+		return {}
+	var excuse: Dictionary = sleepwalk_excuse(w, n, "night %d" % night)
+	if not excuse.is_empty():
+		on_question(w, n)
+		return {"lines": [excuse["line"]], "facts": [excuse["fact"]]}
+	on_question(w, n)
+	_own_night_account(w, n, night, str(n.history.get(w.time_key(night, C.NIGHT), "")).substr(6))
+	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi on night %d: owns the night and keeps the reason (evil work)." % night, {"why": "a case broke its home alibi; nothing it could claim explains the night"})
+	return {"lines": [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")],
+		"facts": [_excuse_fact(w, n, night, "not_wicked")]}
 
 ## The night is owned now: a later question about it, in private or at the podium, gets the
 ## plain "I was out" account rather than the home alibi it replaced (Codex on #261).
@@ -349,6 +438,9 @@ static func _own_night_account(_w, n, nd: int, block: String) -> void:
 
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
 	if not n.claim_public and n.max_tier < 3 and (_gift_outing(w, n, night) or _bluff_outing(w, n, night)):
+		var soft: Dictionary = _soft_tier(w, n, night)
+		if not soft.is_empty():
+			return soft
 		if night not in n.lied_nights: n.lied_nights.append(night)
 		# The existing gift answer owns the admission, claim, reading willingness,
 		# question fatigue and the "So yes: I was out..." line, exactly once.

@@ -450,6 +450,20 @@ Candidates for a unified retuning proposal, not approved changes.
     - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
+  > **Built in part, Nov 19 (Claude-Beadle, `claude/beadle-caught-out-ladder`): the ladder's
+  > private side.**
+  > - **Built:**
+  >   - The soft tier for good and evil, which fits the bluff.
+  >   - The gift named when pressed again or nominated.
+  >   - Evil's claimed walking duty.
+  >   - Evil's "being out isn't wicked".
+  >   - Excuse facts marked for the judge's softening, which Lantern wires.
+  > - **Still to build:**
+  >   - The podium path.
+  >   - Evil backing into a spare or unknown walking gift.
+  >   - The Minion's double claims.
+  >   - The true holder's sure counterclaim.
+  >   - The switch when a bluff is taken.
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
