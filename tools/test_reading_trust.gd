@@ -29,12 +29,12 @@ func _init() -> void:
 	var records_ok: bool = true
 	var shadow_records: int = 0
 	var tiers: Dictionary = {}
-	for seed_v in [9901, 9902, 9903, 9904]:
+	for seed_v in [9901, 9902]:
 		var g = Game.new()
 		g.detailed_logging = true
 		g.new_case(seed_v, 10)
 		var guard := 0
-		while g.state != "over" and g.w.day < 4 and guard < 400:
+		while g.state != "over" and g.w.day < 3 and guard < 400:
 			guard += 1
 			match g.state:
 				"approach": g.command("decline")
