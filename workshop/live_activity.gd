@@ -341,16 +341,16 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 			if card.kind == "sighting" and card.get("hearing_weight", 1.0) < 1.0:
 				continue
 			if card.kind == "sighting" and person.id in card.get("subjects", [card.get("subject", "")]):
-				okay = okay and out and (card.block == "" or (C.vigil_sees_path(card.block, path) if card.get("complete", false) else card.block in path))
+				okay = okay and out and (card.block == "" or (C.vigil_sees_path(card.block, path, str(person.get("home", ""))) if card.get("complete", false) else card.block in path))
 				if card.has("guard_claim"):
 					okay = okay and out and path.back() == card.block
 			elif card.kind == "sighting" and card.get("complete", false) and person.id not in card.get("excluded", []):
 				# Logical consistency; the probabilistic score uses VIGIL_MISS instead.
-				okay = okay and not C.vigil_sees_path(card.block, path)
+				okay = okay and not C.vigil_sees_path(card.block, path, str(person.get("home", "")))
 			elif card.kind == "alibi" and card.subject == person.id and not card.get("known_self", false):
 				okay = okay and not out
 			elif card.kind == "coverage" and person.id not in card.get("excluded", []):
-				okay = okay and not C.vigil_sees_path(card.block, path)
+				okay = okay and not C.vigil_sees_path(card.block, path, str(person.get("home", "")))
 			elif card.kind == "report" and card.role == "nightwatch":
 				if strict_reports and card.source == person.id:
 					okay = okay and out and path.back() == card.data.block
@@ -1902,6 +1902,13 @@ static func _alibi_incident(card: Dictionary) -> String:
 		return "alibi:" + subject + ":known"  # the listener's own knowledge, not a told alibi
 	return "alibi:" + subject + (":self" if str(card.get("source", "")) == subject else "")
 
+## A person's home block from the view, or "" (C.vigil_sees_path then reads the path).
+static func _home_of(view: Dictionary, person: String) -> String:
+	for p in view.get("people", []):
+		if str(p.get("id", "")) == person:
+			return str(p.get("home", ""))
+	return ""
+
 static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
 	if card.get("quoted", false) and card.kind != "alibi":
 		return 1.0
@@ -1909,16 +1916,16 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 	match card.kind:
 		"sighting":
 			if person in card.get("subjects", [card.get("subject", "")]):
-				var matches_block: bool = card.block == "" or (C.vigil_sees_path(card.block, path) if card.get("complete", false) else card.block in path)
+				var matches_block: bool = card.block == "" or (C.vigil_sees_path(card.block, path, _home_of(view, person)) if card.get("complete", false) else card.block in path)
 				return 1.0 if out and matches_block else 1.0 - float(card.get("hearing_weight", 1.0))
 			if card.get("complete", false) and person not in card.get("excluded", []):
-				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
+				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS
 		"evening":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				return 1.0 if card.block == evening else 0.0
 		"coverage":
 			if person not in card.get("excluded", []):
-				return 1.0 if not C.vigil_sees_path(card.block, path) else VIGIL_MISS
+				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS
 		"alibi":
 			if card.get("known_self", false):
 				# "I know I was home": only a Sleepwalker's doubt leaves room for being out.

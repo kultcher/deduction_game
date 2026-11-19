@@ -95,7 +95,8 @@ internal static class LiveActivityKernel
     /// Compact representation of a night path on the 4-block pairwise-connected map.
     /// StayHome: BlockMask = 0, FirstBlock = LastBlock = -1, IsLampTour = false.
     /// Direct / Detour: BlockMask != 0, FirstBlock = home, LastBlock = destination (0..3), IsLampTour = false.
-    /// LampTour (C.BLOCKS.keys()): BlockMask = 0xF, FirstBlock = 0 ("square"), LastBlock = 3 ("hill"), IsLampTour = true.
+    /// LampTour (C.BLOCKS.keys()): BlockMask = 0xF, FirstBlock = the walker's home (where they
+    /// leave their house; the tour itself runs in block order), LastBlock = 3 ("hill"), IsLampTour = true.
     /// </summary>
     internal readonly struct PathSpec
     {
@@ -126,17 +127,17 @@ internal static class LiveActivityKernel
             blockCode >= 0 && blockCode < BlockCount && (BlockMask & (1 << blockCode)) != 0;
 
         /// <summary>
-        /// Matches C.vigil_sees_path(block, path):
-        /// not path.is_empty() and (path.front() == block or path.size() == BLOCKS.size())
-        /// (a vigil sees residents leaving home, Nov 17).
+        /// Matches C.vigil_sees_path(block, path, home): a vigil sees only people leaving home
+        /// on its block (Nov 17), the Lamplighter's and Sexton's tours included (Nov 19).
+        /// FirstBlock is the walker's home for every path that leaves it.
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool VigilSees(int blockCode) =>
-            LastBlock >= 0 && ((blockCode >= 0 && FirstBlock == blockCode) || IsLampTour);
+            LastBlock >= 0 && blockCode >= 0 && FirstBlock == blockCode;
 
         public static PathSpec StayHome(double weight = 1.0) => new(0, -1, -1, false, weight);
 
-        public static PathSpec LampTour(double weight = 1.0) => new(0xF, BlockSquare, BlockHill, true, weight);
+        public static PathSpec LampTour(int home, double weight = 1.0) => new(0xF, home, BlockHill, true, weight);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static PathSpec Route(int home, int dest, double weight = 1.0) =>
@@ -481,7 +482,7 @@ internal static class LiveActivityKernel
                     candBuf[4] = PathSpec.Route(home, BlockHill);
                     if (roleCode == MoveRoleEmpty || roleCode == MoveRoleLamplighter)
                     {
-                        candBuf[5] = PathSpec.LampTour();
+                        candBuf[5] = PathSpec.LampTour(home);
                         candCount = 6;
                     }
 
@@ -984,14 +985,14 @@ internal static class LiveActivityKernel
 
         result.Add(PathSpec.StayHome(1.0 - rate));
         bool unknownLamp = profKind == ProfGift && roleCode == MoveRoleEmpty;
+        int home = personHomes[personIdx];
         if (unknownLamp)
         {
-            result.Add(PathSpec.LampTour(rate * 0.1));
+            result.Add(PathSpec.LampTour(home, rate * 0.1));
         }
 
         double denom = Math.Max(destCount, 1);
         double baseWeight = rate * (unknownLamp ? 0.9 : 1.0) / denom;
-        int home = personHomes[personIdx];
 
         for (int d = 0; d < destCount; d++)
         {
@@ -1014,7 +1015,7 @@ internal static class LiveActivityKernel
             else
             {
                 PathSpec path = (profKind == ProfGift && roleCode == MoveRoleLamplighter)
-                    ? PathSpec.LampTour(baseWeight)
+                    ? PathSpec.LampTour(home, baseWeight)
                     : PathSpec.Route(home, dest, baseWeight);
                 result.Add(path);
             }

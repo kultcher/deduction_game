@@ -191,8 +191,9 @@ it means the game must teach its own way of thinking and make evidence very read
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`
   (0.1) doubt. A Night Watch list that wrongly names them is still set aside.
 - **Vigils see who leaves:** a player vigil on a block sees its residents leaving home, and
-  anyone doing the full Lamplighter or Sexton tour; not walkers arriving from another block
-  or passing through. So it tests suspects (watch the block of the people you doubt)
+  no one else: not walkers arriving from another block or passing through, nor the
+  Lamplighter or Sexton on their tour of every block, who are seen only from their own home
+  block (Michael, Nov 19). So it tests suspects (watch the block of the people you doubt)
   rather than catching the Demon at the scene, and an empty vigil clears that block's
   residents for the night. The Night Watch still sees all traffic. (Michael, Nov 17;
   `docs/design/vigil.md`. Before, a vigil saw walkers arriving.)
