@@ -1,8 +1,8 @@
 ## Backing a case builds trust (BACKLOG, Michael, Nov 18):
 ## - a good NPC warms a little to those who vote the same way it does;
 ## - and to someone who nominates or accuses a person it already suspects;
-## - a reading that clears a good listener raises its trust in the teller, and one that agrees
-##   with the listener's own reading does too, by less;
+## - (the reading-based steps moved to "Trust from readings that confirm what I know or
+##   strongly believe", Michael, Nov 19; a plain reading changes no trust here);
 ## - evil NPCs' own trust isn't moved, and nothing changes for an NPC that doesn't agree.
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -23,7 +23,7 @@ func _check(ok: bool, label: String) -> void:
 func _init() -> void:
 	_votes()
 	_backing()
-	_readings()
+	_readings_unchanged()
 	print("Agreement trust: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -73,31 +73,11 @@ func _backing() -> void:
 	_check(not other.npc_trust.has(accuser.id), "not the trust of someone who doesn't suspect them")
 	_check(not target.npc_trust.has(accuser.id) or target.npc_trust[accuser.id] <= 0.5, "nor the accused's")
 
-func _readings() -> void:
+func _readings_unchanged() -> void:
 	var w = _world()
 	var goods: Array = w.living_good()
 	var l = goods[0]
 	var teller = goods[1]
-	var x = goods[2]
-	var y = goods[3]
 	l.npc_trust = {}
-	# A Seer "neither is the Demon" over the listener: it clears them.
-	Mind.apply_info(w, l, teller, {"day": 1, "role": "seer", "data": {"pair": [l.id, x.id], "yes": false}, "text": "clears me"}, 1.0)
-	var after_clear: float = l.npc_trust.get(teller.id, 0.5)
-	_check(is_equal_approx(after_clear, 0.5 + Tuning.Roles.WARDEN_SAVE_TRUST), "a reading that clears me raises my trust in its teller (%.3f)" % after_clear)
-	Mind.apply_info(w, l, teller, {"day": 1, "role": "seer", "data": {"pair": [l.id, x.id], "yes": false}, "text": "clears me"}, 1.0)
-	_check(is_equal_approx(l.npc_trust.get(teller.id, 0.5), after_clear), "hearing the same reading again adds nothing")
-	# The listener's own reading pointed at y; a teller's Dowser count pointing at y agrees.
-	var t2 = goods[4]
-	l.info_log.append({"day": 1, "role": "seer", "data": {"pair": [y.id, x.id], "yes": true}, "text": "mine", "shared": false, "true": true})
-	Mind.apply_info(w, l, t2, {"day": 2, "role": "dowser", "data": {"group": [y.id, goods[5].id], "count": 1, "block": "market"}, "text": "agrees"}, 1.0)
-	_check(is_equal_approx(l.npc_trust.get(t2.id, 0.5), 0.5 + Tuning.Social.TRUST_VOTED_FOR), "a reading that agrees with my own raises my trust a little (%.3f)" % l.npc_trust.get(t2.id, 0.5))
-	# A reading that neither clears me nor agrees with me changes nothing.
-	var t3 = goods[5]
-	Mind.apply_info(w, l, t3, {"day": 2, "role": "seer", "data": {"pair": [goods[6].id, t2.id], "yes": false}, "text": "unrelated"}, 1.0)
-	_check(not l.npc_trust.has(t3.id), "an unrelated reading changes nothing")
-	# An evil listener's own trust doesn't move.
-	var e = w.evil_team()[0]
-	e.npc_trust = {}
-	Mind.apply_info(w, e, teller, {"day": 2, "role": "seer", "data": {"pair": [e.id, x.id], "yes": false}, "text": "clears evil"}, 1.0)
-	_check(not e.npc_trust.has(teller.id), "an evil listener's own trust doesn't move")
+	Mind.apply_info(w, l, teller, {"day": 1, "role": "seer", "data": {"pair": [l.id, goods[2].id], "yes": false}, "text": "clears me"}, 1.0)
+	_check(not l.npc_trust.has(teller.id), "a reading that clears me changes no trust here (that's the later confirmation item)")
