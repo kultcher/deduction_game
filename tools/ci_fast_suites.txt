@@ -6,6 +6,7 @@
 test_agreement_trust
 test_ask_night_results
 test_attention_0b
+test_augur_wording
 test_badge_text
 test_bare_compile
 test_beliefs
