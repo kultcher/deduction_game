@@ -1680,7 +1680,7 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 			present.append(x)
 	var place: String = w.loc_name(at)
 	var when: String = _day_when(w, sd, sp)
-	var slots: Dictionary = {"place": place, "when": when, "Place": place.capitalize() if place.length() > 0 else place, "When": when.capitalize() if when.length() > 0 else when}
+	var slots: Dictionary = {"place": place, "when": when, "Place": _cap_first(place), "When": _cap_first(when)}
 	var line: Dictionary
 	var named: Array = []  # who the spoken line names (Codex on #318: the cards follow the words)
 	if present.is_empty():
@@ -2493,3 +2493,8 @@ static func trait_of(n, t: String) -> float:
 
 static func voiced(n, kind: String, statement: String, event_id: String = "", context: Dictionary = {}) -> Dictionary:
 	return _mind().voiced(n, kind, statement, event_id, context)
+
+## The first letter in capitals and nothing else: String.capitalize() title-cases every word
+## ("Yesterday Afternoon") and splits names (Steward, Nov 19).
+static func _cap_first(text: String) -> String:
+	return text if text.is_empty() else text[0].to_upper() + text.substr(1)
