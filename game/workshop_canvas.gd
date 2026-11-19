@@ -267,7 +267,7 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
-	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance, "presses": heard.presses}
+	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance, "presses": heard.presses, "challenges": heard.challenges}
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
 	# A challenge is weighed as the listener weighs it (its grounds decide whether it's
@@ -338,8 +338,36 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	for f in pj.get("floors", []):
 		if str(f.get("mode", "")) == "lying":
 			presses.append({"source": str(f.get("source", "")), "agreement": float(f.get("agreement", 0.0))})
+	# Each lie call's outcome for this listener, for the badge's words (Herald, Nov 19):
+	# "pressed" (accepted: the town presses the teller as the liar), "draw" (grounded on
+	# another townsperson's word, which this listener trusts no more than the teller's) or
+	# "bare" (no grounds on the case). `witnesses`: the tellers of its grounds.
+	var outcomes: Array = []
+	var pressed: Dictionary = {}
+	for f in presses:
+		pressed[f.source] = true
+	var challenges: Dictionary = value.get("reading_challenges", {})
+	for rid in challenges:
+		var ch: Dictionary = challenges[rid]
+		if str(ch.get("mode", "")) != "lying":
+			continue
+		var teller: String = _card_source(g, str(rid))
+		var witnesses: Array = []
+		for sid in ch.get("supports", []):
+			var w: String = _card_source(g, str(sid))
+			if w != "" and w != "player" and w not in witnesses:
+				witnesses.append(w)
+		var kind: String = "pressed" if pressed.has(teller) else ("draw" if not ch.get("supports", []).is_empty() else "bare")
+		outcomes.append({"reading": str(rid), "teller": teller, "kind": kind, "witnesses": witnesses})
 	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
-		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses}
+		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses, "challenges": outcomes}
+
+## The teller of the board card whose Workshop id is `id`, or "".
+static func _card_source(g, id: String) -> String:
+	for card in g.board:
+		if card.get("kind", "") != "deduction" and Evidence.normalize_card(card).id == id:
+			return str(Evidence.normalize_card(card).get("source", ""))
+	return ""
 
 static func _logit(p: float) -> float:
 	p = clampf(p, 1e-6, 1.0 - 1e-6)

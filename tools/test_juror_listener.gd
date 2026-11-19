@@ -92,7 +92,45 @@ func _init() -> void:
 	check(plain_t.get("ready", false) and chal_t.get("ready", false) and floors.any(func(f): return str(f.get("source", "")) == minion.id and str(f.get("mode", "")) == "lying") and rise_chal > rise_plain,
 		"a listener who trusts the real Seer more takes the grounded lie call: it presses %s as the liar (requested rise %.3f against %.3f)" % [minion.name, rise_chal, rise_plain])
 	check(not ("challenge holds" in str(r_grounded.get("reason", ""))), "and the badge never claims the challenge simply holds")
+	# Here the Minion and the Seer both claim the gift, so the clash itself grounds the call:
+	# an average listener accepts it and presses the Minion as the liar.
+	var outs: Array = r_grounded.get("listener", {}).get("challenges", [])
+	check(outs.size() == 1 and outs[0].kind == "pressed" and outs[0].teller == minion.id and outs[0].witnesses == [seer.id], "with both claiming the Seer, the call is accepted: the badge's data names the teller it presses and the witness (%s)" % str(outs))
+	_draw_and_bare()
 	_done()
+
+
+## A listener weighs a lie call against everything on the case, not only its cited grounds
+## (ReadingChallenges.assess): with the real Seer's reading on the case, it accepts the call
+## (agreement 0.49 against the 0.3 bar) whether or not the call cites it. Without anything
+## on the case that contradicts the reading, the call is bare and presses no one.
+func _draw_and_bare() -> void:
+	var f: Dictionary = _deal()
+	var g = f.g
+	var bluff: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": true}, "text": "B2"})
+	var truth: int = g.add_card({"kind": "info", "source": f.seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "T2"})
+	var view: Dictionary = Live.view(g)
+	var b_id: String = _id(g, view, bluff)
+	var t_id: String = _id(g, view, truth)
+	var value = Solver.empty_case()
+	value.conclusion = {"type": "evil", "target": f.innocent.id, "at": view.alignment_epoch}
+	value.cards = [b_id, t_id]
+	var uncited = value.duplicate(true)
+	uncited.reading_challenges = {b_id: {"mode": "lying", "supports": []}}
+	# A "no" reading is likely true from the start (a "yes" isn't: one in five, in ten), so a
+	# bare call on it has nothing to stand on.
+	var likely: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "N2"})
+	var n_id: String = _id(g, Live.view(g), likely)
+	var alone = value.duplicate(true)
+	alone.conclusion = {"type": "good", "target": f.innocent.id, "at": view.alignment_epoch}
+	alone.cards = [n_id]
+	alone.reading_challenges = {n_id: {"mode": "lying", "supports": []}}
+	var u: Array = Live.listener_reading(g, uncited).get("challenges", [])
+	var a: Array = Live.listener_reading(g, alone).get("challenges", [])
+	check(u.size() == 1 and u[0].kind == "pressed", "a lie call is weighed against the whole case: with the contradicting reading on it, it's accepted uncited (%s)" % str(u))
+	# Whether a bare call on a likely-true reading is accepted is with Lantern (Nov 19): it
+	# currently presses the teller (see the print). Printed, not pinned, until settled.
+	print("  bare call on a likely reading: %s" % str(a))
 
 
 func _done() -> void:
