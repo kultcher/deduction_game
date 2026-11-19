@@ -268,6 +268,8 @@ listener (#273), both Lantern's.
     reason (avoiding or drawing the Demon's attention), fairly uncommon, possibly tied to
     Confidence. It doesn't volunteer the lie and picks the most harmless one available.
     Part of the secrets rework (`docs/design/secrets_rework.md`, sections 2 and 10.1).
+  - **Retracting a public claim** to back into another gift, for good and evil, belongs here
+    (Michael, Nov 19; see "More rebuttals after a caught lie").
   A caught lie still implicates strongly, so both need care. [open]
 
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
