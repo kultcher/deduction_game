@@ -199,6 +199,12 @@ relay about the first victim naming night 0 (Beadle).
   - **A case at the Poisoner:** it takes about 5 points off the Archivist.
   - **The player's trust:** it moves by at most 0.01 at any step.
   - Revising isn't a way back today. Put to Michael through Seneschal.
+  **Re-measured with Mistaken (Quill, Nov 19; #296's build, same scenario and seeds):**
+  revising is now a way back. The Archivist's suspicion, out of 100:
+  - After the lying call: 51.
+  - Revised to Mistaken: 38. Revised instead to "B is good" with Mistaken: 33.
+  - After a case at the Poisoner: 28 to 33, and the Poisoner rises to 42 to 45.
+  - The player's trust stays at about 70 throughout.
 
   [decided: test later; signposting open]
 
@@ -717,6 +723,13 @@ Workshop and the shared model can't express yet.
   as an explicit premise, so testimony and alignment claims are judged for the relevant
   time rather than voiding the person's whole history. Keep suspected possession distinct
   from confirmed knowledge, and don't expose the hidden victim. (Oct 21) [decided]
+  **Built (Quill, Nov 19):** the curse already had its own time in the judge (before,
+  during and after epochs, `workshop/chronology.gd`), so "X is evil during the curse" was
+  arguable. The new premise, "turned", names the turning itself: X was good before, evil
+  only while the curse held, and good again after. It excludes the worlds where X was evil
+  all along, which "evil during the curse" can't. It's a hypothesis over the worlds, so it
+  never shows who was turned. It's refused with no public curse, or for someone who
+  couldn't have been turned. Herald: the menu wording and whether to hide it before a curse.
 
 - **Minion gifts.** Someone silenced and the people seen on their block that evening
   (the Breathstealer has to be there); a reading that failed on a night someone was near
