@@ -3,10 +3,10 @@
 - **Agent:** Claude-Beadle
 - **Base:** main with #344 (`baseline_ee15238`)
 - **Branch:** `claude/beadle-private-share`
-- **Status:** PR open. **New constant pending Michael: Bailiff, please hold the merge until he
-  approves it.** It moves golden and re-baselines to `baseline_851e676` (main with #344). It
+- **Status:** PR open. Michael approved the new constant at 0.15 and the small calls (Nov 19), so
+  it's no longer held. It moves golden and re-baselines to `baseline_851e676` (main with #344). It
   re-baselines again on its turn.
-- **Next actor:** Michael (approve or change the size), then Bailiff.
+- **Next actor:** Bailiff (review and merge).
 - **BACKLOG item:** "A daily nudge to share a gift privately" (Michael, Nov 19). The built note
   is added.
 
@@ -28,7 +28,7 @@ brings up two things more often each day past day 1: its gift, and its own readi
 - **NPC-to-NPC only.** What NPCs tell the Demonologist keeps its own tuning.
 - **Evil gets the same.** An unclaimed evil NPC's bluffed gift and fake readings are boosted
   alike, so the difference can't become a tell.
-- **Measure first, then build with a proposed value.** The PR is marked pending Michael.
+- **Measure first, then build with a proposed value.** Michael approved 0.15 and these calls (Nov 19).
 
 ## Measured
 

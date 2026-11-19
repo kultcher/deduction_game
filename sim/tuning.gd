@@ -472,7 +472,7 @@ class Social:
 	## Private sharing grows over the days (Michael, Nov 19): an NPC who hasn't claimed a gift
 	## publicly brings up its gift, and its readings, more often in private talk each day past
 	## day 1. The weight is multiplied by 1 + this x (day - 1). NPC-to-NPC only; evil's bluffed
-	## gift and readings get the same, so it isn't a tell. Proposed value, pending Michael.
+	## gift and readings get the same, so it isn't a tell. Michael approved 0.15 (Nov 19).
 	const SHARE_UNCLAIMED_DAY_BOOST = 0.15
 	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
 	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener

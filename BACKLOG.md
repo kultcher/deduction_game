@@ -546,7 +546,7 @@ relay about the first victim naming night 0 (Beadle).
   network. (Michael, Nov 19) Owner Beadle, who proposes the size. [decided]
   Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
   and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1)
-  (`Tuning.Social.SHARE_UNCLAIMED_DAY_BOOST`, a new constant pending Michael). Small calls by
+  (`Tuning.Social.SHARE_UNCLAIMED_DAY_BOOST`, a new constant; Michael approved it and the small calls, Nov 19). Small calls by
   Seneschal for Michael: NPC-to-NPC only; evil's bluffed gift and fake readings get the same.
   Measured on 40 games: see the PR's handoff.
 
