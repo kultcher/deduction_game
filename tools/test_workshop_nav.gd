@@ -99,6 +99,16 @@ func _run() -> void:
 	var have: int = want.filter(func(n): return ed.board.nodes.has("e:" + ed.Live.Evidence.normalize_card(g.board[n - 1]).id)).size()
 	check(have == want.size() and ed.board.nodes.size() >= before, "\"Add all readings ABOUT\" puts each of them on the canvas (%d of %d)" % [have, want.size()])
 	ed.bg_menu.hide()
+	# Several cards dropped at once come into view together (Codex, #323).
+	var several: Array = g.board.filter(func(c): return ed._usable(int(c.n))).map(func(c): return int(c.n)).slice(0, 4)
+	canvas.pan = Vector2(-9000, -9000)
+	scene.case_view.workshop._drop_cards(several)
+	var in_view: int = 0
+	for nb in several:
+		var nid: String = "e:" + ed.Live.Evidence.normalize_card(g.board[nb - 1]).id
+		if ed.board.nodes.has(nid) and Rect2(Vector2.ZERO, canvas.size).intersects(canvas._screen(canvas.world_rect(nid))):
+			in_view += 1
+	check(several.size() >= 2 and in_view == several.size(), "a drop of several cards brings them all into view (%d of %d)" % [in_view, several.size()])
 	_done(scene)
 
 func _done(scene) -> void:
