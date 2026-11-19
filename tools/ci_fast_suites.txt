@@ -28,6 +28,7 @@ test_defence_grounds
 test_defence_repeats
 test_delusional_reading
 test_delusional_self_doubt
+test_demon_when_hanged
 test_dialogue
 test_dialogue_decisions
 test_dialogue_opinion_pass
@@ -46,6 +47,7 @@ test_haunt_learning
 test_headline
 test_held_signals
 test_hint_families
+test_honest_mistake
 test_joint_reasons
 test_juror_claims
 test_lie_severity
@@ -83,6 +85,7 @@ test_premise_step1
 test_premise_step2
 test_premise_step3
 test_public_revisions
+test_reading_confirm
 test_recency
 test_relay_challenge_menu
 test_relay_lie_attribution

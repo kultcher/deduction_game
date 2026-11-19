@@ -7,11 +7,17 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
+const Jury = preload("res://workshop/jury.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
+const Solver = preload("res://workshop/solver.gd")
 
 const SEEDS_FROM = 100
 const SEEDS_COUNT = 40
 const WANT = 3
 const HELD_FLOOR_SEEN = 0.2
+## Above this chance the challenged reading may well be true for the listener (seed 102 on #308:
+## 0.71, against about 0.01 on the deals the floor lands on).
+const COULD_HOLD = 0.1
 
 var checks = 0
 var fails = 0
@@ -78,6 +84,19 @@ func _seed(seed_v: int) -> int:
 	if mine.is_empty():
 		return 0
 	var card: Dictionary = mine[0]
+	# The test needs a reading the listener knows is false. "Both of these read as evil" can be
+	# true of a good listener who is Marked (a Marked soul registers evil), and then the "lying"
+	# challenge is rightly unsupported and no floor lands (seed 102 on #308, Nov 19: the reading
+	# fit 62% of the listener's worlds). So skip a deal where the reading is a real possibility
+	# for it: above COULD_HOLD. (A small chance is always left, about 0.01, the worlds where it is
+	# the one Marked soul and the other named is evil; the challenge still lands there.)
+	var who: Dictionary = Jury._eval_listener(plan.prepared.listener, plan.prepared.listener.knowledge.get("own_reports", []))
+	var q: Dictionary = Solver.empty_case()
+	q.conclusion = {"type": "holds", "report": card.id, "target": teller.id, "at": plan.prepared.view.get("alignment_epoch", "")}
+	var could: Dictionary = CaseEval.evaluate(plan.prepared.view, q, who)
+	if not could.get("impossible", false) and float(could.get("prior", 0.0)) > COULD_HOLD:
+		print("  seed %d: %s's reading could hold for %s (a Marked soul, %.2f); skipped" % [seed_v, teller.id, n.id, float(could.prior)])
+		return 0
 	var considered: Array = n.workshop_state.get("reasoning", {}).get("considered", [])
 	var before: float = float(n.suspicion.get(teller.id, 0.1))
 	Mind.ledger_hear(g.w, n, "def:test:held:" + card.id, [], 1.0, [teller.id, -1, "report"],
