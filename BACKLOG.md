@@ -279,12 +279,15 @@ relay about the first victim naming night 0 (Beadle).
     standing doubt. Michael (Nov 18): the threshold starts at 25% self-doubt, as a new
     named constant in `sim/tuning.gd`. He thinks that may be low and will judge it in
     playtesting; the PR says how often it fires in its tests (no separate sweep).
+    **Built** (Nov 19, `claude/beadle-gift-doubt-good`): `Tuning.Meeting.GIFT_DOUBT_SAY`.
+    Self-doubt builds night by night, about 16% early and 25% or more only on the fourth or
+    fifth night, so in 15 passive games it was said twice, both times on day 5.
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
     (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
     twice running; no new number; logged with its reason. **Built** (Nov 18,
-    `claude/beadle-gift-turned-evil`), with the listener side below; (a) still to build.
+    `claude/beadle-gift-turned-evil`), with the listener side below.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
     far as they believe the line, rather than going through the challenge path, where a
