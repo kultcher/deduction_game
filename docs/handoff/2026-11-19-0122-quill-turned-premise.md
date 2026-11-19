@@ -24,15 +24,18 @@ X's history before the curse.
   after. The mask is built in GDScript, one comparison per world, so the C# kernel is
   untouched.
 - **The live Workshop** (`LiveAssessment.CONCLUSIONS` and `conclusion_issues`) accepts it,
-  and refuses it:
-  - with no public curse: "No curse has been announced, so no one was turned.";
-  - for someone the curse couldn't have turned: "Only someone who voted to hang the
-    Revenant, and survived, could have been turned.";
-  - both lines are placeholders, for Herald.
-- **The menu:** the live workshop lists "was turned by the curse" always. Its menu is built
-  once and picked by index, so hiding it before a curse could shift the other entries.
-  Herald can hide it with the index handling. `CanvasModel.PREMISE_TEXT` has the same
-  text.
+  and refuses it, in Michael's approved wording (Nov 19, Herald's draft):
+  - with no public curse: "No curse has fallen on the town, so no one has been turned.";
+  - for someone the curse couldn't have turned: "Only those who voted to hang the
+    Revenant, and lived, could have been turned.".
+- **The menu** (Michael, Nov 19):
+  - "was turned by the curse" is offered in the premise type menu only once a curse has
+    been announced, or on a premise that already holds it;
+  - its tip is "Argue the curse turned them: good before it, evil while it held, good
+    again once it lifted.";
+  - the refusal stays for saved cases;
+  - the older off-screen picker keeps the full list, since it selects by index;
+  - `CanvasModel.PREMISE_TEXT` carries the same text.
 - **It never shows who was turned.** It's a hypothesis weighed over the worlds, like any
   premise.
 - **Docs:** DESIGN's premise list, and the BACKLOG item marked built. A second BACKLOG
@@ -63,7 +66,8 @@ X's history before the curse.
 
 - **The track record:** "turned" isn't recorded as a good or an evil claim. It says both, at
   different times.
-- **The menu:** listed always, refused before a curse, rather than shown only after one.
+- **After the curse lifts,** the option stays offered: who was turned is still worth
+  arguing then, and the judge reads the curse's whole time.
 
 ## Proposed for the backlog
 
