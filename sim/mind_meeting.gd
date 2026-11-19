@@ -2204,6 +2204,10 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		parts["resentment"] = v_resent
 	if player_yes:
 		parts["player_votes_yes"] = Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET
+	elif w.meeting.get("player_votes_no", false):
+		# The player's no, mirrored at about two-thirds of the yes (Michael, Nov 19). Only a
+		# real vote sets it, so would_vote and other dry runs stay neutral.
+		parts["player_votes_no"] = -(Tuning.Meeting.PLAYER_VOTE_NO_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_NO_OFFSET)
 	if nominator != "player" and susp(v, nominator) > Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_MIN_SUSP:
 		parts["distrusts_nominator"] = Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_OFFSET
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
@@ -2341,7 +2345,7 @@ static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: 
 	if granted_lie:
 		return "vote_no_lie_not_rope"
 	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes",
-		"distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
+		"player_votes_no", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
 	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
 		return "vote_no_reluctant"
 	if float(parts.get("distrusts_nominator", 0.0)) < 0.0 and str(res.get("by", "")) != "player":

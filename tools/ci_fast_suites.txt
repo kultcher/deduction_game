@@ -121,6 +121,7 @@ test_sighter_contest
 test_sighting_followup
 test_social
 test_state_digest
+test_symmetric_vote
 test_too_clean_bluffs
 test_town_note
 test_town_vibe
