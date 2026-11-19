@@ -402,8 +402,35 @@ Candidates for a unified retuning proposal, not approved changes.
       unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
       it's caught out. The rate would be a new constant, for Beadle to propose with a
       measurement.
-    - **Still open:** whether an evil NPC that has publicly claimed a gift may retract it to
-      back into a walker. Vicar's lean: no, for now.
+    - **Retracting a public claim to back into a walker:** Michael (Nov 19) moves it to "Good
+      NPCs lie tactically", since the two share the same space.
+  - **The town's response to a double claim (Michael, Nov 19).** The true holder counterclaims
+    immediately. A Minion's active double claim works in the same framework.
+    - **What exists (read from main):**
+      - **At a meeting,** a public claim of someone's gift moves that person up to speak next,
+        with an openness bonus (`MindMeeting._queue_reactions`, trigger 1;
+        `REACTIVE_OPENNESS_BONUS`). Whether they then claim is still the ordinary
+        `_public_claim_decision` roll, so it isn't certain. An evil NPC whose planned bluff
+        was just claimed gets the same trigger.
+      - **At a nomination,** a hidden holder of the gift the nominee claims comes out: "X is
+        lying. That gift is mine." (`MindSupport`, `counter_claim`).
+      - **Pressed in private** with a rival's claim, a claimant answers "I am the X. If Y says
+        otherwise, Y is lying."
+      - **Belief:** the two claims of one gift are one pairing that raises both claimants and
+        shifts onto the other when one is shown good (#198).
+    - **Proposed (Vicar), for Michael:**
+      - **The true holder counterclaims at once:** at the same meeting, as the next speaker,
+        unless silenced. The trigger-1 reaction becomes a claim, not a roll. If the claim
+        reached it outside a meeting (in private, or through gossip), it counterclaims at the
+        next meeting. A holder hiding its gift for a reason is "Good NPCs lie tactically"
+        territory, not an exception here.
+      - **The Minion's active double claim uses the same trigger:** when a good NPC claims a
+        gift, an unclaimed non-Scion Minion may treat it as "a rival claim on my gift" and
+        counterclaim with the same line, at the small new rate. The rest follows the
+        existing pairing and counter-claim reactions.
+      - **Evil whose planned bluff is claimed by someone else** drops that bluff for a spare,
+        rather than counterclaiming. A Minion may instead take the active double claim above.
+    - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
 
