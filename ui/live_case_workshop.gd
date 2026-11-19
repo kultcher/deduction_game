@@ -58,7 +58,7 @@ const PREMISE_TYPE_HINTS = {
 	"minion": "Argue they're one of the Demon's Minions.",
 }
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
-const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": "Poisoned that night", "delusional": "They're Delusional"}
+const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "delusional": "They're Delusional"}
 
 func premise_types() -> Array:
 	return LIVE_TYPES
@@ -592,13 +592,14 @@ func _refresh_case() -> void:
 			var side_option = _option(case_box, sides.map(func(s): return board.RELAY_SIDE_TEXT[s]))
 			side_option.select(maxi(0, sides.find(str(node.get("attribution", "original")))))
 			side_option.item_selected.connect(func(i): set_evidence_field(mod_id, "side:" + sides[i]))
-		var option = _option(case_box, ["Misled reading", "Suspected lie", "Unlikely reading", "Failed gift (poisoned)"])
-		option.select(["misled", "lying", "unlikely", "impaired"].find(node.mode))
+		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named in ReadingChallenges.
+		var option = _option(case_box, [preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "Suspected lie", "Unlikely reading"])
+		option.select(["impaired", "lying", "unlikely"].find(preload("res://workshop/reading_challenges.gd").canonical(node.mode)))
+		option.set_item_disabled(0, not preload("res://workshop/reading_challenges.gd").honest_allowed(board.view, _report(node.card), str(node.get("attribution", ""))))
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		if relay and str(node.get("attribution", "")) == "transmission":
-			option.set_item_disabled(0, true)
 			option.set_item_disabled(2, true)
-		option.item_selected.connect(func(i): set_evidence_field(mod_id, "mode:" + ["misled", "lying", "unlikely", "impaired"][i]))
+		option.item_selected.connect(func(i): set_evidence_field(mod_id, "mode:" + ["impaired", "lying", "unlikely"][i]))
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)
