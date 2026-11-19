@@ -44,13 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, backing a case builds trust): `baseline_6c45840`
+### Current baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
 
-`tools/golden/baseline_6c45840/` is the capture from `claude/beadle-agreement-trust` at `6c45840`
-(main `44a9962` merged in). A good NPC warms a little to those who vote the same way, and to
-someone who nominates or accuses a person it already suspects (Michael, Nov 18). The reading
-steps were taken out on Nov 19 and moved to their own item, so readings change no trust here.
-- **Divergence from `baseline_e287b3d`:** every seed, at the first ballot or the refresh after
+`tools/golden/baseline_74eb971/` is the capture from `claude/beadle-agreement-trust` at `74eb971`
+(main `21df80d`'s successor merged in, with #296). A good NPC warms a little to those who vote
+the same way, and to someone who nominates or accuses a person it already suspects (Michael,
+Nov 18). The reading steps were taken out on Nov 19 and moved to their own item, so readings
+change no trust here. It replaces this PR's earlier `baseline_6c45840`, which was on main before
+#296; against it, only 98933 moves (from its day-2 nomination, under #296's retuned lie call),
+with the same outcome.
+- **Divergence from `baseline_21df80d`:** every seed, at the first ballot or the refresh after
   it. 54875 and 98933 from record 52 (day 1's vote), 42 from 55 and 900 from 74 (day 2's vote),
   692 from 62 (Nisha's refresh on day 2).
 - **Outcomes:**
