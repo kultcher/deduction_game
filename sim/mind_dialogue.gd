@@ -122,6 +122,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		for x in card.get("support_cards", []):
 			if x.get("phase", -1) == C.NIGHT:
 				night = x.get("day", -1)
+		# When the case's cards place them out (GameConversation.press_contradiction, Quill),
+		# that's the night it's about.
+		if not card.get("contradiction", {}).is_empty():
+			night = int(card.contradiction.get("night", night))
 	var naming_me = kind == "info" and C.has_role_def(card.get("role", "")) and C.role_def(card.get("role", "")).names_good_role_in_pair() and n.id in pair  # "one of you two is the X"
 	var counter = kind == "claim" and card.get("source", "") != n.id and n.claim_public and card.get("role", "") == n.claimed_role
 	# How hard the card lands: the town's own shared weight for it (purge phase 4b).
@@ -156,6 +160,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 		return pressed
 	if night >= 0:
+		var caught: Dictionary = _pressed_caught_out(w, n, night, card.get("contradiction", {}) if kind == "deduction" else {})
+		if not caught.is_empty():
+			caught["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
+			return caught
 		var r = _answer_pressed_night(w, n, night)
 		# Caught out on gift business, they explain rather than defend what they saw: the
 		# "you doubt my account" opener only fits a restated sighting or alibi.
@@ -300,6 +308,30 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 		"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}
 	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi: owns the night and explains it (secret: %s)." % n.secret.get("kind", "?"))
 	return {"lines": [line], "facts": [fact]}
+
+## Pressed with a case whose cards place them out that night (BACKLOG 78148, Kiran): a good
+## NPC who was out on its own business, not its gift, can't stand by "I was at home". It says
+## "Fine, I was out", the line a presented case already gets (WorkshopPresentation), and, if
+## it's open enough today, why (`trapped_explanation`). {} leaves every other case to the
+## usual answer: the truly home stand by it, an unaware Sleepwalker remembers being home and
+## may offer the sleepwalking excuse, a gift walker owns its gift or duty, and evil keeps its
+## cover.
+static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Dictionary:
+	if contra.is_empty() or contra.get("ruled_out_home_by", []).is_empty() or int(contra.get("night", -1)) != night:
+		return {}
+	if n.is_evil() or n.secret_mod == "sleepwalker" or n.silenced:
+		return {}
+	if not str(n.history.get(w.time_key(night, C.NIGHT), "")).begins_with("night:") or _gift_outing(w, n, night):
+		return {}
+	on_question(w, n)
+	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")]
+	var facts: Array = []
+	var tier: int = _target_tier(w, n)
+	var why: Dictionary = trapped_explanation(w, n, night) if tier >= 2 else {}
+	lines.append_array(why.get("lines", []))
+	facts.append_array(why.get("facts", []))
+	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
+	return {"lines": lines, "facts": facts}
 
 ## The night is owned now: a later question about it, in private or at the podium, gets the
 ## plain "I was out" account rather than the home alibi it replaced (Codex on #261).
