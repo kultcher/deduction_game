@@ -410,7 +410,7 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var heard: String = _heard_line(card) if lod == 2 else ""
 	var heard_h: float = small * 1.5 if heard != "" else 0.0
 	var width: float = r.size.x - 20 * zoom - gutter
-	var top: float = r.position.y + pad + bar_h * 0.5
+	var top: float = r.position.y + pad + bar_h
 	var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / _font.get_height(fs))))
 	# A second line after "\n" is a reminder (the Seer's "(Marked or Red Herring?)"), in the
 	# small type below the main text, so it fits beside the gutter (Michael, Nov 19).
@@ -473,7 +473,62 @@ func _draw_fitted(text: String, at: Vector2, width: float, fs: int, max_lines: i
 		para.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		para.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
 		_para_cache[key] = para
-	para.draw(get_canvas_item(), at, col)
+	var spans: Array = _name_spans(text)
+	if spans.is_empty():
+		para.draw(get_canvas_item(), at, col)
+		return
+	# Names in their person's colour (Michael, Nov 19): draw glyph by glyph, colouring
+	# those whose character falls in a name. Ink-darkened, as on the colour bar, so pale
+	# roster colours stay readable on parchment.
+	var ts := TextServerManager.get_primary_interface()
+	var y: float = at.y
+	var shown: int = para.get_line_count() if max_lines <= 0 else mini(para.get_line_count(), max_lines)
+	for i in shown:
+		var rid: RID = para.get_line_rid(i)
+		var base := Vector2(at.x, y + para.get_line_ascent(i))
+		var trim: int = ts.shaped_text_get_trim_pos(rid)
+		var x: float = 0.0
+		var glyphs: Array = ts.shaped_text_get_glyphs(rid)
+		for gi in glyphs.size():
+			if trim >= 0 and gi >= trim:
+				break
+			var gl: Dictionary = glyphs[gi]
+			var gcol: Color = col
+			for sp in spans:
+				if int(gl.start) >= sp[0] and int(gl.start) < sp[1]:
+					gcol = Color(sp[2], col.a)
+					break
+			for r in int(gl.get("repeat", 1)):
+				if gl.font_rid != RID():
+					ts.font_draw_glyph(gl.font_rid, get_canvas_item(), gl.font_size, base + Vector2(x, 0) + gl.offset, gl.index, gcol)
+				x += gl.advance
+		var epos: int = ts.shaped_text_get_ellipsis_pos(rid)
+		if epos >= 0:
+			var ex: float = x
+			for gl in ts.shaped_text_get_ellipsis_glyphs(rid):
+				if gl.font_rid != RID():
+					ts.font_draw_glyph(gl.font_rid, get_canvas_item(), gl.font_size, base + Vector2(ex, 0) + gl.offset, gl.index, col)
+				ex += gl.advance
+		y += para.get_line_size(i).y
+
+## [start, end, colour] for each townsperson's name in `text`, whole words only.
+func _name_spans(text: String) -> Array:
+	var out: Array = []
+	if g == null:
+		return out
+	for m in g.w.npcs:
+		var from: int = 0
+		while true:
+			var at: int = text.find(m.name, from)
+			if at < 0:
+				break
+			var end: int = at + m.name.length()
+			var before_ok: bool = at == 0 or not text[at - 1].is_valid_identifier()
+			var after_ok: bool = end >= text.length() or not text[end].is_valid_identifier()
+			if before_ok and after_ok:
+				out.append([at, end, UITheme.ink_of(C.npc_color(m.id))])
+			from = end
+	return out
 
 func _heard_line(card: Dictionary) -> String:
 	var ls: Array = card.get("learned", [])

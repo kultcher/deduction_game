@@ -13,6 +13,7 @@ const CanvasSkin = preload("res://ui/theme.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
+const UITheme = preload("res://ui/theme.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
 const LocationSolver = preload("res://workshop/location_solver.gd")
 const TraceTooltip = preload("res://ui/trace_tooltip.gd")
@@ -1152,7 +1153,7 @@ func _draw_evidence(id: String, rect: Rect2) -> void:
 		tips.append({"rect": badge, "text": "The shared model can't read this card yet, so a case that uses it can't be presented:\n" + note})
 	var y: float = 50.0
 	for line in lay.text:
-		draw_string(font, rect.position + Vector2(16, y + 12) * zoom, line, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(14), ink)
+		_draw_named(line, rect.position + Vector2(16, y + 12) * zoom, _fs(14), ink)
 		y += 18.0
 	tips.append({"rect": Rect2(rect.position + Vector2(0, 46) * zoom, Vector2(WIDTH, maxf(y - 46, 4)) * zoom), "text": card.get("text", "")})
 	fields[id] = []
@@ -1229,3 +1230,38 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 ## live editor, premises step 2).
 func _again_clause() -> String:
 	return "; again for \"registered as Marked\"; again to clear" if model.marked_answers else "; again to clear"
+
+## One line of card text with each townsperson's name in their colour, ink-darkened for
+## the parchment as on the case board (Michael, Nov 19).
+func _draw_named(line: String, at: Vector2, size: int, ink: Color) -> void:
+	var spans: Array = []
+	for p in model.view.get("people", []):
+		var nm: String = str(p.get("name", ""))
+		if nm == "":
+			continue
+		var from: int = 0
+		while true:
+			var i: int = line.find(nm, from)
+			if i < 0:
+				break
+			var e: int = i + nm.length()
+			if (i == 0 or not line[i - 1].is_valid_identifier()) and (e >= line.length() or not line[e].is_valid_identifier()):
+				spans.append([i, e, UITheme.ink_of(C.npc_color(str(p.id)))])
+			from = e
+	if spans.is_empty():
+		draw_string(font, at, line, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
+		return
+	spans.sort_custom(func(a, b): return a[0] < b[0])
+	var x: float = 0.0
+	var pos: int = 0
+	for sp in spans:
+		if sp[0] < pos:
+			continue
+		var plain: String = line.substr(pos, sp[0] - pos)
+		draw_string(font, at + Vector2(x, 0), plain, HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)
+		x += font.get_string_size(plain, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		var named: String = line.substr(sp[0], sp[1] - sp[0])
+		draw_string(font, at + Vector2(x, 0), named, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(sp[2], ink.a))
+		x += font.get_string_size(named, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		pos = sp[1]
+	draw_string(font, at + Vector2(x, 0), line.substr(pos), HORIZONTAL_ALIGNMENT_LEFT, -1, size, ink)

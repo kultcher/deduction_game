@@ -34,3 +34,13 @@
 - **Suites passed:** `test_roles_registry`, all eight `test_roles_*` suites, `test_text_ui`, `test_ui`, `test_workshop_live_canvas` and `test_workshop`. CI runs the fast list.
 - **Golden:** identical to `baseline_e287b3d` at `--tol 0` on all 5 seeds. The text is display only.
 - **Screenshots:** eight sample readings at two zooms, from an uncommitted probe. The text fits; the Chronicler fit after the trim.
+
+## Later on this PR (Nov 19, Michael's follow-ups)
+
+- **Seer card:** "Lian / Hollis: Demon? YES", with "(Marked or Red Herring?)" beneath it in the small type, only on a YES. A NO reads "Lian / Hollis: Demon? NO". On the Workshop canvas the two parts join into one line.
+- **Names in colour:** every card's text draws each townsperson's name in their colour, on the case board and the Workshop canvas, for all card kinds.
+  - The colour is the ink-darkened shade the colour bar uses (`UITheme.ink_of`), so pale roster colours stay readable on parchment.
+  - On the board, the paragraph is drawn glyph by glyph, keeping wrapping and "…".
+  - On the canvas, lines are drawn in segments.
+- **Fixes:** the card text sits fully below the top colour bar, and a 1-line "heard" field no longer spills past the card.
+- **Screenshots:** board names at both zooms, seed 23973 day 2, sent to Michael. The canvas wasn't screenshotted.
