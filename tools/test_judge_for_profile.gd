@@ -54,13 +54,26 @@ func _init() -> void:
 	print("public cards, trust 0.9 / 0.5 / 0.2: before %.3f / %.3f / %.3f; the case's shift at 0.5 %.4f" % [float(high_trust.get("before", -1.0)), float(heard.get("before", -1.0)), float(low_trust.get("before", -1.0)), float(heard.get("shift", 0.0))])
 	check(float(high_trust.before) > float(heard.before) and float(heard.before) > float(low_trust.before) and float(heard.before) > float(fresh.before), "public cards move the listener before the case, more the more it trusts their tellers")
 	check(absf(float(heard.get("shift", 0.0))) < absf(float(fresh.get("shift", 0.0))), "a case of cards the town already has moves the listener less than one bringing them")
+	# The player's watch record isn't the town's: it changes nothing (Codex on #326).
+	g.watched.append({"day": 1, "phase": "night", "block": p[3].home_block, "at": p[3].home_block})
+	var watched: Dictionary = Connections.judge_for_profile(g, both)
+	g.watched.clear()
+	check(absf(float(watched.get("before", -1.0)) - float(heard.before)) < 1e-12 and absf(float(watched.get("after", -1.0)) - float(heard.after)) < 1e-12, "the player's own watch record changes nothing")
 	# 3. Put to the town already today: it takes its own place, so it adds about nothing more.
 	var filed: int = Live.file(g, both)
 	g.public_presentations[filed] = int(g.w.day)
 	var again: Dictionary = Connections.judge_for_profile(g, both)
 	print("the same case again: %s" % _show(again))
 	check(again.get("ready", false) and absf(float(again.get("shift", 0.0))) < 1e-6, "the same case put again today takes its own place: no further change")
-	check(not heard.get("case", {}).is_empty(), "the result carries the case's own stored entry (%s)" % str(heard.get("case", {}).keys()))
+	check(not heard.get("case", {}).is_empty() and str(heard.case.get("key", "")) == "case:draft", "the result carries the case's own stored entry (%s)" % str(heard.get("case", {}).get("key", "")))
+	check(str(again.get("case", {}).get("key", "")) == "case:%d" % filed, "put again, the entry is that case's own (%s)" % str(again.get("case", {}).get("key", "")))
+	# A revision filed but not yet presented retires nothing: the town still holds the original.
+	var revised: Dictionary = _value(g, "evil", p[3].id, [seer])
+	revised["revises"] = filed
+	var second: int = Live.file(g, revised, filed)
+	var with_pending: Dictionary = Connections.judge_for_profile(g, both)
+	print("with an unpresented revision #%d of #%d filed: %s" % [second, filed, _show(with_pending)])
+	check(absf(float(with_pending.get("before", -1.0)) - float(again.before)) < 1e-12, "a revision only filed, not presented, leaves the town holding the original")
 	# 4. Reads only.
 	g.public_presentations.erase(filed)
 	g.public_citations.erase(seer)

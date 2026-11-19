@@ -48,6 +48,16 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 		replaced[ancestor] = true
 		ancestor = int(g.board[ancestor - 1].get("revises", 0))
 	var numbers: Array = g.public_presentations.keys().map(func(x): return int(x))
+	# Earlier versions of a case put to the town in revised form: the town retracted them when
+	# it heard the revision (GamePresentation.workshop_canvas_retire). A revision only filed,
+	# not yet presented, retires nothing (Codex on #326), as WorkshopCanvas.town_note reads it.
+	for number in numbers:
+		if number < 1 or number > g.board.size():
+			continue
+		var up: int = int(g.board[number - 1].get("revises", 0))
+		while up > 0 and up <= g.board.size() and not replaced.has(up):
+			replaced[up] = true
+			up = int(g.board[up - 1].get("revises", 0))
 	numbers.sort_custom(func(a, b): return _put_day(g, a) < _put_day(g, b) or (_put_day(g, a) == _put_day(g, b) and a < b))
 	var earlier: Dictionary = {}
 	var same_key: String = ""
@@ -55,7 +65,7 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 		if number < 1 or number > g.board.size():
 			continue
 		var filed: Dictionary = g.board[number - 1]
-		if filed.get("kind", "") != "deduction" or not filed.has("workshop_case") or filed.get("withdrawn", false) or int(filed.get("superseded_by", 0)) > 0 or replaced.has(number):
+		if filed.get("kind", "") != "deduction" or not filed.has("workshop_case") or filed.get("withdrawn", false) or replaced.has(number):
 			continue
 		if filed.workshop_case == value:
 			same_key = str(number)  # the same case put again: it takes its own place, renewed
@@ -68,6 +78,7 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	with_case[same_key if same_key != "" else "draft"] = draft
 	var current: Dictionary = Bridge.capture(g, [], "", "meeting")
 	current.listener = listener.duplicate(true)
+	current["watched"] = []  # the player's own watch record: never heard by the town (Codex on #326)
 	var ledger: Dictionary = _public_hearing(g, value)
 	var before: Dictionary = _evaluate(current, earlier, ledger, [])
 	var after: Dictionary = _evaluate(current, with_case, ledger, draft.selected)
@@ -76,8 +87,9 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	if not before.ready:
 		return fail.call(before.issues)
 	var entry: Dictionary = {}
+	var want: String = "case:" + (same_key if same_key != "" else "draft")
 	for e in after.cases.get("entries", []):
-		if str(e.get("key", "")).ends_with(same_key if same_key != "" else "draft"):
+		if str(e.get("key", "")) == want:
 			entry = e
 	# With nothing held before the case, the model reports no posterior: the prior stands.
 	var b: float = float(before.posterior.get(target, after.prior.get(target, -1.0)))
@@ -90,6 +102,7 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 ## A presentation snapshot as this listener hears it: nothing private of its own.
 static func _as_heard(snap: Dictionary, listener: Dictionary) -> Dictionary:
 	snap.private_evidence = []
+	snap["watched"] = []
 	snap.listener = listener.duplicate(true)
 	return snap
 
