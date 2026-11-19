@@ -159,11 +159,19 @@ static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, 
 ## connections: {"with", "without"}, the teller's chance with every held card, and with the
 ## cards the teller relayed left out. Both from one refresh's own inputs (the jury's
 ## weigher), so the difference is the relays' alone. {} if the listener has no plan.
+## "firsthand": the teller's chance with the relays recast as the teller's own sightings (the
+## same cards, told by them, no dead in between), so a relay can be held to what its relayer's
+## own word would do.
 static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionary:
-	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], func(c): return str(c.get("relay_source", "")) == teller_id)
+	var recast = func(c: Dictionary) -> void:
+		c.erase("relay_source")
+		c.erase("relay_role")
+		c.erase("relay_observed_at")
+		c["source"] = teller_id
+	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], func(c): return str(c.get("relay_source", "")) == teller_id, recast)
 	if eff.is_empty():
 		return {}
-	return {"with": float(eff.with[teller_id]), "without": float(eff.without[teller_id]), "relayed": int(eff.dropped)}
+	return {"with": float(eff.with[teller_id]), "without": float(eff.without[teller_id]), "firsthand": float(eff.recast[teller_id]), "relayed": int(eff.dropped)}
 
 
 ## What some of a listener's held cards do, under connections: {"with": {id: chance},
@@ -172,8 +180,9 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 ## refresh's own inputs (the jury's weigher), so the difference is those cards' alone, whatever
 ## else the game gave the listener. The model's kept answers are bypassed, so a switch a test
 ## flips between calls (LiveActivity.sighter_contests_enabled) takes effect. {} if the
-## listener has no plan.
-static func cards_effect(g, listener_id: String, ids: Array, drop: Callable) -> Dictionary:
+## listener has no plan. With `recast`, also "recast": {id: chance} with every held card and
+## `recast.call(card)` applied to a copy of each card `drop` picks.
+static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, recast: Callable = Callable()) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Jury = preload("res://workshop/jury.gd")
 	var Mind = preload("res://sim/mind.gd")
@@ -208,9 +217,21 @@ static func cards_effect(g, listener_id: String, ids: Array, drop: Callable) -> 
 	preload("res://workshop/caches.gd").clear_all()
 	var with_: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held, state)
 	var without: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held.filter(func(id): return id not in dropped), state)
+	var recast_r: Dictionary = {}
+	if recast.is_valid():
+		preload("res://workshop/caches.gd").clear_all()
+		var view: Dictionary = plan.prepared.view.duplicate(true)
+		for c in view.cards:
+			if c.id in dropped:
+				recast.call(c)
+		recast_r = Connections.refresh(view, plan.prepared.case, weigher, held, state)
 	Connections.cache_enabled = was_cache
 	var out: Dictionary = {"with": {}, "without": {}, "dropped": dropped.filter(func(id): return id in held).size()}
+	if recast.is_valid():
+		out["recast"] = {}
 	for id in ids:
 		out.with[id] = float(with_.posterior.get(id, -1.0))
 		out.without[id] = float(without.posterior.get(id, -1.0))
+		if recast.is_valid():
+			out.recast[id] = float(recast_r.posterior.get(id, -1.0))
 	return out
