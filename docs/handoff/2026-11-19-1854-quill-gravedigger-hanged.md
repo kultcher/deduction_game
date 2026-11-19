@@ -59,12 +59,14 @@ Golden is identical to `baseline_ee15238`.
   after compiling and selecting, the Reasoner after its attention filter), otherwise from the
   case's own compiled, selected cards. So a reading that's dropped from attention, excluded
   or quoted refutes nothing. A case with no Gravedigger or Executor reading about the target
-  skips the compile.
+  skips the compile. That check expands derived questions to their supports (`Graph.roots`).
+- **The support model's comparison cache (Codex)** keys on the conclusion's target and
+  refuters when there are any.
 - **A turned reader (Codex).** A teller's alignment is read at the reading's time
   (`TimeModel.evil_at`), so a reader the Revenant's curse has turned refutes nothing from its
   turning on.
 
-`test_demon_when_hanged` is now 35/35. It adds a check that the mask and `Solver.holds` agree
+`test_demon_when_hanged` is now 36/36. It adds a check that the mask and `Solver.holds` agree
 on every live world, a check for the turned reader, and checks that a dropped or quoted reading refutes nothing.
 
 ## Proposed for the backlog

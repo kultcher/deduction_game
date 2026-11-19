@@ -167,6 +167,8 @@ func _live() -> void:
 	check(with_card.conclusion.get("refuters", []).size() == 1, "a case citing the reading carries it as a refuter")
 	var dropped: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": with_card.conclusion, "cards": []})
 	check(not dropped.conclusion.has("refuters"), "once the reading is no longer judged (dropped from attention), its refuter goes with it")
+	var derived_case: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["dq-1"], "derived": [{"id": "dq-1", "supports": ["gd-live"]}]})
+	check(derived_case.conclusion.get("refuters", []).size() == 1, "a reading cited through a derived question refutes it too")
 	var quoted_cards: Array = Solver.selected(lview, {"cards": ["gd-live"], "quoted_cards": ["gd-live"]})
 	var quoted_case: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["gd-live"]}, quoted_cards)
 	check(quoted_cards.size() == 1 and quoted_cards[0].get("quoted", false) and not quoted_case.conclusion.has("refuters"),

@@ -591,6 +591,9 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 	var rank_id: int = int(ranks.get("__id", 0))
 	var fast_mode: bool = worlds_id != 0 and rank_id != 0
 	var inputs = [worlds_id, rank_id, factors, conclusion.at] if fast_mode else [view.people, view.get("chronology", {}), view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
+	if conclusion.has("refuters"):
+		# The scores read the target's refuted "was the Demon when hanged" (Codex on #356).
+		inputs.append([str(conclusion.get("target", "")), conclusion.refuters])
 	var key = hash(inputs)
 	if not comparisons.has(key) or comparisons[key].inputs != inputs:
 		Profiler.count("comparison_cache_miss")

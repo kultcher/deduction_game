@@ -1761,7 +1761,8 @@ static func with_hanged_refuters(view: Dictionary, case_data: Dictionary, cards:
 		return case_data
 	var target: String = str(conclusion.get("target", ""))
 	var held: Array = cards
-	if held.is_empty() and _may_refute(view, case_data.get("cards", []), target):
+	# Derived questions cite their supports (Graph.roots), the reading among them (Codex on #356).
+	if held.is_empty() and _may_refute(view, Graph.roots(case_data, case_data.get("cards", [])), target):
 		var bare: Dictionary = case_data.duplicate(false)
 		bare["conclusion"] = conclusion.duplicate(true)
 		bare.conclusion.erase("refuters")
