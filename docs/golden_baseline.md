@@ -56,6 +56,20 @@ readings in private talk a little more often each day past day 1 (`SHARE_UNCLAIM
   - **98933:** good won on day 2, hanging Odette. Now it hangs Merrin on day 2, with no winner
     by day 4.
   - **42, 54875, 692 and 900:** unchanged.
+
+### Earlier baseline (Nov 19, self-doubt from the judge): `baseline_6569929`
+
+`tools/golden/baseline_6569929/` is the capture from `claude/self-doubt-posterior` at `6569929`
+(main `aef2ff9` merged in). A good NPC's self-doubt is now the judge's chance each night's own
+reading was wrong (`OwnGiftDoubt`), computed when first read rather than stored; the poison and
+Delusional prior that `workshop_state.self_doubt` used to hold is stored as
+`workshop_state.self_doubt_prior`.
+- **Divergence from `baseline_659996a`:** every seed from record 1, only in those stored fields
+  (`self_doubt` gone, `self_doubt_prior` added). With `--ignore engine,self_doubt,self_doubt_prior`
+  all five seeds are identical: no belief, vote, nomination or execution moves, since nothing in
+  play reads self-doubt yet.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, "Demon" capitalised in player-facing text): `baseline_659996a`
