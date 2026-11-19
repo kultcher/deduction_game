@@ -122,15 +122,17 @@ listener (#273), both Lantern's.
   summarised answers, the same as at the meeting (#373). (Michael, Nov 19) Owner Herald.
   [decided]
 
-- **Remove dropped personal items.** (Michael's own item, Nov 19) Remove:
-  - the walker's 12% chance that a drop is a personal item;
-  - the search finding it;
-  - the night "out" card it makes for its owner;
-  - every mechanic that weighs it as evidence.
+- **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
+  - walkers dropping anything on their route, both personal items and the home-block
+    material drops (already dead);
+  - the search finding them;
+  - the night "out" card a personal item makes for its owner;
+  - every mechanic that weighs a drop as evidence.
 
-  Home-block material drops stay. If Quill finds the two can't be separated, that comes back
-  to Michael. It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the same PR (see
-  "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side. [decided]
+  No measurement first (Michael). It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the
+  same PR (see "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side.
+  **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
+  Revenant's totem and the place's regulars. [decided]
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
@@ -142,8 +144,8 @@ listener (#273), both Lantern's.
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
-  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW` in the same PR as "Remove dropped
-     personal items", which already re-baselines. Deleting the Muddler is held for the
+  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW` in the same PR as "Remove drops
+     altogether", which already re-baselines. Deleting the Muddler is held for the
      secrets rework.
   3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
      Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
@@ -498,7 +500,7 @@ The one performance item, "Late-game meeting and presenting cost", is in
   totems**. The Revenant is often invisible. (55774) [decided]
 
 - **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
-  being removed (Michael, Nov 19; "Remove dropped personal items", section 2).
+  being removed (Michael, Nov 19; "Remove drops altogether", section 2).
 
 - **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
   too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are

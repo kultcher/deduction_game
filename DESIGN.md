@@ -211,11 +211,11 @@ it means the game must teach its own way of thinking and make evidence very read
   assignments jointly. The grimoire says who left which.
 - **Drops:** each walker may drop something on their route (demon 35%, others 15%): a
   home-block material (88%) or a personal item (12%). `search` finds everything dropped at
-  a location. A personal item becomes a night "out" card for its owner. **Personal items
-  are to be removed** (Michael, Nov 19; BACKLOG "Remove dropped personal items", Quill),
-  leaving home-block materials.
+  a location. A personal item becomes a night "out" card for its owner. **Drops are to
+  be removed altogether,** personal items and home-block materials alike (Michael, Nov 19;
+  BACKLOG "Remove drops altogether", Quill).
 - Category traces are common. (Owner-identifying items, later plantable by a Framer, go with
-  the personal items.)
+  the drops.)
 
 ### Decided and open directions (world)
 
