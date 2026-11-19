@@ -1340,22 +1340,26 @@ static func town_vibe(g) -> Dictionary:
 ## Trust from a reading that confirms what I know or strongly believe (BACKLOG, Michael, Nov 19,
 ## set R3): each reading a good listener holds is judged once (ReadingConfirm.assess, on the
 ## listener's chances before it heard it), and a confirmation raises its trust in the teller by
-## the tier's size. The record (`confirmed_readings`: teller -> its best confirmation) is kept for
+## the tier's size. The record (`workshop_state.confirmed_readings`: teller -> its best
+## confirmation; kept with the NPC's beliefs, not `dialogue_memory`, which holds only speech) is kept for
 ## what the NPC says (MindDialogue / MindMeeting: "their readings agree with what I know"). An
 ## evil NPC's good self keeps the record too, so it can say so honestly; its own trust doesn't
 ## move (the shadow copies the real NPC's).
 static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, chances: Dictionary) -> void:
 	var RC = load("res://workshop/reading_confirm.gd")
-	var seen: Dictionary = n.dialogue_memory.get("confirm_seen", {})
-	var record: Dictionary = n.dialogue_memory.get("confirmed_readings", {})
+	var seen: Dictionary = n.workshop_state.get("confirm_seen", {})
+	var record: Dictionary = n.workshop_state.get("confirmed_readings", {})
 	var rank: Dictionary = {"small": 1, "moderate": 2, "known": 3}
 	var size: Dictionary = {"small": Tuning.Trust.READING_TRUST_SMALL, "moderate": Tuning.Trust.READING_TRUST_MODERATE, "known": Tuning.Trust.READING_TRUST_KNOWN}
 	for c in view.get("cards", []):
 		var src: String = str(c.get("source", ""))
 		var cid: String = str(c.get("id", ""))
-		if str(c.get("kind", "")) != "report" or src == n.id or seen.has(cid) or not w.by_id.has(src):
+		# Once for each reading: a Medium's relay of a reading already heard is the same reading
+		# (its logical origin), though its receipt has an id of its own (Codex on #319).
+		var origin: String = str(c.get("logical_origin", cid))
+		if str(c.get("kind", "")) != "report" or src == n.id or seen.has(origin) or not w.by_id.has(src):
 			continue
-		seen[cid] = true
+		seen[origin] = true
 		var r: Dictionary = RC.assess(view, c, listener, chances)
 		var tier: String = str(r.get("tier", "none"))
 		if not rank.has(tier):
@@ -1368,5 +1372,5 @@ static func reading_confirm_trust(w, n, view: Dictionary, listener: Dictionary, 
 		n.npc_trust[src] = clampf(n.npc_trust.get(src, 0.5) + float(size[tier]), 0.0, 1.0)
 		w.dlog.add("npc_trust", n.id, src, {"to": snappedf(n.npc_trust[src], 0.001), "step": float(size[tier]), "confirmation": tier, "source": str(r.get("source", "")), "card": cid},
 			"%s's reading confirms what %s %s (%s)" % [src, n.id, "knows" if tier == "known" else "believes", tier])
-	n.dialogue_memory["confirm_seen"] = seen
-	n.dialogue_memory["confirmed_readings"] = record
+	n.workshop_state["confirm_seen"] = seen
+	n.workshop_state["confirmed_readings"] = record

@@ -67,11 +67,11 @@ func _init() -> void:
 			if absf(float(d.get("step", -1.0)) - float(size.get(tier, -2.0))) > 1e-6:
 				wrong_size += 1
 		for n in g.w.npcs:
-			for src in n.dialogue_memory.get("confirmed_readings", {}):
-				var rec: Dictionary = n.dialogue_memory.confirmed_readings[src]
+			for src in n.workshop_state.get("confirmed_readings", {}):
+				var rec: Dictionary = n.workshop_state.confirmed_readings[src]
 				if not (str(rec.get("tier", "")) in ["small", "moderate", "known"]) or src == n.id:
 					records_ok = false
-			if n.is_evil() and n.shadow != null and not n.shadow.dialogue_memory.get("confirmed_readings", {}).is_empty():
+			if n.is_evil() and n.shadow != null and not n.shadow.workshop_state.get("confirmed_readings", {}).is_empty():
 				shadow_records += 1
 	print("  confirmations by tier: %s" % str(tiers))
 	_check(gains > 0, "readings that confirm what a listener knows or believes raise its trust in the teller (%d)" % gains)
