@@ -167,6 +167,11 @@ func _line(x) -> void:
 		if x.has("expression"):
 			event["expression"] = x["expression"]
 			event["expression_strength"] = x.get("expression_strength", 1)
+		# A summarised meeting answer (Michael, Nov 19): the representative carries who agreed;
+		# the others' own words go to the log only.
+		for key in ["agree", "agree_more", "bundled"]:
+			if x.has(key):
+				event[key] = x[key]
 		_ev(event)
 	else:
 		_narr(str(x))

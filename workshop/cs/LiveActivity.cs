@@ -233,6 +233,17 @@ internal static class LiveActivityKernel
         /// (LiveActivity._told_cursed): in a world where the watcher is the converted person, it
         /// takes the evil-teller path, as the sighting contest does (Codex on #273).</summary>
         public bool ListMixToldCursed;
+        /// <summary>A Lamplighter's count mixed the same way (Michael, Nov 19, the Lamplighter fix
+        /// (b), step 1): unlike a list, a count has no sighting contest, so in a world where its
+        /// teller is evil (or the converted person, told while cursed) it takes the broken branch
+        /// outright: an evil Lamplighter can give any number. False for a Night Watch list, whose
+        /// path is unchanged.</summary>
+        public bool ListMixEvilTakesAlt;
+        /// <summary>The sound branch is impossible: the count fits no route mask of the other
+        /// movement evidence (LiveActivity._list_mix). It scores 0, so a good teller's world keeps
+        /// only the broken branch, weighed by its chance, and the count tells against the
+        /// teller by fit, as a contradicted list does. False for a Night Watch list.</summary>
+        public bool ListMixSoundZero;
     }
 
     /// <summary>A Warden's guard of a door on a night the Demon killed nobody. In a world where
@@ -1791,8 +1802,17 @@ internal static class LiveActivityKernel
     /// </summary>
     public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle)
     {
+        AttachListMix(factorHandle, watcher, broken, altScale, toldCursed, nextHandle, altHandle, false, false);
+    }
+
+    /// <summary>AttachListMix for a Lamplighter's count: <paramref name="evilTakesAlt"/> and
+    /// <paramref name="soundZero"/> (CompiledMovementFactor.ListMixEvilTakesAlt, ListMixSoundZero).</summary>
+    public static void AttachListMix(int factorHandle, int watcher, double broken, double altScale, bool toldCursed, int nextHandle, int altHandle, bool evilTakesAlt, bool soundZero)
+    {
         SolverContext.GetMovementFactor(factorHandle).ListMixToldCursed = toldCursed;
         var factor = SolverContext.GetMovementFactor(factorHandle);
+        factor.ListMixEvilTakesAlt = evilTakesAlt;
+        factor.ListMixSoundZero = soundZero;
         factor.ListMixWatcher = watcher;
         factor.ListMixBroken = broken;
         factor.ListMixNext = SolverContext.GetMovementFactor(nextHandle);
@@ -2039,9 +2059,12 @@ internal static class LiveActivityKernel
     {
         if (factor.ListMixWatcher < 0)
             return ScoreWorldCore(world, factor);
-        double sound = ScoreMixed(world, factor.ListMixNext);
-        if ((world.Evil & (1 << factor.ListMixWatcher)) != 0
-            || (factor.ListMixToldCursed && world.ConvertedOrMinusOne == factor.ListMixWatcher))
+        bool evilTeller = (world.Evil & (1 << factor.ListMixWatcher)) != 0
+            || (factor.ListMixToldCursed && world.ConvertedOrMinusOne == factor.ListMixWatcher);
+        if (evilTeller && factor.ListMixEvilTakesAlt)
+            return factor.ListMixAltScale * ScoreMixed(world, factor.ListMixAlt);
+        double sound = factor.ListMixSoundZero ? 0.0 : ScoreMixed(world, factor.ListMixNext);
+        if (evilTeller)
             return sound;
         double b = factor.ListMixBroken;
         // Both on the sound branch's scale: the broken branch divides by the sound branch's

@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`
+### Current baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1, #346): `baseline_652298a`
+
+`tools/golden/baseline_652298a/` is the capture from `claude/lamplighter-count` at `652298a`
+(main with #349 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night
+Watch list: a listener weighs the chance that the Lamplighter is evil, poisoned or Delusional, and
+a broken count says nothing. Before, every count was taken as sound. (It replaces
+`baseline_d33fdae`, made for this PR before #349 landed; the divergence is the same.)
+- **Divergence from `baseline_7a10762`:** 42 from record 1 (a reading's vetting lift on the
+  first day, 0.003 to 0.001), 54875 from record 79 (Jory's refresh on day 2), 900 from record 52
+  (Isolde's cover on day 2) and 98933 from record 82 (Nisha's refresh on day 2). 692 is identical.
+- **Outcomes:** the winner and the last day are unchanged on all five, and 42, 54875, 692 and 900
+  hang the same people. 98933's hangings change: day 2 hangs Merrin (good, the Surveyor, nominated
+  by Dorian) instead of Dorian (good, the Clerk), and day 3 hangs no one instead of Isolde (the
+  Revenant).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`
 
 `tools/golden/baseline_7a10762/` is the capture from `claude/a3-doubted-symmetric` at `7a10762`.
 When a judged set holds several readings the listener doubts, the role check weighs them

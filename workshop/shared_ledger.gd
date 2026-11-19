@@ -183,7 +183,9 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			# bare: an NPC's word with no grounds. It brings nothing new to weigh, so the graded
 			# test (does the rest of the evidence make the reading look wrong?) is left out:
 			# the listener's beliefs already rest on that same evidence (Nov 7, with Michael).
-			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": grounds, "bare": grounds.is_empty()}
+			# npc_defence: an NPC's own call, which the player's judgement doesn't back
+			# (ReadingChallenges.judgement_boost).
+			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": grounds, "bare": grounds.is_empty(), "npc_defence": true}
 	input.evidence = facts.values()
 	input.selected = facts.keys()
 	input.private_evidence = input.private_evidence.filter(func(id): return facts.has(id))

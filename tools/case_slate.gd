@@ -22,6 +22,7 @@ const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
+const MindMeeting = preload("res://sim/mind_meeting.gd")
 
 ## Name: what the case is. The order is the report's.
 const CASES = {
@@ -34,6 +35,7 @@ const CASES = {
 	"double_claim": "S claims the gift its real holder also claims",
 	"gravedigger": "The Gravedigger's reading that the hanged Minion M was a Minion (subject M)",
 	"lamp_alibis": "The Lamplighter's \"1 other out\" + everyone else's home alibi (suspicious)",
+	"lamp_count": "The Lamplighter's \"1 other out\", alone (suspicious)",
 	"nw_nobody": "The Night Watch saw nobody on S's block + a sighting of S there",
 	"guard": "A sighting of S near the guarded door + the Warden's guard, on a quiet night",
 	# Strong-tier cases (Seneschal, Nov 19): nothing above landed between Moderate and the
@@ -52,6 +54,8 @@ const CASES = {
 	"double_claim_innocent": "I, the real holder, and the Demon both claim I's gift",
 	"gravedigger_innocent": "A Minion's false Gravedigger reading that the hanged I was a Minion",
 	"lamp_alibis_innocent": "The Lamplighter's \"1 other out\" + everyone else's home alibi, the Demon's false (suspicious)",
+	"lamp_count_innocent": "The Lamplighter's \"1 other out\", alone, filed against I (suspicious)",
+	"lamp_bluff_innocent": "A Minion bluffing the Lamplighter: \"1 other out\" + everyone else's true home alibi (suspicious)",
 	"nw_nobody_innocent": "The Night Watch saw nobody on I's block + a Minion's false sighting of I there",
 	"guard_innocent": "A sighting of I near the guarded door + the Warden's guard, on a quiet night",
 }
@@ -110,7 +114,7 @@ func _kill(w, victim, night: int) -> void:
 	w.public_log.append({"day": night, "kind": "demon_death", "subjects": [victim.id], "by": ""})
 
 
-func _one(sd: int, name: String) -> Dictionary:
+func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, 10)
@@ -239,6 +243,25 @@ func _one(sd: int, name: String) -> Dictionary:
 					cited.append(_add(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: at home on night 1" % n.name}))
 			sources += [lamp]
 			premise = "suspicious"
+		"lamp_count":
+			var lc = _holder(goods, "lamplighter", [])
+			if lc == null:
+				return {}
+			cited.append(_add(g, {"kind": "info", "source": lc.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "%s: 1 other out on night 1" % lc.name}))
+			sources += [lc]
+			premise = "suspicious"
+		"lamp_bluff":
+			# Only a misleading case: a Minion claims the Lamplighter and gives a false count;
+			# everyone else's home alibi is true, so the innocent is the one left without one.
+			if not innocent:
+				return {}
+			cited.append(_add(g, {"kind": "claim", "subject": [min_ev.id], "role": "lamplighter", "source": min_ev.id, "text": "%s claims the lamplighter" % min_ev.name}))
+			cited.append(_add(g, {"kind": "info", "source": min_ev.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "%s: 1 other out on night 1" % min_ev.name}))
+			for n in w.npcs:
+				if n.alive and n != s and n != min_ev:
+					cited.append(_add(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: at home on night 1" % n.name}))
+			sources += [min_ev]
+			premise = "suspicious"
 		"nw_nobody":
 			var nw = _holder(goods, "nightwatch", [])
 			if nw == null:
@@ -302,6 +325,14 @@ func _one(sd: int, name: String) -> Dictionary:
 	var listeners: Array = w.npcs.filter(func(p): return p.alive and not p.is_evil() and p != s and p not in sources)
 	if listeners.is_empty():
 		return {}
+	# How the good townsfolk would vote on the subject, nominated by a neutral nominator, the
+	# player's vote left out (Michael, Nov 19; Beadle's hook, #347). A vote refreshes each
+	# voter's beliefs, as at a meeting, so "before" is taken on a fresh build of the same deal
+	# with the same cards, never presented: the columns above stay as they were.
+	w.meeting["block"] = ""
+	w.meeting["block_count"] = 0
+	if before_only:
+		return MindMeeting.would_vote(w, s.id)
 	var before_each: Dictionary = {}
 	for l in listeners:
 		before_each[l.id] = float(l.suspicion.get(s.id, 0.0))
@@ -333,6 +364,13 @@ func _one(sd: int, name: String) -> Dictionary:
 			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
 		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
+	var votes_after: Dictionary = MindMeeting.would_vote(w, s.id)
+	var votes_before: Dictionary = _one(sd, name, true)
+	row["yes_before"] = votes_before.yes.size()
+	row["yes_after"] = votes_after.yes.size()
+	row["voters_good"] = votes_after.yes.size() + votes_after.no.size()
+	row["threshold"] = int(votes_after.threshold)
+	row["crosses"] = bool(votes_after.crosses)
 	# The average listener's reading behind the badge (Michael, Nov 19): the premise's chance
 	# before and after, and whether the subject becomes that listener's top suspect, by what
 	# margin (for the fourth tier's measure).

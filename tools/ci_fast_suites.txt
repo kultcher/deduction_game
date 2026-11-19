@@ -6,6 +6,7 @@
 test_agreement_trust
 test_ask_night_results
 test_attention_0b
+test_augur_wording
 test_badge_text
 test_bare_compile
 test_beliefs
@@ -59,8 +60,10 @@ test_honest_forgetting
 test_honest_mistake
 test_joint_reasons
 test_judge_for_profile
+test_judgement_boost
 test_juror_claims
 test_juror_listener
+test_lamplighter_count_mix
 test_lie_severity
 test_lie_severity_votes
 test_location_solver
@@ -110,6 +113,7 @@ test_relay_bluff
 test_relay_challenge_menu
 test_relay_lie_attribution
 test_relayed_alibi
+test_response_bundles
 test_review_fixes
 test_role_check_doubt
 test_roles_dead
@@ -145,3 +149,4 @@ test_workshop_reading_challenges
 test_workshop_regressions
 test_workshop_vote_and_alibi
 test_workshop_why
+test_would_vote
