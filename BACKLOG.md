@@ -157,6 +157,17 @@ listener (#273), both Lantern's.
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
+  5. **Point `game.gd`'s passthroughs straight at their modules** (Michael, Nov 19). When
+     `game.gd` was split, it kept forwarding functions. About 138 of its 159 functions are
+     one-line forwards to `GameBoard`, `GamePresentation` and the other `game_*` modules.
+     Callers should use the module directly, and the forwards should go.
+     - **Owner:** Herald (`game/` and the UI), with each lead updating callers in its own
+       files where that's simpler.
+     - **Zero drift.**
+     - **Scheduled with the file splits:** it touches many callers (`add_card` alone has
+       about 325 call sites, many in tests), so the merge-conflict risk is the same.
+     - **Herald scopes it first,** saying which forwards, if any, are worth keeping as the
+       game's public interface.
 
   [decided]
 
