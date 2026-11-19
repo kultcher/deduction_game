@@ -11,10 +11,10 @@ Michael decided this on Nov 19, through Seneschal. The Augur's reading always me
 
 - **`sim/roles/augur.gd`:** `_spoken_text(yes, day)`.
   - Yes: "I crossed paths with the Demon in the morning or afternoon of the second day".
-  - No: "I didn't cross paths with the Demon in the morning or afternoon of the second day". This negation is mine, sent to Michael with the per-voice drafts.
+  - No: "I didn't cross paths with the Demon in the morning or afternoon of the second day". This negation is mine; Michael approved it with the per-voice lines.
   - Every path passes the reading's day: the real reading, the bluff, its alternative, and the Medium's made-up relay.
 - **`sim/mind_meeting.gd` `_info_intent`** (Beadle's file): a reading that already names its own day ("the second day") is said without the "This evening," / "On day 2, in the evening," lead. Other readings keep the lead.
-- **Per-voice versions:** drafted and sent to Michael for approval. They'll be wired in a follow-up. The card keeps the canonical text.
+- **Per-voice versions:** approved by Michael and wired in this PR (see below). The card keeps the canonical text.
 
 ## Measured
 - **`test_augur_wording`** (new, 6 checks, on the fast list):
