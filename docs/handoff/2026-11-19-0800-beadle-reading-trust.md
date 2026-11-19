@@ -17,8 +17,14 @@ or strongly believes.
 - **How it's judged:** Lantern's `ReadingConfirm.assess` (#309), on the listener's chances from
   its previous refresh, so a reading is judged on what the listener believed before hearing it.
 - **When:** each reading is judged once for each listener, at its first refresh holding the
-  reading (`Social.reading_confirm_trust`, called from `WorkshopOwnership._refresh`). A Medium's
-  relay of a reading already heard is the same reading, by its logical origin (Codex on #319).
+  reading (`Social.reading_confirm_trust`, called from `WorkshopOwnership._confirm_readings`). A
+  Medium's relay of a reading already heard is the same reading, by its logical origin (Codex on
+  #319).
+- **In the same solve:** the readings are judged in the refresh's first half. When trust moves,
+  the listener is captured and prepared again, so the gain counts in that refresh's solve and a
+  repeated refresh changes nothing. Bailiff's full run caught `test_workshop_action` failing on
+  this. The 40-game numbers below were measured before that fix, which moves the gain one
+  refresh earlier.
 
 | Tier (`ReadingConfirm`) | When | Trust (`Tuning.Trust`) |
 |---|---|---|
@@ -45,9 +51,10 @@ All four constants are new, and Michael approved them on Nov 19 (set R3).
   - Confirmations raise trust by the tier's size, once for each reading and listener.
   - An evil NPC's own trust never moves for it, and a listener's own reading confirms nothing.
   - The record names teller and tier, and evil good selves keep one.
-- **Suites that pass:** test_agreement_trust (now on `AGREEMENT_STEP`), test_reading_confirm,
+- **Suites that pass:** test_workshop_action, test_workshop_ownership, test_dialogue_decisions,
+  test_agreement_trust (now on `AGREEMENT_STEP`), test_reading_confirm,
   test_social, test_social_trust, test_connections, test_connections_pairings, test_meeting_flow,
-  test_evil_play, test_held_signals and test_relay_bluff.
+  test_evil_play, test_held_signals, test_relay_bluff, test_relay_bluff_games and test_social.
 - **Trust distribution:** `tools/measure_npc_trust.gd`, 15 passive 10-NPC games, seeds 3000-3014.
 
   | End of day 4 | Main (agreement 0.03 only) | Here |
