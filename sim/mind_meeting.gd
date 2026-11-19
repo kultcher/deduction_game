@@ -675,12 +675,17 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 ## (Evil._boxed_in_gift_doubt). It is the teller's own word that its gift may have failed;
 ## listeners read it as honest doubt about all of that teller's readings.
 static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
+	_good_gift_doubt(w, n)
 	var gd: Dictionary = n.gift_doubt
 	if gd.is_empty() or gd.has("said") or not n.claim_public or n.claimed_role != str(gd.get("role", "")):
 		return
 	gd["said"] = w.day
 	var role: String = str(gd["role"])
-	lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
+	if gd.get("first", false):
+		# Only the one reading to doubt (its first for this gift): the singular line.
+		lines.append(say_voiced(n, "doubt_own_gift_one", "Something seems off about that reading. I fear something might have turned my gift."))
+	else:
+		lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
 	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
 	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
 	w.public_event("self_doubt", [n.id], n.id, {"role": role})
@@ -696,6 +701,26 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 		w.dlog.think(n.id, "lie", "Claimed its gift as the %s might have been turned, to explain away a made-up reading." % C.role_name(role), {"lie": true, "why": why})
 	else:
 		w.dlog.think(n.id, "self_doubt", "Tells the town its %s gift may have been turned (%s)." % [role, why])
+
+## The good side (BACKLOG "Saying 'my gift may have been turned'" (a), Michael, Nov 17-19): a
+## good public claimant that doubts a night of its own readings (SourceDoubt.doubts_own_gift:
+## the judge's chance that night's reading was wrong, from its clash with everything else the
+## NPC holds, at or above Workshop.SELF_DOUBT_TRIGGER) has it waiting to say, once a game, by
+## the same route as the boxed-in liar. The earliest such night is the one it names.
+static func _good_gift_doubt(w, n) -> void:
+	if n.is_evil() or not n.claim_public or n.claimed_role != n.role or not n.gift_doubt.is_empty() or not C.has_readings(n.role):
+		return
+	var SD = load("res://workshop/source_doubt.gd")
+	var nights: Array = SD.doubts_own_gift(n)
+	if nights.is_empty():
+		return
+	var night: int = int(nights[0])
+	var doubt: float = float(SD.self_doubt(n).get(night, 0.0))
+	var why: String = ("%d%% doubt about all its readings" % int(round(doubt * 100.0))) if night == -1 \
+		else ("%d%% doubt about its reading for %s" % [int(round(doubt * 100.0)), C.night_name(night)])
+	n.gift_doubt = {"day": w.day, "role": n.role, "why": why, "night": night, "doubt": doubt}
+	w.dlog.add("gift_doubt_planned", n.id, "", {"night": night, "doubt": snappedf(doubt, 0.001), "good": true},
+		"%s (good, the %s) doubts its own readings enough to say so [%s]" % [n.name, C.role_name(n.role), why])
 
 ## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
 ## Reuse ordinary public claiming without adding the speaker's reading backlog.
@@ -1674,13 +1699,19 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	var at: String = str(d.history.get(w.time_key(sd, sp), ""))
 	if at == "" or at.begins_with("home") or at.begins_with("night") or at == "dead":
 		return {}
+	# Who it can name: the living who were there (no use asking the dead; Steward Nov 19 A6), and
+	# for an evil defender not its own teammates, whom it won't point at or call as witnesses
+	# (Steward A5: that would be a tell). Leaving them out is no lie: it never says it was alone.
 	var present: Array = []
+	var others_there: int = 0
 	for x in w.npcs:
 		if x != d and str(x.history.get(w.time_key(sd, sp), "")) == at:
-			present.append(x)
+			others_there += 1
+			if x.alive and not (d.is_evil() and x.is_evil()):
+				present.append(x)
 	var place: String = w.loc_name(at)
 	var when: String = _day_when(w, sd, sp)
-	var slots: Dictionary = {"place": place, "when": when, "Place": place.capitalize() if place.length() > 0 else place, "When": when.capitalize() if when.length() > 0 else when}
+	var slots: Dictionary = {"place": place, "when": when, "Place": _first_upper(place), "When": _first_upper(when)}
 	var line: Dictionary
 	var named: Array = []  # who the spoken line names (Codex on #318: the cards follow the words)
 	if present.is_empty():
@@ -1688,8 +1719,6 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	else:
 		var suspect = null
 		for x in present:
-			if not x.alive:
-				continue
 			var heat: float = Evil.town_view(w, x) if d.is_evil() else susp(d, x.id)
 			if heat >= Tuning.Meeting.NOMINATION_FLOOR and (suspect == null or heat > (Evil.town_view(w, suspect) if d.is_evil() else susp(d, suspect.id))):
 				suspect = x
@@ -1713,8 +1742,13 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 	for x in named:
 		facts.append({"kind": "sighting", "subject": [x.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp,
 			"text": "%s says %s was at %s too, day %d %s." % [d.name, x.name, place, sd, C.PHASES[sp]]})
-	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, present.size()])
+	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, others_there])
 	return {"line": line, "facts": facts}
+
+## A slot's sentence-start form: only the first letter raised ("Yesterday afternoon", not
+## String.capitalize()'s "Yesterday Afternoon"; Steward Nov 19 A6).
+static func _first_upper(t: String) -> String:
+	return t if t.is_empty() else t.substr(0, 1).to_upper() + t.substr(1)
 
 ## "this morning", "yesterday afternoon", "the first evening": a day phase, as said on w.day.
 static func _day_when(w, sd: int, sp: int) -> String:
@@ -2108,7 +2142,9 @@ static func defence_line(w, n) -> Dictionary:
 		fallback = "P-please. I've done nothing."
 	return say_voiced(n, "defence_line", fallback)
 
-## One NPC's vote on a nomination. statement: "", "defend" or "accuse" (the player's).
+## One NPC's vote on a nomination. statement is always "" since Speak against / in defence
+## was replaced by presenting a case (Michael, option (b), Nov 19): a case moves a voter through
+## what it believes, not through a free nudge on the vote. Kept as a parameter for the callers.
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
 	var id = w.dlog.decision(v.id, "vote", "start", null, {"nominator": nominator,
 		"player_yes": player_yes, "statement": statement, "yes_so_far": yes_so_far,
@@ -2193,10 +2229,6 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		parts["resentment"] = v_resent
 	if player_yes:
 		parts["player_votes_yes"] = Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET
-	if statement == "defend":
-		parts["player_defends"] = Tuning.Meeting.PLAYER_DEFEND_SLOPE * v.credibility
-	elif statement == "accuse":
-		parts["player_accuses"] = Tuning.Meeting.PLAYER_ACCUSE_SLOPE * v.credibility
 	if nominator != "player" and susp(v, nominator) > Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_MIN_SUSP:
 		parts["distrusts_nominator"] = Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_OFFSET
 	if v.spare_pref.get(nominee, 0.0) > 0.0:
@@ -2333,8 +2365,8 @@ static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: 
 	# believe the lie and say it isn't enough to hang (lie severity, the vote side).
 	if granted_lie:
 		return "vote_no_lie_not_rope"
-	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes", "player_defends",
-		"player_accuses", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
+	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes",
+		"distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
 	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
 		return "vote_no_reluctant"
 	if float(parts.get("distrusts_nominator", 0.0)) < 0.0 and str(res.get("by", "")) != "player":

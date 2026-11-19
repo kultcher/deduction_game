@@ -401,9 +401,6 @@ class Trust:
 	const CLEMENCY_TRUSTED_BONUS = 0.06
 	const CLEMENCY_SUSPECTED_DROP = 0.1
 	const VOTED_YES_ON_ME_DROP = 0.08
-	const SPEAK_DEFEND_BONUS = 0.06
-	const SPEAK_AGAINST_NOMINATOR_DROP = 0.04
-	const SPEAK_AGAINST_NOMINEE_DROP = 0.08
 
 
 # ---------------------------------------------------------------- 5. Background Social Gossip & Approaches
@@ -682,8 +679,6 @@ class Meeting:
 	const VOTE_URGENCY_PER_DEATH = 0.02
 	const PLAYER_VOTE_YES_SLOPE = 0.18
 	const PLAYER_VOTE_YES_OFFSET = -0.04
-	const PLAYER_DEFEND_SLOPE = -0.25
-	const PLAYER_ACCUSE_SLOPE = 0.15
 	const VOTE_DISTRUST_NOMINATOR_MIN_SUSP = 0.7
 	const VOTE_DISTRUST_NOMINATOR_OFFSET = -0.15
 	const VOTE_SPARE_PREF_SLOPE = -0.5
@@ -785,6 +780,10 @@ class Dialogue:
 # ---------------------------------------------------------------- 8. Evil AI: Bluffs, Scapegoats, Kills & Poison
 class Evil:
 	const EVIL_HINT_CHANCE = 0.3
+	## A crowd this size (the Dowser's "4+" row in its bluff guideline) is cover enough for a
+	## bluffing Augur to tell the truth about the Demon on its street (#264; Michael approved
+	## it Nov 18; moved here from sim/roles/augur.gd, Steward Nov 19).
+	const AUGUR_DEMON_CROWD = 4
 	const MEDIUM_USELESS_CHANCE = 0.15
 	const EVIL_CAUTION_DEMON = 0.8
 	const EVIL_CAUTION_MINION = 0.7
@@ -988,9 +987,17 @@ class Workshop:
 	## preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where
 	## good people are working.
 	const BREATH_HUNT_REACH = 0.7
-	const LR_WEAK = 1.5
-	const LR_MODERATE = 3.0
-	const LR_STRONG = 10.0
+	## The badge's cut points on a case's strength (the odds ratio on its premise), Michael Nov 19:
+	## from the case slate's vote measure (docs/case_slate/), a Weak case sways one or two good
+	## votes, a Moderate one about half, a Strong one most (it carries a nomination with the
+	## player's vote about 9 times in 10). Below Weak the badge reads Negligible.
+	const LR_WEAK = 1.25
+	const LR_MODERATE = 2.0
+	const LR_STRONG = 3.5
+	## The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the
+	## Test juror's average listener at or above this, whatever the strength. On the slate it
+	## carries every good vote.
+	const LR_DAMNING_CHANCE = 0.9
 	## Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a
 	## relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a
 	## probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x).
@@ -1295,7 +1302,6 @@ static func fingerprint() -> String:
 			Meeting.VOTE_PARANOIA_WEIGHT,
 			Meeting.VOTE_URGENCY_PER_DEATH,
 			Meeting.PLAYER_VOTE_YES_SLOPE,
-			Meeting.PLAYER_ACCUSE_SLOPE,
 			Workshop.EXECUTION_PRIORITY_TOP_MARGIN,
 			Workshop.EXECUTION_PRIORITY_TOP_BONUS,
 			Social.PLANTER_WHISPER_BONUS,

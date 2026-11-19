@@ -86,7 +86,7 @@ func _strict_submission() -> void:
 	g.state = "nomination"
 	g.w.meeting = {"pending": {"nominee": target.id, "by": "player"}}
 	g.statement_used = false
-	var vote_reply = g.command("accuse %d" % ded)
+	var vote_reply = g.command("case %d" % ded)
 	check("Cannot present" in vote_reply and not g.statement_used and _state(g) == before, "blocked nomination does not spend the statement or disclose evidence")
 	check(g.w.dlog.trace_events().any(func(e): return e.type == "workshop_fallback"), "every rejected submission records a fallback reason")
 	g.strict_evaluator = false

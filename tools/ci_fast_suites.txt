@@ -6,6 +6,7 @@
 test_agreement_trust
 test_ask_night_results
 test_attention_0b
+test_badge_text
 test_bare_compile
 test_beliefs
 test_bluff_blend
@@ -47,6 +48,7 @@ test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
 test_gift_doubt
+test_gift_doubt_good
 test_gravedigger_bluff
 test_haunt_learning
 test_headline
@@ -82,6 +84,7 @@ test_meeting_stream
 test_new_case_memory
 test_night0_fake_sightings
 test_nightwatch_whole_list
+test_nomination_case
 test_npc_fixes_shifts_dead_haunt
 test_npc_openness
 test_peer_role_gossip

@@ -43,8 +43,9 @@ static func test_juror(g, value: Dictionary) -> Dictionary:
 	var head: String = "Test juror: an average listener (credibility 0.5, trust 0.5, nothing first-hand), hearing the cards from you."
 	if heard.get("ready", false):
 		head += "\nThe premise's chance for that listener: %d%% without these cards, %d%% with the case (strength x%.2f)." % [int(round(100.0 * float(heard.chance_before))), int(round(100.0 * float(heard.chance))), float(heard.lr)]
+		var name_of: Callable = func(id: String) -> String: return Solver.person_name(prepared.view, id)
 		for c in heard.get("challenges", []):
-			head += "\nLie call on %s's reading: %s." % [Solver.person_name(prepared.view, str(c.teller)), str(c.kind)]
+			head += "\n" + Canvas.lie_call_line(c, name_of)
 		b["heard"] = heard
 	b["text"] = head + "\n\nDiagnostic, not the badge: how the cards fit, each at full weight.\n" + Why.describe(prepared.view, b, _numbers(g))
 	return b
@@ -147,7 +148,7 @@ static func _item_label(g, it: Dictionary, by_id: Dictionary, nums: Dictionary) 
 	var key: String = str(it.key)
 	match str(it.get("kind", "card")):
 		"movement":
-			return "Every night card, read together (%s)" % _count(n_cards)
+			return "All the night cards, read together (%s)" % _count(n_cards)
 		"day":
 			return "The Hexer's day evidence, read together (%s)" % _count(n_cards)
 		"unit":
@@ -156,7 +157,7 @@ static func _item_label(g, it: Dictionary, by_id: Dictionary, nums: Dictionary) 
 			if key.begins_with("augur:"):
 				return "Day %s's Augur readings with that day's sightings (%s)" % [key.trim_prefix("augur:"), _count(n_cards)]
 			if key.begins_with("claims:"):
-				return "Every %s claim, read together (%s)" % [C.role_name(key.trim_prefix("claims:")), _count(n_cards)]
+				return "Everyone who claims the %s's gift, read together (%s)" % [C.role_name(key.trim_prefix("claims:")), _count(n_cards)]
 			var first: Dictionary = by_id.get(it.cards[0], {}) if n_cards > 0 else {}
 			if key.begins_with("psychologist:") and not first.is_empty():
 				return "%s with its statements (%s)" % [_card_tag(g, first, nums), _count(n_cards)]

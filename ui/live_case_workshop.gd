@@ -9,6 +9,7 @@ signal location_solver_requested(question: Dictionary)
 signal fullscreen_toggled
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
 var g
 var case_world
 var support_label: Label
@@ -326,7 +327,8 @@ func refresh() -> void:
 	for old in board.view.cards:
 		if (board.nodes.has("e:" + old.id) or referenced_profile_ids.has(old.id)) and not next_view.cards.any(func(c): return c.id == old.id):
 			var missing: Dictionary = old.duplicate(true)
-			missing.support_note = "BLOCKED: original evidence is missing or changed"
+			missing.support_note = "This card has changed or is no longer on your board."
+			missing["off_board"] = true
 			next_view.cards.append(missing)
 	board.view = next_view
 	session.scenario = {"public_view": next_view}
@@ -484,8 +486,8 @@ func _background_menu(_at: Vector2) -> void:
 		bg_from.set_item_disabled(bg_from.get_item_index(i), given == 0)
 		bg_about.add_item("%s (%d)" % [n.name, named], i)
 		bg_about.set_item_disabled(bg_about.get_item_index(i), named == 0)
-	bg_menu.add_submenu_node_item("Add readings FROM", bg_from)
-	bg_menu.add_submenu_node_item("Add all readings ABOUT", bg_about)
+	bg_menu.add_submenu_node_item("Add readings from", bg_from)
+	bg_menu.add_submenu_node_item("Add all readings about", bg_about)
 	bg_menu.position = Vector2i(get_viewport().get_mouse_position())
 	bg_menu.popup()
 
@@ -528,12 +530,12 @@ func _sync() -> void:
 		var reasons: String = "\n".join(PackedStringArray(issues.map(func(i): return "• " + i)))
 		support_label.tooltip_text = (reasons + "\n\n" if reasons != "" else "") + _support_warning(check)
 		support_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		present_button.disabled = check.blocked or g.state not in ["talk", "meeting", "nomination"] or g.w.game_over
+		present_button.disabled = check.blocked or g.state not in ["talk", "meeting", "nomination"] or g.w.game_over or (g.state == "nomination" and g.statement_used)
 	else:
 		support_label.text = ""
 		support_label.tooltip_text = ""
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
-	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Speak on nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
+	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Present on the nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
 	debug_menu.visible = g.debug_overlay
 	var why_i: int = debug_menu.get_popup().get_item_index(DebugItem.WHY_RECORD)
 	if why_i >= 0:
@@ -573,11 +575,12 @@ func _refresh_case() -> void:
 	if node.kind == "evidence":
 		_clear(case_box)
 		var card: Dictionary = _report(node.card)
-		_label(case_box, card.support_note.replace("FALLBACK:", "UNSUPPORTED:"), 17, "accent")
+		if str(card.get("support_note", "")) != "":
+			_label(case_box, card.support_note, 17, "accent")
 		var editable: bool = (card.kind == "report" and card.role in Live.Assess.ROLES) or card.kind in ["sighting", "secret_claim"] or card.get("context_kind", "") == "psychologist"
-		if editable and not card.support_note.begins_with("FALLBACK"):
+		if editable and not card.get("fallback", false):
 			_question(card)
-		elif not card.support_note.begins_with("FALLBACK"):
+		elif not card.get("fallback", false):
 			_label(case_box, card.text, 18)
 			_label(case_box, "Link this testimony into your argument. Role claims remain conditional on honesty; sightings and alibi discrepancies are circumstantial.", 16)
 		else:
@@ -814,17 +817,12 @@ func _present() -> void:
 	if number < 1:
 		return
 	if g.state == "nomination":
-		var window = ConfirmationDialog.new()
-		window.title = "Speak on this nomination"
-		window.dialog_text = "Use your one statement to accuse or defend the current nominee. The case's headline stays as written; this choice also has the usual social effects."
-		window.ok_button_text = "Accuse"
-		window.cancel_button_text = "Cancel"
-		window.add_button("Defend", true, "defend")
-		window.confirmed.connect(func(): _send("accuse %d" % number); window.queue_free())
-		window.custom_action.connect(func(_action): _send("defend %d" % number); window.queue_free())
-		window.canceled.connect(window.queue_free)
-		_add_subwindow(window)
-		window.popup_centered_clamped()
+		# Option (b), Michael, Nov 19: the case itself is the player's one word on the nomination.
+		var why: String = GameMeeting.nomination_case_rejection(g, g.board[number - 1], g.w.meeting["pending"]["nominee"])
+		if why != "":
+			status.text = why
+			return
+		_send("case %d" % number)
 	else:
 		_send(("convince %d" if g.state == "talk" else "present %d") % number)
 
