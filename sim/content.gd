@@ -90,15 +90,17 @@ static func third_person(text: String) -> String:
 		out = re.sub(out, pair[1], true)
 	return out
 
-## A player vigil on `block` spots residents of `block` leaving home (a night path starts at
-## the walker's home), and nothing else: not walkers who arrive from elsewhere or pass
-## through (Michael, Nov 17, docs/design/vigil.md option A: the vigil aims at suspects, not
-## at the Demon's likely target). The Lamplighter and Sexton walk every block, but leave home
-## only on their own, so only a vigil there sees them (Michael, Nov 19). A Demon whose victim
-## lives on its own block still leaves home. Night Watch still sees all traffic
-## (`block in path`).
-static func vigil_sees_path(block: String, path: Array) -> bool:
-	return not path.is_empty() and path.front() == block
+## A player vigil on `block` spots residents of `block` leaving home, and nothing else: not
+## walkers who arrive from elsewhere or pass through (Michael, Nov 17, docs/design/vigil.md
+## option A: the vigil aims at suspects, not at the Demon's likely target). The Lamplighter
+## and Sexton walk every block, but leave home only on their own, so only a vigil there sees
+## them (Michael, Nov 19). A Demon whose victim lives on its own block still leaves home.
+## Night Watch still sees all traffic (`block in path`).
+## `home` is the walker's home block. A route starts there, but a tour of every block runs in
+## the town's block order, so callers that know the walker pass it (Codex on #300); without
+## it, the path's first block stands in.
+static func vigil_sees_path(block: String, path: Array, home: String = "") -> bool:
+	return not path.is_empty() and (home if home != "" else str(path.front())) == block
 
 static func route(a: String, b: String) -> Array:
 	if a == b:

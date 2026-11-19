@@ -49,6 +49,11 @@ func _init() -> void:
 	var tour: Array = ["hill", "square", "market", "docks"]
 	check(C.vigil_sees_path("hill", tour) and not C.vigil_sees_path("market", tour) and not C.vigil_sees_path("docks", tour),
 		"a vigil sees a four-block tour only from the walker's own home block")
+	# The real tours run in block order, the Square first, wherever the walker lives: the
+	# walker's home decides (Codex on #300).
+	var keys: Array = C.BLOCKS.keys()
+	check(C.vigil_sees_path("docks", keys, "docks") and not C.vigil_sees_path("square", keys, "docks"),
+		"a tour that starts on the Square is seen from its walker's home, not from the Square")
 	print("Vigil and Night Watch: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
