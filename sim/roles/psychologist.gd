@@ -33,18 +33,18 @@ func _init() -> void:
 	conversation_nudge = Tuning.Roles.PSYCHOLOGIST.conversation_nudge
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	if d.has("subject"):
-		return "%s Psychologist: %s trusts %s, suspects %s" % [src, nm.call(d.get("subject", "")), nm.call(d.get("trusts", "")), nm.call(d.get("suspects", ""))]
+		return "%s trusts %s, suspects %s" % [nm.call(d.get("subject", "")), nm.call(d.get("trusts", "")), nm.call(d.get("suspects", ""))]
 	var mode: String = str(d.get("mode", ""))
 	var dh: int = int(d.get("day_heard", 1))
 	if mode == "none_false":
-		return "%s Psychologist: no false statements heard (D%d)" % [src, dh]
+		return "Day %d: nothing false heard" % dh
 	if mode == "pair":
 		var stmts: Array = d.get("statements", [])
 		if stmts.size() == 2:
-			return "%s Psychologist (D%d): >=1 false (%s / %s)" % [src, dh, nm.call(str(stmts[0].get("source", ""))), nm.call(str(stmts[1].get("source", "")))]
-	return "%s Psychologist" % src
+			return "Day %d: %s / %s said something false" % [dh, nm.call(str(stmts[0].get("source", ""))), nm.call(str(stmts[1].get("source", "")))]
+	return "Psychologist reading"
 
 
 static func build_statement_record(w, speaker_id: String, raw_fact: Dictionary, is_false: bool, false_why: String = "", summary_clause: String = "") -> Dictionary:

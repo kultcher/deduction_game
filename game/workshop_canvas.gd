@@ -21,7 +21,7 @@ static func view(g) -> Dictionary:
 	for number in numbers:
 		if number >= 1 and number <= g.board.size():
 			var board_card: Dictionary = g.board[number - 1]
-			shorts[Evidence.normalize_card(board_card).id] = str(CardModel.short_text(board_card, names))
+			shorts[Evidence.normalize_card(board_card).id] = str(CardModel.short_text(board_card, names)).replace("\n", " ")
 	var cards: Array = []
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content

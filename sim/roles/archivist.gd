@@ -18,8 +18,8 @@ func _init() -> void:
 	role_target_pool = "minion"
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s Archivist: %s in %s" % [src, content().role_name(d.get("role", "poisoner")), _names(d.get("pair", []), nm)]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "%s = %s?" % [content().role_name(d.get("role", "poisoner")), _names(d.get("pair", []), nm)]
 
 
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:

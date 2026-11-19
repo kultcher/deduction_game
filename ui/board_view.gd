@@ -20,6 +20,7 @@ const CardModel = preload("res://game/card_model.gd")
 const BoardModel = preload("res://game/board_model.gd")
 const UITheme = preload("res://ui/theme.gd")
 const Icons = preload("res://ui/board_icons.gd")
+const PortraitBadge = preload("res://ui/portrait_badge.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const TraceArt = preload("res://ui/trace_art.gd")
 const TraceTooltip = preload("res://ui/trace_tooltip.gd")
@@ -363,7 +364,9 @@ func _draw_card_item(it: Dictionary, row: String, col: String, k: int) -> void:
 func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: Color, lod: int, src_col: Color) -> void:
 	draw_rect(Rect2(r.position + Vector2(3, 4) * zoom, r.size), Color(0, 0, 0, 0.35) * fade)  # shadow
 	_draw_paper(r, n, fade)
-	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(4 * zoom, r.size.y - 10 * zoom)), UITheme.ink_of(src_col) * fade)
+	# The speaker's colour as a bar across the top (Michael, Nov 18).
+	var bar_h: float = 6.0 * zoom
+	draw_rect(Rect2(r.position + Vector2(6, 5) * zoom, Vector2(r.size.x - 12 * zoom, bar_h)), UITheme.ink_of(src_col) * fade)
 	var names = {}
 	for m in g.w.npcs:
 		names[m.id] = m.name
@@ -374,15 +377,22 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var fs = int(clampf(13.5 * zoom, 12, 28))
 	var small = int(clampf(10.0 * zoom, 9, 20))
 	var pad: float = 6.0 * zoom
-	var tx: float = r.position.x + 14 * zoom
+	var tx: float = r.position.x + 10 * zoom
 	var icon_s: float = 18.0 * zoom
 	# The gutter: kind icon on top, role or place icon below.
 	var icon = _icon_for(card, it)
 	var kind = Icons.kind_for(card)
 	var kind_icon = Icons.texture(kind)
 	var gx: float = r.end.x - pad - icon_s
-	var gy: float = r.position.y + pad
+	var gy: float = r.position.y + pad + bar_h
 	var gutter: float = 0.0
+	# A gift reading shows who told it, as a small round portrait above the role icon,
+	# in place of the generic reading eye (Michael, Nov 18).
+	if kind == "reading" and g.w.by_id.has(src_id(card)):
+		if _draw_face(src_id(card), Vector2(gx, gy) + Vector2(icon_s, icon_s) / 2, icon_s * 0.62, fade):
+			kind_icon = null
+			gy += icon_s * 1.24 + 3 * zoom
+			gutter = icon_s + pad
 	for tex in [kind_icon, icon]:
 		if tex == null:
 			continue
@@ -400,9 +410,28 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	var heard: String = _heard_line(card) if lod == 2 else ""
 	var heard_h: float = small * 1.5 if heard != "" else 0.0
 	var width: float = r.size.x - 20 * zoom - gutter
-	var top: float = r.position.y + pad
+	var top: float = r.position.y + pad + bar_h
 	var max_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - top) / _font.get_height(fs))))
-	_draw_fitted(text, Vector2(tx, top), width, fs, max_lines, _ink * fade)
+	# A second line after "\n" is a reminder (the Seer's "(Marked or Red Herring?)"), in the
+	# small type below the main text, so it fits beside the gutter (Michael, Nov 19).
+	var note: String = ""
+	if text.contains("\n"):
+		note = text.get_slice("\n", 1)
+		text = text.get_slice("\n", 0)
+	# Reserve room for the reminder: the main text gives up a line if it must, and the reminder
+	# is left out when even that doesn't fit, so nothing spills off the card (Codex on #294).
+	var main_lines: int = mini(max_lines, 2) if note != "" else max_lines
+	var note_lines: int = 0
+	if note != "":
+		var room: float = r.end.y - pad - heard_h - top
+		note_lines = int(floor((room - main_lines * _font.get_height(fs)) / _font.get_height(small)))
+		if note_lines < 1 and main_lines > 1:
+			main_lines -= 1
+			note_lines = int(floor((room - main_lines * _font.get_height(fs)) / _font.get_height(small)))
+	_draw_fitted(text, Vector2(tx, top), width, fs, main_lines, _ink * fade)
+	if note != "" and note_lines >= 1:
+		var note_top: float = top + main_lines * _font.get_height(fs)
+		_draw_fitted(note, Vector2(tx, note_top), width, small, note_lines, UITheme.color("ink_soft") * fade)
 	if heard != "":
 		_draw_fitted(heard, Vector2(tx, r.end.y - pad - _font.get_height(small)), width, small, 1, UITheme.color("ink_soft") * fade)
 	if it["mark"] == "nominated":
@@ -452,7 +481,62 @@ func _draw_fitted(text: String, at: Vector2, width: float, fs: int, max_lines: i
 		para.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		para.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
 		_para_cache[key] = para
-	para.draw(get_canvas_item(), at, col)
+	var spans: Array = _name_spans(text)
+	if spans.is_empty():
+		para.draw(get_canvas_item(), at, col)
+		return
+	# Names in their person's colour (Michael, Nov 19): draw glyph by glyph, colouring
+	# those whose character falls in a name. Ink-darkened, as on the colour bar, so pale
+	# roster colours stay readable on parchment.
+	var ts := TextServerManager.get_primary_interface()
+	var y: float = at.y
+	var shown: int = para.get_line_count() if max_lines <= 0 else mini(para.get_line_count(), max_lines)
+	for i in shown:
+		var rid: RID = para.get_line_rid(i)
+		var base := Vector2(at.x, y + para.get_line_ascent(i))
+		var trim: int = ts.shaped_text_get_trim_pos(rid)
+		var x: float = 0.0
+		var glyphs: Array = ts.shaped_text_get_glyphs(rid)
+		for gi in glyphs.size():
+			if trim >= 0 and gi >= trim:
+				break
+			var gl: Dictionary = glyphs[gi]
+			var gcol: Color = col
+			for sp in spans:
+				if int(gl.start) >= sp[0] and int(gl.start) < sp[1]:
+					gcol = Color(sp[2], col.a)
+					break
+			for r in int(gl.get("repeat", 1)):
+				if gl.font_rid != RID():
+					ts.font_draw_glyph(gl.font_rid, get_canvas_item(), gl.font_size, base + Vector2(x, 0) + gl.offset, gl.index, gcol)
+				x += gl.advance
+		var epos: int = ts.shaped_text_get_ellipsis_pos(rid)
+		if epos >= 0:
+			var ex: float = x
+			for gl in ts.shaped_text_get_ellipsis_glyphs(rid):
+				if gl.font_rid != RID():
+					ts.font_draw_glyph(gl.font_rid, get_canvas_item(), gl.font_size, base + Vector2(ex, 0) + gl.offset, gl.index, col)
+				ex += gl.advance
+		y += para.get_line_size(i).y
+
+## [start, end, colour] for each townsperson's name in `text`, whole words only.
+func _name_spans(text: String) -> Array:
+	var out: Array = []
+	if g == null:
+		return out
+	for m in g.w.npcs:
+		var from: int = 0
+		while true:
+			var at: int = text.find(m.name, from)
+			if at < 0:
+				break
+			var end: int = at + m.name.length()
+			var before_ok: bool = at == 0 or not text[at - 1].is_valid_identifier()
+			var after_ok: bool = end >= text.length() or not text[end].is_valid_identifier()
+			if before_ok and after_ok:
+				out.append([at, end, UITheme.ink_of(C.npc_color(m.id))])
+			from = end
+	return out
 
 func _heard_line(card: Dictionary) -> String:
 	var ls: Array = card.get("learned", [])
@@ -464,6 +548,30 @@ func _heard_line(card: Dictionary) -> String:
 		var nm: String = g.w.by_id[who].name if g.w.by_id.has(who) else ("you" if who in ["player", "evidence", ""] else who)
 		parts.append("%s %s%s" % [CardModel.time_label({"day": d["day"], "phase": d["phase"]}), nm, " (public)" if d.get("public", false) else ""])
 	return "heard: " + "; ".join(PackedStringArray(parts))
+
+func src_id(card: Dictionary) -> String:
+	return str(card.get("source", ""))
+
+## A person's face in a small circle with a gold ring, as in the roster (PortraitBadge's
+## framing). Returns false when the person has no portrait.
+func _draw_face(id: String, center: Vector2, radius: float, fade: Color) -> bool:
+	var tex = UITheme.tex("art/portraits/" + id, 0.25)
+	if tex == null:
+		return false
+	var dims: Vector2 = tex.get_size()
+	var frame: Vector3 = PortraitBadge.FACE_FRAMES.get(id, Vector3(0.5, dims.x * 0.58 / dims.y, 1.08))
+	var span: Vector2 = Vector2(dims.x, dims.x) * frame.z / dims
+	var origin: Vector2 = Vector2(frame.x, frame.y) - span / 2
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	for i in 32:
+		var a: float = TAU * i / 32.0
+		var unit := Vector2(cos(a), sin(a))
+		pts.append(center + unit * radius)
+		uvs.append(origin + (unit * 0.5 + Vector2(0.5, 0.5)) * span)
+	draw_colored_polygon(pts, fade, uvs, tex)
+	draw_arc(center, radius, 0, TAU, 32, Color("c9a24a") * fade, maxf(1.5, 1.6 * zoom), true)
+	return true
 
 func _icon_for(card: Dictionary, it: Dictionary):
 	var role: String = ""

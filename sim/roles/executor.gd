@@ -69,11 +69,11 @@ func clears(d: Dictionary) -> Array:
 	return [tgt] if (tgt != "" and r_align == "good") else []
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	var who: String = nm.call(str(d.get("target", "")))
 	if d.has("role"):
-		return "%s Executor: %s was %s" % [src, who, content().role_name(str(d.get("role", "")))]
-	return "%s Executor: charge %s" % [src, who]
+		return "%s = %s" % [who, content().role_name(str(d.get("role", "")))]
+	return "Sworn to %s" % who
 
 
 func _assigned_text(tgt_name: String) -> String:
