@@ -651,7 +651,7 @@ func _today(g, n, read_everything: bool) -> Dictionary:
 	var read: int = 0
 	if plan.get("ready", false) and not plan.get("empty", false):
 		var doubt: Dictionary = SourceDoubt.derive(plan, n.ledger, ws.get("manual_source_doubt", {}))
-		var proposal: Dictionary = Shared.evaluate(plan, outside, doubt.pre_eval, doubt.full, {})
+		var proposal: Dictionary = Shared.evaluate(plan, outside, doubt.pre_eval, doubt.full)
 		for id in proposal.get("effects", {}):
 			pe[id] = float(proposal.effects[id].get("posterior", proposal.effects[id].get("prior", 0.0)))
 		read = proposal.get("reasoning", {}).get("considered", []).size()

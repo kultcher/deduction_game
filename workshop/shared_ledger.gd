@@ -61,8 +61,11 @@ static func ordinary(target: String) -> bool:
 ## Two presented challenges on the same reading that can't be read as one: a different mode,
 ## or, on a Medium's relay, a different side (Codex, #195). They need separate alternatives,
 ## never one silently replacing the other.
+## Two calls on one reading conflict when they name different causes or sides. "misled" and
+## "impaired" are one Mistaken call (Nov 18; Codex on #296), so they never conflict.
 static func challenges_conflict(a: Dictionary, b: Dictionary) -> bool:
-	return a.get("mode") != b.get("mode") or str(a.get("attribution", "")) != str(b.get("attribution", ""))
+	var RC = preload("res://workshop/reading_challenges.gd")
+	return RC.canonical(a.get("mode", "")) != RC.canonical(b.get("mode", "")) or str(a.get("attribution", "")) != str(b.get("attribution", ""))
 
 static func prepare(current: Dictionary, presentations: Dictionary, ledger: Dictionary, withdrawn: Dictionary = {}, focus: Array = []) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
@@ -156,8 +159,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 					quotations[receipt.id] = receipt.duplicate(true)
 		if with_cases:
 			var premise: Array = premise_targets(str(key), presented)
-			# A "suspicious" premise hedges, so the whole case counts at half weight (today
-			# it halves the cards only it brought: premise_shaping).
+			# A "suspicious" premise hedges, so the whole case counts at half weight.
 			stored_cases.append({"key": "case:" + str(key), "presenter": "player", "day": int(presented.get("now", {}).get("day", -1)),
 				"cards": own_cards, "type": _root_type(presented), "target": str(premise[0]) if not premise.is_empty() else "", "targets": premise.duplicate(),
 				"suspicious": _root_type(presented) == "suspicious" and not str(key).begins_with("direct:"), "challenges": own_challenges})
@@ -591,59 +593,6 @@ static func _add_player_words(prepared: Dictionary, presentations: Dictionary, w
 			if id not in prepared.case.cards:
 				prepared.case.cards = prepared.case.cards + [id]
 
-## Premises pass step 1: which remembered presentations shape this listener's beliefs.
-## A card is shaped when only presentations brought it (not the listener's own readings or
-## hearsay) and at least one of them argued an alignment premise about someone (its
-## target). The targets take the shaped cards' full effect, everyone else `spill` of it.
-## Re-presenting the same cards under a Marked or conflict premise neither shapes nor
-## unshapes them. Returns {} when nothing is shaped. `keys` are the presentations that
-## own a shaped card; dropping them gives the "without" plan.
-static func premise_shaping(plan: Dictionary, presentations: Dictionary, withdrawn: Dictionary, insight: float) -> Dictionary:
-	if not plan.get("ready", false) or presentations.is_empty():
-		return {}
-	# The connections model weighs each presentation as a case of its own cards, so people
-	# it didn't touch don't move and nothing needs damping; a "suspicious" premise halves
-	# the case there (workshop/connections.gd).
-	if plan.get("prepared", {}).get("listener", {}).has("connections"):
-		return {}
-	var named_by: Dictionary = {}  # "case:<key>" -> alignment targets ([] for a non-shaping premise)
-	for key in presentations:
-		if withdrawn.has(key) or withdrawn.has(str(key)):
-			continue
-		named_by["case:" + str(key)] = premise_targets(str(key), presentations[key])
-	var shaped_owners: Dictionary = {}
-	var shaped_cards: Array = []
-	for id in plan.get("owners", {}):
-		var owned_by: Array = plan.owners[id]
-		if owned_by.is_empty() or not owned_by.all(func(o): return named_by.has(str(o))):
-			continue  # held another way too: their own reading, hearsay or the public record
-		if not owned_by.any(func(o): return not named_by[str(o)].is_empty()):
-			continue
-		shaped_cards.append(str(id))
-		for o in owned_by:
-			shaped_owners[str(o)] = true
-	if shaped_owners.is_empty():
-		return {}
-	var keys: Array = []
-	var trim: Array = []   # shaped owners with no alignment target (Marked, conflict): keep their other cards
-	var targets: Array = []
-	for owner in shaped_owners:
-		keys.append(owner.trim_prefix("case:"))
-		if named_by[owner].is_empty():
-			trim.append(owner.trim_prefix("case:"))
-		for t in named_by[owner]:
-			if t not in targets:
-				targets.append(t)
-	keys.sort()
-	targets.sort()
-	# Premises step 2: a "suspicious" premise hedges, so the cards only suspicious premises
-	# brought count at half weight for everyone. Dropping those presentations alone leaves
-	# their cards held through any non-suspicious presentation at full weight.
-	var hedged: Array = keys.filter(func(k): return _root_type(presentations[k]) == "suspicious" and not k.begins_with("direct:"))
-	var spill: float = lerpf(Tuning.Workshop.PREMISE_SPILLOVER_MIN, Tuning.Workshop.PREMISE_SPILLOVER_MAX, clampf(insight, 0.0, 1.0))
-	shaped_cards.sort()
-	return {"keys": keys, "trim": trim, "cards": shaped_cards, "targets": targets, "spill": spill, "hedged": hedged, "hedge": Tuning.Workshop.SUSPICIOUS_HEARING}
-
 static func _root_type(presented: Dictionary) -> String:
 	for argument in presented.get("arguments", []):
 		if int(argument.get("board_number", -998)) == int(presented.get("root", -999)):
@@ -655,8 +604,7 @@ static func _root_type(presented: Dictionary) -> String:
 ## that argues about someone's alignment (premise_targets); held any other way (the
 ## listener's own reading, hearsay, the public record) it isn't, and it stays brought after
 ## its case fades until then (the lens stays). A withdrawn case owns nothing. A case with no
-## alignment target (Marked, conflict) among its owners leaves the card unshaped. Step 1's
-## selection (premise_shaping) on the connections model.
+## alignment target (Marked, conflict) among its owners leaves the card unshaped.
 static func brought_by_premise(owners: Dictionary, stored_cases: Array) -> Dictionary:
 	var Cn = load("res://workshop/connections.gd")
 	var target_of: Dictionary = {}
@@ -690,71 +638,23 @@ static func premise_targets(key: String, presented: Dictionary) -> Array:
 			named.append(target)
 	return named
 
-## The presentations left once some are dropped: `field` "keys" (all shaping ones, the
-## "without" side) or "hedged" (only the suspicious ones). On the "without" side an
-## alignment presentation that owns a shaped card is dropped whole (its other cards are held
-## another way, or they'd be shaped too). A presentation with no alignment target (Marked,
-## conflict) that shares a shaped card keeps everything but the shaped cards, so its own
-## cards aren't discounted for anyone (Codex review of PR #92).
-static func without_shaping(presentations: Dictionary, shaping: Dictionary, field: String = "keys") -> Dictionary:
-	var rest: Dictionary = {}
-	var keys: Array = shaping.get(field, []).map(func(k): return str(k))
-	var trim: Array = shaping.get("trim", []).map(func(k): return str(k))
-	var cards: Array = shaping.get("cards", [])
-	for key in presentations:
-		if field == "keys" and str(key) in trim:
-			var kept: Dictionary = presentations[key].duplicate(true)
-			kept.selected = kept.get("selected", []).filter(func(id): return str(id) not in cards)
-			rest[key] = kept
-		elif str(key) not in keys:
-			rest[key] = presentations[key]
-	return rest
-
-const _SHAPED_FIELDS = ["requested", "raw_requested", "posterior", "evil_agreement", "evil_change"]
-
-static func _field_base(effect: Dictionary, other: Dictionary, field: String) -> float:
-	return float(other.get(field, 0.0 if field in ["requested", "raw_requested", "evil_change"] else effect.get("prior", effect[field])))
-
-## Blend one person's effect: `bare` is the pass without any shaping presentation, `firm`
-## the pass without only the suspicious ones (their cards at full weight would be the full
-## pass). The firm presentations' change counts in full, the suspicious ones' at `hedge`,
-## and the whole at `factor` (1 for a target, the spillover for everyone else).
-static func _shape_effect(effect: Dictionary, bare: Dictionary, firm: Dictionary, factor: float, hedge: float) -> void:
-	var full: Dictionary = {}
-	for field in _SHAPED_FIELDS:
-		if effect.has(field):
-			full[field] = float(effect[field])
-	for field in full:
-		var b: float = _field_base(effect, bare, field)
-		var f: float = _field_base(effect, firm, field) if not firm.is_empty() else full[field]
-		effect[field] = b + factor * ((f - b) + hedge * (full[field] - f))
-	if not firm.is_empty() and full.has("requested"):
-		effect["suspicious_case_full"] = full.requested - _field_base(effect, firm, "requested")
-	if effect.has("good_agreement") and effect.has("evil_agreement"):
-		effect.good_agreement = 1.0 - float(effect.evil_agreement)
-	if effect.has("good_change") and effect.has("evil_change"):
-		effect.good_change = -float(effect.evil_change)
-	effect["premise_spill"] = factor
-
-## `shaping` (premises pass step 1): {targets, spill, without} from premise_shaping, with
-## `without` the plan prepared without the shaping presentations. Empty: no shaping.
 ## honest_doubt: SourceDoubt.derive's "honest" map, for the role check (empty: none).
-static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}, honest_doubt: Dictionary = {}) -> Dictionary:
+static func evaluate(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, honest_doubt: Dictionary = {}) -> Dictionary:
 	if not SolverBackend.profiling_enabled:
-		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
+		return _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
 	var _st: int = SolverBackend.begin_stage("outer_prep")
-	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
+	var _res: Dictionary = _evaluate_impl(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
 	SolverBackend.end_stage(_st)
 	return _res
 
-static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, shaping: Dictionary = {}, honest_doubt: Dictionary = {}) -> Dictionary:
+static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt: Dictionary = {}, sighting_doubt: Dictionary = {}, honest_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.ready:
 		return {}
 	if plan.empty:
 		return {"effects": {}}
 	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
-	return _evaluate_adjusted(plan, prepared, suspicion, source_doubt, sighting_doubt, shaping, honest_doubt)
+	return _evaluate_adjusted(plan, prepared, suspicion)
 
 ## One question (`conclusion`, e.g. a secret) asked of the listener's own evidence the way
 ## the belief refresh weighs it: the same doubt-adjusted cards, through the same attention
@@ -823,33 +723,8 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 		prepared.listener.reading_reliability[card.id] = route_weight * (1.0 - doubt)
 	return prepared
 
-static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary, source_doubt: Dictionary, sighting_doubt: Dictionary, shaping: Dictionary, honest_doubt: Dictionary = {}) -> Dictionary:
+static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary) -> Dictionary:
 	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
-	# Premises pass step 1: the shaping presentations' effect reaches non-targets at `spill`.
-	# Step 2: cards only suspicious premises brought count at `hedge` for everyone.
-	if not shaping.is_empty() and shaping.get("without", {}).get("ready", false):
-		var wo_effects: Dictionary = _evaluate_impl(shaping.without, suspicion, source_doubt, sighting_doubt, {}, honest_doubt).get("effects", {})
-		var hedged: Array = shaping.get("hedged", [])
-		var firm_effects: Dictionary = {}
-		var has_firm: bool = false
-		if not hedged.is_empty():
-			if hedged.size() == shaping.keys.size():
-				firm_effects = wo_effects  # every shaping presentation hedges
-				has_firm = true
-			elif shaping.get("without_firm", {}).get("ready", false):
-				firm_effects = _evaluate_impl(shaping.without_firm, suspicion, source_doubt, sighting_doubt, {}, honest_doubt).get("effects", {})
-				has_firm = true
-		var spill: float = float(shaping.spill)
-		var hedge: float = float(shaping.get("hedge", 1.0)) if has_firm else 1.0
-		for person in result.get("effects", {}):
-			if person == prepared.listener.get("id", ""):
-				continue
-			var factor: float = 1.0 if person in shaping.targets else spill
-			if is_equal_approx(factor, 1.0) and is_equal_approx(hedge, 1.0):
-				continue
-			var firm_e: Dictionary = firm_effects.get(person, {"firm": true}) if has_firm else {}
-			_shape_effect(result.effects[person], wo_effects.get(person, {}), firm_e, factor, hedge)
-		result["premise_shaping"] = {"targets": shaping.targets.duplicate(), "spill": spill, "hedge": hedge}
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
 	if prepared.view.get("chronology", {}).has("curse"):
 		var curse: Dictionary = prepared.view.chronology.curse

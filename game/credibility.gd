@@ -145,7 +145,7 @@ static func _agreement(g, n):
 	if not plan.ready:
 		return null
 	var doubt_bundle: Dictionary = SourceDoubt.derive(plan, ledger)
-	var eval_res: Dictionary = Shared.evaluate(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full, {}, doubt_bundle.get("honest", {}))
+	var eval_res: Dictionary = Shared.evaluate(plan, outside, doubt_bundle.pre_eval, doubt_bundle.full, doubt_bundle.get("honest", {}))
 	var effects: Dictionary = eval_res.get("effects", {})
 	var people: Array = effects.keys().filter(func(id): return id != n.id)
 	if people.is_empty():

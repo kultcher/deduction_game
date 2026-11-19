@@ -44,19 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, a Warden's guard read with its night): `baseline_e1d1934`
+### Current baseline (Nov 18, the Mistaken label): `baseline_21df80d`
 
-`tools/golden/baseline_e1d1934/` is the capture from `claude/warden-night-item` at `e1d1934`
-(main `a990916` merged in). A Warden's guard report now sits in its night's movement item with
-that night's sightings and alibis (`Connections.NIGHT_ROLES`), so a quiet-night guard is weighed
-together with who was seen near the guarded door, instead of alone.
-- **Divergence from `baseline_e287b3d`:** 692 from record 32 (Nisha's refresh on day 2, the
-  first refresh that holds a Warden's guard). 42, 54875, 900 and 98933 are identical.
-- **Outcomes:** 692 hangs the same person, Constance, on day 3, with the same eight yes votes.
-  Nisha now nominates her instead of Fenwick. It still reaches day 4 with no winner, in 252
-  records (was 251). Every other seed is unchanged.
-- **Stability:** two captures were identical, and identical to a capture before main was
-  merged in.
+`tools/golden/baseline_21df80d/` is the capture from `claude/honest-mistake` at `21df80d`
+(main `678838f`). "misled" and "failed gift" become one honest-mistake label, Mistaken, and a
+lie call's gate and floor are retuned so it moves suspicion.
+- **Divergence from `baseline_e287b3d`:**
+  - 98933 from record 147, 900 from record 138 and 54875 from record 295. Each is only the
+    stored mode of an NPC's "misled" defence challenge, now "impaired", the merged mode's
+    code name.
+  - 42 and 692 are identical.
+  - With `--ignore engine,mode`, all five seeds are identical, so no belief, vote or
+    execution moves. Nothing in an autoplay game makes a player lie call.
+- **Outcomes unchanged:** the same executions, nominators, winners and record counts on every
+  seed.
+- **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
