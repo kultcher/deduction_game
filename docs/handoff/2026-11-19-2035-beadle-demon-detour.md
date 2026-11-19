@@ -3,7 +3,7 @@
 - **Agent:** Claude-Beadle
 - **Base:** main at `74e6e74` (with #361), `baseline_ee15238`
 - **Branch:** `claude/beadle-demon-detour`
-- **Status:** PR open. It moves golden and re-baselines to `baseline_436cd8b` (main with #349). It is
+- **Status:** PR open. It moves golden and re-baselines to `baseline_0d796b3` (main with #346). It is
   golden-moving, so it queues behind #327; whichever merges second re-baselines.
 - **Next actor:** Bailiff (review and merge).
 - **BACKLOG item:** "Demon detours exist in inference but not in actual movement" (77388).
