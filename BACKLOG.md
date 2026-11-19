@@ -383,11 +383,53 @@ relay about the first victim naming night 0 (Beadle).
   and rewards good NPCs who stick their necks out. (Oct 19) [decided]
   Michael (Nov 18): the item covers agreement through votes, nominations, accusations
   and defences, plus "their reading confirms me" (Beadle rescoping).
-  - **Evidence can build NPC-to-NPC trust.** A relationship gain when credible evidence
-    reduces suspicion, especially a Clerk reading matching the listener's own role
-    (about +0.20, provisional), or a Seer "no" on someone building that person's trust
-    in the Seer. Base it on the listener's knowledge, scale by strength, and deduplicate
-    the underlying fact. (Folded in Nov 18, Michael.)
+  Michael (Nov 19): narrowed to the procedural part: votes, plus nominations and
+  accusations of someone the NPC already suspects. A vote to spare is the defence, since
+  NPCs only defend themselves. Being built in #292. The reading-based part moved to "Trust
+  from readings that confirm what I know or strongly believe", below.
+
+- **Trust from readings that confirm what I know or strongly believe.** A listener gains
+  trust in a teller whose reading it knows, or strongly believes, to be true. Owners:
+  Lantern (the "confirmed from my view" test) and Beadle (the trust gain). Build after the
+  pause. Michael (Nov 19):
+  - **Hard facts:** the reading must be true given the listener's private knowledge: its
+    role, its alignment, where it was each night, and its own readings.
+  - **Strongly held beliefs** count too. Bart strongly believes Edda is evil. Edda is hanged,
+    and next day the Gravedigger Merrin reports she was the Poisoner. Bart can't know it for
+    sure, but it confirms what he strongly believed, so he gains trust in Merrin.
+  - **A cutoff or tiers,** not a gain scaled continuously by how strongly the belief is held.
+  - **Examples:**
+    - Merrin, the Gravedigger, hears the Clerk name "Merrin or Agnes" as the Gravedigger.
+    - A Dowser count that's true given that the listener knows it's good.
+    - A Night Watch hears the Monitor report a Night Watch on the Square, where it walked.
+  - **It absorbs** the "a reading clears me" and "a reading agrees with mine" steps taken out
+    of #292. It also absorbs the earlier note "Evidence can build NPC-to-NPC trust" (Nov 18):
+    a Clerk reading matching the listener's own role (about +0.20, provisional), or a Seer
+    "no" on someone building that person's trust in the Seer. That note said to base it on
+    the listener's knowledge and deduplicate the underlying fact.
+  - **Tiers (Michael, Nov 19).** "Agreement" is how strongly the listener believes the
+    reading is true, from its own view:
+    - 70%+ agreement: a small boost, in line with the shared-voting step;
+    - 85%+ agreement: a moderate boost;
+    - 100% (a known fact from private knowledge): a significant boost.
+
+    The sizes are to be proposed, reusing existing steps where they fit (new constants are
+    Michael's call), together with a measurement.
+  - **Measurement (Michael, Nov 19).** It covers the whole trust system, not just this
+    feature:
+    - track where trust between NPCs ends up: the distribution of pairwise trust at the end of
+      each day and at game end, and how many pairs are near full trust;
+    - soft goal: some NPCs end up near full trust with some others by about day 4 (a guide,
+      not a gate);
+    - first a baseline run on #292 (votes and nominations only); then the tier proposal comes
+      with before-and-after numbers in game terms;
+    - use a probe or sweep script, not a CI suite.
+  - **Open, for a proposal before building:**
+    - the tier sizes;
+    - whether surprise from the public record still scales the gain within a tier;
+    - what happens when a strongly believed reading is later contradicted.
+
+  [decided: direction]
 
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
