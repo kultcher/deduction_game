@@ -1,10 +1,10 @@
 # Private sharing grows each day past day 1
 
 - **Agent:** Claude-Beadle
-- **Base:** main with #312 (`baseline_659996a`)
+- **Base:** main with #320 (`baseline_6569929`)
 - **Branch:** `claude/beadle-private-share`
 - **Status:** PR open. **New constant pending Michael: Bailiff, please hold the merge until he
-  approves it.** It moves golden and re-baselines to `baseline_d46654d`. It queues behind #319
+  approves it.** It moves golden and re-baselines to `baseline_94cf027` (main with #320). It queues behind #319
   and #321, and re-baselines again on its turn.
 - **Next actor:** Michael (approve or change the size), then Bailiff.
 - **BACKLOG item:** "A daily nudge to share a gift privately" (Michael, Nov 19). The built note
