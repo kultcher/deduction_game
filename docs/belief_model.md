@@ -493,7 +493,8 @@ trusted. Built (Nov 18) as the prior only:
   a suspected teller it gives way slightly less; a teller who agrees moves Hollis half as
   much; no Poisoner, no doubt.
 - **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
-  of its own readings (poison, and Delusional with #216), from its last applied refresh.
+  of its own readings, from its last applied refresh. Since Nov 19 it is the judge's posterior
+  (below, "Was my gift turned?"); this prior stays readable as `SourceDoubt.self_doubt_prior(n)`.
 - **Strong frames can shake an own reading** (Michael, Nov 18, option b): a doubted own reading
   no longer pins the person it proves ("proved stays proved" needs the reading undoubted); the
   judge weighs it genuine or broken by fit. Weak contradicting evidence barely moves it; a
@@ -701,3 +702,48 @@ time because it needs the game layer) does that:
   case (0.36 at trust 0.2, 0.37 at 0.5, 0.39 at 0.9), and the case itself then nudges her slightly
   down (−0.005): its stored-case lean, the case's weight beyond its cards, comes out against her
   here. That is the connections arithmetic's own result, as a real listener would get it.
+
+## Was my gift turned? The judge's own doubt (Nov 19)
+
+Michael (Nov 19): the "my gift may have been turned" doubt should come from the NPC's own
+readings clashing with its other beliefs, not from a prior that climbs night by night for every
+reader alike. `workshop/own_gift_doubt.gd` gives, for each night of a good NPC's own gift
+readings, the judge's chance that reading was wrong: CaseEval's "holds" question on it, with
+every card the NPC's connections refresh held. For one's own reading, wrong means the gift
+failed. The poison and Delusional prior (above) is its starting point, inside the judge, so a
+reading that fits the rest falls below the prior and one that fights it rises.
+`WorkshopOwnership` keeps only its inputs from each applied refresh (the cards held, and the
+doubt-adjusted view and listener the evaluation started from, so the prior reaches the role check
+as it did there; Codex on #320), and the judge is asked when something first reads it, at most
+once per refresh. Until something reads it, it costs nothing. `SourceDoubt.self_doubt(n)` reads it, `self_doubt_prior(n)` the prior, and
+`doubts_own_gift(n)` lists the nights at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30).
+
+Measured before the build (42 ten-NPC games, seeds 3032-3095, the day-4 meeting; 105 own
+readings the judge checks, 10 of them false):
+
+| Clash with the NPC's other evidence | Readings | False | True | Judge's "gift failed", median |
+|---|---|---|---|---|
+| strong (under a third of the reading's base rate) | 9 | 4 | 5 | 0.48 |
+| some (a third to two thirds) | 6 | 2 | 3 | 0.15 |
+| none | 90 | 4 | 75 | 0.01 |
+
+- At 0.30 that measurement fired about once in 5 games: 4 of the 10 false readings, 5 of the
+  83 true ones. It left the prior out of the role check (Seer, Archivist, Gravedigger); the
+  build weighs with the refresh's doubt-adjusted listener (Codex on #320). **As built**, read
+  from the stored self-doubt on the same seeds (104 nights in 39 games): it fires on 13 nights
+  in 10 games (about 1 game in 4), for 6 of 9 false readings and 4 of 86 true ones. The median
+  for a false reading is 0.49, for a true one 0.03, and 78 of the 104 nights sit below their
+  prior.
+- Half the false readings clash with nothing (a broken Seer's "no" looks plausible), so no
+  trigger catches them.
+- The commonest true reading it doubts is Michael's own example turned round: a Gravedigger
+  90-98% sure the hanged were evil reads that they were good, and they were (seeds 3040, 3084).
+  The town hanged good people; she wonders whether her gift was turned. That's semi-realistic,
+  and the player can untangle it.
+- **Not covered:** readings that hold in every world (a Warden's quiet night, a Lamplighter's
+  count, a Night Watch list, a Psychologist's or Sexton's reading) and a Medium's relays never
+  get an entry: their clash is weighed through movement, or not at all. About 40% of own
+  readings in the measurement. BACKLOG "Gift doubt for readings the judge doesn't check"
+  ([open]) is the follow-up.
+- **Behaviour:** nothing reads it yet besides tools; beliefs, votes and hangings don't move
+  (golden identical apart from the stored doubt). Beadle's #316 makes it speak.

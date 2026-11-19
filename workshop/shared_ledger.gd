@@ -524,6 +524,12 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 
 ## Inputs for deferred reason attribution from the most recent evaluate() call.
 static var last_reason_ctx: Dictionary = {}
+## The doubt-adjusted view and listener the last belief refresh started weighing with
+## (_doubt_adjusted), kept only while `keep_adjusted` is set: for WorkshopOwnership's
+## self-doubt to weigh a good NPC's own readings the same way without copying the whole plan
+## again. {} when the last evaluate returned early.
+static var last_adjusted: Dictionary = {}
+static var keep_adjusted: bool = false
 
 ## Premises pass step 2: a presented "X holds secret S" premise (the root, or a premise
 ## inside the case) is the player's word: one card per (X, S), a secret reading of X alone
@@ -653,6 +659,9 @@ static func _evaluate_impl(plan: Dictionary, suspicion: Dictionary, source_doubt
 	if plan.empty:
 		return {"effects": {}}
 	var prepared: Dictionary = _doubt_adjusted(plan, suspicion, source_doubt, sighting_doubt, honest_doubt)
+	# Its listener before the evaluation updates it (the view isn't changed).
+	if keep_adjusted:
+		last_adjusted = {"view": prepared.view, "listener": prepared.listener.duplicate(true)}
 	# No headline: the union only asks how every suspicion moves (Jury.refresh).
 	return _evaluate_adjusted(plan, prepared, suspicion)
 
