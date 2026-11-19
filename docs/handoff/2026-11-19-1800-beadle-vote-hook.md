@@ -35,8 +35,8 @@ record the yes count before and after and `crosses`.
 
 ## Measured
 
-- **New suite:** `tools/test_would_vote.gd` (7 checks), on the fast list.
-  - No random draw, no log entry, and the meeting state as it was.
+- **New suite:** `tools/test_would_vote.gd` (8 checks), on the fast list.
+  - No random draw, no log entry, no detailed trace event or live-feed record (Codex on #347), and the meeting state as it was.
   - It counts every good voter but the nominee, and no evil one.
   - It uses the real meeting's threshold.
   - Each voter's result matches the real vote.

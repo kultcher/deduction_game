@@ -1,7 +1,7 @@
 ## The vote hook for the case slate (Michael, Nov 19: how a case moves votes):
 ## MindMeeting.would_vote counts how the good townsfolk would vote on a nominee, with the
 ## player's vote left out, and leaves nothing behind:
-##   - no random draw, no log entry, the meeting state as it was;
+##   - no random draw, no log entry (nor trace event or live-feed record), the meeting state as it was;
 ##   - it agrees with the real vote for each good voter;
 ##   - raising every good voter's suspicion of the nominee turns them to yes and crosses the
 ##     threshold; evil voters and the nominee aren't counted.
@@ -9,6 +9,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const Feed = preload("res://sim/decision_feed.gd")
 
 var checks = 0
 var fails = 0
@@ -58,5 +59,19 @@ func _init() -> void:
 			v.trust_at_reconsider = v.trust
 	var sure: Dictionary = MindMeeting.would_vote(w, nominee.id)
 	_check(sure.yes.size() >= sure.threshold and sure.crosses, "with every good voter sure of the nominee, it crosses (%d of %d needed)" % [sure.yes.size(), sure.threshold])
+	# With detailed logging and a live decision feed on, neither takes the votes (Codex on #347).
+	var g2 = Game.new()
+	g2.new_case(4242, 10)
+	var w2 = g2.w
+	w2.day = 2
+	w2.dlog.detailed = true
+	var feed = Feed.new()
+	feed.enabled = true
+	w2.attach_decision_feed(feed)
+	var trace_n: int = w2.dlog.trace_events().size()
+	var feed_n: int = feed.records.size()
+	MindMeeting.would_vote(w2, w2.living_good()[0].id)
+	_check(w2.dlog.trace_events().size() == trace_n and feed.records.size() == feed_n and w2.dlog.detailed and w2.dlog.live_feed == feed,
+		"no detailed trace event or live-feed record, and both are back on after (%d, %d)" % [w2.dlog.trace_events().size() - trace_n, feed.records.size() - feed_n])
 	print("Would vote: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
