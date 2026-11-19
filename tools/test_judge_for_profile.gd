@@ -73,13 +73,38 @@ func _init() -> void:
 	check(again.get("ready", false) and absf(float(again.get("shift", 0.0))) < 1e-6, "the same case put again today takes its own place: no further change")
 	check(not heard.get("case", {}).is_empty() and str(heard.case.get("key", "")) == "case:draft", "the result carries the case's own stored entry (%s)" % str(heard.get("case", {}).get("key", "")))
 	check(str(again.get("case", {}).get("key", "")) == "case:%d" % filed, "put again, the entry is that case's own (%s)" % str(again.get("case", {}).get("key", "")))
+	# The badge's baseline for a case already put today still leaves its cards out (Codex on #326).
+	var strength_again: Dictionary = Connections.judge_for_profile(g, both, {"baseline": "without_cards"})
+	print("put again, without-cards baseline: %s" % _show(strength_again))
+	check(float(strength_again.get("shift", 0.0)) > 0.02 and absf(float(strength_again.before) - float(fresh.before)) < 1e-9, "put again, the badge's baseline still starts from the public record alone")
 	# A revision filed but not yet presented retires nothing: the town still holds the original.
 	var revised: Dictionary = _value(g, "evil", p[3].id, [seer])
-	revised["revises"] = filed
 	var second: int = Live.file(g, revised, filed)
 	var with_pending: Dictionary = Connections.judge_for_profile(g, both)
 	print("with an unpresented revision #%d of #%d filed: %s" % [second, filed, _show(with_pending)])
 	check(absf(float(with_pending.get("before", -1.0)) - float(again.before)) < 1e-12, "a revision only filed, not presented, leaves the town holding the original")
+	# Judging that revision: it would replace #9 if put (its `revises` is on its board card,
+	# not in the value), so after it holds only the revision; before still holds #9.
+	var as_revision: Dictionary = Connections.judge_for_profile(g, g.board[second - 1].workshop_case)
+	var alone_rev: Dictionary = Connections.judge_for_profile(g, g.board[second - 1].workshop_case, {"baseline": "without_cards"})
+	print("judging the revision: %s" % _show(as_revision))
+	g.public_presentations.erase(filed)
+	var rev_without_original: Dictionary = Connections.judge_for_profile(g, g.board[second - 1].workshop_case)
+	g.public_presentations[filed] = int(g.w.day)
+	check(as_revision.get("ready", false) and absf(float(as_revision.before) - float(rev_without_original.before)) > 1e-6, "judging the revision: before, the town still holds the original (%.4f, against %.4f had it never been put)" % [float(as_revision.get("before", -1.0)), float(rev_without_original.get("before", -1.0))])
+	check(absf(float(as_revision.get("after", -1.0)) - float(rev_without_original.get("after", -2.0))) < 1e-9, "and after, the revision replaces it: the same as if the original had never been put (%.4f / %.4f)" % [float(as_revision.get("after", -1.0)), float(rev_without_original.get("after", -2.0))])
+	# A case withdrawn in public: its argument is taken back, but the cards it brought stay
+	# with the town as the player's word (GamePresentation._keep_receipts; Codex on #326).
+	var third: int = _read(g, p[6], "dowser", 1, {"group": [p[1].id], "count": 0})
+	var tcase: Dictionary = _value(g, "good", p[1].id, [third])
+	var never: Dictionary = Connections.judge_for_profile(g, tcase)
+	var tnum: int = Live.file(g, tcase)
+	g.public_presentations[tnum] = int(g.w.day)
+	g.board[tnum - 1]["withdrawn"] = true
+	var after_withdrawal: Dictionary = Connections.judge_for_profile(g, tcase)
+	print("a withdrawn case's card: before %.4f (never put: %.4f)" % [float(after_withdrawal.get("before", -1.0)), float(never.get("before", -1.0))])
+	check(absf(float(after_withdrawal.get("before", -1.0)) - float(never.get("before", -1.0))) > 1e-6, "after a public withdrawal the town still holds the cards the case brought")
+	g.public_presentations.erase(tnum)
 	# 4. Reads only.
 	g.public_presentations.erase(filed)
 	g.public_citations.erase(seer)

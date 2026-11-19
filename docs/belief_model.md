@@ -680,6 +680,13 @@ time because it needs the game layer) does that:
   and the connections refresh, once without the case and once with it.
 - **Returns:** the target's chance of being evil before and after (the prior where nothing is
   held), the shift, everyone's chances both ways, and the case's own stored-case entry.
+- **A lie call:** an accepted "lying" challenge never moves these chances: the clash is already
+  in the worlds, so discounting the reading would count it twice (`ReadingChallenges.assess`).
+  It acts by flooring the teller's suspicion in the refresh's effects (`Jury`), which the result
+  carries as `floors` and `requested_before`/`requested_after`. On Quill's 10-NPC case, a lie call
+  on a Minion's bluffed Seer reading, grounded on the real Seer's, at trust 0.9 in the Seer and
+  0.3 in the Minion: a floor at agreement 0.68, and the Minion's requested rise 0.09 → 0.18.
+  At equal trust the clash rule calls it a draw and there's no floor.
 - **Two baselines:** by default `before` is the listener as it stands, having already heard the
   case's public cards from their tellers, so the shift is what presenting it would change (the
   town note's question). `profile.baseline = "without_cards"` leaves the case's own cards out of
