@@ -209,6 +209,9 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 				var about: String = _subjects(card, nm)
 				var said: String = "" if str(card.get("source", "")) in card.get("subject", []) else ", says %s" % src
 				if not card.get("home", true):
+					# An excuse that names no place ("Fine, I was out"; Beadle's caught-out ladder).
+					if str(card.block) == "":
+						return "%s: out%s" % [about, said]
 					return "%s: out on %s%s" % [about, C.block_name(card.block), said]
 				return "%s: home, %s%s" % [about, C.block_name(card.block), said]
 		"sighting":

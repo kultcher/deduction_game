@@ -1096,7 +1096,9 @@ internal static class LiveActivityKernel
                     // Sleepwalker) may still say "home"; an evil one may be covering a night out.
                     if (!quoted && currentAlign == AlignGood)
                     {
-                        return !isOut ? 1.0 : GoodOwnAlibiOut;
+                        // The card's own good out-rate: GoodOwnAlibiOut, higher while an excuse
+                        // for a caught lie stands (LiveAssessment._mark_excuses, packed second).
+                        return !isOut ? 1.0 : cardDoubles[cardIdx * 2 + 1];
                     }
                     return isOut ? (currentAlign != AlignGood ? 0.7 : 0.3) : 0.9;
                 }

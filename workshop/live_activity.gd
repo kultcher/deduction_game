@@ -312,7 +312,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			card_ints[off + 19] = int(app.get("through", -1))
 
 		card_doubles[c_i * 2] = (1.0 - float(card.get("self_doubt", 0.0))) if card.get("known_self", false) else float(card.get("hearing_weight", 1.0))
-		card_doubles[c_i * 2 + 1] = clampf(float(card.get("report_error", default_nw_err)), 0.02, 0.45)
+		# The second slot: a report's error, or an alibi's good out-rate (out_rate, an excused lie).
+		card_doubles[c_i * 2 + 1] = float(card.get("out_rate", GOOD_OWN_ALIBI_OUT)) if kind_code == 5 else clampf(float(card.get("report_error", default_nw_err)), 0.02, 0.45)
 
 	return {"ints": card_ints, "doubles": card_doubles}
 
@@ -1958,7 +1959,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				# (GOOD_OWN_ALIBI_OUT, Nov 17); an evil subject may be covering a night out,
 				# priced like a relayed alibi.
 				if not card.get("quoted", false) and alignment == "good":
-					return 1.0 if not out else GOOD_OWN_ALIBI_OUT
+					# out_rate: higher while an excuse for a caught lie stands (LiveAssessment._mark_excuses).
+					return 1.0 if not out else float(card.get("out_rate", GOOD_OWN_ALIBI_OUT))
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":
 			if card.role == "warden" and card.source == person:

@@ -722,6 +722,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
 	if cards.any(func(c): return c.has("route_trust")):
 		key_input.append(cards.map(func(c): return c.get("route_trust", 1.0)))
+	if cards.any(func(c): return c.has("out_rate")):
+		# An excused caught lie's softer out-rate (LiveAssessment._mark_excuses) is scored by the
+		# movement factor, so it must be in the key (found by test_caught_lie_softening).
+		key_input.append(cards.map(func(c): return c.get("out_rate", -1.0)))
 	if cards.any(func(c): return c.has("broken_chance")):
 		key_input.append(cards.map(func(c): return c.get("broken_chance", 0.0)))
 	if cards.any(func(c): return c.get("testimony_only", false)):
