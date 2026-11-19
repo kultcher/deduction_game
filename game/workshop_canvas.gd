@@ -78,6 +78,8 @@ static func view(g) -> Dictionary:
 				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
+	# Excuses for a caught "I was home" soften or contradict it, as in a listener's view.
+	Assess._mark_excuses(cards, int(snapshot.now.day))
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"profile_facets": _profile_facets(g),
