@@ -1,4 +1,5 @@
 ## Dialogue fixes from playtest 13910 (docs/handoff_log.md, 2026-11-05 Claude-Tally).
+## Named test_playtest_13910_dialogue until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")

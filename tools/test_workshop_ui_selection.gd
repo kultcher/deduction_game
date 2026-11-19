@@ -1,6 +1,7 @@
 ## Nov 10 Workshop UI: box selection (move together, remove in one undo), Unlink all, the
 ## fullscreen toggle; and conversations as a bridging node on the board.
-##   godot --headless --path . --script res://tools/test_workshop_ui_1110.gd
+##   godot --headless --path . --script res://tools/test_workshop_ui_selection.gd
+## Named test_workshop_ui_1110 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
