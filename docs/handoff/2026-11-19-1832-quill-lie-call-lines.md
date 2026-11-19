@@ -12,6 +12,7 @@ Michael approved four lines for a lie call's outcome (through Herald):
 | pressed | "The town would press {name} as the liar." |
 | draw, one witness | "It's {witness}'s word against {name}'s: some may be swayed by your assessment." |
 | draw, several witnesses | "Their word against {name}'s: some may be swayed by your assessment." |
+| draw, on the player's own grounds only | "Your word against {name}'s." |
 | unestablished | "Nothing you've cited shows the reading is wrong; the town will still believe it." |
 | bare | "The town won't take this challenge on your word: nothing on the case shows why the reading is wrong." |
 
@@ -22,8 +23,6 @@ Michael approved four lines for a lie call's outcome (through Herald):
 
 ## Small calls made on Michael's behalf
 
-- A draw whose grounds have no named witness (only the player's own cards) uses the
-  several-witness line, "Their word against {name}'s". Herald may want its own line for it.
 - An unknown kind falls back to the bare line.
 
 ## Proposed for the backlog

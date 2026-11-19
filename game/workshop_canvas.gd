@@ -384,6 +384,8 @@ static func lie_call_line(c: Dictionary, name_of: Callable) -> String:
 			return "The town would press %s as the liar." % name
 		"draw":
 			var witnesses: Array = c.get("witnesses", [])
+			if witnesses.is_empty():
+				return "Your word against %s's." % name  # grounds only the player's own (Michael, through Herald)
 			if witnesses.size() == 1:
 				return "It's %s's word against %s's: some may be swayed by your assessment." % [str(name_of.call(str(witnesses[0]))), name]
 			return "Their word against %s's: some may be swayed by your assessment." % name

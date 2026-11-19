@@ -152,6 +152,7 @@ func _lines() -> void:
 	check(Live.lie_call_line({"kind": "pressed", "teller": "t", "witnesses": ["w"]}, name_of) == "The town would press Tamsin as the liar.", "the pressed line names the teller")
 	check(Live.lie_call_line({"kind": "draw", "teller": "t", "witnesses": ["w"]}, name_of) == "It's Wil's word against Tamsin's: some may be swayed by your assessment.", "a draw with one witness names them")
 	check(Live.lie_call_line({"kind": "draw", "teller": "t", "witnesses": ["w", "x"]}, name_of) == "Their word against Tamsin's: some may be swayed by your assessment.", "a draw with several witnesses")
+	check(Live.lie_call_line({"kind": "draw", "teller": "t", "witnesses": []}, name_of) == "Your word against Tamsin's.", "a draw on the player's own grounds")
 	check(Live.lie_call_line({"kind": "unestablished", "teller": "t", "witnesses": ["w"]}, name_of) == "Nothing you've cited shows the reading is wrong; the town will still believe it.", "the unestablished line")
 	check(Live.lie_call_line({"kind": "bare", "teller": "t", "witnesses": []}, name_of) == "The town won't take this challenge on your word: nothing on the case shows why the reading is wrong.", "the bare line")
 
