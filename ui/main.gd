@@ -54,6 +54,10 @@ var map_return: Button
 var conversation_view
 var conversation_show_map = false
 var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
+## A reading (Town Hall records, tavern gossip, a crime scene's traces) that ended the phase:
+## the screen holds the old phase until the last page is done (Michael, Nov 19).
+var _phase_held: bool = false
+const READING_VERBS = ["gossip", "records", "register", "town_hall", "inspect", "search", "s"]
 var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
 ## An NPC approach in the VN (triage 2.8/8.3, Nov 16): "intro" shows the interstitial with
@@ -492,6 +496,8 @@ func _new_case() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	conversation_finished = false
+	_phase_held = false
+	_deferred_log_events = []
 	_day_pick = ""
 	conversation_show_map = false
 	inspect_pages.clear()
@@ -739,7 +745,7 @@ func _open_live_workshop(number: int = 0) -> void:
 	case_view.open_workshop(number)
 
 func _run_workshop(cmd: String, progress: Callable) -> void:
-	if conversation_finished:
+	if conversation_finished or _phase_held:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -770,13 +776,16 @@ func _on_submit(text: String) -> void:
 	_run(t)
 
 func _run(cmd: String) -> void:
-	if conversation_finished:
+	# While a finished conversation or a reading holds the old phase, nothing runs until the
+	# player leaves or presses Done: a command would clear the page and strand the hold (Codex, #369).
+	if conversation_finished or _phase_held:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
 	if g.meeting_streaming() or g.workshop_presenting:
 		_print(g.command(cmd))   # refused; no new events
 		return
+	var phase_before: Array = [g.w.day, g.w.phase, g.state in ["meeting", "nomination"]]
 	var out: String = g.command(cmd)
 	# A conversation that ran out of questions ended the phase too: what comes after it (the
 	# next phase's header, the meeting's headline, who was silenced) waits in the log until
@@ -801,6 +810,18 @@ func _run(cmd: String) -> void:
 				_print(Game.render(evs.slice(0, cut)))
 			else:
 				out = Game.render(evs.slice(0, cut))
+	# A reading that ended the phase: what follows the next phase's header waits in the log
+	# until the last page is done, like a conversation that ran out of questions.
+	var read_ran_out: bool = verb0 in READING_VERBS and previous_state != "talk" and [g.w.day, g.w.phase, g.state in ["meeting", "nomination"]] != phase_before \
+		and not g.last_events.any(func(e): return e.get("k", "") == "error")
+	if read_ran_out and not g.state in ["meeting", "nomination"]:
+		var revs: Array = g.last_events
+		for i in range(revs.size()):
+			if str(revs[i].get("k", "")) in ["header", "headline"]:
+				if i > 0:
+					_deferred_log_events = revs.slice(i)
+					out = Game.render(revs.slice(0, i))
+				break
 	# What's said at the meeting reaches the log as the stage shows it (see _log_events).
 	if not deferred_meeting and not _meeting_owns_log(previous_state):
 		_print(out)
@@ -808,7 +829,14 @@ func _run(cmd: String) -> void:
 		_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
-	if not conversation_finished:
+	var released_now: bool = false
+	if read_ran_out:
+		if inspect_pages.is_empty():
+			_release_phase()   # nothing to read: the new phase shows at once
+			released_now = true   # and its headlines and notes have had their pass (Codex, #369)
+		else:
+			_phase_held = true
+	if not conversation_finished and not _phase_held and not released_now:
 		_consume_headlines()
 		_show_notes()
 	if g.meeting_streaming() and not conversation_finished and inspect_pages.is_empty():
@@ -925,11 +953,22 @@ func _show_inspect_page() -> void:
 	conversation_view.set_location(str(page.get("loc", g.loc)))
 	conversation_view.show_item(page.title, page.texture, page.text)
 
+## The held phase shows: its log, headlines and notes.
+func _release_phase() -> void:
+	_phase_held = false
+	if not _deferred_log_events.is_empty():
+		_log_events(_deferred_log_events)
+		_deferred_log_events = []
+	_consume_headlines()
+	_show_notes()
+
 func _inspect_next() -> void:
 	inspect_index += 1
 	if inspect_index >= inspect_pages.size():
 		inspect_pages.clear()
 		inspect_index = 0
+		if _phase_held:
+			_release_phase()
 		# A search that ended the evening: the meeting waited for you to finish reading.
 		if g.meeting_streaming() and not conversation_finished:
 			_stream_meeting()
@@ -1002,11 +1041,12 @@ var _last_phase_key = ""
 var _day_pick: String = ""   # the person you clicked this phase (the profile panel's default doesn't count)
 
 func _refresh_all() -> void:
-	if conversation_finished:
-		# The talk's last answer has already ended the phase in the game, but the screen holds
-		# the old one (the clock, the map, the townsfolk and the cards) until the player
-		# leaves the conversation (Michael, Nov 19). Nothing the player does can come between,
-		# so this changes only when they see it.
+	if conversation_finished or _phase_held:
+		# The talk's last answer (or a reading: the records, gossip, a scene's traces) has
+		# already ended the phase in the game, but the screen holds the old one (the clock, the
+		# map, the townsfolk and the cards) until the player leaves the conversation or finishes
+		# reading (Michael, Nov 19). Nothing the player does can come between, so this changes
+		# only when they see it.
 		_refresh_actions()
 		cast_list.freeze()
 		map_stage.visible = true
@@ -1515,7 +1555,8 @@ func _nomination_menu(anchor: Control, id: String) -> void:
 	if deck.is_empty():
 		_button(v, "File a case against %s in the Workshop" % who.name, func():
 			popup.hide()
-			_open_live_workshop())
+			_open_live_workshop()
+			case_view.workshop.editor.prefill_premise(id, "evil"))
 	var raw = _button(v, "Nominate without a case", func():
 		popup.hide()
 		_run("nominate %s raw" % id))
