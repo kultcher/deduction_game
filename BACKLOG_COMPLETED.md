@@ -3,6 +3,157 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built, reconciled Nov 19, 2026, evening (Michael via Seneschal; recorded by Claude-Vicar)
+
+Checked against main at e517a66.
+
+- **The phase advances early after Town Hall reads, trace collection and tavern gossip.**
+  Like the conversation fix (#322), the phase must not move on while the player is still
+  reading. (Michael, Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Herald, #369.
+
+- **Augur wording:** "crossed paths with the Demon in the morning or afternoon of <the Nth
+  day>", not "evening". (Michael, Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Herald, #371.
+
+- **Recovering from a wrong "lying" call: signposting.** (Nov 12, Michael) Tell the player
+  that revising a case is the way to take back a "lying" challenge (for example in the block
+  message), or offer "I was wrong, they were mistaken" as one action. Owner Herald.
+  **The rest is done:** Quill measured it on Nov 18. Since #296's Mistaken label, revising
+  is a real way back. On the same 10 seeds, the reader's suspicion falls from 51 to 38 when
+  the call is revised to Mistaken, and the player's trust stays at about 70. The full item
+  is in BACKLOG_COMPLETED.md.
+  **Built (Herald, Nov 19; Michael approved both options and their wording).** (a) The
+  refusal a second case meets becomes a signpost to revising the first. (b) "I was wrong:
+  call it a mistake" on a lie call in the Workshop, with Present then reading "Present the
+  revision (replaces case #N)". Presenting the revision costs what presenting costs (no free
+  public correction). [decided; built]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Herald, #363.
+
+- **The player's judgement in word-against-word lie calls.** (Michael, Nov 19, through
+  Seneschal; it replaces the lie-call badge options (a) and (b).) When the player calls a
+  reading a lie on another teller's word, the listener's trust in the player's judgement
+  adds a little weight to the player's side. That's about ×1.3 from an average listener and
+  ×1.4 at high credibility, capped at the existing witness ceiling. It applies to a
+  misleading call exactly as to a true one, which is intended, so it's kept small. New
+  constants approved: `Workshop.PLAYER_JUDGEMENT_WEIGHT` = 0.5 and `PLAYER_EXPERTISE` =
+  0.1. Being built by Lantern in #352 (open). [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Lantern, #352.
+
+- **Lie-call lines.** (Michael, Nov 19) His four approved lines for a lie call's outcome:
+  pressed; a draw (one witness, several, or the player's own grounds); unestablished; bare.
+  They're shown in the Why readout, and on the badge once its fourth tier is built. Quill
+  in #351 (open), Herald for the badge. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Quill #351 (the Why readout); Herald's badge text, #358.
+
+- **The Test juror's badge tiers.** (Michael, Nov 19) A fourth tier for a premise at 90% or
+  more ("Damning" or "Conclusive"), above Weak, Moderate and Strong. Quill's proposed cut
+  points, from the slate (#332), were ×1.25, ×2 and ×5. **Cut points set (Michael, Nov 19,
+  Quill #357):** Negligible below ×1.25, Weak from ×1.25, Moderate from ×2, Strong from
+  ×3.5, and the top tier at a premise chance of 90%. The top tier applies only where that
+  chance settles the premise: an accusing one, "is good" or "is not the Demon". On the slate's
+  vote measure (#355), Weak sways one or two good votes, Moderate about half, and Strong
+  most, carrying the nomination with the player's vote 9 times in 10. Herald builds the badge
+  text (#358). **Gap to fill:** nothing on the slate falls between Strong (about 4 of 6 good
+  votes) and the top tier (all 7); a possible slate case to add there. Owners: Quill (the cut
+  points), Herald (the badge). [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Quill #357 (the cut points), Herald #358 (the badge text). The slate's vote columns came in #355, and #375 added a case between Strong and the top tier and presents each case to its sources, which fills the gap noted above.
+
+- **The Lamplighter's count, in two steps.** (Michael, Nov 19, with Quill's plan in #346.)
+  - **Step 1:** a count can be broken. Like a Night Watch list (#273), a listener allows that
+    the Lamplighter is evil, poisoned or Delusional, and a broken count says nothing. A
+    Lamplighter case moves the town less, and a Minion bluffing the Lamplighter loses the
+    most. Quill, #346 (open; it moves golden).
+  - **Step 2: tried and dropped (Michael, Nov 19).** Weighing the count against each world
+    (a Poisson-binomial over each person's chance of being out) went the wrong way in a
+    first build: the Lamplighter-and-alibis case fell from ×1.81 to ×1.13, and a witness's
+    sighting against "nobody out" convicted the Lamplighter again (×6.01). Each person's
+    chance of being out is taken across all worlds, so it counts lies like truths. An exact
+    version needs a per-world profile pass; no item for it. Step 1 ships alone.
+  [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Step 1 in Quill's #346 (golden re-baselined). Step 2 was dropped (Michael, Nov 19).
+
+- **Pre-fill the premise from a nomination.** Launching the Workshop from a nomination
+  starts the case with the premise "<nominee> is evil". (Michael, Nov 19) Owner Herald.
+  [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Herald, #370.
+
+- **Saying "my gift may have been turned".** (Michael, Nov 17) Owner Beadle; Herald for the
+  wording (the per-voice `doubt_own_gift` lines are approved). Both parts use the same
+  line, so the player can't tell them apart by wording.
+  - (a) A good NPC that holds significant doubt about its own readings says so in that
+    pass's dialogue. The doubt comes from the poison self-doubt (Lantern and Quill, being
+    built) or the Delusional self-doubt (#216). Michael's draft: "Something seems off
+    about those readings, I fear something might have turned my gift." This part waits
+    for the poison self-doubt signal: Lantern's rebuilt #232, "prior only", where every
+    own reading on a night a Poisoner could have acted carries the poison chance as
+    standing doubt. Michael (Nov 18): the threshold starts at 25% self-doubt, as a new
+    named constant in `sim/tuning.gd`. He thinks that may be low and will judge it in
+    playtesting; the PR says how often it fires in its tests (no separate sweep).
+    Michael (Nov 19): the signal is now the judge's posterior that the own reading was
+    wrong, and the threshold is `Workshop.SELF_DOUBT_TRIGGER`, 0.30
+    (`SourceDoubt.doubts_own_gift(n)`; see "Was my reading poisoned?" below).
+    **Built** (Nov 19, `claude/beadle-gift-doubt-good`, rewired on #320): a good public
+    claimant says it once a game, from the first night in `SourceDoubt.doubts_own_gift(n)`.
+  - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
+    the fabrication check detects), uses the same line to explain the discrepancy. It
+    claims its gift was turned, rather than lying further or going silent. Michael
+    (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
+    twice running; no new number; logged with its reason. **Built** (Nov 18, #245), with
+    the listener side below. (a) is built in #316 (Michael approved it at the
+    0.30 trigger on Nov 19), on Lantern's signal from #320.
+  - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
+    it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
+    far as they believe the line, rather than going through the challenge path, where a
+    claim with nothing cited does nothing (Quill and Lantern, Nov 17). Said only when a
+    Poisoner or Delusional could be in play. "Significant" should reuse the existing
+    doubt numbers if it can; a new constant goes to Michael.
+  - [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. (a) Beadle #316, on Lantern's #320 signal; (b) Beadle #245.
+
+- **Replace the player's "Speak against" / "Speak in their defence" meeting action.** It
+  mostly adds no information and just nudges the town. (Michael, Nov 19) Owner Herald, with
+  Beadle and Quill.
+  - **Michael chose option (b)** of Herald's options (Nov 19, with Beadle's trace of what
+    the action does): keep only **"Present a case about the nominee"**.
+    - One button during a nomination that cites a filed case. It's judged exactly as at
+      the podium: the same evaluation, with the nomination's venue weight.
+    - It removes the free vote nudge (defending lowered the yes chances by 0.25, accusing
+      raised them by 0.15, scaled by credibility) and the trust bumps for merely speaking
+      (`SPEAK_AGAINST_*`).
+    - The stance is recorded only if a case is cited.
+    - It does **not** use up the player's once-per-meeting "Present a deduction".
+  - **Rejected:** (a) remove it entirely, so cases are presented only before nominations;
+    (c) fold it into the vote as "…and cite a case", with a small nudge from the bare vote.
+  - **Follow-up:** Beadle proposes a symmetric player-vote effect for Michael's approval. A
+    no vote gives a small push towards no, the nominee warms to a player who spared them,
+    and perhaps votes count towards the track record.
+
+  [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Herald and Beadle, #361. Beadle's symmetric player-vote effect is still a proposal for Michael.
+
+- **Summarised case responses.** Similar NPC responses to a presented case are bundled.
+  Each bundle shows a representative as the main portrait with its full text, and small
+  agreeing portraits along the bottom of the frame with short agreement lines. (Michael,
+  Nov 19) Owner Herald; plan first. [decided]
+  - **Herald's plan, approved (Michael, Nov 19):**
+    - four movement bands;
+    - at most 5 small portraits, plus "+N more";
+    - meetings only;
+    - hovering shows each person's own words.
+
+  > **Closed Nov 19 (BACKLOG reconcile, evening; Michael via Seneschal):** built. Herald, #373.
+
 ## Built, reconciled Nov 19, 2026 (Michael via Seneschal; recorded by Claude-Vicar)
 
 Items still tagged `[decided]` in BACKLOG.md after they were built. Each was checked against main and its merged PRs.
