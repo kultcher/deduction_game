@@ -18,7 +18,7 @@ func _init() -> void:
 	kind = "info"
 	tags = ["ongoing_info", "demon_id"]
 	day = true
-	desc = "Each evening, learns whether they crossed paths with the demon in public on the same block earlier that day."
+	desc = "Each evening, learns whether they crossed paths with the Demon in public on the same block earlier that day."
 	shape = "AUGUR_CROSSING"
 	marked_registers = true
 	min_gift_day = 1
@@ -34,8 +34,8 @@ func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
 
 func _spoken_text(yes: bool) -> String:
 	if yes:
-		return "I sensed that I crossed paths with the demon earlier in the day"
-	return "I sensed no sign of the demon along my path earlier in the day"
+		return "I sensed that I crossed paths with the Demon earlier in the day"
+	return "I sensed no sign of the Demon along my path earlier in the day"
 
 
 func run_day_gift(w, ag, mind, _evil) -> void:

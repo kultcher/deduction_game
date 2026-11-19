@@ -816,7 +816,7 @@ const VOICES = {
 		"opinion_unfamiliar": "Sorry, I don't really know {subject} that well—I keep to myself a lot.",
 		"opinion_vibes": "I know this sounds paranoid, and I can't put my finger on it, but something's off about {subject}.",
 		"opinion_doubt": "I hate pointing fingers, really, but I have my doubts about {subject}.",
-		"opinion_accuse": "I'm terrified of being wrong about this, but if you ask me: it's {subject}. They're the demon, I mean to say.",
+		"opinion_accuse": "I'm terrified of being wrong about this, but if you ask me: it's {subject}. They're the Demon, I mean to say.",
 		"opinion_word_doubt": "Though maybe double-check what {subject} tells you? Not that they'd lie. Probably.",
 		"opinion_friend_clear": "{subject} is a friend of mine, so I'm biased, obviously—but no, I can't see them being evil.",
 		"opinion_friend_suspect": "{subject} is my friend, which makes this awful to say, but I have my doubts about them.",

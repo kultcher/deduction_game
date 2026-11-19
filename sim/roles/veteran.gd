@@ -11,7 +11,7 @@ func _init() -> void:
 	align = "good"
 	kind = "passive"
 	tags = ["protection", "kill_protection"]
-	desc = "The first time the demon attacks the Veteran, they survive and learn the last block the attacker came through."
+	desc = "The first time the Demon attacks the Veteran, they survive and learn the last block the attacker came through."
 	shape = "NIGHT_EVENT"
 	produces_readings = true
 	can_cause_quiet_night = true
@@ -43,5 +43,5 @@ func on_survive_attack(w, v) -> void:
 	w._add_info(v, {
 		"data": {"attacked": w.day, "block": from},
 		"true": true,
-		"text": "the demon came for me on night %d and I lived; it came by way of %s" % [w.day, content().block_name(from)],
+		"text": "the Demon came for me on night %d and I lived; it came by way of %s" % [w.day, content().block_name(from)],
 	})

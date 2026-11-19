@@ -11,7 +11,7 @@ func _init() -> void:
 	align = "good"
 	kind = "info"
 	tags = ["ongoing_info", "demon_id"]
-	desc = "Each night, picks two people and learns if either is the demon. One good soul reads falsely as the demon."
+	desc = "Each night, picks two people and learns if either is the Demon. One good soul reads falsely as the Demon."
 	shape = "PING"
 	marked_registers = true
 	red_herring_registers = true
@@ -167,7 +167,7 @@ func generate_reading(w, n, _ctx: Dictionary, mind) -> Dictionary:
 	var entry: Dictionary = {
 		"data": {"pair": pair, "yes": reported_yes},
 		"true": reported_yes == true_yes,
-		"text": "I looked at %s: %s" % [w._names(pair), "one of them reads as the demon" if reported_yes else "neither is the demon"],
+		"text": "I looked at %s: %s" % [w._names(pair), "one of them reads as the Demon" if reported_yes else "neither is the Demon"],
 	}
 	if yes and not true_yes and not broken:
 		entry["why"] = "%s is the Seer's red herring, so reads as the Demon" % n.red_herring if n.red_herring in pair else "a Marked soul reads as the Demon"
@@ -213,7 +213,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, asked: Arr
 	pair = w.shuffled(pair)
 	var entry: Dictionary = {
 		"data": {"pair": pair, "yes": yes},
-		"text": "I looked at %s: %s" % [w._names(pair), "one of them reads as the demon" if yes else "neither is the demon"],
+		"text": "I looked at %s: %s" % [w._names(pair), "one of them reads as the Demon" if yes else "neither is the Demon"],
 	}
 	return {"entry": entry, "why": why}
 
@@ -225,7 +225,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, other: Cal
 		var o = other.call([])
 		if o != null:
 			e["data"] = {"pair": [d.id, o.id], "yes": false}
-			e["text"] = "I looked at %s: neither is the demon" % w._names([d.id, o.id])
+			e["text"] = "I looked at %s: neither is the Demon" % w._names([d.id, o.id])
 			return {"entry": e, "why": "made up a reading from the late Seer %s that cleared %s, the Demon" % [dd.id, d.id], "frames": false}
 	var prior: Array = []
 	for pe in dd.info_log:
@@ -238,7 +238,7 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, other: Cal
 	if o2 == null:
 		return {}
 	e["data"] = {"pair": [a, o2.id], "yes": true}
-	e["text"] = "I looked at %s: one of them reads as the demon" % w._names([a, o2.id])
+	e["text"] = "I looked at %s: one of them reads as the Demon" % w._names([a, o2.id])
 	return {"entry": e, "why": "made up a reading from the late Seer %s that pointed at %s again" % [dd.id, a], "frames": true}
 
 
@@ -250,7 +250,7 @@ func bluff_alternatives(w, n, _plan: Dictionary, _s: String, _mate, entry: Dicti
 	var yes: bool = bool(d.get("yes", false))
 	var out: Array = []
 	var make = func(p: Array, y: bool, why: String) -> Dictionary:
-		return {"entry": {"data": {"pair": p, "yes": y}, "text": "I looked at %s: %s" % [w._names(p), "one of them reads as the demon" if y else "neither is the demon"]}, "why": why}
+		return {"entry": {"data": {"pair": p, "yes": y}, "text": "I looked at %s: %s" % [w._names(p), "one of them reads as the Demon" if y else "neither is the Demon"]}, "why": why}
 	out.append(make.call(pair.duplicate(), not yes, "gives the other answer on %s" % str(pair)))
 	var free: Array = bluff_bystanders(w, n)
 	for i in range(pair.size()):
