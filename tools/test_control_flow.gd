@@ -192,9 +192,11 @@ func _test_talk_holds_phase(scene) -> void:
 			scene._run("no")
 	_check(scene.conversation_finished and g.w.phase != phase_before, "the last answer ends the phase in the game (state %s, finished %s)" % [g.state, scene.conversation_finished])
 	_check(scene.day_label.text == label_before, "but the clock still shows the old phase (%s)" % scene.day_label.text)
+	_check(scene.cast_list._frozen != null and scene.cast_list.mouse_filter == Control.MOUSE_FILTER_IGNORE, "and the townsfolk list holds its lines and ignores the pointer (Codex, #322)")
 	scene._leave_finished_conversation()
 	scene.finish_streaming()
 	_check(scene.day_label.text != label_before, "leaving the conversation moves the clock on (%s)" % scene.day_label.text)
+	_check(scene.cast_list._frozen == null and scene.cast_list.mouse_filter == Control.MOUSE_FILTER_STOP, "and the townsfolk list comes back to life")
 
 
 func _test_meeting_log(scene) -> void:

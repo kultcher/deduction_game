@@ -1007,12 +1007,14 @@ func _refresh_all() -> void:
 		# leaves the conversation (Michael, Nov 19). Nothing the player does can come between,
 		# so this changes only when they see it.
 		_refresh_actions()
+		cast_list.freeze()
 		map_stage.visible = true
 		conversation_view.visible = true
 		meeting_view.visible = false
 		map_return.visible = false
 		input.editable = false
 		return
+	cast_list.thaw()
 	_sync_approach(not inspect_pages.is_empty())
 	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
 		_build_roles(roles_content.get_parent() == roles_dock)
@@ -1800,10 +1802,10 @@ func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool,
 
 # ---------------------------------------------------------------- side panels
 
-## A sighting of someone else by day: not a night sighting, nor someone's own account of
-## where they were.
+## A daytime location sighting: anyone seen somewhere by day, people's own "I was at the
+## mill" accounts included (Michael, Nov 19). Night sightings stay.
 static func is_day_sighting(c: Dictionary) -> bool:
-	if c.get("kind", "") != "sighting" or c.get("self_report", false) or c.get("phase") == null:
+	if c.get("kind", "") != "sighting" or c.get("phase") == null:
 		return false
 	return int(c["phase"]) != C.NIGHT
 
