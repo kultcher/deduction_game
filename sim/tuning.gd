@@ -1139,11 +1139,6 @@ class Workshop:
 		"partial": 0.02,
 	}
 
-	## Premises pass step 1 (docs/premises_plan.md): a presented case moves its premise's
-	## target by the full evidence, and everyone else by this share of the presentation's
-	## effect, from the lowest to the highest Insight. Remembered for every refresh.
-	const PREMISE_SPILLOVER_MIN = 0.4
-	const PREMISE_SPILLOVER_MAX = 0.8
 	## Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a
 	## card adds when only presented cases brought it, and what a stored case's cards add
 	## together, count in full on the case's target and at this share on everyone else. A

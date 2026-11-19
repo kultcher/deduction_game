@@ -9,7 +9,6 @@ const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
-const Shared = preload("res://workshop/shared_ledger.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
 var checks = 0
@@ -168,13 +167,8 @@ func check(ok: bool, label: String) -> void:
 
 ## Codex review of PR #92.
 func _codex_review() -> void:
-	# 1. The "without" side drops a shaped card, not every other card of a non-alignment
-	# presentation that shares it.
-	var presentations := {"a": {"selected": ["A"], "arguments": []}, "m": {"selected": ["A", "B"], "arguments": []}, "o": {"selected": ["C"], "arguments": []}}
-	var rest: Dictionary = Shared.without_shaping(presentations, {"keys": ["a", "m"], "trim": ["m"], "cards": ["A"]})
-	check(not rest.has("a") and rest.has("m") and rest.m.selected == ["B"] and rest.has("o"),
-		"the comparison plan drops shaped cards only; a Marked presentation keeps its own (%s)" % [rest])
-	# 2. A presentation-backed argument (a cited deduction) needs the same acceptance as a
+	# (Its first check, the earlier model's shaping comparison plan, went with that code in
+	# purge phase 5.) A presentation-backed argument (a cited deduction) needs the same acceptance as a
 	# presented premise before it sets a protect preference.
 	var g = _game()
 	var n = g.w.npcs[0]

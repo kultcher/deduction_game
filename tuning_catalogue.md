@@ -654,8 +654,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEADLINE_ARCHIVIST` | `1.0` | "one of A/B holds <evil role>": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `HEADLINE_DOWSER` | `1.0` | "c of these n read as evil": each c/n | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `HEADLINE_REPEAT_BUMP` | `0.15` | Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline. | `workshop/jury.gd` |
-| `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `game/workshop_why.gd`, `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `JURY_ALIGNMENT_COEFF` | `0.45` |  | `game/workshop_why.gd`, `workshop/jury.gd` |
+| `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
+| `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
 | `JURY_CHALLENGE_LYING_MIN_AGR` | `0.6` |  | `workshop/jury.gd`, `workshop/reading_challenges.gd` |
 | `JURY_CHALLENGE_LYING_SCALE` | `0.12` |  | `workshop/jury.gd` |
 | `SOURCE_REL_BASE` | `0.50` | Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]). | `workshop/shared_ledger.gd` |
@@ -732,12 +732,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `THEORY_THRESHOLD_SLOPE` | `4.0` |  | `workshop/theory.gd` |
 | `VENUE_MULTS` | `{ "private": 1.0, "meeting": 0.6, "nomination": 0.5, }` | Presentation venue multipliers (`game/workshop_presentation.gd`) | `game/game_meeting.gd`, `game/game_presentation.gd` |
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
-| `PREMISE_SPILLOVER_MIN` | `0.4` | Premises pass step 1 (docs/premises_plan.md): a presented case moves its premise's target by the full evidence, and everyone else by this share of the presentation's effect, from the lowest to the highest Insight. Remembered for every refresh. | `workshop/shared_ledger.gd` |
-| `PREMISE_SPILLOVER_MAX` | `0.8` |  | `workshop/shared_ledger.gd` |
 | `PREMISE_BYSTANDER_SHARE` | `1.0 / 3.0` | Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a card adds when only presented cases brought it, and what a stored case's cards add together, count in full on the case's target and at this share on everyone else. A listener hearing "X is evil" weighs how far the case proves that, and under-registers what it implies about the others. | `workshop/connections.gd` |
 | `PREMISE_SHAPING_TYPES` | `["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrol...` | Premise types whose target is an alignment question. Marked, secret, misled and conflict premises name no alignment target, so their cards spill over in full. | `workshop/shared_ledger.gd` |
 | `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
-| `SUSPICIOUS_HEARING` | `0.5` | Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises brought count at this share for everyone (both directions), and the rest of their full effect on the target becomes pressure, once per filing: the average listener's full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict premise's +0.1 / +0.2. | `game/workshop_why.gd`, `workshop/connections.gd`, `workshop/shared_ledger.gd` |
+| `SUSPICIOUS_HEARING` | `0.5` | Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises brought count at this share for everyone (both directions), and the rest of their full effect on the target becomes pressure, once per filing: the average listener's full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict premise's +0.1 / +0.2. | `game/workshop_why.gd`, `workshop/connections.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` |  | `game/workshop_presentation.gd` |
 | `SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE` | `4.0` | The same pressure under the connections model (Michael, Nov 14). "Suspicious" is the early-game tool: one basic incriminating reading should press its subject by about 0.3 at a meeting (with a nomination's 0.4, about one disclosure tier). The rise is how far the case's cards, read by themselves, lift its subject for the average listener; times this, up to the cap, then the venue's share above. Measured Nov 14 on fresh 10-NPC games: a lone Dowser "1 of these 2" lifts its subject 6 to 8 points, a lone Seer "yes" on a pair 3, a Dowser "1 of these 3" about 1. | `game/workshop_presentation.gd` |
 | `SUSPICIOUS_PRESSURE_CONNECTIONS_CAP` | `0.5` |  | `game/workshop_presentation.gd` |
