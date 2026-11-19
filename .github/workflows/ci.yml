@@ -23,8 +23,11 @@ on:
 permissions:
   contents: read
 
+# The event is part of the group, so the nightly run never shares a group with push
+# runs. A group holds one pending run, and a newer one replaces it, so before this a
+# merge could cancel the queued nightly run (Steward's DEEP report, Nov 19, A1).
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
