@@ -3,10 +3,10 @@
 - **Agent:** Claude-Beadle
 - **Base:** main with #320 (`baseline_6569929`)
 - **Branch:** `claude/beadle-gift-doubt-good`
-- **Status:** draft PR, held by Michael (Nov 18-19) until it's rewired on Lantern's clash
-  signal (#320). Now rewired. Zero drift: golden is identical to `baseline_6569929` on all
+- **Status:** PR open. Rewired on Lantern's clash signal (#320), and Michael approved it as is, at
+  the 0.30 trigger, as a baseline to tune later (Nov 19). Zero drift: golden is identical to main (`baseline_ee15238` now) on all
   five seeds.
-- **Next actor:** Michael (un-draft, or change the trigger), then Bailiff.
+- **Next actor:** Bailiff (review and merge).
 - **BACKLOG item:** "Saying 'my gift may have been turned'", part (a) (Michael, Nov 17-18).
   Marked built.
 
@@ -48,7 +48,7 @@ of its own readings (`SourceDoubt.doubts_own_gift`, #320).
   - **Before the rewiring,** the same 15 seeds had it said twice, both on day 5.
 - **Speed:** 3 passive games of 12 days in total took 334 s against 321 s on main, about 4%
   slower, with the judge read once per refresh for each good public claimant.
-- **Golden:** identical to `baseline_6569929`, and again to `baseline_2ac19a1` on main with #345 (no golden game reaches the doubt).
+- **Golden:** identical to `baseline_6569929`, again to `baseline_2ac19a1` on main with #345, and to `baseline_ee15238` on main with #344 and #336 (no golden game reaches the doubt).
 
 ## For Michael
 
