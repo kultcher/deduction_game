@@ -101,10 +101,11 @@ func _test_flow() -> void:
 	_check(g.state == "meeting", "voting after a press resolves the nomination as before")
 	var g2 = _meeting_game(8402)
 	var t2 = _unclaimed(g2)[0]
+	var case2: int = g2.file_deduction({"type": "evil", "a": t2.id}, [g2.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"])[0].n])
 	g2.command("nominate %s raw" % t2.name.to_lower())
-	g2.command("accuse")
-	_check(g2.w.meeting.pending.get("press", "") == "closed" and "already had your chance" in g2.command("press night"),
-		"speaking for or against closes the press (the statement comes after it)")
+	g2.command("case %d" % case2)
+	_check(g2.statement_used and g2.w.meeting.pending.get("press", "") == "closed" and "already had your chance" in g2.command("press night"),
+		"putting a case closes the press (the case comes after it)")
 	var g3 = _meeting_game(8403)
 	var t3 = _unclaimed(g3)[0]
 	g3.command("nominate %s raw" % t3.name.to_lower())
