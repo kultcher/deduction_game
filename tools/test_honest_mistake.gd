@@ -20,7 +20,6 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const RC = preload("res://workshop/reading_challenges.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var checks = 0
 var fails = 0
@@ -156,7 +155,6 @@ func _lie(sd: int) -> void:
 
 
 func _init() -> void:
-	Connections.enabled = true
 	SourceDoubt.delusional_self_doubt = false  # the listener's own self-doubt, off to keep the numbers plain
 	var sd: int = _seed()
 	check(sd > 0, "a seed with a Poisoner on the script (%d)" % sd)
