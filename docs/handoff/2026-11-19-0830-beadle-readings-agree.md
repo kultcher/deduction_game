@@ -3,8 +3,9 @@
 - **Agent:** Claude-Beadle
 - **Base:** `claude/beadle-reading-trust` (#319), which this builds on
 - **Branch:** `claude/beadle-readings-agree`
-- **Status:** PR open. It merges after #319 and is re-baselined then. Against #319's
-  `baseline_f2e5532`, golden moves only in lines and cards: no outcome changes.
+- **Status:** PR open, with #319 merged in. It moves golden and re-baselines to
+  `baseline_ecfbe7f` (Codex on #321): lines and cards only, no outcome changes. It merges after
+  #319.
 - **Next actor:** Bailiff, after #319.
 - **BACKLOG item:** "Trust from readings that confirm what I know or strongly believe". This is
   its approved "next" step, which #319's BACKLOG note already describes. The false version is
@@ -43,8 +44,8 @@ enough.
     the kind.
 - **Suites that pass:** test_dialogue_voices, test_dialogue_opinion_pass, test_meeting_m2d,
   test_meeting_flow and test_reading_trust.
-- **Golden:** against #319's `baseline_f2e5532`:
-  - 54875 and 98933 diverge at day 2's vote, and 692 at day 3's;
+- **Golden:** `baseline_ecfbe7f`, against #319's `baseline_d61a22d`; two captures identical:
+  - 54875, 692 and 98933 diverge at day 2's vote;
   - in each, the new card and line appear after a failed vote. In 98933, one NPC's reasons are
     then marked for a refresh;
   - 42 and 900 are identical;
