@@ -1,6 +1,6 @@
 # 2026-11-19, Claude-Lantern: movement factor handles shared only on the same scale (`claude/factor-norm-handles`; golden moves at rounding level only)
 
-- **Base:** main `f831dbe`. **Status:** PR open. **Next:** Bailiff; then Quill merges main into
+- **Base:** main `f831dbe`, with main merged in after #345 (Argon's dawn flush). **Status:** PR open. **Next:** Bailiff; then Quill merges main into
   `claude/lamplighter-count` and resumes the Lamplighter fix (b), step 1.
 - **Why:** Seneschal asked me to diagnose Quill's seed-900 cache-parity failure on the Lamplighter
   branch, and approved this fix (Nov 19). It's correctness, not speed. Argon may want to know,
@@ -33,7 +33,8 @@
     `test_vigil_nightwatch`, `test_warden_quiet_route`, `test_sighter_contest`,
     `test_demon_types`, `test_relayed_alibi` and `test_workshop_regressions`.
   - **Golden:** moves on seed 42 only, in 2 values at rounding level, the first 3e-17 at
-    record 72. That's the same collision on main, between two scales that differed only in the
+    record 72 (67 after #345). That's the same collision on main, between two scales that differed only in the
     last digit. The other four seeds are identical, and seed 42 matches at `--tol 1e-12`.
-    Re-baselined to `baseline_1089dd9`; two captures were identical.
+    It's the same after merging #345. Re-baselined to `baseline_ee15238` (first `baseline_1089dd9`,
+    before #345); two captures were identical.
 - **Proposed for the backlog:** none.
