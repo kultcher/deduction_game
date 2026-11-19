@@ -148,7 +148,8 @@ relay about the first victim naming night 0 (Beadle).
   presentation, the subject's own movement, and the others in a vigil sighting like
   Michael's example. Report side by side, then Michael picks. Owner Lantern.
   **Michael (Nov 18): build B at a bystander share of 1/3,** reusing step 1's
-  `premise_shaping` selection (`docs/design/premise_centring.md`). No extra trust cost for a
+  `premise_shaping` selection (`docs/design/premise_centring.md`; built as
+  `Shared.brought_by_premise`, and `premise_shaping` itself was deleted in purge phase 5). No extra trust cost for a
   misframed case: the case not landing is the cost (Michael, Nov 18). Owner Lantern.
   **[decided]: B at a share of 1/3**
 
@@ -238,8 +239,11 @@ relay about the first victim naming night 0 (Beadle).
   **Judge side built (Quill, Nov 18):** a Warden's guard report
   on a quiet night sets the Demon's route to the guarded door, where the Warden and the
   guarded person are good. The player's ward already did this through the scorched sigil.
-  The Test juror's result carries `guards` for Herald's reason line. Herald: the UI and
-  wording.
+  The Test juror's result carries `guards` for Herald's reason line. **Reason line built
+  (Herald, Nov 19, `claude/herald-guard-reason`):** the Test juror's tooltip names each
+  guard that moved the case ("#7 Merrin guarded Fenwick's door on the first night: if Merrin
+  is a working Warden, the Demon came to Fenwick's door that night. This strengthens the
+  case 15 points."), with the quiet night's card when the case cites it.
 
 ### NPC behaviour
 
