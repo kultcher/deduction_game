@@ -146,6 +146,11 @@ func _nomination_prefill(scene) -> void:
 	ed.prefill_premise(who.id, "evil")
 	var again: int = ed.board.nodes.values().filter(func(n): return n.kind == "premise" and n.get("conclusion", {}).get("target", "") == who.id and n.get("conclusion", {}).get("type", "") == "evil").size()
 	check(count == 1 and again == 1, "opening it again selects that premise, not a second one (%d, %d)" % [count, again])
+	# A premise about another alignment epoch (before a curse) isn't reused (Codex, #370).
+	var mine: String = ed.board.selected
+	ed.board.nodes[mine].conclusion.at = "Original alignment" if str(ed.board.view.alignment_epoch) != "Original alignment" else "Current alignment"
+	var fresh: String = ed.prefill_premise(who.id, "evil")
+	check(fresh != mine and str(ed.board.nodes[fresh].conclusion.get("at", "")) == str(ed.board.view.alignment_epoch), "a premise about another alignment epoch isn't reused")
 
 func _find_button(node: Node, text: String) -> Button:
 	if node is Button and node.text == text:

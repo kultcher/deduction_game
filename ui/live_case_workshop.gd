@@ -1112,7 +1112,11 @@ func prefill_premise(target: String, type: String = "evil") -> String:
 		return ""
 	for id in board.nodes:
 		var node: Dictionary = board.nodes[id]
-		if node.kind == "premise" and str(node.get("conclusion", {}).get("type", "")) == type and str(node.get("conclusion", {}).get("target", "")) == target:
+		# The same claim about the same alignment: after a curse, a premise about someone's
+		# original alignment isn't the one to reuse (Codex, #370).
+		var c: Dictionary = node.get("conclusion", {})
+		if node.kind == "premise" and str(c.get("type", "")) == type and str(c.get("target", "")) == target \
+				and (not (type in EPOCH_TYPES) or str(c.get("at", board.view.alignment_epoch)) == str(board.view.alignment_epoch)):
 			board.selected = id
 			case_root = id
 			canvas.centre_on([id])

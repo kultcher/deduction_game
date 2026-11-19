@@ -23,3 +23,8 @@ Michael decided on Nov 19, through Seneschal, that launching the Case Workshop f
 
 ## Proposed for the backlog
 None.
+
+## Codex fix (#370)
+- **The bug:** a premise was reused when it had the same type and target, ignoring the alignment epoch. After a curse, it could pick "X is evil" about X's original alignment.
+- **The fix:** for epoch premises (evil, suspicious, good), it's reused only when its epoch is the current one. Otherwise a new premise is started.
+- **The check:** `test_workshop_nav` (19 checks) covers it. The check fails without the fix.
