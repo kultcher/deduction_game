@@ -1690,7 +1690,8 @@ static func hanged_demon(view: Dictionary, world: Dictionary, target: String) ->
 	return -1 if ctx.is_empty() else hanged_demon_in(world, ctx)
 
 ## The world-independent part, computed once per question: {} when the target wasn't hanged.
-static func hanged_context(view: Dictionary, target: String) -> Dictionary:
+## `cards`, the case's judged cards, supply the readings that can refute it (hanged_refuters).
+static func hanged_context(view: Dictionary, target: String, cards: Array = []) -> Dictionary:
 	var index: int = person_index(view, target)
 	if index < 0:
 		return {}
@@ -1702,7 +1703,43 @@ static func hanged_context(view: Dictionary, target: String) -> Dictionary:
 		return {}
 	var minions: Array = view.get("script_minions", [])
 	var scion: bool = minions.is_empty() or "scion" in minions
-	return {"index": index, "alive_mask": Roles._scion_exec_alive_demon_mask(view, person_ids(view), target) if scion else 0}
+	return {"index": index, "alive_mask": Roles._scion_exec_alive_demon_mask(view, person_ids(view), target) if scion else 0,
+		"refuters": hanged_refuters(view, cards, target) if scion else []}
+
+## The judged readings that name the hanged `target`'s role as something other than a Demon (a
+## Gravedigger's of the hanging, an Executor's of its target; Michael, Nov 19): [source index,
+## relayer index or -1] each, sorted. In a world where its teller (and any relayer) is good,
+## such a reading says the target wasn't the Demon, so "was the Demon when hanged" fails there
+## (hanged_demon_in). Like every premise test, a good teller's reading is taken as healthy here:
+## poison and Delusion come in through reliability, so in those worlds the premise loses the
+## share a broken reading would leave it (the reader's broken chance, about 0.1-0.3 on a
+## Poisoner or Delusional script; Lantern on the design). Quoted, duty-only and testimony-only
+## cards don't count, nor a reading the target gives of itself.
+static func hanged_refuters(view: Dictionary, cards: Array, target: String) -> Array:
+	var demons: Array = view.get("script_demons", [])
+	var out: Array = []
+	for c in cards:
+		if str(c.get("kind", "")) != "report" or bool(c.get("quoted", false)) or bool(c.get("duty_only", false)) or bool(c.get("testimony_only", false)):
+			continue
+		var data: Dictionary = c.get("data", {}) if c.get("data") is Dictionary else {}
+		var role: String = str(c.get("role", ""))
+		var about: String = ""
+		if role == "gravedigger":
+			about = str(data.get("executed", ""))
+		elif role == "executor" and not bool(data.get("assigned", false)):
+			about = str(data.get("target", ""))
+		var named: String = str(data.get("role", ""))
+		if about != target or named == "" or named in demons or C.is_demon(named):
+			continue
+		var src: int = person_index(view, str(c.get("source", "")))
+		if src < 0 or str(c.get("source", "")) == target:
+			continue
+		var relay: int = person_index(view, str(c.get("relay_source", ""))) if c.has("relay_source") else -1
+		var entry: Array = [src, relay]
+		if entry not in out:
+			out.append(entry)
+	out.sort()
+	return out
 
 static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
 	var demon: int = int(world.get("demon", -1))
@@ -1711,7 +1748,12 @@ static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
 		return 1
 	if demon < 0 or (int(world.evil) & (1 << index)) == 0:
 		return 0
-	return 1 if (int(ctx.alive_mask) & (1 << demon)) != 0 else 0
+	if (int(ctx.alive_mask) & (1 << demon)) == 0:
+		return 0
+	for r in ctx.get("refuters", []):
+		if (int(world.evil) & (1 << int(r[0]))) == 0 and (int(r[1]) < 0 or (int(world.evil) & (1 << int(r[1]))) == 0):
+			return 0  # a good teller names a non-Demon role: X was a Minion, not the Demon
+	return 1
 
 static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -> bool:
 	var index: int = person_index(view, conclusion.target)

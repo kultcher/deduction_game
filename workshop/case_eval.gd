@@ -278,18 +278,25 @@ static func neutral_listener(view: Dictionary) -> Dictionary:
 
 static var _premise_cache: Dictionary = {}
 
-static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+static func _premise_mask(view: Dictionary, conclusion: Dictionary, cards: Array = []) -> PackedByteArray:
 	var ref: Array = [Solver._universe_key(view), Solver.question_inputs(view, conclusion), view.get("timeline", {})]
+	var refuters: Array = Solver.hanged_refuters(view, cards, str(conclusion.get("target", ""))) if conclusion.type in ["demon", "notdemon"] and not cards.is_empty() else []
+	if not refuters.is_empty():
+		ref.append(refuters)  # the case's readings that can refute "was the Demon when hanged"
 	var key: int = hash(ref)
 	if _premise_cache.has(key) and _premise_cache[key].ref == ref:
 		return _premise_cache[key].out
 	if _premise_cache.size() > 256:
 		_premise_cache.clear()
-	var out: PackedByteArray = _build_premise_mask(view, conclusion)
+	var out: PackedByteArray = _build_premise_mask(view, conclusion, refuters_cards(refuters, cards))
 	_premise_cache[key] = {"ref": ref.duplicate(true), "out": out}
 	return out
 
-static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
+## Only the judged cards matter to the premise when some of them refute it (hanged_refuters).
+static func refuters_cards(refuters: Array, cards: Array) -> Array:
+	return cards if not refuters.is_empty() else []
+
+static func _build_premise_mask(view: Dictionary, conclusion: Dictionary, cards: Array = []) -> PackedByteArray:
 	if conclusion.type in ["misled", "unreliable"]:
 		return Solver.question_table(view, conclusion)
 	if conclusion.type == "holds":
@@ -303,7 +310,7 @@ static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> Pac
 		for i in range(t_worlds.size()):
 			t_out[i] = 1 if t_idx >= 0 and int(t_worlds[i].get("converted", -1)) == t_idx else 0
 		return t_out
-	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", ""))) if conclusion.type in ["demon", "notdemon"] else {}
+	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", "")), cards) if conclusion.type in ["demon", "notdemon"] else {}
 	if not h_ctx.is_empty():
 		# Someone already hanged: "was the Demon when hanged" (Solver.hanged_demon), the
 		# Scion's succession included. One byte per world, in GDScript.
@@ -787,7 +794,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		for i in range(n):
 			if not Solver.lovers_ok(universe[i], int(need)):
 				dead[i] = 1
-	var premise = _premise_mask(view, conclusion)
+	var premise = _premise_mask(view, conclusion, cards)
 	var live: bool = Domain.live(view)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(PublicEvidence.factors(view))
