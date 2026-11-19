@@ -258,6 +258,11 @@ relay about the first victim naming night 0 (Beadle).
     terms (the sheep check).
   - Owners: Quill (the judge: the challenge, the poison chance, the night-outing link),
     Lantern (the belief side). [decided]
+  - **Built:**
+    - Poison evidence from night outings, and the failed-gift track record: Quill, #252.
+    - The player's "failed gift" call as testimony, honest doubt on the reader's night:
+      Quill, with the belief side by Lantern, #270.
+    - Folded into the one Mistaken label: #296.
 
 - **Quiet-night evidence argued by the player.** Support a player-argued link between
   protection, a suspected attack and movement, without exposing hidden attacks. (61251:

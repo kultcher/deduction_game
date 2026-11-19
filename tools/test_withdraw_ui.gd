@@ -47,6 +47,12 @@ func _init() -> void:
 		"a revision with new evidence is narrated, naming the new card (got %s)" % line)
 	check(GamePresentation._revision_narration(g, g.board[case_n - 1]) == "", "a first filing isn't narrated as a revision")
 
+	# Only at the meeting: typed anywhere else, it's refused and nothing is taken back (Steward, Nov 19).
+	var state_before: String = g.state
+	g.state = "day"
+	g.command("withdraw %d" % rev_n)
+	check(_text(g, "error") == g.WITHDRAW_OUTSIDE_MEETING and not g.board[rev_n - 1].get("withdrawn", false), "away from the meeting, a typed withdraw is refused (got %s)" % _text(g, "error"))
+	g.state = "meeting"
 	# The command, the narration, and the board's mark.
 	g.command("withdraw %d" % case_n)
 	var refused: String = _text(g, "error")
@@ -61,6 +67,7 @@ func _init() -> void:
 	check(_text(g, "error") == "There's no case #999.", "a missing case is named (got %s)" % _text(g, "error"))
 	g.command("withdraw %d" % dowse)
 	check(_text(g, "error") == "Only a case you've filed can be taken back.", "evidence can't be taken back (got %s)" % _text(g, "error"))
+	g.state = state_before
 	print("Withdraw UI: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 

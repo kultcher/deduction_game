@@ -57,6 +57,7 @@ static func clear_all() -> void:
 	LiveActivity._factor_handles.clear()
 	LiveActivity._mru_factor = null
 	LiveActivity._mru_handle = -1
+	LiveActivity._mru_norm = 0
 	LiveActivity._mru_epoch = -1
 	LiveActivity._env_cache.clear()
 	MovementModel.cache.clear()

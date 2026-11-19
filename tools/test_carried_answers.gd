@@ -71,7 +71,7 @@ func _run() -> void:
 	check(board.answer_parts({"positive": [], "registration": "red_herring"}) == ["the Red Herring"], "a Seer registration is named")
 	check(board.answer_parts({"positive": [], "blocks": ["market"], "slots": ["block:market"]}) == ["the Market"], "a Surveyor street is named (got %s)" % str(board.answer_parts({"positive": [], "blocks": ["market"]})))
 	check(board.answer_parts({"positive": [], "in_play_role": "seer"}) == ["the Seer in play"], "a Town Hall role is named")
-	check(board.answer_parts({"positive": [], "false_slot": "1", "false_reason": "lying"}) == ["the second statement false (lying)"], "a Psychologist statement is named")
+	check(board.answer_parts({"positive": [], "false_slot": "1", "false_reason": "lying"}) == ["the second statement false (source lied)"], "a Psychologist statement is named")
 
 	# Revision chains: a case and its earlier revisions, through "revises".
 	var Editor_s = Editor
