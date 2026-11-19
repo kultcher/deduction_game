@@ -3,7 +3,7 @@
 - **Agent:** Claude-Beadle
 - **Base:** main at 05d81a3
 - **Branch:** `claude/beadle-wave-once`
-- **Status:** PR open. It's zero drift: golden is identical to `baseline_d6a93f1` on all five
+- **Status:** PR open. It's zero drift: golden is identical to `baseline_d6a93f1`, and again on main with #321 (`baseline_2829999`) on all five
   seeds.
 - **Next actor:** Bailiff (review and merge).
 - **Item:** Michael (Nov 19, through Seneschal): "an NPC can currently wave the player down twice
