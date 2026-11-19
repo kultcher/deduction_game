@@ -639,18 +639,6 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   **[deferred, Michael, Nov 13: promising, after the connections build]**
 - **Presenting a card to one NPC** (triage 5.8): see "Secret awareness and bluffing" in
   section 2. **[design]**
-- **A bluffer's frame memory** (triage section 6). The scapegoat is one team-wide choice
-  (`evil_plan.scapegoat`), reconsidered each morning with a bonus for keeping it. A
-  bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
-  readings can drift away from the frame. Proposal: a bluffer's later readings stay
-  consistent with the people its earlier ones implicated, unless the team has switched
-  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
-  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
-  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
-  memory drops when the team switches scapegoat. It's another preference at the better-lie
-  choice point ("consistent with my earlier readings"). One or two new tuning constants
-  are approved. Owner Beadle. **[decided]** Built in #255 (Beadle); the reveal's wording
-  for it is in #350 (open). Close once Beadle confirms nothing else is left.
 - **One pass over every bluffer** for the "too clean when an ally is involved" tell that
   gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
   guidelines: within about 1 of the truth, the group size setting the room). For

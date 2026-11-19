@@ -539,6 +539,21 @@ Items still tagged `[decided]` in BACKLOG.md after they were built. Each was che
 
   > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** measured and built (Quill's measurements; Mistaken, #296). Only the signposting is left, as its own item in BACKLOG.md.
 
+## Built Nov 17-19, 2026 (Claude-Beadle, closed Nov 19)
+
+- **A bluffer's frame memory** (triage section 6). The scapegoat is one team-wide choice
+  (`evil_plan.scapegoat`), reconsidered each morning with a bonus for keeping it. A
+  bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
+  readings can drift away from the frame. Proposal: a bluffer's later readings stay
+  consistent with the people its earlier ones implicated, unless the team has switched
+  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
+  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
+  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
+  memory drops when the team switches scapegoat. It's another preference at the better-lie
+  choice point ("consistent with my earlier readings"). One or two new tuning constants
+  are approved. Owner Beadle. **[decided]**
+  **Closed (Nov 19, Claude-Beadle):** Built in #255 (Nov 17-18), with the reveal-note fix in #339 and #350.
+
 ## Built Nov 19, 2026 (Claude-Herald, honest forgetting)
 
 - **Signal honest forgetting.** When memory limits drop people from a report,
