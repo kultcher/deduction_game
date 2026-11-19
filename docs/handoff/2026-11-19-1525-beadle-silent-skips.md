@@ -6,7 +6,7 @@
 - **Status:** PR open. Tests only, no game code, so golden can't move.
 - **Next actor:** Bailiff (review and merge).
 - **Source:** `docs/maintenance/2026-11-19.md` (#328) E1b, the 11 items marked Beadle, routed by
-  Seneschal.
+  Seneschal, and E1a's `test_press_night_case` from Bailiff's list.
 
 ## What changed
 
@@ -27,10 +27,11 @@ it ran. Two of them weren't running at all.
 | `test_conversation_gifts` | the two `answer_night` loops | Assert each reached its check |
 | `test_bluff_blend` | the shadow guard, the Minion count and the Confessor `ran` | Assert the shadow exists, there was at least one Minion, and the Confessor ran |
 | `test_meeting_gossip` | `team.size() >= 2` | Fails without two evil |
+| `test_press_night_case` | the day-case check (E1a, from Bailiff's list) | Asserts the gift answer (`challenge_gift`) with lines, not only "not the night answer" |
 
 ## Measured
 
-- **All 9 touched suites pass.**
+- **All 10 touched suites pass.**
 - **Before the fixes:** the Warden and self-agreement checks failed with the new assertions, which
   shows they had been passing on nothing. Every other new assertion held at once.
 - **Golden:** not captured. Only `tools/test_*.gd` changed.
