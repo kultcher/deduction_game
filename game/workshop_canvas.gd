@@ -241,20 +241,33 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		g.w.dlog.add("state_digest", "", "", g.w.state_digest())
 	return number
 
-## The test juror: public facts and default trust, no private knowledge. Says how well
-## a draft case holds together (CaseEval.strength), or why it can't be judged yet.
-## One evaluation; the Workshop runs it after a pause in editing.
+## The test juror: how an average listener would take the case, put to the town today
+## (Michael, Nov 19, juror fix (a), option (i)): the full listener path
+## (Connections.judge_for_profile: credibility 0.5, trust 0.5, nothing first-hand, each card
+## weighed as heard and the case's own joining at the filing day's weight). Its strength
+## (`lr`) is how far that listener's chance of the premise moves, as an odds ratio; the badge
+## is cut from it (CaseEval.category). No full-weight figure is kept. CaseEval still reads the
+## case's shape for the words around the badge (cards that clash, what it rests on, guards).
+## Says why a case can't be judged yet when it can't. The Workshop runs it after a pause in
+## editing.
 static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
 	var juror: Dictionary = juror_case(g, value, hear_claims)
 	if not juror.ready:
 		return {"ready": false, "issues": juror.issues}
+	var heard: Dictionary = listener_reading(g, value)
+	if not heard.ready:
+		return {"ready": false, "issues": heard.issues}
 	var prepared = juror.prepared
 	var judged: Dictionary = juror.case
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
+	if not ev.get("impossible", false):
+		ev.lr = heard.lr
+		ev.category = CaseEval.category(heard.lr)
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
+	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance}
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
 	var aside: Array = juror.get("set_aside", [])
@@ -263,6 +276,65 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 		result["reason"] = (str(result.get("reason", "")) + " " + note).strip_edges()
 		result["set_aside"] = aside
 	return result
+
+## The judge's own reading of how the case's cards fit together (CaseEval over the juror's
+## case, every card at full weight): {ready, issues, lr, category}. Never shown to the player
+## as a strength (Michael, Nov 19: no full-weight figure); it's what the words around the
+## badge describe, and what tests of the judge's mechanisms read.
+static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dictionary:
+	var juror: Dictionary = juror_case(g, value, hear_claims)
+	if not juror.ready:
+		return {"ready": false, "issues": juror.issues}
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var ev: Dictionary = CaseEval.evaluate(juror.prepared.view, juror.case)
+	var result: Dictionary = CaseEval.strength_from(ev)
+	result["ready"] = true
+	result["issues"] = []
+	return result
+
+## Which way each premise points an average listener's suspicion of its subject: up for an
+## accusation, down for one that clears them. The listener weighs every case through its
+## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
+## no single subject: it is read through whoever it moves most, upward (one of them lied).
+const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+
+## How an average listener takes `value`: {ready, issues, before, after (the subject's
+## chance of being evil), chance_before, chance (the premise's chance, its side of that),
+## lr (the odds ratio of chance over chance_before)}.
+static func listener_reading(g, value: Dictionary) -> Dictionary:
+	var Connections = preload("res://workshop/connections.gd")
+	var pj: Dictionary = Connections.judge_for_profile(g, value)
+	if not pj.get("ready", false):
+		return {"ready": false, "issues": pj.get("issues", ["This case can't be weighed as the town would hear it."])}
+	var conclusion: Dictionary = value.get("conclusion", {})
+	var type: String = str(conclusion.get("type", ""))
+	var target: String = str(pj.get("target", ""))
+	var before: float = float(pj.get("before", -1.0))
+	var after: float = float(pj.get("after", -1.0))
+	if type == "conflict" or before < 0.0 or after < 0.0:
+		# The person the case moves most, upward.
+		var best: float = 0.0
+		for id in pj.get("posterior_after", {}):
+			var b: float = float(pj.get("posterior_before", {}).get(id, -1.0))
+			var a: float = float(pj.posterior_after[id])
+			if b >= 0.0 and _logit(a) - _logit(b) > best:
+				best = _logit(a) - _logit(b)
+				target = id
+				before = b
+				after = a
+		if before < 0.0 or after < 0.0:
+			before = 0.5
+			after = 0.5
+	var clears: bool = type in PREMISE_CLEARS
+	var chance_before: float = 1.0 - before if clears else before
+	var chance: float = 1.0 - after if clears else after
+	var lr: float = exp(_logit(chance) - _logit(chance_before))
+	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
+		"chance_before": chance_before, "chance": chance, "lr": lr}
+
+static func _logit(p: float) -> float:
+	p = clampf(p, 1e-6, 1.0 - 1e-6)
+	return log(p / (1.0 - p))
 
 ## "This weakens your previous case" (Michael, Nov 18; BACKLOG "Believable public
 ## revisions"): would `value`, filed as a revision of case `previous`, leave its premise
@@ -298,11 +370,11 @@ static func _premise_chance(g, value: Dictionary, listener_id: String) -> float:
 	var judged: Dictionary
 	var listener: Dictionary = {}
 	if listener_id == "":
-		var juror: Dictionary = juror_case(g, value)
-		if not juror.ready:
+		# The Test juror: an average listener's chance of the premise (listener_reading).
+		if not juror_case(g, value).ready:
 			return -1.0
-		prepared = juror.prepared
-		judged = juror.case
+		var heard: Dictionary = listener_reading(g, value)
+		return float(heard.chance) if heard.ready else -1.0
 	else:
 		prepared = Assess.prepare(snapshot(g, value, listener_id))
 		if not prepared.ready:

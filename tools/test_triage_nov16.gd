@@ -162,7 +162,7 @@ func _lovers() -> void:
 		for id in m.nodes:
 			if m.nodes[id].kind == "evidence" and m.nodes[id].card == card.id:
 				m.connect_cards(id, prem)
-		cases[who.id] = Live.test_juror(g, m.compile(prem), false)
+		cases[who.id] = Live.shape_reading(g, m.compile(prem), false)
 	var on_partner: Dictionary = cases[partner.id]
 	var other_id: String = cases.keys().filter(func(k): return k != partner.id)[0]
 	check(on_partner.get("ready", false) and str(on_partner.get("category", "")) == "strong" and float(on_partner.get("lr", 0.0)) > 1000.0, "the confession proves the partner holds the Lovers secret (%s)" % str(on_partner))
