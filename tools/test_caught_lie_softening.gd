@@ -15,6 +15,8 @@ const Solver = preload("res://workshop/solver.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
+const CaseEval = preload("res://workshop/case_eval.gd")
+const History = preload("res://workshop/live_history.gd")
 
 var checks = 0
 var fails = 0
@@ -30,6 +32,7 @@ func _init() -> void:
 	_views()
 	_softer()
 	_contradicted_doubt()
+	_admitted_place()
 	print("Caught-lie softening: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -134,3 +137,34 @@ func _doubt(contradicted: bool) -> Dictionary:
 		"prepared": {"view": {"people": people, "cards": cards, "evil_count": 2},
 			"listener": {"id": "l", "knowledge": {"self": "l"}, "suspicion": {"x": 0.3}, "npc_trust": {}}}}
 	return SourceDoubt.derive(plan).get("pre_eval", {})
+
+
+## An admitted outing is only its teller's word (Codex on #372): where the teller is evil it
+## owns the outing but may lie about where. So naming a block away from the kill clears less
+## than a witness seeing them there, while admitting the kill block counts as being seen there.
+func _admitted_place() -> void:
+	var adm = {"id": "adm", "fact_id": "adm", "kind": "sighting", "admitted": true, "source": "a", "subject": "a", "subjects": ["a"], "night": 1, "block": "docks", "data": {}, "role": "", "observed_at": {"day": 1, "phase": "night"}}
+	var at_kill = adm.duplicate(true); at_kill.id = "ak"; at_kill.fact_id = "ak"; at_kill.block = "square"
+	var seen = {"id": "sn", "fact_id": "sn", "kind": "sighting", "source": "player", "subject": "a", "subjects": ["a"], "night": 1, "block": "docks", "data": {}, "role": "", "hearing_weight": 1.0, "observed_at": {"day": 1, "phase": "night"}}
+	var seen_kill = seen.duplicate(true); seen_kill.id = "sk"; seen_kill.fact_id = "sk"; seen_kill.block = "square"
+	var p_seen: float = _p([seen])
+	var p_adm: float = _p([adm])
+	var p_adm_kill: float = _p([at_kill])
+	var p_seen_kill: float = _p([seen_kill])
+	check(p_adm > p_seen + 0.1 and p_adm < p_adm_kill - 0.1,
+		"admitting a place away from the kill clears less than being seen there: the place may be a lie (%.3f against %.3f; admitting the kill block %.3f)" % [p_adm, p_seen, p_adm_kill])
+	check(absf(p_adm_kill - p_seen_kill) < 0.05, "admitting the kill block counts about as much as being seen there (%.3f against %.3f)" % [p_adm_kill, p_seen_kill])
+
+
+## P(a evil) on a hand-built town (as test_lie_severity): a killing on the Square on night 1.
+func _p(cards: Array) -> float:
+	var people: Array = []
+	for id in ["a", "b", "c", "d", "e", "f", "g"]:
+		people.append({"id": id, "name": id, "home": {"a": "hill", "g": "square"}.get(id, "market")})
+	var view: Dictionary = {"people": people, "cards": cards, "evil_count": 2, "day": 2, "alignment_epoch": "Original alignment", "live_activity": true,
+		"timeline": History.from_events([{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1, "phase": "night"}}]),
+		"world_options": {"roles": true, "identities": true, "modifiers": ["marked", "delusional", "sleepwalker", "lovers"]}}
+	var c = Solver.empty_case()
+	c.conclusion = {"type": "evil", "target": "a", "at": view.alignment_epoch}
+	c.cards = cards.map(func(x): return x.id)
+	return float(CaseEval.evaluate(view, c, CaseEval.neutral_listener(view)).get("posterior", -1))

@@ -67,6 +67,9 @@ internal static class LiveActivityKernel
     /// The listener's own knowledge of a night it spent at home (WorkshopBridge, the listener's
     /// view): out has likelihood 1 - cardDoubles[c * 2] (packed as 1 - its self-doubt).
     public const int FlagKnownSelf = 1 << 10;
+    /// A person's own "I was out" (LiveAssessment.activity_card): only their word, so it binds
+    /// only where they're good, and it's no hard route constraint.
+    public const int FlagAdmitted = 1 << 11;
 
     // Movement role codes (slot 7):
     public const int MoveRoleEmpty = 0;
@@ -529,7 +532,7 @@ internal static class LiveActivityKernel
                             }
 
                             int kind = cardInts[off];
-                            if (kind == KindSighting && cardDoubles[c * 2] < 1.0)
+                            if (kind == KindSighting && (cardDoubles[c * 2] < 1.0 || (flags & FlagAdmitted) != 0))
                             {
                                 if (!pathOk) break;
                                 continue;
@@ -1054,6 +1057,13 @@ internal static class LiveActivityKernel
                     int blk = cardInts[off + 10];
                     bool complete = (flags & FlagComplete) != 0;
                     bool matchesBlock = (blk == -1) || (complete ? path.VigilSees(blk) : path.HasBlock(blk));
+                    if ((flags & FlagAdmitted) != 0 && currentAlign != AlignGood)
+                    {
+                        // An evil teller owns the outing but may lie about where (Codex on #372):
+                        // a place it truly went, or one picked among the blocks.
+                        if (!isOut) return 0.0;
+                        return matchesBlock ? 1.0 : 1.0 / BlockCount;
+                    }
                     return (isOut && matchesBlock) ? 1.0 : (1.0 - cardDoubles[cardIdx * 2]);
                 }
                 if ((flags & FlagComplete) != 0 && (cardInts[off + 5] & personBit) == 0)
