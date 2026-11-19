@@ -148,7 +148,8 @@ relay about the first victim naming night 0 (Beadle).
   presentation, the subject's own movement, and the others in a vigil sighting like
   Michael's example. Report side by side, then Michael picks. Owner Lantern.
   **Michael (Nov 18): build B at a bystander share of 1/3,** reusing step 1's
-  `premise_shaping` selection (`docs/design/premise_centring.md`). No extra trust cost for a
+  `premise_shaping` selection (`docs/design/premise_centring.md`; built as
+  `Shared.brought_by_premise`, and `premise_shaping` itself was deleted in purge phase 5). No extra trust cost for a
   misframed case: the case not landing is the cost (Michael, Nov 18). Owner Lantern.
   **[decided]: B at a share of 1/3**
 
@@ -244,8 +245,23 @@ relay about the first victim naming night 0 (Beadle).
   **Judge side built (Quill, Nov 18):** a Warden's guard report
   on a quiet night sets the Demon's route to the guarded door, where the Warden and the
   guarded person are good. The player's ward already did this through the scorched sigil.
-  The Test juror's result carries `guards` for Herald's reason line. Herald: the UI and
-  wording.
+  The Test juror's result carries `guards` for Herald's reason line. **Reason line built
+  (Herald, Nov 19, `claude/herald-guard-reason`):** the Test juror's tooltip names each
+  guard that moved the case ("#7 Merrin guarded Fenwick's door on the first night: if Merrin
+  is a working Warden, the Demon came to Fenwick's door that night. This strengthens the
+  case 15 points."), with the quiet night's card when the case cites it.
+
+- **The case benchmark slate.** (Michael, Nov 19.) A kept set of standard constructed
+  cases (two sightings, a sighting at the kill, a vigil on a kill night, an alibi caught out,
+  two gift readings converging, an impossible reading, a double claim, a Gravedigger
+  confirming a hanged Minion, a Lamplighter count with alibis, a Night Watch "nobody" against
+  a sighting, a Warden's guard), each judged by the Test juror and presented to the town.
+  Like golden, a script and a stored baseline report, run on demand; not a CI suite. Re-run
+  it after any change to the judge or to how listeners weigh a case, and compare.
+  `tools/case_slate.gd`, `tools/case_slate_report.py`, baseline in `docs/case_slate/`.
+  Owners: Quill, with Lantern. **Built (Quill, Nov 19).** Next: re-run after the juror fix
+  (hearsay weight and the Lamplighter count), and when Michael revisits the badge cut points.
+  [decided]
 
 ### NPC behaviour
 
@@ -789,6 +805,14 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   part was done in #149: the curse "When" field shows only on is evil / suspicious /
   good. The Scion part is new work: a premise time option that means "before / after
   the Scion rose". **[decided: direction]**
+  **Built (Quill, Nov 19), in the form Michael chose:** no new option. A world's Demon is
+  the Demon now, so a hanged Demon whose Scion rose sits in it as an evil non-Demon. The
+  movement model and the role constraints already read it so. "X is the Demon" about
+  someone already hanged now means "X was the Demon when hanged": the world's Demon, or an
+  evil X whose world's Demon was alive at a hanging with five or more alive and a Scion on
+  the script. "Is not the Demon" is its complement. A plain "Y is the Demon" about the
+  risen Scion already worked. Herald: optional wording for a hanged person's premise ("was
+  the Demon when hanged").
 - **The Test juror reporting a condition separately** (triage 5.1, the full version). #159
   built the cheap version: a premise → card link means "this card's line runs through that
   premise", labelled "given <premise>". The full version would have the juror say "if

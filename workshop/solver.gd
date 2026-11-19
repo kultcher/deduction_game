@@ -1676,10 +1676,48 @@ static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, kn
 		nights[night_keys.get(night, str(night))] = {"compatible": compat, "forced_out": forced}
 	return {"okay": raw[0] != 0, "nights": nights}
 
+## "X is the Demon" about someone already hanged means "X was the Demon when hanged"
+## (Michael, Nov 19): the world's Demon is the Demon now, so a hanged Demon whose Scion rose
+## sits in it as an evil non-Demon. Holds where X is the world's Demon, or where X was evil,
+## the hanging had five or more alive, a Scion is possible on the script, and the world's
+## Demon was alive at it (the succession; LiveActivity's SuccessionApplies and the role
+## constraints' Scion mask read it the same way). -1 when X wasn't hanged: the plain question.
+static func hanged_demon(view: Dictionary, world: Dictionary, target: String) -> int:
+	var ctx: Dictionary = hanged_context(view, target)
+	return -1 if ctx.is_empty() else hanged_demon_in(world, ctx)
+
+## The world-independent part, computed once per question: {} when the target wasn't hanged.
+static func hanged_context(view: Dictionary, target: String) -> Dictionary:
+	var index: int = person_index(view, target)
+	if index < 0:
+		return {}
+	var hanged: bool = false
+	for day_str in view.get("timeline", {}).get("executions", {}):
+		if target in view.timeline.executions[day_str]:
+			hanged = true
+	if not hanged:
+		return {}
+	var minions: Array = view.get("script_minions", [])
+	var scion: bool = minions.is_empty() or "scion" in minions
+	return {"index": index, "alive_mask": Roles._scion_exec_alive_demon_mask(view, person_ids(view), target) if scion else 0}
+
+static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
+	var demon: int = int(world.get("demon", -1))
+	var index: int = int(ctx.index)
+	if demon == index:
+		return 1
+	if demon < 0 or (int(world.evil) & (1 << index)) == 0:
+		return 0
+	return 1 if (int(ctx.alive_mask) & (1 << demon)) != 0 else 0
+
 static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -> bool:
 	var index: int = person_index(view, conclusion.target)
 	if index < 0:
 		return false
+	if conclusion.type in ["demon", "notdemon"]:
+		var hd: int = hanged_demon(view, world, conclusion.target)
+		if hd >= 0:
+			return (hd == 1) == (conclusion.type == "demon")
 	match conclusion.type:
 		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
 		"notdemon": return not position_holds(view, world, conclusion.target, "demon", conclusion.at)

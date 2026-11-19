@@ -28,6 +28,7 @@ test_defence_grounds
 test_defence_repeats
 test_delusional_reading
 test_delusional_self_doubt
+test_demon_when_hanged
 test_dialogue
 test_dialogue_decisions
 test_dialogue_opinion_pass

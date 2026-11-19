@@ -632,7 +632,10 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   while it held, and good again after it, so their earlier and later word stands. "Evil
   during the curse" also allows that they were evil all along. It needs a public curse and
   a surviving yes-voter, and it never shows who was turned: it's weighed over the worlds
-  like any premise. Protect and spare are
+  like any premise. For someone already hanged, the Demon premise reads "was the Demon when
+  hanged", and holds where the Scion rose after (a hanging with five or more alive). It's
+  offered only with a Scion on the script, and never in the negative (Michael, Nov 19).
+  Protect and spare are
   preferences, spoken as social speech. "Has a secret" and "red herring" can't be
   presented: nothing the town can weigh establishes them.
 - **Cards with inline answers** (who in this Seer pair? which blocks?); unknown answers

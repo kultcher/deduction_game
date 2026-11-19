@@ -301,6 +301,8 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 				notes.append(badge.town_note)
 			if badge.get("raises_text", "") != "":
 				notes.append(badge.raises_text)
+			for gl in badge.get("guard_lines", []):
+				notes.append(gl)
 			for who in badge.get("idle", []):
 				notes.append("Assuming %s %s isn't changing anything in this case." % [Solver.person_name(model.view, who), node.positions.get(who, "")])
 			notes.append("Public facts and default trust: how well the case holds together, not how any one person will react.")
@@ -334,7 +336,7 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 	var what = Rect2(rect.position + Vector2(12, 114) * zoom, Vector2(WIDTH - 24, 34) * zoom)
 	_field_box(what, false)
 	var picked_type: String = shown.get("type", "")
-	var claim_text: String = ("Choose a claim" if picked_type == "" else model.PREMISE_TEXT.get(picked_type, picked_type)) if draft else ("Supporting evidence (no claim)" if conclusion.is_empty() else model.PREMISE_TEXT.get(conclusion.type, conclusion.type))
+	var claim_text: String = ("Choose a claim" if picked_type == "" else model.premise_text(picked_type, str(shown.get("target", "")))) if draft else ("Supporting evidence (no claim)" if conclusion.is_empty() else model.premise_text(str(conclusion.type), str(conclusion.get("target", ""))))
 	draw_string(font, what.position + Vector2(12, 23) * zoom, claim_text, HORIZONTAL_ALIGNMENT_LEFT, what.size.x - 40 * zoom, _fs(16), muted if draft and picked_type == "" else ink)
 	_caret(what)
 	fields[id].append({"rect": what, "field": "type"})

@@ -1126,10 +1126,17 @@ func _field_popup(id: String, field: String) -> void:
 		"type":
 			# "Was turned by the curse" only once a curse has fallen, or where already chosen.
 			var cursed: bool = board.view.get("chronology", {}).has("curse")
-			var types: Array = premise_types().filter(func(t): return t != "turned" or cursed or str(node.get("conclusion", {}).get("type", "")) == "turned")
+			# A hanged person's Demon premise is in the past tense, and only where a Scion
+			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
+			# A draft holds its person in `pick` until both fields are chosen (Codex on #305).
+			var p_target: String = str(node.get("pick", {}).get("target", "")) if node.get("draft", false) else str(node.get("conclusion", {}).get("target", ""))
+			var types: Array = premise_types().filter(func(t): return (t != "turned" or cursed or str(node.get("conclusion", {}).get("type", "")) == "turned") and board.premise_offered(t, p_target))
 			for i in range(types.size()):
-				field_menu.add_item(board.PREMISE_TEXT.get(types[i], types[i]), values.size())
-				if PREMISE_TYPE_HINTS.has(types[i]):
+				field_menu.add_item(board.premise_text(types[i], p_target), values.size())
+				var hanged_demon: bool = types[i] == "demon" and board.premise_text(types[i], p_target) == board.HANGED_DEMON_TEXT
+				if hanged_demon:
+					field_menu.set_item_tooltip(field_menu.item_count - 1, board.HANGED_DEMON_HINT)
+				elif PREMISE_TYPE_HINTS.has(types[i]):
 					field_menu.set_item_tooltip(field_menu.item_count - 1, PREMISE_TYPE_HINTS[types[i]])
 				values.append(types[i])
 		"role":
@@ -1212,6 +1219,7 @@ func _run_test_juror() -> void:
 				badge["town_note_kind"] = town.kind
 			_explain_change(id, value, badge)
 			_idle_assumptions(node, value, badge)
+			badge["guard_lines"] = Live.guard_reason_lines(g, badge, value)
 		badges[id] = badge
 	canvas.badges = badges
 	var clashing: Dictionary = {}
