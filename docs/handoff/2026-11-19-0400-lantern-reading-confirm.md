@@ -26,13 +26,19 @@
     approximation. It's exact for a reading about one person.
   - A reading pointing at a group (a pair, or a count above 0) uses its content only.
   - The listener's own reading confirms nothing.
+  - Its own received readings count on both sides (from `attention_reports`; Codex). A reading
+    matching one is strong belief, not a fact, since its own could have been poisoned.
+  - A reading no world can fail (a Lamplighter count, unchecked) confirms nothing by content (Codex).
 - **For Beadle:** call it before the reading is applied. Pass the prepared view and listener
   (`Shared.prepare`, `Jury._eval_listener`) and the listener's chances
   (`proposal.connections.posterior`). `source` says "fact" or "belief", for the reveal.
-- **Tests:** new `test_reading_confirm` (7 checks, on the fast list). It covers:
+- **Tests:** new `test_reading_confirm` (9 checks, on the fast list). It covers:
   - a reading clearing the listener is known (a fact);
   - a reading naming one person the listener is 90% sure of is moderate, 75% small, 30% none;
   - tiers follow the cutoffs;
-  - its own reading confirms nothing.
+  - its own reading confirms nothing;
+  - a Lamplighter count confirms nothing;
+  - another's reading matching the listener's own raises agreement (0.54 to 0.95, moderate).
+  Both of the last two fail on the first version.
 - **Measured:** in the PR body (golden, and the fast list).
 - **Proposed for the backlog:** none.

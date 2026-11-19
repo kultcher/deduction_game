@@ -20,7 +20,12 @@
 ## (CaseEval's team prior, which follows its suspicions only loosely: a suspicion of 0.97 weighs
 ## a world about as a chance of 0.7 would, so the alignment side reads the chances instead).
 ## The fact side asks with only its own readings, at a neutral prior, so a world is ruled out
-## only by what it knows. Call it before the reading is applied. Reads only; changes nothing.
+## only by what it knows: its own readings are the prepared listener's personally received
+## ones (Shared.prepare moves them into the union and keeps their ids as attention_reports).
+## A reading whose content no world can fail (a count the table doesn't check, such as a
+## Lamplighter's, or one true however the town is dealt) says nothing a liar couldn't, so its
+## content confirms nothing; only what it says about alignment can.
+## Call it before the reading is applied. Reads only; changes nothing.
 extends RefCounted
 
 const Tuning = preload("res://sim/tuning.gd")
@@ -46,14 +51,21 @@ static func assess(view: Dictionary, card: Dictionary, listener: Dictionary, cha
 	if str(card.get("source", "")) == self_id:
 		return none  # its own reading confirms nothing about its teller
 	# The fact side: its own readings only, at a neutral prior.
-	var own: Array = listener.get("knowledge", {}).get("own_reports", []).filter(func(id): return str(id) != str(card.id) and view.cards.any(func(c): return str(c.get("id", "")) == str(id)))
-	var neutral: Dictionary = listener.duplicate(true)
+	var knowledge: Dictionary = listener.get("knowledge", {})
+	var own: Array = []
+	for id in knowledge.get("own_reports", []) + knowledge.get("attention_reports", []):
+		if str(id) != str(card.id) and not (str(id) in own) and view.cards.any(func(c): return str(c.get("id", "")) == str(id)):
+			own.append(str(id))
+	var heard: Dictionary = listener.duplicate(true)
+	heard["knowledge"] = knowledge.duplicate(true)
+	heard.knowledge["own_reports"] = own.duplicate()  # CaseEval weighs these on both sides
+	var neutral: Dictionary = heard.duplicate(true)
 	neutral["suspicion"] = {}
 	var known: float = _right(view, card, neutral, own, {})
 	if known >= 1.0 - CERTAIN:
 		return {"tier": "known", "agreement": 1.0, "source": "fact"}
 	# The belief side: no cards, the listener's own standing view.
-	var agree: float = _right(view, card, listener, [], chances)
+	var agree: float = _right(view, card, heard, [], chances)
 	var tier: String = "moderate" if agree >= Tuning.Trust.READING_CONFIRM_MODERATE else ("small" if agree >= Tuning.Trust.READING_CONFIRM_SMALL else "none")
 	return {"tier": tier, "agreement": agree, "source": "belief" if tier != "none" else ""}
 
@@ -61,13 +73,15 @@ static func assess(view: Dictionary, card: Dictionary, listener: Dictionary, cha
 ## from `cards` and the listener's prior.
 static func _right(view: Dictionary, card: Dictionary, listener: Dictionary, cards: Array, chances: Dictionary) -> float:
 	var epoch = view.get("alignment_epoch", "")
-	var question: Dictionary = Solver.empty_case()
-	question.cards = cards.duplicate()
-	question.conclusion = {"type": "holds", "report": str(card.id), "target": str(card.get("source", "")), "at": epoch}
-	var ev: Dictionary = CaseEval.evaluate(view, question, listener)
-	if ev.get("impossible", false):
-		return 0.0
-	var holds: float = clampf(float(ev.get("posterior", 0.0)), 0.0, 1.0)
+	var holds: float = 0.0
+	if _checked(view, card):
+		var question: Dictionary = Solver.empty_case()
+		question.cards = cards.duplicate()
+		question.conclusion = {"type": "holds", "report": str(card.id), "target": str(card.get("source", "")), "at": epoch}
+		var ev: Dictionary = CaseEval.evaluate(view, question, listener)
+		if ev.get("impossible", false):
+			return 0.0
+		holds = clampf(float(ev.get("posterior", 0.0)), 0.0, 1.0)
 	var entry: Dictionary = {"role": str(card.get("role", "")), "data": card.get("data", {})}
 	var accused: Array = Gifts.implicated(entry)
 	var cleared: Array = Gifts.clears(entry)
@@ -100,3 +114,12 @@ static func _right(view: Dictionary, card: Dictionary, listener: Dictionary, car
 			return holds
 		joint *= clampf(float(e.get("posterior", 0.0)), 0.0, 1.0)
 	return maxf(holds, joint)
+
+## Whether some world could make the reading's content wrong. One that holds in every world
+## (unchecked, or true however the town is dealt) can't confirm anything by its content.
+static func _checked(view: Dictionary, card: Dictionary) -> bool:
+	var mask: PackedByteArray = Solver.reading_holds_table(view, card)
+	for b in mask:
+		if b == 0:
+			return true
+	return false

@@ -652,3 +652,10 @@ So "Edda was the Poisoner" confirms a listener 90% sure Edda is evil (Michael's 
 "the Poisoner exactly" is less sure. The content side weighs worlds by CaseEval's team prior,
 which follows suspicion only loosely; it is why the alignment side uses the chances. For a reading
 pointing at a group (a pair, a count) only the content side applies.
+
+Two limits (Codex on #309). The listener's own readings are the ones it received itself, which
+`Shared.prepare` keeps as `attention_reports` after moving them into the union; both sides weigh
+them. An own reading could have been poisoned, so a reading matching it is strong belief, not a
+known fact (on game 692/7, a Dowser count matching the listener's own went from 0.54 to 0.95
+agreement). And a reading no world can fail, such as a Lamplighter's walker count, which the
+judge doesn't check, confirms nothing by its content: only what it says about alignment can.
