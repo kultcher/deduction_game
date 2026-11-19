@@ -122,7 +122,9 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 		var effect_ok := true
 		var plain_ok := true
 		for id in c.posterior:
-			var total: float = float(c.core.lean.get(id, 0.0))
+			# Stored cases too (an NPC's nomination, the player's presentations): with none,
+			# their lean is empty, which is why this check long read only items and the core.
+			var total: float = float(c.core.lean.get(id, 0.0)) + float(c.get("cases", {}).get("lean", {}).get(id, 0.0))
 			for it in c.items:
 				total += float(it.lean.get(id, 0.0))
 			var settled: bool = c.baseline[id] <= Connections.FIXED or c.baseline[id] >= 1.0 - Connections.FIXED
@@ -143,7 +145,7 @@ func _game(seed_v: int, npcs: int, day: int) -> void:
 			# (The public curse pins its executed Revenant, whose chance is 1 before and after.)
 			if float(e.prior) < 0.999 and absf(float(e.alignment_signal) - Tuning.Workshop.JURY_ALIGNMENT_COEFF * CaseEval.shift(float(e.prior), float(e.posterior))) > 1e-9:
 				plain_ok = false
-		check(sums_ok, "%s %s: each chance is the baseline plus every card's lean and the core's, plus the common shift" % [tag, n.id])
+		check(sums_ok, "%s %s: each chance is the baseline plus every card's lean, the core's and any stored case's, plus the common shift" % [tag, n.id])
 		check(absf(sum_post - sum_base) < 1e-6, "%s %s: the chances still sum to the baseline's (%.4f; the town has %d evil)" % [tag, n.id, sum_post, int(g.w.by_id.values().filter(func(x): return x.is_evil()).size())])
 		check(effect_ok, "%s %s: the refresh's effects carry the model's chances" % [tag, n.id])
 		check(plain_ok, "%s %s: no headline reading is blended in" % [tag, n.id])
