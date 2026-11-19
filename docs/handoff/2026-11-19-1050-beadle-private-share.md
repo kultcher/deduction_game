@@ -1,10 +1,10 @@
 # Private sharing grows each day past day 1
 
 - **Agent:** Claude-Beadle
-- **Base:** main with #321 (`baseline_2829999`)
+- **Base:** main with #345 (`baseline_2ac19a1`)
 - **Branch:** `claude/beadle-private-share`
 - **Status:** PR open. **New constant pending Michael: Bailiff, please hold the merge until he
-  approves it.** It moves golden and re-baselines to `baseline_1d9e025` (main with #321). It
+  approves it.** It moves golden and re-baselines to `baseline_f7e56e2` (main with #345). It
   re-baselines again on its turn.
 - **Next actor:** Michael (approve or change the size), then Bailiff.
 - **BACKLOG item:** "A daily nudge to share a gift privately" (Michael, Nov 19). The built note
@@ -72,7 +72,7 @@ shares of an NPC's own readings, gift hints and gift claims, told first-hand to 
 
   The differences are within what 40 games vary by. Passive games don't show what the player
   hears from the extra gossip.
-- **Golden:** see `docs/golden_baseline.md`. On main with #321, only 98933 diverges, on day 2: it
+- **Golden:** see `docs/golden_baseline.md`. On main with #345, only 98933 diverges, on day 2: it
   hangs Merrin on day 2 instead of Dorian then Isolde, with no winner by day 4 either way.
 
 ## Proposed for the backlog
