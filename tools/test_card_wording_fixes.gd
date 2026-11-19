@@ -1,9 +1,8 @@
 ## Small wording fixes from Steward's Nov 19 report: a counter-claim or a relayed reading
-## isn't shown as an accusation (A8), and spoken slots capitalise only their first letter (A6).
+## isn't shown as an accusation (A8). (A6's slot casing is Beadle's, in #339.)
 ##   godot --headless --path . --script res://tools/test_card_wording_fixes.gd
 extends SceneTree
 const CardModel = preload("res://game/card_model.gd")
-const MindMeeting = preload("res://sim/mind_meeting.gd")
 
 var checks = 0
 var fails = 0
@@ -24,7 +23,5 @@ func _init() -> void:
 	var relay = {"kind": "accusation", "source": "lian", "subject": ["kiran"], "relay": true, "role": "dowser",
 		"text": "Lian says the Dowser (unnamed) told them: one evil among Kiran."}
 	check(CardModel.short_text(relay, names) == "Lian relays a Dowser reading: Kiran", "a relayed reading says so (%s)" % CardModel.short_text(relay, names))
-	check(MindMeeting._cap_first("yesterday afternoon") == "Yesterday afternoon", "only the first letter is capitalised")
-	check(MindMeeting._cap_first("McAllister's") == "McAllister's" and MindMeeting._cap_first("") == "", "names and empty slots are left alone")
 	print("Card wording fixes: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
