@@ -680,6 +680,12 @@ time because it needs the game layer) does that:
   and the connections refresh, once without the case and once with it.
 - **Returns:** the target's chance of being evil before and after (the prior where nothing is
   held), the shift, everyone's chances both ways, and the case's own stored-case entry.
+- **Two baselines:** by default `before` is the listener as it stands, having already heard the
+  case's public cards from their tellers, so the shift is what presenting it would change (the
+  town note's question). `profile.baseline = "without_cards"` leaves the case's own cards out of
+  `before` entirely, keeping the public claims about the people it names, so the shift is how
+  strong the case is to a listener who hears its cards as it would (the badge's question; Quill,
+  Nov 19). On the test case: 0.29 to 0.365 that way, against −0.005 by default.
 - **Measured** (`tools/test_judge_for_profile.gd`, seed 692's 7-NPC deal, a Seer's "one of the
   pair" with a Dowser's clearing of the other, pointing at Odette): from the prior 0.29 the case
   takes her to 0.36 when the town hadn't heard the cards. Credibility moves that only a little

@@ -17,7 +17,7 @@
   - **What it returns:** before, after and shift for the target, everyone's chances both ways,
     and the case's stored-case entry.
   - **Nothing calls it in play yet.** Golden is identical.
-  - **New `tools/test_judge_for_profile.gd`** (8 checks, fast list, a few seconds).
+  - **New `tools/test_judge_for_profile.gd`** (13 checks, fast list, a few seconds).
 - **For Quill:** read `before`, `after` and `shift`, and `case` for the weight and lean.
   `profile` overrides `AVERAGE` (`credibility`, `npc_trust` as a number or a map, `insight`,
   `confidence`). Two things worth knowing:
