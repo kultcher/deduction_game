@@ -420,6 +420,7 @@ func _init() -> void:
 		if g.w.by_id.has(c.get("source", "")):
 			said_by = c["source"]
 			break
+	_check(said_by != "", "precondition: a card from a townsperson is on the board")
 	if said_by != "":
 		scene._select_person(said_by)
 		pp.tab = 1
@@ -513,7 +514,7 @@ func _init() -> void:
 	# New case from the button picks a fresh seed (unless you typed one).
 	var s0 = int(scene.seed_box.value)
 	scene._new_case_button()
-	_check(int(scene.seed_box.value) != s0 or true, "new case button runs")
+	_check(int(scene.seed_box.value) != s0, "the New case button picks a fresh seed")
 	scene.seed_box.value = 4242
 	scene._new_case_button()
 	_check(scene.g.w.seed_value == 4242, "a typed seed is kept by New case")

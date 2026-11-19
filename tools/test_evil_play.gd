@@ -402,6 +402,7 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 
 	# 6) Dialogue & Jury copy checks: Constance Day 1 Morning reveal & Greta non-visual doubted line.
 	var constance = g.w.by_id.get("constance")
+	_check(constance != null, "precondition: Constance is dealt in this case")
 	if constance != null:
 		constance.max_tier = 0
 		constance.claim_public = false
@@ -411,8 +412,10 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 		g.w.phase = C.MORNING
 		var rev_d1: Dictionary = Mind.answer_gift(g.w, constance, 3, false)
 		var joined_d1: String = " ".join(PackedStringArray(rev_d1["lines"].map(func(l): return l.get("text", "") if l is Dictionary else str(l))))
-		_check(not ("conducted this inquiry properly" in joined_d1), "Constance Day 1 Morning private reveal avoids premature 'conducted this inquiry properly'")
+		# The phrase this guarded against has left her voice, so check for the early reveal itself.
+		_check("orderly beginning" in joined_d1, "Constance on the first morning uses her early private reveal (%s)" % joined_d1)
 	var greta = g.w.by_id.get("greta")
+	_check(greta != null, "precondition: Greta is dealt in this case")
 	if greta != null:
 		var non_vis_resp = {"lines": [{"speaker": "greta", "name": "Greta", "text": "I remained at home."}]}
 		Mind._challenged(greta, non_vis_resp, {"kind": "alibi", "source": "greta", "day": 1})

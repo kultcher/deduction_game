@@ -65,7 +65,7 @@ Set `GODOT` to the Godot 4.7.2 .NET binary (`--headless` works everywhere below)
 ```sh
 dotnet build Demonologist.csproj -c Debug                         # after pulling or switching branches
 $GODOT --headless --path . --import                               # after adding any file or asset
-python3 tools/run_gd_tests.py --godot $GODOT test_triage_nov16    # named suites
+python3 tools/run_gd_tests.py --godot $GODOT test_beliefs test_codex_fixes  # named suites
 python3 tools/run_gd_tests.py --godot $GODOT --timeout 2400       # all ~155 suites, ~40 min
 $GODOT --headless --path . --script res://tools/golden_capture.gd -- --out /tmp/goldA
 python3 tools/golden_diff.py tools/golden/<CI BASELINE dir> /tmp/goldA --tol 0 --ignore engine

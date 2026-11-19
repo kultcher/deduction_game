@@ -1,4 +1,5 @@
 ## Dialogue fixes from playtest 13910 (docs/handoff_log.md, 2026-11-05 Claude-Tally).
+## Named test_playtest_13910_dialogue until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -115,6 +116,7 @@ func _ask_why_free() -> void:
 	_check(g.state == "talk" and g.questions_left == q_before and t.pressed_today == pressed_before,
 		"asking why about a dead target's hint costs no question (%d -> %d left)" % [q_before, g.questions_left])
 	t.hints = {w.living_good().filter(func(x): return x != t)[0].id: {"day": w.day, "src": ""}}
+	_check(Mind.has_live_hint(w, t), "precondition: the living-target hint counts as live")
 	if Mind.has_live_hint(w, t):
 		g.command("ask why")
 		_check(g.questions_left == q_before - 1, "while a live hint does cost one (%d -> %d left)" % [q_before, g.questions_left])
