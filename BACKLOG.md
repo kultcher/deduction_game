@@ -72,8 +72,11 @@ relay about the first victim naming night 0 (Beadle).
   - Quill: a pressed case whose cards place its subject out now carries a `contradiction`
     context to the press (`GameConversation.press_contradiction`): the night, the block,
     the cards, and whether it breaks their own home alibi.
-  - Left: Beadle routes the answer from it (the truly home, a knowing walker, an unaware
-    Sleepwalker, evil cover); Herald any new lines.
+  - Beadle (Nov 19, `claude/beadle-press-contradiction`): the press answers from it
+    (`MindDialogue._pressed_caught_out`). A good NPC out on its own business says "Fine, I
+    was out" and, open enough, why; it no longer says it was home. The truly home, an
+    unaware Sleepwalker, a gift walker and evil keep their answers. No new lines: it reuses
+    `trapped_night_out`, which a presented case already says. Built; close once merged.
 
 - **Demon detours exist in inference but not in actual movement.** (77388) The movement
   model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
