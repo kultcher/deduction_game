@@ -98,9 +98,7 @@ static func _refresh(g, n, phase: String) -> void:
 		# what it says aloud (SourceDoubt.self_doubt).
 		state["self_doubt"] = SourceDoubt.own_doubt(n.id, doubt_bundle.get("honest", {}))
 		var started = Time.get_ticks_msec()
-		# Premises pass step 1: remembered presentations shape their own cards' effect.
-		var shaping: Dictionary = Shared.premise_shaping(plan, state.get("presentations", {}), state.get("withdrawn", {}), float(plan.prepared.listener.get("insight", 0.5)))
-		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, shaping, doubt_bundle.get("honest", {})]
+		var inputs = [plan.prepared, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, plan.marked_questions, doubt_bundle.get("honest", {})]
 		var cached: Dictionary = g._workshop_evaluations.get(key, {})
 		var cache_hit = cached.get("input") == inputs
 		var proposal: Dictionary
@@ -112,18 +110,7 @@ static func _refresh(g, n, phase: String) -> void:
 		else:
 			Profiler.count("union_cache_miss")
 			var union_span = Profiler.open("joint_effects")
-			var shaping_eval: Dictionary = {}
-			if not shaping.is_empty():
-				var without_plan: Dictionary = Shared.prepare(plan.input, Shared.without_shaping(state.get("presentations", {}), shaping), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
-				if without_plan.get("ready", false):
-					shaping_eval = shaping.duplicate(true)
-					shaping_eval["without"] = without_plan
-					# Some suspicious, some not: the pass without only the suspicious ones.
-					if not shaping.hedged.is_empty() and shaping.hedged.size() < shaping.keys.size():
-						shaping_eval["without_firm"] = Shared.prepare(plan.input, Shared.without_shaping(state.get("presentations", {}), shaping, "hedged"), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
-				else:
-					Profiler.count("premise_shaping_unprepared")
-			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, shaping_eval, doubt_bundle.get("honest", {}))
+			proposal = Shared.evaluate(plan, n.suspicion, doubt_bundle.pre_eval, doubt_bundle.full, doubt_bundle.get("honest", {}))
 			Profiler.close(union_span)
 			# Deferred attribution inputs ride beside the proposal, never inside it (purge 2a).
 			reason_ctx = Shared.last_reason_ctx

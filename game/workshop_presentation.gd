@@ -15,7 +15,6 @@ const Ownership = preload("res://game/workshop_ownership.gd")
 const Circumstantial = preload("res://workshop/circumstantial.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 const Connections = preload("res://workshop/connections.gd")
-const SourceDoubt = preload("res://workshop/source_doubt.gd")
 
 ## Pure capability check against the real listener and the proposed evidence union.
 ## Used for the entire audience before a command spends time or discloses secrets.
@@ -535,36 +534,6 @@ static func held_back_chance(posterior: Dictionary, withheld: Dictionary, target
 		scores.append(Connections.logit(float(posterior[p])) + float(withheld.get(p, 0.0)))
 	var shift: float = Connections.common_shift(scores, total)
 	return Connections.chance(scores[open.find(target_id)] + shift)
-
-## The listener's other remembered (not withdrawn) suspicious filings, besides `key`.
-static func _other_suspicious(n, key: String) -> Array:
-	var state: Dictionary = n.workshop_state
-	var withdrawn: Dictionary = state.get("withdrawn", {})
-	var out: Array = []
-	for k in state.get("presentations", {}):
-		if str(k) == key or withdrawn.has(k) or str(k).begins_with("direct:"):
-			continue
-		if Shared._root_type(state.presentations[k]) == "suspicious":
-			out.append(str(k))
-	return out
-
-## The rise in `target_id`'s requested change that the filing `key` brings, at full weight:
-## the unshaped union with it against the union without it.
-static func _filing_rise(g, n, listener_key: String, key: String, target_id: String) -> float:
-	var plan: Dictionary = g._workshop_plans.get(listener_key, {})
-	if not plan.get("ready", false):
-		return 0.0
-	var state: Dictionary = n.workshop_state
-	var rest: Dictionary = state.get("presentations", {}).duplicate()
-	rest.erase(key)
-	var without: Dictionary = Shared.prepare(plan.input, rest, n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
-	if not without.get("ready", false):
-		return 0.0
-	var doubt: Dictionary = state.get("source_doubt", {})
-	var honest: Dictionary = SourceDoubt.derive(plan, n.ledger, state.get("manual_source_doubt", {})).get("honest", {})
-	var with_e: Dictionary = Shared.evaluate(plan, n.suspicion, doubt, doubt, {}, honest).get("effects", {}).get(target_id, {})
-	var without_e: Dictionary = Shared.evaluate(without, n.suspicion, doubt, doubt, {}, honest).get("effects", {}).get(target_id, {})
-	return float(with_e.get("requested", 0.0)) - float(without_e.get("requested", 0.0))
 
 ## How far the belief moved toward the claim (negative: away from it).
 static func belief_toward(kind: String, before: float, after: float) -> float:
