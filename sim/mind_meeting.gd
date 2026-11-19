@@ -1700,9 +1700,14 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 		else:
 			named = present.slice(0, 3)
 			var names: Array = named.map(func(x): return x.name)
-			var others: String = names[0] if names.size() == 1 else ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
-			slots["others"] = others
-			line = say_voiced(d, "defence_day_others", "I was at %s %s, and so were %s. Ask any of them what they saw." % [place, when, others], slots)
+			if names.size() == 1:
+				# The voiced lines' {others} is two or three names ("so were", "were there"): one
+				# companion takes the plain singular line until it has voices of its own.
+				line = say(d, "I was at %s %s, and so was %s. Ask them what they saw." % [place, when, names[0]])
+			else:
+				var others: String = ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
+				slots["others"] = others
+				line = say_voiced(d, "defence_day_others", "I was at %s %s, and so were %s. Ask any of them what they saw." % [place, when, others], slots)
 	var facts: Array = [{"kind": "sighting", "subject": [d.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp, "self_report": true,
 		"text": "%s says they were at %s, day %d %s." % [d.name, place, sd, C.PHASES[sp]]}]
 	for x in named:
@@ -1868,8 +1873,12 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var move_strengths = {}
 	var move_scales = {}
 	var defence_scopes = {}
+	# The case rests on where they were by day (2d below): that answer comes first, before any
+	# night account a weaker or uncited item could prompt (Codex on #318).
+	var day_def: Dictionary = _day_whereabouts_defence(w, d, items, case_backed)
+	var day_first: bool = not day_def.is_empty()
 	# 1. A gift that walks at night explains being seen out.
-	if not out_items.is_empty() and framed_night < 0 and C.ROLES.get(role, {}).get("night_walk", false):
+	if not day_first and not out_items.is_empty() and framed_night < 0 and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
 		var safety: float = block_safety(w, d)
 		if safety > 0.0:
@@ -1885,7 +1894,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_scales["reveal"] = 1.0
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
-	if moves.is_empty() and not out_items.is_empty() and framed_night < 0 and not d.is_evil() and not d.secret.is_empty():
+	if not day_first and moves.is_empty() and not out_items.is_empty() and framed_night < 0 and not d.is_evil() and not d.secret.is_empty():
 		var confess_parts = {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}
 		var confess_safety: float = block_safety(w, d)
 		if confess_safety > 0.0:
@@ -1903,7 +1912,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
 	# 2b. "I've been known to sleepwalk": the real Sleepwalker (who can't know they were
 	# out, only that they've walked before) or an evil bluffer whose cover needs it.
-	if moves.is_empty() and not out_items.is_empty():
+	if not day_first and moves.is_empty() and not out_items.is_empty():
 		var excuse: Dictionary = sleepwalk_excuse(w, d, "the meeting")
 		if not excuse.is_empty():
 			lines.append(excuse["line"])
@@ -1916,7 +1925,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# or they were framed with one: they give their account of that night, before the town
 	# (the podium press's answer).
 	var hinge_night: bool = str(hinge.get("channel", "")) == "movement_out" and str(hinge.get("eid", "")).begins_with("sighting:")
-	if moves.is_empty() and (hinge_night or framed_night >= 0):
+	if not day_first and moves.is_empty() and (hinge_night or framed_night >= 0):
 		var hnd: int = framed_night
 		if hinge_night:
 			var hp: PackedStringArray = str(hinge.eid).split(":")
@@ -1933,15 +1942,13 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# 2d. The case rests on where they were by day (BACKLOG "A defence's answer to a
 	# daytime-whereabouts case", Michael, Nov 16 and 19): they say where they were and who else
 	# was there, from the public whereabouts (true for good and evil alike: no lie, Nov 19).
-	if moves.is_empty():
-		var day_def: Dictionary = _day_whereabouts_defence(w, d, items, case_backed)
-		if not day_def.is_empty():
-			lines.append(day_def["line"])
-			facts.append_array(day_def["facts"])
-			moves.append("day_whereabouts")
-			move_strengths["day_whereabouts"] = 1.0
-			move_scales["day_whereabouts"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
-			defence_scopes["day_whereabouts"] = {"type": "plea"}
+	if moves.is_empty() and day_first:
+		lines.append(day_def["line"])
+		facts.append_array(day_def["facts"])
+		moves.append("day_whereabouts")
+		move_strengths["day_whereabouts"] = 1.0
+		move_scales["day_whereabouts"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
+		defence_scopes["day_whereabouts"] = {"type": "plea"}
 	# 3. Against a reading that names them (against a filed case, the one it rests on).
 	if moves.size() < 2:
 		var rd = {}

@@ -78,6 +78,10 @@ func _cases() -> void:
 	var r5: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, crowd), false)
 	var c5: Array = r5.facts.filter(func(f): return not f.get("self_report", false)).map(func(f): return f.subject[0])
 	_check(c5 == [b.id] and b.name in _text(r5), "a suspect fifth among those present is named and carded (%s)" % str(c5))
+	# One companion: the singular line, not a plural one ("so was", not "were there").
+	d.suspicion[b.id] = 0.1
+	var r6: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, [a]), false)
+	_check(("so was " + a.name) in _text(r6), "with one other there, the singular line (%s)" % _text(r6))
 	# Nobody else there.
 	var r3: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, []), false)
 	_check(not r3.is_empty() and r3.facts.size() == 1, "with nobody else there, it says so (%s)" % _text(r3))

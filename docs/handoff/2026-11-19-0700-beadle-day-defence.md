@@ -21,7 +21,12 @@ for that place and phase (`MindMeeting._day_whereabouts_defence`):
   afternoon, and so were Jory and Kiran. Ask any of them what they saw.";
 - **with someone they suspect there:** `defence_day_others_pointed_stand`. For a good defender,
   that's its own suspicion at the nomination floor (0.40); for an evil one, the town's view.
+- **with one other there:** a plain singular line, "I was at the mill yesterday afternoon, and so
+  was Jory. Ask them what they saw." The voiced `{others}` lines are written for two or three
+  names. Herald is asked for voiced versions.
 - **with nobody else there:** `defence_day_alone`.
+- **When it comes first:** when the daytime sighting is the case's heaviest item, this answer
+  comes before any night account that a weaker or uncited item could prompt (Codex on #318).
 
 **Details.**
 - **The voice lines:** Herald's lines, already approved and committed. Only the `_stand`
@@ -33,7 +38,7 @@ for that place and phase (`MindMeeting._day_whereabouts_defence`):
 
 ## Measured
 
-- **New suite:** `tools/test_day_defence.gd` (9 checks), on the fast list. It covers the three
+- **New suite:** `tools/test_day_defence.gd` (10 checks), on the fast list. It covers the three
   lines, the cards (only for those named, Codex on #318), not firing when a heavier item isn't a daytime sighting, and an evil defender
   naming only who was really there.
 - **Suites that pass:** test_mechanics_defences, test_defence_repeats, test_meeting_flow,
