@@ -88,3 +88,4 @@ func _played_games() -> void:
 					_check(not g.w.by_id[who].is_evil(), "seed %d: %s's night-%d watch names teammate %s" % [seed_v, m.id, int(e.day), who])
 	print("  played %d games to day 3, %d Night Watch fabrications checked" % [looked, readings])
 	_check(looked > 0, "some games reached day 3")
+	_check(readings > 0, "and some evil Night Watch fabrications were checked (%d; Steward Nov 19 silent skip)" % readings)
