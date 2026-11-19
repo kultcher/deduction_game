@@ -5,7 +5,8 @@
 ## - with someone it suspects there, it points at them;
 ## - with nobody else there, it says so;
 ## - the player gets a sighting card for each person named, and the defender's own;
-## - an evil defender tells it the same, truthfully.
+## - an evil defender tells it the same, truthfully, leaving out its teammates (Steward A5);
+## - the dead are never named as witnesses (Steward A6).
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -94,3 +95,23 @@ func _cases() -> void:
 	var r4: Dictionary = MindMeeting._day_whereabouts_defence(w, e, _place(w, e, [a]), false)
 	var named: Array = r4.get("facts", []).filter(func(f): return not f.get("self_report", false)).map(func(f): return f.subject[0])
 	_check(named == [a.id], "an evil defender names only who was really there (%s)" % str(named))
+	# An evil defender never points at, or calls as witness, its own teammate (Steward Nov 19 A5).
+	var team: Array = w.evil_team()
+	if team.size() >= 2:
+		var mate = team[1]
+		var r7: Dictionary = MindMeeting._day_whereabouts_defence(w, e, _place(w, e, [mate, a]), false)
+		var c7: Array = r7.get("facts", []).filter(func(f): return not f.get("self_report", false)).map(func(f): return f.subject[0])
+		_check(not (mate.id in c7) and not (mate.name in _text(r7)) and c7 == [a.id], "an evil defender leaves its teammate out (%s)" % _text(r7))
+		var r8: Dictionary = MindMeeting._day_whereabouts_defence(w, e, _place(w, e, [mate]), false)
+		_check(r8.get("facts", []).size() == 1 and not (mate.name in _text(r8)), "with only its teammate there, it names nobody (%s)" % _text(r8))
+	else:
+		_check(false, "a deal with two evil to test the teammate case")
+	# The dead aren't named as witnesses (Steward Nov 19 A6).
+	d.suspicion[b.id] = 0.1
+	a.alive = false
+	var r9: Dictionary = MindMeeting._day_whereabouts_defence(w, d, _place(w, d, [a, b]), false)
+	var c9: Array = r9.get("facts", []).filter(func(f): return not f.get("self_report", false)).map(func(f): return f.subject[0])
+	_check(c9 == [b.id] and not (a.name in _text(r9)), "the dead aren't named as witnesses (%s)" % _text(r9))
+	a.alive = true
+	# Sentence-start slots raise only the first letter (Steward Nov 19 A6).
+	_check(MindMeeting._first_upper("yesterday afternoon") == "Yesterday afternoon" and MindMeeting._first_upper("") == "", "a slot at the start of a sentence raises only its first letter")

@@ -785,6 +785,10 @@ class Dialogue:
 # ---------------------------------------------------------------- 8. Evil AI: Bluffs, Scapegoats, Kills & Poison
 class Evil:
 	const EVIL_HINT_CHANCE = 0.3
+	## A crowd this size (the Dowser's "4+" row in its bluff guideline) is cover enough for a
+	## bluffing Augur to tell the truth about the Demon on its street (#264; Michael approved
+	## it Nov 18; moved here from sim/roles/augur.gd, Steward Nov 19).
+	const AUGUR_DEMON_CROWD = 4
 	const MEDIUM_USELESS_CHANCE = 0.15
 	const EVIL_CAUTION_DEMON = 0.8
 	const EVIL_CAUTION_MINION = 0.7

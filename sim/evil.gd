@@ -903,9 +903,12 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		entry = _stamp_fake(w, gen["entry"], bluff, day_only)
 		why = gen["why"]
 		var kept: Dictionary = _keep_frame(w, n, entry, _alternatives(w, n, bdef, plan, mate, entry, day_only), s)
+		var kept_note: String = ""
 		if not kept.is_empty():
+			# Keeps the motive it was made for, and says why it was changed, as the rework path
+			# does (Steward Nov 19 A4: the alternative's own reason replaced the motive).
 			entry = kept["entry"]
-			why = kept["why"]
+			kept_note = "its first version would have cleared someone its earlier readings pointed at, so it told this one instead"
 		# Checked against what's already public: a self-incriminating one may be noticed,
 		# then reworked once or held back a day (sim/fabrication_check.gd). It's judged as
 		# told: stamped with its gift and night first.
@@ -914,6 +917,8 @@ static func _make_fake_info_for_phase(w, day_only: bool) -> void:
 		_mark_fake(entry)
 		why = named(w, why)
 		entry["why"] = "evil fabrication: " + why
+		if kept_note != "":
+			entry["why"] += "; " + kept_note
 		if vetted["outcome"] == "reworked":
 			# Keeps the motive it was made for, and says why it was changed (Steward A2-A3:
 			# the alternative's own reason replaced the motive, and named ids).
