@@ -44,13 +44,13 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, private sharing grows each day): `baseline_f7e56e2`
+### Current baseline (Nov 19, private sharing grows each day): `baseline_851e676`
 
-`tools/golden/baseline_f7e56e2/` is the capture from `claude/beadle-private-share` at `f7e56e2`
-(main with #345, Argon's end-of-night belief flush, merged in). An NPC who hasn't claimed a gift publicly
+`tools/golden/baseline_851e676/` is the capture from `claude/beadle-private-share` at `851e676`
+(main with #344 merged in). An NPC who hasn't claimed a gift publicly
 brings up its gift and its readings in private talk a little more often each day past day 1
 (`SHARE_UNCLAIMED_DAY_BOOST` 0.15, new, pending Michael).
-- **Divergence from `baseline_2ac19a1`:** 98933 from record 81 (day 2, the first private-talk
+- **Divergence from `baseline_ee15238`:** 98933 from record 81 (day 2, the first private-talk
   draw of the day); 42, 54875, 692 and 900 are identical.
 - **Outcomes:**
   - **98933:** main hangs Dorian on day 2 and Isolde on day 3. Now it hangs Merrin on day 2,
