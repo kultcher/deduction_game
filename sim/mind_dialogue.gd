@@ -1561,7 +1561,8 @@ static func _meeting_note(w, n, t, lines: Array, facts: Array) -> void:
 		# Heard of it: second hand, through this speaker.
 		fact["via"] = n.id
 		fact["text"] = "Via %s: %s" % [n.name, fact["text"]]
-		lines.append(say(n, "%s told me they saw %s and %s talking at %s, %s." % [w.by_id[got.witness].name, t.name, other.name, where, when_s]))
+		var heard_fallback: String = "%s told me they saw %s and %s talking at %s, %s." % [w.by_id[got.witness].name, t.name, other.name, where, when_s]
+		lines.append(say_voiced(n, "gossip_meeting", heard_fallback, {"source": w.by_id[got.witness].name, "a": t.name, "b": other.name, "place": where, "when": when_s}))
 	facts.append(fact)
 
 ## Meeting plan M1: asked about someone, a willing good speaker passes on a private gift
