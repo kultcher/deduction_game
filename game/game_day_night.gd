@@ -669,7 +669,7 @@ static func _morning_report(g) -> void:
 			g._narr("Dawn breaks over a body: %s the %s was killed in the night. Their cottage on %s is now a crime scene." %
 				[v.name, v.occupation, C.block_name(v.home_block)])
 			g._facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": g.w.day - 1,
-				"text": "%s was killed by the demon on night %d (home on %s)." % [v.name, g.w.day - 1, C.block_name(v.home_block)]}])
+				"text": "%s was killed by the Demon on night %d (home on %s)." % [v.name, g.w.day - 1, C.block_name(v.home_block)]}])
 	for save in g.w.ward_saves:
 		if save.night == g.w.day - 1:
 			var held = "Your ward held at %s's door last night." % g.w.by_id[save.target].name

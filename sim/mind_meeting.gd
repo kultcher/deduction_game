@@ -1066,7 +1066,7 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	if sc != null:
 		sc["by"] = n.id
 		if C.is_demon(w.by_id[sc["nominee"]].role):
-			w.dlog.think(n.id, "team_survival", "Protects the demon: maintaining cover cannot justify nominating them.")
+			w.dlog.think(n.id, "team_survival", "Protects the Demon: maintaining cover cannot justify nominating them.")
 			return _evil_counter_or_pass(w, n, m, ev)
 		if Evil.is_teammate(w, n, sc["nominee"]):
 			var stakes = 0.85 * Evil.teammate_value(w, sc["nominee"])
@@ -1652,6 +1652,79 @@ static func _reading_known_to_defender(d, src_id: String, rd: Dictionary, disclo
 		return true
 	return receipts.values().any(func(r): return not r.get("content", {}).get("anonymous", false))
 
+## The answer to a case resting on a daytime sighting (2d): {line, facts}, or {} when the heaviest
+## item against them (of those the player's case cites, when it's a filed case) isn't one. The
+## place and time are their own whereabouts that phase; the others named are everyone else there
+## then, from the public whereabouts, two or three of them. If one of those is someone the
+## defender suspects (a good defender's own suspicion at the nomination floor; for evil, the town's
+## view), they point at them instead. Only at a nomination: the "_stand" lines.
+static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> Dictionary:
+	var pool: Array = items.filter(func(x): return (not case_backed) or x.get("in_case", false))
+	if pool.is_empty():
+		return {}
+	pool.sort_custom(func(a, b): return float(a.get("contrib", 0.0)) > float(b.get("contrib", 0.0)))
+	var top: Dictionary = pool[0]
+	if str(top.get("channel", "")) != "whereabouts_day":
+		return {}
+	var ep: PackedStringArray = str(top.get("eid", "")).split(":")
+	if ep.size() < 6:
+		return {}
+	var sd: int = int(ep[3])
+	var sp: int = int(ep[4])
+	var at: String = str(d.history.get(w.time_key(sd, sp), ""))
+	if at == "" or at.begins_with("home") or at.begins_with("night") or at == "dead":
+		return {}
+	var present: Array = []
+	for x in w.npcs:
+		if x != d and str(x.history.get(w.time_key(sd, sp), "")) == at:
+			present.append(x)
+	var place: String = w.loc_name(at)
+	var when: String = _day_when(w, sd, sp)
+	var slots: Dictionary = {"place": place, "when": when, "Place": place.capitalize() if place.length() > 0 else place, "When": when.capitalize() if when.length() > 0 else when}
+	var line: Dictionary
+	var named: Array = []  # who the spoken line names (Codex on #318: the cards follow the words)
+	if present.is_empty():
+		line = say_voiced(d, "defence_day_alone", "I was at %s %s. Being seen in the open is no crime." % [place, when], slots)
+	else:
+		var suspect = null
+		for x in present:
+			if not x.alive:
+				continue
+			var heat: float = Evil.town_view(w, x) if d.is_evil() else susp(d, x.id)
+			if heat >= Tuning.Meeting.NOMINATION_FLOOR and (suspect == null or heat > (Evil.town_view(w, suspect) if d.is_evil() else susp(d, suspect.id))):
+				suspect = x
+		if suspect != null:
+			slots["suspect"] = suspect.name
+			named = [suspect]
+			line = say_voiced(d, "defence_day_others_pointed_stand", "I was at %s %s. So was %s, if it's company you're weighing." % [place, when, suspect.name], slots)
+		else:
+			named = present.slice(0, 3)
+			var names: Array = named.map(func(x): return x.name)
+			if names.size() == 1:
+				# One companion: its own singular line (the {others} lines are two or three names).
+				slots["other"] = names[0]
+				line = say_voiced(d, "defence_day_other_one", "I was at %s %s, and so was %s. Ask them what they saw." % [place, when, names[0]], slots)
+			else:
+				var others: String = ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
+				slots["others"] = others
+				line = say_voiced(d, "defence_day_others", "I was at %s %s, and so were %s. Ask any of them what they saw." % [place, when, others], slots)
+	var facts: Array = [{"kind": "sighting", "subject": [d.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp, "self_report": true,
+		"text": "%s says they were at %s, day %d %s." % [d.name, place, sd, C.PHASES[sp]]}]
+	for x in named:
+		facts.append({"kind": "sighting", "subject": [x.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp,
+			"text": "%s says %s was at %s too, day %d %s." % [d.name, x.name, place, sd, C.PHASES[sp]]})
+	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, present.size()])
+	return {"line": line, "facts": facts}
+
+## "this morning", "yesterday afternoon", "the first evening": a day phase, as said on w.day.
+static func _day_when(w, sd: int, sp: int) -> String:
+	var ph: String = C.PHASES[sp].to_lower()
+	if sd == w.day:
+		return "this " + ph
+	if sd == w.day - 1:
+		return "yesterday " + ph
+	return "the %s %s" % [C.ORDINALS[clampi(sd - 1, 0, C.ORDINALS.size() - 1)], ph]
+
 ## The night a good defender was framed on: every sighting against them names a night
 ## they (honestly) spent at home. -1 if evil, if any sighting is of a real outing, or if
 ## no sighting names a night. Anyone recorded as out is not framed (a Sleepwalker's walk
@@ -1800,8 +1873,12 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var move_strengths = {}
 	var move_scales = {}
 	var defence_scopes = {}
+	# The case rests on where they were by day (2d below): that answer comes first, before any
+	# night account a weaker or uncited item could prompt (Codex on #318).
+	var day_def: Dictionary = _day_whereabouts_defence(w, d, items, case_backed)
+	var day_first: bool = not day_def.is_empty()
 	# 1. A gift that walks at night explains being seen out.
-	if not out_items.is_empty() and framed_night < 0 and C.ROLES.get(role, {}).get("night_walk", false):
+	if not day_first and not out_items.is_empty() and framed_night < 0 and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
 		var safety: float = block_safety(w, d)
 		if safety > 0.0:
@@ -1817,7 +1894,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_scales["reveal"] = 1.0
 			defence_scopes["reveal"] = {"type": "gift_claim", "role": role}
 	# 2. A personal secret explains it (good only: evil has nothing true to confess).
-	if moves.is_empty() and not out_items.is_empty() and framed_night < 0 and not d.is_evil() and not d.secret.is_empty():
+	if not day_first and moves.is_empty() and not out_items.is_empty() and framed_night < 0 and not d.is_evil() and not d.secret.is_empty():
 		var confess_parts = {"facing_the_rope": 0.5, "privacy": (0.4 - trait_of(d, "privacy")) * 1.0}
 		var confess_safety: float = block_safety(w, d)
 		if confess_safety > 0.0:
@@ -1835,7 +1912,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
 	# 2b. "I've been known to sleepwalk": the real Sleepwalker (who can't know they were
 	# out, only that they've walked before) or an evil bluffer whose cover needs it.
-	if moves.is_empty() and not out_items.is_empty():
+	if not day_first and moves.is_empty() and not out_items.is_empty():
 		var excuse: Dictionary = sleepwalk_excuse(w, d, "the meeting")
 		if not excuse.is_empty():
 			lines.append(excuse["line"])
@@ -1848,7 +1925,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# or they were framed with one: they give their account of that night, before the town
 	# (the podium press's answer).
 	var hinge_night: bool = str(hinge.get("channel", "")) == "movement_out" and str(hinge.get("eid", "")).begins_with("sighting:")
-	if moves.is_empty() and (hinge_night or framed_night >= 0):
+	if not day_first and moves.is_empty() and (hinge_night or framed_night >= 0):
 		var hnd: int = framed_night
 		if hinge_night:
 			var hp: PackedStringArray = str(hinge.eid).split(":")
@@ -1862,6 +1939,16 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_strengths["dispute_night"] = 1.0
 			move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 			defence_scopes["dispute_night"] = {"type": "plea"}
+	# 2d. The case rests on where they were by day (BACKLOG "A defence's answer to a
+	# daytime-whereabouts case", Michael, Nov 16 and 19): they say where they were and who else
+	# was there, from the public whereabouts (true for good and evil alike: no lie, Nov 19).
+	if moves.is_empty() and day_first:
+		lines.append(day_def["line"])
+		facts.append_array(day_def["facts"])
+		moves.append("day_whereabouts")
+		move_strengths["day_whereabouts"] = 1.0
+		move_scales["day_whereabouts"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
+		defence_scopes["day_whereabouts"] = {"type": "plea"}
 	# 3. Against a reading that names them (against a filed case, the one it rests on).
 	if moves.size() < 2:
 		var rd = {}
@@ -2037,7 +2124,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if v.is_evil():
 		var scion_safe: bool = Evil.scion_fallback_active(w)
 		if C.is_demon(w.by_id[nominee].role) and not scion_safe:
-			w.dlog.think(v.id, "team_survival", "Votes no on the demon: later voters can make even an early vote decisive.")
+			w.dlog.think(v.id, "team_survival", "Votes no on the Demon: later voters can make even an early vote decisive.")
 			return false
 		if v.id == nominator and not Evil.is_teammate(w, v, nominee):
 			w.dlog.think(v.id, "vote", "YES on %s. Follows through on own nomination." % nominee, {"evil": true})
@@ -2200,9 +2287,17 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 		# Granted today that the nominee lied about being home (lie severity, the vote side).
 		var grant: Dictionary = v.dialogue_memory.get("granted_lies", {}).get(nominee, {})
 		var lie: bool = int(grant.get("day", -1)) == w.day and not mind.workshop_state.get("withdrawn", {}).has(str(grant.get("key", "")))
-		if not accepted and not lie:
+		var agree: Dictionary = load("res://sim/social.gd").readings_agree_record(v, nominee)
+		if not accepted and not lie and agree.is_empty():
 			continue
-		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie)
+		var key: String = _resistance_key(w, v, parts_map.get(vid, {}), res, lie) if (accepted or lie) else ""
+		# Their readings confirm what I know (Michael, Nov 19): the reason, ahead of the
+		# generic ones; a card for the player (res.resistance_facts).
+		if not agree.is_empty() and key in ["", "vote_no_reluctant", "vote_no_short_of_rope"]:
+			key = "vote_resist_readings_agree"
+			var rf: Array = res.get("resistance_facts", [])
+			rf.append(load("res://sim/social.gd").readings_agree_fact(v, t, agree))
+			res["resistance_facts"] = rf
 		if key == "":
 			continue
 		out.append(_resistance_line(w, v, t, key, res))
@@ -2255,6 +2350,8 @@ static func _resistance_line(w, v, t, key: String, res: Dictionary) -> Dictionar
 	var nom_id: String = str(res.get("by", ""))
 	var nom_name: String = "the Demonologist" if nom_id == "player" else (w.by_id[nom_id].name if w.by_id.has(nom_id) else "")
 	match key:
+		"vote_resist_readings_agree":
+			return say_voiced(v, key, "I won't hang %s: their readings agree with what I know." % t.name, {"nominee": t.name})
 		"vote_no_prefers_block":
 			return say_voiced(v, key, "I take your point about %s, truly, but %s is already on the block and I'd sooner hang %s tonight." % [t.name, block_name, block_name],
 				{"nominee": t.name, "block": block_name})

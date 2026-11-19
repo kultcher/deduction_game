@@ -210,6 +210,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESENTATION_WRONG_AGREEMENT` | `-0.25` |  | `game/workshop_presentation.gd` |
 | `READING_CONFIRM_SMALL` | `0.70` | Trust from a reading that confirms what the listener knows or strongly believes (Michael, Nov 19; workshop/reading_confirm.gd): the listener's agreement with the reading, as a cutoff and tiers, not a scale. At least SMALL: a small trust step (about the shared-voting one); at least MODERATE: a moderate one; known outright from its own knowledge: a significant one. The trust steps themselves are Beadle's. | `workshop/reading_confirm.gd` |
 | `READING_CONFIRM_MODERATE` | `0.85` |  | `workshop/reading_confirm.gd` |
+| `READING_TRUST_SMALL` | `0.06` | Trust from a reading that confirms what the listener knows or strongly believes (Michael, Nov 19, set R3): a good listener gains this much trust in the teller, once for each reading, judged on what it believed before hearing it (ReadingConfirm.assess's tier). | `sim/social.gd` |
+| `READING_TRUST_MODERATE` | `0.12` |  | `sim/social.gd` |
+| `READING_TRUST_KNOWN` | `0.20` |  | `sim/social.gd` |
+| `AGREEMENT_STEP` | `0.02` | Backing a case (Michael, Nov 18; rebalanced Nov 19): a good NPC's trust step toward an ally who votes the same way, or nominates or accuses someone it already suspects. At most once a day for each ally. | `sim/social.gd` |
 | `NOMINATED_PRESSURE` | `0.4` |  | `sim/world.gd` |
 | `NOMINATED_BY_PLAYER_DROP` | `0.15` |  | `sim/world.gd` |
 | `NOMINATED_NPC_TRUST_DROP` | `0.25` |  | `sim/world.gd` |
@@ -417,7 +421,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_meeting.gd` |
 | `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_DAY_SLOPE` | `0.05` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd`, `tools/autoplay.gd` |
 | `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_OWN_CLEAR_RELIEF` | `0.2` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
@@ -630,6 +634,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
 | `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
+| `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_HIGH` | `0.8` |  | `workshop/source_doubt.gd` |
 | `CONNECTIONS_CLIP` | `0.01` | Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds. | `workshop/connections.gd` |
@@ -656,7 +661,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEADLINE_REPEAT_BUMP` | `0.15` | Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline. | `workshop/jury.gd` |
 | `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
-| `JURY_CHALLENGE_LYING_MIN_AGR` | `0.3` | A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by the listener's agreement and the case's weight), and the gate it must pass, shared with the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good reader's suspicion about 3 points from a middling player and 11 from a trusted one. | `workshop/jury.gd`, `workshop/reading_challenges.gd` |
+| `JURY_CHALLENGE_LYING_MIN_AGR` | `0.3` | A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by the listener's agreement and the case's weight), and the gate it must pass, shared with the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good reader's suspicion about 3 points from a middling player and 11 from a trusted one. | `game/workshop_canvas.gd`, `workshop/jury.gd`, `workshop/reading_challenges.gd` |
 | `JURY_CHALLENGE_LYING_SCALE` | `0.4` |  | `workshop/jury.gd` |
 | `SOURCE_REL_BASE` | `0.50` | Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]). | `workshop/shared_ledger.gd` |
 | `SOURCE_REL_SLOPE` | `0.50` |  | `workshop/shared_ledger.gd` |

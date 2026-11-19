@@ -191,8 +191,9 @@ it means the game must teach its own way of thinking and make evidence very read
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`
   (0.1) doubt. A Night Watch list that wrongly names them is still set aside.
 - **Vigils see who leaves:** a player vigil on a block sees its residents leaving home, and
-  anyone doing the full Lamplighter or Sexton tour; not walkers arriving from another block
-  or passing through. So it tests suspects (watch the block of the people you doubt)
+  no one else: not walkers arriving from another block or passing through, nor the
+  Lamplighter or Sexton on their tour of every block, who are seen only from their own home
+  block (Michael, Nov 19). So it tests suspects (watch the block of the people you doubt)
   rather than catching the Demon at the scene, and an empty vigil clears that block's
   residents for the night. The Night Watch still sees all traffic. (Michael, Nov 17;
   `docs/design/vigil.md`. Before, a vigil saw walkers arriving.)
@@ -481,8 +482,9 @@ a frame or their gift shares every sighting they remember in that conversation.
 
 ### Night
 
-- **Vigil** at a block (default, unlimited): see who leaves home there, and anyone on the
-  full lamp route (Nov 17, `docs/design/vigil.md`). Offered vigils build trust only; they
+- **Vigil** at a block (default, unlimited): see who leaves home there, and no one else;
+  the Lamplighter and Sexton are seen only from their own home block (Nov 17 and Nov 19,
+  `docs/design/vigil.md`; see "Vigils see who leaves" above). Offered vigils build trust only; they
   don't deter the demon.
 - **Ward** (toolbox, below) or **sleep**.
 
@@ -666,12 +668,20 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise → card links** mean "this card's line runs through that premise", and the
   canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.
-- **Strength while building:** doesn't support / weakly / moderately / strongly, from a
-  neutral test juror (public facts, default trust). Feedback names a clashing card, the
-  card that weakened the case and who it brings in, collateral ("this mostly raises
-  suspicion of X"), idle assumptions and where each assumption came from. The juror
-  judges as if the case's challenges hold (challenged readings set aside, and it says so)
-  and weighs the public claims of everyone the case names (#159).
+- **Strength while building:** doesn't support / weakly / moderately / strongly, from the
+  Test juror, an average listener (Michael, Nov 19, juror fix (a)). The juror hears the
+  case as a townsperson with credibility 0.5 in the player and trust 0.5 in everyone would,
+  through the same path a real listener takes (`Connections.judge_for_profile`,
+  docs/belief_model.md). Each card is weighed as heard, and the case's own joining counts at
+  the filing day's weight. Its strength is how far that listener's chance of the premise
+  moves, against a town that hasn't heard the case's cards: an accusation moves it up, a
+  clearing premise down. No full-weight figure is kept anywhere. Feedback names a clashing
+  card, the card that weakened the case and who it brings in, collateral ("this mostly
+  raises suspicion of X"), idle assumptions and where each assumption came from. A challenge
+  is weighed as the listener weighs it, not assumed to hold. An accepted lie call shows as
+  the town pressing the teller as the liar, not as a change in the subject's odds. The juror
+  weighs the public claims of everyone the case names (#159). The cut points are being re-set
+  from the case slate (docs/case_slate/).
 - **"No new info"** (#154, `WorkshopCanvas.town_note`): beside the strength chip, a note
   when the case would add little for the town: every card is already public and together
   they add little, an earlier public case of yours today already holds them, or the public

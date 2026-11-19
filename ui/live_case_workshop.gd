@@ -24,6 +24,10 @@ var _numbers: Array = []
 var field_menu: PopupMenu
 var _field_target: Dictionary = {}     # {id, field, values}
 var juror_timer: Timer
+var bg_menu: PopupMenu
+var bg_from: PopupMenu
+var bg_about: PopupMenu
+var _bg_people: Array = []
 var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
 enum DebugItem { PREVIEW, SUPPORT, WITHDRAW, WHY, WHY_RECORD, WHY_SHOW }
 var files: Dictionary = {}
@@ -162,6 +166,10 @@ func _ready() -> void:
 	for name_value in premise_names():
 		premise_type.add_item(name_value)
 	premise_type.select(-1)
+	# Hidden children, so they're freed with the page (orphans leaked their popups' viewports at exit).
+	for hidden in [premise_person, premise_type]:
+		hidden.visible = false
+		tools.add_child(hidden)
 	var add_button = _button(tools, "Add premise", _add_premise)
 	add_button.tooltip_text = "Adds a blank premise. Click its fields to choose who and what you're arguing."
 	var add_profile_btn = _button(tools, "Add Townsfolk Profile Info", _open_add_profile_menu)
@@ -204,6 +212,15 @@ func _ready() -> void:
 	field_menu = PopupMenu.new()
 	_add_subwindow(field_menu)
 	field_menu.id_pressed.connect(_field_chosen)
+	bg_menu = PopupMenu.new()
+	_add_subwindow(bg_menu)
+	bg_from = PopupMenu.new()
+	bg_about = PopupMenu.new()
+	bg_menu.add_child(bg_from)
+	bg_menu.add_child(bg_about)
+	bg_from.id_pressed.connect(func(i): _bg_add(i, true))
+	bg_about.id_pressed.connect(func(i): _bg_add(i, false))
+	canvas.background_context_requested.connect(_background_menu)
 	juror_timer = Timer.new()
 	juror_timer.one_shot = true
 	juror_timer.wait_time = 0.45
@@ -395,13 +412,13 @@ func add_whereabouts(question: Dictionary) -> String:
 		canvas.fit_case(true)
 	return id
 
-func add_evidence(number: int) -> void:
-	if number < 1 or number > g.board.size():
-		return
-	var receipt: Dictionary = g.board[number - 1]
-	if receipt.kind == "deduction" or receipt.get("deleted", false) or receipt.get("tavern_gossip", false) or not receipt.get("workshop_usable", true):
-		return
+## Add a board card. The view centres on it, and it glows softly until first moved
+## (Michael, Nov 19). Returns its node id, or "" if it can't go on the Workshop.
+func add_evidence(number: int, centre: bool = true) -> String:
+	if not _usable(number):
+		return ""
 	refresh()
+	var receipt: Dictionary = g.board[number - 1]
 	var card_id: String = Live.Evidence.normalize_card(receipt).id
 	var id: String = "e:" + card_id
 	if not board.nodes.has(id):
@@ -411,7 +428,73 @@ func add_evidence(number: int) -> void:
 		board.version += 1
 	board.selected = id
 	_session_changed()
-	canvas.fit_case(true)
+	canvas.fresh[id] = true
+	if centre:
+		canvas.centre_on([id])
+	return id
+
+## Several cards at once: each glows, and the view centres on the group.
+func add_evidence_many(numbers: Array) -> Array:
+	var ids: Array = []
+	for number in numbers:
+		var id: String = add_evidence(int(number), false)
+		if id != "":
+			ids.append(id)
+	if not ids.is_empty():
+		canvas.centre_on(ids)
+	return ids
+
+func _usable(number: int) -> bool:
+	if g == null or number < 1 or number > g.board.size():
+		return false
+	var receipt: Dictionary = g.board[number - 1]
+	return not (receipt.kind == "deduction" or receipt.get("deleted", false) or receipt.get("tavern_gossip", false) or not receipt.get("workshop_usable", true))
+
+## The readings on the board (gift results) that a person gave, or that name them, in
+## board order (Michael, Nov 19). `from`: the person who read them; otherwise anyone the
+## reading names (one of a pair or a group counts).
+func readings_for(person: String, from: bool) -> Array:
+	var out: Array = []
+	if g == null:
+		return out
+	for c in g.board:
+		if c.get("kind", "") != "info" or not _usable(int(c.n)):
+			continue
+		if from and str(c.get("source", "")) == person:
+			out.append(int(c.n))
+		elif not from and person in c.get("subject", []):
+			out.append(int(c.n))
+	return out
+
+## Right-click on empty canvas: add a person's readings, given or about them.
+func _background_menu(_at: Vector2) -> void:
+	if g == null:
+		return
+	bg_menu.clear()
+	for sub in [bg_from, bg_about]:
+		sub.clear()
+	var people: Array = g.w.npcs.duplicate()
+	people.sort_custom(func(a, b): return a.name < b.name)
+	_bg_people = people.map(func(n): return n.id)
+	for i in people.size():
+		var n = people[i]
+		var given: int = readings_for(n.id, true).size()
+		var named: int = readings_for(n.id, false).size()
+		bg_from.add_item("%s (%d)" % [n.name, given], i)
+		bg_from.set_item_disabled(bg_from.get_item_index(i), given == 0)
+		bg_about.add_item("%s (%d)" % [n.name, named], i)
+		bg_about.set_item_disabled(bg_about.get_item_index(i), named == 0)
+	bg_menu.add_submenu_node_item("Add readings FROM", bg_from)
+	bg_menu.add_submenu_node_item("Add all readings ABOUT", bg_about)
+	bg_menu.position = Vector2i(get_viewport().get_mouse_position())
+	bg_menu.popup()
+
+func _bg_add(index: int, from: bool) -> void:
+	if index < 0 or index >= _bg_people.size():
+		return
+	var person: String = _bg_people[index]
+	var ids: Array = add_evidence_many(readings_for(person, from))
+	status.text = "Added %d reading%s %s %s." % [ids.size(), "" if ids.size() == 1 else "s", "from" if from else "about", g.w.by_id[person].name]
 
 func _fit_after_layout() -> void:
 	await get_tree().process_frame

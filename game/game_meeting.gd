@@ -383,6 +383,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 					g._narr("The nomination fails.")
 			# Step 6: a voter or two who might surprise you say why (meeting plan M2d).
 			g._lines(Mind.vote_resistance_lines(g.w, res))
+			g._facts(res.get("resistance_facts", []))  # "their readings agree with what I know" cards
 			_after_vote(g)
 		_:
 			g._err("On this nomination: %sdefend | accuse | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
@@ -560,5 +561,5 @@ static func _close_meeting(g) -> void:
 	if g.w.day == 1: g._narr(C.DEMON_NIGHT_RULE)
 	var opts = "'vigil <block>' (watch who goes out from a block at night)"
 	if g.w.tools["ward"] > 0:
-		opts = "'ward <name>' (shield them from the demon, once per case), " + opts
+		opts = "'ward <name>' (shield them from the Demon, once per case), " + opts
 	g._prompt("Choose your night work: %s, or 'sleep'." % opts)

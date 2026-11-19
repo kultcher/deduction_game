@@ -65,6 +65,18 @@ relay about the first victim naming night 0 (Beadle).
   walker who withholds their purpose can say "Fine, I was out last night, but what I was
   doing is my own business." Keep distinct responses for the truly home, unaware
   Sleepwalkers and evil cover. [decided]
+  **Progress (Nov 18-19):**
+  - Beadle's d046d6a routed a pressed case resting on night evidence to the night answer,
+    not the gift one, which fixes Kiran's symptom. #261 added "Fine, I was out"
+    (`trapped_explanation`).
+  - Quill: a pressed case whose cards place its subject out now carries a `contradiction`
+    context to the press (`GameConversation.press_contradiction`): the night, the block,
+    the cards, and whether it breaks their own home alibi.
+  - Beadle (Nov 19, `claude/beadle-press-contradiction`): the press answers from it
+    (`MindDialogue._pressed_caught_out`). A good NPC out on its own business says "Fine, I
+    was out" and, open enough, why; it no longer says it was home. The truly home, an
+    unaware Sleepwalker, a gift walker and evil keep their answers. No new lines: it reuses
+    `trapped_night_out`, which a presented case already says. Built; close once merged.
 
 - **Demon detours exist in inference but not in actual movement.** (77388) The movement
   model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
@@ -319,6 +331,9 @@ relay about the first victim naming night 0 (Beadle).
     standing doubt. Michael (Nov 18): the threshold starts at 25% self-doubt, as a new
     named constant in `sim/tuning.gd`. He thinks that may be low and will judge it in
     playtesting; the PR says how often it fires in its tests (no separate sweep).
+    Michael (Nov 19): the signal is now the judge's posterior that the own reading was
+    wrong, and the threshold is `Workshop.SELF_DOUBT_TRIGGER`, 0.30
+    (`SourceDoubt.doubts_own_gift(n)`; see "Was my reading poisoned?" below).
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
@@ -473,6 +488,22 @@ relay about the first victim naming night 0 (Beadle).
     - the tier sizes;
     - whether surprise from the public record still scales the gain within a tier;
     - what happens when a strongly believed reading is later contradicted.
+  - **Sizes (Michael, Nov 19, set R3):**
+    - small (70%+): +0.06;
+    - moderate (85%+): +0.12;
+    - known (a fact): +0.20.
+    - #292's agreement step goes down to 0.02, as its own constant (`Trust.AGREEMENT_STEP`), so
+      that readings carry more of how trust builds.
+    - Each reading counts once for each listener, judged on its beliefs from before hearing it.
+  - **Built** (Nov 19, `claude/beadle-reading-trust`). On 40 passive games:
+    - readings carry about 42% of the trust gained;
+    - evil gets 31% of it;
+    - day-4 trust is as before: 12.2% of pairs near full trust, against 12.6%.
+  - **Next, approved (Michael, Nov 19):** "Their readings agree with what I know" as a reason
+    given out loud. A no-voter explains sparing someone after a vote, and an opinion clears
+    someone, both from a moderate or known confirmation. Evil says it honestly only, from its
+    good self's record. It shifts no suspicion directly: it's a card for the player, and NPCs
+    re-weigh the reading cited. Herald's lines are approved. Owner Beadle.
 
   [decided: direction]
 
@@ -581,6 +612,10 @@ Candidates for a unified retuning proposal, not approved changes.
     heaviest cited item is a daytime sighting, and names who else was there from the true
     whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
     there, the alone line. No evil lie for now: evil defenders use the same true lines.
+  - **Built** (Nov 19, `claude/beadle-day-defence`). It fires only at a nomination
+    (`defend_self`), when the heaviest item cited against the nominee is a daytime sighting,
+    and uses the `_stand` lines. Evil defenders tell it truthfully. Each person named becomes a
+    sighting card for the player.
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
@@ -1023,6 +1058,27 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   extra refresh, no new number; the own-against-own split isn't needed (the judge weighs
   which own reading fits worse). `SourceDoubt.self_doubt(n)` gives the per-night doubt for
   the dialogue item.
+  **Revised (Michael, Nov 19; Lantern):** a prior-only doubt climbs night by night for every
+  reader alike, so it says nothing about any one reading. What the NPC says now reads the
+  judge's posterior: for each night of its own readings, the chance that reading was wrong
+  given everything else it holds (`OwnGiftDoubt.posterior`). The prior above is still its
+  starting point, inside the judge, and stays readable as `SourceDoubt.self_doubt_prior`. It
+  doubts its gift on a night at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30, a new constant
+  Michael approved; `SourceDoubt.doubts_own_gift(n)`). Measured as built on seeds 3032-3095
+  (ten NPCs, the day-4 meeting): it fires in about 1 game in 4, for about 2 in 3 poisoned or
+  Delusional readings and about 1 in 20 sound ones (often a true Gravedigger reading after
+  the town hanged a good person). Michael decided on an earlier measurement that left the
+  prior out of the role check (about 1 game in 5, 4 in 10, 1 in 17; fixed on Codex's review). Readings whose content the judge doesn't check (a Warden's
+  quiet night, a Lamplighter, a Night Watch list, a Psychologist, a Sexton, a Medium's
+  relays) never fire; the follow-up below covers them. Behaviour doesn't change until
+  something reads it (Beadle's #316).
+- **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
+  Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
+  readings that hold in every world: a Warden's quiet night, a Lamplighter's count, a Night
+  Watch list, a Psychologist's or Sexton's reading, or a Medium's relayed transmission. That
+  was about 40% of own readings in the Nov 19 measurement. Their clash is weighed through
+  movement, or not at all. Extending the doubt there would use the movement factor's own
+  "this list or guard was broken" posterior. Owner Lantern. **[open]**
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.
@@ -1090,6 +1146,12 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
   stay true; only the names are false. It's a lie logged with its reason ("spread the
   suspicion"), and anyone who was there can catch it. Waits until the true-line defence ("A
   defence's answer to a daytime-whereabouts case") is built and played. Owner Beadle.
+  Tabled (Michael, Nov 19).
+
+- **A false "their readings agree with what I know".** (Michael, Nov 19) An evil NPC says it of
+  a teammate with no such confirmation behind it, to save them at a vote. It would be a lie
+  logged with its reason ("cover a teammate"), through `evil_override`. Waits until the honest
+  version is built and played. Owner Beadle.
   Tabled (Michael, Nov 19).
 
 ## Closed

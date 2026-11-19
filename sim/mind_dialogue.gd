@@ -122,6 +122,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		for x in card.get("support_cards", []):
 			if x.get("phase", -1) == C.NIGHT:
 				night = x.get("day", -1)
+		# When the case's cards place them out (GameConversation.press_contradiction, Quill),
+		# that's the night it's about.
+		if not card.get("contradiction", {}).is_empty():
+			night = int(card.contradiction.get("night", night))
 	var naming_me = kind == "info" and C.has_role_def(card.get("role", "")) and C.role_def(card.get("role", "")).names_good_role_in_pair() and n.id in pair  # "one of you two is the X"
 	var counter = kind == "claim" and card.get("source", "") != n.id and n.claim_public and card.get("role", "") == n.claimed_role
 	# How hard the card lands: the town's own shared weight for it (purge phase 4b).
@@ -156,6 +160,10 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 		return pressed
 	if night >= 0:
+		var caught: Dictionary = _pressed_caught_out(w, n, night, card.get("contradiction", {}) if kind == "deduction" else {})
+		if not caught.is_empty():
+			caught["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
+			return caught
 		var r = _answer_pressed_night(w, n, night)
 		# Caught out on gift business, they explain rather than defend what they saw: the
 		# "you doubt my account" opener only fits a restated sighting or alibi.
@@ -300,6 +308,36 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 		"text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}
 	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi: owns the night and explains it (secret: %s)." % n.secret.get("kind", "?"))
 	return {"lines": [line], "facts": [fact]}
+
+## Pressed with a case whose cards place them out that night (BACKLOG 78148, Kiran): a good
+## NPC who was out on its own business, not its gift, can't stand by "I was at home". It says
+## "Fine, I was out", the line a presented case already gets (WorkshopPresentation), and, if
+## it's open enough today, why (`trapped_explanation`). {} leaves every other case to the
+## usual answer: the truly home stand by it, an unaware Sleepwalker remembers being home and
+## may offer the sleepwalking excuse, a gift walker owns its gift or duty, and evil keeps its
+## cover.
+static func _pressed_caught_out(w, n, night: int, contra: Dictionary) -> Dictionary:
+	if contra.is_empty() or contra.get("ruled_out_home_by", []).is_empty() or int(contra.get("night", -1)) != night:
+		return {}
+	if n.is_evil() or n.secret_mod == "sleepwalker" or n.silenced:
+		return {}
+	if not str(n.history.get(w.time_key(night, C.NIGHT), "")).begins_with("night:") or _gift_outing(w, n, night):
+		return {}
+	on_question(w, n)
+	var lines: Array = [say_voiced(n, "trapped_night_out", "Fine, I was out. Doesn't mean I was doing anything wrong.")]
+	var facts: Array = []
+	var tier: int = _target_tier(w, n)
+	var why: Dictionary = trapped_explanation(w, n, night) if tier >= 2 else {}
+	lines.append_array(why.get("lines", []))
+	facts.append_array(why.get("facts", []))
+	if why.is_empty():
+		# The reason kept back, the night is still owned: a later question about it gets the
+		# plain "I was out" account, not the home alibi it replaced (Codex on #330).
+		_own_night_account(w, n, night, str(n.history.get(w.time_key(night, C.NIGHT), "")).substr(6))
+		facts.append({"kind": "alibi", "subject": [n.id], "home": false, "day": night, "phase": C.NIGHT, "source": n.id,
+			"text": "%s admits they were out %s." % [n.name, C.spoken_when(night, w.day)]})
+	w.dlog.think(n.id, "admit_out", "Pressed with a case placing them out on night %d (tier %d): %s." % [night, tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
+	return {"lines": lines, "facts": facts}
 
 ## The night is owned now: a later question about it, in private or at the podium, gets the
 ## plain "I was out" account rather than the home alibi it replaced (Codex on #261).
@@ -729,7 +767,7 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 				"text": "%s told you privately they have no gift." % n.name})
 		elif _afraid(w, n):
 			var refusal = {"kind": "refusal", "subject": [n.id], "source": n.id, "private": true, "fear": true,
-				"text": "%s won't say whether they have a gift: afraid it would make them the demon's next mark." % n.name}
+				"text": "%s won't say whether they have a gift: afraid it would make them the Demon's next mark." % n.name}
 			var ask: Dictionary = _protection_request(w, n, refusal)
 			if not ask.is_empty():
 				n.max_tier = maxi(n.max_tier, 1)
@@ -1447,9 +1485,16 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	var close = n.npc_trust.get(t.id, 0.5) > 0.7 and not (n.is_evil() and t.id == w.evil_plan["scapegoat"])
 	var bond: String = "friend" if (t.id in n.friends or close) else ("rival" if t.id in n.rivals else "")
 	var combined: bool = false   # the line itself states the bond
+	var agree: Dictionary = {}
 	if level < 0.25:
 		text = "I don't take %s for one of the evil ones." % t.name
 		opinion_key = "opinion_clear"
+		# Their readings confirm what I know (Michael, Nov 19): said as the reason, from a
+		# moderate or known confirmation; evil only from its good self's record.
+		agree = load("res://sim/social.gd").readings_agree_record(n, t.id)
+		if not agree.is_empty():
+			text = "%s's readings agree with what I know, so I don't take them for one of the wicked." % t.name
+			opinion_key = "opinion_readings_agree"
 	elif level < 0.45:
 		if w.decision_roll(n, "neutral_opinion_suspicion", 0.6 - 0.4 * trait_of(n, "insight") + paranoia(w, n), {"insight": trait_of(n, "insight"), "paranoia": paranoia(w, n)}, t.id):
 			text = "I can't put my finger on it, but something's off about %s." % t.name
@@ -1520,6 +1565,8 @@ static func answer_opinion(w, n, t) -> Dictionary:
 	lines.append(opinion_reply)
 	if level >= 0.5:
 		facts.append({"kind": "opinion", "subject": [t.id], "source": n.id, "text": "%s distrusts %s." % [n.name, t.name]})
+	if not agree.is_empty():
+		facts.append(load("res://sim/social.gd").readings_agree_fact(n, t, agree))
 	_second_hand_gift_note(w, n, t, lines, facts)
 	_meeting_note(w, n, t, lines, facts)
 	return {"lines": lines, "facts": facts}

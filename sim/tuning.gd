@@ -380,6 +380,16 @@ class Trust:
 	## knowledge: a significant one. The trust steps themselves are Beadle's.
 	const READING_CONFIRM_SMALL = 0.70
 	const READING_CONFIRM_MODERATE = 0.85
+	## Trust from a reading that confirms what the listener knows or strongly believes (Michael,
+	## Nov 19, set R3): a good listener gains this much trust in the teller, once for each reading,
+	## judged on what it believed before hearing it (ReadingConfirm.assess's tier).
+	const READING_TRUST_SMALL = 0.06
+	const READING_TRUST_MODERATE = 0.12
+	const READING_TRUST_KNOWN = 0.20
+	## Backing a case (Michael, Nov 18; rebalanced Nov 19): a good NPC's trust step toward an ally
+	## who votes the same way, or nominates or accuses someone it already suspects. At most once a
+	## day for each ally.
+	const AGREEMENT_STEP = 0.02
 	const NOMINATED_PRESSURE = 0.4
 	const NOMINATED_BY_PLAYER_DROP = 0.15
 	const NOMINATED_NPC_TRUST_DROP = 0.25
@@ -926,6 +936,13 @@ class Workshop:
 	## (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the
 	## role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate.
 	const DELUSIONAL_SELF_DOUBT = 0.1
+	## The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift
+	## failed, from the reading clashing with what else it holds, starting from the poison and
+	## Delusional self-doubt) at or above which it doubts its gift for that night
+	## (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4
+	## meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings
+	## and about 1 in 20 sound ones.
+	const SELF_DOUBT_TRIGGER = 0.30
 	## The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the
 	## expert, so a listener takes a call at its credibility in the player. The doubt runs in a
 	## straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to

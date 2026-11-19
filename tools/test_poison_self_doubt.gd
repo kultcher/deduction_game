@@ -67,8 +67,10 @@ func _run(g) -> Dictionary:
 		var post: Dictionary = {}
 		for id in eff:
 			post[id] = float(eff[id].get("posterior", -1.0))
-		out[i] = {"post": post, "doubt": SourceDoubt.self_doubt(n)}
-	out["self_doubt"] = SourceDoubt.self_doubt(n)
+		out[i] = {"post": post, "doubt": SourceDoubt.self_doubt_prior(n), "judged": SourceDoubt.self_doubt(n)}
+	out["self_doubt"] = SourceDoubt.self_doubt_prior(n)
+	out["judged"] = SourceDoubt.self_doubt(n)
+	out["doubts_gift"] = SourceDoubt.doubts_own_gift(n)
 	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
 	out["pi"] = ReadingChallenges.poison_chance(plan.prepared.view, plan.prepared.listener, 0) if not plan.is_empty() else -1.0
 	return out
@@ -90,7 +92,7 @@ func _init() -> void:
 	print("own reading's doubt %.3f (poison chance for that night %.3f)" % [d1, float(on.pi)])
 	check(d1 > 0.0 and absf(d1 - float(on.pi)) < 1e-9, "an own reading carries the poison chance as its doubt (%.3f)" % d1)
 	check(on[2].doubt.keys() == [1], "only the night of its own reading is doubted (%s)" % str(on[2].doubt.keys()))
-	check(absf(float(on.self_doubt.get(1, 0.0)) - d1) < 1e-9, "the NPC's self-doubt signal carries it, for what it says (%s)" % str(on.self_doubt))
+	check(absf(float(on.self_doubt.get(1, 0.0)) - d1) < 1e-9, "the NPC's self-doubt prior carries it, as the judge's starting point (%s)" % str(on.self_doubt))
 	# 2. Against a trusted teller's clashing card, the reading gives way: it clears Hollis less
 	#    and blames the teller less.
 	SourceDoubt.poison_self_doubt = false
@@ -213,6 +215,7 @@ func _init() -> void:
 	var d10: Dictionary = SourceDoubt.derive(p10, n8.ledger, {}).honest
 	print("with it, a night-3 own reading's doubt %.3f; the Gravedigger reading's own %.3f" % [float(d10.get("%s:3" % n8.id, 0.0)), float(d10.get("%s:2" % n8.id, 0.0))])
 	check(float(d10.get("%s:3" % n8.id, 0.0)) == 0.0 and float(d10.get("%s:2" % n8.id, 0.0)) > 0.0, "...while for the listener's later readings its word that the Poisoner is dead stands")
+	_judged_case()
 	_medium_case()
 	print("Poison self-doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
@@ -254,3 +257,28 @@ func _medium_case() -> void:
 		var got: float = float(derived.honest.get("%s:%d" % [n.id, nd], 0.0))
 		ok = ok and got >= pi - 1e-9 and pi > 0.0
 	check(ok and not seen.is_empty(), "seed %d: %s (Medium): each night it heard the dead carries that night's poison chance (%s)" % [int(found.seed), n.id, str(seen)])
+
+
+## "Was my gift turned?" (Michael, Nov 19; OwnGiftDoubt): what the NPC says reads the judge's
+## chance its own reading was wrong, from the clash with what else it holds. Delusional on, as
+## seed 692's script has it.
+func _judged_case() -> void:
+	SourceDoubt.delusional_self_doubt = true
+	var agree: Array = [["nisha", "seer", 1, 3, {"pair": ["hollis", "merrin"], "yes": false}]]
+	var calm: Dictionary = _run(_game(OWN, agree))
+	var one: Dictionary = _run(_game(OWN, [CLASH]))
+	# Two trusted tellers with different gifts (several Seers would contradict one another).
+	var many: Array = [CLASH, ["odette", "archivist", 1, 3, {"pair": ["hollis", "merrin"], "role": "poisoner"}]]
+	var crowd: Dictionary = _run(_game(OWN, many))
+	var c1: float = float(calm.judged.get(1, -1.0))
+	var o1: float = float(one.judged.get(1, -1.0))
+	var m1: float = float(crowd.judged.get(1, -1.0))
+	print("judged doubt of the own reading: an agreeing teller %.3f, one clashing %.3f, two clashing %.3f (prior %.3f)" % [c1, o1, m1, float(one.self_doubt.get(1, 0.0))])
+	check(c1 >= 0.0 and o1 > c1 and m1 > o1, "the more trusted tellers it clashes with, the more the NPC doubts its own reading")
+	check(c1 < float(calm.self_doubt.get(1, 1.0)), "a reading that fits the rest is doubted less than its prior (%.3f against %.3f)" % [c1, float(calm.self_doubt.get(1, 1.0))])
+	var trig: float = Tuning.Workshop.SELF_DOUBT_TRIGGER
+	var want_calm: Array = [1] if c1 >= trig else []
+	var want_crowd: Array = [1] if m1 >= trig else []
+	check(calm.doubts_gift == want_calm and crowd.doubts_gift == want_crowd, "it doubts its gift on a night at or above the trigger, and not below (%s / %s)" % [str(calm.doubts_gift), str(crowd.doubts_gift)])
+	# Whether a clash in a played game crosses the trigger is test_own_gift_doubt's: here the
+	# clashing tellers might as well be lying evils, so the doubt rises only a little.

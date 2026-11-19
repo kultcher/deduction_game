@@ -90,8 +90,8 @@ The behaviour is gone, but its names and plumbing remain:
   fold into the next planned re-baseline.
 - `USE_FLAVOR_SECRETS = false` (benched flavour secrets): `world.gd:462` and the content
   behind it. Decide whether this is parked or dead.
-- `CONNECTIONS`: on by default since #160 (Nov 16). The earlier model stays reachable with
-  `--legacy-model`; its purge is the planned migration.
+- `CONNECTIONS`: on by default since #160 (Nov 16), and removed with the earlier model in
+  purge phase 3 (#290, Nov 18); `--legacy-model` now stops with a note.
 - **21 constants that nothing reads**, including `MISLEADING_TRACE_CHANCE` and
   `RIVAL_CLAIM_EFF` (both labelled retired), `SHARE_TRUST_BUMP` ("superseded Oct 30"),
   `PARANOIA_DRIFT_RATE` ("unused since Oct 30"), the 10 `SHARE_ROLE_HINT_*` /
