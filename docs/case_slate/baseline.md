@@ -1,6 +1,6 @@
 # Case slate: baseline report
 
-Built on claude/lamplighter-count (main at a6b674b with the Lamplighter count mix, Nov 19,
+Built on claude/slate-votes (claude/lamplighter-count with Beadle's vote hook, #347, Nov 19,
 Quill). There are 27 cases on 10 deals each, 269 in all, and no listener was blocked. Made with
 `python3 tools/case_slate_report.py docs/case_slate/baseline.jsonl`. Town movement is in
 points: one point is 0.01 of suspicion, and listeners start at 25.
@@ -30,6 +30,28 @@ the last baseline (#289 and #344 among others).
 Step 2 (the count weighed against each possible world, a Poisson-binomial term) is next. It
 is meant to raise the Lamplighter-and-alibis case again, since a count of 1 with everyone else at
 home then points at the one without an alibi.
+
+**Votes (Michael, Nov 19: how a case moves votes is the real measure).** Each row now also
+records how the good townsfolk would vote on the subject, nominated by a neutral nominator,
+with the player's vote left out (Beadle's `MindMeeting.would_vote`): before the case, on a
+fresh build of the same deal with the cards on the board but never presented, and after.
+Evil voters vote by strategy and are left out. On these deals there are 6 or 7 good voters,
+and the hanging threshold is 5 or 6 of the 10 or 11 voters (the player's seat counted). No
+existing column changed.
+
+Votes by the proposed tiers (true cases; the cut points proposed to Michael, Weak from
+×1.25, Moderate from ×2, Strong from ×3.5, the top tier at a premise chance of 90%):
+
+| Tier | Cases | Good votes swayed | Good yes after | Hangs on good votes alone | Hangs with the player's vote too |
+|---|---|---|---|---|---|
+| bottom | 50 | 0.0 | 0.1 of 7.0 | 0% | 0% |
+| Weak | 59 | 1.6 | 1.6 of 6.5 | 3% | 17% |
+| Moderate | 21 | 3.2 | 3.3 of 7.0 | 5% | 38% |
+| Strong | 10 | 3.8 | 3.9 of 6.0 | 0% | 90% |
+| top (Damning) | 10 | 6.9 | 7.0 of 7.0 | 100% | 100% |
+
+The misleading twins sway the same: bottom 0.0, Weak 1.1, Moderate 3.4 (35% hang with the
+player's vote). Before any case, almost no one would vote to hang (0.1 good yes on average).
 
 | Case | n | Juror's badges | Strength | Town, mean (range) | Sign | Category |
 |---|---|---|---|---|---|---|
@@ -76,6 +98,40 @@ Town movement by the juror's badge, misleading cases (the subject is innocent):
 |---|---|---|---|---|---|
 | none | 67 | +5.6 | +4.6 | -7.6 to +21.0 | pile_innocent 10, kill_sighting_innocent 10, vigil_kill_innocent 7, alibi_sighting_innocent 10, lamp_count_innocent 10, nw_nobody_innocent 10, guard_innocent 10 |
 | weak | 52 | +15.7 | +14.6 | +4.8 to +30.0 | vigil_kill_innocent 3, converging_innocent 9, double_claim_innocent 10, gravedigger_innocent 10, lamp_alibis_innocent 10, lamp_bluff_innocent 10 |
+
+Votes: the subject nominated by a neutral nominator, the player's vote left out. Good
+voters only (evil voters vote by strategy and are left out). "Reaches" is how often the good
+yes votes alone reach the hanging threshold, which counts the player's seat.
+
+| Case | Good yes before | Good yes after | Share of good voters after | Threshold | Reaches |
+|---|---|---|---|---|---|
+| pile | 0.1 | 0.1 | 1% | 6 | 0% |
+| kill_sighting | 0.1 | 1.3 | 22% | 5 | 0% |
+| vigil_kill | 0.0 | 2.6 | 43% | 5 | 0% |
+| alibi_sighting | 0.1 | 0.2 | 3% | 6 | 0% |
+| converging | 0.0 | 0.8 | 11% | 6 | 0% |
+| impossible | 0.1 | 7.0 | 100% | 6 | 100% |
+| double_claim | 0.1 | 4.3 | 61% | 6 | 0% |
+| gravedigger | 0.1 | 2.1 | 30% | 5 | 0% |
+| lamp_alibis | 0.0 | 1.2 | 17% | 6 | 0% |
+| lamp_count | 0.0 | 0.0 | 0% | 6 | 0% |
+| nw_nobody | 0.1 | 0.0 | 0% | 6 | 0% |
+| guard | 0.0 | 0.0 | 0% | 6 | 0% |
+| seer_twice | 0.1 | 0.1 | 1% | 6 | 0% |
+| vigil_seer | 0.0 | 4.1 | 68% | 5 | 30% |
+| stack | 0.1 | 3.9 | 65% | 5 | 0% |
+| pile_innocent | 0.1 | 0.1 | 2% | 6 | 0% |
+| kill_sighting_innocent | 0.1 | 1.0 | 20% | 5 | 0% |
+| vigil_kill_innocent | 0.0 | 2.2 | 44% | 5 | 0% |
+| alibi_sighting_innocent | 0.1 | 0.2 | 3% | 6 | 0% |
+| converging_innocent | 0.0 | 0.1 | 2% | 6 | 0% |
+| double_claim_innocent | 0.0 | 4.1 | 68% | 6 | 0% |
+| gravedigger_innocent | 0.1 | 2.8 | 47% | 5 | 0% |
+| lamp_alibis_innocent | 0.0 | 1.4 | 23% | 6 | 0% |
+| lamp_count_innocent | 0.0 | 0.0 | 0% | 6 | 0% |
+| nw_nobody_innocent | 0.1 | 0.0 | 0% | 6 | 0% |
+| guard_innocent | 0.0 | 0.0 | 0% | 6 | 0% |
+| lamp_bluff_innocent | 0.1 | 1.0 | 17% | 6 | 0% |
 
 Town bands used for category agreement (points): strong from +25, moderate from +10, weak from +3, none from -2, contradicts below.
 

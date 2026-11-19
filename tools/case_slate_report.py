@@ -11,7 +11,8 @@ suspicion is 1 point) with its range, and two agreement figures:
         town's is its movement's side of zero (within a point is neutral). Cases the juror
         couldn't judge ("not ready") are left out; with none left, the figure is "n/a";
   category: the share where the juror's badge matches the town's own band (TOWN_BANDS).
-Then the town's movement by badge across the whole slate, for revisiting the cut points.
+Then the town's movement by badge across the whole slate, for revisiting the cut points, and,
+where the rows carry them, how the good townsfolk would vote on the subject before and after.
 With a baseline, each case's town mean and strength are shown against it.
 
 TOWN_BANDS are the report's own reading of "how far the town moved", provisional, so that
@@ -130,6 +131,22 @@ def main():
             out.append("| %s | %d | %+.1f | %+.1f | %+.1f to %+.1f | %s |" % (
                 b, len(pts), sum(pts) / len(pts), mid, pts[0], pts[-1],
                 ", ".join("%s %d" % (c, n) for c, n in cs.items())))
+    voted = [c for c in names if all("yes_after" in r for r in run[c])]
+    if voted:
+        out += ["", "Votes: the subject nominated by a neutral nominator, the player's vote left out. Good",
+                "voters only (evil voters vote by strategy and are left out). \"Reaches\" is how often the good",
+                "yes votes alone reach the hanging threshold, which counts the player's seat.", "",
+                "| Case | Good yes before | Good yes after | Share of good voters after | Threshold | Reaches |",
+                "|---|---|---|---|---|---|"]
+        for c in voted:
+            rs = run[c]
+            n = len(rs)
+            yb = sum(r["yes_before"] for r in rs) / n
+            ya = sum(r["yes_after"] for r in rs) / n
+            share = sum(r["yes_after"] / r["voters_good"] for r in rs if r["voters_good"]) / n
+            thr = sorted({r["threshold"] for r in rs})
+            reach = sum(1 for r in rs if r["crosses"]) / n
+            out.append("| %s | %.1f | %.1f | %s | %s | %s |" % (c, yb, ya, pct(share), "/".join(str(t) for t in thr), pct(reach)))
     out += ["", "Town bands used for category agreement (points): " + ", ".join(
         "%s from %+g" % (n, e) for n, e in TOWN_BANDS) + ", contradicts below."]
     print("\n".join(out))

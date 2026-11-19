@@ -95,6 +95,16 @@ averaged over the listeners.
 A case the juror can't judge is reported as "not ready", and the row carries the juror's
 issues. On the slate, that means the case or the judge is broken.
 
+## Votes
+
+Each row also records how the good townsfolk would vote on the subject if a neutral
+nominator put them up, with the player's vote left out (`yes_before`, `yes_after`,
+`voters_good`, `threshold`, `crosses`), through Beadle's `MindMeeting.would_vote` (#347). A
+vote refreshes each voter's beliefs as a real meeting would, so "before" is taken on a fresh
+build of the same deal with the same cards, never presented; the other columns are unchanged
+by it. Evil voters are left out (they vote by strategy). `crosses` is whether the good yes
+votes alone reach the hanging threshold, which counts the player's seat.
+
 ## Adding a case
 
 Add a case to `CASES` and to the `match` in `tools/case_slate.gd`, and to `ORDER` in the
@@ -105,7 +115,6 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built on claude/lamplighter-count (main at a6b674b with the Lamplighter
-count mix, Nov 19, Quill). It adds lamp_count, lamp_count_innocent and lamp_bluff_innocent.
-The Lamplighter-and-alibis cases move with the count mix; nothing else moves by more than 0.4
-of a point. See `baseline.md`.
+`baseline.jsonl`: built on claude/slate-votes (claude/lamplighter-count with Beadle's vote
+hook, #347, Nov 19, Quill), with the vote columns; every other column matches the
+claude/lamplighter-count baseline. See `baseline.md`.

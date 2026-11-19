@@ -22,6 +22,7 @@ const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
+const MindMeeting = preload("res://sim/mind_meeting.gd")
 
 ## Name: what the case is. The order is the report's.
 const CASES = {
@@ -113,7 +114,7 @@ func _kill(w, victim, night: int) -> void:
 	w.public_log.append({"day": night, "kind": "demon_death", "subjects": [victim.id], "by": ""})
 
 
-func _one(sd: int, name: String) -> Dictionary:
+func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, 10)
@@ -324,6 +325,14 @@ func _one(sd: int, name: String) -> Dictionary:
 	var listeners: Array = w.npcs.filter(func(p): return p.alive and not p.is_evil() and p != s and p not in sources)
 	if listeners.is_empty():
 		return {}
+	# How the good townsfolk would vote on the subject, nominated by a neutral nominator, the
+	# player's vote left out (Michael, Nov 19; Beadle's hook, #347). A vote refreshes each
+	# voter's beliefs, as at a meeting, so "before" is taken on a fresh build of the same deal
+	# with the same cards, never presented: the columns above stay as they were.
+	w.meeting["block"] = ""
+	w.meeting["block_count"] = 0
+	if before_only:
+		return MindMeeting.would_vote(w, s.id)
 	var before_each: Dictionary = {}
 	for l in listeners:
 		before_each[l.id] = float(l.suspicion.get(s.id, 0.0))
@@ -355,6 +364,13 @@ func _one(sd: int, name: String) -> Dictionary:
 			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
 		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
+	var votes_after: Dictionary = MindMeeting.would_vote(w, s.id)
+	var votes_before: Dictionary = _one(sd, name, true)
+	row["yes_before"] = votes_before.yes.size()
+	row["yes_after"] = votes_after.yes.size()
+	row["voters_good"] = votes_after.yes.size() + votes_after.no.size()
+	row["threshold"] = int(votes_after.threshold)
+	row["crosses"] = bool(votes_after.crosses)
 	# The average listener's reading behind the badge (Michael, Nov 19): the premise's chance
 	# before and after, and whether the subject becomes that listener's top suspect, by what
 	# margin (for the fourth tier's measure).
