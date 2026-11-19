@@ -300,6 +300,8 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 				notes.append(badge.town_note)
 			if badge.get("raises_text", "") != "":
 				notes.append(badge.raises_text)
+			for gl in badge.get("guard_lines", []):
+				notes.append(gl)
 			for who in badge.get("idle", []):
 				notes.append("Assuming %s %s isn't changing anything in this case." % [Solver.person_name(model.view, who), node.positions.get(who, "")])
 			notes.append("Public facts and default trust: how well the case holds together, not how any one person will react.")

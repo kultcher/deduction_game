@@ -1205,6 +1205,7 @@ func _run_test_juror() -> void:
 				badge["town_note_kind"] = town.kind
 			_explain_change(id, value, badge)
 			_idle_assumptions(node, value, badge)
+			badge["guard_lines"] = Live.guard_reason_lines(g, badge)
 		badges[id] = badge
 	canvas.badges = badges
 	var clashing: Dictionary = {}
