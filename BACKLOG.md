@@ -590,6 +590,10 @@ Candidates for a unified retuning proposal, not approved changes.
     heaviest cited item is a daytime sighting, and names who else was there from the true
     whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
     there, the alone line. No evil lie for now: evil defenders use the same true lines.
+  - **Built** (Nov 19, `claude/beadle-day-defence`). It fires only at a nomination
+    (`defend_self`), when the heaviest item cited against the nominee is a daytime sighting,
+    and uses the `_stand` lines. Evil defenders tell it truthfully. Each person named becomes a
+    sighting card for the player.
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
