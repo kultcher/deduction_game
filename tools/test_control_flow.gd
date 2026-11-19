@@ -65,6 +65,7 @@ func _run() -> void:
 	await _test_meeting_log(scene)
 	_test_review_fixes(scene)
 	await _test_traces_before_meeting(scene)
+	await _test_talk_holds_phase(scene)
 	_test_sightings()
 	print("Control flow: %d checks, %d failures" % [_checks, _fails])
 	scene.queue_free()
@@ -159,6 +160,43 @@ func _test_lock(scene) -> void:
 	mv.finish()
 	scene._refresh_all()
 	_check(not _labels(scene).has("Finish the count"), "then the actions come back")
+
+
+## A talk's last answer ends the phase in the game, but the screen keeps the old phase (the
+## clock above all) until the player leaves the conversation (Michael, Nov 19).
+func _test_talk_holds_phase(scene) -> void:
+	await _fresh(scene, 25923)
+	var g = scene.g
+	if g.state == "approach":
+		scene._run("decline")
+	var n = null
+	for x in g.w.living():
+		if x.loc != "" and not x.loc.begins_with("home") and g.w.phase < C.EVENING:
+			n = x
+			break
+	_check(n != null, "someone is out to talk to")
+	if n == null:
+		return
+	scene._run("go " + n.loc)
+	scene._run("talk " + n.name.to_lower())
+	if g.state != "talk":
+		_check(false, "the talk starts (state %s)" % g.state)
+		return
+	var label_before: String = scene.day_label.text
+	var phase_before: int = g.w.phase
+	for q in ["ask gift", "ask night", "ask today", "ask seen yesterday", "ask about " + g.w.living()[0].name.to_lower(), "ask about " + g.w.living()[1].name.to_lower()]:
+		if scene.conversation_finished or g.state != "talk":
+			break
+		scene._run(q)
+		if g.state == "talk" and g.pending_request.size() > 0:
+			scene._run("no")
+	_check(scene.conversation_finished and g.w.phase != phase_before, "the last answer ends the phase in the game (state %s, finished %s)" % [g.state, scene.conversation_finished])
+	_check(scene.day_label.text == label_before, "but the clock still shows the old phase (%s)" % scene.day_label.text)
+	_check(scene.cast_list._frozen != null and scene.cast_list.mouse_filter == Control.MOUSE_FILTER_IGNORE, "and the townsfolk list holds its lines and ignores the pointer (Codex, #322)")
+	scene._leave_finished_conversation()
+	scene.finish_streaming()
+	_check(scene.day_label.text != label_before, "leaving the conversation moves the clock on (%s)" % scene.day_label.text)
+	_check(scene.cast_list._frozen == null and scene.cast_list.mouse_filter == Control.MOUSE_FILTER_STOP, "and the townsfolk list comes back to life")
 
 
 func _test_meeting_log(scene) -> void:

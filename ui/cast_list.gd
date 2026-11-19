@@ -151,7 +151,31 @@ func _relayed_claim(n) -> Dictionary:
 			return {"role": role, "via": via}
 	return {}
 
+## While a finished conversation holds the screen on the old phase (Michael, Nov 19), the
+## list keeps the lines it showed then and ignores the pointer: nothing of the next phase
+## shows through a hover, a click or a tooltip until the player leaves.
+var _frozen = null   # id -> sub line, or null when live
+
+func freeze() -> void:
+	if _frozen != null or g == null:
+		return
+	_frozen = {}
+	for n in g.w.npcs:
+		_frozen[n.id] = _sub_line(n)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hover = ""
+	queue_redraw()
+
+func thaw() -> void:
+	if _frozen == null:
+		return
+	_frozen = null
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	queue_redraw()
+
 func _sub_line(n) -> String:
+	if _frozen != null and _frozen.has(n.id):
+		return _frozen[n.id]
 	if not n.alive:
 		if n.death_cause == "martyr":
 			return "died in another's place, day %d" % n.death_day
@@ -168,6 +192,8 @@ func _row_at(p: Vector2) -> String:
 	return ""
 
 func _gui_input(ev: InputEvent) -> void:
+	if _frozen != null:
+		return
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		var id = _row_at(ev.position)
 		if id != "":
