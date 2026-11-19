@@ -14,6 +14,7 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 
 var checks = 0
@@ -80,7 +81,9 @@ func _impossible_count(f: Dictionary) -> void:
 	check(not LiveActivity.certain_for_count({"id": "s2", "kind": "sighting", "source": f.witness.id}, "c1", "me"), "another's sighting can't (it could be the lie)")
 	check(not LiveActivity.certain_for_count({"id": "s3", "kind": "sighting", "source": f.witness.id}, "c1", ""), "nor can any sighting for a listener with no nights of its own")
 	check(not LiveActivity.certain_for_count({"id": "a1", "kind": "alibi", "source": f.witness.id}, "c1", "me"), "nor anyone's alibi")
-	check(LiveActivity.certain_for_count({"id": "h1", "kind": "alibi", "known_self": true}, "c1", "me"), "the listener's own night can")
+	check(LiveActivity.certain_for_count({"id": "h1", "kind": "alibi", "known_self": true, "self_doubt": Tuning.Workshop.OWN_ERR}, "c1", "me"), "the listener's own night can")
+	check(not LiveActivity.certain_for_count({"id": "h2", "kind": "alibi", "known_self": true, "self_doubt": Tuning.Workshop.SLEEPWALK_SELF_DOUBT}, "c1", "me"),
+		"but not a night it may have sleepwalked (a Sleepwalker script)")
 	check(LiveActivity.certain_for_count({"id": "t1", "kind": "trace"}, "c1", "me") and not LiveActivity.certain_for_count({"id": "t2", "kind": "trace", "quoted": true}, "c1", "me"),
 		"a trace seen for itself can, a report of one can't")
 

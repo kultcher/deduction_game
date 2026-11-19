@@ -217,7 +217,20 @@ func _init() -> void:
 	check(none.refused != "", "with no cause on the script, the canvas refuses a Mistaken call on an Archivist reading")
 	# 5. The lie.
 	_lie(sd)
+	_unpoisonable()
 	_finish()
+
+
+## Poison can't reach a Registrar's night-0 register (Steward A10): it isn't a cause a Mistaken
+## call can claim there, though a Medium's transmission of it can be poisoned.
+func _unpoisonable() -> void:
+	var reg0: Dictionary = {"kind": "report", "role": "registrar", "source": "a", "observed_at": {"day": 0, "phase": "night"}, "data": {}}
+	var reg1: Dictionary = {"kind": "report", "role": "registrar", "source": "a", "observed_at": {"day": 1, "phase": "night"}, "data": {}}
+	var seer0: Dictionary = {"kind": "report", "role": "seer", "source": "a", "observed_at": {"day": 0, "phase": "night"}, "data": {}}
+	check(not RC.cause_reaches("poison", reg0), "poison can't reach a Registrar's night-0 register")
+	check(RC.cause_reaches("poison", reg1) and RC.cause_reaches("poison", seer0), "but it reaches the Registrar's later readings, and other gifts on night 0")
+	check(RC.cause_reaches("poison", reg0, true), "and a Medium's transmission of the night-0 register can be poisoned")
+	check(RC.cause_reaches("delusion", reg0), "a Delusional Registrar's night-0 register can still be wrong")
 
 
 func _finish() -> void:

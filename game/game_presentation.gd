@@ -105,6 +105,12 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
 	# No legacy route for presentations: an unsupported submission is blocked with its
 	# reason, so a playtest always tests the shared model (user, Oct 25).
+	# A Mistaken call on a reading an earlier case called a lie: say how to take the lie back
+	# (Michael, Nov 19), not "remove the unsupported card".
+	var shown: Array = preload("res://game/workshop_canvas.gd").player_issues(g, card.get("workshop_case", {}), check.issues, int(card.get("n", 0)))
+	if shown != check.issues:
+		g._err("Cannot present. " + "; ".join(PackedStringArray(shown)))
+		return false
 	var reason = "Card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(check.issues))]
 	g._err("Cannot present. " + reason + " Remove the unsupported card and present the rest.")
 	return false
@@ -238,7 +244,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	if g.strict_evaluator:
 		var check: Dictionary = workshop_readiness(g, ded, [n], [], "deduction", venue)
 		if not check.ready:
-			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(check.issues))], "facts": [], "agreement": 0.0}
+			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(preload("res://game/workshop_canvas.gd").player_issues(g, ded.get("workshop_case", {}), check.issues, int(ded.get("n", 0)))))], "facts": [], "agreement": 0.0}
 	if ded.has("workshop_case"):
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}

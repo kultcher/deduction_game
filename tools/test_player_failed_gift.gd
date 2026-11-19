@@ -4,7 +4,8 @@
 ## its credibility in the player (SourceDoubt.call_doubt: FAILED_GIFT_DOUBT_LOW at the lowest
 ## credibility to FAILED_GIFT_DOUBT_HIGH at the highest, Michael, Nov 18), or as one witness
 ## against the chance that reader was poisoned that night where that is more, as honest doubt
-## (SourceDoubt.derive). Only where a Poisoner is possible.
+## (SourceDoubt.derive). With no Poisoner on the script, the call still carries the
+## credibility doubt, with no poison chance to weigh on top (#296's one honest-mistake label).
 ##   godot --headless --path . --script res://tools/test_player_failed_gift.gd
 extends SceneTree
 

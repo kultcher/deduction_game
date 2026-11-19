@@ -782,11 +782,11 @@ func _test_player_ballot_leverage_trim() -> void:
 	voter.credibility = 1.0
 	voter.workshop_state.clear()
 	voter.suspicion[target.id] = 0.20
-	Mind.vote(w, voter, target.id, "player", true, "accuse", 0)
+	Mind.vote(w, voter, target.id, "player", true, "", 0)
 	var evals: Array = w.dlog.trace_events().filter(func(ev): return ev.type == "decision" and ev.data.kind == "vote" and ev.data.stage == "evaluation" and ev.actor == voter.id)
 	var parts: Dictionary = evals[-1].data.details.parts
-	_check(is_equal_approx(float(parts.get("player_votes_yes", 0.0)), 0.14) and is_equal_approx(float(parts.get("player_accuses", 0.0)), 0.15),
-		"trimmed player_votes_yes (0.14 at cred 1.0) and player_accuses (0.15 at cred 1.0) prevent single-click rubber-stamp hangs")
+	_check(is_equal_approx(float(parts.get("player_votes_yes", 0.0)), 0.14) and not parts.has("player_accuses") and not parts.has("player_defends"),
+		"trimmed player_votes_yes (0.14 at cred 1.0), and no free nudge for speaking since option (b) (Nov 19)")
 
 
 func _run_checkpoint_sweep(games: int) -> Dictionary:

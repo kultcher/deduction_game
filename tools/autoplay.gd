@@ -510,11 +510,13 @@ func _print_scale(cases: Array) -> void:
 
 ## A safe substitute for a presentation the game already blocked.
 func _unblocked(cmd: String) -> String:
-	if cmd.begins_with("accuse"):
-		return "accuse"
+	if cmd.begins_with("case"):
+		# The case was refused: vote as the bot would have without it.
+		var nm: Dictionary = g.w.meeting.get("pending", {})
+		return "vote yes" if _scores().get(nm.get("nominee", ""), 0.0) >= VOTE_P else "vote no"
 	if cmd.begins_with("press"):
 		return "press skip"
-	if cmd.begins_with("present") or cmd.begins_with("defend"):
+	if cmd.begins_with("present"):
 		return "done" if g.town_quiet else "wait"
 	return "ask today"
 
@@ -780,17 +782,13 @@ func _decide_inner() -> String:
 			var s: float = sc.get(nm["nominee"], 0.0)
 			if m4 and nm.get("press", "") == "open":
 				return _press_choice(nm, s)
-			if not g.statement_used and nm["by"] != "player":
-				var best_card = 0
-				for c in g.board:
-					# Only cards the game will accept as evidence (not deprecated, superseded or
-					# rumour); citing a rejected one repeats forever and the game never ends.
-					if nm["nominee"] in c.get("subject", []) and c.get("source", "") != nm["nominee"] and c["kind"] in ["info", "sighting", "trace"] and g._presentation_rejection(c) == "":
-						best_card = c["n"]
-				if s <= DEFEND_P:
-					return "defend"
-				if s >= ACCUSE_P:
-					return "accuse %d" % best_card if best_card > 0 else "accuse"
+			if not g.statement_used and nm["by"] != "player" and (s <= DEFEND_P or s >= ACCUSE_P):
+				# Option (b), Nov 19: the bot's word on a nomination is a filed case about the
+				# nominee that speaks its way (newest first), or nothing.
+				var want: String = "defend" if s <= DEFEND_P else "accuse"
+				var cases: Array = g.GameMeeting.nomination_cases(g, nm["nominee"]).filter(func(c): return g.GameMeeting.case_direction(c, nm["nominee"]) == want)
+				if not cases.is_empty():
+					return "case %d" % int(cases[-1].n)
 			if w.tools["clemency"] > 0 and nm["by"] != "player" and s <= CLEMENCY_P and rng.randf() < 0.5:
 				return "clemency"
 			return "vote yes" if s >= VOTE_P else "vote no"

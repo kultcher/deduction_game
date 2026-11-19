@@ -103,6 +103,8 @@ func _init() -> void:
 	var outs: Array = r_grounded.get("listener", {}).get("challenges", [])
 	check(outs.size() == 1 and outs[0].kind == "pressed" and outs[0].teller == minion.id and outs[0].witnesses == [seer.id], "with both claiming the Seer, the call is accepted: the badge's data names the teller it presses and the witness (%s)" % str(outs))
 	_draw_and_bare()
+	_top_tier()
+	_lines()
 	_done()
 
 
@@ -135,13 +137,41 @@ func _draw_and_bare() -> void:
 	var a: Array = Live.listener_reading(g, alone).get("challenges", [])
 	check(u.size() == 1 and u[0].kind == "pressed", "a lie call is weighed against the whole case: with the contradicting reading on it, it's accepted uncited (%s)" % str(u))
 	check(a.size() == 1 and a[0].kind == "bare", "a bare call on a reading nothing argues against presses no one (%s)" % str(a))
-	# Grounds that agree with the reading don't establish anything (Lantern's review of #332).
+	# Grounds that agree with the reading establish no lie (Lantern's review of #332). The two
+	# still both claim the one Seer gift, so the call is your word against theirs on who holds
+	# it: before the player's judgement counted (Nov 19) that came out "unestablished" only
+	# because equal trust gave the clash a share of exactly 0; now it leans a little, a draw.
+	# Either way it presses no one.
 	var agreeing = value.duplicate(true)
 	agreeing.conclusion = {"type": "good", "target": f.innocent.id, "at": view.alignment_epoch}
 	agreeing.cards = [n_id, t_id]
 	agreeing.reading_challenges = {n_id: {"mode": "lying", "supports": [t_id]}}
 	var e: Array = Live.listener_reading(g, agreeing).get("challenges", [])
-	check(e.size() == 1 and e[0].kind == "unestablished", "a call whose cited grounds agree with the reading is not established (%s)" % str(e))
+	check(e.size() == 1 and e[0].kind in ["unestablished", "draw"], "a call whose cited grounds agree with the reading presses no one (%s)" % str(e))
+
+
+## The badge's top tier reads the chance only where it settles the premise (Herald and Codex on
+## #358): accusing premises, "is good", "is not the Demon"; not "holds their gift" and the like.
+func _top_tier() -> void:
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var cat: Callable = func(type: String) -> String: return CaseEval.category(1.1, Live.top_tier_chance(type, 0.95))
+	check(cat.call("evil") == "damning" and cat.call("demon") == "damning" and cat.call("good") == "damning" and cat.call("notdemon") == "damning",
+		"at a 95% chance, an accusing premise, \"is good\" and \"is not the Demon\" reach the top tier")
+	check(cat.call("role") == "none" and cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
+		and cat.call("secret_mod") == "none" and cat.call("conflict") == "none",
+		"a clearing premise the target's goodness doesn't settle keeps the tier its strength earns")
+
+
+## The words for each outcome (Michael's, through Herald, Nov 19).
+func _lines() -> void:
+	var names: Dictionary = {"t": "Tamsin", "w": "Wil", "x": "Ilse"}
+	var name_of: Callable = func(id: String) -> String: return names.get(id, id)
+	check(Live.lie_call_line({"kind": "pressed", "teller": "t", "witnesses": ["w"]}, name_of) == "The town would press Tamsin as the liar.", "the pressed line names the teller")
+	check(Live.lie_call_line({"kind": "draw", "teller": "t", "witnesses": ["w"]}, name_of) == "It's Wil's word against Tamsin's: some may be swayed by your assessment.", "a draw with one witness names them")
+	check(Live.lie_call_line({"kind": "draw", "teller": "t", "witnesses": ["w", "x"]}, name_of) == "Their word against Tamsin's: some may be swayed by your assessment.", "a draw with several witnesses")
+	check(Live.lie_call_line({"kind": "draw", "teller": "t", "witnesses": []}, name_of) == "Your word against Tamsin's.", "a draw on the player's own grounds")
+	check(Live.lie_call_line({"kind": "unestablished", "teller": "t", "witnesses": ["w"]}, name_of) == "Nothing you've cited shows the reading is wrong; the town will still believe it.", "the unestablished line")
+	check(Live.lie_call_line({"kind": "bare", "teller": "t", "witnesses": []}, name_of) == "The town won't take this challenge on your word: nothing on the case shows why the reading is wrong.", "the bare line")
 
 
 func _done() -> void:

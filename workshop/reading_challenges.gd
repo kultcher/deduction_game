@@ -57,7 +57,9 @@ static func game_honest_causes(case_script) -> Array:
 ## A reading that names no one either way, such as a Surveyor's block parity, can come from
 ## a Marked registration (Codex on #296).
 static func cause_reaches(cause: String, card: Dictionary, transmission: bool = false) -> bool:
-	if cause in ["poison", "delusion"]:
+	if cause == "poison":
+		return poison_reaches(card, transmission)
+	if cause == "delusion":
 		return true
 	if transmission:
 		return false
@@ -70,6 +72,15 @@ static func cause_reaches(cause: String, card: Dictionary, transmission: bool = 
 		var data: Dictionary = card.get("data", {})
 		return rdef.marked_registers and (not rdef.implicated(data).is_empty() or rdef.clears(data).is_empty())
 	return false
+
+## Whether poison could have reached this reading (Steward A10): every gift but a Registrar's
+## night-0 register, which can't be poisoned (sim/roles/registrar.gd; the same rule as
+## SourceDoubt's). A Medium's transmission of it can be.
+static func poison_reaches(card: Dictionary, transmission: bool = false) -> bool:
+	if transmission:
+		return true
+	var day: int = int(card.get("observed_at", {}).get("day", card.get("night", -1)))
+	return not (str(card.get("role", "")) == "registrar" and day == 0 and not card.has("relay_source"))
 
 ## Whether a Mistaken call on this reading is allowed: some cause the case's world allows
 ## reaches it. The view knows the script's minions and secrets; a Red Herring is judged by
@@ -93,6 +104,9 @@ static func honest_allowed(view: Dictionary, card: Dictionary, attribution: Stri
 ## taken as true (strength = their credibility alone). "graded": the clash only gates; the
 ## graded world-model test decides. Dev switch for tools/measure_evidence.gd; "contest" in play.
 static var clash_rule: String = "contest"
+## Measuring switch (tools and tests): off, the player's call adds nothing to its grounds
+## (before Nov 19; judgement_boost).
+static var player_judgement: bool = true
 ## How the graded test reads a reading whose content the report table can't check (the
 ## role-content and movement-checked gifts in CaseEval.ROLE_CONTENT_FIXED, but not the
 ## Seer, which has its own holds table). "roles": its holds mask also asks the role
@@ -138,12 +152,22 @@ static func quality(listener: Dictionary, source: String) -> float:
 		return clampf(listener.trust, 0.0, 1.0)
 	return clampf(Tuning.Workshop.WITNESS_QUALITY_BASE + Tuning.Workshop.WITNESS_QUALITY_TRUST_SCALE * listener.npc_trust.get(source, 0.5) - Tuning.Workshop.WITNESS_QUALITY_SUSP_SCALE * listener.suspicion.get(source, 0.1), Tuning.Workshop.WITNESS_QUALITY_MIN, Tuning.Workshop.WITNESS_QUALITY_MAX)
 
+## How much the player's own lie call adds to the grounds' side of a clash, as a factor:
+## 1 + PLAYER_JUDGEMENT_WEIGHT x (the listener's trust in the player's judgement +
+## PLAYER_EXPERTISE) (Michael, Nov 19). The trust is the listener's credibility of the
+## player where it keeps one, else its trust.
+static func judgement_boost(listener: Dictionary) -> float:
+	if not player_judgement:
+		return 1.0
+	var cred: float = clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
+	return 1.0 + Tuning.Workshop.PLAYER_JUDGEMENT_WEIGHT * (cred + Tuning.Workshop.PLAYER_EXPERTISE)
+
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, cards: Array) -> Dictionary:
 	var selected: Dictionary = value.get("reading_challenges", {})
 	if selected.is_empty():
 		return {"reports": {}, "sources": {}, "results": []}
 	var input = [view.people, view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), view.evil_count, selected, cards, listener.knowledge, listener.suspicion, listener.npc_trust, listener.trust,
-		listener.get("reading_reliability", {}), view.get("script_minions", []), value.get("reasons", {})]
+		listener.get("reading_reliability", {}), view.get("script_minions", []), value.get("reasons", {}), listener.get("player_credibility", -1.0), player_judgement]
 	var key = hash(input)
 	if cache.has(key) and cache[key].input == input:
 		return cache[key].result
@@ -198,6 +222,13 @@ static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, ca
 				self_presence_conflict = alone.movement_ok and not duty_together.movement_ok
 			for ground in grounds:
 				strength = minf(strength, quality(listener, ground.source))
+		# The player's call itself adds weight to its grounds' side (Michael, Nov 19): the
+		# listener's trust in the player's judgement, and a little for the Demonologist's
+		# expertise. Lie calls only (the other modes discount the reading, which Michael's
+		# decision doesn't cover; Codex on #352). Never an NPC's defence, and not when the
+		# player's own word is a ground.
+		if conflict and challenge.mode == "lying" and not challenge.get("npc_defence", false) and not grounds.any(func(gc): return str(gc.source) == "player"):
+			strength = maxf(strength, minf(strength * judgement_boost(listener), Tuning.Workshop.WITNESS_QUALITY_MAX))
 		# A clash says one side is wrong, not which. Before: the grounds were taken as true,
 		# so a challenge landed whichever side lied, on trust in the grounds alone.
 		var contest_lost: bool = false

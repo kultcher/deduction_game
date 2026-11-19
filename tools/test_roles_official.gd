@@ -445,14 +445,18 @@ func _test_registrar_sim() -> void:
 
 	# Regression (seeds 9397 & 9400): even when Poisoner hits Registrar on Night 0, the
 	# permanent register keeps >=1 in-play role unless Delusional.
+	var p0_ran: int = 0
 	for psd in [9397, 9400]:
 		var g_p0 = Game.new()
 		g_p0.detailed_logging = false
 		g_p0.new_case(psd, 7, sc)
 		var rg_p0 = g_p0.w.npc_with_role("registrar")
 		if rg_p0.secret_mod != "delusional":
+			p0_ran += 1
 			var p0_ip: bool = rg_p0.registrar_roles.any(func(r): return (r in g_p0.w.initial_good_roles) or g_p0.w.npcs.any(func(p): return p.role == r))
 			_check(p0_ip, "Registrar Night 0 slate keeps >=1 in-play role under Night 0 Poisoner (seed %d)" % psd)
+	# A Delusional Registrar skips its seed; both skipping would pass on nothing (Steward E1b).
+	_check(p0_ran > 0, "(fixture) at least one Night-0-poison seed has a non-Delusional Registrar (%d of 2)" % p0_ran)
 
 	# Player 'ask check <name>' request + Marked registration check:
 	var g_req = Game.new()

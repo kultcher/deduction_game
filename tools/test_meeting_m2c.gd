@@ -116,10 +116,11 @@ func _test_flow() -> void:
 	_check(g.w.meeting.pending.get("supporters_done", false), "skipping the press hands the floor to the supporters")
 	var g2 = _meeting_game(9202)
 	var t2 = _unclaimed(g2)[0]
+	var case2: int = g2.file_deduction({"type": "evil", "a": t2.id}, [g2.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"])[0].n])
 	g2.command("nominate %s raw" % t2.name.to_lower())
-	g2.command("accuse")
-	_check(g2.w.meeting.pending.get("supporters_done", false) and g2.w.meeting.pending.get("statement", "") == "accuse",
-		"a statement made straight away comes after the supporters have had their say")
+	g2.command("case %d" % case2)
+	_check(g2.w.meeting.pending.get("supporters_done", false) and g2.statement_used,
+		"a case put straight away comes after the supporters have had their say")
 	var before: int = g2.w.dlog.entries.filter(func(e): return e.get("type", "") == "support_offer").size()
 	g2.command("vote no")
 	var after: int = g2.w.dlog.entries.filter(func(e): return e.get("type", "") == "support_offer").size()

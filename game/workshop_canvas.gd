@@ -26,9 +26,13 @@ static func view(g) -> Dictionary:
 	var cards: Array = []
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
-		var note = "FALLBACK: this evidence has no live Workshop evaluator"
+		# The note under a Workshop card, in the player's words (Michael, Nov 19). Whether the
+		# Workshop can weigh the card is the `fallback` flag, not the note's wording.
+		var note = "The Workshop can't weigh this card yet."
+		var fallback: bool = true
 		if (receipt.kind == "claim" and content.get("role") in Assess.C.GOOD_ROLES) or (receipt.kind in ["sighting", "alibi"] and receipt.observed_at.phase == "night"):
-			note = "Adapter available · testimony and circumstances, not proof of evil"
+			note = "Testimony and circumstance: not proof of evil."
+			fallback = false
 		var activity = Assess.activity_card(receipt, snapshot)
 		if receipt.kind == "info" and content.get("role") == "medium":
 			activity = Assess.medium_card(receipt, snapshot)
@@ -37,20 +41,25 @@ static func view(g) -> Dictionary:
 		elif receipt.kind == "info" and content.get("anonymous", false):
 			activity = Assess.testimony_card(receipt, snapshot)
 		if not activity.is_empty():
-			note = "Adapter available · experimental joint activity/trace comparison"
+			note = ""
+			fallback = false
 			if activity.kind == "town_hall":
-				note = "Adapter available · Town Hall census (exactly 1 of these 2 good roles is in play)"
+				note = "Town Hall records: exactly one of these two gifts is in play."
 			elif activity.kind in ["context", "location"]:
-				note = "Adapter available · location context; this does not establish guilt"
+				note = "Where someone was: not a sign of guilt on its own."
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
-			note = "Reading adapter available · check whole-case support"
+			note = ""
+			fallback = false
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
-				note = "FALLBACK: this reading time is outside the live adapter"
+				note = "The Workshop can't weigh a reading from this time yet."
+				fallback = true
 			var ids: Array = snapshot.people.map(func(p): return p.id)
 			if not Assess.reading_valid(receipt, ids, snapshot.rules.modifier_options):
-				note = "FALLBACK: reading payload is incomplete or invalid"
+				note = "This reading is missing details, so the Workshop can't weigh it."
+				fallback = true
 			if content.role == "medium" and activity.is_empty():
-				note = "FALLBACK: this Medium item needs supported original evidence, its observation time, and a known deceased source"
+				note = "The Workshop needs the original reading, when it was taken and whose it was before it can weigh this."
+				fallback = true
 		cards.append({"id": receipt.id, "fact_id": receipt.id, "kind": "report" if receipt.kind == "info" else receipt.kind,
 			"source": receipt.source, "subject": receipt.subjects[0] if not receipt.subjects.is_empty() else "", "subjects": receipt.subjects.duplicate(),
 			"role": content.get("role", ""), "data": content.get("data", {}).duplicate(true),
@@ -59,12 +68,16 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "profile_receipt": profile_ids.has(receipt.id)})
+			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "fallback": fallback, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
-			cards[-1].support_note = "Adapter available · Medium relay retains original source and time; a challenge names its side (the passing-on or the original)" if activity.has("relay_source") else note
+			cards[-1].support_note = "A passed-on reading: a challenge says which part failed, the passing-on or the original." if activity.has("relay_source") else note
+			# An adapted relay or teller's testimony is weighable even where the outer reading
+			# alone isn't (Codex, #348): the old note override made these supported.
+			if activity.has("relay_source") or activity.get("testimony_only", false):
+				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
-				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Weak teller testimony · no original-source identity or gift proof"
+				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"profile_facets": _profile_facets(g),
@@ -205,7 +218,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		previous = g.board[previous - 1].superseded_by
 	var check = status(g, value)
 	if check.blocked:
-		g.last_error = "\n".join(PackedStringArray(check.issues))
+		g.last_error = "\n".join(PackedStringArray(player_issues(g, value, check.issues, previous)))
 		return -1
 	var roots = supports(g, value)
 	var conclusion = native_conclusion(g, value.conclusion)
@@ -264,7 +277,11 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var ev: Dictionary = CaseEval.evaluate(prepared.view, judged)
 	if not ev.get("impossible", false):
 		ev.lr = heard.lr
-		ev.category = CaseEval.category(heard.lr)
+		# The top tier reads the listener's chance only where that chance is the premise's own
+		# (Herald and Codex on #358): an accusing premise (would the town vote for them), "is
+		# good" and "is not the Demon". Elsewhere it's the target's chance of being good or evil,
+		# which doesn't settle "holds their gift", "was misled" and the like, nor a conflict.
+		ev.category = CaseEval.category(heard.lr, top_tier_chance(str(value.get("conclusion", {}).get("type", "")), float(heard.chance)))
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
@@ -299,6 +316,15 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 ## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
 ## no single subject: it is read through whoever it moves most, upward (one of them lied).
 const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+## The clearing premises a listener's chance of the target being good settles outright, for
+## the badge's top tier (Conclusive): test_juror.
+const TOP_TIER_CLEARS = ["good", "notdemon"]
+
+## The listener's chance as the badge's top tier reads it for a premise of `type`: the chance
+## itself where it settles the premise, else -1 (no top tier).
+static func top_tier_chance(type: String, chance: float) -> float:
+	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
+	return chance if settles else -1.0
 
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
@@ -374,12 +400,142 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
 		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses, "challenges": outcomes}
 
+## The words for one lie call's outcome (a `challenges` entry of listener_reading), approved
+## by Michael (Herald, Nov 19). {name} is the teller of the challenged reading; a draw names
+## the witnesses whose grounds clash with it. `name_of` turns an id into a name.
+static func lie_call_line(c: Dictionary, name_of: Callable) -> String:
+	var name: String = str(name_of.call(str(c.get("teller", ""))))
+	match str(c.get("kind", "")):
+		"pressed":
+			return "The town would press %s as the liar." % name
+		"draw":
+			var witnesses: Array = c.get("witnesses", [])
+			if witnesses.is_empty():
+				return "Your word against %s's." % name  # grounds only the player's own (Michael, through Herald)
+			if witnesses.size() == 1:
+				return "It's %s's word against %s's: some may be swayed by your assessment." % [str(name_of.call(str(witnesses[0]))), name]
+			return "Their word against %s's: some may be swayed by your assessment." % name
+		"unestablished":
+			return "Nothing you've cited shows the reading is wrong; the town will still believe it."
+		_:
+			return "The town won't take this challenge on your word: nothing on the case shows why the reading is wrong."
+
 ## The teller of the board card whose Workshop id is `id`, or "".
 static func _card_source(g, id: String) -> String:
 	for card in g.board:
 		if card.get("kind", "") != "deduction" and Evidence.normalize_card(card).id == id:
 			return str(Evidence.normalize_card(card).get("source", ""))
 	return ""
+
+## The way back from a wrong lie call (Michael, Nov 19). The refusal a second case meets when
+## it calls a reading Mistaken that an earlier case called a lie ("Conflicting reading
+## challenges…") becomes a signpost to revising that case.
+const CONFLICTING_CALLS = "Conflicting reading challenges need separate alternatives"
+const SIGNPOST_PRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, open case #%d in the Workshop, change the challenge to Mistaken, and present it again: it replaces the old case for everyone who hears it."
+const SIGNPOST_UNPRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, change the challenge in case #%d."
+
+## The live filed case (not `own`, nor any version of it) that calls a lie on a reading `value`
+## calls Mistaken: {number, teller}, or {}. A case someone has heard comes first: only a heard
+## case can refuse the new one, so a newer unheard draft with the same call isn't the one to
+## revise. With two or more heard cases making the call, revising one leaves the others' call
+## standing, so there's no single case to name and the plain refusal stays (Codex, #363).
+##
+## A listener keeps the version it heard until it hears the revision, so a heard version
+## that has since been revised still counts: the player is pointed at the latest version
+## (`latest`) to present (Codex, #363). Several heard versions of one case are one case.
+static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictionary:
+	var found: Array = _lie_calls_elsewhere(g, value, own)
+	var heard: Dictionary = {}
+	for f in found:
+		if was_presented(g, f.number) and not heard.has(f.latest):
+			heard[f.latest] = f
+	if heard.size() > 1:
+		return {}
+	if heard.size() == 1:
+		return heard.values()[0]
+	var live: Array = found.filter(func(f): return f.number == f.latest)
+	return live[0] if not live.is_empty() else {}
+
+## The newest version of case `number`.
+static func latest_version(g, number: int) -> int:
+	var v: int = number
+	var seen: Array = []
+	while v > 0 and v <= g.board.size() and int(g.board[v - 1].get("superseded_by", 0)) > 0 and not (v in seen):
+		seen.append(v)
+		v = int(g.board[v - 1].superseded_by)
+	return v
+
+## Every such case version, newest first: {number (the version with the call), latest, teller}.
+static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
+	var out: Array = []
+	var RC = preload("res://workshop/reading_challenges.gd")
+	var mine: Dictionary = value.get("reading_challenges", {})
+	var lineage: Array = versions_of(g, own)
+	for i in range(g.board.size() - 1, -1, -1):
+		var c: Dictionary = g.board[i]
+		if c.get("kind", "") != "deduction" or c.get("deleted", false) or c.get("withdrawn", false) or not c.has("workshop_case"):
+			continue
+		var latest: int = latest_version(g, int(c.n))
+		if int(c.n) in lineage or latest in lineage or g.board[latest - 1].get("deleted", false) or g.board[latest - 1].get("withdrawn", false):
+			continue
+		var theirs: Dictionary = c.workshop_case.get("reading_challenges", {})
+		for rid in mine:
+			# Same side of a Medium's relay only: switching the mode can't settle calls on
+			# different sides (the passing-on and the original; Codex, #363).
+			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST \
+					and str(theirs[rid].get("attribution", "")) == str(mine[rid].get("attribution", "")):
+				out.append({"number": int(c.n), "latest": latest, "teller": _challenged_teller(g, str(rid), str(theirs[rid].get("attribution", "")))})
+				break
+	return out
+
+## Whose reading a challenge on card `id` accuses: its teller, or, on the original side of a
+## Medium's relay, the dead reader the Medium passed on (Codex, #363).
+static func _challenged_teller(g, id: String, attribution: String) -> String:
+	if attribution == "original":
+		for card in g.board:
+			if card.get("kind", "") != "deduction" and str(card.get("role", "")) == "medium" and Evidence.normalize_card(card).id == id:
+				return str(card.get("data", {}).get("dead", ""))
+	return _card_source(g, id)
+
+## Case `number` and every version it revises.
+static func versions_of(g, number: int) -> Array:
+	var out: Array = []
+	var v: int = number
+	while v > 0 and v <= g.board.size() and not (v in out):
+		out.append(v)
+		v = int(g.board[v - 1].get("revises", 0))
+	return out
+
+## Has anyone heard case `number`, or a version it revises?
+static func was_presented(g, number: int) -> bool:
+	var lineage: Array = versions_of(g, number)
+	for v in lineage:
+		if g.public_presentations.has(v):
+			return true
+	for real in g.w.npcs:
+		var mind = real.shadow if real.is_evil() and real.shadow != null else real
+		var held: Dictionary = mind.workshop_state.get("presentations", {})
+		for v in lineage:
+			if held.has(str(v)) or mind.ledger.has("arg:workshop:%d" % v):
+				return true
+			# A case put in a private accusation or defence is held as "direct:<n>:…" (Codex, #363).
+			for key in held:
+				if str(key).begins_with("direct:%d:" % v):
+					return true
+	return false
+
+## The issues the player reads: the conflicting-calls refusal becomes the signpost when an
+## earlier case's lie call is the cause. Routing still matches the raw issue text, so this
+## is applied only where words reach the player.
+static func player_issues(g, value: Dictionary, issues: Array, own: int = 0) -> Array:
+	if not issues.any(func(i): return str(i).begins_with(CONFLICTING_CALLS)):
+		return issues
+	var other: Dictionary = lie_called_elsewhere(g, value, own)
+	if other.is_empty():
+		return issues
+	var who: String = g.w.by_id[other.teller].name if g.w.by_id.has(other.teller) else "the teller"
+	var line: String = (SIGNPOST_PRESENTED % [who, other.number, other.latest]) if was_presented(g, other.number) else (SIGNPOST_UNPRESENTED % [who, other.number, other.latest])
+	return issues.map(func(i): return line if str(i).begins_with(CONFLICTING_CALLS) else i)
 
 static func _logit(p: float) -> float:
 	p = clampf(p, 1e-6, 1.0 - 1e-6)

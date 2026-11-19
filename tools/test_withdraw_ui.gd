@@ -60,7 +60,7 @@ func _init() -> void:
 	g.command("withdraw %d" % rev_n)
 	check(_text(g, "narration") == "You stand and take back case #%d." % rev_n, "taking a case back is narrated, with no claimed cost (got %s)" % _text(g, "narration"))
 	check(g.board[rev_n - 1].get("withdrawn", false), "the case is marked withdrawn")
-	check(CardList.line_for(g.board[rev_n - 1]).contains("withdrawn on day 2"), "the card list says when (got %s)" % CardList.line_for(g.board[rev_n - 1]))
+	check(CardList.line_for(g.board[rev_n - 1]).contains("taken back on day 2"), "the card list says when (got %s)" % CardList.line_for(g.board[rev_n - 1]))
 	g.command("withdraw %d" % rev_n)
 	check(_text(g, "error") == "You've already taken back case #%d." % rev_n, "twice is refused in plain words (got %s)" % _text(g, "error"))
 	g.command("withdraw 999")

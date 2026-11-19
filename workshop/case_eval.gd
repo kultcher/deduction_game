@@ -43,6 +43,7 @@ const OWN_ERR = Tuning.Workshop.OWN_ERR
 const LR_WEAK = Tuning.Workshop.LR_WEAK
 const LR_MODERATE = Tuning.Workshop.LR_MODERATE
 const LR_STRONG = Tuning.Workshop.LR_STRONG
+const LR_DAMNING_CHANCE = Tuning.Workshop.LR_DAMNING_CHANCE
 
 static var _cc_handles: Dictionary = {}
 static var _cc_handles_epoch: int = -1
@@ -385,8 +386,12 @@ static func _odds(p: float) -> float:
 	p = clampf(p, 1e-9, 1.0 - 1e-9)
 	return p / (1.0 - p)
 
-## Strength category from a likelihood ratio on the premise.
-static func category(lr: float) -> String:
+## Strength category from a likelihood ratio on the premise. With `chance`, the premise's
+## chance after the case for the listener the badge speaks for, the top tier ("damning")
+## applies at LR_DAMNING_CHANCE or above (Michael, Nov 19), whatever the strength.
+static func category(lr: float, chance: float = -1.0) -> String:
+	if chance >= LR_DAMNING_CHANCE:
+		return "damning"
 	if lr < 1.0 / LR_WEAK:
 		return "contradicts"
 	if lr < LR_WEAK:
@@ -404,6 +409,7 @@ static func category_text(cat: String) -> String:
 		"weak": return "This case weakly supports the premise."
 		"moderate": return "This case moderately supports the premise."
 		"strong": return "This case strongly supports the premise."
+		"damning": return "This case strongly supports the premise."  # Herald's wording to come
 	return ""
 
 ## Evaluate a case for one listener. Returns:
@@ -1226,9 +1232,14 @@ static func _is_movement_role_card(card: Dictionary) -> bool:
 ## claim of the gift otherwise: fits = trust x (fits with it) + doubt x (the chance a
 ## broken reading says this) x (fits with only its claim). Without that chance a broken
 ## reading counted as certain to say what it said, and doubt weighed double (Nov 17).
-## Exact for one doubted reading in a set; with several, each mixes against the others
-## read in full. Trust in the teller is not here: the role check already lets an evil
-## teller lie in the worlds where they are evil.
+## Several doubted readings are weighed symmetrically (Michael, Nov 19, Steward A3): all
+## genuine with chance prod(1 - d), or exactly one broken (each against the others read in
+## full) with chance d_i x prod_{j != i}(1 - d_j), renormalised over those cases, so the
+## order of the cards doesn't matter. Exact for one doubted reading; with several, the worlds
+## where two or more broke at once are left out and the rest share their weight. (Before,
+## each reading mixed in turn against the others in full, which depended on card order and
+## under-doubted the earlier ones.) Trust in the teller is not here: the role check already
+## lets an evil teller lie in the worlds where they are evil.
 ## Measuring switch (tools and tests): off, doubt doesn't reach the role check (before Nov 17).
 static var doubted_role_check: bool = true
 
@@ -1236,13 +1247,38 @@ static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, k
 	var doubts: Dictionary = listener.get("reading_doubt", {})
 	if not doubted_role_check or doubts.is_empty() or not view.get("world_options", {}).get("roles", false):
 		return fits
-	var out: PackedFloat64Array = fits
+	var doubted: Array = []
 	for card in cards:
 		if card.get("kind", "") != "report" or card.get("quoted", false) or card.get("testimony_only", false):
 			continue
 		var doubt: float = clampf(float(doubts.get(card.id, 0.0)), 0.0, 1.0)
-		if doubt <= 0.000001:
-			continue
+		if doubt > 0.000001:
+			doubted.append([card, doubt])
+	if doubted.is_empty():
+		return fits
+	if doubted.size() > 1:
+		# Kept short of certain, so "every one broke" never leaves nothing to weigh: with one
+		# reading the weights are exact whatever its doubt.
+		for e in doubted:
+			e[1] = minf(float(e[1]), 1.0 - 1e-6)
+	# The chance that every doubted reading is genuine, and each one's chance of being the
+	# only broken one.
+	var all_sound: float = 1.0
+	for e in doubted:
+		all_sound *= 1.0 - float(e[1])
+	var out := PackedFloat64Array()
+	out.resize(fits.size())
+	for c in range(fits.size()):
+		out[c] = all_sound * fits[c]
+	var total: float = all_sound
+	for e in doubted:
+		var card: Dictionary = e[0]
+		var doubt: float = e[1]
+		var alone_broken: float = doubt
+		for o in doubted:
+			if o[0].id != card.id:
+				alone_broken *= 1.0 - float(o[1])
+		total += alone_broken
 		var claimed: Dictionary = card.duplicate()
 		claimed.kind = "claim"
 		claimed.data = {}
@@ -1250,11 +1286,11 @@ static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, k
 		var alt: PackedFloat64Array = _class_fits(view, cc, swapped, knowledge)
 		# A broken reading says these words only by chance (CaseEval.chance_content).
 		var content_p: float = chance_content(view, card)
-		var mixed := PackedFloat64Array()
-		mixed.resize(out.size())
 		for c in range(out.size()):
-			mixed[c] = (1.0 - doubt) * out[c] + doubt * content_p * alt[c]
-		out = mixed
+			out[c] += alone_broken * content_p * alt[c]
+	if total < 1.0 - 1e-12 and total > 0.0:
+		for c in range(out.size()):
+			out[c] /= total
 	return out
 
 ## A Warden's guard on a quiet night sets the Demon's route only as far as the listener
@@ -1785,7 +1821,7 @@ static func _pivotal(cc: Dictionary, base: PackedFloat64Array, ns: int, err_for:
 	return out
 
 static func _rank(cat: String) -> int:
-	return ["contradicts", "none", "weak", "moderate", "strong"].find(cat)
+	return ["contradicts", "none", "weak", "moderate", "strong", "damning"].find(cat)
 
 ## The case-strength label for the board: the neutral reference listener's category plus a
 ## one-line reason. Describes the case, not any particular NPC.
@@ -1797,7 +1833,7 @@ static func strength_from(r: Dictionary) -> Dictionary:
 	var reason = ""
 	if r.impossible:
 		reason = "These cards can't all be true together; something here is false."
-	elif r.category in ["weak", "moderate", "strong"]:
+	elif r.category in ["weak", "moderate", "strong", "damning"]:
 		if r.pivotal.size() == 1:
 			reason = "It rests on one card."
 		elif r.pivotal.is_empty():

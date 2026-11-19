@@ -178,8 +178,12 @@ static func conclusion_text(w, c: Dictionary) -> String:
 		"demon":
 			# About someone the town hanged: "was the Demon when hanged", as the Workshop
 			# canvas reads it (CanvasModel.HANGED_DEMON_TEXT; Michael, Nov 19).
+			# Only where a Scion could have risen (the Workshop's own gate,
+			# CanvasModel.premise_offered; Steward A9): with no Scion on the script the plain form.
 			var who = w.by_id.get(c.get("a", ""), null) if w != null else null
-			if who != null and not who.alive and who.death_cause == "executed":
+			var sc = w.case_script if w != null else null
+			var minions: Array = sc.minions if sc != null else load("res://sim/script_def.gd").default_minions()
+			if who != null and not who.alive and who.death_cause == "executed" and (minions.is_empty() or "scion" in minions):
 				return "%s was the Demon when hanged" % a
 			return "%s is the Demon" % a
 		"good":

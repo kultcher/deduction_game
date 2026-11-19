@@ -384,3 +384,249 @@ a real one.
   slot; Quill and Argon to confirm.
 - **Michael (Nov 18):** not ready to decide; possibly a messy can of worms.
 
+
+## 11. Argon review: gaps
+
+Michael asked Argon (Nov 19) how this note's direction would hit the solver and the systems
+around it. Argon's report went to the leads through Seneschal. In short:
+- **The solver survives** if Marked stays in the one hidden slot, or gets a clean claim-based
+  replacement.
+- **Rumormonger and Chronicler, and `Solver.lovers_needs`,** are the only evaluators that
+  depend on every secret being enumerated.
+- **Most of the cost is social:** good NPCs claiming knowing secrets, evil bluffing them, and
+  handling double claims of a unique secret.
+
+This section lists what the report misses. The leads' replies are collated below as they
+arrive. Nothing here is decided.
+
+### 11.1 Seneschal's first read
+
+- **Secret bluffing partly exists already,** in two places:
+  - an evil Rumormonger's made-up reading can name a teammate as carrying a secret ("gave
+    X, a fellow evil, a harmless secret to own to", `sim/roles/rumormonger.gd`);
+  - an evil defender whose cover needs it can say "I've been known to sleepwalk"
+    (`MindMeeting.sleepwalk_excuse`, defence step 2b).
+
+  Whatever the rework builds should extend these, not sit beside them. Beadle to confirm how
+  often each fires.
+- **Medium relays of secrets:** what a Medium relays about a dead secret holder, and whether
+  a relayed secret can be bluffed.
+- **The Lamplighter count and the Night Watch list against Sleepwalkers:** an unaware walker
+  inflates a count or appears on a list. This is more pressing once Lamplighter step 2
+  (#346) weighs counts against each world.
+- **The Marked premise-centring knock-on** (section 7).
+- **The Mistaken gate's causes** (`ReadingChallenges.game_honest_causes`, with "marked" among
+  `HONEST_CAUSES`), and the self-doubt clash signal, if Marked leaves the enumeration.
+- **The case slate and its badge** need secret cases: a Lovers' alibi, a Sleepwalker caught
+  out, a Marked false ping.
+- **Hint families and secret hints** ("New role hint families", Herald's #315), and the
+  Rumormonger's hint.
+- **The end-of-game reveal:** how a bluffed secret, an unclaimed knowing secret and a good
+  liar's reason are shown.
+- **Test fixtures that pin secrets:** suites and `tools/fixture_seeds.gd` lookups that expect
+  today's secret deal, and golden.
+
+### 11.2 Design-side gaps (Vicar)
+
+- **Good NPCs lying about their gift: an open dependency.** The direction is in section 2
+  (Nov 18), but Michael said on Nov 19 that it still needs designing. It stays `[open]` in
+  BACKLOG ("Good NPCs lie tactically"), and "Evil backs into a bluff" is on hold until it's
+  decided. If it's adopted, it's a judge change, not only a social one, and the report
+  doesn't cover it. Today a good, healthy teller's
+  gift claim is taken as true, and no two people hold one claimed gift
+  (`WorldDomainKernel.ClaimsCompatible`, the role check in `ReadingFraction`). A good liar
+  needs an allowance there, and a double claim stops meaning "one is evil". Whether that is a
+  rate (cheap) or enumerated (costly) is the question for Argon.
+- **The general allowance for quiet reasons** (section 3, open question 3). Once the Lovers
+  leave the enumeration, the judge no longer explains their nights out. Night sightings of
+  good people get more damning unless an allowance replaces it. That ties in with "Night
+  sightings are too decisive" (BACKLOG, the balance pass).
+- **Unique secrets in the judge.** "At most one holder of each kind" is a new claim rule,
+  like gifts' one-person-per-gift. The report names double-claim handling on the social
+  side, but not the judge's side.
+- **One hidden kind per script.** The arrangement count falls (section 10.3, about 840 at
+  10 NPCs instead of 5,040 if the Lovers leave). The report doesn't time it, or say where
+  the freed room goes: Minion identities for the Breathstealer overhaul, larger towns, or
+  speed.
+- **A Baron, Minion identity and secret counts.** Several secret claims as evidence of a
+  Baron (section 6) needs the judge to know a Baron may be in play, which is part of telling
+  Minions apart.
+- **Hanging consequences** (the Saint, section 5). Votes would need to weigh what a hanging
+  costs, not only how suspicious someone is. That's a new input to `MindMeeting`, and to the
+  judge if the outcome is public evidence.
+- **Not yet decided, but costly if chosen:**
+  - **Plain folk** (section 10.5): a non-unique claim with a public count, a new check on
+    claims.
+  - **Confidants** (section 10.4): hearsay cards about a secret, weighed like relays.
+- **Credibility and the track record.** "X holds secret S" is judged at dawn against the
+  enumerated universe (`Credibility.dawn`). The report covers this. Add that a player who
+  argues an unclaimed knowing secret correctly should still earn credit, so the
+  either/or of 3a, if built, must reach the dawn check.
+
+### 11.3 The leads' replies
+
+Collated from the leads' messages to Vicar (Nov 19). All were read from the code; nothing
+was built or measured. Points already listed in 11.1 and 11.2 aren't repeated.
+
+**Lantern (the belief side).** If Marked stays enumerated and only the knowing kinds leave,
+Lantern's work is SourceDoubt, the self-doubt signal and the new claim premises, plus a golden
+move. If Marked leaves too, add ReadingConfirm and the role check: a real rework of the
+Seer's registration path.
+- **SourceDoubt** (`workshop/source_doubt.gd`, about 31 secret touchpoints, the largest).
+  Every listener's reading doubt is built from the poison prior plus the Delusional and
+  Sleepwalker self-doubts (`DELUSIONAL_SELF_DOUBT`, `SLEEPWALK_SELF_DOUBT`,
+  `could_hold_secret`). Today a script with both adds both; with one hidden kind, only the
+  script's kind should count. If Marked leaves the enumeration, "a Seer's yes may be a Marked
+  registration" has no source but a claim or the player's argument.
+- **The self-doubt signal** (`OwnGiftDoubt`, `SourceDoubt.doubts_own_gift`, read by #316).
+  On a script with Sleepwalker and no Delusional, the prior falls to poison only, and NPCs
+  doubt their gift less often. Re-measure the 0.30 trigger on the new script mix.
+- **ReadingConfirm and reading trust** (#319, `Solver.reading_holds_table`). Marked and
+  Delusional decide where a reading can fail. If Marked becomes a claim, confirmations, and
+  the trust they earn, shift. There's no code change, but golden moves; measure it.
+- **Movement:**
+  - a listener's own home nights carry a Sleepwalker self-doubt, which becomes a clean
+    per-script switch;
+  - Night Watch lists, Lamplighter counts and the quiet-night guard's route trust follow
+    SourceDoubt's priors.
+- **The role check's honest doubt** (`CaseEval._doubted_role_fits`). Delusional has a
+  "broken gift" side; Marked doesn't (the gift works and the target registers wrong). A
+  claimed Marked needs the allowance model Argon names, here as well as in the Seer path.
+- **Premises (3a): the biggest belief-model build.** Stored cases are premise targets, "a
+  person is X" (`premise_targets`, `brought_by_premise`). "Hollis is a Lover" needs a premise
+  that is an either/or on a variable nothing enumerates. Neither the connections refresh, the
+  juror (`judge_for_profile`) nor the case-weight arithmetic has one. Today's "X is the
+  Marked" works only because Marked is enumerated.
+- **The Lovers:** `Solver.lovers_needs` also marks dead worlds in CaseEval's compile. A real
+  Lover's own knowledge (my partner is good) stays first-hand. A *heard* Lovers claim becomes
+  an ordinary claim, and must not leak into the listener's `knowledge`.
+- **Cache keys:** changing the enumeration needs no key work, but anything new a judgement
+  reads off the view outside the cards must go into the judge keys (the lesson of #344 and
+  the Lamplighter cache-parity bug). Put it on the build checklist.
+- **The honest-cause helper** (`ReadingChallenges.honest_allowed`): with one hidden kind, the
+  Mistaken options per reading shrink, and Herald's lie-call lines read them.
+
+**Quill (the judge, challenges and evidence).**
+- **The Mistaken gate's causes** (`script_honest_causes`, `cause_reaches`):
+  - A claimable Marked can't stay an honest cause, because its holder would know and say so.
+  - Exclusive Delusional and Sleepwalker change which causes a script offers, and the cause
+    tooltip with them.
+  - `poisoned_not_lying.md` and `test_honest_mistake` rest on these causes.
+- **Source doubt:**
+  - Delusional also sets the broken chance of Night Watch lists and Lamplighter counts (#273,
+    #346).
+  - A `secret_claim` of "sleepwalker" excuses a claimant's own sightings. If the Sleepwalker
+    stays self-unaware, nobody can truthfully claim it, so that path becomes evil-only
+    bluffing, or goes.
+- **The Gravedigger and Executor:** a hanged Marked reads as evil in the sim
+  (`marked_evil_chance`), and the judge has a `marked_registers` branch for it. That's an
+  evidence-design question as well: should a Gravedigger still expose a hidden Marked?
+- **Premises and the badge:** `secret_mod` and `marked` are clearing premises, left out of
+  the badge's top tier (#357). If knowing secrets become claims, "X holds S" means "X's claim
+  is true", which goodness settles, so `TOP_TIER_CLEARS` needs a line for it.
+- **The slate** needs three secret cases for before-and-after measurements: an evil Lovers
+  or Saint bluff, a true knowing claim, and a Delusional reading.
+- **Secret claim cards** go through the movement kernel, the canvas's "secret" reason,
+  case_graph and connections. All of them assume a secret claim is a good person's, so
+  removing `lovers_needs` is only half of it.
+- **3a's cheaper alternative,** "Hollis had a reason for this lie", would be a new challenge
+  mode beside misled, lying, unlikely, impaired and delusional. It needs its own grading and
+  outcome lines, since Michael's four lines assume a lie call. The general quiet-reason
+  allowance also softens how a caught lie reads (lie severity, #210).
+
+**Herald (wording, cards and the reveal).** The biggest content cost is the voices.
+- **The script window and setup line** assume "one secret, on a gift" (`ui/main.gd`,
+  `game/game_screens.gd`). They need to separate hidden from knowing kinds, and the script
+  editor needs to enforce one hidden kind per script.
+- **The player's secret guess** is one pick, "the secret in play", graded on the reveal. With
+  several unique secrets it becomes a pick per person from the script's list.
+- **The reveal** shows a good liar's logged reason, as it shows evil's, and a bluffed secret
+  against its real holder.
+- **Workshop:**
+  - 3a needs a visible new control, "assume Hollis is a Lover", as a premise type or an
+    assumption chip, with its wording.
+  - The existing hint telling the player to argue Marked through "holds a secret" changes
+    with Marked.
+- **Cards:**
+  - every new knowing kind needs a short form;
+  - a claimed secret must read differently from a proven one;
+  - a confidant's report needs a hearsay card, worded like the relay cards;
+  - new kinds need icons, which is art for Limner.
+- **Tooltips:** the Mistaken tooltip's cause names follow the script, but "a Marked soul"
+  needs rewording if Marked changes.
+- **Voices** (fifteen voices, each line Michael's to approve, so a drafting round per batch):
+  - a claim-under-pressure line per knowing kind;
+  - a good liar coming clean;
+  - a confidant gossiping, and the holder's reaction;
+  - "I have no gift", if plain folk return.
+- **Tutorials:** "two claims of one gift means one is evil" softens to "very probably" with
+  good liars. The hidden/knowing split is a mid-game lesson. All of this waits until the
+  mechanics settle, as planned.
+- **Double-claim friction:** the counter-claim card ("X: Y's claim is false", #335) shouldn't
+  imply one side is evil once good can lie.
+
+**Beadle (NPC behaviour).** Beadle's cost guess: the carry-over is moderate, since
+disclosure, confession and gossip are reusable once they take a lie flag. Evil's bluff, its
+fear of a collision and lie tracking through gossip are the bulk of it, comparable to the
+evil gift-bluff work.
+- **Evil's two existing secret bluffs** (11.1), checked by Beadle on main:
+  - **The Rumormonger's** "harmless secret" for a teammate is a fabricated reading, so it
+    already goes through the fake-reading lie machinery.
+  - **The sleepwalk bluff's** `secret` fact carries no lie flag. That's normal for a claim:
+    the judge weighs it per arrangement. The movement model handles it correctly, because a
+    sleepwalk claim only raises the claimant's ordinary out-rate, and where the claimant is
+    evil it walks on the evil profile anyway.
+  - **The gap is in SourceDoubt** (`workshop/source_doubt.gd`). A listener who saw X out
+    while X claimed home doubts X as a liar, unless X has a sleepwalk claim. That exception
+    doesn't depend on X's alignment, so an evil sleepwalk bluff cancels the "caught lying
+    about home" doubt in full for every listener holding the card. Two limits soften it:
+    evil won't claim to sleepwalk if anyone else already has, or if its bluff is a walking
+    gift. **A candidate fix for Lantern and Quill,** not a decision: make the exception
+    depend on the claimant's alignment in each arrangement.
+  - The "honest forgetting" of secrets in Seneschal's earlier list doesn't exist.
+- **What exists, all good-only:**
+  - **A private confession when caught out** (`MindDialogue`): "...I wasn't home. I
+    <secret>. Please, keep it quiet." It writes a `secret` fact (with the partner, for the
+    Lovers) and sets `secret_known`. #330's pressed path feeds the same account. Hard-coded
+    to good NPCs.
+  - **A public confession in the meeting defence** (`defence_confess`). It only explains a
+    night out. Confessing under nomination for a secret with a consequence (the Saint) is new
+    behaviour.
+  - **Hiding:** a night out on a secret is hidden through the same gate as a hidden walking
+    gift. That makes the hide-a-gift disclosure model (pressure, trust, Privacy against a
+    reveal cost) the natural carry-over for knowing secrets.
+  - **Gossip of secrets** (`sim/social.gd`): an NPC confides its own secret by bond and
+    Privacy; listeners store it (`known_secrets[owner] = teller`) and relay it by Gossip and
+    low Composure; busybodies offer it to the player. A Lovers' secret that names the teller
+    isn't relayed.
+  - **Sleepwalker exceptions,** scattered through `social.gd`, `mind_dialogue.gd` and
+    `mind_meeting.gd`. They stay if the Sleepwalker stays hidden.
+  - **The player's secret claims** go into the track record (`Credibility.record_secret`).
+    Once evil can bluff, "the player said X is a Lover" can't be checked against the truth in
+    the same way.
+- **Missing from Argon's list, and a real cost: gossip assumes a secret is true.**
+  `known_secrets` is keyed by the real holder with no lie flag. A bluffed secret relayed by a
+  good gossip would launder into a true one. It has to travel as a claim with lie tracking,
+  as fake readings and bluffed gifts do (`lie`, `fake`, the relay chain). Today gossip
+  relays only real secrets, so nothing launders through it yet; a sleepwalk claim travels as
+  a meeting or private fact.
+- **What evil would need, all new:**
+  - **Choosing a bluff:** which secret, when and why, with a logged reason and a reveal
+    entry, like bluff planning for gifts.
+  - **A collision check:** evil knows its team, not who holds a secret. It weighs unique
+    secrets, whether anyone has claimed it, and a Baron raising the odds of a real holder,
+    mirroring the gift double-claim fear.
+  - **Faking the confession card:** the same `secret` fact with `lie`, which the judge must
+    stop treating as proof (`lovers_needs`, #162).
+  - **The scapegoat plan:** framing a real holder interacts with 3a.
+  - **Teammate cover:** "she's a Lover, that's why she was out", a made-up secret about
+    someone else, is a new kind of lie with its own reason and reveal line.
+- **Votes:** for the Saint or any secret with a hanging consequence, weighing what a hanging
+  costs is new vote machinery. It belongs to the general hanging-consequence item, not to
+  secrets alone.
+- **Double claims** should reuse the existing counter-claim reactions. A real holder calling
+  out a bluff falls under "More rebuttals after a caught lie", which Beadle is drafting
+  options for.
+- **The night-outing rate gated by the claimed secret** (Argon): agreed. The movement side is
+  `world.gd` `_night_movement` with the secret out-rate (0.55); the judge side is
+  `live_activity`.

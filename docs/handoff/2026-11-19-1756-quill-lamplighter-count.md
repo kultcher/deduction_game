@@ -1,7 +1,7 @@
 # Quill: Lamplighter fix (b) step 1, a count can be broken
 
 Claude-Quill, Nov 19. Base: main at a6b674b (with #344). Status: PR open. Next actor: Lantern
-(review), then Bailiff. **Golden moves**, so it re-baselines to `baseline_d33fdae`. Follows
+(review), then Bailiff. **Golden moves**, so it re-baselines to `baseline_652298a` (first `baseline_d33fdae`, re-made on top of #349; see the end). Follows
 `2026-11-19-1510-quill-lamplighter-parked.md`.
 
 ## What changed
@@ -61,11 +61,29 @@ It also answers Codex's finding: another claimant's count can't rule one out eit
 and the slate to its baseline (no golden or slate case hinged on testimony ruling a count
 out). `test_connections_cache`, `test_connections_core` and `test_nightwatch_whole_list` pass.
 
-## Next
+## Step 2: tried and dropped (Michael, Nov 19)
 
-Step 2: weigh the count against each possible world (a Poisson-binomial term). That should
-raise the Lamplighter-and-alibis case again. It waits until Michael's pause ends.
+Step 2 was to weigh the count against each possible world: a Poisson-binomial over each
+person's chance of being out that night. A first build, never pushed, went the wrong way:
+- the Lamplighter-and-alibis case fell from ×1.81 to ×1.13;
+- a third party hearing a sighting against "nobody out" again read ×6.01 for "the
+  Lamplighter is evil".
+
+The reason: each person's out-share is taken across all worlds, outside any one world, so it
+counts everyone's testimony at face value whether or not its teller is honest in that world.
+It counts lies like truths. An exact version needs a per-world profile pass.
+
+Michael approved shipping step 1 alone, with no backlog item for the per-world version.
+Lantern agreed. Step 1's branch-dependent forcing stays: a sound count still forces the
+one without an alibi out, inside the sound branch only.
 
 ## Proposed for the backlog
 
 None.
+
+## Re-baseline on top of #349 (Nov 19, 21:20 UTC)
+
+I merged main (with Lantern's #349) in and captured twice; the two captures were identical. The
+result is `baseline_652298a`, which replaces `baseline_d33fdae` (now removed). It diverges from
+main's `baseline_7a10762` at the same records as before, with the same outcomes: only 98933's
+hangings change (see `docs/golden_baseline.md`).

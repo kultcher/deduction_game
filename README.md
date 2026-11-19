@@ -273,7 +273,7 @@ members meet. Paranoia rises with every death.
 concerns them), then your chance to present one case to everyone, then nominations one at
 a time. Each person nominates and is
 nominated at most once a day. The nominator states their case, the nominee defends
-themselves, you may accuse or defend (or spend clemency), and the town votes in seat order,
+themselves, you may present a filed case about the nominee (or spend clemency), and the town votes in seat order,
 silently. Reaching half the voters puts the nominee on the block; a later nomination needs
 more votes to replace them, and a tie clears the block. Whoever is on the block when the
 meeting closes is executed, after their last words.

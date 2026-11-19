@@ -102,6 +102,13 @@ func _init() -> void:
 	check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == "%s is the Demon" % who.name, "the living keep \"is the Demon\"")
 	who.alive = false
 	who.death_cause = "executed"
-	check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == "%s was the Demon when hanged" % who.name, "a hanged person's filed Demon case reads as the canvas does")
+	var minions: Array = g.w.case_script.minions if g.w.case_script != null else load("res://sim/script_def.gd").default_minions()
+	var scion: bool = minions.is_empty() or "scion" in minions
+	check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == ("%s was the Demon when hanged" if scion else "%s is the Demon") % who.name, "a hanged person's filed Demon case reads as the canvas does: in the past tense only where a Scion could have risen (scion on script: %s)" % scion)
+	if g.w.case_script != null:
+		var had: Array = g.w.case_script.minions.duplicate()
+		g.w.case_script.minions = had.filter(func(m): return m != "scion") if scion else had + ["scion"]
+		check(g.Deduction.conclusion_text(g.w, {"type": "demon", "a": who.id}) == ("%s is the Demon" if scion else "%s was the Demon when hanged") % who.name, "and the other way with the Scion %s (Steward A9)" % ("taken off" if scion else "added"))
+		g.w.case_script.minions = had
 	print("Turned premise: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

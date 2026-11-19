@@ -6,11 +6,6 @@
 extends "res://sim/role_def.gd"
 
 
-## A crowd this size (the Dowser's "4+" row in its bluff guideline) is cover enough for a
-## bluffing Augur to tell the truth about the Demon on its street.
-const DEMON_CROWD := 4
-
-
 func _init() -> void:
 	id = "augur"
 	display_name = "Augur"
@@ -32,10 +27,13 @@ func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
 	return "Crossed the Demon? %s" % ("YES" if bool(d.get("yes", false)) else "NO")
 
 
-func _spoken_text(yes: bool) -> String:
+## Michael's wording (Nov 19): the reading names the day and the part of it, so "evening" (when
+## the gift speaks) is never heard as when the paths crossed. The day is spoken as an ordinal.
+func _spoken_text(yes: bool, day: int) -> String:
+	var when: String = content().spoken_day(day)
 	if yes:
-		return "I sensed that I crossed paths with the Demon earlier in the day"
-	return "I sensed no sign of the Demon along my path earlier in the day"
+		return "I crossed paths with the Demon in the morning or afternoon of %s" % when
+	return "I didn't cross paths with the Demon in the morning or afternoon of %s" % when
 
 
 func run_day_gift(w, ag, mind, _evil) -> void:
@@ -88,7 +86,7 @@ func generate_reading(w, ag, ctx: Dictionary, _mind) -> Dictionary:
 		"data": {"yes": crossed},
 		"true": crossed == truth_crossed,
 		"why": awhy,
-		"text": _spoken_text(crossed),
+		"text": _spoken_text(crossed, w.day),
 	}
 
 
@@ -119,7 +117,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	# The Dowser's guideline (#160, Michael): stay close to the truth, with the crowd setting
 	# the room. Among a crowd of four or more a "yes" points at nobody in particular, so the
 	# liar tells it true rather than give the Demon a clean day it can be caught out on.
-	if shared_with_demon and demon_crowd.size() >= DEMON_CROWD:
+	if shared_with_demon and demon_crowd.size() >= Tuning.Evil.AUGUR_DEMON_CROWD:
 		yes = true
 		why = "admitted the Demon crossed their path, safe in the crowd of %d on the same street" % demon_crowd.size()
 	elif shared_with_demon and not shared_with_sg:
@@ -132,7 +130,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 		yes = true
 		why = "claimed the Demon crossed their path, without saying where"
 	return {
-		"entry": {"data": {"yes": yes}, "text": _spoken_text(yes)},
+		"entry": {"data": {"yes": yes}, "text": _spoken_text(yes, w.day)},
 		"why": why,
 	}
 
@@ -144,14 +142,14 @@ func fake_medium_reading(w, _n, dd, s: String, _sg, d, _goods: Array, _other: Ca
 	e["phase"] = C.EVENING
 	if d != null and d.alive and demon_implicated and w.chance(0.5):
 		e["data"] = {"yes": false}
-		e["text"] = _spoken_text(false)
+		e["text"] = _spoken_text(false, r_day)
 		return {"entry": e, "why": "made up a reading from the late Augur %s that sensed no Demon on %s" % [dd.id, content().spoken_day(r_day)], "frames": false}
 	e["data"] = {"yes": true}
-	e["text"] = _spoken_text(true)
+	e["text"] = _spoken_text(true, r_day)
 	return {"entry": e, "why": "made up a reading from the late Augur %s that sensed the Demon on %s, pointing toward %s" % [dd.id, content().spoken_day(r_day), s], "frames": true}
 
 
 ## The other answer (FabricationCheck: a better lie).
-func bluff_alternatives(_w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
+func bluff_alternatives(w, _n, _plan: Dictionary, _s: String, _mate, entry: Dictionary) -> Array:
 	var yes: bool = not bool(entry.get("data", {}).get("yes", false))
-	return [{"entry": {"data": {"yes": yes}, "text": _spoken_text(yes)}, "why": "gives the other answer"}]
+	return [{"entry": {"data": {"yes": yes}, "text": _spoken_text(yes, int(entry.get("day", w.day)))}, "why": "gives the other answer"}]
