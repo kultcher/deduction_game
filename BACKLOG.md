@@ -278,6 +278,10 @@ listener (#273), both Lantern's.
   real Night Watch may just be quiet), which need their own logic; once handled, fake
   Mediums and evil generally can make bolder lies. (Oct 19) **On hold** (Michael, Nov 19)
   until "Good NPCs lie tactically" is designed and decided. [decided; on hold]
+  - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
+    bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
+    in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
+    when caught out, and double claims) is in "More rebuttals after a caught lie".
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
   - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
@@ -445,8 +449,8 @@ Candidates for a unified retuning proposal, not approved changes.
         same exposure parts play two roles: the pressure and on-the-block parts push it to
         answer, and the public-talk part holds it back from a double claim. Beadle to propose
         how they combine.
-    - **Not yet answered:** whether evil whose planned bluff is claimed first switches to a
-      spare.
+    - **Evil whose planned bluff is claimed first switches to a spare** (Michael, Nov 19:
+      yes). See "Evil backs into a bluff", whose hold is lifted for this case.
     - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
