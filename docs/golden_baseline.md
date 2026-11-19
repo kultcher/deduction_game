@@ -47,7 +47,7 @@ only by two intended 2c fixes:
 ### Current baseline (Nov 19, backing a case builds trust): `baseline_74eb971`
 
 `tools/golden/baseline_74eb971/` is the capture from `claude/beadle-agreement-trust` at `74eb971`
-(main `21df80d`'s successor merged in, with #296). A good NPC warms a little to those who vote
+(main `4248293` merged in, with #296). A good NPC warms a little to those who vote
 the same way, and to someone who nominates or accuses a person it already suspects (Michael,
 Nov 18). The reading steps were taken out on Nov 19 and moved to their own item, so readings
 change no trust here. It replaces this PR's earlier `baseline_6c45840`, which was on main before

@@ -3,7 +3,7 @@
 - **Agent:** Claude-Beadle
 - **Base:** main at 44a9962
 - **Branch:** claude/beadle-agreement-trust
-- **Status:** PR open. It moves golden and re-baselines to `baseline_6c45840` in the PR.
+- **Status:** PR open. It moves golden and re-baselines to `baseline_74eb971` in the PR (on main with #296).
   Narrowed on Nov 19 to votes and nominations (Michael).
 - **Next actor:** Bailiff (review and merge). Michael, through Seneschal, for the reused
   numbers below.
@@ -82,7 +82,8 @@ named constants of their own.
     as days pass.
   - **Pairs already near full trust on day 1:** these are friends set up at the start, the
     same on both.
-- **Golden:** two captures were identical, and every seed diverges. 42, 692 and 900 keep their
+- **Golden:** `baseline_74eb971`, on main with #296. Two captures were identical, and every seed
+  diverges from main's `baseline_21df80d`. 42, 692 and 900 keep their
   outcomes. 54875 now hangs only Edda, on day 3. 98933 is a good win on day 2. Details are in
   `docs/golden_baseline.md`.
 
