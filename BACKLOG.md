@@ -65,6 +65,15 @@ relay about the first victim naming night 0 (Beadle).
   walker who withholds their purpose can say "Fine, I was out last night, but what I was
   doing is my own business." Keep distinct responses for the truly home, unaware
   Sleepwalkers and evil cover. [decided]
+  **Progress (Nov 18-19):**
+  - Beadle's d046d6a routed a pressed case resting on night evidence to the night answer,
+    not the gift one, which fixes Kiran's symptom. #261 added "Fine, I was out"
+    (`trapped_explanation`).
+  - Quill: a pressed case whose cards place its subject out now carries a `contradiction`
+    context to the press (`GameConversation.press_contradiction`): the night, the block,
+    the cards, and whether it breaks their own home alibi.
+  - Left: Beadle routes the answer from it (the truly home, a knowing walker, an unaware
+    Sleepwalker, evil cover); Herald any new lines.
 
 - **Demon detours exist in inference but not in actual movement.** (77388) The movement
   model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
@@ -597,6 +606,10 @@ Candidates for a unified retuning proposal, not approved changes.
     heaviest cited item is a daytime sighting, and names who else was there from the true
     whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
     there, the alone line. No evil lie for now: evil defenders use the same true lines.
+  - **Built** (Nov 19, `claude/beadle-day-defence`). It fires only at a nomination
+    (`defend_self`), when the heaviest item cited against the nominee is a daytime sighting,
+    and uses the `_stand` lines. Evil defenders tell it truthfully. Each person named becomes a
+    sighting card for the player.
 
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
