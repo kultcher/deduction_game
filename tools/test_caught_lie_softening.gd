@@ -17,6 +17,9 @@ const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const History = preload("res://workshop/live_history.gd")
+const Mind = preload("res://sim/mind.gd")
+const Bridge = preload("res://game/workshop_bridge.gd")
+const Shared = preload("res://workshop/shared_ledger.gd")
 
 var checks = 0
 var fails = 0
@@ -33,6 +36,7 @@ func _init() -> void:
 	_softer()
 	_contradicted_doubt()
 	_admitted_place()
+	_shared_admission()
 	print("Caught-lie softening: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -173,3 +177,31 @@ func _p(cards: Array) -> float:
 	c.conclusion = {"type": "evil", "target": "a", "at": view.alignment_epoch}
 	c.cards = cards.map(func(x): return x.id)
 	return float(CaseEval.evaluate(view, c, CaseEval.neutral_listener(view)).get("posterior", -1))
+
+
+## An admission heard as testimony is weighed by how well it was heard (Codex on #372): the
+## fact is an alibi, but the view reads it as a sighting, and sightings heard from a teller
+## take the hearing's weight (SharedLedger.prepare). Before, it fell between the sighting and
+## alibi branches and counted in full.
+func _shared_admission() -> void:
+	var f: Dictionary = _game()
+	var g = f.g
+	var w = g.w
+	var x = f.x
+	var l = null
+	for n in w.living_good():
+		if n != x:
+			l = n
+			break
+	var card: Dictionary = {"kind": "alibi", "subject": [x.id], "source": x.id, "via": x.id, "day": 1, "phase": C.NIGHT, "home": false, "block": f.other,
+		"excuse": "admit", "excuses_night": 1, "learned": [{"day": w.day, "phase": w.phase, "via": x.id}], "text": "HEARDX"}
+	var receipt: Dictionary = Mind.WorkshopLedger.Evidence.normalize_card(card)
+	Mind.ledger_hear(w, l, "heard:" + receipt.id, [], 0.3, [x.id, 1, "report"],
+		{"kind": "tell", "workshop_card": receipt, "workshop_teller": x.id, "workshop_origin": x.id, "workshop_public": false})
+	var plan: Dictionary = Shared.prepare(Bridge.capture(g, [], l.id, "private", l), {}, l.ledger, {})
+	var got: Dictionary = {}
+	for c in plan.get("prepared", {}).get("view", {}).get("cards", []):
+		if c.get("admitted", false) and x.id in c.get("subjects", []):
+			got = c
+	check(not got.is_empty() and float(got.get("hearing_weight", 1.0)) <= 0.3 + 1e-6,
+		"an admission heard at weight 0.3 counts at most that much (hearing weight %s)" % str(got.get("hearing_weight", "none")))

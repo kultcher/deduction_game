@@ -358,7 +358,9 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 					if ledger[eid].meta.has("workshop_teller"):
 						shared = true
 						hearing = maxf(hearing, clampf(ledger[eid].weight, 0.0, 1.0))
-			if shared and facts[id].kind == "sighting":
+			# An admitted outing ("Fine, I was out") is an alibi fact the view reads as a sighting
+			# of its teller (LiveAssessment.activity_card), so it is heard like one (Codex on #372).
+			if shared and (facts[id].kind == "sighting" or card_ref.get("admitted", false)):
 				var base_sighting_hw: float = 1.0 if ("learned" in owners[id] and facts[id].source == input.listener.id) else hearing
 				hearing = base_sighting_hw
 				if not ("learned" in owners[id] and facts[id].source == input.listener.id) and facts[id].source not in ["", "player", "evidence", "town"]:
