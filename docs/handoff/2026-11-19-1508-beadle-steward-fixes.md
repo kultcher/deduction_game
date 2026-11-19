@@ -10,7 +10,7 @@
 
 ## What changed
 
-- **A4, frame memory's reason in the reveal** (`sim/evil.gd`, `generate_fakes`):
+- **A4, frame memory's reason in the reveal** (`sim/evil.gd`, `_make_fake_info_for_phase`):
   - **Before:** when a bluffer kept its earlier story (`_keep_frame`), the reveal showed the
     swapped-in alternative's own reason, such as `gives the other answer on ["Lian", "Merrin"]`
     or a raw role id, instead of the lie's motive.
@@ -36,7 +36,7 @@
 
 - **The Medium's "why" ids** (`sim/evil.gd`, `_fake_medium_item`). Its reasons do write ids
   (`dd.id`, `s`), but they reach the reveal only through `generate_bluff_reading`, and the one
-  caller, `generate_fakes`, passes every `why` through `Evil.named()` before logging it. The
+  caller, `_make_fake_info_for_phase`, passes every `why` through `Evil.named()` before logging it. The
   ids are named there.
 
 ## For Herald
