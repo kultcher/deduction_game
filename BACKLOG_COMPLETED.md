@@ -3,6 +3,557 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built, reconciled Nov 19, 2026 (Michael via Seneschal; recorded by Claude-Vicar)
+
+Items still tagged `[decided]` in BACKLOG.md after they were built. Each was checked against main and its merged PRs.
+
+- **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
+  Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
+  only the glaring ones; nobody connects public cards that don't touch their own knowledge.
+  The joining bar runs from 0.8 for the dullest NPC to 0.1 for the sharpest (Michael, Nov
+  17, after the wider measurement). DESIGN's Insight row and its new line are approved.
+  Building in #199. Owner Lantern. **[decided]**
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern, #199 (confirmed by Lantern).
+
+- **The phase advances while the player is still reading an NPC's last lines.** The phase
+  must not move on until the player clicks "Leave conversation". (Michael, Nov 19) Owner
+  Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Herald, #322: the screen keeps the old phase until the player clicks "Leave conversation".
+
+- **An NPC waves the player down twice with the same information.** It must never do that
+  with exactly the same information. (Michael, Nov 19) Owner Beadle. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Beadle, #324.
+
+- **A whereabouts contradiction gets an irrelevant gift refusal.** (78148, Kiran)
+  Presenting "Kiran is suspicious" from alibi/vigil evidence produced "Whether I have a
+  gift is my own business." Carry the dated contradiction through the press so a knowing
+  walker who withholds their purpose can say "Fine, I was out last night, but what I was
+  doing is my own business." Keep distinct responses for the truly home, unaware
+  Sleepwalkers and evil cover. [decided]
+  **Progress (Nov 18-19):**
+  - Beadle's d046d6a routed a pressed case resting on night evidence to the night answer,
+    not the gift one, which fixes Kiran's symptom. #261 added "Fine, I was out"
+    (`trapped_explanation`).
+  - Quill: a pressed case whose cards place its subject out now carries a `contradiction`
+    context to the press (`GameConversation.press_contradiction`): the night, the block,
+    the cards, and whether it breaks their own home alibi.
+  - Beadle (Nov 19, `claude/beadle-press-contradiction`): the press answers from it
+    (`MindDialogue._pressed_caught_out`). A good NPC out on its own business says "Fine, I
+    was out" and, open enough, why; it no longer says it was home. The truly home, an
+    unaware Sleepwalker, a gift walker and evil keep their answers. No new lines: it reuses
+    `trapped_night_out`, which a presented case already says. Built; close once merged.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Beadle #261 and #330, Quill #303.
+
+- **Challenge a Night Watch report using a conflicting player vigil.** Let the player
+  target the dated report as lying or misled with a vigil as grounds, reusing the existing
+  reading-challenge path. Same night and block, complete versus incidental coverage, and
+  the watcher excluding themselves matter. A contradiction alone doesn't say which source
+  lied, or that impairment caused it. [decided: capability; evaluator details open]
+  **Built, by the existing model** (Quill, Nov 18; measured and pinned in
+  `tools/test_vigil_nightwatch.gd`, no new rule). A vigil watches a block's doors: it sees
+  everyone who leaves home there, not people passing through, the same rule the night uses.
+  - **It answers "I saw X pass" when X lives on the watched block,** and a Night Watch who
+    watched their own block, since they had to leave home. That's about +16 and +44 points
+    of suspicion of the Night Watch in the suite's deals; one on another block adds nothing.
+  - **A vigil that saw someone else leave counts the same,** being complete coverage.
+  - **It works as the grounds of a "lying" challenge**, about +6 points.
+  - **"Misled" lands like "lying"** until "misled" counts as honest doubt (proposed to
+    Michael).
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill, #287 (pinned by the existing model) and #300 (a vigil sees only who leaves home on its block).
+
+- **Challenge a Warden's particular failed protection claim.** Target "On Night X I
+  protected <NPC>" against that night's Demon death, supporting the explanation that a
+  real good Warden's gift failed. Separate an honest guard attempt from effective
+  protection. **User clarification (Oct 27): lying about a failed Warden protection
+  implies the speaker is evil; a good Warden would not fabricate this account and can only
+  be misled.** This is specific to this claim, not a general rule that every good
+  statement is true. Allow an honest impaired Warden; neither failure nor a misled
+  accusation proves poisoning or alignment. [decided: capability and lying implication]
+  **Built** (Nov 4, #81; pinned by `tools/test_warden_challenge.gd`, re-checked Nov 18).
+  A guard report on someone the Demon killed that night is never a true, healthy reading.
+  A "lying" challenge and a "failed gift" challenge are both supported against it. A
+  neutral listener lays most of it on a lie, a failed-gift call doesn't prove poisoning,
+  and someone else's death that night says nothing about the guard.
+
+  Already built (Nov 4, #81 era, the report table in `Solver`): a guard on a door the Demon
+  killed that night is never a true, healthy reading, so the challenge lands as a lie or a
+  failed gift and the walk stays the movement model's. Pinned by `test_warden_challenge`
+  (Quill, Nov 17). Nothing else to build. [done]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. #81, pinned by #189.
+
+- **Believable public revisions; withdraw or revise a case.** Let the player retract a
+  public endorsement or explain a changed view without deleting the evidence, while NPCs
+  keep the reasons they still believe. Players can re-file a case, but can't retract or
+  explain. (25923: a final nomination cited the player's earlier argument after the
+  player had adopted a different world.) A revised case must not score below the version
+  it replaces. Private guesses stay private. [decided]
+  **Built** (Nov 18, Quill #262; Herald's withdrawal UI #267): a public withdrawal takes a
+  case back from everyone who heard it, and they keep its cards. A withdrawn case's
+  conclusions are judged once more at the next dawn and then leave the track record; a
+  revision citing new evidence clears the old version's conclusions at once (Michael's
+  option c). "A revised case must not score below the version it replaces" became a
+  warning (Michael, Nov 18): "This weakens your previous case", detected in Quill's #275
+  and shown by Herald.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #262 and #275, Herald #267 and #285.
+
+- **The player's "poisoned, not lying" call, and poison evidence from night outings.**
+  (Michael, Nov 18, with Claude-Vicar; design note
+  [docs/design/poisoned_not_lying.md](docs/design/poisoned_not_lying.md), option C) From
+  Quill's measurement for the item above: once a clash pins a poisoned good reader, "failed
+  gift" is almost never accepted, because nothing makes poison likelier than a lie.
+  - **Evidence:** any unexplained night outing on night N raises the poison chance for
+    readings from that night, more strongly if the person could have reached the reader's
+    home.
+  - **The player's call:** a "failed gift" call counts as the player's word that the reading
+    was a failed gift, at the listener's credibility in the player, through the honest-doubt
+    route. The clash then reads as poison, and suspicion spreads toward the Poisoner
+    candidates and the town rather than settling on the reader.
+  - **Guards:** only where a Poisoner or Delusional could be in play, scaled by the poison
+    chance; the call records "the reader is good" in the player's track record, so a wrong
+    call costs credibility at dawn. Nothing stronger (Michael). No diminishing returns.
+  - **Not now:** NPCs making the same call; revisit with "An NPC defender's challenge isn't
+    stored as a case" (section 5).
+  - **Before building:** whether a player's-word card can feed the honest-doubt route (and
+    reaches the connections refresh); re-run Quill's 10-seed measurement under the change
+    (how far the reader recovers, where the suspicion goes); whether recording "the reader is
+    good" misfires when the reader is Delusional.
+  - **Report:** how far one call moves a listener at typical and at high credibility, in game
+    terms (the sheep check).
+  - Owners: Quill (the judge: the challenge, the poison chance, the night-outing link),
+    Lantern (the belief side). [decided]
+  - **Built:**
+    - Poison evidence from night outings, and the failed-gift track record: Quill, #252.
+    - The player's "failed gift" call as testimony, honest doubt on the reader's night:
+      Quill, with the belief side by Lantern, #270.
+    - Folded into the one Mistaken label: #296.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #252, Lantern #270 and #278, folded into Mistaken in #296; marked built in #338.
+
+- **Quiet-night evidence argued by the player.** Support a player-argued link between
+  protection, a suspected attack and movement, without exposing hidden attacks. (61251:
+  a successful ward on Fenwick suppressed the apparent value of the sightings.) See the
+  "Protection + quiet night + sighting" Workshop gap, and build the two together: a case
+  argues protection, a suspected attack and movement as one chain, without revealing
+  hidden attacks. Quill builds the judge side; Herald any Workshop UI or wording.
+  [decided] (Michael, Nov 17)
+
+  **Judge side built (Quill, Nov 18):** a Warden's guard report
+  on a quiet night sets the Demon's route to the guarded door, where the Warden and the
+  guarded person are good. The player's ward already did this through the scorched sigil.
+  The Test juror's result carries `guards` for Herald's reason line. **Reason line built
+  (Herald, Nov 19, `claude/herald-guard-reason`):** the Test juror's tooltip names each
+  guard that moved the case ("#7 Merrin guarded Fenwick's door on the first night: if Merrin
+  is a working Warden, the Demon came to Fenwick's door that night. This strengthens the
+  case 15 points."), with the quiet night's card when the case cites it.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #243 (the judge side), Herald #299 (the reason line).
+
+- **The case benchmark slate.** (Michael, Nov 19.) A kept set of standard constructed
+  cases (two sightings, a sighting at the kill, a vigil on a kill night, an alibi caught out,
+  two gift readings converging, an impossible reading, a double claim, a Gravedigger
+  confirming a hanged Minion, a Lamplighter count with alibis, a Night Watch "nobody" against
+  a sighting, a Warden's guard), each judged by the Test juror and presented to the town.
+  Like golden, a script and a stored baseline report, run on demand; not a CI suite. Re-run
+  it after any change to the judge or to how listeners weigh a case, and compare.
+  `tools/case_slate.gd`, `tools/case_slate_report.py`, baseline in `docs/case_slate/`.
+  Owners: Quill, with Lantern. **Built (Quill, Nov 19).** Next: re-run after the juror fix
+  (the juror hears as an average listener: Michael, Nov 19; the Lamplighter count is on hold),
+  and propose new badge cut points from it.
+  [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #307, refreshed in #325, Strong-tier cases in #342. The badge's cut points are a separate item now (section 2, Cases and the Workshop).
+
+- **Misleading cases on the slate.** (Michael, Nov 19, approved through Seneschal.) The
+  slate's chains built about an innocent subject, as they could really arise: an innocent
+  out at night, true readings naming them beside the real evil, or a lie told by evil. Then
+  a change can be checked for making the town easier to mislead, as well as easier to
+  convince. Owners: Quill, with Lantern. **Built (Quill, Nov 19):** ten misleading cases
+  (`<case>_innocent`; the impossible reading has none) in the same baseline, reported
+  separately. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill, #313.
+
+- **Daytime sightings hidden by default** in the daytime Present window and the main card
+  list, with a checkbox to show them. (Michael, Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Herald, #322.
+
+- **Workshop: centre on a new card.** Adding a card centres the view on it, with a subtle
+  highlight until it's moved. (Michael, Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Herald, #323.
+
+- **Workshop: edge indicators for off-screen cards,** one per direction or cluster.
+  (Michael, Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Herald, #323.
+
+- **Workshop right-click menu:** "Add readings FROM > <person>" and "Add all readings
+  ABOUT > <person>". (Michael, Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Herald, #323.
+
+- **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
+  The "it's the other one" defence (`pair_other`, `sim/mind_meeting.gd`) answers only
+  readings that name a two-person pair. Against a reading over a group (a Surveyor's
+  block, a Dowser's count), the nominee falls through to "my gift was turned" or
+  "misled". In 89077, Chapel Hill held only Hollis and Dorian, so Hollis's Surveyor case
+  was really a pair. The fix is a general defence for any group reading: "it's one of
+  the others in it", naming them where the group is small. Michael (Nov 17): approved.
+  Owner Beadle; Herald for the lines. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Beadle #249, Herald's voices #253.
+
+- **Evil meetings are over-weighted and always visible.** (54875) The pairing that matters
+  happens before the player picks a place, and evil gets a large bonus whenever a member
+  holds unshared intel (nearly always), so the same evil pairs meet on consecutive days.
+  Good NPCs with news for a trusted friend now get a similar bonus. Still open: let evil
+  confer after the player commits (unseen, or seen only from that block), cap the evil
+  bonus, add a pair cooldown. Keep good NPCs meeting often enough to cover. [decided]
+  - **Michael (Nov 18), through Seneschal:**
+    1. Visible meetings still happen. Dropping the bonus before the player chooses is fine,
+       but evil members must still sometimes be seen meeting. Aim for about one visible
+       evil meeting a day across the three phases, and measure the rate.
+       - Michael (Nov 19) clarified this. "Visible" means seen before the player chooses.
+         Keep today's rate, about 0.28 a day (one every 3 to 4 days on seeds 3000-3014).
+         "Don't add new meetings or anything, keep the same numbers of meetings."
+    2. Meetings go into the gossip network, every meeting and not only evil ones. Those at
+       the place where two people were talking learn it ("X and Y were talking at Z") and
+       report it when asked about either person. When the player hears it, it is a
+       hearsay location report for each, as "who did you see earlier" gives today.
+       Herald owns any new wording. Owner Beadle.
+  - **Dropping the evil bonus before the choice, and adding a pass where teammates confer
+    after the player leaves, was tried and set aside (Nov 19).** It halved the visible rate
+    (0.12 a day) and cut evil meetings from 21 to 12. Main's pairing already lets teammates
+    confer after the player leaves, when they are in the same place.
+  - **Built** (Nov 19, `claude/beadle-evil-confer`), with the pairing unchanged:
+    - those present at a meeting after the player's choice see it;
+    - witnesses pass it on in conversation (one step);
+    - asked about either person, an NPC reports it, first or second hand.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Beadle, #308.
+
+- **Backing a strong case builds trust.** Nominating or voting for someone the town
+  strongly suspects (and who turns out evil, or is widely believed so) earns a little
+  trust from the NPCs who agree. It makes throwing a teammate under the bus pay for evil
+  and rewards good NPCs who stick their necks out. (Oct 19) [decided]
+  Michael (Nov 18): the item covers agreement through votes, nominations, accusations
+  and defences, plus "their reading confirms me" (Beadle rescoping).
+  Michael (Nov 19): narrowed to the procedural part: votes, plus nominations and
+  accusations of someone the NPC already suspects. A vote to spare is the defence, since
+  NPCs only defend themselves. Being built in #292. The reading-based part moved to "Trust
+  from readings that confirm what I know or strongly believe", below.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Beadle, #292.
+
+- **Trust from readings that confirm what I know or strongly believe.** A listener gains
+  trust in a teller whose reading it knows, or strongly believes, to be true. Owners:
+  Lantern (the "confirmed from my view" test) and Beadle (the trust gain). Build after the
+  pause. Michael (Nov 19):
+  - **Hard facts:** the reading must be true given the listener's private knowledge: its
+    role, its alignment, where it was each night, and its own readings.
+  - **Strongly held beliefs** count too. Bart strongly believes Edda is evil. Edda is hanged,
+    and next day the Gravedigger Merrin reports she was the Poisoner. Bart can't know it for
+    sure, but it confirms what he strongly believed, so he gains trust in Merrin.
+  - **A cutoff or tiers,** not a gain scaled continuously by how strongly the belief is held.
+  - **Examples:**
+    - Merrin, the Gravedigger, hears the Clerk name "Merrin or Agnes" as the Gravedigger.
+    - A Dowser count that's true given that the listener knows it's good.
+    - A Night Watch hears the Monitor report a Night Watch on the Square, where it walked.
+  - **It absorbs** the "a reading clears me" and "a reading agrees with mine" steps taken out
+    of #292. It also absorbs the earlier note "Evidence can build NPC-to-NPC trust" (Nov 18):
+    a Clerk reading matching the listener's own role (about +0.20, provisional), or a Seer
+    "no" on someone building that person's trust in the Seer. That note said to base it on
+    the listener's knowledge and deduplicate the underlying fact.
+  - **Tiers (Michael, Nov 19).** "Agreement" is how strongly the listener believes the
+    reading is true, from its own view:
+    - 70%+ agreement: a small boost, in line with the shared-voting step;
+    - 85%+ agreement: a moderate boost;
+    - 100% (a known fact from private knowledge): a significant boost.
+
+    The sizes are to be proposed, reusing existing steps where they fit (new constants are
+    Michael's call), together with a measurement.
+  - **Measurement (Michael, Nov 19).** It covers the whole trust system, not just this
+    feature:
+    - track where trust between NPCs ends up: the distribution of pairwise trust at the end of
+      each day and at game end, and how many pairs are near full trust;
+    - soft goal: some NPCs end up near full trust with some others by about day 4 (a guide,
+      not a gate);
+    - first a baseline run on #292 (votes and nominations only); then the tier proposal comes
+      with before-and-after numbers in game terms;
+    - use a probe or sweep script, not a CI suite.
+  - **Open, for a proposal before building:**
+    - the tier sizes;
+    - whether surprise from the public record still scales the gain within a tier;
+    - what happens when a strongly believed reading is later contradicted.
+  - **Sizes (Michael, Nov 19, set R3):**
+    - small (70%+): +0.06;
+    - moderate (85%+): +0.12;
+    - known (a fact): +0.20.
+    - #292's agreement step goes down to 0.02, as its own constant (`Trust.AGREEMENT_STEP`), so
+      that readings carry more of how trust builds.
+    - Each reading counts once for each listener, judged on its beliefs from before hearing it.
+  - **Built** (Nov 19, `claude/beadle-reading-trust`). On 40 passive games:
+    - readings carry about 42% of the trust gained;
+    - evil gets 31% of it;
+    - day-4 trust is as before: 12.2% of pairs near full trust, against 12.6%.
+  - **Next, approved (Michael, Nov 19):** "Their readings agree with what I know" as a reason
+    given out loud. A no-voter explains sparing someone after a vote, and an opinion clears
+    someone, both from a moderate or known confirmation. Evil says it honestly only, from its
+    good self's record. It shifts no suspicion directly: it's a card for the player, and NPCs
+    re-weigh the reading cited. Herald's lines are approved. Owner Beadle.
+
+  [decided: direction]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern #309, Beadle #319; the reason said out loud, Beadle #321.
+
+- **Lie severity.** A false gift report should weigh more than a whereabouts lie, unless
+  the lie puts them near the crime. NPCs who accept a lie but won't hang should say so.
+  Michael (Nov 17): as written. Quill owns the weighting in the judge and goes first;
+  Beadle owns the votes and the "won't hang" behaviour; Herald drafts the new lines for
+  Michael. Coordinate through the handoff log. [decided]
+  - **Judge side (Quill, `claude/lie-severity`):** a good person's own "I was home" stops
+    being certain. New number `Tuning.Workshop.GOOD_OWN_ALIBI_OUT` (0.2): the chance a
+    good person who was out still says "home". Measured Nov 17 on 40 passive 10-NPC games:
+    26% of good people who were out told the player "home" (hiding a night gift or a
+    secret, or a Sleepwalker). "Near the crime" is left to the existing scene reasoning. A
+    caught false reading is unchanged (still near proof when impossible).
+  - **Vote side (Beadle):** how the judge's lighter reading of a caught whereabouts lie
+    reaches votes, and "accepts the lie but won't hang, and says so" (Herald drafts the
+    lines). Follows the judge side.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #210 (the judge side), Beadle #215 (the vote side).
+
+- **A defence's answer to a daytime-whereabouts case.** (26532, #171) A case resting on
+  where someone was by day gets no answer of its own; since #171 the defence frames itself
+  on the next reading or night it can answer. Michael (Nov 16): build an answer that names
+  others present, from public schedules ("I was at the mill that evening, and so were
+  Greta and Jory"); evil can use it too, honestly or with a logged lie. Herald writes the
+  wording; Michael approved Herald's drafts (Nov 16), and Herald commits the voice lines
+  with the build. Constraint (Michael, Nov
+  16): `defend_self` runs only at a nomination today, and some voice lines assume a meeting
+  (Odette's "Funny how only one of us is up here"); if the defence fires anywhere else,
+  such as a private press, those lines must not appear there; use the generic fallback.
+  The PR says where it can fire. Owner Beadle. [decided]
+  - Michael (Nov 19): approved Beadle's plan. The defence fires at a nomination when the
+    heaviest cited item is a daytime sighting, and names who else was there from the true
+    whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
+    there, the alone line. No evil lie for now: evil defenders use the same true lines.
+  - **Built** (Nov 19, `claude/beadle-day-defence`). It fires only at a nomination
+    (`defend_self`), when the heaviest item cited against the nominee is a daytime sighting,
+    and uses the `_stand` lines. Evil defenders tell it truthfully. Each person named becomes a
+    sighting card for the player.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Beadle, #318.
+
+- **Script window: the curtain and frame art cover text.** Widen or pad it. (Michael,
+  Nov 19) Owner Herald. [decided]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Herald, #322.
+
+- **Time-scoped Revenant possession premise.** "X was possessed by a Revenant on day D"
+  as an explicit premise, so testimony and alignment claims are judged for the relevant
+  time rather than voiding the person's whole history. Keep suspected possession distinct
+  from confirmed knowledge, and don't expose the hidden victim. (Oct 21) [decided]
+  **Built (Quill, Nov 19):** the curse already had its own time in the judge (before,
+  during and after epochs, `workshop/chronology.gd`), so "X is evil during the curse" was
+  arguable. The new premise, "turned", names the turning itself: X was good before, evil
+  only while the curse held, and good again after. It excludes the worlds where X was evil
+  all along, which "evil during the curse" can't. It's a hypothesis over the worlds, so it
+  never shows who was turned. It's refused with no public curse, or for someone who
+  couldn't have been turned. Herald: the menu wording and whether to hide it before a curse.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill, #301.
+
+- **Protection + quiet night + sighting** (54875): a kept ward or a Warden claim, a quiet
+  night and a sighting near the guarded door, argued as one chain. Built with "Quiet-night evidence argued by the
+  player" (section 2), [decided] Nov 17.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern #306 (a guard read with its night's sightings), Herald #299 (the guard reason line).
+
+- **The Demon "before/after" premise for the Scion transfer** (triage 1.6). The alignment
+  part was done in #149: the curse "When" field shows only on is evil / suspicious /
+  good. The Scion part is new work: a premise time option that means "before / after
+  the Scion rose". **[decided: direction]**
+  **Built (Quill, Nov 19), in the form Michael chose:** no new option. A world's Demon is
+  the Demon now, so a hanged Demon whose Scion rose sits in it as an evil non-Demon. The
+  movement model and the role constraints already read it so. "X is the Demon" about
+  someone already hanged now means "X was the Demon when hanged": the world's Demon, or an
+  evil X whose world's Demon was alive at a hanging with five or more alive and a Scion on
+  the script. "Is not the Demon" is its complement. A plain "Y is the Demon" about the
+  risen Scion already worked. Herald: optional wording for a hanged person's premise ("was
+  the Demon when hanged").
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill, #305.
+
+- **A Night Watch list that wrongly names the listener.** Each name is scored as an
+  independent slip, so keeping the list cleared the rest of the watch (−0.36).
+  `SourceDoubt` still voids that night's list. Fix: a list that's wrong about the listener
+  is suspect as a whole. Moves golden. **[decided: fix]**
+  - **Decided (Michael, Nov 18):** a list is sound or broken as a whole. The broken chance is
+    the watcher's poison and Delusional priors, the judge weighs sound against broken by fit,
+    and a broken list clears nobody. The void rule stays only as the fallback on scripts with
+    neither secret. No new number.
+  - **Built** (Nov 18, `claude/nightwatch-whole-list`): see `docs/belief_model.md`, "A Night
+    Watch list is sound or broken as a whole".
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern, #273.
+
+- **A relayer cut from the sighter contest by the two-sighter cap** (Lantern, Nov 13).
+  Sighters of a person are ranked by how many sightings they told, then by town order, and
+  only the first two are doubted (`SIGHTER_CONTEST_MAX`). In seed 929 that left out Kiran,
+  an evil Medium who invented a relayed sighting, so it counted as the dead Lian's honest
+  word. Raising the cap to 4 as a test changed the reading a lot on a partial card set and
+  barely with all cards. Moves golden. Michael (Nov 18): fix; owner Lantern. **Built** (Nov 18,
+  `claude/relayer-in-contest`): a relayed card is contested only as its relayer's word, since
+  the dead never told it and can't have invented it, which also frees the cap's slot. Found
+  again on seed 100029 when #216 moved `test_relay_bluff`'s fixture onto it: evil Hollis's
+  invented relay of Merrin took Hollis from 0.83 to 0.46. **[done]**
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern, #265.
+
+- **Build `test_relay_bluff`'s evil-relayer and invented-relay checks by hand** (Lantern,
+  Nov 18).
+  - **Why:** the genuine-Medium check has been built by hand since #272, but the other three
+    checks still search seeds for a game that fits. Changes to play keep moving which game they
+    land on (they tripped three times on Nov 18), and the searches keep the suite at about
+    3 minutes, off the fast list.
+  - **What:** build each from a fixed deal with no play, as the genuine check is, then add the
+    suite to the fast list. Owner Lantern. Michael (Nov 18): yes. **[decided]**
+  - **Built** (Nov 18, `claude/relay-bluff-by-hand`):
+    - Every check in `test_relay_bluff` is a hand-built town on the deals of seeds 692, 900 and
+      42. The suite runs in about 6 s and is on the fast list.
+    - The hand-built towns don't reach #265's bug: two attempts, a crowded sighter contest
+      with and without prior suspicion, gave the same numbers before and after the fix.
+    - So the two searched evil-relayer checks stay as a regression guard,
+      `test_relay_bluff_games`. It runs on main with the full list, not the fast list
+      (Michael, Nov 18).
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern, #276 (and #311).
+
+- **A listener's small doubt that their own gift is Delusional** (Lantern and Quill, Nov 17;
+  Michael, Nov 17). With the Delusional secret on the script, an NPC allows that its own gift
+  might be the Delusional one, at about the rate of the Sleepwalker's self-doubt
+  (`SLEEPWALK_SELF_DOUBT`, 10%): one new constant. Today a listener never doubts its own
+  reading that way (#194 left own readings out of the Delusional skip). Design agreed with
+  Quill: the role fits mix as for the Sleepwalker, 0.9 with the listener's own readings
+  healthy and 0.1 with them skipped in worlds where the listener is the Delusional holder
+  (the world prior gives how likely that is). Quill builds the role check's "self" mode
+  first (zero drift); Lantern then builds the mixing, the constant, docs and a suite, and
+  that PR moves golden. **[decided]**
+  **Built (Lantern, #216, Nov 17):** as an honest 10% doubt on each night of the listener's
+  own readings (`DELUSIONAL_SELF_DOUBT`), through the same doubt map as anyone else's
+  readings, rather than the role-fit mix: it reaches both the role check and the readings'
+  weight (Seneschal's call, Nov 17; Quill's #214 keeps the role check from charging it
+  twice). A gift the deal never gives the secret (Chronicler, Rumormonger) rules it out.
+  Measured on 37 good listeners (13 seeds, 7 NPCs, day 3): a typical own reading gives up
+  about 8% of its lean (median; up to 8 points). Clerk, Seer and Archivist readings soften
+  only through their weight, Dowser, Surveyor and Warden readings only through the role
+  check. It doesn't raise a listener's belief that it is the Delusional one.
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern, #216.
+
+- **A listener's doubt that its own reading was poisoned** (Quill and Lantern, Nov 17;
+  Michael, Nov 17: approved as proposed, no new number and no confidence dial). An NPC's own
+  reading is near-certain today, so a clash with other evidence always blames the other side.
+  Now, when an own reading clashes with another teller's card, the NPC weighs "my reading was
+  poisoned" (the chance a Poisoner could have chosen it that night, zero when none could act)
+  against "they're wrong" (its suspicion of the teller, judged without its own reading in
+  view, plus the teller's own chance of a broken gift), using the most trusted clashing
+  teller. The poison explanation's share becomes an honest doubt on that night's reading
+  from the next refresh, through the Delusional self-doubt's route (#216), and a doubted own
+  reading no longer counts as proof. When two of its own readings can't both be true, the
+  doubt goes to the culprits found by dropping each in turn, split by each night's poison
+  chance, or equally when no single one is the culprit or the cause is Delusional. A reading
+  confirmed by another source taking less of the doubt is left for later. Lantern builds the
+  connections side; Quill the per-night poison chance and the judge side. After the #186
+  role-check fix (#214, merged). Moves golden; report how often it fires and how far it moves
+  an NPC, at fixed game states. **[decided]** (Michael, Nov 17)
+  **Revised and built (Michael, Nov 18; Lantern, #232):** the prior only. Each of an NPC's
+  own readings from a night a Poisoner could have acted carries the poison chance itself as
+  an honest doubt (`SourceDoubt.derive`); the judge then weighs the reading as genuine or
+  broken by how well each fits the rest, so trust in a clashing teller enters on its own.
+  The clash-gated form above counted the clash twice (it fed the judge a doubt already
+  conditioned on the clash) and cost 11-31% more refresh time. No clash detection, no
+  extra refresh, no new number; the own-against-own split isn't needed (the judge weighs
+  which own reading fits worse). `SourceDoubt.self_doubt(n)` gives the per-night doubt for
+  the dialogue item.
+  **Revised (Michael, Nov 19; Lantern):** a prior-only doubt climbs night by night for every
+  reader alike, so it says nothing about any one reading. What the NPC says now reads the
+  judge's posterior: for each night of its own readings, the chance that reading was wrong
+  given everything else it holds (`OwnGiftDoubt.posterior`). The prior above is still its
+  starting point, inside the judge, and stays readable as `SourceDoubt.self_doubt_prior`. It
+  doubts its gift on a night at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30, a new constant
+  Michael approved; `SourceDoubt.doubts_own_gift(n)`). Measured as built on seeds 3032-3095
+  (ten NPCs, the day-4 meeting): it fires in about 1 game in 4, for about 2 in 3 poisoned or
+  Delusional readings and about 1 in 20 sound ones (often a true Gravedigger reading after
+  the town hanged a good person). Michael decided on an earlier measurement that left the
+  prior out of the role check (about 1 game in 5, 4 in 10, 1 in 17; fixed on Codex's review). Readings whose content the judge doesn't check (a Warden's
+  quiet night, a Lamplighter, a Night Watch list, a Psychologist, a Sexton, a Medium's
+  relays) never fire; the follow-up below covers them. Behaviour doesn't change until
+  something reads it (Beadle's #316).
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Lantern #232, revised to the judge's posterior in #320. What the NPC says about it is "Saying 'my gift may have been turned'" (#316).
+
+- **Recovering from a wrong "lying" call.** (Nov 12, Michael; Quill's honest-mistake
+  sample, belief-model doc) A "lying" challenge on a poisoned or misregistered good
+  teller lands about as often as on a real bluffer, which is intended: the player can push
+  the town that way, rightly or not. The way back, read from the code and not yet
+  measured: revising the original case to "misled" or "failed gift" replaces it for each
+  listener who hears the revision. A separate case challenging the same reading the other
+  way is blocked for anyone holding the old one ("Conflicting reading challenges need
+  separate alternatives"). Nothing says "X was poisoned"; it can only be argued through
+  evidence about the Poisoner.
+  1. Test it: a lying challenge on a poisoned good Archivist, then the revised case, then
+     a case pointing at the Poisoner. How far do the teller's suspicion and the player's
+     credibility come back?
+  2. Signposting, or a shortcut: tell the player that revising is the way to take back a
+     challenge (for example in the block message), or offer "I was wrong, they were
+     poisoned" as one action. Pairs with the revisions item above.
+
+  **Step 1 measured (Quill, Nov 18):** 10 seeds with a Poisoner, 7 NPCs, crafted state.
+  - **The scenario:** a good Archivist's false "one of B and C is the Poisoner", against a
+    Dowser's "no evil among B and C".
+  - **The lying call:** it lands with 78% of good listeners. The Archivist rises from 0.25
+    to 0.54, but the same two readings with no challenge give exactly the same. The clash
+    does it, and the challenge's vote floor sits below.
+  - **The revision to "failed gift":** about 3% agreement, so it changes nothing.
+  - **A case at the Poisoner:** it takes about 5 points off the Archivist.
+  - **The player's trust:** it moves by at most 0.01 at any step.
+  - Revising isn't a way back today. Put to Michael through Seneschal.
+  **Re-measured with Mistaken (Quill, Nov 19; #296's build, same scenario and seeds):**
+  revising is now a way back. The Archivist's suspicion, out of 100:
+  - After the lying call: 51.
+  - Revised to Mistaken: 38. Revised instead to "B is good" with Mistaken: 33.
+  - After a case at the Poisoner: 28 to 33, and the Poisoner rises to 42 to 45.
+  - The player's trust stays at about 70 throughout.
+
+  [decided: test later; signposting open]
+
+  > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** measured and built (Quill's measurements; Mistaken, #296). Only the signposting is left, as its own item in BACKLOG.md.
+
+## Built Nov 17-19, 2026 (Claude-Beadle, closed Nov 19)
+
+- **A bluffer's frame memory** (triage section 6). The scapegoat is one team-wide choice
+  (`evil_plan.scapegoat`), reconsidered each morning with a bonus for keeping it. A
+  bluffing Dowser keeps no memory of whom its own earlier counts implicated, so later
+  readings can drift away from the frame. Proposal: a bluffer's later readings stay
+  consistent with the people its earlier ones implicated, unless the team has switched
+  scapegoat and the old reading no longer matters. Michael (Nov 17): yes, scaled by the
+  bluffer's Insight and/or Confidence: a sharp or self-assured liar keeps later readings
+  consistent with whom its earlier ones implicated; a dull or unsure one drifts more. The
+  memory drops when the team switches scapegoat. It's another preference at the better-lie
+  choice point ("consistent with my earlier readings"). One or two new tuning constants
+  are approved. Owner Beadle. **[decided]**
+  **Closed (Nov 19, Claude-Beadle):** Built in #255 (Nov 17-18), with the reveal-note fix in #339 and #350.
+
 ## Built Nov 19, 2026 (Claude-Herald, honest forgetting)
 
 - **Signal honest forgetting.** When memory limits drop people from a report,

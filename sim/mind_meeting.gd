@@ -675,12 +675,17 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 ## (Evil._boxed_in_gift_doubt). It is the teller's own word that its gift may have failed;
 ## listeners read it as honest doubt about all of that teller's readings.
 static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
+	_good_gift_doubt(w, n)
 	var gd: Dictionary = n.gift_doubt
 	if gd.is_empty() or gd.has("said") or not n.claim_public or n.claimed_role != str(gd.get("role", "")):
 		return
 	gd["said"] = w.day
 	var role: String = str(gd["role"])
-	lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
+	if gd.get("first", false):
+		# Only the one reading to doubt (its first for this gift): the singular line.
+		lines.append(say_voiced(n, "doubt_own_gift_one", "Something seems off about that reading. I fear something might have turned my gift."))
+	else:
+		lines.append(say_voiced(n, "doubt_own_gift", "Something seems off about those readings, I fear something might have turned my gift."))
 	# Listeners hear it through the public record (SourceDoubt.derive), not as a card: a new
 	# card kind isn't one the Workshop's evidence takes (Lantern, Nov 18).
 	w.public_event("self_doubt", [n.id], n.id, {"role": role})
@@ -696,6 +701,26 @@ static func _say_gift_doubt(w, n, lines: Array, facts: Array) -> void:
 		w.dlog.think(n.id, "lie", "Claimed its gift as the %s might have been turned, to explain away a made-up reading." % C.role_name(role), {"lie": true, "why": why})
 	else:
 		w.dlog.think(n.id, "self_doubt", "Tells the town its %s gift may have been turned (%s)." % [role, why])
+
+## The good side (BACKLOG "Saying 'my gift may have been turned'" (a), Michael, Nov 17-19): a
+## good public claimant that doubts a night of its own readings (SourceDoubt.doubts_own_gift:
+## the judge's chance that night's reading was wrong, from its clash with everything else the
+## NPC holds, at or above Workshop.SELF_DOUBT_TRIGGER) has it waiting to say, once a game, by
+## the same route as the boxed-in liar. The earliest such night is the one it names.
+static func _good_gift_doubt(w, n) -> void:
+	if n.is_evil() or not n.claim_public or n.claimed_role != n.role or not n.gift_doubt.is_empty() or not C.has_readings(n.role):
+		return
+	var SD = load("res://workshop/source_doubt.gd")
+	var nights: Array = SD.doubts_own_gift(n)
+	if nights.is_empty():
+		return
+	var night: int = int(nights[0])
+	var doubt: float = float(SD.self_doubt(n).get(night, 0.0))
+	var why: String = ("%d%% doubt about all its readings" % int(round(doubt * 100.0))) if night == -1 \
+		else ("%d%% doubt about its reading for %s" % [int(round(doubt * 100.0)), C.night_name(night)])
+	n.gift_doubt = {"day": w.day, "role": n.role, "why": why, "night": night, "doubt": doubt}
+	w.dlog.add("gift_doubt_planned", n.id, "", {"night": night, "doubt": snappedf(doubt, 0.001), "good": true},
+		"%s (good, the %s) doubts its own readings enough to say so [%s]" % [n.name, C.role_name(n.role), why])
 
 ## Last words are a claim and a spoken suspicion, not a fresh evidence argument.
 ## Reuse ordinary public claiming without adding the speaker's reading backlog.
