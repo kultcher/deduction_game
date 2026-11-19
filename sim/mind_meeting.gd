@@ -1651,6 +1651,71 @@ static func _reading_known_to_defender(d, src_id: String, rd: Dictionary, disclo
 		return true
 	return receipts.values().any(func(r): return not r.get("content", {}).get("anonymous", false))
 
+## The answer to a case resting on a daytime sighting (2d): {line, facts}, or {} when the heaviest
+## item against them (of those the player's case cites, when it's a filed case) isn't one. The
+## place and time are their own whereabouts that phase; the others named are everyone else there
+## then, from the public whereabouts, two or three of them. If one of those is someone the
+## defender suspects (a good defender's own suspicion at the nomination floor; for evil, the town's
+## view), they point at them instead. Only at a nomination: the "_stand" lines.
+static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> Dictionary:
+	var pool: Array = items.filter(func(x): return (not case_backed) or x.get("in_case", false))
+	if pool.is_empty():
+		return {}
+	pool.sort_custom(func(a, b): return float(a.get("contrib", 0.0)) > float(b.get("contrib", 0.0)))
+	var top: Dictionary = pool[0]
+	if str(top.get("channel", "")) != "whereabouts_day":
+		return {}
+	var ep: PackedStringArray = str(top.get("eid", "")).split(":")
+	if ep.size() < 6:
+		return {}
+	var sd: int = int(ep[3])
+	var sp: int = int(ep[4])
+	var at: String = str(d.history.get(w.time_key(sd, sp), ""))
+	if at == "" or at.begins_with("home") or at.begins_with("night") or at == "dead":
+		return {}
+	var present: Array = []
+	for x in w.npcs:
+		if x != d and str(x.history.get(w.time_key(sd, sp), "")) == at:
+			present.append(x)
+	var place: String = w.loc_name(at)
+	var when: String = _day_when(w, sd, sp)
+	var slots: Dictionary = {"place": place, "when": when, "Place": place.capitalize() if place.length() > 0 else place, "When": when.capitalize() if when.length() > 0 else when}
+	var facts: Array = [{"kind": "sighting", "subject": [d.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp, "self_report": true,
+		"text": "%s says they were at %s, day %d %s." % [d.name, place, sd, C.PHASES[sp]]}]
+	for x in present.slice(0, 3):
+		facts.append({"kind": "sighting", "subject": [x.id], "source": d.id, "loc": at, "block": w.loc_block(at), "day": sd, "phase": sp,
+			"text": "%s says %s was at %s too, day %d %s." % [d.name, x.name, place, sd, C.PHASES[sp]]})
+	var line: Dictionary
+	if present.is_empty():
+		line = say_voiced(d, "defence_day_alone", "I was at %s %s. Being seen in the open is no crime." % [place, when], slots)
+	else:
+		var suspect = null
+		for x in present:
+			if not x.alive:
+				continue
+			var heat: float = Evil.town_view(w, x) if d.is_evil() else susp(d, x.id)
+			if heat >= Tuning.Meeting.NOMINATION_FLOOR and (suspect == null or heat > (Evil.town_view(w, suspect) if d.is_evil() else susp(d, suspect.id))):
+				suspect = x
+		if suspect != null:
+			slots["suspect"] = suspect.name
+			line = say_voiced(d, "defence_day_others_pointed_stand", "I was at %s %s. So was %s, if it's company you're weighing." % [place, when, suspect.name], slots)
+		else:
+			var names: Array = present.slice(0, 3).map(func(x): return x.name)
+			var others: String = names[0] if names.size() == 1 else ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
+			slots["others"] = others
+			line = say_voiced(d, "defence_day_others", "I was at %s %s, and so were %s. Ask any of them what they saw." % [place, when, others], slots)
+	w.dlog.think(d.id, "defence", "Answers a case resting on where they were %s: %s, with %d others there." % [when, place, present.size()])
+	return {"line": line, "facts": facts}
+
+## "this morning", "yesterday afternoon", "the first evening": a day phase, as said on w.day.
+static func _day_when(w, sd: int, sp: int) -> String:
+	var ph: String = C.PHASES[sp].to_lower()
+	if sd == w.day:
+		return "this " + ph
+	if sd == w.day - 1:
+		return "yesterday " + ph
+	return "the %s %s" % [C.ORDINALS[clampi(sd - 1, 0, C.ORDINALS.size() - 1)], ph]
+
 ## The night a good defender was framed on: every sighting against them names a night
 ## they (honestly) spent at home. -1 if evil, if any sighting is of a real outing, or if
 ## no sighting names a night. Anyone recorded as out is not framed (a Sleepwalker's walk
@@ -1861,6 +1926,18 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			move_strengths["dispute_night"] = 1.0
 			move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 			defence_scopes["dispute_night"] = {"type": "plea"}
+	# 2d. The case rests on where they were by day (BACKLOG "A defence's answer to a
+	# daytime-whereabouts case", Michael, Nov 16 and 19): they say where they were and who else
+	# was there, from the public whereabouts (true for good and evil alike: no lie, Nov 19).
+	if moves.is_empty():
+		var day_def: Dictionary = _day_whereabouts_defence(w, d, items, case_backed)
+		if not day_def.is_empty():
+			lines.append(day_def["line"])
+			facts.append_array(day_def["facts"])
+			moves.append("day_whereabouts")
+			move_strengths["day_whereabouts"] = 1.0
+			move_scales["day_whereabouts"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
+			defence_scopes["day_whereabouts"] = {"type": "plea"}
 	# 3. Against a reading that names them (against a filed case, the one it rests on).
 	if moves.size() < 2:
 		var rd = {}
