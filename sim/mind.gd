@@ -893,7 +893,18 @@ static func flush_beliefs(w, only = null) -> void:
 	var was: bool = w.defer_beliefs
 	w.defer_beliefs = false
 	for p in run:
-		refresh_beliefs(w, p[0], p[1])
+		var m = p[0]
+		if m.is_shadow and not is_same(w.dlog, w.shadow_log):
+			var saved_rng = w.rng
+			var saved_log = w.dlog
+			w.rng = m.shadow_rng
+			w.shadow_log.set_time(saved_log.day, saved_log.phase)
+			w.dlog = w.shadow_log
+			refresh_beliefs(w, m, p[1])
+			w.rng = saved_rng
+			w.dlog = saved_log
+		else:
+			refresh_beliefs(w, m, p[1])
 	w.defer_beliefs = was
 
 static func _refresh_beliefs(w, n, note: String) -> void:
@@ -1177,12 +1188,16 @@ static func tell_save(w, warden, protectee, night: int, belief: float) -> void:
 		"%s tells %s they stood at their door on night %d." % [warden.name, protectee.name, night])
 	if protectee.is_evil():
 		return
+	var was_defer: bool = w.defer_beliefs
+	w.defer_beliefs = true
 	hear_claim(w, protectee, warden.id, "warden", 1.0, "told")
 	var card = fact.duplicate(true)
 	card["learned"] = [{"day": w.day, "phase": w.phase, "via": warden.id}]
 	var receipt = WorkshopLedger.Evidence.normalize_card(card)
 	ledger_hear(w, protectee, "heard:" + receipt.id, [], 1.0, [warden.id, night, "report"],
 		{"kind": "tell", "workshop_card": receipt, "workshop_teller": warden.id, "workshop_public": false})
+	w.defer_beliefs = was_defer
+	flush_beliefs(w, protectee)
 	if susp(protectee, warden.id) < Tuning.Social.GOSSIP_BELIEVED_BELOW:
 		protectee.npc_trust[warden.id] = clampf(protectee.npc_trust.get(warden.id, 0.5) + Tuning.Roles.WARDEN_SAVE_TRUST * belief, 0.0, 1.0)
 
