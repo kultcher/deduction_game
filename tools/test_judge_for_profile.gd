@@ -75,11 +75,20 @@ func _init() -> void:
 	check(str(again.get("case", {}).get("key", "")) == "case:%d" % filed, "put again, the entry is that case's own (%s)" % str(again.get("case", {}).get("key", "")))
 	# A revision filed but not yet presented retires nothing: the town still holds the original.
 	var revised: Dictionary = _value(g, "evil", p[3].id, [seer])
-	revised["revises"] = filed
 	var second: int = Live.file(g, revised, filed)
 	var with_pending: Dictionary = Connections.judge_for_profile(g, both)
 	print("with an unpresented revision #%d of #%d filed: %s" % [second, filed, _show(with_pending)])
 	check(absf(float(with_pending.get("before", -1.0)) - float(again.before)) < 1e-12, "a revision only filed, not presented, leaves the town holding the original")
+	# Judging that revision: it would replace #9 if put (its `revises` is on its board card,
+	# not in the value), so after it holds only the revision; before still holds #9.
+	var as_revision: Dictionary = Connections.judge_for_profile(g, g.board[second - 1].workshop_case)
+	var alone_rev: Dictionary = Connections.judge_for_profile(g, g.board[second - 1].workshop_case, {"baseline": "without_cards"})
+	print("judging the revision: %s" % _show(as_revision))
+	g.public_presentations.erase(filed)
+	var rev_without_original: Dictionary = Connections.judge_for_profile(g, g.board[second - 1].workshop_case)
+	g.public_presentations[filed] = int(g.w.day)
+	check(as_revision.get("ready", false) and absf(float(as_revision.before) - float(rev_without_original.before)) > 1e-6, "judging the revision: before, the town still holds the original (%.4f, against %.4f had it never been put)" % [float(as_revision.get("before", -1.0)), float(rev_without_original.get("before", -1.0))])
+	check(absf(float(as_revision.get("after", -1.0)) - float(rev_without_original.get("after", -2.0))) < 1e-9, "and after, the revision replaces it: the same as if the original had never been put (%.4f / %.4f)" % [float(as_revision.get("after", -1.0)), float(rev_without_original.get("after", -2.0))])
 	# 4. Reads only.
 	g.public_presentations.erase(filed)
 	g.public_citations.erase(seer)

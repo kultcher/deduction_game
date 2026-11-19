@@ -46,30 +46,25 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	var checked = Assess.prepare(draft)
 	if not checked.ready:
 		return fail.call(checked.issues.duplicate())
-	# The player's earlier public cases, as stored cases with the day each was put (oldest
-	# first). A version this case revises is replaced by it, as a listener's would be.
-	var replaced: Dictionary = {}
-	var ancestor: int = int(value.get("revises", 0))
-	while ancestor > 0 and ancestor <= g.board.size() and not replaced.has(ancestor):
-		replaced[ancestor] = true
-		ancestor = int(g.board[ancestor - 1].get("revises", 0))
-	var numbers: Array = g.public_presentations.keys().map(func(x): return int(x))
+	# The player's earlier public cases, as stored cases in the order the town heard them.
 	# Earlier versions of a case put to the town in revised form: the town retracted them when
 	# it heard the revision (GamePresentation.workshop_canvas_retire). A revision only filed,
 	# not yet presented, retires nothing (Codex on #326), as WorkshopCanvas.town_note reads it.
+	var replaced: Dictionary = {}
+	var numbers: Array = _heard_order(g)
 	for number in numbers:
-		if number < 1 or number > g.board.size():
-			continue
-		var up: int = int(g.board[number - 1].get("revises", 0))
-		while up > 0 and up <= g.board.size() and not replaced.has(up):
-			replaced[up] = true
-			up = int(g.board[up - 1].get("revises", 0))
-	numbers.sort_custom(func(a, b): return _put_day(g, a) < _put_day(g, b) or (_put_day(g, a) == _put_day(g, b) and a < b))
+		_ancestors(g, int(g.board[number - 1].get("revises", 0)), replaced)
+	# What this case would replace if it were put now: the versions it revises. Its `revises`
+	# lives on its filed board card, not in the Workshop value (Codex on #326). Left out of the
+	# after-state only: until it is heard, the town still holds them.
+	var draft_replaces: Dictionary = {}
+	_ancestors(g, int(value.get("revises", 0)), draft_replaces)
+	for card in g.board:
+		if card.get("kind", "") == "deduction" and card.get("workshop_case", {}) == value:
+			_ancestors(g, int(card.get("revises", 0)), draft_replaces)
 	var earlier: Dictionary = {}
 	var same_key: String = ""
 	for number in numbers:
-		if number < 1 or number > g.board.size():
-			continue
 		var filed: Dictionary = g.board[number - 1]
 		if filed.get("kind", "") != "deduction" or not filed.has("workshop_case") or filed.get("withdrawn", false) or replaced.has(number):
 			continue
@@ -80,7 +75,11 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 			continue
 		snap.now = {"day": _put_day(g, number), "phase": snap.now.get("phase", "")}
 		earlier[str(number)] = snap
-	var with_case: Dictionary = earlier.duplicate()
+	# Putting it moves it to the end, as a real listener's store does (WorkshopPresentation._present).
+	var with_case: Dictionary = {}
+	for key in earlier:
+		if key != same_key and not draft_replaces.has(int(key)):
+			with_case[key] = earlier[key]
 	with_case[same_key if same_key != "" else "draft"] = draft
 	var current: Dictionary = Bridge.capture(g, [], "", "meeting")
 	current.listener = listener.duplicate(true)
@@ -120,6 +119,32 @@ static func _as_heard(snap: Dictionary, listener: Dictionary) -> Dictionary:
 	snap["watched"] = []
 	snap.listener = listener.duplicate(true)
 	return snap
+
+
+## Every earlier version `number` and its own ancestors revise, into `into`.
+static func _ancestors(g, number: int, into: Dictionary) -> void:
+	while number > 0 and number <= g.board.size() and not into.has(number):
+		into[number] = true
+		number = int(g.board[number - 1].get("revises", 0))
+
+
+## The player's public cases in the order the town last heard them (Codex on #326): a real
+## listener's store moves a case to the end each time it is put (WorkshopPresentation._present),
+## and the connections model's replacement rule reads that order. Read from the living minds
+## that hold them; a case none holds goes by the day it was put.
+static func _heard_order(g) -> Array:
+	var order: Array = []
+	for real in g.w.living():
+		var mind = real.shadow if real.is_evil() and real.shadow != null else real
+		var held: Array = []
+		for key in mind.workshop_state.get("presentations", {}):
+			if str(key).is_valid_int() and g.public_presentations.has(int(key)) and not (int(key) in held):
+				held.append(int(key))
+		if held.size() > order.size():
+			order = held
+	var rest: Array = g.public_presentations.keys().map(func(x): return int(x)).filter(func(x): return x >= 1 and x <= g.board.size() and not (x in order))
+	rest.sort_custom(func(a, b): return _put_day(g, a) < _put_day(g, b) or (_put_day(g, a) == _put_day(g, b) and a < b))
+	return order.filter(func(x): return x >= 1 and x <= g.board.size()) + rest
 
 
 ## The day case `number` was put to the town (public_presentations once held `true`).
