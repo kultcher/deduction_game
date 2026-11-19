@@ -143,25 +143,28 @@ func _juror() -> void:
 		return
 	var premise = model.add_premise(demon.id, "evil", Vector2(0, 0))
 	model.connect_cards(seen_id, premise)
-	var without = Live.test_juror(g, model.compile(premise))
+	var without = Live.shape_reading(g, model.compile(premise))
 	model.connect_cards(guard_id, premise)
-	var with_guard = Live.test_juror(g, model.compile(premise))
+	var with_guard = Live.shape_reading(g, model.compile(premise))
 	# The compiled-case and factor keys carry the switch, so no cache needs clearing.
 	LiveActivity.quiet_guards_enabled = false
-	var off = Live.test_juror(g, model.compile(premise))
+	var off = Live.shape_reading(g, model.compile(premise))
 	LiveActivity.quiet_guards_enabled = true
 	_check(with_guard.get("ready", false), "a case citing the guard can be judged (%s)" % str(with_guard.get("issues", [])))
 	_check(with_guard.get("lr", 1.0) > without.get("lr", 1.0) * 1.05, "seen near the guarded door weighs more with the Warden's save (%.2f -> %.2f)" % [without.get("lr", 1.0), with_guard.get("lr", 1.0)])
 	_check(off.get("lr", 1.0) < with_guard.get("lr", 1.0), "and the rise is the guard's route (%.2f with the switch off)" % off.get("lr", 1.0))
-	var gr: Array = with_guard.get("guards", [])
+	# The reason line is the Test juror's (its words come from the judge's reading of the case).
+	var juror_with: Dictionary = Live.test_juror(g, model.compile(premise))
+	var gr: Array = juror_with.get("guards", [])
 	_check(gr.size() == 1 and gr[0].warden == warden.id and gr[0].guarded == target.id and gr[0].night == 1 and gr[0].report != "" and float(gr[0].shift) > 0.0,
 		"the juror names the guard as a reason: Warden, guarded, night, card (%s)" % str(gr))
 	_check(not without.has("guards"), "and doesn't without the Warden's report")
+	_check(juror_with.get("ready", false) and float(juror_with.get("lr", 1.0)) > 1.0, "the Test juror, an average listener, takes the case as support (x%.2f)" % float(juror_with.get("lr", 1.0)))
 	# Herald's reason line for the Test juror readout (Nov 19).
-	var lines: Array = Live.guard_reason_lines(g, with_guard)
+	var lines: Array = Live.guard_reason_lines(g, juror_with)
 	_check(lines.size() == 1 and lines[0].contains("%s guarded %s's door on the first night" % [warden.name, target.name]) and lines[0].contains("strengthens the case") and lines[0].begins_with("#"),
 		"the juror's reason line names the card, the Warden, the door and the night (%s)" % str(lines))
-	var flipped: Array = Live.guard_reason_lines(g, with_guard, {"conclusion": {"type": "good", "target": demon.id}})
+	var flipped: Array = Live.guard_reason_lines(g, juror_with, {"conclusion": {"type": "good", "target": demon.id}})
 	_check(flipped.size() == 1 and flipped[0].contains("weakens the case"), "for a case that someone is good, the same guard weakens it (Codex on #299)")
 	_check(Live.guard_reason_lines(g, without).is_empty(), "and there's no line without a guard")
 

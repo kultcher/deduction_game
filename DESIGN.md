@@ -667,12 +667,20 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise → card links** mean "this card's line runs through that premise", and the
   canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.
-- **Strength while building:** doesn't support / weakly / moderately / strongly, from a
-  neutral test juror (public facts, default trust). Feedback names a clashing card, the
-  card that weakened the case and who it brings in, collateral ("this mostly raises
-  suspicion of X"), idle assumptions and where each assumption came from. The juror
-  judges as if the case's challenges hold (challenged readings set aside, and it says so)
-  and weighs the public claims of everyone the case names (#159).
+- **Strength while building:** doesn't support / weakly / moderately / strongly, from the
+  Test juror, an average listener (Michael, Nov 19, juror fix (a)). The juror hears the
+  case as a townsperson with credibility 0.5 in the player and trust 0.5 in everyone would,
+  through the same path a real listener takes (`Connections.judge_for_profile`,
+  docs/belief_model.md). Each card is weighed as heard, and the case's own joining counts at
+  the filing day's weight. Its strength is how far that listener's chance of the premise
+  moves, against a town that hasn't heard the case's cards: an accusation moves it up, a
+  clearing premise down. No full-weight figure is kept anywhere. Feedback names a clashing
+  card, the card that weakened the case and who it brings in, collateral ("this mostly
+  raises suspicion of X"), idle assumptions and where each assumption came from. A challenge
+  is weighed as the listener weighs it, not assumed to hold. An accepted lie call shows as
+  the town pressing the teller as the liar, not as a change in the subject's odds. The juror
+  weighs the public claims of everyone the case names (#159). The cut points are being re-set
+  from the case slate (docs/case_slate/).
 - **"No new info"** (#154, `WorkshopCanvas.town_note`): beside the strength chip, a note
   when the case would add little for the town: every card is already public and together
   they add little, an earlier public case of yours today already holds them, or the public
