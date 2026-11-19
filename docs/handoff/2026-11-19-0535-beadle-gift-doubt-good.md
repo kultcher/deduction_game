@@ -1,20 +1,25 @@
 # Good NPCs say their gift may have been turned
 
 - **Agent:** Claude-Beadle
-- **Base:** main at 4248293
+- **Base:** main with #320 (`baseline_6569929`)
 - **Branch:** `claude/beadle-gift-doubt-good`
-- **Status:** PR open. It's zero drift: golden is identical to `baseline_21df80d` on all five
-  seeds.
-- **Next actor:** Bailiff (review and merge). Michael, if he wants the threshold moved.
+- **Status:** draft PR, held by Michael (Nov 18-19) until it's rewired on Lantern's clash
+  signal (#320). Now rewired. Zero drift: golden is identical to `baseline_6569929` on all
+  five seeds.
+- **Next actor:** Michael (un-draft, or change the trigger), then Bailiff.
 - **BACKLOG item:** "Saying 'my gift may have been turned'", part (a) (Michael, Nov 17-18).
   Marked built.
 
 ## What changed
 
-A good NPC whose gift is public, and who is the role it claims, says it when its own doubt about
-a night's readings reaches `Tuning.Meeting.GIFT_DOUBT_SAY` (new, 0.25, Michael's value).
-- **The doubt:** the poison self-doubt or the Delusional self-doubt, from its last refresh
-  (`SourceDoubt.self_doubt`).
+A good NPC whose gift is public, and who is the role it claims, says it when it doubts a night
+of its own readings (`SourceDoubt.doubts_own_gift`, #320).
+- **The doubt:** the judge's chance that night's reading was wrong, from its clash with
+  everything else the NPC holds, starting from the poison and Delusional prior. It fires at
+  `Tuning.Workshop.SELF_DOUBT_TRIGGER` (0.30, Michael, Nov 19).
+- **Rewired (Nov 19):** the first version used the prior alone at a new 25% constant,
+  `Meeting.GIFT_DOUBT_SAY`. Michael held it ("a generalized doubt is not a useful signal"), and
+  that constant is gone.
 - **Where it's said:** at its next meeting turn speaking to the town, with the approved
   per-voice `doubt_own_gift` line, once a game.
 - **The route:** the same one the boxed-in evil bluffer uses (`MindMeeting._say_gift_doubt`),
@@ -28,32 +33,29 @@ a night's readings reaches `Tuning.Meeting.GIFT_DOUBT_SAY` (new, 0.25, Michael's
 ## Measured
 
 - **New suite:** `tools/test_gift_doubt_good.gd` (9 checks), on the fast list.
-  - It fires at 26%, with the line, the night and the public record.
+  - It fires just above the trigger, with the line, the night and the public record.
   - It's said once a game.
-  - Nothing happens below 25%, or for a private claimant.
+  - Nothing happens below the trigger, or for a private claimant.
   - A doubt about all its readings (night -1, the Delusional one) counts.
   - Evil never takes this route.
 - **Suites that pass:** test_gift_doubt, test_meeting_flow, test_evil_play and test_meeting_m2c.
-- **How often, in play:** 15 passive 10-NPC games, seeds 4000-4014, each good reader's own doubt
-  at each day's end.
-
-  | Night of the reading | Its self-doubt |
-  |---|---|
-  | first, second | about 16-17.5% |
-  | third | 19-21% |
-  | fourth, fifth | 25-32.5% |
-
-  - **At 25% or more:** 7 of 193 reader-days, all public claimants.
-  - **Said:** by Agnes (the Gravedigger) and Edda (the Dowser), both on day 5.
-  - **Over 40 games on seeds 4000-4039** it never fired, because few games reach the fourth
-    night.
-  - **For scale:** 15% would be reached on 140 of the 193 reader-days, from day 1.
-- **Golden:** identical (no golden game reaches the doubt).
+- **Suites that pass (rewired):** test_gift_doubt_good, test_own_gift_doubt,
+  test_poison_self_doubt, test_meeting_flow and test_evil_play.
+- **How often, in play (rewired):** 15 passive 10-NPC games, seeds 3000-3014.
+  - **Said 12 times in 8 of the 15 games,** mostly at the day-2 or day-3 meeting.
+  - **8 of the 12 doubted a reading that really was wrong** (poisoned, Delusional or otherwise
+    false); 4 doubted a true one. Doubt ran from 31% to 100% (a Dowser count of 6 evil).
+  - **Before the rewiring,** the same 15 seeds had it said twice, both on day 5.
+- **Speed:** 3 passive games of 12 days in total took 334 s against 321 s on main, about 4%
+  slower, with the judge read once per refresh for each good public claimant.
+- **Golden:** identical to `baseline_6569929` (no golden game reaches the doubt).
 
 ## For Michael
 
-He thought 25% might be low. In play it bites only late in long games. The value is his; it's
-unchanged here.
+It now fires early and mostly when the reading really was wrong: 8 times in 12, in about half
+the games. Lantern's own measure, about 1 game in 4, counted only the day-4 meeting; this counts
+every meeting. If that's too often, raising `SELF_DOUBT_TRIGGER` is the lever (Lantern's
+constant; changing it moves his measure too).
 
 ## Proposed for the backlog
 
