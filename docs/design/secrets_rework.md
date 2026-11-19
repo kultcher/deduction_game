@@ -569,11 +569,21 @@ Seer's registration path.
 disclosure, confession and gossip are reusable once they take a lie flag. Evil's bluff, its
 fear of a collision and lie tracking through gossip are the bulk of it, comparable to the
 evil gift-bluff work.
-- **A correction, checked against main.** Beadle wrote that evil does nothing with secrets
-  today. The code has the two bluffs in 11.1, both live: `sim/roles/rumormonger.gd`
-  (`generate_bluff_reading`) and `MindDialogue.sleepwalk_excuse`, which lets an evil NPC
-  claim to sleepwalk, a logged lie that writes a `secret` fact. The "honest forgetting" of
-  secrets in Seneschal's earlier list doesn't exist.
+- **Evil's two existing secret bluffs** (11.1), checked by Beadle on main:
+  - **The Rumormonger's** "harmless secret" for a teammate is a fabricated reading, so it
+    already goes through the fake-reading lie machinery.
+  - **The sleepwalk bluff's** `secret` fact carries no lie flag. That's normal for a claim:
+    the judge weighs it per arrangement. The movement model handles it correctly, because a
+    sleepwalk claim only raises the claimant's ordinary out-rate, and where the claimant is
+    evil it walks on the evil profile anyway.
+  - **The gap is in SourceDoubt** (`workshop/source_doubt.gd`). A listener who saw X out
+    while X claimed home doubts X as a liar, unless X has a sleepwalk claim. That exception
+    doesn't depend on X's alignment, so an evil sleepwalk bluff cancels the "caught lying
+    about home" doubt in full for every listener holding the card. Two limits soften it:
+    evil won't claim to sleepwalk if anyone else already has, or if its bluff is a walking
+    gift. **A candidate fix for Lantern and Quill,** not a decision: make the exception
+    depend on the claimant's alignment in each arrangement.
+  - The "honest forgetting" of secrets in Seneschal's earlier list doesn't exist.
 - **What exists, all good-only:**
   - **A private confession when caught out** (`MindDialogue`): "...I wasn't home. I
     <secret>. Please, keep it quiet." It writes a `secret` fact (with the partner, for the
@@ -597,8 +607,9 @@ evil gift-bluff work.
 - **Missing from Argon's list, and a real cost: gossip assumes a secret is true.**
   `known_secrets` is keyed by the real holder with no lie flag. A bluffed secret relayed by a
   good gossip would launder into a true one. It has to travel as a claim with lie tracking,
-  as fake readings and bluffed gifts do (`lie`, `fake`, the relay chain). The evil
-  sleepwalk bluff's fact may already have this gap; Beadle to check.
+  as fake readings and bluffed gifts do (`lie`, `fake`, the relay chain). Today gossip
+  relays only real secrets, so nothing launders through it yet; a sleepwalk claim travels as
+  a meeting or private fact.
 - **What evil would need, all new:**
   - **Choosing a bluff:** which secret, when and why, with a logged reason and a reveal
     entry, like bluff planning for gifts.
