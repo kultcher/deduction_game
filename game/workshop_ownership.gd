@@ -75,6 +75,11 @@ static func _refresh(g, n, phase: String) -> void:
 			fallback(g, n, "ownership_after", plan.issues)
 			return
 		g._workshop_plans[key] = plan
+		# Confirming readings (Michael, Nov 19): judged on the chances from before this refresh.
+		var prior_chances: Dictionary = g._workshop_evaluations.get(key, {}).get("proposal", {}).get("connections", {}).get("posterior", {})
+		var know: Dictionary = plan.prepared.listener.get("knowledge", {})
+		load("res://sim/social.gd").reading_confirm_trust(g.w, n, plan.prepared.view,
+			load("res://workshop/jury.gd")._eval_listener(plan.prepared.listener, know.get("own_reports", [])), prior_chances)
 		state.previous_owned = state.get("owned", {}).duplicate(true)
 		if state.get("active", false):
 			var removed = {}

@@ -210,6 +210,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESENTATION_WRONG_AGREEMENT` | `-0.25` |  | `game/workshop_presentation.gd` |
 | `READING_CONFIRM_SMALL` | `0.70` | Trust from a reading that confirms what the listener knows or strongly believes (Michael, Nov 19; workshop/reading_confirm.gd): the listener's agreement with the reading, as a cutoff and tiers, not a scale. At least SMALL: a small trust step (about the shared-voting one); at least MODERATE: a moderate one; known outright from its own knowledge: a significant one. The trust steps themselves are Beadle's. | `workshop/reading_confirm.gd` |
 | `READING_CONFIRM_MODERATE` | `0.85` |  | `workshop/reading_confirm.gd` |
+| `READING_TRUST_SMALL` | `0.06` | Trust from a reading that confirms what the listener knows or strongly believes (Michael, Nov 19, set R3): a good listener gains this much trust in the teller, once for each reading, judged on what it believed before hearing it (ReadingConfirm.assess's tier). | `sim/social.gd` |
+| `READING_TRUST_MODERATE` | `0.12` |  | `sim/social.gd` |
+| `READING_TRUST_KNOWN` | `0.20` |  | `sim/social.gd` |
+| `AGREEMENT_STEP` | `0.02` | Backing a case (Michael, Nov 18; rebalanced Nov 19): a good NPC's trust step toward an ally who votes the same way, or nominates or accuses someone it already suspects. At most once a day for each ally. | `sim/social.gd` |
 | `NOMINATED_PRESSURE` | `0.4` |  | `sim/world.gd` |
 | `NOMINATED_BY_PLAYER_DROP` | `0.15` |  | `sim/world.gd` |
 | `NOMINATED_NPC_TRUST_DROP` | `0.25` |  | `sim/world.gd` |
@@ -417,7 +421,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_meeting.gd` |
 | `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_DAY_SLOPE` | `0.05` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd`, `tools/autoplay.gd` |
 | `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_OWN_CLEAR_RELIEF` | `0.2` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
