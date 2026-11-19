@@ -829,12 +829,14 @@ func _run(cmd: String) -> void:
 		_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
+	var released_now: bool = false
 	if read_ran_out:
 		if inspect_pages.is_empty():
 			_release_phase()   # nothing to read: the new phase shows at once
+			released_now = true   # and its headlines and notes have had their pass (Codex, #369)
 		else:
 			_phase_held = true
-	if not conversation_finished and not _phase_held:
+	if not conversation_finished and not _phase_held and not released_now:
 		_consume_headlines()
 		_show_notes()
 	if g.meeting_streaming() and not conversation_finished and inspect_pages.is_empty():

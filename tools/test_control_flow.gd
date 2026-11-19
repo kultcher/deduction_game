@@ -247,6 +247,32 @@ func _test_reading_holds_phase(scene) -> void:
 	scene.finish_streaming()
 	_check(not scene._phase_held and scene.day_label.text != label_before, "Done moves on to the meeting (%s, state %s)" % [scene.day_label.text, g.state])
 
+	# A search that ends the phase with nothing to read shows the new phase at once, and its
+	# headlines are queued once, not twice (Codex, #369).
+	await _fresh(scene, 25923)
+	g = scene.g
+	if g.state == "approach":
+		scene._run("decline")
+	g.state = "day"
+	g.w.phase = C.MORNING
+	scene._refresh_all()
+	scene.headlines.clear()
+	scene._run("go market")
+	if g.state == "approach":
+		scene._run("decline")
+	scene.headlines.clear()
+	var before_search: int = g.w.phase
+	scene._run("search")
+	var shown: Array = scene.headlines.pending.duplicate()
+	if not scene.headlines.current.is_empty():
+		shown.push_front(scene.headlines.current)
+	var made: Array = g.last_events.filter(func(e): return e.get("k", "") == "headline")
+	if g.w.phase == before_search or not scene.inspect_pages.is_empty():
+		_check(false, "a search that ends the morning with no trace page (phase %d, %d pages)" % [g.w.phase, scene.inspect_pages.size()])
+	else:
+		_check(not scene._phase_held, "a search with nothing to read doesn't hold the phase")
+		_check(not made.is_empty() and shown.size() == made.size(), "its %d headline(s) are queued once each (%d queued)" % [made.size(), shown.size()])
+
 
 func _test_meeting_log(scene) -> void:
 	await _fresh(scene, 25923)
