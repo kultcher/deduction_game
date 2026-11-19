@@ -387,6 +387,26 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
 		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses, "challenges": outcomes}
 
+## The words for one lie call's outcome (a `challenges` entry of listener_reading), approved
+## by Michael (Herald, Nov 19). {name} is the teller of the challenged reading; a draw names
+## the witnesses whose grounds clash with it. `name_of` turns an id into a name.
+static func lie_call_line(c: Dictionary, name_of: Callable) -> String:
+	var name: String = str(name_of.call(str(c.get("teller", ""))))
+	match str(c.get("kind", "")):
+		"pressed":
+			return "The town would press %s as the liar." % name
+		"draw":
+			var witnesses: Array = c.get("witnesses", [])
+			if witnesses.is_empty():
+				return "Your word against %s's." % name  # grounds only the player's own (Michael, through Herald)
+			if witnesses.size() == 1:
+				return "It's %s's word against %s's: some may be swayed by your assessment." % [str(name_of.call(str(witnesses[0]))), name]
+			return "Their word against %s's: some may be swayed by your assessment." % name
+		"unestablished":
+			return "Nothing you've cited shows the reading is wrong; the town will still believe it."
+		_:
+			return "The town won't take this challenge on your word: nothing on the case shows why the reading is wrong."
+
 ## The teller of the board card whose Workshop id is `id`, or "".
 static func _card_source(g, id: String) -> String:
 	for card in g.board:
