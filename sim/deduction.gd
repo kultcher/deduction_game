@@ -207,7 +207,7 @@ static func conclusion_text(w, c: Dictionary) -> String:
 		"suspicious":
 			return "%s is suspicious" % a
 		"turned":
-			return "%s was turned by the curse" % a
+			return "%s was turned by the Revenant's curse" % a
 		"secret":
 			return "%s is hiding a secret (an innocent one)" % a
 		"marked":
