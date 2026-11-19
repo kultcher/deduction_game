@@ -83,6 +83,7 @@ test_premise_step1
 test_premise_step2
 test_premise_step3
 test_public_revisions
+test_reading_confirm
 test_recency
 test_relay_challenge_menu
 test_relay_lie_attribution

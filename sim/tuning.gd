@@ -373,6 +373,13 @@ class Trust:
 	## wrong" is the evidence moving a quarter of the way toward the premise being false.
 	const PRESENTATION_WRONG_COST = 0.02
 	const PRESENTATION_WRONG_AGREEMENT = -0.25
+	## Trust from a reading that confirms what the listener knows or strongly believes
+	## (Michael, Nov 19; workshop/reading_confirm.gd): the listener's agreement with the
+	## reading, as a cutoff and tiers, not a scale. At least SMALL: a small trust step (about
+	## the shared-voting one); at least MODERATE: a moderate one; known outright from its own
+	## knowledge: a significant one. The trust steps themselves are Beadle's.
+	const READING_CONFIRM_SMALL = 0.70
+	const READING_CONFIRM_MODERATE = 0.85
 	const NOMINATED_PRESSURE = 0.4
 	const NOMINATED_BY_PLAYER_DROP = 0.15
 	const NOMINATED_NPC_TRUST_DROP = 0.25

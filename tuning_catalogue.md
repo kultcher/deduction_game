@@ -208,6 +208,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRESENTATION_REWARD` | `0.02` |  | `game/workshop_presentation.gd` |
 | `PRESENTATION_WRONG_COST` | `0.02` | Premises pass step 1: a clearly wrong premise costs what a good one earns. Agreement is CaseEval.shift (-1..1, how far the evidence moved toward the premise), so "clearly wrong" is the evidence moving a quarter of the way toward the premise being false. | `game/workshop_presentation.gd` |
 | `PRESENTATION_WRONG_AGREEMENT` | `-0.25` |  | `game/workshop_presentation.gd` |
+| `READING_CONFIRM_SMALL` | `0.70` | Trust from a reading that confirms what the listener knows or strongly believes (Michael, Nov 19; workshop/reading_confirm.gd): the listener's agreement with the reading, as a cutoff and tiers, not a scale. At least SMALL: a small trust step (about the shared-voting one); at least MODERATE: a moderate one; known outright from its own knowledge: a significant one. The trust steps themselves are Beadle's. | `workshop/reading_confirm.gd` |
+| `READING_CONFIRM_MODERATE` | `0.85` |  | `workshop/reading_confirm.gd` |
 | `NOMINATED_PRESSURE` | `0.4` |  | `sim/world.gd` |
 | `NOMINATED_BY_PLAYER_DROP` | `0.15` |  | `sim/world.gd` |
 | `NOMINATED_NPC_TRUST_DROP` | `0.25` |  | `sim/world.gd` |
