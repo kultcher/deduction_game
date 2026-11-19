@@ -32,6 +32,7 @@ func _init() -> void:
 		return
 	_count_with_alibis(f)
 	_impossible_count(_deal())
+	_testimony_clash(_deal())
 	_done()
 
 
@@ -69,6 +70,23 @@ func _impossible_count(f: Dictionary) -> void:
 	var without: Dictionary = Live.shape_reading(g, _case(g, lamp.id, "evil", [seen]))
 	check(with_count.get("ready", false) and without.get("ready", false) and float(with_count.lr) > float(without.lr) * 1.1,
 		"a count that fits no route tells against the Lamplighter (x%.2f with it, x%.2f without)" % [float(with_count.get("lr", 0.0)), float(without.get("lr", 0.0))])
+
+
+## A true count of 1 (the Demon was out) against everyone else's "home", the Demon's a lie
+## (Lantern on #346): only testimony clashes, so the count isn't impossible. It must not
+## convict the honest Lamplighter, as it did when anyone's alibi could rule it out.
+func _testimony_clash(f: Dictionary) -> void:
+	var g = f.g
+	var lamp = f.lamp
+	var count1: int = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "L: 1 other out"})
+	var alibis: Array = []
+	for n in g.w.npcs:
+		if n.alive and n != lamp:
+			alibis.append(g.add_card({"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: home" % n.name}))
+	var r: Dictionary = Live.shape_reading(g, _case(g, lamp.id, "evil", [count1] + alibis))
+	var d: Dictionary = Live.shape_reading(g, _case(g, f.subject.id, "evil", [count1] + alibis))
+	check(r.get("ready", false) and float(r.lr) < 1.5,
+		"a true count against a lying alibi doesn't convict the Lamplighter (x%.2f; the Demon x%.2f)" % [float(r.get("lr", 0.0)), float(d.get("lr", 0.0))])
 
 
 func _case(g, target: String, type: String, nums: Array) -> Dictionary:

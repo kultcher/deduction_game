@@ -568,16 +568,34 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	var log_scale: float = _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
 	# A count that no route mask of the other movement evidence fits makes the sound branch
 	# impossible (Lantern, Nov 19): it scores 0, so the count tells against its teller by fit.
+	# Only evidence that can't be a lie decides it (Lantern on #346): the count itself, the
+	# listener's own nights, sightings heard as certain, and physical traces. Anyone's alibi,
+	# coverage, report or claim could be the lie instead, and those stay weighed world by world
+	# in the sound branch.
 	var sound_zero: bool = false
 	if is_count:
 		var night_key: String = str(int(list.get("night", list.get("observed_at", {}).get("day", -1))))
-		var routes: Dictionary = _routes_cs(view, cards, {}, {}, false)
+		var certain: Array = cards.filter(func(c): return _certain_for_count(c, str(list.id)))
+		var routes: Dictionary = _routes_cs(view, certain, {}, {}, false)
 		sound_zero = routes.get("nights", {}).has(night_key) and int(routes.nights[night_key].get("compatible", 1)) == 0
 	var top: Dictionary = sound.duplicate(false)
 	top["list_mix"] = {"watcher": view.people.map(func(p): return p.id).find(str(list.source)), "broken": b, "scale": exp(log_scale), "cursed": _told_cursed(view.get("chronology", {}).get("curse", {}), list), "next": sound, "alt": broken,
 		"count": is_count, "sound_zero": sound_zero,
 		"key": "%s:%s:%s:%s:%s:%s|%s|%s" % [list.id, b, log_scale, _told_cursed(view.get("chronology", {}).get("curse", {}), list), is_count, sound_zero, sound.get("list_mix", {}).get("key", ""), broken.get("list_mix", {}).get("key", "")]}
 	return top
+
+## Whether a movement card is certain enough to rule a Lamplighter's count impossible (see
+## _list_mix): the count, the listener's own nights, a sighting heard as certain, a trace or a
+## dropped item.
+static func _certain_for_count(c: Dictionary, count_id: String) -> bool:
+	if str(c.get("id", "")) == count_id or bool(c.get("known_self", false)):
+		return true
+	match str(c.get("kind", "")):
+		"sighting":
+			return float(c.get("hearing_weight", 1.0)) >= 1.0
+		"trace", "dropped":
+			return true
+	return false
 
 ## Sum of log good profiles of a card list's plain profiles (no contests or guards: they don't
 ## touch the good column), with the outings it forces.
