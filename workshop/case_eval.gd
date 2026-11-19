@@ -719,6 +719,10 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	if cards.any(func(c): return c.has("broken_chance")):
 		# A count mixed with no broken chance is still mixed (its evil teller says nothing).
 		key_input.append(cards.map(func(c): return [c.get("broken_chance", 0.0), c.get("count_mix", false)]))
+		if cards.any(func(c): return c.get("count_mix", false)):
+			# Whether a count is impossible reads the listener's own sightings (certain_for_count;
+			# Codex on #346), even for a listener with no home nights to key on below.
+			key_input.append(str(view.get("own_home", {}).get("self", "")))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
