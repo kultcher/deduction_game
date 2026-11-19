@@ -1,0 +1,10 @@
+# Suites CI adds on a pull request that changes anything under sim/ or workshop/ (what NPCs
+# do and believe), on top of tools/ci_fast_suites.txt. They're slower or seed-searching, so
+# they stay off the fast list, but each has caught a change that PR CI missed and only main's
+# full run found (Michael, Nov 19). Main and the nightly run already run everything. CI deals
+# the list across the four shards in this order (suite i goes to shard i mod 4), so keep it
+# short. Keep it sorted.
+test_own_night_knowledge
+test_relay_bluff_games
+test_self_sighting
+test_workshop_action
