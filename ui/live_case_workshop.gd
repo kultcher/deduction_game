@@ -50,7 +50,7 @@ const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion",
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the curse"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the Revenant's curse"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
 ## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
