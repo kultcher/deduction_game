@@ -777,8 +777,8 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 ## A hanged person's Demon premises (Michael, Nov 19): the Workshop offers "was the Demon
 ## when hanged" only where a Scion is on the script, and never "is not the Demon". A saved
 ## case that already uses one is refused here, as any unsupported premise is.
-const HANGED_NOT_DEMON_ISSUE = "Someone the town hanged can't be argued not to be the Demon."
-const HANGED_NO_SCION_ISSUE = "With no Scion on this script, a hanged Demon would have ended the game."
+const HANGED_NOT_DEMON_ISSUE = "Once the town has hanged someone, a case can't clear them of being the Demon."
+const HANGED_NO_SCION_ISSUE = "With no Scion in this town, hanging the Demon would already have saved it."
 
 static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 	var c: Dictionary = value.conclusion
