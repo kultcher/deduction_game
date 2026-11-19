@@ -42,6 +42,19 @@ Night Watch list that wrongly names the listener clearing the rest of the watch.
 (Nov 17–18): a case with no cards answered from an older compile (#192), and an evil Medium's
 relay about the first victim naming night 0 (Beadle).
 
+- **The phase advances while the player is still reading an NPC's last lines.** The phase
+  must not move on until the player clicks "Leave conversation". (Michael, Nov 19) Owner
+  Herald. [decided]
+- **An NPC waves the player down twice with the same information.** It must never do that
+  with exactly the same information. (Michael, Nov 19) Owner Beadle. [decided]
+- **Cleanup and errors** (Michael, Nov 19):
+  - (a) stale scripts in `logs/`, and `tools/test_ask_night_results.gd` failing to parse.
+    Owner Lantern.
+  - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
+  - (c) RID leaks on exit. Owner Herald, low priority.
+
+  [decided]
+
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
@@ -272,6 +285,18 @@ relay about the first victim naming night 0 (Beadle).
   (`<case>_innocent`; the impossible reading has none) in the same baseline, reported
   separately. [decided]
 
+- **Daytime sightings hidden by default** in the daytime Present window and the main card
+  list, with a checkbox to show them. (Michael, Nov 19) Owner Herald. [decided]
+
+- **Workshop: centre on a new card.** Adding a card centres the view on it, with a subtle
+  highlight until it's moved. (Michael, Nov 19) Owner Herald. [decided]
+
+- **Workshop: edge indicators for off-screen cards,** one per direction or cluster.
+  (Michael, Nov 19) Owner Herald. [decided]
+
+- **Workshop right-click menu:** "Add readings FROM > <person>" and "Add all readings
+  ABOUT > <person>". (Michael, Nov 19) Owner Herald. [decided]
+
 ### NPC behaviour
 
 - **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
@@ -460,6 +485,10 @@ relay about the first victim naming night 0 (Beadle).
 
   [decided: direction]
 
+- **A daily nudge to share a gift privately.** Each day past day 1, NPCs who haven't claimed
+  a gift publicly get a small boost towards sharing it privately, to feed the gossip
+  network. (Michael, Nov 19) Owner Beadle, who proposes the size. [decided]
+
 ### Numbers
 
 - **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on
@@ -549,6 +578,15 @@ Candidates for a unified retuning proposal, not approved changes.
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
+
+- **Remove the player's "Speak against" / "Speak in their defence" meeting action.** It
+  mostly adds no information and just nudges the town. It may come back later as a small
+  extra nudge from the player's vote. (Michael, Nov 19) Owner Herald, with Beadle and
+  Quill (today it moves trust: `game/game_meeting.gd`, `SPEAK_AGAINST_*` in
+  `sim/tuning.gd`). [decided]
+
+- **Script window: the curtain and frame art cover text.** Widen or pad it. (Michael,
+  Nov 19) Owner Herald. [decided]
 
 ### Performance
 
