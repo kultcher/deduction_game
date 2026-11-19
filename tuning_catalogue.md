@@ -541,7 +541,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXPOSURE_PLAYER_SUSPECTS` | `0.3` |  | `sim/evil.gd` |
 | `EXPOSURE_PRESSURE_SCALE` | `0.5` |  | `sim/evil.gd` |
 | `EXPOSURE_ON_BLOCK` | `0.2` |  | `sim/evil.gd` |
-| `MINION_DOUBLE_CLAIM_CHANCE` | `0.15` | An unclaimed Minion (never the Demon or a Scion) that hears someone claim a gift may claim the same gift itself, a deliberate double claim (Michael, Nov 19). This is its chance each time, before heat: already being implicated as evil (Evil.exposure's public talk) scales it down, to nothing at full heat. | `sim/mind_meeting.gd` |
+| `MINION_DOUBLE_CLAIM_CHANCE` | `0.05` | A deliberate double claim (Michael, Nov 19): an unclaimed Minion (never the Demon or a Scion) that hears someone claim a gift knowingly takes that same gift as its bluff and claims it. Not a bluff that merely risks a later collision; a chosen one. This is its chance each time it hears a claim, before heat: already being implicated as evil (Evil.exposure's public talk) scales it down, to nothing at full heat. Michael set 0.05. | `sim/mind_meeting.gd` |
 | `TEAMMATE_VALUE_DEMON` | `2.0` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_DEMON_WITH_SCION` | `1.1` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_SCION_ACTIVE` | `1.45` |  | `sim/evil.gd` |
