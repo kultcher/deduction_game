@@ -18,8 +18,8 @@ func _init() -> void:
 	marked_registers = true
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s %s: %d evil of %s" % [src, display_name, d.get("count", 0), _names(group_of(d), nm)]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "%d evil among %s" % [d.get("count", 0), ", ".join(PackedStringArray(group_of(d).map(nm)))]
 
 
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:

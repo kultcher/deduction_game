@@ -928,12 +928,6 @@ class Workshop:
 	## trust (Michael, Nov 18). Only where a Poisoner is possible.
 	const FAILED_GIFT_DOUBT_LOW = 0.2
 	const FAILED_GIFT_DOUBT_HIGH = 0.8
-	## The connections belief model (workshop/connections.gd;
-	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
-	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
-	## connections model). Off: the earlier model, for comparisons (autoplay --legacy-model;
-	## tests that pin it set Connections.enabled themselves).
-	const CONNECTIONS = true
 	## Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds.
 	const CONNECTIONS_CLIP = 0.01
 	## A person the listener's standing view already puts this close to 0 or 1 is settled

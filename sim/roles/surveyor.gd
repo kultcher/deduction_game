@@ -18,12 +18,12 @@ func _init() -> void:
 	marked_registers = true
 
 
-func short_text(d: Dictionary, src: String, _nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
 	if d.has("block") and d.has("same"):
-		var bname: String = content().block_name(str(d.get("block", "square")))
-		return "%s Surveyor: %s %s" % [src, bname, "same alignment" if bool(d.get("same", false)) else "mixed alignments"]
+		var bname: String = content().block_name(str(d.get("block", "square"))).trim_prefix("the ")
+		return "%s: %s" % [bname, "one side" if bool(d.get("same", false)) else "mixed"]
 	var c: int = int(d.get("count", 0))
-	return "%s Surveyor: %d block%s with evil" % [src, c, "" if c == 1 else "s"]
+	return "Evil on %d block%s" % [c, "" if c == 1 else "s"]
 
 
 func _eligible_blocks(w, n) -> Array:

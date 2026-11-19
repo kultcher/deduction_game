@@ -20,8 +20,8 @@ func clears(d: Dictionary) -> Array:
 	return d.get("pair", [])
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s Rumormonger: %s in %s" % [src, content().secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "%s = %s?" % [content().secret_name(d.get("secret", "")), _names(d.get("pair", []), nm)]
 
 
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:

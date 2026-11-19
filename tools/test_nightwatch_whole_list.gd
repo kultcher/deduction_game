@@ -11,7 +11,6 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var checks = 0
 var fails = 0
@@ -102,7 +101,6 @@ func _three_lists() -> Dictionary:
 
 
 func _init() -> void:
-	Connections.enabled = true
 	var none: Dictionary = _town("")
 	var wrong: Dictionary = _town("listener")
 	var sound: Dictionary = _town("other")

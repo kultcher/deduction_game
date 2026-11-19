@@ -17,7 +17,6 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Caches = preload("res://workshop/caches.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
-const Tuning = preload("res://sim/tuning.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -33,7 +32,6 @@ func check(ok: bool, label: String) -> void:
 
 func _init() -> void:
 	_notes()
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	print("Town note: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -99,11 +97,6 @@ func _notes() -> void:
 	var one: Dictionary = _value(g, "evil", p[3].id, [seer])
 	check(both.cards.size() == 2 and one.cards.size() == 1, "the fixture compiles its two drafts")
 
-	Connections.enabled = false
-	g.public_citations[seer] = true
-	check(Live.town_note(g, one).is_empty(), "with the switch off there is no note")
-	Connections.enabled = true
-	g.public_citations.clear()
 
 	# Cards the town hasn't heard are news.
 	check(Live.town_note(g, one).is_empty() and Live.town_note(g, both).is_empty(), "a case of cards the town hasn't heard gets no note")
@@ -157,7 +150,6 @@ func _notes() -> void:
 	_supersets()
 	_spent_pressure()
 	_press_from_posterior()
-	Connections.enabled = false
 
 
 ## Codex on #154: a case you've revised in public no longer stands as an argument (the town

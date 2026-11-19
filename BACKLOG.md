@@ -8,8 +8,8 @@ still being shaped) live in role_exploration.md. Items being watched, and knobs 
 only if needed (`[watch]`, `[knob]`), live in [BACKLOG_WATCH.md](BACKLOG_WATCH.md); tabled items are
 in the Tabled section at the bottom.
 
-**State of play (Nov 16):** the connections belief model is on in play
-(`Tuning.Workshop.CONNECTIONS`; design and spec in [docs/belief_model.md](docs/belief_model.md)).
+**State of play (Nov 16):** the connections belief model is on in play, and since purge
+phase 3 (Nov 18) it's the only one (design and spec in [docs/belief_model.md](docs/belief_model.md)).
 The Nov 13 playtest triage is closed: what's left of it is in
 [section 5](#5-from-the-nov-13-playtest-triage-moved-nov-16), and the connections build's
 own open items are in [section 6](#6-the-connections-model-open-items). The full triage
@@ -477,19 +477,6 @@ Candidates for a unified retuning proposal, not approved changes.
   [decided; presentation open]
 
 ### UI
-
-- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
-  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
-  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
-  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
-  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
-  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
-  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
-  Owner Herald. [decided]
-  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
-  secrets have one now. **The Workshop canvas's evidence cards** show the same short form
-  (`claude/herald-canvas-card-text`, Nov 18), with the sentence still on hover. Still to do:
-  a pass over the gift readings' short forms (each role's `short_text`, with their leads).
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking

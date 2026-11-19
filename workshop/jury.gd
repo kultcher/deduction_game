@@ -932,8 +932,8 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	# on its refresh, the quiet-night protection signal, the circumstantial pattern, the floor
 	# of a challenge made outside any case and the direct checks read the held cards, not just
 	# the attended ones. Attention still picks what is cited (`challenged` and `attended` stay
-	# for reasons). The earlier model keeps attention's cards.
-	var believe_held: bool = refresh and Connections.enabled
+	# for reasons).
+	var believe_held: bool = refresh
 	var belief_case: Dictionary = attention.case
 	var belief_cards: Array = attended
 	var floor_challenges: Dictionary = challenged
@@ -949,7 +949,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var connections: Dictionary = {}
 	var ev: Dictionary = {}
 	var cx_args: Dictionary = {}
-	if refresh and Connections.enabled:
+	if refresh:
 		# A stored case weighs what its presenter does, so the model's listener also carries
 		# the listener's trust in the Demonologist.
 		var weigher: Dictionary = _eval_listener(baseline, baseline.knowledge.get("own_reports", []))

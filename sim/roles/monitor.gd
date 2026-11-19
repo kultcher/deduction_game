@@ -27,12 +27,12 @@ func is_ongoing_info() -> bool:
 	return true
 
 
-func short_text(d: Dictionary, src: String, _nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
 	var C = content()
-	var bname: String = C.block_name(str(d.get("block", "")))
+	var bname: String = C.block_name(str(d.get("block", ""))).trim_prefix("the ")
 	if bool(d.get("walked", false)):
-		return "%s Monitor: %s on %s" % [src, C.role_name(str(d.get("role", ""))), bname]
-	return "%s Monitor: none on %s" % [src, bname]
+		return "%s: a %s walked" % [bname, C.role_name(str(d.get("role", "")))]
+	return "%s: nobody walked" % bname
 
 
 func _spoken_text(block: String, walked: bool, role: String) -> String:

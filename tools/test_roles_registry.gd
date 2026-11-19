@@ -211,7 +211,7 @@ func _test_seer_hooks() -> void:
 	var no_entry = {"role": "seer", "day": 1, "data": {"pair": [a.id, b.id], "yes": false}}
 	_check(Gifts.implicated(yes_entry) == [a.id, b.id] and Gifts.clears(yes_entry).is_empty(), "Gifts.implicated/clears delegates Seer YES reading via PING shape")
 	_check(Gifts.implicated(no_entry).is_empty() and Gifts.clears(no_entry) == [a.id, b.id], "Gifts.implicated/clears delegates Seer NO reading via PING shape")
-	_check("YES" in Gifts.short_text("seer", yes_entry["data"], seer.name, func(id): return w.by_id[id].name), "Gifts.short_text formats Seer reading via RoleDef")
+	_check(Gifts.short_text("seer", yes_entry["data"], seer.name, func(id): return w.by_id[id].name).contains("Demon? YES\n(Marked or Red Herring?)") and Gifts.short_text("seer", no_entry["data"], seer.name, func(id): return w.by_id[id].name).ends_with("Demon? NO"), "Seer card: Demon? YES with the Marked or Red Herring reminder; NO without")
 
 	C.role_def("seer").on_reading_heard(seer, seer, no_entry, true)
 	_check(not C.role_def("seer").has_method("info_effects") and seer.cleared.has(a.id) and seer.cleared.has(b.id), "Seer on_reading_heard clears both subjects on own fresh NO reading without legacy info_effects")
@@ -400,7 +400,8 @@ func _test_count_and_route_hooks() -> void:
 	_check(surv_blk in C.BLOCKS and surv_blk != surv.home_block and w.npcs.filter(func(m): return m.home_block == surv_blk).size() >= 2 and surv_r.get("data", {}).get("same") is bool, "Surveyor generate_reading reads alignment parity on a non-own >=2 resident block")
 	var surv_entry = {"role": "surveyor", "day": 0, "data": surv_r["data"], "text": surv_r["text"]}
 	_check(Gifts.implicated(surv_entry).is_empty() and Gifts.clears(surv_entry).is_empty(), "Surveyor reading implicates and clears nobody directly")
-	_check("Surveyor:" in Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn), "Surveyor short_text formats block alignment parity")
+	var surv_short: String = Gifts.short_text("surveyor", surv_r["data"], surv.name, name_fn)
+	_check(C.block_name(surv_blk).trim_prefix("the ") in surv_short and (surv_short.ends_with("one side") or surv_short.ends_with("mixed")), "Surveyor short_text gives the block and its parity on the card (got %s)" % surv_short)
 
 	# 2. Lamplighter (GROUP_COUNT walkers)
 	w.night_walkers = [{"id": lamp.id, "block": lamp.home_block, "path": [lamp.home_block]}, {"id": walker.id, "block": walker.home_block, "path": [walker.home_block]}]

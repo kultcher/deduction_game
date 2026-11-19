@@ -39,12 +39,12 @@ func _roles_prose(roles: Array) -> String:
 	return ", ".join(PackedStringArray(named))
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	var roles: Array = d.get("roles", [])
-	var rlist: String = _roles_short_list(roles)
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	var C = content()
+	var rlist: String = " / ".join(PackedStringArray(d.get("roles", []).map(func(r): return C.role_name(str(r)))))
 	if d.has("target"):
-		return "%s Registrar: %s in [%s] → %s" % [src, nm.call(str(d.get("target", ""))), rlist, "YES" if bool(d.get("yes", false)) else "no"]
-	return "%s Registrar: %s" % [src, rlist]
+		return "%s = %s? %s" % [nm.call(str(d.get("target", ""))), rlist, "YES" if bool(d.get("yes", false)) else "NO"]
+	return "%s: one or more in play" % rlist
 
 
 func implicated(d: Dictionary) -> Array:

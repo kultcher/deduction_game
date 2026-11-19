@@ -14,7 +14,7 @@ repos/kultcher/deduction_game/actions/workflows/balance-sweep.yml/dispatches -f 
 |---|---|---|
 | `seed_start` | 100000 | First case seed. Every cell uses the same seeds, so a seed pairs across modes. |
 | `games_per_cell` | 2000 | Games per cell. |
-| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches); any mode but `passive` may end `_nocross` (`--no-crosscheck`) and/or `_nodeclare` (`--no-declare`), and any mode may then end `_connections` (`--connections`: the connections belief model, on by default since Nov 16; the suffix only names it) or `_legacy` (`--legacy-model`: the earlier belief model). An optional `"force_demon"` (for example `"daykiller"`) passes `--force-demon` and keeps the cell's records apart. |
+| `cells` | 7/10 NPCs × passive/bot | JSON list of `{"npcs", "mode", "insight"}`; `mode` is `passive`, `bot`, `bot_pre_m4` (`--pre-m4`), `no_present` (`--no-present`: files cases but never presents) or `present_vote` (`--present-and-vote`: no vigils, wards or searches); any mode but `passive` may end `_nocross` (`--no-crosscheck`) and/or `_nodeclare` (`--no-declare`). (The `_connections` and `_legacy` suffixes went with the belief-model switch in purge phase 3, Nov 18.) An optional `"force_demon"` (for example `"daykiller"`) passes `--force-demon` and keeps the cell's records apart. |
 | `costs` | measured | Seconds per game per core, by `<npcs>_<mode>`. Only sizes the shards. |
 | `target_hours` | 3 | Planned hours per shard job (the hard cap is 6). |
 | `max_shards` | 200 | Safety bound on the number of jobs. |

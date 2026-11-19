@@ -4,7 +4,6 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var fails = 0
 
@@ -12,7 +11,6 @@ func _init() -> void:
 	# Reliability, source doubt and belief revision, under the connections model (purge
 	# phase 2; the last two pinned checks unpinned once #186, the doubted own reading, and
 	# #198, the double-claim pairing, merged).
-	Connections.enabled = preload("res://sim/tuning.gd").Workshop.CONNECTIONS
 	_test_recovery()
 	_test_independent_evidence()
 	_test_poison_not_honesty()
