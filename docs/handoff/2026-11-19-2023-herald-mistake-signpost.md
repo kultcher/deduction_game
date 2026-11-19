@@ -54,3 +54,7 @@ None.
   - **The bug:** when two or more heard cases call the same reading a lie, revising one leaves the others' call standing, so no single case is the way back.
   - **The fix:** in that case there's no signpost, and the plain refusal stays. A line covering several cases, such as "take back case #A at the meeting first", would be new wording, so I've offered Michael a draft through Seneschal.
   - **The check:** `test_mistake_signpost`, now 25 checks, covers it. The check fails without the fix.
+- **Codex, fourth finding (a revision not yet heard):**
+  - **The bug:** a listener keeps the version it heard until it hears the revision. The scan skipped superseded versions, so when case A's lie had been heard and its Mistaken revision A′ was filed but not yet presented, the signpost disappeared.
+  - **The fix:** heard superseded versions now count, with several heard versions of one case counted as one case. The line names the heard case for the lie and the newest version as the one to open and present.
+  - **The check:** `test_mistake_signpost` covers it. The check fails without the fix.

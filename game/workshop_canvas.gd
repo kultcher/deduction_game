@@ -439,16 +439,33 @@ const SIGNPOST_UNPRESENTED = "You called %s's reading a lie in case #%d. To call
 ## case can refuse the new one, so a newer unheard draft with the same call isn't the one to
 ## revise. With two or more heard cases making the call, revising one leaves the others' call
 ## standing, so there's no single case to name and the plain refusal stays (Codex, #363).
+##
+## A listener keeps the version it heard until it hears the revision, so a heard version
+## that has since been revised still counts: the player is pointed at the latest version
+## (`latest`) to present (Codex, #363). Several heard versions of one case are one case.
 static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictionary:
 	var found: Array = _lie_calls_elsewhere(g, value, own)
-	var heard: Array = found.filter(func(f): return was_presented(g, f.number))
+	var heard: Dictionary = {}
+	for f in found:
+		if was_presented(g, f.number) and not heard.has(f.latest):
+			heard[f.latest] = f
 	if heard.size() > 1:
 		return {}
 	if heard.size() == 1:
-		return heard[0]
-	return found[0] if not found.is_empty() else {}
+		return heard.values()[0]
+	var live: Array = found.filter(func(f): return f.number == f.latest)
+	return live[0] if not live.is_empty() else {}
 
-## Every such case, newest first.
+## The newest version of case `number`.
+static func latest_version(g, number: int) -> int:
+	var v: int = number
+	var seen: Array = []
+	while v > 0 and v <= g.board.size() and int(g.board[v - 1].get("superseded_by", 0)) > 0 and not (v in seen):
+		seen.append(v)
+		v = int(g.board[v - 1].superseded_by)
+	return v
+
+## Every such case version, newest first: {number (the version with the call), latest, teller}.
 static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
 	var out: Array = []
 	var RC = preload("res://workshop/reading_challenges.gd")
@@ -456,9 +473,10 @@ static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
 	var lineage: Array = versions_of(g, own)
 	for i in range(g.board.size() - 1, -1, -1):
 		var c: Dictionary = g.board[i]
-		if c.get("kind", "") != "deduction" or c.get("deleted", false) or c.get("withdrawn", false) or int(c.get("superseded_by", 0)) > 0 or not c.has("workshop_case"):
+		if c.get("kind", "") != "deduction" or c.get("deleted", false) or c.get("withdrawn", false) or not c.has("workshop_case"):
 			continue
-		if int(c.n) in lineage:
+		var latest: int = latest_version(g, int(c.n))
+		if int(c.n) in lineage or latest in lineage or g.board[latest - 1].get("deleted", false) or g.board[latest - 1].get("withdrawn", false):
 			continue
 		var theirs: Dictionary = c.workshop_case.get("reading_challenges", {})
 		for rid in mine:
@@ -466,7 +484,7 @@ static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
 			# different sides (the passing-on and the original; Codex, #363).
 			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST \
 					and str(theirs[rid].get("attribution", "")) == str(mine[rid].get("attribution", "")):
-				out.append({"number": int(c.n), "teller": _card_source(g, str(rid))})
+				out.append({"number": int(c.n), "latest": latest, "teller": _card_source(g, str(rid))})
 				break
 	return out
 
@@ -502,7 +520,7 @@ static func player_issues(g, value: Dictionary, issues: Array, own: int = 0) -> 
 	if other.is_empty():
 		return issues
 	var who: String = g.w.by_id[other.teller].name if g.w.by_id.has(other.teller) else "the teller"
-	var line: String = (SIGNPOST_PRESENTED % [who, other.number, other.number]) if was_presented(g, other.number) else (SIGNPOST_UNPRESENTED % [who, other.number, other.number])
+	var line: String = (SIGNPOST_PRESENTED % [who, other.number, other.latest]) if was_presented(g, other.number) else (SIGNPOST_UNPRESENTED % [who, other.number, other.latest])
 	return issues.map(func(i): return line if str(i).begins_with(CONFLICTING_CALLS) else i)
 
 static func _logit(p: float) -> float:

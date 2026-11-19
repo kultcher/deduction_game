@@ -114,7 +114,10 @@ func _game_side(sd: int) -> void:
 	check(Live.lie_called_elsewhere(g, revised, a).is_empty(), "a revision isn't sent back to its own old version")
 	var r: int = Live.file(g, revised, a)
 	check(r > 0 and int(g.board[r - 1].get("revises", 0)) == a and Live.was_presented(g, r), "the revision files over case #%d and counts as heard through it" % a)
-	check(Live.lie_called_elsewhere(g, honest.value).is_empty(), "with the lie taken back, the second case meets no lie call")
+	# Filed but not yet heard: the listener still holds case #a's lie, so the second case is still
+	# refused, and the signpost points at the revision to present (Codex, #363).
+	var pending: Array = Live.player_issues(g, honest.value, raw)
+	check(pending == [Live.SIGNPOST_PRESENTED % [goods[0].name, a, r]], "until the revision is heard, the signpost names case #%d and the revision #%d (%s)" % [a, r, str(pending)])
 	g.events = []
 	g._presentation_gate(g.board[r - 1], [goods[1]], [goods[2].id], "deduction", "private")
 	var rsaid: String = " ".join(PackedStringArray(g.events.map(func(e): return str(e.get("text", "")))))
