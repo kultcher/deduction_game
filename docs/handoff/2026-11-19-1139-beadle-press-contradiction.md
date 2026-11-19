@@ -40,7 +40,7 @@ No new lines and no new constants.
 - **Also pass:** test_press_contradiction, test_press_night_case, test_conversation_nights,
   test_framed_defence, test_mechanics_defences, test_ask_night_results, test_npc_interactions,
   test_dialogue, test_dialogue_decisions and test_dialogue_voices.
-- **Golden:** identical to `baseline_659996a` at `--tol 0` on all five seeds. Golden play
+- **Golden:** identical to `baseline_6569929` (main with #320) at `--tol 0` on all five seeds. Golden play
   doesn't press with such a case.
 
 ## Proposed for the backlog
