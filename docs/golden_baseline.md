@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
+### Current baseline (Nov 19, a Warden's guard read with its night): `baseline_e1d1934`
+
+`tools/golden/baseline_e1d1934/` is the capture from `claude/warden-night-item` at `e1d1934`
+(main `a990916` merged in). A Warden's guard report now sits in its night's movement item with
+that night's sightings and alibis (`Connections.NIGHT_ROLES`), so a quiet-night guard is weighed
+together with who was seen near the guarded door, instead of alone.
+- **Divergence from `baseline_e287b3d`:** 692 from record 32 (Nisha's refresh on day 2, the
+  first refresh that holds a Warden's guard). 42, 54875, 900 and 98933 are identical.
+- **Outcomes:** 692 hangs the same person, Constance, on day 3, with the same eight yes votes.
+  Nisha now nominates her instead of Fenwick. It still reaches day 4 with no winner, in 252
+  records (was 251). Every other seed is unchanged.
+- **Stability:** two captures were identical, and identical to a capture before main was
+  merged in.
+
+### Earlier baseline (Nov 18, a Night Watch list sound or broken as a whole): `baseline_e287b3d`
 
 `tools/golden/baseline_e287b3d/` is the capture from `claude/nightwatch-whole-list` at `e287b3d`
 (main `0670d55`). Another's Night Watch list is mixed as sound (each name at its small error)
