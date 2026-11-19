@@ -380,6 +380,16 @@ class Trust:
 	## knowledge: a significant one. The trust steps themselves are Beadle's.
 	const READING_CONFIRM_SMALL = 0.70
 	const READING_CONFIRM_MODERATE = 0.85
+	## Trust from a reading that confirms what the listener knows or strongly believes (Michael,
+	## Nov 19, set R3): a good listener gains this much trust in the teller, once for each reading,
+	## judged on what it believed before hearing it (ReadingConfirm.assess's tier).
+	const READING_TRUST_SMALL = 0.06
+	const READING_TRUST_MODERATE = 0.12
+	const READING_TRUST_KNOWN = 0.20
+	## Backing a case (Michael, Nov 18; rebalanced Nov 19): a good NPC's trust step toward an ally
+	## who votes the same way, or nominates or accuses someone it already suspects. At most once a
+	## day for each ally.
+	const AGREEMENT_STEP = 0.02
 	const NOMINATED_PRESSURE = 0.4
 	const NOMINATED_BY_PLAYER_DROP = 0.15
 	const NOMINATED_NPC_TRUST_DROP = 0.25

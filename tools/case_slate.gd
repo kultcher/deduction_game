@@ -289,6 +289,22 @@ func _one(sd: int, name: String) -> Dictionary:
 			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
 		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
+	# The average listener's reading behind the badge (Michael, Nov 19): the premise's chance
+	# before and after, and whether the subject becomes that listener's top suspect, by what
+	# margin (for the fourth tier's measure).
+	var lis: Dictionary = tj.get("listener", {})
+	if not lis.is_empty():
+		row["chance_before"] = float(lis.chance_before)
+		row["chance"] = float(lis.chance)
+		var pj: Dictionary = preload("res://workshop/connections.gd").judge_for_profile(g, value, {"baseline": "without_cards"})
+		var post: Dictionary = pj.get("posterior_after", {})
+		var mine: float = float(post.get(s.id, -1.0))
+		var rival: float = 0.0
+		for id in post:
+			if id != s.id and g.w.by_id.has(id) and g.w.by_id[id].alive:
+				rival = maxf(rival, float(post[id]))
+		row["top"] = mine > rival
+		row["margin"] = mine - rival
 	if not blocked.is_empty():
 		row["blocked"] = blocked
 		print("  %s seed %d: %d listeners blocked: %s" % [name, sd, blocked.size(), blocked[0]])

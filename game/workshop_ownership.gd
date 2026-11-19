@@ -36,6 +36,14 @@ static func _candidate_outside(n, state: Dictionary) -> Dictionary:
 			out[id] = outside[id] if absf(external_change) < 0.000000001 else outside[id] + external_change
 	return out
 
+## Judges the readings the plan holds that this NPC hasn't judged yet (Social.reading_confirm_trust)
+## on its chances from the previous refresh. True when its trust in a teller moved.
+static func _confirm_readings(g, n, key: String, plan: Dictionary) -> bool:
+	var prior_chances: Dictionary = g._workshop_evaluations.get(key, {}).get("proposal", {}).get("connections", {}).get("posterior", {})
+	var know: Dictionary = plan.prepared.listener.get("knowledge", {})
+	return load("res://sim/social.gd").reading_confirm_trust(g.w, n, plan.prepared.view,
+		load("res://workshop/jury.gd")._eval_listener(plan.prepared.listener, know.get("own_reports", [])), prior_chances)
+
 static func _refresh(g, n, phase: String) -> void:
 	if g._workshop_busy:
 		return
@@ -47,6 +55,14 @@ static func _refresh(g, n, phase: String) -> void:
 		var input = Bridge.capture(g, [], n.id, "private", n)
 		input.listener.suspicion = cand_outside.duplicate(true)
 		var plan = Shared.prepare(input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
+		# Confirming readings (Michael, Nov 19): each new reading is judged on the chances from
+		# before this refresh, and the trust it earns counts in this refresh's solve, so a
+		# repeated refresh changes nothing (test_workshop_action). Captured again only when
+		# trust moved.
+		if plan.ready and _confirm_readings(g, n, key, plan):
+			input = Bridge.capture(g, [], n.id, "private", n)
+			input.listener.suspicion = cand_outside.duplicate(true)
+			plan = Shared.prepare(input, state.get("presentations", {}), n.ledger, state.get("withdrawn", {}), state.get("attention_focus", []))
 		state.issues = plan.issues
 		if plan.ready:
 			g._workshop_plans[key] = plan

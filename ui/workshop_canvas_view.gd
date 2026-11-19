@@ -317,7 +317,7 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 				notes.append(gl)
 			for who in badge.get("idle", []):
 				notes.append("Assuming %s %s isn't changing anything in this case." % [Solver.person_name(model.view, who), node.positions.get(who, "")])
-			notes.append("Public facts and default trust: how well the case holds together, not how any one person will react.")
+			notes.append("As an average townsperson would take it, hearing these cards from you: not how any one person will react.")
 			tip = "\n".join(PackedStringArray(notes))
 		var cw: float = font.get_string_size(chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 18
 		var chip = Rect2(rect.position + Vector2(rect.size.x - (cw + 10) * zoom, 7 * zoom), Vector2(cw, 24) * zoom)

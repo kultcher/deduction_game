@@ -69,8 +69,13 @@ Town movement is in points: one point is 0.01 of a listener's suspicion of the s
 averaged over the listeners.
 
 - **Juror's badges:** the badge each case got, and how often.
-- **Strength:** the juror's likelihood ratio, as a geometric mean. The badge is set by
-  this number: Weak from 1.5, Moderate from 3, Strong from 10.
+- **Strength:** the juror's strength, as a geometric mean. Since the juror fix (Nov 19), it
+  is how far an average listener's chance of the premise moves, as an odds ratio, against
+  a town that hasn't heard the case's cards. The badge is set by this number: Weak from 1.5,
+  Moderate from 3, Strong from 10, until Michael sets the new cut points.
+- **Chance before → after** (the rows' `chance_before` and `chance`): that listener's
+  chance of the premise, and whether the subject becomes their top suspect (`top`,
+  `margin`). These feed the fourth tier's measure.
 - **Town:** the mean movement, and its range across the deals.
 - **Sign:** how often the juror and the town point the same way.
 - **Category:** how often the badge matches the town's own band. The bands are the
@@ -92,6 +97,6 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built from main at 9c5eaf0 (Nov 19, Quill). Since b856819, only the
-Warden's guard (#306) and the player's vigil (#300) cases moved, both slightly; see
-`baseline.md`.
+`baseline.jsonl`: built on claude/juror-listener (main with #326, Nov 19, Quill). The juror
+now hears as an average listener, so its columns changed; the town's movement is identical
+to the 9c5eaf0 baseline. See `baseline.md`.
