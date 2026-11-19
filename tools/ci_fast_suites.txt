@@ -42,6 +42,7 @@ test_evil_owned_lie
 test_evil_play
 test_execution_aftermath
 test_fabrication_check
+test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
 test_gift_doubt
@@ -137,4 +138,3 @@ test_workshop_reading_challenges
 test_workshop_regressions
 test_workshop_vote_and_alibi
 test_workshop_why
-test_factor_norm_handles
