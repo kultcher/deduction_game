@@ -24,7 +24,13 @@ const AVERAGE = {"credibility": 0.5, "npc_trust": 0.5, "confidence": 0.5, "insig
 ## "posterior_after", "case"}: the target's chance of being evil without and with the case,
 ## each person's chance both ways, and the case's own entry among the stored cases (its
 ## weight on the filing day and its lean). `profile` overrides AVERAGE's fields; npc_trust
-## may be one number for everyone or a map.
+## may be one number for everyone or a map. `profile.baseline`:
+##   "marginal" (the default): `before` is the listener as it stands, having heard the case's
+##     public cards from their tellers; what presenting it would change (the town note).
+##   "without_cards": `before` leaves out the case's own cards entirely (their public hearing
+##     as well as the case), keeping the public claims about the people it names; how strong
+##     the case is to a listener who hears its cards as it would (the Test juror's badge;
+##     Quill, Nov 19). `after` is the same either way.
 static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	var Canvas = preload("res://game/workshop_canvas.gd")
 	var p: Dictionary = AVERAGE.duplicate()
@@ -80,7 +86,16 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 	current.listener = listener.duplicate(true)
 	current["watched"] = []  # the player's own watch record: never heard by the town (Codex on #326)
 	var ledger: Dictionary = _public_hearing(g, value)
-	var before: Dictionary = _evaluate(current, earlier, ledger, [])
+	var before_ledger: Dictionary = ledger
+	if str(p.get("baseline", "marginal")) == "without_cards":
+		var own: Dictionary = {}
+		for id in value.get("cards", []):
+			own["tell:public:%s" % str(id)] = true
+		before_ledger = {}
+		for eid in ledger:
+			if not own.has(eid):
+				before_ledger[eid] = ledger[eid]
+	var before: Dictionary = _evaluate(current, earlier, before_ledger, [])
 	var after: Dictionary = _evaluate(current, with_case, ledger, draft.selected)
 	if not after.ready:
 		return fail.call(after.issues)

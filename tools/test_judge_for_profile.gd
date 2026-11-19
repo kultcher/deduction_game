@@ -54,6 +54,12 @@ func _init() -> void:
 	print("public cards, trust 0.9 / 0.5 / 0.2: before %.3f / %.3f / %.3f; the case's shift at 0.5 %.4f" % [float(high_trust.get("before", -1.0)), float(heard.get("before", -1.0)), float(low_trust.get("before", -1.0)), float(heard.get("shift", 0.0))])
 	check(float(high_trust.before) > float(heard.before) and float(heard.before) > float(low_trust.before) and float(heard.before) > float(fresh.before), "public cards move the listener before the case, more the more it trusts their tellers")
 	check(absf(float(heard.get("shift", 0.0))) < absf(float(fresh.get("shift", 0.0))), "a case of cards the town already has moves the listener less than one bringing them")
+	# The badge's baseline leaves the case's own cards out of `before` (Quill, Nov 19): the
+	# same as a case of cards the town hadn't heard, and the same `after`.
+	var strength: Dictionary = Connections.judge_for_profile(g, both, {"baseline": "without_cards"})
+	print("public cards, without-cards baseline: %s" % _show(strength))
+	check(absf(float(strength.get("before", -1.0)) - float(fresh.before)) < 1e-9 and absf(float(strength.get("after", -1.0)) - float(heard.after)) < 1e-12, "without the case's cards, before is the public record alone and after is unchanged")
+	check(float(strength.get("shift", 0.0)) > float(heard.get("shift", 0.0)), "so the case shows its strength, not just what's new")
 	# The player's watch record isn't the town's: it changes nothing (Codex on #326).
 	g.watched.append({"day": 1, "phase": "night", "block": p[3].home_block, "at": p[3].home_block})
 	var watched: Dictionary = Connections.judge_for_profile(g, both)
