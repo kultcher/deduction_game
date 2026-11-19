@@ -191,12 +191,14 @@ listener (#273), both Lantern's.
     Michael (Nov 19): the signal is now the judge's posterior that the own reading was
     wrong, and the threshold is `Workshop.SELF_DOUBT_TRIGGER`, 0.30
     (`SourceDoubt.doubts_own_gift(n)`; see "Was my reading poisoned?" below).
+    **Built** (Nov 19, `claude/beadle-gift-doubt-good`, rewired on #320): a good public
+    claimant says it once a game, from the first night in `SourceDoubt.doubts_own_gift(n)`.
   - (b) An evil NPC that has boxed itself in, with no non-incriminating lie left (the case
     the fabrication check detects), uses the same line to explain the discrepancy. It
     claims its gift was turned, rather than lying further or going silent. Michael
     (Nov 18): only for a gift it has publicly claimed. The trigger is a reading held back
     twice running; no new number; logged with its reason. **Built** (Nov 18, #245), with
-    the listener side below. (a) is being built in #316 (open; Michael approved it at the
+    the listener side below. (a) is built in #316 (Michael approved it at the
     0.30 trigger on Nov 19), on Lantern's signal from #320.
   - Listeners take it as the teller's own word that its gift may have failed ("impaired"):
     it raises their honest doubt about all that teller's readings (key `<teller>:*`), as
