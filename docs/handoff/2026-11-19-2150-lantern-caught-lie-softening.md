@@ -42,8 +42,17 @@
     general doubt from 0.55 to 0.67.
   - **A case is judged on its own cards,** so the excuse counts where the case cites it. An NPC's
     own view holds every card it has heard.
-- **New `tools/test_caught_lie_softening.gd`** (7 checks, fast list): the admission read as an
-  outing; the marking; the softer judgement; a contradicted watch; the second caught lie.
+- **An admitted outing is only its teller's word (Codex's finding).** If the teller is good, it
+  reads as a sighting of them on the named block. If the teller is evil, they own the outing but
+  may name any block: the named block (or no block named) counts in full, any other block at one
+  chance in the number of blocks, and home not at all. No new constant. In a 7-person test town
+  with a killing on the Square, P(X evil) is 0.33 to start. X admitting the Docks puts it at 0.56,
+  where a witness seeing X on the Docks puts it at 0.23. X admitting the Square puts it at 0.79,
+  about the same as being seen there (0.78). A tunable rate for lying about the place would be a
+  new constant, so that's Michael's call.
+- **New `tools/test_caught_lie_softening.gd`** (9 checks, fast list): the admission read as an
+  outing; the marking; the softer judgement; a contradicted watch; the second caught lie; an
+  admitted place may be a lie.
 - **Measured:**
   - **Golden:** identical to `baseline_7a10762` at `--tol 0`; two captures were identical. No
     golden seed has an NPC admit an outing or give an excuse yet.
