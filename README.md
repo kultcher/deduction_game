@@ -318,6 +318,7 @@ workshop/         the shared case judge: case_eval.gd (possible worlds), connect
                   live_activity.gd (night movement), day_presence.gd (who was where
                   by day: the Hexer, the Breathstealer), live_assessment.gd (card adapters),
                   source_doubt.gd, reason_attribution.gd (reasons NPCs cite),
+                  reading_confirm.gd (does a reading confirm what the listener knows),
                   circumstantial.gd (the hub), chronology.gd (curse epochs),
                   canvas_model.gd (the board's case model), solver_backend.gd
 workshop/cs/      the C# solver kernel (built by Demonologist.csproj)
@@ -345,6 +346,7 @@ ui/profile_panel.gd, cast_list.gd, trait_bars.gd, portrait_badge.gd
 ui/text_terms.gd, text_formatter.gd, rich_text_renderer.gd, formatted_text_label.gd,
    inline_icons.gd, log_text.gd
                   shared text system (coloured names and roles, inline icons)
+ui/term_defs.gd   the mechanics terms and control tooltips (learning resources)
 ui/headline_overlay.gd  headline notices   ui/decision_window.gd  the decision inspector
 ui/theme.gd       papercraft theme      ui/dialogue_lab.gd  dialogue workshop
 tools/cli.gd      terminal frontend      tools/autoplay.gd, analyst.gd  bot player
@@ -357,6 +359,8 @@ tools/replay_54875.gd, profile_c0.gd  speed replay and solver profile
 tools/replay_log.gd, explain_case.gd  replay a dev log (--why, --time, --profile)
 tools/connections_prototype.gd  the connections model over a replayed log
 tools/fixture_seeds.gd   seed search for test fixtures
+tools/case_slate.gd     the case benchmark slate (docs/case_slate/), run on demand
+tools/measure_*.gd      one-off measurements (not suites)
 ```
 
 The simulation is deterministic for a given seed and never touches presentation, so it

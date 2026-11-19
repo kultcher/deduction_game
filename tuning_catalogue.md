@@ -300,7 +300,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `GOSSIP_BELIEVED_BELOW` | `0.4` |  | `sim/mind.gd`, `sim/social.gd` |
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
-| `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
+| `TRUST_VOTED_FOR` | `0.03` |  | `sim/social.gd`, `sim/world.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
 | `PARANOIA_DRIFT_RATE` | `0.06` | unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH) | (unused) |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
@@ -417,7 +417,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_meeting.gd` |
 | `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_DAY_SLOPE` | `0.05` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
+| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd`, `tools/autoplay.gd` |
 | `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_OWN_CLEAR_RELIEF` | `0.2` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
