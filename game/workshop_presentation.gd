@@ -379,7 +379,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			spoken_line["text"] = str(spoken_line["text"]) + Mind.Dialogue.apply_tics(n.id, hub_voiced_tail, tic_mem)
 	var descriptor_special: String = text if trapped_out else base_canonical
 	var descriptor = {"kind": "argument", "key": signature, "facts": snapshot.selected, "stance": voiced_stance,
-		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": descriptor_special, "voiced_text": spoken_line["text"]}
+		"claim": card.get("text", "the presented case"), "target_id": root.conclusion.get("a", ""), "special": descriptor_special, "voiced_text": spoken_line["text"],
+		"voiced_reply_key": str(spoken_line.get("reply_key", "")), "voiced_named": spoken_line.get("reply_named", [])}
 	var lines: Array = [spoken_line] if speak and not n.silenced else []
 	var trapped_facts: Array = []
 	if trapped_out and speak and not n.silenced:

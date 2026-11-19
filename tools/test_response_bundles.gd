@@ -101,8 +101,16 @@ func _run() -> void:
 	var bundled: Array = said.filter(func(e): return e.get("bundled", false)).map(func(e): return e.speaker)
 	agreed.sort()
 	bundled.sort()
-	check(agreed == bundled, "those shown agreeing are exactly the bundled log lines (%s)" % str(agreed))
+	var more: int = 0
+	for r in reps:
+		more += int(r.get("agree_more", 0))
+	check(agreed.all(func(id): return bundled.has(id)) and agreed.size() + more == bundled.size(), "those shown agreeing, plus the \"+N more\", are exactly the bundled log lines (%s, +%d)" % [str(agreed), more])
 	check(not bundled.has(t.id), "the target never agrees in a row")
+	# An evil listener giving its good self's answer bundles like anyone: speaking alone would
+	# single it out (Codex, #373).
+	var evil_ids: Array = g.w.living().filter(func(n): return n.is_evil() and not n.silenced).map(func(n): return n.id)
+	var evil_in_rows: Array = evil_ids.filter(func(id): return bundled.has(id) or reps.any(func(r): return r.speaker == id))
+	check(not evil_ids.is_empty() and not evil_in_rows.is_empty(), "evil listeners answering as their good selves join the bundles (%s of %s)" % [str(evil_in_rows), str(evil_ids)])
 
 	# The stage: a bundled line isn't brought forward; the row is drawn under the speaker.
 	var stage = Stage.new()
