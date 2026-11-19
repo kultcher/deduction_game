@@ -73,7 +73,7 @@ def main():
     out = ["| Case | n | Juror's badges | Strength | Town, mean (range) | Sign | Category |",
            "|---|---|---|---|---|---|---|"]
     if base:
-        out[0] = out[0][:-1] + " Baseline town (strength) |"
+        out[0] += " Baseline town (strength) |"
         out[1] += "---|"
     for c in names:
         s = summary(run[c])
@@ -87,6 +87,10 @@ def main():
             else:
                 line += " (new) |"
         out.append(line)
+    blocked = [(c, r["seed"], len(r["blocked"])) for c in names for r in run[c] if r.get("blocked")]
+    if blocked:
+        out += ["", "**Listeners who couldn't assess the case** (left out of the town's movement): " + ", ".join(
+            "%s seed %d (%d)" % b for b in blocked)]
     out += ["", "Town movement by the juror's badge, across the slate:", "",
             "| Badge | Cases | Town, mean | Median | Range | Cases by name |",
             "|---|---|---|---|---|---|"]

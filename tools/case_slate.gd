@@ -205,7 +205,9 @@ func _one(sd: int, name: String) -> Dictionary:
 	var listeners: Array = w.npcs.filter(func(p): return p.alive and not p.is_evil() and p != s and p not in sources)
 	if listeners.is_empty():
 		return {}
-	var before: float = _mean(listeners, s)
+	var before_each: Dictionary = {}
+	for l in listeners:
+		before_each[l.id] = float(l.suspicion.get(s.id, 0.0))
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
@@ -222,10 +224,21 @@ func _one(sd: int, name: String) -> Dictionary:
 	if n_case <= 0:
 		print("  %s seed %d: not filed (%s)" % [name, sd, g.last_error])
 		return {}
+	# A listener who can't assess the case isn't an unconvinced one (Codex on #307): count
+	# them apart, with what blocked them, and leave them out of the town's movement.
+	var heard: Array = []
+	var blocked: Array = []
 	for l in listeners:
-		g._evaluate_deduction(l, g.board[n_case - 1], 1.0, false)
+		var res: Dictionary = g._evaluate_deduction(l, g.board[n_case - 1], 1.0, false)
+		if res.get("blocked", false):
+			blocked.append("%s: %s" % [l.id, " ".join(PackedStringArray(res.get("lines", [])))])
+		else:
+			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
-		"lr": float(tj.get("lr", -1.0)), "town": _mean(listeners, s) - before, "listeners": listeners.size()}
+		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
+	if not blocked.is_empty():
+		row["blocked"] = blocked
+		print("  %s seed %d: %d listeners blocked: %s" % [name, sd, blocked.size(), blocked[0]])
 	if not tj.get("ready", false):
 		# A slate case the juror can't judge is a broken case (or a broken judge): say why.
 		row["issues"] = tj.get("issues", [])
@@ -236,6 +249,14 @@ func _one(sd: int, name: String) -> Dictionary:
 func _sight(witness, s, block: String, night: int) -> Dictionary:
 	return {"kind": "sighting", "subject": [s.id], "block": block, "source": witness.id, "day": night, "phase": C.NIGHT,
 		"text": "Night %d: %s saw %s on %s" % [night, witness.name, s.name, C.block_name(block)]}
+
+
+## The mean suspicion of `s` before the case, over the listeners who heard it.
+func _mean_before(heard: Array, before_each: Dictionary) -> float:
+	var t := 0.0
+	for l in heard:
+		t += float(before_each[l.id])
+	return t / maxf(1.0, heard.size())
 
 
 func _mean(ls: Array, s) -> float:
