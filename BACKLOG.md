@@ -122,6 +122,44 @@ listener (#273), both Lantern's.
   summarised answers, the same as at the meeting (#373). (Michael, Nov 19) Owner Herald.
   [decided]
 
+- **Remove dropped personal items.** (Michael's own item, Nov 19) Remove:
+  - the walker's 12% chance that a drop is a personal item;
+  - the search finding it;
+  - the night "out" card it makes for its owner;
+  - every mechanic that weighs it as evidence.
+
+  Home-block material drops stay. If Quill finds the two can't be separated, that comes back
+  to Michael. It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the same PR (see
+  "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side. [decided]
+
+- **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
+  `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
+  features.
+  1. **Dead code, zero drift:**
+     - the Workshop scaffolding used only by fixtures (Lantern);
+     - retired flags and constants that nothing reads (Beadle);
+     - the dev labs and the trace viewer (Herald);
+     - the one-off scripts in `tools/` (Bailiff sweeps).
+
+     Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
+  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW` in the same PR as "Remove dropped
+     personal items", which already re-baselines. Deleting the Muddler is held for the
+     secrets rework.
+  3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
+     Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
+     `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
+     the profiler.
+  4. **File splits,** one file per PR, with no change to play:
+     - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
+       the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
+       (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` can go as soon
+       as the leads unpause.
+     - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
+       (Herald), `live_activity` and `case_eval` (Lantern).
+     - **Tier 3** waits for the purge.
+
+  [decided]
+
 ### NPC behaviour
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
@@ -448,7 +486,8 @@ The one performance item, "Late-game meeting and presenting cost", is in
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
 
-- **NPCs find evidence and personal items** (dropped items, traces). [decided]
+- **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
+  being removed (Michael, Nov 19; "Remove dropped personal items", section 2).
 
 - **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
   too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
@@ -554,8 +593,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     either a case or a card with a defined interaction. Decide whether holders know they're Marked, how one asks
     about it, and how evil can claim it too. Keep these as attributed claims, not alignment
     confirmations. (61251/25923) [open] (Folded in Nov 18, Michael.)
-  - **Ways to discover and confront secrets:** sightings that don't fit, confidants,
-    personal items, a "you have a secret" card used as leverage. [open] (Folded in Nov 18, Michael.)
+  - **Ways to discover and confront secrets:** sightings that don't fit, confidants, a
+    "you have a secret" card used as leverage. (Personal items came out on Nov 19, when
+    Michael decided to remove them.) [open] (Folded in Nov 18, Michael.)
   - **Softer secret breaches.** Secret-keeping rapport now decays nightly. Still to review:
     first-use and repeated breach losses and the permanent caps, keeping a real betrayal
     consequence while allowing proportionate recovery, with apologies and confidentiality
@@ -695,8 +735,8 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
 **The purge resumes (Michael, Nov 19)** after Lantern's current work: phase 7, then phase 8,
 then the phase 6b measurement for Michael, then 6a. Owner Lantern. **Argon's bloat and
 obsolescence audit** (`docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`) is to
-be done "relatively soon, before we build any more larger features". Its items go to
-Michael as proposals through Seneschal.
+be done "relatively soon, before we build any more larger features". Michael approved its
+four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 
 - **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
   the time on honest mistakes; to a listener an honest mistake and a lie are the same

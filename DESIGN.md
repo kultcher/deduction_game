@@ -211,9 +211,11 @@ it means the game must teach its own way of thinking and make evidence very read
   assignments jointly. The grimoire says who left which.
 - **Drops:** each walker may drop something on their route (demon 35%, others 15%): a
   home-block material (88%) or a personal item (12%). `search` finds everything dropped at
-  a location. A personal item becomes a night "out" card for its owner.
-- Owner-identifying items stay rare (later plantable by a Framer). Category traces are
-  common.
+  a location. A personal item becomes a night "out" card for its owner. **Personal items
+  are to be removed** (Michael, Nov 19; BACKLOG "Remove dropped personal items", Quill),
+  leaving home-block materials.
+- Category traces are common. (Owner-identifying items, later plantable by a Framer, go with
+  the personal items.)
 
 ### Decided and open directions (world)
 
@@ -223,7 +225,7 @@ it means the game must teach its own way of thinking and make evidence very read
   example needed, and the other daytime roles are covered.
 - **Evidence chains:** a trace leads to a second clue at the killer's evening spot.
   Players expect this (playtest 1). Tabled (Michael, Nov 18).
-- **NPCs find evidence and personal items.** **[decided]**
+- **NPCs find evidence** (traces). **[decided]** Personal items are being removed (Nov 19).
 
 ---
 
@@ -1019,8 +1021,8 @@ been known to sleepwalk"; two claimants prove a liar.
 - **Lie severity** **[decided]** (Nov 17; Quill the judge's weighting, Beadle the votes): a false gift report weighs more than a whereabouts lie,
   unless the lie puts them near the crime; NPCs who accept a lie but won't hang should say
   so.
-- **Ways to discover and confront secrets** (sightings that don't fit, confidants,
-  personal items, a "you have a secret" card as leverage) **[open]**. Named corroborators
+- **Ways to discover and confront secrets** (sightings that don't fit, confidants, a "you
+  have a secret" card as leverage) **[open]**. Named corroborators
   in alibis ("I was with Jory"): tabled (Michael, Nov 18); at night people are home or
   walking alone, and walkers needn't see each other.
 - **Situational credence modifiers** (early disclosure, quiet night as a credence boost,
