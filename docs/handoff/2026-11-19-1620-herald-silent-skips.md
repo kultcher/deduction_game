@@ -16,7 +16,7 @@ Michael's one-off sweep found places where a check quietly didn't run when a see
   - test_evil_play (Constance and Greta dealt)
   - test_ui (a townsperson's card on the board)
   - test_playtest_89077 (some voice has a "my own eyes" opener)
-  - test_playtest_13910_dialogue (the living-target hint counts as live)
+  - test_dialogue_fixes_testimony (the living-target hint counts as live; was test_playtest_13910_dialogue)
 - **Checks that couldn't fail:**
   - `test_ui`'s "new case button runs … or true" now checks that the seed really changes.
   - `test_day_conversation_view` used 61 bare `assert()`s, so a failure hung the run. They're now counted checks with FAIL lines and a non-zero exit, 228 checks per run.
@@ -24,5 +24,5 @@ Michael's one-off sweep found places where a check quietly didn't run when a see
 - **Not done:** the two suggested suite merges (hint cards with hint families, drag and pan with workshop_pan) are left for another PR.
 
 ## Measured
-- **Suites:** all the touched suites pass: test_dialogue_voices, test_buildings_tavern_town_hall, test_evil_play, test_workshop_regressions, test_ui, test_playtest_89077, test_playtest_13910_dialogue, test_day_conversation_view and test_wording_89077.
+- **Suites:** all the touched suites pass: test_dialogue_voices, test_buildings_tavern_town_hall, test_evil_play, test_workshop_regressions, test_ui, test_playtest_89077, test_dialogue_fixes_testimony, test_day_conversation_view and test_wording_89077.
 - **Golden:** no game code changed, so it doesn't move.
