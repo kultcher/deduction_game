@@ -1066,7 +1066,7 @@ static func _evil_nomination(w, n, m: Dictionary, block: String):
 	if sc != null:
 		sc["by"] = n.id
 		if C.is_demon(w.by_id[sc["nominee"]].role):
-			w.dlog.think(n.id, "team_survival", "Protects the demon: maintaining cover cannot justify nominating them.")
+			w.dlog.think(n.id, "team_survival", "Protects the Demon: maintaining cover cannot justify nominating them.")
 			return _evil_counter_or_pass(w, n, m, ev)
 		if Evil.is_teammate(w, n, sc["nominee"]):
 			var stakes = 0.85 * Evil.teammate_value(w, sc["nominee"])
@@ -2124,7 +2124,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if v.is_evil():
 		var scion_safe: bool = Evil.scion_fallback_active(w)
 		if C.is_demon(w.by_id[nominee].role) and not scion_safe:
-			w.dlog.think(v.id, "team_survival", "Votes no on the demon: later voters can make even an early vote decisive.")
+			w.dlog.think(v.id, "team_survival", "Votes no on the Demon: later voters can make even an early vote decisive.")
 			return false
 		if v.id == nominator and not Evil.is_teammate(w, v, nominee):
 			w.dlog.think(v.id, "vote", "YES on %s. Follows through on own nomination." % nominee, {"evil": true})

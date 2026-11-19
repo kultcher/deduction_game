@@ -1207,8 +1207,8 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 	match crole:
 		"seer":
 			return [
-				"%s sight said one of them is the demon" % own_poss,
-				"%s sight said one of them is the demon" % third_poss,
+				"%s sight said one of them is the Demon" % own_poss,
+				"%s sight said one of them is the Demon" % third_poss,
 			]
 		"archivist":
 			var a_role: String = C.role_name(str(data.get("role", "")))
@@ -1268,8 +1268,8 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 			]
 		"augur":
 			return [
-				"%s evening omen sensed the demon along that daytime path" % own_poss,
-				"%s evening omen sensed the demon along that daytime path" % third_poss,
+				"%s evening omen sensed the Demon along that daytime path" % own_poss,
+				"%s evening omen sensed the Demon along that daytime path" % third_poss,
 			]
 		"magistrate":
 			return [
@@ -1292,7 +1292,7 @@ static func _report_why_pair(view: Dictionary, card: Dictionary, pid: String, se
 			return [m_txt, m_txt]
 		"veteran":
 			var v_blk: String = C.block_name(str(data.get("block", "")))
-			var v_txt: String = "the demon came by way of %s, where they live" % v_blk
+			var v_txt: String = "the Demon came by way of %s, where they live" % v_blk
 			return [v_txt, v_txt]
 		_:
 			return [

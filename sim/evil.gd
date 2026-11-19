@@ -761,7 +761,7 @@ static func choose_poison_target(w, exclude: String = "") -> String:
 	var plan: Dictionary = w.evil_plan
 	var combo: String = plan.get("poison_for_kill", "")
 	if combo != "" and w.by_id[combo].alive and w.demon().alive:
-		w.dlog.think(m.id, "poison_choice", "Poisoner targets %s, as the demon asked: the Veteran's gift must fail tonight." % combo, {"combo": true})
+		w.dlog.think(m.id, "poison_choice", "Poisoner targets %s, as the Demon asked: the Veteran's gift must fail tonight." % combo, {"combo": true})
 		return combo
 	# A Warden at the door would spoil a kill on someone prominent: break the Warden instead.
 	var kt = w.by_id.get(exclude)

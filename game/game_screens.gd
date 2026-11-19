@@ -16,7 +16,7 @@ const CaseMetrics = preload("res://game/case_metrics.gd")
 
 static func _intro(g) -> void:
 	g._narr("THE DEMONOLOGIST  (case #%d)" % g.w.seed_value)
-	g._narr("You arrive in the village of Hollowmere at dawn. A demon wears the skin of one of its people,")
+	g._narr("You arrive in the village of Hollowmere at dawn. A Demon wears the skin of one of its people,")
 	g._narr("and %s serve%s it. Find the host and see them hanged before the town falls." % ["a minion" if g.w.minion_ids.size() == 1 else "%d minions" % g.w.minion_ids.size(), "s" if g.w.minion_ids.size() == 1 else ""])
 	g._narr("")
 	g._screen(_cast(g))
@@ -252,7 +252,7 @@ static func _script(g) -> String:
 
 
 static func _tools(g) -> String:
-	return "Your tools: Ward (shield one person from the demon for a night) x%d; Clemency (spare a nominee) x%d; Vigil (watch a block at night) unlimited." % [g.w.tools["ward"], g.w.tools["clemency"]]
+	return "Your tools: Ward (shield one person from the Demon for a night) x%d; Clemency (spare a nominee) x%d; Vigil (watch a block at night) unlimited." % [g.w.tools["ward"], g.w.tools["clemency"]]
 
 
 static func _board(g, filter: String) -> String:
@@ -457,9 +457,9 @@ static func _outcome_text(g) -> String:
 			var result = "not recorded" if ids.is_empty() else "correct" if g.case_summary[role + "_identified"] else "incorrect"
 			lines.append("%s identified: %s." % [role.capitalize(), result])
 		if g.case_summary["identified_but_lost"]:
-			lines.append("You identified the demon, but could not save the town in time.")
+			lines.append("You identified the Demon, but could not save the town in time.")
 		elif g.case_summary["town_saved"] and not g.case_summary["demon_identified"]:
-			lines.append("The town survived, though your final theory did not identify the demon.")
+			lines.append("The town survived, though your final theory did not identify the Demon.")
 	lines.append("Innocent townsfolk surviving: %d/%d. Wrongful executions: %d (%d backed, %d opposed, %d mixed)." %
 		[g.case_summary["good_surviving"], g.case_summary["good_initial"], g.case_summary["executions_good"],
 		g.case_summary["wrongful_backed"], g.case_summary["wrongful_opposed"], g.case_summary["wrongful_mixed"]])
@@ -468,11 +468,11 @@ static func _outcome_text(g) -> String:
 	var rc: Array = g.case_summary.get("demon_evidence_reachable", [])
 	if not g.case_summary["town_saved"]:
 		if not ob.is_empty():
-			lines.append("Evidence pointing at the demon was on your board: #%s." % ", #".join(PackedStringArray(ob.map(func(x): return str(x)))))
+			lines.append("Evidence pointing at the Demon was on your board: #%s." % ", #".join(PackedStringArray(ob.map(func(x): return str(x)))))
 		elif not rc.is_empty():
-			lines.append("Evidence pointing at the demon existed but never reached your board: %s." % "; ".join(PackedStringArray(rc.slice(0, 4))))
+			lines.append("Evidence pointing at the Demon existed but never reached your board: %s." % "; ".join(PackedStringArray(rc.slice(0, 4))))
 		else:
-			lines.append("No true evidence pointed at the demon this case.")
+			lines.append("No true evidence pointed at the Demon this case.")
 	return "\n".join(lines)
 
 
@@ -618,7 +618,7 @@ static func named_in(g, id: String) -> Array:
 			"rumormonger":
 				what = C.secret_name(d.get("secret", "")) + " (a secret)"
 			"seer":
-				what = "the demon" if d.get("yes", false) else "not the demon (cleared)"
+				what = "the Demon" if d.get("yes", false) else "not the Demon (cleared)"
 		if what == "":
 			continue
 		var lead = "" if what.begins_with("not") else "possibly "
@@ -630,7 +630,7 @@ static func named_in(g, id: String) -> Array:
 static func _death_text(n) -> String:
 	match n.death_cause:
 		"demon":
-			return "killed by the demon, night %d" % n.death_day
+			return "killed by the Demon, night %d" % n.death_day
 		"martyr":
 			return "died in another's place at the gallows, day %d" % n.death_day
 	return "executed, day %d" % n.death_day

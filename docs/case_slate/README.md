@@ -92,6 +92,6 @@ Dowser card is "not ready".
 
 ## Current baseline
 
-`baseline.jsonl`: built from main at b856819 (Nov 19, Quill), with the misleading cases.
-The true cases' rows are identical to the first baseline (a990916). The report is in
+`baseline.jsonl`: built from main at 9c5eaf0 (Nov 19, Quill). Since b856819, only the
+Warden's guard (#306) and the player's vigil (#300) cases moved, both slightly; see
 `baseline.md`.
