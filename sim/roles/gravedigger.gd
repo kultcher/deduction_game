@@ -19,8 +19,8 @@ func _init() -> void:
 	requires_execution = true
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s Gravedigger: %s was %s" % [src, nm.call(d.get("executed", "")), content().role_name(d.get("role", ""))]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "Hanged %s = %s" % [nm.call(d.get("executed", "")), content().role_name(d.get("role", ""))]
 
 
 func generate_reading(w, n, _ctx: Dictionary, _mind) -> Dictionary:

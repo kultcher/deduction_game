@@ -47,10 +47,10 @@ func clears(d: Dictionary) -> Array:
 	return [d["target"]] if d.get("chosen", false) else []
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	if d.get("evil", false):
-		return "%s Martyr: %s was evil" % [src, nm.call(d.get("target", ""))]
-	return "%s Martyr: chose %s" % [src, nm.call(d.get("target", ""))]
+		return "%s: evil" % nm.call(d.get("target", ""))
+	return "Chose %s" % nm.call(d.get("target", ""))
 
 
 func pick_targets(w, mart, mind):
