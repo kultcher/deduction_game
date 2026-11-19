@@ -502,11 +502,6 @@ Candidates for a unified retuning proposal, not approved changes.
   good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
   `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
 
-- **Signal honest forgetting.** When memory limits drop people from a report,
-  acknowledge it ("There were others, but I can't place them"), distinct from Gossip
-  refusal, omitting a friend, or concealment, without exposing the omitted names.
-  [decided; presentation open]
-
 ### UI
 
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
