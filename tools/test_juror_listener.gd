@@ -128,9 +128,7 @@ func _draw_and_bare() -> void:
 	var u: Array = Live.listener_reading(g, uncited).get("challenges", [])
 	var a: Array = Live.listener_reading(g, alone).get("challenges", [])
 	check(u.size() == 1 and u[0].kind == "pressed", "a lie call is weighed against the whole case: with the contradicting reading on it, it's accepted uncited (%s)" % str(u))
-	# Whether a bare call on a likely-true reading is accepted is with Lantern (Nov 19): it
-	# currently presses the teller (see the print). Printed, not pinned, until settled.
-	print("  bare call on a likely reading: %s" % str(a))
+	check(a.size() == 1 and a[0].kind == "bare", "a bare call on a reading nothing argues against presses no one (%s)" % str(a))
 
 
 func _done() -> void:

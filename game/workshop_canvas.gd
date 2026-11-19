@@ -1,6 +1,7 @@
 ## Live canvas boundary. Only player board receipts cross into the editor.
 extends RefCounted
 const Bridge = preload("res://game/workshop_bridge.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 
@@ -335,8 +336,10 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	# An accepted lie call presses its teller as the liar rather than moving the odds (the
 	# clash is in the worlds already): the badge's words name it (Herald words the line).
 	var presses: Array = []
+	# `floors` lists every lie call assessed; one presses its teller exactly as the refresh
+	# applies it (Jury): agreement at or over the bar (Lantern, Nov 19).
 	for f in pj.get("floors", []):
-		if str(f.get("mode", "")) == "lying":
+		if str(f.get("mode", "")) == "lying" and float(f.get("agreement", 0.0)) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
 			presses.append({"source": str(f.get("source", "")), "agreement": float(f.get("agreement", 0.0))})
 	# Each lie call's outcome for this listener, for the badge's words (Herald, Nov 19):
 	# "pressed" (accepted: the town presses the teller as the liar), "draw" (grounded on
