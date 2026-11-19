@@ -279,6 +279,9 @@ static func neutral_listener(view: Dictionary) -> Dictionary:
 
 static var _premise_cache: Dictionary = {}
 
+## The conclusion carries any readings that refute "was the Demon when hanged" (`refuters`,
+## Solver.with_hanged_refuters), so the key below (question_inputs holds the conclusion) keys
+## on them too.
 static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
 	var ref: Array = [Solver._universe_key(view), Solver.question_inputs(view, conclusion), view.get("timeline", {})]
 	var key: int = hash(ref)
@@ -304,7 +307,7 @@ static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> Pac
 		for i in range(t_worlds.size()):
 			t_out[i] = 1 if t_idx >= 0 and int(t_worlds[i].get("converted", -1)) == t_idx else 0
 		return t_out
-	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", ""))) if conclusion.type in ["demon", "notdemon"] else {}
+	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", "")), conclusion.get("refuters", [])) if conclusion.type in ["demon", "notdemon"] else {}
 	if not h_ctx.is_empty():
 		# Someone already hanged: "was the Demon when hanged" (Solver.hanged_demon), the
 		# Scion's succession included. One byte per world, in GDScript.
@@ -428,6 +431,7 @@ static var capture_worlds: bool = false
 static var captured: Array = []
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)
 	if not SolverBackend.profiling_enabled:
 		return _evaluate_impl(view, case_data, listener)
 	var _st: int = SolverBackend.begin_stage("channel_sum_product")
@@ -702,6 +706,7 @@ const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusa
 ## the premise. Listener-specific work is then per class, not per world.
 ## known: the listener's own readings, which can complete a test factor's route.
 static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data, cards, true)
 	if not SolverBackend.profiling_enabled:
 		return _compile_impl(view, cards, case_data, known)
 	var _st: int = SolverBackend.begin_stage("case_eval_compile")
@@ -723,7 +728,12 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 	if cards.any(func(c): return c.has("route_trust")):
 		key_input.append(cards.map(func(c): return c.get("route_trust", 1.0)))
 	if cards.any(func(c): return c.has("broken_chance")):
-		key_input.append(cards.map(func(c): return c.get("broken_chance", 0.0)))
+		# A count mixed with no broken chance is still mixed (its evil teller says nothing).
+		key_input.append(cards.map(func(c): return [c.get("broken_chance", 0.0), c.get("count_mix", false)]))
+		if cards.any(func(c): return c.get("count_mix", false)):
+			# Whether a count is impossible reads the listener's own sightings (certain_for_count;
+			# Codex on #346), even for a listener with no home nights to key on below.
+			key_input.append(str(view.get("own_home", {}).get("self", "")))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
@@ -1317,7 +1327,19 @@ static func _route_trusted(cards: Array, listener: Dictionary) -> Array:
 static func _list_broken(view: Dictionary, cards: Array, listener: Dictionary) -> Array:
 	var SourceDoubt = preload("res://workshop/source_doubt.gd")
 	var out: Array = []
+	# Counts take the mix slots the lists leave (SourceDoubt.LIST_MIX_MAX, shared), the latest
+	# nights first, chosen among these judged cards only.
+	var lists_mixed: int = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and SourceDoubt.list_broken_chance(view, listener, c) > 0.0).size()
+	var counts: Array = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "lamplighter" and SourceDoubt.count_mixable(view, listener, c))
+	counts.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
+	var count_ids: Array = counts.slice(0, maxi(0, SourceDoubt.LIST_MIX_MAX - lists_mixed)).map(func(c): return str(c.get("id", "")))
 	for card in cards:
+		if str(card.get("id", "")) in count_ids:
+			var mixed: Dictionary = card.duplicate()
+			mixed["broken_chance"] = SourceDoubt.count_broken_chance(view, listener, card)
+			mixed["count_mix"] = true
+			out.append(mixed)
+			continue
 		if card.get("kind", "") == "report" and str(card.get("role", "")) == "nightwatch":
 			var b: float = SourceDoubt.list_broken_chance(view, listener, card)
 			if b > 0.0:

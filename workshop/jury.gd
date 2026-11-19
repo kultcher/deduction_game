@@ -45,6 +45,7 @@ static func _case_eval(view: Dictionary, scoped: Dictionary, listener: Dictionar
 	return result
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary, context: Dictionary = {}) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	_eval_memo = {}
 	var span = Profiler.open("jury")
 	var st: int = SolverBackend.begin_stage("outer_prep") if SolverBackend.profiling_enabled else -1
@@ -60,6 +61,7 @@ static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictiona
 ## effects, theories (also written to listener), reasoning (the attention used) and
 ## reading challenges. CaseEval engine only.
 static func refresh(view: Dictionary, case_data: Dictionary, listener: Dictionary) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	if not SolverBackend.profiling_enabled:
 		return _refresh_impl(view, case_data, listener)
 	var _st: int = SolverBackend.begin_stage("outer_prep")
