@@ -120,7 +120,9 @@ static func hypothetical_cards(view: Dictionary, value: Dictionary, cards: Array
 		var challenge: Dictionary = value.get("reading_challenges", {}).get(card.id, {})
 		var cid_match: String = card.id if psych_dropped.has(card.id) else (str(card.get("fact_id", "")) if psych_dropped.has(str(card.get("fact_id", ""))) else "")
 		if not challenge.is_empty():
-			if challenge.get("mode") == "misled":
+			# An honest mistake ("misled", or its merged name "impaired"; Nov 18) keeps the
+			# claim and drops what the reading said.
+			if str(challenge.get("mode")) in ["misled", "impaired"]:
 				var claim: Dictionary = card.duplicate(true)
 				claim.kind = "claim"
 				claim.data = {}

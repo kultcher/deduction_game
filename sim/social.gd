@@ -591,6 +591,44 @@ static func tavern_whispers(w) -> void:
 			if Evil.unshared_intel(d, m) + Evil.unshared_intel(m, d) > 0 and w.decision_roll(d, "whisper_intelligence", Tuning.Social.TAVERN_WHISPER_CHANCE, {}, m.id):
 				Evil.share_intel(w, d, m, "whisper in the crowded tavern")
 
+# ---------------------------------------------------------------- agreement
+
+## Backing a case builds trust (BACKLOG, Michael, Nov 18): a good NPC warms a little to
+## someone who agrees with it, by the same small step a nominee gives those who vote to spare
+## it (Social.TRUST_VOTED_FOR), at most once a day for each ally: a day of agreeing votes is
+## one agreement, not one per ballot. Evil NPCs' own trust isn't moved (their shadow copies it).
+static func agreement_trust(w, l, ally_id: String, why: String) -> void:
+	if l == null or not l.alive or l.is_evil() or ally_id == l.id or not w.by_id.has(ally_id):
+		return
+	var agreed: Dictionary = l.dialogue_memory.get("agreed_on_day", {})
+	if int(agreed.get(ally_id, -1)) == w.day:
+		return
+	agreed[ally_id] = w.day
+	l.dialogue_memory["agreed_on_day"] = agreed
+	l.npc_trust[ally_id] = clampf(l.npc_trust.get(ally_id, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	w.dlog.add("npc_trust", l.id, ally_id, {"to": snappedf(l.npc_trust[ally_id], 0.001), "agreement": why}, "%s %s" % [ally_id, why])
+
+## Someone nominated or accused `target_id` in front of the town: every good NPC who already
+## suspects them about as much as it takes to nominate (Meeting.NOMINATION_FLOOR) agrees.
+static func backing_trust(w, target_id: String, backer_id: String, why: String) -> void:
+	for l in w.living():
+		if l.id == target_id or l.id == backer_id:
+			continue
+		if Mind.susp(l, target_id) >= Tuning.Meeting.NOMINATION_FLOOR:
+			agreement_trust(w, l, backer_id, why)
+
+## After a vote: each good voter warms to those who voted the same way (a no vote is how one
+## NPC stands up for another, so this covers defences too).
+static func vote_agreement_trust(w, nominee_id: String, yes: Array, no: Array) -> void:
+	for side in [[yes, "voted with me to hang %s" % nominee_id], [no, "voted with me to spare %s" % nominee_id]]:
+		var ids: Array = side[0]
+		for a in ids:
+			if a == nominee_id or not w.by_id.has(a):
+				continue
+			for b in ids:
+				if b != a and b != nominee_id:
+					agreement_trust(w, w.by_id[a], b, side[1])
+
 # ---------------------------------------------------------------- paranoia
 
 ## Paranoia drift (a nightly flat rise in everyone's suspicion) was removed Oct 30: under the

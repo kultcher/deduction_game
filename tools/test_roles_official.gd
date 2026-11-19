@@ -710,7 +710,9 @@ func _challenges(view: Dictionary, knowledge: Dictionary, positive: Dictionary, 
 	check(result.results[0].note.contains("without a broken gift"), "Misled feedback distinguishes registration from impairment")
 	value.reading_challenges = {negative.id: {"mode": "misled", "supports": [positive.id]}}
 	result = preload("res://workshop/reading_challenges.gd").assess(view, value, listener, [positive, negative])
-	check(not result.results[0].supported and result.results[0].multiplier == 1.0, "same-pair flip supplies no automatic poisoning discount")
+	# The one honest-mistake label (Nov 18): a Seer reading is graded like any other, so a
+	# flip gets the graded test's own small discount, never an automatic one.
+	check(float(result.results[0].multiplier) > 0.98, "same-pair flip supplies no automatic poisoning discount (%.3f)" % float(result.results[0].multiplier))
 	var claimant = report("rival", "b", "seer", {"pair": ["c", "d"], "yes": false})
 	view.cards = [claimant]
 	value.cards = [claimant.id]

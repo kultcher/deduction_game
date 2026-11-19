@@ -599,6 +599,12 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 			scores.append({"evil": 0.0, "good": 0.0, "marked": 0.0, "unmarked": 0.0})
 			if view.get("world_options", {}).get("identities", false):
 				scores[-1].merge({"demon": 0.0, "notdemon": 0.0, "minion": 0.0, "notminion": 0.0})
+		# A hanged person's Demon question is "the Demon when hanged" (Solver.hanged_demon;
+		# Codex on #305): a succession world supports it, as the solver's search does.
+		var hanged: Array = []
+		if view.get("world_options", {}).get("identities", false):
+			for person in view.people:
+				hanged.append(Solver.hanged_context(view, person.id))
 		for world in worlds:
 			if world.is_empty():
 				continue
@@ -609,7 +615,10 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 				scores[i][alignment] = maxf(scores[i][alignment], score)
 				scores[i][registration] = maxf(scores[i][registration], score)
 				if world.has("demon"):
-					var identity: String = "demon" if world.demon == i else "notdemon"
+					var was_demon: bool = world.demon == i
+					if i < hanged.size() and not hanged[i].is_empty():
+						was_demon = Solver.hanged_demon_in(world, hanged[i]) == 1
+					var identity: String = "demon" if was_demon else "notdemon"
 					var minion: String = "minion" if (world.evil & (1 << i)) != 0 and world.demon != i else "notminion"
 					scores[i][identity] = maxf(scores[i][identity], score)
 					scores[i][minion] = maxf(scores[i][minion], score)

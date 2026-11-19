@@ -827,6 +827,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 	w.public_event("accusation", [t.id], n.id)
 	# Being accused in front of the town costs the accuser some of the target's trust (Oct 30).
 	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
+	load("res://sim/social.gd").backing_trust(w, t.id, n.id, "accused %s, whom I suspect too" % t.id)
 	var line: Dictionary
 	# Agreeing needs someone else to agree with (a speaker who interjects can come round again).
 	var others_earlier: Array = earlier.filter(func(a): return a.get("by", "") != n.id and w.by_id.has(a.get("by", "")))

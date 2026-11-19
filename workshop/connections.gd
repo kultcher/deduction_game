@@ -144,7 +144,12 @@ const MAP_KEYS: Array = ["positions", "answers", "reasons", "citations", "faults
 
 const CONTEXT_KINDS: Array = ["claim", "secret_claim", "context"]
 const NIGHT_KINDS: Array = ["sighting", "alibi", "coverage", "evening"]
-const NIGHT_ROLES: Array = ["lamplighter", "nightwatch"]
+## Reports read with their night's movement cards. A Warden's guard is one: on a quiet night
+## it says the Demon came to the guarded door (LiveActivity._quiet_guards), which only means
+## something beside who was seen near that block that night. Alone it moved no one (Quill,
+## Nov 19: a guard cited with a sighting on the guarded block counted as the sighting alone,
+## while the Test juror, judging the case whole, counted both).
+const NIGHT_ROLES: Array = ["lamplighter", "nightwatch", "warden"]
 const TRACE_KINDS: Array = ["trace", "dropped"]
 ## What the Hexer factor reads besides the profile cards (LiveActivity: presence_cards).
 const DAY_KINDS: Array = ["location", "watch_log", "evening"]
@@ -723,7 +728,7 @@ static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> A
 
 ## The keys of the items that seed the core: every item holding a firsthand card. A night
 ## (or, under a Walker reading, the movement connection) seeds it this way when it holds
-## the listener's own Night Watch or Lamplighter report, or a wrong sighting of it. The
+## the listener's own Night Watch, Lamplighter or Warden report, or a wrong sighting of it. The
 ## Hexer's day connection never does: it only re-reads cards that sit elsewhere.
 static func seed_keys(item_list: Array, firsthand_ids: Array) -> Array:
 	var out: Array = []

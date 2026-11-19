@@ -152,6 +152,9 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	var challenge_errors: Array = []
 	for id in case_data.get("reading_challenges", {}):
 		var mode: String = case_data.reading_challenges[id].get("mode", "")
+		# One honest-mistake label (Nov 18): "impaired" is "misled"'s merged name.
+		if mode == "impaired":
+			mode = "misled"
 		if mode in ["misled", "lying"]:
 			var ch_card: Dictionary = card_by_id(view, id)
 			# A Medium relay's challenge names whose word is doubted (Codex, #195): the
@@ -160,7 +163,7 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 			var assumed: String = "good" if mode == "misled" else "evil"
 			var allowed: Array = ["good", "marked"] if mode == "misled" else ["evil", "demon", "minion"]
 			if positions.get(source, assumed) not in allowed:
-				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % mode.capitalize())
+				challenge_errors.append("The selected reader alignment conflicts with the %s explanation." % ("Lying" if mode == "lying" else preload("res://workshop/reading_challenges.gd").HONEST_LABEL))
 			else:
 				positions[source] = positions.get(source, assumed)
 	for pcard in cards:
@@ -1676,16 +1679,58 @@ static func _movement_cs(view: Dictionary, cards: Array, answers: Dictionary, kn
 		nights[night_keys.get(night, str(night))] = {"compatible": compat, "forced_out": forced}
 	return {"okay": raw[0] != 0, "nights": nights}
 
+## "X is the Demon" about someone already hanged means "X was the Demon when hanged"
+## (Michael, Nov 19): the world's Demon is the Demon now, so a hanged Demon whose Scion rose
+## sits in it as an evil non-Demon. Holds where X is the world's Demon, or where X was evil,
+## the hanging had five or more alive, a Scion is possible on the script, and the world's
+## Demon was alive at it (the succession; LiveActivity's SuccessionApplies and the role
+## constraints' Scion mask read it the same way). -1 when X wasn't hanged: the plain question.
+static func hanged_demon(view: Dictionary, world: Dictionary, target: String) -> int:
+	var ctx: Dictionary = hanged_context(view, target)
+	return -1 if ctx.is_empty() else hanged_demon_in(world, ctx)
+
+## The world-independent part, computed once per question: {} when the target wasn't hanged.
+static func hanged_context(view: Dictionary, target: String) -> Dictionary:
+	var index: int = person_index(view, target)
+	if index < 0:
+		return {}
+	var hanged: bool = false
+	for day_str in view.get("timeline", {}).get("executions", {}):
+		if target in view.timeline.executions[day_str]:
+			hanged = true
+	if not hanged:
+		return {}
+	var minions: Array = view.get("script_minions", [])
+	var scion: bool = minions.is_empty() or "scion" in minions
+	return {"index": index, "alive_mask": Roles._scion_exec_alive_demon_mask(view, person_ids(view), target) if scion else 0}
+
+static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
+	var demon: int = int(world.get("demon", -1))
+	var index: int = int(ctx.index)
+	if demon == index:
+		return 1
+	if demon < 0 or (int(world.evil) & (1 << index)) == 0:
+		return 0
+	return 1 if (int(ctx.alive_mask) & (1 << demon)) != 0 else 0
+
 static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -> bool:
 	var index: int = person_index(view, conclusion.target)
 	if index < 0:
 		return false
+	if conclusion.type in ["demon", "notdemon"]:
+		var hd: int = hanged_demon(view, world, conclusion.target)
+		if hd >= 0:
+			return (hd == 1) == (conclusion.type == "demon")
 	match conclusion.type:
 		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
 		"notdemon": return not position_holds(view, world, conclusion.target, "demon", conclusion.at)
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
 		"marked": return world.marked == index
+		# "X was turned by the Revenant's curse" (BACKLOG "Time-scoped Revenant possession
+		# premise"): X is the soul the curse turned, so good before and after it and evil
+		# only while it held. Never true with no public curse (no world is turned).
+		"turned": return int(world.get("converted", -1)) == index
 		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
 		"role", "notrole":
 			# A declaration question, not an extra hidden role assignment: the live
