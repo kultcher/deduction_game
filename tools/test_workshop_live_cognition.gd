@@ -1,8 +1,6 @@
 ## Native profiles, committed union memory, scoped replies and reversible ownership.
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
-const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -15,13 +13,9 @@ func _init() -> void:
 	# The earlier model's Workshop theories across a day advance.
 	_insight()
 	_attention()
-	# Persistence Confidence on a belief refresh (a working theory biasing what the listener
-	# believes) is the earlier model's: the connections refresh doesn't read through a theory.
-	# Live play doesn't use persistence by default. Pinned until Michael decides whether the
-	# experiment goes with the purge (docs/connections_purge_plan.md).
-	Connections.enabled = false
-	_confidence()
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
+	# Persistence Confidence on a belief refresh (a working theory biasing belief) went with
+	# the earlier model in purge phase 3; the connections refresh doesn't read through a
+	# theory (BACKLOG, "Persistence Confidence"; the checks are on archive/legacy-belief-final).
 	_cover_and_fallback()
 	_registration()
 	print("Live Workshop cognition: %d checks, %d failures" % [checks, fails])
@@ -146,36 +140,6 @@ func _attention() -> void:
 	Mind.apply_info(g.w, n, p[1], {"role": "dowser", "day": 1, "phase": 0, "data": {"group": [p[3].id], "count": 0}}, 1.0)
 	check(n.workshop_state.reasoning.considered.size() == cards.size() + 1, "independently learning an already presented report does not create a second attention slot")
 
-func _confidence() -> void:
-	# Hold source quality fixed and vary independent prior evidence about the
-	# target. A moderate contrary comparison should move the less committed mind.
-	var outcomes: Array = []
-	var initial: Array = []
-	var atoms: Array = []
-	for confidence in [0.1, 0.9]:
-		var g = _game()
-		var p: Array = g.w.npcs
-		var n = p[0]
-		n.traits.confidence = confidence
-		n.suspicion[p[3].id] = 0.6
-		var card = _read(g, p[1], "dowser", 1, {"group": [p[3].id], "count": 1})
-		var number = g.file_deduction({"type": "evil", "a": p[3].id}, [card])
-		var first = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
-		initial.append(n.workshop_state.requested.duplicate(true))
-		atoms.append(first.assessment.support_model.atoms)
-		var key: String = p[3].id + "|Original alignment"
-		var old: String = n.workshop_state.theories[key].position
-		Mind.adjust(g.w, n, p[3].id, 0.15 - n.workshop_state.outside[p[3].id], "independent contrary evidence", "", false)
-		Mind.refresh_beliefs(g.w, n, "changed independent evidence")
-		outcomes.append([old, n.workshop_state.theories[key].position, n.workshop_state.theories[key].decision.status])
-		if confidence > 0.5:
-			var clear = _read(g, p[1], "dowser", 2, {"group": [p[3].id], "count": 0})
-			var defence = g.file_deduction({"type": "good", "a": p[3].id}, [clear])
-			g._evaluate_deduction(n, g.board[defence - 1], 1.0, false)
-			check(n.workshop_state.theories[key].position == "good", "decisive contrary evidence can dislodge the live high-confidence theory")
-	check(outcomes[0] == ["evil", "good", "revised"] and outcomes[1] == ["evil", "evil", "retained"], "live low confidence revises while high confidence retains under the same moderate contrary evidence")
-	check(_close(initial[0], initial[1]) and atoms[0] == atoms[1], "initial evidence effects and source/accuracy weights are equal across confidence levels")
-
 func _cover_and_fallback() -> void:
 	var g = _game()
 	var n = g.w.npcs[0]
@@ -205,31 +169,49 @@ func _registration() -> void:
 	var n = p[0]
 	var number = _proof(g)
 	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	var centred: Dictionary = _brought(g, n)
 	var marked = g.file_deduction({"type": "marked", "a": p[4].id}, g.board[number - 1].supports)
-	var before = n.suspicion.duplicate(true)
 	var r = g._evaluate_deduction(n, g.board[marked - 1], 1.0, false)
 	var key: String = p[4].id + "|Original alignment|marked"
 	check(r.get("workshop", false) and n.workshop_state.theories.has(key), "live Marked questions persist a separate registration theory")
-	check(_close(before, n.suspicion), "asking a Marked question adds no extra alignment evidence effect")
+	# Premise centring (#246): cards only presented cases brought count in full on those
+	# cases' targets. A Marked question names no alignment target, so cards it also brought
+	# are left unshaped: they count in full for everyone, as cards held directly do
+	# (Shared.brought_by_premise). Before #246 the cards counted in full for everyone anyway,
+	# so a Marked question moved no one; now it lifts the first case's centring.
+	check(not centred.is_empty() and centred.values().all(func(t): return t == [p[3].id]) and _brought(g, n).is_empty(),
+		"a Marked question names no alignment target, so it leaves its cards unshaped (centred on %s before, %s after)" % [str(centred.values()), str(_brought(g, n).values())])
+	var after = n.suspicion.duplicate(true)
 	var memory = n.workshop_state.theories.duplicate(true)
 	g._evaluate_deduction(n, g.board[marked - 1], 0.6, true, "meeting")
-	check(n.workshop_state.theories == memory and _close(before, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
-	# Premises step 1: neither the premise's type nor its target moves beliefs (the cards do),
-	# and a later refresh reproduces them exactly.
-	var retyped = g.file_deduction({"type": "demon", "a": p[3].id}, g.board[number - 1].supports)
-	g._evaluate_deduction(n, g.board[retyped - 1], 1.0, false)
-	check(_close(before, n.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
-	var retargeted = g.file_deduction({"type": "evil", "a": p[5].id}, g.board[number - 1].supports)
-	g._evaluate_deduction(n, g.board[retargeted - 1], 1.0, false)
-	var others_same: bool = before.keys().all(func(id): return id == p[5].id or is_equal_approx(before[id], n.suspicion[id]))
-	# The connections model (purge phase 2): the premise changes what is asked, not how the
-	# cards are weighed, so the same cards aimed at someone else move no one. (The earlier
-	# model gave the new target the full effect and the rest the Insight spillover.)
-	check(others_same and is_equal_approx(before[p[5].id], n.suspicion[p[5].id]), "aiming the same cards at someone else moves no one: the cards are weighed the same, whoever the premise names")
-	var shaped = n.suspicion.duplicate(true)
-	Mind.refresh_beliefs(g.w, n, " (later refresh)")
-	check(_close(shaped, n.suspicion), "a later refresh reproduces the remembered premise shaping exactly")
+	check(n.workshop_state.theories == memory and _close(after, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
 	check(r.assessment.theory == n.workshop_state.theories[key].decision, "scoped registration reply uses the committed union decision")
+	# Its target does (premise centring, #246, Michael's option B): the same cards aimed at
+	# someone else count in full on them too, so they rise; the cards aren't weighed twice.
+	var g2 = _game()
+	var p2: Array = g2.w.npcs
+	var n2 = p2[0]
+	var first = _proof(g2)
+	g2._evaluate_deduction(n2, g2.board[first - 1], 1.0, false)
+	var before2 = n2.suspicion.duplicate(true)
+	# The premise's type doesn't move beliefs: the same cards argued as "demon" about the same
+	# target weigh as they did. (In a game of their own: after a Marked question, any later
+	# case of the player's citing the same cards takes its place, and with it its frame.)
+	var retyped = g2.file_deduction({"type": "demon", "a": p2[3].id}, g2.board[first - 1].supports)
+	g2._evaluate_deduction(n2, g2.board[retyped - 1], 1.0, false)
+	check(_close(before2, n2.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
+	var retargeted = g2.file_deduction({"type": "evil", "a": p2[5].id}, g2.board[first - 1].supports)
+	g2._evaluate_deduction(n2, g2.board[retargeted - 1], 1.0, false)
+	var aimed: Dictionary = _brought(g2, n2)
+	check(not aimed.is_empty() and aimed.values().all(func(t): return p2[3].id in t and p2[5].id in t) and float(n2.suspicion[p2[5].id]) > float(before2[p2[5].id]),
+		"aiming the same cards at someone else centres them on both targets, so the new one rises (%.3f -> %.3f)" % [float(before2[p2[5].id]), float(n2.suspicion[p2[5].id])])
+	var shaped = n2.suspicion.duplicate(true)
+	Mind.refresh_beliefs(g2.w, n2, " (later refresh)")
+	check(_close(shaped, n2.suspicion), "a later refresh reproduces the remembered premise shaping exactly")
+
+## The listener's centred cards ({card id: [targets]}, Shared.brought_by_premise) at its last refresh.
+func _brought(g, n) -> Dictionary:
+	return g._workshop_plans.get(n.id + ":good", {}).get("prepared", {}).get("listener", {}).get("connections", {}).get("brought", {})
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
 	if a.keys() != b.keys():

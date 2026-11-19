@@ -439,8 +439,11 @@ static var list_mix_enabled: bool = true
 ## Delusional priors, as independent ways the gift can fail, 1 - (1 - poison)(1 - delusional).
 ## No new number: the poison chance (ReadingChallenges.poison_chance, read with the night's
 ## outings) and the Delusional prior the listener applies to its own gift. Zero for the
-## listener's own list, a quoted or duty-only card, or a script with neither secret; there a
-## list that wrongly names the listener stays set aside, and its night void, as before.
+## listener's own list, a quoted or duty-only card, a script with neither secret, or a view
+## the live movement model doesn't read (`live_activity` off: the Workshop sandbox, whose
+## movement factors never mix the list, so a kept list would be scored name by name and
+## clear its watcher); there a list that wrongly names the listener stays set aside, and its
+## night void, as before.
 ## At most this many lists in a view are mixed (the latest nights first): the movement
 ## factor is built once for every subset of them left out. A list beyond them gets no broken
 ## chance, so it keeps the old fallback (set aside and its night void when it wrongly names
@@ -459,7 +462,7 @@ static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dic
 	return b if str(card.get("id", "")) in keep else 0.0
 
 static func _list_broken_base(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
-	if not list_mix_enabled or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
+	if not list_mix_enabled or not view.get("live_activity", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
 		return 0.0
 	var src: String = str(card.get("source", ""))
 	var me: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))
@@ -490,9 +493,11 @@ static func could_hold_secret(role: String, secret: String) -> bool:
 ## Nov 18), or, where that is more, the call weighed as one witness as accurate as its trust
 ## in the player against the chance R was poisoned that night (ReadingChallenges.poison_chance
 ## with R as the reader, so an unexplained outing near R's home still strengthens a call;
-## Quill). The call counts only where that chance isn't zero. Honest doubt, so the clash reads as a broken gift rather than a lie, and
+## Quill). Honest doubt, so the clash reads as a broken gift rather than a lie, and
 ## whatever the reading held up moves to whoever the rest of the evidence favours; nothing
-## spreads it on purpose. Zero with no Poisoner possible. A wrong call costs the player
+## spreads it on purpose. The one honest-mistake label (Michael, Nov 18, via Seneschal):
+## "misled" is the same call, and it counts with no Poisoner possible too, at the
+## credibility doubt alone (no poison chance to weigh). A wrong call costs the player
 ## through the track record ("R is good", Quill, game/credibility.gd), nothing more.
 ## The doubt a "failed gift" call carries by the listener's credibility in the player, before
 ## the one-witness weighing: FAILED_GIFT_DOUBT_LOW at Trust.CRED_MIN rising in a straight line
@@ -503,8 +508,9 @@ static func call_doubt(c: float) -> float:
 
 static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: Array, self_id: String) -> Dictionary:
 	var out: Dictionary = {}
-	if not player_failed_gift or not ReadingChallenges.poisoner_possible(view):
+	if not player_failed_gift:
 		return out
+	var poison_possible: bool = ReadingChallenges.poisoner_possible(view)
 	var c_player: float = clampf(float(listener.get("player_credibility", listener.get("trust", 0.5))), 0.0, 1.0)
 	var by_id: Dictionary = {}
 	for card in cards:
@@ -515,10 +521,14 @@ static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: A
 		var chs: Dictionary = cs.get("challenges", {})
 		for rid in chs:
 			var ch = chs[rid]
-			if not ch is Dictionary or str(ch.get("mode", "")) != "impaired":
+			if not ch is Dictionary or ReadingChallenges.canonical(ch.get("mode", "")) != ReadingChallenges.HONEST:
 				continue
 			var rc: Dictionary = by_id.get(str(rid), {})
 			if rc.is_empty() or str(rc.get("kind", "")) != "report" or rc.get("quoted", false):
+				continue
+			# Only where some cause the script allows could have fooled this gift (Nov 18): with
+			# none, a Mistaken call would wash a lie at no cost to the teller.
+			if not ReadingChallenges.honest_allowed(view, rc, str(ch.get("attribution", ""))):
 				continue
 			# Whose gift: a challenge on a relayed reading names its side (ReadingChallenges.
 			# RELAY_ATTRIBUTIONS). Its transmission is the Medium's, keyed as the relay's
@@ -530,14 +540,12 @@ static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: A
 			if r_id == "" or r_id == self_id or r_day < 0:
 				continue
 			# A Registrar's night-0 register can't be poisoned (sim/roles/registrar.gd), so a
-			# call on it carries no poison; a Medium's transmission of it can be (Codex on #270).
-			if not transmission and str(rc.get("role", "")) == "registrar" and r_day == 0:
-				continue
+			# call on it carries no poison chance, only the call; a Medium's transmission of it
+			# can be poisoned (Codex on #270).
 			var by_night: bool = transmission or str(rc.get("observed_at", {}).get("phase", "")) == "night"
 			var r_night: int = r_day if by_night else r_day - 1
-			var prior: float = ReadingChallenges.poison_chance(view, listener, r_night, r_id)
-			if prior <= 0.0:
-				continue
+			var no_poison: bool = not poison_possible or (not transmission and str(rc.get("role", "")) == "registrar" and r_day == 0)
+			var prior: float = 0.0 if no_poison else ReadingChallenges.poison_chance(view, listener, r_night, r_id)
 			var w_doubt: float = maxf(call_doubt(c_player), witness_doubt(prior, c_player))
 			var k_r: String = "%s:%d" % [r_id, r_day]
 			out[k_r] = maxf(float(out.get(k_r, 0.0)), w_doubt)

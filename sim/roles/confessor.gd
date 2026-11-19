@@ -53,10 +53,10 @@ func counter_gift_request(_w, _n, _targets: Array, _top: String) -> String:
 	return request_refuse_line
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	if bool(d.get("forgot", false)):
-		return "%s Confessor: forgot visit" % src
-	return "%s Confessor: %s is good" % [src, nm.call(str(d.get("target", "")))]
+		return "Forgot the visit"
+	return "%s: good" % nm.call(str(d.get("target", "")))
 
 
 func _spoken_text(d: Dictionary, nm: Callable) -> String:

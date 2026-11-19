@@ -28,8 +28,8 @@ func is_valid_gift_time(observed_at: Dictionary) -> bool:
 	return int(observed_at.get("day", -1)) >= 1 and str(observed_at.get("phase", "")) == "evening"
 
 
-func short_text(d: Dictionary, src: String, _nm: Callable) -> String:
-	return "%s Augur: %s" % [src, "YES (crossed Demon)" if bool(d.get("yes", false)) else "no crossing"]
+func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
+	return "Crossed the Demon? %s" % ("YES" if bool(d.get("yes", false)) else "NO")
 
 
 func _spoken_text(yes: bool) -> String:

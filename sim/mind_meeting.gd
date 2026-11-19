@@ -827,6 +827,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 	w.public_event("accusation", [t.id], n.id)
 	# Being accused in front of the town costs the accuser some of the target's trust (Oct 30).
 	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
+	load("res://sim/social.gd").backing_trust(w, t.id, n.id, "accused %s, whom I suspect too" % t.id)
 	var line: Dictionary
 	# Agreeing needs someone else to agree with (a speaker who interjects can come round again).
 	var others_earlier: Array = earlier.filter(func(a): return a.get("by", "") != n.id and w.by_id.has(a.get("by", "")))
@@ -1458,12 +1459,11 @@ static func recall_cited(w, n, t_id: String, whys: Array, extra: Array = []) -> 
 	w.dlog.think(n.id, "recall_cited", "Bringing %d card(s) back to the town's mind about %s." % [ids.size(), t_id], {"cards": ids})
 	return ids
 
-## The connections model (workshop/connections.gd; off by default): the cards a nominator
-## cites are a case put to everyone who hears the nomination. Each listener keeps it, and
-## weighs those cards together at its trust in the nominator, fading by the day. Nothing
-## is kept with the model off.
+## The connections model (workshop/connections.gd): the cards a nominator cites are a case
+## put to everyone who hears the nomination. Each listener keeps it, and weighs those cards
+## together at its trust in the nominator, fading by the day.
 static func remember_nomination(w, n, t_id: String, ids: Array) -> void:
-	if not Connections.enabled or ids.is_empty():
+	if ids.is_empty():
 		return
 	var case_data: Dictionary = {"key": "nomination:%s:%s" % [n.id, t_id], "presenter": n.id, "target": t_id, "type": "evil", "cards": ids.duplicate(), "day": int(w.day)}
 	for l in w.living():

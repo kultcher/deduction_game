@@ -294,6 +294,26 @@ static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> Pac
 		return Solver.question_table(view, conclusion)
 	if conclusion.type == "holds":
 		return _holds_mask(view, Solver.card_by_id(view, str(conclusion.get("report", ""))))
+	if conclusion.type == "turned":
+		# The soul the Revenant's curse turned (Solver.holds): one byte per world.
+		var t_idx: int = Solver.person_index(view, str(conclusion.get("target", "")))
+		var t_worlds: Array = Solver.universe(view)
+		var t_out := PackedByteArray()
+		t_out.resize(t_worlds.size())
+		for i in range(t_worlds.size()):
+			t_out[i] = 1 if t_idx >= 0 and int(t_worlds[i].get("converted", -1)) == t_idx else 0
+		return t_out
+	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", ""))) if conclusion.type in ["demon", "notdemon"] else {}
+	if not h_ctx.is_empty():
+		# Someone already hanged: "was the Demon when hanged" (Solver.hanged_demon), the
+		# Scion's succession included. One byte per world, in GDScript.
+		var h_worlds: Array = Solver.universe(view)
+		var h_out := PackedByteArray()
+		h_out.resize(h_worlds.size())
+		var want: int = 1 if conclusion.type == "demon" else 0
+		for i in range(h_worlds.size()):
+			h_out[i] = 1 if Solver.hanged_demon_in(h_worlds[i], h_ctx) == want else 0
+		return h_out
 	if conclusion.type == "inconsistent":
 		# The source's readings can't all hold: not every one of them fits the world.
 		var n_w: int = Solver.universe(view).size()

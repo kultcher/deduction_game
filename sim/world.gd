@@ -11,7 +11,6 @@ const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Social = preload("res://sim/social.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var rng = RandomNumberGenerator.new()
 var seed_value = 0
@@ -399,10 +398,9 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		"coverage": "milestone_2_state_and_structured_decisions"})
 	var start: Dictionary = {"seed": seed_in, "npcs": npc_count, "build": build_id,
 		"tuning": tuning_id, "shared_execution_priority_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT}
-	# The connections belief model changes every belief, so a log played with it on says so
-	# (the replay tools turn it on from this). Off: the record is as it always was.
-	if Connections.enabled:
-		start["connections"] = true
+	# Every log since #160 is played on the connections belief model and says so; the replay
+	# tools stop on a log without it (one played on the earlier model, purge phase 3).
+	start["connections"] = true
 	dlog.add("case_start", "world", "", start)
 	if case_script == null:
 		case_script = ScriptDef.default_script()
@@ -928,6 +926,7 @@ func open_nomination(by: String, nominee: String, reason: String = "") -> Dictio
 	else:
 		target.npc_trust[by] = clampf(target.npc_trust.get(by, 0.5) - Tuning.Trust.NOMINATED_NPC_TRUST_DROP, 0.0, 1.0)
 		dlog.add("npc_trust", nominee, by, {"to": target.npc_trust[by]}, "%s nominated me" % by)
+		Social.backing_trust(self, nominee, by, "nominated %s, whom I suspect too" % nominee)
 	dlog.add("nomination", by, nominee, {"reason": reason, "on_block": meeting["block"], "block_count": meeting["block_count"]})
 	return nm
 
@@ -1011,6 +1010,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		for v in no:
 			if v != nid and by_id.has(v):
 				nominee_npc.npc_trust[v] = clampf(nominee_npc.npc_trust.get(v, 0.5) + Tuning.Social.TRUST_VOTED_FOR, 0.0, 1.0)
+	Social.vote_agreement_trust(self, nid, yes, no)
 	if player_yes:
 		var t = by_id[nid]
 		if nm["by"] != "player":

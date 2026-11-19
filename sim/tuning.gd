@@ -373,6 +373,13 @@ class Trust:
 	## wrong" is the evidence moving a quarter of the way toward the premise being false.
 	const PRESENTATION_WRONG_COST = 0.02
 	const PRESENTATION_WRONG_AGREEMENT = -0.25
+	## Trust from a reading that confirms what the listener knows or strongly believes
+	## (Michael, Nov 19; workshop/reading_confirm.gd): the listener's agreement with the
+	## reading, as a cutoff and tiers, not a scale. At least SMALL: a small trust step (about
+	## the shared-voting one); at least MODERATE: a moderate one; known outright from its own
+	## knowledge: a significant one. The trust steps themselves are Beadle's.
+	const READING_CONFIRM_SMALL = 0.70
+	const READING_CONFIRM_MODERATE = 0.85
 	const NOMINATED_PRESSURE = 0.4
 	const NOMINATED_BY_PLAYER_DROP = 0.15
 	const NOMINATED_NPC_TRUST_DROP = 0.25
@@ -928,12 +935,6 @@ class Workshop:
 	## trust (Michael, Nov 18). Only where a Poisoner is possible.
 	const FAILED_GIFT_DOUBT_LOW = 0.2
 	const FAILED_GIFT_DOUBT_HIGH = 0.8
-	## The connections belief model (workshop/connections.gd;
-	## docs/belief_model.md, "Phase 6 spec"): the limit on an NPC moves from which cards it
-	## reads to which cards it weighs together. On in play since Nov 16 (Michael: commit to the
-	## connections model). Off: the earlier model, for comparisons (autoplay --legacy-model;
-	## tests that pin it set Connections.enabled themselves).
-	const CONNECTIONS = true
 	## Under connections a chance is held inside [clip, 1 - clip] before it becomes log-odds.
 	const CONNECTIONS_CLIP = 0.01
 	## A person the listener's standing view already puts this close to 0 or 1 is settled
@@ -997,8 +998,14 @@ class Workshop:
 	## Calibrated outer belief scale when source reliability is applied per-card upstream.
 	const JURY_BELIEF_SCALE = 1.35
 	const JURY_ALIGNMENT_COEFF = 0.45
-	const JURY_CHALLENGE_LYING_MIN_AGR = 0.6
-	const JURY_CHALLENGE_LYING_SCALE = 0.12
+	## A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by
+	## the listener's agreement and the case's weight), and the gate it must pass, shared with
+	## the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and
+	## 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed
+	## and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good
+	## reader's suspicion about 3 points from a middling player and 11 from a trusted one.
+	const JURY_CHALLENGE_LYING_MIN_AGR = 0.3
+	const JURY_CHALLENGE_LYING_SCALE = 0.4
 	## Per-card epistemic reliability mapping for spoken reports (0.50 + 0.50 * trust in [0.50, 1.00]).
 	const SOURCE_REL_BASE = 0.50
 	const SOURCE_REL_SLOPE = 0.50
@@ -1138,11 +1145,6 @@ class Workshop:
 		"partial": 0.02,
 	}
 
-	## Premises pass step 1 (docs/premises_plan.md): a presented case moves its premise's
-	## target by the full evidence, and everyone else by this share of the presentation's
-	## effect, from the lowest to the highest Insight. Remembered for every refresh.
-	const PREMISE_SPILLOVER_MIN = 0.4
-	const PREMISE_SPILLOVER_MAX = 0.8
 	## Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a
 	## card adds when only presented cases brought it, and what a stored case's cards add
 	## together, count in full on the case's target and at this share on everyone else. A

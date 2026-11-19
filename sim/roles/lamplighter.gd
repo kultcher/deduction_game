@@ -17,8 +17,8 @@ func _init() -> void:
 	count_mode = "walkers"
 
 
-func short_text(d: Dictionary, src: String, _nm: Callable) -> String:
-	return "%s Lamplighter: %d others out" % [src, d.get("count", 0)]
+func short_text(d: Dictionary, _src: String, _nm: Callable) -> String:
+	return "%d others out" % d.get("count", 0)
 
 
 func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:

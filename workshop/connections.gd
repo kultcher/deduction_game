@@ -1,7 +1,6 @@
-## The connections belief model (Phase 6;
-## `docs/belief_model.md`, "Phase 6 spec"). Behind a switch that is
-## on by default since Nov 16 (`Tuning.Workshop.CONNECTIONS`): with it off nothing here runs,
-## and the game uses the earlier model.
+## The connections belief model (Phase 6; `docs/belief_model.md`, "Phase 6 spec"). The
+## game's only belief model since purge phase 3 (Nov 18); the earlier one is on the branch
+## `archive/legacy-belief-final`.
 ##
 ## The idea: the limit on an NPC moves from which cards it reads to which cards it weighs
 ## together. Every card it holds counts, at the value it has alone; cards are only weighed
@@ -89,10 +88,6 @@ const LiveActivity = preload("res://workshop/live_activity.gd")
 const DayPresence = preload("res://workshop/day_presence.gd")
 const Profiler = preload("res://workshop/profiler.gd")
 
-## The switch. It starts from the Tuning value; tests, autoplay and sweeps set it for a run
-## (`--connections`), so paired cells come from one build.
-static var enabled: bool = Tuning.Workshop.CONNECTIONS
-
 ## Tests and tools only: read movement as this row ("none", "walker" or "hexer") whatever
 ## the town's demon mix is. It changes the grouping, not the mix the judge uses. Empty in play.
 static var force_row: String = ""
@@ -149,7 +144,12 @@ const MAP_KEYS: Array = ["positions", "answers", "reasons", "citations", "faults
 
 const CONTEXT_KINDS: Array = ["claim", "secret_claim", "context"]
 const NIGHT_KINDS: Array = ["sighting", "alibi", "coverage", "evening"]
-const NIGHT_ROLES: Array = ["lamplighter", "nightwatch"]
+## Reports read with their night's movement cards. A Warden's guard is one: on a quiet night
+## it says the Demon came to the guarded door (LiveActivity._quiet_guards), which only means
+## something beside who was seen near that block that night. Alone it moved no one (Quill,
+## Nov 19: a guard cited with a sighting on the guarded block counted as the sighting alone,
+## while the Test juror, judging the case whole, counted both).
+const NIGHT_ROLES: Array = ["lamplighter", "nightwatch", "warden"]
 const TRACE_KINDS: Array = ["trace", "dropped"]
 ## What the Hexer factor reads besides the profile cards (LiveActivity: presence_cards).
 const DAY_KINDS: Array = ["location", "watch_log", "evening"]
@@ -728,7 +728,7 @@ static func firsthand(by_id: Dictionary, held: Array, listener: Dictionary) -> A
 
 ## The keys of the items that seed the core: every item holding a firsthand card. A night
 ## (or, under a Walker reading, the movement connection) seeds it this way when it holds
-## the listener's own Night Watch or Lamplighter report, or a wrong sighting of it. The
+## the listener's own Night Watch, Lamplighter or Warden report, or a wrong sighting of it. The
 ## Hexer's day connection never does: it only re-reads cards that sit elsewhere.
 static func seed_keys(item_list: Array, firsthand_ids: Array) -> Array:
 	var out: Array = []

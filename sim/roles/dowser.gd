@@ -21,8 +21,8 @@ func _init() -> void:
 	min_gift_day = 1
 
 
-func short_text(d: Dictionary, src: String, nm: Callable) -> String:
-	return "%s %s: %d evil of %s" % [src, display_name, d.get("count", 0), _names(group_of(d), nm)]
+func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
+	return "%d evil among %s" % [d.get("count", 0), ", ".join(PackedStringArray(group_of(d).map(nm)))]
 
 
 func run_day_gift(w, dw, mind, _evil) -> void:

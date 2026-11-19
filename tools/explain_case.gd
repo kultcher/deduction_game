@@ -21,8 +21,8 @@
 ##                     status, world share and what the premise loses without it
 ##                     (game/workshop_why.gd). Read-only.
 ## --json OUT          also write every assessment as JSONL
-## --connections       replay with the connections belief model on (logs record it from
-##                     Nov 13 and turn it on by themselves); --why then explains its result
+## --connections       accepted and ignored: connections is the only belief model since
+##                     purge phase 3 (Nov 18)
 ##
 ## Belief mode (no --card): --belief PERSON --at SEQ. Replays to SEQ and, for each good
 ## mind, removes each thing it has heard (each ledger entry: a reading, claim, defence,
@@ -60,8 +60,7 @@ func _init():
 			"--card":
 				card_n = int(args[i + 1]); i += 1
 			"--connections":
-				preload("res://workshop/connections.gd").enabled = true
-				Replay.model_override = 1
+				pass  # the only model now (purge phase 3); kept so old commands still run
 			"--at":
 				at = int(args[i + 1]); i += 1
 			"--drop":
@@ -98,6 +97,9 @@ func _init():
 	var stop: int = mini(at, int(filed[0].seq))
 	var variants: Array = [{"label": "as filed", "case": base}]
 	var probe: Dictionary = Replay.replay(events, stop)
+	if probe.g == null:
+		quit(1)  # a log played on the earlier model (LogReplay.new_game printed why)
+		return
 	var cards_info: Dictionary = _card_info(probe.g, base)
 	for who in adds:
 		var extra: Array = cards_info.keys().filter(func(id): return not id in base.cards and (id.begins_with(who) or (cards_info[id].source == who and cards_info[id].kind == "report")))
@@ -185,6 +187,8 @@ func _belief_mode(events: Array, who: String, at: int, only: Array, top: int) ->
 		print("FAIL: --belief needs --at SEQ")
 		return
 	var g = Replay.replay(events, at).g
+	if g == null:
+		return
 	print("Why each mind suspects %s as it does (replayed to seq %d)" % [who, at])
 	for n in g.w.npcs:
 		if not n.alive or n.is_evil() or n.id == who or (not only.is_empty() and not n.id in only):

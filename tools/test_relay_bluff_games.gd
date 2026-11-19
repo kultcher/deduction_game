@@ -7,8 +7,16 @@
 ## suspicion, gave the same numbers before and after #265), so these games are searched for.
 ##
 ## A seed search, so a change to play can move it onto another game; it runs on main with the
-## full list, not on the fast list. Measured on the relays alone: the relayer's chance with
-## every held card against the same refresh with its relays left out (Seeds.relay_effect).
+## full list, not on the fast list. Measured on the relays alone (Seeds.relay_effect): the
+## relayer's chance with every held card, against the same refresh with the relays recast as
+## the relayer's own firsthand sightings. The bug weighed a relay as the dead's honest word, so
+## it cleared the relayer more than its own word would; a relay counts as the relayer's word,
+## no more. Nov 19 (seed 100031, found once #292 moved the search): the check was "no lower than
+## with the relays left out", but a relay blaming someone else for a killing lowers its teller
+## as far as the listener believes it, as a firsthand sighting would. There Greta, the Demon,
+## relays the dead Agnes seeing Dorian at her door the night Greta killed her: Edda's chance of
+## Greta 0.50 without it, 0.35 with it, 0.35 as Greta's own sighting, 0.33 as Agnes's own word.
+## That is a lie believed in part, which is play; the check is whether the relay launders it.
 ##   godot --headless --path . --script res://tools/test_relay_bluff_games.gd
 extends SceneTree
 
@@ -36,8 +44,8 @@ func _init() -> void:
 	quit(1 if fails else 0)
 
 
-## The relayer's chance with every held card isn't more than 5 points below the same refresh
-## with its relays left out.
+## The relayer's chance with every held card isn't more than 2 points below the same refresh
+## with its relays told as its own firsthand sightings.
 func _relay_case(found: Dictionary, label: String) -> void:
 	if found.is_empty():
 		check(false, "%s (no seed searched has the case)" % label)
@@ -45,4 +53,5 @@ func _relay_case(found: Dictionary, label: String) -> void:
 	var eff: Dictionary = Seeds.relay_effect(found.g, str(found.listener), str(found.teller))
 	var with_r: float = float(eff.get("with", -1.0))
 	var without: float = float(eff.get("without", -1.0))
-	check(not eff.is_empty() and with_r >= without - 0.05, "%s (seed %d: %s on %s, %.2f with the relays, %.2f without)" % [label, int(found.seed), found.listener, found.teller, with_r, without])
+	var firsthand: float = float(eff.get("firsthand", -1.0))
+	check(not eff.is_empty() and firsthand >= 0.0 and with_r >= firsthand - 0.02, "%s (seed %d: %s on %s, %.2f with the relays, %.2f as its own sightings, %.2f without)" % [label, int(found.seed), found.listener, found.teller, with_r, firsthand, without])

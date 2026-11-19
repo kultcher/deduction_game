@@ -2,12 +2,12 @@
 
 Nov 10, 2026 · Claude-Lantern, Claude-Quill and Claude-Bailiff, with Michael · consolidated by Bailiff, Nov 13
 
-**Status (Nov 16):** built and on in play. Phases 0–6 are done: the connections model is
-`workshop/connections.gd`, switched by `Tuning.Workshop.CONNECTIONS`, which is `true` since
-#160 (Michael, Nov 16: "commit to the connections model"; golden `baseline_a713ca5`, then
-`baseline_bb6f01c` with #162). The earlier model stays available for comparisons:
-`autoplay.gd --legacy-model` (sweep cells get the `_legacy` suffix), and tests that check its
-mechanics pin it by setting `Connections.enabled` themselves.
+**Status (Nov 18):** built, and the only belief model. Phases 0–6 are done: the connections
+model is `workshop/connections.gd`, on in play since #160 (Michael, Nov 16: "commit to the
+connections model"; golden `baseline_a713ca5`, then `baseline_bb6f01c` with #162). Purge
+phase 3 (Nov 18) removed its switch and the earlier model with it
+(`docs/connections_purge_plan.md`); the earlier model is on the branch
+`archive/legacy-belief-final`, for comparisons.
 
 **Where this came from:** the claude.ai Project doc `belief-model-direction-2026-11-10`,
 moved into the repo on Nov 16 (Bailiff). Every earlier table, the Phase 4 prototype spec and
@@ -15,7 +15,7 @@ the dated decision logs are in `docs/archive/project-docs/belief-model-archive.m
 open items now live in BACKLOG.md, section 6; the handoff log has each step's PR notes.
 
 **Reading it:** the spec and results were written while the switch was off, so "today" and
-"today's model" below mean the earlier model, now `--legacy-model`.
+"today's model" below mean the earlier model, since removed.
 
 ## The problem
 
@@ -69,13 +69,13 @@ The limit on an NPC moves from *which cards it reads* to *which cards it weighs 
 
 Nov 12 · read against main `9e69144`. Michael answered its four questions as recommended (Nov 12); the answers are folded in below.
 
-- **Switch off** (now `--legacy-model`): the earlier model. During the build golden stayed identical at every PR with the switch off; since #160 golden is captured with it on.
+- **Switch off** (removed in purge phase 3): the earlier model. During the build golden stayed identical at every PR with the switch off; since #160 golden is captured with it on.
 - **Switch on:** one number changes, the chance an NPC gives each person of being evil at a belief refresh. Everything after it is today's code: suspicion, votes, nominations, who to hang first, trust.
 - **Attention stops limiting belief.** The Insight card limit still decides what an NPC cites and explains.
 
 ### The switch
 
-`Tuning.Workshop.CONNECTIONS`, on since Nov 16 (#160). `autoplay.gd --legacy-model` (and the sweep's `_legacy` cells) turns it off for a run; `--connections` is still accepted and names the mode. Golden capture always runs the default. The model's memory exists only with the switch on.
+Was `Tuning.Workshop.CONNECTIONS`, on since Nov 16 (#160), and removed with the earlier model in purge phase 3 (Nov 18). `--connections` is still accepted, and ignored, by autoplay and the replay tools so old commands run; `--legacy-model` stops with a note. A log without `connections` in its `case_start` was played on the earlier model, and the replay tools stop on it.
 
 ### Single cards and pairings
 
@@ -630,3 +630,32 @@ and doubted the watcher in general.
 ## Open items
 
 Moved to BACKLOG.md, section 6 ("The connections model: open items"), on Nov 16.
+
+## Does a reading confirm what I know or strongly believe? (Nov 19)
+
+`workshop/reading_confirm.gd` (Michael, Nov 19; Lantern owns the test, Beadle the trust it earns).
+For a reading another NPC tells, it answers with a tier, not a scale, and says where the answer
+came from:
+
+| Tier | When | Source |
+|---|---|---|
+| known | the reading holds in every world the listener's own knowledge allows (its own readings, role and alignment), at a neutral prior | fact |
+| moderate | the listener's chance the reading is right is at least `Tuning.Trust.READING_CONFIRM_MODERATE` (0.85) | belief |
+| small | at least `READING_CONFIRM_SMALL` (0.70) | belief |
+| none | below that, its own reading, or a reading the judge can't table | |
+
+"Right" is the better of two readings of the reading: its content holds (CaseEval's "holds"
+question), or what it says about alignment holds (everyone it points toward evil is evil,
+everyone it speaks for is good, from `Gifts.implicated` and `clears`). The alignment side reads
+the listener's own chances from its last connections refresh, which is the belief it acts on.
+So "Edda was the Poisoner" confirms a listener 90% sure Edda is evil (Michael's example), though
+"the Poisoner exactly" is less sure. The content side weighs worlds by CaseEval's team prior,
+which follows suspicion only loosely; it is why the alignment side uses the chances. For a reading
+pointing at a group (a pair, a count) only the content side applies.
+
+Two limits (Codex on #309). The listener's own readings are the ones it received itself, which
+`Shared.prepare` keeps as `attention_reports` after moving them into the union; both sides weigh
+them. An own reading could have been poisoned, so a reading matching it is strong belief, not a
+known fact (on game 692/7, a Dowser count matching the listener's own went from 0.54 to 0.95
+agreement). And a reading no world can fail, such as a Lamplighter's walker count, which the
+judge doesn't check, confirms nothing by its content: only what it says about alignment can.

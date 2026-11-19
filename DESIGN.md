@@ -627,7 +627,15 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
   suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, and "something doesn't add up" (conflict). Protect and spare are
+  unreliable, "something doesn't add up" (conflict), and "was turned by the curse". The
+  last names the Revenant's turning itself: the person was good before the curse, evil only
+  while it held, and good again after it, so their earlier and later word stands. "Evil
+  during the curse" also allows that they were evil all along. It needs a public curse and
+  a surviving yes-voter, and it never shows who was turned: it's weighed over the worlds
+  like any premise. For someone already hanged, the Demon premise reads "was the Demon when
+  hanged", and holds where the Scion rose after (a hanging with five or more alive). It's
+  offered only with a Scion on the script, and never in the negative (Michael, Nov 19).
+  Protect and spare are
   preferences, spoken as social speech. "Has a secret" and "red herring" can't be
   presented: nothing the town can weigh establishes them.
 - **Cards with inline answers** (who in this Seer pair? which blocks?); unknown answers
@@ -640,8 +648,21 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
   and is a separate retractable contribution.
 - **Links** between evidence and the premise; contradicting statements merge into a
   contradiction card that offers the challenges.
-- **Challenges** on a card: unlikely, misled or lying. A gift reading against an alibi
-  offers both explanations ("the alibi is false" / "the report is false").
+- **Challenges** on a card: Mistaken, Lying, or (Surveyor counts only) Unlikely. A
+  gift reading against an alibi offers both explanations ("the alibi is false" / "the report
+  is false"). The reading labels (Michael, Nov 18): **Mistaken**, an honest mistake (the old
+  "misled" and "failed gift", merged, since the town can rarely prove a Poisoner; it covers any
+  unreliable reading: poison, Delusion, a Marked soul, a Red Herring), doubts the reading
+  as the player's word at their credibility (the failed-gift strength), counts as saying the
+  reader is good, and points a little at the Poisoner candidates only where a Poisoner is
+  possible. A **lie** doubts the reading and puts suspicion on the reader. **Delusional** is
+  about a person, not a reading: it doubts all their readings and, the secret being
+  good-only, clears them. "misled" stays a valid name for Mistaken in saved cases and NPC
+  defences (`ReadingChallenges.canonical`); its label and tip are `HONEST_LABEL` and
+  `HONEST_TIP` there. Mistaken is allowed only where a cause the script allows could have
+  fooled that gift (`honest_allowed`): poison or Delusion any reading, a Red Herring only
+  the Seer's, Marked any of its gifts' readings but one that only speaks for people. With none, the option
+  is off.
 - **Premise → card links** mean "this card's line runs through that premise", and the
   canvas labels them "given <premise>" (#159, triage 5.1).
 - **File case** turns it into a presentable case, usable as a premise later.
@@ -738,7 +759,8 @@ player's case; it doesn't search for theories.**
     knows firsthand: a sharp NPC links more cards to its own readings and nights, a dull
     one only the glaring ones. It never connects public cards that don't touch its own
     knowledge; that's the player's job. The headline nudge is off. The earlier model, where
-    attention bounded belief, runs with `autoplay.gd --legacy-model`.
+    attention bounded belief, was removed in purge phase 3 (Nov 18); it's on the branch
+    `archive/legacy-belief-final`.
 - **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the
   listener trusts the source of the evidence, then by **directional Confidence**: the
   `1.4 − 0.8 × Confidence` factor applies only to moves against the listener's lean (their
@@ -789,7 +811,7 @@ then constant (low / mid / high tiers at 0.34 / 0.67):
 | **Privacy** (about self: role, relationships, whereabouts) | shares who they are even at low trust; claims early | withholds as long as possible; reveals under pressure; stonewalls rather than lies |
 | **Gossip** (about others) | keeps out of others' business | volunteers what they've seen and heard |
 | **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | defends its lean against contrary evidence; lies boldly when pushed; nominates and votes readily |
-| **Insight** | cites and explains only part of what they hold (with `--legacy-model`: also believes from only part, swayed by headlines) | cites from everything they hold |
+| **Insight** | cites and explains only part of what they hold | cites from everything they hold |
 | **Composure** | attitude cues obvious; strongly affected by pressure and paranoia | almost no cues; resists pressure and paranoia |
 
 Privacy decides **whether** an NPC discloses; Confidence decides **what they do when
@@ -1378,10 +1400,9 @@ state changes for the case history viewer (`tools/case_viewer.py`,
   failure text (some scripts exit 0 on failure); `tools/ci_fast_suites.txt` is the PR
   list. Suites that need a particular deal (a Lovers pair, a Breathstealer) find a seed by
   search (`tools/fixture_seeds.gd`, seeds 100000–100059) rather than hard-coding one, so a
-  behaviour change doesn't break them. Suites that check the earlier model's mechanics pin
-  it (`Connections.enabled = false`).
-- **The earlier belief model** runs with `autoplay.gd --legacy-model` (sweep cells
-  `_legacy`), for comparisons only.
+  behaviour change doesn't break them.
+- **The earlier belief model** was removed in purge phase 3 (Nov 18). For a comparison,
+  run it from the branch `archive/legacy-belief-final`.
 - **Speed:** `tools/replay_54875.gd` (opening timings and a profile), a late-game probe
   (seed 42, Days 3–4) and `tools/profile_c0.gd` (solver stage timers).
 
