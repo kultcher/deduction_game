@@ -6,11 +6,6 @@
 extends "res://sim/role_def.gd"
 
 
-## A crowd this size (the Dowser's "4+" row in its bluff guideline) is cover enough for a
-## bluffing Augur to tell the truth about the Demon on its street.
-const DEMON_CROWD := 4
-
-
 func _init() -> void:
 	id = "augur"
 	display_name = "Augur"
@@ -119,7 +114,7 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, _mate, _asked: A
 	# The Dowser's guideline (#160, Michael): stay close to the truth, with the crowd setting
 	# the room. Among a crowd of four or more a "yes" points at nobody in particular, so the
 	# liar tells it true rather than give the Demon a clean day it can be caught out on.
-	if shared_with_demon and demon_crowd.size() >= DEMON_CROWD:
+	if shared_with_demon and demon_crowd.size() >= Tuning.Evil.AUGUR_DEMON_CROWD:
 		yes = true
 		why = "admitted the Demon crossed their path, safe in the crowd of %d on the same street" % demon_crowd.size()
 	elif shared_with_demon and not shared_with_sg:
