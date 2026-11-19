@@ -160,6 +160,17 @@ func _live() -> void:
 		"with a Gravedigger's reading of a Minion role in the case, it holds in fewer worlds (%d against %d; %d plain)" % [held_with, held, plain])
 	check(agree_gd, "the judge's mask and Solver.holds (the Jury, the Reasoner, the support model) agree with the reading in the case")
 	check(Eval._premise_mask(view, q) == mask, "and the mask without it is unchanged, cached or not")
+	# Refuters come from the cards the case is judged on, recomputed every time (Codex on #356).
+	var lview: Dictionary = view.duplicate(true)
+	lview.cards = lview.cards + [gd]
+	var with_card: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["gd-live"]})
+	check(with_card.conclusion.get("refuters", []).size() == 1, "a case citing the reading carries it as a refuter")
+	var dropped: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": with_card.conclusion, "cards": []})
+	check(not dropped.conclusion.has("refuters"), "once the reading is no longer judged (dropped from attention), its refuter goes with it")
+	var quoted_cards: Array = Solver.selected(lview, {"cards": ["gd-live"], "quoted_cards": ["gd-live"]})
+	var quoted_case: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["gd-live"]}, quoted_cards)
+	check(quoted_cards.size() == 1 and quoted_cards[0].get("quoted", false) and not quoted_case.conclusion.has("refuters"),
+		"a reading the judged case quotes (a conflict branch, a Psychologist's answer) refutes nothing")
 
 
 ## What the Workshop offers for a hanged person (Michael, Nov 19): "was the Demon when

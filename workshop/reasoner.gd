@@ -140,6 +140,9 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 	var attended = Graph.compile_case(view, raw)
 	# Graph expansion must not reintroduce an unattended source or fault premise.
 	attended.cards = keep
+	# The refuters of "was the Demon when hanged" from the readings this listener attends to
+	# (Codex on #356): a dropped Gravedigger reading refutes nothing.
+	attended = Solver.with_hanged_refuters(view, attended, Solver.selected(view, attended))
 	attended.lines = []
 	return {"case": attended, "profile": limits.name if bounded else "Full",
 		"limits": limits, "considered": keep, "ignored": cards.filter(func(c): return c.id not in keep).map(func(c): return c.id),

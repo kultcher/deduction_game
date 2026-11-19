@@ -54,12 +54,18 @@ Golden is identical to `baseline_ee15238`.
   CaseWhy's run and evidence, and Solver.analyze. So `Solver.holds` and CaseEval's mask agree,
   and every cache keyed on the conclusion keys on them. The support model's per-person
   comparison uses them for the conclusion's target.
+- **From the cards actually judged (Codex).** The refuters are recomputed every time, never
+  kept: from the caller's judged cards where it has them (CaseEval.compile, Solver.analyze
+  after compiling and selecting, the Reasoner after its attention filter), otherwise from the
+  case's own compiled, selected cards. So a reading that's dropped from attention, excluded
+  or quoted refutes nothing. A case with no Gravedigger or Executor reading about the target
+  skips the compile.
 - **A turned reader (Codex).** A teller's alignment is read at the reading's time
   (`TimeModel.evil_at`), so a reader the Revenant's curse has turned refutes nothing from its
   turning on.
 
-`test_demon_when_hanged` is now 32/32. It adds a check that the mask and `Solver.holds` agree
-on every live world, and a check for the turned reader.
+`test_demon_when_hanged` is now 35/35. It adds a check that the mask and `Solver.holds` agree
+on every live world, a check for the turned reader, and checks that a dropped or quoted reading refutes nothing.
 
 ## Proposed for the backlog
 

@@ -142,9 +142,9 @@ static func semantic_key(card: Dictionary) -> String:
 	return JSON.stringify([card.get("kind"), card.get("source"), card.get("role"), card.get("observed_at"), data, card.get("subject"), card.get("block")])
 
 static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictionary = {}, include_conflicts: bool = true) -> Dictionary:
-	case_data = with_hanged_refuters(view, case_data)
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
+	case_data = with_hanged_refuters(view, case_data, cards)
 	if case_data.conclusion.type == "conflict":
 		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope) or c.id in knowledge.get("own_reports", []))
 	var base = solve(view, cards, {}, {}, knowledge)
@@ -1747,22 +1747,47 @@ static func hanged_refuters(view: Dictionary, cards: Array, target: String) -> A
 static func _refuter_indices(view: Dictionary, refuters: Array) -> Array:
 	return refuters.filter(func(r): return person_index(view, str(r[0])) >= 0)
 
-## `case_data` with its conclusion carrying `refuters` (hanged_refuters of the case's cards),
-## so that every judge of "was the Demon when hanged" (CaseEval's mask, Solver.holds in the
-## Jury, the Reasoner and the support model, the Why) refutes it alike, and every cache keyed
-## on the conclusion keys on them too (Lantern on the design). Unchanged when there are none.
+## `case_data` with its conclusion carrying `refuters` (hanged_refuters of the cards the case
+## is judged on), so that every judge of "was the Demon when hanged" (CaseEval's mask,
+## Solver.holds in the Jury, the Reasoner and the support model, the Why) refutes it alike, and
+## every cache keyed on the conclusion keys on them too (Lantern on the design). Always
+## recomputed, never kept (Codex on #356): from `cards` when the caller has the cards it
+## judges, else from the case's own compiled, selected cards (Graph.compile_case drops lines
+## that don't support it; Solver.selected marks quoted ones), so an excluded, quoted or
+## unattended reading refutes nothing. Unchanged when the refuters are.
 static func with_hanged_refuters(view: Dictionary, case_data: Dictionary, cards: Array = []) -> Dictionary:
 	var conclusion: Dictionary = case_data.get("conclusion", {})
-	if conclusion.has("refuters") or str(conclusion.get("type", "")) not in ["demon", "notdemon"]:
+	if str(conclusion.get("type", "")) not in ["demon", "notdemon"]:
 		return case_data
-	var held: Array = cards if not cards.is_empty() else case_data.get("cards", []).map(func(id): return card_by_id(view, str(id)))
-	var refuters: Array = hanged_refuters(view, held.filter(func(c): return c is Dictionary and not c.is_empty()), str(conclusion.get("target", "")))
-	if refuters.is_empty():
+	var target: String = str(conclusion.get("target", ""))
+	var held: Array = cards
+	if held.is_empty() and _may_refute(view, case_data.get("cards", []), target):
+		var bare: Dictionary = case_data.duplicate(false)
+		bare["conclusion"] = conclusion.duplicate(true)
+		bare.conclusion.erase("refuters")
+		held = selected(view, Graph.compile_case(view, bare))
+	var refuters: Array = hanged_refuters(view, held.filter(func(c): return c is Dictionary and not c.is_empty()), target) if not held.is_empty() else []
+	if refuters == conclusion.get("refuters", []):
 		return case_data
 	var out: Dictionary = case_data.duplicate(false)
 	out["conclusion"] = conclusion.duplicate(true)
-	out.conclusion["refuters"] = refuters
+	if refuters.is_empty():
+		out.conclusion.erase("refuters")
+	else:
+		out.conclusion["refuters"] = refuters
 	return out
+
+## Whether any of the case's card ids is a Gravedigger or Executor reading about `target`: the
+## cheap check before compiling the case for its refuters.
+static func _may_refute(view: Dictionary, ids: Array, target: String) -> bool:
+	for id in ids:
+		var c: Dictionary = card_by_id(view, str(id))
+		var data: Dictionary = c.get("data", {}) if c.get("data") is Dictionary else {}
+		if str(c.get("role", "")) == "gravedigger" and str(data.get("executed", "")) == target:
+			return true
+		if str(c.get("role", "")) == "executor" and str(data.get("target", "")) == target:
+			return true
+	return false
 
 static func hanged_demon_in(world: Dictionary, ctx: Dictionary) -> int:
 	var demon: int = int(world.get("demon", -1))
