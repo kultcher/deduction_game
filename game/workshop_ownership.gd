@@ -156,7 +156,7 @@ static func _refresh(g, n, phase: String) -> void:
 		elif cache_hit and cached.has("self_doubt"):
 			own_doubt = cached.self_doubt
 		else:
-			own_doubt = _own_gift_doubt(plan, proposal)
+			own_doubt = _own_gift_doubt(plan, proposal, Shared._doubt_adjusted(plan, state.outside, doubt_bundle.pre_eval, doubt_bundle.full, doubt_bundle.get("honest", {})))
 		state["self_doubt"] = own_doubt.duplicate()
 		g._workshop_evaluations[key] = {"input": committed_inputs, "proposal": proposal, "reason_ctx": reason_ctx, "cache_hit": cache_hit, "self_doubt": own_doubt}
 		state.requested = {}
@@ -306,7 +306,10 @@ static func _visibility(n, facts: Array) -> String:
 
 ## {night: the judge's chance the NPC's own reading that night was wrong} (OwnGiftDoubt), with
 ## every card the connections refresh held. {} for a listener with no connections refresh.
-static func _own_gift_doubt(plan: Dictionary, proposal: Dictionary) -> Dictionary:
+## `adjusted`: the doubt-adjusted view and listener the refresh's evaluation used
+## (Shared._doubt_adjusted), so the poison and Delusional prior reaches the role check and the
+## readings' weight here as it did there (Codex on #320).
+static func _own_gift_doubt(plan: Dictionary, proposal: Dictionary, adjusted: Dictionary) -> Dictionary:
 	var cx: Dictionary = proposal.get("connections", {})
 	if cx.is_empty():
 		return {}
@@ -315,8 +318,8 @@ static func _own_gift_doubt(plan: Dictionary, proposal: Dictionary) -> Dictionar
 		for id in it.get("cards", []):
 			if not (str(id) in held):
 				held.append(str(id))
-	var listener: Dictionary = plan.prepared.listener
+	var listener: Dictionary = adjusted.listener
 	var weigher: Dictionary = Jury._eval_listener(listener, listener.get("knowledge", {}).get("own_reports", []))
 	weigher["trust"] = listener.get("trust", 0.5)
 	weigher["insight"] = listener.get("insight", 0.5)
-	return OwnGiftDoubt.posterior(plan.prepared.view, weigher, held)
+	return OwnGiftDoubt.posterior(adjusted.view, weigher, held)
