@@ -7,6 +7,20 @@ session notes are kept for the record; code pointers may have moved since.
 
 Items still tagged `[decided]` in BACKLOG.md after they were built. Each was checked against main and its merged PRs.
 
+- **Cleanup and errors** (Michael, Nov 19):
+  - (a) stale scripts in `logs/`, and `tools/test_ask_night_results.gd` failing to parse.
+    Owner Lantern. **Done** (#331): Godot now skips `logs/`, and the old probe scripts there
+    are untracked local files Michael can delete. The test file exists on main and passes,
+    so its error is most likely a stale import on his side.
+  - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
+    **Closed, not reproducible** (Michael, Nov 19): it no longer appears in a full game on
+    his machine. The game has no control with gutters (#322).
+  - (c) RID leaks on exit. Owner Herald, low priority. **Done** (#322).
+
+  [decided]
+
+  > **Closed Nov 19 (Claude-Vicar):** all three parts are done or closed, as above.
+
 - **Insight sets how readily a card joins an NPC's core** (Lantern, Nov 17; Michael chose
   Option A, Nov 17). A sharp NPC links more cards to its own readings and nights, a dull one
   only the glaring ones; nobody connects public cards that don't touch their own knowledge.

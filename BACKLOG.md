@@ -41,17 +41,11 @@ from an older compile (#192); an evil Medium's relay about the first victim nami
 (Beadle); a relayer cut from the sighter contest (#265) and a Night Watch list naming the
 listener (#273), both Lantern's.
 
-- **Cleanup and errors** (Michael, Nov 19):
-  - (a) stale scripts in `logs/`, and `tools/test_ask_night_results.gd` failing to parse.
-    Owner Lantern. **Done** (#331): Godot now skips `logs/`, and the old probe scripts there
-    are untracked local files Michael can delete. The test file exists on main and passes,
-    so its error is most likely a stale import on his side.
-  - (b) TextEdit "p_gutter = -1 out of bounds" errors, dozens per game. Owner Herald.
-    **Closed, not reproducible** (Michael, Nov 19): it no longer appears in a full game on
-    his machine. The game has no control with gutters (#322).
-  - (c) RID leaks on exit. Owner Herald, low priority. **Done** (#322).
-
-  [decided]
+- **The phase advances early after Town Hall reads, trace collection and tavern gossip.**
+  Like the conversation fix (#322), the phase must not move on while the player is still
+  reading. (Michael, Nov 19) Owner Herald. [decided]
+- **Augur wording:** "crossed paths with the Demon in the morning or afternoon of <the Nth
+  day>", not "evening". (Michael, Nov 19) Owner Herald. [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -172,6 +166,10 @@ listener (#273), both Lantern's.
   - **Step 2, after step 1:** weigh the count against each possible world (a
     Poisson-binomial term), so that "1 other out" with everyone else home points at the one
     without an alibi. This should raise the Lamplighter-and-alibis case again.
+  [decided]
+
+- **Pre-fill the premise from a nomination.** Launching the Workshop from a nomination
+  starts the case with the premise "<nominee> is evil". (Michael, Nov 19) Owner Herald.
   [decided]
 
 ### NPC behaviour
@@ -296,6 +294,9 @@ listener (#273), both Lantern's.
   network. (Michael, Nov 19) Owner Beadle, who proposes the size. Being built in #327
   (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
   Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
+
+- **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
+  (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
 
 ### Numbers
 
@@ -538,6 +539,15 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Minion distancing itself under pressure, the Demon going along with the town even
   against a Minion), and report what happens and what's missing before building the gaps.
   Owner Beadle. [decided: survey first]
+
+- **Summarised case responses.** Similar NPC responses to a presented case are bundled.
+  Each bundle shows a representative as the main portrait with its full text, and small
+  agreeing portraits along the bottom of the frame with short agreement lines. (Michael,
+  Nov 19) Owner Herald; plan first. [decided]
+
+- **Graded gossip.** Each gossip occasion has a budget of mixed-value items, so the player
+  usually gets at least two useful pieces. (Michael, Nov 19) Owner Beadle, with Quill on the
+  value tiers; plan first. [decided]
 
 ## 4. Major structural work (a week or more; design first)
 
