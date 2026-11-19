@@ -302,6 +302,8 @@ listener (#273), both Lantern's.
 
 - **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
+  - **Approved (Michael, Nov 19):** the NPC voices the standing grievance the player has
+    repaired least, and the line replaces its refusal line.
 
 ### Numbers
 
@@ -457,6 +459,8 @@ Candidates for a unified retuning proposal, not approved changes.
         how they combine.
     - **Evil whose planned bluff is claimed first switches to a spare** (Michael, Nov 19:
       yes). See "Evil backs into a bluff", whose hold is lifted for this case.
+    - **The private "they're lying" refutation:** approved, line only (Michael, Nov 19,
+      relayed by Seneschal).
     - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
@@ -549,10 +553,17 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Each bundle shows a representative as the main portrait with its full text, and small
   agreeing portraits along the bottom of the frame with short agreement lines. (Michael,
   Nov 19) Owner Herald; plan first. [decided]
+  - **Herald's plan, approved (Michael, Nov 19):**
+    - four movement bands;
+    - at most 5 small portraits, plus "+N more";
+    - meetings only;
+    - hovering shows each person's own words.
 
 - **Graded gossip.** Each gossip occasion has a budget of mixed-value items, so the player
   usually gets at least two useful pieces. (Michael, Nov 19) Owner Beadle, with Quill on the
   value tiers; plan first. [decided]
+  - **Approved (Michael, Nov 19):** new constants `TAVERN_TIER1_TARGET` = 2 and
+    `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
 
 ## 4. Major structural work (a week or more; design first)
 
