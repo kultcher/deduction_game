@@ -477,12 +477,6 @@ Candidates for a unified retuning proposal, not approved changes.
     whereabouts. If someone there is suspected, it uses the pointed line; if nobody else was
     there, the alone line. No evil lie for now: evil defenders use the same true lines.
 
-- **A false name in the daytime-whereabouts defence.** (Michael, Nov 19) An evil defender
-  answering a daytime-whereabouts case names someone who wasn't there. The place and time
-  stay true; only the names are false. It's a lie logged with its reason ("spread the
-  suspicion"), and anyone who was there can catch it. Tabled while the true-line defence
-  above is built and played. Owner Beadle. [tabled]
-
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
   false need not concede evil. Evil gets the same excuses, open to later corroboration;
@@ -970,6 +964,13 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
 
 - **Talking to a group:** 3 questions per phase, split among anyone at the spot. [open]
   Tabled (Michael, Nov 18).
+
+- **A false name in the daytime-whereabouts defence.** (Michael, Nov 19) An evil defender
+  answering a daytime-whereabouts case names someone who wasn't there. The place and time
+  stay true; only the names are false. It's a lie logged with its reason ("spread the
+  suspicion"), and anyone who was there can catch it. Waits until the true-line defence ("A
+  defence's answer to a daytime-whereabouts case") is built and played. Owner Beadle.
+  Tabled (Michael, Nov 19).
 
 ## Closed
 
