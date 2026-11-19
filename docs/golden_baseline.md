@@ -59,6 +59,8 @@ a broken count says nothing. Before, every count was taken as sound.
   day-3 hanging of Agnes (the Demon) is unchanged, but Isolde nominates her instead of Kiran.
   54875, 692 and 900 hang the same people.
 - **Stability:** two captures were identical.
+- **Re-checked on main at 74e6e74** (with the review fixes): two fresh captures are identical to
+  this baseline, so it stands.
 
 ### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
 
