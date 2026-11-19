@@ -398,7 +398,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 	if joined == "":
 		joined = canonical
 	joined = Dialogue.apply_tics(listener.id, joined, tic_memory)
-	var line: Dictionary = {"speaker": listener.id, "name": listener.name, "text": joined, "statement": canonical}
+	var line: Dictionary = {"speaker": listener.id, "name": listener.name, "text": joined, "statement": canonical, "reply_key": primary_key}
 	return _attach_expression(listener.id, line, primary_key)
 
 
@@ -452,4 +452,5 @@ static func render_evil_override(w, n, conclusion: Dictionary, stance: String, a
 				key = "present_alt_reject_solo"
 				slots = {"demon": w.by_id[sg_id].name}
 	var text: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, key, canonical, slots), tic_memory)
-	return _attach_expression(n.id, {"speaker": n.id, "name": n.name, "text": text, "statement": canonical}, key)
+	# The kind of reply its mask shows, so a summarised meeting bundles it as it sounds.
+	return _attach_expression(n.id, {"speaker": n.id, "name": n.name, "text": text, "statement": canonical, "reply_key": key if key != "present_alt_reject" and key != "present_alt_reject_solo" else ""}, key)
