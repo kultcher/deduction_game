@@ -292,10 +292,10 @@ func _one(sd: int, name: String) -> Dictionary:
 	# The average listener's reading behind the badge (Michael, Nov 19): the premise's chance
 	# before and after, and whether the subject becomes that listener's top suspect, by what
 	# margin (for the fourth tier's measure).
-	var heard: Dictionary = tj.get("listener", {})
-	if not heard.is_empty():
-		row["chance_before"] = float(heard.chance_before)
-		row["chance"] = float(heard.chance)
+	var lis: Dictionary = tj.get("listener", {})
+	if not lis.is_empty():
+		row["chance_before"] = float(lis.chance_before)
+		row["chance"] = float(lis.chance)
 		var pj: Dictionary = preload("res://workshop/connections.gd").judge_for_profile(g, value, {"baseline": "without_cards"})
 		var post: Dictionary = pj.get("posterior_after", {})
 		var mine: float = float(post.get(s.id, -1.0))

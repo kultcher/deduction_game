@@ -84,9 +84,13 @@ func _init() -> void:
 	var trusting: Dictionary = {"baseline": "without_cards", "npc_trust": {seer.id: 0.9, minion.id: 0.3}}
 	var plain_t: Dictionary = Connections.judge_for_profile(g, with_truth, trusting)
 	var chal_t: Dictionary = Connections.judge_for_profile(g, grounded, trusting)
-	print("  PROBE minion %s -> %s; innocent %s -> %s" % [plain_t.get("posterior_after", {}).get(minion.id), chal_t.get("posterior_after", {}).get(minion.id), plain_t.get("after"), chal_t.get("after")])
-	check(plain_t.get("ready", false) and chal_t.get("ready", false) and absf(float(chal_t.after) - float(plain_t.after)) > 1e-4,
-		"a listener who trusts the real Seer more weighs the grounded challenge (%.4f against %.4f)" % [float(chal_t.get("after", 0.0)), float(plain_t.get("after", 0.0))])
+	# An accepted lie call doesn't change the target's odds (the clash is in the worlds already):
+	# it presses the teller as the liar, a floor on their suspicion (Lantern, Nov 19).
+	var floors: Array = chal_t.get("floors", [])
+	var rise_plain: float = float(plain_t.get("requested_after", {}).get(minion.id, 0.0))
+	var rise_chal: float = float(chal_t.get("requested_after", {}).get(minion.id, 0.0))
+	check(plain_t.get("ready", false) and chal_t.get("ready", false) and floors.any(func(f): return str(f.get("source", "")) == minion.id and str(f.get("mode", "")) == "lying") and rise_chal > rise_plain,
+		"a listener who trusts the real Seer more takes the grounded lie call: it presses %s as the liar (requested rise %.3f against %.3f)" % [minion.name, rise_chal, rise_plain])
 	check(not ("challenge holds" in str(r_grounded.get("reason", ""))), "and the badge never claims the challenge simply holds")
 	_done()
 

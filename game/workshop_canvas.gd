@@ -267,7 +267,7 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	var result: Dictionary = CaseEval.strength_from(ev)
 	result["ready"] = true
 	result["issues"] = []
-	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance}
+	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance, "presses": heard.presses}
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
 	# A challenge is weighed as the listener weighs it (its grounds decide whether it's
@@ -332,8 +332,14 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	var chance_before: float = 1.0 - before if clears else before
 	var chance: float = 1.0 - after if clears else after
 	var lr: float = exp(_logit(chance) - _logit(chance_before))
+	# An accepted lie call presses its teller as the liar rather than moving the odds (the
+	# clash is in the worlds already): the badge's words name it (Herald words the line).
+	var presses: Array = []
+	for f in pj.get("floors", []):
+		if str(f.get("mode", "")) == "lying":
+			presses.append({"source": str(f.get("source", "")), "agreement": float(f.get("agreement", 0.0))})
 	return {"ready": true, "issues": [], "target": target, "before": before, "after": after,
-		"chance_before": chance_before, "chance": chance, "lr": lr}
+		"chance_before": chance_before, "chance": chance, "lr": lr, "presses": presses}
 
 static func _logit(p: float) -> float:
 	p = clampf(p, 1e-6, 1.0 - 1e-6)
