@@ -245,6 +245,18 @@ relay about the first victim naming night 0 (Beadle).
   is a working Warden, the Demon came to Fenwick's door that night. This strengthens the
   case 15 points."), with the quiet night's card when the case cites it.
 
+- **The case benchmark slate.** (Michael, Nov 19.) A kept set of standard constructed
+  cases (two sightings, a sighting at the kill, a vigil on a kill night, an alibi caught out,
+  two gift readings converging, an impossible reading, a double claim, a Gravedigger
+  confirming a hanged Minion, a Lamplighter count with alibis, a Night Watch "nobody" against
+  a sighting, a Warden's guard), each judged by the Test juror and presented to the town.
+  Like golden, a script and a stored baseline report, run on demand; not a CI suite. Re-run
+  it after any change to the judge or to how listeners weigh a case, and compare.
+  `tools/case_slate.gd`, `tools/case_slate_report.py`, baseline in `docs/case_slate/`.
+  Owners: Quill, with Lantern. **Built (Quill, Nov 19).** Next: re-run after the juror fix
+  (hearsay weight and the Lamplighter count), and when Michael revisits the badge cut points.
+  [decided]
+
 ### NPC behaviour
 
 - **A defence against group readings: "it's another of us".** (89077, Coroner finding 1)
