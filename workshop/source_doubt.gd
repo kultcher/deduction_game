@@ -439,8 +439,11 @@ static var list_mix_enabled: bool = true
 ## Delusional priors, as independent ways the gift can fail, 1 - (1 - poison)(1 - delusional).
 ## No new number: the poison chance (ReadingChallenges.poison_chance, read with the night's
 ## outings) and the Delusional prior the listener applies to its own gift. Zero for the
-## listener's own list, a quoted or duty-only card, or a script with neither secret; there a
-## list that wrongly names the listener stays set aside, and its night void, as before.
+## listener's own list, a quoted or duty-only card, a script with neither secret, or a view
+## the live movement model doesn't read (`live_activity` off: the Workshop sandbox, whose
+## movement factors never mix the list, so a kept list would be scored name by name and
+## clear its watcher); there a list that wrongly names the listener stays set aside, and its
+## night void, as before.
 ## At most this many lists in a view are mixed (the latest nights first): the movement
 ## factor is built once for every subset of them left out. A list beyond them gets no broken
 ## chance, so it keeps the old fallback (set aside and its night void when it wrongly names
@@ -459,7 +462,7 @@ static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dic
 	return b if str(card.get("id", "")) in keep else 0.0
 
 static func _list_broken_base(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
-	if not list_mix_enabled or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
+	if not list_mix_enabled or not view.get("live_activity", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):
 		return 0.0
 	var src: String = str(card.get("source", ""))
 	var me: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))

@@ -253,6 +253,28 @@ func _known_game(seed_v: int, day: int):
 	return g
 
 
+## The first framed-sighting fixture whose subject, without the fake card, isn't already near
+## sure the sighter is evil (below 0.9): near that ceiling the town's fixed evil count lets
+## the card lift the other evil person instead (seed 100022 with #292: the Demon sighter at
+## 0.97 for her subject, and the subject's Revenant teammate rose), so its own direction
+## can't show. {} if no seed searched has one.
+func _framed_case() -> Dictionary:
+	var from: int = Seeds.SEEDS_FROM
+	while from < Seeds.SEEDS_FROM + Seeds.SEEDS_COUNT:
+		var fc: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1, from)
+		if fc.is_empty():
+			return {}
+		Connections.force_row = "none"
+		var sg: String = fc.sighter
+		var sub: String = fc.subject
+		var eff: Dictionary = Seeds.cards_effect(fc.g, sub, [sg], func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sg and sub in c.get("subjects", [c.get("subject", "")]) and not c.has("relay_source"))
+		Connections.force_row = ""
+		if not eff.is_empty() and float(eff.without[sg]) < 0.9:
+			return fc
+		print("NOTE: seed %d skipped for the framed-sighting checks: %s already holds %s at %.2f without the fake card" % [int(fc.seed), sub, sg, float(eff.get("without", {}).get(sg, -1.0))])
+		from = int(fc.seed) + 1
+	return {}
+
 func _chance(g, listener: String, person: String) -> Dictionary:
 	var n = g.w.by_id.get(listener)
 	if n == null or not n.alive:
@@ -271,34 +293,38 @@ func _fixes_inside_a_night() -> void:
 	# Each a kind of case first found on one seed (100034, 100031, 100020), now searched for
 	# so play changes don't break them (tools/fixture_seeds.gd). Read as _known_game.
 	Connections.force_row = ""
-	var framed_case: Dictionary = Seeds.framed_sighting(2, true, "street")  # (as 100034's: a "window" sighting of someone leaving home argues less)
+	# (A "street" sighting, as 100034's: a "window" sighting of someone leaving home argues
+	# less. The bystander holds the sighter at least 0.1, so it isn't one that already clears
+	# them outright and so believes the sighting.)
+	var framed_case: Dictionary = _framed_case()
 	var sleep_case: Dictionary = Seeds.sleepwalker_sighting(2)
 	var relay_case: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
 	Connections.force_row = "none"
 	if framed_case.is_empty():
 		check(false, "a seed has a planter's fake sighting held by its subject and a bystander")
 	else:
-		# The evil sighter says they saw the subject out; the subject was home.
+		# The evil sighter says they saw the subject out; the subject was home. Each check reads
+		# what the fake sighting itself does (Seeds.cards_effect: the listener's chances with it
+		# held and with it left out), not where the night ends up: that depends on the game's
+		# other cards (seed 100037, Nov 18: the subject's own true sighting of the Demon at the
+		# night's kill pulled the whole night off the sighter).
 		var g = framed_case.g
 		var sg: String = framed_case.sighter
 		var sub: String = framed_case.subject
 		var by: String = framed_case.bystander
-		var framed: Dictionary = _chance(g, sub, sg)
-		var watcher: Dictionary = _chance(g, by, sg)
-		var watcher_subject: Dictionary = _chance(g, by, sub)
+		var fake := func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sg and sub in c.get("subjects", [c.get("subject", "")]) and not c.has("relay_source")
+		var lift := func(eff: Dictionary, id: String) -> float: return float(eff.get("with", {}).get(id, 0.0)) - float(eff.get("without", {}).get(id, 0.0))
+		var framed: Dictionary = Seeds.cards_effect(g, sub, [sg], fake)
+		var watcher: Dictionary = Seeds.cards_effect(g, by, [sg, sub], fake)
 		LiveActivity.sighter_contests_enabled = false
-		var framed_off: Dictionary = _chance(g, sub, sg)
-		var watcher_off: Dictionary = _chance(g, by, sg)
-		var watcher_subject_off: Dictionary = _chance(g, by, sub)
+		var framed_off: Dictionary = Seeds.cards_effect(g, sub, [sg], fake)
+		var watcher_off: Dictionary = Seeds.cards_effect(g, by, [sg, sub], fake)
 		LiveActivity.sighter_contests_enabled = true
-		# Directions, not sizes: on 100034 the night's lean on the sighter was over +0.5 and the
-		# contest added 0.1 or more, but on other street framings the same mechanisms are much
-		# smaller (seed 100012 on main: +0.08, and 0.02-0.03), so the sizes were that game's.
 		var tag: String = "seed %d, %s framed by %s, bystander %s" % [int(framed_case.seed), sub, sg, by]
-		check(framed.night > 0.0, "#139: the night the subject was wrongly sighted counts against the sighter (its lean %+.2f; %s)" % [framed.night, tag])
-		check(framed.chance > framed_off.chance, "#139 works through #135: the subject on the sighter, %.2f with the sighter contest and %.2f without" % [framed.chance, framed_off.chance])
-		check(watcher.chance > watcher_off.chance, "#135: a bystander weighs the sighter too (%.2f against %.2f without)" % [watcher.chance, watcher_off.chance])
-		check(watcher_subject.chance < watcher_subject_off.chance, "#135: and holds the sighting less against its subject (%.2f against %.2f without)" % [watcher_subject.chance, watcher_subject_off.chance])
+		check(not framed.is_empty() and int(framed.dropped) > 0 and lift.call(framed, sg) > 0.0, "#139: the fake sighting counts against its sighter for the subject, who knows they were home (%+.3f; %s)" % [lift.call(framed, sg), tag])
+		check(lift.call(framed, sg) > lift.call(framed_off, sg), "#139 works through #135: more with the sighter contest than without (%+.3f against %+.3f)" % [lift.call(framed, sg), lift.call(framed_off, sg)])
+		check(not watcher.is_empty() and lift.call(watcher, sg) > lift.call(watcher_off, sg), "#135: a bystander weighs the sighter too (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sg), lift.call(watcher_off, sg)])
+		check(lift.call(watcher, sub) < lift.call(watcher_off, sub), "#135: and holds the sighting less against its subject (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sub), lift.call(watcher_off, sub)])
 	var sleepwalker: Dictionary = {} if sleep_case.is_empty() else _chance(sleep_case.g, sleep_case.subject, sleep_case.sighter)
 	check(not sleepwalker.is_empty() and sleepwalker.chance < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied (%.2f; seed %d)" % [sleepwalker.get("chance", -1.0), int(sleep_case.get("seed", -1))])
 	# What the relay itself does to its relayer (Seeds.relay_effect: with it held, and left

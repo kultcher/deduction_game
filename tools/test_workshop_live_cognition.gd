@@ -169,31 +169,49 @@ func _registration() -> void:
 	var n = p[0]
 	var number = _proof(g)
 	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	var centred: Dictionary = _brought(g, n)
 	var marked = g.file_deduction({"type": "marked", "a": p[4].id}, g.board[number - 1].supports)
-	var before = n.suspicion.duplicate(true)
 	var r = g._evaluate_deduction(n, g.board[marked - 1], 1.0, false)
 	var key: String = p[4].id + "|Original alignment|marked"
 	check(r.get("workshop", false) and n.workshop_state.theories.has(key), "live Marked questions persist a separate registration theory")
-	check(_close(before, n.suspicion), "asking a Marked question adds no extra alignment evidence effect")
+	# Premise centring (#246): cards only presented cases brought count in full on those
+	# cases' targets. A Marked question names no alignment target, so cards it also brought
+	# are left unshaped: they count in full for everyone, as cards held directly do
+	# (Shared.brought_by_premise). Before #246 the cards counted in full for everyone anyway,
+	# so a Marked question moved no one; now it lifts the first case's centring.
+	check(not centred.is_empty() and centred.values().all(func(t): return t == [p[3].id]) and _brought(g, n).is_empty(),
+		"a Marked question names no alignment target, so it leaves its cards unshaped (centred on %s before, %s after)" % [str(centred.values()), str(_brought(g, n).values())])
+	var after = n.suspicion.duplicate(true)
 	var memory = n.workshop_state.theories.duplicate(true)
 	g._evaluate_deduction(n, g.board[marked - 1], 0.6, true, "meeting")
-	check(n.workshop_state.theories == memory and _close(before, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
-	# Premises step 1: neither the premise's type nor its target moves beliefs (the cards do),
-	# and a later refresh reproduces them exactly.
-	var retyped = g.file_deduction({"type": "demon", "a": p[3].id}, g.board[number - 1].supports)
-	g._evaluate_deduction(n, g.board[retyped - 1], 1.0, false)
-	check(_close(before, n.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
-	var retargeted = g.file_deduction({"type": "evil", "a": p[5].id}, g.board[number - 1].supports)
-	g._evaluate_deduction(n, g.board[retargeted - 1], 1.0, false)
-	var others_same: bool = before.keys().all(func(id): return id == p[5].id or is_equal_approx(before[id], n.suspicion[id]))
-	# The connections model (purge phase 2): the premise changes what is asked, not how the
-	# cards are weighed, so the same cards aimed at someone else move no one. (The earlier
-	# model gave the new target the full effect and the rest the Insight spillover.)
-	check(others_same and is_equal_approx(before[p[5].id], n.suspicion[p[5].id]), "aiming the same cards at someone else moves no one: the cards are weighed the same, whoever the premise names")
-	var shaped = n.suspicion.duplicate(true)
-	Mind.refresh_beliefs(g.w, n, " (later refresh)")
-	check(_close(shaped, n.suspicion), "a later refresh reproduces the remembered premise shaping exactly")
+	check(n.workshop_state.theories == memory and _close(after, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
 	check(r.assessment.theory == n.workshop_state.theories[key].decision, "scoped registration reply uses the committed union decision")
+	# Its target does (premise centring, #246, Michael's option B): the same cards aimed at
+	# someone else count in full on them too, so they rise; the cards aren't weighed twice.
+	var g2 = _game()
+	var p2: Array = g2.w.npcs
+	var n2 = p2[0]
+	var first = _proof(g2)
+	g2._evaluate_deduction(n2, g2.board[first - 1], 1.0, false)
+	var before2 = n2.suspicion.duplicate(true)
+	# The premise's type doesn't move beliefs: the same cards argued as "demon" about the same
+	# target weigh as they did. (In a game of their own: after a Marked question, any later
+	# case of the player's citing the same cards takes its place, and with it its frame.)
+	var retyped = g2.file_deduction({"type": "demon", "a": p2[3].id}, g2.board[first - 1].supports)
+	g2._evaluate_deduction(n2, g2.board[retyped - 1], 1.0, false)
+	check(_close(before2, n2.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
+	var retargeted = g2.file_deduction({"type": "evil", "a": p2[5].id}, g2.board[first - 1].supports)
+	g2._evaluate_deduction(n2, g2.board[retargeted - 1], 1.0, false)
+	var aimed: Dictionary = _brought(g2, n2)
+	check(not aimed.is_empty() and aimed.values().all(func(t): return p2[3].id in t and p2[5].id in t) and float(n2.suspicion[p2[5].id]) > float(before2[p2[5].id]),
+		"aiming the same cards at someone else centres them on both targets, so the new one rises (%.3f -> %.3f)" % [float(before2[p2[5].id]), float(n2.suspicion[p2[5].id])])
+	var shaped = n2.suspicion.duplicate(true)
+	Mind.refresh_beliefs(g2.w, n2, " (later refresh)")
+	check(_close(shaped, n2.suspicion), "a later refresh reproduces the remembered premise shaping exactly")
+
+## The listener's centred cards ({card id: [targets]}, Shared.brought_by_premise) at its last refresh.
+func _brought(g, n) -> Dictionary:
+	return g._workshop_plans.get(n.id + ":good", {}).get("prepared", {}).get("listener", {}).get("connections", {}).get("brought", {})
 
 func _close(a: Dictionary, b: Dictionary) -> bool:
 	if a.keys() != b.keys():
