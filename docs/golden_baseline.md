@@ -60,6 +60,18 @@ Every belief that weighs a sighting or trace against the Demon's route moves a l
   - 900: Isolde is hanged on day 3 instead of Lian. No winner by day 4 either way.
 - **Stability:** two captures were identical.
 
+### Earlier baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`
+
+`tools/golden/baseline_7a10762/` is the capture from `claude/a3-doubted-symmetric` at `7a10762`.
+When a judged set holds several readings the listener doubts, the role check weighs them
+symmetrically (all genuine, or exactly one broken), not one after another in card order.
+- **Divergence from `baseline_ee15238`:** every seed, at the first night's refreshes (42 at
+  record 9, 54875 at 59, 692 at 28, 900 at 17, 98933 at 58), in belief values only.
+  - **Step records:** on 54875, 692 and 98933, every NPC's suspicion is identical. On 42, 102 of
+    966 suspicion values move, by at most 0.004; on 900, 138 of 1,260, by at most 0.009.
+- **Outcomes:** all five unchanged: the same hangings on the same days and the same winner.
+- **Stability:** two captures were identical.
+
 ### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
 
 `tools/golden/baseline_ee15238/` is the capture from `claude/factor-norm-handles` at `ee15238`

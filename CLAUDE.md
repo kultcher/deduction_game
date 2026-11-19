@@ -73,7 +73,8 @@ $GODOT --headless --path . --script res://tools/autoplay.gd -- --seed 1 --games 
 python3 tools/tuning_index.py                                     # after editing sim/tuning.gd comments
 ```
 
-`tools/ci_fast_suites.txt` is what CI runs on a PR; main runs everything. Run a suite by
+`tools/ci_fast_suites.txt` is what CI runs on a PR, plus `tools/ci_slow_suites.txt` when the
+PR changes `sim/` or `workshop/`; main and the nightly run run everything. Run a suite by
 itself with `$GODOT --headless --path . --script res://tools/<suite>.gd`. Some suites print
 failures and still exit 0, so use the runner, which checks the text.
 
@@ -99,7 +100,14 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
   golden and does, that's a bug to explain before merging.
 - **Codex reviews every PR when it opens.** Answer each finding on its thread, fix or
   explain, resolve it, then comment `@codex review` (the one `@` mention allowed in
-  GitHub text). Its findings have nearly always been real.
+  GitHub text). Its findings have nearly always been real. A follow-up commit that changes
+  only strings, docs or tests needs no new review (Michael, Nov 19).
+- **How Bailiff checks a PR before merging (Michael, Nov 19):**
+  - **Zero-drift and text-only PRs:** Bailiff relies on CI, with no local re-run. CI's
+    golden diff and suites run on the PR merged with main.
+  - **Golden-moving PRs and changes to what NPCs believe (`sim/`, `workshop/`):** Bailiff
+    still runs them locally on the current main.
+  - **Wording and docs PRs:** may be batched into one merge pass.
 - **Git:** never force-push, never delete remote branches (Michael does), never rewrite
   main. Branches are `claude/<topic>`; `mock/<topic>` is for experiments that must never
   merge. Commit everything you mean to keep; never commit `tools/_probe*` scripts.
