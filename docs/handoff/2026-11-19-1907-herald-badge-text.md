@@ -33,3 +33,10 @@ Michael approved the words on Nov 19, through Seneschal. Quill set the cut point
 
 ## Proposed for the backlog
 None.
+
+## Codex fix (#358)
+- **The problem:** the top tier's chance is the target's chance of being evil (or of being good, for clearing premises), whatever the premise. A case that makes someone 90% likely good therefore reached the top tier on "holds their claimed gift", "is Marked" or "told the truth". The Conclusive line would then call that premise settled, though being good doesn't settle it.
+- **The fix:** Conclusive now shows only where being good settles the premise ("is good", "is not the Demon"). Any other clearing premise's chip shows the tier its evidence alone earns, from Strong down.
+- **Damning is unchanged:** its line is about who the town would vote for, which the evil chance does speak to.
+- **For Quill:** whether the cutoff itself in `CaseEval.category` should skip those premise types.
+- **Tests:** `test_badge_text` (now 10 checks) covers a gift premise reading Strong, and Weak when that's all its evidence earns.

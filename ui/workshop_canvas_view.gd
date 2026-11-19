@@ -312,9 +312,17 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 			var juror_text: String = badge.get("text", "")
 			if badge.category == "damning":
 				var top: Dictionary = top_tier(id)
-				chip_text = top.label
-				juror_text = top.line
-				ring = TOP_RING
+				if top.is_empty():
+					# The tier the evidence itself earns, without the top tier's chance cut.
+					var CaseEval = preload("res://workshop/case_eval.gd")
+					var earned: String = CaseEval.category(float(badge.get("lr", 1.0)))
+					chip_text = STRENGTH_TEXT.get(earned, earned)
+					chip_color = STRENGTH_COLORS.get(earned, chip_color)
+					juror_text = CaseEval.category_text(earned)
+				else:
+					chip_text = top.label
+					juror_text = top.line
+					ring = TOP_RING
 			var notes: Array = []
 			if badge.get("headline", "") != "":
 				chip_text = "Doesn't fit"
@@ -682,15 +690,23 @@ func _evidence_card(id: String) -> Dictionary:
 	var node: Dictionary = model.nodes[id]
 	return Solver.card_by_id(model.view, node.card) if node.kind in ["evidence", "modifier"] else {}
 
+## Clearing premises the top tier can call settled: the juror's chance is the target's chance
+## of being good, which settles these and no other clearing premise (Codex, #358). Being good
+## doesn't settle "holds their claimed gift", "is Marked" and the like.
+const CONCLUSIVE_TYPES = ["good", "notdemon"]
+
 ## The top tier's chip and reason line for premise `id`: Damning when it accuses someone by
-## name, Conclusive otherwise ({label, line}).
+## name, Conclusive on a premise their being good settles ({label, line}), or {} where the
+## top tier can't be claimed and the chip stays at Strong.
 func top_tier(id: String) -> Dictionary:
 	var conclusion: Dictionary = model.nodes[id].get("conclusion", {})
 	var type: String = str(conclusion.get("type", ""))
 	var target: String = str(conclusion.get("target", ""))
 	if target != "" and type != "conflict" and type not in Live.PREMISE_CLEARS:
 		return {"label": "Damning", "line": DAMNING_LINE % Solver.person_name(model.view, target)}
-	return {"label": "Conclusive", "line": CONCLUSIVE_LINE % model.title(id)}
+	if type in CONCLUSIVE_TYPES:
+		return {"label": "Conclusive", "line": CONCLUSIVE_LINE % model.title(id)}
+	return {}
 
 ## How the test juror weighed a lie call on the card with Workshop id `card_id`, from any
 ## premise's badge ({} when no badge carries it).

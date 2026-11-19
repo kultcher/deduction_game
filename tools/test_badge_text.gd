@@ -40,6 +40,28 @@ func _run() -> void:
 	top = canvas.top_tier(clears)
 	check(top.label == "Conclusive" and top.line == "This case is conclusive: an ordinary townsperson would take it as settled that %s is good." % who.name, "any other premise's is Conclusive (%s)" % top.line)
 
+	# Being good doesn't settle every clearing premise: those stop at Strong (Codex, #358).
+	var gift: String = ed.board.add_premise(who.id, "role", Vector2(800, 0))
+	check(canvas.top_tier(gift).is_empty(), "\"holds their claimed gift\" can't be called settled by their being good")
+	check(canvas.top_tier(ed.board.add_premise(who.id, "notdemon", Vector2(1200, 0))).get("label", "") == "Conclusive", "\"is not the Demon\" can")
+	canvas.badges = {gift: {"ready": true, "category": "damning", "text": "placeholder", "reason": "", "lr": 5.0}}
+	canvas.queue_redraw()
+	await process_frame
+	await process_frame
+	var gift_tip: String = ""
+	for t in canvas.tips:
+		if "Test juror:" in str(t.text):
+			gift_tip = t.text
+	check("strongly supports" in gift_tip and not ("conclusive" in gift_tip), "its chip reads the tier its evidence earns, here Strong (%s)" % gift_tip.get_slice("\n", 0))
+	canvas.badges[gift].lr = 1.6
+	canvas.queue_redraw()
+	await process_frame
+	await process_frame
+	for t in canvas.tips:
+		if "Test juror:" in str(t.text):
+			gift_tip = t.text
+	check("weakly supports" in gift_tip, "and Weak when that's all the evidence earns (%s)" % gift_tip.get_slice("\n", 0))
+
 	# Drawn: the chip and its tooltip carry the words.
 	var challenge: Dictionary = {"reading": "card-x", "teller": who.id, "kind": "draw", "witnesses": []}
 	canvas.badges = {accuse: {"ready": true, "category": "damning", "text": "placeholder", "reason": "", "listener": {"challenges": [challenge]}}}
