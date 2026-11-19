@@ -428,6 +428,22 @@ relay about the first victim naming night 0 (Beadle).
     - the tier sizes;
     - whether surprise from the public record still scales the gain within a tier;
     - what happens when a strongly believed reading is later contradicted.
+  - **Sizes (Michael, Nov 19, set R3):**
+    - small (70%+): +0.06;
+    - moderate (85%+): +0.12;
+    - known (a fact): +0.20.
+    - #292's agreement step goes down to 0.02, as its own constant (`Trust.AGREEMENT_STEP`), so
+      that readings carry more of how trust builds.
+    - Each reading counts once for each listener, judged on its beliefs from before hearing it.
+  - **Built** (Nov 19, `claude/beadle-reading-trust`). On 40 passive games:
+    - readings carry about 42% of the trust gained;
+    - evil gets 31% of it;
+    - day-4 trust is as before: 12.2% of pairs near full trust, against 12.6%.
+  - **Next, approved (Michael, Nov 19):** "Their readings agree with what I know" as a reason
+    given out loud. A no-voter explains sparing someone after a vote, and an opinion clears
+    someone, both from a moderate or known confirmation. Evil says it honestly only, from its
+    good self's record. It shifts no suspicion directly: it's a card for the player, and NPCs
+    re-weigh the reading cited. Herald's lines are approved. Owner Beadle.
 
   [decided: direction]
 
@@ -1022,6 +1038,12 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
 
 - **Talking to a group:** 3 questions per phase, split among anyone at the spot. [open]
   Tabled (Michael, Nov 18).
+
+- **A false "their readings agree with what I know".** (Michael, Nov 19) An evil NPC says it of
+  a teammate with no such confirmation behind it, to save them at a vote. It would be a lie
+  logged with its reason ("cover a teammate"), through `evil_override`. Waits until the honest
+  version is built and played. Owner Beadle.
+  Tabled (Michael, Nov 19).
 
 ## Closed
 
