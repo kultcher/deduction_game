@@ -151,7 +151,7 @@ static func before(real, g = null) -> Dictionary:
 		return {}
 	var out: Dictionary = {"focus": n.workshop_state.get("attention_focus", []).duplicate(), "suspicion": Mind.suspicion_view(n),
 		"stored": n.suspicion.duplicate()}
-	if g != null and Connections.enabled:
+	if g != null:
 		var kept: Dictionary = g._workshop_evaluations.get(n.id + (":cover" if n.is_shadow else ":good"), {}).get("proposal", {}).get("connections", {})
 		if not kept.is_empty():
 			out["connections"] = _kept(kept)

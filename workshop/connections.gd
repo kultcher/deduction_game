@@ -1,7 +1,6 @@
-## The connections belief model (Phase 6;
-## `docs/belief_model.md`, "Phase 6 spec"). Behind a switch that is
-## on by default since Nov 16 (`Tuning.Workshop.CONNECTIONS`): with it off nothing here runs,
-## and the game uses the earlier model.
+## The connections belief model (Phase 6; `docs/belief_model.md`, "Phase 6 spec"). The
+## game's only belief model since purge phase 3 (Nov 18); the earlier one is on the branch
+## `archive/legacy-belief-final`.
 ##
 ## The idea: the limit on an NPC moves from which cards it reads to which cards it weighs
 ## together. Every card it holds counts, at the value it has alone; cards are only weighed
@@ -88,10 +87,6 @@ const Solver = preload("res://workshop/solver.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const DayPresence = preload("res://workshop/day_presence.gd")
 const Profiler = preload("res://workshop/profiler.gd")
-
-## The switch. It starts from the Tuning value; tests, autoplay and sweeps set it for a run
-## (`--connections`), so paired cells come from one build.
-static var enabled: bool = Tuning.Workshop.CONNECTIONS
 
 ## Tests and tools only: read movement as this row ("none", "walker" or "hexer") whatever
 ## the town's demon mix is. It changes the grouping, not the mix the judge uses. Empty in play.

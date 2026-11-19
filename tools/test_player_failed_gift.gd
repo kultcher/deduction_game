@@ -14,7 +14,6 @@ const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const RC = preload("res://workshop/reading_challenges.gd")
-const Connections = preload("res://workshop/connections.gd")
 
 var checks = 0
 var fails = 0
@@ -76,7 +75,6 @@ func _hear(made: Dictionary, listener_index: int, trust: float) -> Dictionary:
 
 
 func _init() -> void:
-	Connections.enabled = true
 	# Seed 692's script carries Delusional: its self-doubt is the listener's own, not the
 	# reader's, so it doesn't touch the reader's doubt here; off to keep the numbers plain.
 	SourceDoubt.delusional_self_doubt = false

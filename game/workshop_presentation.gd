@@ -41,11 +41,11 @@ static func readiness(g, n, card: Dictionary, targets: Array, direction: String,
 	var plan = Shared.prepare(Bridge.capture(g, [], n.id, venue, n), proposals, n.ledger, withdrawn, snapshot.selected)
 	return {"ready": plan.ready, "issues": plan.issues, "exit_point": "union"}
 
-## The connections model (off by default): has this case, already put to the town, faded
-## for anyone since? A stored case loses half its weight a day, and presenting it again
-## restores it, so then it is assessed again instead of being waved off as already known.
+## Has this case, already put to the town, faded for anyone since? A stored case loses
+## weight by the day, and presenting it again restores it, so then it is assessed again
+## instead of being waved off as already known.
 static func faded(g, card: Dictionary) -> bool:
-	if not Connections.enabled or card.get("kind", "") != "deduction":
+	if card.get("kind", "") != "deduction":
 		return false
 	for n in g.w.living():
 		var mind = n.shadow if n.is_evil() and n.shadow != null else n
@@ -91,9 +91,9 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var repeat_key = listener_key + "|" + signature
 	var cached_repeat: Dictionary = g._workshop_repeats.get(repeat_key, {})
 	var existing: Dictionary = state.get("presentations", {}).get(_key(card, targets, direction, snapshot), {})
-	# The connections model (off by default): a stored case fades by the day, and presenting
-	# it again on a later day restores its weight, so that repeat is assessed, not waved off.
-	var restores: bool = Connections.enabled and not existing.is_empty() and int(existing.get("now", {}).get("day", g.w.day)) != int(g.w.day)
+	# A stored case fades by the day, and presenting it again on a later day restores its
+	# weight, so that repeat is assessed, not waved off.
+	var restores: bool = not existing.is_empty() and int(existing.get("now", {}).get("day", g.w.day)) != int(g.w.day)
 	if state.get("active", false) and not existing.is_empty() and not restores and cached_repeat.get("input", "") == _discussion_inputs(n, snapshot) and not (existing.venue == "private" and venue != "private"):
 		Profiler.count("repeat_no_assessment")
 		var result: Dictionary = cached_repeat.result.duplicate(true)
@@ -473,14 +473,7 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 		return
 	var effect: Dictionary = g._workshop_evaluations.get(listener_key, {}).get("proposal", {}).get("effects", {}).get(target_id, {})
 	var rise: float = maxf(0.0, float(effect.get("suspicious_case_full", 0.0)))
-	# The remembered suspicious union's rise covers every suspicious filing this listener
-	# holds. With another one there, measure this filing's own share: the full union
-	# against the union without it (Codex review of PR #93).
-	var others: Array = _other_suspicious(n, key)
-	if Connections.enabled:
-		rise = _connections_rise(g, listener_key, key, target_id)
-	elif not others.is_empty():
-		rise = maxf(0.0, _filing_rise(g, n, listener_key, key, target_id))
+	rise = _connections_rise(g, listener_key, key, target_id)
 	var ids: Array = snapshot.selected.duplicate()
 	ids.sort()
 	var filing: String = target_id + "|" + ",".join(PackedStringArray(ids))
@@ -494,9 +487,7 @@ static func _suspicious_pressure(g, n, root: Dictionary, snapshot: Dictionary, v
 	entry.sum += rise
 	entry.count += 1
 	var scale: float = float(Tuning.Workshop.SUSPICIOUS_PRESSURE_PER_RISE.get("private" if venue == "private" else "meeting", 1.0))
-	var due: float = scale * entry.sum / float(entry.count)
-	if Connections.enabled:
-		due = scale * connections_pressure(entry.sum / float(entry.count))
+	var due: float = scale * connections_pressure(entry.sum / float(entry.count))
 	var delta: float = due - float(entry.applied)
 	entry.applied = due
 	book[filing] = entry

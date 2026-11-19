@@ -17,7 +17,6 @@ const Game = preload("res://game/game.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Mind = preload("res://sim/mind.gd")
-const Tuning = preload("res://sim/tuning.gd")
 const Connections = preload("res://workshop/connections.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const Caches = preload("res://workshop/caches.gd")
@@ -37,7 +36,6 @@ func _init() -> void:
 	_grouping()
 	_rows_in_game()
 	_fixes_inside_a_night()
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
 	Connections.force_row = ""
 	print("Connections pairings: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -196,7 +194,6 @@ func _rows_in_game() -> void:
 		check(false, "the two-kind game reaches the day-3 meeting")
 		return
 	var listeners: Array = g.w.living().filter(func(n): return not n.is_evil())
-	Connections.enabled = true
 	var nights := 0
 	var movement := 0
 	var day_items := 0
@@ -238,21 +235,17 @@ func _rows_in_game() -> void:
 					movement += int(by_kind.get("movement", 0))
 			check(_adds_up(c), "%s: each chance is the baseline plus every item's lean and the core's, plus the common shift" % tag)
 	LiveActivity.declared_demon_type = ""
-	Connections.enabled = false
 	check(LiveActivity.hex_factor_enabled, "the Hexer factor is left on after the model's judgements")
 	check(nights > 0 and movement > 0, "the game exercises nights (%d) and the movement connection (%d); day connections: %d" % [nights, movement, day_items])
 
 
-## A passive game played as it is today (the model off), then read with the model on,
-## night by night.
+## A passive game, read night by night (the movement rows forced off).
 func _known_game(seed_v: int, day: int):
-	Connections.enabled = false
 	Connections.force_row = ""
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(seed_v, 7)
 	_play(g, day)
-	Connections.enabled = true
 	Connections.force_row = "none"
 	return g
 
@@ -273,14 +266,11 @@ func _chance(g, listener: String, person: String) -> Dictionary:
 ## (test_self_sighting): passive play, walker-only scripts, read night by night.
 func _fixes_inside_a_night() -> void:
 	# Each a kind of case first found on one seed (100034, 100031, 100020), now searched for
-	# so play changes don't break them (tools/fixture_seeds.gd). Played with the model off,
-	# read with it on (as _known_game).
-	Connections.enabled = false
+	# so play changes don't break them (tools/fixture_seeds.gd). Read as _known_game.
 	Connections.force_row = ""
 	var framed_case: Dictionary = Seeds.framed_sighting(2, true, "street")  # (as 100034's: a "window" sighting of someone leaving home argues less)
 	var sleep_case: Dictionary = Seeds.sleepwalker_sighting(2)
 	var relay_case: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
-	Connections.enabled = true
 	Connections.force_row = "none"
 	if framed_case.is_empty():
 		check(false, "a seed has a planter's fake sighting held by its subject and a bystander")
@@ -315,4 +305,3 @@ func _fixes_inside_a_night() -> void:
 	var relay: Dictionary = {} if relay_case.is_empty() else Seeds.relay_effect(relay_case.g, str(relay_case.listener), str(relay_case.teller))
 	check(not relay.is_empty() and float(relay.with) >= float(relay.without) - 0.01, "an evil Medium's invented relay doesn't clear them for its subject (%.2f with it, %.2f without; seed %d)" % [float(relay.get("with", -1.0)), float(relay.get("without", -1.0)), int(relay_case.get("seed", -1))])
 	Connections.force_row = ""
-	Connections.enabled = false

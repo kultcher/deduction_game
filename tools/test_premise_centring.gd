@@ -118,7 +118,6 @@ func _chances(g, n) -> Dictionary:
 ## The sighting-against-alibi case presented as `frame` (p[3] is the one the cards point at,
 ## p[4] the named sighter): the listener's chances after, and its connections result.
 func _present(frame_index: int, centring: bool, kind: String = "sighting vs alibi") -> Dictionary:
-	Connections.enabled = true
 	Connections.premise_centring = centring
 	_texts = {}
 	var g = _game()

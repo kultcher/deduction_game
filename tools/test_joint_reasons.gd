@@ -30,7 +30,6 @@ const ScriptDef = preload("res://sim/script_def.gd")
 const SCRIPT: Dictionary = {"demons": ["demon"], "forced": [], "minions": ["breathstealer", "poisoner", "revenant", "scion"], "name": "Dynamic #89077",
 	"secrets": ["delusional", "marked", "muddler", "sleepwalker"], "town": ["archivist", "clerk", "gravedigger", "lamplighter", "magistrate", "medium",
 	"nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]}
-const Tuning = preload("res://sim/tuning.gd")
 
 var checks := 0
 var fails := 0
@@ -83,8 +82,7 @@ func _play(seed_v: int, day: int, npcs: int):
 func _init() -> void:
 	var seen := 0
 	var cited := 0
-	# Played with connections on, as in play (the fixture search plays on the earlier model).
-	Connections.enabled = Tuning.Workshop.CONNECTIONS
+	# Played as in play.
 	var seed_v: int = Seeds.SEEDS_FROM
 	while seen < MINDS and seed_v < Seeds.SEEDS_FROM + SEEDS_TRIED:
 		var g = _play(seed_v, 3, 7)
