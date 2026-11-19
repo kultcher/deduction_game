@@ -21,9 +21,9 @@ for that place and phase (`MindMeeting._day_whereabouts_defence`):
   afternoon, and so were Jory and Kiran. Ask any of them what they saw.";
 - **with someone they suspect there:** `defence_day_others_pointed_stand`. For a good defender,
   that's its own suspicion at the nomination floor (0.40); for an evil one, the town's view.
-- **with one other there:** a plain singular line, "I was at the mill yesterday afternoon, and so
-  was Jory. Ask them what they saw." The voiced `{others}` lines are written for two or three
-  names. Herald is asked for voiced versions.
+- **with one other there:** `defence_day_other_one`, Herald's singular line in all 15 voices,
+  which Michael approved on Nov 19. The `{others}` lines are written for two or three names. The
+  voice test's key count goes up by 1.
 - **with nobody else there:** `defence_day_alone`.
 - **When it comes first:** when the daytime sighting is the case's heaviest item, this answer
   comes before any night account that a weaker or uncited item could prompt (Codex on #318).

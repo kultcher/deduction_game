@@ -1701,9 +1701,9 @@ static func _day_whereabouts_defence(w, d, items: Array, case_backed: bool) -> D
 			named = present.slice(0, 3)
 			var names: Array = named.map(func(x): return x.name)
 			if names.size() == 1:
-				# The voiced lines' {others} is two or three names ("so were", "were there"): one
-				# companion takes the plain singular line until it has voices of its own.
-				line = say(d, "I was at %s %s, and so was %s. Ask them what they saw." % [place, when, names[0]])
+				# One companion: its own singular line (the {others} lines are two or three names).
+				slots["other"] = names[0]
+				line = say_voiced(d, "defence_day_other_one", "I was at %s %s, and so was %s. Ask them what they saw." % [place, when, names[0]], slots)
 			else:
 				var others: String = ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) + " and " + names[-1]
 				slots["others"] = others
