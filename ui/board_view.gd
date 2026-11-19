@@ -418,11 +418,19 @@ func _draw_card_face(it: Dictionary, card: Dictionary, n: int, r: Rect2, fade: C
 	if text.contains("\n"):
 		note = text.get_slice("\n", 1)
 		text = text.get_slice("\n", 0)
+	# Reserve room for the reminder: the main text gives up a line if it must, and the reminder
+	# is left out when even that doesn't fit, so nothing spills off the card (Codex on #294).
 	var main_lines: int = mini(max_lines, 2) if note != "" else max_lines
-	_draw_fitted(text, Vector2(tx, top), width, fs, main_lines, _ink * fade)
+	var note_lines: int = 0
 	if note != "":
+		var room: float = r.end.y - pad - heard_h - top
+		note_lines = int(floor((room - main_lines * _font.get_height(fs)) / _font.get_height(small)))
+		if note_lines < 1 and main_lines > 1:
+			main_lines -= 1
+			note_lines = int(floor((room - main_lines * _font.get_height(fs)) / _font.get_height(small)))
+	_draw_fitted(text, Vector2(tx, top), width, fs, main_lines, _ink * fade)
+	if note != "" and note_lines >= 1:
 		var note_top: float = top + main_lines * _font.get_height(fs)
-		var note_lines: int = maxi(1, int(floor((r.end.y - pad - heard_h - note_top) / _font.get_height(small))))
 		_draw_fitted(note, Vector2(tx, note_top), width, small, note_lines, UITheme.color("ink_soft") * fade)
 	if heard != "":
 		_draw_fitted(heard, Vector2(tx, r.end.y - pad - _font.get_height(small)), width, small, 1, UITheme.color("ink_soft") * fade)
