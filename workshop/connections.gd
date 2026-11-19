@@ -1555,3 +1555,12 @@ static func summary(result: Dictionary) -> Dictionary:
 	if not told.is_empty():
 		short["cases"] = told
 	return short
+
+
+## How a listener with `profile` (game/profile_judge.gd's AVERAGE by default: credibility
+## 0.5, trust 0.5, nothing first-hand) would weigh the Workshop case `value` put to the town
+## today: the full listener path, the case among the player's public cases (Michael, Nov 19,
+## juror fix (a)). The Test juror, its badge and the town note read it. Loaded at call time:
+## it reaches into the game layer, which this model never does.
+static func judge_for_profile(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
+	return load("res://game/profile_judge.gd").judge(g, value, profile)

@@ -493,7 +493,8 @@ trusted. Built (Nov 18) as the prior only:
   a suspected teller it gives way slightly less; a teller who agrees moves Hollis half as
   much; no Poisoner, no doubt.
 - **For dialogue:** `SourceDoubt.self_doubt(n)` gives an NPC's current doubt about each night
-  of its own readings (poison, and Delusional with #216), from its last applied refresh.
+  of its own readings, from its last applied refresh. Since Nov 19 it is the judge's posterior
+  (below, "Was my gift turned?"); this prior stays readable as `SourceDoubt.self_doubt_prior(n)`.
 - **Strong frames can shake an own reading** (Michael, Nov 18, option b): a doubted own reading
   no longer pins the person it proves ("proved stays proved" needs the reading undoubted); the
   judge weighs it genuine or broken by fit. Weak contradicting evidence barely moves it; a
@@ -659,3 +660,90 @@ them. An own reading could have been poisoned, so a reading matching it is stron
 known fact (on game 692/7, a Dowser count matching the listener's own went from 0.54 to 0.95
 agreement). And a reading no world can fail, such as a Lamplighter's walker count, which the
 judge doesn't check, confirms nothing by its content: only what it says about alignment can.
+
+## Weighing a case as an average listener would (Nov 19)
+
+Michael (Nov 19, juror fix (a), option (i)): the Test juror, its badge and the Workshop town note
+judge a case as a synthetic average listener would hear it put to the town, through the same path
+a real NPC hears a public presentation. No full-weight figure is kept anywhere.
+`Connections.judge_for_profile(g, value, profile)` (in `game/profile_judge.gd`, loaded at call
+time because it needs the game layer) does that:
+- **The listener:** credibility 0.5 in the player, trust 0.5 in everyone, middling insight and
+  confidence, and nothing first-hand: no readings or sightings of its own, no private talk, no
+  self in the deal. `profile` overrides any of these (`npc_trust` as one number or a map).
+- **What it heard:** each card the case cites that is already public, and the public claims about
+  the people it names, as heard from their tellers (so trust in the teller counts). A card the case
+  brings to the town for the first time is heard only through the case, at the player's
+  credibility. The player's earlier public cases are stored cases with the day each was put; a
+  version the case revises is replaced, and the same case already put today takes its own place.
+- **What it does:** `Bridge.capture`, the case as a meeting presentation, `Shared.prepare` (per-card
+  hearing weights, route trust, the case's chain weight on the filing day), then `Shared.evaluate`
+  and the connections refresh, once without the case and once with it.
+- **Returns:** the target's chance of being evil before and after (the prior where nothing is
+  held), the shift, everyone's chances both ways, and the case's own stored-case entry.
+- **A lie call:** an accepted "lying" challenge never moves these chances: the clash is already
+  in the worlds, so discounting the reading would count it twice (`ReadingChallenges.assess`).
+  It acts by flooring the teller's suspicion in the refresh's effects (`Jury`), which the result
+  carries as `floors` and `requested_before`/`requested_after`. On Quill's 10-NPC case, a lie call
+  on a Minion's bluffed Seer reading, grounded on the real Seer's, at trust 0.9 in the Seer and
+  0.3 in the Minion: a floor at agreement 0.68, and the Minion's requested rise 0.09 → 0.18.
+  At equal trust the clash rule calls it a draw and there's no floor.
+- **Two baselines:** by default `before` is the listener as it stands, having already heard the
+  case's public cards from their tellers, so the shift is what presenting it would change (the
+  town note's question). `profile.baseline = "without_cards"` leaves the case's own cards out of
+  `before` entirely, keeping the public claims about the people it names, so the shift is how
+  strong the case is to a listener who hears its cards as it would (the badge's question; Quill,
+  Nov 19). On the test case: 0.29 to 0.365 that way, against −0.005 by default.
+- **Measured** (`tools/test_judge_for_profile.gd`, seed 692's 7-NPC deal, a Seer's "one of the
+  pair" with a Dowser's clearing of the other, pointing at Odette): from the prior 0.29 the case
+  takes her to 0.36 when the town hadn't heard the cards. Credibility moves that only a little
+  (0.353 at 0.1, 0.358 at 0.9): through the player's route a card's weight is the average of the
+  teller's trust and the player's credibility. Once the cards are public they move her before the
+  case (0.36 at trust 0.2, 0.37 at 0.5, 0.39 at 0.9), and the case itself then nudges her slightly
+  down (−0.005): its stored-case lean, the case's weight beyond its cards, comes out against her
+  here. That is the connections arithmetic's own result, as a real listener would get it.
+
+## Was my gift turned? The judge's own doubt (Nov 19)
+
+Michael (Nov 19): the "my gift may have been turned" doubt should come from the NPC's own
+readings clashing with its other beliefs, not from a prior that climbs night by night for every
+reader alike. `workshop/own_gift_doubt.gd` gives, for each night of a good NPC's own gift
+readings, the judge's chance that reading was wrong: CaseEval's "holds" question on it, with
+every card the NPC's connections refresh held. For one's own reading, wrong means the gift
+failed. The poison and Delusional prior (above) is its starting point, inside the judge, so a
+reading that fits the rest falls below the prior and one that fights it rises.
+`WorkshopOwnership` keeps only its inputs from each applied refresh (the cards held, and the
+doubt-adjusted view and listener the evaluation started from, so the prior reaches the role check
+as it did there; Codex on #320), and the judge is asked when something first reads it, at most
+once per refresh. Until something reads it, it costs nothing. `SourceDoubt.self_doubt(n)` reads it, `self_doubt_prior(n)` the prior, and
+`doubts_own_gift(n)` lists the nights at or above `Workshop.SELF_DOUBT_TRIGGER` (0.30).
+
+Measured before the build (42 ten-NPC games, seeds 3032-3095, the day-4 meeting; 105 own
+readings the judge checks, 10 of them false):
+
+| Clash with the NPC's other evidence | Readings | False | True | Judge's "gift failed", median |
+|---|---|---|---|---|
+| strong (under a third of the reading's base rate) | 9 | 4 | 5 | 0.48 |
+| some (a third to two thirds) | 6 | 2 | 3 | 0.15 |
+| none | 90 | 4 | 75 | 0.01 |
+
+- At 0.30 that measurement fired about once in 5 games: 4 of the 10 false readings, 5 of the
+  83 true ones. It left the prior out of the role check (Seer, Archivist, Gravedigger); the
+  build weighs with the refresh's doubt-adjusted listener (Codex on #320). **As built**, read
+  from the stored self-doubt on the same seeds (104 nights in 39 games): it fires on 13 nights
+  in 10 games (about 1 game in 4), for 6 of 9 false readings and 4 of 86 true ones. The median
+  for a false reading is 0.49, for a true one 0.03, and 78 of the 104 nights sit below their
+  prior.
+- Half the false readings clash with nothing (a broken Seer's "no" looks plausible), so no
+  trigger catches them.
+- The commonest true reading it doubts is Michael's own example turned round: a Gravedigger
+  90-98% sure the hanged were evil reads that they were good, and they were (seeds 3040, 3084).
+  The town hanged good people; she wonders whether her gift was turned. That's semi-realistic,
+  and the player can untangle it.
+- **Not covered:** readings that hold in every world (a Warden's quiet night, a Lamplighter's
+  count, a Night Watch list, a Psychologist's or Sexton's reading) and a Medium's relays never
+  get an entry: their clash is weighed through movement, or not at all. About 40% of own
+  readings in the measurement. BACKLOG "Gift doubt for readings the judge doesn't check"
+  ([open]) is the follow-up.
+- **Behaviour:** nothing reads it yet besides tools; beliefs, votes and hangings don't move
+  (golden identical apart from the stored doubt). Beadle's #316 makes it speak.

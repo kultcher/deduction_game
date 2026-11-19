@@ -132,3 +132,4 @@ test_player_failed_gift
 test_nightwatch_whole_list
 test_state_digest
 test_relay_bluff
+test_judge_for_profile
