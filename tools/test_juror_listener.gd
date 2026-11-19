@@ -56,6 +56,12 @@ func _init() -> void:
 	check(not heard.is_empty() and absf(float(r.lr) - odds.call(float(heard.chance)) / odds.call(float(heard.chance_before))) < 1e-6,
 		"its strength is the average listener's odds ratio on the premise (x%.3f)" % float(r.get("lr", 0.0)))
 	check(str(r.get("category", "")) == CaseEval.category(float(r.get("lr", 1.0))), "and the badge is cut from that strength (%s)" % str(r.get("category", "")))
+	# Debug > Why explains the badge's own reading first, and labels the full-weight breakdown
+	# as a diagnostic (Codex on #332).
+	var why: Dictionary = preload("res://game/workshop_why.gd").test_juror(g, accuse)
+	var why_text: String = str(why.get("text", ""))
+	check(why_text.begins_with("Test juror: an average listener") and "x%.2f" % float(r.lr) in why_text and "Diagnostic, not the badge" in why_text,
+		"the Why readout leads with the listener reading the badge uses, and labels the full-weight breakdown")
 	# A clearing premise reads the same listener the other way.
 	var good_p: String = model.add_premise(innocent.id, "good", Vector2(0, 200))
 	_link(model, view, good_p, [bluff_id])
