@@ -99,6 +99,14 @@ func _game_side(sd: int) -> void:
 	for rid in other_side.reading_challenges:
 		other_side.reading_challenges[rid]["attribution"] = "original"
 	check(Live.player_issues(g, other_side, raw) == raw, "calls on different sides of a relay keep the plain refusal")
+	# On a Medium's relay, the original side's reading is the dead reader's, not the Medium's (Codex, #363).
+	var medium = goods[1]
+	var dead = goods[4]
+	var entry = {"role": "seer", "day": 0, "data": {"pair": [goods[2].id, goods[3].id], "yes": true}, "text": "Original Seer reading"}
+	var mn: int = g.add_card({"kind": "info", "source": medium.id, "subject": [], "role": "medium", "day": 2, "phase": 3,
+		"data": {"dead": dead.id, "item": {"type": "reading", "entry": entry}}, "text": "Medium repeats dead Seer"})
+	var mid: String = Live.Evidence.normalize_card(g.board[mn - 1]).id
+	check(Live._challenged_teller(g, mid, "original") == dead.id and Live._challenged_teller(g, mid, "transmission") == medium.id, "a relay's original side names the dead reader, its passing-on the Medium")
 	var b: int = Live.file(g, honest.value)
 	check(b > 0, "the second case files (#%d)" % b)
 	g.events = []

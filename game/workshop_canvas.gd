@@ -484,9 +484,18 @@ static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
 			# different sides (the passing-on and the original; Codex, #363).
 			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST \
 					and str(theirs[rid].get("attribution", "")) == str(mine[rid].get("attribution", "")):
-				out.append({"number": int(c.n), "latest": latest, "teller": _card_source(g, str(rid))})
+				out.append({"number": int(c.n), "latest": latest, "teller": _challenged_teller(g, str(rid), str(theirs[rid].get("attribution", "")))})
 				break
 	return out
+
+## Whose reading a challenge on card `id` accuses: its teller, or, on the original side of a
+## Medium's relay, the dead reader the Medium passed on (Codex, #363).
+static func _challenged_teller(g, id: String, attribution: String) -> String:
+	if attribution == "original":
+		for card in g.board:
+			if card.get("kind", "") != "deduction" and str(card.get("role", "")) == "medium" and Evidence.normalize_card(card).id == id:
+				return str(card.get("data", {}).get("dead", ""))
+	return _card_source(g, id)
 
 ## Case `number` and every version it revises.
 static func versions_of(g, number: int) -> Array:

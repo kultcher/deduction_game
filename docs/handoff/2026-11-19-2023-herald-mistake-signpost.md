@@ -58,3 +58,7 @@ None.
   - **The bug:** a listener keeps the version it heard until it hears the revision. The scan skipped superseded versions, so when case A's lie had been heard and its Mistaken revision A′ was filed but not yet presented, the signpost disappeared.
   - **The fix:** heard superseded versions now count, with several heard versions of one case counted as one case. The line names the heard case for the lie and the newest version as the one to open and present.
   - **The check:** `test_mistake_signpost` covers it. The check fails without the fix.
+- **Codex, fifth finding (the relay's teller):**
+  - **The bug:** for a call on the original side of a Medium's relay, the signpost named the Medium instead of the dead reader.
+  - **The fix:** `_challenged_teller` names the dead reader on the original side and the Medium on the passing-on side.
+  - **The check:** `test_mistake_signpost`, now 26 checks, covers both sides.
