@@ -3,8 +3,8 @@
 - **Agent:** Claude-Beadle
 - **Base:** main at 2823c17
 - **Branch:** `claude/beadle-evil-confer`
-- **Status:** PR open. It moves golden and re-baselines to `baseline_eb98b79`. It queues behind
-  #292, which also moves golden, so it re-baselines again once #292 merges.
+- **Status:** PR open. It moves golden and re-baselines to `baseline_d6a93f1`, on main with #292
+  and #306.
 - **Next actor:**
   - Bailiff: review and merge.
   - Herald: the second-hand line below.

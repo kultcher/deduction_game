@@ -44,15 +44,15 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, meetings feed the gossip network): `baseline_eb98b79`
+### Current baseline (Nov 19, meetings feed the gossip network): `baseline_d6a93f1`
 
-`tools/golden/baseline_eb98b79/` is the capture from `claude/beadle-evil-confer` at `eb98b79`
-(main `2823c17` merged in). Those at the place where two people talked after the player had
+`tools/golden/baseline_d6a93f1/` is the capture from `claude/beadle-evil-confer` at `d6a93f1`
+(main `8801906` merged in). Those at the place where two people talked after the player had
 gone see it. A witness passes on a meeting in conversation, and asked about either person an
 NPC reports it, first or second hand (BACKLOG item 3, Michael, Nov 18-19). The pairing itself is
 unchanged.
-- **Divergence from `baseline_e287b3d`:**
-  - 54875 from record 80 (day 2: Edda sees Jory and Isolde talking after the player had gone);
+- **Divergence from `baseline_22733aa`:**
+  - 54875 from record 84 (day 2: a meeting seen after the player had gone);
   - 692 from record 40 (Bart's refresh on day 2, after hearing of a meeting);
   - 98933 from record 82 (Dorian's refresh on day 2);
   - 42 and 900 are identical.
