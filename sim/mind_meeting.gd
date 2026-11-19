@@ -366,7 +366,12 @@ static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	if body.contains(C.spoken_day(int(e["day"]))):
 		# The reading already says which day (the Augur's "…the morning or afternoon of the
 		# second day"; Michael, Nov 19): a lead naming the evening would read as when it happened.
-		return {"kind": "report", "statement": "%s." % (body[0].to_upper() + body.substr(1)), "event_id": info_eid(n.id, e)}
+		var said: String = "%s." % (body[0].to_upper() + body.substr(1))
+		if str(e.get("role", "")) == "augur":
+			# Each voice says it its own way, keeping "the morning or afternoon of {day}" (Michael,
+			# Nov 19). The card keeps the canonical text.
+			said = Dialogue.voice_line(n.id, "augur_yes" if bool(e.get("data", {}).get("yes", false)) else "augur_no", said, {"day": C.spoken_day(int(e["day"]))})
+		return {"kind": "report", "statement": said, "event_id": info_eid(n.id, e)}
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	elif body.ends_with(" " + spoken):

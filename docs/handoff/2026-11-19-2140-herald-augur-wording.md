@@ -27,3 +27,11 @@ Michael decided this on Nov 19, through Seneschal. The Augur's reading always me
 
 ## Proposed for the backlog
 None.
+
+## Per-voice lines (Michael approved, Nov 19)
+- **The voices:** `augur_yes` / `augur_no` in all 15 voices, with a {day} slot, as drafted. Hollis's are Michael's own edit: "My path converged with the Demon's during the morning or afternoon of {day}." and "…did not converge with…".
+- **Where they're used:** at the meeting and in private reports. `_info_intent` uses them when the reading names its own day. The card keeps the canonical text.
+- **Tests:**
+  - `test_augur_wording` (8 checks) checks every voice has both lines with the day's morning and afternoon, and Hollis's exact line.
+  - `test_dialogue_voices`' key count rises from 252 to 254.
+- **Golden:** still identical on all five seeds.

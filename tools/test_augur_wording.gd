@@ -30,11 +30,20 @@ func _init() -> void:
 	var n = w.living_good()[0]
 	var entry: Dictionary = {"role": "augur", "day": 2, "phase": C.EVENING, "data": {"yes": true}, "text": augur._spoken_text(true, 2)}
 	var said: String = str(MindMeeting._info_intent(w, n, entry).statement)
-	check(said == "I crossed paths with the Demon in the morning or afternoon of the second day.", "at the meeting it's said as is (%s)" % said)
+	check("morning or afternoon of the second day" in said and not said.begins_with("This"), "at the meeting it names the morning or afternoon of the day, with no lead (%s)" % said)
 	check(not ("evening" in said.to_lower()), "with no evening in it")
+	# Each voice says it its own way, keeping the morning or afternoon of the day (Michael, Nov 19).
+	var Dialogue = preload("res://sim/dialogue.gd")
+	var voiced_ok: bool = true
+	for voice in ["agnes", "bart", "constance", "dorian", "edda", "fenwick", "greta", "hollis", "isolde", "jory", "kiran", "lian", "merrin", "nisha", "odette"]:
+		for key in ["augur_yes", "augur_no"]:
+			var line: String = Dialogue.voice_line(voice, key, "", {"day": "the second day"})
+			voiced_ok = voiced_ok and line != "" and "morning" in line.to_lower() and "afternoon" in line and "the second day" in line
+	check(voiced_ok, "all fifteen voices have both lines, each with the morning or afternoon of the day")
+	check(Dialogue.voice_line("hollis", "augur_yes", "", {"day": "the second day"}) == "My path converged with the Demon's during the morning or afternoon of the second day.", "Hollis says it in his own words")
 	w.day = 4
 	said = str(MindMeeting._info_intent(w, n, entry).statement)
-	check(said.begins_with("I crossed paths") and "the second day" in said, "days later it still names the second day (%s)" % said)
+	check("the second day" in said, "days later it still names the second day (%s)" % said)
 	var other: Dictionary = {"role": "dowser", "day": 2, "phase": C.EVENING, "data": {}, "text": "something"}
 	check(str(MindMeeting._info_intent(w, n, other).statement).begins_with("On day 2, in the evening"), "other readings keep their lead")
 	print("Augur wording: %d checks, %d failures" % [checks, fails])
