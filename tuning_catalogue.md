@@ -528,6 +528,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `EVIL_HINT_CHANCE` | `0.3` |  | `sim/content.gd`, `sim/mind_meeting.gd` |
+| `AUGUR_DEMON_CROWD` | `4` | A crowd this size (the Dowser's "4+" row in its bluff guideline) is cover enough for a bluffing Augur to tell the truth about the Demon on its street (#264; Michael approved it Nov 18; moved here from sim/roles/augur.gd, Steward Nov 19). | `sim/roles/augur.gd` |
 | `MEDIUM_USELESS_CHANCE` | `0.15` |  | `sim/content.gd`, `sim/evil.gd` |
 | `EVIL_CAUTION_DEMON` | `0.8` |  | `sim/content.gd`, `sim/evil.gd` |
 | `EVIL_CAUTION_MINION` | `0.7` |  | `sim/content.gd`, `sim/evil.gd` |

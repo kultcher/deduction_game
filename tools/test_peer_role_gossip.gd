@@ -160,6 +160,7 @@ func _test_hint_only_at_moderate_bond() -> void:
 	var kinds: Dictionary = _kind_counts(w, s, l)
 	_check(kinds.get("role_hint", 0) > kinds.get("role_claim", 0), "at moderate bond a hint is likelier than the gift (%s)" % str(kinds))
 	var item = _pick_kind(w, s, l, "role_hint")
+	_check(item != null, "a hint is picked to deliver (Steward Nov 19 silent skip)")
 	if item != null:
 		Social._deliver(w, s, l, item)
 		_check(not l.known_claims.has(s.id) and l.hearsay.any(func(h): return h["kind"] == "role_hint" and h["package"] == C.hint_package(w, s.role)),
@@ -178,11 +179,18 @@ func _test_hint_only_at_moderate_bond() -> void:
 
 
 func _test_protect_lock_withholds_claim() -> void:
-	var g = _game(7104)
+	# A deal with a good Warden, found rather than hard-coded: seed 7104 alone dealt none, so this
+	# tested a Sexton (Steward Nov 19 silent skip).
+	var g = null
+	for sd in range(7104, 7204):
+		g = _game(sd)
+		if g.w.living_good().any(func(n): return n.role == "warden"):
+			break
 	var w = g.w
 	var pr: Array = _good_pair(w, ["warden"])
 	var s = pr[0]
 	var l = pr[1]
+	_check(s.role == "warden", "a deal with a good Warden to test (%s)" % s.role)
 	_prime(w, s, l, 0.95)
 	s.protect_lock = true
 	_check(not _kinds_offered(w, s, l).has("role_claim"), "a Warden who promised protection keeps the claim to themself")
