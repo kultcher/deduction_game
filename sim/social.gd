@@ -233,6 +233,31 @@ static func _pick_item(w, s, l):
 						"kind": "unease", "about": ut.id, "why": Mind.citable_reason(w, s, ut.id, "town"),
 						"from": s.id, "key": ukey,
 					}])
+	# Who they saw talking with whom by day (BACKLOG item 3, Michael, Nov 18: meetings feed
+	# the gossip network): the latest such meeting the listener isn't part of, passed on as
+	# "X and Y were talking at Z". Evil keeps its teammates' meetings to itself.
+	for idx in range(s.beliefs.size() - 1, -1, -1):
+		var mb: Dictionary = s.beliefs[idx]
+		if mb.get("kind", "") != "saw" or mb.get("phase", C.NIGHT) == C.NIGHT or str(mb.get("with", "")) == "" or str(mb.get("loc", "")) == "":
+			continue
+		if int(mb.get("day", -1)) < maxi(1, w.day - 1):
+			continue
+		var m_a: String = str(mb.get("who", ""))
+		var m_b: String = str(mb["with"])
+		if l.id in [m_a, m_b] or s.id in [m_a, m_b] or not w.by_id.has(m_a) or not w.by_id.has(m_b):
+			continue
+		if s.is_evil() and (Evil.is_teammate(w, s, m_a) or Evil.is_teammate(w, s, m_b)):
+			continue
+		var m_pair: Array = [m_a, m_b]
+		m_pair.sort()
+		var mkey: String = "meeting:%s:%s:%d:%d" % [m_pair[0], m_pair[1], int(mb["day"]), int(mb["phase"])]
+		if _told(s, l, mkey):
+			continue
+		cands.append([gos * Tuning.Social.DAY_RUMOR_WEIGHT, {
+			"kind": "meeting", "about": m_a, "with": m_b, "loc": str(mb["loc"]), "block": str(mb.get("block", "")),
+			"day": int(mb["day"]), "phase": int(mb["phase"]), "from": s.id, "witness": s.id, "key": mkey,
+		}])
+		break
 	# What a dead person told them is no longer someone else's to keep: readings from the
 	# dead are passed on readily, the more so the more they trusted the dead (Nov 5).
 	if not s.is_evil():
@@ -253,7 +278,7 @@ static func _pick_item(w, s, l):
 			dr["late"] = true
 			cands.append([gos * Tuning.Social.SHARE_RELAY_GOSSIP_SCALE + Tuning.Social.SHARE_DEAD_RELAY_SLOPE * s.npc_trust.get(src.id, 0.5), dr])
 	for h in s.hearsay.slice(-4):
-		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "unease", "role_hint", "role_claim"]:
+		if h.get("public", false) or h["from"] == l.id or h.get("about", "") in [s.id, l.id] or h["kind"] in ["secret", "day_sighting", "meeting", "unease", "role_hint", "role_claim"]:
 			continue
 		if not s.is_evil() and str(h.get("kind", "")) == "reading" and w.by_id.has(str(h.get("from", ""))) and not w.by_id[str(h["from"])].alive:
 			continue # offered above
@@ -479,6 +504,10 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			# Witnessed daytime visits build social fabric and context
 			# without manufacturing night-movement suspicion in the listener's ledger.
 			l.hearsay.append(hs)
+		"meeting":
+			# Who was talking with whom: remembered, to pass on when asked about either of
+			# them (MindDialogue._meeting_note). Not evidence in the listener's ledger.
+			l.hearsay.append(hs)
 		"case":
 			var proof = w.workshop_roots.call(item["card"]) if w.workshop_roots.is_valid() else {"complete": false, "receipts": {}}
 			for receipt in proof.receipts.values():
@@ -535,6 +564,8 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "they distrust %s%s" % [w.by_id[item["about"]].name, via]
 		"unease":
 			return "they feel uneasy about %s%s" % [w.by_id[item["about"]].name, via]
+		"meeting":
+			return "%s and %s were talking at %s%s" % [w.by_id[item["about"]].name, w.by_id[item["with"]].name, w.loc_name(str(item["loc"])), via]
 		"day_sighting":
 			var dname: String = w.by_id[item["about"]].name
 			var dloc: String = str(item.get("loc", ""))

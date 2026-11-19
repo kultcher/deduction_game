@@ -800,11 +800,26 @@ func _make_pair(a, b, when: String) -> void:
 	var evil_meet = a.is_evil() and b.is_evil()
 	dlog.add("npc_conversation", a.id, b.id, {"when": when, "loc": a.loc, "visible": when == "pre", "evil_meeting": evil_meet},
 		"%s and %s talk%s (content: stage 2)." % [a.name, b.name, " (evil meeting)" if evil_meet else ""])
+	if when != "pre":
+		_witness_meeting(a, b)
 	Social.converse(self, a, b, when)
 
-## After the player's action: evil members with word for each other confer out of sight
-## (wherever they are: the player has gone, and nobody notes it), then the remaining idlers on
-## the same location may pair off.
+## Those at the place where two people talked after the player had gone see it (BACKLOG item
+## 3, Michael, Nov 18: every meeting feeds the gossip network). A meeting before the player's
+## choice is seen through the phase's day sightings (`_day_sightings`, the "with" field).
+func _witness_meeting(a, b) -> void:
+	if a.at_home() or a.loc != b.loc:
+		return
+	for x in living():
+		if x == a or x == b or x.at_home() or x.loc != a.loc:
+			continue
+		for pr in [[a, b], [b, a]]:
+			x.beliefs.append({"kind": "saw", "who": pr[0].id, "loc": a.loc, "block": loc_block(a.loc),
+				"day": day, "phase": phase, "with": pr[1].id})
+
+## After the player's action: evil members with word for each other confer out of the
+## player's sight (others at the same place still see them), then the remaining idlers on the
+## same location may pair off.
 func _post_pair(talked_id: String) -> void:
 	_evil_conference(talked_id)
 	var cands = _idle_pairable().filter(func(n): return n.id != talked_id)
@@ -824,19 +839,22 @@ func _post_pair(talked_id: String) -> void:
 		if decision_roll(pr[0], "post_phase_conversation", p, {"pair_weight": p / Tuning.Setup.POST_PHASE_PAIR_MULT}, pr[1].id):
 			_make_pair(pr[0], pr[1], "post")
 
-## Evil confers after the player commits (BACKLOG, Michael): two idle teammates with unshared
-## word meet unseen, with the chance an after-the-choice pair has (POST_PHASE_PAIR_MULT x
+## Evil confers after the player commits (BACKLOG, Michael): two idle teammates in the same
+## place with unshared word meet out of the player's sight, with the chance an after-the-choice pair has (POST_PHASE_PAIR_MULT x
 ## their pair weight, the evil news bonus included). Each NPC still talks at most once a day,
 ## which keeps the same pair from meeting every phase.
 func _evil_conference(talked_id: String) -> void:
 	var team: Array = _idle_pairable().filter(func(n): return n.is_evil() and n.id != talked_id)
 	if team.size() < 2:
 		return
-	# The pair with the most unshared word between them (the first such, on a tie).
+	# The pair with the most unshared word between them (the first such, on a tie). They meet
+	# where they both are, so anyone else there sees them (`_witness_meeting`).
 	var pr: Array = []
 	var most: int = 0
 	for i in range(team.size()):
 		for j in range(i + 1, team.size()):
+			if team[i].loc != team[j].loc or team[i].at_home():
+				continue
 			var word: int = Evil.unshared_intel(team[i], team[j]) + Evil.unshared_intel(team[j], team[i])
 			if word > most:
 				most = word

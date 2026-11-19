@@ -321,6 +321,23 @@ relay about the first victim naming night 0 (Beadle).
   Good NPCs with news for a trusted friend now get a similar bonus. Still open: let evil
   confer after the player commits (unseen, or seen only from that block), cap the evil
   bonus, add a pair cooldown. Keep good NPCs meeting often enough to cover. [decided]
+  - **Michael (Nov 18), through Seneschal:**
+    1. Visible meetings still happen. Dropping the bonus before the player chooses is fine,
+       but evil members must still sometimes be seen meeting. Aim for about one visible
+       evil meeting a day across the three phases, and measure the rate. (Nov 19: main
+       measured about one every 3 to 4 days; whether that is a ceiling or a target is
+       with Michael.)
+    2. Meetings go into the gossip network, every meeting and not only evil ones. Those at
+       the place where two people were talking learn it ("X and Y were talking at Z") and
+       report it when asked about either person. When the player hears it, it is a
+       hearsay location report for each, as "who did you see earlier" gives today.
+       Herald owns any new wording. Owner Beadle.
+  - **Being built** on `claude/beadle-evil-confer`:
+    - no evil bonus before the player chooses;
+    - teammates confer after the player has gone, where they both are;
+    - those present at any meeting after the player's choice see it;
+    - witnesses pass it on in conversation (one step);
+    - asked about either person, an NPC reports it, first or second hand.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so

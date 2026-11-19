@@ -60,6 +60,7 @@ test_mechanics_sightings
 test_medium_night0_frame
 test_medium_relay_challenge
 test_meeting_flow
+test_meeting_gossip
 test_meeting_m2a
 test_meeting_m2b
 test_meeting_m2c
