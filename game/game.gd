@@ -5,6 +5,8 @@
 ## the events and the board directly instead of parsing text.
 ## Event kinds: header, narration, speech {speaker, name, text}, card {n}, prompt, error, screen.
 extends RefCounted
+## Refusal for a typed "withdraw" away from the meeting (draft wording, with Michael).
+const WITHDRAW_OUTSIDE_MEETING = "You can only take back a case before the whole town, at the meeting."
 
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -607,6 +609,11 @@ func _dispatch(text: String) -> void:
 			return
 		"withdraw", "takeback":
 			var wnum: int = rest.strip_edges().trim_prefix("#").to_int()
+			# Taking a case back is a public act, so only at the town meeting, as the button
+			# is (Steward, Nov 19: typed, it reached every listener at night or in private).
+			if state != "meeting":
+				_err(WITHDRAW_OUTSIDE_MEETING)
+				return
 			var werr: String = workshop_withdraw_public(wnum)
 			if werr != "":
 				_err(werr)

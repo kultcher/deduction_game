@@ -11,6 +11,7 @@ test_beliefs
 test_bluff_blend
 test_bot_m4
 test_buildings_tavern_town_hall
+test_card_wording_fixes
 test_case_metrics_dead
 test_case_script
 test_codex_fixes
@@ -42,6 +43,7 @@ test_evil_owned_lie
 test_evil_play
 test_execution_aftermath
 test_fabrication_check
+test_factor_norm_handles
 test_fixes_crowd_augur_lovers_pan
 test_framed_defence
 test_gift_doubt

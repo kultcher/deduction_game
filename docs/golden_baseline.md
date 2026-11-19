@@ -56,6 +56,19 @@ brings up its gift and its readings in private talk a little more often each day
   - **98933:** main hangs Dorian on day 2 and Isolde on day 3. Now it hangs Merrin on day 2,
     with no winner by day 4 either way.
   - **42, 54875, 692 and 900:** unchanged.
+
+### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
+
+`tools/golden/baseline_ee15238/` is the capture from `claude/factor-norm-handles` at `ee15238`
+(main with #345 merged in). A movement factor's compiled handle is now shared only between uses
+scored on the same scale. Before, a mixed Night Watch list's broken branch could share a handle
+with an identical factor used on its own and rewrite that factor's scale; the last mix to attach
+decided how it scored.
+- **Divergence from `baseline_2ac19a1`:** seed 42 only, in 2 values at rounding level (the
+  first at record 67, Fenwick's raw posterior on Kiran: 0.07560079988852052 to
+  0.07560079988852055). That's one such collision on main, between two scales that differed only
+  in the last digit. The other four seeds are identical, and seed 42 matches at `--tol 1e-12`.
+- **Outcomes:** all five unchanged.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, Argon's single end-of-night belief flush, #289): `baseline_2ac19a1`

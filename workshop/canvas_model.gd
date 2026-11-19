@@ -1230,7 +1230,8 @@ func answer_parts(answer: Dictionary) -> Array:
 	var slot: String = str(answer.get("false_slot", ""))
 	if slot != "":
 		var which: String = {"0": "the first statement false", "1": "the second statement false", "both": "both statements false"}.get(slot, "a statement false")
-		var why: String = str(answer.get("false_reason", ""))
+		# The reason in the chips' words, not its id (Steward, Nov 19).
+		var why: String = {"lying": "source lied", "misled": "source misled"}.get(str(answer.get("false_reason", "")), "")
 		parts.append(which + (" (%s)" % why if why != "" else ""))
 	return parts
 
