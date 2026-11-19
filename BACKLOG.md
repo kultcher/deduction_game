@@ -781,6 +781,13 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
   was about 40% of own readings in the Nov 19 measurement. Their clash is weighed through
   movement, or not at all. Extending the doubt there would use the movement factor's own
   "this list or guard was broken" posterior. Owner Lantern. **[open]**
+- **Higher-Insight NPCs weigh more broken-reading combinations** (Michael, Nov 19, with the
+  Steward A3 fix). When a case holds several readings the listener doubts, the role check
+  now weighs them symmetrically: all genuine, or exactly one broken
+  (`CaseEval._doubted_role_fits`). The exact fix also weighs two or more broken at once,
+  at 2^k role checks instead of k. The idea: sharper NPCs take the exact fix, duller ones the
+  symmetric approximation. In 2 ten-NPC games (Nov 19), 43% of the role checks holding any
+  doubted reading held two or more, up to four. Owner Lantern. **[tentative]**
 - **Persistence Confidence: a working theory that colours new evidence** (connections purge,
   Nov 17; Michael asked for it to be kept on the backlog). An experiment for live NPCs: a
   listener committed to a theory about someone (high Confidence) read new evidence through
