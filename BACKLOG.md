@@ -474,19 +474,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **Card text: the fewest words on the card, the full sentence on hover.** (Michael,
-  Nov 18; follows #250) A card face shows only the fewest words that carry the fact; the
-  full sentence ("Kiran publicly accused Greta.", "Merrin says they were home (on the
-  Market) on night 1.") moves to the hover tooltip at every zoom. Card nights stay
-  numbered ("Night 2"); speech uses ordinals. Covers the card-text generators across
-  game/ and sim/ (claims, accusations, alibis, sightings, gift readings, hints, secrets,
-  votes); each lead reviews the generators in their files. Rule: DIALOGUE_DESIGN §7.6.
-  Owner Herald. [decided]
-  **Built for the case board (#256, Nov 18):** every zoom shows the short form; hints and
-  secrets have one now. **The Workshop canvas's evidence cards** show the same short form
-  (`claude/herald-canvas-card-text`, Nov 18), with the sentence still on hover. Still to do:
-  a pass over the gift readings' short forms (each role's `short_text`, with their leads).
-
 - **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
   people who aren't talking or working showing on the map; a wrong role guess blocking
   process of elimination.
