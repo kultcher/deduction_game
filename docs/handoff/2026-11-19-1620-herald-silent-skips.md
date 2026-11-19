@@ -20,7 +20,7 @@ Michael's one-off sweep found places where a check quietly didn't run when a see
 - **Checks that couldn't fail:**
   - `test_ui`'s "new case button runs … or true" now checks that the seed really changes.
   - `test_day_conversation_view` used 61 bare `assert()`s, so a failure hung the run. They're now counted checks with FAIL lines and a non-zero exit, 228 checks per run.
-- **Not changed:** `test_wording_89077`'s play path still plays 3 games and finds no count reason to check, as its own comment says. The hand-built case below it is the real check. Dropping the play path would save CI time but removes a guard in case counts start arising, so I've left that for Bailiff and Michael to decide.
+- **`test_wording_89077`'s empty play path is dropped (Bailiff's call, Nov 19).** It played 3 games on every PR and checked a list that's always empty. The hand-built count-line case stays as the real check. If the play path comes back, it should assert that the situation arose.
 - **Not done:** the two suggested suite merges (hint cards with hint families, drag and pan with workshop_pan) are left for another PR.
 
 ## Measured
