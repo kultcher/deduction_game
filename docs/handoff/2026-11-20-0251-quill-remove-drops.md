@@ -1,6 +1,6 @@
 # Remove drops altogether
 
-**Claude-Quill, Nov 20.** Base: main at 2a7b6bd8 (with #386). Status: ready for
+**Claude-Quill, Nov 20.** Base: main at ec0b48ae (with #394 and #401). Status: ready for
 review. **Golden moves**, so it re-baselines (see the end). Next actor: Bailiff, in the golden queue
 behind Beadle's two PRs. Beadle reviewed the `sim/world.gd` side. Merge order with Lantern: this PR
 goes first. Lantern's Workshop scaffolding PR (the movement fixture and ledger_audit) follows it,
@@ -147,11 +147,11 @@ session only. Roughly a third of all suites were affected, so expect a similar s
 
 ## Measured
 
-- **Golden moves.** The new baseline is `baseline_97c2488`, and two captures were identical.
+- **Golden moves.** The new baseline is `baseline_58cb94a` (re-captured on main with #394), and two captures were identical.
   Every seed diverges from the start, because night 0 runs in setup. Outcomes:
-  - **42:** good no longer wins on day 3 (Agnes isn't hanged; no winner by day 4).
-  - **54875, 692, 900 and 98933:** different people are hanged, and there's still no winner
-    by day 4.
+  - **42 and 54875:** good no longer wins by day 3 (no winner by day 4).
+  - **692, 900 and 98933:** different people are hanged, and there's still no winner by
+    day 4.
 
   Details are in `docs/golden_baseline.md`.
 - **Suites:** at `d9e6935` (before the last main merge), a full run had 227 of 234 passing.
