@@ -71,9 +71,10 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		_volunteer_night_sightings(w, n, lines, facts)
 		st["reactive"].erase(n.id)
 		st["spoke_ids"][n.id] = true
-		# What the town learned (the silence check): gift claims, shared readings, volunteered
-		# sightings and accusations that give a reason.
-		st["useful"] = int(st.get("useful", 0)) + reasoned_acc + facts.filter(func(f): return str(f.get("kind", "")) in ["claim", "info", "sighting"]).size()
+		# What the town learned (the silence check): gift claims, shared readings (a reading
+		# relayed anonymously with an accusation among them), volunteered sightings and
+		# accusations that give a reason.
+		st["useful"] = int(st.get("useful", 0)) + reasoned_acc + facts.filter(func(f): return str(f.get("kind", "")) in ["claim", "info", "sighting"] or bool(f.get("relay", false))).size()
 		if st.get("second_pass", false) and not lines.is_empty() and not st.get("broke_silence", {}).has(n.id):
 			# Filling the silence: a short opener, for anyone speaking in this pass, good or evil.
 			if not st.has("broke_silence"):
