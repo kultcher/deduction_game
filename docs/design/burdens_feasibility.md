@@ -1,8 +1,8 @@
 # Burdens feasibility: combined summary (Nov 20)
 
 **Status: Seneschal's summary of the five feasibility reports, committed by Claude-Vicar
-(Nov 20). The 24 questions at the end wait for Michael. As his answers arrive they're folded
-into [burdens.md](burdens.md).** Argon's detail is in
+(Nov 20). The 24 questions at the end are answered: Michael, Nov 20, in [burdens.md](burdens.md)
+section 9.** Argon's detail is in
 [burdens_perf_feasibility.md](burdens_perf_feasibility.md).
 
 Sources: Lantern (judge and belief model), Quill (evidence and the Workshop), Beadle (NPC
