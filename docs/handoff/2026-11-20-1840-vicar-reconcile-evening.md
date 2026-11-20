@@ -25,8 +25,9 @@ Michael asked, through Seneschal, for a full reconcile against main (Nov 20).
   - tagged `[decided]`.
 - **Argon's audit, file splits:**
   - Tier 1 is done (#404, #417, #426, #433);
-  - Tier 2 is under way (#438, #439 done). Beadle's `social.gd` split comes after #431 and
-    #437, and Lantern's `live_activity` and `case_eval` after the joint-reasons PR.
+  - Tier 2 is under way. The Workshop UI is done (#438, #439). Left: Herald's
+    `dialogue_voices.gd` (after #415 and #446), Beadle's `social.gd` (after #431 and #437),
+    and Lantern's `live_activity` and `case_eval` (after the joint-reasons PR).
 - **New UI item, accepted by Michael (Nov 20):** "Movement wording: 'pass by' and 'road'".
   - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves);
   - no voiced line says "road".
@@ -34,7 +35,7 @@ Michael asked, through Seneschal, for a full reconcile against main (Nov 20).
   Owner Herald.
 
 **The contents list now marks in-progress items with `\*`** (Michael's rule: a lead is
-building it, or its PR is open). Marked from the open PRs and the leads' answers:
+building it, or its PR is open). Ten are marked, from the open PRs and the leads' answers:
 
 | Item | Why |
 |---|---|
@@ -47,9 +48,12 @@ building it, or its PR is open). Marked from the open PRs and the leads' answers
 | Graded gossip | #431, #437 |
 | Minion gifts: the Poisoner's visit | Quill, applying the destination rule |
 | A reason citing a pairing the model didn't weigh | Lantern, `claude/joint-reasons-combined` |
+| Movement wording: "pass by" and "road" | Herald #446 ("road"); the "pass by" draft is with Michael |
 
-Beadle, Lantern and Quill have answered. When Herald answers, the marks are updated in a
-follow-up file.
+All four leads (Beadle, Lantern, Quill, Herald) answered. Not in progress:
+- Caught out and pressed again: not started (Beadle);
+- Anger reasons: Herald has planned the lines with Beadle, waiting on Beadle's hook;
+- the Sleepwalker's doubt from the Rumormonger: not started (Lantern).
 
 - **Not tied to an open item:**
   - #414, the slate's word-against-word lie calls and their twins (Lantern; merged at

@@ -42,7 +42,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
     1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
-    1. Movement wording: "pass by" and "road" `[decided]`
+    1. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
@@ -135,9 +135,10 @@ Lantern). Nothing is open here.
   3. **File splits,** one file per PR, with no change to play:
      - **Tier 1: done.** `mind_meeting.gd` (#404), `mind_dialogue.gd` (#417), `world.gd`
        (#426) and `mind.gd` (#433), Beadle, with Lantern on `mind.gd`'s case side.
-     - **Tier 2, under way:** the voices (Herald), `social.gd` (Beadle), the Workshop UI
-       (Herald; the live Workshop's field editors, #438, and the canvas's card layouts, #439,
-       are done), `live_activity` and `case_eval` (Lantern).
+     - **Tier 2, under way:** the Workshop UI is done (Herald: the live Workshop's field
+       editors, #438, and the canvas's card layouts, #439). Left: `sim/dialogue_voices.gd` by
+       character (Herald, after #415 and #446 merge), `social.gd` (Beadle, after #431 and
+       #437), and `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
 
   [decided]
@@ -277,8 +278,9 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
-  - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves);
-  - no voiced line says "road".
+  - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves). Herald's
+    draft is with Seneschal for Michael, together with the Vigil tooltip's "passing through";
+  - no voiced line says "road": Herald #446.
 
   Owner Herald. [decided]
 
