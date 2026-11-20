@@ -56,6 +56,35 @@ brings up its gift and its readings in private talk a little more often each day
   - **98933:** main hangs Dorian on day 2 and Isolde on day 3. Now it hangs Merrin on day 2,
     with no winner by day 4 either way.
   - **42, 54875, 692 and 900:** unchanged.
+
+### Earlier baseline (Nov 19, the Demon never detours in inference): `baseline_0d796b3`
+
+`tools/golden/baseline_0d796b3/` is the capture from `claude/beadle-demon-detour` at `0d796b3`
+(main at `2bdb785`, with #346, merged in). The movement model's Demon now walks only the direct
+way to its victim, as the live Demon does (Michael, Nov 17), instead of a 5% detour allowance.
+Every belief that weighs a sighting or trace against the Demon's route moves a little.
+- **Divergence from `baseline_652298a`:** every seed, from the first day's belief refreshes
+  (42 at record 21, 54875 at 9, 692 at 14, 900 at 5, 98933 at 13).
+- **Outcomes:**
+  - 42, 692 and 98933: unchanged.
+  - 54875: Greta is hanged on day 2 and nobody on day 3, instead of Edda on day 2 and Hollis
+    on day 3. No winner by day 4 either way.
+  - 900: Isolde is hanged on day 3 instead of Lian. No winner by day 4 either way.
+
+### Earlier baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1, #346): `baseline_652298a`
+
+`tools/golden/baseline_652298a/` is the capture from `claude/lamplighter-count` at `652298a`
+(main with #349 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night
+Watch list: a listener weighs the chance that the Lamplighter is evil, poisoned or Delusional, and
+a broken count says nothing. Before, every count was taken as sound. (It replaces
+`baseline_d33fdae`, made for this PR before #349 landed; the divergence is the same.)
+- **Divergence from `baseline_7a10762`:** 42 from record 1 (a reading's vetting lift on the
+  first day, 0.003 to 0.001), 54875 from record 79 (Jory's refresh on day 2), 900 from record 52
+  (Isolde's cover on day 2) and 98933 from record 82 (Nisha's refresh on day 2). 692 is identical.
+- **Outcomes:** the winner and the last day are unchanged on all five, and 42, 54875, 692 and 900
+  hang the same people. 98933's hangings change: day 2 hangs Merrin (good, the Surveyor, nominated
+  by Dorian) instead of Dorian (good, the Clerk), and day 3 hangs no one instead of Isolde (the
+  Revenant).
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`

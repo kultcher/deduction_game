@@ -121,7 +121,45 @@ func _run() -> void:
 	check(gone.get("off_board", false) and canvas._unsupported(gone), "a card no longer on the board is marked unsupported")
 	check(gone.get("support_note", "") == "This card has changed or is no longer on your board.", "and its note says so plainly (%s)" % gone.get("support_note", ""))
 	g.board[gone_n - 1].deleted = false
+	await _nomination_prefill(scene)
 	_done(scene)
+
+## From the nomination menu, "File a case against X in the Workshop" starts the case as
+## "X is evil" (Michael, Nov 19); doing it again doesn't add a second one.
+func _nomination_prefill(scene) -> void:
+	var g = scene.g
+	var who = g.w.living()[1]
+	if not g.on_deck_case(who.id).is_empty():
+		check(false, "%s has no case on deck (the menu offers filing one)" % who.name)
+		return
+	scene._nomination_menu(scene.actions, who.id)
+	var file_btn: Button = _find_button(scene.popup, "File a case against %s in the Workshop" % who.name)
+	check(file_btn != null, "the nomination menu offers filing a case against %s" % who.name)
+	if file_btn == null:
+		return
+	file_btn.pressed.emit()
+	await process_frame
+	var ed = scene.case_view.workshop.editor
+	var node: Dictionary = ed.board.nodes.get(ed.board.selected, {})
+	check(node.get("kind", "") == "premise" and not node.get("draft", false) and node.conclusion.get("type", "") == "evil" and node.conclusion.get("target", "") == who.id, "the Workshop opens on \"%s is evil\"" % who.name)
+	var count: int = ed.board.nodes.values().filter(func(n): return n.kind == "premise" and n.get("conclusion", {}).get("target", "") == who.id and n.get("conclusion", {}).get("type", "") == "evil").size()
+	ed.prefill_premise(who.id, "evil")
+	var again: int = ed.board.nodes.values().filter(func(n): return n.kind == "premise" and n.get("conclusion", {}).get("target", "") == who.id and n.get("conclusion", {}).get("type", "") == "evil").size()
+	check(count == 1 and again == 1, "opening it again selects that premise, not a second one (%d, %d)" % [count, again])
+	# A premise about another alignment epoch (before a curse) isn't reused (Codex, #370).
+	var mine: String = ed.board.selected
+	ed.board.nodes[mine].conclusion.at = "Original alignment" if str(ed.board.view.alignment_epoch) != "Original alignment" else "Current alignment"
+	var fresh: String = ed.prefill_premise(who.id, "evil")
+	check(fresh != mine and str(ed.board.nodes[fresh].conclusion.get("at", "")) == str(ed.board.view.alignment_epoch), "a premise about another alignment epoch isn't reused")
+
+func _find_button(node: Node, text: String) -> Button:
+	if node is Button and node.text == text:
+		return node
+	for c in node.get_children():
+		var b = _find_button(c, text)
+		if b != null:
+			return b
+	return null
 
 func _done(scene) -> void:
 	print("Workshop navigation: %d checks, %d failures" % [checks, fails])

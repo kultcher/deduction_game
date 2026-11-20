@@ -65,6 +65,7 @@ func _init() -> void:
 	var e_i: int = Solver.person_index(small, "e")
 	var rose_small: Dictionary = {"evil": (1 << e_i) | (1 << a_i), "demon": a_i}
 	check(Solver.hanged_demon(small, rose_small, "e") == 0, "with four alive at the hanging the Scion can't rise, so a hanged Minion was only a Minion")
+	_refuted()
 	_live()
 	_menu()
 	_refusals()
@@ -76,6 +77,49 @@ func _init() -> void:
 ## On a real game's live universe, with a hanging written into the public timeline: the
 ## judge's mask agrees with Solver.holds in every world, and holds in more worlds than the
 ## plain "X is the world's Demon" (the succession worlds).
+## A reading that names the hanged person's role as a non-Demon (a Gravedigger's of the hanging,
+## an Executor's of its target; Michael, Nov 19) refutes "was the Demon when hanged" in every
+## world where its teller (and any relayer) is good. Where the teller is evil it can still hold.
+func _refuted() -> void:
+	var view: Dictionary = _view(["scion", "poisoner"])
+	var i: Callable = func(id): return 1 << Solver.person_index(view, id)
+	var gd: Dictionary = {"id": "gd1", "kind": "report", "role": "gravedigger", "source": "b", "data": {"executed": "g", "role": "poisoner"}}
+	var ctx: Dictionary = Solver.hanged_context(view, "g", Solver.hanged_refuters(view, [gd], "g"))
+	var rose_b_good: Dictionary = {"evil": i.call("g") | i.call("a"), "demon": Solver.person_index(view, "a")}
+	var rose_b_evil: Dictionary = {"evil": i.call("g") | i.call("a") | i.call("b"), "demon": Solver.person_index(view, "a")}
+	var demon_g: Dictionary = {"evil": i.call("g") | i.call("a"), "demon": Solver.person_index(view, "g")}
+	check(Solver.hanged_demon_in(rose_b_good, ctx) == 0, "a good Gravedigger's \"g was the Poisoner\" refutes \"was the Demon when hanged\"")
+	check(Solver.hanged_demon_in(rose_b_evil, ctx) == 1, "from an evil Gravedigger it doesn't")
+	check(Solver.hanged_demon_in(demon_g, ctx) == 1, "where g is still the world's Demon, it holds")
+	check(Solver.hanged_demon_in(rose_b_good, Solver.hanged_context(view, "g", [])) == 1, "without the reading, the Scion's succession holds as before")
+	var relayed: Dictionary = {"id": "gd2", "kind": "report", "role": "gravedigger", "source": "b", "relay_source": "d", "data": {"executed": "g", "role": "poisoner"}}
+	var rctx: Dictionary = Solver.hanged_context(view, "g", Solver.hanged_refuters(view, [relayed], "g"))
+	check(Solver.hanged_demon_in(rose_b_good, rctx) == 0 and Solver.hanged_demon_in({"evil": i.call("g") | i.call("a") | i.call("d"), "demon": Solver.person_index(view, "a")}, rctx) == 1,
+		"a relayed reading refutes it only where both the reader and the Medium are good")
+	# A reader the Revenant's curse has turned is evil from its turning (Codex on #356): its
+	# reading during the curse doesn't refute the premise; one from before the curse does.
+	var cursed: Dictionary = view.duplicate(true)
+	cursed["chronology"] = {"curse": {"from": 4, "until": 99}, "epochs": {}}
+	var turned_b: Dictionary = {"evil": i.call("g") | i.call("a"), "demon": Solver.person_index(view, "a"), "converted": Solver.person_index(view, "b")}
+	var during: Dictionary = gd.duplicate(true)
+	during["observed_at"] = {"day": 2, "phase": "night"}
+	var before: Dictionary = gd.duplicate(true)
+	before["observed_at"] = {"day": 0, "phase": "morning"}
+	var t_during: int = preload("res://workshop/chronology.gd").tick(during.observed_at)
+	var t_before: int = preload("res://workshop/chronology.gd").tick(before.observed_at)
+	check(t_before < 4 and t_during >= 4 and Solver.hanged_demon_in(turned_b, Solver.hanged_context(cursed, "g", Solver.hanged_refuters(cursed, [during], "g"))) == 1
+		and Solver.hanged_demon_in(turned_b, Solver.hanged_context(cursed, "g", Solver.hanged_refuters(cursed, [before], "g"))) == 0,
+		"a reader turned by the curse refutes it only with a reading from before its turning (ticks %d, %d)" % [t_before, t_during])
+	var ex: Dictionary = {"id": "ex1", "kind": "report", "role": "executor", "source": "b", "data": {"target": "g", "role": "poisoner"}}
+	check(Solver.hanged_demon_in(rose_b_good, Solver.hanged_context(view, "g", Solver.hanged_refuters(view, [ex], "g"))) == 0, "an Executor's reading of its target refutes it too")
+	var names_demon: Dictionary = {"id": "gd3", "kind": "report", "role": "gravedigger", "source": "b", "data": {"executed": "g", "role": "demon"}}
+	var quoted: Dictionary = {"id": "gd4", "kind": "report", "role": "gravedigger", "source": "b", "quoted": true, "data": {"executed": "g", "role": "poisoner"}}
+	var own: Dictionary = {"id": "gd5", "kind": "report", "role": "gravedigger", "source": "g", "data": {"executed": "g", "role": "poisoner"}}
+	check(Solver.hanged_refuters(view, [names_demon, quoted, own], "g").is_empty(), "a reading naming a Demon, a quoted one and the hanged person's own don't refute it")
+	check(Solver.hanged_refuters(_view(["poisoner"]), [gd], "g").map(func(r): return r[0]) == ["b"] and Solver.hanged_context(_view(["poisoner"]), "g", [["b", "", {}, {}]]).refuters.is_empty(),
+		"with no Scion on the script there is no succession to refute")
+
+
 func _live() -> void:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
@@ -101,6 +145,36 @@ func _live() -> void:
 	print("live: %d worlds, %d plain, %d when hanged" % [worlds.size(), plain, held])
 	check(agree, "the judge's mask and the solver agree in every live world")
 	check(held > plain and plain > 0, "\"was the Demon when hanged\" holds in the plain worlds and the succession worlds too (%d > %d)" % [held, plain])
+	# A good-in-some-worlds Gravedigger's "x was the Poisoner" in the case: the premise mask follows
+	# the case's own cards (its cache key carries them), and holds in fewer worlds.
+	var teller: String = view.people[1].id
+	var gd: Dictionary = {"id": "gd-live", "kind": "report", "role": "gravedigger", "source": teller, "data": {"executed": x, "role": "poisoner"}}
+	var refuted: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": q, "cards": []}, [gd]).conclusion
+	var with_gd: PackedByteArray = Eval._premise_mask(view, refuted)
+	var held_with := 0
+	var agree_gd: bool = with_gd.size() == worlds.size()
+	for i in range(with_gd.size()):
+		held_with += int(with_gd[i])
+		agree_gd = agree_gd and (with_gd[i] == 1) == Solver.holds(view, worlds[i], refuted)
+	check(refuted.get("refuters", []).map(func(r): return r[0]) == [teller] and with_gd.size() == worlds.size() and held_with < held and held_with >= plain,
+		"with a Gravedigger's reading of a Minion role in the case, it holds in fewer worlds (%d against %d; %d plain)" % [held_with, held, plain])
+	check(agree_gd, "the judge's mask and Solver.holds (the Jury, the Reasoner, the support model) agree with the reading in the case")
+	check(Eval._premise_mask(view, q) == mask, "and the mask without it is unchanged, cached or not")
+	# Refuters come from the cards the case is judged on, recomputed every time (Codex on #356).
+	var lview: Dictionary = view.duplicate(true)
+	lview.cards = lview.cards + [gd]
+	var with_card: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["gd-live"]})
+	check(with_card.conclusion.get("refuters", []).size() == 1, "a case citing the reading carries it as a refuter")
+	var dropped: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": with_card.conclusion, "cards": []})
+	check(not dropped.conclusion.has("refuters"), "once the reading is no longer judged (dropped from attention), its refuter goes with it")
+	var rejected: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["gd-live"]}, [], true)
+	check(not rejected.conclusion.has("refuters"), "given the accepted cards explicitly, a rejected reading refutes nothing, even when none are accepted")
+	var derived_case: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["dq-1"], "derived": [{"id": "dq-1", "supports": ["gd-live"]}]})
+	check(derived_case.conclusion.get("refuters", []).size() == 1, "a reading cited through a derived question refutes it too")
+	var quoted_cards: Array = Solver.selected(lview, {"cards": ["gd-live"], "quoted_cards": ["gd-live"]})
+	var quoted_case: Dictionary = Solver.with_hanged_refuters(lview, {"conclusion": q, "cards": ["gd-live"]}, quoted_cards)
+	check(quoted_cards.size() == 1 and quoted_cards[0].get("quoted", false) and not quoted_case.conclusion.has("refuters"),
+		"a reading the judged case quotes (a conflict branch, a Psychologist's answer) refutes nothing")
 
 
 ## What the Workshop offers for a hanged person (Michael, Nov 19): "was the Demon when

@@ -265,7 +265,6 @@ class Mind:
 	const NIGHT_DOUBT_CAP = 0.9
 
 	## Role-claim & sighting ledger weights
-	const RIVAL_CLAIM_EFF = 0.6  # retired legacy claim-collision weight (shared model owns claims)
 	const PUBLIC_CLAIM_HEARING_WEIGHT = 0.5
 	const DEMON_VICTIM_CLAIM_BOOST = 1.95
 	const BELIEVED_ROLE_MIN_EFF = 0.12
@@ -508,7 +507,6 @@ class Social:
 	const TRUST_VOTED_AGAINST = 0.1
 	const TRUST_VOTED_FOR = 0.03
 	const TRUST_ACCUSED_ME = 0.1
-	const PARANOIA_DRIFT_RATE = 0.06  # unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH)
 	const APPROACH_PHASE_CHANCE = 0.4
 	const APPROACH_SCORE_THRESHOLD = 0.35
 	const APPROACH_NOISE = 0.2
@@ -1049,6 +1047,15 @@ class Workshop:
 	const WITNESS_QUALITY_MIN = 0.05
 	const WITNESS_QUALITY_MAX = 0.95
 	const CHALLENGE_GROUND_MIN_QUALITY = 0.4
+	## The player's judgement in a lie call that sets one teller's word against another's
+	## (Michael, Nov 19): the grounds' side of the clash counts as
+	## x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE)), at most
+	## WITNESS_QUALITY_MAX. About x1.3 from an average listener, x1.4 at credibility 0.7.
+	## Small on purpose: the town shouldn't simply take the player's word, but a wrong call
+	## can lead it astray. Not for an NPC's own defence, nor when the player's own word is
+	## among the grounds (that already counts at the player's credibility).
+	const PLAYER_JUDGEMENT_WEIGHT = 0.5
+	const PLAYER_EXPERTISE = 0.1
 	const CHALLENGE_SOURCE_PENALTY_SCALE = 0.3
 	## Premises step 3: a challenge backfires (and costs the presentation trust) when the rest
 	## of the evidence moves the reading's content this far toward certainly holding
@@ -1087,7 +1094,6 @@ class Workshop:
 	const WALKER_CLAIM_GIFT = 0.95
 	const WALKER_CLAIM_HOME = 0.03
 	const WALKER_CLAIM_SECRET = 0.02
-	const DEMON_DETOUR = 0.05
 	const NIGHT_OUT_RATES = {
 		"hunt": 1.0,
 		"minion": 0.25,

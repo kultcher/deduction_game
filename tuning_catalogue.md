@@ -126,8 +126,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HONESTY_K` | `0.8` | Credibility (honesty) discounting from evidence against a source (retired legacy aliases retained) | `game/game_screens.gd` |
 | `HONESTY_CAP` | `0.5` |  | `game/game_screens.gd` |
 | `NIGHT_DOUBT_CAP` | `0.9` |  | (unused) |
-| `RIVAL_CLAIM_EFF` | `0.6` | retired legacy claim-collision weight (shared model owns claims) | (unused) |
-| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` |  | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
+| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` | Role-claim & sighting ledger weights | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
 | `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind.gd` |
 | `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind.gd` |
 | `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind.gd` |
@@ -304,7 +303,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
-| `PARANOIA_DRIFT_RATE` | `0.06` | unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH) | (unused) |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
 | `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
 | `APPROACH_NOISE` | `0.2` |  | `sim/social.gd` |
@@ -623,7 +621,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd`, `workshop/live_activity.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
@@ -672,6 +670,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WITNESS_QUALITY_MIN` | `0.05` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `WITNESS_QUALITY_MAX` | `0.95` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `CHALLENGE_GROUND_MIN_QUALITY` | `0.4` |  | `workshop/reading_challenges.gd` |
+| `PLAYER_JUDGEMENT_WEIGHT` | `0.5` | The player's judgement in a lie call that sets one teller's word against another's (Michael, Nov 19): the grounds' side of the clash counts as x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE)), at most WITNESS_QUALITY_MAX. About x1.3 from an average listener, x1.4 at credibility 0.7. Small on purpose: the town shouldn't simply take the player's word, but a wrong call can lead it astray. Not for an NPC's own defence, nor when the player's own word is among the grounds (that already counts at the player's credibility). | `workshop/reading_challenges.gd` |
+| `PLAYER_EXPERTISE` | `0.1` |  | `workshop/reading_challenges.gd` |
 | `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | (unused) |
 | `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
@@ -682,7 +682,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
-| `DEMON_DETOUR` | `0.05` |  | `workshop/live_activity.gd` |
 | `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
 | `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
