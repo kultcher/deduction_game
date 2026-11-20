@@ -14,7 +14,7 @@ const SourceDoubt = preload("res://workshop/source_doubt.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
 
-const EVIL_LEANING = ["evil", "demon", "minion", "suspicious"]
+const EVIL_LEANING = ["evil", "demon", "suspicious"]
 const GOOD_LEANING = ["good"]
 ## Ledger entries that carry the player's word rather than the NPC's own evidence.
 const PLAYER_WORD = ["tell:", "for:", "arg:", "workshop:tell:"]

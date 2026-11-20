@@ -1,5 +1,6 @@
 ## Live canvas boundary. Only player board receipts cross into the editor.
 extends RefCounted
+const GameBoard = preload("res://game/game_board.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -100,10 +101,10 @@ static func _profile_facets(g) -> Dictionary:
 	var out = {}
 	var C = Assess.C
 	for n in g.w.npcs:
-		var hw_recs: Array = g.profile_receipts_for(n.id, "home_work")
-		var haunt_recs: Array = g.profile_receipts_for(n.id, "haunts")
-		var trait_recs: Array = g.profile_receipts_for(n.id, "personality")
-		var bond_recs: Array = g.profile_receipts_for(n.id, "bonds")
+		var hw_recs: Array = GameBoard.profile_receipts_for(g, n.id, "home_work")
+		var haunt_recs: Array = GameBoard.profile_receipts_for(g, n.id, "haunts")
+		var trait_recs: Array = GameBoard.profile_receipts_for(g, n.id, "personality")
+		var bond_recs: Array = GameBoard.profile_receipts_for(g, n.id, "bonds")
 		var haunt_names: Array = haunt_recs.map(func(c): return g.w.loc_name(c.get("loc", c.get("locs", [""])[0])))
 		var latest_traits = {}
 		for c in trait_recs:
@@ -144,7 +145,7 @@ static func _profile_facets(g) -> Dictionary:
 static func supports(g, value: Dictionary) -> Dictionary:
 	var numbers: Array = []
 	var missing: Array = []
-	var pool: Array = g.all_receipts()
+	var pool: Array = GameBoard.all_receipts(g)
 	for id in value.cards:
 		var matches: Array = pool.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id)
 		if matches.is_empty():
@@ -227,7 +228,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	# Build native footing through the ordinary filer, then retain the
 	# entire graph. A unique label prevents text-based card merging across drafts.
 	var old_size: int = g.board.size()
-	var number = g.file_deduction(conclusion, roots.numbers, true)
+	var number = GameBoard.file_deduction(g, conclusion, roots.numbers, true)
 	if number < 1:
 		return number
 	var card: Dictionary = g.board[number - 1].duplicate(true)
@@ -247,7 +248,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	if number > old_size:
 		g.board[number - 1] = card
 	else:
-		number = g.add_card(card)
+		number = GameBoard.add_card(g, card)
 	if number < 1:
 		return number
 	g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": revises > 0, "revises": revises, "case": value, "supports": roots.numbers})
@@ -320,14 +321,14 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 
 ## The premises and badge bands the "points elsewhere" flag can join (test_juror): an
 ## accusation the case doesn't carry.
-const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "minion", "suspicious"]
+const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "suspicious"]
 const POINTS_ELSEWHERE_BANDS = ["contradicts", "none", "weak"]
 
 ## Which way each premise points an average listener's suspicion of its subject: up for an
 ## accusation, down for one that clears them. The listener weighs every case through its
-## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
-## no single subject: it is read through whoever it moves most, upward (one of them lied).
-const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+## subject's chance of being evil, so that is what the juror reads. A premise the judge
+## couldn't pin on one subject is read through whoever it moves most, upward.
+const PREMISE_CLEARS = ["good", "notdemon", "truthful", "misled", "marked", "secret_mod"]
 ## The clearing premises a listener's chance of the target being good settles outright, for
 ## the badge's top tier (Conclusive): test_juror.
 const TOP_TIER_CLEARS = ["good", "notdemon"]
@@ -335,7 +336,7 @@ const TOP_TIER_CLEARS = ["good", "notdemon"]
 ## The listener's chance as the badge's top tier reads it for a premise of `type`: the chance
 ## itself where it settles the premise, else -1 (no top tier).
 static func top_tier_chance(type: String, chance: float) -> float:
-	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
+	var settles: bool = type in TOP_TIER_CLEARS or type not in PREMISE_CLEARS
 	return chance if settles else -1.0
 
 ## The share of a person's chance of being evil that is the chance of being the Demon, before
@@ -402,7 +403,7 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	var target: String = str(pj.get("target", ""))
 	var before: float = float(pj.get("before", -1.0))
 	var after: float = float(pj.get("after", -1.0))
-	if type == "conflict" or before < 0.0 or after < 0.0:
+	if before < 0.0 or after < 0.0:
 		# The person the case moves most, upward.
 		var best: float = 0.0
 		for id in pj.get("posterior_after", {}):
@@ -670,7 +671,7 @@ static func juror_case(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
@@ -713,7 +714,7 @@ static func public_claims_for(g, value: Dictionary) -> Array:
 	var roots: Dictionary = supports(g, value)
 	var named: Dictionary = {}
 	for number in roots.numbers:
-		var card: Dictionary = g.receipt_by_number(int(number))
+		var card: Dictionary = GameBoard.receipt_by_number(g, int(number))
 		for field in ["source", "subject"]:
 			var v = card.get(field, "")
 			for id in (v if v is Array else [v]):
@@ -785,7 +786,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		var ids: Array = Array(filed.get("workshop_case", {}).get("cards", [])).duplicate()
 		if ids.is_empty():
 			for support in filed.get("supports", []):
-				var root: Dictionary = g.receipt_by_number(int(support))  # board cards and profile receipts
+				var root: Dictionary = GameBoard.receipt_by_number(g, int(support))  # board cards and profile receipts
 				if not root.is_empty() and root.get("kind", "") != "deduction":
 					ids.append(Evidence.normalize_card(root).id)
 		var conclusion: Dictionary = filed.get("workshop_case", {}).get("conclusion", {})
@@ -798,8 +799,8 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		# doesn't count as an argument of yours here (its cards are still heard).
 		if retired.has(int(number)) or not filed.get("workshop_case", {}).get("reading_challenges", {}).is_empty():
 			continue
-		# Only the cards it argues for count as its argument: a "conflict" case argues for none,
-		# and a quoted-only line's cards are heard but not endorsed (SharedLedger.endorsed_facts).
+		# Only the cards it argues for count as its argument: a quoted-only line's cards are
+		# heard but not endorsed (SharedLedger.endorsed_facts).
 		if filed.has("workshop_case"):
 			ids = _endorsed(filed.workshop_case)
 		if ids.is_empty():
@@ -812,7 +813,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	if not roots.issues.is_empty():
 		return {}
 	for number in roots.numbers:
-		var card: Dictionary = g.receipt_by_number(int(number))  # board cards and profile receipts
+		var card: Dictionary = GameBoard.receipt_by_number(g, int(number))  # board cards and profile receipts
 		if card.is_empty() or not (Meeting.already_public(g, card) or said.has(Evidence.normalize_card(card).id)):
 			return {}
 	# The neutral listener's view: this case's cards and your public cases', no watch record.
@@ -825,7 +826,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input["watched"] = []
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {}
@@ -849,8 +850,8 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	for it in item_list:
 		values[it.key] = Connections.value(run, it)
 	var today: int = int(g.w.day)
-	# The draft's argument is the cards it argues for, as an earlier case's is: a "conflict"
-	# draft argues for none (no note), and quoted-only lines are heard, not endorsed.
+	# The draft's argument is the cards it argues for, as an earlier case's is: quoted-only
+	# lines are heard, not endorsed.
 	var argued: Array = _endorsed(value)
 	if argued.is_empty():
 		return {}
@@ -967,8 +968,6 @@ static func _pressure_spent(g, target: String, numbers: Array) -> bool:
 
 ## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
 static func _endorsed(value: Dictionary) -> Array:
-	if str(value.get("conclusion", {}).get("type", "")) == "conflict":
-		return []
 	var assigned: Array = []
 	var endorsed: Array = []
 	for line in value.get("lines", []):
@@ -1065,7 +1064,7 @@ static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, re
 					unique.append(id)
 			result["clashing"] = unique
 	# Collateral: who this case would mostly raise suspicion of, if not the subject.
-	if case_data.conclusion.get("type", "") in ["evil", "demon", "minion", "suspicious"] and ev.has("people"):
+	if case_data.conclusion.get("type", "") in ["evil", "demon", "suspicious"] and ev.has("people"):
 		var people: Dictionary = ev.people
 		var own: float = people.get(target, {}).get("posterior", 0.0) - people.get(target, {}).get("prior", 0.0)
 		var top = ""
@@ -1224,7 +1223,7 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Trace check", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"has_traces": false}
@@ -1332,7 +1331,7 @@ static func circumstantial_summary(g, value: Dictionary) -> Dictionary:
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input["watched"] = []  # a listener's view: no raw watch record (see GhostJuror.live)
 	input.listener = {"id": "ghost", "name": "Hub check", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"has_hub": false}

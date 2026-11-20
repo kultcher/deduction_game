@@ -4,6 +4,8 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
+const MindAnswers = preload("res://sim/mind_answers.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const Social = preload("res://sim/social.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
@@ -57,7 +59,7 @@ func _owned_nights() -> void:
 		n.lied_nights = [0]
 		n.dialogue_memory["night_accounts"] = {} if said == "" else {"0": {"kind": said}}
 		w.day = 2
-		var st: Array = _statements(MindDialogue.answer_gift(w, n, 3))
+		var st: Array = _statements(MindAnswers.answer_gift(w, n, 3))
 		var joined: String = " ".join(PackedStringArray(st))
 		_check(("whatever I told you" in joined) == (said == "alibi"), "owned-lie line only after a false alibi (%s): %s" % [said, joined])
 		_check(("wouldn't say where I was" in joined) == (said == "refusal"), "refusal owned as a refusal (%s)" % said)
@@ -81,9 +83,9 @@ func _caught_out_opener() -> void:
 	var card = {"kind": "sighting", "phase": C.NIGHT, "day": 0, "source": "player", "subject": [n.id], "block": "docks", "text": "You saw them on the Docks."}
 	# The first press only owns the night and keeps the gift (the caught-out ladder, Michael,
 	# Nov 19); the second names it.
-	var soft: Array = _statements(MindDialogue.press(w, n, card))
+	var soft: Array = _statements(MindPress.press(w, n, card))
 	_check(not soft.is_empty() and soft[0].begins_with("Fine, I was out") and not soft.has("All right, you saw me. Here's why I was out."), "first pressed, the soft tier: %s" % str(soft))
-	var st: Array = _statements(MindDialogue.press(w, n, card))
+	var st: Array = _statements(MindPress.press(w, n, card))
 	_check(not st.is_empty() and st[0] == "All right, you saw me. Here's why I was out.", "gift reveal under a night card opens caught out: %s" % str(st))
 	var doubted: Array = Voices.VOICES.get(n.id, {}).get("doubted_visual", [])
 	_check(not st.any(func(x): return x in doubted), "no doubted-visual stem before a reveal")

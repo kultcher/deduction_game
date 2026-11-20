@@ -1,5 +1,5 @@
 ## Workshop and shared-model behaviour pinned by past bugs: juror feedback, connections, presentation replies, ledger guards, caches.
-## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase2_bug_sweep, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
+## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
 const Mind = preload("res://sim/mind.gd")
@@ -46,7 +46,6 @@ func _main() -> void:
 	_run_backlog_batch4()
 	_run_claude_batch()
 	_run_claude_audit_cleanup()
-	_run_phase2_bug_sweep()
 	_run_phase4_3_framing_and_vig()
 	_run_playtest_nov4_fixes()
 	_run_playtest_regressions()
@@ -99,12 +98,6 @@ func _run_claude_audit_cleanup() -> void:
 	_test_shared_ledger_zero_weight_reading_guard()
 	_test_caches_clear_all_and_constance_inquiry_gate()
 	_test_jury_persuasion_tail_helper()
-
-
-# ---------------------------------------------------------------- from test_phase2_bug_sweep
-
-func _run_phase2_bug_sweep() -> void:
-	_test_2_5_headline_firsthand_attention_reports()
 
 
 # ---------------------------------------------------------------- from test_phase4_3_framing_and_vigil_physics
@@ -304,7 +297,7 @@ func _evil_subject_never_accepts() -> void:
 	for sd in range(4470, 4490):
 		var g = _game(sd)
 		var e = g.w.evil_team()[0]
-		for type in ["minion", "evil", "demon"]:
+		for type in ["evil", "demon"]:
 			var mask: Dictionary = preload("res://sim/presentation_reply.gd")._evil_mask(g.w, e, {"type": type, "a": e.id}, 0, false)
 			tried += 1
 			if mask.get("stance", "") == "accept":
@@ -511,32 +504,6 @@ func _test_jury_persuasion_tail_helper() -> void:
 		var sample: String = "I checked another explanation and it also fits: Odette, Bram evil; Kira Marked." + Jury.accept_persuasion_tail(kind)
 		var stripped: String = Jury.strip_accept_persuasion_tail(sample)
 		_check(not ("Even so," in stripped) and stripped.begins_with("I checked another explanation"), "Jury.strip_accept_persuasion_tail cleanly removes persuasion tail (%s)" % (kind if kind != "" else "plain"))
-
-
-# ---- test_phase2_bug_sweep
-
-
-func _test_2_5_headline_firsthand_attention_reports() -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(4, 10)
-	var holder = g.w.living_good()[0]
-	var a = g.w.living_good()[1]
-	var b = g.w.living_good()[2]
-	holder.role = "seer"
-	holder.claimed_role = ""
-	holder.claim_public = false
-	holder.ledger.clear()
-	holder.workshop_state.clear()
-	holder.info_log = [{"role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "seer yes"}]
-	var input: Dictionary = Bridge.capture(g, [], holder.id, "private", holder)
-	var plan: Dictionary = Shared.prepare(input, {}, holder.ledger)
-	_check(plan.ready and plan.prepared.listener.knowledge.get("own_reports", []).is_empty() and not plan.prepared.listener.knowledge.get("attention_reports", []).is_empty(), "SharedLedger moves firsthand report IDs into attention_reports")
-	var h_own: float = Jury._headline(plan.prepared.view, plan.prepared.view.cards, a.id, 0.30, plan.prepared.listener, plan.prepared.listener, false)
-	var stripped_eval: Dictionary = plan.prepared.listener.duplicate(true)
-	stripped_eval.knowledge["attention_reports"] = []
-	var h_default: float = Jury._headline(plan.prepared.view, plan.prepared.view.cards, a.id, 0.30, plan.prepared.listener, stripped_eval, false)
-	_check(h_own > h_default, "Jury._headline uses OWN_ERR via attention_reports instead of DEFAULT_ERR (%.4f > %.4f)" % [h_own, h_default])
 
 
 # ---- test_phase4_3_framing_and_vigil_physics

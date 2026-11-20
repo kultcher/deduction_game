@@ -11,9 +11,8 @@ var fails = 0
 
 func _init() -> void:
 	_direct_and_migration()
-	_conflicts()
 	_venues_and_mixed()
-	_scrutiny_and_cover()
+	_cover()
 	_intermediate()
 	_private_reasons()
 	_self_support_paths()
@@ -113,61 +112,6 @@ func _direct_and_migration() -> void:
 	var grouped = Mind.hear_group_case(g.w, n, group, g.board[card - 1])
 	check(grouped.get("workshop", false) and n.workshop_state.facts.size() == 1, "group presentations assess individual questions against one shared evidence set")
 
-func _conflicts() -> void:
-	var g = _game()
-	var n = g.w.living_good()[0]
-	var source = g.w.npcs.filter(func(p): return p != n)[0]
-	var second = g.w.npcs.filter(func(p): return p != n and p != source)[0]
-	var candidates = g.w.npcs.filter(func(p): return p != n and p != source and p != second)
-	var a = candidates[0]
-	var b = candidates.filter(func(p): return p.home_block != a.home_block)[0]
-	var c = g.w.npcs.filter(func(p): return p.home_block != a.home_block and p.home_block != b.home_block)[0]
-	var survey = _reading(g, source, "surveyor", 0, {"count": 1})
-	# Marked may register differently on each read. Three pings on three
-	# blocks require at least two actual evil blocks, so count 1 really conflicts.
-	var dowse = _reading(g, second, "dowser", 1, {"group": [a.id, b.id, c.id], "count": 3})
-	var conflict = g.file_deduction({"type": "conflict", "group": [source.id, second.id]}, [survey, dowse])
-	check(conflict > 0, "native conflict builder can supply a real supported conflict")
-	var before = n.suspicion.duplicate(true)
-	var result = g._evaluate_deduction(n, g.board[conflict - 1], 1.0, true)
-	if not result.get("workshop", false) or result.dialogue.stance != "accept":
-		print("Conflict diagnostic: ", JSON.stringify({"agreement": result.get("agreement"), "dialogue": result.get("dialogue"), "scope": result.get("assessment", {}).get("shared_assessment", {})}))
-	check(result.get("workshop", false) and result.dialogue.stance == "accept", "a cross-role contradiction is assessed by shared logic")
-	check(n.workshop_state.active and n.workshop_state.facts.is_empty(), "conflict receipts are quoted without endorsing either report")
-	check(_close(before, n.suspicion) and n.discounted.is_empty(), "establishing a conflict awards no guilt and invents no blanket all-night impairment")
-	check("cannot all be accurate" in result.dialogue.special and "does not establish" in result.dialogue.special, "the reply distinguishes conflicting reports from alignment guilt")
-	var trust = n.trust
-	var duplicate = g.file_deduction({"type": "conflict", "group": [source.id, second.id]}, [dowse, survey])
-	var repeated = g._evaluate_deduction(n, g.board[duplicate - 1], 0.6, true, "meeting")
-	check(repeated.repeated and is_equal_approx(trust, n.trust), "reordered conflict wrappers cannot farm rewards")
-	var direct = g.file_deduction({"type": "evil", "a": a.id}, [dowse])
-	var alone = g._evaluate_deduction(n, g.board[direct - 1], 1.0, true)
-	var direct_effects = n.suspicion.duplicate(true)
-	var shared = g.file_deduction({"type": "evil", "a": a.id}, [dowse, conflict])
-	var with_quote = g._evaluate_deduction(n, g.board[shared - 1], 1.0, true)
-	check(with_quote.get("workshop", false) and is_equal_approx(alone.agreement, with_quote.agreement), "quoting a child cannot erase the same report's direct endorsement from the spoken assessment")
-	check(_close(direct_effects, n.suspicion), "direct and quoted routes share one actual contribution")
-	var child_claims: Array = with_quote.assessment.claims.filter(func(c): return c.conclusion.type == "conflict")
-	check(not child_claims.is_empty() and child_claims[0].links.all(func(link): return Evidence.normalize_card(g.board[dowse - 1]).id not in link.exclusive_cards), "branch diagnostics retain original roots still owned by a direct parent path")
-	g.workshop_retract(direct, n.id)
-	g.workshop_retract(shared, n.id)
-	var clear = _reading(g, second, "dowser", 2, {"group": [a.id], "count": 0})
-	var base = g.file_deduction({"type": "good", "a": a.id}, [clear])
-	var base_result = g._evaluate_deduction(n, g.board[base - 1], 1.0, true)
-	var accepted = n.suspicion.duplicate(true)
-	var combined = g.file_deduction({"type": "good", "a": a.id}, [clear, conflict])
-	var composed = g._evaluate_deduction(n, g.board[combined - 1], 1.0, true)
-	check(composed.get("workshop", false) and _close(accepted, n.suspicion), "a nested conflict contributes quoted context, not two endorsed contradictory readings")
-	check(n.workshop_state.facts.size() == 1 and composed.assessment.claims.any(func(c): return c.conclusion.type == "conflict"), "intermediate conflict assessments remain visible without adding evidence")
-	g.workshop_retract(base, n.id)
-	g.workshop_retract(combined, n.id)
-	check(n.workshop_state.facts.is_empty() and _close(before, n.suspicion), "withdrawing alignment endorsements leaves quoted conflicts without residual guilt")
-	# A coherent pair should not generate scrutiny simply because the player names a conflict.
-	g.board[survey - 1].data.count = 3
-	var consistent = g.file_deduction({"type": "conflict", "group": [source.id, second.id]}, [survey, clear])
-	var denied = g._evaluate_deduction(n, g.board[consistent - 1], 1.0, true)
-	check(denied.get("workshop", false) and denied.dialogue.stance == "reject", "a coherent set does not become conflicting just because it is labelled that way")
-
 func _venues_and_mixed() -> void:
 	var results: Array = []
 	for venue in ["private", "meeting", "nomination"]:
@@ -211,7 +155,7 @@ func _venues_and_mixed() -> void:
 			check(not fallback.get("workshop", false) and (fallback.agreement == 0.0 or not n.workshop_state.active), "unsupported argument falls back; contributing mixed evidence cannot count only its convenient part")
 	check(results[0] == results[1] and results[1] == results[2], "venue does not change interpretation, evidence strength, or sound-argument reward")
 
-func _scrutiny_and_cover() -> void:
+func _cover() -> void:
 	var g = _game()
 	var n = g.w.living_good()[0]
 	n.role = "surveyor"
@@ -223,20 +167,8 @@ func _scrutiny_and_cover() -> void:
 	var third = people.filter(func(p): return p.home_block != first.home_block and p.home_block != second.home_block)[0]
 	var a = _reading(g, n, "surveyor", 0, {"count": 1})
 	var b = _reading(g, source, "dowser", 1, {"group": [first.id, second.id, third.id], "count": 3})
-	var conflict = g.file_deduction({"type": "conflict", "group": [n.id, source.id]}, [a, b])
-	var result = g._evaluate_deduction(n, g.board[conflict - 1], 1.0, true)
-	check(result.get("workshop", false) and result.agreement >= 0.6 and is_equal_approx(n.pressure, 0.1), "accepted conflict scrutiny applies once to an actual cited participant")
-	var trust: float = n.trust
-	g._evaluate_deduction(n, g.board[conflict - 1], 0.6, true, "meeting")
-	check(is_equal_approx(n.pressure, 0.1) and is_equal_approx(n.trust, trust), "venue changes do not duplicate conflict pressure or trust rewards")
 	g.board[a - 1].data.count = 2
 	var c = _reading(g, source, "dowser", 2, {"group": [first.id], "count": 0})
-	var coherent = g.file_deduction({"type": "conflict", "group": [n.id, source.id]}, [a, c])
-	var previous: float = n.pressure
-	var rejected = g._evaluate_deduction(n, g.board[coherent - 1], 1.0, true)
-	if not rejected.get("workshop", false) or rejected.agreement != 0.0:
-		print("Coherent diagnostic: ", JSON.stringify({"agreement": rejected.agreement, "dialogue": rejected.get("dialogue"), "shared": rejected.get("assessment", {}).get("shared_assessment", {}), "issues": n.workshop_state.get("issues", [])}))
-	check(rejected.get("workshop", false) and rejected.agreement == 0.0 and is_equal_approx(n.pressure, previous), "an unsubstantiated conflict creates no assessment-based scrutiny")
 	# Cover reasoning receives reports on repetitions too, even if the real evil
 	# chooses a different public stance for strategic reasons.
 	var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]

@@ -30,8 +30,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
-    2. The premise menu, trimmed `[decided]`
-    3. Remove the Muddler `[in review]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided]`
@@ -61,7 +59,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   8. Scoring system `[open]`
   9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
-  1. Minion gifts
+  1. Minion gifts: the Poisoner's visit
   2. A Medium's relayed sighting vs the dead's known vantage
   3. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -71,7 +69,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. The spoken reply to a later-day repeat `[polish]`
+  2. The spoken reply to a later-day repeat `[in review]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Brute kills scored as hexes on custom scripts `[later]`
@@ -97,7 +95,8 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 **Deferred (Michael, Nov 8)** and not on the active list: premises step 4 (Scion/Revenant
 and movement premises, `docs/premises_plan.md`); contradiction callouts and poses on the
 courtroom stage; the live seat-by-seat player vote (meeting plan stretch A); procedural
-towns.
+towns. The Minion premise was folded into "evil" (Michael, Nov 20); it may return with
+step 4.
 
 ---
 
@@ -135,9 +134,10 @@ listener (#273), both Lantern's.
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
   features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
   1. **Dead code, zero drift:**
-     - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
+     - ~~the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
        and `legacy_evidence`, the `legacy_path` stub), together with retiring
-       `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
+       `tools/connections_prototype.gd`~~. Done (Lantern, Nov 20,
+       `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`);
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
@@ -159,20 +159,6 @@ listener (#273), both Lantern's.
      PRs merge.
 
   [decided]
-
-- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
-  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
-  - (b) keep "readings don't fit together";
-  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
-    premises step 4;
-  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
-    decided.
-
-  Owner Quill. [decided]
-
-- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
-  and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
-  `2026-11-20-0725-quill-remove-muddler.md`). [in review]
 
 ### NPC behaviour
 
@@ -283,7 +269,9 @@ listener (#273), both Lantern's.
   - **Gift-hiding fear should follow the gift's value to the Demon** (Beadle's idea, folded
     in Nov 20). How much a good NPC fears revealing its gift should follow the per-role
     kill-score table, not be the same for every info gift.
-  A caught lie still implicates strongly, so both need care. [open]
+  A caught lie still implicates strongly, so both need care. The "holds their claimed
+  gift" premise was merged into "is good" (Michael, Nov 20); revisit if this is decided.
+  [open]
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
   Beadle's proposals):
@@ -528,10 +516,11 @@ The one performance item, "Late-game meeting and presenting cost", is in
 Patterns that come up in play, or that the mechanics make meaningful, but that the Case
 Workshop and the shared model can't express yet.
 
-- **Minion gifts.** Someone silenced and the people seen on their block that evening
-  (the Breathstealer has to be there); a reading that failed on a night someone was near
-  the reader's home (the Poisoner's visit); a totem found and the people who live where
-  its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
+- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
+  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
+  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
+  fix Seneschal approved). Whether to add a real per-world Poisoner-presence factor goes to
+  Michael. The other two Minion gifts are built and closed (Quill, Nov 20). Owner Quill.
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
@@ -589,7 +578,9 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   history, signs of poisoning). Since #296, misled and failed gift are one honest-mistake
   label, "Mistaken". **[open; Michael]**
 - **The spoken reply to a later-day repeat.** Re-presenting a faded case restores its
-  weight, but the reply may still say the assessment is unchanged. **[polish]**
+  weight, but the reply may still say the assessment is unchanged. **Built** on
+  `claude/repeat-reply` (Quill, Nov 20; handoff `2026-11-20-1130-quill-repeat-reply.md`).
+  [in review]
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**

@@ -14,7 +14,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
-| `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
+| `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_answers.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
@@ -86,7 +86,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONGOING_INFO_EARLY_CLAIM` | `-0.4` | Nov 10: was -0.45 (case 12926's day-1 wall) | `sim/role_def.gd` |
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
-| `SEER` | `{ "public_threat_bonus": 1.0, "red_herring_defence_eff": -0.12, "focus_base":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
+| `SEER` | `{ "red_herring_defence_eff": -0.12, "focus_base": 0.3, "focus_insight_scale":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
 | `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 | `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
@@ -99,6 +99,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VETERAN` | `{ "quiet_night_effect": -0.06, "quiet_night_claim_weight": 0.025, }` |  | `sim/roles/veteran.gd` |
 | `MARTYR` | `{ "claim_chosen_bonus": 0.4, "pick_min_score": 0.62, "pick_susp_scale": 0.5, ...` |  | `sim/roles/martyr.gd` |
 | `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
+| `REGISTRAR` | `{ "public_threat_bonus": 0.75, # the Demon's extra interest in a claimed Regi...` |  | `sim/roles/registrar.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
 | `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
 | `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
@@ -189,10 +190,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_dialogue.gd` |
+| `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
+| `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
 | `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social.gd` |
-| `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_dialogue.gd` |
+| `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_answers.gd` |
 | `PROMISE_OFFER_BONUS` | `0.03` |  | `game/game_conversation.gd` |
 | `PROMISE_KEPT_BONUS` | `0.06` |  | `game/game_conversation.gd` |
 | `PROMISE_BROKEN_DROP` | `0.15` |  | `game/game_conversation.gd` |
@@ -455,10 +456,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TIER_VAGUE` | `0.15` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
 | `TIER_PARTIAL` | `0.45` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
 | `TIER_FULL` | `0.75` |  | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_TRUST_PIVOT` | `0.45` | Hint follow-ups, protection & confidence requests | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_TRUST_SLOPE` | `2.0` |  | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_AFRAID_OFFSET` | `-0.3` |  | `sim/mind_dialogue.gd` |
+| `HINT_FOLLOWUP_TRUST_PIVOT` | `0.45` | Hint follow-ups, protection & confidence requests | `sim/mind_press.gd` |
+| `HINT_FOLLOWUP_TRUST_SLOPE` | `2.0` |  | `sim/mind_press.gd` |
+| `HINT_FOLLOWUP_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_press.gd` |
+| `HINT_FOLLOWUP_AFRAID_OFFSET` | `-0.3` |  | `sim/mind_press.gd` |
 | `PROTECTION_REQ_MIN_TRUST` | `0.45` |  | `sim/mind_dialogue.gd` |
 | `PROTECTION_REQ_BASE` | `0.35` |  | `sim/mind_dialogue.gd` |
 | `PROTECTION_REQ_TRUST_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd` |
@@ -476,30 +477,30 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `FEAR_PRESSURE_SCALE` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `FEAR_EASED_MULT` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `FEAR_CAP` | `0.85` |  | `sim/mind_dialogue.gd` |
-| `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_dialogue.gd` |
-| `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_dialogue.gd` |
+| `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_press.gd` |
+| `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_press.gd` |
 | `UNMODELLED_CARD_WEIGHT` | `0.5` |  | `sim/mind.gd` |
-| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_dialogue.gd` |
-| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_dialogue.gd` |
-| `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_dialogue.gd` |
-| `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `CONFESS_PRIVACY_SLOPE` | `1.0` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `CONFESS_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `HIDDEN_GIFT_DECLINE_BIAS` | `-0.4` |  | `sim/mind_dialogue.gd` |
+| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd` |
+| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd` |
+| `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
+| `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_answers.gd` |
+| `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_answers.gd` |
+| `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `CONFESS_PRIVACY_SLOPE` | `1.0` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `CONFESS_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_answers.gd` |
+| `CONFESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_answers.gd` |
+| `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `HIDDEN_GIFT_DECLINE_BIAS` | `-0.4` |  | `sim/mind_answers.gd` |
 | `PUBLIC_READINGS_MIN_TRUST` | `0.3` |  | `sim/mind_dialogue.gd` |
-| `SLIP_COMPOSURE_SCALE` | `0.25` |  | `sim/mind_dialogue.gd` |
-| `SLIP_PRESSURE_SCALE` | `0.15` |  | `sim/mind_dialogue.gd` |
-| `DIRECT_NIGHT_SIGHTING_SHARE_PROB` | `0.95` |  | `sim/mind_dialogue.gd` |
-| `GOSSIP_SHARE_PRESSURE_SCALE` | `0.5` | Daytime memory, opinion caveats & profile-note sharing | `sim/mind_dialogue.gd` |
-| `GOSSIP_SHARE_MULT` | `3.0` |  | `sim/mind_dialogue.gd` |
-| `DAY_MEMORY_BASE` | `2` |  | `sim/mind_dialogue.gd` |
-| `DAY_MEMORY_INSIGHT_SCALE` | `4.0` |  | `sim/mind_dialogue.gd` |
-| `WORD_DOUBT_BELOW` | `0.75` |  | `sim/mind_dialogue.gd` |
+| `SLIP_COMPOSURE_SCALE` | `0.25` |  | `sim/mind_answers.gd` |
+| `SLIP_PRESSURE_SCALE` | `0.15` |  | `sim/mind_answers.gd` |
+| `DIRECT_NIGHT_SIGHTING_SHARE_PROB` | `0.95` |  | `sim/mind_answers.gd` |
+| `GOSSIP_SHARE_PRESSURE_SCALE` | `0.5` | Daytime memory, opinion caveats & profile-note sharing | `sim/mind_answers.gd` |
+| `GOSSIP_SHARE_MULT` | `3.0` |  | `sim/mind_answers.gd` |
+| `DAY_MEMORY_BASE` | `2` |  | `sim/mind_answers.gd` |
+| `DAY_MEMORY_INSIGHT_SCALE` | `4.0` |  | `sim/mind_answers.gd` |
+| `WORD_DOUBT_BELOW` | `0.75` |  | `sim/mind_dialogue_base.gd` |
 | `SHARE_HAUNTS_BASE` | `0.15` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_GOSSIP_SCALE` | `0.55` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_TRUST_SCALE` | `0.5` |  | `game/game_conversation.gd` |
@@ -583,6 +584,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_VOTE_NATURAL_BASE` | `0.35` |  | `sim/evil.gd` |
 | `EVIL_VOTE_NATURAL_CONF_SCALE` | `0.2` |  | `sim/evil.gd` |
 | `KILL_INFO_CLAIM` | `3.0` | Demon kill target scoring | `sim/evil.gd` |
+| `KILL_CLAIM_BY_ROLE` | `{"lamplighter": 2.0, "psychologist": 2.0, "warden": 3.0, "sexton": 2.0}` | What a publicly claimed gift is worth to the Demon, where it isn't KILL_INFO_CLAIM (Michael, Nov 20). A claimed info gift scores KILL_INFO_CLAIM unless listed; a gift that isn't info scores only if listed. The Sexton's counts while its bell is unrung (it can stop a Scion rising). | `sim/evil.gd` |
+| `KILL_IDENTIFIER_ROLES` | `["seer", "augur", "dowser", "confessor"]` | Gifts that can point at the Demon or clear people get one shared bonus on top (Michael, Nov 20; replaces the Seer's own +1.0). | `sim/evil.gd` |
+| `KILL_IDENTIFIER_BONUS` | `1.0` |  | `sim/evil.gd` |
 | `KILL_SPENT_INFO_CLAIM` | `0.0` |  | `sim/evil.gd` |
 | `KILL_IMPLICATES_US` | `2.0` |  | `sim/evil.gd` |
 | `KILL_HOSTILITY_SCALE` | `0.8` |  | `sim/evil.gd` |
@@ -645,13 +649,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `LR_STRONG` | `3.5` |  | `workshop/case_eval.gd` |
 | `LR_DAMNING_CHANCE` | `0.9` | The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the Test juror's average listener at or above this, whatever the strength. On the slate it carries every good vote. | `workshop/case_eval.gd` |
 | `PRIOR_K` | `1.5` | Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x). | `workshop/case_eval.gd` |
-| `HEADLINE_WEIGHT` | `1.0` | Headline reading (`Jury._headline`): how far a listener takes a strong evil reading at its word, on top of the full model. Effect = model + HEADLINE_WEIGHT * (1 - Insight) * (headline - model) where the headline is higher. The per-role values are the chance each named person is evil "if the reading is simply true" (1.0 = full share). | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_FULL_AT` | `0.1` | The blend toward the headline grows with the headline's strength, full at this value (about one Seer ping at default trust). Before Nov 6 any positive headline, however faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5. | `workshop/jury.gd` |
 | `LEAN_MIN` | `0.05` | Directional Confidence: below this lean (suspicion minus the listener's average) there is no hunch to defend, so Confidence doesn't resist (Oct 30). | `workshop/jury.gd` |
-| `HEADLINE_SEER` | `1.0` | "one of A/B is the Demon": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_ARCHIVIST` | `1.0` | "one of A/B holds <evil role>": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_DOWSER` | `1.0` | "c of these n read as evil": each c/n | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_REPEAT_BUMP` | `0.15` | Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline. | `workshop/jury.gd` |
 | `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
 | `JURY_CHALLENGE_LYING_MIN_AGR` | `0.3` | A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by the listener's agreement and the case's weight), and the gate it must pass, shared with the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good reader's suspicion about 3 points from a middling player and 11 from a trusted one. | `game/workshop_canvas.gd`, `workshop/jury.gd`, `workshop/reading_challenges.gd` |
@@ -681,11 +679,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
-| `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
-| `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
 | `REFUSAL_LR` | `1.5` |  | `workshop/speech_evidence.gd` |
-| `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "minion": 0.45, "good": -0.4, "marked": -0.1, ...` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
+| `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0....` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
 | `STANCE_ACCEPT` | `0.6` |  | `workshop/consequences.gd`, `workshop/jury.gd` |
 | `STANCE_PARTIAL` | `0.35` |  | `workshop/consequences.gd`, `workshop/jury.gd` |
 | `EXECUTION_PRIORITY_TOP_MARGIN` | `0.12` |  | `workshop/shared_ledger.gd` |
@@ -734,7 +730,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VENUE_MULTS` | `{ "private": 1.0, "meeting": 0.6, "nomination": 0.5, }` | Presentation venue multipliers (`game/workshop_presentation.gd`) | `game/game_meeting.gd`, `game/game_presentation.gd` |
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
 | `PREMISE_BYSTANDER_SHARE` | `1.0 / 3.0` | Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a card adds when only presented cases brought it, and what a stored case's cards add together, count in full on the case's target and at this share on everyone else. A listener hearing "X is evil" weighs how far the case proves that, and under-registers what it implies about the others. | `workshop/connections.gd` |
-| `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrol...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret, misled and conflict premises name no alignment target. | `workshop/shared_ledger.gd` |
+| `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "suspicious", "good", "notdemon", "notrole", "lied", "truth...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret and misled premises name no alignment target. | `workshop/shared_ledger.gd` |
 | `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
 | `SUSPICIOUS_HEARING` | `0.5` | A "suspicious" premise halves its stored case's weight (`Connections.case_weight`): what the case's cards add together counts at this share. Each card alone still counts in full. | `game/workshop_why.gd`, `workshop/connections.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` | The venue's share of connections pressure (`WorkshopPresentation`): private / meeting. | `game/workshop_presentation.gd` |

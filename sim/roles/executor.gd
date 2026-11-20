@@ -27,6 +27,12 @@ func is_ongoing_info() -> bool:
 	return true
 
 
+## Its assigned person has died, or the reading is in (Michael, Nov 20: spent one-shots
+## score nothing).
+func kill_claim_spent(w, n) -> bool:
+	return n.executor_resolved or (n.executor_target != "" and not (w.by_id.has(n.executor_target) and w.by_id[n.executor_target].alive))
+
+
 func gift_live_tonight(w, n) -> bool:
 	if n.executor_resolved:
 		return false

@@ -5,6 +5,10 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -43,7 +47,7 @@ static func press_contradiction(g, n, pc: Dictionary) -> Dictionary:
 	if nights.size() != 1:
 		return {}
 	var night: int = int(nights.keys()[0])
-	var alibi: bool = g.all_receipts().any(func(x): return x.get("kind", "") == "alibi" and x.get("home", false) and x.get("source", "") == n.id and n.id in x.get("subject", []) and int(x.get("day", -1)) == night)
+	var alibi: bool = GameBoard.all_receipts(g).any(func(x): return x.get("kind", "") == "alibi" and x.get("home", false) and x.get("source", "") == n.id and n.id in x.get("subject", []) and int(x.get("day", -1)) == night)
 	return {"night": night, "block": nights[night].block, "ruled_out_home_by": nights[night].cards, "against_alibi": alibi}
 
 static func _maybe_approach(g, skip_id: String = "") -> void:
@@ -123,7 +127,7 @@ static func _maybe_divulge(g, skip_id: String = "") -> bool:
 		var r: Dictionary = Mind.keep_request(g.w, n, 4 if n.trust >= 0.6 else 3)
 		g._lines(r["lines"])
 		g.approach["events"] = g.events.slice(from)
-		g._facts(r["facts"])
+		GameBoard._facts(g, r["facts"])
 		g._prompt("(That cost you nothing.) 'accept' to keep talking (uses this phase's action) or 'decline'.")
 		return true
 	return false
@@ -153,11 +157,11 @@ static func _approach_command(g, verb: String, rest: String) -> void:
 			g.w.dlog.add("player_talk", "player", n.id, {"trust": snappedf(n.trust, 0.01), "approach": g.approach["agenda"]})
 			g._narr("You step aside with %s at %s." % [n.name, g.w.loc_name(g.loc)])
 			# Identical arrival, visible people and observations to an ordinary visit.
-			g._observe()
+			GameDayNight._observe(g)
 			if g.approach["agenda"] != "divulge":  # they've already told you
 				var r: Dictionary = Social.approach_open(g.w, n, g.approach["agenda"])
 				g._lines(r["lines"])
-				g._facts(r["facts"])
+				GameBoard._facts(g, r["facts"])
 			else:
 				g._line(Mind.greeting_line(g.w, n, greeting_context(g, n), false))
 			g._prompt(_talk_options(g, n))
@@ -206,7 +210,7 @@ static func _grant_protection(g, n, what: String) -> void:
 		g._line(Mind.say_voiced(n, "protect_trust_now", "Then I'll trust you now."))
 		var r: Dictionary = Mind.keep_request(g.w, n, 3)
 		g._lines(r["lines"])
-		g._facts(r["facts"])
+		GameBoard._facts(g, r["facts"])
 	else:
 		g.protect_pending[n.id] = true
 		n.protect_lock = true
@@ -215,9 +219,9 @@ static func _grant_protection(g, n, what: String) -> void:
 
 static func _phase_header(g) -> void:
 	g._hdr("Day %d, %s" % [g.w.day, g.w.phase_name()])
-	g._screen(g._map())
-	g._card_workers()
-	g._card_conversations()
+	g._screen(GameScreens._map(g))
+	GameScreens._card_workers(g)
+	GameScreens._card_conversations(g)
 	g._prompt("Where will you spend the %s? ('go <place | block | person>')" % g.w.phase_name().to_lower())
 
 
@@ -259,7 +263,7 @@ static func greeting_context(g, n) -> Dictionary:
 	for c_num in g.sigil_heard:
 		var heard_list: Array = g.sigil_heard[c_num]
 		if n.id in heard_list:
-			var rec: Dictionary = g.receipt_by_number(int(c_num))
+			var rec: Dictionary = GameBoard.receipt_by_number(g, int(c_num))
 			if str(rec.get("target", "")) == n.id:
 				ctx["protection_key"] = "protect:sigil:%d" % int(c_num)
 	if not ctx.has("protection_key") and n.fear_eased:
@@ -342,9 +346,9 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			return
 		verb = "apologise"
 	if verb in ["present", "show", "case"]:
-		var context_card = g._ward_context_card(rest)
+		var context_card = GamePresentation._ward_context_card(g, rest)
 		if not context_card.is_empty():
-			r = g._show_ward_context(context_card, [n])
+			r = GamePresentation._show_ward_context(g, context_card, [n])
 			verb = "ward_context"
 	# Silenced: they can't answer anything, but they can still read what you show them.
 	if n.silenced and verb in ["ask", "a", "press", "confront"]:
@@ -393,7 +397,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 						g._err("You can see who's around this %s for yourself; ask about earlier." % frame)
 						return
 					else:
-						r = Mind.answer_today(g.w, n, frame, g.loc, g.seen_pairs())
+						r = Mind.answer_today(g.w, n, frame, g.loc, GameBoard.seen_pairs(g))
 				"why", "reason", "hint":
 					# Only a live hint is worth a question. Otherwise say so, for free.
 					if not Mind.has_live_hint(g.w, n):
@@ -448,7 +452,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 					g._err("Ask: gift | night | today | are <gift> | about <name or gift>")
 					return
 		"present", "show", "case":
-			var pr = g._route_present(n, rest)
+			var pr = GamePresentation._route_present(g, n, rest)
 			if pr.has("error"):
 				g._err(pr["error"])
 				return
@@ -463,10 +467,10 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			if num0 < 1 or num0 > g.board.size() or g.board[num0 - 1]["kind"] != "deduction" or g.board[num0 - 1].get("deleted", false):
 				g._err("Convince them of which deduction? ('convince <card#>'; to cite a plain card use 'tell <suspect> <card#>')")
 				return
-			if not g._presentation_gate(g.board[num0 - 1], [n], [], "deduction", "private"):
+			if not GamePresentation._presentation_gate(g, g.board[num0 - 1], [n], [], "deduction", "private"):
 				return
-			g._secrets_used(g.board[num0 - 1])
-			r = g._evaluate_deduction(n, g.board[num0 - 1], 1.0)
+			GamePresentation._secrets_used(g, g.board[num0 - 1])
+			r = GamePresentation._evaluate_deduction(g, n, g.board[num0 - 1], 1.0)
 			r["facts"] = []
 			if not r.get("repeated", false) or g.free_repeats >= 1:
 				Mind.on_question(g.w, n)
@@ -486,8 +490,8 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 				return
 			var pc: Dictionary = g.board[num1 - 1].duplicate()
 			if pc["kind"] == "deduction":
-				pc["support_cards"] = g.all_receipts().filter(func(x): return x["n"] in pc["supports"])
-				g._secrets_used(pc)
+				pc["support_cards"] = GameBoard.all_receipts(g).filter(func(x): return x["n"] in pc["supports"])
+				GamePresentation._secrets_used(g, pc)
 				var contra: Dictionary = press_contradiction(g, n, pc)
 				if not contra.is_empty():
 					pc["contradiction"] = contra
@@ -504,7 +508,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			if sds.is_empty() or numd < 1 or numd > g.board.size() or g.board[numd - 1].get("deleted", false):
 				g._err("Usage: present <card#> for <name>")
 				return
-			if not g._presentation_gate(g.board[numd - 1], [n], sds.map(func(p): return p.id), "defend", "private"):
+			if not GamePresentation._presentation_gate(g, g.board[numd - 1], [n], sds.map(func(p): return p.id), "defend", "private"):
 				return
 			r = Mind.hear_defence(g.w, n, sds, g.board[numd - 1])
 		"tell", "accuse":
@@ -522,7 +526,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 				if grp.is_empty() or numg < 1 or numg > g.board.size():
 					g._err("Usage: present <card#>")
 					return
-				if not g._presentation_gate(g.board[numg - 1], [n], grp.map(func(p): return p.id), "accuse", "private"):
+				if not GamePresentation._presentation_gate(g, g.board[numg - 1], [n], grp.map(func(p): return p.id), "accuse", "private"):
 					return
 				r = Mind.hear_group_case(g.w, n, grp, g.board[numg - 1])
 			else:
@@ -537,7 +541,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 				if num < 1 or num > g.board.size():
 					g._err("No such card on your board.")
 					return
-				if not g._presentation_gate(g.board[num - 1], [n], [s.id], "accuse", "private"):
+				if not GamePresentation._presentation_gate(g, g.board[num - 1], [n], [s.id], "accuse", "private"):
 					return
 				r = Mind.hear_accusation(g.w, n, s, g.board[num - 1])
 		"offer", "promise":
@@ -578,7 +582,7 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 	else:
 		g.questions_left -= 1
 	g._lines(r["lines"])
-	g._facts(r["facts"])
+	GameBoard._facts(g, r["facts"])
 	_record_trace_profile_haunts(g, n, r)
 	for note in r.get("narration", []):
 		g._narr(note)
@@ -610,8 +614,8 @@ static func _record_trace_profile_haunts(g, speaker, r: Dictionary) -> void:
 			continue
 		if not (loc_id in g.known_haunts.get(pid, [])):
 			g.known_haunts[pid] = g.known_haunts.get(pid, []) + [loc_id]
-		g.add_profile_receipt({"kind": "haunt", "subject": [pid], "source": speaker.id, "loc": loc_id, "locs": [loc_id],
-			"block": g.w.loc_block(loc_id), "day": g.w.day, "phase": g._phase_now(), "class": "circumstantial",
+		GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [pid], "source": speaker.id, "loc": loc_id, "locs": [loc_id],
+			"block": g.w.loc_block(loc_id), "day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial",
 			"text": "%s says %s often goes to %s when not working." % [speaker.name, g.w.by_id[pid].name, g.w.loc_name(loc_id)]})
 
 
@@ -635,7 +639,7 @@ static func _answer_request_now(g, n, rq: Dictionary, verb: String, rest: String
 	if not yes:
 		var d: Dictionary = rq.get("decline", {"lines": [], "facts": []})
 		g._lines(d["lines"])
-		g._facts(d["facts"])
+		GameBoard._facts(g, d["facts"])
 		if no:
 			g._prompt("(No question used. %d question%s left)" % [g.questions_left, "" if g.questions_left == 1 else "s"])
 		return no
@@ -647,7 +651,7 @@ static func _answer_request_now(g, n, rq: Dictionary, verb: String, rest: String
 				if not f.get("silent", false) and not n.claim_public:
 					f["confidential"] = n.id
 			g._lines(r["lines"])
-			g._facts(r["facts"])
+			GameBoard._facts(g, r["facts"])
 		"protect":
 			_grant_protection(g, n, rq["what"])
 			return true  # _offer_command already showed the question count
@@ -812,8 +816,8 @@ static func _maybe_tell_haunts(g, n, t, r: Dictionary) -> void:
 	else:
 		r["lines"].append(Mind.say_voiced(n, "tell_haunt_dead", "I don't know if this will help your investigation, but %s used to spend off-work time at %s." % [t.name, places_s], {"subject": t.name, "places": places_s}))
 	for loc_id in tell:
-		g.add_profile_receipt({"kind": "haunt", "subject": [t.id], "source": n.id, "loc": loc_id, "locs": [loc_id],
-			"block": g.w.loc_block(loc_id), "day": g.w.day, "phase": g._phase_now(), "class": "circumstantial",
+		GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [t.id], "source": n.id, "loc": loc_id, "locs": [loc_id],
+			"block": g.w.loc_block(loc_id), "day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial",
 			"text": "%s says %s often goes to %s when not working." % [n.name, t.name, g.w.loc_name(loc_id)]})
 	g.w.dlog.add("player_learns_haunts", n.id, t.id, {"locs": tell})
 
@@ -821,8 +825,8 @@ static func _maybe_tell_haunts(g, n, t, r: Dictionary) -> void:
 static func _record_trait_receipt(g, target, key: String, tier: String, source_id: String) -> int:
 	var withdrawn: bool = target.withdrawn_since != ""
 	var suffix: String = " (withdrawn after bereavement)" if withdrawn else ""
-	return g.add_profile_receipt({"kind": "trait", "subject": [target.id], "source": source_id,
-		"trait": key, "tier": tier, "withdrawn": withdrawn, "day": g.w.day, "phase": g._phase_now(),
+	return GameBoard.add_profile_receipt(g, {"kind": "trait", "subject": [target.id], "source": source_id,
+		"trait": key, "tier": tier, "withdrawn": withdrawn, "day": g.w.day, "phase": GameBoard._phase_now(g),
 		"class": "circumstantial", "text": "%s's %s: %s%s." % [target.name, key, tier, suffix]})
 
 
@@ -949,8 +953,8 @@ static func _maybe_tell_relationships(g, n, t, r: Dictionary) -> void:
 		g.known_relationships[entry.key] = {"kind": bond.kind, "people": bond.people.duplicate(), "source": n.id, "text": note}
 		var bond_people: Array = bond.people.duplicate()
 		bond_people.sort()
-		g.add_profile_receipt({"kind": "bond", "subject": bond_people, "bond_kind": bond.kind, "source": n.id,
-			"day": g.w.day, "phase": g._phase_now(), "class": "circumstantial", "text": note})
+		GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": bond_people, "bond_kind": bond.kind, "source": n.id,
+			"day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": note})
 		r.lines.append(bond_line)
 		g.w.dlog.add("player_learns_relationship", n.id, t.id, {"kind": bond.kind, "people": bond.people})
 
@@ -970,8 +974,8 @@ static func _remember_spoken_relationship(g, line: Dictionary) -> void:
 	var key = bond.kind + ":" + ":".join(PackedStringArray(people))
 	g.known_relationships[key] = {"kind": bond.kind, "people": people, "source": source,
 		"text": g.w.by_id[source].name + ' says "' + line.text + '"'}
-	g.add_profile_receipt({"kind": "bond", "subject": people.duplicate(), "bond_kind": bond.kind, "source": source,
-		"day": g.w.day, "phase": g._phase_now(), "class": "circumstantial", "text": g.known_relationships[key].text})
+	GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": people.duplicate(), "bond_kind": bond.kind, "source": source,
+		"day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": g.known_relationships[key].text})
 	g.w.dlog.add("player_learns_relationship", source, people[1] if people[0] == source else people[0], {"kind": bond.kind, "people": people, "how": "explicit speech"})
 
 
@@ -997,4 +1001,4 @@ static func _close_conversation(g) -> void:
 		sync_bereaved_traits(g, n, "player")
 	g.state = "day"
 	g.talk_with = null
-	g._end_phase(n.id)
+	GameDayNight._end_phase(g, n.id)

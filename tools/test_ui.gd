@@ -365,9 +365,7 @@ func _init() -> void:
 	_check(it0["n"] in cv.staged, "dropping it on the Workshop adds it")
 	cv.workshop.editor._undo_remove()
 	var ev_cards: Array = g.board.filter(func(c): return c["kind"] in ["sighting", "alibi", "info", "claim"]).map(func(c): return c["n"])
-	var dn = g.file_deduction({"type": "conflict", "a": "", "group": []}, ev_cards.slice(0, 2)) if ev_cards.size() >= 2 else -1
-	if dn < 0:
-		dn = g.file_deduction({"type": "evil", "a": g.w.npcs[0].id}, ev_cards.slice(0, 1))
+	var dn = g.file_deduction({"type": "evil", "a": g.w.npcs[0].id}, ev_cards.slice(0, 1))
 	cv.refresh()
 	_check(cv.tray.deductions().size() >= 1, "a filed deduction waits in the tray")
 	bv._drop_data(bv.size / 2, {"pin": dn})
