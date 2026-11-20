@@ -164,16 +164,17 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 		var board_pub: bool = public_ids.has(cid)
 		var told_direct: bool = idx >= 0 and idx < real_npc.told_readings
 		var board_plr: bool = player_ids.has(cid)
-		var other_pub: bool = not is_joint or root_ids.all(func(r): return str(r) == cid or _root_is_public(w, mind, real_npc, str(r), public_ids))
-		var other_plr: bool = not is_joint or root_ids.all(func(r): return str(r) == cid or _root_is_public(w, mind, real_npc, str(r), public_ids) or player_ids.has(str(r)))
+		# Whether an own reading is revealable is a matter of the reading itself: whether the town
+		# (or the Demonologist) has it and knows it's theirs. The cards cited with it don't decide
+		# it (Beadle, Nov 20): a reading already shared and claimed isn't "revealed" again because
+		# a partner card is private, and one on the board only anonymously (a relay, a rumour)
+		# while the gift is unclaimed stays theirs to reveal.
 		var r_kind: String = "private"
 		var r_why: String = str(raw.get("why_own", ""))
-		if (self_shared or board_pub) and other_pub:
+		if self_shared or (board_pub and real_npc.claim_public):
 			r_kind = "public"
-			r_why = str(raw.get("why_own", "")) if (real_npc.claim_public or self_shared) else str(raw.get("why_public", ""))
-		elif (told_direct or board_plr) and other_plr:
+		elif told_direct or (board_plr and real_npc.claim_public):
 			r_kind = "player"
-			r_why = str(raw.get("why_own", "")) if (told_direct or real_npc.claim_public) else str(raw.get("why_public", ""))
 		return {
 			"eid": r_eid,
 			"why": r_why,
