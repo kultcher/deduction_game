@@ -49,6 +49,7 @@ static func dimensions(cards: Array, listener: Dictionary, challenges: Dictionar
 	return count
 
 static func assess(view: Dictionary, value: Dictionary, listener: Dictionary, bias: Dictionary = {}, prepared: Dictionary = {}, shared: Dictionary = {}) -> Dictionary:
+	value = Solver.with_hanged_refuters(view, value)  # "was the Demon when hanged" refuted alike (Lantern)
 	var span = Profiler.open("support")
 	var result = _assess(view, value, listener, bias, prepared, shared)
 	Profiler.close(span)
@@ -98,6 +99,11 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 			var private_solved: Dictionary = subset.private_solved
 			var private_worlds: Array = private_solved.worlds
 			var solved: Dictionary = subset.solved
+			# The refuters of "was the Demon when hanged" come from the cards this state accepts, and
+			# the private reference's from the listener's own (Codex on #356). Derived here, not in
+			# the plan, which assessments of other questions share.
+			var conclusion: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": case_data.conclusion}, active, true).conclusion
+			var private_conclusion: Dictionary = Solver.with_hanged_refuters(view, {"conclusion": case_data.conclusion}, private_cards, true).conclusion
 			var searched = {}
 			if bounded:
 				searched = Reasoner.search(view, case_data, active, listener, attention.limits)
@@ -112,7 +118,7 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 				var contributing: Array = subset.contributing
 				var a = 0.0
 				var solved_id: int = 0 if bounded else int(solved.get("__id", 0))
-				var comparison: Dictionary = {} if bounded else _comparison(view, solved.worlds, case_data.conclusion, factors, ranks, solved_id)
+				var comparison: Dictionary = {} if bounded else _comparison(view, solved.worlds, conclusion, factors, ranks, solved_id)
 				var all_hold: bool = searched.status == "entailed_in_attention" if bounded else comparison.support > 0.0 and comparison.rival == 0.0
 				var any_hold: bool = not searched.support.is_empty() if bounded else comparison.support > 0.0
 				var conditional: bool = false
@@ -124,33 +130,33 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 						paths.append(path)
 				elif any_hold and ((presented_reading and not contributing.is_empty()) or not factors.is_empty()):
 					if bounded and searched.status == "provisional":
-						var ratio = _direct_ratio(factors, case_data.conclusion)
+						var ratio = _direct_ratio(factors, conclusion)
 						if contributing.is_empty():
 							a = (2.0 if Movement.available(view) else 0.16) * (ratio / (1.0 + ratio) - 0.5)
 						else:
 							a = minf(0.95, (0.76 if contributing.size() >= 2 else 0.3) * 2.0 * ratio / (1.0 + ratio))
-						if not bias.is_empty() and not Solver.position_holds(view, searched.support, bias.target, bias.position, case_data.conclusion.at):
+						if not bias.is_empty() and not Solver.position_holds(view, searched.support, bias.target, bias.position, conclusion.at):
 							a /= bias.factor
 					elif bounded:
-						a = possibility(view, [searched.support, searched.rival], case_data.conclusion, listener, factors, ranks)
+						a = possibility(view, [searched.support, searched.rival], conclusion, listener, factors, ranks)
 					else:
-						a = _possibility(comparison) if reuse_comparisons else possibility(view, solved.worlds, case_data.conclusion, listener, factors, ranks, solved_id)
+						a = _possibility(comparison) if reuse_comparisons else possibility(view, solved.worlds, conclusion, listener, factors, ranks, solved_id)
 					if Movement.available(view) and not (bounded and searched.status == "provisional") and factors.any(func(f): return f.get("origin") == "movement_model"):
 						var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
 						var candidates_id: int = 0 if bounded else solved_id
-						var preferred = comparison if not bounded and reuse_comparisons else _comparison(view, candidates, case_data.conclusion, factors, ranks, candidates_id)
+						var preferred = comparison if not bounded and reuse_comparisons else _comparison(view, candidates, conclusion, factors, ranks, candidates_id)
 						var reference_factors: Array = factors.filter(func(f): return f.get("origin") != "movement_model")
-						var neutral = _comparison(view, candidates, case_data.conclusion, reference_factors, ranks, candidates_id)
+						var neutral = _comparison(view, candidates, conclusion, reference_factors, ranks, candidates_id)
 						var shift: float = preferred.support / maxf(preferred.support + preferred.rival, 1e-12) - neutral.support / maxf(neutral.support + neutral.rival, 1e-12)
 						a = clampf(a + 2.0 * shift, -1.0, 1.0)
 					if contributing.is_empty() and not (bounded and searched.status == "provisional"):
 						var candidates: Array = [searched.support] + ([] if searched.rival.is_empty() else [searched.rival]) if bounded else solved.worlds
 						var candidates_id: int = 0 if bounded else solved_id
-						a -= possibility(view, candidates, case_data.conclusion, listener, [], ranks, candidates_id)
+						a -= possibility(view, candidates, conclusion, listener, [], ranks, candidates_id)
 					var positions: Dictionary = case_data.positions.duplicate(true)
-					positions.erase(case_data.conclusion.target)
+					positions.erase(conclusion.target)
 					var answers: Dictionary = case_data.answers.duplicate(true)
-					if case_data.conclusion.type == "marked":
+					if conclusion.type == "marked":
 						for card in contributing:
 							if card.role == "rumormonger":
 								answers.erase(card.id)
@@ -158,8 +164,8 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 						if bounded:
 							conditional = not searched.support.is_empty()
 						else:
-							var chosen = Solver.solve(view, active, positions, answers, listener.knowledge, case_data.conclusion.at, case_data.get("temporal_positions", []))
-							conditional = not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, case_data.conclusion))
+							var chosen = Solver.solve(view, active, positions, answers, listener.knowledge, conclusion.at, case_data.get("temporal_positions", []))
+							conditional = not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, conclusion))
 						if conditional:
 							a = maxf(a, 0.4)
 				var reference = 0.0
@@ -170,7 +176,7 @@ static func _assess(view: Dictionary, value: Dictionary, listener: Dictionary, b
 						Profiler.count("private_comparison_reuse")
 						prior = private_comparisons[private_key]
 					else:
-						prior = _comparison(view, private_worlds, case_data.conclusion, [], ranks, int(private_solved.get("__id", 0)))
+						prior = _comparison(view, private_worlds, private_conclusion, [], ranks, int(private_solved.get("__id", 0)))
 						private_comparisons[private_key] = prior
 					if prior.support > 0 and prior.rival == 0:
 						reference = 1.0
@@ -375,6 +381,7 @@ static func _contributing(view: Dictionary, active: Array) -> Array:
 	return result
 
 static func explain(view: Dictionary, value: Dictionary, listener: Dictionary, prepared: Dictionary = {}) -> Dictionary:
+	value = Solver.with_hanged_refuters(view, value)  # "was the Demon when hanged" refuted alike (Lantern)
 	var span = Profiler.open("explain")
 	# These are the inputs read by attention, bounded search, source quality and
 	# prior ranking. Theory memory/receipt bookkeeping do not enter this operation.
@@ -589,6 +596,9 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 	var rank_id: int = int(ranks.get("__id", 0))
 	var fast_mode: bool = worlds_id != 0 and rank_id != 0
 	var inputs = [worlds_id, rank_id, factors, conclusion.at] if fast_mode else [view.people, view.get("chronology", {}), view.get("timeline", {}), view.get("live_activity", false), view.get("world_options", {}), worlds, factors, ranks, conclusion.at]
+	if conclusion.has("refuters"):
+		# The scores read the target's refuted "was the Demon when hanged" (Codex on #356).
+		inputs.append([str(conclusion.get("target", "")), conclusion.refuters])
 	var key = hash(inputs)
 	if not comparisons.has(key) or comparisons[key].inputs != inputs:
 		Profiler.count("comparison_cache_miss")
@@ -604,7 +614,8 @@ static func _comparison_inner(view: Dictionary, worlds: Array, conclusion: Dicti
 		var hanged: Array = []
 		if view.get("world_options", {}).get("identities", false):
 			for person in view.people:
-				hanged.append(Solver.hanged_context(view, person.id))
+				# The case's readings that refute it about its own target (conclusion.refuters).
+				hanged.append(Solver.hanged_context(view, person.id, conclusion.get("refuters", []) if person.id == str(conclusion.get("target", "")) else []))
 		for world in worlds:
 			if world.is_empty():
 				continue

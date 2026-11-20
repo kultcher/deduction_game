@@ -6,7 +6,7 @@
 ##
 ## Each case is built on a real deal (10 NPCs, seeds from 1): the cards are added to the
 ## board as the player would hold them, the player files the case about its subject and
-## presents it to every good listener who isn't one of its sources, at credibility 0.7 with
+## presents it to every living good townsperson but the subject (its sources too), at credibility 0.7 with
 ## suspicion reset to 0.25. Every gift reading comes from that gift's real (good) holder,
 ## or the seed is skipped for that case. The subject is the Demon unless the case says
 ## otherwise; a "<case>_innocent" twin builds the same chain about an innocent, with any lie
@@ -22,6 +22,7 @@ const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
+const MindMeeting = preload("res://sim/mind_meeting.gd")
 
 ## Name: what the case is. The order is the report's.
 const CASES = {
@@ -34,6 +35,7 @@ const CASES = {
 	"double_claim": "S claims the gift its real holder also claims",
 	"gravedigger": "The Gravedigger's reading that the hanged Minion M was a Minion (subject M)",
 	"lamp_alibis": "The Lamplighter's \"1 other out\" + everyone else's home alibi (suspicious)",
+	"lamp_count": "The Lamplighter's \"1 other out\", alone (suspicious)",
 	"nw_nobody": "The Night Watch saw nobody on S's block + a sighting of S there",
 	"guard": "A sighting of S near the guarded door + the Warden's guard, on a quiet night",
 	# Strong-tier cases (Seneschal, Nov 19): nothing above landed between Moderate and the
@@ -41,6 +43,7 @@ const CASES = {
 	"seer_twice": "The Seer's \"yes\" on S and one other on night 1, and on S and another on night 2",
 	"vigil_seer": "The player's vigil saw S leave home on the kill night + the Seer's \"yes\" on S and one other",
 	"stack": "The vigil at the kill + a witness's sighting of S on the victim's block + the Seer's \"yes\" on S twice",
+	"two_kills_seer": "Two kills (vigil + witness each) + the Seer's \"yes\" on S twice",
 	# Misleading cases (Michael, Nov 19): the same chains about an innocent subject I (a
 	# good townsperson), built as they could really arise: an innocent out at night, true
 	# readings that name I beside the real evil, or a lie told by evil.
@@ -52,6 +55,8 @@ const CASES = {
 	"double_claim_innocent": "I, the real holder, and the Demon both claim I's gift",
 	"gravedigger_innocent": "A Minion's false Gravedigger reading that the hanged I was a Minion",
 	"lamp_alibis_innocent": "The Lamplighter's \"1 other out\" + everyone else's home alibi, the Demon's false (suspicious)",
+	"lamp_count_innocent": "The Lamplighter's \"1 other out\", alone, filed against I (suspicious)",
+	"lamp_bluff_innocent": "A Minion bluffing the Lamplighter: \"1 other out\" + everyone else's true home alibi (suspicious)",
 	"nw_nobody_innocent": "The Night Watch saw nobody on I's block + a Minion's false sighting of I there",
 	"guard_innocent": "A sighting of I near the guarded door + the Warden's guard, on a quiet night",
 }
@@ -110,7 +115,7 @@ func _kill(w, victim, night: int) -> void:
 	w.public_log.append({"day": night, "kind": "demon_death", "subjects": [victim.id], "by": ""})
 
 
-func _one(sd: int, name: String) -> Dictionary:
+func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
 	g.new_case(sd, 10)
@@ -239,6 +244,25 @@ func _one(sd: int, name: String) -> Dictionary:
 					cited.append(_add(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: at home on night 1" % n.name}))
 			sources += [lamp]
 			premise = "suspicious"
+		"lamp_count":
+			var lc = _holder(goods, "lamplighter", [])
+			if lc == null:
+				return {}
+			cited.append(_add(g, {"kind": "info", "source": lc.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "%s: 1 other out on night 1" % lc.name}))
+			sources += [lc]
+			premise = "suspicious"
+		"lamp_bluff":
+			# Only a misleading case: a Minion claims the Lamplighter and gives a false count;
+			# everyone else's home alibi is true, so the innocent is the one left without one.
+			if not innocent:
+				return {}
+			cited.append(_add(g, {"kind": "claim", "subject": [min_ev.id], "role": "lamplighter", "source": min_ev.id, "text": "%s claims the lamplighter" % min_ev.name}))
+			cited.append(_add(g, {"kind": "info", "source": min_ev.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "%s: 1 other out on night 1" % min_ev.name}))
+			for n in w.npcs:
+				if n.alive and n != s and n != min_ev:
+					cited.append(_add(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: at home on night 1" % n.name}))
+			sources += [min_ev]
+			premise = "suspicious"
 		"nw_nobody":
 			var nw = _holder(goods, "nightwatch", [])
 			if nw == null:
@@ -286,6 +310,24 @@ func _one(sd: int, name: String) -> Dictionary:
 			cited.append(_add(g, {"kind": "info", "source": seer4.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, rest4[2].id], "yes": true}, "text": "%s's Seer (night 1): %s or %s is the Demon" % [seer4.name, s.name, rest4[2].name]}))
 			cited.append(_add(g, {"kind": "info", "source": seer4.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [s.id, rest4[3].id], "yes": true}, "text": "%s's Seer (night 2): %s or %s is the Demon" % [seer4.name, s.name, rest4[3].name]}))
 			sources += [seer4, victim4, rest4[1]]
+		"two_kills_seer":
+			if innocent:
+				return {}
+			var seer7 = _holder(goods, "seer", [])
+			if seer7 == null:
+				return {}
+			var rest7: Array = goods.filter(func(n): return n != seer7 and n.home_block != s.home_block)
+			if rest7.size() < 6:
+				return {}
+			for night in [1, 2]:
+				var victim7 = rest7[(night - 1) * 2]
+				_kill(w, victim7, night)
+				cited.append(_add(g, {"kind": "sighting", "subject": [s.id], "block": s.home_block, "source": "player", "day": night, "phase": C.NIGHT, "vigil": true,
+					"text": "Night %d vigil on %s: you saw %s go out." % [night, C.block_name(s.home_block), s.name]}))
+				cited.append(_add(g, _sight(rest7[(night - 1) * 2 + 1], s, victim7.home_block, night)))
+				cited.append(_add(g, {"kind": "info", "source": seer7.id, "role": "seer", "day": night, "phase": C.NIGHT, "data": {"pair": [s.id, rest7[3 + night].id], "yes": true}, "text": "%s's Seer (night %d): %s or %s is the Demon" % [seer7.name, night, s.name, rest7[3 + night].name]}))
+				sources += [victim7, rest7[(night - 1) * 2 + 1]]
+			sources += [seer7]
 		"guard":
 			var target = null
 			for n in goods:
@@ -299,9 +341,20 @@ func _one(sd: int, name: String) -> Dictionary:
 			cited.append(_add(g, _sight(wit, s, target.home_block, 1)))
 			cited.append(_add(g, {"kind": "info", "source": warden.id, "role": "warden", "day": 1, "phase": C.NIGHT, "data": {"target": target.id, "saved": true}, "text": "%s guarded %s's door on night 1" % [warden.name, target.name]}))
 			sources += [warden, wit, target]
-	var listeners: Array = w.npcs.filter(func(p): return p.alive and not p.is_evil() and p != s and p not in sources)
+	# Every living good townsperson but the subject hears it, its sources too: a presentation at
+	# a meeting reaches the whole town (Seneschal, Nov 19). Before, the sources didn't hear it,
+	# and a big case used up much of the town as sources who then voted unheard.
+	var listeners: Array = w.npcs.filter(func(p): return p.alive and not p.is_evil() and p != s)
 	if listeners.is_empty():
 		return {}
+	# How the good townsfolk would vote on the subject, nominated by a neutral nominator, the
+	# player's vote left out (Michael, Nov 19; Beadle's hook, #347). A vote refreshes each
+	# voter's beliefs, as at a meeting, so "before" is taken on a fresh build of the same deal
+	# with the same cards, never presented: the columns above stay as they were.
+	w.meeting["block"] = ""
+	w.meeting["block_count"] = 0
+	if before_only:
+		return MindMeeting.would_vote(w, s.id)
 	var before_each: Dictionary = {}
 	for l in listeners:
 		before_each[l.id] = float(l.suspicion.get(s.id, 0.0))
@@ -333,6 +386,19 @@ func _one(sd: int, name: String) -> Dictionary:
 			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
 		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
+	var votes_after: Dictionary = MindMeeting.would_vote(w, s.id)
+	var votes_before: Dictionary = _one(sd, name, true)
+	row["yes_before"] = votes_before.yes.size()
+	row["yes_after"] = votes_after.yes.size()
+	row["voters_good"] = votes_after.yes.size() + votes_after.no.size()
+	row["threshold"] = int(votes_after.threshold)
+	row["crosses"] = bool(votes_after.crosses)
+	# Among the good who heard the case (its sources and the dead don't): a big case uses up
+	# much of the town as sources, who vote without having heard it.
+	var heard_ids: Array = heard.map(func(l): return l.id)
+	row["heard_good"] = heard_ids.size()
+	row["yes_heard"] = votes_after.yes.filter(func(id): return id in heard_ids).size()
+	row["yes_heard_before"] = votes_before.yes.filter(func(id): return id in heard_ids).size()
 	# The average listener's reading behind the badge (Michael, Nov 19): the premise's chance
 	# before and after, and whether the subject becomes that listener's top suspect, by what
 	# margin (for the fourth tier's measure).

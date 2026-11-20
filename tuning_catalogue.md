@@ -623,7 +623,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd`, `workshop/live_activity.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
@@ -672,6 +672,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WITNESS_QUALITY_MIN` | `0.05` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `WITNESS_QUALITY_MAX` | `0.95` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `CHALLENGE_GROUND_MIN_QUALITY` | `0.4` |  | `workshop/reading_challenges.gd` |
+| `PLAYER_JUDGEMENT_WEIGHT` | `0.5` | The player's judgement in a lie call that sets one teller's word against another's (Michael, Nov 19): the grounds' side of the clash counts as x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE)), at most WITNESS_QUALITY_MAX. About x1.3 from an average listener, x1.4 at credibility 0.7. Small on purpose: the town shouldn't simply take the player's word, but a wrong call can lead it astray. Not for an NPC's own defence, nor when the player's own word is among the grounds (that already counts at the player's credibility). | `workshop/reading_challenges.gd` |
+| `PLAYER_EXPERTISE` | `0.1` |  | `workshop/reading_challenges.gd` |
 | `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | (unused) |
 | `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |

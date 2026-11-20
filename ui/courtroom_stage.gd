@@ -25,6 +25,7 @@ const VNPortraits = preload("res://ui/vn_portraits.gd")
 const Formatter = preload("res://ui/text_formatter.gd")
 const Renderer = preload("res://ui/rich_text_renderer.gd")
 const FormattedLabel = preload("res://ui/formatted_text_label.gd")
+const PortraitBadge = preload("res://ui/portrait_badge.gd")
 
 const REVEAL_PER_SECOND = 90.0
 const FADE_SECONDS = 0.15
@@ -46,6 +47,9 @@ var status_pill: Label
 var continue_button: Button
 var clear_button: Button
 var auto_toggle: CheckBox
+## Summarised answers (Michael, Nov 19): those who agreed with the speaker, along the bottom of
+## the frame, each with a small portrait and a short line; hover for their own words.
+var agree_row: HFlowContainer
 
 var queue: Array = []          # {speaker, name, text, expression, log}; log-only entries have speaker ""
 var current: Dictionary = {}
@@ -156,6 +160,11 @@ void fragment() {
 	speech.scroll_active = true
 	speech.gui_input.connect(_on_input)
 	content.add_child(speech)
+	agree_row = HFlowContainer.new()
+	agree_row.add_theme_constant_override("h_separation", 8)
+	agree_row.add_theme_constant_override("v_separation", 6)
+	agree_row.hide()
+	content.add_child(agree_row)
 	var controls = HFlowContainer.new()
 	controls.anchor_left = 0.46
 	controls.anchor_top = 0.70
@@ -207,6 +216,11 @@ func push(events: Array) -> int:
 		if k == "card" and not last.is_empty() and chunk.is_empty():
 			last.log.append(e)
 			continue
+		# A bundled answer is said through its representative's row: the log keeps it, the
+		# stage doesn't bring it forward.
+		if k == "speech" and e.get("bundled", false) and not last.is_empty() and chunk.is_empty():
+			last.log.append(e)
+			continue
 		chunk.append(e)
 		last = {}
 		if k != "speech":
@@ -218,13 +232,14 @@ func push(events: Array) -> int:
 		var expr: String = str(e.get("expression", "neutral")) if int(e.get("expression_strength", 1)) > 0 else "neutral"
 		var tail: Dictionary = queue.back() if not queue.is_empty() else {}
 		if not tail.is_empty() and tail.speaker == id and chunk.size() == 1 and not _silent(tail.text) and not _silent(text) \
-				and tail.text.length() + text.length() + 1 <= MERGE_MAX:
+				and tail.text.length() + text.length() + 1 <= MERGE_MAX and not e.has("agree") and tail.get("agree", []).is_empty():
 			tail.text += "\n" + text
 			tail.expression = expr
 			tail.log.append_array(chunk)
 			last = tail
 		else:
-			last = {"speaker": id, "name": str(e.get("name", id)), "text": text, "expression": expr, "log": chunk}
+			last = {"speaker": id, "name": str(e.get("name", id)), "text": text, "expression": expr, "log": chunk,
+				"agree": e.get("agree", []), "agree_more": int(e.get("agree_more", 0))}
 			queue.append(last)
 			added += 1
 		chunk = []
@@ -357,9 +372,40 @@ func _next() -> void:
 	_reveal_total = speech.get_total_character_count()
 	_reveal_position = 0.0
 	speech.visible_characters = 0
+	_fill_agree_row(current.get("agree", []), int(current.get("agree_more", 0)))
 	continue_button.text = "Continue" if waiting() > 0 else "Done"
 	show()
 
+
+func _fill_agree_row(agree: Array, more: int) -> void:
+	for ch in agree_row.get_children():
+		agree_row.remove_child(ch)
+		ch.queue_free()
+	agree_row.visible = not agree.is_empty()
+	for a in agree:
+		var box = VBoxContainer.new()
+		box.alignment = BoxContainer.ALIGNMENT_CENTER
+		box.mouse_filter = Control.MOUSE_FILTER_STOP
+		box.tooltip_text = "%s: %s" % [str(a.get("name", "")), str(a.get("own", ""))]
+		var face = PortraitBadge.new()
+		face.custom_minimum_size = Vector2(48, 48)
+		face.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		face.show_person(str(a.get("speaker", "")), true)
+		box.add_child(face)
+		var said = Label.new()
+		said.text = str(a.get("text", ""))
+		said.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		said.add_theme_font_size_override("font_size", 13)
+		said.add_theme_color_override("font_color", UITheme.ink_of(C.npc_color(str(a.get("speaker", "")))))
+		said.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(said)
+		agree_row.add_child(box)
+	if more > 0:
+		var rest = Label.new()
+		rest.text = "+%d more" % more
+		rest.add_theme_font_size_override("font_size", 14)
+		rest.add_theme_color_override("font_color", Color("5a4c38"))
+		agree_row.add_child(rest)
 
 func _finish(was_busy: bool) -> void:
 	current = {}

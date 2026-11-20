@@ -1050,6 +1050,15 @@ class Workshop:
 	const WITNESS_QUALITY_MIN = 0.05
 	const WITNESS_QUALITY_MAX = 0.95
 	const CHALLENGE_GROUND_MIN_QUALITY = 0.4
+	## The player's judgement in a lie call that sets one teller's word against another's
+	## (Michael, Nov 19): the grounds' side of the clash counts as
+	## x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE)), at most
+	## WITNESS_QUALITY_MAX. About x1.3 from an average listener, x1.4 at credibility 0.7.
+	## Small on purpose: the town shouldn't simply take the player's word, but a wrong call
+	## can lead it astray. Not for an NPC's own defence, nor when the player's own word is
+	## among the grounds (that already counts at the player's credibility).
+	const PLAYER_JUDGEMENT_WEIGHT = 0.5
+	const PLAYER_EXPERTISE = 0.1
 	const CHALLENGE_SOURCE_PENALTY_SCALE = 0.3
 	## Premises step 3: a challenge backfires (and costs the presentation trust) when the rest
 	## of the evidence moves the reading's content this far toward certainly holding
