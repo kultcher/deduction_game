@@ -16,11 +16,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `MUDDLER_GOSSIP_FLOOR` | `0.7` | The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret only shows when they relay what they've heard. | `sim/world.gd` |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
-| `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
+| `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
-| `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/world.gd` |
+| `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/world.gd` |
 | `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world.gd` |
 | `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
@@ -336,7 +336,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `BLOCK_SAFETY_HEAT_BASE` | `0.15` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_PER_ACCUSER` | `0.15` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_CREDIBILITY` | `0.30` |  | `sim/mind_meeting.gd` |
-| `BLOCK_SAFETY_DEFENCE_RELIEF` | `0.75` |  | `sim/mind_meeting.gd` |
+| `BLOCK_SAFETY_DEFENCE_RELIEF` | `0.75` |  | `sim/mind_defence.gd` |
 | `BLOCK_SAFETY_PRESS_RELIEF` | `0.65` |  | `sim/mind_podium.gd` |
 | `PODIUM_PRESS_URGENCY` | `0.5` | Podium press (Step 3, sim/mind_podium.gd): being asked before the whole town, on trial, pushes toward an answer; a hint costs less than a claim; being seen out pushes a hidden walking gift to explain itself. A refusal raises pressure, and costs a little trust with the Demonologist when the press had no grounds or the nominee was safe. | `sim/mind_podium.gd` |
 | `PODIUM_HINT_EASE` | `0.6` |  | `sim/mind_podium.gd` |
@@ -372,8 +372,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SUPPORT_EVIL_DEFEND_STAKES` | `0.3` | Evil bystanders: the worth of defending a teammate in danger, or of piling onto the scapegoat, before cover (Mind.evil_override). Words are the cheap place to keep cover, so speaking up for a teammate is rare until the team is desperate (a Demon's stakes 0.6 against caution 0.8 falling to 0.45). | `sim/mind_support.gd` |
 | `SUPPORT_EVIL_PILE_STAKES` | `0.6` |  | `sim/mind_support.gd` |
 | `LATE_RELAY_TELLER_MARK` | `0.02` | Vote resistance lines (Step 6, M2d): after the tally, at most this many voters say why. Someone who accepted the Demonologist's case and still voted no explains; failing that, the voter who swung a close count. A "short of rope" no needs a close margin. | `sim/mind_meeting.gd` |
-| `MAX_VOTE_RESISTANCE_SPEAKERS` | `2` |  | `sim/mind_meeting.gd` |
-| `VOTE_RESISTANCE_CLOSE_MARGIN` | `0.35` |  | `sim/mind_meeting.gd` |
+| `MAX_VOTE_RESISTANCE_SPEAKERS` | `2` |  | `sim/mind_vote.gd` |
+| `VOTE_RESISTANCE_CLOSE_MARGIN` | `0.35` |  | `sim/mind_vote.gd` |
 | `ALLOW_UNANCHORED_PLAYER_NOMINATION` | `true` | Player nominations: with a filed case (anchored) or without (raw). A raw nomination still counts at the formal track-record weight (unchanged; revisit in M4's sweep). | (unused) |
 | `VOLUNTEER_SIGHTING_BASE` | `1.2` |  | `sim/mind_meeting.gd` |
 | `PUBLIC_CLAIM_BASE` | `-0.35` |  | `sim/mind_meeting.gd` |
@@ -389,8 +389,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `REVEAL_COST_FEW_LEFT` | `-0.6` |  | `sim/mind_meeting.gd` |
 | `REVEAL_STRENGTH_PIVOT` | `0.45` |  | `sim/mind_meeting.gd` |
 | `REVEAL_STRENGTH_SLOPE` | `1.4` |  | `sim/mind_meeting.gd` |
-| `REVEAL_SUSPICION_PIVOT` | `0.45` |  | `sim/mind_meeting.gd` |
-| `REVEAL_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd` |
+| `REVEAL_SUSPICION_PIVOT` | `0.45` |  | `sim/mind_meeting.gd`, `sim/mind_nomination.gd` |
+| `REVEAL_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd`, `sim/mind_nomination.gd` |
 | `REVEAL_CONFIDENCE_SLOPE` | `0.6` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_SUSPICION_PIVOT` | `0.6` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd` |
@@ -404,21 +404,21 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `LATE_RELAY_TRUST_SLOPE` | `2.0` |  | `sim/mind_meeting.gd` |
 | `LATE_RELAY_OPENNESS_SLOPE` | `0.8` |  | `sim/mind_meeting.gd` |
 | `RELAY_CORROBORATE` | `0.05` |  | `sim/content.gd`, `sim/mind_meeting.gd` |
-| `CONSENSUS_BASE` | `0.09` | Social consensus bandwagon pressure | `sim/mind_meeting.gd` |
-| `CONSENSUS_FADE` | `0.6` |  | `sim/mind_meeting.gd` |
-| `CONSENSUS_CAP` | `0.22` |  | `sim/mind_meeting.gd` |
-| `CONSENSUS_HINT` | `1.15` |  | `sim/mind_meeting.gd` |
-| `DEFENCE_ROPE` | `1.1` | Self-defence moves | `sim/content.gd`, `sim/mind_meeting.gd` |
-| `DEFENCE_LIE_BLOWBACK` | `0.02` |  | `sim/content.gd`, `sim/mind_meeting.gd` |
-| `DEFENCE_REVEAL_CAP` | `0.35` |  | `sim/mind_meeting.gd` |
-| `DEFENCE_SECRET_CAP` | `0.3` |  | `sim/mind_meeting.gd` |
-| `DEFENCE_PAIR_OTHER_DELTA` | `0.06` |  | `sim/mind_meeting.gd` |
-| `DEFENCE_LYING_RELIEF` | `-0.05` |  | `sim/mind_meeting.gd` |
-| `DEFENCE_MISLED_RELIEF` | `-0.06` |  | `sim/mind_meeting.gd` |
-| `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_meeting.gd` |
+| `CONSENSUS_BASE` | `0.09` | Social consensus bandwagon pressure | `sim/mind_meeting_base.gd` |
+| `CONSENSUS_FADE` | `0.6` |  | `sim/mind_meeting_base.gd` |
+| `CONSENSUS_CAP` | `0.22` |  | `sim/mind_meeting_base.gd` |
+| `CONSENSUS_HINT` | `1.15` |  | `sim/mind_meeting_base.gd` |
+| `DEFENCE_ROPE` | `1.1` | Self-defence moves | `sim/content.gd`, `sim/mind_defence.gd` |
+| `DEFENCE_LIE_BLOWBACK` | `0.02` |  | `sim/content.gd`, `sim/mind_defence.gd` |
+| `DEFENCE_REVEAL_CAP` | `0.35` |  | `sim/mind_defence.gd` |
+| `DEFENCE_SECRET_CAP` | `0.3` |  | `sim/mind_defence.gd` |
+| `DEFENCE_PAIR_OTHER_DELTA` | `0.06` |  | `sim/mind_defence.gd` |
+| `DEFENCE_LYING_RELIEF` | `-0.05` |  | `sim/mind_defence.gd` |
+| `DEFENCE_MISLED_RELIEF` | `-0.06` |  | `sim/mind_defence.gd` |
+| `DEFENCE_PLEA_RELIEF` | `-0.02` |  | `sim/mind_defence.gd` |
 | `NOMINATION_BASE` | `0.65` | Nomination threshold, evil counter-nominations & failed-vote cooloff | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_DAY_SLOPE` | `0.05` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
-| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd`, `tools/autoplay.gd` |
+| `NOMINATION_FLOOR` | `0.40` |  | `game/workshop_why.gd`, `sim/mind_defence.gd`, `sim/mind_meeting.gd`, `sim/social.gd`, `tools/autoplay.gd` |
 | `NOMINATION_CONFIDENCE_SCALE` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_PARANOIA_SCALE` | `0.5` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `tools/autoplay.gd` |
 | `NOMINATION_OWN_CLEAR_RELIEF` | `0.2` |  | `sim/mind_meeting.gd`, `tools/autoplay.gd` |
@@ -428,25 +428,25 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_NOMINATION_STAKES_BASE` | `0.45` |  | `sim/mind_meeting.gd` |
 | `EVIL_RESCUE_DEMON_BONUS` | `0.45` |  | `sim/mind_meeting.gd` |
 | `EVIL_RESCUE_MINION_BONUS` | `0.20` |  | `sim/mind_meeting.gd` |
-| `EVIL_VOTE_RESCUE_DEMON` | `0.65` |  | `sim/mind_meeting.gd` |
-| `EVIL_VOTE_RESCUE_MINION` | `0.30` |  | `sim/mind_meeting.gd` |
-| `EVIL_VOTE_LANDSLIDE_PIVOT` | `0.20` |  | `sim/mind_meeting.gd` |
-| `EVIL_VOTE_NONPIVOTAL_TEAMMATE` | `0.55` |  | `sim/mind_meeting.gd` |
-| `EVIL_VOTE_SCION_COVER_MULT` | `0.70` |  | `sim/mind_meeting.gd` |
-| `VOTE_BASE_NEED` | `0.52` | Voting threshold & player ballot leverage | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
-| `VOTE_CONFIDENCE_SCALE` | `0.12` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
-| `VOTE_DAY1_PENALTY` | `0.1` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
-| `VOTE_PARANOIA_WEIGHT` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_meeting.gd` |
-| `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd` |
-| `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
-| `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_meeting.gd` |
-| `PLAYER_VOTE_NO_SLOPE` | `0.12` | The player's no pushes later voters toward no, at about two-thirds of the yes push (Michael, Nov 19; there's no abstaining, so every no counts). At a credibility below a quarter it backfires, as a low-credibility yes does. | `sim/mind_meeting.gd` |
-| `PLAYER_VOTE_NO_OFFSET` | `-0.03` |  | `sim/mind_meeting.gd` |
-| `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_meeting.gd` |
-| `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_meeting.gd` |
-| `VOTE_SPARE_PREF_SLOPE` | `-0.5` |  | `sim/mind_meeting.gd` |
-| `VOTE_PREFERS_BLOCK_OFFSET` | `-0.4` |  | `sim/mind_meeting.gd` |
-| `VOTE_SELF_NOMINATION_MARGIN` | `0.02` |  | `sim/mind_meeting.gd` |
+| `EVIL_VOTE_RESCUE_DEMON` | `0.65` |  | `sim/mind_vote.gd` |
+| `EVIL_VOTE_RESCUE_MINION` | `0.30` |  | `sim/mind_vote.gd` |
+| `EVIL_VOTE_LANDSLIDE_PIVOT` | `0.20` |  | `sim/mind_vote.gd` |
+| `EVIL_VOTE_NONPIVOTAL_TEAMMATE` | `0.55` |  | `sim/mind_vote.gd` |
+| `EVIL_VOTE_SCION_COVER_MULT` | `0.70` |  | `sim/mind_vote.gd` |
+| `VOTE_BASE_NEED` | `0.52` | Voting threshold & player ballot leverage | `game/workshop_why.gd`, `sim/mind_vote.gd` |
+| `VOTE_CONFIDENCE_SCALE` | `0.12` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
+| `VOTE_DAY1_PENALTY` | `0.1` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
+| `VOTE_PARANOIA_WEIGHT` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
+| `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_vote.gd`, `sim/social.gd` |
+| `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_vote.gd` |
+| `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_vote.gd` |
+| `PLAYER_VOTE_NO_SLOPE` | `0.12` | The player's no pushes later voters toward no, at about two-thirds of the yes push (Michael, Nov 19; there's no abstaining, so every no counts). At a credibility below a quarter it backfires, as a low-credibility yes does. | `sim/mind_vote.gd` |
+| `PLAYER_VOTE_NO_OFFSET` | `-0.03` |  | `sim/mind_vote.gd` |
+| `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_vote.gd` |
+| `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_vote.gd` |
+| `VOTE_SPARE_PREF_SLOPE` | `-0.5` |  | `sim/mind_vote.gd` |
+| `VOTE_PREFERS_BLOCK_OFFSET` | `-0.4` |  | `sim/mind_vote.gd` |
+| `VOTE_SELF_NOMINATION_MARGIN` | `0.02` |  | `sim/mind_vote.gd` |
 
 ## Dialogue
 
