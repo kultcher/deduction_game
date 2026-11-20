@@ -54,6 +54,7 @@ test_framed_defence
 test_gift_doubt
 test_gift_doubt_good
 test_gravedigger_bluff
+test_gravedigger_lean
 test_haunt_learning
 test_headline
 test_held_signals

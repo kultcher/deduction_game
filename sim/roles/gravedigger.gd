@@ -19,6 +19,22 @@ func _init() -> void:
 	requires_execution = true
 
 
+## Nothing to read yet: no one has been hanged this case, and its gift needs a hanging.
+## A good, unbroken Gravedigger leans a little toward one, as a hidden motive (Michael,
+## Nov 17): logged with its reason, never said. These are real people, so the lean is small.
+func _wants_a_reading(w, n) -> bool:
+	return n.role == "gravedigger" and not n.is_evil() and w.executions.is_empty() and not n.gift_broken()
+
+
+func nomination_lean(w, n) -> float:
+	return Tuning.Roles.GRAVEDIGGER.nothing_to_read_lean if _wants_a_reading(w, n) else 0.0
+
+
+func score_vote_reluctance(w, v, _nominee: String, _base: float, _panic: float, parts: Dictionary) -> void:
+	if _wants_a_reading(w, v):
+		parts["gravedigger_nothing_to_read"] = Tuning.Roles.GRAVEDIGGER.nothing_to_read_lean
+
+
 func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	return "Hanged %s = %s" % [nm.call(d.get("executed", "")), content().role_name(d.get("role", ""))]
 

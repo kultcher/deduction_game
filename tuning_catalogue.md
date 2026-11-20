@@ -97,7 +97,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
 | `ARCHIVIST` | `{ }` |  | (unused) |
-| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/world.gd` |
+| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, # A good Graved...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/world.gd` |
 | `NIGHTWATCH` | `{ "req_already_wondering": 0.3, }` |  | `sim/roles/nightwatch.gd` |
 | `RUMORMONGER` | `{ }` |  | (unused) |
 | `MEDIUM` | `{ "relay_reading_scale": 0.6, "dead_suspicion_min": 0.35, }` |  | `sim/roles/medium.gd` |

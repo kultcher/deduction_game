@@ -160,6 +160,10 @@ class Roles:
 
 	const GRAVEDIGGER = {
 		"marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE,
+		# A good Gravedigger with nothing to read yet (no one hanged this case) leans a little
+		# toward nominating and voting to hang, and never says why (Michael, Nov 17: a hidden
+		# motive, kept modest). Proposed value, for Michael to confirm.
+		"nothing_to_read_lean": 0.08,
 		"trust_backed_innocent": -0.06,
 		"trust_proven_right_base": 0.08,
 		"trust_proven_right_insight": 0.06,

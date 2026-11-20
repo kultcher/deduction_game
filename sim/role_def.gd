@@ -281,6 +281,12 @@ func score_vote_reluctance(_w, _v, _nominee: String, _base: float, _panic: float
 	pass
 
 
+## A role's own lean toward nominating, added to a good nominator's score for each
+## candidate (`MindMeeting._good_nomination_impl`). 0 for most roles.
+func nomination_lean(_w, _n) -> float:
+	return 0.0
+
+
 ## Role-specific reading defence when `d` defends against a reading `rd` by `src` (`Mind.defend`, e.g. Seer red herring).
 func try_reading_defence(_w, _d, _src, _src_id: String, _rd: Dictionary, _mind, _workshop_ledger) -> Dictionary:
 	return {}
