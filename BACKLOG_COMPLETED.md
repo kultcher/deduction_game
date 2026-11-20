@@ -31,7 +31,10 @@ session notes are kept for the record; code pointers may have moved since.
 
   > **Closed Nov 20 (Michael dropped it):** Quill measured 20 games. None of 125 told
   > sightings came from somewhere the teller couldn't have seen it, because the sim only lets
-  > an NPC tell sightings that fit its own account, evil fakes included.
+  > an NPC tell sightings that fit its own account, evil fakes included (65 of the 125 were
+  > evil fakes; 10-NPC town, passive play). The one opening left, not measured: an NPC tells a
+  > window sighting and later admits being out elsewhere that night, which needs the player to
+  > ask the right question.
 
 ## Built, Nov 20, 2026, afternoon (closed by Claude-Vicar)
 

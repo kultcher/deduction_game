@@ -30,7 +30,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. Accusations from starting suspicion read as clues `[decided]`
+    1. \*Accusations from starting suspicion read as clues `[decided]`
     2. \*The Gravedigger in a reluctant town `[decided]`
     3. Caught out and pressed again: what's left `[decided]`
     4. Good NPCs lie tactically `[open]`
@@ -67,7 +67,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. A reason citing a pairing the model didn't weigh `[polish]`
+  2. \*A reason citing a pairing the model didn't weigh `[polish]`
   3. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   4. Brute kills scored as hexes on custom scripts `[later]`
   5. Gift doubt for readings the judge doesn't check `[open]`
