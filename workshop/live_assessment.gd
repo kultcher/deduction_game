@@ -14,9 +14,7 @@ const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon"
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
-## mixture_budget: apply the old 2^u mixture's 64-state gate, on the legacy engine only
-## (CaseEval has no such limit, so no listener falls back to native rules over it).
-static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictionary:
+static func prepare(snapshot: Dictionary) -> Dictionary:
 	var result = {"ready": false, "issues": [], "view": {}, "case": {}, "listener": {},
 		"scope": "Conditional report comparison with legal original alignment/modifier worlds and public event timing. Accepting a report assumes a good, correctly claimed, healthy source. Live movement and traces use experimental activity priors; quiet nights supply bounded circumstantial support. Medium relays retain separate original and transmission credibility. Alignment-transition histories remain unsupported. Venue is recorded; proposed effects use the unscaled Workshop response."}
 	if snapshot.get("format") != "demonologist-live-evidence-1":
@@ -111,8 +109,6 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			card["route_origin"] = card.id
 	if not cards.any(func(c): return c.id in snapshot.selected):
 		result.issues.append("No supported reading is presented.")
-	if Jury.engine == "legacy" and (cards.size() > 8 or snapshot.arguments.size() > 6):
-		result.issues.append("This comparison exceeds the initial eight-reading / six-claim workload budget.")
 	# Supported questions concern original alignment. Advancing the day must not
 	# silently create a fresh theory and discard yesterday's commitment.
 	var epoch: String = "Original alignment"
@@ -225,14 +221,6 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.listener = _listener(snapshot, cards)
 			if not result.listener.knowledge.get("public_roles", {}).is_empty():
 				view.world_options["roles"] = true
-			var uncertain = cards.filter(func(c): return c.source != snapshot.listener.id).map(func(c): return c.source)
-			var sources = {}
-			for source in uncertain:
-				sources[source] = true
-			var discounts: int = result.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
-			var dimensions: int = Jury.Support.dimensions(cards, result.listener, result.case.get("reading_challenges", {})) if view.world_options.get("roles", false) or not result.case.get("reading_challenges", {}).is_empty() else sources.size() + discounts
-			if mixture_budget and Jury.engine == "legacy" and dimensions > 6:
-				result.issues.append("This comparison exceeds the initial 64-state credibility budget.")
 	result.view = view
 	result.ready = result.issues.is_empty()
 	return result
