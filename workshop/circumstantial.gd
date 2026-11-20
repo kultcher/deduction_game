@@ -17,7 +17,7 @@ const SMEAR_MIN = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MIN
 const SMEAR_MAX = Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MAX
 const REFUSAL_FEAR_DISCOUNT: float = Tuning.Workshop.CIRCUMSTANTIAL_REFUSAL_FEAR_DISCOUNT
 const STAGE1_NOISE_FLOOR: float = Tuning.Workshop.CIRCUMSTANTIAL_STAGE1_NOISE_FLOOR
-const ACCUSATORY_TYPES = ["evil", "demon", "minion", "suspicious"]
+const ACCUSATORY_TYPES = ["evil", "demon", "suspicious"]
 
 
 static func _passive_survivor_floor(view: Dictionary, stage1_requested: Dictionary, listener_id: String, known_good: Array, target_id: String = "") -> float:

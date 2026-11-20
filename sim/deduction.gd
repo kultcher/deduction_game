@@ -7,11 +7,11 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 
 ## Conclusion types. The player builds them as "<name> <is / is not / should be> <status>".
-const CONCLUSION_TYPES = ["good", "evil", "demon", "minion", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
+const CONCLUSION_TYPES = ["good", "evil", "demon", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
 	"suspicious", "secret", "marked", "red_herring", "secret_mod"]
 
 ## Conclusions that speak against someone (as opposed to for them).
-const ACCUSING = ["evil", "demon", "minion", "lied", "notrole", "unreliable", "suspicious"]
+const ACCUSING = ["evil", "demon", "lied", "notrole", "unreliable", "suspicious"]
 
 static func is_evil_role(r: String) -> bool:
 	return C.ROLES.has(r) and C.ROLES[r].get("align", "good") == "evil"
@@ -124,7 +124,7 @@ static func assertions(card: Dictionary) -> Array:
 			var dc: Dictionary = card.get("conclusion", {})
 			if dc.get("type", "") in ["good", "marked", "red_herring"] or (dc.get("type", "") == "secret_mod" and dc.get("mod", "") != "delusional"):
 				out.append({"t": "proven_good", "who": dc.get("a", ""), "how": "deduced", "src": src, "card": n})
-			if dc.get("type", "") in ["evil", "demon", "minion"]:
+			if dc.get("type", "") in ["evil", "demon"]:
 				out.append({"t": "believed_evil", "who": dc.get("a", ""), "eid": "arg:" + conclusion_key(dc), "src": src, "card": n})
 			if dc.get("type", "") in ["misled", "unreliable"] and dc.has("night"):
 				out.append({"t": "ded_misled", "who": dc.get("a", ""), "night": dc["night"], "src": src, "card": n})
@@ -151,8 +151,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 	var night = (" on night %d" % c["night"]) if c.has("night") else ""
 	var about = (" (card #%d)" % c["card"]) if c.get("card", -1) > 0 else ""
 	match c["type"]:
-		"minion":
-			return "%s is a minion" % a
 		"evil":
 			return "%s is evil" % a
 		"demon":

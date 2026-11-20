@@ -123,7 +123,7 @@ static func _evil_reason(w, n, c: Dictionary, ded: Dictionary, approved: Diction
 	else:
 		approved["reason"] = "weak"
 	var sg = w.by_id.get(w.evil_plan.get("scapegoat", ""))
-	if c["type"] in ["evil", "demon", "minion"] and sg != null and sg.alive and sg.id != c.get("a", "") and sg != n and (h / 16) % 2 == 0:
+	if c["type"] in ["evil", "demon"] and sg != null and sg.alive and sg.id != c.get("a", "") and sg != n and (h / 16) % 2 == 0:
 		approved["preferred"] = sg.name
 
 
@@ -182,7 +182,7 @@ static func _social(w, n, ded: Dictionary, board: Array, scale: float, c: Dictio
 	var lines: Array = []
 	var agreement = 0.0
 	var route = "social"
-	if target == n and c["type"] in ["evil", "demon", "minion", "lied", "notrole", "suspicious", "unreliable"]:
+	if target == n and c["type"] in ["evil", "demon", "lied", "notrole", "suspicious", "unreliable"]:
 		route = "own_knowledge_rejection"
 		Mind.set_trust(w, n, n.trust - Tuning.Presentation.SELF_ACCUSED_TRUST_LOSS, "the Demonologist argued against me to my face")
 	elif target == n:
@@ -209,7 +209,7 @@ static func _social(w, n, ded: Dictionary, board: Array, scale: float, c: Dictio
 		approved["special"] = "I don't buy it: it's about me, and I know it's false."
 	elif agreement < 0.6:
 		approved["reason"] = "weak"
-	if c["type"] in ["evil", "demon", "minion"] and target != n:
+	if c["type"] in ["evil", "demon"] and target != n:
 		var ranked: Array = Mind.ranked_suspects(w, n)
 		if not ranked.is_empty() and ranked[0].id != c.get("a", "") and Mind.susp(n, ranked[0].id) > Mind.susp(n, c.get("a", "")) + 0.05:
 			approved["preferred"] = ranked[0].name

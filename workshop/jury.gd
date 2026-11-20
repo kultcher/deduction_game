@@ -162,7 +162,7 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	listener.theories = consequences.theories
 	# The headline's original confidence decision remains the reported decision.
 	var theory_key: String = target + "|" + case_data.conclusion.at
-	if case_data.conclusion.type in ["marked", "demon", "minion"]:
+	if case_data.conclusion.type in ["marked", "demon"]:
 		theory_key += "|" + case_data.conclusion.type
 	if primary_listener.theories.has(theory_key):
 		listener.theories[theory_key] = primary_listener.theories[theory_key].duplicate(true)
@@ -310,7 +310,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	var ev = _case_eval(view, scoped, eval_listener)
 	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
 	var contributing: Array = Solver.selected(view, scoped).filter(func(c): return Solver.tabled(c))
-	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"]:
+	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type in ["evil", "good", "suspicious", "marked", "demon"]:
 		agreement = clampf(_provisional(view, conclusion, ev, contributing, listener, eval_listener, reasoning.status == "entailed_in_attention", int(reasoning.get("rivals_tested", 0))), -1.0, 1.0)
 	var pattern = _pattern(view, case_data, listener)
 	if bounded:
@@ -393,9 +393,6 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
 	var target_prefix: String = (Solver.person_name(view, target) + "'s ") if target != "" else ""
 	for note in ev.movement:
-		# "Not that night's killer" says nothing against a minion.
-		if note.begins_with("Seen elsewhere:") and conclusion.type == "minion":
-			continue
 		if note.begins_with("Seen elsewhere:") or note.begins_with("Scattered sightings:"):
 			if target_prefix == "" or note.contains(": " + target_prefix):
 				response += " " + note

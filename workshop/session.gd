@@ -153,7 +153,7 @@ func validate_case(value) -> String:
 	if not value.cards.all(func(id): return id in card_ids) or value.cards.size() > card_ids.size():
 		return "Unknown evidence card."
 	var conclusion = value.get("conclusion")
-	if not conclusion is Dictionary or conclusion.get("type") not in ["evil", "good", "marked", "suspicious", "demon", "minion"] or conclusion.get("target") not in ids or conclusion.get("at") not in TimeModel.epochs(scenario.public_view):
+	if not conclusion is Dictionary or conclusion.get("type") not in ["evil", "good", "marked", "suspicious", "demon"] or conclusion.get("target") not in ids or conclusion.get("at") not in TimeModel.epochs(scenario.public_view):
 		return "Invalid conclusion or time."
 	for id in value.positions:
 		if id not in ids or value.positions[id] not in ["good", "evil", "marked"]:

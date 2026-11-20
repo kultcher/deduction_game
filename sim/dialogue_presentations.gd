@@ -8,10 +8,10 @@ const C = preload("res://sim/content.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Solver = preload("res://workshop/solver.gd")
 
-const ACCUSING_TYPES = ["evil", "demon", "minion", "lied", "notrole", "suspicious", "unreliable"]
+const ACCUSING_TYPES = ["evil", "demon", "lied", "notrole", "suspicious", "unreliable"]
 ## Premises the "seen elsewhere / the traces" movement notes can speak to: whether someone is
 ## on the killer's side. Role, secret, Marked and misled premises don't.
-const MOVEMENT_NOTE_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon"]
+const MOVEMENT_NOTE_TYPES = ["evil", "demon", "suspicious", "good", "notdemon"]
 const MARKED_PING_ROLES = ["seer", "dowser", "clerk", "gravedigger", "hearthwitch", "surveyor", "augur", "magistrate", "executor", "registrar"]
 
 const FALSE_SELF_EXPRESSIONS = {
@@ -155,7 +155,7 @@ static func _append_movement_notes(w, listener_id: String, ctype: String, stance
 	re_role.compile("^Scattered sightings:\\s+(.+?)'s movements fit the claimed (.+?) gift\\.")
 	for raw_note in mov:
 		var note: String = str(raw_note)
-		if note.begins_with("Seen elsewhere:") and ctype != "minion":
+		if note.begins_with("Seen elsewhere:"):
 			if target_prefix == "" or note.contains(": " + target_prefix):
 				var m_seen: RegExMatch = re_seen.search(note)
 				if m_seen != null:
@@ -252,7 +252,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		used_circumstantial = true
 		allow_lean = false
-		if ctype in ["evil", "demon", "minion", "good", "marked"] and believed_stance in ["accept", "partial"]:
+		if ctype in ["evil", "demon", "good", "marked"] and believed_stance in ["accept", "partial"]:
 			var follow_k: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
 			parts.append(Dialogue.voice_line(listener.id, follow_k, canonical, {"target": target_label}))
 	elif path_kind == "conditional" and believed_stance == "reject":
@@ -433,7 +433,7 @@ static func render_evil_override(w, n, conclusion: Dictionary, stance: String, a
 		# Evil may cite its non-evil scapegoat as top Demon suspect (+ #2 non-evil suspect).
 		var sg_id: String = str(w.evil_plan.get("scapegoat", ""))
 		var h: int = absi(hash(n.id + "|evil_pres|" + ctype + "|" + target_id + "|" + str(w.day)))
-		if ctype in ["evil", "demon", "minion", "suspicious"] and sg_id != "" and sg_id != target_id and sg_id != n.id and w.by_id.has(sg_id) and w.by_id[sg_id].alive and not w.by_id[sg_id].is_evil() and (h % 2 == 0):
+		if ctype in ["evil", "demon", "suspicious"] and sg_id != "" and sg_id != target_id and sg_id != n.id and w.by_id.has(sg_id) and w.by_id[sg_id].alive and not w.by_id[sg_id].is_evil() and (h % 2 == 0):
 			var non_evil_others: Array = []
 			var sh_susp: Dictionary = n.shadow.suspicion if n.shadow != null else n.suspicion
 			for p in w.living():

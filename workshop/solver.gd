@@ -1811,7 +1811,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		if hd >= 0:
 			return (hd == 1) == (conclusion.type == "demon")
 	match conclusion.type:
-		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
+		"demon": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
 		"notdemon": return not position_holds(view, world, conclusion.target, "demon", conclusion.at)
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)

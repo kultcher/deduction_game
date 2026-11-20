@@ -40,7 +40,7 @@ const NO_WEIGHT = 0.02
 ## A presentation asks every listener about the same case in a row, so the last few are kept.
 static var _mask_cache: Dictionary = {}
 const MASK_CACHE_MAX = 64
-const ACCUSING = ["evil", "suspicious", "demon", "minion", "lied"]
+const ACCUSING = ["evil", "suspicious", "demon", "lied"]
 const CLEARING = ["good", "notdemon", "truthful"]
 
 ## One CaseEval run on the caller's inputs, optionally with per-world weights. The capture
@@ -409,12 +409,10 @@ static func _alternatives(view: Dictionary, conclusion: Dictionary, cards: Array
 		var key: String = "other"
 		if not bad.is_empty():
 			key = "teller:" + bad[0]
-		elif t_idx >= 0 and ctype in ["evil", "suspicious", "demon", "minion"] and (evil >> t_idx) & 1 == 0 and _is_marked(world, t_idx):
+		elif t_idx >= 0 and ctype in ["evil", "suspicious", "demon"] and (evil >> t_idx) & 1 == 0 and _is_marked(world, t_idx):
 			key = "marked"
 		elif t_idx >= 0 and ctype == "demon" and (evil >> t_idx) & 1 == 1:
 			key = "minion"
-		elif t_idx >= 0 and ctype == "minion" and (evil >> t_idx) & 1 == 1:
-			key = "demon"
 		groups[key] = float(groups.get(key, 0.0)) + w
 	var out: Dictionary = {"left": left / total if total > 0.0 else 0.0, "groups": [], "evil_instead": [], "demon_instead": [], "doubted": []}
 	if left <= 0.0:
@@ -428,8 +426,6 @@ static func _alternatives(view: Dictionary, conclusion: Dictionary, cards: Array
 			label = "%s is good but Marked, and only registers as evil" % t_name
 		elif key == "minion":
 			label = "%s is evil, but a Minion, not the Demon" % t_name
-		elif key == "demon":
-			label = "%s is evil, but the Demon, not a Minion" % t_name
 		out.groups.append({"key": key, "share": groups[key] / left, "label": label})
 	out.groups.sort_custom(func(a, b): return a.share > b.share if not is_equal_approx(a.share, b.share) else a.key < b.key)
 	out.evil_instead = _ranked(evil_instead, left)

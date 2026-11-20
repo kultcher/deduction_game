@@ -993,7 +993,7 @@ static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, re
 					unique.append(id)
 			result["clashing"] = unique
 	# Collateral: who this case would mostly raise suspicion of, if not the subject.
-	if case_data.conclusion.get("type", "") in ["evil", "demon", "minion", "suspicious"] and ev.has("people"):
+	if case_data.conclusion.get("type", "") in ["evil", "demon", "suspicious"] and ev.has("people"):
 		var people: Dictionary = ev.people
 		var own: float = people.get(target, {}).get("posterior", 0.0) - people.get(target, {}).get("prior", 0.0)
 		var top = ""

@@ -103,7 +103,8 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 **Deferred (Michael, Nov 8)** and not on the active list: premises step 4 (Scion/Revenant
 and movement premises, `docs/premises_plan.md`); contradiction callouts and poses on the
 courtroom stage; the live seat-by-seat player vote (meeting plan stretch A); procedural
-towns.
+towns. The Minion premise was folded into "evil" (Michael, Nov 20); it may return with
+step 4.
 
 ---
 

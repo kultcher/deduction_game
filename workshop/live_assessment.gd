@@ -10,7 +10,7 @@ const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "demon", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
@@ -142,7 +142,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		view.world_options["roles"] = true
 	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
 		view.world_options["roles"] = true
-	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger", "chronicler", "augur", "executor", "registrar"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon", "minion"])):
+	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger", "chronicler", "augur", "executor", "registrar"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon"])):
 		view.world_options["identities"] = true
 		view.world_options["roles"] = true
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0] if snapshot.arguments.any(func(a): return a.board_number == snapshot.root) else {}
@@ -672,8 +672,8 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		for hub in claim.get("circumstantial", []):
 			if not hub is Dictionary or not hub.get("cards") is Array or hub.cards.is_empty():
 				issues.append("Link at least one supporting card into the Circumstantial Evidence hub, or remove the empty hub.")
-			elif str(hub.get("type", "")) not in ["evil", "demon", "minion", "suspicious"] or str(hub.get("target", "")) == "":
-				issues.append("Circumstantial Evidence hubs support accusatory premises (evil, Demon, Minion, or suspicious).")
+			elif str(hub.get("type", "")) not in ["evil", "demon", "suspicious"] or str(hub.get("target", "")) == "":
+				issues.append("Circumstantial Evidence hubs support accusatory premises (evil, Demon, or suspicious).")
 			elif not hub.cards.all(func(cid): return cid in value.cards):
 				issues.append("Circumstantial Evidence hub references missing root cards.")
 		var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)

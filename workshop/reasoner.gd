@@ -399,7 +399,7 @@ static func _live_person_priority(id: String, is_target: bool, cards: Array, lis
 				score += 1.5
 		elif card.kind == "sighting" and id in card.get("subjects", [card.get("subject", "")]):
 			score += 1.5
-	var evil_target: bool = want if type in ["evil", "suspicious", "demon", "minion"] else not want
+	var evil_target: bool = want if type in ["evil", "suspicious", "demon"] else not want
 	if is_target:
 		score += 10.0 if evil_target else -10.0
 	return score
@@ -422,8 +422,6 @@ static func _variant_priority(candidate: Dictionary, target_idx: int, want: bool
 			s -= 4.0
 		if type == "demon" and ((d == target_idx) == want):
 			s += 4.0
-		elif type == "minion" and ((d != target_idx) == want):
-			s += 2.0
 	return s
 
 static func _matches(view: Dictionary, world: Dictionary, cards: Array, knowledge: Dictionary, positions: Dictionary, answers: Dictionary, epoch: String = "", temporal_positions: Array = [], claims_checked: bool = false) -> bool:
@@ -652,7 +650,7 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 			return []
 		if demon_req >= 0 and ((must_be_good & (1 << demon_req)) != 0 or (not_demon_mask & (1 << demon_req)) != 0):
 			return []
-	var needs_demon: bool = type in ["demon", "notdemon", "minion", "misled", "unreliable"] or demon_req >= 0 or not_demon_mask != 0 or view.get("live_activity", false)
+	var needs_demon: bool = type in ["demon", "notdemon", "misled", "unreliable"] or demon_req >= 0 or not_demon_mask != 0 or view.get("live_activity", false)
 	var needs_marked: bool = type in ["marked", "misled", "unreliable"] or marked_req >= 0 or unmarked_mask != 0
 	var needs_holders: bool = type == "secret_mod" or (req_modifier != "" and req_modifier != "marked")
 	for card in cards:
@@ -787,7 +785,7 @@ static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Di
 	var objections: Array = []
 	var rejected: Array = []
 	var fatal = false
-	if case_data.conclusion.type in ["evil", "demon", "minion"] and TimeModel.known_good(view, knowledge, case_data.conclusion.target, case_data.conclusion.at):
+	if case_data.conclusion.type in ["evil", "demon"] and TimeModel.known_good(view, knowledge, case_data.conclusion.target, case_data.conclusion.at):
 		objections.append("I know I was good at that time; this accusation cannot be right about me.")
 		fatal = true
 	for id in knowledge.get("good", []):

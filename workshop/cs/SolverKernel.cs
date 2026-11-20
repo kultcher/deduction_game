@@ -58,7 +58,7 @@ internal static class SolverKernel
     public const int ConclLied = 3;
     public const int ConclTruthful = 4;
     public const int ConclDemon = 5;
-    public const int ConclMinion = 6;
+    // 6 was the Minion premise, folded into "evil" (Michael, Nov 20).
     public const int ConclNotDemon = 7;
     public const int ConclMarked = 8;
     public const int ConclSecretMod = 9;
@@ -1357,7 +1357,6 @@ internal static class SolverKernel
                 ConclLied => EvilIndex(w, targetIdx, convEvilAtConcl),
                 ConclTruthful => !EvilIndex(w, targetIdx, convEvilAtConcl),
                 ConclDemon => PositionHolds(w, targetIdx, PosDemon, convEvilAtConcl),
-                ConclMinion => PositionHolds(w, targetIdx, PosMinion, convEvilAtConcl),
                 ConclNotDemon => !PositionHolds(w, targetIdx, PosDemon, convEvilAtConcl),
                 ConclMarked => w.Marked == targetIdx,
                 ConclSecretMod => secretModCode >= 0

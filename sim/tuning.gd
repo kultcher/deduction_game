@@ -1125,7 +1125,6 @@ class Workshop:
 	const CONCLUSION_COEFFS = {
 		"evil": 0.45,
 		"demon": 0.45,
-		"minion": 0.45,
 		"good": -0.4,
 		"marked": -0.1,
 		"suspicious": 0.3,
@@ -1204,7 +1203,7 @@ class Workshop:
 	## Premise types that ask an alignment question about a person: a stored case's target
 	## (`Shared.premise_targets`). Marked, secret and misled premises name no
 	## alignment target.
-	const PREMISE_ALIGNMENT_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]
+	const PREMISE_ALIGNMENT_TYPES = ["evil", "demon", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]
 	## The protect / believed-role preference from a presented premise needs at least this
 	## agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks.
 	const PREMISE_PREF_MIN_AGREEMENT = 0.5

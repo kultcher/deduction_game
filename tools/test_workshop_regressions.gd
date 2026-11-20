@@ -303,7 +303,7 @@ func _evil_subject_never_accepts() -> void:
 	for sd in range(4470, 4490):
 		var g = _game(sd)
 		var e = g.w.evil_team()[0]
-		for type in ["minion", "evil", "demon"]:
+		for type in ["evil", "demon"]:
 			var mask: Dictionary = preload("res://sim/presentation_reply.gd")._evil_mask(g.w, e, {"type": type, "a": e.id}, 0, false)
 			tried += 1
 			if mask.get("stance", "") == "accept":
