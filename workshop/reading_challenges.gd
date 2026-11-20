@@ -634,6 +634,9 @@ static func _outing_explained(cards: Array, person: String, night: int, knowledg
 				return true
 	return false
 
+## Tests switch the self-doubt Poisoner nudge off to compare (test_self_doubt_poisoner).
+static var self_doubt_poisoner: bool = true
+
 ## An NPC's own "my gift may have been turned" (the public `self_doubt`; Michael, Nov 20): the
 ## listener gives the same Poisoner nudge as an accepted Mistaken call (Jury's floor), to
 ## everyone seen on the reader's block on any night it read, by `poisoner_candidates`'s rule.
@@ -644,6 +647,9 @@ static func _outing_explained(cards: Array, person: String, night: int, knowledg
 ## one per reader who said it; none for the listener's own words, or with no reading held.
 static func self_doubt_floors(view: Dictionary, value: Dictionary, listener: Dictionary, cards: Array) -> Array:
 	var out: Array = []
+	# As for the Mistaken call: where no Poisoner can be in play, no one is pointed at.
+	if not self_doubt_poisoner or not poisoner_possible(view):
+		return out
 	var knowledge: Dictionary = listener.get("knowledge", {})
 	var self_id: String = str(listener.get("id", knowledge.get("self", "")))
 	var seen: Dictionary = {}
