@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_9c570ec`
+
+`tools/golden/baseline_9c570ec/` is the capture from `claude/beadle-martyr-bluff-quiet` at `9c570ec`
+(main at `fff6b66`, after #413, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_b96d2f2`:** only 692, at record 236 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
 
 `tools/golden/baseline_b96d2f2/` is the capture from `claude/beadle-gravedigger-lean` at `b96d2f2` (main at
 `0b44cae`, merged in). A good Gravedigger always leans a little toward nominating and voting to hang
