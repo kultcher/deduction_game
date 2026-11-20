@@ -23,7 +23,7 @@ func _init() -> void:
 	_batch4_voices()
 	_live()
 	_live_presence()
-	call_deferred("_lab")
+	call_deferred("_done")
 
 func _contracts() -> void:
 	for scenario in Fixtures.SCENARIOS:
@@ -594,70 +594,7 @@ func _case_with(g, ids: Array) -> void:
 			return
 	_check(false, "found a case with %s" % str(ids))
 
-func _lab() -> void:
-	var lab = load("res://ui/dialogue_lab.tscn").instantiate()
-	root.add_child(lab)
-	await process_frame
-	_check(lab.last_results.size() == Fixtures.IDS.size() and lab.memories["agnes"].is_empty(), "comparison scene shows all voices without recording previews")
-	var cast_ids: Array = C.CAST.map(func(person): return person.id)
-	_check(lab.sketch_outputs.size() == 15 and cast_ids.all(func(id): return lab.sketch_outputs.has(id)), "calibration includes every actual cast ID, including all twelve draft voices")
-	_check(cast_ids.filter(func(id): return Dialogue.has_voice(id)) == Fixtures.IDS, "editorial sketches do not register unfinished voices in live gameplay")
-	var sketch_memory = lab.memories.duplicate(true)
-	for i in range(lab.sketch_data.scenarios.size()):
-		lab.sketch_opt.select(i)
-		lab._refresh_sketches()
-		var scenario: Dictionary = lab.sketch_data.scenarios[i]
-		_check(scenario.statement in lab.sketch_core.text and cast_ids.all(func(id): return not lab.sketch_outputs[id].text.is_empty()), "all fifteen calibration cards render with their approved meaning: " + scenario.key)
-		if scenario.key in ["report", "challenged_report"]:
-			_check(cast_ids.all(func(id): return ["rowan", "tavern", "yesterday evening"].all(func(slot): return slot in lab.sketch_outputs[id].text.to_lower())), "calibration reports retain the same subject, place and time")
-	_check(lab.memories == sketch_memory, "browsing draft voices records no delivered speech or conversation history")
-	lab._refresh(true)
-	lab._refresh(true)
-	_check(lab.last_results["agnes"]["repeated"], "Speak/ask again records listener history")
-	lab.audience_opt.select(1)
-	lab._refresh(false)
-	_check(not lab.last_results["agnes"]["repeated"], "comparison audience control isolates history")
-	for i in range(Fixtures.SCENARIOS.size()):
-		lab.scenario_opt.select(i)
-		lab._refresh(false)
-		_check(lab.last_results["bart"]["intent"] == Fixtures.SCENARIOS[i]["kind"], "comparison renders scenario %d" % i)
-	var flow_start: int = Fixtures.SCENARIOS.size()
-	for i in range(Fixtures.FLOW_SCENARIOS.size()):
-		lab.scenario_opt.select(flow_start + i)
-		lab._refresh(false)
-		_check(lab.last_results["bart"]["parts"].size() == Fixtures.FLOW_SCENARIOS[i]["parts"].size(), "workshop renders full speaker turn %d" % i)
-	lab.scenario_opt.select(flow_start + 1)
-	lab.audience_opt.select(0)
-	lab.speech_act_opt.select(1)
-	lab._refresh(false)
-	_check(lab.last_results.agnes.text == "Oh, yes. I did see Jory at the tavern yesterday evening. Fenwick was there too.", "lab displays the concise authored answer as one paragraph")
-	var preview_memory = lab.memories.duplicate(true)
-	lab.speech_act_opt.select(2)
-	lab.warmth_check.button_pressed = true
-	lab._refresh(false)
-	_check(lab.last_results.agnes.parts[0].cue == "report_volunteer_warm" and lab.memories == preview_memory, "speech-act and warmth controls preview without recording delivery")
-	lab.pressure_check.button_pressed = true
-	lab._refresh(false)
-	_check(lab.last_results.agnes.parts[0].cue == "pressure_volunteer", "lab pressure overrides warmth within the selected speech act")
-	lab.pressure_check.button_pressed = false
-	lab.warmth_check.button_pressed = false
-	lab.speech_act_opt.select(0)
-	var exchange_start: int = flow_start + Fixtures.FLOW_SCENARIOS.size()
-	for i in range(Fixtures.EXCHANGE_SCENARIOS.size()):
-		lab.scenario_opt.select(exchange_start + i)
-		lab._refresh(false)
-		_check(lab.last_results["bart"]["intent"] == "exchange" and not lab.last_results["bart"]["cue"].is_empty(), "workshop renders across-exchange continuity %d" % i)
-	lab.scenario_opt.select(exchange_start + 1)
-	lab._refresh(false)
-	_check(lab.memories["agnes"].get("conversation", {}).is_empty(), "contextual workshop preview does not record primed prior speech")
-	lab._refresh(true)
-	_check(lab.memories["agnes"].get("conversation", {}).get("last_action", "") == "opinion", "delivered workshop exchange records the actual current answer")
-	lab._refresh(false)
-	_check(lab.last_results["agnes"]["cue"] == "opinion_again", "second preview continues after the first delivered opinion")
-	lab.reset_memory()
-	_check(lab.memories["agnes"].is_empty(), "reset clears delivery memory")
-	lab.queue_free()
-	await process_frame
+func _done() -> void:
 	print("DIALOGUE FAILURES: %d" % fails)
 	quit(1 if fails else 0)
 

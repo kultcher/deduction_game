@@ -414,16 +414,6 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 				rel_scale = clampf(rel_base + rel_slope * (best_trust * maxf(hearing, 0.35)), rel_base, 1.0)
 			prepared.listener.reading_reliability[id] *= rel_scale
 		_add_player_words(prepared, presentations, withdrawn, owners, player_weight, input.get("now", {}))
-		# Presentation weights add per-report uncertainty; enforce the budget AFTER
-		# introducing those dimensions as well as during ordinary preparation.
-		var sources = {}
-		for card in prepared.view.cards:
-			if card.source != prepared.listener.id:
-				sources[card.source] = true
-		var uncertain = prepared.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
-		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
-		if Jury.engine == "legacy" and dimensions > 6:
-			issues.append("Shared evidence exceeds the 64-state credibility budget.")
 	return {"ready": issues.is_empty(), "empty": facts.is_empty() and circumstantial_hubs.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
 		"marked_questions": marked_questions, "circumstantial_hubs": circumstantial_hubs}
@@ -735,7 +725,7 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 	return prepared
 
 static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary) -> Dictionary:
-	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
+	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener)
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
 	if prepared.view.get("chronology", {}).has("curse"):
 		var curse: Dictionary = prepared.view.chronology.curse

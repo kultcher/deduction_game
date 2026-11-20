@@ -44,7 +44,36 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1, #346): `baseline_652298a`
+### Current baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
+
+`tools/golden/baseline_9ea3f99/` is the capture from `claude/beadle-private-share` at `9ea3f99`
+(main at `561e17f`, with #365, merged in). An NPC who hasn't claimed a gift publicly
+brings up its gift and its readings in private talk a little more often each day past day 1
+(`SHARE_UNCLAIMED_DAY_BOOST` 0.15, new; Michael approved it on Nov 19).
+- **Divergence from `baseline_0d796b3`:** 98933 from record 81 (day 2, the first private-talk
+  draw of the day), and 900 from record 107 (day 3). 42, 54875 and 692 are identical.
+- **Outcomes:**
+  - **98933:** main hangs Merrin on day 2. Now it hangs Merrin on day 2 and Isolde on day 3,
+    with no winner by day 4 either way.
+  - **900:** unchanged (Isolde on day 3).
+  - **42, 54875 and 692:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, the Demon never detours in inference): `baseline_0d796b3`
+
+`tools/golden/baseline_0d796b3/` is the capture from `claude/beadle-demon-detour` at `0d796b3`
+(main at `2bdb785`, with #346, merged in). The movement model's Demon now walks only the direct
+way to its victim, as the live Demon does (Michael, Nov 17), instead of a 5% detour allowance.
+Every belief that weighs a sighting or trace against the Demon's route moves a little.
+- **Divergence from `baseline_652298a`:** every seed, from the first day's belief refreshes
+  (42 at record 21, 54875 at 9, 692 at 14, 900 at 5, 98933 at 13).
+- **Outcomes:**
+  - 42, 692 and 98933: unchanged.
+  - 54875: Greta is hanged on day 2 and nobody on day 3, instead of Edda on day 2 and Hollis
+    on day 3. No winner by day 4 either way.
+  - 900: Isolde is hanged on day 3 instead of Lian. No winner by day 4 either way.
+
+### Earlier baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1, #346): `baseline_652298a`
 
 `tools/golden/baseline_652298a/` is the capture from `claude/lamplighter-count` at `652298a`
 (main with #349 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night

@@ -62,7 +62,6 @@ var suspicious_pressure = {}        # premises step 2: "target|cards" -> {sum, c
 var totem = {}                      # the Revenant's hidden totem: {loc, day, owner} or {}
 var totem_at_dawn = false           # a totem was in play when the day began (no new one today)
 var curse = {}                      # the Revenant's curse: {victim, day} while someone is turned
-var knell_night = -1                # night the Sexton tolled (legacy)
 var sexton_tolled_night = -1        # night the Sexton tolled the church bell
 var sexton_suppression_night = -1   # night during which minions are suppressed
 var scion_rose = ""                 # the Scion who became the demon, if any

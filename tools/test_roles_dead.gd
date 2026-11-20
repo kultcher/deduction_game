@@ -6,16 +6,13 @@ const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
-const Support = preload("res://workshop/support_model.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const Evil = preload("res://sim/evil.gd")
-const Factored = preload("res://workshop/factored_channels.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Caches = preload("res://workshop/caches.gd")
-const Oracle = preload("res://workshop/channel_likelihood.gd")
 
 var checks = 0
 var fails = 0
@@ -230,27 +227,8 @@ func _run() -> void:
 	check(Live.status(g, value).ready, "supported Medium reading uses live evaluator")
 	var prepared = Live.Assess.prepare(_ghost_input(g, value))
 	check(prepared.ready, "Medium source knowledge is complete for neutral assessment")
-	var listener = Ghost.profile(prepared.view.people)
-	var attention = preload("res://workshop/reasoner.gd").prepare(prepared.view, prepared.case, listener)
-	var mixture = Support._mixture(prepared.view, attention.case, listener, attention, false, {})
-	check(mixture.atoms.any(func(a): return a.key == "source:" + medium.id) and mixture.atoms.any(func(a): return a.key == "source:" + dead.id), "credibility distinguishes Medium transmission from original speaker")
 	var preview = Ghost.live(Live.snapshot(g, value))
 	check(preview.ready, "Medium gets neutral preview")
-	var full = Support.assess(prepared.view, prepared.case, listener)
-	listener.npc_trust[medium.id] = 0.0
-	var distrusted = Support.assess(prepared.view, prepared.case, listener)
-	check(distrusted.report_acceptance[id] < full.report_acceptance[id], "distrusting Medium lowers relay acceptance")
-	listener.npc_trust[medium.id] = 0.5
-	listener.npc_trust[dead.id] = 0.0
-	distrusted = Support.assess(prepared.view, prepared.case, listener)
-	check(distrusted.report_acceptance[id] < full.report_acceptance[id], "distrusting original source also lowers relay acceptance")
-	var original = Live.Evidence.normalize_card({"kind": "info", "source": dead.id, "subject": [], "role": "seer", "day": 0, "phase": 3, "data": entry.data, "text": entry.text})
-	var direct = card.duplicate(true)
-	for key in ["relay_source", "relay_observed_at", "relay_role", "logical_origin", "accuracy_origin"]:
-		direct.erase(key)
-	direct.id = original.id
-	direct.fact_id = original.id
-	check(Support._contributing(prepared.view, [card, direct]).size() == 1, "relay and direct copy count as one original reading")
 	var direct_number = g.add_card({"kind": "info", "source": dead.id, "subject": [], "role": "seer", "day": 0, "phase": 3, "data": entry.data, "text": entry.text})
 	var combined = Canvas.new(Live.view(g))
 	combined.nodes[combined.selected].conclusion = value.conclusion.duplicate(true)
@@ -261,14 +239,6 @@ func _run() -> void:
 	check(combined_prepared.ready, "direct reading and Medium copy can share a live case")
 	var combined_cards: Array = combined_prepared.view.cards
 	check(combined_cards.size() == 2 and combined_cards[0].accuracy_origin == combined_cards[1].accuracy_origin and combined_cards[0].accuracy_origin.begins_with("health:"), "original health is shared separately from receipt route weights")
-	var comparison_listener = Ghost.profile(combined_prepared.view.people)
-	comparison_listener.knowledge.good = [medium.id]
-	var both = Support.assess(combined_prepared.view, combined_prepared.case, comparison_listener)
-	var direct_only = combined_prepared.case.duplicate(true)
-	direct_only.cards = [original.id]
-	direct_only.lines = []
-	var just_original = Support.assess(combined_prepared.view, direct_only, comparison_listener)
-	check(is_equal_approx(both.agreement, just_original.agreement), "a faithful relay does not corroborate an already-present identical original")
 	var wrapped = combined_cards.filter(func(c): return c.has("relay_source"))[0]
 	var index: int = combined_prepared.view.people.map(func(p): return p.id).find(medium.id)
 	var possible = Solver.solve(combined_prepared.view, [], {medium.id: "good", dead.id: "good"}).worlds
@@ -833,11 +803,3 @@ func _test_executor_workshop_and_parity() -> void:
 	_check(has_promoted_world,
 		"Executor reading 'demon' on hanged target with >=5 alive supports worlds where Scion promoted to active Demon")
 
-	# FactoredChannels vs exhaustive Oracle parity:
-	var fac: Dictionary = Factored.assess(view, [c_assign, c_role_good], {}, {"gift_honesty:" + people[0].id: 0.85, "gift_accuracy:" + people[0].id + ":0": 0.98, "gift_accuracy:" + people[0].id + ":1": 0.95}, {})
-	var ora: Dictionary = Oracle.assess(view, [c_assign, c_role_good], {}, {"gift_honesty:" + people[0].id: 0.85, "gift_accuracy:" + people[0].id + ":0": 0.98, "gift_accuracy:" + people[0].id + ":1": 0.95}, {})
-	var max_diff: float = 0.0
-	for idx in range(fac.post.size()):
-		max_diff = maxf(max_diff, absf(fac.post[idx] - ora.post[idx]))
-	_check(max_diff <= 1e-12,
-		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Executor (max diff %.3g)" % max_diff)

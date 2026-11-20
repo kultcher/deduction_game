@@ -3,7 +3,7 @@
 ##
 ##   godot --headless --path . --script res://tools/autoplay.gd -- [--seed N] [--games G]
 ##         [--npcs 7] [--log-dir DIR] [--transcript] [--echo-log] [--passive] [--results FILE] [--no-trace]
-##         [--no-attention] [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
+##         [--insight 1.0] [--dynamic] [--results-jsonl FILE] [--sha SHA]
 ##         [--no-crosscheck] [--no-declare]
 ##
 ## The connections belief model (workshop/connections.gd) is the only one since purge phase
@@ -31,9 +31,6 @@
 ##
 ## --transcript prints everything the player would see. Logs go to <log-dir>/case_<seed>.*
 ## --no-trace skips detailed state sidecars; ordinary developer logs and metrics remain.
-## --no-attention (experiment): every shared-model listener reads every card it holds;
-## Insight still limits links and the explanation search. Measures how much the card
-## budget scatters the town's beliefs, and what reading everything costs.
 ##
 ## The M4 policy (meeting plan slice M4; default): the bot presses the nominee at the
 ## podium, nominates less (and not below the one on the block), keeps vigils on the block of
@@ -165,8 +162,6 @@ func _init() -> void:
 		jsonl.seek_end()
 	no_workshop_cases = args.has("no-workshop-cases")
 	no_hub = args.has("no-hub")
-	if args.has("no-attention"):
-		preload("res://workshop/reasoner.gd").unlimited_cards = true
 	# The solver is C# only (Nov 4 cutover); --backend is accepted for old scripts and ignored.
 	if args.has("backend") and str(args["backend"]).to_lower() != "csharp":
 		push_warning("autoplay: --backend %s ignored; the solver is C# only." % args["backend"])
@@ -231,7 +226,7 @@ func _init() -> void:
 			push_error("Cannot write results: " + path)
 			quit(1)
 			return
-		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "shared", "workshop_cases": not no_workshop_cases, "circumstantial_hub": not (no_workshop_cases or no_hub), "attention": "unlimited" if args.has("no-attention") else "budgeted", "seed_start": first,
+		file.store_string(JSON.stringify({"schema_version": 2, "mode": "passive" if passive else "active", "beliefs": "shared", "workshop_cases": not no_workshop_cases, "circumstantial_hub": not (no_workshop_cases or no_hub), "seed_start": first,
 			"npcs": int(args.get("npcs", "7")), "rng_note": "Same seed matches setup; player actions can change later random draws.",
 			"summary": summary, "cases": case_results}, "\t"))
 		file.close()

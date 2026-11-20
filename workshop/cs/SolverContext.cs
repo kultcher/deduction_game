@@ -196,8 +196,6 @@ internal static class SolverContext
     private static readonly Dictionary<int, UniverseMeta> UniverseMetaByHandle = new(64);
     private static readonly List<LiveActivityKernel.CompiledMovementFactor> MovementFactors = new(64);
     private static readonly List<CaseEvalKernel.CompiledCaseEntry> CompiledCases = new(64);
-    private static readonly List<ChannelSumProductKernel.CompiledProgram> Programs = new(32);
-    private static readonly List<ChannelSumProductKernel.CompiledCircuit> Circuits = new(32);
     private static readonly List<Dictionary<long, double>> RoleConstraintMemos = new(256);
 
     public static void Clear()
@@ -209,8 +207,6 @@ internal static class SolverContext
         MovementFactors.Clear();
         PresenceWeights.Clear();
         CompiledCases.Clear();
-        Programs.Clear();
-        Circuits.Clear();
         RoleConstraintMemos.Clear();
     }
 
@@ -218,8 +214,6 @@ internal static class SolverContext
     public static int RegisteredHandleCount => PackedUniverses.Count;
     public static int RegisteredMovementFactorCount => MovementFactors.Count;
     public static int RegisteredCompiledCaseCount => CompiledCases.Count;
-    public static int RegisteredProgramCount => Programs.Count;
-    public static int RegisteredCircuitCount => Circuits.Count;
 
     public static bool TryGetUniverse(string cacheKey, out long[] stride3) =>
         UniverseStride3Cache.TryGetValue(cacheKey, out stride3!);
@@ -358,24 +352,4 @@ internal static class SolverContext
         (handle >= 0 && handle < CompiledCases.Count) ? CompiledCases[handle] : null;
 
     public static void ClearCompiledCases() => CompiledCases.Clear();
-
-    public static int RegisterProgram(ChannelSumProductKernel.CompiledProgram prog)
-    {
-        int handle = Programs.Count;
-        Programs.Add(prog);
-        return handle;
-    }
-
-    public static ChannelSumProductKernel.CompiledProgram? GetProgram(int handle) =>
-        (handle >= 0 && handle < Programs.Count) ? Programs[handle] : null;
-
-    public static int RegisterCircuit(ChannelSumProductKernel.CompiledCircuit circuit)
-    {
-        int handle = Circuits.Count;
-        Circuits.Add(circuit);
-        return handle;
-    }
-
-    public static ChannelSumProductKernel.CompiledCircuit? GetCircuit(int handle) =>
-        (handle >= 0 && handle < Circuits.Count) ? Circuits[handle] : null;
 }

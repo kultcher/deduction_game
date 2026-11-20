@@ -5,8 +5,8 @@
 ##      attributed sighting non-collision, and dotted timeline markers).
 ##   2. Town Hall player-only building (Morning/Afternoon gating, 3-per-case cap,
 ##      6 unique roles, case-start good role persistence across death/curse, evil bluff
-##      eligibility, blank-square map layout, Workshop in_play_role toggle, FactoredChannels
-##      vs ChannelLikelihood oracle agreement, and GDScript vs C# --tol 0 parity).
+##      eligibility, blank-square map layout, Workshop in_play_role toggle, and GDScript vs
+##      C# --tol 0 parity).
 extends SceneTree
 
 const C = preload("res://sim/content.gd")
@@ -18,8 +18,6 @@ const Caches = preload("res://workshop/caches.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Roles = preload("res://workshop/role_constraints.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
-const Factored = preload("res://workshop/factored_channels.gd")
-const Oracle = preload("res://workshop/channel_likelihood.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 const LiveAssessment = preload("res://workshop/live_assessment.gd")
@@ -308,7 +306,7 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 	# Build a 7-NPC live view (5 good, 2 evil) to test:
 	#   (A) Double-claim clash: p0 claims seer, p1 claims clerk, Town Hall says [seer, clerk].
 	#   (B) Good-slot saturation: p2..p6 claim 5 other good roles while Town Hall says [seer, clerk].
-	#   (C) Optional in_play_role answer toggle & CaseEval._theory_fit + FactoredChannels vs Oracle parity.
+	#   (C) Optional in_play_role answer toggle & CaseEval._theory_fit.
 	var people: Array = []
 	for i in range(7):
 		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})
@@ -356,15 +354,13 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 		"CaseEval raises suspicion on rival claimant (%.3f -> %.3f) and computes Town Hall theory_fit (%.3f)" % [
 			ev_res.prior, ev_res.posterior, ev_res.theory_fit])
 
-	# Check 5-good slot saturation + FactoredChannels vs exhaustive ChannelLikelihood oracle:
+	# Check 5-good slot saturation:
 	var other_roles: Array = ["dowser", "warden", "nightwatch", "lamplighter", "medium"]
 	var sat_cards: Array = [c_th]
-	var rates: Dictionary = {}
 	for j in range(5):
 		var pj: String = people[2 + j].id
 		sat_cards.append({"id": "sat_%d" % j, "fact_id": "sat_%d" % j, "kind": "claim", "source": pj, "subject": pj,
 			"role": other_roles[j], "data": {}, "observed_at": {"day": 1, "phase": "evening"}, "text": pj + " claims " + other_roles[j]})
-		rates["gift_honesty:" + pj] = 0.8
 	var view_sat: Dictionary = view.duplicate(true)
 	view_sat.cards = sat_cards
 	var solved_sat: Dictionary = Solver.solve(view_sat, sat_cards)
@@ -372,13 +368,6 @@ func _test_town_hall_workshop_and_csharp_parity() -> void:
 	_check(not all_five_good,
 		"5 good claims disjoint from Town Hall [Seer, Clerk] cannot all be good in a 5-good town")
 
-	var fac: Dictionary = Factored.assess(view_sat, sat_cards, {}, rates, {})
-	var ora: Dictionary = Oracle.assess(view_sat, sat_cards, {}, rates, {})
-	var max_diff: float = 0.0
-	for idx in range(fac.post.size()):
-		max_diff = maxf(max_diff, absf(fac.post[idx] - ora.post[idx]))
-	_check(max_diff <= 1e-12,
-		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Town Hall slot saturation (max diff %.3g)" % max_diff)
 
 
 	# Check CanvasModel.apply_answer toggle round-trip:

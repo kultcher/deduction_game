@@ -261,7 +261,6 @@ class Mind:
 	const NIGHT_DOUBT_CAP = 0.9
 
 	## Role-claim & sighting ledger weights
-	const RIVAL_CLAIM_EFF = 0.6  # retired legacy claim-collision weight (shared model owns claims)
 	const PUBLIC_CLAIM_HEARING_WEIGHT = 0.5
 	const DEMON_VICTIM_CLAIM_BOOST = 1.95
 	const BELIEVED_ROLE_MIN_EFF = 0.12
@@ -462,6 +461,11 @@ class Social:
 	const SHARE_GIFT_TOPIC_GOSSIP = 0.2
 	const SHARE_GIFT_JITTER = 0.2
 	const SHARE_GIFT_PEER_OFFSET = -0.1   # a touch more guarded with a neighbour than with the Demonologist
+	## Private sharing grows over the days (Michael, Nov 19): an NPC who hasn't claimed a gift
+	## publicly brings up its gift, and its readings, more often in private talk each day past
+	## day 1. The weight is multiplied by 1 + this x (day - 1). NPC-to-NPC only; evil's bluffed
+	## gift and readings get the same, so it isn't a tell. Michael approved 0.15 (Nov 19).
+	const SHARE_UNCLAIMED_DAY_BOOST = 0.15
 	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
 	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
@@ -499,7 +503,6 @@ class Social:
 	const TRUST_VOTED_AGAINST = 0.1
 	const TRUST_VOTED_FOR = 0.03
 	const TRUST_ACCUSED_ME = 0.1
-	const PARANOIA_DRIFT_RATE = 0.06  # unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH)
 	const APPROACH_PHASE_CHANCE = 0.4
 	const APPROACH_SCORE_THRESHOLD = 0.35
 	const APPROACH_NOISE = 0.2
@@ -1087,7 +1090,6 @@ class Workshop:
 	const WALKER_CLAIM_GIFT = 0.95
 	const WALKER_CLAIM_HOME = 0.03
 	const WALKER_CLAIM_SECRET = 0.02
-	const DEMON_DETOUR = 0.05
 	const NIGHT_OUT_RATES = {
 		"hunt": 1.0,
 		"minion": 0.25,
