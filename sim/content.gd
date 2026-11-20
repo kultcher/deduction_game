@@ -6,8 +6,6 @@ const Tuning = preload("res://sim/tuning.gd")
 const RoleRegistry = preload("res://sim/role_registry.gd")
 
 const DEMON_NIGHT_RULE = "The Demon does not kill on the night before you arrive. It kills from night 1."
-## Enable explicitly in regression tests and playtests, never in ordinary play.
-const STRICT_EVALUATOR = false
 
 ## Q3 is deferred. Keep shared execution-priority plumbing inactive until the
 ## user authorizes action tuning; evidence updates remain independent of this.

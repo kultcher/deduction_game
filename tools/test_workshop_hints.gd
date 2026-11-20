@@ -76,7 +76,6 @@ func _live(size: int) -> void:
 	check(ded > 0, "a gift-family claim can support a filed case")
 	if ded < 1:
 		return
-	g.strict_evaluator = true
 	for n in g.w.living():
 		var result = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		var listener = n.shadow if n.is_evil() else n

@@ -90,8 +90,8 @@ func _run() -> void:
 	board.connect_cards("e:" + trace_id, root_id)
 	var mixed = board.compile(root_id)
 	var status = Live.status(g, mixed)
-	check(not status.ready and not status.blocked and status.issues.any(func(s): return "trace" in s), "mixed trace/reading chain remains usable and clearly requires fallback")
-	check("NOT interpreted" in status.warning, "fallback warning names the lost canvas interpretation")
+	check(not status.ready and not status.blocked and status.issues.any(func(s): return "trace" in s), "a mixed trace/reading chain stays editable and names the trace as its issue")
+	check(not status.has("warning"), "the readiness no longer offers a fallback warning: there is no fallback (Michael, Nov 20)")
 	number = Live.file(g, mixed, number)
 	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	# No legacy route for presentations (Oct 25): an unsupported graph is blocked, not judged natively.
