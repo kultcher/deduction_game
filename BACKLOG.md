@@ -64,15 +64,6 @@ listener (#273), both Lantern's.
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
 
-- **Demon detours exist in inference but not in actual movement.** (77388) The movement
-  model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
-  Demon never actually detours. Decide which is authoritative, then reconcile the
-  evaluator, the movement and the explanatory dialogue; compare inference, votes, RNG
-  and timings on fixed replays. Michael (Nov 17): the Demon still never detours, so
-  remove the detour from inference: drop it from what NPCs assume and from the
-  explanatory dialogue (Herald for any wording), and compare inference and votes on fixed
-  replays. Owner Beadle. [decided] **In flight:** Beadle's #365 (open).
-
 - **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
   helping execute them and claiming non-substitution as evidence against them an active
@@ -119,7 +110,9 @@ listener (#273), both Lantern's.
      - the Workshop scaffolding used only by fixtures (Lantern: the movement fixture,
        `ledger_audit` and `legacy_evidence`, and the `legacy_path` stub). It starts once
        Quill's drops PR merges;
-     - retired flags and constants that nothing reads (Beadle);
+     - retired flags and constants that nothing reads (Beadle): **Beadle's part done**
+       (#380). `STRICT_EVALUATOR` went to Herald. `LEGACY_MUD_DROPS_ENABLED` goes with Quill's
+       drops PR. (`LEGACY_EXTRA_SHIFT_DRAW` stays deferred, below.)
      - ~~the dev labs and the trace viewer (Herald)~~ **done** (#381; #391 removed the
        Workshop's fixture-only code they used);
      - the one-off scripts in `tools/` (Bailiff sweeps).
@@ -229,11 +222,12 @@ listener (#273), both Lantern's.
   people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
   for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
 
-- **Follow-up after a false alibi is established.** The good NPC's first response can
-  concede "Fine, I was out. Doesn't mean I was doing anything wrong." Later: pressure
-  checks and possible forced revelation of the hidden gift or secret, with proper
-  handling of genuine home accounts, unremembered outings and evil cover. (44814)
-  [decided; mechanics open]
+- **Follow-up after a false alibi is established.** (44814) **Left:** pressure checks, and a
+  possible forced reveal of the hidden gift or secret, handling genuine home accounts,
+  unremembered outings and evil cover. **Built** (Beadle, #368): the first response, "Fine,
+  I was out. Doesn't mean I was doing anything wrong", which concedes the night without
+  conceding evil. Beadle notes it overlaps the "backing into a spare or unknown gift"
+  remainder of "More rebuttals after a caught lie". [decided; mechanics open]
 
 - **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:
@@ -256,8 +250,8 @@ listener (#273), both Lantern's.
   - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
     bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
     in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
-    when caught out, and double claims) is in "More rebuttals after a caught lie". Not
-    started: Beadle's #368 lists it for its next PR.
+    when caught out, and double claims) is in "More rebuttals after a caught lie". **In
+    review:** Beadle's #390 (open).
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
   - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
@@ -266,16 +260,6 @@ listener (#273), both Lantern's.
   - player wards the Warden knows about counting as an alternative explanation.
 
   [decided: direction]
-
-- **A daily nudge to share a gift privately.** Each day past day 1, NPCs who haven't claimed
-  a gift publicly get a small boost towards sharing it privately, to feed the gossip
-  network. (Michael, Nov 19) Owner Beadle, who proposes the size. **In flight:** Beadle's
-  #327 (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
-  Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
-  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
-  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1). NPC-to-NPC
-  only; evil's bluffed gift and fake readings get the same. Measured on 40 games: see the PR's
-  handoff.
 
 - **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
@@ -447,18 +431,23 @@ Candidates for a unified retuning proposal, not approved changes.
     - Owner Beadle; Herald for any new lines.
 
   Owner Beadle; Herald for the lines.
-  - **Progress (Nov 19):**
-    - **Built:** Lantern's #367. A sleepwalk claim excuses a caught "I was home" only as far
-      as its claimant may be good. That fixes the evil-bluff gap Beadle found.
-    - **In flight:**
-      - Beadle's #368 (open): the ladder's private side, with the soft tier, the gift named
-        when pressed again, evil's walking duty and "being out isn't wicked", and excuse
-        facts for the judge.
-      - Lantern's #372 (open): excuses soften a caught "I was home", and an NPC's "I was
-        out" reads as what it says.
-    - **Not started:** the podium path, backing into a spare or unknown gift, the Minion's
-      double claims, the true holder's sure counterclaim, the switch when a bluff is taken,
-      and the private "they're lying" line.
+  - **Progress (Beadle and Lantern, Nov 20):**
+    - **Built:**
+      - Lantern's #367: a sleepwalk claim excuses a caught "I was home" only as far as its
+        claimant may be good.
+      - Beadle's #368: the private caught-out ladder. A good NPC concedes it was out; the
+        admission is tied to a walking duty; evil gets the same excuses; a gift named in
+        private counts as disclosed.
+      - Lantern's #372: excuses soften a caught "I was home", and an NPC's "I was out" reads
+        as what it says.
+    - **In review,** Beadle's #390 (open, zero drift), counted as built once it merges:
+      - the town's answer to a double claim: the true holder always counterclaims;
+      - evil switches a bluff someone else took;
+      - a Minion double-claims on purpose, from one 5% roll per Minion per game;
+      - the private "<witness> is lying about seeing me" line.
+    - **Left, on hold until Michael reprioritises:**
+      - the podium path (the ladder at the meeting, not only in private);
+      - backing into a spare or unknown walking gift when pressed again.
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -716,16 +705,6 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   **[deferred, Michael, Nov 13: promising, after the connections build]**
 - **Presenting a card to one NPC** (triage 5.8): see "Secret awareness and bluffing" in
   section 2. **[design]**
-- **One pass over every bluffer** for the "too clean when an ally is involved" tell that
-  gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
-  guidelines: within about 1 of the truth, the group size setting the room). For
-  comparison, the Surveyor frames the scapegoat's block 60% of the time, clears a
-  teammate's block half the rest, or picks at random; the Seer never gives a "no" that
-  covers the scapegoat. Michael (Nov 17): review every bluff rule against the Dowser's
-  #160 guideline (stay close to the truth; the situation sets the room) and fix the tells.
-  Pairs with the better-lie rework, which touches every bluff's alternatives. Owner
-  Beadle. **[decided]** A pass was built in #264 (Beadle). Close once Beadle confirms it
-  covered every bluff rule.
 - **The Test juror reporting a condition separately** (triage 5.1, the full version). #159
   built the cheap version: a premise → card link means "this card's line runs through that
   premise", labelled "given <premise>". The full version would have the juror say "if

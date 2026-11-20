@@ -3,7 +3,43 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
-## Closed Nov 20, 2026 (Michael; recorded by Claude-Vicar)
+## Closed Nov 20, 2026 (Michael's calls and the leads' confirmations; recorded by Claude-Vicar)
+
+- **Demon detours exist in inference but not in actual movement.** (77388) The movement
+  model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
+  Demon never actually detours. Decide which is authoritative, then reconcile the
+  evaluator, the movement and the explanatory dialogue; compare inference, votes, RNG
+  and timings on fixed replays. Michael (Nov 17): the Demon still never detours, so
+  remove the detour from inference: drop it from what NPCs assume and from the
+  explanatory dialogue (Herald for any wording), and compare inference and votes on fixed
+  replays. Owner Beadle. [decided] **In flight:** Beadle's #365 (open).
+
+  > **Closed Nov 20 (Beadle confirmed):** built. Beadle, #365.
+
+- **A daily nudge to share a gift privately.** Each day past day 1, NPCs who haven't claimed
+  a gift publicly get a small boost towards sharing it privately, to feed the gossip
+  network. (Michael, Nov 19) Owner Beadle, who proposes the size. **In flight:** Beadle's
+  #327 (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
+  Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
+  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
+  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1). NPC-to-NPC
+  only; evil's bluffed gift and fake readings get the same. Measured on 40 games: see the PR's
+  handoff.
+
+  > **Closed Nov 20 (Beadle confirmed):** built. Beadle, #327 (re-baselined to baseline_9ea3f99).
+
+- **One pass over every bluffer** for the "too clean when an ally is involved" tell that
+  gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
+  guidelines: within about 1 of the truth, the group size setting the room). For
+  comparison, the Surveyor frames the scapegoat's block 60% of the time, clears a
+  teammate's block half the rest, or picks at random; the Seer never gives a "no" that
+  covers the scapegoat. Michael (Nov 17): review every bluff rule against the Dowser's
+  #160 guideline (stay close to the truth; the situation sets the room) and fix the tells.
+  Pairs with the better-lie rework, which touches every bluff's alternatives. Owner
+  Beadle. **[decided]** A pass was built in #264 (Beadle). Close once Beadle confirms it
+  covered every bluff rule.
+
+  > **Closed Nov 20 (Beadle confirmed):** built. Beadle, #264, with Michael's Nov 18 blend-in-or-disrupt follow-up.
 
 - **The premise should matter.** (user + Claude, Oct 25, case 22485) A case's premise
   changes only the reply and a small trust reward: the belief update re-weighs all the
