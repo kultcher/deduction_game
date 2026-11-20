@@ -3,7 +3,7 @@
 - **Agent:** Claude-Beadle
 - **Base:** main at `8c45a7c` (`baseline_9ea3f99`)
 - **Branch:** `claude/beadle-double-claims`
-- **Status:** PR open. It moves golden on two seeds and re-baselines to `baseline_c7c2199`.
+- **Status:** PR open. Zero drift: golden identical to `baseline_9ea3f99` (no golden seed's Minion rolls the up-front intent).
   Golden-moving PRs merge one at a time.
 - **Next actor:** Bailiff (review and merge).
 - **BACKLOG item:** "More rebuttals after a caught lie": the town's response to a double
@@ -63,34 +63,38 @@
   test_evil_play, test_double_claim, test_mechanics_claims, test_meeting_m2a, test_relay_bluff,
   test_too_clean_bluffs, test_npc_interactions, test_evil_owned_lie and test_press_caught_out.
 
-**In play:** 40 passive 10-NPC games, seeds 4000-4039, main (`49b17ec`) against this branch at
-0.05, with the Minion's roll on its own draw.
+**In play:** 40 passive 10-NPC games, seeds 4000-4039, main (`49b17ec`) against this branch:
+0.05 rolled once per Minion per game, heat deciding at each claim it hears.
 
 | | Main | Here |
 |---|---|---|
-| Winners | 20 good, 20 evil | 19 good, 21 evil |
-| Hangings | 88 | 95 |
-| Evil hanged | 54 | 62 |
-| Good hanged | 34 | 33 |
-| Deliberate double claims | — | 9 (in 9 games) |
+| Winners | 20 good, 20 evil | 23 good, 17 evil |
+| Hangings | 88 | 97 |
+| Evil hanged | 54 | 63 |
+| Good hanged | 34 | 34 |
+| Deliberate double claims | — | 4 (in 4 games) |
 
-- **A double claim usually costs the Minion.** It was hanged in 8 of the 9 cases, 5 times
-  within a day of claiming. The real holder was hanged too in 4 of them. Evil won 6 of those
-  9 games, so the confusion sometimes pays off even when the Minion is lost.
+- **How often:** 4 games in 40, close to Michael's "roughly 1 game in 20 per Minion".
+- **A double claim costs the Minion.** It was hanged in all 4, each within a day of claiming.
+  The real holder was hanged too in 2 of them. Good won 3 of those 4 games.
 - **Holder counterclaims and bluff switches: none fired in these 40 games.** That follows from
   how the deal works. Evil's bluffs are gifts not in play, so a good holder's gift is claimed
   by someone else only through a double claim. By then the holder has already claimed, since
   the double claim answers its claim. Both paths are covered by the suite.
-- **How to read it:** more evil hanged and no more good. At 40 games, the winner shift is
-  within noise.
-- **An earlier run at 0.15,** on the world's draw, gave 12 double claims in 40 games. The
-  Minion was hanged in all 12, 11 times within a day. Winners were 22 good, 18 evil.
+- **How to read it:** more evil hanged, and good hanged the same. At 40 games, the winner shift
+  is within noise.
+- **Earlier runs, for comparison,** rolled the chance at every claim heard:
+  - at 0.15, 12 double claims in 40 games;
+  - at 0.05, 9.
 
-**The Minion's roll has its own draw,** seeded from the moment, like the tavern gossip. So the
-world's random stream, and golden, move only where a double claim is actually made. The suite
-checks this.
+  The up-front roll is Michael's fix for that (Nov 20).
 
-**Golden:** see `docs/golden_baseline.md`.
+**The Minion's rolls have their own draws,** seeded from the case, like the tavern gossip. So
+the world's random stream, and golden, move only where a double claim is actually made. The
+suite checks this.
+
+**Golden:** identical to `baseline_9ea3f99` at `--tol 0` on all five seeds. No golden seed's
+Minion rolls the up-front intent. Two captures were identical.
 
 ## Proposed for the backlog
 
