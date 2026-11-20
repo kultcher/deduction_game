@@ -166,7 +166,9 @@ func _impaired() -> void:
 	var seer = _remember(g, _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true}))
 	var d1 = _remember(g, _read(g, p[5], "dowser", 1, {"group": [p[3].id], "count": 0}))
 	var d2 = _remember(g, _read(g, p[6], "dowser", 1, {"group": [p[4].id], "count": 0}))
-	var seen = _remember(g, GameBoard.add_card(g, {"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[1].home_block,
+	# Seen on the reader's block: their destination (a Poisoner candidate must have gone there;
+	# Michael, Nov 20).
+	var seen = _remember(g, GameBoard.add_card(g, {"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[2].home_block,
 		"text": "%s saw %s out on night 1." % [p[6].name, p[1].name]}))
 	var res: Dictionary = _present(g, "evil", p[1].id, [seer, d1, d2, seen], seer, "impaired", [d1, d2])
 	var ir: Dictionary = _result_for(res.results, "impaired")
