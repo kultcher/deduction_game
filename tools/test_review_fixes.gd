@@ -74,9 +74,8 @@ func _test_poisoner_candidates_group() -> void:
 	for r in [r1, r2]:
 		both.merge(ReadingChallenges.poisoner_candidates(view, r, {}, cards))
 	_check(one.keys() == ["a"] and both.has("a") and both.has("b"), "each reading's night names its own candidates; a group takes them all (%s)" % str(both.keys()))
-	# Only those seen on the way to the reader's home (Nov 20, as the reading's doubt already
-	# reads it): the reader lives on the Hill; "near" is out on the Market (their own block),
-	# "at" is out on the Hill, "far" is out on the Docks, off the road between, and "vague" is
+	# The reader lives on the Hill; "near" is out on the Market (their own block),
+	# "at" is out on the Hill, "far" is out on the Docks, and "vague" is
 	# seen out with no block named.
 	var homes: Dictionary = {"people": [{"id": "src", "home": "hill"}, {"id": "near", "home": "market"}, {"id": "at", "home": "market"}, {"id": "far", "home": "market"}, {"id": "vague", "home": "market"}, {"id": "both", "home": "market"}]}
 	var rr: Dictionary = {"id": "rr", "kind": "report", "source": "src", "night": 1}
@@ -88,8 +87,16 @@ func _test_poisoner_candidates_group() -> void:
 		{"id": "a5", "kind": "sighting", "night": 1, "subjects": ["both"], "block": "hill"},
 		{"id": "a6", "kind": "sighting", "night": 1, "subjects": ["both"], "block": "docks"}]
 	var routed: Dictionary = ReadingChallenges.poisoner_candidates(homes, rr, {}, seen_cards)
-	_check(routed.has("near") and routed.has("at") and routed.has("vague") and not routed.has("far") and not routed.has("both"),
-		"a Poisoner candidate was seen on the way to the reader's home, not off it, and one sighting off the road rules them out (%s)" % str(routed.keys()))
+	# Their destination must be the reader's block (Michael, Nov 20): "at" went to the Hill;
+	# "near" was only seen setting out and "vague" was seen nowhere named, so neither counts;
+	# one sighting elsewhere rules "both" out. A neighbour of the reader, seen on the block
+	# they share, still counts.
+	_check(routed.has("at") and not routed.has("near") and not routed.has("vague") and not routed.has("far") and not routed.has("both"),
+		"a Poisoner candidate was seen where they went, the reader's block, and nowhere else but home (%s)" % str(routed.keys()))
+	var nb: Dictionary = homes.duplicate(true)
+	nb["people"].append({"id": "nbr", "home": "hill"})
+	var nb_cards: Array = [rr, {"id": "a7", "kind": "sighting", "night": 1, "subjects": ["nbr"], "block": "hill"}]
+	_check(ReadingChallenges.poisoner_candidates(nb, rr, {}, nb_cards).has("nbr"), "the reader's neighbour, seen on their shared block, is a candidate")
 
 
 func _test_silenced_trace() -> void:

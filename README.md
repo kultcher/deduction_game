@@ -315,13 +315,21 @@ sim/mind_nomination.gd, mind_defence.gd, mind_vote.gd
 sim/mind_press.gd, mind_answers.gd
                   pressing and the caught-out ladder, and answers about a gift, a night and
                   the day; with mind_dialogue.gd they share sim/mind_dialogue_base.gd
-sim/social.gd     NPC-to-NPC exchanges, peer gift talk, approaches, the tavern
+sim/social.gd     NPC-to-NPC exchanges, peer gift talk, agreement trust, confirming readings;
+                  approaches and role questions are in social_approaches.gd and the evening
+                  tavern (gossip, the town's mood) in social_tavern.gd: one inheritance chain
+                  over sim/social_base.gd, so Social's functions are unchanged
 sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
 sim/fabrication_check.gd  whether a fabricated reading would point the town at its teller
 sim/presentation_reply.gd  replies to speech the Workshop doesn't judge; evil's mask
 sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd, dialogue_presentations.gd
                   dialogue composer: words decided statements in a character's voice
+sim/voices/       one file per character: that voice's lines (dialogue_voices.gd assembles them)
 sim/devlog.gd     developer trace (JSONL + text, and the .trace.jsonl sidecar)
+workshop/case_eval_base.gd, case_eval_content.gd, case_eval_classes.gd
+                  CaseEval's shared constants, chance of content and premise masks, and
+                  compile() with the class and fit machinery; one inheritance chain under
+                  case_eval.gd, which keeps evaluate(), category() and strength()
 workshop/         the shared case judge: case_eval.gd (possible worlds), connections.gd
                   (how each NPC combines what it holds), jury.gd and
                   shared_ledger.gd (per-listener runs), role_constraints.gd,

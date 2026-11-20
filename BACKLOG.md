@@ -36,7 +36,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     3. Caught out and pressed again: what's left `[decided]`
     4. Good NPCs lie tactically `[open]`
     5. \*Rapport and Warden-credit leftovers `[decided: direction]`
-    6. Anger reasons `[decided]`
+    6. \*Anger reasons `[decided]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
     1. \*Explicit night-sighting rebuttals `[decided]`
@@ -67,7 +67,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
   2. \*A reason citing a pairing the model didn't weigh `[polish]`
-  3. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
+  3. \*The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   4. Brute kills scored as hexes on custom scripts `[later]`
   5. Gift doubt for readings the judge doesn't check `[open]`
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
@@ -134,10 +134,10 @@ Lantern). Nothing is open here.
   3. **File splits,** one file per PR, with no change to play:
      - **Tier 1: done.** `mind_meeting.gd` (#404), `mind_dialogue.gd` (#417), `world.gd`
        (#426) and `mind.gd` (#433), Beadle, with Lantern on `mind.gd`'s case side.
-     - **Tier 2, under way:** the Workshop UI is done (Herald: the live Workshop's field
-       editors, #438, and the canvas's card layouts, #439). Left: `sim/dialogue_voices.gd` by
-       character (Herald, after #415 and #446 merge), `social.gd` (Beadle, after #431 and
-       #437), and `live_activity` and `case_eval` (Lantern).
+     - **Tier 2, under way:** Herald's splits are done: the live Workshop's field editors
+       (#438), the canvas's card layouts (#439), and the voices, one file per character in
+       `sim/voices/` (#458). `social.gd` is in review (Beadle, #452). Left: `live_activity` and
+       `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
 
   [decided]
@@ -282,7 +282,7 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
   - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves);
-  - no voiced line says "road": Herald #446.
+  - no voiced line says "road": Herald #446, merged.
 
   **Wording approved (Michael, Nov 20):**
   - **#446, the no-roads rewording:** approved as drafted, with its kept phrases: the
@@ -293,7 +293,8 @@ Candidates for a unified retuning proposal, not approved changes.
   - **The Vigil tooltip:** "You only see if its residents leave home. You do not see people
     arrive on this block from elsewhere."
 
-  Owner Herald. [decided]
+  The Night Watch card and Vigil tooltip are in Herald's #448, first in the golden queue;
+  the item closes when #448 merges. Owner Herald. [decided]
 
 ### Performance
 
@@ -336,10 +337,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
   - **Value tiers built** (Quill, Nov 20, `claude/gossip-tiers`; handoff
     `2026-11-20-1215-quill-gossip-tiers.md`), as approved above. Measured: the targets are
     both met on about 4% of tavern evenings today, though the town's news would allow it on
-    about 84%. Beadle's budget is next. [in review]
+    about 84%. Merged (#431, Nov 20).
   - **Budget built** (Beadle, Nov 20, #437; handoff `2026-11-20-1400-beadle-gossip-budget.md`):
     each evening fills its tier-1 and tier-2 targets first, then draws as before. Both targets
-    are met on about 73% of evenings (from 3%). [in review]
+    are met on about 73% of evenings (from 3%). Merged (#437, Nov 20).
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -531,6 +532,9 @@ Workshop and the shared model can't express yet.
   judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
   This item closes when #445 merges. The other two Minion gifts are
   built and closed (Quill, Nov 20). Owner Quill. [decided]
+  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
+    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
+    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -602,7 +606,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
         else.
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
-    - **A possible cap** would be a new constant, Michael's call.
+    - **Approved (Michael, Nov 20), as built in Lantern's #459:** her doubt that she stayed
+      home scales with her belief that she holds the Sleepwalker secret. It's capped at a coin
+      flip (reusing `SLEEPWALK_CHANCE`, 0.5), and its floor is the own-reading error. No new
+      constant. This item closes when #459 merges.
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
