@@ -610,6 +610,15 @@ static func _outing_poison_chance(view: Dictionary, listener: Dictionary, night:
 		out += m[0] * scale * m[1]
 	return clampf(out + (1.0 - w_sum * scale) * base, 0.0, 1.0)
 
+## Whether the blocks someone was seen on that night show their destination was `dest_home`'s
+## block (Michael, Nov 20: a Poisoner candidate is someone spotted whose destination was the
+## failed reader's block). People walk straight from home to one block, so a walker is seen
+## only at home or where they went: seen on `dest_home`, and nowhere but there and their own
+## home. A sighting on their own block alone says only that they set out (unless the reader is
+## a neighbour), and one with no block says nothing of where they went, so neither counts.
+static func _destination_on(blocks: Array, home: String, dest_home: String) -> bool:
+	return dest_home in blocks and blocks.all(func(b): return b == home or b == dest_home)
+
 ## A night outing the cards explain: a claimed gift that walks at night, or a confided
 ## secret (a Sleepwalker's) that covers the night.
 static func _outing_explained(cards: Array, person: String, night: int, knowledge: Dictionary) -> bool:
@@ -655,10 +664,11 @@ static func self_doubt_floors(view: Dictionary, value: Dictionary, listener: Dic
 	return out
 
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
-## the reading was taken, on the way to the reader's home, with no gift or private errand the
-## case gives for it. Nobody without such a sighting is a candidate. A sighting off every road
-## from their home to the reader's doesn't make them one (the same test as
-## `_outing_poison_chance`, Nov 20); one with no block named still does.
+## the reading was taken, whose destination was the reader's block (Michael, Nov 20; see
+## `_destination_on`), with no gift or private errand the case gives for it. Nobody without
+## such a sighting is a candidate: not someone seen only setting out from their own block, nor
+## one seen with no block named. The reading's doubt (`_outing_poison_chance`) reads the same
+## sightings but keeps an unknown destination open, as a chance spread over every door.
 static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dictionary, cards: Array) -> Dictionary:
 	var C = preload("res://sim/content.gd")
 	var homes: Dictionary = {}
@@ -670,9 +680,10 @@ static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dic
 		var obs: Dictionary = report.get("observed_at", {})
 		night = int(obs.get("day", 0)) - (1 if str(obs.get("phase", "")) == "morning" else 0)
 	var reasons: Dictionary = value.get("reasons", {})
-	# Every block each person was seen on that night ("" when none is named), then the same
-	# test as `_outing_poison_chance`: all of them on the way to the reader's home (Lantern on
-	# #429: one card off the road rules them out, as it does for the reading's doubt).
+	# Every block each person was seen on that night (none when no block is named), then the
+	# same test as `_outing_poison_chance`: their destination was the reader's block (Michael,
+	# Nov 20). One card elsewhere rules them out, as it does for the reading's doubt (Lantern
+	# on #429).
 	var blocks: Dictionary = {}
 	for c in cards:
 		var seen: Array = []
@@ -693,7 +704,7 @@ static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dic
 	var out: Dictionary = {}
 	for person in blocks:
 		var home: String = str(homes.get(str(person), ""))
-		if reader_home != "" and home != "" and not blocks[person].all(func(b): return b in C.route(home, reader_home)):
+		if reader_home != "" and home != "" and not _destination_on(blocks[person], home, reader_home):
 			continue
 		out[person] = true
 	return out
