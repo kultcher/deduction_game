@@ -39,7 +39,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     6. Anger reasons `[decided]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. \*Explicit night-sighting rebuttals `[decided]`
+    1. \*Explicit night-sighting rebuttals `[in review]`
   - [UI](#ui)
     1. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
@@ -270,6 +270,12 @@ Candidates for a unified retuning proposal, not approved changes.
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
   - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
     the town moves block to block.
+  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
+    the podium press of a sighting and the private press, as speech with no weight; a quiet
+    night isn't argued when the defender knows of a possible thwart. Approved block wording in
+    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
+    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
+    [in review]
 
 ### UI
 

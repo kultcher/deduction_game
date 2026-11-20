@@ -105,6 +105,7 @@ test_meeting_stream
 test_mistake_signpost
 test_new_case_memory
 test_night0_fake_sightings
+test_night_sighting_rebuttal
 test_nightwatch_whole_list
 test_nomination_and_evil_tuning
 test_nomination_case
