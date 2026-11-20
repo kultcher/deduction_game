@@ -270,7 +270,9 @@ listener (#273), both Lantern's.
       bonus for evil;
     - constants approved: `GOOD_ACCUSE_MIN_SUSP` 0.2, `SILENCE_USEFUL_MIN` 3,
       `SILENCE_SPEAK_BONUS` 0.6;
-    - a silence-breaker opener per voice (Herald), its wording Michael's;
+    - a silence-breaker opener per voice (Herald). **Herald's 15 lines approved** (Michael,
+      Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
+      speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
     - Beadle measures it on a `mock/` branch first.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
