@@ -132,6 +132,9 @@ class Roles:
 		"pick_pref_scale": 1.2,
 		"req_trust_scale": 1.0,
 		"req_susp_scale": 1.0,
+		# A save the Warden believes in, as a reason to claim at the meeting (Michael, Nov 20;
+		# proposed value, for him to confirm). It offsets most of the Warden's hiding floor.
+		"save_claim_bonus": 0.3,
 	}
 
 	const DOWSER = {

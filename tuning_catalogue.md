@@ -104,7 +104,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
 | `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
 | `REVENANT` | `{ "place_totem_probs": [0.45, 0.6, 1.0], "curse_voter_eff": 0.15, "evil_vote_...` |  | `sim/roles/revenant.gd` |
-| `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/world_night.gd` |
+| `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/roles/warden.gd`, `sim/world_night.gd` |
 | `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world_night.gd` |
 | `WARDEN_TELL_TRUST` | `0.6` | the Warden tells the protectee when trusting them at least this much | `sim/world_night.gd` |
 | `WARDEN_SAVE_RELIABILITY` | `0.7` | how far the model trusts a claimed save (an inference, not a sighting) | `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
