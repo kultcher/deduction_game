@@ -3,7 +3,55 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026, section 2 answers (Michael; recorded by Claude-Vicar)
+
+- **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on
+  an ordinary night only about 5% of the time, against the Demon heading for the victim's
+  house on kill nights, so one sighting is a large likelihood ratio, and "claimed a day
+  role, seen out at night" reads as open-and-shut. Don't fix it by biasing the Demon
+  toward night-walking roles. Levers, measured with the bot A/B: a higher ordinary
+  out-rate, more good NPCs with secret errands, softer Demon routes, vigil yield.
+  [decided: tune in the balance pass]
+
+  > **Closed Nov 20 (Michael):** ongoing and known.
+
+- **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
+  bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
+  seen out at night, and nobody has claimed Night Watch). This opens double claims (the
+  real Night Watch may just be quiet), which need their own logic; once handled, fake
+  Mediums and evil generally can make bolder lies. (Oct 19) **On hold** (Michael, Nov 19)
+  until "Good NPCs lie tactically" is designed and decided. [decided; on hold]
+  - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
+    bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
+    in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
+    when caught out, and double claims) is in "More rebuttals after a caught lie".
+    **Built** (Beadle, #390).
+
+  > **Closed Nov 20 (Michael):** the case where the hold was lifted (switching when pre-empted) is built in #390. The rest is in "Caught out and pressed again: what's left".
+
 ## Closed Nov 20, 2026, reprioritization (Michael; recorded by Claude-Vicar)
+
+- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
+  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
+  world with everyone's routes, so "N others out, and everyone but one home" already points
+  at the one unaccounted, and more people reported out than counted already clashes. Neither
+  case has been measured on its own, so what's left is a test that shows it. Owners Quill
+  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
+  Michael wants it stronger.
+
+  > **Closed Nov 20 (Lantern):** already tested. `test_lamplighter_count_mix` (#346, on the fast list) covers the accounting case (a count plus everyone else's home alibi supports a case about the one left over, ×1.81), a third party's clashing sighting (it doesn't convict the Lamplighter, ×0.92), the listener's own sighting ruling a count out, and a true count against a lying home alibi. "Seen nowhere" uses the same joint factor, so no item is kept for it.
+
+- **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
+  move a reading at equal effective weight, with night scope and self-knowledge included.
+  [open]
+  Michael (Nov 18): being handled now, with "Recovering from a wrong 'lying' call" and
+  "The player's 'poisoned, not lying' call" (section 2, Cases and the Workshop).
+  Quill (Nov 18): Michael chose three labels after the label audit. "Misled" and "failed
+  gift" are now one honest mistake (honest doubt at the player's credibility, "the reader is
+  good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
+  `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
+
+  > **Closed Nov 20 (Quill; Michael confirmed the Lying strength):** settled by the Mistaken merge and the Lying retune (#296, Nov 18). Both calls were measured side by side; the table is in `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
 
 - **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
   Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
