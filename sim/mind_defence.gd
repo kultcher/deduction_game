@@ -315,6 +315,21 @@ static func rebuttal_line(w, d, reb: Dictionary, private: bool = false) -> Dicti
 	return say_voiced(d, "private_night_no_death" if private else "defence_night_no_death",
 		"I was seen out %s, but no one died that night." % when, {"when": when})
 
+## Whether the rebuttal fits the account the defender has given of that night (Codex on #415).
+## "No one died" opens "I was seen out", so it needs an account that owns the outing: an
+## admitted walk, a confessed errand or a duty that took them out. After a home alibi, a
+## refusal or no account at all it would retract what they said, so it isn't said. "Another
+## block" ("I was never on {block}") fits any account.
+static func rebuttal_fits_account(d, reb: Dictionary) -> bool:
+	if reb.is_empty():
+		return false
+	if str(reb["variant"]) != "no_death":
+		return true
+	var acct: Dictionary = d.dialogue_memory.get("night_accounts", {}).get(str(int(reb["night"])), {})
+	if acct.is_empty() or str(acct.get("kind", "")) == "refusal":
+		return false
+	return not (str(acct.get("kind", "")) == "alibi" and bool(acct.get("home", false)))
+
 ## The logged reason (every argument has one; evil's is true but misleading).
 static func note_rebuttal(w, d, reb: Dictionary, where: String) -> void:
 	var what: String = "a death on another block" if str(reb["variant"]) == "other_block" else "no one died"
@@ -609,7 +624,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		move_strengths[moves[0]] = 1.0
 		move_scales[moves[0]] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 		defence_scopes[moves[0]] = {"type": "plea"}
-	if not reb.is_empty():
+	if rebuttal_fits_account(d, reb):
 		lines.insert(reb_after_account if reb_after_account >= 0 else reb_at, rebuttal_line(w, d, reb))
 		note_rebuttal(w, d, reb, "At the meeting")
 		moves.append("rebuttal")

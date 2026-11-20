@@ -125,6 +125,12 @@ func _run(g, size: int) -> void:
 		var nd: int = case[0]
 		var lab: String = "%s night %d, %s:" % [tag, nd, case[2]]
 		var spoken: Array = [_sighting(accuser, d, nd, case[1])]
+		if case[2] == "no_death":
+			# Home that night: their account says so, and "I was seen out" would retract it
+			# (Codex on #415), so no rebuttal. Then out and owning it: the rebuttal follows.
+			var res_home: Dictionary = Mind.defend_self(w, d, accuser.id, spoken)
+			check(not ("rebuttal" in res_home.moves) and not res_home.lines.any(func(l): return l is Dictionary and case[3] in str(l.get("statement", ""))), lab + " after a home account, no \"I was seen out\" (%s)" % [res_home.moves])
+			_own_outing(w, d, nd, case[1])
 		var res: Dictionary = Mind.defend_self(w, d, accuser.id, spoken)
 		check("rebuttal" in res.moves, lab + " the defence includes the rebuttal (%s)" % [res.moves])
 		check(res.moves.size() >= 2, lab + " it is added to another move, not instead of one (%s)" % [res.moves])
@@ -133,7 +139,12 @@ func _run(g, size: int) -> void:
 		for i in range(res.lines.size()):
 			if res.lines[i] is Dictionary and case[3] in str(res.lines[i].get("statement", "")):
 				at = i
-		check("dispute_night" in res.moves and at >= 2, lab + " it follows their account of that night, never replacing it (line %d)" % at)
+		if case[2] == "no_death":
+			# The outing is owned already, so there is no account to give or dispute: the line
+			# comes first, added to their other move.
+			check(not ("dispute_night" in res.moves) and at == 0, lab + " with the outing owned, it opens the defence without disputing the night (line %d, moves %s)" % [at, res.moves])
+		else:
+			check("dispute_night" in res.moves and at >= 2, lab + " it follows their account of that night, never replacing it (line %d, moves %s)" % [at, res.moves])
 		var entries: Array = []
 		for l in w.living():
 			if l == d:
@@ -165,9 +176,23 @@ func _run(g, size: int) -> void:
 	var card_on: Dictionary = _sighting(accuser, d, 1, on_b)
 	check(MindPodium.press_card(w, d, card_on, true).get("rebuttal", {}).is_empty(), tag + " the podium press of an on-route sighting adds nothing")
 
-	# In private: pressed with the sighting.
+	# In private: pressed with the sighting. Home that night, it isn't said; out and owning it,
+	# it is.
+	d.history[w.time_key(2, C.NIGHT)] = "home:" + d.home_block
+	d.dialogue_memory.get("night_accounts", {}).erase("2")
+	var priv_home: Dictionary = MindPress.press(w, d, _sighting(accuser, d, 2, off_b))
+	check(not priv_home.lines.any(func(l): return l is Dictionary and "no one died that night" in str(l.get("statement", ""))), tag + " the private press after a home account doesn't say \"I was seen out\"")
+	_own_outing(w, d, 2, off_b)
 	var priv: Dictionary = MindPress.press(w, d, _sighting(accuser, d, 2, off_b))
-	check(priv.lines.any(func(l): return l is Dictionary and "no one died that night" in str(l.get("statement", ""))), tag + " the private press over a quiet night adds the rebuttal")
+	check(priv.lines.any(func(l): return l is Dictionary and "no one died that night" in str(l.get("statement", ""))), tag + " the private press over a quiet night, the outing owned, adds the rebuttal")
+
+## Out on `block` that night and already owning it (an admitted walk, reason kept back).
+func _own_outing(w, d, nd: int, block: String) -> void:
+	d.history[w.time_key(nd, C.NIGHT)] = "night:" + block
+	var accounts: Dictionary = d.dialogue_memory.get("night_accounts", {})
+	accounts[str(nd)] = {"kind": "alibi", "subject": [d.id], "home": false, "day": nd, "phase": C.NIGHT, "source": d.id, "block": block,
+		"text": "%s says they were out on %s on night %d." % [d.name, block, nd]}
+	d.dialogue_memory["night_accounts"] = accounts
 
 func _sighting(src, subj, nd: int, block: String) -> Dictionary:
 	return {"kind": "sighting", "source": src.id, "subject": [subj.id], "block": block, "day": nd, "phase": C.NIGHT,
