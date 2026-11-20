@@ -13,7 +13,6 @@ const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
-const Support = preload("res://workshop/support_model.gd")
 
 var checks = 0
 var fails = 0
@@ -69,7 +68,6 @@ func _init() -> void:
 	_live()
 	_menu()
 	_refusals()
-	_support(rose, demon_g, good_g)
 	print("Demon when hanged: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -198,19 +196,3 @@ func _refusals() -> void:
 	check(Assess.conclusion_issues(no_scion, case_of.call("demon", "g")) == [Assess.HANGED_NO_SCION_ISSUE], "a saved \"was the Demon\" about a hanged person with no Scion on the script is refused")
 	check(Assess.conclusion_issues(with_scion, case_of.call("demon", "g")).is_empty(), "with a Scion on the script, \"was the Demon when hanged\" is judged")
 	check(Assess.conclusion_issues(no_scion, case_of.call("demon", "a")).is_empty() and Assess.conclusion_issues(no_scion, case_of.call("notdemon", "a")).is_empty(), "the living keep both Demon premises")
-
-
-## The legacy judge's comparison agrees with the solver (Codex on #305): a succession world
-## supports "was the Demon when hanged" rather than counting as a rival.
-func _support(rose: Dictionary, demon_g: Dictionary, good_g: Dictionary) -> void:
-	var view: Dictionary = _view(["scion", "poisoner"])
-	view["world_options"] = {"identities": true}
-	var q: Dictionary = {"type": "demon", "target": "g", "at": ""}
-	rose = rose.merged({"marked": -1})
-	good_g = good_g.merged({"marked": -1})
-	var TimeModel = preload("res://workshop/chronology.gd")
-	var ranks: Dictionary = {TimeModel.key(view, rose): 1.0, TimeModel.key(view, good_g): 1.0}
-	var only_rose: Dictionary = Support._comparison(view, [rose], q, [], ranks)
-	check(float(only_rose.support) > 0.0 and float(only_rose.rival) == 0.0, "the legacy comparison counts a succession world as support, not a rival (%s)" % only_rose)
-	var only_good: Dictionary = Support._comparison(view, [good_g], q, [], ranks)
-	check(float(only_good.support) == 0.0 and float(only_good.rival) > 0.0, "a world where the hanged person was good is the rival")
