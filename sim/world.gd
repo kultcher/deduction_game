@@ -981,6 +981,8 @@ func vote_pending(player_yes: bool) -> Dictionary:
 	var prev_block: String = meeting["block"]
 	var prev_block_count: int = int(meeting["block_count"])
 	meeting["vote_parts"] = {}
+	# The player's vote is declared up front, so a no pushes every voter (Michael, Nov 19).
+	meeting["player_votes_no"] = not player_yes
 	var order: Array = vote_order(nid)
 	for vid in order:
 		if vid == "player":
@@ -991,6 +993,7 @@ func vote_pending(player_yes: bool) -> Dictionary:
 			public_event("vote_yes", [nid], v.id)
 		else:
 			no.append(v.id)
+	meeting.erase("player_votes_no")
 	var count = yes.size() + (1 if player_yes else 0)
 	var thr = vote_threshold()
 	var outcome = "fails"
@@ -1029,6 +1032,9 @@ func vote_pending(player_yes: bool) -> Dictionary:
 		var t = by_id[nid]
 		if nm["by"] != "player":
 			Mind.set_trust(self, t, t.trust - Tuning.Trust.VOTED_YES_ON_ME_DROP, "the Demonologist voted to hang me")
+	elif nm["by"] != "player" and by_id[nid].alive:
+		var t = by_id[nid]
+		Mind.set_trust(self, t, t.trust + Tuning.Trust.VOTED_NO_ON_ME_RISE, "the Demonologist voted to spare me")
 	return res
 
 ## Close the meeting: whoever is on the block is executed.
