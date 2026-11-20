@@ -339,6 +339,11 @@ workshop/         the shared case judge: case_eval.gd (possible worlds), connect
                   reading_confirm.gd (does a reading confirm what the listener knows),
                   circumstantial.gd (the hub), chronology.gd (curse epochs),
                   canvas_model.gd (the board's case model), solver_backend.gd
+workshop/live_activity_base.gd, live_activity_profiles.gd, live_activity_pack.gd,
+   live_activity_factors.gd
+                  LiveActivity's constants, movement inputs and per-person profiles, the C#
+                  packing and routes, and the joint factor machinery; one inheritance chain
+                  under live_activity.gd, which keeps factors(), score() and _likelihood()
 workshop/cs/      the C# solver kernel (built by Demonologist.csproj)
 game/game.gd      command interpreter and state container; emits structured events
 game/game_conversation.gd, game_meeting.gd, game_day_night.gd, game_screens.gd,
