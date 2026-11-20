@@ -81,11 +81,7 @@ class Setup:
 	const SLEEPWALK_CHANCE = 0.5
 	const FLAVOR_SECRET_WALK_CHANCE = 0.55
 
-	## Night drops, sightings & crime scene traces
-	const DROP_CHANCE_DEMON = 0.35
-	const DROP_CHANCE_WALKER = 0.15
-	const LEGACY_MUD_DROPS_ENABLED = false
-	const DROP_OWNED_CHANCE = 0.12
+	## Night sightings & crime scene traces
 	const NIGHT_SIGHTING_STREET_CHANCE = 0.5
 	const NIGHT_SIGHTING_WINDOW_CHANCE = 0.15
 	const NIGHT_NEIGHBOUR_ALIBI_CHANCE = 0.2
@@ -1286,20 +1282,6 @@ class Workshop:
 	}
 
 
-
-# ---------------------------------------------------------------- 10. Presentation replies (purge phase 4)
-
-## Speech the Workshop doesn't judge (protect / spare preferences, bare beliefs):
-## sim/presentation_reply.gd. Never evidence; only feeds social preferences.
-class Presentation:
-	## Agreement = trust weight x the listener's trust in the player + belief weight x how
-	## far their own suspicion already leans the speaker's way.
-	const SOCIAL_TRUST_WEIGHT = 0.5
-	const SOCIAL_BELIEF_WEIGHT = 0.5
-	## Below this (agreement x venue scale) nothing is recorded.
-	const SOCIAL_MIN_BASE = 0.004
-	## Trust lost when the player accuses a good listener of something they know is false.
-	const SELF_ACCUSED_TRUST_LOSS = 0.05
 
 static var _fingerprint_cache: String = ""
 

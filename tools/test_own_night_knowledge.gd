@@ -31,7 +31,9 @@ func check(ok: bool, label: String) -> void:
 
 ## The listener's prepared view and the teller's chance of evil with every held card, and
 ## with the cards `drop` accepts left out. {} if the listener has no plan.
-func _effect(g, listener_id: String, teller_id: String, drop: Callable) -> Dictionary:
+## `plain_self`: read the listener's own home nights with only the tiny own-reading error, as
+## a town with no Sleepwalker on its script would (the Sleepwalker check's comparison).
+func _effect(g, listener_id: String, teller_id: String, drop: Callable, plain_self: bool = false) -> Dictionary:
 	var n = g.w.by_id[listener_id]
 	var key: String = n.id + ":good"
 	g._workshop_evaluations.erase(key)
@@ -52,12 +54,21 @@ func _effect(g, listener_id: String, teller_id: String, drop: Callable) -> Dicti
 		for id in it.cards:
 			if id not in held:
 				held.append(id)
-	var dropped: Array = plan.prepared.view.cards.filter(drop).map(func(c): return c.id)
-	var state: Dictionary = base.get("connections", {})
-	var a: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held, state)
-	var b: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held.filter(func(id): return id not in dropped), state)
+	var view: Dictionary = plan.prepared.view
+	if plain_self:
+		view = view.duplicate(true)
+		for c in view.cards:
+			if bool(c.get("known_self", false)):
+				c["self_doubt"] = Tuning.Workshop.OWN_ERR
+		if view.get("own_home") is Dictionary:
+			for k in view.own_home.get("nights", {}):
+				view.own_home.nights[k] = Tuning.Workshop.OWN_ERR
+	var dropped: Array = view.cards.filter(drop).map(func(c): return c.id)
+	var state: Dictionary = {} if plain_self else base.get("connections", {})
+	var a: Dictionary = Connections.refresh(view, plan.prepared.case, weigher, held, state)
+	var b: Dictionary = Connections.refresh(view, plan.prepared.case, weigher, held.filter(func(id): return id not in dropped), state)
 	return {"with": float(a.posterior.get(teller_id, -1.0)), "without": float(b.posterior.get(teller_id, -1.0)),
-		"dropped": dropped.size(), "view": plan.prepared.view, "held": held}
+		"dropped": dropped.size(), "view": view, "held": held}
 
 
 func _logit(p: float) -> float:
@@ -76,7 +87,7 @@ func _missing(label: String) -> void:
 func _init() -> void:
 	# 1. An evil planter's fake street sighting of a good person who was home (a sighting
 	# on their own block, "seen leaving home", barely clashes with being home).
-	var f: Dictionary = Seeds.framed_sighting(2, false, "street")
+	var f: Dictionary = Seeds.framed_sighting(2, false, "street", 0.0, Seeds.SEEDS_FROM, 0.5)  # heard nearly in full (Lantern, Nov 20)
 	if f.is_empty():
 		_missing("a planter's fake sighting")
 	else:
@@ -123,6 +134,13 @@ func _init() -> void:
 		print("%s: %.3f with the sighting, %.3f without" % [label3, e3.with, e3.without])
 		var own3: Array = _own_cards(e3.view, s.subject)
 		check(not own3.is_empty() and own3.all(func(c): return absf(float(c.get("self_doubt", -1.0)) - Tuning.Workshop.SLEEPWALK_SELF_DOUBT) < 1e-9), "%s: its known-home cards carry the Sleepwalker's doubt" % label3)
-		check(e3.with < 0.7, "%s: it stays far from sure the sighter lied (%.3f)" % [label3, e3.with])
+		# The sighting's own effect, against the same game read with no sleepwalking doubt (Lantern,
+		# Nov 20): an end state ("< 0.7") depends on the game's other cards.
+		var sight3 = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == s.sighter and s.subject in c.get("subjects", [c.get("subject", "")])
+		var p3: Dictionary = _effect(s.g, s.subject, s.sighter, sight3, true)
+		var lift3: float = _logit(e3.with) - _logit(e3.without)
+		var plain3: float = _logit(p3.with) - _logit(p3.without)
+		print("%s: lift %+.2f log-odds with the doubt, %+.2f without (%.3f / %.3f)" % [label3, lift3, plain3, p3.with, p3.without])
+		check(lift3 < plain3, "%s: the sighting counts less against the sighter than it would with no sleepwalking doubt (%+.2f against %+.2f log-odds)" % [label3, lift3, plain3])
 	print("Own night knowledge: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

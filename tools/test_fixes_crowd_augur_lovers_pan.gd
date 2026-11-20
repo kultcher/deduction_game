@@ -98,6 +98,8 @@ func _augur() -> void:
 	var lone = Game.new()
 	lone.detailed_logging = false
 	lone.new_case(692, 7)
+	lone.board.clear()  # only this fixture's cards (the game makes its own work sightings)
+	lone._fact_keys.clear()
 	lone.add_card({"kind": "info", "source": lone.w.npcs[2].id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": false}, "text": "no crossing"})
 	var lv: Dictionary = Live.view(lone)
 	var lc: Dictionary = {}

@@ -19,6 +19,7 @@ test_case_script
 test_caught_lie_softening
 test_caught_out_ladder
 test_codex_fixes
+test_confessed_night
 test_connections
 test_connections_cache
 test_connections_cases
@@ -98,6 +99,7 @@ test_peer_role_gossip
 test_player_failed_gift
 test_playtest_23973
 test_playtest_89077
+test_points_elsewhere
 test_poison_chance
 test_poison_outing
 test_poison_self_doubt

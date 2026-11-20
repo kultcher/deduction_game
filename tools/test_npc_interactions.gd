@@ -185,7 +185,7 @@ func _protection_flow() -> void:
 		if g.protect_pending.has(n.id):
 			deferred += 1
 			_check(n.protect_lock, "a deferred disclosure locks in their promise")
-			var keep: bool = sd % 2 == 0
+			var keep: bool = deferred % 2 == 1  # alternate over the deferred deals (the first is kept), not by seed
 			g.state = "night"
 			if keep:
 				g.command("vigil " + n.home_block)
