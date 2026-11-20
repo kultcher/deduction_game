@@ -189,7 +189,10 @@ listener (#273), both Lantern's.
 - **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
   player presents should move onto the current social plumbing, not the old
   `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
-  is worth keeping. Herald scopes it, and a decision follows the scope. **[open]**
+  is worth keeping. Herald scopes it, and a decision follows the scope.
+  - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
+    play: there are no protect or spare cases and no bare beliefs, and the evil fallback
+    only follows from those. Herald deletes it in a zero-drift PR. **[decided]**
 
 ### NPC behaviour
 
