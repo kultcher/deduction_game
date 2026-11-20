@@ -247,10 +247,6 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		primary_key = "present_false_self" if about_me else "present_false_known"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		allow_lean = false
-	elif ctype == "conflict":
-		primary_key = "present_conflict_found" if agreement > 0.0 else "present_conflict_none"
-		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
-		allow_lean = false
 	elif path_kind == "pattern" and agreement > 0.0:
 		primary_key = "present_circumstantial_only"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
@@ -388,7 +384,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 					primary_key = "present_unmoved"
 					parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label}))
 
-	if bounded and primary_key not in ["present_lost_thread", "present_clashes_own", "present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none"]:
+	if bounded and primary_key not in ["present_lost_thread", "present_clashes_own", "present_false_self", "present_false_known"]:
 		var ignored_arr: Array = reasoning.get("ignored", [])
 		var pres_rep: Array = snapshot.get("selected", []) if snapshot.has("selected") else view.get("listener", {}).get("knowledge", {}).get("presented_reports", [])
 		var ignored_presented: bool = ignored_arr.any(func(id): return id in pres_rep)
@@ -398,7 +394,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 	# The movement notes ("seen elsewhere, so not the killer", "the traces incline me") only
 	# fit premises about whether someone is the killer's side (premises pass step 1; playtest
 	# issue #5: "Dorian is the Warden" drew a killer clause).
-	if primary_key not in ["present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none", "present_conditional"] and ctype in MOVEMENT_NOTE_TYPES:
+	if primary_key not in ["present_false_self", "present_false_known", "present_conditional"] and ctype in MOVEMENT_NOTE_TYPES:
 		_append_movement_notes(w, listener.id, ctype, stance_subject, ev, parts, used_circumstantial, allow_lean)
 
 	var joined: String = " ".join(PackedStringArray(parts.filter(func(s): return str(s).strip_edges() != "")))
@@ -423,10 +419,6 @@ static func render_evil_override(w, n, conclusion: Dictionary, stance: String, a
 			var self_def: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "present_false_self", canonical), tic_memory)
 			return _attach_expression(n.id, {"speaker": n.id, "name": n.name, "text": self_def, "statement": canonical}, "present_false_self")
 		return render_self_support(n, "thanks", canonical, tic_memory)
-	if ctype == "conflict":
-		var ck: String = "present_conflict_found" if stance != "reject" else "present_conflict_none"
-		var cv: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, ck, canonical), tic_memory)
-		return {"speaker": n.id, "name": n.name, "text": cv, "statement": canonical}
 	var target_label: String = w.by_id[target_id].name if (target_id != "" and w.by_id.has(target_id)) else "that"
 	var key: String = "present_unmoved"
 	var slots: Dictionary = {"target": target_label}

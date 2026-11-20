@@ -145,8 +145,6 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
 	case_data = with_hanged_refuters(view, case_data, cards, true)
-	if case_data.conclusion.type == "conflict":
-		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope) or c.id in knowledge.get("own_reports", []))
 	var base = solve(view, cards, {}, {}, knowledge)
 	var proposed_cards = TimeModel.hypothetical_cards(view, case_data, cards)
 	var positions: Dictionary = case_data.positions.duplicate(true)
@@ -205,14 +203,10 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	var entailment = "possible"
 	if base.worlds.is_empty() or not base.movement_ok:
 		entailment = "conflicting"
-	elif conclusion.type == "conflict":
-		entailment = "unsupported"
 	elif n == base.worlds.size():
 		entailment = "forced"
 	elif n == 0:
 		entailment = "unsupported"
-	if conclusion.type == "conflict" and (base.worlds.is_empty() or not base.movement_ok):
-		entailment = "forced"
 	var conflicts: Array = []
 	if include_conflicts and (base.worlds.is_empty() or not base.movement_ok):
 		conflicts = minimal_conflicts(view, cards, knowledge)

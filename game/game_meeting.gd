@@ -200,11 +200,10 @@ static func already_public(g, card: Dictionary) -> bool:
 	return g.public_citations.has(int(card.get("n", 0))) or CardModel.disclosure_scope(card) == "public"
 
 
-## Is this filed case about `id`: does its headline name them, for or against? A conflict
-## names everyone in its group.
+## Is this filed case about `id`: does its headline name them, for or against?
 static func case_about(card: Dictionary, id: String) -> bool:
 	var c: Dictionary = card.get("conclusion", {})
-	return str(c.get("a", "")) == id or str(c.get("b", "")) == id or id in c.get("group", [])
+	return str(c.get("a", "")) == id or str(c.get("b", "")) == id
 
 
 ## Which way a case about `id` speaks at their nomination: "defend" when its headline clears

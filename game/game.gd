@@ -321,7 +321,7 @@ func _attach_workshop_world() -> void:
 			var endorsed: Array = WorkshopOwnership.Shared.endorsed_facts(captured, card.n)
 			for id in proof.receipts.keys():
 				if id not in endorsed:
-					proof.receipts.erase(id) # Quoting a conflict is not endorsing its accounts.
+					proof.receipts.erase(id) # Quoting a case is not endorsing its accounts.
 		return proof
 	w.workshop_present = func(n, card, targets, direction, venue, speak):
 		var game = weak_game.get_ref()
@@ -848,11 +848,6 @@ func file_deduction(conclusion: Dictionary, supports: Array, workshop_filing: bo
 ## the card has no direction of its own, it falls flat (logged as a fallback).
 func _route_present(n, rest: String) -> Dictionary:
 	return GamePresentation._route_present(self, n, rest)
-
-## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
-## them; privately, only the listener if they're one of them.
-func _conflict_pressure(ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	GamePresentation._conflict_pressure(self, ded, amount, listener, fallback)
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 ## Meeting plan M2a, for the nomination picker: the case on deck against `id`, every live

@@ -23,26 +23,6 @@ static func normalize(c: Dictionary) -> Dictionary:
 		c["type"] = "misled"
 	return c
 
-## The people a set of cards rests on: who said or reported them (and who claimed what).
-## Excludes you, physical evidence, and anyone the demon killed (known good).
-static func group_of(w, cards: Array) -> Array:
-	var out: Array = []
-	for x in cards:
-		var ids: Array = []
-		var src: String = x.get("source", "")
-		if w.by_id.has(src):
-			ids.append(src)
-		if x.get("kind", "") == "claim":
-			ids += x.get("subject", [])
-		for id in ids:
-			if w.by_id.has(id) and not (id in out) and not (not w.by_id[id].alive and w.by_id[id].death_cause == "demon"):
-				out.append(id)
-	out.sort()
-	return out
-
-static func conflict_of(w, cards: Array) -> Dictionary:
-	return {"type": "conflict", "a": "", "group": group_of(w, cards)}
-
 static func _names(w, ids: Array) -> String:
 	var names: Array = ids.map(func(x): return _nm(w, x))
 	if names.size() <= 1:
@@ -206,8 +186,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "%s should be protected" % a
 		"spare":
 			return "%s should be spared from execution" % a
-		"conflict":
-			return "Something doesn't add up: one of %s is misled or lying" % _names(w, c.get("group", []))
 		"suspicious":
 			return "%s is suspicious" % a
 		"turned":
@@ -232,8 +210,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 
 ## A key for "the same conclusion": type, person and its qualifier.
 static func conclusion_key(c: Dictionary) -> String:
-	if c.get("type", "") == "conflict":
-		return "conflict:" + ",".join(PackedStringArray(c.get("group", [])))
 	return "%s:%s:%s:%s" % [c.get("type", ""), c.get("a", ""), c.get("role", c.get("mod", "")), str(c.get("night", c.get("card", "")))]
 
 ## Three-valued trace relevance from ONLY discovered board/profile receipts (`matches` | `unknown` | `contradicts`).
@@ -354,8 +330,6 @@ static func trace_fit_from_receipts(person_id: String, trace_card: Dictionary, r
 ## Do these cards actually say something about the conclusion's subject?
 ## Uses only discovered `known_receipts` (falling back to `cards`) so filing never leaks hidden truth.
 static func bears_on(w, c: Dictionary, cards: Array, known_receipts: Array = []) -> bool:
-	if c.get("type", "") == "conflict":
-		return c.get("group", []).size() >= 2
 	var a: String = c.get("a", "")
 	var pool: Array = known_receipts if not known_receipts.is_empty() else cards
 	for x in cards:
@@ -372,8 +346,6 @@ static func bears_on(w, c: Dictionary, cards: Array, known_receipts: Array = [])
 static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matched: bool) -> String:
 	if supports.is_empty():
 		return "Pick at least one card as evidence."
-	if c.get("type", "") == "conflict" and c.get("group", []).size() < 2:
-		return "Those cards only rest on one person's word. Name them instead (e.g. 'is misled or lying')."
 	var a: String = c.get("a", "")
 	var cards: Array = board.filter(func(x): return x["n"] in supports)
 	if cards.is_empty():

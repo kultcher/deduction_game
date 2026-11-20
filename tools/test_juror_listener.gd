@@ -158,7 +158,7 @@ func _top_tier() -> void:
 	check(cat.call("evil") == "damning" and cat.call("demon") == "damning" and cat.call("good") == "damning" and cat.call("notdemon") == "damning",
 		"at a 95% chance, an accusing premise, \"is good\" and \"is not the Demon\" reach the top tier")
 	check(cat.call("role") == "none" and cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
-		and cat.call("secret_mod") == "none" and cat.call("conflict") == "none",
+		and cat.call("secret_mod") == "none",
 		"a clearing premise the target's goodness doesn't settle keeps the tier its strength earns")
 
 

@@ -53,9 +53,6 @@ static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -
 
 static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
 	var full = Graph.compile_case(view, value)
-	if full.conclusion.type == "conflict":
-		var scope = Graph.roots(value, full.get("conflict_scope", []))
-		full.cards = full.cards.filter(func(id): return id in scope)
 	var limits = profile(listener.get("insight", 0.5))
 	var bounded: bool = listener.get("reasoning_mode", "full") == "bounded"
 	if bounded and listener.knowledge.has("attention_reports"):

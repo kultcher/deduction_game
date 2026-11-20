@@ -181,7 +181,7 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	result.calculation.rule = consequences.rule
 	# Speak about accepted intermediate inferences separately from the headline.
 	if not result.repeated:
-		if effects[target].get("protection_signal", 0.0) < 0 and case_data.conclusion.type != "conflict":
+		if effects[target].get("protection_signal", 0.0) < 0:
 			result.response += " The quiet night gives that protection claim some support, though other explanations remain."
 		for claim in consequences.claims:
 			if claim.conclusion.target != target and claim.conclusion.type == "evil" and claim.status == "entailed_in_attention" and claim.forced_mass > 0:
@@ -324,7 +324,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		best = pattern
 	# The player's chosen answers and positions are a theory: if the conclusion follows
 	# only once they're granted, say so. They never add evidence.
-	if best.kind == "reading" and best.agreement < 0.6 and conclusion.type not in ["conflict", "suspicious"]:
+	if best.kind == "reading" and best.agreement < 0.6 and conclusion.type != "suspicious":
 		var positions: Dictionary = case_data.positions.duplicate(true)
 		positions.erase(target)
 		var answers: Dictionary = case_data.answers.duplicate(true)
@@ -333,10 +333,6 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			if not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, conclusion)):
 				best.kind = "conditional"
 	var conflict = assessment.status == "conflicting" or not ev.consistent
-	if conclusion.type == "conflict":
-		var detected: bool = (reasoning.status == "inconsistent" or not reasoning.private_checks.rejected.is_empty()) if bounded else not ev.consistent
-		var value = 1.0 if detected else 0.0
-		best = {"weight": value, "agreement": value, "quality": 1.0, "cards": case_data.cards, "kind": "conflict"}
 	if reasoning.private_checks.fatal or ev.impossible:
 		best.weight = 0.0
 		best.agreement = 0.0
@@ -360,8 +356,6 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		objection = _bounded_objection(reasoning)
 		if reasoning.private_checks.fatal:
 			response = reasoning.private_checks.objections[0]
-		elif conclusion.type == "conflict":
-			response = "The accounts I considered cannot all be accurate. That does not identify anyone as evil." if best.agreement > 0 else "I have not established a conflict among the accounts I considered."
 		elif best.kind == "pattern" and best.weight > 0:
 			response = "That gives me a reason to be suspicious, though it does not establish evil."
 		elif best.kind == "conditional":
@@ -436,8 +430,6 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 	var conclusion: Dictionary = case_data.conclusion
 	if repeated:
 		return "That is the same case. Repeating it adds no new reason."
-	if conclusion.type == "conflict":
-		return "Those accounts cannot all be accurate. I have reopened which report to believe; this does not establish anyone's alignment." if best.agreement > 0 else "I don't see a conflict among the reports you selected."
 	if best.kind == "pattern" and best.weight > 0:
 		return "That gives me a reason to be suspicious, though it does not establish evil."
 	var response = ""
@@ -843,7 +835,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 					net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
 		var own_check: Dictionary = belief_case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
-		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"
+		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at)
 		if direct_fatal:
 			net_weight = 0.0
 		var per_card_trust: bool = bool(baseline.get("per_card_source_trust", false))
@@ -954,8 +946,6 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 		pattern_case.cards = pattern_case.cards.filter(func(id): return id not in checks.rejected)
 		pattern = _pattern(view, pattern_case, baseline)
 		agreement = maxf(agreement, pattern.agreement if pattern.weight > 0 else 0.0)
-	if claim_case.conclusion.type == "conflict":
-		agreement = 1.0 if status == "inconsistent" or not ev.consistent or not checks.rejected.is_empty() else 0.0
 	if checks.fatal or ev.impossible:
 		agreement = 0.0
 	var note = "Another explanation remains possible."
@@ -967,8 +957,6 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 		note = "The observations give a circumstantial reason for suspicion; they do not establish evil."
 	elif claim_case.conclusion.type == "suspicious" and not ev.movement.is_empty() and agreement > 0:
 		note = "The joint movement and trace comparison gives a circumstantial reason for suspicion; it does not establish evil."
-	elif claim_case.conclusion.type == "conflict":
-		note = "The considered accounts conflict; that does not identify deliberate deception or evil." if agreement > 0 else "I have not established a conflict in the considered accounts."
 	elif status == "inconsistent" or not ev.consistent:
 		note = "The premises I checked cannot all hold together."
 	elif status == "entailed_in_attention":

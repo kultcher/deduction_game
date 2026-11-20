@@ -51,11 +51,11 @@ var presenting = false
 ## a curse has been announced (Michael, Nov 19), or on a premise that already holds it; the
 ## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
 ## as it is for the older off-screen picker, which selects by index.
-const LIVE_TYPES = ["evil", "suspicious", "good", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent", "turned"]
+const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "minion", "notdemon", "secret_mod", "role", "inconsistent", "turned"]
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "these reports conflict", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the Revenant's curse"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is a Minion", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the Revenant's curse"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
 ## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
@@ -1131,7 +1131,7 @@ func set_premise_field(id: String, field: String, value) -> void:
 			node.erase("draft")
 			node.erase("pick")
 			node.conclusion = {}
-		elif type != "" and (pick.has("target") or type == "conflict"):
+		elif type != "" and pick.has("target"):
 			node.erase("draft")
 			node.erase("pick")
 			node.conclusion = {"type": type, "target": pick.get("target", board._default_target()), "at": board.view.alignment_epoch}

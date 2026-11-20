@@ -169,7 +169,7 @@ static func _masks(view: Dictionary, conclusion: Dictionary, cards: Array, unive
 	# and the public record of deaths (whether a reader was alive to read).
 	var about: String = "%d:%d" % [hash([Solver._universe_key(view), view.get("timeline", {})]), universe.size()]
 	var premise: PackedByteArray = _mask("%s:premise:%d" % [about, hash(conclusion)], universe,
-		func(world: Dictionary) -> bool: return conclusion.get("type", "") != "conflict" and Solver.holds(view, world, conclusion))
+		func(world: Dictionary) -> bool: return Solver.holds(view, world, conclusion))
 	var by_card_ok: Array = []
 	for card in cards:
 		# What teller_ok and Solver.source_valid read of a card. A listener takes their own

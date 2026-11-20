@@ -249,7 +249,6 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		return result
 	if not result.get("workshop", false):
 		Mind.refresh_beliefs(g.w, n, " (shared presentation)")
-		_conflict_pressure(g, ded, 0.1 if venue == "private" else 0.2, n, true)
 	if g.workshop_compare:
 		var comparison: Dictionary = WorkshopAssessment.evaluate(snapshot)
 		comparison.listener = n.id
@@ -498,22 +497,6 @@ static func _present_fallback(g, n, num: int, why: String) -> Dictionary:
 	return {"verb": "", "rest": "", "note": "", "flat": "%s: \"I'm not sure what you're trying to prove.\" (You can say 'present %d for <name>' or 'against <name>'.)" % [n.name, num]}
 
 
-## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
-## them; privately, only the listener if they're one of them.
-static func _conflict_pressure(g, ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	if not fallback:
-		return # The supported assessment owns scrutiny; unsupported paths retain native behavior.
-	var c: Dictionary = ded.get("conclusion", {})
-	if c.get("type", "") != "conflict":
-		return
-	for id in c.get("group", []):
-		var m = g.w.by_id[id]
-		if not m.alive or (listener != null and m != listener):
-			continue
-		m.pressure += amount
-		g.w.dlog.think(m.id, "pressed", "Under scrutiny: the Demonologist says something doesn't add up (pressure +%.2f -> %.2f)." % [amount, m.pressure])
-
-
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 static func _secrets_used(g, ded: Dictionary, depth: int = 0) -> void:
 	for x in ded.get("supports", []):
@@ -610,7 +593,6 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	g.w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)
-	_conflict_pressure(g, ded, 0.2, null)
 	# Every listener weighs the case, then the town's answers are given summarised: those who
 	# answered alike speak as one, a representative in full and the rest in a word (Michael,
 	# Nov 19; game/response_bundles.gd). The log keeps every answer.

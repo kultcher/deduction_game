@@ -633,7 +633,8 @@ The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
   suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, "something doesn't add up" (conflict), and "was turned by the curse". The
+  unreliable, and "was turned by the curse" ("these reports conflict" was removed,
+  Michael, Nov 20: it never moved beliefs, only earned trust risk-free). The
   last names the Revenant's turning itself: the person was good before the curse, evil only
   while it held, and good again after it, so their earlier and later word stands. "Evil
   during the curse" also allows that they were evil all along. It needs a public curse and

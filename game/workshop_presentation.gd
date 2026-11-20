@@ -134,8 +134,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var earlier: Array = state.get("facts", []).duplicate()
 	var novelty_ids = Shared.endorsed_facts(snapshot, snapshot.root)
 	var headline: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
-	if headline.conclusion.type == "conflict":
-		novelty_ids = snapshot.selected
 	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
 	var previous_focus: Array = state.get("attention_focus", []).duplicate()
 	state["attention_focus"] = original_ids.duplicate()
@@ -288,13 +286,11 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# Always judged on the narrower pass: the broader assessment's sign doesn't bound it
 		# (hearsay can lift a case its own cards and the listener's readings argue against;
 		# Codex review of PR #92).
-		var judged: float = float(assessment.agreement)
-		if root.conclusion.type != "conflict":
-			judged = _reward_agreement(plan, snapshot, state.outside, assessment)
+		var judged: float = _reward_agreement(plan, snapshot, state.outside, assessment)
 		if not fresh.is_empty() and judged >= 0.6:
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
 			Mind.refresh_beliefs(g.w, n, " (presentation trust reward)")
-		elif judged <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT and root.conclusion.type != "conflict":
+		elif judged <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT:
 			Mind.set_trust(g.w, n, n.trust - Tuning.Trust.PRESENTATION_WRONG_COST, "the presented reports argue against the claim")
 			Mind.refresh_beliefs(g.w, n, " (presentation wrong-premise cost)")
 		if _challenge_backfired(plan, snapshot, state.outside, assessment):
@@ -345,13 +341,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			text += hub_voiced_tail
 	if root.conclusion.type == "suspicious" and direction == "deduction" and not self_support:
 		_suspicious_pressure(g, n, root, snapshot, venue, listener_key, key)
-	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
-		if not state.has("scrutinized"):
-			state.scrutinized = {}
-		var sources: Array = snapshot.evidence.filter(func(e): return e.id in snapshot.selected).map(func(e): return e.source)
-		if not state.scrutinized.has(signature) and n.id in sources:
-			n.pressure += 0.1 if venue == "private" else 0.2
-			state.scrutinized[signature] = true
 	if not state.has("discussion"):
 		state.discussion = {}
 	# Trust rewards are part of the new starting inputs on a repeat.
@@ -546,7 +535,7 @@ static func belief_stance(kind: String, before: float, after: float) -> String:
 
 static func _belief_stance_text(g, n, kind: String, subject: String, before: float, scoped: String, text: String, nothing_new: bool = false) -> String:
 	if kind not in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
-		return text  # conflicts and the like say nothing about one person's alignment
+		return text  # lie calls and the like say nothing about one person's alignment
 	var after: float = n.suspicion.get(subject, 0.1)
 	var believed: String = belief_stance(kind, before, after)
 	g.w.dlog.trace_event("stance_from_belief", n.id, subject, {"kind": kind, "before": before, "after": after,

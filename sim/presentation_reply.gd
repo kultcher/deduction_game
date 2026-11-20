@@ -151,13 +151,7 @@ static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionar
 	var target = w.by_id.get(c.get("a", ""))
 	var accusing = c["type"] in ACCUSING or (c["type"] == "role" and Deduction.is_evil_role(c.get("role", "")))
 	var serves = 0.5
-	if c["type"] == "conflict":
-		var grp: Array = c.get("group", [])
-		if n.id in grp:
-			var agrees = w.rng.randf() < 0.5
-			return {"stance": "partial", "special": "I've told the truth. But something's off there, I'll grant you." if agrees else "I've told the truth, and I stand by it. Look to the others."}
-		serves = 0.15 if grp.any(func(x): return w.by_id[x].is_evil()) else 0.75
-	elif target != null:
+	if target != null:
 		if target == n and c["type"] in ["misled", "unreliable"]:
 			var agrees = w.rng.randf() < 0.5
 			return {"stance": "partial", "special": "I'm no liar. But my gift may have failed me; I'll grant that." if agrees else "I'm no liar, and I trust what my gift showed me. But I'll think on it."}
@@ -245,7 +239,7 @@ static func _record(w, n, ded: Dictionary, c: Dictionary, supports: Array, board
 
 static func descriptor(w, c: Dictionary, facts: Array, stance: String) -> Dictionary:
 	return {"kind": "argument", "key": Deduction.conclusion_key(c), "facts": facts.duplicate(), "stance": stance,
-		"claim": Deduction.conclusion_text(w, c).trim_prefix("Something doesn't add up: "), "target_id": c.get("a", ""),
+		"claim": Deduction.conclusion_text(w, c), "target_id": c.get("a", ""),
 		"accusing": c.get("type", "") in ACCUSING}
 
 

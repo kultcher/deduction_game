@@ -78,9 +78,7 @@ const BATCH5_SLOTS = {
 	"present_alt_marked": {"marked": "Isolde"},
 	"present_points_elsewhere": {"target": "Edda", "rival": "Fenwick"},
 	"present_weighs_against": {"target": "Edda"},
-	"present_conflict_found": {},
 	"present_conflict_weighing": {},
-	"present_conflict_none": {},
 	"present_conditional": {},
 	"present_lost_thread": {},
 	"present_partial_attention": {},
@@ -465,7 +463,7 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 257, "Agnes voice pack contains all 257 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 255, "Agnes voice pack contains all 255 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()
