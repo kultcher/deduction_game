@@ -2,6 +2,7 @@
 ## godot --headless --path . --script res://tools/test_town_ui.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const TraitBars = preload("res://ui/trait_bars.gd")
 var fails = 0
@@ -41,7 +42,7 @@ func _run() -> void:
 	n.max_tier = 0
 	n.claimed_role = "seer"
 	_check(cl._claimed(n) == "", "an undisclosed actual claim is absent from the cast list")
-	var relay = g.add_card({"kind": "claim", "source": n.id, "via": other.id, "subject": [n.id], "role": "seer", "text": "Via a witness: a private Seer claim."})
+	var relay = GameBoard.add_card(g, {"kind": "claim", "source": n.id, "via": other.id, "subject": [n.id], "role": "seer", "text": "Via a witness: a private Seer claim."})
 	var board_before = JSON.stringify(g.board)
 	var rng_before = g.w.rng.state
 	_check(cl._claimed(n) == "seer" and cl._relayed_claim(n).via == [other.id], "a relayed claim supplies its role and named attribution")

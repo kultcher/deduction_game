@@ -5,6 +5,7 @@
 ##   godot --headless --path . --script res://tools/test_review_fixes.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -91,7 +92,7 @@ func _test_silenced_trace() -> void:
 	var before: Dictionary = g.known_haunts.duplicate(true)
 	var receipts: int = g.profile_receipts.size()
 	var victim = g.w.living_good()[1]
-	var t: int = g.add_card({"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+	var t: int = GameBoard.add_card(g, {"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "a brass farthing", "text": "Scene trace: brass farthing (the Bakery or the Tavern)."})

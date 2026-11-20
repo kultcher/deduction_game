@@ -1,4 +1,5 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -31,7 +32,7 @@ func _init() -> void:
 	var eid: String = Mind.claim_eid(rival.id, "seer")
 	check(listener.workshop_state.owned.has(eid) and listener.workshop_state.owned.has(Mind.claim_eid(listener.id, "seer")), "both sides of a double claim acquire shared ownership")
 	check(is_zero_approx(Mind.claim_credence(listener, rival.id, "seer")), "owned legacy claim credence is parked")
-	var plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
+	var plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener.id), {}, listener.ledger)
 	var claims: Array = plan.prepared.view.cards.filter(func(c): return c.kind == "claim" and c.source == rival.id)
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, 0.5), "a public rival declaration enters once at its hearing weight")
 	var before: Dictionary = listener.workshop_state.requested.duplicate(true)

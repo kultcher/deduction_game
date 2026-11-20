@@ -6,6 +6,7 @@
 ##   godot --headless --path . --script res://tools/test_points_elsewhere.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -28,7 +29,7 @@ func check(ok: bool, label: String) -> void:
 func _judge(g, premise_type: String, subject, readings: Array) -> Dictionary:
 	var texts: Array = []
 	for r in readings:
-		var n: int = g.add_card({"kind": "info", "source": r[3].id, "role": "seer", "day": 1, "phase": 3,
+		var n: int = GameBoard.add_card(g, {"kind": "info", "source": r[3].id, "role": "seer", "day": 1, "phase": 3,
 			"data": {"pair": [r[0].id, r[1].id], "yes": r[2]},
 			"text": "%s seer day 1: %s and %s %s (%d)" % [r[3].id, r[0].id, r[1].id, "yes" if r[2] else "no", g.board.size()]})
 		texts.append(g.board[n - 1].text)

@@ -1,4 +1,5 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -29,7 +30,7 @@ func _init() -> void:
 	listener.role = "surveyor"
 	var entry = {"role": "surveyor", "day": 0, "phase": 3, "data": {"count": 2}, "text": "An unnamed Surveyor counted two.", "shared": false}
 	Mind.apply_info(g.w, listener, original, entry, 0.3, teller.id, true)
-	var plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
+	var plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener.id), {}, listener.ledger)
 	var cards: Array = plan.prepared.view.cards
 	check(plan.ready and cards.size() == 1 and cards[0].source == teller.id and cards[0].get("testimony_only", false), "unnamed reading is an account by the known teller")
 	check(plan.prepared.listener.reading_reliability[cards[0].id] <= Assess.C.RELAY_WEIGHT and plan.prepared.listener.reading_reliability[cards[0].id] > 0.0, "account keeps the existing reduced relay weight")
@@ -45,10 +46,10 @@ func _init() -> void:
 	var before: Dictionary = plan.prepared.duplicate(true)
 	original.role = "demon"
 	original.alignment = "evil"
-	plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
+	plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener.id), {}, listener.ledger)
 	check(plan.prepared == before, "changing hidden original role/alignment cannot alter the prepared assessment")
 	var medium = Shared.Evidence.normalize_card({"kind": "info", "role": "medium", "source": teller.id, "day": 2, "phase": 3, "subject": [], "data": {"dead": original.id, "item": {"type": "reading", "entry": entry}}, "text": "Unverified Medium account"})
-	var snapshot = g.workshop_snapshot([], listener.id)
+	var snapshot = GamePresentation.workshop_snapshot(g, [], listener.id)
 	var weak: Dictionary = Assess.testimony_card(medium, snapshot)
 	check(weak.get("testimony_only", false) and weak.source == teller.id and not weak.has("relay_source"), "unverified Medium original does not manufacture a verified transmission")
 	medium.content.data.item.entry.erase("day")

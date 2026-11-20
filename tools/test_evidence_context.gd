@@ -1,4 +1,5 @@
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Context = preload("res://ui/evidence_context.gd")
@@ -30,11 +31,11 @@ func run():
 	var a = g.w.npcs[0]
 	var b = g.w.npcs[1]
 	var c = g.w.npcs[2]
-	var location = g.add_card({"kind": "sighting", "source": "player", "subject": [a.id], "block": "square", "day": 2, "phase": C.MORNING, "text": "A public daytime sighting."})
-	var night = g.add_card({"kind": "sighting", "source": "player", "subject": [a.id], "block": "square", "day": 1, "phase": C.NIGHT, "text": "A night sighting."})
-	var psych = g.add_card({"kind": "info", "source": a.id, "subject": [b.id], "role": "psychologist", "day": 1, "data": {"subject": b.id, "trusts": a.id, "suspects": c.id}, "text": "A Psychologist reported public opinions."})
-	var claim = g.add_card({"kind": "claim", "source": a.id, "subject": [a.id], "role": "seer", "text": "A claims Seer."})
-	var opinion = g.add_card({"kind": "opinion", "source": a.id, "subject": [b.id], "text": "An unsupported opinion."})
+	var location = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [a.id], "block": "square", "day": 2, "phase": C.MORNING, "text": "A public daytime sighting."})
+	var night = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [a.id], "block": "square", "day": 1, "phase": C.NIGHT, "text": "A night sighting."})
+	var psych = GameBoard.add_card(g, {"kind": "info", "source": a.id, "subject": [b.id], "role": "psychologist", "day": 1, "data": {"subject": b.id, "trusts": a.id, "suspects": c.id}, "text": "A Psychologist reported public opinions."})
+	var claim = GameBoard.add_card(g, {"kind": "claim", "source": a.id, "subject": [a.id], "role": "seer", "text": "A claims Seer."})
+	var opinion = GameBoard.add_card(g, {"kind": "opinion", "source": a.id, "subject": [b.id], "text": "An unsupported opinion."})
 	var original = JSON.stringify(g.board)
 	var rng = g.w.rng.state
 	var numbers = Context.numbers(g)

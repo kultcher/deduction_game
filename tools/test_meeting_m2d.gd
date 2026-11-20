@@ -7,6 +7,7 @@
 ##     never voices its override.
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
@@ -44,7 +45,7 @@ func _meeting_game(sd: int, day: int = 2):
 	g.w.day = day
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	return g
 
 

@@ -4,6 +4,8 @@
 ## Gathered from the Legacy Purge phase 2b suite on 2026-11-04.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -98,7 +100,7 @@ func _test_vote_shielding() -> void:
 		"ambient refresh does NOT auto-compute vote shielding without a player-presented Circumstantial hub")
 
 	# Add the vote card and present a Circumstantial hub targeting `shielder`!
-	var vote_card_num: int = g.add_card({
+	var vote_card_num: int = GameBoard.add_card(g, {
 		"kind": "vote", "source": "player", "subject": tally["yes"] + [nom_evil.id],
 		"day": 2, "phase": C.EVENING, "nominee": nom_evil.id, "by": nominator.id,
 		"yes": tally["yes"].duplicate(), "no": tally["no"].duplicate(),
@@ -106,7 +108,7 @@ func _test_vote_shielding() -> void:
 		"threshold": tally["threshold"], "outcome": tally["outcome"],
 		"text": "Day 2 vote on %s" % nom_evil.name,
 	})
-	var dowser_card_num: int = g.add_card({
+	var dowser_card_num: int = GameBoard.add_card(g, {
 		"kind": "info", "source": nominator.id, "subject": [shielder.id, nominator.id],
 		"day": 1, "phase": C.MORNING, "role": "dowser",
 		"data": {"group": [shielder.id, nominator.id], "count": 1},
@@ -125,7 +127,7 @@ func _test_vote_shielding() -> void:
 	var filed_num: int = WorkshopCanvas.file(g, canvas.compile(prem_id))
 	_check(filed_num > 0, "WorkshopCanvas files case with vote card wired into Circumstantial hub")
 
-	g._evaluate_deduction(listener, g.board[filed_num - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed_num - 1], 1.0, false, "meeting")
 	var incs: Array = listener.workshop_state.get("circumstantial_incidents", {}).get(shielder.id, [])
 	_check(incs.any(func(inc): return str(inc.get("family", "")) == "shielding") and float(listener.workshop_state.get("circumstantial_applied", {}).get(shielder.id, 0.0)) > 0.0,
 		"player-presented Circumstantial hub fires shielding incident against no-voter (%s)" % str(incs))
@@ -155,9 +157,9 @@ func _present_watch_vs_alibi(trust_w: float, trust_a: float, blame: String) -> D
 	var alibied = goods[2]
 	listener.npc_trust[watcher.id] = trust_w
 	listener.npc_trust[alibied.id] = trust_a
-	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": C.NIGHT,
+	GameBoard.add_card(g, {"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": C.NIGHT,
 		"data": {"block": alibied.home_block, "seen": [alibied.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, alibied.name]})
-	g.add_card({"kind": "alibi", "subject": [alibied.id], "home": true, "day": 1, "phase": C.NIGHT, "source": alibied.id,
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [alibied.id], "home": true, "day": 1, "phase": C.NIGHT, "source": alibied.id,
 		"block": alibied.home_block, "text": "%s says they were home on night 1." % alibied.name})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var model = CanvasModel.new(view)
@@ -175,7 +177,7 @@ func _present_watch_vs_alibi(trust_w: float, trust_a: float, blame: String) -> D
 	else:
 		model.connect_cards(contradiction, premise)
 	var filed: int = WorkshopCanvas.file(g, model.compile(premise))
-	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false, "meeting")
 	return {"a": Mind.susp(listener, alibied.id), "w": Mind.susp(listener, watcher.id)}
 
 

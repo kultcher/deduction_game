@@ -1,4 +1,6 @@
 extends SceneTree
+const GameScreens = preload("res://game/game_screens.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
 const Activity = preload("res://workshop/live_activity.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
@@ -94,19 +96,19 @@ func _talk_sightings() -> void:
 	a.busy_with = b.id
 	b.busy_with = a.id
 	var before: int = g.board.size()
-	g._card_conversations()
+	GameScreens._card_conversations(g)
 	var sighted = func(n): return g.board.any(func(c): return c.kind == "sighting" and c.subject == [n.id] and c.loc == a.loc and int(c.day) == g.w.day and int(c.phase) == g.w.phase)
 	check(sighted.call(a) and sighted.call(b), "each talker has their own sighting card (a working one counts)")
 	check(g.board.slice(before).any(func(c): return c.kind == "conversation" and a.id in c.subject and b.id in c.subject), "the talk itself is a card")
 	var after: int = g.board.size()
-	g._card_conversations()
+	GameScreens._card_conversations(g)
 	check(not g.board.slice(after).any(func(c): return c.kind == "sighting"), "seeing the same talk again adds no new sightings")
 	# Visiting the spot in the same phase: the visit's sighting of each talker is the same
 	# fact (source, person, day, phase, block), so it merges into the talk's sighting card
 	# (Seneschal, Nov 18: BACKLOG "Conversation sightings should also cover location sightings").
 	g.loc = a.loc
 	var at_visit: int = g.board.size()
-	g._observe()
+	GameDayNight._observe(g)
 	var dup = func(n): return g.board.slice(at_visit).any(func(c): return c.kind == "sighting" and c.subject == [n.id] and int(c.phase) == g.w.phase)
 	check(not dup.call(a) and not dup.call(b), "visiting the spot in the same phase adds no second sighting of either talker")
 	_visit_then_talk()
@@ -129,11 +131,11 @@ func _visit_then_talk() -> void:
 	for n in g.w.living():
 		n.busy_with = ""
 	g.loc = pair[0].loc
-	g._observe()
+	GameDayNight._observe(g)
 	var seen_first = func(n): return g.board.filter(func(c): return c.kind == "sighting" and c.subject == [n.id] and int(c.day) == g.w.day and int(c.phase) == g.w.phase).size()
 	var before_a: int = seen_first.call(pair[0])
 	pair[0].busy_with = pair[1].id
 	pair[1].busy_with = pair[0].id
-	g._card_conversations()
+	GameScreens._card_conversations(g)
 	check(before_a == 1 and seen_first.call(pair[0]) == 1 and seen_first.call(pair[1]) == 1, "a visit then the talk in the same phase: still one sighting card each")
 	check(g.board.any(func(c): return c.kind == "conversation" and pair[0].id in c.subject and pair[1].id in c.subject), "and the talk is its own card")
