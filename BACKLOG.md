@@ -456,7 +456,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
   self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
   ones the holder knows about become ordinary claims, which evil can bluff, and the player
   can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
-  Muddler", section 2). Backlogged by
+  Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
+  "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
+  Marked, Unrequited and Ill-Omened (known); draft note and open questions in
+  [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
   it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
