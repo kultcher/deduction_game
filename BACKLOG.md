@@ -67,7 +67,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
   2. \*A reason citing a pairing the model didn't weigh `[polish]`
-  3. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
+  3. \*The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   4. Brute kills scored as hexes on custom scripts `[later]`
   5. Gift doubt for readings the judge doesn't check `[open]`
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
@@ -605,7 +605,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
         else.
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
-    - **A possible cap** would be a new constant, Michael's call.
+    - **Approved (Michael, Nov 20), as built in Lantern's #459:** her doubt that she stayed
+      home scales with her belief that she holds the Sleepwalker secret. It's capped at a coin
+      flip (reusing `SLEEPWALK_CHANCE`, 0.5), and its floor is the own-reading error. No new
+      constant. This item closes when #459 merges.
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
