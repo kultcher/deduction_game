@@ -357,7 +357,14 @@ static func choose_double_claim(w, l, rival, role: String) -> bool:
 		return false
 	var heat: float = float(Evil.exposure(w, l).get("public_talk", 0.0))
 	var p: float = Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE * clampf(1.0 - heat, 0.0, 1.0)
-	if not w.decision_roll(l, "minion_double_claim", p, {"base": Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE, "public_talk": heat}, rival.id):
+	# Its own draw, seeded from the moment, so the world's stream (and everything after it)
+	# moves only when a double claim is actually made.
+	var drng := RandomNumberGenerator.new()
+	drng.seed = hash([w.seed_value, w.day, l.id, rival.id, role, "minion_double_claim"])
+	var draw: float = drng.randf()
+	if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
+		w.dlog.decision(l.id, "minion_double_claim", "roll", draw < p, {"mechanism": "probability", "inputs": {"base": Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE, "public_talk": heat}, "probability": p, "draw": draw}, rival.id)
+	if draw >= p:
 		return false
 	var old: String = str(w.evil_plan["bluffs"].get(l.id, ""))
 	l.info_log = l.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == old))

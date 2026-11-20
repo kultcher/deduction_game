@@ -102,7 +102,7 @@ func _double_claim() -> void:
 	_unclaimed(demon)
 	var seen_demon := false
 	for k in 200:
-		w.rng.seed = k
+		w.seed_value = k
 		if MindMeeting.choose_double_claim(w, demon, rival, role):
 			seen_demon = true
 	_check(not seen_demon, "never the Demon")
@@ -114,7 +114,7 @@ func _double_claim() -> void:
 		_unclaimed(m)
 		m.dialogue_memory.erase("double_claim")
 		m.info_log = m.info_log.filter(func(x): return not (x.get("fake", false) and x.get("shared", false)))
-		w.rng.seed = 1000 + k
+		w.seed_value = 1000 + k
 		if MindMeeting.choose_double_claim(w, m, rival, role):
 			hits += 1
 	var rate: float = hits / 400.0
@@ -123,7 +123,7 @@ func _double_claim() -> void:
 	for k in 400:
 		_unclaimed(m)
 		m.dialogue_memory.erase("double_claim")
-		w.rng.seed = 9000 + k
+		w.seed_value = 9000 + k
 		if MindMeeting.choose_double_claim(w, m, rival, role):
 			chose = true
 			break
@@ -135,10 +135,16 @@ func _double_claim() -> void:
 	for k in 200:
 		_unclaimed(m)
 		m.dialogue_memory.erase("double_claim")
-		w.rng.seed = 5000 + k
+		w.seed_value = 5000 + k
 		if MindMeeting.choose_double_claim(w, m, rival, role):
 			hot += 1
 	_check(hot == 0, "fully implicated before the town, it never double-claims (%d)" % hot)
+	# Its draw is its own: choosing (or not) leaves the world's random stream where it was.
+	_unclaimed(m)
+	w.public_log = w.public_log.filter(func(x): return not (m.id in x.get("subjects", [])))
+	var state = w.rng.state
+	MindMeeting.choose_double_claim(w, m, rival, role)
+	_check(w.rng.state == state, "the double-claim roll draws nothing from the world's stream")
 
 ## Pressed in private with another NPC's sighting (Michael, Nov 19): "<witness> is lying
 ## about seeing me", Confidence over the meeting's gate; a good NPC only if it was home.
