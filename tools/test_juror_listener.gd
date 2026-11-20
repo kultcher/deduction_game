@@ -92,6 +92,25 @@ func _init() -> void:
 	var ndc: Dictionary = Live.test_juror(g, nd_called)
 	check(nd2.get("ready", false) and ndc.get("ready", false) and float(ndc.lr) > 1.0 and absf(log(float(ndc.lr)) - log(float(nd2.lr))) < 0.5 * absf(log(float(nd2.lr))),
 		"a bare lie call on \"neither is the Demon\" doesn't turn \"is not the Demon\" against itself (x%.3f, x%.3f uncalled)" % [float(ndc.get("lr", 0.0)), float(nd2.get("lr", 0.0))])
+	# An honest-mistake call the listener takes discounts the reading in the Demon share too
+	# (Codex on #410), as it does in the listener's own chances: the share moves with the call.
+	# Word against word (the Minion's bluff against the real Seer) an average listener doesn't
+	# take the call, so the grounds are taken as true here (the "legacy" clash rule) to reach it.
+	var RC = preload("res://workshop/reading_challenges.gd")
+	var rule_was: String = RC.clash_rule
+	RC.clash_rule = "legacy"
+	var nd_mist: Dictionary = model.compile(nd2_p)
+	nd_mist["reading_challenges"] = {truth_id: {"mode": "impaired", "supports": [bluff_id]}}
+	if bluff_id not in nd_mist.cards:
+		nd_mist.cards.append(bluff_id)
+	var nd_plain: Dictionary = model.compile(nd2_p)
+	if bluff_id not in nd_plain.cards:
+		nd_plain.cards.append(bluff_id)
+	var share_mist: Dictionary = Live._demon_share(g, nd_mist, innocent.id)
+	var share_plain: Dictionary = Live._demon_share(g, nd_plain, innocent.id)
+	RC.clash_rule = rule_was
+	check(not share_mist.is_empty() and not share_plain.is_empty() and float(share_mist.after) > float(share_plain.after) + 1e-6,
+		"a Mistaken call on \"neither is the Demon\" weakens it in the Demon share too (share of evil that is the Demon %.3f, %.3f uncalled)" % [float(share_mist.get("after", -1.0)), float(share_plain.get("after", -1.0))])
 	# A challenge, weighed as the listener weighs it.
 	var bare: Dictionary = accuse.duplicate(true)
 	bare["reading_challenges"] = {bluff_id: {"mode": "lying", "supports": []}}

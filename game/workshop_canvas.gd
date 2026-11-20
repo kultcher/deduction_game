@@ -329,23 +329,39 @@ static func top_tier_chance(type: String, chance: float) -> float:
 ## The share of a person's chance of being evil that is the chance of being the Demon, before
 ## and after the case's evidence, as the judge reads the case (CaseEval, on the Test juror's
 ## view): {before, after}, or {} if the case can't be judged. A "was the Demon when hanged"
-## question reads the same way (CaseEval's "demon" premise). It reads every card the case
-## cites, challenged ones too (Codex on #410): the listener whose chance of evil this splits
-## keeps a challenged reading (a lie call presses its teller rather than moving the chances; a
-## mistaken one only discounts it), so setting it aside here would split that chance by
-## different evidence.
+## question reads the same way (CaseEval's "demon" premise). It weighs the case's challenges
+## as the listener whose chance of evil it splits does (Codex on #410): every cited card stays,
+## challenged ones too, with the reliability each challenge's assessment gives them
+## (Connections.lean_challenged's way: a lie call presses its teller rather than moving the
+## chances; an accepted honest-mistake call discounts the reading), so the split reads the
+## same evidence.
 static func _demon_share(g, value: Dictionary, target: String) -> Dictionary:
+	var challenges: Dictionary = value.get("reading_challenges", {})
 	var unchallenged: Dictionary = value.duplicate(true)
 	unchallenged.erase("reading_challenges")
 	var juror: Dictionary = juror_case(g, unchallenged)
 	if not juror.get("ready", false) or target == "":
 		return {}
 	var CaseEval = preload("res://workshop/case_eval.gd")
+	var view: Dictionary = juror.prepared.view
 	var asked: Dictionary = juror.case.duplicate(true)
 	asked.conclusion = asked.conclusion.duplicate(true)
 	asked.conclusion.type = "demon"
 	asked.conclusion.target = target
-	var ev: Dictionary = CaseEval.evaluate(juror.prepared.view, asked)
+	# The Test juror's own listener: the average listener, nothing first-hand.
+	var listener: Dictionary = juror.prepared.listener.duplicate(true)
+	var named: Dictionary = {}
+	for id in challenges:
+		if id in asked.cards:
+			named[id] = challenges[id]
+	if not named.is_empty():
+		var cited: Array = asked.cards.map(func(id): return preload("res://workshop/solver.gd").card_by_id(view, id)).filter(func(c): return not c.is_empty())
+		var assessed: Dictionary = preload("res://workshop/reading_challenges.gd").assess(view, {"reading_challenges": named}, listener, cited)
+		if not (assessed.reports.is_empty() and assessed.sources.is_empty()):
+			listener["challenge_reports"] = assessed.reports
+			listener["challenge_sources"] = assessed.sources
+		asked["reading_challenges"] = named.duplicate(true)
+	var ev: Dictionary = CaseEval.evaluate(view, asked, listener)
 	if ev.get("impossible", false):
 		return {}
 	var person: Dictionary = ev.get("people", {}).get(target, {})
