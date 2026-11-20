@@ -1,8 +1,8 @@
 # Burdens: the secrets rework, scoped (design note)
 
 **Status: scoped with Michael (Nov 20, 2026). Design questions are answered (sections 1 to 7),
-and so are the feasibility questions (section 9). The judge's world model waits on
-Lantern's worked scenarios. Nothing is
+and so are the feasibility questions and the judge's world model (section 9). Nothing is
+open. Nothing is
 built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
@@ -425,9 +425,19 @@ No exact numbers yet: the builders estimate them, and they're tuned from data.
 - **"Bolder with silence" (Q16):** Beadle estimates the two caution values so that a day 1
   bluff is extremely rare. They're tuned from data afterwards.
 
-### Still open
+### The judge's world model: A (Michael, Nov 20)
 
-- **The judge's world model.** Michael wants worked scenarios before he settles it. He asked
-  Lantern (Nov 20) to compare the revised plan (each known burden placed per world) with the
-  cheaper "none" placement, across four Rumormonger, Unrequited and Marked scenarios, with the
-  difference in precision. The answer goes here when it arrives.
+Decided after Lantern's four worked scenarios (in
+[burdens_feasibility.md](burdens_feasibility.md)).
+- **A:** each known burden has its own place in a world, and an unclaimed Marked is
+  enumerated. That's 2g + 2 per evil team: 5,760 worlds at 10 NPCs against 15,120 today,
+  about 2.6× fewer.
+- **Fallback: C**, if speed turns out to matter. C is per-kind, with Marked under the
+  allowance: 3,600 worlds.
+- **Why not B** (the "none" placement, 2,880 worlds): it can't tell which known burden is in
+  play, so it misses burden bluffs that clash with another burden claim or with a true
+  Rumormonger reading. In Lantern's scenarios 2 and 4, a bluff mostly works under B and is
+  caught under A.
+- **Argon re-estimates the speed** with Marked enumerated.
+
+Nothing in the design is open now. Building waits on Michael's word to Seneschal.
