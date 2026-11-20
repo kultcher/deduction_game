@@ -89,7 +89,6 @@ var regulars_searched = {}   # place -> true: a place's regulars can be asked ab
 var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
 var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
-var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
 # Every refresh or presentation the shared model couldn't prepare (the mind kept its last
 # good beliefs; always recorded, with or without detailed tracing). See the `fallbacks` command.
 var unprepared_refreshes: Array = []
@@ -110,7 +109,6 @@ var workshop_compare = false # opt-in diagnostics; never applies the proposed ef
 ## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
 var workshop_why = false
 var workshop_whys: Array = []
-var _workshop_native_social = false  # a protect/spare preference or a bare belief: social speech, not a fallback
 var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
@@ -119,7 +117,7 @@ var _workshop_reason_ctx = {} # deferred reason attribution inputs per mind (pur
 var _workshop_responses = {}
 var workshop_comparisons: Array = []
 var workshop_draft: Dictionary = {} # case-local canvas layout and filed premise numbers
-var workshop_deliveries: Array = [] # explicit actual model/fallback feedback
+var workshop_deliveries: Array = [] # each listener who heard a filed case, with any issues
 var workshop_presenting = false
 var trace_build = ""
 var trace_tuning = ""
@@ -242,7 +240,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	_workshop_reason_ctx = {}
 	_workshop_responses = {}
 	_workshop_repeats = {}
-	_workshop_native_social = false
 	board = []
 	profile_receipts = []
 	confidences = {}
@@ -269,7 +266,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	haunt_sightings = {}
 	watched = []
 	known_relationships = {}
-	fallback_count = 0
 	unprepared_refreshes = []
 	_unprepared_reported = 0
 	show_hidden = false
@@ -327,8 +323,6 @@ func _attach_workshop_world() -> void:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {}
-		if game._workshop_native_social:
-			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	_home_cards()
 
@@ -348,7 +342,6 @@ func command(line: String) -> String:
 	if text == "":
 		return ""
 	_canvas_status_memo = {}
-	_workshop_native_social = false
 	events = []
 	if w != null:
 		w.set_log_time()
@@ -370,7 +363,6 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] == "case")):
 		return command(line)
 	workshop_presenting = true
-	_workshop_native_social = false
 	events = []
 	w.set_log_time()
 	w.dlog.begin_action("command", {"cmd": line})
@@ -530,11 +522,6 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 ## claim: role"), or [] if any issue is about the evidence itself.
 func _unsupported_conclusions(issues: Array) -> Array:
 	return GamePresentation._unsupported_conclusions(issues)
-
-## Issues that only say "there's no evidence here", as opposed to evidence the shared
-## model can't read.
-func _bare_speech(issues: Array) -> bool:
-	return GamePresentation._bare_speech(issues)
 
 func _presentation_rejection(card: Dictionary) -> String:
 	return GamePresentation._presentation_rejection(self, card)
@@ -845,14 +832,9 @@ func file_deduction(conclusion: Dictionary, supports: Array, workshop_filing: bo
 ## About the listener -> press them. A deduction -> argue it. A plain card about others ->
 ## a case for or against them, direction read from the card itself (a Seer "yes" accuses, a
 ## Seer "no" clears), split across everyone it names. for/against is only an override; if
-## the card has no direction of its own, it falls flat (logged as a fallback).
+## the card has no direction of its own, it falls flat (logged as "present_flat").
 func _route_present(n, rest: String) -> Dictionary:
 	return GamePresentation._route_present(self, n, rest)
-
-## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
-## them; privately, only the listener if they're one of them.
-func _conflict_pressure(ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	GamePresentation._conflict_pressure(self, ded, amount, listener, fallback)
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 ## Meeting plan M2a, for the nomination picker: the case on deck against `id`, every live
