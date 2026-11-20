@@ -189,6 +189,10 @@ Lantern). Nothing is open here.
       Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
       speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
     - Beadle measures it on a `mock/` branch first.
+  - **Built and measured** (Beadle, Nov 20; handoff `2026-11-20-1940-beadle-silence.md`). With
+    the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1 claims
+    rise by a third. **Approved to ship, with no cap on the second pass** (Michael, Nov 21).
+    [in review]
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so

@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+### Current baseline (Nov 21, the pressure of silence): `baseline_ae2a5ee`
+
+`tools/golden/baseline_ae2a5ee/` is the capture from `claude/beadle-silence` at `ae2a5ee` (main at
+`977e15e`). A good NPC needs 0.2 suspicion to accuse in a meeting's first pass; a meeting that
+turns up fewer than three useful things runs its speaking order once more, with the floor waived
+and nervous good NPCs pushed to speak (Michael, Nov 20 and 21).
+- **Divergence from `baseline_7005cc6`:** every seed on day 1, at the first meeting (records 7-11),
+  where an accusation under the floor no longer happens and the beliefs that follow differ.
+- **Outcomes:**
+  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
+    day 4 before).
+  - **54875:** hangs Edda on day 1 (day 2 before), then Odette and Jory (Hollis before).
+  - **692:** the same hangings (Constance, Lian).
+  - **900:** hangs Isolde on day 3 instead of Greta on day 2.
+  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
+  - No winner by day 4 on 54875, 692, 900 or 98933.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
 `tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
 `d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
