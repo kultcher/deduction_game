@@ -329,6 +329,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CROWD_FADE_PRIVACY_FLOOR` | `0.45` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SIGHTING_BAR` | `0.10` |  | `sim/mind_meeting.gd` |
+| `GOOD_ACCUSE_MIN_SUSP` | `0.2` | The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered sightings, accusations with a reason), the speaking order runs once more. In that pass the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by (1 - Composure): the jittery fill the silence. Evil gets no bonus. | `sim/mind_meeting.gd` |
+| `SILENCE_USEFUL_MIN` | `3` |  | `sim/mind_meeting.gd` |
+| `SILENCE_SPEAK_BONUS` | `0.6` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_FULL_MARGIN` | `3.0` | Block safety (Step 2): how safe a nominee is because someone else is firmly on the block. | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_BASE` | `0.15` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_PER_ACCUSER` | `0.15` |  | `sim/mind_meeting.gd` |
