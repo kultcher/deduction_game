@@ -321,6 +321,7 @@ sim/fabrication_check.gd  whether a fabricated reading would point the town at i
 sim/presentation_reply.gd  replies to speech the Workshop doesn't judge; evil's mask
 sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd, dialogue_presentations.gd
                   dialogue composer: words decided statements in a character's voice
+sim/voices/       one file per character: that voice's lines (dialogue_voices.gd assembles them)
 sim/devlog.gd     developer trace (JSONL + text, and the .trace.jsonl sidecar)
 workshop/         the shared case judge: case_eval.gd (possible worlds), connections.gd
                   (how each NPC combines what it holds), jury.gd and
