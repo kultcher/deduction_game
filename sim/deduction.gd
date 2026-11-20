@@ -101,8 +101,6 @@ static func assertions(card: Dictionary) -> Array:
 				out.append({"t": "trace_struct", "family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "victim_block": card.get("victim_block", card.get("block", "")), "day": day, "src": src, "card": n})
 			else:
 				out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
-		"dropped":
-			out.append({"t": "dropped", "material": card.get("material", ""), "block": card.get("block", ""), "night": day, "src": src, "card": n})
 		"conversation":
 			for who in subj:
 				out.append({"t": "at", "who": who, "block": card.get("block", ""), "day": day, "phase": ph, "src": src, "card": n})

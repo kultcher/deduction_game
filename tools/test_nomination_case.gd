@@ -1,7 +1,8 @@
 ## Present a case about the nominee (option (b), Michael, Nov 19): on a nomination the player's
 ## one word is a filed case about the nominee, judged as at the podium. There's no bare
 ## "accuse" or "defend", no free nudge to the vote, no trust change for speaking, and it
-## doesn't spend the meeting's Present.
+## doesn't spend the meeting's Present. The town answers it aloud, summarised as at the
+## meeting's floor (game/response_bundles.gd).
 ##   godot --headless --path . --script res://tools/test_nomination_case.gd
 extends SceneTree
 
@@ -47,6 +48,21 @@ func _init() -> void:
 	g.workshop_deliveries.clear()
 	g.command("case %d" % against)
 	_check(g.statement_used, "putting the case uses the player's one word on the nomination")
+	# The town answers aloud, summarised as at the meeting's floor (Michael, Nov 19): every
+	# listener but the nominee is heard once, as a representative, a bundled log line or alone.
+	var said: Array = g.last_events.filter(func(e): return e.get("k", "") == "speech")
+	var ids: Array = said.map(func(e): return str(e.speaker))
+	var hearers: Array = g.w.living().filter(func(v): return v != t and not v.silenced).map(func(v): return v.id)
+	_check(not hearers.is_empty() and hearers.all(func(id): return ids.has(id)), "every listener's answer to the case is said (%d answers for %d listeners)" % [said.size(), hearers.size()])
+	var reps: Array = said.filter(func(e): return not e.get("agree", []).is_empty())
+	var agreed: Array = []
+	var more: int = 0
+	for rp in reps:
+		agreed.append_array(rp.agree.map(func(a): return a.speaker))
+		more += int(rp.get("agree_more", 0))
+	var bundled: Array = said.filter(func(e): return e.get("bundled", false)).map(func(e): return e.speaker)
+	_check(agreed.all(func(id): return bundled.has(id)) and agreed.size() + more == bundled.size(), "those shown agreeing are exactly the bundled lines (%s, +%d)" % [str(agreed), more])
+	_check(not reps.is_empty() and not bundled.is_empty(), "(fixture) some answered alike, so the answers were summarised (%d rows)" % (said.size() - bundled.size()))
 	_check(not g.presented_today, "it doesn't spend the meeting's Present")
 	_check(g.public_presentations.has(against), "the case is now public")
 	_check(g.w.meeting.pending.get("statement", "") == "", "no stance reaches the vote as a free nudge")

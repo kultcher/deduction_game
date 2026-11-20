@@ -16,7 +16,6 @@ func _init() -> void:
 	_invalid_payloads()
 	_opinions_are_not_evidence()
 	_totem()
-	_dropped_material()
 	_public_deaths()
 	print("Card adapters: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -173,38 +172,3 @@ func _totem() -> void:
 	check(cards.size() == 1 and cards[0].id == id and cards[0].data.candidates == prepared.view.people.filter(func(p): return p.home == block).map(func(p): return p.id), "totem candidates come only from the public roster")
 	var result = g._evaluate_deduction(listener, g.board[ded - 1], 1.0, false)
 	check(result.get("workshop", false) and listener.workshop_state.active, "a totem case uses shared ownership through presentation")
-
-func _dropped_material() -> void:
-	var g = _game()
-	var input = g.workshop_snapshot([])
-	# A controlled public roster; no actual roles, owners or night movements enter.
-	for i in range(input.people.size()):
-		input.people[i].home = "hill" if i == 0 else "square"
-	var a: String = input.people[0].id
-	var b: String = input.people[1].id
-	var raw = {"kind": "dropped", "source": "evidence", "subject": [], "block": "market", "loc": "bakery",
-		"material": "hill", "day": 1, "phase": 3, "text": "Chalk found at the bakery"}
-	var receipt = Shared.Evidence.normalize_card(raw)
-	var drop = Assess.activity_card(receipt, input)
-	check(Shared.supported(receipt) and drop.kind == "dropped" and not drop.has("owner"), "material drops retain the home material without inventing an owner")
-	var view = {"people": input.people, "live_activity": true, "timeline": Assess.History.from_events([])}
-	var routes = Activity.routes(view, [drop])
-	check(routes.okay and routes.nights["1"].forced_out == [a], "a material group with one eligible resident establishes that resident was out")
-	var alibi = {"id": "home:a", "kind": "alibi", "source": a, "subject": a, "night": 1, "block": "hill"}
-	check(not Activity.routes(view, [drop, alibi]).okay, "a home alibi conflicts with the sole eligible material owner")
-	view.people[1].home = "hill"
-	routes = Activity.routes(view, [drop])
-	check(routes.okay and routes.nights["1"].forced_out.is_empty(), "several eligible residents remain alternatives")
-	alibi.id = "home:b"
-	alibi.source = b
-	alibi.subject = b
-	check(Activity.routes(view, [drop, alibi]).nights["1"].forced_out == [a], "accepted independent alibis can resolve the material owner")
-	var second_raw = raw.duplicate(true)
-	second_raw.block = "docks"
-	second_raw.loc = "wharf"
-	second_raw.text = "Chalk found at the wharf"
-	var second = Assess.activity_card(Shared.Evidence.normalize_card(second_raw), input)
-	check(Activity.routes(view, [drop, second]).nights["1"].forced_out.size() == 2, "distinct drops require distinct walkers under the native one-drop rule")
-	view.people[1].home = "square"
-	check(not Activity.routes(view, [drop, second]).okay, "one resident cannot account for two different drops in one night")
-	check(Activity.routes(view, [drop, drop]).okay, "quoting the same original drop twice does not invent a second item")

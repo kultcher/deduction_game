@@ -81,11 +81,7 @@ class Setup:
 	const SLEEPWALK_CHANCE = 0.5
 	const FLAVOR_SECRET_WALK_CHANCE = 0.55
 
-	## Night drops, sightings & crime scene traces
-	const DROP_CHANCE_DEMON = 0.35
-	const DROP_CHANCE_WALKER = 0.15
-	const LEGACY_MUD_DROPS_ENABLED = false
-	const DROP_OWNED_CHANCE = 0.12
+	## Night sightings & crime scene traces
 	const NIGHT_SIGHTING_STREET_CHANCE = 0.5
 	const NIGHT_SIGHTING_WINDOW_CHANCE = 0.15
 	const NIGHT_NEIGHBOUR_ALIBI_CHANCE = 0.2

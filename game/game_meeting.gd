@@ -15,6 +15,7 @@ const CardModel = preload("res://game/card_model.gd")
 const Deduction = preload("res://sim/deduction.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const MindSupport = preload("res://sim/mind_support.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
 
 
 static func _start_meeting(g) -> void:
@@ -338,11 +339,8 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			g._narr("You lay case #%d before the town: %s" % [card["n"], card["text"]])
 			g._break_confidences([card["n"]] + Array(card.get("supports", [])))
 			g._secrets_used(card)
-			for v in g.w.living():
-				if v != t:
-					if progress.is_valid():
-						await progress.call(v.name)
-					g._evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
+			# The town answers aloud, summarised as at the meeting's floor (Michael, Nov 19).
+			await GamePresentation.hear_town(g, g.w.living().filter(func(v): return v != t), card, Tuning.Workshop.VENUE_MULTS.nomination, "nomination", progress)
 			g.w.dlog.add("player_statement", "player", t.id, {"statement": direction, "card": int(card.n), "case": true})
 			g._prompt("'vote yes' or 'vote no'%s." % (", or 'clemency'" if g.w.tools["clemency"] > 0 and nm["by"] != "player" else ""))
 		"press":

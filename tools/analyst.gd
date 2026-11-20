@@ -15,7 +15,7 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 
 ## Board evidence the juror reads (per WorkshopCanvas.view card kinds).
-const EVIDENCE_KINDS = ["report", "death", "context", "sighting", "alibi", "trace", "claim", "coverage", "dropped", "location", "evening"]
+const EVIDENCE_KINDS = ["report", "death", "context", "sighting", "alibi", "trace", "claim", "coverage", "location", "evening"]
 ## Most cards a built case uses, and how many candidates it weighs.
 const MAX_CASE_CARDS = 8
 const MAX_CANDIDATES = 12
