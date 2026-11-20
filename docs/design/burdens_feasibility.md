@@ -177,3 +177,19 @@ reconcile them:
   allowance form no longer applies to Marked: Marked is placed in the worlds like the hidden
   burden. The allowance in point 3 would then cover only the known burdens that aren't
   enumerated. Lantern should confirm how much of point 3 still applies.
+
+## Lantern's revised numbers, after Michael's answers (Nov 20, through Seneschal)
+
+These replace the addendum's points 1 to 3 where they differ, and settle the Vicar's note above.
+- **The allowance now covers only the Unrequited's night walks.** It's per person (1/g, about
+  1 in 7) inside worlds where Unrequited is in play, and zero elsewhere. So Q3 resolves to
+  per person, Unrequited only.
+- **Worlds per evil team:** 2g + 2. That's g for Delusional (hidden), g for Marked
+  (enumerated), plus 1 each for Unrequited and Ill-Omened. Each known burden has its own
+  place, so a reading of a known burden counts world by world, as Michael's Q2 answer wants.
+  - 10 NPCs: 16 per team, 5,760 worlds against 15,120 today, about 2.6× fewer.
+  - 7 NPCs: 504 against 1,050.
+- **Speed:** a smaller gain than Argon's 20–40%, roughly 10–25% by Lantern's guess. Argon
+  should re-estimate with Marked enumerated.
+- **Ill-Omened** reuses the Poisoner's reading-failure path. **Unrequited's bluff** fits the
+  walker-reason path, with the beloved's block, or the graveyard once the beloved is dead.

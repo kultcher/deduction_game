@@ -1,7 +1,8 @@
 # Burdens: the secrets rework, scoped (design note)
 
 **Status: scoped with Michael (Nov 20, 2026). Design questions are answered (sections 1 to 7),
-and so are the feasibility questions (section 9), with two small points to confirm. Nothing is
+and so are the feasibility questions (section 9). Only the new constants they imply
+are left. Nothing is
 built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
@@ -311,8 +312,8 @@ The feasibility reports (Nov 20) raised 24 build-level questions for Michael. Th
 [burdens_perf_feasibility.md](burdens_perf_feasibility.md). Answers are folded in here as
 they arrive.
 
-Before the reports, none were open. Michael answered the 24 on Nov 20 (section 9); two
-small points are still to confirm. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
+Before the reports, none were open. Michael answered the 24 on Nov 20 (section 9); only
+the new constants they imply are left. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
 2.1 and 7. Next comes the staged plan (section 5): feasibility reports, then a `mock/`
 prototype.
 
@@ -329,9 +330,13 @@ add to sections 1 to 7, and win where they differ.
    reader.
 2. **The town reasons about which known burden is in play.** A true Rumormonger "Marked" rules
    out Unrequited, with the usual caveats about what can and can't actually be confirmed.
-3. **The ~10% allowance:** Michael's answer was "Explained to the player? Not directly." Read
-   here as: the allowance works inside NPC reasoning and isn't shown to the player as a
-   number. *Whether it's per person or per oddity explained is still to confirm.*
+3. **The ~10% allowance:** Michael's answer was "Explained to the player? Not directly." It
+   works inside NPC reasoning and isn't shown to the player as a number.
+   - **Resolved with Lantern (Nov 20):** with Marked enumerated, the allowance covers only the
+     Unrequited's night walks. It's per person, about 1 in 7, and only in worlds where
+     Unrequited is in play.
+   - The judge then weighs 2g + 2 worlds per evil team: 5,760 in total at 10 NPCs, against
+     15,120 today. Details in [burdens_feasibility.md](burdens_feasibility.md).
 4. **A script with no burden in play** (a "none" world): eventually, not now.
 
 ### Ill-Omened
@@ -407,8 +412,6 @@ add to sections 1 to 7, and win where they differ.
 
 ### Still to confirm
 
-- **Q3:** is the allowance per person, or per oddity explained? (Its reading above is
-  tentative.)
 - **New constants** these imply, each Michael's call:
   - the Unrequited reveal's trust cost (Q14);
   - the two caution values behind "bolder with silence" (Q16);
