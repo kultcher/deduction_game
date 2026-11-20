@@ -131,3 +131,49 @@ Then paired sweeps against main. Ill-Omened, Unrequited and Sleepwalker 2.0 foll
     their gift. The script lists the possible burdens and how many are in play. A hidden
     burden's holder doesn't know they carry it."
 24. **Later:** the "drink" Mistaken cause, the Rumormonger phrases and the ~200 voice lines.
+
+## Addendum: Lantern (Nov 20, through Seneschal)
+
+1. **Question 2, sharpened: where the known burden sits in a world.**
+   - **Argon's "none" placement:** 7 + 1 = 8 choices per team, about 2,880 worlds.
+   - **Lantern's per-known-kind placement:** 7 + 3 = 10 per team, about 3,600 worlds.
+   - **Why it matters:** with per-kind placement, a true Rumormonger or Chronicler reading of a
+     known burden ("one of A, B is Unrequited") can rule out "it's Marked" world by world,
+     instead of only through the allowance.
+   - **Lantern's view:** both work, and Argon's is about 20% cheaper. Lantern would accept
+     "none" unless Michael wants readings of known burdens to be decisive.
+2. **An unclaimed Marked, under the allowance:**
+   - P(a reading calls X evil | X good) = a × P(it reads Marked as evil) + (1 − a) × the normal
+     false-positive rate.
+   - A claimed Marked X registers evil only in worlds where X is good.
+3. **The allowance formula:**
+   - a = P(a known burden is in play) / (goods not ruled out). That's about 0.75 / 7 ≈ 0.11 per
+     person in the 10-NPC town, which matches Michael's ~10%.
+   - Each other burden claim multiplies it by (1 − 0.3 × trust in the claimant).
+   - A Rumormonger or Chronicler reading raises a inside the named pair and lowers it outside,
+     never to zero.
+   - a is quantized for caching.
+4. **Ill-Omened:**
+   - It's an independent failure cause: P(sound) = (1 − p_poison)(1 − d)(1 − p_delusional),
+     where d applies only in worlds where the hanged claimant was good.
+   - A self-doubt on a drunk night carries the Ill-Omened cause, so #455's Poisoner nudge skips
+     it.
+5. **Argon's three cache hazards, confirmed, with additions:**
+   - the allowance also enters CaseEval's key;
+   - a Marked claim arriving after a reading queues a refresh;
+   - the Ill-Omened night is keyed on (night, claimant).
+
+   Sleepwalker 2.0 adds a new multi-block path kind for its holder.
+
+### Vicar's note: how this meets Michael's answers ([burdens.md](burdens.md) section 9)
+
+The addendum and Michael's answers were written in parallel. Two places need the leads to
+reconcile them:
+- **Point 1:** Michael answered Q2 "yes, the town reasons about which known burden is in
+  play". That reads as wanting readings of known burdens to count world by world, which points
+  to Lantern's per-kind placement (about 3,600 worlds) over "none". Worth confirming with him
+  in one line.
+- **Points 2 and 3:** Michael answered Q1 "enumerate" for an unclaimed Marked. So point 2's
+  allowance form no longer applies to Marked: Marked is placed in the worlds like the hidden
+  burden. The allowance in point 3 would then cover only the known burdens that aren't
+  enumerated. Lantern should confirm how much of point 3 still applies.
