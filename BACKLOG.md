@@ -279,8 +279,17 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
   - the Night Watch card's "pass by" is reworded, along with the Vigil tooltip's "passing
-    through" (Michael approved the wording, Nov 20): Herald, in the Night Watch card PR;
+    through": Herald #448;
   - no voiced line says "road": Herald #446.
+
+  **Wording approved (Michael, Nov 20):**
+  - **#446, the no-roads rewording:** approved as drafted, with its kept phrases: the
+    Lamplighter's "lamp route", the Augur's "crossed paths", the idiom "a long road from
+    murder", and general street flavour.
+  - **The Night Watch card:** "I watched {block}: I saw A and B out." With one person, "I saw
+    A out." With nobody, "nobody stirred".
+  - **The Vigil tooltip:** "You only see if its residents leave home. You do not see people
+    arrive on this block from elsewhere."
 
   Owner Herald. [decided]
 
@@ -499,8 +508,11 @@ Workshop and the shared model can't express yet.
   Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
   fix Seneschal approved; the route version merged in #429). **Michael (Nov 20, later):** a
   candidate is a person spotted whose destination was on the failed reader's block, not
-  anyone whose route passed it. Quill is applying that rule to the existing filter now. The
-  fuller Poisoner-presence factor waits for after this round. The other two Minion gifts are
+  anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
+  **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
+  Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
+  destination is spread over the town. The fuller Poisoner-presence factor waits for after
+  this round. The other two Minion gifts are
   built and closed (Quill, Nov 20). Owner Quill. [decided]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
