@@ -15,6 +15,7 @@ const MindMeeting = preload("res://sim/mind_meeting.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
 const C = preload("res://sim/content.gd")
 
 var checks = 0
@@ -183,7 +184,7 @@ func _witness_lying() -> void:
 	n.secret_mod = ""
 	n.history[w.time_key(1, C.NIGHT)] = "home:" + n.home_block
 	var card = {"kind": "sighting", "subject": [n.id], "source": witness.id, "block": "market", "day": 1, "phase": C.NIGHT, "text": "%s saw them on the Market." % witness.name}
-	var r: Dictionary = MindDialogue.press(w, n, card)
+	var r: Dictionary = MindPress.press(w, n, card)
 	var said: String = " ".join(PackedStringArray(r.lines.map(func(l): return str(l.get("statement", l.get("text", ""))) if l is Dictionary else str(l))))
 	_check(("%s is lying about seeing me." % witness.name) in said, "confident and truly home: calls the witness a liar (%s)" % said)
 	var g2 = _game()
@@ -192,7 +193,7 @@ func _witness_lying() -> void:
 	n2.history[g2.w.time_key(1, C.NIGHT)] = "home:" + n2.home_block
 	var card2 = card.duplicate(true)
 	card2["source"] = g2.w.living_good()[1].id
-	var r2: Dictionary = MindDialogue.press(g2.w, n2, card2)
+	var r2: Dictionary = MindPress.press(g2.w, n2, card2)
 	_check(not r2.lines.any(func(l): return l is Dictionary and "lying about seeing me" in str(l.get("statement", ""))), "unconfident: it only stands by its account")
 
 ## Changing a bluff leaves nothing of the old one behind (Codex on #390): no fabrication of it

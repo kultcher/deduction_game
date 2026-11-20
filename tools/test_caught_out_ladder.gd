@@ -11,6 +11,7 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 
@@ -76,7 +77,7 @@ func _claims(r: Dictionary) -> bool:
 func _good_walker() -> void:
 	var g = _game()
 	var n = _good(g)
-	var first: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var first: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(not _claims(first) and n.claimed_role == "" and _excuse(first, n, "admit"), "good hidden walker, first caught: owns the night, keeps the gift")
 	# On the board it names no place (Lantern on #368: a blank block crashed the card text).
 	var card: Dictionary = first.facts[0].duplicate(true)
@@ -85,22 +86,22 @@ func _good_walker() -> void:
 	for p in g.w.npcs:
 		names[p.id] = p.name
 	_check(CardModel.short_text(card, names).ends_with("out that night"), "the admission's card reads 'out that night' (%s)" % CardModel.short_text(card, names))
-	var second: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var second: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(_claims(second) and n.claimed_role == "warden", "good hidden walker, caught again: names its gift")
 
 func _nominated() -> void:
 	var g = _game()
 	var n = _good(g)
 	g.w.meeting["nominated"] = [n.id]
-	var r: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var r: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(_claims(r) and n.claimed_role == "warden", "nominated, the soft tier is skipped: names its gift at once")
 
 func _evil_walking_bluff() -> void:
 	var g = _game()
 	var n = _evil(g, "lamplighter")
-	var first: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var first: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(not _claims(first) and n.claimed_role == "" and _excuse(first, n, "admit"), "evil with a walking bluff, first caught: the same soft tier")
-	var second: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var second: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(_claims(second) and n.claimed_role == "lamplighter", "evil, caught again: names its planned walking bluff")
 
 func _evil_claimed_bluff() -> void:
@@ -109,17 +110,17 @@ func _evil_claimed_bluff() -> void:
 	n.claimed_role = "lamplighter"
 	n.claim_public = true
 	n.max_tier = 3
-	var r: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var r: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(_excuse(r, n, "duty") and r.facts.any(func(f): return f.get("duty_role", "") == "lamplighter"), "evil with a claimed walking bluff tells its duty, marked as a duty excuse")
 	_check(not r.facts.any(func(f): return f.get("kind", "") == "alibi" and f.get("home", false)), "and no home alibi")
 
 func _evil_nothing_to_claim() -> void:
 	var g = _game()
 	var n = _evil(g, "seer")
-	_check(MindDialogue.trapped_explanation(g.w, n, 1).is_empty(), "evil with a non-walking bluff: nothing to explain the night with (the line stands alone)")
+	_check(MindPress.trapped_explanation(g.w, n, 1).is_empty(), "evil with a non-walking bluff: nothing to explain the night with (the line stands alone)")
 	# Pressed with a case that breaks the home alibi: owns the night, or the sleepwalk bluff.
 	var contra: Dictionary = {"night": 1, "ruled_out_home_by": ["x"]}
-	var r: Dictionary = MindDialogue._pressed_caught_out(g.w, n, 1, contra)
+	var r: Dictionary = MindPress._pressed_caught_out(g.w, n, 1, contra)
 	var owned: bool = _excuse(r, n, "not_wicked")
 	var sleepwalk: bool = r.get("facts", []).any(func(f): return f.get("kind", "") == "secret" and f.get("secret_kind", "") == "sleepwalker")
 	_check(owned or sleepwalk, "evil caught out with nothing to claim: being out isn't wicked, or the sleepwalk bluff")
@@ -131,13 +132,13 @@ func _disclosed_privately() -> void:
 	var n = _good(g)
 	n.claimed_role = "warden"
 	n.max_tier = 3
-	var r: Dictionary = MindDialogue.trapped_explanation(g.w, n, 1)
+	var r: Dictionary = MindPress.trapped_explanation(g.w, n, 1)
 	_check(not _excuse(r, n, "admit") and not r.get("lines", []).is_empty(), "a good walker who told the player its gift: no soft tier")
 	var g2 = _game()
 	var e = _evil(g2, "lamplighter")
 	e.claimed_role = "lamplighter"
 	e.max_tier = 3
-	var r2: Dictionary = MindDialogue.trapped_explanation(g2.w, e, 1)
+	var r2: Dictionary = MindPress.trapped_explanation(g2.w, e, 1)
 	_check(_excuse(r2, e, "duty"), "evil that named its walking bluff privately tells its duty")
 	var contra: Dictionary = {"night": 1, "ruled_out_home_by": ["x"]}
-	_check(MindDialogue._pressed_caught_out(g2.w, e, 1, contra).is_empty(), "and pressed with a case, it's left to the duty answer, not 'being out isn't wicked'")
+	_check(MindPress._pressed_caught_out(g2.w, e, 1, contra).is_empty(), "and pressed with a case, it's left to the duty answer, not 'being out isn't wicked'")
