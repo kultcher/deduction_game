@@ -91,6 +91,23 @@ func _run(g, size: int) -> void:
 			break
 	check(MindDefence.night_route_rebuttal(w, d, 1, far_b).is_empty(), tag + " a defender living on the victim's block, home that night, gives no other_block")
 	d.home_block = own_home
+	# "I was never on" never retracts an account: not one that put them on the victim's
+	# block, nor a duty that walks every block (Codex on #415).
+	var accts: Dictionary = d.dialogue_memory.get("night_accounts", {})
+	var saved: Variant = accts.get("1", null)
+	d.dialogue_memory["night_accounts"] = accts
+	accts["1"] = {"kind": "sighting", "subject": [d.id], "block": off_b, "day": 1, "phase": C.NIGHT, "source": d.id, "duty_claim": true, "duty": "lamplighter"}
+	check(not MindDefence.rebuttal_fits_account(w, d, r_off), tag + " after the lamp route (every block), no \"I was never on\"")
+	accts["1"] = {"kind": "sighting", "subject": [d.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "source": d.id, "duty_claim": true, "duty": "nightwatch"}
+	check(not MindDefence.rebuttal_fits_account(w, d, r_off), tag + " after a watch on the victim's block, no \"I was never on\"")
+	accts["1"] = {"kind": "alibi", "subject": [d.id], "home": false, "block": off_b, "day": 1, "phase": C.NIGHT, "source": d.id}
+	check(MindDefence.rebuttal_fits_account(w, d, r_off), tag + " after owning a walk elsewhere, \"I was never on\" fits")
+	accts["1"] = {"kind": "alibi", "subject": [d.id], "home": true, "block": d.home_block, "day": 1, "phase": C.NIGHT, "source": d.id}
+	check(MindDefence.rebuttal_fits_account(w, d, r_off), tag + " after a home alibi off the victim's block, \"I was never on\" fits")
+	if saved == null:
+		accts.erase("1")
+	else:
+		accts["1"] = saved
 	var r_q: Dictionary = MindDefence.night_route_rebuttal(w, d, 2, off_b)
 	check(str(r_q.get("variant", "")) == "no_death", tag + " a quiet night gives no_death (%s)" % [r_q])
 	check(MindDefence.night_route_rebuttal(w, d, 0, off_b).is_empty(), tag + " night 0 never")

@@ -369,7 +369,7 @@ static func press_card(w, d, card: Dictionary, grounds: bool) -> Dictionary:
 			var defence = load("res://sim/mind_defence.gd")
 			var blk: String = str(card.get("block", ""))
 			var reb: Dictionary = defence.night_route_rebuttal(w, d, nd, blk)
-			if defence.rebuttal_fits_account(d, reb):
+			if defence.rebuttal_fits_account(w, d, reb):
 				r.lines.append(defence.rebuttal_line(w, d, reb))
 				defence.note_rebuttal(w, d, reb, "At the podium")
 				var s_eid: String = "sighting:%s:%s:%d:%s" % [str(card.get("source", "")), d.id, nd, blk]

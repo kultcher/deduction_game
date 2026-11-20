@@ -75,7 +75,10 @@ argue from the public death record, in their own words:
   press; "another block" fits any account.
 - **No "I was never on" for a victim's neighbour** (Codex): a defender who lives on a victim's
   block was on it all night, so the other-block line isn't said.
-- Golden identical to `baseline_7005cc6` after both; test_night_sighting_rebuttal,
+- **No "I was never on" against a stated account** (Codex): not after an account that put them
+  on a victim's block (a watch, a guard, an owned walk there), nor after a duty that walks every
+  block (the lamp route, the Sexton's toll), whatever they really did.
+- Golden identical to `baseline_7005cc6` after all three; test_night_sighting_rebuttal,
   test_dialogue_voices, test_dialogue, test_meeting_flow and test_confessed_night pass.
 
 ## Measured

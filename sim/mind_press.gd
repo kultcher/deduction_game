@@ -145,7 +145,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		if kind == "sighting":
 			reb = defence.night_route_rebuttal(w, n, int(night), str(card.get("block", "")))
 		var reb_after: Callable = func() -> Array:
-			if not defence.rebuttal_fits_account(n, reb):
+			if not defence.rebuttal_fits_account(w, n, reb):
 				return []
 			defence.note_rebuttal(w, n, reb, "In private")
 			return [defence.rebuttal_line(w, n, reb, true)]
