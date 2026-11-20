@@ -55,6 +55,8 @@
 ## are at which exact location within a block (to keep it from wasting moves).
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -744,7 +746,7 @@ func _decide_inner() -> String:
 				# Tell them the latest card that points at the top suspect.
 				var best_c = 0
 				for c in g.board:
-					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]) and g._presentation_rejection(c) == "":
+					if ts[0].id in c.get("subject", []) and c.get("source", "") != ts[0].id and not (c["kind"] in ["vote", "secret", "deduction", "conversation", "home", "haunt"]) and GamePresentation._presentation_rejection(g, c) == "":
 						if Mind.card_implicates(w, c, ts[0].id):
 							best_c = c["n"]
 				if best_c > 0:
@@ -816,7 +818,7 @@ func _press_choice(nm: Dictionary, s: float) -> String:
 	for i in range(g.board.size() - 1, -1, -1):
 		var c: Dictionary = g.board[i]
 		if c["kind"] in ["sighting", "trace"] and t.id in c.get("subject", []) and c.get("source", "") != t.id \
-				and g._presentation_rejection(c) == "" and MindPodium.card_fits(g.w, t, c):
+				and GamePresentation._presentation_rejection(g, c) == "" and MindPodium.card_fits(g.w, t, c):
 			return "press card %d" % c["n"]
 	var opts: Dictionary = MindPodium.options(g.w, t)
 	if opts.get("gift", "") != "":
@@ -855,7 +857,7 @@ func _pick_location() -> String:
 	var best_n = -1.0
 	for l in C.LOCATIONS:
 		# Free people it can see there, plus the "someone's there" count for those it can't.
-		var n: float = w.npcs_at(l).filter(func(m): return m.busy_with == "" and g.can_see(m) and talked.get(m.id, -1) != w.day).size() + 0.8 * g.unseen_at(l)
+		var n: float = w.npcs_at(l).filter(func(m): return m.busy_with == "" and g.can_see(m) and talked.get(m.id, -1) != w.day).size() + 0.8 * GameDayNight.unseen_at(g, l)
 		if n > best_n:
 			best_n = n
 			best = l
@@ -917,6 +919,6 @@ func _find_or_file_deduction() -> int:
 
 func _latest_deduction() -> int:
 	for i in range(g.board.size() - 1, -1, -1):
-		if g.board[i]["kind"] == "deduction" and g._presentation_rejection(g.board[i]) == "":
+		if g.board[i]["kind"] == "deduction" and GamePresentation._presentation_rejection(g, g.board[i]) == "":
 			return g.board[i]["n"]
 	return 0

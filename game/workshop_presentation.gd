@@ -203,7 +203,10 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 				trapped_out = true
 				trapped_night = int(alibis[0].observed_at.day)
 				break
-	var repeated_same_audience: bool = repeated and state.get("delivered", {}).get(delivery_key, "") == inputs
+	# A later day's repeat restores the case's weight (it had faded), so it is answered on its
+	# merits, never as "the same reports, unchanged" (BACKLOG "The spoken reply to a later-day
+	# repeat", Nov 20).
+	var repeated_same_audience: bool = repeated and not restores and state.get("delivered", {}).get(delivery_key, "") == inputs
 	if repeated_same_audience:
 		text = "Those are the same reports. My assessment is unchanged."
 	elif targets.size() > 1:

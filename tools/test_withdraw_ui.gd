@@ -4,6 +4,7 @@
 ##   godot --headless --path . --script res://tools/test_withdraw_ui.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -78,7 +79,7 @@ func _text(g, kind: String) -> String:
 	return ""
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	var number: int = g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	var number: int = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 	_texts[number] = g.board[number - 1].text
 	return number

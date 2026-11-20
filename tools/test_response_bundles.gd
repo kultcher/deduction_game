@@ -5,6 +5,8 @@
 ##   godot --headless --path . --script res://tools/test_response_bundles.gd
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Bundles = preload("res://game/response_bundles.gd")
 const Stage = preload("res://ui/courtroom_stage.gd")
@@ -84,10 +86,10 @@ func _run() -> void:
 	g.w.day = 2
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	var t = g.w.living_good()[0]
 	var cards: Array = g.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"]).map(func(c): return int(c.n)).slice(0, 2)
-	var ded: int = g.file_deduction({"type": "evil", "a": t.id}, cards)
+	var ded: int = GameBoard.file_deduction(g, {"type": "evil", "a": t.id}, cards)
 	g.command("present %d" % ded)
 	var said: Array = g.last_events.filter(func(e): return e.get("k", "") == "speech")
 	var ids: Array = said.map(func(e): return e.speaker)

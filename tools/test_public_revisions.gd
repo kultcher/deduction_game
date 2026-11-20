@@ -3,6 +3,7 @@
 ##   godot --headless --path . --script res://tools/test_public_revisions.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -38,7 +39,7 @@ func _game():
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	var number: int = g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	var number: int = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 	_texts[number] = g.board[number - 1].text
 	return number
@@ -74,7 +75,7 @@ func _file(g, type: String, target: String, support: Array, previous: int = 0) -
 
 func _present(g, listeners: Array, number: int) -> void:
 	for n in listeners:
-		g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+		GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 
 func _public_withdrawal() -> void:
 	var g = _game()
@@ -93,7 +94,7 @@ func _public_withdrawal() -> void:
 	check(not g.on_deck_case(accused.id).is_empty(), "before: the case is on deck against %s" % accused.name)
 	var lmind = l.shadow if l.is_evil() and l.shadow != null else l
 	var facts_before: int = lmind.workshop_state.get("facts", {}).size()
-	var err: String = g.workshop_withdraw_public(case_n)
+	var err: String = GamePresentation.workshop_withdraw_public(g, case_n)
 	check(err == "", "the case can be taken back in public (%s)" % err)
 	check(g.board[case_n - 1].get("withdrawn", false) and not g.board[case_n - 1].get("deleted", false), "the board keeps the case, marked withdrawn")
 	var all_out: bool = true
@@ -105,8 +106,8 @@ func _public_withdrawal() -> void:
 	check(l.claim_record.get(accused.id, {}).get("withdrawn", false), "its claim waits in the track record for the next dawn")
 	check(facts_before > 0 and lmind.workshop_state.get("facts", {}).size() == facts_before, "listeners keep the cards it cited as their own (%d before, %d after)" % [facts_before, lmind.workshop_state.get("facts", {}).size()])
 	check(g.on_deck_case(accused.id).is_empty() and g.cases_naming(accused.id).is_empty(), "a withdrawn case is no longer on deck or offered for a nomination")
-	check(g._presentation_rejection(g.board[case_n - 1]) != "", "and can't be presented again")
-	check(g.workshop_withdraw_public(case_n) != "", "taking it back twice is refused")
+	check(GamePresentation._presentation_rejection(g, g.board[case_n - 1]) != "", "and can't be presented again")
+	check(GamePresentation.workshop_withdraw_public(g, case_n) != "", "taking it back twice is refused")
 	Credibility.dawn(g)
 	var cleared: bool = true
 	for n in g.w.npcs:
@@ -124,7 +125,7 @@ func _public_withdrawal() -> void:
 	check(c2 > 0, "(fixture) the case to restate files (%d)" % c2)  # fail loudly, not skip (Steward E1b)
 	if c2 > 0:
 		_present(g2, ls2, c2)
-		g2.workshop_withdraw_public(c2)
+		GamePresentation.workshop_withdraw_public(g2, c2)
 		Credibility.record(ls2[0], "evil", a2.id, g2.w.day)
 		Credibility.dawn(g2)
 		check(ls2[0].claim_record.has(a2.id), "a claim restated after the withdrawal (a nomination) stays in the record")
@@ -198,7 +199,7 @@ func _withdraw_chain() -> void:
 	var rev: int = _file(g, "evil", goods[2].id, [k2], first)
 	_present(g, ls.slice(0, ls.size() - 1), rev)
 	var missed = ls[-1]
-	check(g.workshop_withdraw_public(rev) == "", "the latest version can be taken back")
+	check(GamePresentation.workshop_withdraw_public(g, rev) == "", "the latest version can be taken back")
 	var mind = missed.shadow if missed.is_evil() and missed.shadow != null else missed
 	check(not mind.workshop_state.get("presentations", {}).has(str(first)) and missed.claim_record.get(goods[1].id, {}).get("withdrawn", false),
 		"someone who missed the revision has the version they heard taken back too")

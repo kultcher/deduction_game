@@ -13,6 +13,8 @@
 ## - There is no spillover damping: a presentation is weighed as its own cards.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -289,7 +291,7 @@ func _game():
 
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	var number: int = g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	var number: int = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if role == "seer" else 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 	_texts[number] = g.board[number - 1].text
 	return number
@@ -364,7 +366,7 @@ func _seer_case(type: String) -> Dictionary:
 	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
 	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
 	var filed: int = _file(g, type, p[3].id, [seer, dowser])
-	var reply: Dictionary = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	var reply: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	return {"g": g, "n": n, "p": p, "filed": filed, "seer": seer, "dowser": dowser, "reply": reply, "proposal": _proposal(g, n)}
 
 
@@ -406,7 +408,7 @@ func _reuse_in_game() -> void:
 	var n = s.n
 	var first: Array = s.proposal.get("connections", {}).get("cases", {}).get("entries", [])
 	var again: int = _file(g, "suspicious", s.p[4].id, [s.seer, s.dowser])
-	g._evaluate_deduction(n, g.board[again - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[again - 1], 1.0, false)
 	var now: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
 	check(first.size() == 1 and now.size() == 2 and now[0].key == "case:%d" % s.filed and now[1].key == "case:%d" % again and now[1].replaces.is_empty(),
 		"in a game, the same cards under a \"suspicious\" premise leave the firmer first case in place (%s)" % str(now.map(func(e): return e.key)))
@@ -433,7 +435,7 @@ func _reuse_in_game() -> void:
 	# The other way round: a firm case on the same cards the next day takes both places.
 	g.w.day += 1
 	var firm: int = _file(g, "evil", s.p[4].id, [s.seer, s.dowser])
-	g._evaluate_deduction(n, g.board[firm - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[firm - 1], 1.0, false)
 	var later: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
 	check(later.size() == 1 and later[0].key == "case:%d" % firm and later[0].replaces.size() == 2, "a later firm case on the same cards takes the place of both (%s)" % str(later.map(func(e): return e.key)))
 	g.w.day -= 1
@@ -452,10 +454,10 @@ func _represent_order() -> void:
 	var n = s.n
 	g.w.day += 1
 	var other: int = _file(g, "evil", s.p[4].id, [s.seer, s.dowser])
-	g._evaluate_deduction(n, g.board[other - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[other - 1], 1.0, false)
 	var mid: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
 	check(mid.size() == 1 and mid[0].key == "case:%d" % other, "the next day, a firm case on the same cards takes the first one's place (%s)" % str(mid.map(func(e): return e.key)))
-	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, false)
 	var keys: Array = n.workshop_state.presentations.keys()
 	var now: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
 	check(keys.back() == str(s.filed), "presenting the first case again moves it last (%s)" % str(keys))
@@ -471,7 +473,7 @@ func _fading_and_repeat() -> void:
 	if first.size() != 1:
 		check(false, "the fading fixture stores its case")
 		return
-	var again: Dictionary = g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false)
+	var again: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, false)
 	check(again.get("repeated", false), "the same case again the same day is still waved off as a repeat")
 	check(not WorkshopPresentation.faded(g, g.board[s.filed - 1]), "and at a meeting it is still \"already public knowledge\"")
 	g.w.day += 1
@@ -481,11 +483,20 @@ func _fading_and_repeat() -> void:
 	check(later.size() == 1 and later[0].day == first[0].day and later[0].weight < first[0].weight and later[0].rate >= Connections.CASE_FADE and later[0].rate <= Connections.CASE_FADE_BOUGHT
 		and absf(later[0].weight / maxf(0.001, Connections.presenter_trust(g._workshop_plans[n.id + ":good"].prepared.listener, "player")) - later[0].rate) < 1e-6,
 		"a day later the case counts at its presenter's trust times what it kept (%.3f, keeping %.2f a day)" % [later[0].weight if later.size() == 1 else -1.0, later[0].rate if later.size() == 1 else -1.0])
-	var restored: Dictionary = g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false)
+	var restored: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, false)
 	var back: Array = _proposal(g, n).get("connections", {}).get("cases", {}).get("entries", [])
 	check(not restored.is_empty() and back.size() == 1 and back[0].day == int(g.w.day) and is_equal_approx(back[0].weight, Connections.presenter_trust(g._workshop_plans[n.id + ":good"].prepared.listener, "player")),
 		"presenting it again on a later day restores its weight, and no more (%.3f)" % (back[0].weight if back.size() == 1 else -1.0))
 	check(n.workshop_state.presentations.size() == 1, "it is still one stored case")
+	# The spoken reply matches: a later day's repeat, to a new audience or the same one, is
+	# answered on its merits, not as "the same reports, unchanged" (Nov 20).
+	g.w.day += 1
+	var at_meeting: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, true, "meeting")
+	var said: String = str(at_meeting.get("dialogue", {}).get("special", ""))
+	check(not ("unchanged" in said) and not ("already" in said), "a later day's repeat at the meeting isn't answered as unchanged (%s)" % said)
+	var same_day: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, true, "meeting")
+	check("unchanged" in str(same_day.get("dialogue", {}).get("special", "")), "but the same day again is (%s)" % str(same_day.get("dialogue", {}).get("special", "")))
+	g.w.day -= 1
 	g.w.day += 30
 	Mind.refresh_beliefs(g.w, n, " (a month on)")
 	var gone: Dictionary = _proposal(g, n).get("connections", {})
@@ -503,12 +514,12 @@ func _challenge_case(mode: String, listener_role: String = "warden") -> Dictiona
 	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
 	var d1: int = _read(g, p[5], "dowser", 1, {"group": [p[3].id], "count": 0})
 	var d2: int = _read(g, p[6], "dowser", 1, {"group": [p[4].id], "count": 0})
-	var seen: int = g.add_card({"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[1].home_block,
+	var seen: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[1].home_block,
 		"text": "%s saw %s out on night 1." % [p[6].name, p[1].name]})
 	_texts[seen] = g.board[seen - 1].text
 	var target: String = p[1].id if mode != "lying" else p[2].id
 	var filed: int = _file(g, "evil", target, [seer, d1, d2, seen], seer if mode != "" else 0, mode, [d1, d2] if mode != "" else [])
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	return {"g": g, "n": n, "p": p, "seer": _card_id(g, n, seer), "c": _proposal(g, n).get("connections", {}), "filed": filed}
 
 
@@ -519,14 +530,14 @@ func _movement_challenge() -> void:
 	var g = _game()
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
-	var watch: int = g.add_card({"kind": "info", "source": p[2].id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": p[1].home_block, "seen": [p[1].id]},
+	var watch: int = GameBoard.add_card(g, {"kind": "info", "source": p[2].id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": p[1].home_block, "seen": [p[1].id]},
 		"text": "%s nightwatch day 1 on %s: %s" % [p[2].id, p[1].home_block, p[1].id]})
 	_texts[watch] = g.board[watch - 1].text
-	var seen: int = g.add_card({"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[3].home_block,
+	var seen: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[3].home_block,
 		"text": "%s saw %s out by %s's on night 1." % [p[6].name, p[1].name, p[3].name]})
 	_texts[seen] = g.board[seen - 1].text
 	var filed: int = _file(g, "good", p[1].id, [watch, seen], watch, "impaired", [seen])
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	var c: Dictionary = _proposal(g, n).get("connections", {})
 	var entries: Array = c.get("cases", {}).get("entries", [])
 	check(c.get("row", "") == "walker" and entries.size() == 1, "a case of movement cards under Walker is stored (%s, %d)" % [str(c.get("row", "")), entries.size()])
@@ -603,14 +614,14 @@ func _challenged_factors() -> void:
 	var g = _game()
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
-	var aug: int = g.add_card({"kind": "info", "source": p[2].id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true},
+	var aug: int = GameBoard.add_card(g, {"kind": "info", "source": p[2].id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true},
 		"text": "%s augur day 1: crossed the Demon" % p[2].id})
 	_texts[aug] = g.board[aug - 1].text
-	var seen: int = g.add_card({"kind": "sighting", "subject": [p[3].id], "day": 1, "phase": 1, "source": p[4].id, "block": p[2].home_block,
+	var seen: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [p[3].id], "day": 1, "phase": 1, "source": p[4].id, "block": p[2].home_block,
 		"text": "%s saw %s near %s's home on day 1." % [p[4].name, p[3].name, p[2].name]})
 	_texts[seen] = g.board[seen - 1].text
 	var filed: int = _file(g, "evil", p[3].id, [aug, seen])
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	var plan: Dictionary = g._workshop_plans.get(n.id + ":good", {})
 	var view: Dictionary = plan.get("prepared", {}).get("view", {})
 	var listener: Dictionary = plan.get("prepared", {}).get("listener", {})

@@ -64,10 +64,10 @@ func _init() -> void:
 	var one = Jury.evaluate(view, c, s.baseline[0].duplicate(true))
 	c.cards = ["watch1", "vigil1"]
 	var twice = Jury.evaluate(view, c, s.baseline[0].duplicate(true))
-	check(twice.pattern.incidents == 1, "two reports of night 1 remain one outing")
+	check(Jury._pattern(view, Solver.Graph.compile_case(view, c), s.baseline[0]).incidents == 1 and twice.path_kind == "pattern", "two reports of night 1 remain one outing")
 	c.cards = ["watch1", "watch2"]
 	var nights = Jury.evaluate(view, c, s.baseline[0].duplicate(true))
-	check(nights.pattern.incidents == 2 and nights.strength > one.strength, "a second night adds a distinct suspicious incident")
+	check(Jury._pattern(view, Solver.Graph.compile_case(view, c), s.baseline[0]).incidents == 2 and nights.strength > one.strength, "a second night adds a distinct suspicious incident")
 	c.cards.append("gift_claim")
 	c.reasons = {"constance:1": "gift", "constance:2": "gift"}
 	c.citations = {"constance:1": "gift_claim", "constance:2": "gift_claim"}
@@ -147,7 +147,7 @@ func _init() -> void:
 	rival_listener.suspicion.nisha = 0.8
 	var neutral = Jury.evaluate(view, c, s.baseline[0].duplicate(true))
 	var rival = Jury.evaluate(view, c, rival_listener)
-	check(rival.strength < neutral.strength and rival.shared_assessment == neutral.shared_assessment, "prior suspicion favors a rival world without changing public logic")
+	check(rival.strength < neutral.strength and rival.assessment == neutral.assessment, "prior suspicion favors a rival world without changing public logic")
 	print("Case Workshop: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 

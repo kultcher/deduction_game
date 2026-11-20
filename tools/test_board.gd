@@ -2,6 +2,7 @@
 ##   godot --headless --path . --script res://tools/test_board.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
@@ -35,7 +36,7 @@ func _game(sd: int):
 	return g
 
 func _ctx(g, rows_by: String = "place") -> Dictionary:
-	return {"day": g.w.day, "phase": g._phase_now(), "rows_by": rows_by,
+	return {"day": g.w.day, "phase": GameBoard._phase_now(g), "rows_by": rows_by,
 		"people": g.w.npcs.map(func(n): return {"id": n.id, "name": n.name, "alive": n.alive}), "blocks": C.BLOCKS.keys()}
 
 ## A reading about night 1, heard on day 3, sits at N1; a claim sits where it was said.
@@ -46,9 +47,9 @@ func _test_canonical_time() -> void:
 	var b = w.npcs[1]
 	w.day = 3
 	w.phase = C.AFTERNOON
-	var n1 = g.add_card({"kind": "info", "role": "seer", "day": 1, "source": a.id, "data": {"pair": [b.id, a.id], "yes": true}, "text": "seer n1"})
-	var n2 = g.add_card({"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "text": "claim"})
-	var n3 = g.add_card({"kind": "death", "subject": [b.id], "night": 2, "source": "player", "text": "death"})
+	var n1 = GameBoard.add_card(g, {"kind": "info", "role": "seer", "day": 1, "source": a.id, "data": {"pair": [b.id, a.id], "yes": true}, "text": "seer n1"})
+	var n2 = GameBoard.add_card(g, {"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "text": "claim"})
+	var n3 = GameBoard.add_card(g, {"kind": "death", "subject": [b.id], "night": 2, "source": "player", "text": "death"})
 	var c1: Dictionary = g.board[n1 - 1]
 	var c2: Dictionary = g.board[n2 - 1]
 	var c3: Dictionary = g.board[n3 - 1]
@@ -65,15 +66,15 @@ func _test_merge_disclosures() -> void:
 	var b = w.npcs[1]
 	w.day = 1
 	w.phase = C.MORNING
-	var n1 = g.add_card({"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "text": "%s tells you they're the Seer." % a.name})
+	var n1 = GameBoard.add_card(g, {"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "text": "%s tells you they're the Seer." % a.name})
 	w.day = 2
 	w.phase = C.AFTERNOON
-	var n2 = g.add_card({"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "via": b.id, "private": true, "text": "Via %s: %s privately claims to be the Seer." % [b.name, a.name]})
+	var n2 = GameBoard.add_card(g, {"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "via": b.id, "private": true, "text": "Via %s: %s privately claims to be the Seer." % [b.name, a.name]})
 	w.phase = C.EVENING
 	g.state = "meeting"
-	var n3 = g.add_card({"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "text": "%s publicly claims to be the Seer." % a.name})
+	var n3 = GameBoard.add_card(g, {"kind": "claim", "subject": [a.id], "role": "seer", "source": a.id, "text": "%s publicly claims to be the Seer." % a.name})
 	g.state = "day"
-	var n4 = g.add_card({"kind": "claim", "subject": [a.id], "role": "warden", "source": a.id, "text": "%s claims Warden." % a.name})
+	var n4 = GameBoard.add_card(g, {"kind": "claim", "subject": [a.id], "role": "warden", "source": a.id, "text": "%s claims Warden." % a.name})
 	var ls: Array = g.board[n1 - 1]["learned"]
 	print("cards %d %d %d %d; disclosures: %s" % [n1, n2, n3, n4, ls])
 	_check(n1 == n2 and n2 == n3, "the same claim heard three ways is one card")
@@ -99,8 +100,8 @@ func _test_layout_rows() -> void:
 	w.day = 2
 	w.phase = C.EVENING
 	var ids: Array = w.npcs.map(func(n): return n.id)
-	var seer = g.add_card({"kind": "info", "role": "seer", "day": 1, "source": ids[0], "data": {"pair": [ids[1], ids[2]], "yes": true}, "text": "seer"})
-	var vote = g.add_card({"kind": "vote", "subject": [ids[3], ids[4], ids[1]], "nominee": ids[1], "by": ids[2], "yes": [ids[3], ids[4]], "day": 2, "phase": C.EVENING, "outcome": "on_block", "source": "player", "text": "vote"})
+	var seer = GameBoard.add_card(g, {"kind": "info", "role": "seer", "day": 1, "source": ids[0], "data": {"pair": [ids[1], ids[2]], "yes": true}, "text": "seer"})
+	var vote = GameBoard.add_card(g, {"kind": "vote", "subject": [ids[3], ids[4], ids[1]], "nominee": ids[1], "by": ids[2], "yes": [ids[3], ids[4]], "day": 2, "phase": C.EVENING, "outcome": "on_block", "source": "player", "text": "vote"})
 	var st: Dictionary = BoardModel.layout(g.board, "statements", _ctx(g))
 	var rows_seer: Array = st["items"].filter(func(it): return it["card"] == seer).map(func(it): return it["row"])
 	print("Seer reading rows: %s at %s" % [rows_seer, st["items"].filter(func(it): return it["card"] == seer).map(func(it): return it["col"])])
@@ -144,7 +145,7 @@ func _test_state_filters() -> void:
 		g.command(cmd)
 	# Homes now live in profiles; explicitly supply a statement rather than
 	# depending on a conversation with an NPC who may not be at the tavern.
-	g.add_card({"kind": "claim", "subject": [g.w.npcs[0].id], "source": g.w.npcs[0].id,
+	GameBoard.add_card(g, {"kind": "claim", "subject": [g.w.npcs[0].id], "source": g.w.npcs[0].id,
 		"role": "seer", "text": "A gift claim for the board-filter fixture."})
 	var st = CaseState.new()
 	var all_n: int = st.apply(g).size()
@@ -180,14 +181,14 @@ func _test_dated_observations_and_public_confidence() -> void:
 	var a = g.w.npcs[0]
 	var b = g.w.npcs[1]
 	var observation = {"kind": "saw", "who": b.id, "block": "market", "how": "window"}
-	var first = g.add_card(Mind.sighting_report(g.w, a, observation, 1).fact)
-	var later = g.add_card(Mind.sighting_report(g.w, a, observation, 2).fact)
+	var first = GameBoard.add_card(g, Mind.sighting_report(g.w, a, observation, 1).fact)
+	var later = GameBoard.add_card(g, Mind.sighting_report(g.w, a, observation, 2).fact)
 	_check(first != later and g.board[first - 1].when.day == 1 and g.board[later - 1].when.day == 2, "sightings on different nights keep distinct cards and observation times")
-	var claim = g.add_card({"kind": "claim", "source": a.id, "subject": [a.id], "role": "seer", "text": "A private claim for the confidence check."})
+	var claim = GameBoard.add_card(g, {"kind": "claim", "source": a.id, "subject": [a.id], "role": "seer", "text": "A private claim for the confidence check."})
 	g.confidences[claim] = a.id
 	a.claim_public = true
 	var trust: float = a.trust
-	g._break_confidences([claim])
+	GameBoard._break_confidences(g, [claim])
 	_check(a.trust == trust and not g.confidences.has(claim), "a holder's public disclosure lifts the old confidence cost")
 
 func _test_revision_labels() -> void:
@@ -229,14 +230,14 @@ func _test_private_scope_hook() -> void:
 	var g = _game(4242)
 	var n = g.w.living_good()[0]
 	g.state = "talk"
-	var num: int = g.add_card({"kind": "claim", "subject": [n.id], "role": "seer", "source": n.id, "private": true,
+	var num: int = GameBoard.add_card(g, {"kind": "claim", "subject": [n.id], "role": "seer", "source": n.id, "private": true,
 		"text": "%s told you privately they are the Seer." % n.name})
 	var card: Dictionary = g.board[num - 1]
 	_check(CardModel.shared_privately(card) and CardModel.badges(card) == ["private"], "a claim told one-to-one is private")
 	g.confidences[num] = n.id
 	_check(CardModel.badges(card, g.confidences) == ["private", "confidential"], "and confidential once you've promised")
 	g.state = "meeting"
-	g.add_card({"kind": "claim", "subject": [n.id], "role": "seer", "source": n.id,
+	GameBoard.add_card(g, {"kind": "claim", "subject": [n.id], "role": "seer", "source": n.id,
 		"text": "%s claims to be the Seer." % n.name})
 	_check(CardModel.disclosure_scope(card) == "public", "said to the town later: public (one card, two disclosures)")
 	var own: Dictionary = g.board[0]
