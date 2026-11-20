@@ -146,6 +146,12 @@ static func admitted_before(d, nd: int) -> bool:
 	var prior: Dictionary = d.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
 	return prior.get("kind", "") == "alibi" and not prior.get("home", true) and prior.get("source", "") == d.id
 
+## They've already confessed that night's errand (at the podium or to you): asked again,
+## they tell the same confession, never a refusal or a lie (Quill, Nov 20, seed 701).
+static func confessed_before(d, nd: int) -> bool:
+	var prior: Dictionary = d.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
+	return prior.get("kind", "") == "secret" and prior.get("owner", "") == d.id
+
 ## Out that night, owned, but the reason kept back.
 static func _plain_account(w, d, nd: int, block: String, lines: Array, facts: Array) -> void:
 	w.dlog.think(d.id, "admit_out", "Owned the sighting: says they were out on %s on night %d, keeps the reason." % [block, nd])
@@ -223,7 +229,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				outcome = "gift_outing"
 		elif not d.is_evil() and not d.secret.is_empty():
 			parts["privacy"] = (Tuning.Dialogue.CONFESS_PRIVACY_PIVOT - _trait(d, "privacy")) * Tuning.Dialogue.CONFESS_PRIVACY_SLOPE
-			if _mind().decide(w, d, "podium_confess", parts, "Pressed on night %d: confess my errand (%s) before the town?" % [nd, d.secret.get("kind", "?")]):
+			if confessed_before(d, nd) or _mind().decide(w, d, "podium_confess", parts, "Pressed on night %d: confess my errand (%s) before the town?" % [nd, d.secret.get("kind", "?")]):
 				d.secret_known = true
 				var me: String = d.secret.get("me", d.secret.get("text", ""))
 				lines.append(_say(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % me, {"secret": me}))
