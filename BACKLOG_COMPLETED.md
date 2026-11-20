@@ -12,7 +12,16 @@ session notes are kept for the record; code pointers may have moved since.
   #385, #424 and #435, with zero drift. `game.gd` keeps only the 23 public forwards the UI
   and CLI use, and its header names them.
 
-  > **Closed Nov 20 (through Seneschal).** Groups 1 to 3 of the item stay in BACKLOG.md.
+  > **Closed Nov 20 (through Seneschal).** Groups 2 and 3 of the item stay in BACKLOG.md.
+
+- **Argon's audit, group 1: dead code, zero drift.**
+  - The Workshop scaffolding used only by fixtures was removed and
+    `tools/connections_prototype.gd` retired (Lantern, Nov 20,
+    `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`).
+  - Bailiff swept the one-off scripts in `tools/`. #379 dropped the Oct 30 prior experiment;
+    the rest are still in use, as the table in its handoff shows.
+
+  > **Closed Nov 20 (through Seneschal).**
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
   (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.

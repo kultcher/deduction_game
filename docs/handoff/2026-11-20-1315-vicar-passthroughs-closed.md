@@ -24,3 +24,9 @@ was nothing to do.
 
 Beadle's #421 (the approved kill-score values) is merged (174191ee), so "Kill-score pass on
 every role" moved to BACKLOG_COMPLETED.md, as the item itself said to do.
+
+## Also: Argon's audit group 1 is closed
+
+Seneschal reported that Bailiff's `tools/` sweep is done: #379 merged and dropped the Oct 30
+prior experiment, and the rest of the scripts are still in use. With Lantern's scaffolding
+removal, that finishes group 1. Only groups 2 (deferred) and 3 (the file splits) are left.

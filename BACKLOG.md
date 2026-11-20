@@ -132,14 +132,8 @@ listener (#273), both Lantern's.
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
   features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
-  1. **Dead code, zero drift:**
-     - ~~the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
-       and `legacy_evidence`, the `legacy_path` stub), together with retiring
-       `tools/connections_prototype.gd`~~. Done (Lantern, Nov 20,
-       `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`);
-     - the one-off scripts in `tools/` (Bailiff sweeps).
-
-     Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
+  Groups 1 and 4 are done (BACKLOG_COMPLETED.md). Keep `ALLOW_NO_GIFT_DENIAL` and
+  `USE_FLAVOR_SECRETS` until the secrets rework decides.
   2. **Golden-moving:**
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
