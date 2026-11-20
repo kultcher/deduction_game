@@ -5,6 +5,18 @@ session notes are kept for the record; code pointers may have moved since.
 
 ## Closed Nov 20, 2026, reprioritization (Michael; recorded by Claude-Vicar)
 
+- **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
+  move a reading at equal effective weight, with night scope and self-knowledge included.
+  [open]
+  Michael (Nov 18): being handled now, with "Recovering from a wrong 'lying' call" and
+  "The player's 'poisoned, not lying' call" (section 2, Cases and the Workshop).
+  Quill (Nov 18): Michael chose three labels after the label audit. "Misled" and "failed
+  gift" are now one honest mistake (honest doubt at the player's credibility, "the reader is
+  good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
+  `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
+
+  > **Closed Nov 20 (Quill; Michael confirmed the Lying strength):** settled by the Mistaken merge and the Lying retune (#296, Nov 18). Both calls were measured side by side; the table is in `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
+
 - **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
   Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
   1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
