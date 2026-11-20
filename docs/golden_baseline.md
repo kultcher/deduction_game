@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
+### Current baseline (Nov 20, the Gravedigger's hidden lean): `baseline_dfb5a81`
+
+`tools/golden/baseline_dfb5a81/` is the capture from `claude/beadle-gravedigger-lean` at `dfb5a81` (main at
+`ad33789`). A good Gravedigger with no one hanged yet leans a little toward nominating and voting
+to hang (`GRAVEDIGGER.nothing_to_read_lean` 0.08, proposed). It's a hidden motive: a vote part
+and a logged nomination term.
+- **Divergence from `baseline_7792e9a`:** 54875 (record 52, day 1), 692 (104, day 2), 900 (76,
+  day 2) and 98933 (52, day 1), at the first vote whose record carries the Gravedigger's
+  `gravedigger_nothing_to_read` part. 42 is identical.
+- **Outcomes:** unchanged on all five seeds: the same hangings, winners and last days.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
 
 `tools/golden/baseline_7792e9a/` is the capture from `claude/beadle-symmetric-vote` at `7792e9a`
 (main at `39a57d2`, with #390, merged in). The player's no now pushes later voters toward no, at
