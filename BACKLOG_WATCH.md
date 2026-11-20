@@ -88,3 +88,13 @@ to reach for only if needed.
   the spirit will seek a new hiding place; whether the totem search can keep pace is a
   balance question. (54875) [watch]
   Verified Nov 18: built; only the balance check (can the totem search keep pace?) is left.
+
+## From "Cases and the Workshop"
+
+- **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
+  skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
+  outcomes, nested relays and conversion histories are still unsupported. See
+  [docs/archive/CASE_WORKSHOP_FINDINGS.md](docs/archive/CASE_WORKSHOP_FINDINGS.md) for the
+  expansion checkpoints. [watch; broader adapters open]
+
+  > **Moved here Nov 20 (Michael).**
