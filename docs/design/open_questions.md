@@ -70,8 +70,8 @@ These are the ones under discussion now, roughly by how much they shape other wo
   Lantern measures it for Michael before building it (Lantern's `claude/own-reading-doubt`
   handoff entry, Nov 17, on main: after phase 6b and the double-claim pairing). Still open:
   what the measurement shows, and whether to keep it.
-- **DESIGN's Insight row:** Lantern's draft is approved (Michael, Nov 20, later); it goes into
-  DESIGN.md's traits table.
+- **DESIGN's Insight row:** Lantern's draft is approved (Michael, Nov 20, later), and Lantern
+  committed it to DESIGN.md in #441.
 - **Evidence:** `docs/belief_model.md`; `docs/connections_purge_plan.md` sections 7–8 (#174).
 - **Builds:** Lantern.
 

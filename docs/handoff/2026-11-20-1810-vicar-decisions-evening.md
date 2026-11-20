@@ -7,8 +7,8 @@
 
 ## What changed and why
 
-Seneschal relayed a batch of Michael's decisions. Seneschal dated them Nov 21, but this
-session's clock reads Nov 20, 18:00 UTC, so they're recorded as "Nov 20, later".
+Seneschal relayed a batch of Michael's decisions from Nov 20. They're recorded as "Nov 20,
+later" (Seneschal confirmed the date).
 
 **BACKLOG.md:**
 - **Explicit night-sighting rebuttals:** approved, speech only. The wording never says "road".
@@ -27,8 +27,8 @@ session's clock reads Nov 20, 18:00 UTC, so they're recorded as "Nov 20, later".
   scoping it.
 
 **docs/design/open_questions.md:**
-- **1.3:** Lantern's draft of DESIGN's Insight row is approved. I've asked Seneschal for the
-  text and haven't applied it to DESIGN.md yet.
+- **1.3:** Lantern's draft of DESIGN's Insight row is approved. Lantern committed it in #441;
+  DESIGN.md isn't touched here.
 - **1.9:** kept as is:
   - 6a's face-value term in a cited reason's strength;
   - the "not the Demon" badge's approximation (no per-case Demon pool);
