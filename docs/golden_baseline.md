@@ -44,7 +44,24 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
+### Current baseline (Nov 20, a sighting places its teller): `baseline_e8ff7e0`
+
+`tools/golden/baseline_e8ff7e0/` is the capture from `claude/sighting-places-teller` at `e8ff7e0` (main at
+`bcc702a` after #444, merged in). In a world where its teller is good, a street sighting puts
+the teller out on that block that night, and a window sighting puts them home or on their own
+block (`LiveActivity.teller_place`).
+- **Divergence from `baseline_6836d21`:** every seed, at a refresh: 98933 at record 1, 54875 at 4
+  (day 1), 42 at 29, 900 at 32 and 692 at 53 (day 2).
+- **Outcomes:**
+  - **54875:** Edda (the Revenant) on day 1 as before, then Odette (a good Veteran) on day 2 and
+    Isolde (a good Lamplighter) on day 3, instead of Greta (the Poisoner) on day 2.
+  - **692:** Constance (the Demon) on day 2 as before, and now Lian (the Revenant) on day 3.
+  - **98933:** Agnes (a good Medium) on day 2 as before; Lian (a good Psychologist) is no longer
+    hanged on day 3.
+  - **42 and 900:** the same hangings (none; Greta). No winner by day 4 anywhere.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
 
 `tools/golden/baseline_6836d21/` is the capture from `claude/joint-reasons-combined` at `6836d21`
 (main at `03968fd` after #448, merged in). A "taken together" reason names only two cards the
