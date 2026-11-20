@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+### Current baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_1fe73e4`
+
+`tools/golden/baseline_1fe73e4/` is the capture from `claude/joint-reasons-combined` at `1fe73e4`
+(main at `7005cc6` merged in). A "taken together" reason names only two cards the belief
+model weighed together. An NPC's own reading counts as known to the town or the Demonologist
+by the reading itself (shared, claimed, or cited in a presentation to them), not by the
+cards cited with it, so a reading already shared is no longer "revealed" again.
+- **Divergence from `baseline_7005cc6`:** 692 from record 67 and 900 from 41 (both the day 2
+  meeting: an accusation no longer hints at a private reason). 42 and 54875 diverge earlier,
+  at a day 1 or day 2 refresh, after a different line in talk. 98933 is identical.
+- **Outcomes:**
+  - **54875:** the town hangs Edda (the Revenant) on day 1 instead of day 2, then Greta (the
+    Poisoner) on day 2, instead of Hollis (a good Gravedigger) on day 3. No winner by day 4
+    either way.
+  - **692:** Constance (the Demon) on day 2 as before. Lian (the Revenant) is no longer hanged
+    on day 3. No winner by day 4 either way.
+  - **42, 900 and 98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
 `tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
 `d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
