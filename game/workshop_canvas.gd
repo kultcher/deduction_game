@@ -326,6 +326,27 @@ static func top_tier_chance(type: String, chance: float) -> float:
 	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
 	return chance if settles else -1.0
 
+## The share of a person's chance of being evil that is the chance of being the Demon, before
+## and after the case's evidence, as the judge reads the case (CaseEval, on the Test juror's
+## view): {before, after}, or {} if the case can't be judged. A "was the Demon when hanged"
+## question reads the same way (CaseEval's "demon" premise).
+static func _demon_share(g, value: Dictionary, target: String) -> Dictionary:
+	var juror: Dictionary = juror_case(g, value)
+	if not juror.get("ready", false) or target == "":
+		return {}
+	var CaseEval = preload("res://workshop/case_eval.gd")
+	var asked: Dictionary = juror.case.duplicate(true)
+	asked.conclusion = asked.conclusion.duplicate(true)
+	asked.conclusion.type = "demon"
+	asked.conclusion.target = target
+	var ev: Dictionary = CaseEval.evaluate(juror.prepared.view, asked)
+	if ev.get("impossible", false):
+		return {}
+	var person: Dictionary = ev.get("people", {}).get(target, {})
+	var share := func(demon: float, evil: float) -> float: return clampf(demon / evil, 0.0, 1.0) if evil > 1e-9 else 1.0
+	return {"before": share.call(float(ev.get("prior", 0.0)), float(person.get("prior", 0.0))),
+		"after": share.call(float(ev.get("posterior", 0.0)), float(person.get("posterior", 0.0)))}
+
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
 ## lr (the odds ratio of chance over chance_before)}.
@@ -358,6 +379,15 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	var clears: bool = type in PREMISE_CLEARS
 	var chance_before: float = 1.0 - before if clears else before
 	var chance: float = 1.0 - after if clears else after
+	if type == "notdemon":
+		# "Not the Demon" also holds for a Minion: the listener reports only the chance of being
+		# evil, so the share of that which is the Demon comes from the judge's own reading of the
+		# case (Seneschal's check, Nov 20: the badge read the chance of being good, so evidence
+		# that the subject is a Minion read as arguing against "not the Demon").
+		var split: Dictionary = _demon_share(g, value, target)
+		if not split.is_empty():
+			chance_before = 1.0 - before * float(split.before)
+			chance = 1.0 - after * float(split.after)
 	var lr: float = exp(_logit(chance) - _logit(chance_before))
 	# An accepted lie call presses its teller as the liar rather than moving the odds (the
 	# clash is in the worlds already): the badge's words name it (Herald words the line).

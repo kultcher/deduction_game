@@ -67,6 +67,20 @@ func _init() -> void:
 	_link(model, view, good_p, [bluff_id])
 	var clear: Dictionary = Live.test_juror(g, model.compile(good_p))
 	check(clear.get("ready", false) and absf(log(float(clear.lr)) + log(float(r.lr))) < 1e-6, "\"is good\" on the same card reads the inverse strength (x%.3f against x%.3f)" % [float(clear.get("lr", 0.0)), float(r.get("lr", 0.0))])
+	# "Is not the Demon" reads the chance of not being the Demon, which a Minion also meets, not
+	# the chance of being good (Seneschal's check, Nov 20). The real Seer's "neither is the
+	# Demon" says nothing about a Minion, so it clears the Demon question further than "good".
+	var nd_p: String = model.add_premise(innocent.id, "notdemon", Vector2(0, 400))
+	_link(model, view, nd_p, [truth_id])
+	var nd: Dictionary = Live.test_juror(g, model.compile(nd_p))
+	var gd_p: String = model.add_premise(innocent.id, "good", Vector2(0, 600))
+	_link(model, view, gd_p, [truth_id])
+	var gd: Dictionary = Live.test_juror(g, model.compile(gd_p))
+	var nd_heard: Dictionary = nd.get("listener", {})
+	check(nd.get("ready", false) and gd.get("ready", false) and float(nd.lr) > float(gd.lr) and float(nd.lr) > 1.0,
+		"\"is not the Demon\" on \"neither is the Demon\" reads stronger than \"is good\" on it (x%.3f against x%.3f)" % [float(nd.get("lr", 0.0)), float(gd.get("lr", 0.0))])
+	check(not nd_heard.is_empty() and float(nd_heard.chance) >= 1.0 - float(nd_heard.after) - 1e-9 and float(nd_heard.chance_before) >= 1.0 - float(nd_heard.before) - 1e-9,
+		"its chance is at least the chance of being good, before and after (%.3f, %.3f)" % [float(nd_heard.get("chance_before", -1.0)), float(nd_heard.get("chance", -1.0))])
 	# A challenge, weighed as the listener weighs it.
 	var bare: Dictionary = accuse.duplicate(true)
 	bare["reading_challenges"] = {bluff_id: {"mode": "lying", "supports": []}}
