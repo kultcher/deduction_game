@@ -150,7 +150,9 @@ listener (#273), both Lantern's.
   3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
      Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
      `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
-     the profiler.
+     the profiler. **Done** (Lantern, Nov 20, `claude/delete-channel-stack`): also took
+     `test_channel_sum_product`, `test_workshop_class_parity`, and the oracle parity checks in
+     four role suites.
   4. **File splits,** one file per PR, with no change to play:
      - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
        the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
@@ -264,6 +266,10 @@ listener (#273), both Lantern's.
   network. (Michael, Nov 19) Owner Beadle, who proposes the size. **In flight:** Beadle's
   #327 (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
   Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
+  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
+  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1). NPC-to-NPC
+  only; evil's bluffed gift and fake readings get the same. Measured on 40 games: see the PR's
+  handoff.
 
 - **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]

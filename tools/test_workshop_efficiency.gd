@@ -1,13 +1,11 @@
-## Independent constraint oracle plus exact shared/scalar assessment comparisons.
+## Independent constraint oracle and exact bounded-search reuse.
 extends SceneTree
 const Session = preload("res://workshop/session.gd")
 const Solver = preload("res://workshop/solver.gd")
-const Support = preload("res://workshop/support_model.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Domain = preload("res://workshop/world_domain.gd")
-const Jury = preload("res://workshop/jury.gd")
 var checks = 0
 var fails = 0
 
@@ -52,20 +50,6 @@ func _initialize() -> void:
 		_oracle(v, reports, {}, {reports[0].id: {"positive": ["hollis"]}}, {}, v.alignment_epoch)
 		if fixture == "revenant":
 			_oracle(v, reports, {}, {}, {}, "during curse", [{"at": "during curse", "positions": {"merrin": "evil"}}])
-		var proposal = session.case_data.duplicate(true)
-		proposal.cards = reports.map(func(c): return c.id)
-		if fixture == "movement":
-			proposal.cards.append_array(["soot2", "evening2"])
-		var listener = Ghost.profile(v.people)
-		listener.reading_reliability[Solver.semantic_key(reports[0])] = 0.65
-		_batch(v, proposal, listener, fixture)
-		proposal.positions.nisha = "marked"
-		proposal.answers[reports[0].id] = {"positive": ["hollis"]}
-		_batch(v, proposal, listener, fixture + " conditional")
-		Support.reuse_batches = false
-		var scalar = Jury.evaluate(v, proposal, listener.duplicate(true))
-		Support.reuse_batches = true
-		check(Jury.evaluate(v, proposal, listener.duplicate(true)) == scalar, fixture + " complete jury agrees exactly with separate assessment plans")
 	# Live modifier domains also retain exactly the same survivor order.
 	var live = Session.new(692).scenario.public_view.duplicate(true)
 	live.world_options = {"modifiers": ["marked", "delusional", "lovers", "sleepwalker"]}
@@ -75,7 +59,6 @@ func _initialize() -> void:
 	var proposal = Solver.empty_case()
 	proposal.cards = reports.map(func(c): return c.id)
 	var listener = Ghost.profile(live.people)
-	_batch(live, proposal, listener, "live")
 	var limits = {"support": 48, "rivals": 48, "complete": true}
 	Reasoner.reuse_matches = false
 	var expected = Reasoner.search(live, proposal, reports, listener, limits)
@@ -90,22 +73,6 @@ func _initialize() -> void:
 	check(Reasoner.search(live, proposal, reports, listener, limits) == expected and expected.support.is_empty(), "fast candidate holds cannot treat an unknown target as good")
 	print("Workshop efficiency: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
-
-func _batch(view: Dictionary, proposal: Dictionary, listener: Dictionary, label: String) -> void:
-	var shared = {"enabled": true}
-	for person in view.people:
-		for type in ["evil", "good"]:
-			var question = proposal.duplicate(true)
-			question.conclusion = {"target": person.id, "type": type, "at": proposal.conclusion.at}
-			var prepared = Reasoner.prepare(view, question, listener)
-			var scalar = Support.assess(view, question, listener, {}, prepared)
-			check(Support.assess(view, question, listener, {}, prepared, shared) == scalar, "%s %s %s shared/scalar equality" % [label, person.id, type])
-	# Same context must not retain stale source quality or first-hand knowledge.
-	var changed = listener.duplicate(true)
-	changed.suspicion[view.people[0].id] = 0.95
-	changed.knowledge.good = [view.people[-1].id]
-	var prepared = Reasoner.prepare(view, proposal, changed)
-	check(Support.assess(view, proposal, changed, {}, prepared, shared) == Support.assess(view, proposal, changed, {}, prepared), label + " shared plan invalidates changed beliefs/knowledge")
 
 func _oracle(view: Dictionary, cards: Array, positions: Dictionary, answers: Dictionary, knowledge: Dictionary, epoch: String, temporal: Array = []) -> void:
 	# Deliberately use the original array/string report predicates, independent of

@@ -12,13 +12,10 @@ const Evil = preload("res://sim/evil.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Caches = preload("res://workshop/caches.gd")
 const Live = preload("res://game/workshop_canvas.gd")
-const Channels = preload("res://workshop/evidence_channels.gd")
-const Factored = preload("res://workshop/factored_channels.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Challenges = preload("res://workshop/reading_challenges.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
-const Oracle = preload("res://workshop/channel_likelihood.gd")
 const Social = preload("res://sim/social.gd")
 const PsychRole = preload("res://sim/roles/psychologist.gd")
 
@@ -533,22 +530,6 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 	var ev_lied: Dictionary = CaseEval.evaluate(cview, compiled_lied)
 	_check(ev_lied.posterior > ev_lied.prior and ev_lied.lr > 1.2, "Picking liar's statement + Source lied boosts CaseEval likelihood ratio against liar")
 
-	# FactoredChannels vs ChannelLikelihood oracle exact agreement on [P, s0, s1]
-	var subset_cards: Array = [Solver.card_by_id(cview, p_card.id), Solver.card_by_id(cview, fid0), Solver.card_by_id(cview, fid1)]
-	var rates: Dictionary = {}
-	var q_map: Dictionary = {}
-	# Rates keyed by the compiled plan's own channels (as test_workshop_channel_likelihood does).
-	for channel in Channels.compile(cview, subset_cards).channels:
-		rates[channel.key] = {"healthy": 0.95, "impaired": 0.25} if channel.kind == "gift_accuracy" else 0.8
-	for sc in subset_cards:
-		q_map[sc.id] = CaseEval.chance_content(cview, sc)
-	var f_res: Dictionary = Factored.assess(cview, subset_cards, {}, rates, q_map)
-	var o_res: Dictionary = Oracle.assess(cview, subset_cards, {}, rates, q_map)
-	_check(f_res.consistent == o_res.consistent, "FactoredChannels and ChannelLikelihood agree on consistent flag for [P, s0, s1]")
-	var max_diff: float = 0.0
-	for wi in range(f_res.post.size()):
-		max_diff = maxf(max_diff, absf(f_res.post[wi] - o_res.post[wi]))
-	_check(max_diff < 1e-10, "FactoredChannels matches exhaustive ChannelLikelihood oracle on Psychologist pair gate")
 
 	# Direct night sighting disables "misled" in apply_answer and validate_answers
 	var sight_fact: Dictionary = {"kind": "sighting", "source": liar.id, "subject": [other_g.id], "block": other_g.home_block, "day": 0, "phase": C.NIGHT, "text": "saw"}

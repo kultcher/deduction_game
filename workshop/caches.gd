@@ -10,10 +10,7 @@ extends RefCounted
 const CaseEval = preload("res://workshop/case_eval.gd")
 const CaseWhy = preload("res://workshop/case_why.gd")
 const Connections = preload("res://workshop/connections.gd")
-const ChannelLikelihood = preload("res://workshop/channel_likelihood.gd")
-const ChannelSumProduct = preload("res://workshop/channel_sum_product.gd")
 const Chronology = preload("res://workshop/chronology.gd")
-const FactoredChannels = preload("res://workshop/factored_channels.gd")
 const GhostJuror = preload("res://workshop/ghost_juror.gd")
 const Jury = preload("res://workshop/jury.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
@@ -42,13 +39,8 @@ static func clear_all() -> void:
 	CaseEval._bare_fits_cache.clear()
 	CaseWhy._mask_cache.clear()
 	Connections._kept.clear()
-	ChannelLikelihood.cache.clear()
-	ChannelSumProduct._program_entries.clear()
-	ChannelSumProduct._circuit_entries.clear()
-	ChannelSumProduct._handles_epoch = -1
 	Chronology._cached_people = null
 	Chronology._cached_idx = {}
-	FactoredChannels.cache.clear()
 	GhostJuror._live_cache.clear()
 	Jury._eval_memo.clear()
 	LiveActivity.cache.clear()
@@ -84,7 +76,6 @@ static func clear_all() -> void:
 	Solver._sig_groups.clear()
 	Solver.question_cache.clear()
 	SupportModel.cache.clear()
-	SupportModel.comparisons.clear()
 	SupportModel.priors.clear()
 	SupportModel.explanations.clear()
 	TraceSolver._compiled_cache.clear()

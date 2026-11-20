@@ -176,7 +176,7 @@ func _run() -> void:
 	quit(1 if fails else 0)
 
 func _ui() -> void:
-	var scene = load("res://ui/case_workshop.tscn").instantiate()
+	var scene = _fixture_workshop()
 	root.add_child(scene)
 	await process_frame
 	await process_frame
@@ -218,3 +218,10 @@ func _diff(a, b, path: String) -> void:
 			_diff(a[i], b[i], path + "." + str(i))
 	else:
 		print("DIFF %s: %s vs %s" % [path, str(a), str(b)])
+
+## The fixture Workshop (fixture 692): the canvas base script as a full-screen control. Its lab
+## scene is gone (dead dev labs, Nov 19); the script is still the live Workshop's base.
+func _fixture_workshop() -> Control:
+	var scene: Control = preload("res://ui/case_workshop_canvas.gd").new()
+	scene.set_anchors_preset(Control.PRESET_FULL_RECT)
+	return scene

@@ -513,7 +513,7 @@ func _save(path: String) -> void:
 func _open(path: String) -> void:
 	var value = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if not value is Dictionary or value.get("format") != "demonologist-workshop-canvas-1":
-		status.text = "Choose a saved Workshop canvas. Earlier list experiments can be opened in case_workshop_lab.tscn."
+		status.text = "Choose a saved Workshop canvas."
 		return
 	var candidate = Session.new(692)
 	if not value.get("experiment") is Dictionary or int(value.experiment.get("seed", 0)) != 692:

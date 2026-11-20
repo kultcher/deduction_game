@@ -33,7 +33,7 @@ static func live(snapshot: Dictionary) -> Dictionary:
 		"source_doubt": {}, "own_gift": "", "legacy_evidence": []}
 	# Includes receipts, compiled profile weights and public history. Repeated previews
 	# with identical inputs can reuse the neutral result without re-running the jury.
-	var cache_input = [input, Jury.engine, preload("res://workshop/case_eval.gd").prior_k, preload("res://workshop/reasoner.gd").unlimited_cards]
+	var cache_input = [input, preload("res://workshop/case_eval.gd").prior_k, preload("res://workshop/reasoner.gd").unlimited_cards]
 	var cache_key = hash(cache_input)
 	if _live_cache.has(cache_key) and _live_cache[cache_key].input == cache_input:
 		return _live_cache[cache_key].result.duplicate(true)
