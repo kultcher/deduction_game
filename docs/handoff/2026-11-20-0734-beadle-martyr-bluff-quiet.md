@@ -1,10 +1,11 @@
 # The evil Martyr bluff stays quiet against its chosen
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `ad33789` (`baseline_7792e9a`)
+- **Base:** main at `0b44cae` (`baseline_7005cc6`), merged in Nov 21; first written on `ad33789`
 - **Branch:** `claude/beadle-martyr-bluff-quiet`
-- **Status:** draft PR. Zero drift: golden is identical to `baseline_7792e9a` on all five seeds.
-  It's marked ready once the A/B is in.
+- **Status:** draft PR. Golden moves (one seed's vote parts; no outcome changes) and is
+  re-baselined here to `baseline_bb8cd47`. It's marked ready once the A/B is in. Golden-moving
+  PRs merge one at a time.
 - **Next actor:** Beadle (the A/B), then Bailiff.
 - **BACKLOG item:** "Evil Martyr bluff can frame a good scapegoat" [decided] (Michael, Nov 20).
   From the overnight queue.
@@ -29,22 +30,35 @@ person it claims to protect, which is a plain tell. It now never does, wherever 
 - **Teammates are unaffected,** so they may still push the scapegoat.
 - `Evil.martyr_bluff_chosen(n)` reads the made-up choice from its fake reading.
 
-## Question for Michael
+## Its vote on its chosen (Michael, Nov 21: yes, copy the reluctance)
 
-**Its own vote on its chosen:**
-- **Today:** it votes as evil does, so yes on the scapegoat.
-- **A real Martyr:** reluctant to vote to hang its chosen (`martyr_reluctance`), so an eager yes
-  is a softer tell.
-- **The question:** should the bluff copy that reluctance? It's not built, and I recommend yes.
+- **Before:** it voted as evil does, so yes on the scapegoat, an eager yes a real Martyr wouldn't give.
+- **Now:** its good self takes a real Martyr's `martyr_reluctance` on its made-up chosen
+  (`Martyr._chosen` reads it for the shadow), and on that nominee the bluff votes as its good self
+  does, with no evil override (`MindVote`, logged "votes on X, its 'chosen', as a real Martyr
+  would"). A strong enough case or panic still carries a real Martyr, and so the bluff, to yes.
+
+## Small calls made on Michael's behalf
+
+- **No override on its chosen.** Copying only the good self's part would have been hollow: the
+  evil side wants the scapegoat hanged and would outvote it nearly every time. The frame comes
+  after the hanging anyway, so the bluff has no need to vote for it.
 
 ## Measured
 
-- **New:** `tools/test_martyr_bluff_quiet.gd` (5 checks), on the fast list.
+- **New:** `tools/test_martyr_bluff_quiet.gd` (12 checks), on the fast list.
   - It never accuses, nominates or speaks against its chosen.
   - A control: with no chosen, the same evil NPC accuses the scapegoat 7 times in 8.
+  - Its good self is exactly as reluctant as a real Martyr would be, on its chosen only; in a real
+    vote where the evil side wants the hanging, it votes no with its good self 6 times in 6.
 - **Also pass:** test_evil_play, test_meeting_flow, test_meeting_m2a, test_meeting_m2c,
   test_too_clean_bluffs, test_relay_bluff, test_roles_registry and test_evil_owned_lie.
-- **Golden:** identical to `baseline_7792e9a` at `--tol 0`.
+- **Also pass (Nov 21):** test_symmetric_vote, test_would_vote, test_meeting_flow and
+  test_roles_registry.
+- **Golden:** re-baselined to `baseline_bb8cd47` on main at `0b44cae`. Two captures were
+  identical. Only 692 diverges, at record 236 (day 3): Hollis, a Martyr bluff, now carries the
+  reluctance on its chosen and its no vote gets firmer. The hangings (Constance, Lian) are the same,
+  and no seed has a winner. 42, 54875, 900 and 98933 are identical.
 - **A/B:** to follow, 40 passive games against main. It counts Martyr-bluff frames, the chosen
   hanged, and winners and hangings.
 

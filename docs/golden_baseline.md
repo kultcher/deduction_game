@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_bb8cd47`
+
+`tools/golden/baseline_bb8cd47/` is the capture from `claude/beadle-martyr-bluff-quiet` at `bb8cd47`
+(main at `0b44cae`, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_7005cc6`:** only 692, at record 236 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
 `tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
 `d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
