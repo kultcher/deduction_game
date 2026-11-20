@@ -288,6 +288,13 @@ static func test_juror(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	result["listener"] = {"before": heard.before, "after": heard.after, "chance_before": heard.chance_before, "chance": heard.chance, "presses": heard.presses, "challenges": heard.challenges}
 	feedback(prepared.view, judged, ev, result)
 	guard_reasons(prepared.view, judged, ev, result)
+	# A weak or contrary accusation that points more at someone else (Michael, Nov 20): the
+	# rule a listener uses to say "points elsewhere", naming no one here.
+	var c_type: String = str(value.get("conclusion", {}).get("type", ""))
+	if c_type in POINTS_ELSEWHERE_TYPES and str(result.get("category", "")) in POINTS_ELSEWHERE_BANDS:
+		var Presentations = preload("res://sim/dialogue_presentations.gd")
+		if Presentations.points_elsewhere(g.w, ev.get("rivals", []), [str(value.get("conclusion", {}).get("target", ""))]) != "":
+			result["points_elsewhere"] = true
 	# A challenge is weighed as the listener weighs it (its grounds decide whether it's
 	# accepted), no longer assumed to hold; the readings it questions are still listed, for the
 	# words around the badge. (Herald drafts a line for an ungrounded challenge.)
@@ -310,6 +317,11 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 	result["ready"] = true
 	result["issues"] = []
 	return result
+
+## The premises and badge bands the "points elsewhere" flag can join (test_juror): an
+## accusation the case doesn't carry.
+const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "minion", "suspicious"]
+const POINTS_ELSEWHERE_BANDS = ["contradicts", "none", "weak"]
 
 ## Which way each premise points an average listener's suspicion of its subject: up for an
 ## accusation, down for one that clears them. The listener weighs every case through its
