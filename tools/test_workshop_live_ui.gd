@@ -39,7 +39,7 @@ func _run() -> void:
 	g.workshop_compare = true
 	g._evaluate_deduction(n, g.board[-1], 0.6, true, "meeting")
 	panel._records()
-	check("Applied shared assessment" in panel.output.text and not g.workshop_comparisons[-1].has("legacy"), "recorded applied assessments name the actual model without inventing a legacy comparison")
+	check("Applied shared assessment" in panel.output.text and not g.workshop_comparisons[-1].has("social"), "recorded applied assessments name the actual model without inventing a social comparison")
 	g.workshop_compare = false
 	for i in range(panel.listeners.item_count):
 		if panel.listeners.get_item_metadata(i) == n.id:

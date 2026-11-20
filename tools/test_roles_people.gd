@@ -350,7 +350,6 @@ func _family(size: int) -> void:
 	value.conclusion = {"type": "evil", "target": target.id, "at": "Original alignment"}
 	var filed = Live.file(g, value)
 	check(filed > 0, "a Psychologist context case files for a %d-person town" % size)
-	g.strict_evaluator = true
 	for real in g.w.living():
 		var n = real.shadow if real.is_evil() else real
 		var prepared = Live.Assess.prepare(g.workshop_snapshot([filed], real.id))

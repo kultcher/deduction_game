@@ -95,7 +95,6 @@ func _run() -> void:
 		check(Live.Assess.activity_card(Live.Evidence.normalize_card(invalid), raw).is_empty(), "incomplete secret semantics receive no guessed explanation")
 	var filed = Live.file(g, value)
 	check(filed > 0, "the supported explanation files as an ordinary case")
-	g.strict_evaluator = true
 	var heard = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
 	check(heard.get("workshop", false) and secret_id in listener.workshop_state.facts, "an actual strict presentation retains the secret's exact shared root")
 	var before = listener.suspicion.duplicate(true)

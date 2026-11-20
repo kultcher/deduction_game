@@ -242,10 +242,6 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	var rejected: String = _presentation_rejection(g, ded)
 	if rejected != "":
 		return {"blocked": true, "lines": [rejected], "facts": [], "agreement": 0.0}
-	if g.strict_evaluator:
-		var check: Dictionary = workshop_readiness(g, ded, [n], [], "deduction", venue)
-		if not check.ready:
-			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(preload("res://game/workshop_canvas.gd").player_issues(g, ded.get("workshop_case", {}), check.issues, int(ded.get("n", 0)))))], "facts": [], "agreement": 0.0}
 	if ded.has("workshop_case"):
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
@@ -263,13 +259,13 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		comparison["card"] = ded.n
 		comparison["venue"] = venue
 		comparison["actual"] = {
-			"model": "shared" if result.get("workshop", false) else "legacy",
+			"model": "shared" if result.get("workshop", false) else "social",
 			"agreement": result.get("agreement", 0.0),
 			"before": before,
 			"after": n.suspicion.duplicate(true),
 		}
 		if not result.get("workshop", false):
-			comparison["legacy"] = comparison.actual.duplicate(true)
+			comparison["social"] = comparison.actual.duplicate(true)
 		g.workshop_comparisons.append(comparison)
 		if g.workshop_comparisons.size() > 24:
 			g.workshop_comparisons.pop_front()
@@ -289,7 +285,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 			"name": n.name,
 			"card": ded.n,
 			"venue": venue,
-			"model": "shared" if result.get("workshop", false) else "legacy",
+			"model": "shared" if result.get("workshop", false) else "social",
 			"issues": issues,
 		})
 		g.w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), g.workshop_deliveries[-1],

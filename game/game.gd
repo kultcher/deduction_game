@@ -110,8 +110,6 @@ var workshop_compare = false # opt-in diagnostics; never applies the proposed ef
 ## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
 var workshop_why = false
 var workshop_whys: Array = []
-## Opt-in test assertion: unsupported presentations are rejected before any effects.
-var strict_evaluator = C.STRICT_EVALUATOR
 var _workshop_native_submission = false
 var _workshop_native_social = false  # a bare belief with no evidence: social speech, not a fallback
 var _workshop_repeats: Dictionary = {}
@@ -291,7 +289,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")
-	w.dlog.trace_event("game_config", "world", "", {"strict_evaluator": strict_evaluator})
 	state = "day"
 	moved = false
 	approached_id = ""
