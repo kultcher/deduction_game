@@ -28,7 +28,7 @@ Removed: `_canvas_status`, `_link_corroboration`, `_silent_corroboration`, `_eva
 
 - **game.gd:** parses cleanly. A repository search finds no remaining reference to any removed name.
 - **Golden:** identical at `--tol 0` on all five seeds.
-- **CI fast suites:** run locally before opening.
+- **Suites:** test_control_flow, test_meeting_flow, test_presentation_contracts, test_workshop_presentation and test_evidence_cards pass locally; CI runs the rest.
 
 ## Proposed for the backlog
 None.
