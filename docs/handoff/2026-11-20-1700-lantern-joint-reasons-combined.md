@@ -1,6 +1,6 @@
 ## Nov 20 — Claude-Lantern: a joint reason names only a pairing the NPC weighed
 
-- **Base:** main `6cccaf4` (merged in, after #413). **Status:** PR open. **Next:** Beadle (behaviour review),
+- **Base:** main `03968fd` (merged in, after #448). **Status:** PR open. **Next:** Beadle (behaviour review),
   then Bailiff. **Moves golden:** re-baselined in this PR (see `docs/golden_baseline.md`).
 - **What this is:** section 6 polish, "A reason citing a pairing the model didn't weigh"
   (Seneschal assigned it Nov 20; Quill scoped it; Beadle approved the behaviour). Attention picks the
@@ -61,7 +61,7 @@ by one private partner card. Beadle set the rule above (his code), then refined 
 presentation counting for its audience. The presentation suites check that.
 
 ### Golden
-Re-baselined to `baseline_bb85d5d`, on main after #413 (the Gravedigger's lean). Two captures
+Re-baselined to `baseline_6836d21`, on main after #448 (the Night Watch wording). Two captures
 were identical.
 - 54875 hangs Edda a day earlier, then Greta (the Poisoner) on day 2 instead of Agnes on day 3.
 - 692 no longer hangs Lian on day 3.
