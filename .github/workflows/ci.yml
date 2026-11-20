@@ -32,7 +32,7 @@ concurrency:
 
 env:
   GODOT_VERSION: "4.7.2"
-  BASELINE: tools/golden/baseline_ee15238
+  BASELINE: tools/golden/baseline_9ea3f99
   DOTNET_CLI_TELEMETRY_OPTOUT: "1"
   DOTNET_NOLOGO: "1"
 
@@ -46,6 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.check.outputs.docs_only }}
+      belief: ${{ steps.check.outputs.belief }}
     steps:
       - uses: actions/checkout@v4
         if: github.event_name == 'pull_request'
@@ -65,6 +66,15 @@ jobs:
             echo "Docs only: suites and golden skipped." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+          # A change under sim/ or workshop/ (what NPCs do and believe) also runs the slow
+          # list, tools/ci_slow_suites.txt: suites outside the fast list that have caught what
+          # PR CI missed (Michael, Nov 19).
+          if grep -qE '^(sim|workshop)/' <<< "$files"; then
+            echo "belief=true" >> "$GITHUB_OUTPUT"
+            echo "Touches sim/ or workshop/: the slow list runs too." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "belief=false" >> "$GITHUB_OUTPUT"
           fi
 
   suites:
@@ -107,6 +117,14 @@ jobs:
           done
           if [[ "${{ github.event_name }}" != "pull_request" && "${{ matrix.shard }}" == "4" ]]; then
             picked+=(test_meeting_stream)
+          fi
+          # A pull request touching sim/ or workshop/ adds the slow list, dealt across the
+          # shards the same way.
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ needs.changes.outputs.belief }}" == "true" ]]; then
+            mapfile -t slow < <(grep -v '^\s*#' tools/ci_slow_suites.txt | sed '/^\s*$/d')
+            for i in "${!slow[@]}"; do
+              if (( i % 4 == ${{ matrix.shard }} - 1 )); then picked+=("${slow[$i]}"); fi
+            done
           fi
           echo "suites=${picked[*]}" >> "$GITHUB_OUTPUT"
           echo "Suites: ${picked[*]}"

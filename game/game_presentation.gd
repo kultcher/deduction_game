@@ -17,6 +17,7 @@ const WorkshopOwnership = preload("res://game/workshop_ownership.gd")
 const WorkshopPresentation = preload("res://game/workshop_presentation.gd")
 const WorkshopGhost = preload("res://workshop/ghost_juror.gd")
 const WorkshopAssessment = preload("res://workshop/live_assessment.gd")
+const ResponseBundles = preload("res://game/response_bundles.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 const WorkshopProfiler = preload("res://workshop/profiler.gd")
 
@@ -65,16 +66,14 @@ static func workshop_readiness(g, card: Dictionary, listeners: Array, targets: A
 
 
 static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
-	g._workshop_native_submission = false
+	g._workshop_native_social = false
 	var rejected: String = _presentation_rejection(g, card)
 	if rejected != "":
 		g._err(rejected)
 		return false
-	g._workshop_native_social = false
 	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
 		# Mechanics-support item 0: a preference is social speech even when the
 		# speaker attaches a card. It is not an unsupported evidence conclusion.
-		g._workshop_native_submission = true
 		g._workshop_native_social = true
 		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
 		return true
@@ -84,7 +83,6 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 	if _bare_speech(check.issues):
 		# No evidence at all ("I believe they're not the Demon"): speech, which stays
 		# social and native (like accusing or defending without a card).
-		g._workshop_native_submission = true
 		g._workshop_native_social = true
 		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A bare belief with no evidence: native social response.")
 		return true
@@ -105,6 +103,12 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
 	# No legacy route for presentations: an unsupported submission is blocked with its
 	# reason, so a playtest always tests the shared model (user, Oct 25).
+	# A Mistaken call on a reading an earlier case called a lie: say how to take the lie back
+	# (Michael, Nov 19), not "remove the unsupported card".
+	var shown: Array = preload("res://game/workshop_canvas.gd").player_issues(g, card.get("workshop_case", {}), check.issues, int(card.get("n", 0)))
+	if shown != check.issues:
+		g._err("Cannot present. " + "; ".join(PackedStringArray(shown)))
+		return false
 	var reason = "Card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(check.issues))]
 	g._err("Cannot present. " + reason + " Remove the unsupported card and present the rest.")
 	return false
@@ -235,10 +239,6 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	var rejected: String = _presentation_rejection(g, ded)
 	if rejected != "":
 		return {"blocked": true, "lines": [rejected], "facts": [], "agreement": 0.0}
-	if g.strict_evaluator:
-		var check: Dictionary = workshop_readiness(g, ded, [n], [], "deduction", venue)
-		if not check.ready:
-			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(check.issues))], "facts": [], "agreement": 0.0}
 	if ded.has("workshop_case"):
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
@@ -256,13 +256,13 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		comparison["card"] = ded.n
 		comparison["venue"] = venue
 		comparison["actual"] = {
-			"model": "shared" if result.get("workshop", false) else "legacy",
+			"model": "shared" if result.get("workshop", false) else "social",
 			"agreement": result.get("agreement", 0.0),
 			"before": before,
 			"after": n.suspicion.duplicate(true),
 		}
 		if not result.get("workshop", false):
-			comparison["legacy"] = comparison.actual.duplicate(true)
+			comparison["social"] = comparison.actual.duplicate(true)
 		g.workshop_comparisons.append(comparison)
 		if g.workshop_comparisons.size() > 24:
 			g.workshop_comparisons.pop_front()
@@ -282,7 +282,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 			"name": n.name,
 			"card": ded.n,
 			"venue": venue,
-			"model": "shared" if result.get("workshop", false) else "legacy",
+			"model": "shared" if result.get("workshop", false) else "social",
 			"issues": issues,
 		})
 		g.w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), g.workshop_deliveries[-1],
@@ -611,11 +611,26 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)
 	_conflict_pressure(g, ded, 0.2, null)
+	# Every listener weighs the case, then the town's answers are given summarised: those who
+	# answered alike speak as one, a representative in full and the rest in a word (Michael,
+	# Nov 19; game/response_bundles.gd). The log keeps every answer.
+	var target: String = str(ded.get("conclusion", {}).get("a", ""))
+	var answers: Array = []
+	var seat: int = 0
 	for n in g.w.living():
 		if progress.is_valid():
 			await progress.call(n.name)
+		var mind = n.shadow if n.is_evil() and n.shadow != null else n
+		var before: float = float(mind.suspicion.get(target, 0.0))
 		var r: Dictionary = _evaluate_deduction(g, n, ded, Tuning.Workshop.VENUE_MULTS.meeting, true, "meeting")
-		g._lines(r["lines"])
-		# What a listener told the town in answer (a caught alibi explained) goes on the board
-		# too (Codex on #261).
-		g._facts(r.get("facts", []))
+		answers.append({"id": n.id, "name": n.name, "lines": r.get("lines", []), "facts": r.get("facts", []),
+			"agreement": float(r.get("agreement", 0.0)), "stance": str(r.get("dialogue", {}).get("stance", "")),
+			"delta": float(mind.suspicion.get(target, 0.0)) - before, "trust": float(n.trust), "seat": seat})
+		seat += 1
+	for said in ResponseBundles.arrange(answers, target):
+		if said is Dictionary and said.has("facts") and not said.has("speaker"):
+			# What a listener told the town in answer (a caught alibi explained) goes on the
+			# board too (Codex on #261).
+			g._facts(said.facts)
+		else:
+			g._line(said)

@@ -1,115 +1,125 @@
 # Case slate: baseline report
 
-Built on claude/slate-strong (main at 4cf1d73, Nov 19, Quill). There are 24 cases on 10
-deals each, 239 in all, and no listener was blocked. Made with
+Built on claude/slate-gap (main at 17dd113, with #346, #349, #355 and #357, plus each case presented to
+its sources too, Nov 19, Quill). There are 28 cases, 275 in all (two_kills_seer finds 6 deals,
+converging_innocent 9, the rest 10), and no listener was blocked. Made with
 `python3 tools/case_slate_report.py docs/case_slate/baseline.jsonl`. Town movement is in
 points: one point is 0.01 of suspicion, and listeners start at 25.
 
-**Changes since the last baseline (claude/juror-listener).**
+**Changes since the last baseline (#355, built before #346 and #349 landed).**
 
-- Three true cases were added to reach the upper tiers: seer_twice, vigil_seer and stack.
-  None has a misleading twin.
-- 22 of the 209 earlier rows changed, across 13 cases, and only in the town's movement:
-  the largest change is 0.26 of a point. The juror's strength, its badges and every
-  category are unchanged. Main moved under it: the likely cause is the NPC trust
-  changes merged since (#319, #321, #330), not checked case by case. The impossible reading's mean moved from +59.1 to +59.0; every other mean is
-  the same to the decimal.
+- **Sources hear the case.** A case's witnesses, readers and victims used to be left out of
+  its presentation, so they voted on the subject without having heard it. A presentation at
+  a meeting reaches the whole town, so they hear it now. That was what made Strong look
+  barely stronger than Moderate. The juror's strengths are unchanged. The town moves further
+  on cases whose sources were left out before: kill_sighting +14.3 → +16.1, double_claim
+  +22.8 → +28.2, gravedigger +20.0 → +22.2.
+- **The badges are #357's cut points:** Weak from ×1.25, Moderate from ×2, Strong from ×3.5,
+  and Damning at a 90% chance. The report now knows the Damning badge, and its town bands gain
+  one from +45.
+- **A new case, two_kills_seer:** two killings, the vigil and a witness at each, and the Seer's
+  "yes" on the Demon on both nights. It's ×8.0 (the average listener's chance about 82%), Strong,
+  between stack and the Damning impossible reading.
+- **Two new vote columns:** "Heard it" and "Of those, yes".
+- **#346 and #349 move nothing here.** Each row matches a run made before they landed, to within
+  0.1 of a point.
 
-Where the new cases land (average listener, premise's chance before → after):
+Votes by badge (true cases). "Before" is the last baseline, regrouped by the same badges:
 
-| Case | Average listener | Strength | Town | Badge now (1.5 / 3 / 10) | Proposed cuts (1.25 / 2 / 3.5, 90%) |
+| Badge | Cases | Good votes swayed (before) | Good yes after | Hangs on good votes alone | Hangs with the player's vote too |
 |---|---|---|---|---|---|
-| seer_twice | 30% → 37% | 1.38 | +8 | none | Weak |
-| vigil_seer | 33% → 48% | 1.85 | +23 | Weak | Weak (1 deal Moderate) |
-| stack | 33% → 65% | 3.83 | +41 | Moderate | Strong |
+| none | 50 | 0.0 (0.0) | 0.1 of 7.0 | 0% | 0% |
+| Weak | 59 | 2.0 (1.6) | 2.0 of 6.5 | 12% | 20% |
+| Moderate | 21 | 4.2 (3.2) | 4.3 of 7.0 | 38% | 52% |
+| Strong | 16 | 5.4 (3.8, stack alone) | 5.6 of 5.6 | 100% | 100% |
+| Damning | 10 | 6.9 (6.9) | 7.0 of 7.0 | 100% | 100% |
 
-Under the proposed cut points (Weak ×1.25, Moderate ×2, Strong ×3.5, Damning /
-Conclusive at a premise chance of 90% or more), the true cases sort like this:
-
-| Tier | Cases | Town, mean | Range | Cases by name |
-|---|---|---|---|---|
-| none | 40 | +2.6 | −6.1 to +12.0 | pile, alibi_sighting, nw_nobody, guard |
-| Weak | 49 | +14.5 | +6.5 to +24.6 | kill_sighting, vigil_kill, converging, seer_twice, vigil_seer 9 |
-| Moderate | 31 | +20.6 | +12.1 to +29.3 | double_claim, gravedigger, lamp_alibis, vigil_seer 1 |
-| Strong | 10 | +40.7 | +36.1 to +53.6 | stack |
-| Damning | 10 | +59.0 | +54.6 to +63.3 | impossible |
-
-And the misleading twins: none 40 (+2.7), Weak 29 (+13.9), Moderate 30 (+20.3).
-
-The tables below still use the cut points in the code (1.5 / 3 / 10).
+The misleading twins: none 0.0, Weak 1.5 (before 1.1), and Moderate 3.4 (unchanged, with 35%
+hanging with the player's vote). None hangs an innocent on good votes alone.
 
 | Case | n | Juror's badges | Strength | Town, mean (range) | Sign | Category |
 |---|---|---|---|---|---|---|
-| pile | 10 | none 10 | 1.15 | +5.2 (+2.5 to +12.0) | 100% | 10% |
-| kill_sighting | 10 | none 10 | 1.36 | +14.3 (+11.6 to +20.3) | 100% | 0% |
-| vigil_kill | 10 | none 4, weak 6 | 1.47 | +16.1 (+12.6 to +18.3) | 100% | 0% |
-| alibi_sighting | 10 | none 10 | 1.13 | +5.2 (+3.3 to +9.4) | 100% | 0% |
-| converging | 10 | weak 10 | 1.62 | +12.1 (+10.1 to +14.6) | 100% | 0% |
-| impossible | 10 | strong 10 | 177.50 | +59.0 (+54.6 to +63.3) | 100% | 100% |
-| double_claim | 10 | weak 10 | 2.73 | +22.8 (+17.3 to +29.3) | 100% | 0% |
-| gravedigger | 10 | weak 10 | 2.83 | +20.0 (+15.0 to +26.6) | 100% | 0% |
-| lamp_alibis | 10 | weak 10 | 2.10 | +18.2 (+12.1 to +23.7) | 100% | 0% |
-| nw_nobody | 10 | none 10 | 0.85 | -3.0 (-6.1 to +2.7) | 80% | 20% |
-| guard | 10 | none 10 | 1.07 | +3.1 (+2.0 to +6.4) | 100% | 50% |
-| seer_twice | 10 | none 10 | 1.38 | +8.2 (+6.5 to +13.8) | 100% | 0% |
-| vigil_seer | 10 | weak 10 | 1.85 | +22.8 (+18.8 to +27.5) | 100% | 0% |
-| stack | 10 | moderate 10 | 3.83 | +40.7 (+36.1 to +53.6) | 100% | 0% |
-| pile_innocent | 10 | none 10 | 1.15 | +5.7 (+0.5 to +13.4) | 90% | 10% |
-| kill_sighting_innocent | 10 | none 10 | 1.36 | +14.7 (+9.1 to +21.0) | 100% | 0% |
-| vigil_kill_innocent | 10 | none 7, weak 3 | 1.44 | +15.9 (+10.3 to +17.6) | 100% | 0% |
+| pile | 10 | none 10 | 1.15 | +6.0 (+3.8 to +10.8) | 100% | 0% |
+| kill_sighting | 10 | weak 10 | 1.36 | +16.1 (+14.1 to +21.3) | 100% | 0% |
+| vigil_kill | 10 | weak 10 | 1.47 | +16.1 (+12.6 to +18.3) | 100% | 0% |
+| alibi_sighting | 10 | none 10 | 1.13 | +6.2 (+4.6 to +10.0) | 100% | 0% |
+| converging | 10 | weak 10 | 1.62 | +11.8 (+9.9 to +13.8) | 100% | 10% |
+| impossible | 10 | damning 10 | 177.50 | +59.0 (+54.6 to +63.3) | 100% | 100% |
+| double_claim | 10 | moderate 10 | 2.73 | +28.2 (+24.3 to +33.4) | 100% | 10% |
+| gravedigger | 10 | moderate 10 | 2.83 | +22.2 (+18.4 to +27.7) | 100% | 90% |
+| lamp_alibis | 10 | weak 10 | 1.74 | +13.9 (+10.4 to +16.1) | 100% | 0% |
+| lamp_count | 10 | none 10 | 1.00 | +0.6 (-0.1 to +1.1) | 70% | 100% |
+| nw_nobody | 10 | none 10 | 0.85 | -3.3 (-6.8 to +1.0) | 80% | 20% |
+| guard | 10 | none 10 | 1.07 | +4.7 (+3.5 to +7.2) | 100% | 0% |
+| seer_twice | 10 | weak 10 | 1.38 | +8.5 (+6.6 to +13.5) | 100% | 90% |
+| vigil_seer | 10 | weak 9, moderate 1 | 1.85 | +23.3 (+20.9 to +28.5) | 100% | 0% |
+| stack | 10 | strong 10 | 3.83 | +41.9 (+38.3 to +50.3) | 100% | 80% |
+| two_kills_seer | 6 | strong 6 | 8.02 | +54.3 (+51.4 to +59.8) | 100% | 0% |
+| pile_innocent | 10 | none 10 | 1.15 | +6.6 (+3.1 to +12.1) | 100% | 0% |
+| kill_sighting_innocent | 10 | weak 10 | 1.36 | +16.7 (+12.6 to +21.7) | 100% | 0% |
+| vigil_kill_innocent | 10 | weak 10 | 1.44 | +15.9 (+10.3 to +17.6) | 100% | 0% |
 | alibi_sighting_innocent | 10 | none 10 | 1.13 | +5.4 (+3.3 to +10.9) | 100% | 0% |
-| converging_innocent | 9 | weak 9 | 1.62 | +10.7 (+8.3 to +14.3) | 100% | 56% |
-| double_claim_innocent | 10 | weak 10 | 2.73 | +21.8 (+18.4 to +29.0) | 100% | 0% |
-| gravedigger_innocent | 10 | weak 10 | 2.84 | +19.1 (+7.2 to +30.0) | 100% | 10% |
-| lamp_alibis_innocent | 10 | weak 10 | 2.10 | +20.0 (+17.2 to +24.1) | 100% | 0% |
-| nw_nobody_innocent | 10 | none 10 | 0.86 | -3.5 (-7.6 to +3.6) | 80% | 10% |
-| guard_innocent | 10 | none 10 | 1.08 | +3.1 (+0.8 to +5.7) | 90% | 60% |
+| converging_innocent | 9 | weak 9 | 1.62 | +11.1 (+8.8 to +13.9) | 100% | 22% |
+| double_claim_innocent | 10 | moderate 10 | 2.73 | +21.8 (+18.4 to +29.0) | 100% | 90% |
+| gravedigger_innocent | 10 | moderate 10 | 2.84 | +19.1 (+7.2 to +30.0) | 100% | 80% |
+| lamp_alibis_innocent | 10 | weak 10 | 1.74 | +15.2 (+9.5 to +21.2) | 100% | 10% |
+| lamp_count_innocent | 10 | none 10 | 1.00 | +0.7 (-0.4 to +1.8) | 80% | 100% |
+| nw_nobody_innocent | 10 | none 10 | 0.86 | -4.6 (-9.7 to +2.1) | 90% | 20% |
+| guard_innocent | 10 | none 10 | 1.08 | +5.1 (+1.8 to +8.3) | 100% | 10% |
+| lamp_bluff_innocent | 10 | weak 10 | 1.73 | +10.9 (+4.8 to +17.1) | 100% | 40% |
 
 Town movement by the juror's badge, true cases (the subject is evil):
 
 | Badge | Cases | Town, mean | Median | Range | Cases by name |
 |---|---|---|---|---|---|
-| none | 64 | +6.1 | +5.0 | -6.1 to +20.3 | pile 10, kill_sighting 10, vigil_kill 4, alibi_sighting 10, nw_nobody 10, guard 10, seer_twice 10 |
-| weak | 56 | +19.0 | +18.9 | +10.1 to +29.3 | vigil_kill 6, converging 10, double_claim 10, gravedigger 10, lamp_alibis 10, vigil_seer 10 |
-| moderate | 10 | +40.7 | +39.5 | +36.1 to +53.6 | stack 10 |
-| strong | 10 | +59.0 | +59.0 | +54.6 to +63.3 | impossible 10 |
+| none | 50 | +2.8 | +4.4 | -6.8 to +10.8 | pile 10, alibi_sighting 10, lamp_count 10, nw_nobody 10, guard 10 |
+| weak | 59 | +14.7 | +14.8 | +6.6 to +25.1 | kill_sighting 10, vigil_kill 10, converging 10, lamp_alibis 10, seer_twice 10, vigil_seer 9 |
+| moderate | 21 | +25.4 | +25.4 | +18.4 to +33.4 | double_claim 10, gravedigger 10, vigil_seer 1 |
+| strong | 16 | +46.6 | +44.4 | +38.3 to +59.8 | stack 10, two_kills_seer 6 |
+| damning | 10 | +59.0 | +59.0 | +54.6 to +63.3 | impossible 10 |
 
 Town movement by the juror's badge, misleading cases (the subject is innocent):
 
 | Badge | Cases | Town, mean | Median | Range | Cases by name |
 |---|---|---|---|---|---|
-| none | 57 | +6.5 | +5.0 | -7.6 to +21.0 | pile_innocent 10, kill_sighting_innocent 10, vigil_kill_innocent 7, alibi_sighting_innocent 10, nw_nobody_innocent 10, guard_innocent 10 |
-| weak | 42 | +17.9 | +18.9 | +7.2 to +30.0 | vigil_kill_innocent 3, converging_innocent 9, double_claim_innocent 10, gravedigger_innocent 10, lamp_alibis_innocent 10 |
+| none | 50 | +2.6 | +3.8 | -9.7 to +12.1 | pile_innocent 10, alibi_sighting_innocent 10, lamp_count_innocent 10, nw_nobody_innocent 10, guard_innocent 10 |
+| weak | 49 | +14.0 | +14.7 | +4.8 to +21.7 | kill_sighting_innocent 10, vigil_kill_innocent 10, converging_innocent 9, lamp_alibis_innocent 10, lamp_bluff_innocent 10 |
+| moderate | 20 | +20.4 | +21.2 | +7.2 to +30.0 | double_claim_innocent 10, gravedigger_innocent 10 |
 
-Town bands used for category agreement (points): strong from +25, moderate from +10, weak from +3, none from -2, contradicts below.
+Votes: the subject nominated by a neutral nominator, the player's vote left out. Good
+voters only (evil voters vote by strategy and are left out). "Reaches" is how often the good
+yes votes alone reach the hanging threshold, which counts the player's seat. "Heard it" counts
+the good who heard the case: its sources (witnesses, readers, victims) vote without hearing it.
 
-## What it shows
+| Case | Good yes before | Good yes after | Share of good voters after | Heard it | Of those, yes | Threshold | Reaches |
+|---|---|---|---|---|---|---|---|
+| pile | 0.1 | 0.1 | 1% | 7.0 | 1% | 6 | 0% |
+| kill_sighting | 0.1 | 2.2 | 37% | 6.0 | 37% | 5 | 0% |
+| vigil_kill | 0.0 | 2.6 | 43% | 6.0 | 43% | 5 | 0% |
+| alibi_sighting | 0.1 | 0.3 | 4% | 7.0 | 4% | 6 | 0% |
+| converging | 0.0 | 1.1 | 16% | 7.0 | 16% | 6 | 0% |
+| impossible | 0.1 | 7.0 | 100% | 7.0 | 100% | 6 | 100% |
+| double_claim | 0.1 | 5.3 | 76% | 7.0 | 76% | 6 | 60% |
+| gravedigger | 0.1 | 3.1 | 44% | 7.0 | 44% | 5 | 10% |
+| lamp_alibis | 0.0 | 1.6 | 23% | 7.0 | 23% | 6 | 0% |
+| lamp_count | 0.0 | 0.0 | 0% | 7.0 | 0% | 6 | 0% |
+| nw_nobody | 0.1 | 0.0 | 0% | 7.0 | 0% | 6 | 0% |
+| guard | 0.0 | 0.0 | 0% | 7.0 | 0% | 6 | 0% |
+| seer_twice | 0.1 | 0.2 | 3% | 7.0 | 3% | 6 | 0% |
+| vigil_seer | 0.0 | 4.9 | 82% | 6.0 | 82% | 5 | 80% |
+| stack | 0.1 | 5.9 | 98% | 6.0 | 98% | 5 | 100% |
+| two_kills_seer | 0.3 | 5.0 | 100% | 5.0 | 100% | 5 | 100% |
+| pile_innocent | 0.1 | 0.1 | 2% | 6.0 | 2% | 6 | 0% |
+| kill_sighting_innocent | 0.1 | 1.9 | 38% | 5.0 | 38% | 5 | 0% |
+| vigil_kill_innocent | 0.0 | 2.2 | 44% | 5.0 | 44% | 5 | 0% |
+| alibi_sighting_innocent | 0.1 | 0.2 | 3% | 6.0 | 3% | 6 | 0% |
+| converging_innocent | 0.0 | 0.6 | 9% | 6.0 | 9% | 6 | 0% |
+| double_claim_innocent | 0.0 | 4.1 | 68% | 6.0 | 68% | 6 | 0% |
+| gravedigger_innocent | 0.1 | 2.8 | 47% | 6.0 | 47% | 5 | 0% |
+| lamp_alibis_innocent | 0.0 | 1.8 | 30% | 6.0 | 30% | 6 | 0% |
+| lamp_count_innocent | 0.0 | 0.0 | 0% | 6.0 | 0% | 6 | 0% |
+| nw_nobody_innocent | 0.1 | 0.0 | 0% | 6.0 | 0% | 6 | 0% |
+| guard_innocent | 0.0 | 0.1 | 2% | 6.0 | 2% | 6 | 0% |
+| lamp_bluff_innocent | 0.1 | 1.0 | 17% | 6.0 | 17% | 6 | 0% |
 
-**True cases:**
-
-- Each tier now moves the town further than the one below it. Under the proposed cuts,
-  the means run +3, +15, +21, +41 and +59, though Weak and Moderate overlap across most
-  of their ranges.
-- The stack is the first constructed case in the Strong tier. It's the kind of case a
-  player builds over two nights: their own vigil at a kill, a witness at the scene, and
-  two Seer readings. It moves the town about +41, between the Moderate cases and the
-  impossible reading.
-- Two Seer "yes" readings alone are a gentle case (+8). The vigil plus one Seer reading moves
-  the town +23, more than the vigil at a kill alone (+16) or the two readings alone.
-- The impossible reading is still the only case past 90%, and it moves the town about +59.
-- The Night Watch "nobody" chain still gets no badge and moves the town slightly away
-  from the subject (about −3).
-
-**Misleading cases** (the same chains about an innocent):
-
-- On the same evidence, the town moves as far against an innocent as against the Demon,
-  and a lie from evil carries as much weight as a true account. Nothing here changed
-  since the last baseline; these rows are the reference for whether a later change makes
-  the town easier to mislead.
-
-Not measured here:
-
-- one build only;
-- the 10-NPC town only;
-- listeners at a single credibility, 0.7;
-- what the town does after a case (votes, nominations).
+Town bands used for category agreement (points): damning from +45, strong from +25, moderate from +10, weak from +3, none from -2, contradicts below.

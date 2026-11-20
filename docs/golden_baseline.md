@@ -44,7 +44,64 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
+### Current baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
+
+`tools/golden/baseline_9ea3f99/` is the capture from `claude/beadle-private-share` at `9ea3f99`
+(main at `561e17f`, with #365, merged in). An NPC who hasn't claimed a gift publicly
+brings up its gift and its readings in private talk a little more often each day past day 1
+(`SHARE_UNCLAIMED_DAY_BOOST` 0.15, new; Michael approved it on Nov 19).
+- **Divergence from `baseline_0d796b3`:** 98933 from record 81 (day 2, the first private-talk
+  draw of the day), and 900 from record 107 (day 3). 42, 54875 and 692 are identical.
+- **Outcomes:**
+  - **98933:** main hangs Merrin on day 2. Now it hangs Merrin on day 2 and Isolde on day 3,
+    with no winner by day 4 either way.
+  - **900:** unchanged (Isolde on day 3).
+  - **42, 54875 and 692:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, the Demon never detours in inference): `baseline_0d796b3`
+
+`tools/golden/baseline_0d796b3/` is the capture from `claude/beadle-demon-detour` at `0d796b3`
+(main at `2bdb785`, with #346, merged in). The movement model's Demon now walks only the direct
+way to its victim, as the live Demon does (Michael, Nov 17), instead of a 5% detour allowance.
+Every belief that weighs a sighting or trace against the Demon's route moves a little.
+- **Divergence from `baseline_652298a`:** every seed, from the first day's belief refreshes
+  (42 at record 21, 54875 at 9, 692 at 14, 900 at 5, 98933 at 13).
+- **Outcomes:**
+  - 42, 692 and 98933: unchanged.
+  - 54875: Greta is hanged on day 2 and nobody on day 3, instead of Edda on day 2 and Hollis
+    on day 3. No winner by day 4 either way.
+  - 900: Isolde is hanged on day 3 instead of Lian. No winner by day 4 either way.
+
+### Earlier baseline (Nov 19, a Lamplighter's count can be broken, Lamplighter fix (b) step 1, #346): `baseline_652298a`
+
+`tools/golden/baseline_652298a/` is the capture from `claude/lamplighter-count` at `652298a`
+(main with #349 merged in). A Lamplighter's count is now mixed as sound or broken, like a Night
+Watch list: a listener weighs the chance that the Lamplighter is evil, poisoned or Delusional, and
+a broken count says nothing. Before, every count was taken as sound. (It replaces
+`baseline_d33fdae`, made for this PR before #349 landed; the divergence is the same.)
+- **Divergence from `baseline_7a10762`:** 42 from record 1 (a reading's vetting lift on the
+  first day, 0.003 to 0.001), 54875 from record 79 (Jory's refresh on day 2), 900 from record 52
+  (Isolde's cover on day 2) and 98933 from record 82 (Nisha's refresh on day 2). 692 is identical.
+- **Outcomes:** the winner and the last day are unchanged on all five, and 42, 54875, 692 and 900
+  hang the same people. 98933's hangings change: day 2 hangs Merrin (good, the Surveyor, nominated
+  by Dorian) instead of Dorian (good, the Clerk), and day 3 hangs no one instead of Isolde (the
+  Revenant).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, several doubted readings weighed symmetrically, Steward A3): `baseline_7a10762`
+
+`tools/golden/baseline_7a10762/` is the capture from `claude/a3-doubted-symmetric` at `7a10762`.
+When a judged set holds several readings the listener doubts, the role check weighs them
+symmetrically (all genuine, or exactly one broken), not one after another in card order.
+- **Divergence from `baseline_ee15238`:** every seed, at the first night's refreshes (42 at
+  record 9, 54875 at 59, 692 at 28, 900 at 17, 98933 at 58), in belief values only.
+  - **Step records:** on 54875, 692 and 98933, every NPC's suspicion is identical. On 42, 102 of
+    966 suspicion values move, by at most 0.004; on 900, 138 of 1,260, by at most 0.009.
+- **Outcomes:** all five unchanged: the same hangings on the same days and the same winner.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 19, movement factor handles on their own scale, #344): `baseline_ee15238`
 
 `tools/golden/baseline_ee15238/` is the capture from `claude/factor-norm-handles` at `ee15238`
 (main with #345 merged in). A movement factor's compiled handle is now shared only between uses

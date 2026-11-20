@@ -78,6 +78,8 @@ static func view(g) -> Dictionary:
 				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
+	# Excuses for a caught "I was home" soften or contradict it, as in a listener's view.
+	Assess._mark_excuses(cards, int(snapshot.now.day))
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"profile_facets": _profile_facets(g),
@@ -204,9 +206,7 @@ static func status(g, value: Dictionary) -> Dictionary:
 	var blocked = not supports(g, value).issues.is_empty() or value.cards.is_empty()
 	if value.cards.is_empty():
 		issues.append("Connect evidence to the selected premise before filing.")
-	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked or (g.strict_evaluator and (not prepared.ready or not audience_ready)), "issues": issues,
-		"mode": "shared" if prepared.ready else "legacy",
-		"warning": "Fallback evaluates the headline and original cards using the existing argument system. Canvas answers, assumptions, intermediate claims and link meanings are NOT interpreted by that system."}
+	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked, "issues": issues}
 
 static func file(g, value: Dictionary, previous: int = 0) -> int:
 	if g.workshop_presenting:
@@ -218,7 +218,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 		previous = g.board[previous - 1].superseded_by
 	var check = status(g, value)
 	if check.blocked:
-		g.last_error = "\n".join(PackedStringArray(check.issues))
+		g.last_error = "\n".join(PackedStringArray(player_issues(g, value, check.issues, previous)))
 		return -1
 	var roots = supports(g, value)
 	var conclusion = native_conclusion(g, value.conclusion)
@@ -426,6 +426,116 @@ static func _card_source(g, id: String) -> String:
 		if card.get("kind", "") != "deduction" and Evidence.normalize_card(card).id == id:
 			return str(Evidence.normalize_card(card).get("source", ""))
 	return ""
+
+## The way back from a wrong lie call (Michael, Nov 19). The refusal a second case meets when
+## it calls a reading Mistaken that an earlier case called a lie ("Conflicting reading
+## challenges…") becomes a signpost to revising that case.
+const CONFLICTING_CALLS = "Conflicting reading challenges need separate alternatives"
+const SIGNPOST_PRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, open case #%d in the Workshop, change the challenge to Mistaken, and present it again: it replaces the old case for everyone who hears it."
+const SIGNPOST_UNPRESENTED = "You called %s's reading a lie in case #%d. To call it a mistake instead, change the challenge in case #%d."
+
+## The live filed case (not `own`, nor any version of it) that calls a lie on a reading `value`
+## calls Mistaken: {number, teller}, or {}. A case someone has heard comes first: only a heard
+## case can refuse the new one, so a newer unheard draft with the same call isn't the one to
+## revise. With two or more heard cases making the call, revising one leaves the others' call
+## standing, so there's no single case to name and the plain refusal stays (Codex, #363).
+##
+## A listener keeps the version it heard until it hears the revision, so a heard version
+## that has since been revised still counts: the player is pointed at the latest version
+## (`latest`) to present (Codex, #363). Several heard versions of one case are one case.
+static func lie_called_elsewhere(g, value: Dictionary, own: int = 0) -> Dictionary:
+	var found: Array = _lie_calls_elsewhere(g, value, own)
+	var heard: Dictionary = {}
+	for f in found:
+		if was_presented(g, f.number) and not heard.has(f.latest):
+			heard[f.latest] = f
+	if heard.size() > 1:
+		return {}
+	if heard.size() == 1:
+		return heard.values()[0]
+	var live: Array = found.filter(func(f): return f.number == f.latest)
+	return live[0] if not live.is_empty() else {}
+
+## The newest version of case `number`.
+static func latest_version(g, number: int) -> int:
+	var v: int = number
+	var seen: Array = []
+	while v > 0 and v <= g.board.size() and int(g.board[v - 1].get("superseded_by", 0)) > 0 and not (v in seen):
+		seen.append(v)
+		v = int(g.board[v - 1].superseded_by)
+	return v
+
+## Every such case version, newest first: {number (the version with the call), latest, teller}.
+static func _lie_calls_elsewhere(g, value: Dictionary, own: int) -> Array:
+	var out: Array = []
+	var RC = preload("res://workshop/reading_challenges.gd")
+	var mine: Dictionary = value.get("reading_challenges", {})
+	var lineage: Array = versions_of(g, own)
+	for i in range(g.board.size() - 1, -1, -1):
+		var c: Dictionary = g.board[i]
+		if c.get("kind", "") != "deduction" or c.get("deleted", false) or c.get("withdrawn", false) or not c.has("workshop_case"):
+			continue
+		var latest: int = latest_version(g, int(c.n))
+		if int(c.n) in lineage or latest in lineage or g.board[latest - 1].get("deleted", false) or g.board[latest - 1].get("withdrawn", false):
+			continue
+		var theirs: Dictionary = c.workshop_case.get("reading_challenges", {})
+		for rid in mine:
+			# Same side of a Medium's relay only: switching the mode can't settle calls on
+			# different sides (the passing-on and the original; Codex, #363).
+			if theirs.has(rid) and RC.canonical(str(theirs[rid].get("mode", ""))) == "lying" and RC.canonical(str(mine[rid].get("mode", ""))) == RC.HONEST \
+					and str(theirs[rid].get("attribution", "")) == str(mine[rid].get("attribution", "")):
+				out.append({"number": int(c.n), "latest": latest, "teller": _challenged_teller(g, str(rid), str(theirs[rid].get("attribution", "")))})
+				break
+	return out
+
+## Whose reading a challenge on card `id` accuses: its teller, or, on the original side of a
+## Medium's relay, the dead reader the Medium passed on (Codex, #363).
+static func _challenged_teller(g, id: String, attribution: String) -> String:
+	if attribution == "original":
+		for card in g.board:
+			if card.get("kind", "") != "deduction" and str(card.get("role", "")) == "medium" and Evidence.normalize_card(card).id == id:
+				return str(card.get("data", {}).get("dead", ""))
+	return _card_source(g, id)
+
+## Case `number` and every version it revises.
+static func versions_of(g, number: int) -> Array:
+	var out: Array = []
+	var v: int = number
+	while v > 0 and v <= g.board.size() and not (v in out):
+		out.append(v)
+		v = int(g.board[v - 1].get("revises", 0))
+	return out
+
+## Has anyone heard case `number`, or a version it revises?
+static func was_presented(g, number: int) -> bool:
+	var lineage: Array = versions_of(g, number)
+	for v in lineage:
+		if g.public_presentations.has(v):
+			return true
+	for real in g.w.npcs:
+		var mind = real.shadow if real.is_evil() and real.shadow != null else real
+		var held: Dictionary = mind.workshop_state.get("presentations", {})
+		for v in lineage:
+			if held.has(str(v)) or mind.ledger.has("arg:workshop:%d" % v):
+				return true
+			# A case put in a private accusation or defence is held as "direct:<n>:…" (Codex, #363).
+			for key in held:
+				if str(key).begins_with("direct:%d:" % v):
+					return true
+	return false
+
+## The issues the player reads: the conflicting-calls refusal becomes the signpost when an
+## earlier case's lie call is the cause. Routing still matches the raw issue text, so this
+## is applied only where words reach the player.
+static func player_issues(g, value: Dictionary, issues: Array, own: int = 0) -> Array:
+	if not issues.any(func(i): return str(i).begins_with(CONFLICTING_CALLS)):
+		return issues
+	var other: Dictionary = lie_called_elsewhere(g, value, own)
+	if other.is_empty():
+		return issues
+	var who: String = g.w.by_id[other.teller].name if g.w.by_id.has(other.teller) else "the teller"
+	var line: String = (SIGNPOST_PRESENTED % [who, other.number, other.latest]) if was_presented(g, other.number) else (SIGNPOST_UNPRESENTED % [who, other.number, other.latest])
+	return issues.map(func(i): return line if str(i).begins_with(CONFLICTING_CALLS) else i)
 
 static func _logit(p: float) -> float:
 	p = clampf(p, 1e-6, 1.0 - 1e-6)

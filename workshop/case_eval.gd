@@ -279,6 +279,9 @@ static func neutral_listener(view: Dictionary) -> Dictionary:
 
 static var _premise_cache: Dictionary = {}
 
+## The conclusion carries any readings that refute "was the Demon when hanged" (`refuters`,
+## Solver.with_hanged_refuters), so the key below (question_inputs holds the conclusion) keys
+## on them too.
 static func _premise_mask(view: Dictionary, conclusion: Dictionary) -> PackedByteArray:
 	var ref: Array = [Solver._universe_key(view), Solver.question_inputs(view, conclusion), view.get("timeline", {})]
 	var key: int = hash(ref)
@@ -304,7 +307,7 @@ static func _build_premise_mask(view: Dictionary, conclusion: Dictionary) -> Pac
 		for i in range(t_worlds.size()):
 			t_out[i] = 1 if t_idx >= 0 and int(t_worlds[i].get("converted", -1)) == t_idx else 0
 		return t_out
-	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", ""))) if conclusion.type in ["demon", "notdemon"] else {}
+	var h_ctx: Dictionary = Solver.hanged_context(view, str(conclusion.get("target", "")), conclusion.get("refuters", [])) if conclusion.type in ["demon", "notdemon"] else {}
 	if not h_ctx.is_empty():
 		# Someone already hanged: "was the Demon when hanged" (Solver.hanged_demon), the
 		# Scion's succession included. One byte per world, in GDScript.
@@ -428,6 +431,7 @@ static var capture_worlds: bool = false
 static var captured: Array = []
 
 static func evaluate(view: Dictionary, case_data: Dictionary, listener: Dictionary = {}) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)
 	if not SolverBackend.profiling_enabled:
 		return _evaluate_impl(view, case_data, listener)
 	var _st: int = SolverBackend.begin_stage("channel_sum_product")
@@ -702,6 +706,7 @@ const SOFT_EVENTS: Array = ["nomination", "meeting", "vote", "vote_yes", "accusa
 ## the premise. Listener-specific work is then per class, not per world.
 ## known: the listener's own readings, which can complete a test factor's route.
 static func compile(view: Dictionary, cards: Array, case_data: Dictionary, known: Array = []) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data, cards, true)
 	if not SolverBackend.profiling_enabled:
 		return _compile_impl(view, cards, case_data, known)
 	var _st: int = SolverBackend.begin_stage("case_eval_compile")
@@ -722,8 +727,17 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(cards.map(func(c): return c.get("hearing_weight", 1.0)))
 	if cards.any(func(c): return c.has("route_trust")):
 		key_input.append(cards.map(func(c): return c.get("route_trust", 1.0)))
+	if cards.any(func(c): return c.has("out_rate")):
+		# An excused caught lie's softer out-rate (LiveAssessment._mark_excuses) is scored by the
+		# movement factor, so it must be in the key (found by test_caught_lie_softening).
+		key_input.append(cards.map(func(c): return c.get("out_rate", -1.0)))
 	if cards.any(func(c): return c.has("broken_chance")):
-		key_input.append(cards.map(func(c): return c.get("broken_chance", 0.0)))
+		# A count mixed with no broken chance is still mixed (its evil teller says nothing).
+		key_input.append(cards.map(func(c): return [c.get("broken_chance", 0.0), c.get("count_mix", false)]))
+		if cards.any(func(c): return c.get("count_mix", false)):
+			# Whether a count is impossible reads the listener's own sightings (certain_for_count;
+			# Codex on #346), even for a listener with no home nights to key on below.
+			key_input.append(str(view.get("own_home", {}).get("self", "")))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
@@ -1227,9 +1241,14 @@ static func _is_movement_role_card(card: Dictionary) -> bool:
 ## claim of the gift otherwise: fits = trust x (fits with it) + doubt x (the chance a
 ## broken reading says this) x (fits with only its claim). Without that chance a broken
 ## reading counted as certain to say what it said, and doubt weighed double (Nov 17).
-## Exact for one doubted reading in a set; with several, each mixes against the others
-## read in full. Trust in the teller is not here: the role check already lets an evil
-## teller lie in the worlds where they are evil.
+## Several doubted readings are weighed symmetrically (Michael, Nov 19, Steward A3): all
+## genuine with chance prod(1 - d), or exactly one broken (each against the others read in
+## full) with chance d_i x prod_{j != i}(1 - d_j), renormalised over those cases, so the
+## order of the cards doesn't matter. Exact for one doubted reading; with several, the worlds
+## where two or more broke at once are left out and the rest share their weight. (Before,
+## each reading mixed in turn against the others in full, which depended on card order and
+## under-doubted the earlier ones.) Trust in the teller is not here: the role check already
+## lets an evil teller lie in the worlds where they are evil.
 ## Measuring switch (tools and tests): off, doubt doesn't reach the role check (before Nov 17).
 static var doubted_role_check: bool = true
 
@@ -1237,13 +1256,38 @@ static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, k
 	var doubts: Dictionary = listener.get("reading_doubt", {})
 	if not doubted_role_check or doubts.is_empty() or not view.get("world_options", {}).get("roles", false):
 		return fits
-	var out: PackedFloat64Array = fits
+	var doubted: Array = []
 	for card in cards:
 		if card.get("kind", "") != "report" or card.get("quoted", false) or card.get("testimony_only", false):
 			continue
 		var doubt: float = clampf(float(doubts.get(card.id, 0.0)), 0.0, 1.0)
-		if doubt <= 0.000001:
-			continue
+		if doubt > 0.000001:
+			doubted.append([card, doubt])
+	if doubted.is_empty():
+		return fits
+	if doubted.size() > 1:
+		# Kept short of certain, so "every one broke" never leaves nothing to weigh: with one
+		# reading the weights are exact whatever its doubt.
+		for e in doubted:
+			e[1] = minf(float(e[1]), 1.0 - 1e-6)
+	# The chance that every doubted reading is genuine, and each one's chance of being the
+	# only broken one.
+	var all_sound: float = 1.0
+	for e in doubted:
+		all_sound *= 1.0 - float(e[1])
+	var out := PackedFloat64Array()
+	out.resize(fits.size())
+	for c in range(fits.size()):
+		out[c] = all_sound * fits[c]
+	var total: float = all_sound
+	for e in doubted:
+		var card: Dictionary = e[0]
+		var doubt: float = e[1]
+		var alone_broken: float = doubt
+		for o in doubted:
+			if o[0].id != card.id:
+				alone_broken *= 1.0 - float(o[1])
+		total += alone_broken
 		var claimed: Dictionary = card.duplicate()
 		claimed.kind = "claim"
 		claimed.data = {}
@@ -1251,11 +1295,11 @@ static func _doubted_role_fits(view: Dictionary, cc: Dictionary, cards: Array, k
 		var alt: PackedFloat64Array = _class_fits(view, cc, swapped, knowledge)
 		# A broken reading says these words only by chance (CaseEval.chance_content).
 		var content_p: float = chance_content(view, card)
-		var mixed := PackedFloat64Array()
-		mixed.resize(out.size())
 		for c in range(out.size()):
-			mixed[c] = (1.0 - doubt) * out[c] + doubt * content_p * alt[c]
-		out = mixed
+			out[c] += alone_broken * content_p * alt[c]
+	if total < 1.0 - 1e-12 and total > 0.0:
+		for c in range(out.size()):
+			out[c] /= total
 	return out
 
 ## A Warden's guard on a quiet night sets the Demon's route only as far as the listener
@@ -1287,7 +1331,19 @@ static func _route_trusted(cards: Array, listener: Dictionary) -> Array:
 static func _list_broken(view: Dictionary, cards: Array, listener: Dictionary) -> Array:
 	var SourceDoubt = preload("res://workshop/source_doubt.gd")
 	var out: Array = []
+	# Counts take the mix slots the lists leave (SourceDoubt.LIST_MIX_MAX, shared), the latest
+	# nights first, chosen among these judged cards only.
+	var lists_mixed: int = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "nightwatch" and SourceDoubt.list_broken_chance(view, listener, c) > 0.0).size()
+	var counts: Array = cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("role", "")) == "lamplighter" and SourceDoubt.count_mixable(view, listener, c))
+	counts.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
+	var count_ids: Array = counts.slice(0, maxi(0, SourceDoubt.LIST_MIX_MAX - lists_mixed)).map(func(c): return str(c.get("id", "")))
 	for card in cards:
+		if str(card.get("id", "")) in count_ids:
+			var mixed: Dictionary = card.duplicate()
+			mixed["broken_chance"] = SourceDoubt.count_broken_chance(view, listener, card)
+			mixed["count_mix"] = true
+			out.append(mixed)
+			continue
 		if card.get("kind", "") == "report" and str(card.get("role", "")) == "nightwatch":
 			var b: float = SourceDoubt.list_broken_chance(view, listener, card)
 			if b > 0.0:

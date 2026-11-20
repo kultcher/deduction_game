@@ -183,7 +183,9 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			# bare: an NPC's word with no grounds. It brings nothing new to weigh, so the graded
 			# test (does the rest of the evidence make the reading look wrong?) is left out:
 			# the listener's beliefs already rest on that same evidence (Nov 7, with Michael).
-			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": grounds, "bare": grounds.is_empty()}
+			# npc_defence: an NPC's own call, which the player's judgement doesn't back
+			# (ReadingChallenges.judgement_boost).
+			reading_challenges[scope.reading] = {"mode": scope.mode, "weight": hearing, "supports": grounds, "bare": grounds.is_empty(), "npc_defence": true}
 	input.evidence = facts.values()
 	input.selected = facts.keys()
 	input.private_evidence = input.private_evidence.filter(func(id): return facts.has(id))
@@ -358,7 +360,9 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 					if ledger[eid].meta.has("workshop_teller"):
 						shared = true
 						hearing = maxf(hearing, clampf(ledger[eid].weight, 0.0, 1.0))
-			if shared and facts[id].kind == "sighting":
+			# An admitted outing ("Fine, I was out") is an alibi fact the view reads as a sighting
+			# of its teller (LiveAssessment.activity_card), so it is heard like one (Codex on #372).
+			if shared and (facts[id].kind == "sighting" or card_ref.get("admitted", false)):
 				var base_sighting_hw: float = 1.0 if ("learned" in owners[id] and facts[id].source == input.listener.id) else hearing
 				hearing = base_sighting_hw
 				if not ("learned" in owners[id] and facts[id].source == input.listener.id) and facts[id].source not in ["", "player", "evidence", "town"]:
@@ -412,16 +416,6 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 				rel_scale = clampf(rel_base + rel_slope * (best_trust * maxf(hearing, 0.35)), rel_base, 1.0)
 			prepared.listener.reading_reliability[id] *= rel_scale
 		_add_player_words(prepared, presentations, withdrawn, owners, player_weight, input.get("now", {}))
-		# Presentation weights add per-report uncertainty; enforce the budget AFTER
-		# introducing those dimensions as well as during ordinary preparation.
-		var sources = {}
-		for card in prepared.view.cards:
-			if card.source != prepared.listener.id:
-				sources[card.source] = true
-		var uncertain = prepared.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
-		var dimensions: int = Support.dimensions(prepared.view.cards, prepared.listener, prepared.case.reading_challenges) if prepared.view.world_options.get("roles", false) or not prepared.case.reading_challenges.is_empty() else sources.size() + uncertain
-		if Jury.engine == "legacy" and dimensions > 6:
-			issues.append("Shared evidence exceeds the 64-state credibility budget.")
 	return {"ready": issues.is_empty(), "empty": facts.is_empty() and circumstantial_hubs.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,
 		"marked_questions": marked_questions, "circumstantial_hubs": circumstantial_hubs}
@@ -733,7 +727,7 @@ static func _doubt_adjusted(plan: Dictionary, suspicion: Dictionary, source_doub
 	return prepared
 
 static func _evaluate_adjusted(plan: Dictionary, prepared: Dictionary, suspicion: Dictionary) -> Dictionary:
-	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener) if Jury.engine == "case_eval" else Jury.evaluate(prepared.view, prepared.case, prepared.listener)
+	var result = Jury.refresh(prepared.view, prepared.case, prepared.listener)
 	var public_good: Array = preload("res://workshop/public_evidence.gd").known_good(plan.input.public_events, plan.input.people.map(func(p): return p.id))
 	if prepared.view.get("chronology", {}).has("curse"):
 		var curse: Dictionary = prepared.view.chronology.curse

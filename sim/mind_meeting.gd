@@ -363,6 +363,15 @@ static func _info_intent(w, n, e: Dictionary) -> Dictionary:
 	var spoken: String = C.spoken_when(e["day"], w.day)
 	var when = spoken[0].to_upper() + spoken.substr(1)
 	var body: String = reading_body(str(e["text"]))
+	if body.contains(C.spoken_day(int(e["day"]))):
+		# The reading already says which day (the Augur's "…the morning or afternoon of the
+		# second day"; Michael, Nov 19): a lead naming the evening would read as when it happened.
+		var said: String = "%s." % (body[0].to_upper() + body.substr(1))
+		if str(e.get("role", "")) == "augur":
+			# Each voice says it its own way, keeping "the morning or afternoon of {day}" (Michael,
+			# Nov 19). The card keeps the canonical text.
+			said = Dialogue.voice_line(n.id, "augur_yes" if bool(e.get("data", {}).get("yes", false)) else "augur_no", said, {"day": C.spoken_day(int(e["day"]))})
+		return {"kind": "report", "statement": said, "event_id": info_eid(n.id, e)}
 	if e.has("phase"):
 		when = ("This " + C.PHASES[e["phase"]].to_lower()) if e["day"] == w.day else "On day %d, in the %s" % [e["day"], C.PHASES[e["phase"]].to_lower()]
 	elif body.ends_with(" " + spoken):
@@ -2273,6 +2282,48 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if w.meeting.has("vote_parts"):
 		w.meeting["vote_parts"][v.id] = {"parts": exact_parts, "margin": s - need, "yes": yes}
 	return yes
+
+## Measurement only (Michael, Nov 19: how a case moves votes; Quill's case slate): how the
+## good townsfolk would vote on `nominee` if it were nominated now, by `nominator` ("" for a
+## neutral nominator), with the player's vote and statement left out. Each good, living voter
+## other than the nominee runs the real vote (`_vote_impl`), including its reconsideration, so
+## its beliefs refresh as at a real meeting. Nothing else is left behind: no random draw, no
+## log entry (nor detailed trace event, nor live-feed record), and the meeting state as it was. Evil voters are left out.
+## Returns {yes: [ids], no: [ids], voters, threshold, crosses}. `voters` and `threshold` are
+## the real meeting's (World.vote_threshold, the player counted among the voters); `crosses`
+## is whether the good yes votes alone reach it.
+static func would_vote(w, nominee: String, nominator: String = "") -> Dictionary:
+	var rng_state = w.rng.state
+	var meeting_was: Dictionary = w.meeting.duplicate(true)
+	var log_size: int = w.dlog.entries.size()
+	var log_seq = w.dlog._seq
+	# The detailed trace and the live decision feed don't take these votes either (Codex on #347).
+	var was_detailed: bool = w.dlog.detailed
+	var was_feed = w.dlog.live_feed
+	var was_echo: bool = w.dlog.echo
+	w.dlog.detailed = false
+	w.dlog.live_feed = null
+	w.dlog.echo = false
+	if not w.meeting.has("block"):
+		w.meeting["block"] = ""
+	var yes: Array = []
+	var no: Array = []
+	for v in w.living():
+		if v.id == nominee or v.is_evil():
+			continue
+		if _vote_impl(w, v, nominee, nominator, false, "", 0, 0):
+			yes.append(v.id)
+		else:
+			no.append(v.id)
+	w.rng.state = rng_state
+	w.meeting = meeting_was
+	w.dlog.entries.resize(log_size)
+	w.dlog._seq = log_seq
+	w.dlog.detailed = was_detailed
+	w.dlog.live_feed = was_feed
+	w.dlog.echo = was_echo
+	var threshold: int = w.vote_threshold()
+	return {"yes": yes, "no": no, "voters": w.voter_count(), "threshold": threshold, "crosses": yes.size() >= threshold}
 
 ## Whether a case catches `target` in a home lie: among `ids`, their own "I was home"
 ## for a night and something that puts them out that night (a sighting, a Night Watch

@@ -254,7 +254,7 @@ static func judge_key(view: Dictionary, template_case: Dictionary, listener: Dic
 	known.erase("presented_reports")
 	known.erase("attention_reports")
 	who["knowledge"] = known
-	return "%d:%d:%d:%d|%s|%s" % [hash(around), hash(cards), hash(template_case), hash(who), "hex" if hex else "", ",".join(PackedStringArray(ids))]
+	return "%d:%d:%d:%d:%d|%s|%s" % [hash(around), hash(cards), hash(template_case), hash(who), _mix_key(view, listener, cards), "hex" if hex else "", ",".join(PackedStringArray(ids))]
 
 
 static func _prepare_key_ctx(view: Dictionary, bare: Dictionary, listener: Dictionary) -> Dictionary:
@@ -373,7 +373,21 @@ static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener
 		known.erase("attention_reports")
 		who["knowledge"] = known
 		who_h = hash(who)
-	return "%d:%d:%d:%d|%s|%s" % [around_h, hash(cards), tmpl_h, who_h, "hex" if hex else "", ",".join(PackedStringArray(ids))]
+	return "%d:%d:%d:%d:%d|%s|%s" % [around_h, hash(cards), tmpl_h, who_h, _mix_key(ctx.view, listener, cards), "hex" if hex else "", ",".join(PackedStringArray(ids))]
+
+
+## The broken chance of each Night Watch list and Lamplighter count the judgement would mix
+## (CaseEval._list_broken), in the key itself: it reads the night's outings from the whole
+## view, which the rest of the key leaves out (Lantern, Nov 19; the Lamplighter fix (b)). Exact
+## whatever the chance reads; only makes the key finer, so lists stay as they were.
+static func _mix_key(view: Dictionary, listener: Dictionary, cards: Array) -> int:
+	if not cards.any(func(c): return str(c.get("kind", "")) == "report" and str(c.get("role", "")) in ["nightwatch", "lamplighter"]):
+		return 0
+	var mixed: Array = []
+	for c in CaseEval._list_broken(view, cards, listener):
+		if c.has("broken_chance") or c.get("count_mix", false):
+			mixed.append([str(c.get("id", "")), float(c.get("broken_chance", 0.0)), bool(c.get("count_mix", false))])
+	return hash(mixed)
 
 
 static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false, key_ctx: Dictionary = {}) -> Dictionary:

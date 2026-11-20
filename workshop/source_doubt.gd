@@ -49,6 +49,10 @@ static func lookup(source_doubt: Dictionary, src: String, night: int = -1, kind:
 	return clampf(maxf(float(source_doubt.get("%s:%d" % [src, night], 0.0)), star), 0.0, 1.0)
 
 
+## The listener's chance that `who` is evil, its suspicion of them (0.5 when it holds none).
+static func _evil_chance(listener: Dictionary, who: String) -> float:
+	return clampf(float(listener.get("suspicion", {}).get(who, 0.5)), 0.0, 1.0)
+
 static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictionary = {}) -> Dictionary:
 	if not plan.get("ready", false) or not plan.has("prepared"):
 		return {"pre_eval": seed_doubt.duplicate(true), "full": seed_doubt.duplicate(true), "settled_sincere": {}, "honest": {}}
@@ -168,10 +172,25 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 		if ckind == "alibi" and cnight >= 0:
 			for subj in card.get("subjects", [card.get("subject", "")]):
 				var s_id: String = str(subj)
-				if s_id != "" and own_saw.has("%s:%d" % [s_id, cnight]) and not sleepwalkers.has(s_id) and not settled_sincere.has(s_id):
+				if s_id != "" and own_saw.has("%s:%d" % [s_id, cnight]) and not settled_sincere.has(s_id):
+					# "I've been known to sleepwalk" excuses the false "I was home" only where its
+					# claimant is a good Sleepwalker; where they're evil it's a bluff and the lie
+					# stands (Michael, Nov 19). One doubt for every world, so weighed by the
+					# listener's chance they're evil. Before, the claim cancelled it outright, whoever
+					# made it. (Under the secrets rework a Sleepwalker stays self-unaware: then a
+					# claim is never a good holder's knowing one; docs/design/secrets_rework.md.)
+					var excused: float = 1.0 - _evil_chance(listener, s_id) if sleepwalkers.has(s_id) else 0.0
+					var d_night: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT * (1.0 - excused)
+					var d_general: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL * (1.0 - excused)
+					if card.get("excuse_contradicted", false):
+						# The excuse for this lie was contradicted (LiveAssessment._mark_excuses): a
+						# second caught lie, at CONTRADICTED_EXCUSE_WEIGHT of the first (Michael, Nov 19).
+						var w2: float = Tuning.Workshop.CONTRADICTED_EXCUSE_WEIGHT
+						d_night = 1.0 - (1.0 - d_night) * (1.0 - w2 * Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
+						d_general = 1.0 - (1.0 - d_general) * (1.0 - w2 * Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
 					var nk_a: String = "%s:%d" % [s_id, cnight]
-					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
-					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
+					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), d_night)
+					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), d_general)
 
 	# A teller's own word that its gift may have been turned (BACKLOG "Saying 'my gift may
 	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading
@@ -471,12 +490,41 @@ static func list_broken_chance(view: Dictionary, listener: Dictionary, card: Dic
 	var b: float = _list_broken_base(view, listener, card)
 	if b <= 0.0:
 		return 0.0
+	return b if _mix_selected(view, listener, card) else 0.0
+
+## Whether a Night Watch list is among the LIST_MIX_MAX mixed lists of the view (latest
+## nights first). Counts take only the slots the lists leave, chosen among the judged cards
+## (CaseEval._list_broken), so a town with both roles mixes no more subsets than before
+## (Lantern, Nov 19) and the choice depends only on what's judged (the connections cache).
+static func _mix_selected(view: Dictionary, listener: Dictionary, card: Dictionary) -> bool:
 	var mixable: Array = view.get("cards", []).filter(func(c): return str(c.get("role", "")) == "nightwatch" and _list_broken_base(view, listener, c) > 0.0)
 	mixable.sort_custom(func(a, b2): return int(a.get("night", -1)) > int(b2.get("night", -1)) or (int(a.get("night", -1)) == int(b2.get("night", -1)) and str(a.get("id", "")) < str(b2.get("id", ""))))
 	var keep: Array = mixable.slice(0, LIST_MIX_MAX).map(func(c): return str(c.get("id", "")))
 	if not view.get("cards", []).any(func(c): return str(c.get("id", "")) == str(card.get("id", ""))):
-		return b
-	return b if str(card.get("id", "")) in keep else 0.0
+		return true
+	return str(card.get("id", "")) in keep
+
+## A Lamplighter's count mixed as sound or broken as a whole (Michael, Nov 19, the Lamplighter
+## fix (b), step 1): another's count card, in a view the live movement model reads. It's mixed
+## even with no broken chance, because in a world where its teller is evil it says nothing.
+static func count_mixable(view: Dictionary, listener: Dictionary, card: Dictionary) -> bool:
+	if not list_mix_enabled or not view.get("live_activity", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "lamplighter" \
+		or card.get("quoted", false) or card.get("duty_only", false) or not card.get("data", {}).has("count"):
+		return false
+	var src: String = str(card.get("source", ""))
+	var me: String = str(listener.get("id", listener.get("knowledge", {}).get("self", "")))
+	return src != "" and src != me and src not in ["player", "evidence", "town"]
+
+## The chance a mixable count was broken that night: as a list's (_list_broken_base), for the
+## Lamplighter's gift; -1 for a count that isn't mixable. The cap is CaseEval._list_broken's.
+static func count_broken_chance(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
+	if not count_mixable(view, listener, card):
+		return -1.0
+	var night: int = int(card.get("night", card.get("observed_at", {}).get("day", -1)))
+	var src: String = str(card.get("source", ""))
+	var poison: float = ReadingChallenges.poison_chance(view, listener, night, src)
+	var delusional: float = Tuning.Workshop.DELUSIONAL_SELF_DOUBT if "delusional" in view.get("world_options", {}).get("modifiers", []) and could_hold_secret("lamplighter", "delusional") else 0.0
+	return 1.0 - (1.0 - poison) * (1.0 - delusional)
 
 static func _list_broken_base(view: Dictionary, listener: Dictionary, card: Dictionary) -> float:
 	if not list_mix_enabled or not view.get("live_activity", false) or str(card.get("kind", "")) != "report" or str(card.get("role", "")) != "nightwatch" or card.get("quoted", false) or card.get("duty_only", false):

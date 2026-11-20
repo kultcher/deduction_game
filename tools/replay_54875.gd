@@ -144,7 +144,7 @@ func _init() -> void:
 	var out = FileAccess.open("res://logs/migration/replay_54875/measurement.json", FileAccess.WRITE)
 	out.store_string(JSON.stringify(result, "\t"))
 	print("54875 replay: filed #%d; %d shared, %d native; %d vote tallies; errors %s" % [filed,
-		presentation.filter(func(d): return d.model == "shared").size(), presentation.filter(func(d): return d.model == "legacy").size(), tallies.size(), errors])
+		presentation.filter(func(d): return d.model == "shared").size(), presentation.filter(func(d): return d.model == "social").size(), tallies.size(), errors])
 	for tally in tallies:
 		print("Case #85 day %d vote: %d yes / %d needed; %s" % [tally.day, tally.data.count, tally.data.threshold, tally.data.outcome])
 	print("Measurement: logs/migration/replay_54875/measurement.json")

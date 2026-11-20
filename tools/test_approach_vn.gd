@@ -2,6 +2,7 @@
 ## covers the phase change ("You part ways with ... As you cross past ..., X waves you
 ## down."), holds on Continue, then the approacher speaks with your choices beneath.
 extends SceneTree
+const MainActions = preload("res://ui/main_actions.gd")
 
 const GameConversation = preload("res://game/game_conversation.gd")
 
@@ -52,7 +53,7 @@ func _run() -> void:
 	_check(view.person_id == "" and view.portrait.texture == null and view.lines == [after], "with no portrait, just the passage")
 	var buttons: Array = view.controls.get_children().filter(func(c): return c is Button)
 	_check(buttons.size() == 1 and buttons[0].text == "Continue", "and holds on Continue (%s)" % str(buttons.map(func(b): return b.text)))
-	scene._approach_continue()
+	MainActions.approach_continue(scene)
 	await process_frame
 	buttons = view.controls.get_children().filter(func(c): return c is Button)
 	_check(scene.approach_stage == "speaking" and view.person_id == n.id and view.portrait.texture != null, "Continue brings the approacher on")
@@ -67,7 +68,7 @@ func _run() -> void:
 	g.state = "approach"
 	g.approach = {"npc": n, "agenda": "gossip", "intro": after, "events": []}
 	scene._refresh_all()
-	scene._approach_continue()
+	MainActions.approach_continue(scene)
 	scene._new_case()
 	await process_frame
 	var g2 = scene.g

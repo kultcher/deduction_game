@@ -8,23 +8,17 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const TermDefs = preload("res://ui/term_defs.gd")
 const TextTerms = preload("res://ui/text_terms.gd")
-const Mind = preload("res://sim/mind.gd")
-const Declaration = preload("res://game/demon_declaration.gd")
-const MindPodium = preload("res://sim/mind_podium.gd")
-const GameMeeting = preload("res://game/game_meeting.gd")
-const CaseView = preload("res://ui/case_view.gd")
 const CardList = preload("res://ui/card_list.gd")
 const EvidenceContext = preload("res://ui/evidence_context.gd")
 const MapView = preload("res://ui/map_view.gd")
-const MeetingView = preload("res://ui/meeting_view.gd")
 const CaseState = preload("res://ui/case_state.gd")
 const UITheme = preload("res://ui/theme.gd")
 const TraceArt = preload("res://ui/trace_art.gd")
 const NewCaseScreen = preload("res://ui/new_case_screen.gd")
-const ProfilePanel = preload("res://ui/profile_panel.gd")
-const CastList = preload("res://ui/cast_list.gd")
 const LogText = preload("res://ui/log_text.gd")
-const FormattedTextLabel = preload("res://ui/formatted_text_label.gd")
+const Layout = preload("res://ui/main_layout.gd")
+const Roles = preload("res://ui/main_roles.gd")
+const Actions = preload("res://ui/main_actions.gd")
 
 var g
 var out: RichTextLabel
@@ -54,6 +48,10 @@ var map_return: Button
 var conversation_view
 var conversation_show_map = false
 var _deferred_log_events: Array = []  # the phase change after a conversation that ran out of questions (see _run)
+## A reading (Town Hall records, tavern gossip, a crime scene's traces) that ended the phase:
+## the screen holds the old phase until the last page is done (Michael, Nov 19).
+var _phase_held: bool = false
+const READING_VERBS = ["gossip", "records", "register", "town_hall", "inspect", "search", "s"]
 var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
 ## An NPC approach in the VN (triage 2.8/8.3, Nov 16): "intro" shows the interstitial with
@@ -100,351 +98,14 @@ var log_text = LogText.new()
 
 var headlines
 
+## The screen is built in ui/main_layout.gd; this script keeps the state and the command flow.
+func _ready() -> void:
+	Layout.build(self)
+
 func _consume_headlines() -> void:
 	for event in g.last_events:
 		if event.k == "headline":
 			headlines.enqueue(event)
-
-func _ready() -> void:
-	preload("res://ui/column_menus.gd").watch(self)
-	var bg = ColorRect.new()
-	bg.color = UITheme.color("bg")
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-
-	mono = SystemFont.new()
-	mono.font_names = PackedStringArray(["DejaVu Sans Mono", "Consolas", "Menlo", "monospace"])
-	theme = UITheme.make(mono)
-
-	var root = VBoxContainer.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
-	add_child(root)
-
-	# Title bar: the day, the screens, and case controls.
-	var top = HBoxContainer.new()
-	top.add_theme_constant_override("separation", 8)
-	root.add_child(top)
-	day_icon = TextureRect.new()
-	day_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	day_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	day_icon.custom_minimum_size = Vector2(30, 30)
-	top.add_child(day_icon)
-	var title = Label.new()
-	title.text = "DEMONOLOGIST"
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", UITheme.color("accent"))
-	top.add_child(title)
-	day_label = Label.new()
-	day_label.add_theme_font_size_override("font_size", 18)
-	day_label.custom_minimum_size = Vector2(170, 0)
-	top.add_child(day_label)
-	var town_tab = _button(top, "Town", func(): pass)
-	town_tab.toggle_mode = true
-	town_tab.button_pressed = true
-	_button(top, "Case board", _open_case_view)
-	_button(top, "Notes", _open_notes)
-	_button(top, "Roles", _open_roles)
-	_button(top, "Help", func(): _run("help"))
-	var spacer = Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(spacer)
-	var lbl = Label.new()
-	lbl.text = "Case"
-	lbl.add_theme_color_override("font_color", UITheme.color("muted"))
-	top.add_child(lbl)
-	seed_box = SpinBox.new()
-	seed_box.min_value = 1
-	seed_box.max_value = 999999
-	seed_box.value = NewCaseScreen.fresh_seed()
-	top.add_child(seed_box)
-	size_opt = OptionButton.new()
-	size_opt.add_item("7 townsfolk")
-	size_opt.set_item_metadata(0, 7)
-	size_opt.add_item("10 townsfolk")
-	size_opt.set_item_metadata(1, 10)
-	size_opt.tooltip_text = "Town size for the next case: 7 (one minion) or 10 (two minions)."
-	size_opt.visible = false
-	top.add_child(size_opt)
-	var more = MenuButton.new()
-	more.text = "More ▾"
-	more.flat = false
-	var mp: PopupMenu = more.get_popup()
-	# Ids are fixed per entry so reordering the menu never changes what an id does.
-	for it in [["New case…", MoreItem.NEW_CASE], ["Cast (text)", MoreItem.CAST], ["Timeline (text)", MoreItem.TIMELINE],
-			["Card list sidebar", MoreItem.SIDEBAR], ["Write dev log", MoreItem.LOG], ["Case Workshop", MoreItem.WORKSHOP]]:
-		mp.add_item(it[0], it[1])
-	mp.id_pressed.connect(_on_more)
-	top.add_child(more)
-	debug_check = CheckBox.new()
-	debug_check.text = "Debug"
-	debug_check.tooltip_text = "Show what NPCs privately make of each card and person (influence, credibility, suspicion). Turning it on mid-case leaves your identification unscored."
-	debug_check.toggled.connect(func(on):
-		g.set_debug_overlay(on)
-		roll_button.visible = on
-		if not on: roll_window.hide()
-		_refresh_all())
-	top.add_child(debug_check)
-	roll_window = preload("res://ui/decision_window.gd").new()
-	roll_window.theme = theme
-	add_child(roll_window)
-	roll_button = Button.new()
-	roll_button.text = "Rolls"
-	roll_button.tooltip_text = "Live NPC decisions: stats, sampled draws, thresholds and chance estimates"
-	roll_button.visible = false
-	roll_button.pressed.connect(func():
-		if g.debug_overlay:
-			roll_window._refresh()
-			roll_window.popup_centered())
-	top.add_child(roll_button)
-	theory_label = Label.new()
-	theory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	theory_label.add_theme_color_override("font_color", UITheme.color("muted"))
-	root.add_child(theory_label)
-
-	# Top: the map, the townsfolk, the profile. Bottom: what you can do, beside the log.
-	var body = VSplitContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	root.add_child(body)
-	var upper = HBoxContainer.new()
-	upper.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	upper.size_flags_stretch_ratio = 1.25
-	upper.add_theme_constant_override("separation", 10)
-	body.add_child(upper)
-	map_stage = Control.new()
-	map_stage.custom_minimum_size = Vector2(500, 300)
-	map_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_stage.clip_contents = true
-	upper.add_child(map_stage)
-	map = MapView.new()
-	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	map.clicked.connect(_on_map_clicked)
-	map_stage.add_child(map)
-	conversation_view = preload("res://ui/day_conversation_view.gd").new()
-	conversation_view.visible = false
-	map_stage.add_child(conversation_view)
-	map_return = Button.new()
-	map_return.name = "MapReturn"
-	map_return.visible = false
-	map_return.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	map_return.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	map_return.offset_left = -10
-	map_return.offset_right = -10
-	map_return.offset_top = 10
-	map_return.offset_bottom = 10
-	map_return.pressed.connect(_on_map_return)
-	map_stage.add_child(map_return)
-	# While the town meets, the meeting circle takes the map's place.
-	meeting_view = MeetingView.new()
-	meeting_view.custom_minimum_size = Vector2(500, 300)
-	meeting_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	meeting_view.visible = false
-	meeting_view.person_clicked.connect(func(id): _select_person(id))
-	# The log follows the stage, speaker by speaker; once nothing is left to show (last words
-	# included), the actions come back.
-	meeting_view.stage.logged.connect(_log_events)
-	meeting_view.settled.connect(func(): if g != null: _refresh_all())
-	upper.add_child(meeting_view)
-	var castbox = VBoxContainer.new()
-	castbox.custom_minimum_size = Vector2(330, 0)
-	upper.add_child(castbox)
-	var ch = Label.new()
-	cast_header = ch
-	ch.text = "Townsfolk"
-	ch.add_theme_font_size_override("font_size", 18)
-	ch.add_theme_color_override("font_color", UITheme.color("accent"))
-	castbox.add_child(ch)
-	var csc = ScrollContainer.new()
-	csc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	csc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	castbox.add_child(csc)
-	cast_list = CastList.new()
-	cast_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cast_list.person_clicked.connect(_on_town_person_clicked)
-	csc.add_child(cast_list)
-	profile = ProfilePanel.new(true)
-	profile.build()
-	profile.custom_minimum_size = Vector2(360, 0)
-	profile.person_changed.connect(func(id): case_view.show_profile(id))
-	profile.changed.connect(func():
-		theory_label.text = g.theory_status()
-		cast_list.refresh())
-	profile.card_clicked.connect(func(n):
-		_open_case_view()
-		case_view.reveal(n)
-		case_state.select_card(n)
-		case_view.board.fit_selection())
-	profile.card_context_requested.connect(func(n, at): case_view.show_card_menu(n, at))
-	profile.profile_workshop_requested.connect(func(pid: String, facet: String):
-		_open_case_view()
-		case_view.open_workshop_profile(pid, facet))
-	upper.add_child(profile)
-	roles_dock = PanelContainer.new()
-	roles_dock.custom_minimum_size.x = 360
-	roles_dock.add_theme_stylebox_override("panel", UITheme.panel("paper"))
-	roles_dock.hide()
-	upper.add_child(roles_dock)
-
-	var lower = HBoxContainer.new()
-	lower.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lower.add_theme_constant_override("separation", 10)
-	body.add_child(lower)
-	var right = VBoxContainer.new()
-	right.custom_minimum_size = Vector2(380, 0)
-	right.add_theme_constant_override("separation", 6)
-	lower.add_child(right)
-	action_title = Label.new()
-	action_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	action_title.add_theme_font_size_override("font_size", 19)
-	action_title.add_theme_color_override("font_color", UITheme.color("accent"))
-	right.add_child(action_title)
-	var asc = ScrollContainer.new()
-	asc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	asc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	right.add_child(asc)
-	actions = VBoxContainer.new()
-	actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	asc.add_child(actions)
-	var logbox = VBoxContainer.new()
-	logbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lower.add_child(logbox)
-	var logpanel = PanelContainer.new()
-	logpanel.add_theme_stylebox_override("panel", UITheme.panel("inset"))
-	logpanel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	logbox.add_child(logpanel)
-	out = FormattedTextLabel.new()
-	out.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	out.custom_minimum_size = Vector2(0, 160)
-	out.scroll_following = true
-	out.selection_enabled = true
-	out.bbcode_enabled = true
-	UITheme.rich_text_fonts(out, mono)
-	out.hint_underlined = false
-	out.add_theme_font_size_override("normal_font_size", 16)
-	out.meta_clicked.connect(func(meta):
-		var m = str(meta)
-		if m.begins_with("card:"):
-			_open_case_view()
-			case_view.reveal(int(m.substr(5)))
-			case_state.select_card(int(m.substr(5)))
-			case_view.board.fit_selection())
-	logpanel.add_child(out)
-	var bottom = HBoxContainer.new()
-	logbox.add_child(bottom)
-	input = LineEdit.new()
-	input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	input.placeholder_text = "Or type a command (help lists them) and press Enter"
-	input.add_theme_font_override("font", mono)
-	input.text_submitted.connect(_on_submit)
-	input.gui_input.connect(_on_input_key)
-	bottom.add_child(input)
-	_button(bottom, "Send", func(): _on_submit(input.text))
-
-	# Optional card-list sidebar (More ▾).
-	side = VBoxContainer.new()
-	side.custom_minimum_size = Vector2(320, 0)
-	side.visible = true
-	lower.add_child(side)
-	var st = Label.new()
-	st.text = "Case board (newest first)"
-	side.add_child(st)
-	side_filter = LineEdit.new()
-	side_filter.placeholder_text = "filter: person, place, kind, d2, n1, text; join with + (greta+night)"
-	side_filter.text_changed.connect(func(_t): _refresh_side())
-	side.add_child(side_filter)
-	side_sightings_check = _day_sightings_check(func(): _refresh_side())
-	side.add_child(side_sightings_check)
-	side_list = CardList.new()
-	side_list.select_mode = Tree.SELECT_ROW
-	side_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side_list.readable(15)
-	side_list.card_activated.connect(_on_side_activated)
-	side_list.card_context_requested.connect(func(n, at): case_view.show_card_menu(n, at))
-	side.add_child(side_list)
-	var hint = Label.new()
-	hint.text = "Double-click a card to add its number to your command."
-	hint.add_theme_font_size_override("font_size", 14)
-	side.add_child(hint)
-	_button(side, "Open case board", _open_case_view)
-
-	# Case notes and the roles list: movable windows, reachable from both screens.
-	var nwin = _make_window("Case notes", Vector2i(560, 480))
-	notes_win = nwin[0]
-	var nv: VBoxContainer = nwin[1]
-	var nh = Label.new()
-	nh.text = "Your notes on the case (saved as you type)"
-	nh.add_theme_color_override("font_color", UITheme.color("ink"))
-	nv.add_child(nh)
-	notes_edit = TextEdit.new()
-	notes_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	notes_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	notes_edit.text_changed.connect(func():
-		if g != null:
-			g.case_notes = notes_edit.text)
-	nv.add_child(notes_edit)
-	var rwin = _make_window("The script: what may be in play", Vector2i(1160, 960), [22, 4, 18, 12])
-	roles_win = rwin[0]
-	roles_window_box = rwin[1]
-	roles_content = VBoxContainer.new()
-	roles_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	roles_window_box.add_child(roles_content)
-	var role_controls = HBoxContainer.new()
-	roles_content.add_child(role_controls)
-	roles_pin = CheckBox.new()
-	roles_pin.text = "Pin as side panel"
-	for colour in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
-		roles_pin.add_theme_color_override(colour, UITheme.color("ink"))
-	roles_pin.tooltip_text = "Keep Roles beside the town profile for this session. From the case board, Roles still opens as a window."
-	roles_pin.toggled.connect(_set_roles_pinned)
-	role_controls.add_child(roles_pin)
-	_button(role_controls, "Hide", _hide_roles)
-	roles_win.close_requested.connect(_hide_roles)
-	var rsc = ScrollContainer.new()
-	rsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	rsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	roles_content.add_child(rsc)
-	roles_box = VBoxContainer.new()
-	roles_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	roles_box.add_theme_constant_override("separation", 8)
-	rsc.add_child(roles_box)
-
-	popup = PopupPanel.new()
-	popup.add_theme_stylebox_override("panel", UITheme.panel("popup"))
-	add_child(popup)
-
-	case_view = CaseView.new()
-	case_view.state = case_state
-	case_state.selection_changed.connect(func():
-		if case_state.selected_person != "" and _side_person_id() != case_state.selected_person:
-			_select_person(case_state.selected_person))
-	case_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	case_view.visible = false
-	add_child(case_view)
-	case_view.workshop_execute = _run_workshop
-	case_view.build(mono)
-	case_view.changed.connect(_refresh_side)
-	case_view.notes_requested.connect(_open_notes)
-	case_view.roles_requested.connect(_open_roles)
-	case_view.visibility_changed.connect(func():
-		if not case_view.visible and roles_pinned and roles_showing:
-			_open_roles())
-	case_view.workshop_requested.connect(_open_live_workshop)
-
-	var headline_layer = CanvasLayer.new()
-	headline_layer.layer = 30
-	add_child(headline_layer)
-	headlines = preload("res://ui/headline_overlay.gd").new()
-	headline_layer.add_child(headlines)
-	new_case_screen = NewCaseScreen.new()
-	new_case_screen.hide()
-	new_case_screen.start_requested.connect(_on_new_case_start)
-	add_child(new_case_screen)
-	# Headless runs (tests, tools) and --quick-start skip the screen and deal a Default case.
-	if DisplayServer.get_name() == "headless" or "--quick-start" in OS.get_cmdline_user_args():
-		_new_case()
-	else:
-		new_case_screen.case_seed = int(seed_box.value)
-		new_case_screen.open(false, debug_check.button_pressed)
-
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
 	b.text = text
@@ -457,12 +118,10 @@ func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 		b.add_theme_color_override("font_hover_color", UITheme.ink_of(color).darkened(0.2))
 	parent.add_child(b)
 	return b
-
 func _on_side_activated(num) -> void:
 	input.text += " " + str(num)
 	input.grab_focus()
 	input.caret_column = input.text.length()
-
 ## New case from the button: a fresh seed, unless you've typed one in since this case began.
 func _open_new_case_screen() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
@@ -470,12 +129,10 @@ func _open_new_case_screen() -> void:
 	new_case_screen.count = int(size_opt.get_item_metadata(size_opt.selected))
 	new_case_screen.case_seed = _next_case_seed()
 	new_case_screen.open(g != null and not g.w.game_over, debug_check.button_pressed)
-
 ## The seed the next case starts with: the one typed in, or a fresh one if the box still
 ## holds this case's. The New Case screen builds a dynamic script from it.
 func _next_case_seed() -> int:
 	return int(seed_box.value) if int(seed_box.value) != _case_seed else NewCaseScreen.fresh_seed()
-
 func _on_new_case_start(count: int, script_def, case_seed: int) -> void:
 	for i in range(size_opt.item_count):
 		if int(size_opt.get_item_metadata(i)) == count:
@@ -483,15 +140,15 @@ func _on_new_case_start(count: int, script_def, case_seed: int) -> void:
 	current_script = script_def
 	seed_box.value = case_seed
 	_new_case()
-
 func _new_case_button() -> void:
 	seed_box.value = _next_case_seed()
 	_new_case()
-
 func _new_case() -> void:
 	if g != null and (g.workshop_presenting or g.meeting_streaming()):
 		return
 	conversation_finished = false
+	_phase_held = false
+	_deferred_log_events = []
 	_day_pick = ""
 	conversation_show_map = false
 	inspect_pages.clear()
@@ -524,197 +181,13 @@ func _new_case() -> void:
 	roll_button.visible = debug_check.button_pressed
 	_refresh_all()
 	if is_inside_tree() and show_script_at_start:
-		_open_roles()
-
+		Roles.open(self)
 func _input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible:
 		input.grab_focus()
-
 func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
-
-## A movable window on framed paper. Returns [window, content vbox].
-## `inset` pads the content further in from the frame's corner leaves (left, top, right,
-## bottom), for content that runs to the edges (the script's icons; Michael, Nov 19).
-func _make_window(title: String, sz: Vector2i, inset: Array = []) -> Array:
-	var win = Window.new()
-	win.title = title
-	win.size = sz
-	win.visible = false
-	win.close_requested.connect(func(): win.hide())
-	var panel = PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.add_theme_stylebox_override("panel", UITheme.panel("paper"))
-	win.add_child(panel)
-	var v = VBoxContainer.new()
-	if inset.size() == 4:
-		var pad = MarginContainer.new()
-		for i in 4:
-			pad.add_theme_constant_override(["margin_left", "margin_top", "margin_right", "margin_bottom"][i], int(inset[i]))
-		panel.add_child(pad)
-		pad.add_child(v)
-	else:
-		panel.add_child(v)
-	add_child(win)
-	return [win, v]
-
-## The roles list (the script, as in Clocktower): the town's gifts on the left; the demon's
-## side and the secrets on the right. Each with its icon, what it does, and who has claimed it.
-static func setup_summary(count: int) -> String:
-	# Setup rules count secrets, not holders; a pair of Lovers is one secret.
-	var rules: Dictionary = C.SETUPS.get(count, {"town": count - 2, "minions": 1, "secrets": 1})
-	return "Good: %d gifted townsfolk / %d secret%s · Evil: %d minion%s / 1 demon" % [rules.town, rules.secrets, "" if rules.secrets == 1 else "s", rules.minions, "" if rules.minions == 1 else "s"]
-
-func _set_roles_pinned(on: bool) -> void:
-	roles_pinned = on
-	roles_pin.set_pressed_no_signal(on)
-	_open_roles()
-
-func _hide_roles() -> void:
-	roles_showing = false
-	roles_win.hide()
-	if roles_pinned and roles_content.get_parent() != roles_dock:
-		roles_content.reparent(roles_dock)
-		_build_roles(true)
-	roles_dock.hide()
-
-func _open_roles() -> void:
-	roles_showing = true
-	var embedded: bool = roles_pinned and not case_view.visible
-	var host = roles_dock if embedded else roles_window_box
-	if roles_content.get_parent() != host: roles_content.reparent(host)
-	_build_roles(embedded)
-	roles_dock.visible = embedded
-	if embedded:
-		roles_win.hide()
-	elif not roles_win.visible:
-		roles_win.popup_centered()
-
-func _roles_state_key() -> String:
-	return JSON.stringify([g.w.n_npcs, g.w.minion_ids.size(), g.w.npcs.map(func(n): return [n.id, n.claimed_role, n.max_tier >= 3, n.claim_public])])
-
-func _build_roles(embedded: bool) -> void:
-	_roles_signature = _roles_state_key()
-	for ch in roles_box.get_children():
-		roles_box.remove_child(ch)
-		ch.queue_free()
-	# Four stacked sections, as on a Clocktower script sheet: gifts, secrets, minions, demons.
-	# Each lays its roles out in two columns in the window, one when pinned beside the profile.
-	var sections = VBoxContainer.new()
-	sections.name = "ScriptSections"
-	sections.add_theme_constant_override("separation", 14)
-	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	roles_box.add_child(sections)
-	var sc = g.w.case_script
-	var minions: int = g.w.minion_ids.size()
-	_roles_group(sections, "Gifts of the town", sc.town, "good", embedded)
-	_roles_group(sections, "Secrets: one in play, on top of a gift", sc.secrets, "secret", embedded)
-	_roles_group(sections, "Minions: %d in play" % minions, sc.minions, "evil", embedded)
-	var demon_box = _roles_group(sections, "Demon" if sc.demons.size() == 1 else "Demons: one in play", sc.demons, "evil", embedded)
-	var night_rule = Label.new()
-	night_rule.name = "DemonNightRule"
-	night_rule.text = C.DEMON_NIGHT_RULE
-	night_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	night_rule.add_theme_color_override("font_color", UITheme.color("ink"))
-	demon_box.add_child(night_rule)
-	var summary = Label.new()
-	summary.name = "SetupSummary"
-	summary.text = setup_summary(g.w.n_npcs)
-	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	summary.add_theme_color_override("font_color", UITheme.color("ink"))
-	roles_box.add_child(summary)
-	var bottom_pad = Control.new()
-	bottom_pad.custom_minimum_size = Vector2(0, 12)
-	roles_box.add_child(bottom_pad)
-
-## Team colours on the script sheet: blue gifts, violet secrets, red for the demon's side.
-const ROLE_TEAM_COLOR = {"good": "role_good_ink", "secret": "role_secret_ink", "evil": "role_evil_ink"}
-
-## Recolours a role icon's dark ink to its team colour, keeping the gold and paper fills.
-static var _icon_shader: Shader = null
-static func _team_icon_material(team_color: Color) -> ShaderMaterial:
-	if _icon_shader == null:
-		_icon_shader = Shader.new()
-		_icon_shader.code = """shader_type canvas_item;
-uniform vec4 tint : source_color;
-void fragment() {
-	vec4 c = texture(TEXTURE, UV);
-	float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-	float ink = 1.0 - smoothstep(0.18, 0.42, lum);
-	COLOR = vec4(mix(c.rgb, tint.rgb, ink), c.a);
-}"""
-	var m = ShaderMaterial.new()
-	m.shader = _icon_shader
-	m.set_shader_parameter("tint", team_color)
-	return m
-
-## One section: its heading, then its roles in a grid. Returns the section box.
-func _roles_group(parent: Container, title: String, roles: Array, team: String, embedded: bool) -> VBoxContainer:
-	var team_color: Color = UITheme.color(ROLE_TEAM_COLOR[team])
-	var box = VBoxContainer.new()
-	box.name = "Section_" + team
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 6)
-	parent.add_child(box)
-	var h = Label.new()
-	h.text = title
-	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	h.add_theme_font_size_override("font_size", 18)
-	h.add_theme_color_override("font_color", team_color)
-	box.add_child(h)
-	var rule = ColorRect.new()
-	rule.color = Color(team_color, 0.45)
-	rule.custom_minimum_size = Vector2(0, 2)
-	box.add_child(rule)
-	var grid = GridContainer.new()
-	grid.columns = 1 if embedded else 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 24)
-	grid.add_theme_constant_override("v_separation", 10)
-	box.add_child(grid)
-	var icon_material := _team_icon_material(team_color)
-	for r in roles:
-		var row = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_child(row)
-		var ic = TextureRect.new()
-		var rt = UITheme.tex("ui/roles/" + r, 0.1)
-		ic.texture = rt if rt != null else UITheme.tex("ui/roles/unknown", 0.1)  # icons for new gifts still to come
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.custom_minimum_size = Vector2(34, 34)
-		ic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		ic.material = icon_material
-		row.add_child(ic)
-		var col = VBoxContainer.new()
-		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		col.add_theme_constant_override("separation", 0)
-		row.add_child(col)
-		var nm = Label.new()
-		nm.text = C.role_name(r)
-		nm.add_theme_font_size_override("font_size", 16)
-		nm.add_theme_color_override("font_color", team_color)
-		col.add_child(nm)
-		var d = Label.new()
-		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
-		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		d.add_theme_font_size_override("font_size", 14)
-		d.add_theme_color_override("font_color", UITheme.color("ink_soft"))
-		col.add_child(d)
-		var who: Array = []
-		for n in g.w.npcs:
-			if n.claimed_role == r and (n.claim_public or n.max_tier >= 3):
-				who.append("%s (%s)" % [n.name, "to the town" if n.claim_public else "told you"])
-		if not who.is_empty():
-			var c2 = Label.new()
-			c2.text = "Claimed by: " + ", ".join(PackedStringArray(who))
-			c2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			c2.add_theme_font_size_override("font_size", 13)
-			c2.add_theme_color_override("font_color", UITheme.color("red").darkened(0.2))
-			col.add_child(c2)
-	return box
 
 enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE }
 
@@ -732,14 +205,12 @@ func _on_more(i: int) -> void:
 			_open_live_workshop()
 		MoreItem.NEW_CASE:
 			_open_new_case_screen()
-
 ## The Case Workshop lives on the case board as a pull-out sheet.
 func _open_live_workshop(number: int = 0) -> void:
 	case_view.refresh()
 	case_view.open_workshop(number)
-
 func _run_workshop(cmd: String, progress: Callable) -> void:
-	if conversation_finished:
+	if conversation_finished or _phase_held:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
@@ -751,15 +222,12 @@ func _run_workshop(cmd: String, progress: Callable) -> void:
 	if g.state == "talk" and g.talk_with != null:
 		_select_person(g.talk_with.id)
 	_refresh_all()
-
 func _open_notes() -> void:
 	notes_edit.text = g.case_notes
 	notes_win.popup_centered()
-
 func _open_theory() -> void:
 	_open_case_view()
 	case_view.open_theory()
-
 func _on_submit(text: String) -> void:
 	var t = text.strip_edges()
 	input.clear()
@@ -768,15 +236,17 @@ func _on_submit(text: String) -> void:
 	history.append(t)
 	hist_i = history.size()
 	_run(t)
-
 func _run(cmd: String) -> void:
-	if conversation_finished:
+	# While a finished conversation or a reading holds the old phase, nothing runs until the
+	# player leaves or presses Done: a command would clear the page and strand the hold (Codex, #369).
+	if conversation_finished or _phase_held:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
 	if g.meeting_streaming() or g.workshop_presenting:
 		_print(g.command(cmd))   # refused; no new events
 		return
+	var phase_before: Array = [g.w.day, g.w.phase, g.state in ["meeting", "nomination"]]
 	var out: String = g.command(cmd)
 	# A conversation that ran out of questions ended the phase too: what comes after it (the
 	# next phase's header, the meeting's headline, who was silenced) waits in the log until
@@ -801,6 +271,18 @@ func _run(cmd: String) -> void:
 				_print(Game.render(evs.slice(0, cut)))
 			else:
 				out = Game.render(evs.slice(0, cut))
+	# A reading that ended the phase: what follows the next phase's header waits in the log
+	# until the last page is done, like a conversation that ran out of questions.
+	var read_ran_out: bool = verb0 in READING_VERBS and previous_state != "talk" and [g.w.day, g.w.phase, g.state in ["meeting", "nomination"]] != phase_before \
+		and not g.last_events.any(func(e): return e.get("k", "") == "error")
+	if read_ran_out and not g.state in ["meeting", "nomination"]:
+		var revs: Array = g.last_events
+		for i in range(revs.size()):
+			if str(revs[i].get("k", "")) in ["header", "headline"]:
+				if i > 0:
+					_deferred_log_events = revs.slice(i)
+					out = Game.render(revs.slice(0, i))
+				break
 	# What's said at the meeting reaches the log as the stage shows it (see _log_events).
 	if not deferred_meeting and not _meeting_owns_log(previous_state):
 		_print(out)
@@ -808,7 +290,14 @@ func _run(cmd: String) -> void:
 		_capture_meeting(previous_state)
 	_capture_conversation(previous_state, cmd)
 	_capture_scene_search(cmd)
-	if not conversation_finished:
+	var released_now: bool = false
+	if read_ran_out:
+		if inspect_pages.is_empty():
+			_release_phase()   # nothing to read: the new phase shows at once
+			released_now = true   # and its headlines and notes have had their pass (Codex, #369)
+		else:
+			_phase_held = true
+	if not conversation_finished and not _phase_held and not released_now:
 		_consume_headlines()
 		_show_notes()
 	if g.meeting_streaming() and not conversation_finished and inspect_pages.is_empty():
@@ -819,23 +308,19 @@ func _run(cmd: String) -> void:
 	_refresh_all()
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
-
 ## A command's log goes through the stage when the meeting is (or was) on.
 func _meeting_owns_log(previous_state: String) -> bool:
 	return previous_state in ["meeting", "nomination"] or g.state in ["meeting", "nomination"]
-
 func _log_events(evs: Array) -> void:
 	var text: String = Game.render(evs)
 	if text != "":
 		_print(text)
-
 ## Something is still being shown (a speaker, a vote count, a trace, the town still
 ## speaking): nothing moves on until it's done (Nov 7). The action pane offers Continue.
 func _presenting() -> bool:
 	if g == null:
 		return false
 	return meeting_view.presenting() or g.meeting_streaming() or g.workshop_presenting or not inspect_pages.is_empty()
-
 ## What's said at the meeting comes forward on the courtroom stage (meeting plan M3a).
 func _capture_meeting(previous_state: String) -> void:
 	var was: bool = previous_state in ["meeting", "nomination"]
@@ -843,7 +328,6 @@ func _capture_meeting(previous_state: String) -> void:
 		meeting_view.arrive()
 	if was or g.state in ["meeting", "nomination"]:
 		meeting_view.consume(g.last_events)
-
 func _capture_conversation(previous_state: String, cmd: String) -> void:
 	if g.state == "talk" and g.talk_with != null:
 		if previous_state != "talk" or conversation_view.person_id != g.talk_with.id:
@@ -864,7 +348,6 @@ func _capture_conversation(previous_state: String, cmd: String) -> void:
 		if not verb in ["bye", "leave", "done"]:
 			conversation_finished = true
 			conversation_show_map = false
-
 ## A search that turns up crime-scene traces shows them in the conversation view, the item
 ## where the portrait goes; the log keeps the same text. Any other command closes it.
 func _capture_scene_search(cmd: String) -> void:
@@ -896,7 +379,6 @@ func _capture_scene_search(cmd: String) -> void:
 		inspect_pages.append({"title": title, "texture": TraceArt.icon(c, "large"), "text": text})
 	if not inspect_pages.is_empty():
 		_show_inspect_page()
-
 ## Tavern gossip and Town Hall records come up in the conversation view over the building's
 ## interior, like a crime-scene trace: the building where the portrait goes, what you learned
 ## in the speech bubble. The log keeps the same text. Only the command's own narration, up to
@@ -919,17 +401,25 @@ func _capture_place_reading(verb: String) -> void:
 	inspect_pages.append({"title": title, "texture": UITheme.tex("art/" + MapView.PAPER_ART.get(loc, ""), 0.5), "text": "\n".join(PackedStringArray(text_parts)),
 		"loc": loc, "button": "Done"})
 	_show_inspect_page()
-
 func _show_inspect_page() -> void:
 	var page: Dictionary = inspect_pages[inspect_index]
 	conversation_view.set_location(str(page.get("loc", g.loc)))
 	conversation_view.show_item(page.title, page.texture, page.text)
-
+## The held phase shows: its log, headlines and notes.
+func _release_phase() -> void:
+	_phase_held = false
+	if not _deferred_log_events.is_empty():
+		_log_events(_deferred_log_events)
+		_deferred_log_events = []
+	_consume_headlines()
+	_show_notes()
 func _inspect_next() -> void:
 	inspect_index += 1
 	if inspect_index >= inspect_pages.size():
 		inspect_pages.clear()
 		inspect_index = 0
+		if _phase_held:
+			_release_phase()
 		# A search that ended the evening: the meeting waited for you to finish reading.
 		if g.meeting_streaming() and not conversation_finished:
 			_stream_meeting()
@@ -937,7 +427,6 @@ func _inspect_next() -> void:
 	else:
 		_show_inspect_page()
 	_refresh_all()
-
 func _leave_finished_conversation() -> void:
 	conversation_finished = false
 	if not _deferred_log_events.is_empty():
@@ -954,7 +443,6 @@ func _leave_finished_conversation() -> void:
 		_stream_meeting()
 	else:
 		_refresh_all()
-
 ## Several commands from one click (e.g. walk to someone, then talk to them).
 func _run_seq(cmds: Array) -> void:
 	for c in cmds:
@@ -964,7 +452,6 @@ func _run_seq(cmds: Array) -> void:
 			break
 		if g.state == "over" or (before == g.state and g.last_events.any(func(e): return e.get("k", "") == "error")):
 			break
-
 ## The meeting's testimony, one speaker at a time: the next speaker is worked out while the
 ## current one is on the stage, never more than one ahead, so the stage (and the log, which
 ## follows it) moves at the player's pace. Actions wait until the town has spoken.
@@ -982,14 +469,13 @@ func _stream_meeting() -> void:
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 		meeting_view.refresh()
-		_refresh_actions()   # Continue appears as soon as someone's on the stage
+		Actions.refresh(self)   # Continue appears as soon as someone's on the stage
 		var left: float = STREAM_GAP - (Time.get_ticks_msec() - started) / 1000.0
 		if left > 0.0:
 			await get_tree().create_timer(left).timeout
 	_refresh_all()
 	if case_view.visible and case_view.workshop != null:
 		case_view.workshop.refresh()
-
 ## Finish a streamed meeting at once (tests and scripted clicks that can't wait).
 func finish_streaming() -> void:
 	while g != null and g.meeting_streaming():
@@ -997,17 +483,17 @@ func finish_streaming() -> void:
 		meeting_view.consume(g.last_events)
 		_consume_headlines()
 	_refresh_all()
-
 var _last_phase_key = ""
 var _day_pick: String = ""   # the person you clicked this phase (the profile panel's default doesn't count)
 
 func _refresh_all() -> void:
-	if conversation_finished:
-		# The talk's last answer has already ended the phase in the game, but the screen holds
-		# the old one (the clock, the map, the townsfolk and the cards) until the player
-		# leaves the conversation (Michael, Nov 19). Nothing the player does can come between,
-		# so this changes only when they see it.
-		_refresh_actions()
+	if conversation_finished or _phase_held:
+		# The talk's last answer (or a reading: the records, gossip, a scene's traces) has
+		# already ended the phase in the game, but the screen holds the old one (the clock, the
+		# map, the townsfolk and the cards) until the player leaves the conversation or finishes
+		# reading (Michael, Nov 19). Nothing the player does can come between, so this changes
+		# only when they see it.
+		Actions.refresh(self)
 		cast_list.freeze()
 		map_stage.visible = true
 		conversation_view.visible = true
@@ -1016,9 +502,9 @@ func _refresh_all() -> void:
 		input.editable = false
 		return
 	cast_list.thaw()
-	_sync_approach(not inspect_pages.is_empty())
-	if roles_pinned and roles_showing and _roles_signature != _roles_state_key():
-		_build_roles(roles_content.get_parent() == roles_dock)
+	Actions.sync_approach(self, not inspect_pages.is_empty())
+	if roles_pinned and roles_showing and _roles_signature != Roles.state_key(self):
+		Roles.build(self, roles_content.get_parent() == roles_dock)
 	# The map follows you: zoom to your block once you've moved; back out for a new phase.
 	var key = "%d:%d:%s" % [g.w.day, g.w.phase, g.state if g.state in ["night", "meeting", "nomination", "over"] else "day"]
 	if key != _last_phase_key:
@@ -1029,7 +515,7 @@ func _refresh_all() -> void:
 	if g.state in ["day", "talk", "approach"] and g.moved:
 		map.zoom_block = g.w.loc_block(g.loc)
 	_refresh_side()
-	_refresh_actions()
+	Actions.refresh(self)
 	var meeting = g.state in ["meeting", "nomination"]
 	if not meeting or (g.state == "nomination" and _last_state != "nomination") or (g.state == "meeting" and _last_state == "nomination") or meeting_view.presenting():
 		meeting_show_map = false  # a vote starting (or being counted), or anyone speaking, brings the circle back
@@ -1056,17 +542,14 @@ func _refresh_all() -> void:
 	day_label.text = ("Night %d" % g.w.day) if night else ("Day %d · %s" % [g.w.day, "Town meeting" if g.state in ["meeting", "nomination"] else C.PHASES[g.w.phase]])
 	if case_view.visible:
 		case_view.refresh()
-
 ## Show this person's profile in the sidebar and the case view.
 func _side_person_id() -> String:
 	return profile.current()
-
 func _select_person(id: String) -> void:
 	case_state.select_person(id)
 	profile.show_person(id)
 	case_view.show_profile(id)
 	_refresh_profile()
-
 func _on_town_person_clicked(id: String) -> void:
 	var selected: String = "" if cast_list.selected == id else id
 	_day_pick = id   # their profile stays up either way
@@ -1078,18 +561,15 @@ func _on_town_person_clicked(id: String) -> void:
 	map.refresh()
 	if g.state == "night":
 		_ward_target = selected
-	if g.state in ["day", "night"]: _refresh_actions()
-
+	if g.state in ["day", "night"]: Actions.refresh(self)
 # ---------------------------------------------------------------- coloured log
 
 func _print(s: String) -> void:
 	log_text.append_to(out, s)
-
 func _swatch(c: Color) -> ImageTexture:
 	var img = Image.create(12, 12, false, Image.FORMAT_RGBA8)
 	img.fill(c)
 	return ImageTexture.create_from_image(img)
-
 # ---------------------------------------------------------------- map clicks
 
 func _on_map_clicked(kind: String, id: String) -> void:
@@ -1098,7 +578,7 @@ func _on_map_clicked(kind: String, id: String) -> void:
 	if kind == "npc":
 		_day_pick = id
 		_select_person(id)
-		if g.state == "day": _refresh_actions()
+		if g.state == "day": Actions.refresh(self)
 		if g.state == "night":
 			_ward_target = id
 	match g.state:
@@ -1106,7 +586,7 @@ func _on_map_clicked(kind: String, id: String) -> void:
 			var w = g.w
 			match kind:
 				"block", "back":
-					_refresh_actions()
+					Actions.refresh(self)
 				"location", "scene":
 					if not g.moved:
 						_run("go " + id)
@@ -1124,307 +604,8 @@ func _on_map_clicked(kind: String, id: String) -> void:
 						_print("(%s is in, but you've already chosen where to spend this phase.)" % hn.name)
 
 		"night":
-			_refresh_actions()
+			Actions.refresh(self)
 	map.refresh()
-
-# ---------------------------------------------------------------- action panel
-
-## The approach's choices: in the VN's controls once the approacher is speaking.
-func _actions_approach(w) -> void:
-	match g.approach.get("agenda", ""):
-		"protect":
-			var pk: String = Mind.protection_kind(w, g.approach["npc"])
-			_button(actions, "Promise it: %s (free)" % ("your ward on their door (%s; promise does not spend it)" % _ward_remaining() if pk == "ward" else "a vigil tonight"), func(): _run("yes"))
-			_button(actions, "Say no", func(): _run("no"))
-		"divulge":
-			_button(actions, "Keep talking (uses this phase)", func(): _run("accept"))
-			_button(actions, "Go on your way", func(): _run("decline"))
-		_:
-			_button(actions, "Hear them out (uses this phase)", func(): _run("accept"))
-			_button(actions, "Wave them off", func(): _run("decline"))
-
-## Keep the approach's VN in step with the game: a new approach starts at its interstitial;
-## leaving the approach (accepted, declined) clears it. It waits behind a finished
-## conversation or a reading.
-func _sync_approach(reading: bool) -> void:
-	if g.state != "approach" or not g.approach.has("npc"):
-		approach_stage = ""
-		_approach_key = ""
-		return
-	if conversation_finished or reading:
-		return
-	var n = g.approach["npc"]
-	# The game's identity too: a new case can open on the same approach (Codex, #162).
-	var key: String = "%d:%d:%d:%s:%s" % [g.get_instance_id(), g.w.day, g.w.phase, n.id, str(g.approach.get("agenda", ""))]
-	if key == _approach_key:
-		return
-	_approach_key = key
-	approach_stage = "intro"
-	conversation_view.set_location(n.loc)
-	conversation_view.show_item("", null, str(g.approach.get("intro", "%s wants a word." % n.name)))
-
-func _approach_continue() -> void:
-	if g.state != "approach" or not g.approach.has("npc"):
-		return
-	var n = g.approach["npc"]
-	approach_stage = "speaking"
-	conversation_view.begin(n.id, n.name)
-	conversation_view.set_location(n.loc)
-	conversation_view.consume(g.approach.get("events", []))
-	_refresh_all()
-
-func _refresh_actions() -> void:
-	conversation_view.set_action_hint("")
-	for ch in actions.get_children():
-		actions.remove_child(ch)
-		ch.queue_free()
-	for ch in conversation_view.controls.get_children():
-		conversation_view.controls.remove_child(ch)
-		ch.queue_free()
-	if g == null:
-		return
-	var w = g.w
-	if conversation_finished:
-		action_title.text = "Conversation finished"
-		_button(conversation_view.controls, "Leave conversation", _leave_finished_conversation)
-		return
-	if not inspect_pages.is_empty():
-		var more: bool = inspect_index < inspect_pages.size() - 1
-		var page_now: Dictionary = inspect_pages[inspect_index]
-		_button(conversation_view.controls, "Next trace" if more else str(page_now.get("button", "Done")), _inspect_next)
-		action_title.text = "Reading the traces" if not page_now.has("loc") else ("Listening to the gossip" if page_now.loc == "tavern" else "Reading the records")
-		_hint("Finish reading before you move on.")
-		return
-	if _presenting():
-		action_title.text = ("Day %d: the town meeting" % w.day) if g.state in ["meeting", "nomination"] or g.meeting_streaming() else "The town is speaking"
-		if meeting_view.stage.busy():
-			_button(actions, "Continue", func(): meeting_view.stage.advance())
-		elif meeting_view.animating():
-			_button(actions, "Finish the count", func(): meeting_view.finish())
-		_hint("The town is speaking…" if g.meeting_streaming() or meeting_view.stage.busy() else "The hand goes round…")
-		return
-	match g.state:
-		"day":
-			_actions_day(w)
-		"approach":
-			if approach_stage == "intro":
-				action_title.text = "Someone waves you down"
-				_button(conversation_view.controls, "Continue", _approach_continue)
-				return
-			action_title.text = ("%s wants a word." % g.approach["npc"].name) if g.approach.has("npc") else "Someone wants a word."
-			var lower_actions = actions
-			if approach_stage == "speaking":
-				actions = conversation_view.controls
-			_actions_approach(w)
-			actions = lower_actions
-		"talk":
-			_button(actions, "Look at conversation" if conversation_show_map else "Look at the map", func():
-				conversation_show_map = not conversation_show_map
-				_refresh_all())
-			if conversation_show_map:
-				# The conversation's options wait while the map is up: go back to it to carry on
-				# (Michael, Nov 17).
-				action_title.text = "Talking with %s" % g.talk_with.name
-			else:
-				var lower_actions = actions
-				actions = conversation_view.controls
-				_actions_talk(w)
-				actions = lower_actions
-		"meeting":
-			action_title.text = "Day %d: the town meeting" % w.day
-			# Wards and scorched sigils are shown, not argued: one button each, free of the floor.
-			for pc in g.board.filter(func(c): return c.kind in ["ward", "scorched_sigil"] and not c.get("deleted", false) and not g.shown_protection.has(int(c.n))):
-				var pnum: int = int(pc.n)
-				_button(actions, "Show the town %s" % g.protection_label(pc), func(): _run("present %d" % pnum))
-			_map_toggle()
-			_button(actions, "Let the town speak (wait)", func(): _run("wait"))
-			if not g.presented_today:
-				_button(actions, "Present a deduction to everyone…", func(): _card_picker("Present a deduction to the meeting",
-					func(c): return c["kind"] == "deduction", func(num, _x): _run("present %d" % num), false))
-			# Take back a filed case in public (BACKLOG "Believable public revisions", Nov 18).
-			if g.board.any(_withdrawable):
-				_button(actions, "Take back a case…", func(): _card_picker("Take back a case in public",
-					_withdrawable, func(num, _x): _confirm_withdraw(num), false))
-			if Declaration.blocked(w) == "":
-				# The demon-type declaration: its own action, once a day (game/demon_declaration.gd).
-				for kind in Declaration.TYPES:
-					if kind == w.declared_demon_type:
-						continue
-					var verb: String = "Correct yourself" if w.declared_demon_type != "" else "Declare"
-					var b = _button(actions, "%s: it's %s" % [verb, Declaration.LABEL[kind]], func(): _run("declare " + kind))
-					b.tooltip_text = "The whole town weighs the evidence as if this were true. Once a day; changing your mind costs credibility with everyone."
-			var nom = _button(actions, "Nominate…", func(): pass)
-			nom.disabled = "player" in w.meeting.get("nominators", [])
-			if nom.disabled:
-				nom.tooltip_text = "No nominations remaining"
-			nom.pressed.connect(func(): _people_picker(nom, "Nominate whom?", func(id): _nomination_menu(nom, id), func(n): return w.can_nominate("player", n.id) == ""))
-			var done = _button(actions, "Close the meeting", func(): _run("done"))
-			done.disabled = not g.town_quiet
-			if not g.town_quiet:
-				done.tooltip_text = "Let the town speak first (wait) until nobody else rises."
-		"nomination":
-			var nm: Dictionary = w.meeting["pending"]
-			action_title.text = "Vote on %s" % w.by_id[nm["nominee"]].name
-			_map_toggle()
-			_button(actions, "Vote to execute", func(): _run("vote yes"))
-			_button(actions, "Vote to spare", func(): _run("vote no"))
-			if not nm.get("supporters_done", false):
-				# Steps 3-4 first (meeting plan M2c/M2d): press them, or let the town speak.
-				if nm.get("press", "") == "open":
-					var pr = _button(actions, "Press them before the town…", func(): pass)
-					pr.tooltip_text = "One public question before the town weighs in. Voting without pressing skips it."
-					pr.pressed.connect(func(): _press_menu(pr, nm["nominee"]))
-				var hear = _button(actions, "Hear the town", func(): _run("hear"))
-				hear.tooltip_text = "Let bystanders speak for or against them; then it's your turn."
-			elif not g.statement_used:
-				# Option (b), Michael, Nov 19: one filed case about the nominee, judged as at the podium.
-				var nominee: String = nm["nominee"]
-				var cases: Array = GameMeeting.nomination_cases(g, nominee)
-				var put = _button(actions, "Present a case about them…", func(): _card_picker("Present a case about %s" % w.by_id[nominee].name,
-					func(c): return GameMeeting.nomination_case_rejection(g, c, nominee) == "", func(num, _x): _run("case %d" % num), false))
-				put.disabled = cases.is_empty()
-				put.tooltip_text = "Put one filed case about them to the town before the vote. It doesn't use your Present." if not cases.is_empty() else "You have no filed case about them. Build one in the Workshop."
-			if w.tools["clemency"] > 0 and nm["by"] != "player" and nm.get("supporters_done", false):
-				_button(actions, "Invoke Clemency (once per case)", func(): _run("clemency"))
-		"night":
-			action_title.text = "Night %d: your night work" % w.day
-			# Tonight's promises first, so keeping your word is one click.
-			if g.offer.has("ward") and w.tools["ward"] > 0:
-				var wid: String = g.offer["ward"]
-				_button(actions, "Keep your word: ward %s's door (%s)" % [w.by_id[wid].name, _ward_remaining()], func(): _confirm_ward(wid), C.npc_color(wid))
-			var vblocks = {}
-			for id in g.offer.get("vigil", {}):
-				vblocks[g.offer["vigil"][id]] = true
-			for vb in vblocks:
-				_button(actions, "Keep your word: vigil on %s" % C.block_name(vb), func(): _run("vigil " + vb))
-			if not g.offer.is_empty():
-				_hint("You promised %s." % g.offer_text())
-			if map.selected_block != "":
-				_button(actions, "Keep vigil on %s" % C.block_name(map.selected_block), func(): _run("vigil " + map.selected_block))
-			if _ward_target != "" and w.tools["ward"] > 0 and w.by_id[_ward_target].alive:
-				_button(actions, "Ward %s's door (%s)" % [w.by_id[_ward_target].name, _ward_remaining()], func(): _confirm_ward(_ward_target), C.npc_color(_ward_target))
-			var vig = _button(actions, "Keep vigil on…", func(): pass)
-			vig.pressed.connect(func(): _list_picker(vig, "Watch which block?", C.BLOCKS.keys().map(func(b): return [C.block_name(b), "vigil " + b, null])))
-			if w.tools["ward"] > 0:
-				var wd = _button(actions, "Ward someone… (%s)" % _ward_remaining(), func(): pass)
-				wd.pressed.connect(func(): _people_picker(wd, "Ward whom?", func(id): _confirm_ward(id), func(n): return n.alive))
-			_button(actions, "Sleep", func(): _run("sleep"))
-			_hint("Tip: click a block or a person on the map to pick them.")
-		"over":
-			action_title.text = "The case is closed."
-			_button(actions, "Show the grimoire", func(): _run("grimoire"))
-			_button(actions, "Show every lie", func(): _run("grimoire lies"))
-			_button(actions, "Show who told whom what", func(): _run("grimoire talk"))
-			_button(actions, "New case", _open_new_case_screen)
-
-## Portraits inspect; this explicit action owns the existing go/talk sequence.
-func _talk_to_person(id: String) -> void:
-	if g.state != "day": return
-	var n = g.w.by_id.get(id)
-	if n == null or not g.can_see_ui(n): return
-	var cmds: Array = []
-	if not g.moved:
-		# An approach discloses a destination even before ordinary block visibility.
-		var destination: String = id if g.can_see(n) else g.approached_loc
-		cmds.append("go " + destination)
-	cmds.append("talk " + id)
-	_run_seq(cmds)
-
-func _actions_day(w) -> void:
-	if not g.moved:
-		action_title.text = "Day %d, %s: where will you go?" % [w.day, C.PHASES[w.phase].to_lower()]
-		var picked = w.by_id.get(_day_pick)
-		if picked != null and picked.alive and g.can_see_ui(picked):
-			var talk = _button(actions, "Talk to %s" % picked.name, func(): _talk_to_person(picked.id), C.npc_color(picked.id))
-			talk.disabled = picked.busy_with != ""
-		if map.zoom_block != "" and C.BLOCKS.has(map.zoom_block):
-			# Zoomed in on a block: go there (its busiest spot; the other is a free step away),
-			# to its crime scene, or back out.
-			var zb: String = map.zoom_block
-			_hint("Click a spot on the block to go straight there, or a person to inspect their profile.")
-			_button(actions, "Visit %s" % C.block_name(zb), func(): _run("go " + zb))
-			for sid in w.scenes:
-				if w.scenes[sid].get("block", "") == zb:
-					var scene_id: String = sid
-					_button(actions, "Go to %s (crime scene)" % w.scenes[scene_id]["name"], func(): _run("go " + scene_id))
-			_button(actions, "Back to town view", func():
-				map.zoom_block = ""
-				map.refresh()
-				_refresh_actions())
-		else:
-			_hint("Examine a block to look closer, or click a person to inspect their profile.")
-			for b in C.BLOCKS.keys():
-				var blk: String = b
-				_button(actions, "Examine %s" % C.block_name(blk), func():
-					map.zoom_to(blk)
-					_refresh_actions())
-		_button(actions, "Wait (let the %s pass)" % C.PHASES[w.phase].to_lower(), func(): _run("wait"))
-		return
-	action_title.text = "%s, %s" % [w.loc_name(g.loc).capitalize(), C.PHASES[w.phase].to_lower()]
-	var here: Array = g._present(g.loc)
-	for n in here:
-		if n.busy_with == "":
-			_button(actions, "Talk to %s" % n.name, func(): _run("talk " + n.id), C.npc_color(n.id))
-		else:
-			var b = _button(actions, "%s is deep in conversation" % n.name, func(): pass, C.npc_color(n.id))
-			b.disabled = true
-	if not g.free_move_used:
-		for l in w.locations_on(w.loc_block(g.loc)):
-			if l == g.loc or l.begins_with("home_"):
-				continue
-			var who: Array = g._present(l).filter(func(x): return x.busy_with == "")
-			if not who.is_empty():
-				for n in who:
-					_button(actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): _run("talk " + n.id), C.npc_color(n.id))
-	if not g.loc.begins_with("home_") and not C.is_player_building(g.loc):
-		_button(actions, "Search here", func(): _run("search"))
-	if g.loc == "tavern":
-		var gos_btn = _button(actions, "Listen to the gossip" if w.phase == C.EVENING else "Listen to the gossip (evening only)", func(): _run("gossip"))
-		gos_btn.disabled = w.phase != C.EVENING
-	if g.loc == "town_hall":
-		var th_open: bool = w.phase in [C.MORNING, C.AFTERNOON]
-		var th_left: int = w.town_hall_uses_left
-		var th_lbl: String = ("Check the Town Hall records (%d left)" % th_left) if th_open else "Check the Town Hall records (morning/afternoon only)"
-		if th_left <= 0:
-			th_lbl = "Check the Town Hall records (0 left)"
-		var th_btn = _button(actions, th_lbl, func(): _run("records"))
-		th_btn.disabled = (not th_open) or th_left <= 0
-	_button(actions, "Wait", func(): _run("wait"))
-	if not g.free_move_used:
-		_hint("You can still step to the other spot on this block (click it on the map).")
-
-func _actions_talk(w) -> void:
-	var n = g.talk_with
-	action_title.text = "Talking with %s · %d question%s left" % [n.name, g.questions_left, "" if g.questions_left == 1 else "s"]
-	if not g.pending_request.is_empty():
-		var rq: Dictionary = g.pending_request
-		var ask: String = "Promise to keep it quiet" if rq["kind"] == "confidence" else (
-			"Promise your ward on their door (%s; promise does not spend it)" % _ward_remaining() if rq.get("what", "") == "ward" else "Promise a vigil on %s tonight" % C.block_name(n.home_block))
-		_button(actions, ask + " (free)", func(): _run("yes"), C.npc_color(n.id))
-		_button(actions, "Say no (free)", func(): _run("no"))
-		_hint("Anything else you do counts as no.")
-	var gb = _button(actions, "Ask about their readings…  ▸" if n.max_tier >= 3 or n.claim_public else "Ask about %s's gift…  ▸" % n.name, func(): pass)
-	gb.pressed.connect(func(): _ask_gift_picker(gb))
-	var ob = _button(actions, "Offer…  ▸", func(): pass)
-	ob.pressed.connect(func(): _offer_picker(ob))
-	var wb = _button(actions, "Ask where they were and who they saw…  ▸", func(): pass)
-	wb.pressed.connect(func(): _ask_when_picker(wb))
-	var ab = _button(actions, "Ask about others…  ▸", func(): pass)
-	ab.pressed.connect(func(): _ask_about_picker(ab))
-	var asks: Dictionary = {"seer": "check", "registrar": "check", "warden": "guard", "nightwatch": "watch"}
-	if (n.max_tier >= 3 or n.claim_public) and asks.has(n.claimed_role) and w.phase != C.NIGHT:
-		var rb = _button(actions, "Ask them to use their gift tonight…  ▸", func(): pass)
-		rb.pressed.connect(func(): _gift_request_picker(rb, n.claimed_role, asks[n.claimed_role]))
-	for k in n.hints:
-		if w.by_id[k].alive:
-			# They hinted at a private reason at the meeting: ask them for it.
-			_button(actions, "Ask why they suspect %s" % w.by_id[k].name, func(): _run("ask why"), C.npc_color(k))
-			break
-	_button(actions, "Present a card…", func(): _card_picker("Present a card to %s" % n.name,
-		func(c): return not c.get("tavern_gossip", false) and c.get("pressable", true) and c.get("workshop_usable", true),
-		func(num, extra): _run(("present %d" % num) + extra), false, true))
-	_button(actions, "Leave", func(): _run("bye"))
-
 ## The map's "Return to conversation" / "Return to meeting" button.
 func _on_map_return() -> void:
 	if g == null:
@@ -1434,124 +615,6 @@ func _on_map_return() -> void:
 	else:
 		meeting_show_map = false
 	_refresh_all()
-
-## During the meeting: switch the top-left view between the meeting circle and the map.
-func _map_toggle() -> void:
-	_button(actions, "Back to the meeting" if meeting_show_map else "Look at the map", func():
-		meeting_show_map = not meeting_show_map
-		_refresh_all())
-
-func _hint(t: String) -> void:
-	if actions == conversation_view.controls:
-		conversation_view.set_action_hint(t)
-		return
-	var l = Label.new()
-	l.text = t
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.add_theme_font_size_override("font_size", 15)
-	l.add_theme_color_override("font_color", Color(0.65, 0.65, 0.7))
-	actions.add_child(l)
-
-# ---------------------------------------------------------------- pickers
-
-func _show_popup(content: Control, anchor: Control) -> void:
-	# Clicking the same button again closes its menu.
-	if popup.visible and anchor != null and anchor == _popup_anchor:
-		popup.hide()
-		_popup_anchor = null
-		content.queue_free()
-		return
-	_popup_anchor = anchor
-	var original_content = content
-	content = preload("res://ui/column_menus.gd").balance(content)
-	if content != original_content:
-		original_content.queue_free()
-	for ch in popup.get_children():
-		popup.remove_child(ch)
-		ch.queue_free()
-	# Every menu gets its own close button (Esc works too).
-	var wrap = VBoxContainer.new()
-	var bar = HBoxContainer.new()
-	var sp = Control.new()
-	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.add_child(sp)
-	var x = Button.new()
-	x.text = "✕ Close"
-	x.pressed.connect(func():
-		popup.hide()
-		_popup_anchor = null)
-	bar.add_child(x)
-	wrap.add_child(bar)
-	wrap.add_child(content)
-	content = wrap
-	var pos = Vector2i(get_viewport_rect().size / 2.0)
-	if anchor != null:
-		# Embedded popup positions are in logical viewport units, not screen pixels.
-		var origin = anchor.global_position if anchor.get_window().gui_embed_subwindows else anchor.get_screen_position()
-		pos = Vector2i(origin) + Vector2i(0, int(anchor.size.y))
-	preload("res://ui/column_menus.gd").fit_picker(popup, content, pos)
-
-## Meeting plan M2a: nominate on the case on deck (your latest case naming them), update it
-## first, pick another, file one, or nominate on your word alone.
-func _nomination_menu(anchor: Control, id: String) -> void:
-	var who = g.w.by_id[id]
-	var deck: Dictionary = g.on_deck_case(id)
-	var v = _column("Nominate %s" % who.name)
-	var public_tip: String = "This case is already public knowledge: citing it again doesn't sway the town further, but it stands on its own merits."
-	if not deck.is_empty():
-		var go = _button(v, "Nominate on case #%d: %s" % [deck.n, deck.text], func():
-			popup.hide()
-			_run("nominate %s #%d" % [id, deck.n]))
-		if g.already_public(deck):
-			go.tooltip_text = public_tip
-		_button(v, "Update case #%d in the Workshop first" % deck.n, func():
-			popup.hide()
-			_open_live_workshop(deck.n))
-	var others: Array = g.cases_naming(id).filter(func(c): return deck.is_empty() or c.n != deck.n).map(func(c): return c.n)
-	if not others.is_empty():
-		_button(v, "Nominate on another case…", func():
-			popup.hide()
-			_card_picker("Nominate %s on which case?" % who.name, func(c): return c.n in others, func(num, _x): _run("nominate %s #%d" % [id, num]), false))
-	if deck.is_empty():
-		_button(v, "File a case against %s in the Workshop" % who.name, func():
-			popup.hide()
-			_open_live_workshop())
-	var raw = _button(v, "Nominate without a case", func():
-		popup.hide()
-		_run("nominate %s raw" % id))
-	raw.tooltip_text = "Rests on your word alone: the town will want more, and a wrong call costs your credibility."
-	_show_popup(v, anchor)
-
-## The podium press (Step 3): their gift, a night's account, or a card about them. Cards
-## from the case on the floor come first.
-func _press_menu(anchor: Control, id: String) -> void:
-	var t = g.w.by_id[id]
-	var opts: Dictionary = MindPodium.options(g.w, t)
-	var v = _column("Press %s before the town" % t.name)
-	if opts.gift != "":
-		_button(v, "Ask what their gift has shown them" if opts.gift == "readings" else "Press them on their gift", func():
-			popup.hide()
-			_run("press role"))
-	var nights: Array = opts.nights.duplicate()
-	nights.reverse()
-	if not nights.is_empty():
-		_button(v, "Press their account of a night…", func():
-			popup.hide()
-			_list_picker(anchor, "Which night?", nights.map(func(nd): return [C.spoken_night(nd, g.w.day).capitalize(), "press night %d" % nd, null])))
-	var case_n: int = int(g.w.meeting["pending"].get("case_card", 0))
-	var case_cards: Array = []
-	if case_n > 0:
-		case_cards = Array(g.board[case_n - 1].get("supports", [])).map(func(x): return int(x))
-	var fits = func(c): return MindPodium.card_fits(g.w, t, c)
-	if case_cards.any(func(n): return n >= 1 and n <= g.board.size() and fits.call(g.board[n - 1])):
-		_button(v, "Press a card from case #%d…" % case_n, func():
-			popup.hide()
-			_card_picker("Press %s with which card from the case?" % t.name, func(c): return int(c.n) in case_cards and fits.call(c), func(num, _x): _run("press card %d" % num), false))
-	_button(v, "Press them with a card…", func():
-		popup.hide()
-		_card_picker("Press %s with which card?" % t.name, fits, func(num, _x): _run("press card %d" % num), false))
-	_show_popup(v, anchor)
-
 ## Informational notes (never a confirmation): a short toast that fades on its own.
 func _show_notes() -> void:
 	for e in g.last_events:
@@ -1569,241 +632,6 @@ func _show_notes() -> void:
 		get_tree().create_timer(6.0).timeout.connect(func():
 			if is_instance_valid(panel):
 				panel.queue_free())
-
-func _column(title: String) -> VBoxContainer:
-	var v = VBoxContainer.new()
-	var l = Label.new()
-	l.text = title
-	l.add_theme_color_override("font_color", Color(0.95, 0.88, 0.6))
-	v.add_child(l)
-	return v
-
-## "Ask about <them>'s gift…": what their gift is, or whether they hold a particular one.
-func _ask_gift_picker(anchor: Control) -> void:
-	var n = g.talk_with
-	var h = HBoxContainer.new()
-	h.add_theme_constant_override("separation", 16)
-	var qs = _column("Ask %s…" % n.name)
-	_button(qs, "about their readings" if n.max_tier >= 3 or n.claim_public else "about their gift", func():
-		popup.hide()
-		_run("ask gift"))
-	h.add_child(qs)
-	var gifts = _column("…if they are the")
-	for r in g.w.case_script.town:
-		_button(gifts, C.role_name(r), func():
-			popup.hide()
-			_run("ask are " + C.role_name(r).to_lower()))
-	h.add_child(gifts)
-	_show_popup(h, anchor)
-
-## "Offer…": your ward on their door tonight, or a vigil on their block.
-func _ward_remaining() -> String:
-	return "%d left, once per case" % g.w.tools["ward"]
-
-## A filed case that can still be taken back: live, not replaced, not already withdrawn.
-func _withdrawable(c: Dictionary) -> bool:
-	return c.get("kind", "") == "deduction" and not c.get("deleted", false) and not c.get("withdrawn", false) and int(c.get("superseded_by", 0)) == 0
-
-func _confirm_withdraw(num: int) -> ConfirmationDialog:
-	var dialog = ConfirmationDialog.new()
-	dialog.dialog_text = "Take back case #%d in public? If the town still thinks it was wrong at dawn, it may cost you some of their trust." % num
-	add_child(dialog)
-	dialog.confirmed.connect(func():
-		_run("withdraw %d" % num)
-		dialog.queue_free(), CONNECT_ONE_SHOT)
-	dialog.canceled.connect(dialog.queue_free, CONNECT_ONE_SHOT)
-	dialog.popup_centered()
-	return dialog
-
-func _confirm_ward(id: String) -> ConfirmationDialog:
-	var dialog = ConfirmationDialog.new()
-	dialog.dialog_text = "This spends your only ward. Ward %s?" % g.w.by_id[id].name
-	add_child(dialog)
-	dialog.confirmed.connect(func():
-		_run("ward " + id)
-		dialog.queue_free(), CONNECT_ONE_SHOT)
-	dialog.canceled.connect(dialog.queue_free, CONNECT_ONE_SHOT)
-	dialog.popup_centered()
-	return dialog
-
-func _offer_picker(anchor: Control) -> void:
-	var n = g.talk_with
-	var v = _column("Offer %s…" % n.name)
-	var wb = _button(v, "my ward on your door tonight (%s; promise only)" % _ward_remaining(), func():
-		popup.hide()
-		_run("offer ward"))
-	wb.tooltip_text = "Promising does not spend your ward; keeping the promise does."
-	wb.disabled = g.w.tools["ward"] <= 0 or g.offer.has("ward")
-	if g.w.tools["ward"] <= 0:
-		wb.tooltip_text = "Your ward is spent (once per case)."
-	var vb = _button(v, "a vigil on %s tonight" % C.block_name(n.home_block), func():
-		popup.hide()
-		_run("offer vigil"))
-	vb.disabled = g.offer.has("vigil")
-	if not g.offer.is_empty():
-		_hint_into(v, "You've promised tonight: %s." % g.offer_text())
-	var open: Array = Mind.open_grievances(n)
-	if not open.is_empty():
-		var col = _column("Apologise for… (uses a question)")
-		for i in range(open.size()):
-			var idx: int = i + 1
-			_button(col, Game.grievance_text(open[i]), func():
-				popup.hide()
-				_run("apologise %d" % idx))
-		var h = HBoxContainer.new()
-		h.add_theme_constant_override("separation", 16)
-		h.add_child(v)
-		h.add_child(col)
-		_show_popup(h, anchor)
-		return
-	_show_popup(v, anchor)
-
-## "Ask them to use their gift tonight…": whom a Seer looks at (one or two), whom a Warden
-## guards, which block a Night Watch watches. Costs a question.
-func _gift_request_picker(anchor: Control, role: String, verb: String) -> void:
-	var n = g.talk_with
-	var items: Array = []
-	if role == "nightwatch":
-		for b in C.BLOCKS.keys():
-			items.append([C.block_name(b), "ask watch " + b, null])
-	else:
-		for m in g.w.living():
-			if m != n:
-				items.append([m.name, "ask %s %s" % [verb, m.id], C.npc_color(m.id)])
-	var title = {"seer": "Ask %s to look at… (a question; for a pair, type 'ask check A, B')", "registrar": "Ask %s to check against their register…", "warden": "Ask %s to guard…", "nightwatch": "Ask %s to watch…"}[role] % n.name
-	_list_picker(anchor, title, items)
-
-## "Ask where they were and who they saw…": a time to ask about.
-func _ask_when_picker(anchor: Control) -> void:
-	# Not this phase: you can see who's around for yourself.
-	var items: Array = [["…last night", "ask night", null]]
-	if g.w.phase > 0:
-		items.push_front(["…earlier today", "ask seen today", null])
-	if g.w.day > 1:
-		for ph in [2, 1, 0]:
-			items.append(["…yesterday %s" % C.PHASES[ph].to_lower(), "ask seen yesterday " + C.PHASES[ph].to_lower(), null])
-	_list_picker(anchor, "Ask where they were and who they saw…", items)
-
-func _hint_into(box: Control, t: String) -> void:
-	var l = Label.new()
-	l.text = t
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(260, 0)
-	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	box.add_child(l)
-
-## "Ask about others…": opinion on a person, or whether they've heard of anyone holding a gift.
-func _ask_about_picker(anchor: Control) -> void:
-	var h = HBoxContainer.new()
-	h.add_theme_constant_override("separation", 16)
-	var people = _column("Opinion on…")
-	for n in g.w.npcs:
-		if n == g.talk_with:
-			continue
-		_button(people, n.name + ("" if n.alive else " †"), func():
-			popup.hide()
-			_run("ask about " + n.id), C.npc_color(n.id))
-	h.add_child(people)
-	var gifts = _column("Heard of a…")
-	for r in g.w.case_script.town:
-		_button(gifts, C.role_name(r), func():
-			popup.hide()
-			_run("ask about " + C.role_name(r).to_lower()))
-	h.add_child(gifts)
-	_show_popup(h, anchor)
-
-func _people_picker(anchor: Control, title: String, cb: Callable, allowed: Callable) -> void:
-	var v = _column(title)
-	for n in g.w.living():
-		var b = _button(v, n.name, func():
-			popup.hide()
-			cb.call(n.id), C.npc_color(n.id))
-		b.disabled = not allowed.call(n)
-	_show_popup(v, anchor)
-
-func _list_picker(anchor: Control, title: String, items: Array) -> void:
-	var v = _column(title)
-	for it in items:
-		_button(v, it[0], func():
-			popup.hide()
-			_run(it[1]), it[2])
-	_show_popup(v, anchor)
-
-## Pick a card from the board. allow_none: offer "without a card". with_target: offer the
-## optional for/against override for 'present'.
-func _card_picker(title: String, keep: Callable, cb: Callable, allow_none: bool, with_target: bool = false) -> void:
-	var v = VBoxContainer.new()
-	v.custom_minimum_size = Vector2(560, 420)
-	var t = Label.new()
-	t.text = title
-	t.add_theme_color_override("font_color", Color(0.95, 0.88, 0.6))
-	v.add_child(t)
-	var f = LineEdit.new()
-	f.placeholder_text = "filter: person, place, kind, d2, n1, text; join with + (greta+night)"
-	v.add_child(f)
-	var lst = CardList.new()
-	lst.card_context_requested.connect(func(n, at):
-		popup.hide()
-		case_view.show_card_menu(n, at))
-	lst.select_mode = Tree.SELECT_ROW
-	lst.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	lst.readable(14)
-	v.add_child(lst)
-	var fill = func():
-		lst.reset()
-		lst.context_numbers = EvidenceContext.numbers(g)
-		var cs: Array = g.filter_cards(f.text)
-		cs.reverse()  # newest first
-		for c in cs:
-			if with_target and not show_day_sightings and is_day_sighting(c):
-				continue
-			if keep.call(c):
-				lst.add(CardList.line_for(c), c["n"], c["text"], CardList.color_for(c, Color(0.95, 0.8, 0.45) if c["kind"] == "deduction" else CardList.tint_for(c)))
-	fill.call()
-	f.text_changed.connect(func(_x): fill.call())
-	if with_target:
-		var sight_check: CheckBox = _day_sightings_check(func(): fill.call())
-		v.add_child(sight_check)
-		v.move_child(sight_check, f.get_index() + 1)
-	var mode: OptionButton = null
-	var who: OptionButton = null
-	if with_target:
-		var row = HBoxContainer.new()
-		v.add_child(row)
-		mode = OptionButton.new()
-		for m in ["Let them read it", "Speak for…", "Speak against…"]:
-			mode.add_item(m)
-		row.add_child(mode)
-		who = OptionButton.new()
-		for n in g.w.living():
-			who.add_item(n.name)
-			who.set_item_metadata(who.item_count - 1, n.id)
-		row.add_child(who)
-		# Whom to speak for or against only matters once you pick one of those.
-		who.visible = false
-		mode.item_selected.connect(func(i): who.visible = i > 0)
-	var extra = func() -> String:
-		if mode == null or mode.selected == 0 or who.selected < 0:
-			return ""
-		return (" for " if mode.selected == 1 else " against ") + str(who.get_item_metadata(who.selected))
-	var go = func():
-		var sel: Array = lst.selected_metas()
-		if sel.is_empty():
-			return
-		popup.hide()
-		cb.call(sel[0], extra.call())
-	lst.card_activated.connect(func(_n): go.call())
-	var row2 = HBoxContainer.new()
-	v.add_child(row2)
-	_button(row2, "Use this card", func(): go.call())
-	if allow_none:
-		_button(row2, "Without a card", func():
-			popup.hide()
-			cb.call(0, ""))
-	_button(row2, "Cancel", func(): popup.hide())
-	_show_popup(v, null)
-
 # ---------------------------------------------------------------- side panels
 
 ## A daytime location sighting: anyone seen somewhere by day, people's own "I was at the
@@ -1812,7 +640,6 @@ static func is_day_sighting(c: Dictionary) -> bool:
 	if c.get("kind", "") != "sighting" or c.get("phase") == null:
 		return false
 	return int(c["phase"]) != C.NIGHT
-
 ## The "Show daytime sightings" box; toggling it updates the shared setting, then `refill`.
 func _day_sightings_check(refill: Callable) -> CheckBox:
 	var box = CheckBox.new()
@@ -1827,7 +654,6 @@ func _day_sightings_check(refill: Callable) -> CheckBox:
 		if box != side_sightings_check:
 			_refresh_side())
 	return box
-
 func _refresh_side() -> void:
 	if g == null or side_list == null:
 		return
@@ -1851,11 +677,9 @@ func _refresh_side() -> void:
 		var dbg = g.debug_card_text(c) if g.debug_overlay else ""
 		side_list.add("%s%s" % [CardList.line_for(c), ("\n      ⟨" + dbg + "⟩") if dbg != "" else ""], c["n"], c["text"], CardList.color_for(c, col))
 	_refresh_profile()
-
 func _refresh_profile() -> void:
 	if g != null:
 		profile.refresh()
-
 func _on_input_key(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not history.is_empty():
 		if ev.keycode == KEY_UP:

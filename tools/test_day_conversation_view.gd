@@ -1,4 +1,5 @@
 extends SceneTree
+const MainActions = preload("res://ui/main_actions.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 
@@ -42,14 +43,14 @@ func _run() -> void:
 	n.working = true
 	n.busy_with = ""
 	g.moved = false
-	scene._talk_to_person(n.id)
+	MainActions.talk_to_person(scene, n.id)
 	_check(g.state == "talk", "line 35")
 	_check(scene.conversation_view.visible, "line 36")
 	_check(scene.conversation_view.person_id == n.id, "line 37")
 	_check(scene.conversation_view.portrait.texture != null, "line 38")
 	# Pending requests must not place a wrapping hint in a row of choice buttons.
 	g.pending_request = {"kind": "confidence"}
-	scene._refresh_actions()
+	MainActions.refresh(scene)
 	await process_frame
 	await process_frame
 	var choice_view = scene.conversation_view
@@ -61,7 +62,7 @@ func _run() -> void:
 	for button in choice_buttons:
 		_check(button.size.y < 100, "line 51")
 	g.pending_request = {}
-	scene._refresh_actions()
+	MainActions.refresh(scene)
 	_check(not choice_view.action_hint.visible, "line 54")
 	var view = scene.conversation_view
 	var neutral: Texture2D = view.portrait.texture
@@ -153,7 +154,7 @@ func _run() -> void:
 	n.working = true
 	n.busy_with = ""
 	scene.g.moved = false
-	scene._talk_to_person(n.id)
+	MainActions.talk_to_person(scene, n.id)
 	scene.g.questions_left = 1
 	scene._run("ask night")
 	_check(scene.g.state != "talk", "line 148")
@@ -177,7 +178,7 @@ func _run() -> void:
 	n.working = true
 	n.busy_with = ""
 	scene.g.moved = false
-	scene._talk_to_person(n.id)
+	MainActions.talk_to_person(scene, n.id)
 	scene.g.w.phase = C.EVENING
 	scene.g.questions_left = 1
 	scene._run("ask night")

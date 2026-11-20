@@ -58,7 +58,6 @@ func _run(size: int) -> void:
 	if prepared.ready:
 		var result = Eval.evaluate(prepared.view, prepared.case)
 		check(result.people.values().all(func(p): return is_equal_approx(p.prior, p.posterior)), "votes alone have no alignment likelihood")
-	g.strict_evaluator = true
 	for n in g.w.living():
 		var heard = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		var listener = n.shadow if n.is_evil() else n

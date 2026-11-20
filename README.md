@@ -79,9 +79,9 @@ with the mouse; the typed prompt still works as a fallback.
   heard it; how the town credits and suspects each person). Turning it on mid-case leaves
   your identification unscored.
 
-**Dialogue lab:** open `ui/dialogue_lab.tscn` and press **F6** to compare the cast's
-voices on the same situations. All fifteen characters speak in their own voice in normal
-play. Votes are silent (vote talk returns with the meeting-flow work). The voice bible is
+**Dialogue preview:** `godot --headless --path . --script res://tools/dialogue_preview.gd`
+prints the cast's voices on the same situations. All fifteen characters speak in their own
+voice in normal play. Votes are silent (vote talk returns with the meeting-flow work). The voice bible is
 [docs/DIALOGUE_DESIGN.md](docs/DIALOGUE_DESIGN.md).
 
 **In a terminal:**
@@ -333,7 +333,9 @@ game/workshop_*.gd, credibility.gd
 game/card_model.gd     card times, views, rows and markers
 game/board_model.gd    case board layout as data
 game/case_metrics.gd   post-case outcome and identification analysis
-ui/main.gd        town screen, title bar, actions and log (ui/main.tscn)
+ui/main.gd        town screen (ui/main.tscn): its state, the command flow and the log
+ui/main_layout.gd, main_actions.gd, main_pickers.gd, main_roles.gd
+                  the screen's layout, the action pane, its menus, the script sheet
 ui/new_case_screen.gd, script_editor.gd   the New Case screen and the script editor
 ui/map_view.gd    painted map            ui/meeting_view.gd  meeting circle
 ui/day_conversation_view.gd  conversations with VN portraits
@@ -348,11 +350,10 @@ ui/text_terms.gd, text_formatter.gd, rich_text_renderer.gd, formatted_text_label
                   shared text system (coloured names and roles, inline icons)
 ui/term_defs.gd   the mechanics terms and control tooltips (learning resources)
 ui/headline_overlay.gd  headline notices   ui/decision_window.gd  the decision inspector
-ui/theme.gd       papercraft theme      ui/dialogue_lab.gd  dialogue workshop
+ui/theme.gd       papercraft theme      tools/dialogue_preview.gd  voice comparison
 tools/cli.gd      terminal frontend      tools/autoplay.gd, analyst.gd  bot player
 tools/compare_runs.py  paired active/passive comparison
 tools/golden_capture.gd, golden_diff.py  the behaviour-drift guard
-tools/case_viewer.py   case history viewer (docs/case_viewer.md)
 tools/trace.py    dev-log filter         tools/slice_sheets.py  art sheet slicer
 tools/test_*.gd   headless tests     tools/run_gd_tests.py  the test runner
 tools/replay_54875.gd, profile_c0.gd  speed replay and solver profile

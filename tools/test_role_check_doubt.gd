@@ -47,6 +47,7 @@ func _init() -> void:
 		check(is_equal_approx(off.end, on.end), "%s: a \"lied\" argument isn't read as an honest error (%.3f with the fix, %.3f without)" % [role, on.end, off.end])
 	CaseEval.doubted_role_check = true
 	_mixture()
+	_two_doubted()
 	print("Role check doubt: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -152,6 +153,25 @@ func _mixture() -> void:
 		var doubted: float = _p([cd, rd], {"rd": d})
 		var mix: float = (1.0 - d) * with_it + d * claim_only
 		check(doubted - with_it <= 1.1 * (mix - with_it) and doubted - with_it >= 0.3 * (mix - with_it), "mix: a %d%% doubt gives back about that share of what the reading did (%.3f; the plain mix is %.3f)" % [int(d * 100), doubted, mix])
+
+## Two doubted readings in one set are weighed symmetrically (Michael, Nov 19, Steward A3):
+## all genuine, or exactly one broken, renormalised. Before, each mixed in turn against the
+## others read in full, so the result depended on the cards' order.
+func _two_doubted() -> void:
+	var cd = {"id": "cd", "fact_id": "cd", "kind": "claim", "source": "d", "subject": "d", "subjects": ["d"], "role": "seer", "data": {}}
+	var rd = {"id": "rd", "fact_id": "rd", "kind": "report", "source": "b", "role": "clerk", "night": 1, "data": {"pair": ["a", "d"], "role": "dowser"}, "observed_at": {"day": 1, "phase": "night"}}
+	var re = {"id": "re", "fact_id": "re", "kind": "report", "source": "e", "role": "seer", "night": 1, "data": {"pair": ["a", "c"], "yes": true}, "observed_at": {"day": 1, "phase": "night"}}
+	var ce = {"id": "ce", "fact_id": "ce", "kind": "claim", "source": "e", "subject": "e", "subjects": ["e"], "role": "seer", "data": {}}
+	var doubts: Dictionary = {"rd": 0.4, "re": 0.3}
+	var one_way: float = _p([cd, ce, rd, re], doubts)
+	var other_way: float = _p([cd, ce, re, rd], doubts)
+	check(one_way >= 0.0 and is_equal_approx(one_way, other_way), "two doubted readings: the order of the cards doesn't matter (%.4f, %.4f)" % [one_way, other_way])
+	# Each doubt still does something with the other present.
+	var only_rd: float = _p([cd, ce, rd, re], {"rd": 0.4})
+	var only_re: float = _p([cd, ce, rd, re], {"re": 0.3})
+	var none: float = _p([cd, ce, rd, re], {})
+	check(absf(one_way - none) > absf(only_rd - none) * 0.5 and absf(one_way - only_rd) > 1e-4 and absf(one_way - only_re) > 1e-4,
+		"two doubted readings: each doubt counts with the other present (%.4f; one alone %.4f and %.4f; none %.4f)" % [one_way, only_rd, only_re, none])
 
 func _p(cards: Array, doubt: Dictionary) -> float:
 	var people: Array = []

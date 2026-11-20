@@ -126,8 +126,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HONESTY_K` | `0.8` | Credibility (honesty) discounting from evidence against a source (retired legacy aliases retained) | `game/game_screens.gd` |
 | `HONESTY_CAP` | `0.5` |  | `game/game_screens.gd` |
 | `NIGHT_DOUBT_CAP` | `0.9` |  | (unused) |
-| `RIVAL_CLAIM_EFF` | `0.6` | retired legacy claim-collision weight (shared model owns claims) | (unused) |
-| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` |  | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
+| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` | Role-claim & sighting ledger weights | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
 | `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind.gd` |
 | `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind.gd` |
 | `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind.gd` |
@@ -279,6 +278,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_GIFT_TOPIC_GOSSIP` | `0.2` |  | `sim/social.gd` |
 | `SHARE_GIFT_JITTER` | `0.2` |  | `sim/social.gd` |
 | `SHARE_GIFT_PEER_OFFSET` | `-0.1` | a touch more guarded with a neighbour than with the Demonologist | `sim/social.gd` |
+| `SHARE_UNCLAIMED_DAY_BOOST` | `0.15` | Private sharing grows over the days (Michael, Nov 19): an NPC who hasn't claimed a gift publicly brings up its gift, and its readings, more often in private talk each day past day 1. The weight is multiplied by 1 + this x (day - 1). NPC-to-NPC only; evil's bluffed gift and readings get the same, so it isn't a tell. Michael approved 0.15 (Nov 19). | `sim/social.gd` |
 | `CONFIDE_TRUST_LISTENER` | `0.08` | the listener toward the one who confided | `sim/social.gd` |
 | `CONFIDE_TRUST_TELLER` | `0.04` | the confider toward the listener | `sim/social.gd` |
 | `ROLE_NEWS_LAST_DAY` | `2` | Good NPCs with an untold gift count as having news on these early days. | `sim/social.gd` |
@@ -304,7 +304,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
-| `PARANOIA_DRIFT_RATE` | `0.06` | unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH) | (unused) |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
 | `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
 | `APPROACH_NOISE` | `0.2` |  | `sim/social.gd` |
@@ -625,7 +624,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd`, `workshop/live_activity.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
@@ -674,6 +673,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WITNESS_QUALITY_MIN` | `0.05` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `WITNESS_QUALITY_MAX` | `0.95` |  | `workshop/reading_challenges.gd`, `workshop/support_model.gd` |
 | `CHALLENGE_GROUND_MIN_QUALITY` | `0.4` |  | `workshop/reading_challenges.gd` |
+| `PLAYER_JUDGEMENT_WEIGHT` | `0.5` | The player's judgement in a lie call that sets one teller's word against another's (Michael, Nov 19): the grounds' side of the clash counts as x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE)), at most WITNESS_QUALITY_MAX. About x1.3 from an average listener, x1.4 at credibility 0.7. Small on purpose: the town shouldn't simply take the player's word, but a wrong call can lead it astray. Not for an NPC's own defence, nor when the player's own word is among the grounds (that already counts at the player's credibility). | `workshop/reading_challenges.gd` |
+| `PLAYER_EXPERTISE` | `0.1` |  | `workshop/reading_challenges.gd` |
 | `CHALLENGE_SOURCE_PENALTY_SCALE` | `0.3` |  | (unused) |
 | `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
@@ -681,10 +682,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval.gd` |
 | `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity.gd` |
+| `EXCUSED_OWN_ALIBI_OUT` | `0.35` | While an excuse for a caught "I was home" stands ("Fine, I was out", a walking duty that fits, "being out isn't wicked"; Beadle's caught-out ladder), that night's own "home" alibi reads as a good person's at this out-rate instead of GOOD_OWN_ALIBI_OUT (Michael, Nov 19, Quill's form): the lie softens a little. | `workshop/live_assessment.gd` |
+| `CONTRADICTED_EXCUSE_WEIGHT` | `0.5` | An excuse that something contradicts (a claimed watch with no watch report) counts as a second caught lie at this share of the first's doubt (Michael, Nov 19). | `workshop/source_doubt.gd` |
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
-| `DEMON_DETOUR` | `0.05` |  | `workshop/live_activity.gd` |
 | `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
 | `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |

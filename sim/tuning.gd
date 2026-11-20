@@ -265,7 +265,6 @@ class Mind:
 	const NIGHT_DOUBT_CAP = 0.9
 
 	## Role-claim & sighting ledger weights
-	const RIVAL_CLAIM_EFF = 0.6  # retired legacy claim-collision weight (shared model owns claims)
 	const PUBLIC_CLAIM_HEARING_WEIGHT = 0.5
 	const DEMON_VICTIM_CLAIM_BOOST = 1.95
 	const BELIEVED_ROLE_MIN_EFF = 0.12
@@ -469,6 +468,11 @@ class Social:
 	const SHARE_GIFT_TOPIC_GOSSIP = 0.2
 	const SHARE_GIFT_JITTER = 0.2
 	const SHARE_GIFT_PEER_OFFSET = -0.1   # a touch more guarded with a neighbour than with the Demonologist
+	## Private sharing grows over the days (Michael, Nov 19): an NPC who hasn't claimed a gift
+	## publicly brings up its gift, and its readings, more often in private talk each day past
+	## day 1. The weight is multiplied by 1 + this x (day - 1). NPC-to-NPC only; evil's bluffed
+	## gift and readings get the same, so it isn't a tell. Michael approved 0.15 (Nov 19).
+	const SHARE_UNCLAIMED_DAY_BOOST = 0.15
 	const CONFIDE_TRUST_LISTENER = 0.08  # the listener toward the one who confided
 	const CONFIDE_TRUST_TELLER = 0.04    # the confider toward the listener
 	## Good NPCs with an untold gift count as having news on these early days.
@@ -506,7 +510,6 @@ class Social:
 	const TRUST_VOTED_AGAINST = 0.1
 	const TRUST_VOTED_FOR = 0.03
 	const TRUST_ACCUSED_ME = 0.1
-	const PARANOIA_DRIFT_RATE = 0.06  # unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH)
 	const APPROACH_PHASE_CHANCE = 0.4
 	const APPROACH_SCORE_THRESHOLD = 0.35
 	const APPROACH_NOISE = 0.2
@@ -1052,6 +1055,15 @@ class Workshop:
 	const WITNESS_QUALITY_MIN = 0.05
 	const WITNESS_QUALITY_MAX = 0.95
 	const CHALLENGE_GROUND_MIN_QUALITY = 0.4
+	## The player's judgement in a lie call that sets one teller's word against another's
+	## (Michael, Nov 19): the grounds' side of the clash counts as
+	## x (1 + PLAYER_JUDGEMENT_WEIGHT x (credibility + PLAYER_EXPERTISE)), at most
+	## WITNESS_QUALITY_MAX. About x1.3 from an average listener, x1.4 at credibility 0.7.
+	## Small on purpose: the town shouldn't simply take the player's word, but a wrong call
+	## can lead it astray. Not for an NPC's own defence, nor when the player's own word is
+	## among the grounds (that already counts at the player's credibility).
+	const PLAYER_JUDGEMENT_WEIGHT = 0.5
+	const PLAYER_EXPERTISE = 0.1
 	const CHALLENGE_SOURCE_PENALTY_SCALE = 0.3
 	## Premises step 3: a challenge backfires (and costs the presentation trust) when the rest
 	## of the evidence moves the reading's content this far toward certainly holding
@@ -1083,6 +1095,14 @@ class Workshop:
 	## proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else
 	## stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`.
 	const GOOD_OWN_ALIBI_OUT = 0.2
+	## While an excuse for a caught "I was home" stands ("Fine, I was out", a walking duty that
+	## fits, "being out isn't wicked"; Beadle's caught-out ladder), that night's own "home"
+	## alibi reads as a good person's at this out-rate instead of GOOD_OWN_ALIBI_OUT (Michael,
+	## Nov 19, Quill's form): the lie softens a little.
+	const EXCUSED_OWN_ALIBI_OUT = 0.35
+	## An excuse that something contradicts (a claimed watch with no watch report) counts as a
+	## second caught lie at this share of the first's doubt (Michael, Nov 19).
+	const CONTRADICTED_EXCUSE_WEIGHT = 0.5
 	## A good person who claims a walking gift: how the movement model splits their nights
 	## between doing the duty, staying home anyway, and a secret's outing (before Nov 5:
 	## 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the
@@ -1090,7 +1110,6 @@ class Workshop:
 	const WALKER_CLAIM_GIFT = 0.95
 	const WALKER_CLAIM_HOME = 0.03
 	const WALKER_CLAIM_SECRET = 0.02
-	const DEMON_DETOUR = 0.05
 	const NIGHT_OUT_RATES = {
 		"hunt": 1.0,
 		"minion": 0.25,

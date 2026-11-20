@@ -14,9 +14,7 @@ const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon"
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
-## mixture_budget: apply the old 2^u mixture's 64-state gate, on the legacy engine only
-## (CaseEval has no such limit, so no listener falls back to native rules over it).
-static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictionary:
+static func prepare(snapshot: Dictionary) -> Dictionary:
 	var result = {"ready": false, "issues": [], "view": {}, "case": {}, "listener": {},
 		"scope": "Conditional report comparison with legal original alignment/modifier worlds and public event timing. Accepting a report assumes a good, correctly claimed, healthy source. Live movement and traces use experimental activity priors; quiet nights supply bounded circumstantial support. Medium relays retain separate original and transmission credibility. Alignment-transition histories remain unsupported. Venue is recorded; proposed effects use the unscaled Workshop response."}
 	if snapshot.get("format") != "demonologist-live-evidence-1":
@@ -109,10 +107,9 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			card["logical_origin"] = card.id
 			card["accuracy_origin"] = "health:" + card.id
 			card["route_origin"] = card.id
+	_mark_excuses(cards, int(snapshot.now.day))
 	if not cards.any(func(c): return c.id in snapshot.selected):
 		result.issues.append("No supported reading is presented.")
-	if Jury.engine == "legacy" and (cards.size() > 8 or snapshot.arguments.size() > 6):
-		result.issues.append("This comparison exceeds the initial eight-reading / six-claim workload budget.")
 	# Supported questions concern original alignment. Advancing the day must not
 	# silently create a fresh theory and discard yesterday's commitment.
 	var epoch: String = "Original alignment"
@@ -225,17 +222,48 @@ static func prepare(snapshot: Dictionary, mixture_budget: bool = true) -> Dictio
 			result.listener = _listener(snapshot, cards)
 			if not result.listener.knowledge.get("public_roles", {}).is_empty():
 				view.world_options["roles"] = true
-			var uncertain = cards.filter(func(c): return c.source != snapshot.listener.id).map(func(c): return c.source)
-			var sources = {}
-			for source in uncertain:
-				sources[source] = true
-			var discounts: int = result.listener.reading_reliability.values().filter(func(v): return v > 0 and v < 1).size()
-			var dimensions: int = Jury.Support.dimensions(cards, result.listener, result.case.get("reading_challenges", {})) if view.world_options.get("roles", false) or not result.case.get("reading_challenges", {}).is_empty() else sources.size() + discounts
-			if mixture_budget and Jury.engine == "legacy" and dimensions > 6:
-				result.issues.append("This comparison exceeds the initial 64-state credibility budget.")
 	result.view = view
 	result.ready = result.issues.is_empty()
 	return result
+
+## Beadle's caught-out excuses (Michael, Nov 19, Quill's form): an excuse fact (`excuse`,
+## `excuses_night`, its owner as source) for a night its owner had said "I was home". While it
+## stands, that night's own "home" alibi carries `out_rate` EXCUSED_OWN_ALIBI_OUT (the judge
+## reads a good person's caught "home" more softly); once contradicted, `excuse_contradicted`
+## (SourceDoubt counts a second caught lie at CONTRADICTED_EXCUSE_WEIGHT of the first).
+## "admit" and "not_wicked" name nothing checkable, so they always stand. A "duty" excuse
+## (a claimed walking gift's account) is contradicted once the night is past and the view
+## holds no report of that gift from its owner for that night, only the claimed duty.
+static func _mark_excuses(cards: Array, today: int) -> void:
+	var standing: Dictionary = {}
+	for c in cards:
+		if not c.has("excuse"):
+			continue
+		var owner: String = str(c.get("source", ""))
+		var nd: int = int(c.get("excuses_night", -1))
+		if owner == "" or nd < 0:
+			continue
+		var key: String = "%s:%d" % [owner, nd]
+		var holds: bool = true
+		if str(c.excuse) == "duty":
+			var role: String = str(c.get("duty_role", c.get("role", "")))
+			var reported: bool = cards.any(func(r): return str(r.get("kind", "")) == "report" and str(r.get("source", "")) == owner \
+				and str(r.get("role", "")) == role and int(r.get("night", -1)) == nd and not r.get("duty_only", false))
+			holds = reported or today <= nd
+		standing[key] = bool(standing.get(key, false)) or holds
+	if standing.is_empty():
+		return
+	for c in cards:
+		if str(c.get("kind", "")) != "alibi" or c.get("quoted", false) or c.has("excuse"):
+			continue
+		var who: String = str(c.get("source", ""))
+		var key: String = "%s:%d" % [who, int(c.get("night", -1))]
+		if who == "" or who not in c.get("subjects", [c.get("subject", "")]) or not standing.has(key):
+			continue
+		if standing[key]:
+			c["out_rate"] = Tuning.Workshop.EXCUSED_OWN_ALIBI_OUT
+		else:
+			c["excuse_contradicted"] = true
 
 ## Live activity receipts keep their exact original identity. Old trace cards without
 ## a structured scene cannot be reconstructed from prose or hidden scene records.
@@ -420,6 +448,15 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 				card["kind"] = "report"
 				card["role"] = duty_role
 				card["data"] = {"block": block}
+			elif e.kind == "alibi" and e.content.has("home") and not bool(e.content.home):
+				# A person's own word that they WERE out ("Fine, I was out", or an account of an
+				# outing): never a home claim (before Nov 19 it lost `home` here and read as one).
+				# Their own sighting of themselves, on the block they name, if any.
+				card["kind"] = "sighting"
+				card["admitted"] = true
+			for xf in ["excuse", "excuses_night", "duty_role"]:
+				if e.content.has(xf):
+					card[xf] = e.content[xf]
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card

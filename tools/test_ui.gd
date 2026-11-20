@@ -2,6 +2,8 @@
 ## view and moves cards into the Case Workshop sheet.
 ##   godot --headless --path . --script res://tools/test_ui.gd
 extends SceneTree
+const MainActions = preload("res://ui/main_actions.gd")
+const MainRoles = preload("res://ui/main_roles.gd")
 
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
@@ -34,7 +36,7 @@ func _init() -> void:
 	_check(g.w.rng.state == voter_rng and g.w.meeting.block_count == threshold + 1, "formatting requirements changes neither vote state nor RNG")
 	var old_state: String = g.state
 	g.state = "nomination"
-	scene._refresh_actions()
+	MainActions.refresh(scene)
 	var vote_labels: Array = scene.actions.get_children().filter(func(button): return button is Button).map(func(button): return button.text)
 	_check("Vote to execute" in vote_labels and "Vote to spare" in vote_labels, "both vote buttons name their execution outcome")
 	g.state = old_state
@@ -467,7 +469,7 @@ func _init() -> void:
 	scene.notes_edit.text_changed.emit()
 	scene.notes_win.hide()
 	_check(g.case_notes == "Suspect the miller", "case notes save as you type")
-	scene._open_roles()
+	MainRoles.open(scene)
 	await process_frame
 	_check(scene.roles_win.visible and _role_rows(scene.roles_box) >= g.w.case_script.town.size() + 4, "roles window lists every gift on the script")
 	scene.roles_win.hide()
@@ -494,7 +496,7 @@ func _init() -> void:
 	await process_frame
 	print("size test: npcs %d, minions %d, selected %d" % [scene.g.w.npcs.size(), scene.g.w.minion_ids.size(), scene.size_opt.selected])
 	_check(scene.g.w.npcs.size() == 10 and scene.g.w.minion_ids.size() == 2, "the size selector starts a 10-person case")
-	scene._open_roles()
+	MainRoles.open(scene)
 	await process_frame
 	var sc_ui = scene.g.w.case_script
 	_check(_role_rows(scene.roles_box) == sc_ui.town.size() + sc_ui.demons.size() + sc_ui.minions.size() + sc_ui.secrets.size(), "the roles window lists the whole script and the secrets")
@@ -637,7 +639,7 @@ func _approach_talk(scene) -> void:
 	g.approached_loc = n.loc
 	g.command("decline")
 	_check(not g.can_see(n) and g.can_see_ui(n), "declined approach discloses its location without changing simulation visibility")
-	scene._refresh_actions()
+	MainActions.refresh(scene)
 	await process_frame
 	var none: Array = scene.actions.get_children().filter(func(button): return button is Button and not button.is_queued_for_deletion() and button.text.begins_with("Talk to "))
 	_check(none.is_empty(), "nobody's offered for a talk before you've clicked anyone (Nov 7)")
@@ -654,6 +656,6 @@ func _approach_talk(scene) -> void:
 	g.moved = false
 	g.loc = ""
 	n.loc = "bakery" # An old approach must not disclose a later destination.
-	scene._talk_to_person(n.id)
+	MainActions.talk_to_person(scene, n.id)
 	await process_frame
 	_check(g.state == "day" and not g.moved and g.loc == "", "an expired approach location cannot make the action follow an unseen NPC")

@@ -235,6 +235,9 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 
 	var parts: Array = []
 	var primary_key: String = ""
+	# Whom the reply names as evil besides the target: answers alike in words but naming
+	# different people don't agree (response bundles; Codex, #373).
+	var named: Array = []
 	var used_circumstantial: bool = false
 	var allow_lean: bool = true
 
@@ -292,8 +295,10 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 			parts.append(Dialogue.voice_line(listener.id, primary_key, "Other explanations fit as well as yours; it doesn't settle it for me." if primary_key == "present_alt_open" else canonical, {"target": target_label}))
 		elif demon_id != "" and w.by_id.has(demon_id):
 			var d_name: String = w.by_id[demon_id].name
+			named.append(demon_id)
 			if acc_id != "" and w.by_id.has(acc_id):
 				var a_name: String = w.by_id[acc_id].name
+				named.append(acc_id)
 				match believed_stance:
 					"accept":
 						primary_key = "present_alt_accept"
@@ -317,6 +322,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 						parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"demon": d_name}))
 			var marked_id: String = str(alt.get("marked", ""))
 			if marked_id != "" and marked_id != listener.id and w.by_id.has(marked_id) and _is_marked_relevant(marked_id, root_conclusion, snapshot, reasoning):
+				named.append(marked_id)
 				parts.append(Dialogue.voice_line(listener.id, "present_alt_marked", "", {"marked": w.by_id[marked_id].name}))
 		else:
 			primary_key = "present_accept_open" if believed_stance == "accept" else ("present_partial" if believed_stance == "partial" else "present_unmoved")
@@ -350,6 +356,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 				break
 		if rival_id != "":
 			primary_key = "present_points_elsewhere"
+			named.append(rival_id)
 			parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label, "rival": w.by_id[rival_id].name}))
 		elif believed_stance == "accept":
 			primary_key = "present_accept_open"
@@ -398,7 +405,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 	if joined == "":
 		joined = canonical
 	joined = Dialogue.apply_tics(listener.id, joined, tic_memory)
-	var line: Dictionary = {"speaker": listener.id, "name": listener.name, "text": joined, "statement": canonical}
+	var line: Dictionary = {"speaker": listener.id, "name": listener.name, "text": joined, "statement": canonical, "reply_key": primary_key, "reply_named": named}
 	return _attach_expression(listener.id, line, primary_key)
 
 
@@ -452,4 +459,5 @@ static func render_evil_override(w, n, conclusion: Dictionary, stance: String, a
 				key = "present_alt_reject_solo"
 				slots = {"demon": w.by_id[sg_id].name}
 	var text: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, key, canonical, slots), tic_memory)
-	return _attach_expression(n.id, {"speaker": n.id, "name": n.name, "text": text, "statement": canonical}, key)
+	# The kind of reply its mask shows, so a summarised meeting bundles it as it sounds.
+	return _attach_expression(n.id, {"speaker": n.id, "name": n.name, "text": text, "statement": canonical, "reply_key": key if key != "present_alt_reject" and key != "present_alt_reject_solo" else ""}, key)

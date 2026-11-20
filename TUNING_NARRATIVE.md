@@ -635,7 +635,7 @@ likely by the evening. That night one good regular of the place dies.
 The movement model's rates, used for every sighting's likelihood: a good person with no
 walking gift is out about 5% of nights; on a walking-gift duty, always; with a night
 secret (Lovers, Sleepwalker), about 55%; a minion about 25%; the Demon, on a kill night,
-goes to the victim's home (with a 5% allowance for a detour).
+goes to the victim's home by the direct way (no detour, as in the live sim).
 
 In the live sim, a walker on the street is seen by someone else out on their route 50% of
 the time, from a home window 15%, and a neighbour notices someone stayed in 20% of the

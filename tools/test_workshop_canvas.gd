@@ -3,6 +3,9 @@ const Session = preload("res://workshop/session.gd")
 const Model = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
+const Game = preload("res://game/game.gd")
+const Editor = preload("res://ui/live_case_workshop.gd")
+const Live = preload("res://game/workshop_canvas.gd")
 var checks = 0
 var fails = 0
 
@@ -116,74 +119,78 @@ func _run() -> void:
 	print("Workshop canvas: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
+## The canvas's input and answer controls, on the live Workshop (the fixture scene that used to
+## carry these checks was retired, Nov 20): drag, the link handle, and a reading's answer slots.
 func _ui() -> void:
-	var scene = load("res://ui/case_workshop.tscn").instantiate()
+	var g = Game.new()
+	g.log_dir = "user://test_logs"
+	g.new_case(5, 10)
+	g.w.day = 2
+	var goods: Array = g.w.living_good()
+	var reading: int = g.add_card({"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3,
+		"data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": "%s's Archivist reading: one of %s and %s is the Poisoner" % [goods[0].name, goods[2].name, goods[3].name]})
+	var group: Array = goods.slice(1, 5).map(func(n): return n.id)
+	var dowse: int = g.add_card({"kind": "info", "source": goods[5].id, "role": "dowser", "day": 1, "phase": 1,
+		"data": {"group": group, "count": 2, "block": "market"}, "text": "%s's Dowser reading: two evil among four on the Market" % goods[5].name})
+	var scene = Editor.new()
+	scene.g = g
+	root.size = Vector2i(1400, 950)
 	root.add_child(scene)
 	await process_frame
-	await process_frame
+	scene.add_evidence(reading)
+	scene.add_evidence(dowse)
+	var r_id: String = "e:" + Live.Evidence.normalize_card(g.board[reading - 1]).id
+	var d_id: String = "e:" + Live.Evidence.normalize_card(g.board[dowse - 1]).id
+	scene.board.nodes[r_id].at = [80.0, 120.0]
+	scene.board.nodes[d_id].at = [520.0, 120.0]
 	var canvas = scene.canvas
-	check(scene.get_window().gui_embed_subwindows and [scene.answer_window, scene.preview_window, scene.jury_window, scene.export_dialog, scene.import_dialog, scene.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "fixture Workshop dialogs share their parent's embedded layer and fixed window ownership")
-	var original: Array = scene.board.nodes["e:survey"].at.duplicate()
-	var point: Vector2 = canvas.hit["e:survey"].position + Vector2(35, 55)
+	canvas.queue_redraw()
+	await process_frame
+	await process_frame
+	var original: Array = scene.board.nodes[r_id].at.duplicate()
+	var point: Vector2 = canvas.hit[r_id].position + Vector2(35, 55)
 	_mouse(canvas, point, true)
 	var motion = InputEventMouseMotion.new()
 	motion.position = point + Vector2(55, 25)
 	canvas._gui_input(motion)
 	_mouse(canvas, motion.position, false)
-	check(scene.board.nodes["e:survey"].at != original, "left-drag moves the actual evidence card")
-	scene._open_answer("e:rumor")
-	var slot = scene.find_child("Answer_rumor_0", true, false)
-	slot.select(2)
-	slot.item_selected.emit(2)
-	check(scene.board.nodes["e:rumor"].answers.rumor.positive == ["nisha"], "answer-window signal updates the shared evidence answer")
-	scene.answer_window.close_requested.emit()
-	check("Marked: Nisha" in canvas.body("e:rumor"), "the closed card displays its answered result")
+	check(scene.board.nodes[r_id].at != original, "left-drag moves the actual evidence card")
 	await process_frame
-	var link_point: Vector2 = canvas._link_rect(canvas.hit["e:rumor"]).get_center()
+	var link_point: Vector2 = canvas._link_rect(canvas.hit[r_id]).get_center()
 	_mouse(canvas, link_point, true)
 	_mouse(canvas, link_point, false)
-	var dest: Vector2 = canvas.hit["e:survey"].position + Vector2(20, 65)
+	var dest: Vector2 = canvas.hit[d_id].position + Vector2(20, 65)
 	_mouse(canvas, dest, true)
 	_mouse(canvas, dest, false)
-	check(scene.board.links.any(func(e): return e.from == "e:rumor" and e.to == "e:survey") and canvas.drag == "", "Link then destination connects actual cards without starting a drag")
-	scene.board.nodes["e:vigil1"].at = [100.0, 150.0]
-	scene.board.nodes["e:alibi1"].at = [500.0, 150.0]
-	canvas.queue_redraw()
+	check(scene.board.links.any(func(e): return e.from == r_id and e.to == d_id) and canvas.drag == "", "Link then destination connects actual cards without starting a drag")
+	# A reading's answer slots (ui/case_workshop.gd _question).
+	scene._open_answer(r_id)
 	await process_frame
+	var slot = scene.find_children("Answer_*", "OptionButton", true, false)[0]
+	slot.select(1)
+	slot.item_selected.emit(1)
 	await process_frame
-	link_point = canvas._link_rect(canvas.hit["e:vigil1"]).get_center()
-	_mouse(canvas, link_point, true)
-	_mouse(canvas, link_point, false)
-	dest = canvas.hit["e:alibi1"].position + Vector2(20, 65)
-	_mouse(canvas, dest, true)
-	_mouse(canvas, dest, false)
-	check(scene.board.nodes[scene.board.selected].kind == "contradiction", "linking the actual vigil and alibi cards automatically merges the contradiction")
-	scene._context(scene.board.selected)
-	scene.context_menu.id_pressed.emit(2)
-	scene.context_menu.hide()
-	check(not scene.board.nodes["e:alibi1"].has("merged"), "right-click Unlink restores the original evidence cards")
-	scene.find_child("LoadMockup", true, false).pressed.emit()
-	check(scene.board.nodes.values().any(func(n): return n.kind == "contradiction"), "Load mockup assembles the requested merged-contradiction case")
-	var preview_before = JSON.stringify([scene.session.history, scene.session.listeners, scene.board.export_data()])
-	await scene._preview_effectiveness()
-	check(scene.preview_window.visible and "Neutral reference" in scene.preview_output.text, "manual canvas preview opens a separate neutral response window")
-	check(preview_before == JSON.stringify([scene.session.history, scene.session.listeners, scene.board.export_data()]), "preview leaves the case and remembered jury discussion untouched")
-	scene.preview_window.hide()
-	scene._present()
-	check(scene.jury_window.visible and scene.session.last_results.size() == 4 and scene.session.last_results.all(func(r): return r.assessment.movement_ok), "Present evaluates the connected case and opens the separate jury window")
-	scene.jury_window.hide()
-	scene.remember.button_pressed = true
-	scene._present()
-	check(scene.session.last_results.all(func(r): return r.repeated and is_zero_approx(r.suspicion_delta)), "canvas presentations retain no-repeat-farming behavior")
-	scene.jury_window.hide()
-	var path = "user://workshop-canvas-test.json"
-	scene._save(path)
-	var results = scene.session.last_results.duplicate(true)
-	var exported = scene.board.export_data()
-	scene.board.reset()
-	scene._open(path)
-	check(scene.board.export_data() == exported and scene.session.last_results == results, "Save/Open restores the canvas and replays the jury history exactly: " + scene.status.text)
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	var fact: String = r_id.trim_prefix("e:")
+	check(scene.board.nodes[r_id].answers.get(fact, {}).get("slots", []) == [goods[2].id], "an actual answer signal records the chosen slot")
+	scene._open_answer(r_id)
+	await process_frame
+	check(scene.find_children("Answer_*", "OptionButton", true, false)[0].selected == 1, "the chosen slot survives the answer window's rebuild")
+	scene.answer_window.hide()
+	scene._open_answer(d_id)
+	await process_frame
+	var d_slots: Array = scene.find_children("Answer_*", "OptionButton", true, false)
+	check(d_slots.size() == 2, "a count-two reading offers two slots (%d)" % d_slots.size())
+	d_slots[1].select(1)
+	d_slots[1].item_selected.emit(1)
+	await process_frame
+	d_slots = scene.find_children("Answer_*", "OptionButton", true, false)
+	check(d_slots[0].selected == 0 and d_slots[1].selected == 1, "a later slot can be answered while an earlier one stays unknown")
+	d_slots[0].select(1)
+	d_slots[0].item_selected.emit(1)
+	await process_frame
+	d_slots = scene.find_children("Answer_*", "OptionButton", true, false)
+	check(d_slots[0].selected == 0 and scene.status.text.contains("already fills a slot"), "a duplicate slot is blocked with specific feedback and stays unknown")
+	scene.answer_window.hide()
 	scene.queue_free()
 	await process_frame
 

@@ -78,7 +78,6 @@ func _run() -> void:
 	var again = Jury.evaluate(view, c, juror)
 	check(again.effects.values().all(func(e): return is_zero_approx(e.delta)), "joint soft evidence is repeat-stable for all character effects")
 	Support.cache.clear()
-	Support.comparisons.clear()
 	Solver.report_matches.clear()
 	Solver.movement_cache.clear()
 	Movement.cache.clear()
@@ -104,25 +103,11 @@ func _run() -> void:
 	check(Solver.analyze(view, c).proposed > 0 and not Solver.analyze(view, c).hypothetically_released.is_empty(), "validator can represent the proposed poisoned explanation without treating its broken reading as healthy")
 	check(TimeModel.fault_for(view, c, bad).key == TimeModel.fault_for(view, c, Solver.card_by_id(view, "dowse_relay")).key, "reports and retellings within one poison interval share one health cause")
 	check(TimeModel.fault_for(view, c, recovered).is_empty(), "recovery reading is outside the poison interval")
-	var assessment = Support.assess(view, c, poison.baseline[3])
 	started = Time.get_ticks_msec()
 	var conflicts = Solver.minimal_conflicts(view, Solver.selected(view, c))
 	print("Poison healthy-report conflict extraction: %d ms; %d minimal cores" % [Time.get_ticks_msec() - started, conflicts.size()])
-	check(assessment.faults == ["healthy:night1"] and assessment.atoms.filter(func(a): return a.key.begins_with("healthy:")).size() == 1, "the credibility mixture counts a poison episode once")
 	var unsupported = c.duplicate(true)
 	unsupported.faults.night1.basis = ""
-	check(Support.assess(view, unsupported, poison.baseline[3]).faults.is_empty(), "a bare poisoning assertion receives no free reliability discount")
-	var no_fault = Support.assess(view, unsupported, poison.baseline[3])
-	check(assessment.report_acceptance.dowse <= no_fault.report_acceptance.dowse + 1e-9 and assessment.report_acceptance.dowse_recovered >= no_fault.report_acceptance.dowse_recovered - 1e-9, "interval doubt does not increase acceptance of the bad report or discredit the recovered reading")
-	var isolated = c.duplicate(true)
-	isolated.cards.erase("dowse_recovered")
-	var with_fault = Support.assess(view, isolated, poison.baseline[3])
-	isolated.faults.night1.basis = ""
-	var without_fault = Support.assess(view, isolated, poison.baseline[3])
-	check(with_fault.report_acceptance.dowse < without_fault.report_acceptance.dowse, "before recovery, supported interval doubt retracts acceptance of the affected report")
-	var with_sighting = c.duplicate(true)
-	with_sighting.cards.append("watch1")
-	check(Support.assess(view, with_sighting, poison.baseline[3]).report_acceptance.watch1 == 1.0, "poisoning another source does not weaken the juror's independent firsthand Watch report")
 	var invalid = c.duplicate(true)
 	invalid.faults.night1.window = "night99"
 	check(poison.validate_case(invalid) != "", "impossible poison timing is rejected")
@@ -170,10 +155,6 @@ func _run() -> void:
 	cover.knowledge.own_reports.append("rumor_retold")
 	var restored_cover = TimeModel.restore_cover(cover, view)
 	check(not restored_cover.has("intel") and not restored_cover.has("evil_only") and "rumor_retold" not in restored_cover.knowledge.own_reports, "restoration adapter copies only permitted cover knowledge and removes withdrawn own retellings")
-	var late = c.duplicate(true)
-	late.cards.append("rumor_retold")
-	var late_support = Support.assess(view, late, revenant.baseline[3])
-	check(late_support.report_acceptance.rumor_retold == 0 and late_support.report_acceptance.rumor > 0, "known withdrawal disables the later retelling without erasing the original reading")
 	revenant.case_data = c
 	revenant.present(false)
 	revenant.case_data.conclusion.at = "after restoration"
@@ -203,7 +184,6 @@ func _run() -> void:
 	board.connect_cards(restated, board.selected)
 	var restatement = Jury.evaluate(view, board.compile(board.selected), persistent)
 	check(restatement.repeated and restatement.effects.values().all(func(e): return is_zero_approx(e.delta)), "duplicate dated premises cannot farm confidence persistence or evidence effects")
-	await _ui()
 	print("Remaining Workshop slices: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -269,59 +249,14 @@ func _calibration() -> void:
 	check(demon_fit_count == 10000 and loc_count == 10000 and absf(float(token_count) / float(loc_count) - Tuning.Setup.TRACE_TOKEN_PROB) < 0.03 and absf(two_trace_count / 10000.0 - Tuning.Setup.EXTRA_TRACE_CHANCE) < 0.025 and absf(float(slot0_demon_count) / maxf(two_trace_count, 1) - 0.5) < 0.04, "10,000 kill-generator samples always include the Demon trace, hit 100% locations (67/33 token/scent), and roll 45% shuffled passer second traces")
 	check(absf(demon_items / 10000.0 - 0.042) < 0.007 and absf(good_items / 10000.0 - 0.018) < 0.005, "actual drop-generator samples match the conditional 4.2/1.8 percent mechanism, before route/location search")
 
-func _ui() -> void:
-	var scene = load("res://ui/case_workshop.tscn").instantiate()
-	root.add_child(scene)
-	await process_frame
-	await process_frame
-	var picker = scene.find_child("WorkshopExperiment", true, false)
-	for i in [1, 2, 3]:
-		picker.select(i)
-		picker.item_selected.emit(i)
-		check(scene.session.validate_case(scene.session.case_data) == "", "experiment picker produces a valid connected case %d" % i)
-		if i == 2:
-			scene._open_answer("e:dowse")
-			var fault = scene.find_child("PoisonExplanation", true, false)
-			fault.select(2)
-			fault.item_selected.emit(2)
-			scene.answer_window.hide()
-			check(scene.board.compile(scene.case_root).faults.night1.basis == "vial1", "actual Answer control cites a shared poison interval")
-		if i == 3:
-			scene._open_answer("e:curse_warning")
-			var voter = scene.find_child("ConvertedVoter", true, false)
-			voter.select(1)
-			voter.item_selected.emit(1)
-			scene.answer_window.hide()
-			check(scene.board.compile(scene.case_root).answers.curse_warning.positive == ["merrin"], "actual curse card answers who converted, preserving uncertainty as a choice")
-			scene._open_answer(scene.case_root)
-			var epoch = scene.find_child("ClaimEpoch", true, false)
-			epoch.select(2)
-			epoch.item_selected.emit(2)
-			scene.answer_window.hide()
-			check(scene.board.compile(scene.case_root).conclusion.at == "after restoration", "actual premise control selects the alignment epoch")
-		var start = Time.get_ticks_msec()
-		scene._present()
-		print("Fixture %s jury latency: %d ms" % [scene.session.scenario.fixture, Time.get_ticks_msec() - start])
-		check(scene.session.last_results.size() == 4, "new fixture presents through the shared jury engine %d" % i)
-		scene.jury_window.hide()
-		var before = scene.session.last_results.duplicate(true)
-		var path = "user://workshop-remaining-%d.json" % i
-		scene._save(path)
-		scene._load_fixture(0)
-		scene._open(path)
-		check(scene.session.last_results == before and picker.selected == i, "canvas experiment, answers, dates and jury history restore %d: %s" % [i, scene.status.text])
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	scene.queue_free()
-	await process_frame
-
 func _roundtrip(session, label: String) -> void:
 	var restored = Session.new()
 	var error = restored.restore(JSON.parse_string(JSON.stringify(session.export_data())))
 	check(error == "" and restored.last_results == session.last_results, label + " fixture and chronology replay exactly: " + error)
-	var before = Support.assess(session.scenario.public_view, session.case_data, session.baseline[3])
+	var before = Jury.evaluate(session.scenario.public_view, session.case_data, session.baseline[3].duplicate(true)).effects
 	session.scenario.truth.reverse()
 	session.scenario.timeline.append({"actual_hidden_cause": "changed for isolation test"})
-	check(Support.assess(session.scenario.public_view, session.case_data, session.baseline[3]) == before, label + " assessment is independent of hidden causes and truth ordering")
+	check(Jury.evaluate(session.scenario.public_view, session.case_data, session.baseline[3].duplicate(true)).effects == before, label + " assessment is independent of hidden causes and truth ordering")
 
 func check(okay: bool, label: String) -> void:
 	checks += 1

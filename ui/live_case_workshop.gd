@@ -519,8 +519,9 @@ func _sync() -> void:
 	selection_label.text = "Selected: " + board.title(board.selected)
 	present_button.disabled = board.nodes[board.selected].kind != "premise" or board.nodes[board.selected].get("conclusion", {}).is_empty()
 	if not present_button.disabled:
-		var check = Live.status(g, board.compile(board.selected))
-		var issues: Array = check.issues.duplicate()
+		var compiled: Dictionary = board.compile(board.selected)
+		var check = Live.status(g, compiled)
+		var issues: Array = Live.player_issues(g, compiled, check.issues.duplicate(), files.get(board.selected, 0))
 		if check.ready and check.get("audience_ready", false):
 			support_label.text = "Ready: everyone present can judge this case."
 		elif check.ready:
@@ -536,6 +537,10 @@ func _sync() -> void:
 		support_label.tooltip_text = ""
 	context_label.text = "Context: " + g.state + (" · speaking with " + g.talk_with.name if g.state == "talk" and g.talk_with != null else "")
 	present_button.text = "Present privately" if g.state == "talk" else "Take meeting floor" if g.state == "meeting" else "Present on the nomination" if g.state == "nomination" else "Start a conversation or meeting to present"
+	# A changed version of a case the town has heard replaces it when presented (Michael, Nov 19).
+	var revising: int = revision_of()
+	if revising > 0 and g.state in ["talk", "meeting", "nomination"]:
+		present_button.text = "Present the revision (replaces case #%d)" % revising
 	debug_menu.visible = g.debug_overlay
 	var why_i: int = debug_menu.get_popup().get_item_index(DebugItem.WHY_RECORD)
 	if why_i >= 0:
@@ -807,8 +812,6 @@ func _preview_effectiveness() -> void:
 		result_output.text += "\n\n" + csum_prev.text
 	var readiness = Live.status(g, board.compile(board.selected))
 	result_output.text += "\n\nEvery current listener can evaluate this case." if readiness.get("audience_ready", false) else "\n\nSome listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(readiness.issues))
-	if not result.ready:
-		result_output.text += "\n\nNo effectiveness estimate is available for the existing-rules fallback. " + Live.status(g, board.compile(board.selected)).warning
 
 func _present() -> void:
 	if present_button.disabled:
@@ -1004,13 +1007,63 @@ func _undo_remove() -> void:
 	status.text = "Restored."
 
 func _extend_context(id: String) -> void:
+	if board.nodes.has(id):
+		_take_back_lie_item(id)
 	if board.nodes.has(id) and board.nodes[id].kind in ["evidence", "profile_info", "trace_chain", "whereabouts", "circumstantial", "modifier"]:
 		context_menu.add_separator()
 		context_menu.add_item("Remove from Workshop", 204)
 	if id in canvas.group and canvas.group.size() > 1:
 		context_menu.add_item("Remove selected (%d)" % canvas.group.size(), 205)
 
+## The filed case the selected premise would replace if presented now: one the town has heard
+## whose premise has since changed on the canvas, or 0.
+func revision_of() -> int:
+	var previous: int = files.get(board.selected, 0)
+	if previous < 1 or previous > g.board.size() or board.nodes[board.selected].kind != "premise":
+		return 0
+	while int(g.board[previous - 1].get("superseded_by", 0)) > 0:
+		previous = int(g.board[previous - 1].superseded_by)
+	if g.board[previous - 1].get("workshop_case", {}) == board.compile(board.selected) or not Live.was_presented(g, previous):
+		return 0
+	return previous
+
+## "I was wrong: call it a mistake" (Michael, Nov 19): on a lie call, switch it to Mistaken.
+## Presenting the case again then replaces the old one; it costs what presenting costs.
+const TAKE_BACK_LIE = 206
+const TAKE_BACK_LIE_TEXT = "I was wrong: call it a mistake"
+const TAKE_BACK_LIE_TIP = "Take back the lie: the reading was wrong, but honestly told."
+const TAKE_BACK_LIE_REPLACES = " Presenting the revision replaces case #%d for everyone who hears it."
+
+func _take_back_lie_item(id: String) -> void:
+	var node: Dictionary = board.nodes[id]
+	var RC = preload("res://workshop/reading_challenges.gd")
+	if node.kind != "modifier" or RC.canonical(str(node.get("mode", ""))) != "lying":
+		return
+	context_menu.add_item(TAKE_BACK_LIE_TEXT, TAKE_BACK_LIE)
+	var at: int = context_menu.get_item_index(TAKE_BACK_LIE)
+	var card: Dictionary = _report(node.card)
+	var allowed: bool = RC.honest_allowed(board.view, card, str(node.get("attribution", "")))
+	context_menu.set_item_disabled(at, not allowed)
+	var heard: int = _heard_case_with(id)
+	context_menu.set_item_tooltip(at, TAKE_BACK_LIE_TIP + (TAKE_BACK_LIE_REPLACES % heard if heard > 0 else ""))
+
+## The case the town has heard that this lie call belongs to (through its premise), or 0.
+func _heard_case_with(id: String) -> int:
+	for premise in files:
+		if board.nodes.has(premise) and board._reaches(id, premise):
+			var n: int = int(files[premise])
+			while n > 0 and n <= g.board.size() and int(g.board[n - 1].get("superseded_by", 0)) > 0:
+				n = int(g.board[n - 1].superseded_by)
+			if Live.was_presented(g, n):
+				return n
+	return 0
+
 func _context_action(action: int) -> void:
+	if action == TAKE_BACK_LIE:
+		board.nodes[context_id].mode = preload("res://workshop/reading_challenges.gd").HONEST
+		board.selected = context_id
+		_edit()
+		return
 	if action == 204:
 		remove_node(context_id)
 		return
@@ -1103,6 +1156,38 @@ func set_premise_field(id: String, field: String, value) -> void:
 		node.conclusion[field] = value
 	board.selected = id
 	_edit()
+
+## Opened from the nomination flow, the Workshop starts the case for you (Michael, Nov 19): the
+## blank premise becomes "<target> is <type>". An existing premise saying just that is
+## selected instead; with no blank premise, a new one is added in view. Returns its id.
+func prefill_premise(target: String, type: String = "evil") -> String:
+	if board == null:
+		return ""
+	for id in board.nodes:
+		var node: Dictionary = board.nodes[id]
+		# The same claim about the same alignment: after a curse, a premise about someone's
+		# original alignment isn't the one to reuse (Codex, #370).
+		var c: Dictionary = node.get("conclusion", {})
+		if node.kind == "premise" and str(c.get("type", "")) == type and str(c.get("target", "")) == target \
+				and (not (type in EPOCH_TYPES) or str(c.get("at", board.view.alignment_epoch)) == str(board.view.alignment_epoch)):
+			board.selected = id
+			case_root = id
+			canvas.centre_on([id])
+			_edit()
+			return id
+	var blank: String = ""
+	for id in board.nodes:
+		var node: Dictionary = board.nodes[id]
+		if node.kind == "premise" and node.get("draft", false) and node.get("pick", {}).is_empty():
+			blank = id
+			break
+	if blank == "":
+		var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / canvas.zoom - Vector2(150, 110)
+		blank = board.add_blank_premise(at)
+	set_premise_field(blank, "person", target)
+	set_premise_field(blank, "type", type)
+	canvas.centre_on([blank])
+	return blank
 
 func _default_detail(node: Dictionary) -> void:
 	var conclusion: Dictionary = node.conclusion

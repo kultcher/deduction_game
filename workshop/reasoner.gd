@@ -12,10 +12,9 @@ static var reuse_matches = true # developer A/B switch, not a reasoning-budget c
 static var preparations: Dictionary = {}
 static var reuse_preparations = true
 
-static var unlimited_cards = false # developer experiment (autoplay --no-attention): every listener reads every card
-## Developer experiment (tools/read_everything_gap.gd): card kinds a bounded listener
-## always reads, on top of its budget ("report" = gift readings, "report:dowser" = one gift). Empty in play.
-static var always_keep_kinds: Array = []
+## Test and measurement hook: every listener reads every card it holds (the connections
+## suites' held cards, and the attended-against-held measurement). Off in play.
+static var unlimited_cards = false
 
 static func profile(insight: float) -> Dictionary:
 	var result: Dictionary
@@ -35,6 +34,7 @@ static var capture_attention: bool = false
 static var captured: Array = []
 
 static func prepare(view: Dictionary, value: Dictionary, listener: Dictionary) -> Dictionary:
+	value = Solver.with_hanged_refuters(view, value)  # "was the Demon when hanged" refuted alike (Lantern)
 	var inputs = [view, value, listener.get("reasoning_mode", "full"), listener.get("insight", 0.5),
 		listener.get("npc_trust", {}), listener.get("suspicion", {}), listener.get("knowledge", {})]
 	var key = hash(inputs)
@@ -112,10 +112,6 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 		for id in personal:
 			if cards.any(func(c): return c.id == id) and id not in keep:
 				keep.append(id)
-	if not always_keep_kinds.is_empty():
-		for c in cards:
-			if (str(c.get("kind", "")) in always_keep_kinds or "%s:%s" % [c.get("kind", ""), c.get("role", "")] in always_keep_kinds) and c.id not in keep:
-				keep.append(c.id)
 	# The player's word on a secret (premises step 2) is a claim they made to this listener,
 	# like a presented card: always in view, outside the budget.
 	for c in cards:
@@ -139,6 +135,9 @@ static func _prepare(view: Dictionary, value: Dictionary, listener: Dictionary) 
 	var attended = Graph.compile_case(view, raw)
 	# Graph expansion must not reintroduce an unattended source or fault premise.
 	attended.cards = keep
+	# The refuters of "was the Demon when hanged" from the readings this listener attends to
+	# (Codex on #356): a dropped Gravedigger reading refutes nothing.
+	attended = Solver.with_hanged_refuters(view, attended, Solver.selected(view, attended), true)
 	attended.lines = []
 	return {"case": attended, "profile": limits.name if bounded else "Full",
 		"limits": limits, "considered": keep, "ignored": cards.filter(func(c): return c.id not in keep).map(func(c): return c.id),
@@ -284,6 +283,8 @@ static func _group_score(view: Dictionary, ids: Array, focus: Dictionary, listen
 	return score
 
 static func search(view: Dictionary, case_data: Dictionary, cards: Array, listener: Dictionary, limits: Dictionary) -> Dictionary:
+	# From the cards the search is given: the listener's accepted ones (Codex on #356).
+	case_data = Solver.with_hanged_refuters(view, case_data, cards, true)
 	var span = Profiler.open("candidate_search")
 	var result = _search(view, case_data, cards, listener, limits)
 	Profiler.count("candidates_tested", result.tested)
@@ -785,6 +786,7 @@ static func _finish_live(key: int, query_key: String, world: Dictionary, tested:
 	return result
 
 static func direct_checks(view: Dictionary, case_data: Dictionary, knowledge: Dictionary) -> Dictionary:
+	case_data = Solver.with_hanged_refuters(view, case_data)  # "was the Demon when hanged" refuted alike (Lantern)
 	var objections: Array = []
 	var rejected: Array = []
 	var fatal = false

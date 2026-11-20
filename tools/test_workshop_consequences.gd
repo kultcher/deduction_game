@@ -171,23 +171,8 @@ func _run() -> void:
 	var obsolete = JSON.parse_string(JSON.stringify(session.export_data()))
 	obsolete.format = "demonologist-case-workshop-3"
 	check(restored.restore(obsolete).contains("Version 5"), "old model histories are not silently replayed with different persuasion semantics")
-	await _ui()
 	print("Workshop consequences: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
-
-func _ui() -> void:
-	var scene = load("res://ui/case_workshop.tscn").instantiate()
-	root.add_child(scene)
-	await process_frame
-	await process_frame
-	scene.find_child("LoadMockup", true, false).pressed.emit()
-	scene._present()
-	var label = scene.find_child("CaseEffects_3", true, false)
-	check(label != null and label.text.contains("Hollis"), "actual jury window displays collateral Hollis suspicion")
-	var claims = scene.find_child("CaseClaims_3", true, false)
-	check(claims != null and claims.get_child_count() >= 6, "actual jury window exposes intermediate claim assessments and connections")
-	scene.queue_free()
-	await process_frame
 
 func _effects(result: Dictionary) -> Dictionary:
 	var effects = {}

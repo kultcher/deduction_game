@@ -110,10 +110,7 @@ var workshop_compare = false # opt-in diagnostics; never applies the proposed ef
 ## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
 var workshop_why = false
 var workshop_whys: Array = []
-## Opt-in test assertion: unsupported presentations are rejected before any effects.
-var strict_evaluator = C.STRICT_EVALUATOR
-var _workshop_native_submission = false
-var _workshop_native_social = false  # a bare belief with no evidence: social speech, not a fallback
+var _workshop_native_social = false  # a protect/spare preference or a bare belief: social speech, not a fallback
 var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
@@ -167,6 +164,11 @@ func _line(x) -> void:
 		if x.has("expression"):
 			event["expression"] = x["expression"]
 			event["expression_strength"] = x.get("expression_strength", 1)
+		# A summarised meeting answer (Michael, Nov 19): the representative carries who agreed;
+		# the others' own words go to the log only.
+		for key in ["agree", "agree_more", "bundled"]:
+			if x.has(key):
+				event[key] = x[key]
 		_ev(event)
 	else:
 		_narr(str(x))
@@ -240,7 +242,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	_workshop_reason_ctx = {}
 	_workshop_responses = {}
 	_workshop_repeats = {}
-	_workshop_native_submission = false
+	_workshop_native_social = false
 	board = []
 	profile_receipts = []
 	confidences = {}
@@ -286,7 +288,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")
-	w.dlog.trace_event("game_config", "world", "", {"strict_evaluator": strict_evaluator})
 	state = "day"
 	moved = false
 	approached_id = ""
@@ -326,9 +327,7 @@ func _attach_workshop_world() -> void:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {}
-		if game._workshop_native_submission:
-			if not game._workshop_native_social:
-				WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
+		if game._workshop_native_social:
 			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	_home_cards()
@@ -340,9 +339,6 @@ func _home_cards() -> void:
 ## audience, so computing it once per listener made a presentation O(listeners^2).
 var _canvas_status_memo: Dictionary = {}
 
-func _canvas_status(value: Dictionary) -> Dictionary:
-	return GamePresentation._canvas_status(self, value)
-
 func command(line: String) -> String:
 	if workshop_presenting:
 		return "A case presentation is still being assessed."
@@ -352,7 +348,7 @@ func command(line: String) -> String:
 	if text == "":
 		return ""
 	_canvas_status_memo = {}
-	_workshop_native_submission = false
+	_workshop_native_social = false
 	events = []
 	if w != null:
 		w.set_log_time()
@@ -374,7 +370,7 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] == "case")):
 		return command(line)
 	workshop_presenting = true
-	_workshop_native_submission = false
+	_workshop_native_social = false
 	events = []
 	w.set_log_time()
 	w.dlog.begin_action("command", {"cmd": line})
@@ -496,17 +492,9 @@ static func core_keys(card: Dictionary) -> Array:
 func _corroborate(card: Dictionary, src: String) -> void:
 	GameBoard._corroborate(card, src)
 
-func _link_corroboration(card: Dictionary) -> void:
-	GameBoard._link_corroboration(self, card)
-
 ## Cards you've already got for a conversation (for "don't tell me what I saw myself").
 func seen_pairs() -> Dictionary:
 	return GameBoard.seen_pairs(self)
-
-## A fact an NPC passes over in silence because you saw it yourself: no new card, they're
-## just recorded as backing yours.
-func _silent_corroboration(f: Dictionary) -> void:
-	GameBoard._silent_corroboration(self, f)
 
 ## The current time slot as the board counts it (the meeting and the night belong to the
 ## evening and night of the day they're in).
@@ -564,9 +552,6 @@ func workshop_withdraw_public(number: int) -> String:
 ## All three deduction venues share receipt ownership and optional comparison.
 func _evaluate_deduction(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
 	return GamePresentation._evaluate_deduction(self, n, ded, scale, speak, venue)
-
-func _evaluate_deduction_inner(n, ded: Dictionary, scale: float, speak: bool = true, venue: String = "private") -> Dictionary:
-	return GamePresentation._evaluate_deduction_inner(self, n, ded, scale, speak, venue)
 
 ## Canvas revisions replace this listener's previous endorsement only when heard.
 ## Keep a dedicated native ledger entry so other filed arguments are untouched.
@@ -715,17 +700,8 @@ func _present(l: String) -> Array:
 func _resolve_go(target: String) -> String:
 	return GameDayNight._resolve_go(self, target)
 
-func _best_location_on(b: String) -> String:
-	return GameDayNight._best_location_on(self, b)
-
 func _day_command(verb: String, rest: String) -> void:
 	GameDayNight._day_command(self, verb, rest)
-
-func _warn_busy_visit(n) -> void:
-	GameDayNight._warn_busy_visit(self, n)
-
-func _who_here(l: String) -> String:
-	return GameDayNight._who_here(self, l)
 
 func _observe() -> void:
 	GameDayNight._observe(self)
@@ -760,26 +736,14 @@ const MAX_BONDS_TOLD = GameConversation.MAX_BONDS_TOLD
 func _maybe_approach(skip_id: String = "") -> void:
 	GameConversation._maybe_approach(self, skip_id)
 
-func _promised_to(n) -> bool:
-	return GameConversation._promised_to(self, n)
-
 func _maybe_divulge() -> bool:
 	return GameConversation._maybe_divulge(self)
 
 func _approach_command(verb: String, rest: String) -> void:
 	GameConversation._approach_command(self, verb, rest)
 
-func _protect_approach_answer(n, verb: String, rest: String) -> void:
-	GameConversation._protect_approach_answer(self, n, verb, rest)
-
-func _grant_protection(n, what: String) -> void:
-	GameConversation._grant_protection(self, n, what)
-
 func _phase_header() -> void:
 	GameConversation._phase_header(self)
-
-func _remember_dialogue_exchange(n, verb: String, rest: String, response: Dictionary) -> void:
-	GameConversation._remember_dialogue_exchange(self, n, verb, rest, response)
 
 func _greeting_context(n) -> Dictionary:
 	return GameConversation.greeting_context(self, n)
@@ -792,15 +756,6 @@ func _repeat_refusal(n, response: Dictionary) -> void:
 
 func _talk_command(verb: String, rest: String) -> void:
 	GameConversation._talk_command(self, verb, rest)
-
-func _record_trace_profile_haunts(speaker, r: Dictionary) -> void:
-	GameConversation._record_trace_profile_haunts(self, speaker, r)
-
-func _answer_request(n, verb: String, rest: String) -> bool:
-	return GameConversation._answer_request(self, n, verb, rest)
-
-func _answer_request_now(n, rq: Dictionary, verb: String, rest: String) -> bool:
-	return GameConversation._answer_request_now(self, n, rq, verb, rest)
 
 func _gift_request(n, topic: String, target: String) -> Dictionary:
 	return GameConversation._gift_request(self, n, topic, target)
@@ -838,9 +793,6 @@ func known_relationship_notes(id: String) -> Array:
 func known_haunt_names(id: String) -> String:
 	return GameConversation.known_haunt_names(self, id)
 
-func _close_conversation() -> void:
-	GameConversation._close_conversation(self)
-
 # ---------------------------------------------------------------- meeting forwarders
 
 func _start_meeting() -> void:
@@ -855,17 +807,8 @@ func testimony_step() -> String:
 func _testimony_turn() -> void:
 	GameMeeting._testimony_turn(self)
 
-func _meeting_opened() -> void:
-	GameMeeting._meeting_opened(self)
-
 func _meeting_command(verb: String, rest: String) -> void:
 	GameMeeting._meeting_command(self, verb, rest)
-
-func _next_npc_nomination() -> bool:
-	return GameMeeting._next_npc_nomination(self)
-
-func _defend_pending() -> void:
-	GameMeeting._defend_pending(self)
 
 func vote_requirement_text() -> String:
 	return GameMeeting.vote_requirement_text(self)
@@ -875,9 +818,6 @@ func _show_nomination() -> void:
 
 func _nomination_command(verb: String, rest: String, progress: Callable = Callable()) -> void:
 	await GameMeeting._nomination_command(self, verb, rest, progress)
-
-func _after_vote() -> void:
-	GameMeeting._after_vote(self)
 
 func _last_words(n) -> void:
 	GameMeeting._last_words(self, n)
@@ -896,9 +836,6 @@ func _close_meeting() -> void:
 func filter_cards(filter: String) -> Array:
 	return GameBoard.filter_cards(self, filter)
 
-func _filter_term(cards: Array, f: String) -> Array:
-	return GameBoard._filter_term(self, cards, f)
-
 ## File a deduction card. conclusion: {type, a, role?, night?, card?}. Returns the card
 ## number, or -1 if refused (reason in last_error).
 func file_deduction(conclusion: Dictionary, supports: Array, workshop_filing: bool = false) -> int:
@@ -911,11 +848,6 @@ func file_deduction(conclusion: Dictionary, supports: Array, workshop_filing: bo
 ## the card has no direction of its own, it falls flat (logged as a fallback).
 func _route_present(n, rest: String) -> Dictionary:
 	return GamePresentation._route_present(self, n, rest)
-
-## The card has no direction of its own: it falls flat, costs no question, and is logged
-## so we can see which cards keep landing here.
-func _present_fallback(n, num: int, why: String) -> Dictionary:
-	return GamePresentation._present_fallback(self, n, num, why)
 
 ## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
 ## them; privately, only the listener if they're one of them.
@@ -1035,14 +967,8 @@ func capture_prediction(reason: String, extra: Dictionary = {}) -> Dictionary:
 func theory_status() -> String:
 	return GameScreens.theory_status(self)
 
-func _outcome_text() -> String:
-	return GameScreens._outcome_text(self)
-
 func set_debug_overlay(on: bool) -> void:
 	GameScreens.set_debug_overlay(self, on)
-
-func _spread(vals: Dictionary) -> String:
-	return GameScreens._spread(self, vals)
 
 func debug_card_text(card: Dictionary) -> String:
 	return GameScreens.debug_card_text(self, card)
@@ -1050,14 +976,8 @@ func debug_card_text(card: Dictionary) -> String:
 func debug_npc_text(id: String) -> String:
 	return GameScreens.debug_npc_text(self, id)
 
-func named_in(id: String) -> Array:
-	return GameScreens.named_in(self, id)
-
 func _death_text(n) -> String:
 	return GameScreens._death_text(n)
-
-func _claim_text(n) -> String:
-	return GameScreens._claim_text(self, n)
 
 func profile_data(id: String) -> Dictionary:
 	return GameScreens.profile_data(self, id)
