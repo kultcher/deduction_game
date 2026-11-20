@@ -3,6 +3,8 @@
 ## Uses production card filing, meeting presentation, evaluation and ledger updates.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const NPC = preload("res://sim/npc.gd")
@@ -58,13 +60,13 @@ func _fixture():
 		g.w.npcs.append(n)
 		g.w.by_id[n.id] = n
 	g.w.scenes["scene"] = {"day": 1, "block": "market"}
-	g.add_card({"kind": "sighting", "subject": ["greta"], "block": "market", "day": 1,
+	GameBoard.add_card(g, {"kind": "sighting", "subject": ["greta"], "block": "market", "day": 1,
 		"phase": C.NIGHT, "source": "player", "vigil": true, "text": "Your night-1 vigil saw Greta on Market."})
-	g.add_card({"kind": "trace", "subject": [], "block": "market", "day": 1,
+	GameBoard.add_card(g, {"kind": "trace", "subject": [], "block": "market", "day": 1,
 		"phase": C.EVENING, "source": "evidence", "text": "The death-scene trace points to Market on evening 1."})
-	g.add_card({"kind": "sighting", "subject": ["greta"], "block": "market", "day": 1,
+	GameBoard.add_card(g, {"kind": "sighting", "subject": ["greta"], "block": "market", "day": 1,
 		"phase": C.EVENING, "source": "player", "text": "You saw Greta on Market on evening 1."})
-	g.add_card({"kind": "home", "subject": ["greta"], "block": "market", "source": "town",
+	GameBoard.add_card(g, {"kind": "home", "subject": ["greta"], "block": "market", "source": "town",
 		"class": "concrete", "text": "Greta lives on Market."})
 	return g
 
@@ -72,7 +74,7 @@ func _init() -> void:
 	for templated in [true, false]:
 		var g = _fixture()
 		var supports: Array = [1, 2, 3] if templated else [1, 2]
-		var dn = g.file_deduction({"type": "demon", "a": "greta"}, supports)
+		var dn = GameBoard.file_deduction(g, {"type": "demon", "a": "greta"}, supports)
 		_check(dn > 0, "filing succeeds")
 		var ded: Dictionary = g.board[dn - 1]
 		_check(ded["template"] == ("trace_match" if templated else ""), "expected template")
@@ -83,7 +85,7 @@ func _init() -> void:
 			var n = g.w.by_id[p[0]]
 			snapshots[n.id] = {"suspicion": n.suspicion["greta"], "trust": n.trust}
 		# Real whole-meeting route: handles confidentiality, scale .6 and all listeners.
-		g._present_deduction(str(dn))
+		GamePresentation._present_deduction(g, str(dn))
 		for p in PROFILES:
 			var n = g.w.by_id[p[0]]
 			var eval = {}
@@ -112,9 +114,9 @@ func _init() -> void:
 				"trust_before": old["trust"], "trust_after": n.trust, "honesty_greta": n.honesty.get("greta", 1.0)}))
 		# Home knowledge does not replace evidence of evening presence. Nor do all three
 		# originally suggested cards form a Demon template without the evening sighting.
-		var home_dn = g.file_deduction({"type": "demon", "a": "greta"}, [1, 2, 4])
+		var home_dn = GameBoard.file_deduction(g, {"type": "demon", "a": "greta"}, [1, 2, 4])
 		_check(g.board[home_dn - 1]["template"] == "", "vigil + trace + home is not a Demon template")
-		var home_pair = g.file_deduction({"type": "demon", "a": "greta"}, [2, 4])
+		var home_pair = GameBoard.file_deduction(g, {"type": "demon", "a": "greta"}, [2, 4])
 		_check(g.board[home_pair - 1]["template"] == "", "trace + home does not prove evening presence")
 	print("Ledger example: %d checks, %d failures." % [checks, failures])
 	quit(1 if failures else 0)

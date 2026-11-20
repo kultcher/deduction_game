@@ -28,7 +28,7 @@ const TRACE_FIELDS = ["name", "traits", "role", "alignment", "alive", "death_day
 	"pressure", "consensus_pressure", "pressed_today", "role_guesses",
 	"claimed_role", "claim_public", "max_tier", "told_readings", "secret_known",
 	"secret_spread", "secret_spread_by_npc", "beliefs", "info_log", "known_claims",
-	"known_secrets", "hearsay", "protect_pref", "spare_pref", "believed_roles",
+	"known_secrets", "hearsay", "protect_pref", "believed_roles",
 	"discounted", "honesty", "resentments", "ledger", "workshop_state", "cleared", "used_facts"]
 var detailed = false
 var stream = "real"

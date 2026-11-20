@@ -1,4 +1,7 @@
 extends SceneTree
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -22,19 +25,19 @@ func _run() -> void:
 	var g = Game.new()
 	g.new_case(44814, 10)
 	g.w.dlog.detailed = false
-	var number = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "subject": [], "day": 0, "phase": 3, "data": {"count": 1}, "text": "Mechanics Surveyor."})
-	var other = g.add_card({"kind": "info", "role": "dowser", "source": "odette", "subject": ["greta"], "day": 1, "phase": 1, "data": {"group": ["greta", "hollis"], "count": 1}, "text": "Independent mechanics support."})
-	for type in ["notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]:
+	var number = GameBoard.add_card(g, {"kind": "info", "role": "surveyor", "source": "greta", "subject": [], "day": 0, "phase": 3, "data": {"count": 1}, "text": "Mechanics Surveyor."})
+	var other = GameBoard.add_card(g, {"kind": "info", "role": "dowser", "source": "odette", "subject": ["greta"], "day": 1, "phase": 1, "data": {"group": ["greta", "hollis"], "count": 1}, "text": "Independent mechanics support."})
+	for type in ["notdemon", "secret_mod", "notrole", "lied", "truthful", "misled", "unreliable"]:
 		var conclusion = {"type": type, "a": "greta", "role": "surveyor", "mod": "delusional", "card": number}
-		var filed = g.file_deduction(conclusion, [number, other], true)
+		var filed = GameBoard.file_deduction(g, conclusion, [number, other], true)
 		check(filed > 0, type + " files: " + g.last_error)
-		var prepared = Assess.prepare(g.workshop_snapshot([filed], "nisha"))
+		var prepared = Assess.prepare(GamePresentation.workshop_snapshot(g, [filed], "nisha"))
 		check(prepared.ready, type + " has a shared adapter: " + str(prepared.issues))
 		if not prepared.ready:
 			continue
 		var result = Eval.evaluate(prepared.view, prepared.case, prepared.listener)
 		check(not result.impossible and is_finite(result.posterior), type + " has a finite posterior")
-		var response = g._evaluate_deduction(g.w.by_id.nisha, g.board[filed - 1], 1.0)
+		var response = GamePresentation._evaluate_deduction(g, g.w.by_id.nisha, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), type + " uses the shared judge in live delivery")
 		if type == "notdemon":
 			check(result.prior > 0.0 and result.prior < 1.0 and prepared.view.world_options.get("identities", false), "notdemon enables the same identity domain as demon")
@@ -48,8 +51,8 @@ func _run() -> void:
 		if type == "unreliable":
 			_fraction_parity(prepared)
 	for type in ["secret", "red_herring"]:
-		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], true)
-		check(not Assess.prepare(g.workshop_snapshot([filed], "nisha")).ready, type + " stays explicit without a represented fact")
+		var filed = GameBoard.file_deduction(g, {"type": type, "a": "greta"}, [number, other], true)
+		check(not Assess.prepare(GamePresentation.workshop_snapshot(g, [filed], "nisha")).ready, type + " stays explicit without a represented fact")
 	await _ui(g, number, other)
 	print("Mechanics conclusion checks: %d; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
@@ -61,12 +64,12 @@ func _ui(g, number: int, other: int) -> void:
 	await process_frame
 	editor.add_evidence(number)
 	editor.add_evidence(other)
-	for type in ["secret_mod", "role", "unreliable"]:
-		editor._add_premise()
+	for type in ["secret_mod", "notrole", "unreliable"]:
+		LiveWorkshopFields.add_premise(editor)
 		var id: String = editor.board.selected
 		check(editor.board.nodes[id].get("draft", false), "Add premise adds a blank premise")
-		editor.set_premise_field(id, "type", type)
-		editor.set_premise_field(id, "person", "greta")
+		LiveWorkshopFields.set_premise_field(editor, id, "type", type)
+		LiveWorkshopFields.set_premise_field(editor, id, "person", "greta")
 		check(editor.board.nodes[id].conclusion.get("type") == type and editor.board.nodes[id].conclusion.get("target") == "greta", type + " premise is set on the card")
 		for n in [number, other]:
 			editor.board.connect_cards("e:" + Live.Evidence.normalize_card(g.board[n - 1]).id, id)
@@ -75,14 +78,14 @@ func _ui(g, number: int, other: int) -> void:
 		check(not choices.is_empty(), type + " exposes its question controls")
 		if type == "secret_mod":
 			choices[0].item_selected.emit(Assess.C.SECRET_MOD_LIST.find("delusional"))
-		elif type == "role":
+		elif type == "notrole":
 			choices[0].item_selected.emit(Assess.C.GOOD_ROLES.find("surveyor"))
 		else:
 			choices[0].item_selected.emit(1)
 		var filed: int = editor._file()
 		check(filed > 0, type + " files from the actual editor: " + g.last_error)
 		if filed > 0:
-			var captured = Assess.prepare(g.workshop_snapshot([filed], "nisha"))
+			var captured = Assess.prepare(GamePresentation.workshop_snapshot(g, [filed], "nisha"))
 			check(captured.ready, type + " retains question parameters after UI filing: " + str(captured.issues))
 		editor.answer_window.hide()
 	editor.queue_free()

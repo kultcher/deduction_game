@@ -38,7 +38,7 @@ var history = {}         # "d:p" -> location id (or "home:<block>" / "night:<blo
 var friends: Array = []  # seeds for npc_trust
 var rivals: Array = []
 var secret = {}          # personal reason to be out at night (good NPCs only), may be empty
-var secret_mod = ""      # secret modifier on top of their gift: delusional | marked | lovers | sleepwalker | muddler
+var secret_mod = ""      # secret modifier on top of their gift: delusional | marked | lovers | sleepwalker
 var lover = ""           # Secret Lovers: the other lover's id
 var withdrawn_since = ""   # the Lover whose death left them withdrawn (visible in the profile)
 
@@ -60,8 +60,6 @@ var gift_used = false        # one-shot gifts spent (Sexton's knell)
 var medium_visited: Array = []   # Medium: the dead whose homes they've visited
 var talked_today: Array = []     # NPCs they talked with today (Psychologist picks from these)
 var heard_statements: Array = [] # Direct eligible statements heard today for Psychologist
-var muddled_items = {}           # Muddler cache: base item key -> muddled item/entry or {}
-var pending_muddle_debunks: Array = [] # Deferred public debunks when unclaimed source stayed silent
 var dowsed_day = -1          # Dowser: day they last read a block
 var breath_day = -1          # Breathstealer: day they last silenced someone
 var breath_last = ""         # Breathstealer: whom they silenced last
@@ -136,7 +134,6 @@ var dialogue_memory = {}     # presentation only: delivered statements / variant
 var secret_spread_by_npc = false   # someone other than the player spread their secret
 ## Effects of the player's arguments (stage 3).
 var protect_pref = {}        # id -> how strongly they've been persuaded to protect/keep them
-var spare_pref = {}          # id -> how strongly they've been persuaded not to execute them
 var believed_roles = {}      # id -> role they've been persuaded someone holds
 var discounted = {}          # derived: "source:night|*" -> doubt in that source's readings (0..0.9)
 ## Evidence ledger (see Mind.ledger_hear): eid -> {effects, weight, rel, applied, meta, times}.

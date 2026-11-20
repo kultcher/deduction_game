@@ -2,6 +2,7 @@
 ## Merged from: test_chunk6a_sexton_brute, test_mechanics_curse, test_roster.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
@@ -356,11 +357,11 @@ func _live() -> void:
 	g.w.phase = 2
 	g.w.public_event("vote", [rv.id], "town", {"nominee": rv.id, "nominator": "player", "yes": voters, "no": [], "player_yes": false, "count": 3, "threshold": 3, "outcome": "on_block"})
 	rv.alive = false
-	g.add_card({"kind": "execution", "source": "player", "subject": [rv.id], "day": 2, "phase": 2, "alive_before": 10, "text": "Public execution."})
+	GameBoard.add_card(g, {"kind": "execution", "source": "player", "subject": [rv.id], "day": 2, "phase": 2, "alive_before": 10, "text": "Public execution."})
 	g.w.totem = {"block": "square"}
 	rv.poisoned = false
 	g.w._revenant_curse(rv, {"yes": voters})
-	g.add_card({"kind": "curse", "source": "player", "subject": [rv.id], "day": 2, "phase": 2, "text": "Public curse."})
+	GameBoard.add_card(g, {"kind": "curse", "source": "player", "subject": [rv.id], "day": 2, "phase": 2, "text": "Public curse."})
 	observer.info_log = []
 	observer.known_claims = {}
 	observer.ledger = {}

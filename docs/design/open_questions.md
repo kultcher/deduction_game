@@ -43,7 +43,7 @@ These are the ones under discussion now, roughly by how much they shape other wo
   confirmed good, so they don't help evil hide; and they leave out good people with
   reasons to lie. Direction so far: secrets stay riders on a gift; most become something
   the holder knows but doesn't volunteer; evil can bluff them; a Saint as the worked
-  example. **The Muddler is tentatively cut** (it had something to muddle in 5 of 40
+  example. **The Muddler is cut** (removed, Michael, Nov 20) (it had something to muddle in 5 of 40
   games).
 - **Proposal on the table:** the judge keeps one slot for the self-unaware kinds (Marked,
   Delusional, Sleepwalker); the kinds the holder knows about become ordinary claims, with a

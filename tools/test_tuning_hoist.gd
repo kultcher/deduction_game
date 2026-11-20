@@ -102,10 +102,17 @@ func _test_production_wiring_and_aliases() -> void:
 	)
 
 	var expected_refs: Dictionary = {
-		"res://sim/world.gd": ["PRE_PHASE_CHAT_CHANCE", "SAME_BLOCK_SIGHTING_CHANCE", "NIGHT_SIGHTING_STREET_CHANCE", "CLEMENCY_SPARED_BONUS", "trust_backed_innocent"],
-		"res://sim/mind.gd": ["DEMON_VICTIM_CLAIM_BOOST", "RECONSIDER_MIN_SHIFT", "HEARD_READING_WEIGHT", "SELF_SUPPORT_BONUS"],
-		"res://sim/mind_dialogue.gd": ["QUESTION_FATIGUE_LIMIT", "CIVIL_TALK_BASE", "PRESSED_EVIDENCE_BASE", "SLIP_COMPOSURE_SCALE", "DIRECT_NIGHT_SIGHTING_SHARE_PROB"],
-		"res://sim/mind_meeting.gd": ["PUBLIC_CLAIM_FEW_LEFT", "DEFENCE_REVEAL_CAP", "DEFENCE_MISLED_RELIEF", "ACCUSE_SUSPICION_PIVOT", "VOTE_DISTRUST_NOMINATOR_OFFSET"],
+		"res://sim/world.gd": ["PRE_PHASE_CHAT_CHANCE", "SAME_BLOCK_SIGHTING_CHANCE"],
+		"res://sim/world_night.gd": ["NIGHT_SIGHTING_STREET_CHANCE"],
+		"res://sim/world_meeting.gd": ["CLEMENCY_SPARED_BONUS", "trust_backed_innocent"],
+		"res://sim/mind_ledger.gd": ["DEMON_VICTIM_CLAIM_BOOST", "RECONSIDER_MIN_SHIFT", "HEARD_READING_WEIGHT"],
+		"res://sim/mind_cases.gd": ["SELF_SUPPORT_BONUS"],
+		"res://sim/mind_dialogue.gd": ["QUESTION_FATIGUE_LIMIT", "CIVIL_TALK_BASE"],
+		"res://sim/mind_press.gd": ["PRESSED_EVIDENCE_BASE"],
+		"res://sim/mind_answers.gd": ["SLIP_COMPOSURE_SCALE", "DIRECT_NIGHT_SIGHTING_SHARE_PROB"],
+		"res://sim/mind_meeting.gd": ["PUBLIC_CLAIM_FEW_LEFT", "ACCUSE_SUSPICION_PIVOT"],
+		"res://sim/mind_defence.gd": ["DEFENCE_REVEAL_CAP", "DEFENCE_MISLED_RELIEF"],
+		"res://sim/mind_vote.gd": ["VOTE_DISTRUST_NOMINATOR_OFFSET"],
 		"res://sim/social.gd": ["TAVERN_WHISPER_MIN_CROWD", "TAVERN_WHISPER_CHANCE", "WRONG_ROLE_GUESS_STEP", "SHARE_READING_OPENNESS_SCALE", "ROLE_WILLING_THRESHOLD"],
 		"res://sim/evil.gd": ["KILL_VETERAN_UNPOISONED", "KILL_NOISE", "POISON_NOISE", "PLANTER_MINION_BONUS", "SCAPEGOAT_KEEP_BASE"],
 		"res://workshop/source_doubt.gd": ["DOUBT_CAUGHT_ALIBI_NIGHT", "DOUBT_FALSE_NW_GENERAL", "DOUBT_GD_EVIL_SCALE", "History.executed"],

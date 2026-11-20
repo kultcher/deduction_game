@@ -85,8 +85,11 @@ func _init() -> void:
 	# A failed passing-on implicates those out on the Medium's night (Codex, #191).
 	var sv: Dictionary = view.duplicate(true)
 	sv.script_minions = ["poisoner"]
-	var s1: Dictionary = {"id": "s1", "kind": "sighting", "source": "g", "subject": "c", "subjects": ["c"], "night": 1, "block": "market"}
-	var s2: Dictionary = {"id": "s2", "kind": "sighting", "source": "g", "subject": "d", "subjects": ["d"], "night": 2, "block": "market"}
+	# Seen on the Square, where everyone here lives: on the way to the reader's home. A Poisoner
+	# candidate must have been (ReadingChallenges.poisoner_candidates, Nov 20; before, the
+	# Market sightings here counted although they lay off every road).
+	var s1: Dictionary = {"id": "s1", "kind": "sighting", "source": "g", "subject": "c", "subjects": ["c"], "night": 1, "block": "square"}
+	var s2: Dictionary = {"id": "s2", "kind": "sighting", "source": "g", "subject": "d", "subjects": ["d"], "night": 2, "block": "square"}
 	var ti: Dictionary = _assess_with(sv, relay, [s1, s2], {"mode": "impaired", "supports": [], "attribution": "transmission"}, listener)
 	var oi: Dictionary = _assess_with(sv, relay, [s1, s2], {"mode": "impaired", "supports": [], "attribution": "original"}, listener)
 	print("impaired candidates: transmission %s, original %s" % [str(ti.get("candidates", {}).keys()), str(oi.get("candidates", {}).keys())])

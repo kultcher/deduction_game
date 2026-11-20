@@ -1,5 +1,7 @@
 ## The live adapter must preserve semantics and remain independent of hidden causes.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const C = preload("res://sim/content.gd")
@@ -24,14 +26,14 @@ func _live(seed_value: int, size: int) -> void:
 	g.w.day = 3
 	g.w.phase = C.AFTERNOON
 	n.info_log.append({"day": 1, "role": "surveyor", "data": {"count": 3}, "true": false, "why": "HIDDEN_CAUSE", "text": "Three blocks."})
-	var read = g.add_card({"kind": "info", "source": n.id, "subject": [], "day": 1, "role": "surveyor", "data": {"count": 3, "why": "HIDDEN_CAUSE"}, "text": "Three blocks."})
+	var read = GameBoard.add_card(g, {"kind": "info", "source": n.id, "subject": [], "day": 1, "role": "surveyor", "data": {"count": 3, "why": "HIDDEN_CAUSE"}, "text": "Three blocks."})
 	var private_read = {"day": 2, "role": "seer", "data": {"pair": [n.id, other.id], "yes": true}, "text": "PRIVATE_READING"}
 	other.info_log.append(private_read)
-	var sight = g.add_card({"kind": "sighting", "source": "player", "subject": [other.id], "day": 1, "phase": C.NIGHT, "block": "market", "text": "Saw them out."})
-	var alibi = g.add_card({"kind": "alibi", "source": other.id, "subject": [other.id], "day": 1, "phase": C.NIGHT, "home": true, "text": "They said home."})
-	var deduction = g.file_deduction({"type": "evil", "a": other.id}, [sight, alibi, read])
+	var sight = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [other.id], "day": 1, "phase": C.NIGHT, "block": "market", "text": "Saw them out."})
+	var alibi = GameBoard.add_card(g, {"kind": "alibi", "source": other.id, "subject": [other.id], "day": 1, "phase": C.NIGHT, "home": true, "text": "They said home."})
+	var deduction = GameBoard.file_deduction(g, {"type": "evil", "a": other.id}, [sight, alibi, read])
 	var before = _state(g)
-	var snapshot = g.workshop_snapshot([deduction], n.id)
+	var snapshot = GamePresentation.workshop_snapshot(g, [deduction], n.id)
 	check(before == _state(g), "capture leaves world, NPCs, RNG and log unchanged (%d/%d)" % [seed_value, size])
 	check(snapshot.selected.size() == 3 and snapshot.arguments.size() == 1, "deductions recursively preserve original evidence and claim")
 	check(snapshot.rules.initial_evil_count == (2 if size == 7 else 3), "evil count comes from public setup rules")
@@ -44,7 +46,7 @@ func _live(seed_value: int, size: int) -> void:
 	var outing: Array = snapshot.evidence.filter(func(e): return e.kind in ["sighting", "alibi"])
 	check(outing[0].incident_ids == outing[1].incident_ids and outing[0].id != outing[1].id, "conflicting testimony shares an incident without merging witnesses")
 	check(snapshot.issues.any(func(i): return i.code == "modifier_alternatives") and snapshot.issues.any(func(i): return i.code == "live_movement"), "missing capabilities are explicit")
-	var detached = g.workshop_snapshot([deduction], n.id)
+	var detached = GamePresentation.workshop_snapshot(g, [deduction], n.id)
 	detached.listener.suspicion[other.id] = 100
 	detached.arguments[0].supports.clear()
 	detached.evidence[0].content.subjects.clear()
@@ -59,18 +61,18 @@ func _live(seed_value: int, size: int) -> void:
 	g.w.demon_id = other.id
 	g.w.curse = {"victim": n.id, "day": 1}
 	g.w.night_walkers = [{"id": other.id, "why": "HIDDEN_WALK"}]
-	check(snapshot == g.workshop_snapshot([deduction], n.id), "referee roles, actual health, secret and curse victim are not inference inputs")
+	check(snapshot == GamePresentation.workshop_snapshot(g, [deduction], n.id), "referee roles, actual health, secret and curse victim are not inference inputs")
 	var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]
 	if evil.shadow != null:
 		var cover_before = _state(g)
-		var cover = g.workshop_snapshot([read], evil.id)
+		var cover = GamePresentation.workshop_snapshot(g, [read], evil.id)
 		check(cover.listener.suspicion == preload("res://sim/mind.gd").suspicion_view(evil.shadow) and "HIDDEN_INTEL" not in JSON.stringify(cover), "evil assessment receives only its existing cover mind")
 		check(cover_before == _state(g), "cover capture does not create or sync shadows")
-	check(g.workshop_snapshot([99999], n.id).issues.any(func(i): return i.code == "missing_card"), "absent evidence is reported")
-	check(g.workshop_snapshot([read], "missing").issues.any(func(i): return i.code == "unknown_listener"), "missing listener is reported")
+	check(GamePresentation.workshop_snapshot(g, [99999], n.id).issues.any(func(i): return i.code == "missing_card"), "absent evidence is reported")
+	check(GamePresentation.workshop_snapshot(g, [read], "missing").issues.any(func(i): return i.code == "unknown_listener"), "missing listener is reported")
 	var cyclic = g.board[deduction - 1]
 	cyclic.supports.append(deduction)
-	check(g.workshop_snapshot([deduction], n.id).issues.any(func(i): return i.code == "cyclic_argument"), "cyclic claims cannot silently disappear")
+	check(GamePresentation.workshop_snapshot(g, [deduction], n.id).issues.any(func(i): return i.code == "cyclic_argument"), "cyclic claims cannot silently disappear")
 
 func _receipts() -> void:
 	var report = {"kind": "info", "source": "bart", "role": "dowser", "day": 2, "phase": 1,

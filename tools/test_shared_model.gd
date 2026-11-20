@@ -5,10 +5,13 @@
 ## Gathered from the Legacy Purge phase 2b/2c/3 suites on 2026-11-04.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
 const Social = preload("res://sim/social.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -110,8 +113,8 @@ func _test_ledger_receipts_and_ownership() -> void:
 
 	# 2. Whispered sighting relay + relayed case
 	Social._deliver(w, speaker, listener, {"kind": "sighting", "about": walker.id, "from": speaker.id, "block": "docks", "day": 1, "key": "sight:1"})
-	var cnum: int = g.add_card({"kind": "info", "source": speaker.id, "role": "dowser", "day": 1, "phase": 0, "data": dowse_entry.data, "text": "1 evil in pair"})
-	var dnum: int = g.file_deduction({"type": "evil", "a": walker.id}, [cnum])
+	var cnum: int = GameBoard.add_card(g, {"kind": "info", "source": speaker.id, "role": "dowser", "day": 1, "phase": 0, "data": dowse_entry.data, "text": "1 evil in pair"})
+	var dnum: int = GameBoard.file_deduction(g, {"type": "evil", "a": walker.id}, [cnum])
 	Social._deliver(w, speaker, listener, {"kind": "case", "about": walker.id, "from": speaker.id, "card": g.board[dnum - 1], "key": "case:1"})
 
 	# 3. Workshop deduction presentation must NOT park native arg:* / arg:workshop:* entries
@@ -120,7 +123,7 @@ func _test_ledger_receipts_and_ownership() -> void:
 	board.nodes[root].conclusion = {"type": "evil", "target": walker.id, "at": "Original alignment"}
 	board.connect_cards("e:" + Live.Evidence.normalize_card(g.board[cnum - 1]).id, root)
 	var filed: int = Live.file(g, board.compile(root))
-	var pres_res: Dictionary = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+	var pres_res: Dictionary = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false)
 	_check(pres_res.get("workshop", false), "a Workshop deduction presentation is evaluated by the shared model")
 
 	# 4. Direct card presentation records receipt-only workshop:tell:* entry
@@ -135,11 +138,11 @@ func _test_ledger_receipts_and_ownership() -> void:
 	w._quiet_night()
 	# What the game adds alongside a quiet night: the player's "no deaths" card, and the
 	# listener having heard the Warden's public claim.
-	g.add_card({"kind": "quiet", "source": "player", "subject": [], "night": 2, "day": 2, "phase": C.NIGHT, "ward": "", "text": "No deaths on night 2"})
+	GameBoard.add_card(g, {"kind": "quiet", "source": "player", "subject": [], "night": 2, "day": 2, "phase": C.NIGHT, "ward": "", "text": "No deaths on night 2"})
 	Mind.hear_claim(w, listener, saved.id, "warden", 0.5, "public")
 	walker.silence_pending = 2
 	w.begin_meeting()
-	MindMeeting.defend_self(w, walker, "player")
+	MindDefence.defend_self(w, walker, "player")
 
 	martyr.role = "martyr"
 	martyr.martyr_target = saved.id
@@ -254,7 +257,7 @@ func _test_source_doubt() -> void:
 		"claiming listener's own unique gift sets workshop_state.source_doubt[liar:*] = 1.0")
 	_check(is_zero_approx(Mind.reliability(listener, liar.id, 1, "reading")),
 		"Mind.reliability drops to 0.0 when source_doubt[liar:*] == 1.0")
-	var plan_after = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
+	var plan_after = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener.id), {}, listener.ledger)
 	var sight_card_after: Dictionary = plan_after.prepared.view.cards.filter(func(c): return c.id == sight_cid)[0]
 	_check(is_zero_approx(float(sight_card_after.get("hearing_weight", 1.0))),
 		"caught lie in source_doubt collapses relayed sighting hearing_weight to 0.0 without touching legacy discounted")
@@ -305,7 +308,7 @@ func _test_gravedigger_missing_execution_ready_and_catches_liar() -> void:
 	_check(not reasons.is_empty() and "no such hanging" in str(reasons[0].get("why", "")),
 		"ReasonAttribution cites bogus Gravedigger report with no matching hanging (%s)" % str(reasons))
 
-	var card_num: int = g.add_card({"kind": "info", "source": faker.id, "role": "gravedigger", "day": 1, "phase": 3, "data": bogus_entry.data, "text": bogus_entry.text})
+	var card_num: int = GameBoard.add_card(g, {"kind": "info", "source": faker.id, "role": "gravedigger", "day": 1, "phase": 3, "data": bogus_entry.data, "text": bogus_entry.text})
 	var fact_id: String = LiveCanvas.Evidence.normalize_card(g.board[card_num - 1]).id
 	var board_accuse_subject = CanvasModel.new(LiveCanvas.view(g))
 	board_accuse_subject.nodes[board_accuse_subject.selected].conclusion.target = innocent.id
@@ -322,7 +325,7 @@ func _test_gravedigger_missing_execution_ready_and_catches_liar() -> void:
 	board_accuse_liar.connect_cards("e:" + fact_id, board_accuse_liar.selected)
 	var filed_liar: int = LiveCanvas.file(g, board_accuse_liar.compile(board_accuse_liar.selected))
 	var fresh_listener = goods[3]
-	var resp: Dictionary = g._evaluate_deduction(fresh_listener, g.board[filed_liar - 1], 1.0, false)
+	var resp: Dictionary = GamePresentation._evaluate_deduction(g, fresh_listener, g.board[filed_liar - 1], 1.0, false)
 	_check(resp.get("workshop", false) and float(fresh_listener.workshop_state.get("requested", {}).get(faker.id, 0.0)) > 0.25,
 		"Presenting bogus Gravedigger report against its claimant succeeds via shared presentation")
 

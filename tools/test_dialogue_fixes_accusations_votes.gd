@@ -5,10 +5,12 @@
 ## Named test_playtest_1709 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 
 var _checks: int = 0
@@ -78,8 +80,8 @@ func _test_vote_line_names_the_nominator() -> void:
 	var v = w.living_good()[0]
 	var t = w.living_good()[1]
 	var nom = w.living_good()[2]
-	var by_npc: Dictionary = MindMeeting._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": nom.id, "prev_block": ""})
-	var by_player: Dictionary = MindMeeting._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": "player", "prev_block": ""})
+	var by_npc: Dictionary = MindVote._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": nom.id, "prev_block": ""})
+	var by_player: Dictionary = MindVote._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": "player", "prev_block": ""})
 	_check(not "Demonologist" in str(by_npc.get("text", "")) and nom.name in str(by_npc.get("text", "")), "a no-vote on an NPC's nomination doesn't hand the Demonologist a case (%s)" % by_npc.get("text", ""))
 	_check("Your case" in str(by_player.get("text", "")), "a no-vote on the Demonologist's nomination still answers them")
 
@@ -100,7 +102,7 @@ func _test_silenced_conversation() -> void:
 	g.command("ask gift")
 	_check(g.questions_left == before, "asking a silenced townsperson costs nothing (they can't answer)")
 	var other = g.w.living_good()[1]
-	var num: int = g.add_card({"kind": "sighting", "source": "player", "subject": [other.id], "block": "market", "day": 1, "phase": C.MORNING, "text": "A sighting to show"})
+	var num: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [other.id], "block": "market", "day": 1, "phase": C.MORNING, "text": "A sighting to show"})
 	g.command("present %d against %s" % [num, other.id])
 	var spoke2: bool = g.last_events.any(func(e): return e.get("k", "") == "speech" and e.get("speaker", "") == n.id)
 	_check(g.questions_left == before - 1 and not spoke2, "showing them a card costs a question, and they don't answer (%d left)" % g.questions_left)

@@ -1,5 +1,7 @@
 ## Location adapters retain actual observation times and do not manufacture guilt.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -48,13 +50,13 @@ func _context() -> void:
 		{"kind": "sighting", "source": "player", "subject": [target.id], "block": "market", "day": 1, "phase": 1, "text": "Afternoon sighting"},
 		{"kind": "conversation", "source": "player", "subject": [target.id, partner.id], "block": "market", "loc": "bakery", "day": 1, "phase": 0, "text": "Morning conversation"}]
 	for card in raw:
-		var number = g.add_card(card)
+		var number = GameBoard.add_card(g, card)
 		var normalized = Shared.Evidence.normalize_card(g.board[number - 1])
 		check(Shared.supported(normalized), card.kind + " has a shared owner")
-		var ded = g.file_deduction({"type": "evil", "a": target.id}, [number])
-		var prepared = Assess.prepare(g.workshop_snapshot([ded], n.id))
+		var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [number])
+		var prepared = Assess.prepare(GamePresentation.workshop_snapshot(g, [ded], n.id))
 		check(prepared.ready and normalized.id in prepared.case.cards, card.kind + " remains an exact cited root")
-		var result = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		var result = GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 		check(result.get("workshop", false) and n.workshop_state.active and normalized.id in n.workshop_state.facts, card.kind + " uses the shared presentation path and keeps ownership after parking")
 		check(n.workshop_state.requested.values().all(func(v): return absf(v) < 0.000001), card.kind + " alone is context, not alignment evidence")
 		if card.kind in ["sighting", "conversation"]:
@@ -71,18 +73,18 @@ func _evening_conversation() -> void:
 	var target = others[0]
 	var partner = others[1]
 	var victim = others[2]
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "text": "Public death"})
-	var trace = g.add_card({"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2,
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "text": "Public death"})
+	var trace = GameBoard.add_card(g, {"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2,
 		"material": "market", "block": "market", "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"victim": victim.id, "crime_night": 1, "text": "Market scene trace"})
-	var conversation = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, partner.id],
+	var conversation = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, partner.id],
 		"day": 1, "phase": 2, "block": "market", "loc": "bakery", "text": "Evening conversation at the bakery"})
-	var sighting = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id, partner.id],
+	var sighting = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id, partner.id],
 		"day": 1, "phase": 2, "block": "market", "text": "Both seen on the Market that evening"})
 	var results: Array = []
 	for number in [conversation, sighting]:
-		var ded = g.file_deduction({"type": "evil", "a": target.id}, [trace, number])
-		var prepared = Assess.prepare(g.workshop_snapshot([ded], n.id))
+		var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [trace, number])
+		var prepared = Assess.prepare(GamePresentation.workshop_snapshot(g, [ded], n.id))
 		check(prepared.ready, "evening location and trace share one supported assessment")
 		if prepared.ready:
 			results.append(CaseEval.evaluate(prepared.view, prepared.case, prepared.listener))
@@ -91,7 +93,7 @@ func _evening_conversation() -> void:
 func _invalid_payloads() -> void:
 	var g = _game()
 	var target = g.w.npcs[0]
-	var input = g.workshop_snapshot([])
+	var input = GamePresentation.workshop_snapshot(g, [])
 	for raw in [
 		{"kind": "home", "source": "town", "subject": [target.id], "block": "nowhere"},
 		{"kind": "haunt", "source": "player", "subject": [target.id], "locs": ["invented-place"]},
@@ -112,7 +114,7 @@ func _public_deaths() -> void:
 	for raw in [
 		{"kind": "death", "source": "player", "subject": [target.id], "night": 1, "block": target.home_block, "text": "Public Demon death"},
 		{"kind": "execution", "source": "player", "subject": [target.id], "day": 2, "phase": 2, "text": "Public execution"}]:
-		var number = g.add_card(raw)
+		var number = GameBoard.add_card(g, raw)
 		var value = Solver.empty_case()
 		var fact: String = Shared.Evidence.normalize_card(g.board[number - 1]).id
 		value.cards = [fact]
@@ -124,7 +126,7 @@ func _public_deaths() -> void:
 		if prepared.ready:
 			check(prepared.view.timeline.deaths.has(target.id), raw.kind + " carries public death timing into the common model")
 			var filed = preload("res://game/workshop_canvas.gd").file(g, value)
-			var result = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+			var result = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false)
 			check(result.get("workshop", false) and fact in listener.workshop_state.facts, raw.kind + " stays a shared root in an actual presentation")
 		if raw.kind == "death":
 			var omitted = input.duplicate(true)
@@ -139,8 +141,8 @@ func _opinions_are_not_evidence() -> void:
 	var listener = g.w.living_good()[0]
 	var target = g.w.npcs.filter(func(p): return p != listener)[0]
 	for kind in ["opinion", "accusation"]:
-		var number = g.add_card({"kind": kind, "source": target.id, "subject": [target.id], "text": "Unsupported " + kind})
-		var ded = g.file_deduction({"type": "evil", "a": target.id}, [number])
+		var number = GameBoard.add_card(g, {"kind": kind, "source": target.id, "subject": [target.id], "text": "Unsupported " + kind})
+		var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [number])
 		g.state = "talk"
 		g.talk_with = listener
 		g.questions_left = 3
@@ -152,12 +154,12 @@ func _opinions_are_not_evidence() -> void:
 func _totem() -> void:
 	var g = _game()
 	var block: String = g.w.npcs[0].home_block
-	var number = g.add_card({"kind": "totem", "source": "evidence", "subject": [], "block": block,
+	var number = GameBoard.add_card(g, {"kind": "totem", "source": "evidence", "subject": [], "block": block,
 		"loc": "well", "day": 1, "phase": 0, "text": "A totem bearing its maker's home material"})
 	var target = g.w.npcs[0]
 	var listener = g.w.living_good().filter(func(p): return p != target)[0]
-	var ded = g.file_deduction({"type": "minion", "a": target.id}, [number])
-	var prepared = Assess.prepare(g.workshop_snapshot([ded], listener.id))
+	var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [number])
+	var prepared = Assess.prepare(GamePresentation.workshop_snapshot(g, [ded], listener.id))
 	check(prepared.ready and prepared.view.world_options.identities, "a valid totem activates joint minion role assignments")
 	if not prepared.ready:
 		return
@@ -170,5 +172,5 @@ func _totem() -> void:
 	check(not worlds.is_empty() and worlds.all(func(w): return bool((w.evil & ~(1 << w.demon)) & candidates)), "the totem requires an actual minion on its material's home block, not a Demon or Marked registration")
 	var id = Shared.Evidence.normalize_card(g.board[number - 1]).id
 	check(cards.size() == 1 and cards[0].id == id and cards[0].data.candidates == prepared.view.people.filter(func(p): return p.home == block).map(func(p): return p.id), "totem candidates come only from the public roster")
-	var result = g._evaluate_deduction(listener, g.board[ded - 1], 1.0, false)
+	var result = GamePresentation._evaluate_deduction(g, listener, g.board[ded - 1], 1.0, false)
 	check(result.get("workshop", false) and listener.workshop_state.active, "a totem case uses shared ownership through presentation")

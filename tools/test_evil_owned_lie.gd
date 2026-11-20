@@ -9,6 +9,8 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
+const MindAnswers = preload("res://sim/mind_answers.gd")
 const C = preload("res://sim/content.gd")
 
 var checks = 0
@@ -78,7 +80,7 @@ func _pressed_backs_into_bluff(bluff: String) -> void:
 	_check(n.lied_nights.is_empty(), "%s bluff: owned nights are cleared" % bluff)
 	_check(not reply.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "%s bluff: no fresh home account" % bluff)
 	# Asked again, the duty story stands: no "home" for that night.
-	var again = MindDialogue.answer_night(g.w, n, 1)
+	var again = MindAnswers.answer_night(g.w, n, 1)
 	_check(not again.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "%s bluff: asked again, tells the duty, not home (%s)" % [bluff, _joined(again)])
 
 ## A Night Watch bluff's duty covers only the nights it made a watch report for.
@@ -90,7 +92,7 @@ func _nightwatch_owns_only_watched_nights() -> void:
 	w.evil_plan.fake_watch = {"1": "market"}
 	n.dialogue_memory["night_accounts"] = {"0": {"kind": "alibi", "home": true, "source": n.id}, "1": {"kind": "alibi", "home": true, "source": n.id}}
 	n.lied_nights = [0, 1]
-	var r = MindDialogue.answer_gift(w, n, 3)
+	var r = MindAnswers.answer_gift(w, n, 3)
 	var said: String = _joined(r)
 	_check(n.claimed_role == "nightwatch", "Night Watch bluff named")
 	_check("whatever I told you" in said and C.spoken_when(1, w.day) in said, "owns the watched night (%s)" % said)
@@ -100,15 +102,15 @@ func _nightwatch_owns_only_watched_nights() -> void:
 	var g2 = _game()
 	var n2 = _setup(g2, "nightwatch")
 	g2.w.evil_plan.fake_watch = {}
-	_check(not MindDialogue._bluff_outing(g2.w, n2, 1), "no watch report that night: no gift outing to back into")
+	_check(not MindPress._bluff_outing(g2.w, n2, 1), "no watch report that night: no gift outing to back into")
 
 func _non_walking_bluff_keeps_cover() -> void:
 	var g = _game()
 	var n = _setup(g, "seer")
-	_check(not MindDialogue._bluff_outing(g.w, n, 1), "a Seer bluff doesn't explain a night out")
+	_check(not MindPress._bluff_outing(g.w, n, 1), "a Seer bluff doesn't explain a night out")
 	n.lied_nights = [1]
 	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi", "home": true, "source": n.id}}
-	var r = MindDialogue.answer_gift(g.w, n, 3)
+	var r = MindAnswers.answer_gift(g.w, n, 3)
 	_check(not ("whatever I told you" in _joined(r)), "naming a non-walking bluff owns nothing")
 	_check(n.lied_nights == [1], "the lie stays on record")
 
@@ -126,7 +128,7 @@ func _good_walker_unchanged() -> void:
 	n.lied_nights = [1]
 	n.history[g.w.time_key(1, C.NIGHT)] = "night:market"
 	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi"}}
-	_check(not MindDialogue._bluff_outing(g.w, n, 1), "a good NPC never takes the evil path")
+	_check(not MindPress._bluff_outing(g.w, n, 1), "a good NPC never takes the evil path")
 	var soft = Mind.press(g.w, n, _sighting(n))
 	_check(n.claimed_role == "" and soft.facts.any(func(f): return f.kind == "alibi" and not f.get("home", true) and f.get("excuse", "") == "admit"), "good walker: first pressed, owns the night and keeps the gift, as evil does (%s)" % _joined(soft))
 	var reply = Mind.press(g.w, n, _sighting(n))
@@ -141,20 +143,20 @@ func _before_first_gift_night() -> void:
 	var w = g.w
 	var n = _setup(g, "warden")
 	n.history[w.time_key(0, C.NIGHT)] = "night:market"
-	_check(not MindDialogue._bluff_outing(w, n, 0), "warden bluff: night 0 isn't a gift outing")
+	_check(not MindPress._bluff_outing(w, n, 0), "warden bluff: night 0 isn't a gift outing")
 	n.lied_nights = [0]
 	n.dialogue_memory["night_accounts"] = {"0": {"kind": "alibi", "home": true, "source": n.id}}
-	var r = MindDialogue.answer_gift(w, n, 3)
+	var r = MindAnswers.answer_gift(w, n, 3)
 	_check(not ("whatever I told you" in _joined(r)) and n.lied_nights == [0], "warden bluff: naming the gift doesn't own night 0 (%s)" % _joined(r))
-	var again = MindDialogue.answer_night(w, n, 0)
+	var again = MindAnswers.answer_night(w, n, 0)
 	_check(again.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "warden bluff: night 0 still reads home (%s)" % _joined(again))
 	var g2 = _game()
 	var n2 = _setup(g2, "confessor")
 	n2.history[g2.w.time_key(0, C.NIGHT)] = "night:market"
 	n2.lied_nights = [0]
 	n2.dialogue_memory["night_accounts"] = {"0": {"kind": "alibi", "home": true, "source": n2.id}}
-	var r2 = MindDialogue.answer_gift(g2.w, n2, 3)
-	var again2 = MindDialogue.answer_night(g2.w, n2, 0)
+	var r2 = MindAnswers.answer_gift(g2.w, n2, 3)
+	var again2 = MindAnswers.answer_night(g2.w, n2, 0)
 	var owned: bool = "whatever I told you" in _joined(r2)
 	var says_out: bool = not again2.facts.any(func(f): return f.kind == "alibi" and f.get("home", false))
 	_check(owned == says_out, "confessor bluff: owns night 0 exactly when it then tells it as out (owned %s, out %s)" % [owned, says_out])

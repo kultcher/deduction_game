@@ -46,6 +46,36 @@ func _default_target() -> String:
 	return "constance" if view.people.any(func(p): return p.id == "constance") else view.people[0].id
 
 ## A premise with no person or claim yet: the player fills it in on the card.
+## Premise types retired on Nov 20 (#416), as a board saved before then now reads them:
+## "is a Minion" becomes "is evil" (the same person, a weaker claim the cards still argue),
+## and "holds their claimed gift" becomes "is good" (Michael's merge). "These reports
+## conflict" had no subject: it becomes an unclaimed premise, its cards and links kept, so
+## the player picks the claim again. Filed cases on the board are history and stay as filed.
+const RETIRED_PREMISES = {"minion": "evil", "role": "good"}
+
+## Brings a saved board's retired premise types up to date (RETIRED_PREMISES). Returns how
+## many premises changed. Run on every board read back from a save or an undo.
+func migrate_retired_premises() -> int:
+	var changed: int = 0
+	for id in nodes:
+		var n = nodes[id]
+		if not n is Dictionary or n.get("kind") != "premise" or not n.get("conclusion") is Dictionary:
+			continue
+		var c: Dictionary = n.conclusion
+		var t: String = str(c.get("type", ""))
+		if RETIRED_PREMISES.has(t):
+			c["type"] = RETIRED_PREMISES[t]
+			c.erase("role")
+			changed += 1
+		elif t == "conflict":
+			n["conclusion"] = {}
+			n["draft"] = true
+			n.erase("pick")
+			changed += 1
+	if changed > 0:
+		version += 1
+	return changed
+
 func add_blank_premise(at: Vector2) -> String:
 	var id: String = add_premise("", "support", at)
 	nodes[id]["draft"] = true
@@ -708,8 +738,6 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 						line.assumption_sets.append(nodes[id].positions.duplicate(true))
 			if not nodes[edge.from].conclusion.is_empty():
 				line["conclusion"] = nodes[edge.from].conclusion.duplicate(true)
-				if line.conclusion.type == "conflict":
-					line.relation = "quotes"
 			result.lines.append(line)
 		else:
 			direct.append_array(ancestors(edge.from))
@@ -747,13 +775,6 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 			result.reading_challenges[node.card] = {"mode": node.mode, "supports": _evidence(ancestors(id)).filter(func(card): return card != node.card)}
 			if node.has("attribution"):
 				result.reading_challenges[node.card]["attribution"] = node.attribution
-		elif node.kind == "premise" and node.conclusion.get("type") == "conflict":
-			var reports: Array = _evidence(ancestors(id))
-			for home in reports:
-				for out in reports:
-					var dispute = {"reports": [home, out], "challenged": home, "preferred": out}
-					if Graph.valid_dispute(view, dispute) and not result.disputes.has(dispute):
-						result.disputes.append(dispute)
 		if node.kind == "premise" and not node.positions.is_empty() and node.conclusion.get("at", result.conclusion.at) != result.conclusion.at:
 			result.temporal_positions.append({"at": node.conclusion.at, "positions": node.positions.duplicate(true)})
 	for edge in links:
@@ -798,9 +819,6 @@ func compile(root: String, include_arguments: bool = true) -> Dictionary:
 				trace_assessments.append(compiled_tc)
 	if not trace_assessments.is_empty():
 		result["trace_assessments"] = trace_assessments
-	if result.conclusion.type == "conflict":
-		result.conflict_scope = result.cards.duplicate()
-		result.disputes = [] # Ask whether contents conflict; do not resolve one first.
 	if include_arguments:
 		result["argument_root"] = root
 		result["arguments"] = []
@@ -892,8 +910,8 @@ func premise_offered(type: String, target: String) -> bool:
 	return minions.is_empty() or "scion" in minions
 
 const PREMISE_TEXT = {"evil": "is evil", "suspicious": "is suspicious", "good": "is good", "marked": "is Marked",
-	"conflict": "these reports conflict", "demon": "is the Demon", "minion": "is a Minion",
-	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "turned": "was turned by the Revenant's curse", "role": "holds their claimed gift",
+	"demon": "is the Demon",
+	"notdemon": "is not the Demon", "secret_mod": "holds a secret", "turned": "was turned by the Revenant's curse",
 	"notrole": "is bluffing their claimed gift", "lied": "lied about a reading", "truthful": "told the truth about a reading",
 	"misled": "was misled by a reading", "unreliable": "gave an unreliable reading", "inconsistent": "has readings that don't fit together"}
 
@@ -904,8 +922,6 @@ func title(id: String) -> String:
 			return "New premise"
 		if node.conclusion.is_empty():
 			return "Supporting evidence"
-		if node.conclusion.type == "conflict":
-			return "These reports conflict"
 		return "%s %s" % [Solver.person_name(view, node.conclusion.target), premise_text(str(node.conclusion.type), str(node.conclusion.get("target", "")))]
 	if node.kind == "contradiction":
 		return "Contradicted home alibi"
@@ -966,6 +982,7 @@ func restore(value, session) -> String:
 	candidate.version = int(value.version)
 	candidate.serial = int(value.serial)
 	candidate.selected = value.selected
+	candidate.migrate_retired_premises()
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]

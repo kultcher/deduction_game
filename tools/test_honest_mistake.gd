@@ -14,6 +14,8 @@
 ##   godot --headless --path . --script res://tools/test_honest_mistake.gd
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -58,7 +60,7 @@ func _game(sd: int, mode: String, poisoner: bool = true, causes: bool = true) ->
 	var reader = goods[0]
 	g.w.day = 2
 	var text: String = "%s's Archivist reading: one of %s and %s is the Poisoner" % [reader.name, goods[2].name, goods[3].name]
-	g.add_card({"kind": "info", "source": reader.id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
+	GameBoard.add_card(g, {"kind": "info", "source": reader.id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
@@ -83,7 +85,7 @@ func _hear(made: Dictionary, trust: float) -> Dictionary:
 	listener.trust = trust
 	listener.credibility = trust
 	g._workshop_evaluations.erase(listener.id + ":good")
-	g._evaluate_deduction(listener, g.board[made.filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[made.filed - 1], 1.0, false)
 	var plan: Dictionary = g._workshop_plans.get(listener.id + ":good", {})
 	if plan.is_empty():
 		return {}
@@ -95,7 +97,7 @@ func _hear(made: Dictionary, trust: float) -> Dictionary:
 
 func _card(g, source, role: String, day: int, data: Dictionary) -> String:
 	var text: String = "%s's %s reading, day %d: %s" % [source.name, role, day, JSON.stringify(data)]
-	g.add_card({"kind": "info", "source": source.id, "role": role, "day": day, "phase": 3 if role == "archivist" else 0, "data": data, "text": text})
+	GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day, "phase": 3 if role == "archivist" else 0, "data": data, "text": text})
 	return text
 
 
@@ -142,13 +144,13 @@ func _lie(sd: int) -> void:
 	check(plain > 0, "the plain case can be filed (%s)" % g.last_error)
 	if plain <= 0:
 		return
-	g._evaluate_deduction(listener, g.board[plain - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[plain - 1], 1.0, false)
 	var before: float = float(listener.suspicion.get(goods[0].id, 0.0))
 	var called: int = _file_lie(g, goods, arch, dowse, true)
 	check(called > 0, "a case calling the reading a lie can be filed (%s)" % g.last_error)
 	if called <= 0:
 		return
-	g._evaluate_deduction(listener, g.board[called - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[called - 1], 1.0, false)
 	var after: float = float(listener.suspicion.get(goods[0].id, 0.0))
 	print("lie call: the reader's suspicion %.3f -> %.3f" % [before, after])
 	check(after > before + 0.01, "a lie call against a contradicted reading raises its teller's suspicion (%.3f -> %.3f)" % [before, after])

@@ -6,6 +6,7 @@
 ##   godot --headless --path . --script res://tools/test_juror_listener.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -36,10 +37,10 @@ func _init() -> void:
 	var other = found.other
 	# The Minion bluffs the Seer and names the innocent; the real Seer read the same pair
 	# and saw no Demon there.
-	var lie: int = g.add_card({"kind": "claim", "subject": [minion.id], "role": "seer", "source": minion.id, "text": "%s claims the Seer" % minion.name})
-	var bluff: int = g.add_card({"kind": "info", "source": minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": true}, "text": "%s's Seer: %s or %s is the Demon" % [minion.name, innocent.name, other.name]})
-	var truth: int = g.add_card({"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": false}, "text": "%s's Seer: neither %s nor %s is the Demon" % [seer.name, innocent.name, other.name]})
-	g.add_card({"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+	var lie: int = GameBoard.add_card(g, {"kind": "claim", "subject": [minion.id], "role": "seer", "source": minion.id, "text": "%s claims the Seer" % minion.name})
+	var bluff: int = GameBoard.add_card(g, {"kind": "info", "source": minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": true}, "text": "%s's Seer: %s or %s is the Demon" % [minion.name, innocent.name, other.name]})
+	var truth: int = GameBoard.add_card(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": false}, "text": "%s's Seer: neither %s nor %s is the Demon" % [seer.name, innocent.name, other.name]})
+	GameBoard.add_card(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
@@ -183,8 +184,8 @@ func _init() -> void:
 func _draw_and_bare() -> void:
 	var f: Dictionary = _deal()
 	var g = f.g
-	var bluff: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": true}, "text": "B2"})
-	var truth: int = g.add_card({"kind": "info", "source": f.seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "T2"})
+	var bluff: int = GameBoard.add_card(g, {"kind": "info", "source": f.minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": true}, "text": "B2"})
+	var truth: int = GameBoard.add_card(g, {"kind": "info", "source": f.seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "T2"})
 	var view: Dictionary = Live.view(g)
 	var b_id: String = _id(g, view, bluff)
 	var t_id: String = _id(g, view, truth)
@@ -195,7 +196,7 @@ func _draw_and_bare() -> void:
 	uncited.reading_challenges = {b_id: {"mode": "lying", "supports": []}}
 	# A "no" reading is likely true from the start (a "yes" isn't: one in five, in ten), so a
 	# bare call on it has nothing to stand on.
-	var likely: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "N2"})
+	var likely: int = GameBoard.add_card(g, {"kind": "info", "source": f.minion.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "N2"})
 	var n_id: String = _id(g, Live.view(g), likely)
 	var alone = value.duplicate(true)
 	alone.conclusion = {"type": "good", "target": f.innocent.id, "at": view.alignment_epoch}
@@ -219,14 +220,14 @@ func _draw_and_bare() -> void:
 
 
 ## The badge's top tier reads the chance only where it settles the premise (Herald and Codex on
-## #358): accusing premises, "is good", "is not the Demon"; not "holds their gift" and the like.
+## #358): accusing premises, "is good", "is not the Demon"; not "is Marked" and the like.
 func _top_tier() -> void:
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var cat: Callable = func(type: String) -> String: return CaseEval.category(1.1, Live.top_tier_chance(type, 0.95))
 	check(cat.call("evil") == "damning" and cat.call("demon") == "damning" and cat.call("good") == "damning" and cat.call("notdemon") == "damning",
 		"at a 95% chance, an accusing premise, \"is good\" and \"is not the Demon\" reach the top tier")
-	check(cat.call("role") == "none" and cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
-		and cat.call("secret_mod") == "none" and cat.call("conflict") == "none",
+	check(cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
+		and cat.call("secret_mod") == "none",
 		"a clearing premise the target's goodness doesn't settle keeps the tier its strength earns")
 
 

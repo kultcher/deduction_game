@@ -44,22 +44,43 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Gravedigger's hidden lean): `baseline_82f6be4`
+### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
-`tools/golden/baseline_82f6be4/` is the capture from `claude/beadle-gravedigger-lean` at `82f6be4` (main at
-`07416df`, with #397 and #410). A good Gravedigger with no one hanged yet leans a little toward
-nominating and voting to hang (`GRAVEDIGGER.nothing_to_read_lean` 0.08, proposed). It's a hidden
-motive: a vote part and a logged nomination term.
-- **Divergence from `baseline_58cb94a`:**
-  - 54875 at record 50 (day 1), 692 at 92 (day 2) and 900 at 69 (day 2), each at the first vote
-    whose record carries the `gravedigger_nothing_to_read` part;
-  - 98933 at record 41 (day 1), a nomination;
-  - 42 is identical.
-- **Outcomes:**
-  - **54875:** day 3 hangs Agnes instead of Hollis (Edda on day 2 as before). No winner by day 4
-    either way.
-  - **692, 900 and 98933:** the same hangings; no winner by day 4.
-  - **42:** unchanged.
+`tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
+`d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
+term, constant and trace entries. Nothing wrote to it after #395.
+- **Divergence from `baseline_c712b7a`:** every seed from record 1, but only because each NPC record
+  (real and shadow) no longer carries the always-empty `spare_pref` key. With that key ignored
+  (`golden_diff.py --ignore engine,spare_pref`), all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, purge 6a, the headline reading removed): `baseline_c712b7a`
+
+`tools/golden/baseline_c712b7a/` is the capture from `claude/purge-6a-headline` at `c712b7a`
+(main at `bd4ac84`, with #405, merged in). A duller NPC no longer cites a reading it isn't
+attending to, and the headline nudge is gone from the jury. A cited reading's strength keeps
+its face-value term, so a reason feels as strong as before when it is cited.
+- **Divergence from `baseline_9fa5a74`:** 42 from record 91, 54875 from 191 and 900 from 52, all
+  in the day 2 meeting, where an NPC cites fewer or weaker reasons:
+  - 42: Isolde's second reason against Nisha weighs about half as much;
+  - 54875: Greta's shadow weighs her reason against Odette a little less;
+  - 900: Jory's first reason against Constance is a different card.
+
+  692 and 98933 are identical.
+- **Outcomes:** unchanged on every seed.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
+
+`tools/golden/baseline_9fa5a74/` is the capture from `claude/remove-muddler` at `9fa5a74` (main with
+#397 merged in). The default script never deals the Muddler. But `reason_attribution`'s defence
+view (an NPC weighing a disclosed fact) built its worlds from the whole secret roster, so NPCs
+weighed impossible Muddler worlds. Those are gone, and a few close weighings shift.
+- **Divergence from `baseline_58cb94a`:** 54875 at record 6 (day 1), 98933 at 22 (day 1), 42 at 44
+  (day 2) and 900 at 85 (day 3). 692 is identical.
+- **Outcomes:** unchanged on every seed. The same people are hanged on the same days, and no
+  seed has a winner by day 4.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 20, drops removed): `baseline_58cb94a`

@@ -5,6 +5,7 @@
 ##   godot --headless --path . --script res://tools/test_review_fixes.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -73,6 +74,22 @@ func _test_poisoner_candidates_group() -> void:
 	for r in [r1, r2]:
 		both.merge(ReadingChallenges.poisoner_candidates(view, r, {}, cards))
 	_check(one.keys() == ["a"] and both.has("a") and both.has("b"), "each reading's night names its own candidates; a group takes them all (%s)" % str(both.keys()))
+	# Only those seen on the way to the reader's home (Nov 20, as the reading's doubt already
+	# reads it): the reader lives on the Hill; "near" is out on the Market (their own block),
+	# "at" is out on the Hill, "far" is out on the Docks, off the road between, and "vague" is
+	# seen out with no block named.
+	var homes: Dictionary = {"people": [{"id": "src", "home": "hill"}, {"id": "near", "home": "market"}, {"id": "at", "home": "market"}, {"id": "far", "home": "market"}, {"id": "vague", "home": "market"}, {"id": "both", "home": "market"}]}
+	var rr: Dictionary = {"id": "rr", "kind": "report", "source": "src", "night": 1}
+	var seen_cards: Array = [rr,
+		{"id": "a1", "kind": "sighting", "night": 1, "subjects": ["near"], "block": "market"},
+		{"id": "a2", "kind": "sighting", "night": 1, "subjects": ["at"], "block": "hill"},
+		{"id": "a3", "kind": "sighting", "night": 1, "subjects": ["far"], "block": "docks"},
+		{"id": "a4", "kind": "sighting", "night": 1, "subjects": ["vague"]},
+		{"id": "a5", "kind": "sighting", "night": 1, "subjects": ["both"], "block": "hill"},
+		{"id": "a6", "kind": "sighting", "night": 1, "subjects": ["both"], "block": "docks"}]
+	var routed: Dictionary = ReadingChallenges.poisoner_candidates(homes, rr, {}, seen_cards)
+	_check(routed.has("near") and routed.has("at") and routed.has("vague") and not routed.has("far") and not routed.has("both"),
+		"a Poisoner candidate was seen on the way to the reader's home, not off it, and one sighting off the road rules them out (%s)" % str(routed.keys()))
 
 
 func _test_silenced_trace() -> void:
@@ -91,7 +108,7 @@ func _test_silenced_trace() -> void:
 	var before: Dictionary = g.known_haunts.duplicate(true)
 	var receipts: int = g.profile_receipts.size()
 	var victim = g.w.living_good()[1]
-	var t: int = g.add_card({"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
+	var t: int = GameBoard.add_card(g, {"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "a brass farthing", "text": "Scene trace: brass farthing (the Bakery or the Tavern)."})

@@ -626,26 +626,47 @@ static func _outing_explained(cards: Array, person: String, night: int, knowledg
 	return false
 
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
-## the reading was taken, with no gift or private errand the case gives for it. Nobody
-## without such a sighting is a candidate.
+## the reading was taken, on the way to the reader's home, with no gift or private errand the
+## case gives for it. Nobody without such a sighting is a candidate. A sighting off every road
+## from their home to the reader's doesn't make them one (the same test as
+## `_outing_poison_chance`, Nov 20); one with no block named still does.
 static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dictionary, cards: Array) -> Dictionary:
+	var C = preload("res://sim/content.gd")
+	var homes: Dictionary = {}
+	for p in view.get("people", []):
+		homes[str(p.get("id", ""))] = str(p.get("home", ""))
+	var reader_home: String = str(homes.get(str(report.get("source", "")), ""))
 	var night: int = int(report.get("night", -1))
 	if night < 0:
 		var obs: Dictionary = report.get("observed_at", {})
 		night = int(obs.get("day", 0)) - (1 if str(obs.get("phase", "")) == "morning" else 0)
 	var reasons: Dictionary = value.get("reasons", {})
-	var out: Dictionary = {}
+	# Every block each person was seen on that night ("" when none is named), then the same
+	# test as `_outing_poison_chance`: all of them on the way to the reader's home (Lantern on
+	# #429: one card off the road rules them out, as it does for the reading's doubt).
+	var blocks: Dictionary = {}
 	for c in cards:
 		var seen: Array = []
+		var blk: String = str(c.get("block", ""))
 		if c.get("kind", "") == "sighting" and int(c.get("night", -1)) == night:
 			seen = c.get("subjects", [c.get("subject", "")])
 		elif c.get("kind", "") == "report" and c.get("role", "") == "nightwatch" and int(c.get("night", -1)) == night:
 			seen = c.get("data", {}).get("seen", [])
+			blk = str(c.get("data", {}).get("block", blk))
 		for person in seen:
 			var key: String = "%s:%d" % [person, night]
 			if str(person) == "" or person == report.source or str(reasons.get(key, "")) in ["gift", "secret"]:
 				continue
-			out[person] = true
+			if not blocks.has(person):
+				blocks[person] = []
+			if blk != "" and blk not in blocks[person]:
+				blocks[person].append(blk)
+	var out: Dictionary = {}
+	for person in blocks:
+		var home: String = str(homes.get(str(person), ""))
+		if reader_home != "" and home != "" and not blocks[person].all(func(b): return b in C.route(home, reader_home)):
+			continue
+		out[person] = true
 	return out
 
 ## Count distinct alignment/modifier layouts, ignoring redundant Demon identities.

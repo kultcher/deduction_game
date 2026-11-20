@@ -5,6 +5,10 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const World = preload("res://sim/world.gd")
@@ -62,18 +66,18 @@ static func _look(g) -> void:
 	match g.state:
 		"day":
 			if g.moved:
-				g._observe()
+				GameDayNight._observe(g)
 			else:
-				g._phase_header()
+				GameConversation._phase_header(g)
 		"talk":
 			g._narr("You are talking with %s (%d questions left)." % [g.talk_with.name, g.questions_left])
 		"meeting":
 			var b: String = g.w.meeting["block"]
 			g._narr("The town meeting. On the block: %s." % ("%s (%d votes)" % [g.w.by_id[b].name, g.w.meeting["block_count"]] if b != "" else "nobody"))
 		"nomination":
-			g._show_nomination()
+			GameMeeting._show_nomination(g)
 		"night":
-			g._narr(g._night_homes())
+			g._narr(GameDayNight._night_homes(g))
 			g._narr("Night falls. %svigil <block> | sleep" % ("ward <name> | " if g.w.tools["ward"] > 0 else ""))
 		_:
 			g._narr("The case is over.")
@@ -93,14 +97,14 @@ static func _card_workers(g) -> void:
 		_mark_crowd(g, fact)
 		if not g._fact_keys.has(Mind.fact_id(fact)):
 			facts.append(fact)
-	g._facts(facts)
+	GameBoard._facts(g, facts)
 
 
 ## A sighting from afar (a worker, a conversation) also notes how many more people were at
 ## that place whom you couldn't make out, as the town view shows them ("2 more at the
 ## Bakery"): "crowd_unseen", and "+N people there" on the card (triage 8.2).
 static func _mark_crowd(g, fact: Dictionary) -> void:
-	var more: int = g.unseen_at(str(fact.get("loc", "")))
+	var more: int = GameDayNight.unseen_at(g, str(fact.get("loc", "")))
 	if more > 0:
 		fact["crowd_unseen"] = more
 		fact["text"] = str(fact.text).trim_suffix(".") + " (+%d %s there)." % [more, "person" if more == 1 else "people"]
@@ -126,7 +130,7 @@ static func _card_conversations(g) -> void:
 			_mark_crowd(g, seen_talking)
 			facts.append(seen_talking)
 	if not facts.is_empty():
-		g._facts(facts)
+		GameBoard._facts(g, facts)
 
 
 ## Current-phase view of the town: workers and conversations from anywhere; anyone else
@@ -156,7 +160,7 @@ static func _map(g) -> String:
 		var places: Array = g.w.locations_on(b).map(func(l): return g.w.loc_name(l).trim_prefix("the "))
 		var more: Array = []
 		for l in g.w.locations_on(b):
-			var u = g.unseen_at(l)
+			var u = GameDayNight.unseen_at(g, l)
 			if u > 0:
 				more.append("%d more at %s" % [u, g.w.loc_name(l).trim_prefix("the ")])
 		if not more.is_empty():
@@ -201,7 +205,7 @@ static func _profile(g, token: String) -> String:
 		return "Profile of whom?"
 	var out = PackedStringArray()
 	out.append("%s the %s: %s." % [n.name, n.occupation, n.blurb])
-	out.append("Works %s at %s; off work, %s; lives on %s.%s" % [C.phase_list(n.work_phases), g.w.loc_name(n.work), ("often at " + g.known_haunt_names(n.id)) if g.known_haunt_names(n.id) != "" else "nobody's told you where", C.block_name(n.home_block),
+	out.append("Works %s at %s; off work, %s; lives on %s.%s" % [C.phase_list(n.work_phases), g.w.loc_name(n.work), ("often at " + GameConversation.known_haunt_names(g, n.id)) if GameConversation.known_haunt_names(g, n.id) != "" else "nobody's told you where", C.block_name(n.home_block),
 		"" if n.alive else " %s%s." % [_death_text(n)[0].to_upper(), _death_text(n).substr(1)]])
 	var tl = PackedStringArray()
 	for t in C.TRAITS:
@@ -659,7 +663,7 @@ static func profile_data(g, id: String) -> Dictionary:
 		if n.traits.has(key):
 			traits[key] = n.traits[key]
 	return {"id": id, "name": n.name, "occupation": n.occupation, "blurb": n.blurb, "work": "%s at %s" % [C.phase_list(n.work_phases), g.w.loc_name(n.work)],
-		"haunts": g.known_haunt_names(id), "relationships": g.known_relationship_notes(id),
+		"haunts": GameConversation.known_haunt_names(g, id), "relationships": GameConversation.known_relationship_notes(g, id),
 		"home": C.block_name(n.home_block), "status": status, "traits": traits, "claim": claim,
 		"guess": g.guesses.get(id, {}), "note": g.notes.get(id, ""), "cards": g.filter_cards(id).map(func(c): return c["n"]),
 		"named": named_in(g, id)}

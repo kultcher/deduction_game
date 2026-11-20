@@ -8,6 +8,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindNomination = preload("res://sim/mind_nomination.gd")
 const Voices = preload("res://sim/dialogue_voices.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
 const FixtureSeeds = preload("res://tools/fixture_seeds.gd")
@@ -65,10 +66,10 @@ func _no_premise_line_after_a_spoken_sighting() -> void:
 	var n = w.living_good()[0]
 	var t = w.living_good()[1]
 	# Nobody on record against t: the reason list is empty.
-	var said: Dictionary = MindMeeting.nomination_case(w, n, t, "I saw them out in the street from my window last night")
+	var said: Dictionary = MindNomination.nomination_case(w, n, t, "I saw them out in the street from my window last night")
 	var statements: Array = said.lines.map(func(l): return str(l.get("statement", l.get("text", ""))) if l is Dictionary else str(l))
 	_check(not statements.any(func(x): return "can't say better than that" in x or "public premise" in x), "after 'I saw them out', no 'nothing to go on' line (%s)" % str(statements))
-	var bare: Dictionary = MindMeeting.nomination_case(w, n, t, "")
+	var bare: Dictionary = MindNomination.nomination_case(w, n, t, "")
 	_check(bare.lines.any(func(l): return l is Dictionary and ("can't say better than that" in str(l.get("statement", "")) or str(l.get("statement", "")) != "")), "with no reason at all, the 'nothing to go on' line still comes")
 
 ## Constance's three Lamplighter counts against Kiran: one reason, not three sentences.
@@ -84,21 +85,21 @@ func _same_gift_reasons_merge() -> void:
 		return {"eid": "info:%s:%d:%s" % [src, nd, role], "why": why, "kind": "public", "contrib": 0.1, "strength": 0.4, "entry": en}
 	var items: Array = [item.call(1, "lamplighter", "my count on the first night"), item.call(2, "lamplighter", "my count on the second night"),
 		item.call(3, "lamplighter", "my count last night"), {"eid": "resentment:x:y", "why": "they pushed to hang Ann", "kind": "public", "contrib": 0.05, "entry": {}}]
-	var out: Array = MindMeeting._merge_gift_reasons(w, n, items)
+	var out: Array = MindNomination._merge_gift_reasons(w, n, items)
 	_check(out.size() == 2, "three counts and a resentment become two reasons (%s)" % str(out.map(func(x): return x.why)))
 	_check(out[0].why == "what my gift showed me over several nights points at them", "three nights: 'over several nights' (%s)" % out[0].why)
 	_check(out[0].get("whys", []).size() == 3, "the merged reason keeps the three sentences it stands for")
-	var two: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(2, "lamplighter", "b")])
+	var two: Array = MindNomination._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(2, "lamplighter", "b")])
 	_check(two.size() == 1 and two[0].why == "what my gift showed me on two nights points at them", "two counts: 'on two nights' (%s)" % str(two.map(func(x): return x.why)))
-	var mixed: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(1, "seer", "b"), item.call(2, "lamplighter", "c", "someone_else")])
+	var mixed: Array = MindNomination._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(1, "seer", "b"), item.call(2, "lamplighter", "c", "someone_else")])
 	_check(mixed.size() == 3, "different gifts, or another teller's reading, stay separate")
 	# Only readings that were themselves reasons against the nominee fold in: a third count
 	# on record (and shared) that isn't among the cited reasons leaves the nights untouched.
 	n.info_log = [{"role": "lamplighter", "day": 1, "data": {}, "shared": true}, {"role": "lamplighter", "day": 2, "data": {}, "shared": true},
 		{"role": "lamplighter", "day": 3, "data": {}, "shared": true}]
-	var cited_two: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(2, "lamplighter", "b")])
+	var cited_two: Array = MindNomination._merge_gift_reasons(w, n, [item.call(1, "lamplighter", "a"), item.call(2, "lamplighter", "b")])
 	_check(cited_two.size() == 1 and cited_two[0].why.contains("on two nights") and cited_two[0].whys == ["a", "b"], "an uncited reading of the same gift isn't folded in (%s)" % str(cited_two.map(func(x): return x.why)))
-	var day_r: Array = MindMeeting._merge_gift_reasons(w, n, [item.call(1, "dowser", "a", n.id, 1), item.call(2, "dowser", "b", n.id, 1)])
+	var day_r: Array = MindNomination._merge_gift_reasons(w, n, [item.call(1, "dowser", "a", n.id, 1), item.call(2, "dowser", "b", n.id, 1)])
 	_check(day_r.size() == 2, "daytime readings aren't merged into 'nights'")
 
 ## A nomination that cites a sighting the nominator already told the town keeps it as a
@@ -121,7 +122,7 @@ func _spoken_facts_reach_the_pending_nomination() -> void:
 		n.beliefs.append(b)
 		if told:
 			n.told_to[MindMeeting._town_sighting_key(n, b)] = true
-		var cs: Dictionary = MindMeeting.nomination_case(w, n, t, "I saw them out in the street from my window last night")
+		var cs: Dictionary = MindNomination.nomination_case(w, n, t, "I saw them out in the street from my window last night")
 		var spoken: Array = cs.get("spoken_facts", [])
 		var new_cards: Array = cs.get("facts", []).filter(func(f): return f.get("kind", "") == "sighting")
 		if told:

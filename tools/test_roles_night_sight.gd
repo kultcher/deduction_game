@@ -2,6 +2,8 @@
 ## Merged from: test_chunk5_monitor_confessor, test_lamplighter_drops, test_roster, test_workshop_lamplighter, test_workshop_nightwatch_gravedigger.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -13,7 +15,6 @@ const Solver = preload("res://workshop/solver.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const History = preload("res://workshop/live_history.gd")
-const Muddler = preload("res://sim/muddler.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Tuning = preload("res://sim/tuning.gd")
 
@@ -108,7 +109,6 @@ func _run_chunk5_monitor_confessor() -> void:
 	_test_monitor_bluff_and_fake_medium()
 	_test_workshop_live_evidence_and_assessment()
 	_test_workshop_solver_monitor_and_confessor()
-	_test_muddler_monitor_and_confessor()
 	_test_maintenance_2026_11_05()
 
 
@@ -211,7 +211,7 @@ func _live() -> void:
 	g.new_case(692, 7)
 	g.w.dlog.detailed = false
 	var source = g.w.npcs[0]
-	var number = g.add_card({"kind": "info", "source": source.id, "subject": [], "role": "lamplighter", "day": 1, "phase": 3, "data": {"count": 3}, "text": "Three others out on N1"})
+	var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "subject": [], "role": "lamplighter", "day": 1, "phase": 3, "data": {"count": 3}, "text": "Three others out on N1"})
 	var board = Canvas.new(Live.view(g))
 	var root: String = board.selected
 	board.nodes[root].conclusion = {"type": "suspicious", "target": g.w.npcs[1].id, "at": "Original alignment"}
@@ -230,10 +230,10 @@ func _live() -> void:
 	listener.ledger = {}
 	listener.role = "seer"
 	listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "Lamplighter reaches real shared delivery")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "Lamplighter presentation is repeat stable")
 	check(board.add_modifier("e:" + id, "misled") == "", "Lamplighter permits supported reading challenges")
 	check(Live.status(g, board.compile(root)).ready, "Lamplighter modifier stays in live evaluator")
@@ -303,10 +303,10 @@ func workshop_nightwatch_grav__live() -> void:
 		g.w.dlog.detailed = false
 		var source = g.w.npcs[0]
 		var target = g.w.npcs[1]
-		g.add_card({"kind": "execution", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Public execution fixture"})
+		GameBoard.add_card(g, {"kind": "execution", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Public execution fixture"})
 		var data: Dictionary = {"block": "square", "seen": [target.id]} if role == "nightwatch" else {"executed": target.id, "role": "poisoner"}
 		var night: int = 0 if role == "nightwatch" else 1
-		var number = g.add_card({"kind": "info", "source": source.id, "role": role, "day": night, "phase": 3, "data": data, "text": "New supported report " + role})
+		var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": night, "phase": 3, "data": data, "text": "New supported report " + role})
 		var board = Canvas.new(Live.view(g))
 		var root: String = board.selected
 		board.nodes[root].conclusion.target = target.id
@@ -325,10 +325,10 @@ func workshop_nightwatch_grav__live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " actual NPC delivery uses shared evaluator")
 		var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-		response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, role + " repeat does not stack effects")
 		check(board.add_modifier("e:" + id, "misled") == "", role + " supports Misled attachment")
 		check(Live.status(g, board.compile(root)).ready, role + " attached modifier preserves live capability")
@@ -592,35 +592,6 @@ func _test_workshop_solver_monitor_and_confessor() -> void:
 
 ## Maintenance 2026-11-05: A3 (Monitor bluffer night-scoped), A8 (Confessor clears),
 ## A11 (Marked rolled once; misreads recorded false).
-func _test_muddler_monitor_and_confessor() -> void:
-	var g = Game.new()
-	g.log_dir = "user://test_logs"
-	g.new_case(66123, 7)
-	var w = g.w
-	var muddler = w.living_good()[0]
-	muddler.secret_mod = "muddler"
-
-	# Test Monitor mutation
-	var orig_mon = {
-		"role": "monitor",
-		"data": {"block": "square", "walked": true, "role": "seer"},
-		"text": "I learned that a Seer was abroad on Square last night"
-	}
-	var mut_mon = Muddler.mutate_reading_entry(w, muddler, "other", orig_mon)
-	_check(not mut_mon.is_empty(), "Muddler mutates Monitor reading")
-	_check(mut_mon.data.get("role") != "seer" or mut_mon.data.get("walked") == false, "Muddler changes Monitor role or walked flag")
-
-	# Test Confessor mutation
-	var orig_conf = {
-		"role": "confessor",
-		"data": {"target": "bob", "good": true},
-		"text": "I heard Bob's confession: their heart was pure and their spirit good"
-	}
-	var mut_conf = Muddler.mutate_reading_entry(w, muddler, "other", orig_conf)
-	_check(not mut_conf.is_empty(), "Muddler mutates Confessor reading")
-	_check(mut_conf.data.get("target") != "bob" or mut_conf.data.get("forgot") == true, "Muddler changes Confessor target or flips to forgot")
-
-
 func _test_maintenance_2026_11_05() -> void:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"

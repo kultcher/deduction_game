@@ -2,6 +2,8 @@
 ## view and moves cards into the Case Workshop sheet.
 ##   godot --headless --path . --script res://tools/test_ui.gd
 extends SceneTree
+const GameScreens = preload("res://game/game_screens.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const MainActions = preload("res://ui/main_actions.gd")
 const MainRoles = preload("res://ui/main_roles.gd")
 
@@ -187,7 +189,7 @@ func _init() -> void:
 	_check(g.guesses[id]["guess"] == "demon" and g.w.by_id[id].name in scene.theory_label.text, "profile guess updates the persistent banner")
 	scene._open_theory()
 	_check(cv.visible and cv.panels["profile"].visible and cv.prof_opt.get_item_metadata(cv.prof_opt.selected) == id, "Record theory opens the saved candidate's profile")
-	g.capture_prediction("before_night")
+	GameScreens.capture_prediction(g, "before_night")
 	g.w._finish("evil", "UI test")
 	scene._run("look")
 	scene.finish_streaming()
@@ -365,9 +367,7 @@ func _init() -> void:
 	_check(it0["n"] in cv.staged, "dropping it on the Workshop adds it")
 	cv.workshop.editor._undo_remove()
 	var ev_cards: Array = g.board.filter(func(c): return c["kind"] in ["sighting", "alibi", "info", "claim"]).map(func(c): return c["n"])
-	var dn = g.file_deduction({"type": "conflict", "a": "", "group": []}, ev_cards.slice(0, 2)) if ev_cards.size() >= 2 else -1
-	if dn < 0:
-		dn = g.file_deduction({"type": "evil", "a": g.w.npcs[0].id}, ev_cards.slice(0, 1))
+	var dn = GameBoard.file_deduction(g, {"type": "evil", "a": g.w.npcs[0].id}, ev_cards.slice(0, 1))
 	cv.refresh()
 	_check(cv.tray.deductions().size() >= 1, "a filed deduction waits in the tray")
 	bv._drop_data(bv.size / 2, {"pin": dn})

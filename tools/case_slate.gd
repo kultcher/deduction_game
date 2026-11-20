@@ -17,12 +17,15 @@
 ##   python3 tools/case_slate_report.py FILE [BASELINE]   (the report; against a baseline)
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const C = preload("res://sim/content.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 
 ## Name: what the case is. The order is the report's.
 const CASES = {
@@ -354,7 +357,7 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	w.meeting["block"] = ""
 	w.meeting["block_count"] = 0
 	if before_only:
-		return MindMeeting.would_vote(w, s.id)
+		return MindVote.would_vote(w, s.id)
 	var before_each: Dictionary = {}
 	for l in listeners:
 		before_each[l.id] = float(l.suspicion.get(s.id, 0.0))
@@ -379,14 +382,14 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var heard: Array = []
 	var blocked: Array = []
 	for l in listeners:
-		var res: Dictionary = g._evaluate_deduction(l, g.board[n_case - 1], 1.0, false)
+		var res: Dictionary = GamePresentation._evaluate_deduction(g, l, g.board[n_case - 1], 1.0, false)
 		if res.get("blocked", false):
 			blocked.append("%s: %s" % [l.id, " ".join(PackedStringArray(res.get("lines", [])))])
 		else:
 			heard.append(l)
 	var row: Dictionary = {"case": name, "seed": sd, "category": str(tj.get("category", "")) if tj.get("ready", false) else "not ready",
 		"lr": float(tj.get("lr", -1.0)), "town": _mean(heard, s) - _mean_before(heard, before_each), "listeners": heard.size()}
-	var votes_after: Dictionary = MindMeeting.would_vote(w, s.id)
+	var votes_after: Dictionary = MindVote.would_vote(w, s.id)
 	var votes_before: Dictionary = _one(sd, name, true)
 	row["yes_before"] = votes_before.yes.size()
 	row["yes_after"] = votes_after.yes.size()
@@ -446,6 +449,6 @@ func _mean(ls: Array, s) -> float:
 
 
 func _add(g, card: Dictionary) -> int:
-	var n: int = g.add_card(card)
+	var n: int = GameBoard.add_card(g, card)
 	_texts[n] = card.text
 	return n

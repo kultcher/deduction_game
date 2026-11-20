@@ -1,4 +1,5 @@
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Session = preload("res://workshop/session.gd")
 const Model = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -61,7 +62,7 @@ func _run() -> void:
 	var before = Jury.evaluate(board.view, no_alibi, neutral.duplicate(true))
 	var after = Jury.evaluate(board.view, accusation, neutral.duplicate(true))
 	check(after.agreement > before.agreement and after.assessment.compatible == before.assessment.compatible, "challenged alibi favors Constance without deleting the Nisha alternative")
-	check(after.response.contains("not proof") and after.support_model.factors.size() == 1, "false alibi remains one explicit circumstantial factor, not proof of evil")
+	check(after.response.contains("not proof") and after.case_eval.movement.size() == 1, "false alibi remains one explicit circumstantial factor, not proof of evil")
 	var duplicate_dispute = accusation.duplicate(true)
 	duplicate_dispute.disputes.append(duplicate_dispute.disputes[0].duplicate(true))
 	check(Jury.evaluate(board.view, duplicate_dispute, neutral.duplicate(true)).agreement == after.agreement, "repeating the same contradiction cannot multiply its factor")
@@ -72,7 +73,7 @@ func _run() -> void:
 	var impaired_watch = neutral.duplicate(true)
 	impaired_watch.reading_reliability[Solver.semantic_key(Solver.card_by_id(board.view, "watch1"))] = 0.0
 	var doubted = Jury.evaluate(board.view, watch_case, impaired_watch)
-	check(doubted.support_model.factors.is_empty() and doubted.support_model.quoted_cards == ["alibi1"], "rejecting the observation removes the false-alibi factor without endorsing the quoted alibi")
+	check(doubted.case_eval.movement.is_empty() and Solver.Graph.compile_case(board.view, watch_case).quoted_cards == ["alibi1"], "rejecting the observation removes the false-alibi factor without endorsing the quoted alibi")
 	var unframed = accusation.duplicate(true)
 	unframed.disputes = []
 	check(not Solver.analyze(board.view, unframed).movement_ok, "the same accounts still conflict if both are endorsed")
@@ -90,11 +91,6 @@ func _run() -> void:
 	var wrong_gift = Model.new(board.view)
 	wrong_gift.connect_cards("e:gift_claim", "e:alibi1")
 	check(wrong_gift.links[0].kind == "read_together", "a walking claim does not explain a report that the person stayed home")
-	var conflict_root = board.add_premise("constance", "conflict", Vector2.ZERO)
-	var merged: String = board.nodes.keys().filter(func(id): return board.nodes[id].kind == "contradiction")[0]
-	board.connect_cards(merged, conflict_root)
-	check(Solver.analyze(board.view, board.compile(conflict_root)).entailment == "forced" and Jury.evaluate(board.view, board.compile(conflict_root), neutral.duplicate(true)).suspicion_delta == 0, "a conflict premise can ask about the original accounts without assigning alignment guilt")
-	board.unlink(merged, conflict_root)
 	var group: String = board.nodes.keys().filter(func(id): return board.nodes[id].kind == "contradiction")[0]
 	check(board.nodes["e:alibi1"].get("merged") == group and board.nodes["e:vigil1"].get("merged") == group, "merged contradiction retains both hidden original copies")
 	var saved = JSON.parse_string(JSON.stringify(board.export_data()))
@@ -127,10 +123,10 @@ func _ui() -> void:
 	g.new_case(5, 10)
 	g.w.day = 2
 	var goods: Array = g.w.living_good()
-	var reading: int = g.add_card({"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3,
+	var reading: int = GameBoard.add_card(g, {"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3,
 		"data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": "%s's Archivist reading: one of %s and %s is the Poisoner" % [goods[0].name, goods[2].name, goods[3].name]})
 	var group: Array = goods.slice(1, 5).map(func(n): return n.id)
-	var dowse: int = g.add_card({"kind": "info", "source": goods[5].id, "role": "dowser", "day": 1, "phase": 1,
+	var dowse: int = GameBoard.add_card(g, {"kind": "info", "source": goods[5].id, "role": "dowser", "day": 1, "phase": 1,
 		"data": {"group": group, "count": 2, "block": "market"}, "text": "%s's Dowser reading: two evil among four on the Market" % goods[5].name})
 	var scene = Editor.new()
 	scene.g = g

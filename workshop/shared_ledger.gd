@@ -320,7 +320,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			prepared.listener.knowledge["presented_reports"] = focus.filter(func(id): return facts.has(id))
 			prepared.listener.knowledge.presented_reports.sort()
 		# Per-card source reliability (Phase 3.2): each spoken card carries its own
-		# source/teller/player trust into CaseEval and _headline individually, so a low-trust
+		# source/teller/player trust into CaseEval individually, so a low-trust
 		# rumor never dilutes a firsthand clue and a firsthand clue never launders a rumor.
 		# Raw NPC discoveries never depend on player credibility unless heard solely via player.
 		var player_cred: float = clampf(float(prepared.listener.trust), 0.0, 1.0)
@@ -432,7 +432,7 @@ static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) 
 	if snapshot.board_map.has(str(number)):
 		return [snapshot.board_map[str(number)]]
 	var arguments: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
-	if arguments.is_empty() or arguments[0].conclusion.get("type") == "conflict":
+	if arguments.is_empty():
 		return []
 	if arguments[0].has("workshop_case"):
 		var value: Dictionary = arguments[0].workshop_case
@@ -509,8 +509,6 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 		for id in listener.knowledge.own_reports:
 			if id not in scoped.case.cards:
 				scoped.case.cards.append(id)
-	if scoped.case.conclusion.type == "conflict":
-		listener.knowledge.own_reports = [] # Test the quoted set, not an unrelated background inconsistency.
 	# The reply's effects are never applied: the union evaluated in the belief refresh
 	# owns them. Reuse its commitments (fixed decisions above) and compute only the
 	# headline's own effect, which the reply text reads.

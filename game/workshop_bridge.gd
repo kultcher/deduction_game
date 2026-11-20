@@ -1,6 +1,7 @@
 ## Read-only boundary between simulation state and the portable evidence contract.
 ## Never pass the World, real evil mind, hidden gift causes or developer log onward.
 extends RefCounted
+const GameBoard = preload("res://game/game_board.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -31,7 +32,7 @@ static func script_demons(g) -> Array:
 
 
 static func capture(g, selected: Array, listener_id: String = "", venue: String = "private", cover_mind = null) -> Dictionary:
-	var now = {"day": g.w.day, "phase": g._phase_now()}
+	var now = {"day": g.w.day, "phase": GameBoard._phase_now(g)}
 	var input = {"case_id": "case:%d:%d" % [g.w.seed_value, g.w.n_npcs], "now": now, "venue": venue,
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
@@ -75,7 +76,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		if input.root == 0:
 			input.root = number
 	for number in numbers:
-		var card: Dictionary = g.receipt_by_number(number)
+		var card: Dictionary = GameBoard.receipt_by_number(g, number)
 		if not card.is_empty() and card.get("kind") != "deduction":
 			input.selected.append(number)
 			input.receipts.append({"card": card, "private": false})
@@ -101,7 +102,7 @@ static func _collect(g, number, numbers: Array, arguments: Array, issues: Array,
 	if not number is int or number == 0:
 		issues.append({"code": "missing_card", "fact": str(number), "detail": "Selected evidence is absent or deleted."})
 		return
-	var card: Dictionary = g.receipt_by_number(number)
+	var card: Dictionary = GameBoard.receipt_by_number(g, number)
 	if card.is_empty() or card.get("deleted", false):
 		issues.append({"code": "missing_card", "fact": str(number), "detail": "Selected evidence is absent or deleted."})
 		return
@@ -113,7 +114,7 @@ static func _collect(g, number, numbers: Array, arguments: Array, issues: Array,
 	numbers.append(number)
 	if card.get("kind") == "deduction":
 		var conclusion = {}
-		for key in ["type", "a", "b", "role", "night", "mod", "group", "card"]:
+		for key in ["type", "a", "b", "role", "night", "mod", "card"]:
 			if card.get("conclusion", {}).has(key):
 				var value = card.conclusion[key]
 				conclusion[key] = value.duplicate(true) if value is Array or value is Dictionary else value
@@ -149,7 +150,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 		"confidence_mode": n.workshop_state.get("confidence_mode", "scale"),
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
 		"source_doubt": n.workshop_state.get("source_doubt", {}).duplicate(true),
-		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
+		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true)}
 	# The connections model: the day, what this mind's core held at its last refresh (so
 	# the core is rebuilt at dawn and otherwise only tests newly held cards), and the cards
 	# NPC nominators cited to it (stored cases; Shared.prepare adds the player's
@@ -158,26 +159,6 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	input.listener["connections"] = {"day": int(now.get("day", -1)), "core": remembered.get("core", {}).duplicate(true),
 		"nominations": remembered.get("nominations", []).duplicate(true)}
 	input.listener["disowned_reports"] = []
-	for entry in n.ledger.values():
-		if entry.get("meta", {}).get("kind", "") not in ["reading", "arg", "tell"]:
-			continue
-		var supports: Array = entry.get("meta", {}).get("supports", []).duplicate(true)
-		for justification in entry.get("justs", []):
-			for support in justification.get("supports", []):
-				if support not in supports:
-					supports.append(support.duplicate())
-		var id: String = entry.get("eid", "")
-		var relation: Array = entry.get("rel", []).duplicate(true)
-		var receipts: Array = entry.meta.get("workshop_receipts", {}).values()
-		if not receipts.is_empty() and receipts.all(func(receipt): return receipt.get("content", {}).get("anonymous", false)):
-			# The native compatibility key contains referee identity. It is not
-			# permitted provenance for an unnamed public report.
-			id = "anonymous:" + str(receipts[0].id)
-			if not relation.is_empty():
-				relation[0] = ""
-			supports = []
-		input.listener.legacy_evidence.append({"id": id, "kind": entry.meta.kind,
-			"rel": relation, "supports": supports})
 	for key in n.history:
 		if str(key).ends_with(":3"):
 			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")

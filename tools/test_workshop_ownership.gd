@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -27,8 +29,8 @@ func _init() -> void:
 	var source = g.w.npcs.filter(func(p): return p != n)[0]
 	var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
 	var entry = {"day": 1, "phase": 0, "role": "dowser", "data": {"group": [target.id, source.id], "count": 2}}
-	var card = g.add_card({"kind": "info", "source": source.id, "day": 1, "phase": 0, "role": "dowser", "data": entry.data, "text": "Two evil pings"})
-	var ded = g.file_deduction({"type": "evil", "a": target.id}, [card])
+	var card = GameBoard.add_card(g, {"kind": "info", "source": source.id, "day": 1, "phase": 0, "role": "dowser", "data": entry.data, "text": "Two evil pings"})
+	var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [card])
 	var native_before = n.suspicion.duplicate(true)
 	Mind.apply_info(g.w, n, source, entry, 0.5)
 	var eid = Mind.info_eid(source.id, entry)
@@ -39,7 +41,7 @@ func _init() -> void:
 	var once = n.suspicion.duplicate(true)
 	Mind.refresh_beliefs(g.w, n, "repeat")
 	check(_close(once, n.suspicion), "unchanged reassessment cannot feed its accusation into credibility")
-	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 	var presented = n.suspicion.duplicate(true)
 	check(n.workshop_state.active, "a supported deduction keeps joint ownership active")
 	check(n.workshop_state.facts.size() == 1, "a raw reading and its case share one original fact")
@@ -47,12 +49,12 @@ func _init() -> void:
 	# fixed while checking ownership across repetition and venues.
 	var fixed_trust = n.trust
 	for venue in ["meeting", "nomination", "private"]:
-		g._evaluate_deduction(n, g.board[ded - 1], 0.5, false, venue)
+		GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 0.5, false, venue)
 		n.trust = fixed_trust
 		Mind.refresh_beliefs(g.w, n, "fixed social inputs")
 	check(_close(presented, n.suspicion), "repeating the same evidence across venues does not stack")
-	var other_ded = g.file_deduction({"type": "evil", "a": source.id}, [card])
-	g._evaluate_deduction(n, g.board[other_ded - 1], 0.6, false, "meeting")
+	var other_ded = GameBoard.file_deduction(g, {"type": "evil", "a": source.id}, [card])
+	GamePresentation._evaluate_deduction(g, n, g.board[other_ded - 1], 0.6, false, "meeting")
 	n.trust = fixed_trust
 	Mind.refresh_beliefs(g.w, n, "shared roots")
 	check(_close(presented, n.suspicion), "a second case sharing the report adds no second award")
@@ -76,13 +78,13 @@ func _init() -> void:
 	n.ledger = {}
 	n.workshop_state = {}
 	n.suspicion = native_before.duplicate(true)
-	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 	check(n.workshop_state.active and n.workshop_state.facts.size() == 1, "player-only evidence can acquire one owner")
 	g.workshop_retract(ded, n.id)
 	check(n.workshop_state.active and n.workshop_state.facts.is_empty(), "withdrawing the sole endorsement removes its exclusive evidence")
 	check(_close(n.suspicion, native_before), "sole-case retraction withdraws the old argument effect too")
 	# Clamp boundary belongs to the new layer, not its independent baseline.
-	g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 	Mind.adjust(g.w, n, target.id, 2.0, "independent saturation", "", false)
 	# The shared layer's own vector sits on top of the independent baseline, clamped:
 	# the independent change stays reversible even above the displayed upper bound.
@@ -117,7 +119,7 @@ func _init() -> void:
 	old_ledger.erase(eid)
 	old_ledger.erase(variant_eid)
 	old_ledger[coarse] = old
-	var ambiguous = Shared.prepare(g.workshop_snapshot([], n.id), {}, old_ledger)
+	var ambiguous = Shared.prepare(GamePresentation.workshop_snapshot(g, [], n.id), {}, old_ledger)
 	check(not ambiguous.ready and ambiguous.issues.any(func(issue): return "Unresolved original reading identity" in issue), "an ambiguous old coarse record still requires explicit fallback")
 	# A ghost is neither a particular NPC nor an oracle over hidden truth.
 	var before_ghost = _state(g)
@@ -131,7 +133,7 @@ func _init() -> void:
 		p.suspicion = {}
 	var changed = g.workshop_ghost_preview(ded)
 	check(ghost.proposal.effects == changed.proposal.effects, "ghost ignores hidden truth and all actual NPC social inputs")
-	var profile = Ghost.profile(g.workshop_snapshot([ded]).people)
+	var profile = Ghost.profile(GamePresentation.workshop_snapshot(g, [ded]).people)
 	check(profile.knowledge.self == "" and profile.knowledge.good.is_empty() and profile.knowledge.own_role == "", "ghost manufactures no self-good or own-role certainty")
 	var scenario = Scenario.generate(692)
 	var canvas = Canvas.new(scenario.public_view)
@@ -162,14 +164,14 @@ func _advanced() -> void:
 		n.role = "warden"
 		var source = g.w.npcs.filter(func(p): return p != n)[0]
 		var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
-		var card = g.add_card({"kind": "info", "source": source.id, "day": 1, "phase": 0, "role": "dowser", "data": {"group": [source.id, target.id], "count": 2}, "text": "First report"})
-		var ded = g.file_deduction({"type": "evil", "a": target.id}, [card])
-		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		var card = GameBoard.add_card(g, {"kind": "info", "source": source.id, "day": 1, "phase": 0, "role": "dowser", "data": {"group": [source.id, target.id], "count": 2}, "text": "First report"})
+		var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [card])
+		GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 		check(n.workshop_state.active, "%d-person town supports a shared presentation" % size)
 		var previous_fact: String = n.workshop_state.facts[0]
-		var other = g.add_card({"kind": "info", "source": source.id, "day": 2, "phase": 0, "role": "dowser", "data": {"group": [source.id, target.id], "count": 0}, "text": "Later report"})
+		var other = GameBoard.add_card(g, {"kind": "info", "source": source.id, "day": 2, "phase": 0, "role": "dowser", "data": {"group": [source.id, target.id], "count": 0}, "text": "Later report"})
 		g.board[ded - 1].supports = [other]
-		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 		check(n.workshop_state.active and n.workshop_state.facts.size() == 1 and previous_fact not in n.workshop_state.facts and n.workshop_state.facts[0] == Shared.Evidence.normalize_card(g.board[other - 1]).id, "re-presenting a revised case replaces its exclusive old evidence in a %d-person town even when bounded conviction is unresolved" % size)
 		# The report itself can also be learned independently after presentation.
 		Mind.apply_info(g.w, n, source, {"day": 2, "phase": 0, "role": "dowser", "data": g.board[other - 1].data}, 0.6)
@@ -200,10 +202,10 @@ func _advanced() -> void:
 				sh.role = "warden"
 				for id in sh.suspicion:
 					sh.suspicion[id] = 0.3)
-			g._evaluate_deduction(evil, g.board[ded - 1], 0.6, false)
+			GamePresentation._evaluate_deduction(g, evil, g.board[ded - 1], 0.6, false)
 			check(evil.suspicion == real_suspicion, "shared inference never modifies the real evil mind")
 			check(evil.shadow.workshop_state.get("active", false), "evil presentation routes shared state to the good cover")
-			var input = g.workshop_snapshot([ded], n.id)
+			var input = GamePresentation.workshop_snapshot(g, [ded], n.id)
 			var uncertified = n.ledger.duplicate(true)
 			uncertified.erase("test:mixed-tell")
 			for e in uncertified.values():
@@ -223,9 +225,9 @@ func _advanced() -> void:
 			var small = n.ledger.values()[0]
 			check(n.workshop_state.active and small.effects.is_empty(), "ownership activates cleanly on receipt-only reading entries")
 			Mind.adjust(g.w, n, target.id, -3.0, "lower-bound regression", "", false)
-			var unclamped_plan = Shared.prepare(g.workshop_snapshot([], n.id), {}, n.ledger)
+			var unclamped_plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], n.id), {}, n.ledger)
 			check(unclamped_plan.ready and is_zero_approx(Mind.susp(n, target.id)), "lower-bound totals no longer block reversible ownership")
-			var wide_input = g.workshop_snapshot([ded], n.id)
+			var wide_input = GamePresentation.workshop_snapshot(g, [ded], n.id)
 			for i in range(9):
 				var added = Shared.reading(source.id, {"day": i + 3, "phase": 0, "role": "dowser", "data": {"group": [target.id], "count": 1}})
 				wide_input.evidence.append(added)

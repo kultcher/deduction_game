@@ -60,7 +60,7 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		if id not in assigned:
 			included.append(id)
 	result.cards = roots(value, included)
-	if view.has("movement_experiment") or view.get("live_activity", false):
+	if view.get("live_activity", false):
 		# Choosing a citation in Answer is an explicit evidence reference, just like
 		# drawing a string from the claim. It enters the ordinary attention budget.
 		for key in result.get("citations", {}):
@@ -88,7 +88,7 @@ static func compile_case(view: Dictionary, value: Dictionary) -> Dictionary:
 		var alibi = find_card(view, dispute.challenged)
 		if alibi.id not in result.quoted_cards:
 			result.quoted_cards.append(alibi.id)
-		if view.has("movement_experiment") or view.get("live_activity", false):
+		if view.get("live_activity", false):
 			continue # Outings already enter one shared likelihood; no extra 2x award.
 		factor_lines.append({"relation": "supports", "cards": dispute.reports, "label": "Challenged home alibi: " + alibi.subject,
 			"test_factor": {"target": alibi.subject, "log2_ratio": 1.0, "origin": "false_alibi"}})

@@ -5,6 +5,10 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -90,7 +94,7 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			if l == "":
 				var lost = g.find_npc(rest)
 				if lost != null and lost.alive:
-					var hs: String = g.known_haunt_names(lost.id)
+					var hs: String = GameConversation.known_haunt_names(g, lost.id)
 					g._err("You can't see where %s is this %s. Try their work (%s), %s, or their home block (%s)." % [lost.name,
 						g.w.phase_name().to_lower(), g.w.loc_name(lost.work), ("where they often go (%s)" % hs) if hs != "" else "where they go off work (ask around)", C.block_name(lost.home_block)])
 				else:
@@ -162,12 +166,12 @@ static func _day_command(g, verb: String, rest: String) -> void:
 				# The Breathstealer took their voice: no greeting, no remarks.
 				g._narr("%s meets your eye and touches their throat: no words come. They can't speak until tomorrow evening, but they can read what you show them." % n.name)
 			else:
-				g._line(Mind.greeting_line(g.w, n, g._greeting_context(n)))
+				g._line(Mind.greeting_line(g.w, n, GameConversation.greeting_context(g, n)))
 			if not n.silenced and not n.remarks.is_empty() and not n.is_evil():
 				var said: String = n.remarks.pop_front()
 				g.w.dlog.think(n.id, "reconsider", "Tells the player they've come round to %s." % said)
 				g._lines([Mind.reconsideration_line(n, said)])
-			g._narr("You draw %s aside. %s" % [n.name, g._talk_options(n)])
+			g._narr("You draw %s aside. %s" % [n.name, GameConversation._talk_options(g, n)])
 		"search", "s":
 			if not g.moved:
 				g._err("First choose where to spend this phase ('go <place>').")
@@ -193,7 +197,7 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			g.w.finish_evening_conversations("")
 			var r: Dictionary = Social.tavern_evening_gossip(g)
 			g._lines(r["lines"])
-			g._facts(r["facts"])
+			GameBoard._facts(g, r["facts"])
 			_apply_tavern_profile_gossip(g, r)
 			_end_phase(g, "")
 		"records", "register", "town_hall", "inspect":
@@ -217,7 +221,7 @@ static func _day_command(g, verb: String, rest: String) -> void:
 			var rem: int = int(th["uses_left"])
 			g._narr("Combing through the Town Hall's parish ledgers, you narrow the town's gifts: either the %s or the %s is in play here, not both. (%d consultation%s left this case.)" %
 				[C.role_name(pair[0]), C.role_name(pair[1]), rem, "" if rem == 1 else "s"])
-			g._facts([{
+			GameBoard._facts(g, [{
 				"kind": "town_hall", "subject": [], "roles": pair.duplicate(), "source": "player",
 				"day": g.w.day, "phase": g.w.phase, "class": "concrete",
 				"text": "Town Hall records: either the %s or the %s is in town, not both." % [C.role_name(pair[0]), C.role_name(pair[1])],
@@ -262,7 +266,7 @@ static func _observe(g) -> void:
 			g._narr("You knock, but nobody answers.")
 		else:
 			g._narr("You knock, and %s opens the door." % here[0].name)
-			g._facts([{"kind": "sighting", "subject": [here[0].id], "block": g.w.loc_block(l), "loc": l, "day": g.w.day, "phase": g.w.phase,
+			GameBoard._facts(g, [{"kind": "sighting", "subject": [here[0].id], "block": g.w.loc_block(l), "loc": l, "day": g.w.day, "phase": g.w.phase,
 				"source": "player", "text": "You found %s at home, day %d %s." % [here[0].name, g.w.day, g.w.phase_name()]}])
 	elif l == "town_hall":
 		g._narr("The clerks' desks stand quiet; the parish registers and gift rolls are kept here.")
@@ -273,7 +277,7 @@ static func _observe(g) -> void:
 		# One card per person: being in the same place isn't being together (a conversation
 		# you see gets its own card linking the two).
 		for n in here:
-			g._facts([{"kind": "sighting", "subject": [n.id], "block": g.w.loc_block(l),
+			GameBoard._facts(g, [{"kind": "sighting", "subject": [n.id], "block": g.w.loc_block(l),
 				"loc": l, "day": g.w.day, "phase": g.w.phase, "source": "player",
 				"text": "You saw %s at %s, day %d %s." % [n.name, g.w.loc_name(l), g.w.day, g.w.phase_name()]}])
 	for other in g.w.locations_on(g.w.loc_block(l)):
@@ -283,7 +287,7 @@ static func _observe(g) -> void:
 		if not there.is_empty():
 			g._narr("Nearby, at %s: %s." % [g.w.loc_name(other), _who_here(g, other)])
 			for x in there:
-				g._facts([{"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(other), "loc": other, "day": g.w.day,
+				GameBoard._facts(g, [{"kind": "sighting", "subject": [x.id], "block": g.w.loc_block(other), "loc": other, "day": g.w.day,
 					"phase": g.w.phase, "source": "player", "text": "You saw %s nearby at %s, day %d %s." %
 					[x.name, g.w.loc_name(other), g.w.day, g.w.phase_name()]}])
 	_note_watch(g, l)
@@ -310,9 +314,9 @@ static func _apply_tavern_profile_gossip(g, r: Dictionary) -> void:
 			continue
 		if not (loc_id in g.known_haunts.get(pid, [])):
 			g.known_haunts[pid] = g.known_haunts.get(pid, []) + [loc_id]
-		g.add_profile_receipt({
+		GameBoard.add_profile_receipt(g, {
 			"kind": "haunt", "subject": [pid], "source": "town", "loc": loc_id, "locs": [loc_id],
-			"day": g.w.day, "phase": g._phase_now(), "class": "circumstantial",
+			"day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial",
 			"text": "Word about town says %s often goes to %s when off work." % [g.w.by_id[pid].name, g.w.loc_name(loc_id)],
 		})
 		g.w.dlog.add("player_learns_haunts", "rumour", pid, {"locs": [loc_id], "via": "tavern_gossip"})
@@ -330,9 +334,9 @@ static func _apply_tavern_profile_gossip(g, r: Dictionary) -> void:
 		g.known_relationships[bkey] = {"kind": bkind, "people": people.duplicate(), "source": "town", "text": note}
 		var sorted_p: Array = people.duplicate()
 		sorted_p.sort()
-		g.add_profile_receipt({
+		GameBoard.add_profile_receipt(g, {
 			"kind": "bond", "subject": sorted_p, "bond_kind": bkind, "source": "town",
-			"day": g.w.day, "phase": g._phase_now(), "class": "circumstantial", "text": note,
+			"day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": note,
 		})
 		g.w.dlog.add("player_learns_relationship", "rumour", people[0], {"kind": bkind, "people": people, "via": "tavern_gossip"})
 
@@ -350,7 +354,7 @@ static func _search(g) -> void:
 			var tb: String = sc.get("trace_block", sc["block"])
 			g._narr("Near the body you find %s. Whoever did this most likely spent the evening of day %d on %s." % [C.BLOCKS[tb]["trace"], sc["day"], C.block_name(tb)])
 			g.w.dlog.add("player_search", "player", sc["victim"], {"trace_block": tb, "trace_true": sc.get("trace_true", true)}, sc.get("why", ""))
-			g._facts([{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
+			GameBoard._facts(g, [{"kind": "trace", "subject": [], "block": tb, "source": "evidence", "day": sc["day"], "phase": C.EVENING,
 				"scene": l, "scene_block": sc.block, "victim": sc.victim, "crime_night": sc.day, "material": tb,
 				"text": "Trace at %s's death scene: the killer most likely spent the evening of day %d on %s." %
 					[g.w.by_id[sc["victim"]].name, sc["day"], C.block_name(tb)]}])
@@ -382,7 +386,7 @@ static func _search(g) -> void:
 				"text": tr.get("card_text", ""),
 			})
 		g.w.dlog.add("player_search", "player", sc["victim"], {"traces": scene_traces.map(func(t): return t.get("trace_key", "")), "trace_true": sc.get("trace_true", true)}, sc.get("why", ""))
-		g._facts(new_cards)
+		GameBoard._facts(g, new_cards)
 		return
 	if l.begins_with("home_"):
 		g._narr("You can't search someone's home from their doorstep.")
@@ -394,11 +398,11 @@ static func _search(g) -> void:
 		var rv_alive: bool = g.w.by_id.has(tt.get("owner", "")) and g.w.by_id[tt["owner"]].alive
 		g._narr("Wedged out of sight at %s you find a crude totem of bone and twine, caked with %s. It reeks of the grave. You burn it.%s" % [g.w.loc_name(l), mat, " The Revenant's spirit will seek a new hiding place." if rv_alive else ""])
 		g._headline("totem", "A Revenant's totem is burned", "Its spirit will seek a new hiding place." if rv_alive else "Its maker is already dead.")
-		g._facts([{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": g.w.day, "phase": g.w.phase,
+		GameBoard._facts(g, [{"kind": "totem", "subject": [], "block": tt["material"], "loc": l, "source": "evidence", "day": g.w.day, "phase": g.w.phase,
 			"text": "A Revenant's totem, hidden at %s and found on day %d, caked with %s (from %s).%s" % [g.w.loc_name(l), g.w.day, mat, C.block_name(tt["material"]), " The Revenant's spirit will seek a new hiding place." if rv_alive else ""]}])
 		if tt.get("freed", "") != "":
 			g._narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
-			g._facts([{"kind": "curse_lifted", "subject": [], "source": "player", "day": g.w.day, "phase": g.w.phase,
+			GameBoard._facts(g, [{"kind": "curse_lifted", "subject": [], "source": "player", "day": g.w.day, "phase": g.w.phase,
 				"text": "Day %d: the totem burned and the Revenant's curse lifted. The turned soul is good again." % g.w.day}])
 	var regular: bool = _search_regulars(g, l)
 	if tt.is_empty():
@@ -474,7 +478,7 @@ static func _record_day_log(g, day: int) -> int:
 		return 0
 	var parts: Array = watches.map(func(e): return "%s: %s" % [str(e.phase), C.block_name(str(e.block))])
 	var last_phase: int = C.PHASES.map(func(p): return p.to_lower()).find(str(watches[-1].phase))
-	return g.add_profile_receipt({"kind": "watch_log", "subject": [], "source": "player", "day": day, "phase": last_phase,
+	return GameBoard.add_profile_receipt(g, {"kind": "watch_log", "subject": [], "source": "player", "day": day, "phase": last_phase,
 		"watches": watches, "class": "concrete",
 		"text": "Your record of who was at each place on day %d (%s)." % [day, ", ".join(PackedStringArray(parts))]})
 
@@ -501,8 +505,8 @@ static func _note_haunt_sightings(g, l: String) -> void:
 static func _learn_haunt(g, n, l: String, source: String, text: String, via: String) -> void:
 	if not (l in g.known_haunts.get(n.id, [])):
 		g.known_haunts[n.id] = g.known_haunts.get(n.id, []) + [l]
-	g.add_profile_receipt({"kind": "haunt", "subject": [n.id], "source": source, "loc": l, "locs": [l],
-		"block": g.w.loc_block(l), "day": g.w.day, "phase": g._phase_now(), "class": "circumstantial", "text": text})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [n.id], "source": source, "loc": l, "locs": [l],
+		"block": g.w.loc_block(l), "day": g.w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": text})
 	g.w.dlog.add("player_learns_haunts", "player", n.id, {"locs": [l], "via": via})
 
 
@@ -515,10 +519,10 @@ static func _end_phase(g, talked_id: String) -> void:
 	g.approached_id = ""
 	g.approached_loc = ""
 	if g.w.end_day_phase(talked_id):
-		g._phase_header()
-		g._maybe_approach(talked_id)
+		GameConversation._phase_header(g)
+		GameConversation._maybe_approach(g, talked_id)
 	else:
-		g._start_meeting()
+		GameMeeting._start_meeting(g)
 
 
 ## Match the night-planning map: living townsfolk are shown at their homes.
@@ -546,7 +550,7 @@ static func _night_command(g, verb: String, rest: String) -> void:
 			g.ward_log[g.w.day] = n.id
 			g.w.player_vigil = ""
 			g._narr("You chalk a warding sigil on %s's door." % n.name)
-			g._facts([{"kind": "ward", "source": "player", "subject": [n.id], "target": n.id, "loc": "home_" + n.id, "block": n.home_block, "night": g.w.day, "day": g.w.day, "phase": C.NIGHT, "private": true,
+			GameBoard._facts(g, [{"kind": "ward", "source": "player", "subject": [n.id], "target": n.id, "loc": "home_" + n.id, "block": n.home_block, "night": g.w.day, "day": g.w.day, "phase": C.NIGHT, "private": true,
 				"text": "Night %d: you spent your ward on %s's door on %s." % [g.w.day, n.name, C.block_name(n.home_block)]}])
 			_resolve_night(g)
 		"vigil", "watch":
@@ -566,7 +570,7 @@ static func _night_command(g, verb: String, rest: String) -> void:
 
 
 static func _resolve_night(g) -> void:
-	g.capture_prediction("before_night")
+	GameScreens.capture_prediction(g, "before_night")
 	# Each NPC's hunches at day's end: tomorrow's Confidence resists moves against them.
 	for n in g.w.npcs:
 		for mind in [n, n.shadow]:
@@ -575,23 +579,23 @@ static func _resolve_night(g) -> void:
 			if mind != null:
 				mind.workshop_state["committed_lean"] = Mind.suspicion_view(mind).duplicate(true)
 				mind.workshop_state["committed_requested"] = mind.workshop_state.get("requested", {}).duplicate(true)
-	g._settle_offers()
+	GameConversation._settle_offers(g)
 	var vig: String = g.w.player_vigil
 	g.w.resolve_night()
 	for e in g.w.public_log:
 		if e["kind"] == "knell" and e["day"] == g.w.day:
 			g._narr("At dusk the death knell tolls from the chapel. Doors are barred; nobody walks abroad tonight, or should.")
-			g._facts([{"kind": "knell", "subject": [], "source": "player", "day": g.w.day, "phase": C.EVENING,
+			GameBoard._facts(g, [{"kind": "knell", "subject": [], "source": "player", "day": g.w.day, "phase": C.EVENING,
 				"text": "Night %d: the Sexton tolled the death knell (no gift that walks abroad should work)." % g.w.day}])
 	if vig != "":
 		if g.w.player_vigil_seen.is_empty():
 			g._narr("You kept watch over %s all night. Nobody stirred." % C.block_name(vig))
-			g._facts([{"kind": "vigil", "subject": [], "block": vig, "source": "player", "day": g.w.day, "phase": C.NIGHT,
+			GameBoard._facts(g, [{"kind": "vigil", "subject": [], "block": vig, "source": "player", "day": g.w.day, "phase": C.NIGHT,
 				"text": "Night %d vigil on %s: nobody stirred." % [g.w.day, C.block_name(vig)]}])
 		else:
 			var names: Array = g.w.player_vigil_seen.map(func(i): return g.w.by_id[i].name)
 			g._narr("You kept watch over %s. In the night, %s went out." % [C.block_name(vig), ", ".join(PackedStringArray(names))])
-			g._facts([{"kind": "sighting", "subject": g.w.player_vigil_seen.duplicate(), "block": vig, "source": "player",
+			GameBoard._facts(g, [{"kind": "sighting", "subject": g.w.player_vigil_seen.duplicate(), "block": vig, "source": "player",
 				"day": g.w.day, "phase": C.NIGHT, "vigil": true, "text": "Night %d vigil on %s: you saw %s go out." % [g.w.day, C.block_name(vig), ", ".join(PackedStringArray(names))]}])
 	g.w.player_vigil = ""
 	if g.w.game_over:
@@ -608,7 +612,7 @@ static func _resolve_night(g) -> void:
 	for n in g.w.living():
 		Mind.refresh_beliefs(g.w, n, " (a new day)")
 	_morning_report(g)
-	g._maybe_approach()
+	GameConversation._maybe_approach(g)
 
 
 ## Developer report: refreshes the shared model couldn't prepare (each kept the last good beliefs).
@@ -639,7 +643,7 @@ static func _morning_report(g) -> void:
 			var nq = g.w.day - 1
 			if nq >= 1:
 				var wd: String = g.ward_log.get(nq, "")
-				g._facts([{"kind": "quiet", "subject": [], "night": nq, "day": nq, "phase": C.NIGHT, "source": "player", "ward": wd,
+				GameBoard._facts(g, [{"kind": "quiet", "subject": [], "night": nq, "day": nq, "phase": C.NIGHT, "source": "player", "ward": wd,
 					"text": "Nobody died on night %d%s." % [nq, (" (you had warded %s)" % g.w.by_id[wd].name) if wd != "" else ""]}])
 		for id in g.w.deaths_last_night:
 			var v = g.w.by_id[id]
@@ -649,7 +653,7 @@ static func _morning_report(g) -> void:
 			g._headline("death", death_title, "A Demon hides among %d remaining townsfolk" % g.w.living().size())
 			g._narr("Dawn breaks over a body: %s the %s was killed in the night. Their cottage on %s is now a crime scene." %
 				[v.name, v.occupation, C.block_name(v.home_block)])
-			g._facts([{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": g.w.day - 1,
+			GameBoard._facts(g, [{"kind": "death", "subject": [id], "block": v.home_block, "source": "player", "night": g.w.day - 1,
 				"text": "%s was killed by the Demon on night %d (home on %s)." % [v.name, g.w.day - 1, C.block_name(v.home_block)]}])
 	for save in g.w.ward_saves:
 		if save.night == g.w.day - 1:
@@ -657,9 +661,9 @@ static func _morning_report(g) -> void:
 			g._narr(held)
 			g._headline("ward", held)
 			var saved = g.w.by_id[save.target]
-			g._facts([{"kind": "scorched_sigil", "source": "evidence", "subject": [saved.id], "target": saved.id, "loc": "home_" + saved.id, "block": saved.home_block, "night": save.night, "day": save.night, "phase": C.NIGHT, "private": true,
+			GameBoard._facts(g, [{"kind": "scorched_sigil", "source": "evidence", "subject": [saved.id], "target": saved.id, "loc": "home_" + saved.id, "block": saved.home_block, "night": save.night, "day": save.night, "phase": C.NIGHT, "private": true,
 				"text": "You alone found a scorched sigil on %s's door on %s: the Demon came to that door on night %d and your ward held." % [saved.name, C.block_name(saved.home_block), save.night]}])
-	g._screen(g._map())
-	g._card_workers()
-	g._card_conversations()
+	g._screen(GameScreens._map(g))
+	GameScreens._card_workers(g)
+	GameScreens._card_conversations(g)
 	g._prompt("%d townsfolk remain. Where will you spend the morning? ('go <place | block | person>', 'help')" % g.w.living().size())
