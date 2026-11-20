@@ -4,6 +4,8 @@
 ## never weight. Also the headline blend's strength scaling (folded in with recency).
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -94,26 +96,26 @@ func _recall() -> void:
 		n.workshop_state["reasoning_mode"] = mode
 		var p: Array = g.w.npcs
 		var old = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true}, 1)
-		var first = g.file_deduction({"type": "evil", "a": p[3].id}, [old])
-		g._evaluate_deduction(n, g.board[first - 1], 1.0, false)
+		var first = GameBoard.file_deduction(g, {"type": "evil", "a": p[3].id}, [old])
+		GamePresentation._evaluate_deduction(g, n, g.board[first - 1], 1.0, false)
 		# Day 4: two more readings; day 5: two more again. A low-Insight budget (4 cards)
 		# leaves two slots beside the day-5 cards, and the day-4 pair is fresher than the
 		# day-1 Seer reading.
 		g.w.day = 4
 		var mid: Array = [_read(g, p[5], "dowser", 4, {"group": [p[1].id, p[2].id], "count": 1}, 4), _read(g, p[6], "dowser", 4, {"group": [p[1].id, p[5].id], "count": 0}, 4)]
-		var second = g.file_deduction({"type": "evil", "a": p[1].id}, mid)
-		g._evaluate_deduction(n, g.board[second - 1], 1.0, false)
+		var second = GameBoard.file_deduction(g, {"type": "evil", "a": p[1].id}, mid)
+		GamePresentation._evaluate_deduction(g, n, g.board[second - 1], 1.0, false)
 		g.w.day = 5
 		var late: Array = [_read(g, p[5], "dowser", 5, {"group": [p[2].id, p[6].id], "count": 1}, 5), _read(g, p[6], "dowser", 5, {"group": [p[2].id, p[4].id], "count": 1}, 5)]
-		var third = g.file_deduction({"type": "evil", "a": p[2].id}, late)
-		g._evaluate_deduction(n, g.board[third - 1], 1.0, false)
+		var third = GameBoard.file_deduction(g, {"type": "evil", "a": p[2].id}, late)
+		GamePresentation._evaluate_deduction(g, n, g.board[third - 1], 1.0, false)
 		Mind.refresh_beliefs(g.w, n, " (day 5)")
 		var drifted: float = n.suspicion[p[3].id]
-		var again = g.file_deduction({"type": "evil", "a": p[3].id}, [old])
-		g._evaluate_deduction(n, g.board[again - 1], 1.0, false)
+		var again = GameBoard.file_deduction(g, {"type": "evil", "a": p[3].id}, [old])
+		GamePresentation._evaluate_deduction(g, n, g.board[again - 1], 1.0, false)
 		var recalled: float = n.suspicion[p[3].id]
-		var repeat = g.file_deduction({"type": "evil", "a": p[3].id}, [old])
-		g._evaluate_deduction(n, g.board[repeat - 1], 1.0, false)
+		var repeat = GameBoard.file_deduction(g, {"type": "evil", "a": p[3].id}, [old])
+		GamePresentation._evaluate_deduction(g, n, g.board[repeat - 1], 1.0, false)
 		results[mode] = {"drifted": drifted, "recalled": recalled, "repeated": n.suspicion[p[3].id], "refresh": n.workshop_state.get("card_refresh", {}).duplicate()}
 	var b: Dictionary = results.bounded
 	var f: Dictionary = results.full
@@ -203,7 +205,7 @@ func _setup():
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary, _learned: int) -> int:
-	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	return GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if role == "seer" else 0, "data": data,
 		"text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 

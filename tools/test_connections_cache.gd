@@ -9,6 +9,7 @@
 ##   with new talk make it be judged again.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -133,7 +134,7 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 				var d: int = int(g.w.day)
 				var mag_reports: Array = []
 				var reports: Array = []
-				for c in g.all_receipts():
+				for c in GameBoard.all_receipts(g):
 					if c.kind == "info" and not c.get("deleted", false):
 						var norm: Dictionary = Evidence.normalize_card(c)
 						var cid: String = str(norm.get("id", ""))
@@ -185,7 +186,7 @@ func _play_magistrate_presentations(game_seed: int) -> Dictionary:
 					g.command("sleep")
 	Connections.capture = false
 	var mag_ids: Dictionary = {}
-	for c in g.all_receipts():
+	for c in GameBoard.all_receipts(g):
 		if str(c.get("role", "")) == "magistrate":
 			var cid: String = str(Evidence.normalize_card(c).get("id", ""))
 			if cid != "":

@@ -2,6 +2,7 @@
 ## godot --headless --path . --script res://tools/test_dialogue_decisions.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -57,8 +58,8 @@ func _live() -> void:
 	var n = w.living_good()[0]
 	var target = w.living().filter(func(x): return x != n)[0]
 	# A deliberately weak, freeform argument: a claim alone does not establish evil.
-	var k = g.add_card({"kind": "claim", "source": target.id, "subject": [target.id], "role": "surveyor", "text": "I am the Surveyor."})
-	var dn = g.file_deduction({"type": "evil", "a": target.id}, [k])
+	var k = GameBoard.add_card(g, {"kind": "claim", "source": target.id, "subject": [target.id], "role": "surveyor", "text": "I am the Surveyor."})
+	var dn = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [k])
 	_check(dn > 0, "fixture can file a weak accusation")
 	if dn <= 0:
 		return

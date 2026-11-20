@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -73,18 +75,18 @@ func _live(size: int) -> void:
 	var observer = g.w.living_good()[1]
 	var raw = {"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": 3,
 		"fear": true, "text": "Refused to give their whereabouts, saying they were afraid"}
-	var number = g.add_card(raw)
+	var number = GameBoard.add_card(g, raw)
 	var receipt = Live.Evidence.normalize_card(g.board[number - 1])
-	var input = g.workshop_snapshot([], observer.id)
+	var input = GamePresentation.workshop_snapshot(g, [], observer.id)
 	var adapted = Live.Assess.activity_card(receipt, input)
 	check(not adapted.is_empty() and adapted.night == -1 and adapted.data.fear, "a dated refusal preserves fear without asserting a night outing")
 	check(preload("res://workshop/shared_ledger.gd").supported(receipt), "refusal receipts are shared evidence for the whole town")
-	var ded = g.file_deduction({"type": "suspicious", "a": target.id}, [number])
+	var ded = GameBoard.file_deduction(g, {"type": "suspicious", "a": target.id}, [number])
 	check(ded > 0, "a refusal can support a filed suspicion case")
 	if ded < 1:
 		return
 	for n in g.w.living():
-		var result = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		var result = GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 		var listener = n.shadow if n.is_evil() else n
 		check(result.get("workshop", false) and listener.workshop_state.active and receipt.id in listener.workshop_state.facts, "strict refusal presentation uses shared ownership for " + n.id)
 	var once = observer.suspicion.duplicate(true)

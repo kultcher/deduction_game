@@ -1,5 +1,7 @@
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -61,7 +63,7 @@ func _test_canvas_hub_orphan_and_restore() -> void:
 		if not g.w.npcs.any(func(p): return p.id == "constance"):
 			break
 	var target_id: String = g.w.npcs[0].id
-	var ref_num: int = g.add_card({"kind": "refusal", "source": target_id, "subject": [target_id], "day": 1, "phase": C.NIGHT, "fear": false, "withheld": true, "text": "Refused night account"})
+	var ref_num: int = GameBoard.add_card(g, {"kind": "refusal", "source": target_id, "subject": [target_id], "day": 1, "phase": C.NIGHT, "fear": false, "withheld": true, "text": "Refused night account"})
 	var ref_cid: String = WorkshopCanvas.Evidence.normalize_card(g.board[ref_num - 1]).id
 	var view: Dictionary = WorkshopCanvas.view(g)
 	_check(not view.people.any(func(p): return p.id == "constance"), "precondition: restore fixture omits constance from cast")
@@ -105,10 +107,10 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
 	Mind.refresh_beliefs(g.w, listener, "seed public baseline")
-	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
-	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
-	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
-	var trace_num: int = g.add_card({
+	var death_num: int = GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var sil_num: int = GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
+	var conv_num: int = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
+	var trace_num: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
@@ -128,8 +130,8 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	vibes_only.connect_cards(hub_v, root_v)
 	var filed_v: int = WorkshopCanvas.file(g, vibes_only.compile(root_v))
 	_check(filed_v > 0, "vibes-only hub case files cleanly")
-	g._evaluate_deduction(listener, g.board[filed_v - 1], 1.0, false)
-	var prepared: Dictionary = WorkshopCanvas.Assess.prepare(g.workshop_snapshot([sil_num, conv_num], listener.id))
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed_v - 1], 1.0, false)
+	var prepared: Dictionary = WorkshopCanvas.Assess.prepare(GamePresentation.workshop_snapshot(g, [sil_num, conv_num], listener.id))
 	var uniform_s1: Dictionary = {}
 	var outside: Dictionary = {}
 	for p in prepared.view.people:
@@ -154,7 +156,7 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 	var p_s1: String = s1_board.add_profile_info(target.id, ["home_work"])
 	s1_board.connect_cards(p_s1, root_s1)
 	var filed_s1: int = WorkshopCanvas.file(g, s1_board.compile(root_s1))
-	g._evaluate_deduction(listener, g.board[filed_s1 - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed_s1 - 1], 1.0, false)
 	var s1_susp: float = listener.suspicion[target.id]
 	var s1_req: float = float(listener.workshop_state.requested.get(target.id, 0.0))
 	g.workshop_retract(filed_s1, listener.id)
@@ -172,7 +174,7 @@ func _test_stage1_preserved_through_hub_and_stage2_gated() -> void:
 		s2_board.connect_cards("e:" + cid2, hub_s2)
 	s2_board.connect_cards(hub_s2, root_s2)
 	var filed_s2: int = WorkshopCanvas.file(g, s2_board.compile(root_s2))
-	g._evaluate_deduction(listener, g.board[filed_s2 - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed_s2 - 1], 1.0, false)
 	var hub_s1_req: float = float(listener.workshop_state.requested.get(target.id, 0.0))
 	var hub_s2_app: float = float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
 	var hub_incs: Array = listener.workshop_state.get("circumstantial_incidents", {}).get(target.id, [])
@@ -200,17 +202,17 @@ func _test_association_alibi_boundary_and_trace_guards() -> void:
 	trusting_listener.workshop_state.outside[partner.id] = 0.08
 	trusting_listener.suspicion[partner.id] = 0.08
 
-	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
-	var trace_num: int = g.add_card({
+	var death_num: int = GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var trace_num: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing",
 		"text": "Scene trace: farthing (the Bakery or the Tavern).",
 	})
-	var talk_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, partner.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.AFTERNOON, "text": "Saw target talking to partner"})
-	var alibi_num: int = g.add_card({"kind": "alibi", "source": target.id, "subject": [target.id], "day": 1, "phase": C.NIGHT, "text": "Claimed stayed home Night 1"})
-	var sight_num: int = g.add_card({"kind": "sighting", "source": "evidence", "subject": [target.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "text": "Seen out Night 1"})
+	var talk_num: int = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, partner.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.AFTERNOON, "text": "Saw target talking to partner"})
+	var alibi_num: int = GameBoard.add_card(g, {"kind": "alibi", "source": target.id, "subject": [target.id], "day": 1, "phase": C.NIGHT, "text": "Claimed stayed home Night 1"})
+	var sight_num: int = GameBoard.add_card(g, {"kind": "sighting", "source": "evidence", "subject": [target.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "text": "Seen out Night 1"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 
 	# 1) "Talking with suspected evil": sways skeptical_listener (> 0), leaves trusting_listener at 0 Stage 2 with zero trust loss!
@@ -225,8 +227,8 @@ func _test_association_alibi_boundary_and_trace_guards() -> void:
 	board.connect_cards(hub, root)
 	var filed: int = WorkshopCanvas.file(g, board.compile(root))
 	var trust_before: float = trusting_listener.trust
-	g._evaluate_deduction(skeptical_listener, g.board[filed - 1], 1.0, true)
-	g._evaluate_deduction(trusting_listener, g.board[filed - 1], 1.0, true)
+	GamePresentation._evaluate_deduction(g, skeptical_listener, g.board[filed - 1], 1.0, true)
+	GamePresentation._evaluate_deduction(g, trusting_listener, g.board[filed - 1], 1.0, true)
 	var skep_s2: float = float(skeptical_listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
 	var trust_s2: float = float(trusting_listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
 	var skep_incs: Array = skeptical_listener.workshop_state.get("circumstantial_incidents", {}).get(target.id, [])
@@ -237,15 +239,15 @@ func _test_association_alibi_boundary_and_trace_guards() -> void:
 	# and rival bond already backing a Stage 1 `connection` trace does NOT double-dip in Stage 2!
 	var sil_victim = partner
 	g.w.public_event("silenced", [sil_victim.id], "town")
-	var home_only_sight: int = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "block": sil_victim.home_block, "day": 1, "phase": C.MORNING, "text": "Seen alone on silenced person's home block"})
-	var conn_trace: int = g.add_card({
+	var home_only_sight: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "block": sil_victim.home_block, "day": 1, "phase": C.MORNING, "text": "Seen alone on silenced person's home block"})
+	var conn_trace: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "connection", "trace_subtype": "grudge", "trace_slot": 0, "scene_trace_count": 1,
 		"victim_block": victim.home_block, "item_label": "two overturned pewter cups",
 		"text": "Scene trace: victim connection.",
 	})
-	var bond_rec: int = g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": trusting_listener.id, "day": 1, "phase": 0, "text": "Rival of victim"})
+	var bond_rec: int = GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": trusting_listener.id, "day": 1, "phase": 0, "text": "Rival of victim"})
 	var view2: Dictionary = WorkshopCanvas.view(g)
 	var check_ids: Array = [
 		WorkshopCanvas.Evidence.normalize_card(g.board[home_only_sight - 1]).id,
@@ -280,20 +282,20 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	listener.trust = 0.75
 	Mind.refresh_beliefs(g.w, listener, "lock pre-case baseline")
 
-	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
-	var trace_num: int = g.add_card({
+	var death_num: int = GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var trace_num: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing",
 		"text": "Scene trace: farthing (the Bakery or the Tavern).",
 	})
-	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [trusted_ally.id], "day": 2, "phase": C.EVENING, "text": "Silenced"})
-	var prox_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, trusted_ally.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.MORNING, "text": "With ally before silence"})
-	var assoc_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, accomplice.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.AFTERNOON, "text": "With suspected accomplice"})
-	var vote_num: int = g.add_card({"kind": "vote", "source": "player", "subject": [target.id, accomplice.id, trusted_ally.id], "day": 2, "phase": C.EVENING, "nominee": trusted_ally.id, "by": target.id, "yes": [target.id, accomplice.id], "no": [listener.id], "player_yes": false, "count": 2, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
-	var ref_num: int = g.add_card({"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": C.NIGHT, "fear": false, "withheld": true, "text": "Refused night account"})
-	g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": listener.id, "day": 1, "phase": 0, "text": "At odds with victim"})
+	var sil_num: int = GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [trusted_ally.id], "day": 2, "phase": C.EVENING, "text": "Silenced"})
+	var prox_num: int = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, trusted_ally.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.MORNING, "text": "With ally before silence"})
+	var assoc_num: int = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, accomplice.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.AFTERNOON, "text": "With suspected accomplice"})
+	var vote_num: int = GameBoard.add_card(g, {"kind": "vote", "source": "player", "subject": [target.id, accomplice.id, trusted_ally.id], "day": 2, "phase": C.EVENING, "nominee": trusted_ally.id, "by": target.id, "yes": [target.id, accomplice.id], "no": [listener.id], "player_yes": false, "count": 2, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
+	var ref_num: int = GameBoard.add_card(g, {"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": C.NIGHT, "fear": false, "withheld": true, "text": "Refused night account"})
+	GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": listener.id, "day": 1, "phase": 0, "text": "At odds with victim"})
 
 	var view: Dictionary = WorkshopCanvas.view(g)
 	# The notebook's cards feed the shared baseline (the conversation by a silencing does, via
@@ -311,7 +313,7 @@ func _test_union_dedup_cap_and_retraction() -> void:
 	board.connect_cards(pnode, hub)
 	board.connect_cards(hub, root)
 	var filed1: int = WorkshopCanvas.file(g, board.compile(root))
-	g._evaluate_deduction(listener, g.board[filed1 - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed1 - 1], 1.0, false)
 	var applied_total: float = float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
 	_check(applied_total > 0.03 and applied_total <= Tuning.Workshop.CIRCUMSTANTIAL_TARGET_CAP + 1e-6, "4+ qualifying incidents cap cleanly at +0.045 per (listener, target) (got %.4f)" % applied_total)
 
@@ -325,7 +327,7 @@ func _test_union_dedup_cap_and_retraction() -> void:
 		board2.connect_cards("e:" + cid2, hub2)
 	board2.connect_cards(hub2, root2)
 	var filed2: int = WorkshopCanvas.file(g, board2.compile(root2))
-	g._evaluate_deduction(listener, g.board[filed2 - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed2 - 1], 1.0, false)
 	var after_second: float = float(listener.workshop_state.get("circumstantial_applied", {}).get(target.id, 0.0))
 	_check(after_second <= Tuning.Workshop.CIRCUMSTANTIAL_TARGET_CAP + 1e-6 and is_equal_approx(after_second, applied_total), "second overlapping hub presentation deduplicates incidents and respects +0.045 global cap")
 
@@ -360,10 +362,10 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	for l in [listener, control_listener]:
 		Mind.refresh_beliefs(g.w, l, "seed public baseline")
 	var outside_before: float = float(listener.workshop_state.outside[target.id])
-	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
-	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
-	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
-	var trace_num: int = g.add_card({
+	var death_num: int = GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var sil_num: int = GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced at meeting"})
+	var conv_num: int = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
+	var trace_num: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
@@ -371,7 +373,7 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 		"text": "Scene trace: farthing (the Bakery or the Tavern).",
 	})
 	# A Stage 2 incident to hold (being near the silencing is Stage 1 now): at odds with the victim.
-	g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": control_listener.id, "day": 1, "phase": 0, "text": "At odds with victim"})
+	GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": control_listener.id, "day": 1, "phase": 0, "text": "At odds with victim"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root: String = board.selected
@@ -384,7 +386,7 @@ func _test_native_adjust_preserves_stage2_layer() -> void:
 	board.connect_cards(pnode, hub)
 	board.connect_cards(hub, root)
 	var filed: int = WorkshopCanvas.file(g, board.compile(root))
-	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false)
 	var s2_req: float = float(listener.workshop_state.get("circumstantial_requested", {}).get(target.id, 0.0))
 	_check(s2_req > 0.0, "precondition: listener holds nonzero Stage 2 circumstantial suspicion before native adjust")
 	var pre_adjust_susp: float = listener.suspicion[target.id]
@@ -417,7 +419,7 @@ func _test_smear_backlash() -> void:
 	var bystander = g.w.living_good()[2]
 	listener.trust = 0.6
 	listener.npc_trust[target.id] = 0.75
-	var benign_num: int = g.add_card({"kind": "sighting", "source": "player", "subject": [bystander.id], "block": "market", "day": 1, "phase": C.MORNING, "text": "Unrelated morning sighting"})
+	var benign_num: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [bystander.id], "block": "market", "day": 1, "phase": C.MORNING, "text": "Unrelated morning sighting"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root: String = board.selected
@@ -427,7 +429,7 @@ func _test_smear_backlash() -> void:
 	board.connect_cards(hub, root)
 	var filed: int = WorkshopCanvas.file(g, board.compile(root))
 	var trust_before: float = listener.trust
-	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, true)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, true)
 	var drop: float = trust_before - listener.trust
 	_check(drop >= Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MIN - 1e-5 and drop <= Tuning.Workshop.CIRCUMSTANTIAL_SMEAR_MAX + 1e-5, "ungrounded circumstantial smear triggers [-0.015, -0.005] trust backlash (drop=%.4f)" % drop)
 

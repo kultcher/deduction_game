@@ -1,8 +1,8 @@
 # Graded gossip: value tiers and their measurement
 
 **Claude-Quill, Nov 20.** Base: main at 6cdafd17. Status: ready for review. Next actor: Beadle
-(review, then their budget PR on top), then Bailiff. Zero drift. **The tier definition is a
-draft awaiting Michael** (sent to Seneschal, Nov 20).
+(review, then their budget PR on top), then Bailiff. Zero drift. The tier definition was a draft
+when this opened; Michael approved it as drafted later on Nov 20 (#442).
 
 ## What changed and why
 
@@ -11,7 +11,7 @@ and I split it on Nov 20: I tag each tavern gossip item with a value tier and me
 Beadle wires the budget into the selection (draw `TAVERN_TIER1_TARGET` 2 and `TIER2_TARGET` 1
 first, then fill by weight). That PR moves golden and lands after this one.
 
-- **`Social.gossip_tier(cand)`:** one helper with the rule. **Draft:**
+- **`Social.gossip_tier(cand)`:** one helper with the rule (approved as drafted):
   - **Tier 1** is something the player can file or check: an anonymous reading, or a night
     sighting with a block and a night.
   - **Tier 2** is useful but softer: a gift claim in circulation, a gift-family hint about a

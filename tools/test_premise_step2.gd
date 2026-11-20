@@ -4,6 +4,8 @@
 ## a public role claim joins a case that cites it automatically.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -50,7 +52,7 @@ func _game(credibility: float = 0.7):
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	return GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if day == 0 else 0, "data": data,
 		"text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 
@@ -66,8 +68,8 @@ func _seer_case(mod: String, credibility: float, words: bool = true, off_script:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var seer = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
-	var number = g.file_deduction({"type": "secret_mod", "a": p[3].id, "mod": mod}, [seer])
-	var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	var number = GameBoard.file_deduction(g, {"type": "secret_mod", "a": p[3].id, "mod": mod}, [seer])
+	var r = GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var cards: Array = g._workshop_plans.get(n.id + ":good", {}).get("prepared", {}).get("view", {}).get("cards", [])
 	Shared.player_words = true
 	var effects: Dictionary = g._workshop_evaluations.get(n.id + ":good", {}).get("proposal", {}).get("effects", {})
@@ -99,8 +101,8 @@ func _secret_record() -> void:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var seer = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
-	var number = g.file_deduction({"type": "secret_mod", "a": p[3].id, "mod": "marked"}, [seer])
-	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	var number = GameBoard.file_deduction(g, {"type": "secret_mod", "a": p[3].id, "mod": "marked"}, [seer])
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var entry: Dictionary = n.claim_record.get("secret:" + p[3].id, {})
 	check(entry.get("type", "") == "secret" and entry.get("mod", "") == "marked", "a presented secret premise joins the player's track record")
 	var agreement = preload("res://game/credibility.gd")._agreement(g, n)
@@ -117,8 +119,8 @@ func _dowser_case(type: String, g = null) -> Dictionary:
 	var before: Dictionary = n.suspicion.duplicate(true)
 	var pressure0: float = p[3].pressure
 	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
-	var number = g.file_deduction({"type": type, "a": p[3].id}, [dowser])
-	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	var number = GameBoard.file_deduction(g, {"type": type, "a": p[3].id}, [dowser])
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	return {"g": g, "dowser": dowser, "t": n.suspicion[p[3].id] - before[p[3].id], "o": n.suspicion[p[4].id] - before[p[4].id],
 		"pressure": p[3].pressure - pressure0, "before": before}
 
@@ -141,14 +143,14 @@ func _suspicious() -> void:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var pressure1: float = p[3].pressure
-	var firm = g.file_deduction({"type": "evil", "a": p[3].id}, [hedged.dowser])
-	g._evaluate_deduction(n, g.board[firm - 1], 1.0, false)
+	var firm = GameBoard.file_deduction(g, {"type": "evil", "a": p[3].id}, [hedged.dowser])
+	GamePresentation._evaluate_deduction(g, n, g.board[firm - 1], 1.0, false)
 	check(absf((n.suspicion[p[3].id] - hedged.before[p[3].id]) - evil.t) < 0.005, "refiled as evil, the same card lands at full weight, once")
 	check(is_equal_approx(p[3].pressure, pressure1), "refiling doesn't press the target again")
 	# Refile as suspicious again: nothing changes.
-	var again = g.file_deduction({"type": "suspicious", "a": p[3].id}, [hedged.dowser])
+	var again = GameBoard.file_deduction(g, {"type": "suspicious", "a": p[3].id}, [hedged.dowser])
 	var held: Dictionary = n.suspicion.duplicate(true)
-	g._evaluate_deduction(n, g.board[again - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[again - 1], 1.0, false)
 	check(absf(n.suspicion[p[3].id] - held[p[3].id]) < 0.005 and is_equal_approx(p[3].pressure, pressure1), "refiled as suspicious after evil, nothing changes")
 	# Codex review of PR #93: a second suspicious filing about the same target presses only
 	# for what its own cards add, not the first filing's remembered rise.
@@ -158,8 +160,8 @@ func _suspicious() -> void:
 	var q: Array = g2.w.npcs
 	var before2: float = q[3].pressure
 	var unrelated = _read(g2, q[6], "dowser", 1, {"group": [q[5].id], "count": 0})
-	var second = g2.file_deduction({"type": "suspicious", "a": q[3].id}, [unrelated])
-	g2._evaluate_deduction(n2, g2.board[second - 1], 1.0, false)
+	var second = GameBoard.file_deduction(g2, {"type": "suspicious", "a": q[3].id}, [unrelated])
+	GamePresentation._evaluate_deduction(g2, n2, g2.board[second - 1], 1.0, false)
 	# Under connections a reading that clears someone else still lifts the target a little
 	# (the evil count has fewer places to go), so the second filing presses. It presses for
 	# its own cards, read from its own stored case, not for the first filing's rise: a
@@ -181,8 +183,8 @@ func _contradiction_link() -> void:
 	var watcher = goods[1]
 	var seen = goods[2]
 	g.w.day = 2
-	g.add_card({"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
-	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": seen.home_block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
+	GameBoard.add_card(g, {"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": seen.home_block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true  # as in the live editor
@@ -225,8 +227,8 @@ func _auto_citation() -> void:
 	var watcher = goods[1]
 	var walker = goods[2]
 	g.w.day = 2
-	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": walker.home_block, "seen": [walker.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, walker.name]})
-	g.add_card({"kind": "claim", "subject": [walker.id], "role": "nightwatch", "source": walker.id, "day": 1, "text": "%s says they're the Night Watch." % walker.name})
+	GameBoard.add_card(g, {"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": walker.home_block, "seen": [walker.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, walker.name]})
+	GameBoard.add_card(g, {"kind": "claim", "subject": [walker.id], "role": "nightwatch", "source": walker.id, "day": 1, "text": "%s says they're the Night Watch." % walker.name})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	var report = _node(model, view, func(c): return c.kind == "report" and c.source == watcher.id)
@@ -247,7 +249,7 @@ func _marked_answers() -> void:
 	var g = _game()
 	var p: Array = g.w.npcs
 	g.w.day = 2
-	g.add_card({"kind": "info", "source": p[2].id, "role": "dowser", "day": 1, "phase": 0, "data": {"group": [p[3].id, p[4].id, p[5].id], "count": 1}, "text": "dowse"})
+	GameBoard.add_card(g, {"kind": "info", "source": p[2].id, "role": "dowser", "day": 1, "phase": 0, "data": {"group": [p[3].id, p[4].id, p[5].id], "count": 1}, "text": "dowse"})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.marked_answers = false

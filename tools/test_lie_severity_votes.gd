@@ -7,6 +7,8 @@
 ##     for it, ahead of the generic "not enough" line, and even when the miss wasn't close.
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -79,7 +81,7 @@ func _voter_says_lie_not_rope() -> void:
 	g.w.day = 2
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	var good: Array = g.w.living().filter(func(n): return not n.is_evil())
 	var v = good[0]
 	var t = good[1]
@@ -146,10 +148,10 @@ func _presented_case_records_the_lie() -> void:
 		t.history[g.w.time_key(1, 3)] = "night:" + block
 		var canvas = Canvas.new(LiveCanvas.view(g))
 		var root: String = canvas.add_premise(t.id, "evil", Vector2.ZERO)
-		var sight = g.add_card({"kind": "sighting", "subject": [t.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
+		var sight = GameBoard.add_card(g, {"kind": "sighting", "subject": [t.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
 		var b: String = "e:" + Evidence.normalize_card(g.board[sight - 1]).id
 		if with_alibi:
-			var alibi = g.add_card({"kind": "alibi", "subject": [t.id], "source": t.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
+			var alibi = GameBoard.add_card(g, {"kind": "alibi", "subject": [t.id], "source": t.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
 			canvas = Canvas.new(LiveCanvas.view(g))
 			root = canvas.add_premise(t.id, "evil", Vector2.ZERO)
 			var a: String = "e:" + Evidence.normalize_card(g.board[alibi - 1]).id

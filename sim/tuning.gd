@@ -687,7 +687,6 @@ class Meeting:
 	const PLAYER_VOTE_NO_OFFSET = -0.03
 	const VOTE_DISTRUST_NOMINATOR_MIN_SUSP = 0.7
 	const VOTE_DISTRUST_NOMINATOR_OFFSET = -0.15
-	const VOTE_SPARE_PREF_SLOPE = -0.5
 	const VOTE_PREFERS_BLOCK_OFFSET = -0.4
 	const VOTE_SELF_NOMINATION_MARGIN = 0.02
 
@@ -1025,23 +1024,9 @@ class Workshop:
 	## relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a
 	## probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x).
 	const PRIOR_K = 1.5
-	## Headline reading (`Jury._headline`): how far a listener takes a strong evil reading at
-	## its word, on top of the full model. Effect = model + HEADLINE_WEIGHT * (1 - Insight) *
-	## (headline - model) where the headline is higher. The per-role values are the chance
-	## each named person is evil "if the reading is simply true" (1.0 = full share).
-	const HEADLINE_WEIGHT = 1.0
-	## The blend toward the headline grows with the headline's strength, full at this value
-	## (about one Seer ping at default trust). Before Nov 6 any positive headline, however
-	## faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5.
-	const HEADLINE_FULL_AT = 0.1
 	## Directional Confidence: below this lean (suspicion minus the listener's average) there
 	## is no hunch to defend, so Confidence doesn't resist (Oct 30).
 	const LEAN_MIN = 0.05
-	const HEADLINE_SEER = 1.0       # "one of A/B is the Demon": each 1/2
-	const HEADLINE_ARCHIVIST = 1.0  # "one of A/B holds <evil role>": each 1/2
-	const HEADLINE_DOWSER = 1.0     # "c of these n read as evil": each c/n
-	## Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline.
-	const HEADLINE_REPEAT_BUMP = 0.15
 	## Calibrated outer belief scale when source reliability is applied per-card upstream.
 	const JURY_BELIEF_SCALE = 1.35
 	const JURY_ALIGNMENT_COEFF = 0.45
@@ -1292,11 +1277,9 @@ static func fingerprint() -> String:
 			Setup.IDLE_HAUNT_CHANCE,
 			Setup.PRE_PHASE_CHAT_CHANCE,
 			Workshop.PRIOR_K,
-			Workshop.HEADLINE_WEIGHT,
 			Workshop.LEAN_MIN,
 			Workshop.JURY_BELIEF_SCALE,
 			Workshop.JURY_ALIGNMENT_COEFF,
-			Workshop.HEADLINE_REPEAT_BUMP,
 			Workshop.REASON_MIN_SUSPECT_REQUESTED,
 			Workshop.REASON_LOO_COVERED_SHARE,
 			Workshop.DOUBT_CAUGHT_ALIBI_NIGHT,

@@ -2,6 +2,7 @@
 ## godot --headless --path . --script res://tools/test_dialogue.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Fixtures = preload("res://tools/dialogue_scenarios.gd")
 const Game = preload("res://game/game.gd")
@@ -272,7 +273,7 @@ func _live_presence() -> void:
 			"text": "%s saw %s on %s, day 2 Evening." % [n.name, w.by_id[who].name, C.block_name("square")]})
 	_check(reply.facts == expected, "condensed live scene retains exact separate dated sighting facts and ordering")
 	_check(n.beliefs == beliefs and n.suspicion == suspicion and w.rng.state == rng, "semantic narration consumes no RNG and changes no observation or suspicion")
-	var cards: Array = reply.facts.map(func(f): return g.add_card(f))
+	var cards: Array = reply.facts.map(func(f): return GameBoard.add_card(g, f))
 	_check(cards.size() == 2 and cards[0] != cards[1] and g.board[cards[0] - 1].subject == ["jory"] and g.board[cards[1] - 1].subject == ["fenwick"], "shared speech still creates two independent case cards")
 	# Same visible scene and approved disclosures have the same voice for evil.
 	n.alignment = "evil"
@@ -548,7 +549,7 @@ func _live() -> void:
 	n.silenced = false
 	n.traits["gossip"] = 0.9
 	Mind.Dialogue.begin_conversation(n.dialogue_memory)
-	var claim_card: int = g.add_card({"kind": "claim", "source": target.id, "subject": [target.id],
+	var claim_card: int = GameBoard.add_card(g, {"kind": "claim", "source": target.id, "subject": [target.id],
 		"role": "clerk", "text": "Edda claimed Clerk."})
 	g.command("tell edda %d" % claim_card)
 	_check(n.dialogue_memory.get("conversation", {}).get("last_action", "") == "accusation" and

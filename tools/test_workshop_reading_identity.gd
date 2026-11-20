@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -49,7 +51,7 @@ func _live(size: int) -> void:
 		var raw = reading.duplicate(true)
 		raw.kind = "info"
 		raw.source = source.id
-		cards.append(g.add_card(raw))
+		cards.append(GameBoard.add_card(g, raw))
 		check(Mind.fact_id(raw) == Mind.info_eid(source.id, reading), "board and learned readings use the same exact semantic key")
 	var rng = g.w.rng.state
 	for n in g.w.living():
@@ -60,19 +62,19 @@ func _live(size: int) -> void:
 		check(entries.size() == 3 and entries.all(func(entry): return entry.meta.workshop_receipts.size() == 1), "distinct readings and their repeat retain three exact owners for " + n.id)
 		check(listener.workshop_state.active and entries.all(func(entry): return listener.workshop_state.owned.has(entry.eid) and entry.effects.is_empty()), "all exact readings are owned with empty legacy effects for " + n.id)
 	check(g.w.rng.state == rng, "exact identity and repeated receipt ownership draw no game RNG")
-	var ded = g.file_deduction({"type": "evil", "a": observer.id}, cards)
+	var ded = GameBoard.file_deduction(g, {"type": "evil", "a": observer.id}, cards)
 	for n in g.w.living():
-		var response = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		var response = GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 		check(response.get("workshop", false), "same-day exact receipts remain fully shared in strict presentation to " + n.id)
 	# A pre-migration coarse record is safe only when exactly one receipt matches.
 	var original = observer.ledger[Mind.info_eid(source.id, first)].duplicate(true)
 	var coarse = "info:%s:%d:%s" % [source.id, first.day, first.role]
 	original.eid = coarse
 	var old = {coarse: original}
-	var single = Shared.prepare(g.workshop_snapshot([], observer.id), {}, old)
+	var single = Shared.prepare(GamePresentation.workshop_snapshot(g, [], observer.id), {}, old)
 	check(single.ready and single.owned.has(coarse), "an unambiguous old coarse record retains explicit backward compatibility")
 	original.meta.workshop_receipts.merge(observer.ledger[Mind.info_eid(source.id, changed)].meta.workshop_receipts)
-	var ambiguous = Shared.prepare(g.workshop_snapshot([], observer.id), {}, old)
+	var ambiguous = Shared.prepare(GamePresentation.workshop_snapshot(g, [], observer.id), {}, old)
 	check(not ambiguous.ready and ambiguous.issues.any(func(issue): return "Unresolved original reading identity" in issue), "ambiguous coarse records still fail capability instead of selecting an arbitrary receipt")
 	# The old and new records can coexist during migration. A weaker duplicate
 	# neither adds another reading nor weakens the stronger, independently heard one.

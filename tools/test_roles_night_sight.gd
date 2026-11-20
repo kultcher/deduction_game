@@ -2,6 +2,8 @@
 ## Merged from: test_chunk5_monitor_confessor, test_lamplighter_drops, test_roster, test_workshop_lamplighter, test_workshop_nightwatch_gravedigger.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -209,7 +211,7 @@ func _live() -> void:
 	g.new_case(692, 7)
 	g.w.dlog.detailed = false
 	var source = g.w.npcs[0]
-	var number = g.add_card({"kind": "info", "source": source.id, "subject": [], "role": "lamplighter", "day": 1, "phase": 3, "data": {"count": 3}, "text": "Three others out on N1"})
+	var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "subject": [], "role": "lamplighter", "day": 1, "phase": 3, "data": {"count": 3}, "text": "Three others out on N1"})
 	var board = Canvas.new(Live.view(g))
 	var root: String = board.selected
 	board.nodes[root].conclusion = {"type": "suspicious", "target": g.w.npcs[1].id, "at": "Original alignment"}
@@ -228,10 +230,10 @@ func _live() -> void:
 	listener.ledger = {}
 	listener.role = "seer"
 	listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "Lamplighter reaches real shared delivery")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "Lamplighter presentation is repeat stable")
 	check(board.add_modifier("e:" + id, "misled") == "", "Lamplighter permits supported reading challenges")
 	check(Live.status(g, board.compile(root)).ready, "Lamplighter modifier stays in live evaluator")
@@ -301,10 +303,10 @@ func workshop_nightwatch_grav__live() -> void:
 		g.w.dlog.detailed = false
 		var source = g.w.npcs[0]
 		var target = g.w.npcs[1]
-		g.add_card({"kind": "execution", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Public execution fixture"})
+		GameBoard.add_card(g, {"kind": "execution", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Public execution fixture"})
 		var data: Dictionary = {"block": "square", "seen": [target.id]} if role == "nightwatch" else {"executed": target.id, "role": "poisoner"}
 		var night: int = 0 if role == "nightwatch" else 1
-		var number = g.add_card({"kind": "info", "source": source.id, "role": role, "day": night, "phase": 3, "data": data, "text": "New supported report " + role})
+		var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": night, "phase": 3, "data": data, "text": "New supported report " + role})
 		var board = Canvas.new(Live.view(g))
 		var root: String = board.selected
 		board.nodes[root].conclusion.target = target.id
@@ -323,10 +325,10 @@ func workshop_nightwatch_grav__live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " actual NPC delivery uses shared evaluator")
 		var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-		response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, role + " repeat does not stack effects")
 		check(board.add_modifier("e:" + id, "misled") == "", role + " supports Misled attachment")
 		check(Live.status(g, board.compile(root)).ready, role + " attached modifier preserves live capability")

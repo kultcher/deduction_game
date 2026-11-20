@@ -1024,8 +1024,8 @@ static func _player_heard_gossip_key(g, gkey: String) -> bool:
 			return true
 	return false
 
-## A tavern gossip item's value to the player (graded gossip; the tiers are a DRAFT awaiting
-## Michael, Nov 20, from Quill and Beadle):
+## A tavern gossip item's value to the player (graded gossip; the tiers approved by Michael,
+## Nov 20, drafted by Quill and Beadle):
 ##   1: something the player can file or check: an anonymous reading, or a night sighting
 ##      with a block and a night;
 ##   2: useful but softer: a gift claim in circulation, a gift-family hint about a named

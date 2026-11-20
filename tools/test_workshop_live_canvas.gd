@@ -1,4 +1,8 @@
 extends SceneTree
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
@@ -26,9 +30,9 @@ func _run() -> void:
 	var target = candidates[0]
 	var a = candidates[1]
 	var b = candidates[2]
-	var read = g.add_card({"kind": "info", "source": source.id, "subject": [target.id, a.id, b.id], "role": "dowser",
+	var read = GameBoard.add_card(g, {"kind": "info", "source": source.id, "subject": [target.id, a.id, b.id], "role": "dowser",
 		"day": 1, "phase": 0, "data": {"group": [target.id, a.id, b.id], "count": 3}, "text": "Dowser read: three registrations."})
-	var trace = g.add_card({"kind": "trace", "source": "player", "subject": [target.id], "day": 1, "phase": 0, "block": "market", "text": "Market soot from the scene."})
+	var trace = GameBoard.add_card(g, {"kind": "trace", "source": "player", "subject": [target.id], "day": 1, "phase": 0, "block": "market", "text": "Market soot from the scene."})
 	var rng: int = g.w.rng.state
 	var view = Live.view(g)
 	check(g.w.rng.state == rng, "building the live library does not advance the world RNG")
@@ -63,18 +67,18 @@ func _run() -> void:
 	second_case.argument_root = "another draft"
 	var other = Live.file(g, second_case)
 	check(other != number and g.board[number - 1].workshop_case == value, "separate drafts with identical headlines and evidence do not overwrite each other")
-	var input = g.workshop_snapshot([number], listener.id)
+	var input = GamePresentation.workshop_snapshot(g, [number], listener.id)
 	var prepared = Assess.prepare(input)
 	check(prepared.ready and prepared.case.answers == value.answers, "live transport preserves reading answers")
 	check(prepared.case.arguments == value.arguments and prepared.case.lines == value.lines, "live transport preserves scoped claims, assumptions and paths")
 	check(g.w.rng.state == rng, "filing and support inspection do not use world randomness")
 	var before = listener.suspicion.duplicate(true)
-	var result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
+	var result = GamePresentation._evaluate_deduction(g, listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false), "filed live canvas uses the new assessment path")
 	check(listener.workshop_state.facts.size() == 1, "two lines citing one reading share one original fact")
 	check(g.workshop_deliveries[-1].listener == listener.id and g.workshop_deliveries[-1].issues.is_empty(), "the shared delivery is recorded")
 	var requested = listener.workshop_state.requested.duplicate(true)
-	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
+	result = GamePresentation._evaluate_deduction(g, listener, g.board[number - 1], 1.0)
 	check(result.repeated and listener.workshop_state.requested == requested, "unchanged canvas repeat does not stack suspicion")
 	board.nodes[root_id].positions[target.id] = "good"
 	board.version += 1
@@ -83,7 +87,7 @@ func _run() -> void:
 	check(revised > number and g.board[number - 1].superseded_by == revised and listener.workshop_state.requested == requested, "a revision gets a new number, marks its predecessor and leaves listener beliefs untouched")
 	var previous = number
 	number = revised
-	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
+	result = GamePresentation._evaluate_deduction(g, listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false) and not result.repeated, "changed hypotheses produce a fresh assessment rather than an unchanged reply")
 	check(listener.workshop_state.presentations[str(number)].arguments[0].workshop_case.positions == changed.positions, "the listener's endorsement is replaced by the heard revision")
 	check(not listener.workshop_state.presentations.has(str(previous)), "hearing a revision retires the previous endorsement")
@@ -93,7 +97,7 @@ func _run() -> void:
 	check(not status.ready and not status.blocked and status.issues.any(func(s): return "trace" in s), "a mixed trace/reading chain stays editable and names the trace as its issue")
 	check(not status.has("warning"), "the readiness no longer offers a fallback warning: there is no fallback (Michael, Nov 20)")
 	number = Live.file(g, mixed, number)
-	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
+	result = GamePresentation._evaluate_deduction(g, listener, g.board[number - 1], 1.0)
 	# No legacy route for presentations (Oct 25): an unsupported graph is blocked, not judged natively.
 	check(result.get("blocked", false) and not result.get("workshop", false), "unsupported revised graph is blocked with its reason, not judged at all")
 	check(not listener.workshop_state.get("presentations", {}).has(str(number)), "a blocked revision leaves no shared endorsement behind")
@@ -102,7 +106,7 @@ func _run() -> void:
 	board.unlink("e:" + trace_id, root_id)
 	board.nodes[root_id].positions.clear()
 	number = Live.file(g, board.compile(root_id), number)
-	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
+	result = GamePresentation._evaluate_deduction(g, listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false), "removing unsupported evidence allows supported interpretation again")
 	check(listener.workshop_state.facts.size() == 1, "fallback recovery retains a single original owner")
 	g.workshop_retract(number, listener.id)
@@ -112,7 +116,7 @@ func _run() -> void:
 	g.board[read - 1].deleted = true
 	check(Live.status(g, missing).blocked and Live.file(g, missing, number) < 0, "missing original evidence blocks filing instead of silently weakening the case")
 	g.board[read - 1].deleted = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	g.workshop_deliveries.clear()
 	g.command("present %d" % number)
 	check(g.presented_today and g.workshop_deliveries.size() == g.w.living().size(), "ordinary typed meeting commands still complete synchronously without a progress callback")
@@ -149,8 +153,8 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.g = g
 	root.add_child(editor)
 	# A fresh Workshop starts blank; these checks argue the old preset premise.
-	editor.set_premise_field(editor.case_root, "type", "evil")
-	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "type", "evil")
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "person", editor.board._default_target())
 	await process_frame
 	check(editor.canvas.size.x > 1000 and editor.canvas.size.y > 200, "live editor fills the available window and leaves room for its canvas")
 	check(editor.board.view.live and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "opening the live Workshop does not automatically transfer board evidence")
@@ -187,7 +191,7 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.answer_window.hide()
 	editor._store()
 	var saved = editor.board.export_data()
-	var generated = g.add_card({"kind": "trace", "source": "player", "subject": [], "day": 2, "phase": 0, "block": "docks", "text": "New scene evidence, not selected for Workshop."})
+	var generated = GameBoard.add_card(g, {"kind": "trace", "source": "player", "subject": [], "day": 2, "phase": 0, "block": "docks", "text": "New scene evidence, not selected for Workshop."})
 	editor.refresh()
 	check(editor.board.export_data() == saved and not editor.board.nodes.has("e:" + Live.Evidence.normalize_card(g.board[generated - 1]).id), "newly generated evidence and refresh leave transferred cards, layout, links and answers unchanged")
 	var reopened = Editor.new()
@@ -220,7 +224,7 @@ func _flow() -> void:
 	for person in g.w.npcs:
 		for reading in person.info_log:
 			if reading.role in Assess.ROLES:
-				reports.append(g.add_card({"kind": "info", "source": person.id, "subject": [], "role": reading.role,
+				reports.append(GameBoard.add_card(g, {"kind": "info", "source": person.id, "subject": [], "role": reading.role,
 					"day": reading.day, "phase": reading.get("phase", 3 if reading.day == 0 else 0),
 					"data": reading.data, "text": "Native %s: %s" % [reading.role, reading.text]}))
 	check(not reports.is_empty(), "native world supplies supported readings for the playable-flow smoke test")
@@ -241,7 +245,7 @@ func _flow() -> void:
 	check(not g.workshop_deliveries.is_empty() and g.workshop_deliveries[-1].issues.is_empty(), "native-generated private case reaches the shared evaluator")
 	g.command("bye")
 	g.w.phase = 2
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	g.workshop_deliveries.clear()
 	var started = Time.get_ticks_msec()
 	var progress_count: Array = [0]
@@ -265,7 +269,7 @@ func _flow() -> void:
 	check(g.workshop_deliveries.size() == g.w.living().size() - 1, "canvas cannot bypass the one-statement nomination limit")
 	g.command("vote no")
 	if g.state == "meeting":
-		g._close_meeting()
+		GameMeeting._close_meeting(g)
 	if g.state == "night":
 		g.command("sleep")
 	check(g.w.day >= 2 or g.w.game_over, "normal execution and night resolution finish after the canvas presentations")
@@ -283,8 +287,8 @@ func _main_ui() -> void:
 	await process_frame
 	var editor = main.case_view.workshop.editor
 	# A fresh Workshop starts blank; these checks argue the old preset premise.
-	editor.set_premise_field(editor.case_root, "type", "evil")
-	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "type", "evil")
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "person", editor.board._default_target())
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
 	check(main.get_window().gui_embed_subwindows, "Workshop dialogs are embedded in the game window")
 	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "live answer, results, progress and context windows are embedded transient dialogs")

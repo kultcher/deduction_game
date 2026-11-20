@@ -2,6 +2,9 @@
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_claude_batch, test_fixes, test_phase4_2_balanced_execution_priority, test_phase4_3_framing_and_vigil_physics, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Mind = preload("res://sim/mind.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
@@ -171,7 +174,7 @@ func last_words():
 		w.meeting = {"block": nominee.id, "results": [{"nominee": nominee.id, "by": "player", "yes": [], "player_yes": false}], "nominators": [], "nominated": []}
 		g.events = []
 		var alive_before = w.living().size()
-		g._close_meeting()
+		GameMeeting._close_meeting(g)
 		var speech: Array = g.events.filter(func(e): return e.k == "speech" and e.speaker == condemned.id)
 		check(w.living().size() == alive_before - 1 and w.executions.size() == 1 and not condemned.alive, "one actual condemned death and execution record after substitution")
 		check(saved.alive if mode == "martyr" else true, "the substituted nominee survives")
@@ -190,7 +193,7 @@ func last_words():
 				if g.events[i].k == "headline" and g.events[i].kind in ["execution", "martyr"]: death_pos = i
 			check(claim_pos >= 0 and death_pos > claim_pos, "last words precede the actual execution or Martyr aftermath")
 		var snapshot = JSON.stringify([w.executions, g.events, w.rng.state])
-		g._close_meeting()
+		GameMeeting._close_meeting(g)
 		check(JSON.stringify([w.executions, g.events, w.rng.state]) == snapshot, "closing a meeting twice cannot repeat death, aftermath or last words")
 
 
@@ -621,8 +624,8 @@ func _sleepwalk_excuse() -> void:
 	# The model: one claim from a good person means they're the Sleepwalker; two claims
 	# mean at least one claimant is evil.
 	w.day = 2
-	g.add_card({"kind": "secret", "subject": [sleeper.id], "owner": sleeper.id, "source": sleeper.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % sleeper.name})
-	g.add_card({"kind": "secret", "subject": [plain.id], "owner": plain.id, "source": plain.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % plain.name})
+	GameBoard.add_card(g, {"kind": "secret", "subject": [sleeper.id], "owner": sleeper.id, "source": sleeper.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % sleeper.name})
+	GameBoard.add_card(g, {"kind": "secret", "subject": [plain.id], "owner": plain.id, "source": plain.id, "secret_kind": "sleepwalker", "mod": "sleepwalker", "day": 1, "phase": 2, "text": "%s says they've been known to sleepwalk." % plain.name})
 	var view = Live.view(g)
 	var claims: Array = view.cards.filter(func(c): return c.kind == "secret_claim")
 	_check(claims.size() == 2, "the claims reach the shared model as secret claims")
@@ -704,7 +707,6 @@ func _test_bandwagon_pullback_vs_model_standout() -> void:
 	voter.traits["confidence"] = 0.5
 	voter.traits["composure"] = 0.5
 	voter.cleared.clear()
-	voter.spare_pref.clear()
 	for m in w.npcs:
 		voter.suspicion[m.id] = 0.10
 		voter.npc_trust[m.id] = 0.50
@@ -752,7 +754,6 @@ func _test_death_spiral_pullback_and_threshold_parts_parity() -> void:
 	voter.traits["confidence"] = 0.5
 	voter.traits["composure"] = 0.5
 	voter.cleared.clear()
-	voter.spare_pref.clear()
 	voter.workshop_state.clear()
 	for m in w.npcs:
 		voter.suspicion[m.id] = 0.40
@@ -954,8 +955,8 @@ func _test_case_98933_polish_fixes() -> void:
 	# 3) Authoring validation block (citing 'gift' without walking-role claim card) leaves unprepared_refreshes at 0.
 	g.unprepared_refreshes.clear()
 	var fb_before: int = w.dlog.entries.filter(func(e): return e.get("type", "") == "unprepared_refresh").size()
-	var c_vig: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": "market", "text": "Vigil saw Agnes."})
-	var c_clm: int = g.add_card({"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium", "day": 2, "phase": C.EVENING, "text": "Agnes Medium."})
+	var c_vig: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": "market", "text": "Vigil saw Agnes."})
+	var c_clm: int = GameBoard.add_card(g, {"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium", "day": 2, "phase": C.EVENING, "text": "Agnes Medium."})
 	var id_clm: String = Live.Evidence.normalize_card(g.board[c_clm - 1]).id
 	var id_vig: String = Live.Evidence.normalize_card(g.board[c_vig - 1]).id
 	var bad_case: Dictionary = {
@@ -971,13 +972,13 @@ func _test_case_98933_polish_fixes() -> void:
 		}}]
 	}
 	var bad_num: int = Live.file(g, bad_case)
-	var gate_ok: bool = g._presentation_gate(g.board[bad_num - 1], w.living(), ["isolde"], "deduction", "meeting")
+	var gate_ok: bool = GamePresentation._presentation_gate(g, g.board[bad_num - 1], w.living(), ["isolde"], "deduction", "meeting")
 	var fb_after: int = w.dlog.entries.filter(func(e): return e.get("type", "") == "unprepared_refresh").size()
 	_check(not gate_ok and g.unprepared_refreshes.is_empty() and fb_after == fb_before,
 		"Incomplete canvas authoring validation block returns false with 0 unprepared refreshes")
 
 	# 4) Jury rival-world formatting omits ';  Marked' when marked == ''.
-	var snap_ok: Dictionary = g.workshop_snapshot([bad_num], hollis.id, "meeting")
+	var snap_ok: Dictionary = GamePresentation.workshop_snapshot(g, [bad_num], hollis.id, "meeting")
 	var view_dummy: Dictionary = {"people": [{"id": "odette", "name": "Odette", "home": "square"}, {"id": "isolde", "name": "Isolde", "home": "hill"}, {"id": "edda", "name": "Edda", "home": "market"}], "evil_count": 2, "day": 2, "timeline": {"events": []}}
 	var desc_unmarked: Dictionary = Jury.Solver.describe_world(view_dummy, {"evil": 3, "marked": -1, "demon": 0}, "Original alignment")
 	var marked_clause: String = ("; %s Marked" % Jury.Solver.person_name(view_dummy, desc_unmarked.marked)) if str(desc_unmarked.get("marked", "")) != "" else ""
@@ -1030,7 +1031,7 @@ func public_sightings():
 	speaker.beliefs = [seen]
 	w.defer_beliefs = true
 	g._testimony = {"speakers": [speaker], "i": 0, "done": false, "spoken": 0}
-	g._testimony_turn()
+	GameMeeting._testimony_turn(g)
 	var sightings = g.board.filter(func(card): return card.kind == "sighting" and card.source == speaker.id and card.day == 1 and card.subject == [target.id])
 	check(sightings.size() == 1, "the actual testimony turn files the volunteered sighting once")
 	if sightings.is_empty(): return

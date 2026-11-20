@@ -1,4 +1,4 @@
-## Graded gossip's value tiers (Social.gossip_tier; a DRAFT awaiting Michael, Nov 20): what the
+## Graded gossip's value tiers (Social.gossip_tier; approved by Michael, Nov 20): what the
 ## tavern tags each item as. The selection doesn't use the tiers yet.
 ##   godot --headless --path . --script res://tools/test_gossip_tiers.gd
 extends SceneTree
