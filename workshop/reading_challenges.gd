@@ -626,9 +626,16 @@ static func _outing_explained(cards: Array, person: String, night: int, knowledg
 	return false
 
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
-## the reading was taken, with no gift or private errand the case gives for it. Nobody
-## without such a sighting is a candidate.
+## the reading was taken, on the way to the reader's home, with no gift or private errand the
+## case gives for it. Nobody without such a sighting is a candidate. A sighting off every road
+## from their home to the reader's doesn't make them one (the same test as
+## `_outing_poison_chance`, Nov 20); one with no block named still does.
 static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dictionary, cards: Array) -> Dictionary:
+	var C = preload("res://sim/content.gd")
+	var homes: Dictionary = {}
+	for p in view.get("people", []):
+		homes[str(p.get("id", ""))] = str(p.get("home", ""))
+	var reader_home: String = str(homes.get(str(report.get("source", "")), ""))
 	var night: int = int(report.get("night", -1))
 	if night < 0:
 		var obs: Dictionary = report.get("observed_at", {})
@@ -637,13 +644,18 @@ static func poisoner_candidates(view: Dictionary, report: Dictionary, value: Dic
 	var out: Dictionary = {}
 	for c in cards:
 		var seen: Array = []
+		var blk: String = str(c.get("block", ""))
 		if c.get("kind", "") == "sighting" and int(c.get("night", -1)) == night:
 			seen = c.get("subjects", [c.get("subject", "")])
 		elif c.get("kind", "") == "report" and c.get("role", "") == "nightwatch" and int(c.get("night", -1)) == night:
 			seen = c.get("data", {}).get("seen", [])
+			blk = str(c.get("data", {}).get("block", blk))
 		for person in seen:
 			var key: String = "%s:%d" % [person, night]
 			if str(person) == "" or person == report.source or str(reasons.get(key, "")) in ["gift", "secret"]:
+				continue
+			var home: String = str(homes.get(str(person), ""))
+			if blk != "" and reader_home != "" and home != "" and not (blk in C.route(home, reader_home)):
 				continue
 			out[person] = true
 	return out
