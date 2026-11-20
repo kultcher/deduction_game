@@ -1,4 +1,5 @@
 extends SceneTree
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const GamePresentation = preload("res://game/game_presentation.gd")
 const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
@@ -64,11 +65,11 @@ func _ui(g, number: int, other: int) -> void:
 	editor.add_evidence(number)
 	editor.add_evidence(other)
 	for type in ["secret_mod", "notrole", "unreliable"]:
-		editor._add_premise()
+		LiveWorkshopFields.add_premise(editor)
 		var id: String = editor.board.selected
 		check(editor.board.nodes[id].get("draft", false), "Add premise adds a blank premise")
-		editor.set_premise_field(id, "type", type)
-		editor.set_premise_field(id, "person", "greta")
+		LiveWorkshopFields.set_premise_field(editor, id, "type", type)
+		LiveWorkshopFields.set_premise_field(editor, id, "person", "greta")
 		check(editor.board.nodes[id].conclusion.get("type") == type and editor.board.nodes[id].conclusion.get("target") == "greta", type + " premise is set on the card")
 		for n in [number, other]:
 			editor.board.connect_cards("e:" + Live.Evidence.normalize_card(g.board[n - 1]).id, id)
