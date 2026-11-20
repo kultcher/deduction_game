@@ -126,8 +126,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HONESTY_K` | `0.8` | Credibility (honesty) discounting from evidence against a source (retired legacy aliases retained) | `game/game_screens.gd` |
 | `HONESTY_CAP` | `0.5` |  | `game/game_screens.gd` |
 | `NIGHT_DOUBT_CAP` | `0.9` |  | (unused) |
-| `RIVAL_CLAIM_EFF` | `0.6` | retired legacy claim-collision weight (shared model owns claims) | (unused) |
-| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` |  | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
+| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` | Role-claim & sighting ledger weights | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
 | `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind.gd` |
 | `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind.gd` |
 | `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind.gd` |
@@ -303,7 +302,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
-| `PARANOIA_DRIFT_RATE` | `0.06` | unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH) | (unused) |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
 | `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
 | `APPROACH_NOISE` | `0.2` |  | `sim/social.gd` |
