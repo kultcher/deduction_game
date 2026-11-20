@@ -28,7 +28,21 @@ BACKLOG §3, "Graded gossip" (Michael, Nov 19): each gossip occasion has a budge
 
 `tools/measure_gossip_tiers.gd` (Quill's tool, at the evening before the meeting's testimony), 40 passive games, 10 NPCs, seeds 1–40. Before = #431, after = this branch:
 
-MEASURE_TABLE
+168 evenings on each side:
+
+| Per evening | Before | After |
+|---|---|---|
+| Tier 1 told (something to file or check) | 0.46 | 1.72 |
+| Tier 2 told (useful but softer) | 0.63 | 1.06 |
+| Tier 3 told (colour: haunts, relationships, day sightings) | 2.89 | 1.20 |
+| Evenings meeting the tier-1 target (2) | 10% | 75% |
+| Evenings meeting the tier-2 target (1) | 46% | 92% |
+| Evenings meeting both | 3% | 73% |
+| Evenings where the offer could meet both | 84% | 84% |
+
+- **In game terms:** before, about 1 tavern evening in 30 gave the player two things they could file or check, plus a softer lead. Now about 3 in 4 do. The rest of the evening is still colour, but about half as much of it.
+- **The gap to 84%:** the budget only counts news. Where the only tier-1 items left are ones the player already heard, it doesn't repeat them.
+- **The town is unchanged:** the offer is identical on both sides, which shows the measure doesn't alter the games.
 
 - **Golden:** identical to `baseline_7005cc6` at `--tol 0` on all five seeds. The golden games never visit the tavern, so no re-baseline.
 - **Suites:** 29 pass:
