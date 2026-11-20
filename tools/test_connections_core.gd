@@ -12,7 +12,7 @@
 ##   stay for the day and only an item with a newly held card is tested.
 ## - What the firsthand cards prove by themselves stays proved.
 ## - In game the memory lives in the NPC's workshop_state.connections, is written only by
-##   the applied refresh, and isn't there at all while the switch is off.
+##   the applied refresh.
 extends SceneTree
 
 const Seeds = preload("res://tools/fixture_seeds.gd")

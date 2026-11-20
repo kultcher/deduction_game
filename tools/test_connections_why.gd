@@ -1,14 +1,13 @@
-## The "why they moved" report with the connections belief model on (game/workshop_why.gd,
+## The "why they moved" report with the connections belief model (game/workshop_why.gd,
 ## `_connections_report`; workshop/connections.gd).
 ##
-## - With the model on, the report is read from the breakdown the applied refresh stored
-##   (and the one before it): nothing is re-run, and none of today's stages (attention,
-##   change of view, headline) appear.
+## - The report is read from the breakdown the applied refresh stored (and the one before
+##   it): nothing is re-run, and none of the earlier report's stages (attention, change of
+##   view, headline) appear.
 ## - The "after" chance is the refresh's own; the parts shown for a person add up to it.
 ## - The case's own part and its weight (trust in the presenter, fading, the "suspicious"
 ##   halving) are the stored case's.
-## - With the model off the report is what it always was.
-## - A log played with the model on says so in case_start, and the replay tools read it.
+## - A log says it was played on connections in case_start, and the replay tools read it.
 ## - The profiling hooks (Connections.capture, the profiler's spans) record and change nothing.
 extends SceneTree
 
@@ -153,7 +152,7 @@ func _state(g, n) -> Array:
 		g.w.dlog.entries.size()]
 
 
-# ------------------------------------------------------------ the report, model on
+# ------------------------------------------------------------ the report
 
 func _report() -> void:
 	var s: Dictionary = _filed("evil")
@@ -174,8 +173,8 @@ func _report() -> void:
 	check(b.had_before, "it has the refresh before the case to compare with")
 	var c: Dictionary = _proposal(g, n).connections
 	print(b.text)
-	check(b.get("model", "") == "connections" and b.ready, "with the model on, the report is the connections one")
-	check(not b.has("chain") and not b.has("view_change") and not b.has("trust"), "none of today's stages are in it")
+	check(b.get("model", "") == "connections" and b.ready, "the report is the connections one")
+	check(not b.has("chain") and not b.has("view_change") and not b.has("trust"), "none of the earlier report's stages are in it")
 	check(not b.text.contains("attention") and not b.text.contains("Change of view") and not b.text.contains("headline") and not b.text.contains("Against what"),
 		"and its text names no attention, change of view, headline or \"against what they already held\" step")
 	var parts: Dictionary = b.parts.get(t, {})

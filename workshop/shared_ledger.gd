@@ -107,7 +107,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			_add(facts, owners, entry.meta.workshop_card, "defence:" + eid)
 		if entry.get("meta", {}).get("kind") in ["role_claim", "role_counter"] and entry.meta.get("how") != "own" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "claim:" + eid)
-	# The connections model (workshop/connections.gd; off by default): each presentation is a
+	# The connections model (workshop/connections.gd): each presentation is a
 	# stored case, with its own cards, premise, challenges and the day it was presented.
 	var stored_cases: Array = []
 	var with_cases: bool = input.get("listener", {}).has("connections")
@@ -360,7 +360,9 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 					if ledger[eid].meta.has("workshop_teller"):
 						shared = true
 						hearing = maxf(hearing, clampf(ledger[eid].weight, 0.0, 1.0))
-			if shared and facts[id].kind == "sighting":
+			# An admitted outing ("Fine, I was out") is an alibi fact the view reads as a sighting
+			# of its teller (LiveAssessment.activity_card), so it is heard like one (Codex on #372).
+			if shared and (facts[id].kind == "sighting" or card_ref.get("admitted", false)):
 				var base_sighting_hw: float = 1.0 if ("learned" in owners[id] and facts[id].source == input.listener.id) else hearing
 				hearing = base_sighting_hw
 				if not ("learned" in owners[id] and facts[id].source == input.listener.id) and facts[id].source not in ["", "player", "evidence", "town"]:
@@ -629,7 +631,7 @@ static func premise_targets(key: String, presented: Dictionary) -> Array:
 		var is_root: bool = int(argument.get("board_number", -998)) == int(presented.get("root", -999))
 		if not is_root and not key.begins_with("direct:"):
 			continue
-		if str(argument.get("conclusion", {}).get("type", "")) not in Tuning.Workshop.PREMISE_SHAPING_TYPES:
+		if str(argument.get("conclusion", {}).get("type", "")) not in Tuning.Workshop.PREMISE_ALIGNMENT_TYPES:
 			continue
 		var target: String = Assess._target(argument.conclusion)
 		if target != "" and target not in named:

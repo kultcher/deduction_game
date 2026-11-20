@@ -72,11 +72,12 @@ godot --headless --path . --script res://tools/explain_case.gd -- logs/case_1391
 
 ## Why an argument moved someone this far: the "why" breakdown
 
-`explain_case.gd` shows what a case did. The why breakdown shows where the rest went:
-every discount the shared model applied between "this case proves it" and the suspicion
-that was actually added, each as its own step. It reads the solver's own numbers back; it
-decides nothing. (`workshop/case_why.gd` for the evidence half, `game/workshop_why.gd` for a
-real listener; tests in `tools/test_workshop_why.gd`.)
+`explain_case.gd` shows what a case did. The why breakdown shows where it came from: for a
+real listener, each part of the chance before and after the presentation, read back from
+the breakdown the connections model's refresh stored; for any listener, how far the case's
+cards support its own premise. It reads the solver's own numbers back; it decides nothing.
+(`workshop/case_why.gd` for the evidence half, `game/workshop_why.gd` for a real listener;
+tests in `tools/test_workshop_why.gd` and `tools/test_connections_why.gd`.)
 
 **Where to see it**
 
@@ -84,45 +85,41 @@ real listener; tests in `tools/test_workshop_why.gd`.)
   premise, judged by the test juror. Debug must be on.
 - **Workshop, Debug ▾ > "Record why each listener moved, when I present"** (or
   `g.workshop_why = true`): after each presented case, one breakdown per listener goes to
-  the dev log (`workshop_why`: the chain, the cards and a one-line reason), the trace sidecar
-  (the full text) and **"Show recorded listener breakdowns"**. Off by default.
+  the dev log (`workshop_why`: the parts, the case, the suspicion, the premise and a
+  one-line reason), the trace sidecar (the full text) and **"Show recorded listener
+  breakdowns"**. Off by default.
 - **`tools/explain_case.gd ... --why`**: the same breakdown under each listener of a
   replayed log.
 
-**The suspicion chain (a real listener).** The suspicion of the premise's subject the case
-could add, with one idealisation dropped per line:
+**The belief half (a real listener).** Belief isn't limited by attention, and what a case
+adds is what its cards say together (`workshop/connections.gd`; the report is
+`WorkshopWhy._connections_report`). The report follows the premise's subject and whoever the
+case's own part moved most (up to three people), and shows:
 
-| Step | What it means | The loss to the next step |
-|---|---|---|
-| If the case settled it outright | the ceiling: a posterior of 1 (or 0 for a defence) | the cards don't settle it: other explanations remain |
-| If every card were news, at face value, nothing out of view | every card heard at full weight from a trusted teller; they read everything they hold | hearing weight and trust in the tellers |
-| As they hear each card | their real reliabilities (hearing weight, trust, doubt, challenges) | attention: putting these cards in front of them pushed others out of view |
-| Within their attention | their real card budget, focused on the presented cards | already held: only new cards add anything |
-| Against what they already held | against everything they held before, with their attention where it was | resistance to moving against a lean (Confidence) |
-| After resistance | the requested change | the scale's floor and ceiling |
-| Applied | what the presentation did | |
+- **In short:** the chance before and after, the suspicion before and after as stored
+  (it can go below zero; the game reads that as 0), and the largest part of the change.
+- **The case's cards weighed together:** who that moved, the weight it counted at (trust in
+  the presenter, fading 0.5–0.9 a day by buy-in (`CONNECTIONS_CASE_FADE` …
+  `CONNECTIONS_CASE_FADE_BOUGHT`), x0.5 for a "suspicious" premise), how many cards were
+  weighed together, and whether that was with the listener's core. If the case as a whole
+  added nothing, why (a single card, no held cards, too faded).
+- **Part by part, per person,** before and after, in log-odds: where they start; this
+  case's cards each counted by itself; every other card; the core; this case weighed
+  together; other stored cases (by case number, or "X's nomination of Y"); and the common
+  shift that keeps the evil count. The parts add up to the chance.
+- **The case's cards, each counted by itself:** a card, or the built-in pairing it sits in
+  (a night, an Augur day, a Psychologist reading with its statements, a trace with
+  profiles, the movement or day connection). `[new to them: the case brought it]` marks a
+  card they didn't hold. "(was ...)" shows a card whose own value changed when it was cited.
+- **The core:** what it starts from, what joined it, what it adds, and whether this case
+  was weighed with it.
+- **Suspicion and the action bars:** where a vote and a nomination on the subject stand
+  now, with the same parts `MindMeeting._vote_impl` adds up (no statement from the player).
+- **The premise chain** (below: the case's cards read together by this listener alone).
 
-Under the chain, three blocks say what else the presentation did:
-
-- **Challenge on #N:** each challenge the case attached, how far the listener agrees, the
-  multiplier it puts on the reading, and where the subject (and the challenged reader)
-  would stand without it.
-- **Citing changed how far they trust:** readings whose reliability moved because the
-  case's own copy counts as a way of holding them, and the subject with those readings
-  heard as before.
-- **Change of view:** the held cards that left and entered what they read, the subject
-  with their old view kept, and people the case didn't name who moved by 5 points or more.
-
-Each is one more rerun with that single thing undone, so they don't add up to the total.
-
-Then the **action bars**: where a vote and a nomination on the subject stand now, with the
-same parts `MindMeeting._vote_impl` adds up (no statement from the player).
-
-Each step is the listener's own union evaluation, re-run on copies
-(`Shared.prepare` / `Jury.refresh`). "Reads everything" uses the existing developer switch
-`Reasoner.unlimited_cards`. The "without this case" side needs to know what their attention
-was on before the presentation, which the presentation overwrites: recording and
-`explain_case --why` capture it first (`WorkshopWhy.before`).
+"Before" is the breakdown the listener's last refresh stored (`WorkshopWhy.before(n, g)`
+keeps it, and recording and `explain_case --why` take it before presenting); "after" is the
+one the presentation's own refresh stored.
 
 **The premise chain (any listener, including the test juror).** The chance the premise
 is true: with no cards (their starting view and the public record); if every teller is
@@ -156,56 +153,21 @@ group is "the strongest surviving alternative".
 **It changes nothing.** No game RNG draw, no write to a mind, a plan or a cache switch
 (`test_workshop_why`: state compared before and after; the same presentations with
 recording on and off leave every mind and the world RNG identical). With recording off
-(the default) nothing is computed, so the golden capture is unchanged. Cost: 5 or 6 union
-evaluations plus a few CaseEval runs per card: about 0.15 s per listener early in a 7-NPC
-case, 0.5 s on day 2 at 10 NPCs and up to 2 s late in a 10-NPC case (so recording adds a
-real pause at a late meeting).
+(the default) nothing is computed, so the golden capture is unchanged. Nothing in the belief
+half is re-run, so it costs a few milliseconds. The premise chain is the cost: its per-world
+checks (does the premise hold, can each teller be taken at their word) are kept between
+listeners (`CaseWhy._masks`), so the first listener of a case pays about 0.4 s at 10 NPCs
+and the rest about 0.08 s each.
 
-### With the connections model on (the default in play since Nov 16)
-
-With `Connections.enabled` (workshop/connections.gd) none of the steps above exist: belief
-isn't limited by attention, and what a case adds is what its cards say together. The same
-menu items, `g.workshop_why` and `explain_case.gd --why` then give a different report
-(`WorkshopWhy._connections_report`; tests in `tools/test_connections_why.gd`). It follows
-the premise's subject and whoever the case's own part moved most (up to three people), and
-shows:
-
-- **In short:** the chance before and after, the suspicion before and after as stored
-  (it can go below zero; the game reads that as 0), and the largest part of the change.
-- **The case's cards weighed together:** who that moved, the weight it counted at (trust in
-  the presenter, x0.5 a day since it was presented, x0.5 for a "suspicious" premise), how
-  many cards were weighed together, and whether that was with the listener's core. If the
-  case as a whole added nothing, why (a single card, no held cards, too faded).
-- **Part by part, per person,** before and after, in log-odds: where they start; this
-  case's cards each counted by itself; every other card; the core; this case weighed
-  together; other stored cases (by case number, or "X's nomination of Y"); and the common
-  shift that keeps the evil count. The parts add up to the chance.
-- **The case's cards, each counted by itself:** a card, or the built-in pairing it sits in
-  (a night, an Augur day, a Psychologist reading with its statements, a trace with
-  profiles, the movement or day connection). `[new to them: the case brought it]` marks a
-  card they didn't hold. "(was ...)" shows a card whose own value changed when it was cited.
-- **The core:** what it starts from, what joined it, what it adds, and whether this case
-  was weighed with it.
-- **Suspicion and the action bars,** as before, and the **premise chain** (unchanged: the
-  case's cards read together by this listener alone).
-
-"Before" is the breakdown the listener's last refresh stored (`WorkshopWhy.before(n, g)`
-keeps it); "after" is the one the presentation's own refresh stored. Nothing is re-run, so
-the model's part of the report costs a few milliseconds. The premise chain is the cost: its
-per-world checks (does the premise hold, can each teller be taken at their word) are kept
-between listeners (`CaseWhy._masks`), so the first listener of a case pays about 0.4 s at
-10 NPCs and the rest about 0.08 s each.
-
-A log played with the model on says so in `case_start` (`"connections": true`), and
-`replay_log.gd` and `explain_case.gd` replay with the model the log recorded: a log without
-the field replays with it off (the earlier model). For a log from before the field was
-recorded that was played with it on, pass `--connections`.
+A log played on the connections model says so in `case_start` (`"connections": true`). A
+log without the field was played on the earlier model; the replay tools stop on it
+(`LogReplay.new_game`).
 
 ### What a command cost: `tools/replay_log.gd --time` and `--profile`
 
 `--time` prints how long each replayed command took (those over 100 ms) and the total.
 `--profile` adds, under each, the Workshop profiler's spans by their own time and its
-counters. With the connections model on the refresh shows as
+counters. The refresh shows as
 `.../consequences/connections/{baseline,items,core,cases}`, and `connections_judgements`
 counts the judgements asked for; `connections_kept` counts those handed back from the
 kept store instead of being made (step 6). `Connections.capture` (a developer switch, off) records each
@@ -213,7 +175,7 @@ judgement (listener, part, the set judged, time, a hash of the answer), for meas
 cache would save.
 
 ```text
-godot --headless --path . --script res://tools/replay_log.gd -- logs/case_44542.jsonl --connections --profile
+godot --headless --path . --script res://tools/replay_log.gd -- logs/case_44542.jsonl --profile
 ```
 
 ## Coverage and maintenance

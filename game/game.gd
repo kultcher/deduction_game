@@ -90,10 +90,10 @@ var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling
 var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
-# Every time the legacy rules judged something the shared model couldn't read (always
-# recorded, with or without detailed tracing). See the `fallbacks` command.
-var shared_fallbacks: Array = []
-var _fallbacks_reported = 0
+# Every refresh or presentation the shared model couldn't prepare (the mind kept its last
+# good beliefs; always recorded, with or without detailed tracing). See the `fallbacks` command.
+var unprepared_refreshes: Array = []
+var _unprepared_reported = 0
 const DecisionFeed = preload("res://sim/decision_feed.gd")
 const WorkshopCaches = preload("res://workshop/caches.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -110,10 +110,7 @@ var workshop_compare = false # opt-in diagnostics; never applies the proposed ef
 ## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
 var workshop_why = false
 var workshop_whys: Array = []
-## Opt-in test assertion: unsupported presentations are rejected before any effects.
-var strict_evaluator = C.STRICT_EVALUATOR
-var _workshop_native_submission = false
-var _workshop_native_social = false  # a bare belief with no evidence: social speech, not a fallback
+var _workshop_native_social = false  # a protect/spare preference or a bare belief: social speech, not a fallback
 var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
@@ -245,7 +242,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	_workshop_reason_ctx = {}
 	_workshop_responses = {}
 	_workshop_repeats = {}
-	_workshop_native_submission = false
+	_workshop_native_social = false
 	board = []
 	profile_receipts = []
 	confidences = {}
@@ -273,8 +270,8 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	watched = []
 	known_relationships = {}
 	fallback_count = 0
-	shared_fallbacks = []
-	_fallbacks_reported = 0
+	unprepared_refreshes = []
+	_unprepared_reported = 0
 	show_hidden = false
 	last_error = ""
 	_trace_export_pending = false
@@ -291,7 +288,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	w.setup(seed_in, npc_count, func(_world): _attach_workshop_world())
 	if debug_overlay: set_debug_overlay(true)
 	w.dlog.begin_action("new_case_presentation")
-	w.dlog.trace_event("game_config", "world", "", {"strict_evaluator": strict_evaluator})
 	state = "day"
 	moved = false
 	approached_id = ""
@@ -331,9 +327,7 @@ func _attach_workshop_world() -> void:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {}
-		if game._workshop_native_submission:
-			if not game._workshop_native_social:
-				WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
+		if game._workshop_native_social:
 			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	_home_cards()
@@ -354,7 +348,7 @@ func command(line: String) -> String:
 	if text == "":
 		return ""
 	_canvas_status_memo = {}
-	_workshop_native_submission = false
+	_workshop_native_social = false
 	events = []
 	if w != null:
 		w.set_log_time()
@@ -376,7 +370,7 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] == "case")):
 		return command(line)
 	workshop_presenting = true
-	_workshop_native_submission = false
+	_workshop_native_social = false
 	events = []
 	w.set_log_time()
 	w.dlog.begin_action("command", {"cmd": line})

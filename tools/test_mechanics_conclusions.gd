@@ -52,9 +52,9 @@ func _run() -> void:
 		check(not Assess.prepare(g.workshop_snapshot([filed], "nisha")).ready, type + " stays explicit without a represented fact")
 	for type in ["protect", "spare"]:
 		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], true)
-		var before: int = g.w.dlog.entries.filter(func(e): return e.type == "legacy_fallback").size()
+		var before: int = g.w.dlog.entries.filter(func(e): return e.type == "unprepared_refresh").size()
 		check(g._presentation_gate(g.board[filed - 1], [g.w.by_id.nisha], [], "", "meeting") and g._workshop_native_social, type + " is social speech")
-		check(g.w.dlog.entries.filter(func(e): return e.type == "legacy_fallback").size() == before, type + " does not count as fallback")
+		check(g.w.dlog.entries.filter(func(e): return e.type == "unprepared_refresh").size() == before, type + " does not count as an unprepared refresh")
 	await _ui(g, number, other)
 	print("Mechanics conclusion checks: %d; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)

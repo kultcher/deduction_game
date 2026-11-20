@@ -1,6 +1,8 @@
 ## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, false-reading causes.
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_fixes, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
+const MainActions = preload("res://ui/main_actions.gd")
+const MainPickers = preload("res://ui/main_pickers.gd")
 
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
@@ -113,11 +115,11 @@ func ward_warnings():
 	check(g.w.tools.ward == 1 and g.offer.ward == person.id and Game.render(g.events).contains("Promising does not spend your ward; keeping the promise does"), "ward promises explain the limit and do not consume the tool")
 	g.state = "night"
 	scene._ward_target = person.id
-	scene._refresh_actions()
+	MainActions.refresh(scene)
 	await process_frame
 	var buttons: Array = scene.actions.get_children().filter(func(n): return n is Button and "ward" in n.text.to_lower())
 	check(buttons.size() >= 3 and buttons.all(func(b): return "1 left, once per case" in b.text), "every direct-night Ward button displays the remaining limit")
-	var dialog = scene._confirm_ward(person.id)
+	var dialog = MainPickers.confirm_ward(scene, person.id)
 	check(dialog.dialog_text == "This spends your only ward. Ward %s?" % person.name and g.w.tools.ward == 1, "direct UI warding asks for confirmation before spending")
 	dialog.canceled.emit()
 	await process_frame

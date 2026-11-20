@@ -180,9 +180,17 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 					# made it. (Under the secrets rework a Sleepwalker stays self-unaware: then a
 					# claim is never a good holder's knowing one; docs/design/secrets_rework.md.)
 					var excused: float = 1.0 - _evil_chance(listener, s_id) if sleepwalkers.has(s_id) else 0.0
+					var d_night: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT * (1.0 - excused)
+					var d_general: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL * (1.0 - excused)
+					if card.get("excuse_contradicted", false):
+						# The excuse for this lie was contradicted (LiveAssessment._mark_excuses): a
+						# second caught lie, at CONTRADICTED_EXCUSE_WEIGHT of the first (Michael, Nov 19).
+						var w2: float = Tuning.Workshop.CONTRADICTED_EXCUSE_WEIGHT
+						d_night = 1.0 - (1.0 - d_night) * (1.0 - w2 * Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT)
+						d_general = 1.0 - (1.0 - d_general) * (1.0 - w2 * Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL)
 					var nk_a: String = "%s:%d" % [s_id, cnight]
-					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT * (1.0 - excused))
-					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL * (1.0 - excused))
+					pre_eval[nk_a] = maxf(float(pre_eval.get(nk_a, 0.0)), d_night)
+					pre_eval[s_id + ":*"] = maxf(float(pre_eval.get(s_id + ":*", 0.0)), d_general)
 
 	# A teller's own word that its gift may have been turned (BACKLOG "Saying 'my gift may
 	# have been turned'", Michael, Nov 17-18), before pass 2 so a retracted Gravedigger reading

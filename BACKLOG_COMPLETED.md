@@ -3,6 +3,116 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026 (Michael's calls and the leads' confirmations; recorded by Claude-Vicar)
+
+- **Demon detours exist in inference but not in actual movement.** (77388) The movement
+  model gives the Demon a 5% detour, and listeners are told a detour is possible, but the
+  Demon never actually detours. Decide which is authoritative, then reconcile the
+  evaluator, the movement and the explanatory dialogue; compare inference, votes, RNG
+  and timings on fixed replays. Michael (Nov 17): the Demon still never detours, so
+  remove the detour from inference: drop it from what NPCs assume and from the
+  explanatory dialogue (Herald for any wording), and compare inference and votes on fixed
+  replays. Owner Beadle. [decided] **In flight:** Beadle's #365 (open).
+
+  > **Closed Nov 20 (Beadle confirmed):** built. Beadle, #365.
+
+- **A daily nudge to share a gift privately.** Each day past day 1, NPCs who haven't claimed
+  a gift publicly get a small boost towards sharing it privately, to feed the gossip
+  network. (Michael, Nov 19) Owner Beadle, who proposes the size. **In flight:** Beadle's
+  #327 (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
+  Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
+  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
+  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1). NPC-to-NPC
+  only; evil's bluffed gift and fake readings get the same. Measured on 40 games: see the PR's
+  handoff.
+
+  > **Closed Nov 20 (Beadle confirmed):** built. Beadle, #327 (re-baselined to baseline_9ea3f99).
+
+- **One pass over every bluffer** for the "too clean when an ally is involved" tell that
+  gave Kiran's Dowser away in 97626 (the Dowser itself was reworked in #160 to Michael's
+  guidelines: within about 1 of the truth, the group size setting the room). For
+  comparison, the Surveyor frames the scapegoat's block 60% of the time, clears a
+  teammate's block half the rest, or picks at random; the Seer never gives a "no" that
+  covers the scapegoat. Michael (Nov 17): review every bluff rule against the Dowser's
+  #160 guideline (stay close to the truth; the situation sets the room) and fix the tells.
+  Pairs with the better-lie rework, which touches every bluff's alternatives. Owner
+  Beadle. **[decided]** A pass was built in #264 (Beadle). Close once Beadle confirms it
+  covered every bluff rule.
+
+  > **Closed Nov 20 (Beadle confirmed):** built. Beadle, #264, with Michael's Nov 18 blend-in-or-disrupt follow-up.
+
+- **The premise should matter.** (user + Claude, Oct 25, case 22485) A case's premise
+  changes only the reply and a small trust reward: the belief update re-weighs all the
+  listener's evidence regardless, so "Isolde is evil" with cards pointing at Dorian raises
+  suspicion of Dorian as much as "Dorian is evil" would. Wanted: the town can notice what
+  the player missed, but not solve the case solo or by accident.
+  1. Listeners update mainly on what was argued: full weight on the premise target,
+     reduced spillover on others scaled by Insight (a sharp NPC notices "this actually
+     points at Dorian").
+  2. A clearly wrong premise costs a little trust ("you're accusing the wrong person").
+  3. The preview shows qualitative strength for the premise and, when the evidence points
+     elsewhere, a hint ("this evidence may say more about someone else") without names.
+
+  Measure with the bot A/B; check this doesn't let moderately supported wrong
+  nominations through. [decided: direction; numbers open]
+
+  Built Nov 6 as premises steps 1–3 (PRs #92, #93, #95; `docs/premises_plan.md`). Tally's
+  A/B (Nov 7) found no outcome change. Under the connections model (in play since Nov 16)
+  the premise type changes what's asked, not how cards are weighed, and people a case
+  doesn't touch don't move by construction. Presented cards are still heard at the case's
+  agreement (Michael, Nov 13, triage 5.3: keep it), so a weaker framing of the same facts
+  lands weaker. [watch]
+
+  **Direction (Michael, Nov 17, from his answer on "Say what a card is offered for"):** when
+  a case has a premise, the case's effect should centre on its subject. In a case "Constance
+  is evil" that cites a vigil sighting contradicting her alibi, any suspicion the case moves
+  onto other people in that sighting should be scaled down, with full weight on Constance.
+  This would also cover most of what "Say what a card is offered for" asks. Under the
+  connections model it sits in how a stored case adds its joint value (Lantern).
+
+  **Centre a case on its premise (Michael, Nov 17).** Two ways, to be chosen after
+  measurement:
+  - **A, the joint value only:** on the premise's subject a case adds its joint value (what
+    its cards say together, beyond each alone) in full, and on everyone else at a fraction;
+    brought cards keep counting in full for everyone they name.
+  - **B, the brought cards too:** a card a listener holds only because a case brought it
+    also counts in full on the subject and at a fraction on everyone else; cards held some
+    other way count as usual.
+  In both, there's no centring without a premise, and a "suspicious" premise centres the
+  same way. The bystander fraction is a new constant, approved with this decision. Measure
+  A and B on the same bot games, at 0.5 and one other value: bystander movement per
+  presentation, the subject's own movement, and the others in a vigil sighting like
+  Michael's example. Report side by side, then Michael picks. Owner Lantern.
+  **Michael (Nov 18): build B at a bystander share of 1/3,** reusing step 1's
+  `premise_shaping` selection (`docs/design/premise_centring.md`; built as
+  `Shared.brought_by_premise`, and `premise_shaping` itself was deleted in purge phase 5). No extra trust cost for a
+  misframed case: the case not landing is the cost (Michael, Nov 18). Owner Lantern.
+  **[decided]: B at a share of 1/3** **Built** (Lantern, #246; Marked's knock-on is in the
+  secrets rework). What's left is point 3's preview hint for a misframed case, never built.
+  Close once Lantern confirms.
+
+  > **Moved Nov 20 (Lantern confirmed):** centring B at 1/3 is built (#246). Point 3, the misframed-case hint, stays in BACKLOG as its own item.
+
+- **Breathstealer by presence:** built (#111, Nov 10; a joint factor over the presence
+  table), and since #157 (Nov 14) it assumes the Breathstealer hunts. The Breathstealer
+  decision (does silence prove the victim good?) is still open, in section 4.
+
+  > **Closed Nov 20 (Quill confirmed):** built. The open question lives in "The Breathstealer overhaul", section 4.
+
+- **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
+  too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
+  over-weighted and always visible" first, then see what's left. [open]
+
+  > **Closed Nov 20 (Michael):** closed, through Seneschal.
+
+- **Passing through vs stopping.** Sightings say whether someone was passing through a
+  block or out on it ("heading toward the Docks" vs "out on the Docks"). Two "out on"
+  sightings on different blocks are a real contradiction; "passing through" fits a route.
+  Open: who can tell the difference (street observers and vigils, not window glimpses).
+  [open]
+
+  > **Closed Nov 20 (Michael):** closed, through Seneschal.
+
 ## Built, reconciled Nov 19, 2026, evening (Michael via Seneschal; recorded by Claude-Vicar)
 
 Checked against main at e517a66.

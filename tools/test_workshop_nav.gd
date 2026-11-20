@@ -3,6 +3,7 @@
 ## canvas adds a person's readings, given by them or naming them.
 ##   godot --headless --path . --script res://tools/test_workshop_nav.gd
 extends SceneTree
+const MainPickers = preload("res://ui/main_pickers.gd")
 
 var checks = 0
 var fails = 0
@@ -132,7 +133,7 @@ func _nomination_prefill(scene) -> void:
 	if not g.on_deck_case(who.id).is_empty():
 		check(false, "%s has no case on deck (the menu offers filing one)" % who.name)
 		return
-	scene._nomination_menu(scene.actions, who.id)
+	MainPickers.nomination_menu(scene, scene.actions, who.id)
 	var file_btn: Button = _find_button(scene.popup, "File a case against %s in the Workshop" % who.name)
 	check(file_btn != null, "the nomination menu offers filing a case against %s" % who.name)
 	if file_btn == null:

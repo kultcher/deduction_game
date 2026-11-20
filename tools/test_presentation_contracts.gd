@@ -1,4 +1,4 @@
-## Presentation contracts: bounded and reversible suspicion totals, strict submission
+## Presentation contracts: bounded and reversible suspicion totals, blocked submissions
 ## (blocked presentations cost nothing and say why), case revisions, and free repeats.
 ## (Was test_legacy_migration; renamed 2026-11-04.)
 extends SceneTree
@@ -13,7 +13,7 @@ var fails = 0
 
 func _init() -> void:
 	_reversible_totals()
-	_strict_submission()
+	_blocked_submission()
 	_revisions_and_repeats()
 	print("Presentation contracts: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -63,9 +63,8 @@ func _reversible_totals() -> void:
 	Mind.adjust(g.w, n, target.id, 0.1, "counterevidence", "", false)
 	check(is_equal_approx(n.suspicion[target.id], total + 0.1), "demon victims remain open to counterevidence")
 
-func _strict_submission() -> void:
+func _blocked_submission() -> void:
 	var g = _clean()
-	g.strict_evaluator = true
 	var target = g.w.living_good()[0]
 	var totem = g.add_card({"kind": "totem", "source": "evidence", "subject": [target.id], "block": "unknown", "day": 1, "phase": 0, "text": "An incomplete totem receipt."})
 	var ded = g.file_deduction({"type": "evil", "a": target.id}, [totem])
@@ -76,7 +75,7 @@ func _strict_submission() -> void:
 	g.state = "meeting"
 	g.presented_today = false
 	var reply = g.command("present %d" % ded)
-	check("Cannot present" in reply and "totem" in reply, "strict meeting submission explains the unsupported card")
+	check("Cannot present" in reply and "totem" in reply, "a meeting submission explains the unsupported card")
 	check(not g.presented_today and _state(g) == before, "blocked meeting spends no floor, RNG, trust or belief")
 	g.state = "talk"
 	g.talk_with = target
@@ -88,13 +87,12 @@ func _strict_submission() -> void:
 	g.statement_used = false
 	var vote_reply = g.command("case %d" % ded)
 	check("Cannot present" in vote_reply and not g.statement_used and _state(g) == before, "blocked nomination does not spend the statement or disclose evidence")
-	check(g.w.dlog.trace_events().any(func(e): return e.type == "workshop_fallback"), "every rejected submission records a fallback reason")
-	g.strict_evaluator = false
+	check(g.w.dlog.trace_events().any(func(e): return e.type == "workshop_unprepared"), "every rejected submission records an unprepared reason")
 	g.state = "talk"
 	g.questions_left = 3
 	var ordinary = g.command("convince %d" % ded)
 	# No legacy route for presentations (Oct 25): ordinary play blocks it too, with the reason.
-	check("Cannot present" in ordinary and g.questions_left == 3 and g.shared_fallbacks.size() > 0, "ordinary play blocks an unsupported presentation with its reason and records the fallback")
+	check("Cannot present" in ordinary and g.questions_left == 3 and g.unprepared_refreshes.size() > 0, "ordinary play blocks an unsupported presentation with its reason and records the unprepared refresh")
 
 func _state(g) -> String:
 	return JSON.stringify([g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.pressure, n.suspicion, n.ledger, n.secret_spread, n.workshop_state, n.shadow.suspicion if n.shadow != null else {}])])

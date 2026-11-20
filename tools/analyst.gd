@@ -1,4 +1,4 @@
-## The analyst bot's reasoning (legacy purge phase 4c, docs/legacy_retirement_plan.md).
+## The analyst bot's reasoning (legacy purge phase 4c, docs/archive/legacy_retirement_plan.md).
 ## A neutral test juror reads the player's board through the shared model (the same
 ## CaseEval the town uses) and gives every person a posterior chance of being evil. The
 ## bot ranks, nominates, votes and builds Workshop cases from that, so it measures the

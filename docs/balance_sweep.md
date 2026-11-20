@@ -104,7 +104,8 @@ One JSON object per game. Flat fields:
 - **Bot:** `player_commands`, `player_nominations`, `player_nominations_executed_evil`,
   `player_nominations_executed_good`.
 - **Health:** `wall_s`, `guard` (commands issued), `stuck` (the 600-command guard ran
-  out), `legacy_fallbacks` (shared-model fallbacks), `complete`.
+  out), `unprepared_refreshes` (refreshes the shared model couldn't prepare; `legacy_fallbacks` in
+  records from before Nov 20), `complete`.
 
 A lost game has only identity fields plus `failed` (`crash` / `timeout` / `startup`) and
 `complete: false`.

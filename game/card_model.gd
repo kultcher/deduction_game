@@ -212,6 +212,9 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 					# An admission that names no place ("Fine, I was out"; the caught-out ladder).
 					return "%s: out that night%s" % [about, said]
 				if not card.get("home", true):
+					# An excuse that names no place ("Fine, I was out"; Beadle's caught-out ladder).
+					if str(card.block) == "":
+						return "%s: out%s" % [about, said]
 					return "%s: out on %s%s" % [about, C.block_name(card.block), said]
 				return "%s: home, %s%s" % [about, C.block_name(card.block), said]
 		"sighting":

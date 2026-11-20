@@ -1,4 +1,4 @@
-## Native profiles, committed union memory, scoped replies and reversible ownership.
+## Live NPC cognitive profiles, committed union memory, scoped replies and reversible ownership.
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
@@ -10,7 +10,7 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
-	# The earlier model's Workshop theories across a day advance.
+	# Workshop listeners' theories (persistence) across a day advance.
 	_insight()
 	_attention()
 	# Persistence Confidence on a belief refresh (a working theory biasing belief) went with
@@ -150,10 +150,10 @@ func _cover_and_fallback() -> void:
 	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
 	var committed = n.workshop_state.theories.duplicate(true)
 	var last_good = n.suspicion.duplicate(true)
-	g.shared_fallbacks.clear()
+	g.unprepared_refreshes.clear()
 	g.w.public_log.append({"day": 1, "kind": "curse", "subjects": [n.id], "by": "town"})
 	Mind.refresh_beliefs(g.w, n, "unsupported public transition")
-	check(n.workshop_state.active and _close(n.suspicion, last_good) and not g.shared_fallbacks.is_empty() and n.workshop_state.theories == committed, "unsupported history keeps last good vector and theory memory while logging fallback")
+	check(n.workshop_state.active and _close(n.suspicion, last_good) and not g.unprepared_refreshes.is_empty() and n.workshop_state.theories == committed, "unsupported history keeps last good vector and theory memory while logging an unprepared refresh")
 	g.w.public_log.clear()
 	Mind.refresh_beliefs(g.w, n, "supported evidence again")
 	check(n.workshop_state.active and n.workshop_state.issues.is_empty(), "supported ownership clears fallback issues once resolved")

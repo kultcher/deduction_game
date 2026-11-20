@@ -165,7 +165,7 @@ func _run_seed_signature(seed_val: int, npc_count: int) -> Dictionary:
 			reasons_by_npc[p.id] = Mind.reason_status(g.w, p, top[0].id)
 	return {
 		"rng_state": g.w.rng.state,
-		"fallbacks": g.shared_fallbacks.size(),
+		"fallbacks": g.unprepared_refreshes.size(),
 		"suspicion": sus_by_npc,
 		"doubt": doubt_by_npc,
 		"reasons": reasons_by_npc,
@@ -181,7 +181,7 @@ func _test_deterministic_replay_7_and_10_npcs() -> void:
 		and JSON.stringify(r7_a.suspicion) == JSON.stringify(r7_b.suspicion)
 		and JSON.stringify(r7_a.doubt) == JSON.stringify(r7_b.doubt)
 		and JSON.stringify(r7_a.reasons) == JSON.stringify(r7_b.reasons),
-		"7-NPC deterministic multi-day run produces bit-identical RNG state, suspicions, source doubt, and reasons with 0 fallbacks"
+		"7-NPC deterministic multi-day run produces bit-identical RNG state, suspicions, source doubt, and reasons with 0 unprepared refreshes"
 	)
 
 	var r10_a: Dictionary = _run_seed_signature(900, 10)
@@ -191,5 +191,5 @@ func _test_deterministic_replay_7_and_10_npcs() -> void:
 		and r10_a.fallbacks == 0
 		and JSON.stringify(r10_a.suspicion) == JSON.stringify(r10_b.suspicion)
 		and JSON.stringify(r10_a.doubt) == JSON.stringify(r10_b.doubt),
-		"10-NPC deterministic multi-day run produces bit-identical RNG state, suspicions, and source doubt with 0 fallbacks"
+		"10-NPC deterministic multi-day run produces bit-identical RNG state, suspicions, and source doubt with 0 unprepared refreshes"
 	)

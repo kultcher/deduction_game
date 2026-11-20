@@ -66,16 +66,14 @@ static func workshop_readiness(g, card: Dictionary, listeners: Array, targets: A
 
 
 static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
-	g._workshop_native_submission = false
+	g._workshop_native_social = false
 	var rejected: String = _presentation_rejection(g, card)
 	if rejected != "":
 		g._err(rejected)
 		return false
-	g._workshop_native_social = false
 	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
 		# Mechanics-support item 0: a preference is social speech even when the
 		# speaker attaches a card. It is not an unsupported evidence conclusion.
-		g._workshop_native_submission = true
 		g._workshop_native_social = true
 		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
 		return true
@@ -85,7 +83,6 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 	if _bare_speech(check.issues):
 		# No evidence at all ("I believe they're not the Demon"): speech, which stays
 		# social and native (like accusing or defending without a card).
-		g._workshop_native_submission = true
 		g._workshop_native_social = true
 		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A bare belief with no evidence: native social response.")
 		return true
@@ -101,7 +98,7 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 	# claim, an empty hub) is not a model gap, so it is not counted as a fallback.
 	for row in check.listeners:
 		if not row.ready and not _all_authoring_validation_issues(row.issues):
-			WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+			WorkshopOwnership.unprepared(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
 	if _all_authoring_validation_issues(check.issues):
 		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
 	# No legacy route for presentations: an unsupported submission is blocked with its
@@ -242,10 +239,6 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	var rejected: String = _presentation_rejection(g, ded)
 	if rejected != "":
 		return {"blocked": true, "lines": [rejected], "facts": [], "agreement": 0.0}
-	if g.strict_evaluator:
-		var check: Dictionary = workshop_readiness(g, ded, [n], [], "deduction", venue)
-		if not check.ready:
-			return {"blocked": true, "lines": ["Cannot present: " + "; ".join(PackedStringArray(preload("res://game/workshop_canvas.gd").player_issues(g, ded.get("workshop_case", {}), check.issues, int(ded.get("n", 0)))))], "facts": [], "agreement": 0.0}
 	if ded.has("workshop_case"):
 		workshop_canvas_retire(g, n, ded)
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
@@ -263,13 +256,13 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		comparison["card"] = ded.n
 		comparison["venue"] = venue
 		comparison["actual"] = {
-			"model": "shared" if result.get("workshop", false) else "legacy",
+			"model": "shared" if result.get("workshop", false) else "social",
 			"agreement": result.get("agreement", 0.0),
 			"before": before,
 			"after": n.suspicion.duplicate(true),
 		}
 		if not result.get("workshop", false):
-			comparison["legacy"] = comparison.actual.duplicate(true)
+			comparison["social"] = comparison.actual.duplicate(true)
 		g.workshop_comparisons.append(comparison)
 		if g.workshop_comparisons.size() > 24:
 			g.workshop_comparisons.pop_front()
@@ -289,7 +282,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 			"name": n.name,
 			"card": ded.n,
 			"venue": venue,
-			"model": "shared" if result.get("workshop", false) else "legacy",
+			"model": "shared" if result.get("workshop", false) else "social",
 			"issues": issues,
 		})
 		g.w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), g.workshop_deliveries[-1],

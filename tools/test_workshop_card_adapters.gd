@@ -124,9 +124,8 @@ func _public_deaths() -> void:
 		if prepared.ready:
 			check(prepared.view.timeline.deaths.has(target.id), raw.kind + " carries public death timing into the common model")
 			var filed = preload("res://game/workshop_canvas.gd").file(g, value)
-			g.strict_evaluator = true
 			var result = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
-			check(result.get("workshop", false) and fact in listener.workshop_state.facts, raw.kind + " stays a shared root in an actual strict presentation")
+			check(result.get("workshop", false) and fact in listener.workshop_state.facts, raw.kind + " stays a shared root in an actual presentation")
 		if raw.kind == "death":
 			var omitted = input.duplicate(true)
 			omitted.public_events = []

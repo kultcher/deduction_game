@@ -5,6 +5,10 @@ Nov 5, 2026 · @Michael Smith · revised Nov 5, 22:50 ET (Claude-Bailiff) · ste
 **Status (Nov 6, afternoon):** Step 0 (a bare defence cites no grounds; PR #81) and step 0b
 (one attended set; PR #86) are on main.
 
+**Status (Nov 20):** Steps 1–2's belief mechanics (spillover by Insight, the half-weight
+hearing) were replaced by the connections model and deleted in purge phase 5; the rest is
+history.
+
 **Step 0b revised (Nov 6, with Michael):** the belief update has no premise target, and
 nothing about an argument is remembered between presentations. The judging pass (agreement,
 reasons, the trust reward) still ranks attention against the premise's target. The belief
@@ -275,7 +279,7 @@ assumptions (proposal 6, step 2).
 - **Shaping** (`SharedLedger.premise_shaping`, applied in `SharedLedger.evaluate` from
   `WorkshopOwnership._refresh`). A card is shaped when only presentations brought it (not
   the listener's own readings, hearsay or the public record) and at least one of them argued
-  an alignment premise about someone (`Tuning.Workshop.PREMISE_SHAPING_TYPES`: evil, demon,
+  an alignment premise about someone (`Tuning.Workshop.PREMISE_SHAPING_TYPES`, now `PREMISE_ALIGNMENT_TYPES`: evil, demon,
   minion, suspicious, good, notdemon, role, notrole, lied, truthful). Each refresh evaluates
   the union twice, with and without the presentations that own a shaped card. The targets
   take the full difference; everyone else takes `spill` of it, from 0.4 at Insight 0 to 0.8
@@ -340,8 +344,10 @@ secret premise is **the player's word**, weighted by credibility.
   - **Track record:** a presented secret joins `claim_record` as `secret:<target>`;
     at dawn `Credibility._agreement` scores it by how far the NPC's own evidence moved the
     chance that X holds S (abstaining when it hasn't moved), beside the alignment claims.
-- **Suspicious = half-weight hearing plus pressure.** Cards that only suspicious premises
-  brought count at `SUSPICIOUS_HEARING` (0.5) for everyone, both directions, on top of the
+- **Suspicious = half-weight hearing plus pressure.** **Superseded:** removed with the
+  earlier model (purge phase 5). Under connections a "suspicious" premise halves its case's
+  weight, and the pressure is `SUSPICIOUS_PRESSURE_CONNECTIONS_*` (#155). As planned:
+  cards that only suspicious premises brought count at `SUSPICIOUS_HEARING` (0.5) for everyone, both directions, on top of the
   step 1 spillover (a third union pass when firm and suspicious presentations mix). The
   other half presses the target once per filing (target and cards): the average listener's
   full-weight rise on the target times `SUSPICIOUS_PRESSURE_PER_RISE` (0.5 private, 1.0 at
