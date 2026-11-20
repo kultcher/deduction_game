@@ -229,6 +229,153 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 			it["in_case"] = true
 	return out
 
+# ---------------------------------------------------------------- night-sighting rebuttals
+
+## "I was seen out, but no one died that night" / "the death was on another block" (BACKLOG
+## "Explicit night-sighting rebuttals", Michael): an argument from the public death record,
+## said in the defender's own words. Speech only: it carries no weight and changes no belief,
+## since the judge already reasons from the same record (LiveActivity._profile_paths sends the
+## Demon straight to a victim's home on a death night, by `demon_routes`: from its home block to the victim's).
+## Returns {} or {"variant": "other_block"|"no_death", "night": nd, "cites": {...}}.
+##   other_block: a public Demon death on night nd, and `block` (where they were seen) is neither
+##     the defender's own home block nor any victim's home block, so had they been the Demon
+##     they could not have been seen there (people move straight from block to block; the
+##     judge's outing for that person).
+##   no_death: nobody died on night nd (the morning's public "quiet night"), and the defender
+##     knows of nothing that could have turned the Demon away that night.
+## Night 0 never (the Demon doesn't kill then, so a quiet night 0 argues nothing). Only public
+## or held knowledge: deaths and quiet nights are announced; a thwart counts only when the
+## defender could know of it (a public Warden or Veteran claim, a ward the player showed them or
+## the town, a Warden telling them of a save, or their own protective gift). It never says what
+## isn't so: if they were truly out on their own or a victim's block, there is no other_block (good or evil alike),
+## so evil only ever says it when it's true as stated.
+static func night_route_rebuttal(w, d, nd: int, block: String) -> Dictionary:
+	if nd < 1 or nd >= w.day:
+		return {}
+	var deaths: Array = w.public_log.filter(func(e): return str(e.get("kind", "")) == "demon_death" and int(e.get("day", -1)) == nd and not e.get("subjects", []).is_empty())
+	if not deaths.is_empty():
+		if block == "":
+			return {}
+		var victims: Array = []
+		var on_route: Array = []
+		for e in deaths:
+			var v = w.by_id.get(str(e["subjects"][0]))
+			if v == null:
+				return {}
+			for b in C.route(d.home_block, v.home_block):
+				if not (b in on_route):
+					on_route.append(b)
+			victims.append(v.id)
+		if block in on_route:
+			return {}
+		# "I was never on {block}" must be true of the night they spent at home too: a defender
+		# who lives on a victim's block was on it, out or not (Codex on #415).
+		for vid in victims:
+			if w.by_id[vid].home_block == d.home_block:
+				return {}
+		# True as stated: they weren't really out on their own or a victim's block themselves.
+		var where: String = str(d.history.get(w.time_key(nd, C.NIGHT), ""))
+		if where.begins_with("night:") and w.loc_block(where) in on_route:
+			return {}
+		var first = w.by_id[victims[0]]
+		return {"variant": "other_block", "night": nd, "cites": {"deaths": victims, "victim_block": first.home_block, "route": on_route, "sighting_block": block}}
+	if not w.dlog.entries.any(func(e): return e["type"] == "quiet_night" and int(e["data"].get("night", -1)) == nd):
+		return {}
+	if knows_of_thwart(w, d, nd):
+		return {}
+	return {"variant": "no_death", "night": nd, "cites": {"quiet_night": nd}}
+
+## Whether the defender could know of something that turned the Demon away on night nd: only
+## public or held signals, never why the night was really quiet.
+static func knows_of_thwart(w, d, nd: int) -> bool:
+	for pc in w.public_claims:
+		var qdef = C.role_def(str(pc.get("role", ""))) if C.has_role_def(str(pc.get("role", ""))) else null
+		if qdef != null and qdef.can_cause_quiet_night:
+			return true
+	if not d.is_evil() and C.has_role_def(d.role) and C.role_def(d.role).can_cause_quiet_night:
+		return true
+	for e in w.dlog.entries:
+		match str(e["type"]):
+			"player_ward_context":
+				if int(e["data"].get("night", -1)) == nd and (e["data"].get("public", false) or d.id in e["data"].get("listeners", [])):
+					return true
+			"warden_tells_save":
+				if str(e["target"]) == d.id and int(e["data"].get("night", -1)) == nd:
+					return true
+			"protect":
+				if int(e["day"]) == nd and str(e["actor"]) == "player" and str(e["target"]) == d.id:
+					return true
+	return false
+
+## The rebuttal's line, for the town (meeting and podium) or the Demonologist alone, in the
+## speaker's voice (defence_night_* / private_night_*; Michael, Nov 20). In block terms: people
+## move from block to block, there are no roads.
+static func rebuttal_line(w, d, reb: Dictionary, private: bool = false) -> Dictionary:
+	var nd: int = int(reb["night"])
+	var when: String = C.spoken_when(nd, w.day)
+	if str(reb["variant"]) == "other_block":
+		var bname: String = C.block_name(str(reb["cites"]["victim_block"]))
+		return say_voiced(d, "private_night_other_block" if private else "defence_night_other_block",
+			"Someone died on %s that night; I was never on %s." % [bname, bname], {"block": bname, "when": when})
+	return say_voiced(d, "private_night_no_death" if private else "defence_night_no_death",
+		"I was seen out %s, but no one died that night." % when, {"when": when})
+
+## Whether the rebuttal fits the account the defender has given of that night (Codex on #415).
+## "No one died" opens "I was seen out", so it needs an account that owns the outing: an
+## admitted walk, a confessed errand or a duty that took them out. After a home alibi, a
+## refusal or no account at all it would retract what they said, so it isn't said. "Another
+## block" ("I was never on {block}") must not retract an account either: not after one that
+## puts them on a victim's block, nor after a duty that walks every block (the lamp route, the
+## Sexton's toll), whatever they really did (Codex on #415).
+static func rebuttal_fits_account(w, d, reb: Dictionary) -> bool:
+	if reb.is_empty():
+		return false
+	var acct: Dictionary = d.dialogue_memory.get("night_accounts", {}).get(str(int(reb["night"])), {})
+	if str(reb["variant"]) != "no_death":
+		if str(acct.get("duty", "")) in ["lamplighter", "sexton"]:
+			return false
+		var victim_blocks: Array = reb["cites"].get("deaths", []).map(func(v): return w.by_id[v].home_block if w.by_id.has(v) else "")
+		return not (str(acct.get("block", "")) in victim_blocks)
+	if acct.is_empty() or str(acct.get("kind", "")) == "refusal":
+		return false
+	return not (str(acct.get("kind", "")) == "alibi" and bool(acct.get("home", false)))
+
+## The logged reason (every argument has one; evil's is true but misleading).
+static func note_rebuttal(w, d, reb: Dictionary, where: String) -> void:
+	var what: String = "a death on another block" if str(reb["variant"]) == "other_block" else "no one died"
+	if d.is_evil():
+		w.dlog.think(d.id, "rebuttal", "%s: answers the sighting on night %d with %s. True but misleading: it says nothing of what they did that night." % [where, int(reb["night"]), what], reb.merged({"evil": true}))
+	else:
+		w.dlog.think(d.id, "rebuttal", "%s: answers the sighting on night %d with %s, from the public record." % [where, int(reb["night"]), what], reb.merged({"evil": false}))
+
+static func rebuttal_scope(reb: Dictionary, sighting_eid: String) -> Dictionary:
+	return {"type": "rebuttal", "variant": str(reb["variant"]), "night": int(reb["night"]), "sighting": sighting_eid, "cites": reb["cites"].duplicate(true)}
+
+## The town hears a rebuttal said outside defend_self (the podium): the same speech-only
+## defence entry, weightless.
+static func hear_rebuttal(w, d, scope: Dictionary) -> void:
+	var identity: String = "def:%s:%s:%s" % [d.id, scope.type, JSON.stringify(WorkshopLedger.Evidence.canonical(scope)).sha256_text()]
+	for l in w.living():
+		if l == d:
+			continue
+		ledger_hear(w, l, identity, [], 0.0, [d.id, -1, "report"], {"kind": "defence", "move": "rebuttal", "scope": scope.duplicate(true), "hearing_scale": 0.0})
+
+## The night sighting a defence answers: the case's hinge (as 2c reads it), else the framed
+## night's sighting, else the heaviest night sighting against them. {} when none.
+static func _rebuttal_target(hinge: Dictionary, framed_night: int, out_items: Array) -> Dictionary:
+	if str(hinge.get("channel", "")) == "movement_out" and str(hinge.get("eid", "")).begins_with("sighting:"):
+		return hinge
+	var best: Dictionary = {}
+	for x in out_items:
+		var p: PackedStringArray = str(x.get("eid", "")).split(":")
+		if p.size() < 5 or p[0] != "sighting":
+			continue
+		if framed_night >= 0 and int(p[3]) != framed_night:
+			continue
+		if best.is_empty() or float(x.get("contrib", 0.0)) > float(best.get("contrib", 0.0)):
+			best = x
+	return best
+
 static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = []) -> Dictionary:
 	var lines: Array = []
 	var facts: Array = []
@@ -269,6 +416,19 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	# night account a weaker or uncited item could prompt (Codex on #318).
 	var day_def: Dictionary = _day_whereabouts_defence(w, d, items, case_backed)
 	var day_first: bool = not day_def.is_empty()
+	# The night-sighting rebuttal (BACKLOG "Explicit night-sighting rebuttals", Michael): the
+	# cheap answer to the same night, from the public death record. Speech only, added to
+	# whatever else they say, never instead of it: no weight, and it gates none of the moves
+	# below (it joins the moves list only at the end). Deterministic, no roll.
+	var reb: Dictionary = {}
+	var reb_eid: String = ""
+	var reb_target: Dictionary = {} if day_first else _rebuttal_target(hinge, framed_night, out_items)
+	if not reb_target.is_empty():
+		reb_eid = str(reb_target.eid)
+		var rp: PackedStringArray = reb_eid.split(":")
+		reb = night_route_rebuttal(w, d, int(rp[3]), rp[4] if rp.size() >= 5 else "")
+	var reb_at: int = lines.size()  # said before any gift reveal or confession
+	var reb_after_account: int = -1  # or just after their account of that same night
 	# 1. A gift that walks at night explains being seen out.
 	if not day_first and not out_items.is_empty() and framed_night < 0 and C.ROLES.get(role, {}).get("night_walk", false):
 		var parts = {"facing_the_rope": C.DEFENCE_ROPE, "strength": maxf(0.2, out_weight)}
@@ -327,6 +487,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			var acct: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, hnd, true)
 			lines.append_array(acct.get("lines", []))
 			facts.append_array(acct.get("facts", []))
+			if not reb.is_empty() and int(reb["night"]) == hnd:
+				reb_after_account = lines.size()
 			moves.append("dispute_night")
 			move_strengths["dispute_night"] = 1.0
 			move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
@@ -426,6 +588,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					var acct_s: Dictionary = load("res://sim/mind_podium.gd").press_night(w, d, nd_s, true, true)
 					lines.append_array(acct_s.get("lines", []))
 					facts.append_array(acct_s.get("facts", []))
+					if not reb.is_empty() and int(reb["night"]) == nd_s:
+						reb_after_account = lines.size()
 					moves.append("dispute_night")
 					move_strengths["dispute_night"] = 1.0
 					move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
@@ -470,6 +634,13 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		move_strengths[moves[0]] = 1.0
 		move_scales[moves[0]] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 		defence_scopes[moves[0]] = {"type": "plea"}
+	if rebuttal_fits_account(w, d, reb):
+		lines.insert(reb_after_account if reb_after_account >= 0 else reb_at, rebuttal_line(w, d, reb))
+		note_rebuttal(w, d, reb, "At the meeting")
+		moves.append("rebuttal")
+		move_strengths["rebuttal"] = 0.0  # speech: no weight
+		move_scales["rebuttal"] = 0.0
+		defence_scopes["rebuttal"] = rebuttal_scope(reb, reb_eid)
 	for mv in move_strengths:
 		var scope: Dictionary = defence_scopes[mv]
 		var identity: String = "def:%s:%s:%s" % [d.id, scope.type, JSON.stringify(WorkshopLedger.Evidence.canonical(scope)).sha256_text()]

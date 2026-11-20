@@ -147,7 +147,7 @@ static func _append_movement_notes(w, listener_id: String, ctype: String, stance
 	if has_alibi_challenge and not used_circumstantial:
 		parts.append(Dialogue.voice_line(listener_id, "present_circumstantial_only", "If the linked observation is accurate, the home alibi is false; that remains circumstantial."))
 	elif allow_lean and has_move_trace and not used_circumstantial:
-		parts.append(Dialogue.voice_line(listener_id, "present_move_trace_lean", "The routes and scene traces favor that reading, though as circumstantial support rather than proof."))
+		parts.append(Dialogue.voice_line(listener_id, "present_move_trace_lean", "The movements and scene traces favor that reading, though as circumstantial support rather than proof."))
 	var target_prefix: String = (w.by_id[stance_subject].name + "'s ") if (stance_subject != "" and w.by_id.has(stance_subject)) else ""
 	var re_seen := RegEx.new()
 	re_seen.compile("^Seen elsewhere:\\s+(.+?)'s sighting on night (\\d+)")

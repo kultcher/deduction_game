@@ -123,3 +123,47 @@ the good who heard the case: its sources (witnesses, readers, victims) vote with
 | lamp_bluff_innocent | 0.1 | 1.0 | 17% | 6.0 | 17% | 6 | 0% |
 
 Town bands used for category agreement (points): damning from +45, strong from +25, moderate from +10, weak from +3, none from -2, contradicts below.
+
+## Word-against-word lie calls (added Nov 20, Lantern)
+
+Six cases added on main at 1e91151, 10 deals each, run with `--only` and appended to the baseline above (whose other rows are from 17dd113). In each one the player calls a reading a lie, on another teller's clashing reading; `lie_calls` records how the average listener takes the call (pressed, draw, unestablished, bare). The true call is about the Minion who lied; its `_innocent` twin is the misleading call, about the real holder, on the Minion's word.
+
+| Case | n | Juror's badges | Strength | Town, mean (range) | Sign | Category |
+|---|---|---|---|---|---|---|
+| lie_gravedigger | 10 | strong 10 | 8.71 | +45.6 (+40.5 to +53.9) | 100% | 60% |
+| lie_gravedigger_innocent | 10 | none 10 | 1.09 | +2.7 (-2.7 to +8.1) | 60% | 20% |
+| lie_seer | 10 | strong 10 | 3.83 | +34.3 (+29.9 to +38.5) | 100% | 100% |
+| lie_seer_innocent | 10 | moderate 10 | 2.08 | +14.0 (+9.7 to +23.0) | 100% | 90% |
+| lie_seer_reversed | 10 | moderate 10 | 2.08 | +21.9 (+16.9 to +26.7) | 100% | 70% |
+| lie_seer_reversed_innocent | 10 | strong 10 | 3.83 | +28.8 (+25.6 to +37.1) | 100% | 100% |
+
+Town movement by the juror's badge, true cases (the subject is evil):
+
+| Badge | Cases | Town, mean | Median | Range | Cases by name |
+|---|---|---|---|---|---|
+| moderate | 10 | +21.9 | +21.2 | +16.9 to +26.7 | lie_seer_reversed 10 |
+| strong | 20 | +39.9 | +39.5 | +29.9 to +53.9 | lie_gravedigger 10, lie_seer 10 |
+
+Town movement by the juror's badge, misleading cases (the subject is innocent):
+
+| Badge | Cases | Town, mean | Median | Range | Cases by name |
+|---|---|---|---|---|---|
+| none | 10 | +2.7 | +3.8 | -2.7 to +8.1 | lie_gravedigger_innocent 10 |
+| moderate | 10 | +14.0 | +13.1 | +9.7 to +23.0 | lie_seer_innocent 10 |
+| strong | 10 | +28.8 | +28.2 | +25.6 to +37.1 | lie_seer_reversed_innocent 10 |
+
+Votes: the subject nominated by a neutral nominator, the player's vote left out. Good
+voters only (evil voters vote by strategy and are left out). "Reaches" is how often the good
+yes votes alone reach the hanging threshold, which counts the player's seat. "Heard it" counts
+the good who heard the case: its sources (witnesses, readers, victims) vote without hearing it.
+
+| Case | Good yes before | Good yes after | Share of good voters after | Heard it | Of those, yes | Threshold | Reaches |
+|---|---|---|---|---|---|---|---|
+| lie_gravedigger | 0.1 | 6.0 | 100% | 6.0 | 100% | 5 | 100% |
+| lie_gravedigger_innocent | 0.0 | 0.5 | 10% | 5.0 | 10% | 5 | 0% |
+| lie_seer | 0.0 | 6.6 | 94% | 7.0 | 94% | 6 | 90% |
+| lie_seer_innocent | 0.1 | 1.4 | 23% | 6.0 | 23% | 6 | 0% |
+| lie_seer_reversed | 0.0 | 2.4 | 34% | 7.0 | 34% | 6 | 0% |
+| lie_seer_reversed_innocent | 0.1 | 5.6 | 93% | 6.0 | 93% | 6 | 70% |
+
+Town bands used for category agreement (points): damning from +45, strong from +25, moderate from +10, weak from +3, none from -2, contradicts below.
