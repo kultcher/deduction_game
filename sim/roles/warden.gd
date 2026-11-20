@@ -106,10 +106,41 @@ func warden_door(w, n, nd: int) -> String:
 	return guarded
 
 
+## The saves a Warden tells of, night -> {target, belief}. A good Warden's are its own
+## (`World._warden_credit`). An evil Warden bluff takes each quiet night as a save at the door
+## it says it guarded, believed as a real Warden would believe it: discounted by the other
+## public explanations (a living Veteran claim each) and dropped below WARDEN_SAVE_BELIEF_MIN
+## (Michael, Nov 20: evil Wardens fake saves).
+func told_saves(w, n) -> Dictionary:
+	if not n.is_evil():
+		return n.warden_saves
+	var out: Dictionary = {}
+	for nd in range(min_gift_day, w.day):
+		if not w.dlog.entries.any(func(e): return e["type"] == "quiet_night" and int(e["data"].get("night", -1)) == nd):
+			continue
+		var door: String = warden_door(w, n, nd)
+		if door == "" or not w.by_id.has(door):
+			continue
+		var alternatives: int = w.public_claims.filter(func(pc): return pc["role"] == "veteran" and pc["who"] != n.id and w.by_id[pc["who"]].alive).size()
+		var belief: float = 1.0 / float(1 + alternatives)
+		if belief < Tuning.Roles.WARDEN_SAVE_BELIEF_MIN:
+			continue
+		out[str(nd)] = {"target": door, "belief": belief, "fake": true}
+	return out
+
+
+## A good Warden with a save it believes in has more reason to come out: the town would
+## want to know the Demon came to that door (Michael, Nov 20).
+func score_public_claim(w, n, parts: Dictionary) -> void:
+	super.score_public_claim(w, n, parts)
+	if not n.is_evil() and not n.warden_saves.is_empty():
+		parts["save_to_tell"] = Tuning.Roles.WARDEN.save_claim_bonus
+
+
 func guard_fact(w, n, nd: int, guarded: String, block_name_fn: Callable) -> Dictionary:
 	var gb: String = w.by_id[guarded].home_block
 	# A quiet night they take as their save (World._warden_credit): "the Demon came for them".
-	var saved: bool = n.warden_saves.get(str(nd), {}).get("target", "") == guarded
+	var saved: bool = told_saves(w, n).get(str(nd), {}).get("target", "") == guarded
 	var fact = {
 		"kind": "sighting",
 		"subject": [n.id],
@@ -143,10 +174,13 @@ func answer_gift_custom(w, n, first_time: bool, tier: int, lines: Array, facts: 
 		lines.append(mind.say_voiced(n, "warden_doors_report", "I keep watch over one door each night: %s." % doors_cap, {"doors": doors_cap}))
 		var saves: Array = []
 		for nd in range(0, w.day):
-			var sv: Dictionary = n.warden_saves.get(str(nd), {})
+			var sv: Dictionary = told_saves(w, n).get(str(nd), {})
 			if not sv.is_empty() and w.by_id.has(sv.target):
 				saves.append("%s %s" % [w.by_id[sv.target].name, content().spoken_when(nd, w.day)])
 		if not saves.is_empty():
+			if n.is_evil():
+				w.dlog.think(n.id, "lie", "Told of %s as their saves, as the Warden: quiet nights they had nothing to do with." % ", ".join(PackedStringArray(saves)),
+					{"lie": true, "why": "a Warden with saves to its name is believed, and draws the town's trust"})
 			var saves_str: String = " and ".join(PackedStringArray(saves))
 			lines.append(mind.say_voiced(n, "warden_saves_claim", "Nobody died the nights I kept %s safe. I believe the Demon came for them and my watch turned it away." % saves_str, {"saves": saves_str}))
 		n.max_tier = maxi(n.max_tier, tier)

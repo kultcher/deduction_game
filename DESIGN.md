@@ -825,7 +825,7 @@ then constant (low / mid / high tiers at 0.34 / 0.67):
 | **Privacy** (about self: role, relationships, whereabouts) | shares who they are even at low trust; claims early | withholds as long as possible; reveals under pressure; stonewalls rather than lies |
 | **Gossip** (about others) | keeps out of others' business | volunteers what they've seen and heard |
 | **Confidence** | opinions shift quickly; stonewalls or cracks when pushed; rarely nominates | defends its lean against contrary evidence; lies boldly when pushed; nominates and votes readily |
-| **Insight** | cites and explains only part of what they hold | cites from everything they hold |
+| **Insight** | cites and explains only part of what they hold; links only the glaring cards to their own readings and nights | cites from everything they hold; links more of what they hear to their own readings and nights |
 | **Composure** | attitude cues obvious; strongly affected by pressure and paranoia | almost no cues; resists pressure and paranoia |
 
 Privacy decides **whether** an NPC discloses; Confidence decides **what they do when

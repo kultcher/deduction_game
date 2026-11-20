@@ -179,6 +179,7 @@ test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge
 test_warden_quiet_route
+test_warden_saves
 test_wave_once
 test_withdraw_ui
 test_wording_23973
