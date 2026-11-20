@@ -39,11 +39,12 @@
 - **Also pass:** test_roles_registry, test_meeting_flow, test_would_vote,
   test_nomination_and_evil_tuning, test_meeting_m2d, test_symmetric_vote and
   test_tuning_hoist.
-- **Golden:**
-  - **Divergence from `baseline_7792e9a`:** 54875, 692, 900 and 98933, at the first vote whose
-    record holds the Gravedigger's part.
-  - **Outcomes:** unchanged on all five seeds (the same hangings, winners and last days).
-  - Re-baselined in this PR; see "Current baseline" in `docs/golden_baseline.md`.
+- **Golden:** re-baselined to `baseline_82f6be4` on main with #397. Two captures were identical.
+  - **Divergence from `baseline_58cb94a`:** 54875, 692 and 900 at the first vote carrying the
+    Gravedigger's part, and 98933 at a day-1 nomination. 42 is identical.
+  - **Outcomes:** 54875's day 3 hangs Agnes instead of Hollis. The other four seeds keep their
+    hangings, and none has a winner by day 4.
+  - See "Current baseline" in `docs/golden_baseline.md`.
 
 ## Proposed for the backlog
 
