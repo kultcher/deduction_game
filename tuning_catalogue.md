@@ -67,11 +67,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TRACE_CONNECTION_BASE_WEIGHT` | `0.0` |  | `sim/world_night.gd` |
 | `TRACE_FRESH_FAMILY_WEIGHT` | `1.25` |  | `sim/world_night.gd` |
 | `EXTRA_TRACE_CHANCE` | `0.45` |  | `sim/world_night.gd` |
-| `TRACE_MATCH_WEIGHT` | `3.0` |  | `workshop/live_activity.gd`, `workshop/trace_solver.gd` |
-| `TRACE_UNKNOWN_WEIGHT` | `1.6` |  | `workshop/live_activity.gd`, `workshop/trace_solver.gd` |
-| `TRACE_CONTRADICT_WEIGHT` | `1.0` |  | `workshop/live_activity.gd`, `workshop/trace_solver.gd` |
-| `TRACE_CONNECTION_MISS_WEIGHT` | `1.5` |  | `workshop/live_activity.gd` |
-| `TRACE_PASSER_PRIOR_FLOOR` | `0.05` |  | `workshop/live_activity.gd` |
+| `TRACE_MATCH_WEIGHT` | `3.0` |  | `workshop/live_activity_profiles.gd`, `workshop/trace_solver.gd` |
+| `TRACE_UNKNOWN_WEIGHT` | `1.6` |  | `workshop/live_activity_factors.gd`, `workshop/live_activity_profiles.gd`, `workshop/trace_solver.gd` |
+| `TRACE_CONTRADICT_WEIGHT` | `1.0` |  | `workshop/live_activity_profiles.gd`, `workshop/trace_solver.gd` |
+| `TRACE_CONNECTION_MISS_WEIGHT` | `1.5` |  | `workshop/live_activity_profiles.gd` |
+| `TRACE_PASSER_PRIOR_FLOOR` | `0.05` |  | `workshop/live_activity_factors.gd` |
 | `NIGHT_PRESSURE_DECAY` | `0.6` |  | `sim/world_night.gd` |
 | `PSYCH_EVIL_TEAMMATE_TRUST_PROB` | `0.75` |  | `sim/world_night.gd` |
 
@@ -87,7 +87,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
 | `SEER` | `{ "red_herring_defence_eff": -0.12, "focus_base": 0.3, "focus_insight_scale":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
-| `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world_night.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
+| `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world_night.gd`, `workshop/live_activity_factors.gd`, `workshop/live_assessment.gd` |
 | `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
@@ -101,13 +101,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
 | `REGISTRAR` | `{ "public_threat_bonus": 0.75, # the Demon's extra interest in a claimed Regi...` |  | `sim/roles/registrar.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
-| `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
+| `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity_factors.gd` |
 | `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
 | `REVENANT` | `{ "place_totem_probs": [0.45, 0.6, 1.0], "curse_voter_eff": 0.15, "evil_vote_...` |  | `sim/roles/revenant.gd` |
 | `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/roles/warden.gd`, `sim/world_night.gd` |
 | `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world_night.gd` |
 | `WARDEN_TELL_TRUST` | `0.6` | the Warden tells the protectee when trusting them at least this much | `sim/world_night.gd` |
-| `WARDEN_SAVE_RELIABILITY` | `0.7` | how far the model trusts a claimed save (an inference, not a sighting) | `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
+| `WARDEN_SAVE_RELIABILITY` | `0.7` | how far the model trusts a claimed save (an inference, not a sighting) | `workshop/live_activity_factors.gd`, `workshop/live_assessment.gd` |
 
 ## Mind
 
@@ -624,12 +624,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd`, `workshop/live_activity.gd` |
-| `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd`, `workshop/live_activity_factors.gd` |
+| `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity_pack.gd`, `workshop/live_activity_profiles.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
-| `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
-| `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity.gd` |
-| `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
+| `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity_factors.gd` |
+| `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity_factors.gd` |
+| `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity_factors.gd` |
 | `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
 | `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
@@ -643,8 +643,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CONNECTIONS_CASE_FLOOR` | `0.05` |  | `workshop/connections.gd` |
 | `CONNECTIONS_CASE_FADE_BOUGHT` | `0.9` | Buy-in (Michael, Nov 13): a case a listener bought fades slower. It keeps between CASE_FADE and CASE_FADE_BOUGHT of its weight a day, by how far it moves that listener: the largest move its cards make together on anyone, at the listener's trust in the presenter, against CASE_BUYIN_FULL log-odds (at or over it, the slowest fade). | `workshop/connections.gd` |
 | `CONNECTIONS_CASE_BUYIN_FULL` | `0.7` |  | `workshop/connections.gd` |
-| `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity.gd` |
-| `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity.gd` |
+| `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity_factors.gd` |
+| `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity_factors.gd` |
 | `BREATH_HUNT_REACH` | `0.7` | A hunting Breathstealer in a free phase: the chance it is on its victim's block, for the presence reasoning (workshop/day_presence.gd hunt_block; Nov 14). It seeks its preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where good people are working. | `workshop/day_presence.gd` |
 | `LR_WEAK` | `1.25` | The badge's cut points on a case's strength (the odds ratio on its premise), Michael Nov 19: from the case slate's vote measure (docs/case_slate/), a Weak case sways one or two good votes, a Moderate one about half, a Strong one most (it carries a nomination with the player's vote about 9 times in 10). Below Weak the badge reads Negligible. | `workshop/case_eval.gd` |
 | `LR_MODERATE` | `2.0` |  | `workshop/case_eval.gd` |
@@ -674,13 +674,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |
 | `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval.gd` |
-| `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity.gd` |
-| `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity.gd` |
+| `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity_base.gd` |
+| `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity_base.gd` |
 | `EXCUSED_OWN_ALIBI_OUT` | `0.35` | While an excuse for a caught "I was home" stands ("Fine, I was out", a walking duty that fits, "being out isn't wicked"; Beadle's caught-out ladder), that night's own "home" alibi reads as a good person's at this out-rate instead of GOOD_OWN_ALIBI_OUT (Michael, Nov 19, Quill's form): the lie softens a little. | `workshop/live_assessment.gd` |
 | `CONTRADICTED_EXCUSE_WEIGHT` | `0.5` | An excuse that something contradicts (a claimed watch with no watch report) counts as a second caught lie at this share of the first's doubt (Michael, Nov 19). | `workshop/source_doubt.gd` |
-| `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
-| `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
-| `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
+| `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity_base.gd` |
+| `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity_base.gd` |
+| `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity_base.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
 | `REFUSAL_LR` | `1.5` |  | `workshop/speech_evidence.gd` |
 | `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0....` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
