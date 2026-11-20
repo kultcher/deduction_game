@@ -1,10 +1,10 @@
 # The Gravedigger in a reluctant town: a hidden lean
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `ad33789` (`baseline_7792e9a`)
+- **Base:** main at `07416df` (`baseline_58cb94a`, after #397)
 - **Branch:** `claude/beadle-gravedigger-lean`
-- **Status:** PR open. Golden moves, with a vote part added and no outcome changed; it's
-  re-baselined in this PR. Golden-moving PRs merge one at a time.
+- **Status:** PR open. Golden moves; it's re-baselined in this PR (one seed's day-3 hanging
+  changes). Golden-moving PRs merge one at a time.
 - **Next actor:** Bailiff (review and merge).
 - **BACKLOG item:** "The Gravedigger in a reluctant town" [decided] (Michael, Nov 17). From the
   overnight queue, the decision-free items.

@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, drops removed): `baseline_58cb94a`
+### Current baseline (Nov 20, the Gravedigger's hidden lean): `baseline_82f6be4`
+
+`tools/golden/baseline_82f6be4/` is the capture from `claude/beadle-gravedigger-lean` at `82f6be4` (main at
+`07416df`, with #397 and #410). A good Gravedigger with no one hanged yet leans a little toward
+nominating and voting to hang (`GRAVEDIGGER.nothing_to_read_lean` 0.08, proposed). It's a hidden
+motive: a vote part and a logged nomination term.
+- **Divergence from `baseline_58cb94a`:**
+  - 54875 at record 50 (day 1), 692 at 92 (day 2) and 900 at 69 (day 2), each at the first vote
+    whose record carries the `gravedigger_nothing_to_read` part;
+  - 98933 at record 41 (day 1), a nomination;
+  - 42 is identical.
+- **Outcomes:**
+  - **54875:** day 3 hangs Agnes instead of Hollis (Edda on day 2 as before). No winner by day 4
+    either way.
+  - **692, 900 and 98933:** the same hangings; no winner by day 4.
+  - **42:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, drops removed): `baseline_58cb94a`
 
 `tools/golden/baseline_58cb94a/` is the capture from `claude/remove-drops` at `58cb94a` (main at
 `ec0b48a`, with #394 and #401, merged in). Night walkers no longer drop anything on their route
