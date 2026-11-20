@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
+### Current baseline (Nov 21, the pressure of silence): `baseline_c1cce1b`
+
+`tools/golden/baseline_c1cce1b/` is the capture from `claude/beadle-silence` at `c1cce1b` (main at
+`554f2f4`, after #448, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion to accuse in a meeting's first pass; a meeting that
+turns up fewer than three useful things runs its speaking order once more, with the floor waived
+and nervous good NPCs pushed to speak (Michael, Nov 20 and 21).
+- **Divergence from `baseline_66be26f`:** every seed on day 1, at the first meeting (records 7-11),
+  where an accusation under the floor no longer happens and the beliefs that follow differ.
+- **Outcomes:**
+  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
+    day 4 before).
+  - **54875:** hangs Edda on day 1 (day 2 before), then Odette and Jory (Agnes before).
+  - **692:** the same hangings (Constance, Lian).
+  - **900:** hangs Isolde on day 2 instead of Greta.
+  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
+  - No winner by day 4 on 54875, 692, 900 or 98933.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
 
 `tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
 `fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
