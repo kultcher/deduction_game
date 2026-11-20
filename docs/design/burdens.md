@@ -1,7 +1,7 @@
 # Burdens: the secrets rework, scoped (design note)
 
-**Status: scoped with Michael (Nov 20, 2026). Most questions are answered, and five remain
-(section 8). Nothing is built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
+**Status: scoped with Michael (Nov 20, 2026). Every question so far is answered (section 8).
+Nothing is built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
 Where the two disagree, this note is the newer one.
@@ -16,7 +16,16 @@ Where the two disagree, this note is the newer one.
   burden ("I don't sleep easy"), never "my burden".
 - **The script** (Nov 20):
   - **At most one hidden burden per script, and none is required.** A hidden burden is one
-    its holder doesn't know about. Any hidden burden a script holds is named on the script.
+    its holder doesn't know about.
+  - **What the script shows** (clarified Nov 20). As now, it lists up to four *possible*
+    burdens, with the hidden one marked as hidden. The first slate's base script lists:
+    Delusional (hidden), Marked, Unrequited, Ill-Omened.
+    - It also says how many burdens are in play.
+    - It doesn't say which one, or whether the one in play is the hidden one.
+    - So if a good townsperson is secretly Delusional, nobody can claim the burden truthfully
+      (only a Rumormonger or a Chronicler can point at it), and evil has more room to bluff.
+      Evil doesn't know that either, so a bluff is always a risk. It can infer it, though:
+      its chance of bluffing a burden rises as the days go by without anyone claiming one.
   - **Every other burden is known to its holder,** who doesn't volunteer it but doesn't really
     hide it either. Only the hidden one is enumerated by the judge.
   - **For now, both town sizes (7 and 10 NPCs) carry one burden.** It may or may not be the
@@ -64,9 +73,11 @@ never reveals.
 | How it comes out | Share |
 |---|---|
 | announced publicly | about 15% |
-| shared privately with a trusted NPC, or with the player | about 40% |
+| shared privately with a trusted NPC, or with the player (one tier, trust-based) | about 40% |
 | held until the holder is nominated or named in an evil reading | about 45% |
 
+- **Private sharing is trust-based,** so it goes most often to the friend the NPC starts the
+  game with, the same person who may be its confidant.
 - "I've carried the mark since birth" is the holder's answer to a reading that calls them
   evil. Evil can bluff the same line, and the real holder can counter it, because burdens are
   unique.
@@ -82,7 +93,8 @@ never reveals.
   swayed. If that damping isn't strong enough to notice, add some of its own.
 - **They defend within reason.** They don't fabricate evidence to clear the beloved, but they
   may hide evidence that would implicate them. That's a good NPC withholding, with a logged
-  reason. They give it up under pressure or when nominated.
+  reason, as its own narrow rule rather than part of "Good NPCs lie tactically" (Nov 20). They
+  give it up under pressure or when nominated.
 - **The anomaly it explains:** odd night movement. They give the burden up when called out
   on those nights, or when their suspicion of the beloved grows enough to break the spell.
 - **Night visits** stay at the beloved's home. Following them to wherever they walk was
@@ -92,7 +104,10 @@ never reveals.
 **Ill-Omened** (Nov 20). Michael wants to try the "everyone is drunk" version first:
 - **What it does:** when the holder is hanged, every good gift is drunk that night. Evil is
   unaffected.
-- **Only a hanging sets it off.** A night death doesn't.
+- **Only a hanging sets it off,** and only if the holder **claimed Ill-Omened when
+  nominated** (a hard rule, Nov 20). A night death doesn't set it off.
+  - So the solver only has to account for the nights after a claimed Ill-Omened is hanged.
+    It's never a hidden effect.
 - **The Demon doesn't know** who holds it.
 - **No anomaly to explain.** It's a deterrent. The holder always cites it before an
   execution, and sometimes earlier, if pressure is high or the town is already turning on
@@ -100,8 +115,7 @@ never reveals.
 - It's in the Saint family: a cost at the hanging.
 - **Michael's earlier lean was the other version**, in which the affected holders know their
   gifts failed. That makes the outcome public, so a claim can be checked after the hanging.
-  The drunk version is the one to try first. Whether the drunk holders know is Q2 in section
-  7.
+  The drunk version is the one to try first.
 
 ### 2.2 On deck (mechanics deferred)
 
@@ -140,8 +154,8 @@ level of what has to exist, not how to build it.
    - at most one hidden, and none required;
    - a hidden burden is named on the script.
 
-   Left: whether a known burden is named on the script too (section 8, Q1). Everything else
-   builds on this. Quill, with Lantern.
+   The script lists the possible burdens and how many are in play, not which one. Everything
+   else builds on this. Quill, with Lantern.
 2. **The solver.** The judge enumerates the one hidden burden and nothing else.
    - A known burden is an ordinary claim once it's made. Unclaimed, it's a general
      allowance.
@@ -257,34 +271,45 @@ feasibility reports, then a `mock/` prototype with paired sweeps, then Michael p
   - **Any known burden can be bluffed,** to explain an anomaly or to deter a hanging.
   - **The choice rests on public knowledge:** has anyone else claimed a burden, and is there
     a Rumormonger in play?
+  - **Evil grows bolder with silence:** each day that passes with no burden claimed raises
+    its chance of bluffing one, since the burden in play may be the hidden one, which no one
+    can claim.
 - **Evil doesn't know** who holds the real burden.
 - **The general allowance** is roughly odds-based:
   - about 10% when nothing is known;
-  - it scales with other burden claims, since the script's maximum is known, and with what
-    the Rumormonger reads.
+  - it scales with other burden claims, since the script's count is known, and with what the
+    Rumormonger reads.
+  - **Once someone claims the burden,** the allowance for everyone else drops only a little,
+    since almost any claim could be a bluff (Nov 20).
+  - **A Rumormonger or Chronicler reading** pushes it closer to zero, but never to certain:
+    those readings can be lies or tampered with too.
 - **The player arguing an unclaimed burden** (the per-case either/or): tentative, built only
   if needed.
 
+## 7a. Carried in from other work
+
+- **Delusional and Sleepwalker, one per world** (Michael, Nov 20, from seed 100002 via
+  Lantern; deferred to this rework).
+  - **The rule:** in a world where someone else holds a secret, the listener can't be the
+    Sleepwalker.
+  - **Frame it as open burden slots** (Michael, Nov 20). The listener can't be the
+    Sleepwalker in a world with no open burden slot left. It is not a hard rule about
+    someone else claiming or holding a burden. The script says how many burdens are in play,
+    and each one held uses a slot. Framed this way, the rule still works with different town
+    sizes and with a Baron-like Minion that adds slots.
+  - **In the meantime:** #459's adjustment stands. A Rumormonger reading that names another
+    secret makes the Sleepwalker surer she was home.
+  - **Vicar's note, not checked against the code:** with one burden per script (section 1),
+    the world-level exclusivity probably follows from the script rule. The solver work in
+    workstream 2 should confirm it.
+
 ## 8. Still open
 
-1. **Is a known burden named on the script?** Today the script names any hidden burden.
-   - If the known one is named too ("this town has an Ill-Omened"), every claim can be
-     checked against one name. A second claim means a bluff, and the allowance is about
-     that one burden.
-   - If only the count is shown ("one burden"), evil has more room to bluff.
+The feasibility reports (Nov 20) raised 24 build-level questions for Michael. They're in
+[burdens_feasibility.md](burdens_feasibility.md), with Argon's detail in
+[burdens_perf_feasibility.md](burdens_perf_feasibility.md). Answers are folded in here as
+they arrive.
 
-   This also decides what the 10% allowance is about.
-2. **Ill-Omened, "everyone is drunk":** do the drunk good readers know their gift failed that
-   night?
-   - **If they don't** (Clocktower's drunk), their readings are silently wrong. The town sees
-     no outcome, so a bluffer is never exposed by the hanging itself. The judge would also
-     have to weigh that night's readings as possibly false after any claimant is hanged, which
-     is close to a second hidden effect. Quill and Lantern should size it before it's built.
-   - **If they do,** it's the public-outcome version.
-3. **Marked's private share:** does "shared privately with the player" count inside the 40%,
-   or is it its own tier?
-4. **Unrequited hiding evidence** is a good NPC withholding with a reason. Does it go through
-   "Good NPCs lie tactically" (BACKLOG section 2, `[open]`), or ship as its own narrow rule?
-5. **The 10% allowance and the one-burden script:** once one burden is claimed, does the
-   allowance for everyone else drop to near zero (one per script), unless the claim might be
-   a bluff?
+Before the reports, none were open. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
+2.1 and 7. Next comes the staged plan (section 5): feasibility reports, then a `mock/`
+prototype.
