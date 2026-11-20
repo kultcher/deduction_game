@@ -659,15 +659,18 @@ static func self_doubt_floors(view: Dictionary, value: Dictionary, listener: Dic
 			continue
 		seen[by] = true
 		var candidates: Dictionary = {}
-		for c in cards:
+		# Only what the listener holds itself: a quoted observation is no ground (Codex on #455),
+		# as _outing_poison_chance reads the night.
+		var own_cards: Array = cards.filter(func(c): return not c.get("quoted", false))
+		for c in own_cards:
 			if c.get("kind", "") == "report" and str(c.get("source", "")) == by and not c.get("quoted", false):
 				var night_c: int = int(c.get("night", -1))
-				for p in poisoner_candidates(view, c, value, cards):
+				for p in poisoner_candidates(view, c, value, own_cards):
 					# As the reading's doubt reads the night (_outing_poison_chance): not someone
 					# a claimed night gift or confided secret takes out, nor someone the listener
 					# knows is good. A case's reasons do this for the player's call; an NPC's own
 					# refresh has none.
-					if str(p) in knowledge.get("good", []) or _outing_explained(cards, str(p), night_c, knowledge):
+					if str(p) in knowledge.get("good", []) or _outing_explained(own_cards, str(p), night_c, knowledge):
 						continue
 					candidates[p] = true
 		candidates.erase(by)

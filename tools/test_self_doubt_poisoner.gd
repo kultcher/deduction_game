@@ -60,6 +60,11 @@ func _init() -> void:
 	kg.knowledge["good"] = ["c"]
 	var kf: Array = RC.self_doubt_floors(_view(cards, doubt), {}, kg, cards)
 	check(not kf.is_empty() and not kf[0].candidates.has("c"), "nor someone the listener knows is good")
+	var quoted: Dictionary = _seen("d", "docks", 1)
+	quoted["quoted"] = true
+	var with_q: Array = cards + [quoted]
+	var qf: Array = RC.self_doubt_floors(_view(with_q, doubt), {}, _listener(), with_q)
+	check(not qf.is_empty() and not qf[0].candidates.has("d"), "a quoted sighting is no ground: d, quoted on the docks, isn't a candidate")
 	var v_none: Dictionary = _view(cards, doubt)
 	v_none.script_minions = ["scion", "brute"]
 	check(RC.self_doubt_floors(v_none, {}, _listener(), cards).is_empty(), "no Poisoner on the script: no one is pointed at, as for the Mistaken call")

@@ -28,12 +28,16 @@ BACKLOG "A reader's self-doubt points at the Poisoner" (Michael, Nov 20, [decide
   door" can't undo a strong clear. Continuous at 0, no new number. It applies at all three
   Poisoner-floor sites, so **the player's accepted Mistaken call changes too**; the lie-call
   floors are untouched.
+- **One Poisoner floor per person** (Codex): every Mistaken and self-doubt nudge on a person is
+  gathered and the strongest applied once, after the lie floors, so their order doesn't matter
+  and repeats don't stack. Quoted observations are no ground for a self-doubt's candidates
+  (Codex), as `_outing_poison_chance` reads the night.
 
 ## Measured
 - **Golden:** moves on seeds 42 and 54875 (see `docs/golden_baseline.md`); outcomes unchanged.
   Two captures identical. Before the clear rule, seed 54875 turned a cleared good Lamplighter
   (Isolde) suspected (requested -0.544 to +0.146); with it she stays cleared (-0.398).
-- **New `tools/test_self_doubt_poisoner.gd`** (18 checks): the candidates (any night it read,
+- **New `tools/test_self_doubt_poisoner.gd`** (19 checks): the candidates (any night it read,
   the destination rule, not the reader, a held reading needed, no Poisoner in play, an explained
   outing, the known good), the agreement, the clear rule, and an in-play check (Lantern's pin):
   one listener, R's reading and its own sighting of X on R's block; with the nudge X goes
