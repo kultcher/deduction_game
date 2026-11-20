@@ -428,7 +428,7 @@ func _test_spoken_when_and_sighting_dedup() -> void:
 		"day": 2,
 		"role": "nightwatch",
 		"data": {"block": "market", "seen": [sg.id]},
-		"text": "Last night, I watched the Market: I saw %s pass by." % sg.name,
+		"text": "Last night, I watched the Market: I saw %s out." % sg.name,
 		"true": false,
 		"fake": true,
 		"shared": false,
