@@ -123,7 +123,8 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 
 ## A good person's honest sighting of a real Sleepwalker, out on a night they believe they
 ## spent at home, that the Sleepwalker holds: {"sighter", "subject"}.
-static func sleepwalker_sighting(day: int) -> Dictionary:
+## A rare case (a Sleepwalker must be dealt and seen), so it searches further than the rest.
+static func sleepwalker_sighting(day: int, count: int = 3 * SEEDS_COUNT) -> Dictionary:
 	return search(day, func(g):
 		var w = g.w
 		for s in w.living_good():
@@ -133,7 +134,7 @@ static func sleepwalker_sighting(day: int) -> Dictionary:
 				var sighter = w.by_id.get(str(c.get("source", "")))
 				if sighter != null and sighter.alive and not sighter.is_evil() and was_out(w, s, _night_of(c)):
 					return {"sighter": sighter.id, "subject": s.id}
-		return {})
+		return {}, 7, SEEDS_FROM, count)
 
 
 ## A Medium's relayed sighting held by a living good listener, from a relayer that

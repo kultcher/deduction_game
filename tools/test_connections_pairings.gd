@@ -189,10 +189,15 @@ func _rows_in_game() -> void:
 	var sc = ScriptDef.default_script()
 	sc.demons = ["demon", "daykiller"]
 	sc.forced = sc.forced.filter(func(r): return not r in sc.demons) + ["daykiller"]
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(12, 7, sc)
-	_play(g, 3)
+	# The first deal from 12 that's still going at the day-3 meeting.
+	var g = null
+	for sd in range(12, 42):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(sd, 7, sc)
+		_play(g, 3)
+		if g.state == "meeting":
+			break
 	if g.state != "meeting":
 		check(false, "the two-kind game reaches the day-3 meeting")
 		return
