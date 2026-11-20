@@ -5,6 +5,61 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+
+
+## Settled, Nov 20, 2026, night (closed by Claude-Vicar)
+
+- **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
+  pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
+  Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
+  Check against the current prior mapping. (Oct 30) Michael (Nov 18): saved for a dedicated
+  role-tuning pass. [later: role tuning pass]
+
+  > **Closed Nov 20 (Michael, through Seneschal): no change.** Quill's tuning pass: the "+0.22"
+  > hand calculation left out the red herring. The exact rise is +0.14, and NPCs take about
+  > three quarters of it.
+
+- **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
+  producing zero-count group clears. Specify whether "evil" means registered evil
+  (including Marked), how poison and Delusional results behave, and when an absent ping
+  is observable.
+  Michael (Nov 18): moved to the role-tuning pass with "The Seer's rise looks small".
+  [later: role tuning pass]
+
+  > **Closed Nov 20 (Michael, through Seneschal): no change.** Quill's tuning pass: a Dowser's 0
+  > clears hard, but it can only be wrong through poison or Delusion. "Fire only on a positive
+  > ping" isn't adopted unless Michael asks for it.
+
+## Built or dropped, Nov 20, 2026, evening (closed by Claude-Vicar)
+
+- **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`
+  builds the defence view from the whole roster of secrets (`C.SECRET_MOD_LIST`), not from
+  the game's `case_script.secrets`. Fix: read the script's secrets, as the rest of the judge
+  does. It moves golden wherever a defence is scored. Its own small PR, after Quill's #405
+  re-baseline, Lantern's scaffolding PR and the "not the Demon" badge fix. Owner Lantern;
+  approved as a bug fix by Seneschal (Nov 20). [decided]
+
+  > **Closed Nov 20:** fixed, Lantern #432 (zero drift).
+
+- **The spoken reply to a later-day repeat.** Re-presenting a faded case restores its
+  weight, but the reply may still say the assessment is unchanged. **Built** on
+  `claude/repeat-reply` (Quill, Nov 20; handoff `2026-11-20-1130-quill-repeat-reply.md`).
+
+  > **Closed Nov 20:** built, Quill #428.
+
+- **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
+  guarded a different block that night, so couldn't have seen what the Medium says.
+  Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
+  route of the person seen, never against where the sighter was. **Michael (Nov 20,
+  later):** it needs more detail before it's built; Quill is scoping it.
+
+  > **Closed Nov 20 (Michael dropped it):** Quill measured 20 games. None of 125 told
+  > sightings came from somewhere the teller couldn't have seen it, because the sim only lets
+  > an NPC tell sightings that fit its own account, evil fakes included (65 of the 125 were
+  > evil fakes; 10-NPC town, passive play). The one opening left, not measured: an NPC tells a
+  > window sighting and later admits being out elsewhere that night, which needs the player to
+  > ask the right question.
+
 ## Built, Nov 20, 2026, afternoon (closed by Claude-Vicar)
 
 - **Argon's audit, group 4: point `game.gd`'s remaining passthroughs at their modules**
@@ -951,6 +1006,8 @@ Items still tagged `[decided]` in BACKLOG.md after they were built. Each was che
   [decided]
 
   > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #307, refreshed in #325, Strong-tier cases in #342. The badge's cut points are a separate item now (section 2, Cases and the Workshop).
+
+  > **Added Nov 20:** word-against-word slate cases, lie calls and their twins, Lantern #414 (no backlog item of its own).
 
 - **Misleading cases on the slate.** (Michael, Nov 19, approved through Seneschal.) The
   slate's chains built about an innocent subject, as they could really arise: an innocent

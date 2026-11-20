@@ -136,8 +136,22 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 		return pressed
 	if night >= 0:
+		# Shown a sighting of themselves, they may add what the death record says of that night
+		# (BACKLOG "Explicit night-sighting rebuttals"): after whatever else they answer, speech
+		# only, to the Demonologist alone (no one else hears it, so no ledger entry).
+		# It's said only once their account is in, and only if it fits that account.
+		var defence = load("res://sim/mind_defence.gd")
+		var reb: Dictionary = {}
+		if kind == "sighting":
+			reb = defence.night_route_rebuttal(w, n, int(night), str(card.get("block", "")))
+		var reb_after: Callable = func() -> Array:
+			if not defence.rebuttal_fits_account(w, n, reb):
+				return []
+			defence.note_rebuttal(w, n, reb, "In private")
+			return [defence.rebuttal_line(w, n, reb, true)]
 		var caught: Dictionary = _pressed_caught_out(w, n, night, card.get("contradiction", {}) if kind == "deduction" else {})
 		if not caught.is_empty():
+			caught["lines"].append_array(reb_after.call())
 			caught["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
 			return caught
 		var r = _answer_pressed_night(w, n, night)
@@ -146,16 +160,18 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		var reveal: bool = r["facts"].any(func(f): return f.get("kind", "") == "claim" and f.get("source", "") == n.id)
 		if r.get("soft", false):
 			# The soft tier owns the night: it answers the sighting, not "you doubt my account".
-			return {"lines": lines + r["lines"], "facts": facts + r["facts"], "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
+			return {"lines": lines + r["lines"] + reb_after.call(), "facts": facts + r["facts"], "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
 		if reveal:
 			lines.append(say_voiced(n, "pressed_caught_out", "All right, you saw me. Here's why I was out."))
 		lines += r["lines"]
 		facts += r["facts"]
 		if reveal:
+			lines.append_array(reb_after.call())
 			return {"lines": lines, "facts": facts, "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
 		var witness_lying: Dictionary = _witness_lying(w, n, card, night, r)
 		if not witness_lying.is_empty():
 			lines.append(witness_lying)
+		lines.append_array(reb_after.call())
 		var pressed: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 		pressed["dialogue_exchange"] = {"action": "challenge_night", "subject": n.id}
 		return pressed
@@ -170,7 +186,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		var trace_supports: Array = card.get("support_cards", []).filter(func(sc): return sc.get("kind", "") == "trace")
 		if trace_supports.size() >= 2:
 			_dialogue().on_question(w, n)
-			lines.append(say_voiced(n, "pressed_multi_trace_case", "You're stringing scraps from half the village together to hang me. Anyone walking that road in the dark could have tracked those in or left them to frame me."))
+			lines.append(say_voiced(n, "pressed_multi_trace_case", "You're stringing scraps from half the village together to hang me. Anyone out in the dark could have tracked those in or left them to frame me."))
 			var pressed_multi: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 			pressed_multi["dialogue_exchange"] = {"action": "challenge_trace_case", "subject": n.id}
 			return pressed_multi
