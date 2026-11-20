@@ -15,22 +15,83 @@ The Nov 13 playtest triage is closed: what's left of it is in
 own open items are in [section 6](#6-the-connections-model-open-items). The full triage
 record is `docs/archive/playtest_triage_2026-11-13.md`.
 
-**Contents**
+**Contents** (every open item, by section; closed ones are in BACKLOG_COMPLETED.md)
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
+    1. Evil Martyr bluff can frame a good scapegoat `[decided: direction]`
   - [Cases and the Workshop](#cases-and-the-workshop)
+    1. The misframed-case hint `[decided]`
+    2. Reading challenges and further gift adapters `[watch; broader adapters open]`
+    3. Summarised answers at a nomination `[decided]`
+    4. Remove drops altogether `[decided]`
+    5. Argon's audit: cleanup `[decided]`
+    6. The social presentation route `[decided]`
   - [NPC behaviour](#npc-behaviour)
+    1. Kill-score pass on every role `[decided]`
+    2. Accusations from starting suspicion read as clues `[decided: pitch first]`
+    3. The Gravedigger in a reluctant town `[decided]`
+    4. Caught out and pressed again: what's left `[decided; mechanics open]`
+    5. Good NPCs lie tactically `[open]`
+    6. Evil backs into a bluff `[decided; on hold]`
+    7. Rapport and Warden-credit leftovers `[decided: direction]`
+    8. Anger reasons `[decided]`
   - [Numbers](#numbers)
+    1. Night sightings are too decisive `[decided]`
+    2. Evil sometimes tells the truth (start by faking it) `[decided: add; t measured]`
+    3. The Seer's rise looks small `[later: role tuning pass]`
+    4. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
+    1. Privacy without compounding trust penalties `[tentative]`
+    2. Ward promises should outrank vigil promises `[decided]`
+    3. Explicit night-sighting rebuttals `[decided]`
+    4. More rebuttals after a caught lie `[decided; options open]`
+    5. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
+    1. From Playtest Notes 12553
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
+  1. Expanded dialogue and trust management `[tentative]`
+  2. NPCs voice doubt about their own readings `[decided; triggers open]`
+  3. Revenant seeks execution `[decided]`
+  4. NPCs find evidence `[decided]`
+  5. Throw a teammate under the bus `[decided: survey first]`
+  6. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
+  1. The Breathstealer overhaul `[decided: add; option open]`
+  2. The Muddler rarely has anything to muddle `[open]`
+  3. The secrets rework `[decided; values open]`
+  4. Roster expansion `[open]`
+  5. Scripts, follow-ups `[decided]`
+  6. The demon lures a victim elsewhere `[open]`
+  7. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
+  8. Player toolbox `[open]`
+  9. Scoring system `[open]`
+  10. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
+  1. Minion gifts
+  2. Night companions of the proven evil
+  3. A Medium's relayed sighting vs the dead's known vantage
+  4. Accounting
+  5. Walker sightings vs the Lamplighter count
+  6. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
+  1. An NPC defender's challenge isn't stored as a case
+  2. Presenting a card to one NPC
+  3. The Test juror reporting a condition separately `[later]`
+  4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
+  1. Honest mistakes against lies in challenges `[open; Michael]`
+  2. The spoken reply to a later-day repeat `[polish]`
+  3. A reason citing a pairing the model didn't weigh `[polish]`
+  4. Sleepwalker self-doubt scaled by confidence `[decided]`
+  5. Adjudicating a muddled card `[later]`
+  6. Brute kills scored as hexes on custom scripts `[later]`
+  7. Gift doubt for readings the judge doesn't check `[open]`
+  8. Higher-Insight NPCs weigh more broken-reading combinations `[tentative]`
+  9. Persistence Confidence: a working theory that colours new evidence `[tentative]`
+  10. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
