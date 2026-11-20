@@ -7,6 +7,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
 
 var checks = 0
 var fails = 0
@@ -160,11 +161,11 @@ func _not_for_full_counts_or_relayed_lists() -> void:
 	var a = goods[2]
 	var b = goods[3]
 	var full: Dictionary = {"role": "dowser", "data": {"group": [d.id, a.id], "count": 2, "block": "chapel"}}
-	_check(not (d.id in MindMeeting._reading_group(w, full)), "two evil among two: no 'another of us'")
+	_check(not (d.id in MindDefence._reading_group(w, full)), "two evil among two: no 'another of us'")
 	var part: Dictionary = {"role": "dowser", "data": {"group": [d.id, a.id, b.id], "count": 2, "block": "chapel"}}
-	_check(d.id in MindMeeting._reading_group(w, part), "two evil among three: still a group")
+	_check(d.id in MindDefence._reading_group(w, part), "two evil among three: still a group")
 	var watch: Dictionary = {"role": "nightwatch", "day": 1, "data": {"block": "chapel", "seen": [d.id, a.id]}}
 	var relayed: Dictionary = {"role": "medium", "data": {"item": {"type": "reading", "entry": watch}}}
-	_check(MindMeeting._reading_group(w, relayed).is_empty(), "a Medium's relayed Night Watch list isn't a group")
+	_check(MindDefence._reading_group(w, relayed).is_empty(), "a Medium's relayed Night Watch list isn't a group")
 	var relayed_count: Dictionary = {"role": "medium", "data": {"item": {"type": "reading", "entry": part}}}
-	_check(d.id in MindMeeting._reading_group(w, relayed_count), "a relayed Dowser count is")
+	_check(d.id in MindDefence._reading_group(w, relayed_count), "a relayed Dowser count is")

@@ -24,19 +24,14 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 **Contents** (every open item, by section; closed ones are in BACKLOG_COMPLETED.md)
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
-  1. Possible bug: the "not the Demon" badge `[decided]`
-  2. NPC defenders weigh secrets the game can't deal `[decided]`
+  1. NPC defenders weigh secrets the game can't deal `[decided]`
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
-    1. The misframed-case hint `[decided]`
-    2. Summarised answers at a nomination `[decided]`
-    3. Remove drops altogether `[decided]`
-    4. Argon's audit: cleanup `[decided]`
-    5. The social presentation route `[decided]`
-    6. The premise menu, trimmed `[decided]`
-    7. Remove the Muddler `[decided]`
+    1. Argon's audit: cleanup `[decided]`
+    2. The premise menu, trimmed `[decided]`
+    3. Remove the Muddler `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided]`
@@ -113,9 +108,6 @@ from an older compile (#192); an evil Medium's relay about the first victim nami
 (Beadle); a relayer cut from the sighter contest (#265) and a Night Watch list naming the
 listener (#273), both Lantern's.
 
-- **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
-  ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
-  and Herald. [decided]
 - **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`
   builds the defence view from the whole roster of secrets (`C.SECRET_MOD_LIST`), not from
   the game's `case_script.secrets`. Fix: read the script's secrets, as the rest of the judge
@@ -139,35 +131,6 @@ listener (#273), both Lantern's.
 
 ### Cases and the Workshop
 
-- **The misframed-case hint** (what's left of "The premise should matter", point 3). When a
-  case's evidence points at someone other than the premise's subject, the Workshop preview
-  says so without naming them ("this evidence may say more about someone else"). Never
-  built. Lantern owns the belief side (does the case's weight fall more on someone other than
-  the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
-  Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
-  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
-  - **Decided (Michael, Nov 20): a variant of the Test juror chip.** The chip keeps its band
-    and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
-    else than about <target>." It names no one, and it shows at the same threshold as NPCs'
-    "points elsewhere" line. Owner Herald.
-
-- **Summarised answers at a nomination.** A case presented at a nomination gets
-  summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
-  only. (Michael, Nov 19) Owner Herald, held for the reprioritization. [decided]
-
-- **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
-  - walkers dropping anything on their route, both personal items and the home-block
-    material drops (already dead);
-  - the search finding them;
-  - the night "out" card a personal item makes for its owner;
-  - every mechanic that weighs a drop as evidence.
-
-  No measurement first (Michael). It moves golden and ships alone: `LEGACY_EXTRA_SHIFT_DRAW`
-  is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
-  Beadle reviewing the sim side.
-  **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
-  Revenant's totem and the place's regulars. [decided]
-
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
   features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
@@ -175,7 +138,6 @@ listener (#273), both Lantern's.
      - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
        and `legacy_evidence`, the `legacy_path` stub), together with retiring
        `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
-     - `LEGACY_MUD_DROPS_ENABLED`, in Quill's drops PR;
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
@@ -197,16 +159,6 @@ listener (#273), both Lantern's.
      PRs merge.
 
   [decided]
-
-- **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
-  player presents should move onto the current social plumbing, not the old
-  `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
-  is worth keeping. Herald scopes it, and a decision follows the scope.
-  - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
-    play: there are no protect or spare cases and no bare beliefs, and the evil fallback
-    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
-    Herald's #395, which also purges every presentation fallback (Michael). Close this item
-    when it merges.
 
 - **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
   - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
@@ -234,6 +186,14 @@ listener (#273), both Lantern's.
     handled separately.
   - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
     ratings, and Michael gives quick guidance.
+  - **Values approved (Michael, Nov 20), in Beadle's #421:**
+    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
+      per-role ratings may come later);
+    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
+    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
+    - `REGISTRAR.public_threat_bonus` stays at 0.75.
+
+    Close this item when #421 merges.
 
   Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
   gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing

@@ -404,30 +404,11 @@ static func _search(g) -> void:
 			g._narr("As it burns, you feel the curse on the town lift. Whoever it turned is themselves again.")
 			GameBoard._facts(g, [{"kind": "curse_lifted", "subject": [], "source": "player", "day": g.w.day, "phase": g.w.phase,
 				"text": "Day %d: the totem burned and the Revenant's curse lifted. The turned soul is good again." % g.w.day}])
-	var raw_items: Array = g.w.dropped.get(l, [])
-	g.w.dropped.erase(l)
-	var items: Array = raw_items.filter(func(it): return it.get("owner", "") != "" or Tuning.Setup.LEGACY_MUD_DROPS_ENABLED)
 	var regular: bool = _search_regulars(g, l)
-	if items.is_empty():
-		if tt.is_empty():
-			g.w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing dropped here.")
-		if tt.is_empty() and not regular:
-			g._narr("You search %s carefully. Nothing out of place." % g.w.loc_name(l))
-		return
-	var blk: String = g.w.loc_block(l)
-	for it in items:
-		g.w.dlog.add("player_search", "player", it["who"], {"loc": l, "item": it}, "Found something %s dropped (%s)." % [it["who"], it["why"]])
-		if it["owner"] != "":
-			var o = g.w.by_id[it["owner"]]
-			g._narr("Tucked against the wall of %s you find something of %s's, dropped there on night %d." % [g.w.loc_name(l), o.name, it["night"]])
-			GameBoard._facts(g, [{"kind": "sighting", "subject": [o.id], "block": blk, "loc": l, "day": it["night"], "phase": C.NIGHT, "source": "evidence", "dropped": true,
-				"text": "%s's belongings found at %s: they were on %s on night %d." % [o.name, g.w.loc_name(l), C.block_name(blk), it["night"]]}])
-		else:
-			g._narr("At %s you find %s, left there on night %d. Someone who lives on %s passed this way in the dark." %
-				[g.w.loc_name(l), C.BLOCKS[it["material"]]["trace"], it["night"], C.block_name(it["material"])])
-			GameBoard._facts(g, [{"kind": "dropped", "subject": [], "block": blk, "loc": l, "day": it["night"], "phase": C.NIGHT, "source": "evidence",
-				"material": it["material"], "text": "%s found at %s, left on night %d: someone from %s was out that night." %
-				[C.BLOCKS[it["material"]]["trace"].capitalize(), g.w.loc_name(l), it["night"], C.block_name(it["material"])]}])
+	if tt.is_empty():
+		g.w.dlog.add("player_search", "player", "", {"loc": l}, "Nothing hidden here.")
+	if tt.is_empty() and not regular:
+		g._narr("You search %s carefully. Nothing out of place." % g.w.loc_name(l))
 
 
 ## Searching a social spot also turns up one of its regulars (someone with it as a haunt),

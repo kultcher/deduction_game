@@ -940,7 +940,7 @@ func _test_case_98933_polish_fixes() -> void:
 	Mind.hear_claim(w, hollis, odette.id, "archivist", 0.5, "public")
 	Mind.apply_info(w, hollis, odette, arch_entry, 0.5)
 	Mind.flush_beliefs(w, hollis)
-	var reasons: Array = Mind.MindMeeting.case_against(w, hollis, odette.id)
+	var reasons: Array = Mind.MindNomination.case_against(w, hollis, odette.id)
 	# Superseded by purge phase 2a: reasons now come from the shared model's attribution,
 	# and only for people the shared model actually suspects. This synthetic fixture (legacy
 	# apply_info, no poisoning explanation ruled out) leaves Odette below Hollis's average,

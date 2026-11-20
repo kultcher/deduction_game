@@ -8,6 +8,7 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindNomination = preload("res://sim/mind_nomination.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -128,7 +129,7 @@ func _test_vote_shielding() -> void:
 	var incs: Array = listener.workshop_state.get("circumstantial_incidents", {}).get(shielder.id, [])
 	_check(incs.any(func(inc): return str(inc.get("family", "")) == "shielding") and float(listener.workshop_state.get("circumstantial_applied", {}).get(shielder.id, 0.0)) > 0.0,
 		"player-presented Circumstantial hub fires shielding incident against no-voter (%s)" % str(incs))
-	var reasons: Array = MindMeeting.case_against(w, listener, shielder.id, 6)
+	var reasons: Array = MindNomination.case_against(w, listener, shielder.id, 6)
 	_check(reasons.any(func(r): return "voted against hanging %s" % nom_evil.name in str(r.get("why", ""))),
 		"case_against surfaces citable shielding reason (%s)" % str(reasons))
 

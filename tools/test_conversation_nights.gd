@@ -251,22 +251,28 @@ func _talk_to(g, n) -> void:
 
 
 func _where_were_you() -> void:
-	var g = _game(7110, 7)
-	for i in range(40):
+	# The first deal from 7110 that reaches a second day (one whose town hangs the Demon on
+	# day 1 has no "yesterday" to ask about).
+	var g = null
+	for sd in range(7110, 7140):
+		g = _game(sd, 7)
+		for i in range(40):
+			if (g.w.day >= 2 and g.state == "day") or g.state == "over":
+				break
+			match g.state:
+				"night":
+					g.command("sleep")
+				"meeting", "nomination":
+					g.command("done" if g.state == "meeting" else "vote no")
+					g.command("wait")
+				"approach":
+					g.command("decline")
+				_:
+					g.command("wait")
 		if g.w.day >= 2 and g.state == "day":
 			break
-		match g.state:
-			"night":
-				g.command("sleep")
-			"meeting", "nomination":
-				g.command("done" if g.state == "meeting" else "vote no")
-				g.command("wait")
-			"approach":
-				g.command("decline")
-			_:
-				g.command("wait")
 	var w = g.w
-	var n = w.living()[0]
+	var n = w.living().filter(func(x): return not x.silenced)[0]  # (a silenced townsperson can't answer)
 	n.traits["gossip"] = 0.9
 	_talk_to(g, n)
 	var r = Mind.answer_today(w, n, "yesterday afternoon")
@@ -364,7 +370,7 @@ func _secrets() -> void:
 func _watch_disclosure() -> void:
 	var g = playtest_regressions__game()
 	var w = g.w
-	var n = w.by_id["isolde"]
+	var n = w.by_id[w.minion_ids[0]]  # an evil teller, chosen by alignment so the deal can move
 	var target = w.living_good()[0]
 	w.day = 3
 	w.phase = C.MORNING
