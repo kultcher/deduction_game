@@ -11,10 +11,8 @@ const Live = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const Evil = preload("res://sim/evil.gd")
-const Factored = preload("res://workshop/factored_channels.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Caches = preload("res://workshop/caches.gd")
-const Oracle = preload("res://workshop/channel_likelihood.gd")
 
 var checks = 0
 var fails = 0
@@ -805,11 +803,3 @@ func _test_executor_workshop_and_parity() -> void:
 	_check(has_promoted_world,
 		"Executor reading 'demon' on hanged target with >=5 alive supports worlds where Scion promoted to active Demon")
 
-	# FactoredChannels vs exhaustive Oracle parity:
-	var fac: Dictionary = Factored.assess(view, [c_assign, c_role_good], {}, {"gift_honesty:" + people[0].id: 0.85, "gift_accuracy:" + people[0].id + ":0": 0.98, "gift_accuracy:" + people[0].id + ":1": 0.95}, {})
-	var ora: Dictionary = Oracle.assess(view, [c_assign, c_role_good], {}, {"gift_honesty:" + people[0].id: 0.85, "gift_accuracy:" + people[0].id + ":0": 0.98, "gift_accuracy:" + people[0].id + ":1": 0.95}, {})
-	var max_diff: float = 0.0
-	for idx in range(fac.post.size()):
-		max_diff = maxf(max_diff, absf(fac.post[idx] - ora.post[idx]))
-	_check(max_diff <= 1e-12,
-		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Executor (max diff %.3g)" % max_diff)

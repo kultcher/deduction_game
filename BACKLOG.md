@@ -150,7 +150,9 @@ listener (#273), both Lantern's.
   3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
      Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
      `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
-     the profiler.
+     the profiler. **Done** (Lantern, Nov 20, `claude/delete-channel-stack`): also took
+     `test_channel_sum_product`, `test_workshop_class_parity`, and the oracle parity checks in
+     four role suites.
   4. **File splits,** one file per PR, with no change to play:
      - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
        the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`

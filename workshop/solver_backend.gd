@@ -24,7 +24,7 @@ const STAGES: Array[String] = [
 	"world_domain",        # world_domain.gd + role_constraints.gd
 	"live_activity",       # live_activity.gd route masks, trace likelihoods & movement scores
 	"case_eval_compile",   # case_eval.gd equivalence classes
-	"channel_sum_product", # case_eval.gd posterior pass + channel_sum_product.gd + factored_channels.gd
+	"channel_sum_product", # case_eval.gd posterior pass (the stage keeps its old name for profiler continuity)
 	"reason_attribution",  # reason_attribution.gd (_class_like / _subset_fits)
 ]
 
