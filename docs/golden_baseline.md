@@ -44,7 +44,22 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+### Current baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_d553f53`
+
+`tools/golden/baseline_d553f53/` is the capture from `claude/self-doubt-poisoner` at `d553f53` (main at
+`871a9ad`, with #445 stacked in). A listener who hears a reader say its gift may have been turned
+nudges suspicion toward anyone seen on that reader's block on a night it read, as an accepted
+Mistaken call does; and both Poisoner nudges now add to a clear instead of overriding it.
+- **Divergence from `baseline_7005cc6`:** two seeds.
+  - **42**, record 35 (Nisha's refresh, day 2 afternoon): Agnes, seen on a self-doubting
+    reader's block, is pressed a little more (requested 0.113 to 0.146).
+  - **54875**, record 227 (Hollis's cover, day 3 afternoon): Isolde, cleared and seen on a
+    self-doubting reader's block, is cleared a little less (requested -0.544 to -0.398).
+  - 692, 900 and 98933 are identical.
+- **Outcomes:** unchanged on all five seeds (the same hangings).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
 `tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
 `d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
