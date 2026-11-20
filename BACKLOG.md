@@ -69,7 +69,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. The spoken reply to a later-day repeat `[in review]`
+  2. The spoken reply to a later-day repeat
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Brute kills scored as hexes on custom scripts `[later]`
@@ -152,11 +152,6 @@ listener (#273), both Lantern's.
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
-  4. **Point `game.gd`'s remaining passthroughs at their modules** (Herald). Repoint the
-     callers of the remaining ~106 one-line forwards and delete them, in two PRs: game, sim
-     and ui callers first, then tests and tools. About 18 that the UI and CLI call stay as
-     the game's interface. Zero drift. It waits for Seneschal's go, after Beadle's in-flight
-     PRs merge.
 
   [decided]
 

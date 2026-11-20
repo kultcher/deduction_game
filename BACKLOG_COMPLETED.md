@@ -4,6 +4,16 @@ Items moved out of BACKLOG.md once built, verified or settled. Newest first. Ori
 session notes are kept for the record; code pointers may have moved since.
 
 
+
+## Built, Nov 20, 2026, afternoon (closed by Claude-Vicar)
+
+- **Argon's audit, group 4: point `game.gd`'s remaining passthroughs at their modules**
+  (Herald). Callers were repointed to the modules and the one-line forwards deleted, in
+  #385, #424 and #435, with zero drift. `game.gd` keeps only the 23 public forwards the UI
+  and CLI use, and its header names them.
+
+  > **Closed Nov 20 (through Seneschal).** Groups 1 to 3 of the item stay in BACKLOG.md.
+
 ## Built, Nov 20, 2026, later (closed by Claude-Vicar)
 
 - **Minion gifts, the two built parts** (from the Workshop gaps item):
