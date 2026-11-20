@@ -39,6 +39,9 @@ func _init() -> void:
 			# own tavern visit happens (Codex on #431).
 			if g.state == "day" and g.w.phase == C.EVENING and g.w.day != last_day:
 				last_day = g.w.day
+				# As game_day_night.gd does: the evening's own conversations finish first, so
+				# their shares are in the offer (its once-a-day guard stops a second run).
+				g.w.finish_evening_conversations("")
 				var before: int = g.w.dlog.entries.size()
 				Social.tavern_evening_gossip(g)
 				var logged: Array = g.w.dlog.entries.slice(before).filter(func(e): return e["type"] == "tavern_evening_gossip")
