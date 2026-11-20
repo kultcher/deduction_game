@@ -373,6 +373,10 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			_run_supporters(g)
 			g.capture_prediction("before_vote", {"nominee": t.id, "player_yes": yes})
 			var res: Dictionary = g.w.vote_pending(yes)
+			# A yes is a weak public claim that the nominee is evil, for the track record (Michael,
+			# Nov 19). A no claims nothing: it's the default. Your own nominee is already on record.
+			if res["player_yes"] and res["by"] != "player":
+				Credibility.record_public(g, "evil", t.id, Tuning.Trust.CRED_WEIGHT_STATEMENT)
 			var yes_names: Array = res["yes"].map(func(i): return g.w.by_id[i].name)
 			if res["player_yes"]:
 				yes_names.append("you")
