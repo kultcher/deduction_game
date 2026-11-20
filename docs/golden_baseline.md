@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
+### Current baseline (Nov 20, the Sleepwalker's doubt reads the Rumormonger): `baseline_922d89c`
+
+`tools/golden/baseline_922d89c/` is the capture from `claude/sleepwalker-rumour-doubt` at `922d89c` (main at
+`6cccaf4`). An NPC's "am I the Sleepwalker?" doubt moves with the Rumormonger readings it holds,
+weighted by trust in the teller (`WorkshopBridge.sleepwalk_doubt`).
+- **Divergence from `baseline_b96d2f2`:** only 98933, at record 115 (Lian's day 2 refresh, after
+  hearing a Rumormonger). A few suspicions move in the fifth decimal place. 42, 54875, 692 and
+  900 are identical.
+- **Outcomes:** unchanged everywhere. In 98933 the town hangs Agnes on day 2 and Lian on day 3, as
+  before. No winner by day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
 
 `tools/golden/baseline_b96d2f2/` is the capture from `claude/beadle-gravedigger-lean` at `b96d2f2` (main at
 `0b44cae`, merged in). A good Gravedigger always leans a little toward nominating and voting to hang
