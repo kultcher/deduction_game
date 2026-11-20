@@ -234,7 +234,11 @@ func pressed_nights():
 			# An evil walking bluff not yet named, caught out on a night its duty would cover,
 			# backs into the bluff and owns the outing, as a good walker does (Claude-Beadle,
 			# Nov 16; BACKLOG "An evil walker's owned lie doesn't follow its disclosure").
+			# The caught-out ladder (Michael, Nov 19): the first press only owns the night and keeps
+			# the bluff back, as a good walker keeps its gift; the second names it.
 			if evil and load("res://sim/mind_dialogue.gd")._bluff_outing(b.w, nb, 1):
+				var soft = Mind.press(b.w, nb, card)
+				check(not soft.facts.any(func(f): return f.kind == "claim") and not soft.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "a caught evil %s bluff first owns the night, bluff kept back" % mode)
 				var revealed = Mind.press(b.w, nb, card)
 				check(nb.max_tier >= 3 and revealed.facts.any(func(f): return f.kind == "claim" and f.role == mode)
 					and not revealed.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "a caught evil %s bluff backs into the bluff, no home account" % mode)
@@ -267,8 +271,12 @@ func pressed_nights():
 	# They told the player they were home that night (the owned-lie line needs a real lie).
 	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi"}}
 	var card = {"kind": "sighting", "subject": [n.id], "source": "player", "block": "market", "day": 1, "phase": C.NIGHT, "text": "The player's vigil caught them out"}
+	# The caught-out ladder (Michael, Nov 19): first caught, it owns the night and keeps the
+	# gift; pressed again, it reveals.
+	var soft = Mind.press(g.w, n, card)
+	check(n.claimed_role != "nightwatch" and not soft.facts.any(func(f): return f.kind == "claim") and soft.facts.any(func(f): return f.kind == "alibi" and not f.get("home", true)), "a caught hidden good walker first owns the night and keeps the gift")
 	var reply = Mind.press(g.w, n, card)
-	check(n.claimed_role == "nightwatch" and n.max_tier >= 3 and reply.facts.any(func(f): return f.kind == "claim" and f.role == "nightwatch"), "a caught hidden good walker reveals their gift despite low ordinary willingness")
+	check(n.claimed_role == "nightwatch" and n.max_tier >= 3 and reply.facts.any(func(f): return f.kind == "claim" and f.role == "nightwatch"), "pressed again, a caught hidden good walker reveals their gift despite low ordinary willingness")
 	check(reply.lines.any(func(line): return line is Dictionary and "So yes: I was out" in line.get("statement", line.text) and C.spoken_when(1, g.w.day) in line.text) and n.lied_nights.is_empty(), "the same disclosure owns the earlier lie with the existing admission line")
 	check(not reply.facts.any(func(f): return f.kind == "alibi"), "a revealed walker does not restate the false home account")
 	var home = fresh()
