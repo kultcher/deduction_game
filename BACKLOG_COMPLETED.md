@@ -6,6 +6,30 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+
+## Settled, Nov 20, 2026, night (closed by Claude-Vicar)
+
+- **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
+  pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
+  Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
+  Check against the current prior mapping. (Oct 30) Michael (Nov 18): saved for a dedicated
+  role-tuning pass. [later: role tuning pass]
+
+  > **Closed Nov 20 (Michael, through Seneschal): no change.** Quill's tuning pass: the "+0.22"
+  > hand calculation left out the red herring. The exact rise is +0.14, and NPCs take about
+  > three quarters of it.
+
+- **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
+  producing zero-count group clears. Specify whether "evil" means registered evil
+  (including Marked), how poison and Delusional results behave, and when an absent ping
+  is observable.
+  Michael (Nov 18): moved to the role-tuning pass with "The Seer's rise looks small".
+  [later: role tuning pass]
+
+  > **Closed Nov 20 (Michael, through Seneschal): no change.** Quill's tuning pass: a Dowser's 0
+  > clears hard, but it can only be wrong through poison or Delusion. "Fire only on a positive
+  > ping" isn't adopted unless Michael asks for it.
+
 ## Built or dropped, Nov 20, 2026, evening (closed by Claude-Vicar)
 
 - **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`

@@ -29,6 +29,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. \*Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
+    2. \*A reader's self-doubt points at the Poisoner `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. \*Accusations from starting suspicion read as clues `[decided]`
     2. \*The Gravedigger in a reluctant town `[decided]`
@@ -37,8 +38,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     5. \*Rapport and Warden-credit leftovers `[decided: direction]`
     6. Anger reasons `[decided]`
   - [Numbers](#numbers)
-    1. The Seer's rise looks small `[later: role tuning pass]`
-    2. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
     1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
@@ -143,6 +142,15 @@ Lantern). Nothing is open here.
 
   [decided]
 
+- **A reader's self-doubt points at the Poisoner** (Michael, Nov 20). When an NPC voices
+  "my readings may have been tampered with" (gift self-doubt), listeners who hear it focus
+  Poisoner suspicion on anyone seen on that reader's block on any night it read.
+  - It works the same way as a Mistaken call's nudge.
+  - It applies even if the reader is Delusional, or wrong to be suspicious.
+  - It reuses the existing weight, scaled by the listener's trust in the reader.
+
+  Owner Quill, with Lantern and Beadle reviewing. [decided]
+
 ### NPC behaviour
 
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
@@ -179,6 +187,8 @@ Lantern). Nothing is open here.
       Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
       speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
     - Beadle measures it on a `mock/` branch first.
+  - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
+    round.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -251,19 +261,6 @@ Lantern). Nothing is open here.
 
 ### Numbers
 
-- **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
-  pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
-  Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
-  Check against the current prior mapping. (Oct 30) Michael (Nov 18): saved for a dedicated
-  role-tuning pass. [later: role tuning pass]
-
-- **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
-  producing zero-count group clears. Specify whether "evil" means registered evil
-  (including Marked), how poison and Delusional results behave, and when an absent ping
-  is observable.
-  Michael (Nov 18): moved to the role-tuning pass with "The Seer's rise looks small".
-  [later: role tuning pass]
-
 ### Tentative social tuning (Oct 20–21 discussion)
 
 Candidates for a unified retuning proposal, not approved changes.
@@ -273,6 +270,12 @@ Candidates for a unified retuning proposal, not approved changes.
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
   - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
     the town moves block to block.
+  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
+    the podium press of a sighting and the private press, as speech with no weight; a quiet
+    night isn't argued when the defender knows of a possible thwart. Approved block wording in
+    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
+    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
+    [in review]
 
 ### UI
 
@@ -364,6 +367,12 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
   - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
     totems**. The Revenant is often invisible. (55774) [decided]
+
+  - **Evil's fake self-doubt and the Poisoner nudge** (Beadle's proposal; Michael, Nov 20).
+    Since "A reader's self-doubt points at the Poisoner", evil's fake gift self-doubt also
+    nudges Poisoner suspicion toward whoever was seen on its block, its own teammate
+    included. Smarter evil could aim it (voice the doubt when an innocent was near) or avoid
+    it (stay quiet when a teammate was). Owner Beadle.
 
   [deferred]
 
@@ -517,8 +526,10 @@ Workshop and the shared model can't express yet.
   anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
   **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
   Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
-  destination is spread over the town. The fuller Poisoner-presence factor waits for after
-  this round. The other two Minion gifts are
+  destination is spread over the town. **Declined (Michael, Nov 20):** the fuller
+  Poisoner-presence factor in the judge. Nobody can verify that a reading was mistaken, so the
+  judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
+  This item closes when #445 merges. The other two Minion gifts are
   built and closed (Quill, Nov 20). Owner Quill. [decided]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
