@@ -12,6 +12,7 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const C = preload("res://sim/content.gd")
@@ -31,6 +32,7 @@ func _init() -> void:
 	_switch()
 	_double_claim()
 	_witness_lying()
+	_bluff_change_clean()
 	print("Double claim response: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -128,6 +130,27 @@ func _double_claim() -> void:
 			chose = true
 			break
 	_check(chose and str(w.evil_plan.bluffs[m.id]) == role and MindMeeting._public_claim_decision(w, m) == role, "having chosen it, it claims the rival's gift at the meeting")
+	# Rolled once per game (Michael, Nov 20): with the seed fixed, a Minion not looking to
+	# double-claim never does, however many claims it hears.
+	var never_seed: int = -1
+	for k in 400:
+		w.seed_value = 20000 + k
+		_unclaimed(m)
+		m.dialogue_memory.erase("double_claim")
+		if not MindMeeting.choose_double_claim(w, m, rival, role):
+			never_seed = 20000 + k
+			break
+	var acted := false
+	for other in w.living_good():
+		for d in [1, 2, 3]:
+			w.seed_value = never_seed
+			w.day = d
+			_unclaimed(m)
+			m.dialogue_memory.erase("double_claim")
+			if MindMeeting.choose_double_claim(w, m, other, other.role):
+				acted = true
+	w.day = 2
+	_check(never_seed >= 0 and not acted, "a Minion not looking to double-claim this game never does, whoever claims and whenever")
 	# Hot: implicated before the town, it doesn't risk it.
 	for i in 12:
 		w.public_log.append({"kind": "accusation", "subjects": [m.id], "day": w.day, "by": rival.id})
@@ -171,3 +194,48 @@ func _witness_lying() -> void:
 	card2["source"] = g2.w.living_good()[1].id
 	var r2: Dictionary = MindDialogue.press(g2.w, n2, card2)
 	_check(not r2.lines.any(func(l): return l is Dictionary and "lying about seeing me" in str(l.get("statement", ""))), "unconfident: it only stands by its account")
+
+## Changing a bluff leaves nothing of the old one behind (Codex on #390): no fabrication of it
+## in the log or held back a day, the shadow (the good self) takes the new gift, drops the old
+## readings, and its reading cursor still points at the next unseen entry. A Revenant-turned
+## townsperson, evil but not a Minion, never double-claims or switches.
+func _bluff_change_clean() -> void:
+	var g = _game()
+	var w = g.w
+	var m = w.minion()
+	_unclaimed(m)
+	var old: String = str(w.bluffs[0])
+	for id in w.evil_plan.bluffs:
+		w.evil_plan.bluffs[id] = "clerk"
+	w.evil_plan.bluffs[m.id] = old
+	m.info_log = m.info_log.filter(func(x): return not x.get("fake", false))
+	m.info_log.append({"role": old, "day": 0, "fake": true, "shared": false, "data": {}, "text": "old, seen by the shadow"})
+	m.held_fakes = [{"entry": {"role": old, "day": 1, "fake": true, "data": {}, "text": "old, held"}, "until": w.day}]
+	Mind._shadow_own_info(w, m)
+	var cursor_before: int = int(m.shadow_seen.get("fake", 0))
+	var rival = w.living_good()[0]
+	rival.claim_public = true
+	rival.claimed_role = old
+	_check(MindMeeting.switch_taken_bluff(w, m), "the switch happens with an untold fabrication of the old bluff")
+	var now: String = str(w.evil_plan.bluffs[m.id])
+	_check(not m.info_log.any(func(x): return x.get("fake", false) and x.get("role", "") == old) and not m.held_fakes.any(func(h): return h.entry.role == old),
+		"no fabrication of the old bluff is left, in the log or held back")
+	_check(m.shadow != null and m.shadow.role == now and not m.shadow.info_log.any(func(x): return x.get("fake", false) and x.get("role", "") == old),
+		"the shadow takes the new gift (%s) and drops the old readings" % (m.shadow.role if m.shadow != null else "none"))
+	_check(int(m.shadow_seen.get("fake", -1)) == cursor_before - 1 and int(m.shadow_seen.get("fake", -1)) <= m.info_log.size(),
+		"the shadow's cursor moves back past the removed reading (%d -> %d)" % [cursor_before, int(m.shadow_seen.get("fake", -1))])
+	# A new fabrication after the change reaches the shadow.
+	m.info_log.append({"role": now, "day": 1, "fake": true, "shared": false, "data": {}, "text": "new"})
+	Mind._shadow_own_info(w, m)
+	_check(m.shadow.info_log.any(func(x): return x.get("fake", false) and x.get("role", "") == now), "a fabrication of the new gift reaches the shadow")
+	# A turned townsperson is no Minion.
+	var t = w.living_good()[2]
+	t.turned = true
+	t.alignment = "evil"
+	_unclaimed(t)
+	var any := false
+	for k in 200:
+		w.seed_value = 7000 + k
+		if MindMeeting.choose_double_claim(w, t, rival, old):
+			any = true
+	_check(not any and not MindMeeting.switch_taken_bluff(w, t), "a Revenant-turned townsperson never double-claims or switches")

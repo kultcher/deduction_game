@@ -323,7 +323,8 @@ static func rival_claimants(w, n, role: String) -> Array:
 ## Not if it has already told a fake reading of the old bluff: that's committed. Returns
 ## whether it switched.
 static func switch_taken_bluff(w, n) -> bool:
-	if not n.is_evil() or n.claim_public or n.claimed_role != "":
+	# A Revenant-turned townsperson keeps its own gift as its cover: nothing to switch.
+	if not n.is_evil() or n.turned or n.claim_public or n.claimed_role != "":
 		return false
 	var bluff: String = str(w.evil_plan["bluffs"].get(n.id, ""))
 	if str(n.dialogue_memory.get("double_claim", {}).get("role", "")) == bluff:
@@ -338,37 +339,72 @@ static func switch_taken_bluff(w, n) -> bool:
 	if spares.is_empty():
 		return false
 	var spare: String = str(spares[0])
-	n.info_log = n.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == bluff))
-	w.evil_plan["bluffs"][n.id] = spare
+	_change_bluff(w, n, bluff, spare)
 	w.dlog.think(n.id, "bluff_switch", "Bluff taken (%s claimed the %s); switched to the %s." % [w.by_id[rivals[0]].name, C.role_name(bluff), C.role_name(spare)],
 		{"from": bluff, "to": spare, "rival": rivals[0], "why": "bluff taken; switched to %s" % spare})
 	return true
+
+## Evil drops its planned bluff `old` for `new` before claiming either (Codex on #390): its
+## untold fabrications of the old gift go, from its log and from those held back a day, and
+## its shadow (its good self) drops their evidence and takes the new gift as its own, with
+## its reading cursor moved back past what was removed.
+static func _change_bluff(w, n, old: String, new: String) -> void:
+	var cursor: int = int(n.shadow_seen.get("fake", 0)) if n.shadow_seen is Dictionary else 0
+	var keep: Array = []
+	var removed_before: int = 0
+	for i in range(n.info_log.size()):
+		var e: Dictionary = n.info_log[i]
+		if e.get("fake", false) and e.get("role", "") == old:
+			if i < cursor:
+				removed_before += 1
+			continue
+		keep.append(e)
+	n.info_log = keep
+	if n.shadow_seen is Dictionary and n.shadow_seen.has("fake"):
+		n.shadow_seen["fake"] = cursor - removed_before
+	n.held_fakes = n.held_fakes.filter(func(h): return str(h.get("entry", {}).get("role", "")) != old)
+	w.evil_plan["bluffs"][n.id] = new
+	if n.shadow != null:
+		var s = n.shadow
+		for e in s.info_log:
+			if e.get("fake", false) and e.get("role", "") == old:
+				s.ledger.erase(_mind().info_eid(s.id, e))
+		s.info_log = s.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == old))
+		s.applied_info = s.info_log.size()
+		s.role = new if C.ROLES.has(new) and C.ROLES[new]["align"] == "good" else ""
 
 ## A Minion that hears a claim may take that gift as its own bluff: a deliberate double
 ## claim (Michael, Nov 19). Never the Demon or a Scion, never once it has claimed, nor if a
 ## told fake reading commits it to its bluff. Heat (being already implicated, Evil.exposure's
 ## public talk) makes it a poorer bet. Returns whether it chose to.
 static func choose_double_claim(w, l, rival, role: String) -> bool:
-	if not l.is_evil() or l.id == w.demon_id or l.role == "scion" or l.claim_public or l.claimed_role != "" or l.silenced:
+	# A real Minion only: a Revenant-turned townsperson is evil but keeps its own gift (Codex on #390).
+	if not l.is_evil() or not C.is_minion(l.role) or l.turned or l.id == w.demon_id or l.role == "scion" or l.claim_public or l.claimed_role != "" or l.silenced:
 		return false
 	if role == "" or C.ROLES.get(role, {}).get("kind", "") == "evil":
 		return false
 	if l.info_log.any(func(e): return e.get("fake", false) and e.get("shared", false)):
 		return false
+	# One roll per Minion per game, up front (Michael, Nov 20): is it looking to double-claim
+	# at all? Then at each claim it hears, heat decides whether it acts: already implicated
+	# (Evil.exposure's public talk), it lets the chance pass. Both draws are its own, seeded
+	# from the case, so the world's stream moves only when a double claim is made.
+	var intent := RandomNumberGenerator.new()
+	intent.seed = hash([w.seed_value, l.id, "minion_double_claim_intent"])
+	var intent_draw: float = intent.randf()
+	if intent_draw >= Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE:
+		return false
 	var heat: float = float(Evil.exposure(w, l).get("public_talk", 0.0))
-	var p: float = Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE * clampf(1.0 - heat, 0.0, 1.0)
-	# Its own draw, seeded from the moment, so the world's stream (and everything after it)
-	# moves only when a double claim is actually made.
+	var p: float = clampf(1.0 - heat, 0.0, 1.0)
 	var drng := RandomNumberGenerator.new()
 	drng.seed = hash([w.seed_value, w.day, l.id, rival.id, role, "minion_double_claim"])
 	var draw: float = drng.randf()
 	if w.dlog.live_feed != null and w.dlog.live_feed.enabled:
-		w.dlog.decision(l.id, "minion_double_claim", "roll", draw < p, {"mechanism": "probability", "inputs": {"base": Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE, "public_talk": heat}, "probability": p, "draw": draw}, rival.id)
+		w.dlog.decision(l.id, "minion_double_claim", "roll", draw < p, {"mechanism": "probability", "inputs": {"intent": intent_draw, "chance": Tuning.Evil.MINION_DOUBLE_CLAIM_CHANCE, "public_talk": heat}, "probability": p, "draw": draw}, rival.id)
 	if draw >= p:
 		return false
 	var old: String = str(w.evil_plan["bluffs"].get(l.id, ""))
-	l.info_log = l.info_log.filter(func(e): return not (e.get("fake", false) and e.get("role", "") == old))
-	w.evil_plan["bluffs"][l.id] = role
+	_change_bluff(w, l, old, role)
 	l.dialogue_memory["double_claim"] = {"day": w.day, "rival": rival.id, "role": role}
 	w.dlog.think(l.id, "plan", "Will claim the %s too, the gift %s just claimed: a deliberate double claim (heat %.2f)." % [C.role_name(role), rival.name, heat], {"from": old, "to": role, "rival": rival.id})
 	return true

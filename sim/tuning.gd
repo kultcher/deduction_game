@@ -804,11 +804,13 @@ class Evil:
 	const EXPOSURE_PLAYER_SUSPECTS = 0.3
 	const EXPOSURE_PRESSURE_SCALE = 0.5
 	const EXPOSURE_ON_BLOCK = 0.2
-	## A deliberate double claim (Michael, Nov 19): an unclaimed Minion (never the Demon or a
-	## Scion) that hears someone claim a gift knowingly takes that same gift as its bluff and
-	## claims it. Not a bluff that merely risks a later collision; a chosen one. This is its
-	## chance each time it hears a claim, before heat: already being implicated as evil
-	## (Evil.exposure's public talk) scales it down, to nothing at full heat. Michael set 0.05.
+	## A deliberate double claim (Michael, Nov 19-20): the chance, rolled once per Minion per
+	## game (never the Demon or a Scion), that this Minion is looking to double-claim: when it
+	## hears someone claim a gift, unclaimed, it knowingly takes that same gift as its bluff and
+	## claims it. A chosen collision, not a bluff that merely risks one. Once it is looking, heat
+	## decides each time whether it acts: already implicated as evil (Evil.exposure's public
+	## talk), it lets the chance pass, never at full heat. Michael set 0.05: roughly 1 game in
+	## 20 per Minion.
 	const MINION_DOUBLE_CLAIM_CHANCE = 0.05
 	const TEAMMATE_VALUE_DEMON = 2.0
 	const TEAMMATE_VALUE_DEMON_WITH_SCION = 1.1
