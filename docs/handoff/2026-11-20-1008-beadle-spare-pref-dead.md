@@ -32,6 +32,9 @@
   - **With that key ignored** (`golden_diff.py --ignore engine,spare_pref`): identical on all
     five seeds.
   - So no decision changed. Re-baselined to the new capture.
+  - **Re-run after merging main at `d242a1f` (#418, `baseline_c712b7a`):** two captures identical;
+    against `baseline_c712b7a` with `spare_pref` ignored, identical on all five seeds. Re-baselined
+    to `baseline_7005cc6` (the earlier `baseline_6ab77dc` folder, never main's, is removed).
 - **Suites:** 10 of 10 pass: test_meeting_m2d, test_meeting_flow, test_symmetric_vote,
   test_would_vote, test_lie_severity_votes, test_tuning_hoist,
   test_dialogue_fixes_accusations_votes, test_readings_agree, test_state_digest and
