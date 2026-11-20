@@ -4,7 +4,7 @@
 - **Base:** main, with `claude/vicar-batch-nov20b`'s earlier commits (the misframed-case hint,
   the social route in review)
 - **Status:** docs only, ready for Bailiff
-- **Next actor:** Bailiff. Michael has two calls (below).
+- **Next actor:** Bailiff
 
 ## What changed and why
 
@@ -36,13 +36,13 @@
     rework.
 - **The contents list** is regenerated.
 
-## For Michael
+## Michael's answers (Nov 20)
 
-1. **Privacy:** close the item if the openness term in starting trust is fine.
-2. **Insight's part of doubting one's own readings:** close it if the flat 30% trigger is
-   enough.
-3. **Herald (optional):** no doubt line names the specific oddity. Herald doesn't think it's
-   needed.
+1. **Privacy:** closed. The openness term is fine, and "an openish person per phase" is
+   dropped.
+2. **Insight's part of doubting one's own readings:** kept, low priority (Beadle, Lantern).
+3. **Doubt lines naming the specific oddity:** declined, not needed. Recorded in the closed
+   item's note.
 
 ## Checked
 

@@ -43,10 +43,9 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     3. The Seer's rise looks small `[later: role tuning pass]`
     4. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. Privacy without compounding trust penalties `[tentative]`
-    2. Ward promises should outrank vigil promises `[decided]`
-    3. Explicit night-sighting rebuttals `[decided]`
-    4. Misled versus reading-lie strength `[open]`
+    1. Ward promises should outrank vigil promises `[decided]`
+    2. Explicit night-sighting rebuttals `[decided]`
+    3. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
     1. From Playtest Notes 12553
   - [Performance](#performance)
@@ -341,24 +340,6 @@ listener (#273), both Lantern's.
 
 Candidates for a unified retuning proposal, not approved changes.
 
-- **Privacy without compounding trust penalties.** Remove Privacy from initial player
-  trust and benign trust changes; let high Privacy scale only what a private person would
-  resent (intrusive pressure, revealing secrets). Keep the disclosure gates. Distinguish
-  ordinary questions on different topics from repeating a refused question. (54875: on
-  Day 1 three of three people stonewalled; Privacy counts in both openness and starting
-  trust. The first day swings a lot on how many private characters are dealt.) Consider
-  removing the double count or dealing at least one openish person per phase. [tentative]
-  - **Mostly done (Beadle, Nov 20).** #258 took Privacy out of civil talk, and starting trust
-    stopped using Privacy itself on Oct 30. Privacy still scales what a private person would
-    resent, as the item asks.
-  - **Left, Michael's call:**
-    - a newcomer's starting trust still has an openness term, 1 − Privacy
-      (`PLAYER_TRUST_OPENNESS_SCALE`), so a private person starts a little cooler while
-      Privacy also gates disclosure. That's the 54875 double count, smaller;
-    - "deal at least one openish person per phase" was never built.
-
-    Close the item if Michael counts the openness term as fine.
-
 - **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
   and add plausible-success credit for a kept ward followed by a deathless night.
   Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
@@ -415,8 +396,8 @@ The one performance item, "Late-game meeting and presenting cost", is in
   doubt about their own readings", Beadle, Nov 20). The doubt and the line are built (#320,
   #316). Lantern says the judge's clash signal already catches a repeated pair flipping yes
   and no. The trigger is a flat 30% for everyone, though, and the item asked for higher
-  Insight to notice a mismatch sooner. Close it if Michael counts the flat trigger as enough.
-  Owners Beadle and Lantern. [decided; triggers open]
+  Insight to notice a mismatch sooner. **Kept, low priority** (Michael, Nov 20). Owners Beadle
+  and Lantern. [decided; triggers open]
 
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]

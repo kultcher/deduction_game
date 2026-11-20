@@ -5,6 +5,26 @@ session notes are kept for the record; code pointers may have moved since.
 
 ## Closed Nov 20, 2026, second pass (Michael; recorded by Claude-Vicar)
 
+- **Privacy without compounding trust penalties.** Remove Privacy from initial player
+  trust and benign trust changes; let high Privacy scale only what a private person would
+  resent (intrusive pressure, revealing secrets). Keep the disclosure gates. Distinguish
+  ordinary questions on different topics from repeating a refused question. (54875: on
+  Day 1 three of three people stonewalled; Privacy counts in both openness and starting
+  trust. The first day swings a lot on how many private characters are dealt.) Consider
+  removing the double count or dealing at least one openish person per phase. [tentative]
+  - **Mostly done (Beadle, Nov 20).** #258 took Privacy out of civil talk, and starting trust
+    stopped using Privacy itself on Oct 30. Privacy still scales what a private person would
+    resent, as the item asks.
+  - **Left, Michael's call:**
+    - a newcomer's starting trust still has an openness term, 1 − Privacy
+      (`PLAYER_TRUST_OPENNESS_SCALE`), so a private person starts a little cooler while
+      Privacy also gates disclosure. That's the 54875 double count, smaller;
+    - "deal at least one openish person per phase" was never built.
+
+    Close the item if Michael counts the openness term as fine.
+
+  > **Closed Nov 20 (Michael):** the openness term in starting trust is fine as it is, and "an openish person per phase" is dropped.
+
 - **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
   walking duties, personal secrets, protecting a confidence. Conceding the statement was
   false need not concede evil. Evil gets the same excuses, open to later corroboration;
@@ -132,7 +152,7 @@ session notes are kept for the record; code pointers may have moved since.
   what they know, allow legitimate changes such as succession, and keep suspicion of
   misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
 
-  > **Closed Nov 20 (Lantern and Herald confirmed):** built, except Insight's part. OwnGiftDoubt (#320) weighs whether a reading still holds, which catches a repeated pair flipping and allows succession. The NPC says so to the town (#316), in lines all 15 voices have. Readings the judge can't check are their own item, "Gift doubt for readings the judge doesn't check". Herald notes no line names the specific oddity; specific lines would be Michael's call. Beadle (Nov 20) points out that the Insight part was never built (the trigger is a flat 30%), so that remainder stays in BACKLOG.md as "Insight helps an NPC notice its own readings don't fit".
+  > **Closed Nov 20 (Lantern and Herald confirmed):** built, except Insight's part. OwnGiftDoubt (#320) weighs whether a reading still holds, which catches a repeated pair flipping and allows succession. The NPC says so to the town (#316), in lines all 15 voices have. Readings the judge can't check are their own item, "Gift doubt for readings the judge doesn't check". Lines naming the specific oddity ("my two readings of the same pair disagree") were declined by Michael on Nov 20: not needed. Beadle (Nov 20) points out that the Insight part was never built (the trigger is a flat 30%), so that remainder stays in BACKLOG.md as "Insight helps an NPC notice its own readings don't fit".
 
 - **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one →
   the unaccounted person was out.
