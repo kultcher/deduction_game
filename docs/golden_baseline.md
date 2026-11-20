@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, drops removed): `baseline_58cb94a`
+### Current baseline (Nov 20, the dead spare_pref removed): `baseline_a55b4ab`
+
+`tools/golden/baseline_a55b4ab/` is the capture from `claude/beadle-spare-pref-dead` at `a55b4ab` (main at
+`de0fa80`, with #404). The dead "persuaded to spare" preference is gone: its field, vote term,
+constant and trace entries. Nothing wrote to it after #395.
+- **Divergence from `baseline_58cb94a`:** every seed from record 1, but only because each NPC record
+  (real and shadow) no longer carries the always-empty `spare_pref` key. With that key ignored
+  (`golden_diff.py --ignore engine,spare_pref`), all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, drops removed): `baseline_58cb94a`
 
 `tools/golden/baseline_58cb94a/` is the capture from `claude/remove-drops` at `58cb94a` (main at
 `ec0b48a`, with #394 and #401, merged in). Night walkers no longer drop anything on their route
