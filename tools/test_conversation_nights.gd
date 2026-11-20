@@ -304,7 +304,7 @@ func _one_night_story() -> void:
 		var x = goods[0]
 		var block: String = m.home_block
 		m.info_log.append({"day": 1, "role": "nightwatch", "fake": true, "shared": false, "true": false,
-			"data": {"block": block, "seen": [x.id]}, "text": "I watched it: I saw %s pass by" % x.name})
+			"data": {"block": block, "seen": [x.id]}, "text": "I watched it: I saw %s out" % x.name})
 		w.day = 2
 		tried += 1
 		var r = Evil.fake_night_sighting(w, m, 1)
