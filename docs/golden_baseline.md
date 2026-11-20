@@ -44,16 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Sleepwalker's doubt reads the Rumormonger): `baseline_922d89c`
+### Current baseline (Nov 20, the Sleepwalker's doubt reads the Rumormonger): `baseline_c515fc8`
 
-`tools/golden/baseline_922d89c/` is the capture from `claude/sleepwalker-rumour-doubt` at `922d89c` (main at
-`6cccaf4`). An NPC's "am I the Sleepwalker?" doubt moves with the Rumormonger readings it holds,
-weighted by trust in the teller (`WorkshopBridge.sleepwalk_doubt`).
-- **Divergence from `baseline_b96d2f2`:** only 98933, at record 115 (Lian's day 2 refresh, after
-  hearing a Rumormonger). A few suspicions move in the fifth decimal place. 42, 54875, 692 and
-  900 are identical.
-- **Outcomes:** unchanged everywhere. In 98933 the town hangs Agnes on day 2 and Lian on day 3, as
-  before. No winner by day 4.
+`tools/golden/baseline_c515fc8/` is the capture from `claude/sleepwalker-rumour-doubt` at `c515fc8` (main at
+`a8a8a78`, merged in). An NPC's "am I the Sleepwalker?" doubt moves with every Rumormonger reading
+it holds, however it learned it, weighted by that reading's route trust (`SourceDoubt.sleepwalk_doubt`,
+applied in `SharedLedger.prepare`). This replaces the PR's earlier `baseline_922d89c`, which read
+only readings heard directly (`known_claims`) and moved only 98933.
+- **Divergence from `baseline_b96d2f2`:** every seed, at a refresh: 54875 at record 9 and 692 at 13
+  (day 1), 98933 at 96 (day 2), 42 at 131 and 900 at 90 (day 3). Most listeners hold some
+  Rumormonger reading, and one that doesn't name them makes them a little surer they were home.
+- **Outcomes:** unchanged everywhere. The same hangings on the same days (54875: Edda, then Agnes;
+  692: Constance, then Lian; 900: Greta; 98933: Agnes, then Lian; 42: none), and no winner by day 4.
+  900 ends one record shorter.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`

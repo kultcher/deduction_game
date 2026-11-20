@@ -447,8 +447,9 @@ is false has no honest explanation. That cancelled the relay's weight against it
   alibi, "I know I was home on night 1" (`LiveActivity.own_home_cards`, `FlagKnownSelf`):
   the listener out that night is possible only by its self-doubt, which is the
   Sleepwalker's 10% when that secret is on the script, and the own-reading error
-  otherwise. A Rumormonger's reading the listener holds moves the 10%, weighted by trust
-  in the teller (`SourceDoubt.sleepwalk_doubt`): named for the Sleepwalker it rises, to
+  otherwise. Each Rumormonger reading the listener holds, however learned, moves the 10%,
+  weighted by the reading's route trust (`SourceDoubt.sleepwalk_doubt`, applied in
+  `SharedLedger.prepare`): named for the Sleepwalker it rises, to
   at most a coin flip (`SLEEPWALK_CHANCE`); another pair or another secret, true, would
   rule the listener out, so it falls. The role fits' "am I the Sleepwalker?" mix reads
   the same value (`own_home.sleep_doubt`). The routes check skips it, so it never makes a night impossible, and it's
