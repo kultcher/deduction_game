@@ -10,6 +10,8 @@
 - `WorkshopBridge.sleepwalk_doubt(w, n)`: on a script with the Sleepwalker, how unsure an NPC is
   that it is not the Sleepwalker. Each Rumormonger reading it holds updates its chance of
   holding the secret, believed as far as it trusts the teller (`npc_trust`):
+  - a relayed reading is believed as far as the mean of its trust in the source and in whoever
+    passed it on, as the shared ledger weighs the card (Codex on #459);
   - a reading naming it for the Sleepwalker makes it, if true, a coin flip with the other name;
   - any other reading (another pair, or another secret) would rule it out if true, since a case
     has one secret on one townsfolk (the Lovers on two).
@@ -43,7 +45,7 @@ Only 98933 moves: Lian's day 2 refresh, in the fifth decimal place. Outcomes are
 - New `tools/test_sleepwalk_doubt.gd`:
   - with no reading, the doubt is `SLEEPWALK_SELF_DOUBT`;
   - named by a trusted teller, it rises, capped at `SLEEPWALK_CHANCE`;
-  - a barely trusted teller moves it less;
+  - a barely trusted teller moves it less, and so does a reading passed on by someone it distrusts;
   - the Sleepwalker named elsewhere, or another secret named, lowers it;
   - the home nights and the role fits carry the same value;
   - in play, the honest sighter's guilt falls.

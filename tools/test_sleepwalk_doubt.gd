@@ -63,6 +63,14 @@ func _init() -> void:
 	_rumour(n, teller, [n.id, other.id], "sleepwalker", 0.1)
 	var faint: float = Bridge.sleepwalk_doubt(w, n)
 	check(faint > base and faint < named, "a teller it hardly trusts moves it less (%.3f)" % faint)
+	_rumour(n, teller, [n.id, other.id], "sleepwalker", 0.5)
+	var direct: float = Bridge.sleepwalk_doubt(w, n)
+	n.known_claims[teller.id]["via"] = other.id
+	var other_trust = n.npc_trust.get(other.id, 0.5)
+	n.npc_trust[other.id] = 0.0
+	var relayed: float = Bridge.sleepwalk_doubt(w, n)
+	n.npc_trust[other.id] = other_trust
+	check(relayed > base and relayed < direct, "a half-trusted teller's reading, passed on by someone it distrusts, moves it less than told directly (%.3f against %.3f; Codex on #459)" % [relayed, direct])
 	_rumour(n, teller, [other.id, sighter], "sleepwalker", 0.9)
 	var elsewhere: float = Bridge.sleepwalk_doubt(w, n)
 	check(elsewhere < base and elsewhere >= Tuning.Workshop.OWN_ERR, "the Sleepwalker named as someone else lowers it (%.3f)" % elsewhere)

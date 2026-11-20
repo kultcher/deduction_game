@@ -253,7 +253,7 @@ static func sleepwalk_doubt(w, n) -> float:
 			var d = e.get("data", {})
 			if not d is Dictionary or not d.has("pair"):
 				continue
-			var c: float = clampf(float(n.npc_trust.get(str(source), 0.5)), 0.0, 1.0)
+			var c: float = _route_trust(n, str(source), str(claim.get("via", "")))
 			if n.id in d.pair and str(d.get("secret", "")) == "sleepwalker":
 				p = c * 0.5 + (1.0 - c) * p
 			else:
@@ -262,6 +262,18 @@ static func sleepwalk_doubt(w, n) -> float:
 	if not moved:
 		return base
 	return clampf(base * p / p0, Tuning.Workshop.OWN_ERR, Tuning.Setup.SLEEPWALK_CHANCE)
+
+
+## How far an NPC believes a reading from `source` that reached it through `via`: its trust
+## in the source, or, relayed, the mean of its trust in the source and in whoever passed it
+## on, as the shared ledger weighs the card (SharedLedger._card_route_trust; Codex on #459).
+static func _route_trust(n, source: String, via: String) -> float:
+	var trust_of = func(id: String) -> float:
+		return float(n.credibility) if id == "player" else float(n.npc_trust.get(id, 0.5))
+	var t: float = trust_of.call(source)
+	if via != "" and via != source and via != n.id:
+		t = 0.5 * (t + trust_of.call(via))
+	return clampf(t, 0.0, 1.0)
 
 
 ## The haunts an NPC knows without being told (regulars know regulars): their own, and
