@@ -205,9 +205,9 @@ listener (#273), both Lantern's.
   is worth keeping. Herald scopes it, and a decision follows the scope.
   - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
     play: there are no protect or spare cases and no bare beliefs, and the evil fallback
-    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In flight:**
-    built and pushed with Michael's "purge every fallback" request; the PR opens after
-    Lantern's #386, which renames the same reporting.
+    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
+    Herald's #395, which also purges every presentation fallback (Michael). Close this item
+    when it merges.
 
 ### NPC behaviour
 
