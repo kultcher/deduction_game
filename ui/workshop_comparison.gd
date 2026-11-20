@@ -133,7 +133,7 @@ func _records() -> void:
 		return
 	var lines = PackedStringArray()
 	for result in g.workshop_comparisons:
-		var actual: Dictionary = result.get("actual", result.get("social", {}))
+		var actual: Dictionary = result.get("actual", {})
 		var label = "Applied shared assessment" if actual.get("model") == "shared" else "Original agreement"
 		lines.append("Card #%d · %s · %s\n%s %.3f\n%s" % [result.card,
 			g.w.by_id[result.listener].name if g.w.by_id.has(result.listener) else result.listener,

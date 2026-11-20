@@ -14,7 +14,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `MUDDLER_GOSSIP_FLOOR` | `0.7` | The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret only shows when they relay what they've heard. | `sim/world.gd` |
-| `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
+| `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world.gd` |
@@ -760,12 +760,3 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PROFILE_LOW` | `{ "name": "Low", "cards": 4, "lines": 2, "support": 12, "rivals": 3, "complet...` |  | `workshop/reasoner.gd` |
 | `PROFILE_MEDIUM` | `{ "name": "Medium", "cards": 8, "lines": 3, "support": 24, "rivals": 9, "comp...` |  | `workshop/reasoner.gd` |
 | `PROFILE_HIGH` | `{ "name": "High", "cards": 12, "lines": 4, "support": 48, "rivals": 27, "comp...` |  | `workshop/reasoner.gd` |
-
-## Presentation
-
-| Constant | Value | Note | Used in |
-| --- | --- | --- | --- |
-| `SOCIAL_TRUST_WEIGHT` | `0.5` | Agreement = trust weight x the listener's trust in the player + belief weight x how far their own suspicion already leans the speaker's way. | `sim/presentation_reply.gd` |
-| `SOCIAL_BELIEF_WEIGHT` | `0.5` |  | `sim/presentation_reply.gd` |
-| `SOCIAL_MIN_BASE` | `0.004` | Below this (agreement x venue scale) nothing is recorded. | `sim/presentation_reply.gd` |
-| `SELF_ACCUSED_TRUST_LOSS` | `0.05` | Trust lost when the player accuses a good listener of something they know is false. | `sim/presentation_reply.gd` |

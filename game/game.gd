@@ -110,7 +110,6 @@ var workshop_compare = false # opt-in diagnostics; never applies the proposed ef
 ## they did (game/workshop_why.gd). Read-only; costs several union evaluations per listener.
 var workshop_why = false
 var workshop_whys: Array = []
-var _workshop_native_social = false  # a protect/spare preference or a bare belief: social speech, not a fallback
 var _workshop_repeats: Dictionary = {}
 var _workshop_busy = false
 var _workshop_plans = {}
@@ -242,7 +241,6 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	_workshop_reason_ctx = {}
 	_workshop_responses = {}
 	_workshop_repeats = {}
-	_workshop_native_social = false
 	board = []
 	profile_receipts = []
 	confidences = {}
@@ -327,8 +325,6 @@ func _attach_workshop_world() -> void:
 		var game = weak_game.get_ref()
 		if game == null or game.w != weak_world.get_ref():
 			return {}
-		if game._workshop_native_social:
-			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	_home_cards()
 
@@ -348,7 +344,6 @@ func command(line: String) -> String:
 	if text == "":
 		return ""
 	_canvas_status_memo = {}
-	_workshop_native_social = false
 	events = []
 	if w != null:
 		w.set_log_time()
@@ -370,7 +365,6 @@ func workshop_command(line: String, progress: Callable) -> String:
 	if parts.size() != 2 or not ((state == "meeting" and parts[0] in ["present", "nominate"]) or (state == "nomination" and parts[0] == "case")):
 		return command(line)
 	workshop_presenting = true
-	_workshop_native_social = false
 	events = []
 	w.set_log_time()
 	w.dlog.begin_action("command", {"cmd": line})
@@ -531,10 +525,6 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 func _unsupported_conclusions(issues: Array) -> Array:
 	return GamePresentation._unsupported_conclusions(issues)
 
-## Issues that only say "there's no evidence here", as opposed to evidence the shared
-## model can't read.
-func _bare_speech(issues: Array) -> bool:
-	return GamePresentation._bare_speech(issues)
 
 func _presentation_rejection(card: Dictionary) -> String:
 	return GamePresentation._presentation_rejection(self, card)

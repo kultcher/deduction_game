@@ -843,7 +843,7 @@ func _send(command: String) -> void:
 	presenting = false
 	var lines: Array = []
 	for delivery in g.workshop_deliveries:
-		lines.append("%s · %s" % [delivery.name, "Shared evaluator" if delivery.model == "shared" else "Existing rules (explicit route)"])
+		lines.append("%s · %s" % [delivery.name, "Shared evaluator" if delivery.model == "shared" else "Not assessed"])
 		for issue in delivery.issues:
 			lines.append("  " + issue)
 	if lines.is_empty():

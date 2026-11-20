@@ -66,25 +66,12 @@ static func workshop_readiness(g, card: Dictionary, listeners: Array, targets: A
 
 
 static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
-	g._workshop_native_social = false
 	var rejected: String = _presentation_rejection(g, card)
 	if rejected != "":
 		g._err(rejected)
 		return false
-	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
-		# Mechanics-support item 0: a preference is social speech even when the
-		# speaker attaches a card. It is not an unsupported evidence conclusion.
-		g._workshop_native_social = true
-		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
-		return true
 	var check: Dictionary = workshop_readiness(g, card, listeners, targets, direction, venue)
 	if check.ready:
-		return true
-	if _bare_speech(check.issues):
-		# No evidence at all ("I believe they're not the Demon"): speech, which stays
-		# social and native (like accusing or defending without a card).
-		g._workshop_native_social = true
-		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A bare belief with no evidence: native social response.")
 		return true
 	var kinds: Array = _unsupported_conclusions(check.issues)
 	if not kinds.is_empty():
@@ -151,12 +138,6 @@ static func _unsupported_conclusions(issues: Array) -> Array:
 	return kinds
 
 
-## Issues that only say "there's no evidence here", as opposed to evidence the shared
-## model can't read.
-static func _bare_speech(issues: Array) -> bool:
-	if not "No supported reading is presented." in issues:
-		return false
-	return issues.all(func(issue): return issue == "No supported reading is presented." or str(issue).begins_with("Unsupported claim:"))
 
 
 static func _presentation_rejection(g, card: Dictionary) -> String:
@@ -247,22 +228,17 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	var result: Dictionary = PresentationReply.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
 	if result.get("blocked", false):
 		return result
-	if not result.get("workshop", false):
-		Mind.refresh_beliefs(g.w, n, " (shared presentation)")
-		_conflict_pressure(g, ded, 0.1 if venue == "private" else 0.2, n, true)
 	if g.workshop_compare:
 		var comparison: Dictionary = WorkshopAssessment.evaluate(snapshot)
 		comparison.listener = n.id
 		comparison["card"] = ded.n
 		comparison["venue"] = venue
 		comparison["actual"] = {
-			"model": "shared" if result.get("workshop", false) else "social",
+			"model": "shared" if result.get("workshop", false) else "unassessed",
 			"agreement": result.get("agreement", 0.0),
 			"before": before,
 			"after": n.suspicion.duplicate(true),
 		}
-		if not result.get("workshop", false):
-			comparison["social"] = comparison.actual.duplicate(true)
 		g.workshop_comparisons.append(comparison)
 		if g.workshop_comparisons.size() > 24:
 			g.workshop_comparisons.pop_front()
@@ -276,13 +252,13 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		var capability: Dictionary = _canvas_status(g, ded.workshop_case)
 		var issues: Array = capability.issues.duplicate()
 		if not result.get("workshop", false) and issues.is_empty():
-			issues.append("This listener could not use the shared assessment; existing response rules were used.")
+			issues.append("This listener could not weigh this case.")
 		g.workshop_deliveries.append({
 			"listener": n.id,
 			"name": n.name,
 			"card": ded.n,
 			"venue": venue,
-			"model": "shared" if result.get("workshop", false) else "social",
+			"model": "shared" if result.get("workshop", false) else "unassessed",
 			"issues": issues,
 		})
 		g.w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), g.workshop_deliveries[-1],
