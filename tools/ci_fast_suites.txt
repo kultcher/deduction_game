@@ -16,6 +16,7 @@ test_buildings_tavern_town_hall
 test_card_wording_fixes
 test_case_metrics_dead
 test_case_script
+test_caught_lie_softening
 test_caught_out_ladder
 test_codex_fixes
 test_connections
@@ -104,6 +105,7 @@ test_premise_step2
 test_premise_step3
 test_press_caught_out
 test_press_contradiction
+test_private_share_boost
 test_public_revisions
 test_reading_confirm
 test_reading_trust

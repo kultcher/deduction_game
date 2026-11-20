@@ -107,6 +107,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			card["logical_origin"] = card.id
 			card["accuracy_origin"] = "health:" + card.id
 			card["route_origin"] = card.id
+	_mark_excuses(cards, int(snapshot.now.day))
 	if not cards.any(func(c): return c.id in snapshot.selected):
 		result.issues.append("No supported reading is presented.")
 	# Supported questions concern original alignment. Advancing the day must not
@@ -224,6 +225,45 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 	result.view = view
 	result.ready = result.issues.is_empty()
 	return result
+
+## Beadle's caught-out excuses (Michael, Nov 19, Quill's form): an excuse fact (`excuse`,
+## `excuses_night`, its owner as source) for a night its owner had said "I was home". While it
+## stands, that night's own "home" alibi carries `out_rate` EXCUSED_OWN_ALIBI_OUT (the judge
+## reads a good person's caught "home" more softly); once contradicted, `excuse_contradicted`
+## (SourceDoubt counts a second caught lie at CONTRADICTED_EXCUSE_WEIGHT of the first).
+## "admit" and "not_wicked" name nothing checkable, so they always stand. A "duty" excuse
+## (a claimed walking gift's account) is contradicted once the night is past and the view
+## holds no report of that gift from its owner for that night, only the claimed duty.
+static func _mark_excuses(cards: Array, today: int) -> void:
+	var standing: Dictionary = {}
+	for c in cards:
+		if not c.has("excuse"):
+			continue
+		var owner: String = str(c.get("source", ""))
+		var nd: int = int(c.get("excuses_night", -1))
+		if owner == "" or nd < 0:
+			continue
+		var key: String = "%s:%d" % [owner, nd]
+		var holds: bool = true
+		if str(c.excuse) == "duty":
+			var role: String = str(c.get("duty_role", c.get("role", "")))
+			var reported: bool = cards.any(func(r): return str(r.get("kind", "")) == "report" and str(r.get("source", "")) == owner \
+				and str(r.get("role", "")) == role and int(r.get("night", -1)) == nd and not r.get("duty_only", false))
+			holds = reported or today <= nd
+		standing[key] = bool(standing.get(key, false)) or holds
+	if standing.is_empty():
+		return
+	for c in cards:
+		if str(c.get("kind", "")) != "alibi" or c.get("quoted", false) or c.has("excuse"):
+			continue
+		var who: String = str(c.get("source", ""))
+		var key: String = "%s:%d" % [who, int(c.get("night", -1))]
+		if who == "" or who not in c.get("subjects", [c.get("subject", "")]) or not standing.has(key):
+			continue
+		if standing[key]:
+			c["out_rate"] = Tuning.Workshop.EXCUSED_OWN_ALIBI_OUT
+		else:
+			c["excuse_contradicted"] = true
 
 ## Live activity receipts keep their exact original identity. Old trace cards without
 ## a structured scene cannot be reconstructed from prose or hidden scene records.
@@ -408,6 +448,15 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 				card["kind"] = "report"
 				card["role"] = duty_role
 				card["data"] = {"block": block}
+			elif e.kind == "alibi" and e.content.has("home") and not bool(e.content.home):
+				# A person's own word that they WERE out ("Fine, I was out", or an account of an
+				# outing): never a home claim (before Nov 19 it lost `home` here and read as one).
+				# Their own sighting of themselves, on the block they name, if any.
+				card["kind"] = "sighting"
+				card["admitted"] = true
+			for xf in ["excuse", "excuses_night", "duty_role"]:
+				if e.content.has(xf):
+					card[xf] = e.content[xf]
 			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
 				card["item_drop"] = true
 			return card

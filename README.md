@@ -333,7 +333,9 @@ game/workshop_*.gd, credibility.gd
 game/card_model.gd     card times, views, rows and markers
 game/board_model.gd    case board layout as data
 game/case_metrics.gd   post-case outcome and identification analysis
-ui/main.gd        town screen, title bar, actions and log (ui/main.tscn)
+ui/main.gd        town screen (ui/main.tscn): its state, the command flow and the log
+ui/main_layout.gd, main_actions.gd, main_pickers.gd, main_roles.gd
+                  the screen's layout, the action pane, its menus, the script sheet
 ui/new_case_screen.gd, script_editor.gd   the New Case screen and the script editor
 ui/map_view.gd    painted map            ui/meeting_view.gd  meeting circle
 ui/day_conversation_view.gd  conversations with VN portraits

@@ -129,8 +129,9 @@ listener (#273), both Lantern's.
   - the night "out" card a personal item makes for its owner;
   - every mechanic that weighs a drop as evidence.
 
-  No measurement first (Michael). It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the
-  same PR (see "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side.
+  No measurement first (Michael). It moves golden and ships alone: `LEGACY_EXTRA_SHIFT_DRAW`
+  is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
+  Beadle reviewing the sim side.
   **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
   Revenant's totem and the place's regulars. [decided]
 
@@ -144,9 +145,11 @@ listener (#273), both Lantern's.
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
-  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW` in the same PR as "Remove drops
-     altogether", which already re-baselines. Deleting the Muddler is held for the
-     secrets rework.
+  2. **Golden-moving:**
+     - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It's split from
+       the drops PR, because it reshuffles every deal and would mean about 25 to 30 suite
+       fixes. Michael decides at the reprioritization whether to do it at all.
+     - Deleting the Muddler is held for the secrets rework.
   3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
      Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
      `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
@@ -172,8 +175,21 @@ listener (#273), both Lantern's.
        about 325 call sites, many in tests), so the merge-conflict risk is the same.
      - **Herald scopes it first,** saying which forwards, if any, are worth keeping as the
        game's public interface.
+  6. **Two more (Michael, Nov 20):**
+     - (a) Retire `tools/connections_prototype.gd`. Owner Lantern.
+     - (b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
+       and drop the dead branch. Owner Herald.
+  7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
+     in play, no listener fails to weigh a case on its own (Herald's check of golden and
+     autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
+     case's issues.
 
   [decided]
+
+- **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
+  player presents should move onto the current social plumbing, not the old
+  `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
+  is worth keeping. Herald scopes it, and a decision follows the scope. **[open]**
 
 ### NPC behaviour
 
@@ -266,6 +282,10 @@ listener (#273), both Lantern's.
   network. (Michael, Nov 19) Owner Beadle, who proposes the size. **In flight:** Beadle's
   #327 (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
   Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
+  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
+  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1). NPC-to-NPC
+  only; evil's bluffed gift and fake readings get the same. Measured on 40 games: see the PR's
+  handoff.
 
 - **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
@@ -763,8 +783,25 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**
-- **Sleepwalker self-doubt scaled by confidence** (10% flat for now,
-  `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
+- **Sleepwalker self-doubt scaled by confidence** (10% flat, `Workshop.SLEEPWALK_SELF_DOUBT`).
+  **No change** (Michael, Nov 20): a Sleepwalker "should be aware it's a possibility, but I
+  think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled
+  by confidence. **[settled]**
+  - **What the Rumormonger tells her** (Michael, Nov 20). A Rumormonger she trusts naming
+    her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
+    looks less evil to her. A Rumormonger naming a different secret, which implies no
+    Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
+    in the Rumormonger. Owner Lantern. **[decided]**, built after the reprioritization.
+    - **Not working today** (Lantern, Nov 20): the Sleepwalker's own home doubt is fixed per
+      game and never reads what she believes about secrets.
+    - **Scope:** her doubt scales with her belief that she holds the Sleepwalker secret:
+      - today's value when she has no evidence;
+      - higher when a Rumormonger she trusts names her;
+      - near zero when another secret is named, or the Sleepwalker is shown to be someone
+        else.
+    - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
+      reading.
+    - **A possible cap** would be a new constant, Michael's call.
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
