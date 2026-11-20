@@ -299,14 +299,19 @@ sim/script_def.gd, script_builder.gd
 sim/gifts.gd      what each reading says in general terms (who it points at, clears, names)
 sim/deduction.gd  the conclusion vocabulary, assertions and filing checks for cases
 sim/npc.gd        one NPC's state (receipts, suspicion, rapport, credibility, claims)
-sim/world.gd      case setup and the deal, schedules, sightings, night resolution, traces,
-                  votes, executions, the Town Hall
+sim/world.gd      case setup and the deal, schedules and the day phases; World's state and
+                  helpers are in world_base.gd, the meeting, votes and executions in
+                  world_meeting.gd, and the night (kills, sightings, traces, gifts) in
+                  world_night.gd: one inheritance chain, so World's methods are unchanged
 sim/mind.gd, mind_dialogue.gd, mind_meeting.gd
                   NPC reasoning: claims, conversation answers, testimony, accusations,
                   choosing nominations
 sim/mind_nomination.gd, mind_defence.gd, mind_vote.gd
                   the nominator's case, the nominee's defence, and each NPC's vote; the four
                   meeting modules share sim/mind_meeting_base.gd
+sim/mind_press.gd, mind_answers.gd
+                  pressing and the caught-out ladder, and answers about a gift, a night and
+                  the day; with mind_dialogue.gd they share sim/mind_dialogue_base.gd
 sim/social.gd     NPC-to-NPC exchanges, peer gift talk, approaches, the tavern
 sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
 sim/fabrication_check.gd  whether a fabricated reading would point the town at its teller
@@ -360,7 +365,6 @@ tools/trace.py    dev-log filter         tools/slice_sheets.py  art sheet slicer
 tools/test_*.gd   headless tests     tools/run_gd_tests.py  the test runner
 tools/replay_54875.gd, profile_c0.gd  speed replay and solver profile
 tools/replay_log.gd, explain_case.gd  replay a dev log (--why, --time, --profile)
-tools/connections_prototype.gd  the connections model over a replayed log
 tools/fixture_seeds.gd   seed search for test fixtures
 tools/case_slate.gd     the case benchmark slate (docs/case_slate/), run on demand
 tools/measure_*.gd      one-off measurements (not suites)

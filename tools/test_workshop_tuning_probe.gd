@@ -377,7 +377,6 @@ func _run_receipt_level_ablation_probe() -> Array:
 			"prior": eff_a.get("prior", 0.0),
 			"posterior": eff_a.get("posterior", 0.0),
 			"requested": eff_a.get("requested", 0.0),
-			"headline_signal": eff_a.get("headline_signal", 0.0),
 		})
 	CaseEval.prior_k = saved_k
 	_check(out_rows.size() == 2 and is_finite(float(out_rows[1]["posterior"])), "receipt-level ablation probe compares old and new prior_k cleanly")

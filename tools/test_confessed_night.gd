@@ -5,6 +5,7 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindAnswers = preload("res://sim/mind_answers.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const C = preload("res://sim/content.gd")
 
@@ -69,7 +70,7 @@ func _private_after_public() -> void:
 		var n = _setup(g)
 		_confessed(n, true)
 		for ask in 3:  # asked again and again, on the same NPC (Codex on #399)
-			var res: Dictionary = MindDialogue.answer_night(g.w, n, 1)
+			var res: Dictionary = MindAnswers.answer_night(g.w, n, 1)
 			var kinds: Array = _kinds(res["facts"])
 			if not ("secret" in kinds) or "refusal" in kinds or 1 in n.lied_nights:
 				_check(false, "after a confession before the town, asked in private, tells it again (try %d, ask %d: %s)" % [i, ask, kinds])
@@ -84,7 +85,7 @@ func _private_after_private() -> void:
 	var g = _game()
 	var n = _setup(g)
 	_confessed(n, false)
-	var res: Dictionary = MindDialogue.answer_night(g.w, n, 1)
+	var res: Dictionary = MindAnswers.answer_night(g.w, n, 1)
 	var kinds: Array = _kinds(res["facts"])
 	_check("secret" in kinds and not ("refusal" in kinds), "confessed to you before, asked again, tells it again")
 
@@ -105,7 +106,7 @@ func _not_confessed() -> void:
 	for s in 6:
 		var g = _game(s)
 		var n = _setup(g)
-		var kinds: Array = _kinds(MindDialogue.answer_night(g.w, n, 1)["facts"])
+		var kinds: Array = _kinds(MindAnswers.answer_night(g.w, n, 1)["facts"])
 		if not ("secret" in kinds):
 			hid += 1
 	_check(hid > 0, "with nothing confessed, an unwilling NPC can still keep the errand (%d of 6 hid it)" % hid)

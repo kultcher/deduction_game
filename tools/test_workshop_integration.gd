@@ -8,7 +8,6 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Mind = preload("res://sim/mind.gd")
-const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 var checks = 0
 var fails = 0
 
@@ -77,15 +76,7 @@ func _init() -> void:
 		var result = g.workshop_preview(ded, n.id)
 		print("Live comparison %d people: %d ms" % [size, Time.get_ticks_msec() - start])
 		check(result.ready and result.proposal.effects.size() == size, "live assessment produces collateral proposals for every person")
-		check(not result.ledger_audit.reading_entries.is_empty() and not result.ledger_audit.safe_to_apply_additively, "real raw-reading entries are identified before applying an overlapping proposal")
 		check(before == _state(g), "preview does not mutate beliefs, ledger, RNG or time")
-		var ambiguous = input.duplicate(true)
-		var variant: Dictionary = ambiguous.evidence.filter(func(e): return e.kind == "info")[0].duplicate(true)
-		variant.id += ":variant"
-		variant.content.data.count = 3
-		ambiguous.evidence.append(variant)
-		ambiguous.private_evidence.append(variant.id)
-		check(not Assess.evaluate(ambiguous).ready, "unresolved shared reading identities prevent false precision")
 		var child = GameBoard.file_deduction(g, {"type": "evil", "a": source.id}, [card])
 		var nested = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [card, child])
 		var nested_result = g.workshop_preview(nested, n.id)
@@ -112,7 +103,6 @@ func _init() -> void:
 		var other = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [unsupported])
 		check(not g.workshop_preview(other, n.id).ready, "unsupported roles do not silently become unconditional good-source constraints")
 	_routes()
-	_audit()
 	_rumormonger_fallback()
 	print("Workshop integration: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -145,28 +135,6 @@ func _rumormonger_fallback() -> void:
 	var world = {"evil": evil, "marked": index, "modifier": "marked", "holders": 1 << index}
 	var card = {"kind": "report", "source": source.id, "role": "rumormonger", "observed_at": {"day": 0, "phase": "night"}, "data": {"pair": [other, g.w.living_good()[2].id], "secret": "marked"}}
 	check(not Solver._report_holds(view, world, card, {}), "a world where the Rumormonger holds the secret alone can't produce its report")
-
-func _audit() -> void:
-	var input = {"evidence": [], "listener": {"legacy_evidence": [
-		{"id": "info:bart:2:dowser", "kind": "reading", "rel": [], "supports": []},
-		{"id": "arg:evil:hollis", "kind": "arg", "rel": [], "supports": [["bart", 2, "reading"]]},
-		{"id": "ordinary", "kind": "tell", "rel": ["bart", 2, "report"], "supports": []}]}}
-	for id in ["first", "changed"]:
-		input.evidence.append({"id": id, "kind": "info", "source": "bart", "observed_at": {"day": 2}, "content": {"role": "dowser"}})
-	var result = LedgerAudit.inspect(input)
-	check(result.aliases.size() == 1 and result.aliases[0].facts.size() == 2, "same-day legacy collisions are exposed rather than silently merged")
-	check(result.potential_arguments.size() == 1 and result.potential_arguments[0].certainty == "coarse_dependency", "argument dependencies are identified without treating ordinary testimony as gift evidence")
-	check(not result.safe_to_apply_additively, "audit findings never authorize stacking or deleting effects")
-	var g = _game(7)
-	var listener = g.w.living_good()[0]
-	var source = g.w.npcs.filter(func(n): return n != listener)[0]
-	var other = g.w.npcs.filter(func(n): return n != listener and n != source)[0]
-	var entry = {"day": 1, "phase": 1, "role": "dowser", "data": {"group": [source.id, other.id], "count": 1}}
-	var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "dowser", "day": 1, "phase": 1,
-		"data": entry.data, "text": "Dowser group"})
-	Mind.apply_info(g.w, listener, source, entry, 0.5)
-	var audit = LedgerAudit.inspect(GamePresentation.workshop_snapshot(g, [number], listener.id))
-	check(listener.ledger[Mind.info_eid(source.id, entry)].effects.is_empty() and not audit.reading_entries.is_empty(), "audit detects a learned Dowser reading receipt with empty legacy effects")
 
 func _routes() -> void:
 	var off = _game(7)

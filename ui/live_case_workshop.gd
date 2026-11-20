@@ -301,6 +301,7 @@ func refresh() -> void:
 			board.selected = saved.selected
 			board.serial = saved.serial
 			board.version = saved.version
+			board.migrate_retired_premises()
 		else:
 			# A fresh Workshop starts with one blank premise, not a preset accusation.
 			var preset: String = board.selected
@@ -998,6 +999,7 @@ func _undo_remove() -> void:
 	board.selected = saved.selected
 	board.serial = saved.serial
 	board.version = saved.version + 1
+	board.migrate_retired_premises()
 	case_root = _undo.root
 	files = _undo.files.duplicate(true)
 	_undo = {}
@@ -1503,7 +1505,7 @@ func _reason_menu(id: String, card: Dictionary, person: String) -> void:
 		options.append(["gift", claim.id])
 	field_menu.add_item("Evil errand", options.size())
 	options.append(["evil", ""])
-	if board.view.get("live_activity", false) or board.view.has("movement_experiment"):
+	if board.view.get("live_activity", false):
 		for claim in board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person):
 			field_menu.add_item("Private errand (their own account)", options.size())
 			options.append(["secret", claim.id])

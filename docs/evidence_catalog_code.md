@@ -10,7 +10,7 @@ Companion to `docs/evidence_catalog.md`, keyed by the same entry numbers. File a
 | Reading content per world | `workshop/solver.gd` (`report_table`, `_report_content_impl`, `_testimony_content`, `source_valid`, `CONTENT_ROLES`) |
 | Reading likelihood | `workshop/case_eval.gd` (`chance_content`, `_chance_content_fixed`, `ROLE_CONTENT_FIXED`, `reading_error`, `_route_credit`), `workshop/cs/CaseEvalKernel.cs` |
 | Role table | `workshop/role_constraints.gd` (`fit_weight`, `bluff_weights`, `_FIXED_ROLES`), `workshop/cs/RoleConstraints.cs` (`FitsViewSingle`, `SeerRhWeight`, `AssignRole`, `BluffWeightsTemporal`) |
-| Movement | `workshop/live_activity.gd` (`routes`, `factors`, `score`, `evaluate_trace_for_person`), `workshop/cs/LiveActivity.cs`, `workshop/movement_model.gd` (fixture experiment) |
+| Movement | `workshop/live_activity.gd` (`routes`, `factors`, `score`, `evaluate_trace_for_person`), `workshop/cs/LiveActivity.cs`, `workshop/movement_model.gd` (the movement gate; the weighing is `live_activity.gd`) |
 | Public factors | `workshop/public_evidence.gd` (`factors`, `victim_ratio`) |
 | Speech factors | `workshop/speech_evidence.gd` (`factors`) |
 | Circumstantial hub | `workshop/circumstantial.gd` (`extract_hub_incidents`, `evaluate_union`, `stage1_gate`, `evaluate_smear_backlash`) |

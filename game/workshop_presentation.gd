@@ -203,7 +203,10 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 				trapped_out = true
 				trapped_night = int(alibis[0].observed_at.day)
 				break
-	var repeated_same_audience: bool = repeated and state.get("delivered", {}).get(delivery_key, "") == inputs
+	# A later day's repeat restores the case's weight (it had faded), so it is answered on its
+	# merits, never as "the same reports, unchanged" (BACKLOG "The spoken reply to a later-day
+	# repeat", Nov 20).
+	var repeated_same_audience: bool = repeated and not restores and state.get("delivered", {}).get(delivery_key, "") == inputs
 	if repeated_same_audience:
 		text = "Those are the same reports. My assessment is unchanged."
 	elif targets.size() > 1:
@@ -379,7 +382,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		var tier: int = Mind._target_tier(g.w, n)
 		var why: Dictionary = {}
 		if tier >= 2:
-			why = preload("res://sim/mind_podium.gd").press_night(g.w, n, trapped_night, true, true) if venue != "private" else Mind.MindDialogue.trapped_explanation(g.w, n, trapped_night)
+			why = preload("res://sim/mind_podium.gd").press_night(g.w, n, trapped_night, true, true) if venue != "private" else Mind.MindPress.trapped_explanation(g.w, n, trapped_night)
 		g.w.dlog.think(n.id, "admit_out", "Caught out of a home alibi (tier %d): %s." % [tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
 		lines.append_array(why.get("lines", []))
 		trapped_facts = why.get("facts", [])

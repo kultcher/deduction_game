@@ -95,7 +95,6 @@ func _run_phase2_bug_sweep() -> void:
 func _run_phase3_credibility_and_t() -> void:
 	_test_3_1_delta_confidence_and_proof_retraction_overrides()
 	_test_3_2_per_card_source_trust_non_dilution_and_non_laundering()
-	_test_3_2_headline_context_aware_repeat_grouping()
 	_test_3_3_non_circular_credibility_dawn_and_tiered_weights()
 
 
@@ -681,41 +680,6 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 	listener_lo.credibility = 0.1
 	Mind.refresh_beliefs(g.w, listener_lo, "player credibility changed")
 	_check(is_equal_approx(endorsed_req, float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))), "player credibility changes do not reweight independently heard reports")
-
-
-func _test_3_2_headline_context_aware_repeat_grouping() -> void:
-	var view: Dictionary = {
-		"people": [{"id": "a"}, {"id": "b"}, {"id": "s1"}, {"id": "s2"}],
-		"timeline": {"executions": {}},
-	}
-	var listener: Dictionary = {
-		"id": "l", "trust": 0.8, "player_credibility": 0.8,
-		"npc_trust": {"s1": 0.9, "s2": 0.9},
-		"knowledge": {"own_reports": []},
-	}
-	var eval_listener: Dictionary = {
-		"id": "l", "reading_reliability": {"c1": 0.95, "c2": 0.95, "c3": 0.95},
-		"knowledge": {"own_reports": []},
-	}
-	var c1: Dictionary = {"id": "c1", "kind": "report", "source": "s1", "role": "seer", "night": 1,
-		"observed_at": {"day": 1, "phase": "night"}, "data": {"pair": ["a", "b"], "yes": true}}
-	var c2_same_seer: Dictionary = {"id": "c2", "kind": "report", "source": "s1", "role": "seer", "night": 2,
-		"observed_at": {"day": 2, "phase": "night"}, "data": {"pair": ["b", "a"], "yes": true}}
-	var c3_second_seer: Dictionary = {"id": "c3", "kind": "report", "source": "s2", "role": "seer", "night": 2,
-		"observed_at": {"day": 2, "phase": "night"}, "data": {"pair": ["a", "b"], "yes": true}}
-
-	var h_single: float = Jury._headline(view, [c1], "a", 0.25, listener, eval_listener, false)
-	var h_repeat: float = Jury._headline(view, [c1, c2_same_seer], "a", 0.25, listener, eval_listener, false)
-	var h_two_sources: float = Jury._headline(view, [c1, c3_second_seer], "a", 0.25, listener, eval_listener, false)
-	_check(h_repeat > h_single and (h_repeat - h_single) < 0.35 * (h_two_sources - h_single),
-		"same-Seer same-epoch repeat gets only diminishing confirmation bump while two distinct claimants combine fully (%.4f, %.4f, %.4f)" % [h_single, h_repeat, h_two_sources])
-
-	# Across a Day 2 execution (potential Scion promotion), Night 1 and Night 2 checks belong to distinct epochs!
-	var view_exec: Dictionary = view.duplicate(true)
-	view_exec.timeline.executions = {2: "x"}
-	var h_post_exec: float = Jury._headline(view_exec, [c1, c2_same_seer], "a", 0.25, listener, eval_listener, false)
-	_check(h_post_exec > h_repeat + 0.02,
-		"checks separated by a public execution land in distinct scion_epochs and are not collapsed as stale repeats (%.4f vs %.4f)" % [h_post_exec, h_repeat])
 
 
 func _test_3_3_non_circular_credibility_dawn_and_tiered_weights() -> void:

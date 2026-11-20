@@ -100,7 +100,7 @@ func _init() -> void:
 	check(_statements(r) == [TRAPPED] and not _home(r, n), "closed, it says only that it was out, and not that it was home")
 	check(r.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and f.get("source", "") == n.id and not f.get("home", true) and int(f.get("day", -1)) == 1), "and the player's card says it admits being out that night")
 	# The admission sticks: asked about that night again, it doesn't go back to "at home" (Codex on #330).
-	var again: Dictionary = Mind.MindDialogue.answer_night(g.w, n, 1)
+	var again: Dictionary = Mind.MindAnswers.answer_night(g.w, n, 1)
 	var again_said: Array = again.get("lines", []).filter(func(l): return l is Dictionary).map(func(l): return str(l.get("statement", l.get("text", ""))))
 	check(not again_said.any(func(t): return "at home" in t) and not again.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and f.get("home", false)), "asked about that night again, it doesn't say it was home (%s)" % str(again_said))
 	# Without the context: the usual night answer (not the caught-out line).
