@@ -10,7 +10,7 @@ const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "conflict", "demon", "minion", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "demon", "notdemon", "secret_mod", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
@@ -140,9 +140,9 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		view.world_options["identities"] = true
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar", "psychologist"]):
 		view.world_options["roles"] = true
-	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
+	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["notrole", "misled", "unreliable"]):
 		view.world_options["roles"] = true
-	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger", "chronicler", "augur", "executor", "registrar"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon", "minion"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon", "minion"])):
+	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger", "chronicler", "augur", "executor", "registrar"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon"])):
 		view.world_options["identities"] = true
 		view.world_options["roles"] = true
 	var root: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0] if snapshot.arguments.any(func(a): return a.board_number == snapshot.root) else {}
@@ -655,13 +655,6 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 	var claims: Array = [value] + value.get("arguments", []).map(func(a): return a.case)
 	if claims.size() > 7:
 		issues.append("Canvas exceeds the initial six-claim budget.")
-	for argument in value.get("arguments", []):
-		if argument.id == value.get("argument_root") or argument.case.conclusion.type != "conflict":
-			continue
-		# The shared owner can distinguish quoted roots, but the scoped response's
-		# attention still excludes them. Flag the missing joint interpretation.
-		if argument.case.get("disputes", []).is_empty():
-			issues.append("Embedded conflict questions need a live quoted-evidence assessment adapter; present the conflict as its own headline to use the new evaluator.")
 	var fields: Array = Solver.empty_case().keys() + ["arguments", "argument_root", "circumstantial", "trace_assessments"]
 	for claim in claims:
 		for field in claim:
@@ -673,8 +666,8 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		for hub in claim.get("circumstantial", []):
 			if not hub is Dictionary or not hub.get("cards") is Array or hub.cards.is_empty():
 				issues.append("Link at least one supporting card into the Circumstantial Evidence hub, or remove the empty hub.")
-			elif str(hub.get("type", "")) not in ["evil", "demon", "minion", "suspicious"] or str(hub.get("target", "")) == "":
-				issues.append("Circumstantial Evidence hubs support accusatory premises (evil, Demon, Minion, or suspicious).")
+			elif str(hub.get("type", "")) not in ["evil", "demon", "suspicious"] or str(hub.get("target", "")) == "":
+				issues.append("Circumstantial Evidence hubs support accusatory premises (evil, Demon, or suspicious).")
 			elif not hub.cards.all(func(cid): return cid in value.cards):
 				issues.append("Circumstantial Evidence hub references missing root cards.")
 		var history = History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
@@ -773,9 +766,6 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 			result.lines.append({"id": "argument:%d" % number, "label": "Supporting claim", "relation": "supports",
 				"conclusion": sub.conclusion, "cards": sub.cards, "answers": sub.answers.duplicate(true), "positions": sub.positions.duplicate(true),
 				"reasons": sub.reasons.duplicate(true), "citations": sub.citations.duplicate(true), "faults": sub.faults.duplicate(true)})
-			if sub.conclusion.type == "conflict":
-				result.lines[-1].relation = "quotes"
-				continue
 			if not _has_canvas(snapshot, number):
 				continue # Preserve the existing shape of native-only argument trees.
 			for line in sub.lines:
@@ -794,8 +784,6 @@ static func _case(snapshot: Dictionary, argument: Dictionary, epoch: String, pat
 		# Preserve both routes so quoting cannot erase that independent endorsement.
 		result.lines.append({"id": "direct:%d" % argument.board_number, "label": "Direct reports", "relation": "supports",
 			"cards": direct, "answers": {}, "positions": {}, "reasons": {}})
-	if result.conclusion.type == "conflict":
-		result.conflict_scope = result.cards.duplicate()
 	if result.conclusion.type in ["lied", "truthful", "misled", "unreliable"]:
 		var reports: Array = snapshot.evidence.filter(func(e): return e.id in result.cards and e.kind == "info" and e.source == result.conclusion.target and (not result.conclusion.has("night") or e.observed_at.day == result.conclusion.night))
 		if result.conclusion.get("report", "") == "" and reports.size() == 1:
@@ -828,7 +816,7 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 			return ["No curse has fallen on the town, so no one has been turned."]
 		if str(c.get("target", "")) not in curse.get("yes_voters", []) or str(c.get("target", "")) == str(curse.get("executed", "")):
 			return ["Only those who voted to hang the Revenant, and lived, could have been turned."]
-	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
+	if c.type == "notrole" and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
 		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
 	if c.type == "inconsistent":
 		var own: Array = Solver.selected(view, value).filter(func(card): return card.kind == "report" and card.source == c.target and Solver.tabled(card) and not card.has("relay_source") and not card.get("testimony_only", false))

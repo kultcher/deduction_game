@@ -317,8 +317,6 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, workshop_
 	conclusion = Deduction.normalize(conclusion.duplicate())
 	var pool: Array = all_receipts(g)
 	var cards: Array = pool.filter(func(x): return x["n"] in supports and not x.get("deleted", false))
-	if conclusion.get("type", "") == "conflict" and conclusion.get("group", []).is_empty():
-		conclusion["group"] = Deduction.group_of(g.w, cards)
 	g.last_error = Deduction.filing_problem(g.w, conclusion, supports, pool, false)
 	if g.last_error != "":
 		g.w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, g.last_error)
@@ -337,7 +335,7 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, workshop_
 	var unfounded: bool = not Deduction.bears_on(g.w, conclusion, cards, active_pool)
 	var labels: Array = supports.map(func(x): return ("P%d" % (-x - 10000)) if x <= -10000 else ("#%d" % x))
 	var basis = " (because %s%s)" % [", ".join(PackedStringArray(labels)), "; unfounded" if unfounded else "; your inference"]
-	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
+	var subj: Array = [conclusion["a"]] if conclusion.has("a") else []
 	var card = {
 		"kind": "deduction",
 		"subject": subj,

@@ -60,7 +60,7 @@ static func _explain(view: Dictionary, value: Dictionary, listener: Dictionary, 
 		limits.support = Solver.Domain.worlds(view).size()
 		limits.rivals = limits.support
 	var result = Reasoner.search(view, considered, accepted, listener, limits)
-	if result.support.is_empty() and considered.conclusion.type != "conflict":
+	if result.support.is_empty():
 		var own_ids: Array = listener.knowledge.get("own_reports", [])
 		var core_accepted: Array = accepted.filter(func(c): return c.id not in own_ids or c.source == listener.id)
 		if not core_accepted.is_empty() and core_accepted.size() < accepted.size():

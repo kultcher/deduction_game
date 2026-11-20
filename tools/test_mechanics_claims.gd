@@ -53,7 +53,7 @@ func _init() -> void:
 	check(is_zero_approx(Mind.claim_credence(listener, rival.id, "seer")) and listener.workshop_state.get("active", false) and listener.workshop_state.owned.has(eid), "the shared model keeps owning the claim; legacy credence stays parked")
 	var report = {"id": "anonymous", "kind": "report", "source": "a", "role": "seer", "testimony_only": true}
 	var view = {"cards": [report]}
-	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "role", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")
+	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "notrole", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")
 	var claim = {"kind": "claim", "source": "a", "role": "seer", "hearing_weight": 0.2}
 	check(is_equal_approx(Activity.role_hearing([report, claim], "a", "seer"), 0.2), "anonymous reading content cannot strengthen a separate gift claim")
 	print("Claim mechanics: %d checks; failures: %d" % [checks, fails])
