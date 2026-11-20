@@ -5,6 +5,58 @@ session notes are kept for the record; code pointers may have moved since.
 
 ## Closed Nov 20, 2026 (Michael; recorded by Claude-Vicar)
 
+- **The premise should matter.** (user + Claude, Oct 25, case 22485) A case's premise
+  changes only the reply and a small trust reward: the belief update re-weighs all the
+  listener's evidence regardless, so "Isolde is evil" with cards pointing at Dorian raises
+  suspicion of Dorian as much as "Dorian is evil" would. Wanted: the town can notice what
+  the player missed, but not solve the case solo or by accident.
+  1. Listeners update mainly on what was argued: full weight on the premise target,
+     reduced spillover on others scaled by Insight (a sharp NPC notices "this actually
+     points at Dorian").
+  2. A clearly wrong premise costs a little trust ("you're accusing the wrong person").
+  3. The preview shows qualitative strength for the premise and, when the evidence points
+     elsewhere, a hint ("this evidence may say more about someone else") without names.
+
+  Measure with the bot A/B; check this doesn't let moderately supported wrong
+  nominations through. [decided: direction; numbers open]
+
+  Built Nov 6 as premises steps 1–3 (PRs #92, #93, #95; `docs/premises_plan.md`). Tally's
+  A/B (Nov 7) found no outcome change. Under the connections model (in play since Nov 16)
+  the premise type changes what's asked, not how cards are weighed, and people a case
+  doesn't touch don't move by construction. Presented cards are still heard at the case's
+  agreement (Michael, Nov 13, triage 5.3: keep it), so a weaker framing of the same facts
+  lands weaker. [watch]
+
+  **Direction (Michael, Nov 17, from his answer on "Say what a card is offered for"):** when
+  a case has a premise, the case's effect should centre on its subject. In a case "Constance
+  is evil" that cites a vigil sighting contradicting her alibi, any suspicion the case moves
+  onto other people in that sighting should be scaled down, with full weight on Constance.
+  This would also cover most of what "Say what a card is offered for" asks. Under the
+  connections model it sits in how a stored case adds its joint value (Lantern).
+
+  **Centre a case on its premise (Michael, Nov 17).** Two ways, to be chosen after
+  measurement:
+  - **A, the joint value only:** on the premise's subject a case adds its joint value (what
+    its cards say together, beyond each alone) in full, and on everyone else at a fraction;
+    brought cards keep counting in full for everyone they name.
+  - **B, the brought cards too:** a card a listener holds only because a case brought it
+    also counts in full on the subject and at a fraction on everyone else; cards held some
+    other way count as usual.
+  In both, there's no centring without a premise, and a "suspicious" premise centres the
+  same way. The bystander fraction is a new constant, approved with this decision. Measure
+  A and B on the same bot games, at 0.5 and one other value: bystander movement per
+  presentation, the subject's own movement, and the others in a vigil sighting like
+  Michael's example. Report side by side, then Michael picks. Owner Lantern.
+  **Michael (Nov 18): build B at a bystander share of 1/3,** reusing step 1's
+  `premise_shaping` selection (`docs/design/premise_centring.md`; built as
+  `Shared.brought_by_premise`, and `premise_shaping` itself was deleted in purge phase 5). No extra trust cost for a
+  misframed case: the case not landing is the cost (Michael, Nov 18). Owner Lantern.
+  **[decided]: B at a share of 1/3** **Built** (Lantern, #246; Marked's knock-on is in the
+  secrets rework). What's left is point 3's preview hint for a misframed case, never built.
+  Close once Lantern confirms.
+
+  > **Moved Nov 20 (Lantern confirmed):** centring B at 1/3 is built (#246). Point 3, the misframed-case hint, stays in BACKLOG as its own item.
+
 - **Breathstealer by presence:** built (#111, Nov 10; a joint factor over the presence
   table), and since #157 (Nov 14) it assumes the Breathstealer hunts. The Breathstealer
   decision (does silence prove the victim good?) is still open, in section 4.
