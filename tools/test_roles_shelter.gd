@@ -217,7 +217,7 @@ func _mechanics() -> void:
 		var approach: String = route.path[-2] if route.path.size() >= 2 else view.people[0].home
 		if approach == vet.data.block:
 			detour_weight += route.weight
-	check(Solver.Roles.fits(view, world, [vet], {}) and detour_weight > 0 and detour_weight <= Activity.DEMON_DETOUR, "Veteran approach permits an otherwise incompatible home only through the small detour allowance")
+	check(not Solver.Roles.fits(view, world, [vet], {}) and detour_weight == 0.0, "Veteran approach rules out a Demon home whose direct route comes from elsewhere (no detour, Michael Nov 17)")
 	world.demon = 5
 	check(not Solver.Roles.fits(view, world, [vet, _veteran(2)], {}), "one-use Veteran cannot have two healthy attack reports")
 	view.timeline.events = [{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1}}]

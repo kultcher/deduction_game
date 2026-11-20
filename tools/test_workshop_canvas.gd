@@ -117,7 +117,7 @@ func _run() -> void:
 	quit(1 if fails else 0)
 
 func _ui() -> void:
-	var scene = load("res://ui/case_workshop.tscn").instantiate()
+	var scene = _fixture_workshop()
 	root.add_child(scene)
 	await process_frame
 	await process_frame
@@ -267,3 +267,10 @@ func _given_link(view: Dictionary, session) -> void:
 	check(direct_lines.size() == 1 and direct_lines[0].get("assumption_sets", []) == [{"nisha": "good"}], "a given premise's assumptions go with the line it runs through (%s)" % str(direct_lines))
 	var reopened = Model.new(view)
 	check(reopened.restore(JSON.parse_string(JSON.stringify(m.export_data())), session) == "" and reopened.links.any(func(e): return e.kind == "given"), "a saved canvas with a given link reopens with it (Codex on #159)")
+
+## The fixture Workshop (fixture 692): the canvas base script as a full-screen control. Its lab
+## scene is gone (dead dev labs, Nov 19); the script is still the live Workshop's base.
+func _fixture_workshop() -> Control:
+	var scene: Control = preload("res://ui/case_workshop_canvas.gd").new()
+	scene.set_anchors_preset(Control.PRESET_FULL_RECT)
+	return scene

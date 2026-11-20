@@ -126,8 +126,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HONESTY_K` | `0.8` | Credibility (honesty) discounting from evidence against a source (retired legacy aliases retained) | `game/game_screens.gd` |
 | `HONESTY_CAP` | `0.5` |  | `game/game_screens.gd` |
 | `NIGHT_DOUBT_CAP` | `0.9` |  | (unused) |
-| `RIVAL_CLAIM_EFF` | `0.6` | retired legacy claim-collision weight (shared model owns claims) | (unused) |
-| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` |  | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
+| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` | Role-claim & sighting ledger weights | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
 | `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind.gd` |
 | `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind.gd` |
 | `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind.gd` |
@@ -303,7 +302,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
-| `PARANOIA_DRIFT_RATE` | `0.06` | unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH) | (unused) |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
 | `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
 | `APPROACH_NOISE` | `0.2` |  | `sim/social.gd` |
@@ -685,7 +683,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
-| `DEMON_DETOUR` | `0.05` |  | `workshop/live_activity.gd` |
 | `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
 | `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |

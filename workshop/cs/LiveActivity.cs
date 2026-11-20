@@ -878,8 +878,7 @@ internal static class LiveActivityKernel
         int[] demonAttackEvents,
         int[] cardInts,
         double[] cardDoubles,
-        int cardCount,
-        double demonDetour)
+        int cardCount)
     {
         double rate = profKind switch
         {
@@ -1013,18 +1012,8 @@ internal static class LiveActivityKernel
             int dest = destStack[d];
             if (profKind == ProfDemon)
             {
-                // Exact demon_routes(home, dest) order: direct first, then via blocks in 0..3 order
-                int directMask = (1 << home) | (1 << dest);
-                int viaCount = home == dest ? 3 : 2;
-                result.Add(new PathSpec(directMask, home, dest, false, baseWeight * (1.0 - demonDetour)));
-                double detourShare = demonDetour / (double)viaCount;
-                for (int b = 0; b < BlockCount; b++)
-                {
-                    if ((directMask & (1 << b)) == 0)
-                    {
-                        result.Add(new PathSpec(directMask | (1 << b), home, dest, false, baseWeight * detourShare));
-                    }
-                }
+                // demon_routes(home, dest): the direct way only. The Demon never detours.
+                result.Add(PathSpec.Route(home, dest, baseWeight));
             }
             else
             {
@@ -1194,7 +1183,6 @@ internal static class LiveActivityKernel
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles)
     {
@@ -1227,7 +1215,6 @@ internal static class LiveActivityKernel
             hasCurse,
             curseFrom,
             curseUntil,
-            demonDetour,
             cardInts,
             cardDoubles,
             cardCount);
@@ -1245,7 +1232,6 @@ internal static class LiveActivityKernel
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles)
     {
@@ -1277,18 +1263,18 @@ internal static class LiveActivityKernel
             int b = p * stride;
             outBuf[b] = ComputePersonLikelihoodCore(
                 p, AlignGood, nights, reportsByNight, personHomes, personDeathBeforeNight,
-                demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             outBuf[b + 1] = ComputePersonLikelihoodCore(
                 p, AlignMinion, nights, reportsByNight, personHomes, personDeathBeforeNight,
-                demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             outBuf[b + 2] = ComputePersonLikelihoodCore(
                 p, AlignDemon, nights, reportsByNight, personHomes, personDeathBeforeNight,
-                demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             if (includeConverted)
             {
                 outBuf[b + 3] = ComputePersonLikelihoodCore(
                     p, AlignConverted, nights, reportsByNight, personHomes, personDeathBeforeNight,
-                    demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                    demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             }
         }
 
@@ -1338,7 +1324,6 @@ internal static class LiveActivityKernel
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles,
         int cardCount)
@@ -1372,7 +1357,7 @@ internal static class LiveActivityKernel
                 int effProfKind = (alignCode == AlignConverted && currentAlign == AlignMinion) ? ProfMinion : profKind;
                 var paths = BuildProfilePaths(
                     personIdx, night, effProfKind, roleCode, personHomes, personDeathBeforeNight,
-                    demonAttackEvents, cardInts, cardDoubles, cardCount, demonDetour);
+                    demonAttackEvents, cardInts, cardDoubles, cardCount);
                 int pathCount = paths.Count;
                 int[] nightCards = reportsByNight[n];
 
@@ -1429,7 +1414,6 @@ internal static class LiveActivityKernel
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles)
     {
@@ -1464,7 +1448,7 @@ internal static class LiveActivityKernel
         int[] obsArr = nightObs.Count > 0 ? nightObs.ToArray() : Array.Empty<int>();
         return ComputeCrossingCore(
             personIdx, night, alignCode, sceneBlockCode, obsArr, personHomes, personDeathBeforeNight,
-            demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+            demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
     }
 
     /// <summary>
@@ -1481,7 +1465,6 @@ internal static class LiveActivityKernel
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles)
     {
@@ -1523,15 +1506,15 @@ internal static class LiveActivityKernel
             int b = p * stride;
             outBuf[b] = ComputeCrossingCore(
                 p, night, AlignGood, sceneBlockCode, obsArr, personHomes, personDeathBeforeNight,
-                demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             outBuf[b + 1] = ComputeCrossingCore(
                 p, night, AlignMinion, sceneBlockCode, obsArr, personHomes, personDeathBeforeNight,
-                demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             if (includeConverted)
             {
                 outBuf[b + 2] = ComputeCrossingCore(
                     p, night, AlignConverted, sceneBlockCode, obsArr, personHomes, personDeathBeforeNight,
-                    demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles, cardCount);
+                    demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles, cardCount);
             }
         }
         return outBuf;
@@ -1549,7 +1532,6 @@ internal static class LiveActivityKernel
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles,
         int cardCount)
@@ -1579,7 +1561,7 @@ internal static class LiveActivityKernel
             double profW = profWeights[pr];
             var paths = BuildProfilePaths(
                 personIdx, night, pKind, roleCode, personHomes, personDeathBeforeNight,
-                demonAttackEvents, cardInts, cardDoubles, cardCount, demonDetour);
+                demonAttackEvents, cardInts, cardDoubles, cardCount);
             int pathCount = paths.Count;
 
             for (int e = 0; e < BlockCount; e++)
