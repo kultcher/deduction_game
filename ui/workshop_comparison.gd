@@ -170,8 +170,5 @@ static func describe(result: Dictionary) -> String:
 		lines.append("Claim about %s: %s. %s" % [claim.conclusion.target.capitalize(), claim.stance, claim.note])
 	for challenge in proposal.get("reading_challenges", []):
 		lines.append("%s challenge: %s (agreement %.3f)." % [challenge.mode.capitalize(), challenge.note, challenge.agreement])
-	var audit: Dictionary = result.get("ledger_audit", {})
-	if not audit.is_empty():
-		lines.append("\nExisting evidence: %d reading entries, %d potentially overlapping arguments, %d ambiguous legacy identities.\n%s" % [audit.reading_entries.size(), audit.potential_arguments.size(), audit.aliases.size(), audit.note])
 	lines.append("\n" + result.scope)
 	return "\n".join(lines)

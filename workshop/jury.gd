@@ -404,16 +404,11 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		response += " " + " ".join(PackedStringArray(changes))
 	if not case_data.get("faults", {}).is_empty():
 		response += " Your explanation needs impairment in the selected interval. That remains a hypothesis; readings outside it keep their own support."
-	var support_model = {"agreement": agreement, "evidence_agreement": agreement, "forced_mass": ev.posterior if ev.posterior >= 0.999 else 0.0,
-		"conditional_mass": 0.0, "paths": [paths], "report_acceptance": ev.acceptance, "states": 1, "factors": ev.movement, "atoms": [], "credence": ev.credence,
-		"quoted_cards": scoped.get("quoted_cards", []).duplicate(), "faults": [], "movement_comparison": [], "prior": ev.prior, "posterior": ev.posterior,
-		"category": ev.category, "rivals": ev.rivals, "theory_fit": ev.theory_fit,
-		"model": "CaseEval: likelihood-weighted worlds (docs/CASE_REASONING.md)."}
 	Profiler.close(span)
 	return {"listener": listener.id, "name": listener.name, "version": case_data.version, "stance": stance,
 		"agreement": best.agreement, "quality": best.quality, "strength": strength, "path": best.cards,
 		"path_kind": best.kind, "repeated": repeated, "response": response, "objection": objection, "changes": changes,
-		"assessment": assessment, "shared_assessment": shared, "pattern": pattern, "support_model": support_model, "legacy_path": {"weight": 0.0, "omitted": true},
+		"assessment": assessment,
 		"reasoning": reasoning, "theory": theory, "case_eval": ev,
 		"before_suspicion": before_suspicion, "after_suspicion": listener.suspicion[target], "suspicion_delta": listener.suspicion[target] - before_suspicion,
 		"before_trust": before_trust, "after_trust": listener.trust, "trust_delta": 0.0,
@@ -972,8 +967,8 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 		"parents": argument.parents.duplicate(), "cards": claim_case.cards.duplicate(),
 		"ignored": Graph.compile_case(view, argument.case).cards.filter(func(id): return id not in claim_case.cards),
 		"agreement": agreement, "stance": Consequences._stance(agreement), "status": status,
-		"conditional_mass": 0.0, "forced_mass": 1.0 if status == "entailed_in_attention" and ev.consistent else 0.0,
-		"note": note, "links": [], "support_model": {"agreement": agreement, "prior": ev.prior, "posterior": ev.posterior, "category": ev.category},
+		"forced_mass": 1.0 if status == "entailed_in_attention" and ev.consistent else 0.0,
+		"note": note, "links": [],
 		"reasoning": thought}
 
 static func _bounded_objection(reasoning: Dictionary) -> String:

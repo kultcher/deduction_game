@@ -363,7 +363,6 @@ tools/trace.py    dev-log filter         tools/slice_sheets.py  art sheet slicer
 tools/test_*.gd   headless tests     tools/run_gd_tests.py  the test runner
 tools/replay_54875.gd, profile_c0.gd  speed replay and solver profile
 tools/replay_log.gd, explain_case.gd  replay a dev log (--why, --time, --profile)
-tools/connections_prototype.gd  the connections model over a replayed log
 tools/fixture_seeds.gd   seed search for test fixtures
 tools/case_slate.gd     the case benchmark slate (docs/case_slate/), run on demand
 tools/measure_*.gd      one-off measurements (not suites)

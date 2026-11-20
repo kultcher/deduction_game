@@ -686,8 +686,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
-| `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
-| `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
 | `REFUSAL_LR` | `1.5` |  | `workshop/speech_evidence.gd` |
 | `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0....` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |

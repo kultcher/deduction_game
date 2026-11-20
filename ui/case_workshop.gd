@@ -235,7 +235,7 @@ func _question(card: Dictionary) -> void:
 			var key = "%s:%d" % [id, card.night]
 			var labels: Array = ["? Unexplained", "Night gift â€” choose supporting claim", "Possibly evil activity"]
 			var reasons = ["unexplained", "gift", "evil"]
-			if session.scenario.public_view.has("movement_experiment") or session.scenario.public_view.get("live_activity", false):
+			if session.scenario.public_view.get("live_activity", false):
 				labels.append("Private errand â€” choose supporting claim")
 				reasons.append("secret")
 			var option = _option(box, labels)

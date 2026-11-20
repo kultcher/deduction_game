@@ -134,9 +134,10 @@ listener (#273), both Lantern's.
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
   features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
   1. **Dead code, zero drift:**
-     - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
+     - ~~the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
        and `legacy_evidence`, the `legacy_path` stub), together with retiring
-       `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
+       `tools/connections_prototype.gd`~~. Done (Lantern, Nov 20,
+       `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`);
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
