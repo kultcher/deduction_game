@@ -126,6 +126,8 @@ listener (#273), both Lantern's.
     the opposite: they always pick a good NPC, ideally one with some heat on them, so that if
     that NPC is executed the bluffer can frame it as evil. They shouldn't be loud about
     pushing that person's execution, since that would be an obvious tell. Owner Beadle.
+  - **Michael (Nov 20, later):** the bluffer also copies a real Martyr's reluctance to vote to
+    hang the person it chose.
 
 ### Cases and the Workshop
 
@@ -192,6 +194,8 @@ listener (#273), both Lantern's.
   a little more toward nominating and voting to hang, but never says so: these are real
   people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
   for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
+  - **Approved (Michael, Nov 20, later):** `GRAVEDIGGER.nothing_to_read_lean` = 0.08. The
+    lean is **permanent** for a good Gravedigger: it doesn't wear off.
 
 - **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
   remainders.) Owner Beadle.
@@ -240,7 +244,8 @@ listener (#273), both Lantern's.
   Beadle's proposals):
   - (a) "caught lying about me" as an NPC-to-NPC trust loss: waits for "Anger reasons";
   - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
-    meeting: **[decided]**, one PR, owner Beadle;
+    meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
+    (Michael, Nov 20, later);
   - (d) player wards the Warden knows about counting as an alternative explanation: closed,
     already built.
 
@@ -273,6 +278,8 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
+  - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
+    the town moves block to block.
 
 ### UI
 
@@ -311,6 +318,13 @@ The one performance item, "Late-game meeting and presenting cost", is in
     `2026-11-20-1215-quill-gossip-tiers.md`). The tier definition is a draft awaiting Michael.
     Measured: the targets are both met on about 2% of tavern evenings today, though the offer
     allows it on about 88%. Beadle's budget is next. [in review]
+  - **The tiers (Michael, Nov 20, later):**
+    - **Tier 1:** a reading or other stated information, or a night sighting that names a
+      place;
+    - **Tier 2:** role claims, hints and secrets;
+    - **Tier 3:** everything else.
+
+    The targets stay at 2 and 1, and Beadle's budget calls are approved.
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -486,13 +500,16 @@ Workshop and the shared model can't express yet.
 - **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
   the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
   Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
-  fix Seneschal approved). Whether to add a real per-world Poisoner-presence factor goes to
-  Michael. The other two Minion gifts are built and closed (Quill, Nov 20). Owner Quill.
+  fix Seneschal approved). **Michael (Nov 20, later):** no per-world factor; the Poisoner's
+  presence is limited to a person spotted whose destination was on the reader's block, not
+  anyone whose route passed it. The other two Minion gifts are built and closed (Quill,
+  Nov 20). Owner Quill.
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
   Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
-  route of the person seen, never against where the sighter was.
+  route of the person seen, never against where the sighter was. **Michael (Nov 20,
+  later):** it needs more detail before it's built; Quill is scoping it.
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a

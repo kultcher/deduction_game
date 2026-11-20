@@ -3,6 +3,8 @@
 ## canvas adds a person's readings, given by them or naming them.
 ##   godot --headless --path . --script res://tools/test_workshop_nav.gd
 extends SceneTree
+const CardLayout = preload("res://ui/workshop_card_layout.gd")
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const MainPickers = preload("res://ui/main_pickers.gd")
 
 var checks = 0
@@ -119,7 +121,7 @@ func _run() -> void:
 	g.board[gone_n - 1].deleted = true
 	ed.refresh()
 	var gone: Dictionary = canvas._evidence_card(id) if ed.board.nodes.has(id) else {}
-	check(gone.get("off_board", false) and canvas._unsupported(gone), "a card no longer on the board is marked unsupported")
+	check(gone.get("off_board", false) and CardLayout.unsupported(canvas, gone), "a card no longer on the board is marked unsupported")
 	check(gone.get("support_note", "") == "This card has changed or is no longer on your board.", "and its note says so plainly (%s)" % gone.get("support_note", ""))
 	g.board[gone_n - 1].deleted = false
 	await _nomination_prefill(scene)
@@ -144,13 +146,13 @@ func _nomination_prefill(scene) -> void:
 	var node: Dictionary = ed.board.nodes.get(ed.board.selected, {})
 	check(node.get("kind", "") == "premise" and not node.get("draft", false) and node.conclusion.get("type", "") == "evil" and node.conclusion.get("target", "") == who.id, "the Workshop opens on \"%s is evil\"" % who.name)
 	var count: int = ed.board.nodes.values().filter(func(n): return n.kind == "premise" and n.get("conclusion", {}).get("target", "") == who.id and n.get("conclusion", {}).get("type", "") == "evil").size()
-	ed.prefill_premise(who.id, "evil")
+	LiveWorkshopFields.prefill_premise(ed, who.id, "evil")
 	var again: int = ed.board.nodes.values().filter(func(n): return n.kind == "premise" and n.get("conclusion", {}).get("target", "") == who.id and n.get("conclusion", {}).get("type", "") == "evil").size()
 	check(count == 1 and again == 1, "opening it again selects that premise, not a second one (%d, %d)" % [count, again])
 	# A premise about another alignment epoch (before a curse) isn't reused (Codex, #370).
 	var mine: String = ed.board.selected
 	ed.board.nodes[mine].conclusion.at = "Original alignment" if str(ed.board.view.alignment_epoch) != "Original alignment" else "Current alignment"
-	var fresh: String = ed.prefill_premise(who.id, "evil")
+	var fresh: String = LiveWorkshopFields.prefill_premise(ed, who.id, "evil")
 	check(fresh != mine and str(ed.board.nodes[fresh].conclusion.get("at", "")) == str(ed.board.view.alignment_epoch), "a premise about another alignment epoch isn't reused")
 
 func _find_button(node: Node, text: String) -> Button:

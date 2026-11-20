@@ -7,6 +7,7 @@ signal contents_changed
 signal trace_solver_requested(selected_by_night: Dictionary)
 signal location_solver_requested(question: Dictionary)
 signal fullscreen_toggled
+const Fields = preload("res://ui/live_workshop_fields.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const WorkshopSolver = preload("res://workshop/solver.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
@@ -32,9 +33,11 @@ var _bg_people: Array = []
 var _last_juror: Dictionary = {}   # premise id -> {cards, lr}: to say why adding a card weakened it
 enum DebugItem { PREVIEW, SUPPORT, WITHDRAW, WHY, WHY_RECORD, WHY_SHOW }
 var files: Dictionary = {}
+
 ## The answers each filed case was filed with, by case number (as a string), so a new case
 ## can name the answers it carries over from an earlier one.
 var filed_answers: Dictionary = {}
+
 ## The last filing's carried-answers note, repeated in the presentation's result window
 ## (presenting replaces the status line).
 var _carried_note: String = ""
@@ -52,10 +55,12 @@ var presenting = false
 ## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
 ## as it is for the older off-screen picker, which selects by index.
 const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "inconsistent", "turned"]
+
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
 const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "holds a secret", "has readings that don't fit together", "was turned by the Revenant's curse"]
+
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
 ## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
@@ -83,41 +88,6 @@ func _auto_claims() -> bool:
 
 func _identity_hint() -> String:
 	return "Why did they register? Optional: assume someone Good or Evil under the premise's assumptions. To argue someone is Marked, link this reading to a premise that they hold a secret."
-
-func _premise_details(node: Dictionary) -> void:
-	var conclusion: Dictionary = node.get("conclusion", {})
-	if not conclusion.is_empty() and board.view.get("chronology", {}).has("curse") and conclusion.get("type") in EPOCH_TYPES:
-		var epochs: Array = board.view.chronology.epochs.keys()
-		var epoch = _option(case_box, epochs)
-		epoch.select(epochs.find(conclusion.at))
-		epoch.item_selected.connect(func(i): conclusion.at = epochs[i]; _edit())
-	if conclusion.get("type") == "secret_mod":
-		var kinds: Array = Live.Assess.C.SECRET_MOD_LIST
-		var choice = _option(case_box, kinds.map(func(kind): return Live.Assess.C.secret_name(kind)))
-		if not conclusion.has("mod"):
-			conclusion["mod"] = kinds[0]
-		choice.select(kinds.find(conclusion.mod))
-		choice.item_selected.connect(func(i): conclusion.mod = kinds[i]; _edit())
-	if conclusion.get("type") == "notrole":
-		var roles: Array = Live.Assess.C.GOOD_ROLES
-		var choice = _option(case_box, roles.map(func(role): return Live.Assess.C.role_name(role)))
-		if not conclusion.has("role"):
-			var claims: Array = board.view.cards.filter(func(card): return card.source == conclusion.target and card.get("role", "") in roles)
-			conclusion["role"] = claims[0].role if not claims.is_empty() else roles[0]
-		choice.select(roles.find(conclusion.role))
-		choice.item_selected.connect(func(i): conclusion.role = roles[i]; _edit())
-		_label(case_box, "Judges this person's included gift declaration. It does not assign an unclaimed role.", 16)
-	if conclusion.get("type") in ["lied", "truthful", "misled", "unreliable"]:
-		var reports: Array = board.view.cards.filter(func(card): return card.kind == "report" and card.source == conclusion.target and not card.has("relay_source") and not card.get("testimony_only", false))
-		var choice = _option(case_box, ["Choose the report being questioned"] + reports.map(func(card): return card.text))
-		choice.select(1 + reports.find(reports.filter(func(card): return card.id == conclusion.get("report", ""))[0]) if reports.any(func(card): return card.id == conclusion.get("report", "")) else 0)
-		choice.item_selected.connect(func(i):
-			if i == 0:
-				conclusion.erase("report")
-			else:
-				conclusion["report"] = reports[i - 1].id
-			_edit())
-		_label(case_box, "Link that original report and the grounds for questioning it. Lying and impairment remain different explanations.", 16)
 
 func _ready() -> void:
 	_configure_subwindows()
@@ -170,7 +140,7 @@ func _ready() -> void:
 	for hidden in [premise_person, premise_type]:
 		hidden.visible = false
 		tools.add_child(hidden)
-	var add_button = _button(tools, "Add premise", _add_premise)
+	var add_button = _button(tools, "Add premise", func(): Fields.add_premise(self))
 	add_button.tooltip_text = "Adds a blank premise. Click its fields to choose who and what you're arguing."
 	var add_profile_btn = _button(tools, "Add Townsfolk Profile Info", _open_add_profile_menu)
 	add_profile_btn.name = "AddProfileInfo"
@@ -206,12 +176,12 @@ func _ready() -> void:
 	canvas.cards_dropped.connect(func(numbers): cards_dropped.emit(numbers))
 	canvas.removal_requested.connect(remove_node)
 	canvas.group_removal_requested.connect(remove_nodes)
-	canvas.field_requested.connect(_field_popup)
-	canvas.detail_label = _detail_label
+	canvas.field_requested.connect(func(id, field): Fields.field_popup(self, id, field))
+	canvas.detail_label = func(node): return Fields.detail_label(self, node)
 	canvas.tooltip_text = "Case Workshop"
 	field_menu = PopupMenu.new()
 	_add_subwindow(field_menu)
-	field_menu.id_pressed.connect(_field_chosen)
+	field_menu.id_pressed.connect(func(index): Fields.field_chosen(self, index))
 	bg_menu = PopupMenu.new()
 	_add_subwindow(bg_menu)
 	bg_from = PopupMenu.new()
@@ -687,7 +657,7 @@ func _refresh_case() -> void:
 			var sides: Array = ["transmission", "original"]
 			var side_option = _option(case_box, sides.map(func(s): return board.RELAY_SIDE_TEXT[s]))
 			side_option.select(maxi(0, sides.find(str(node.get("attribution", "original")))))
-			side_option.item_selected.connect(func(i): set_evidence_field(mod_id, "side:" + sides[i]))
+			side_option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "side:" + sides[i]))
 		# One honest-mistake label for "misled" and "failed gift" (Nov 18), named in ReadingChallenges.
 		var option = _option(case_box, [preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "Suspected lie", "Unlikely reading"])
 		option.select(["impaired", "lying", "unlikely"].find(preload("res://workshop/reading_challenges.gd").canonical(node.mode)))
@@ -695,7 +665,7 @@ func _refresh_case() -> void:
 		option.set_item_disabled(2, _report(node.card).get("role", "") != "surveyor" or not _report(node.card).get("data", {}).has("count"))
 		if relay and str(node.get("attribution", "")) == "transmission":
 			option.set_item_disabled(2, true)
-		option.item_selected.connect(func(i): set_evidence_field(mod_id, "mode:" + ["impaired", "lying", "unlikely"][i]))
+		option.item_selected.connect(func(i): Fields.set_evidence_field(self, mod_id, "mode:" + ["impaired", "lying", "unlikely"][i]))
 	elif node.kind == "contradiction":
 		_clear(case_box)
 		var doubtable: bool = board.report_doubtable(answer_id)
@@ -717,7 +687,7 @@ func _refresh_case() -> void:
 		_clear(case_box)
 		_label(case_box, board.title(answer_id), 22)
 		_label(case_box, "Assumed identities in this line. These are hypotheses, not facts the jury must accept.", 16)
-		_premise_details(node)
+		Fields.premise_details(self, node)
 		if not node.get("conclusion", {}).is_empty():
 			var compiled_prem: Dictionary = board.compile(answer_id)
 			var tsum: Dictionary = Live.trace_summary(g, compiled_prem)
@@ -1097,275 +1067,6 @@ func board_numbers() -> Array:
 			_numbers.append(receipt.n)
 	return _numbers
 
-# ------------------------------------------------------------ premises on the card
-
-## Add a premise. Blank unless a claim type was preselected (scripted callers).
-func _add_premise() -> void:
-	if board.nodes.values().filter(func(n): return n.kind == "premise").size() >= 12:
-		status.text = "A case board holds up to twelve premises."
-		return
-	var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / canvas.zoom - Vector2(150, 110)
-	if premise_type.selected >= 0:
-		var people: Array = session.scenario.public_view.people
-		var target: String = people[maxi(premise_person.selected, 0)].id
-		board.selected = board.add_premise(target, (premise_types() + ["support"])[premise_type.selected], at)
-		if not board.nodes[board.selected].conclusion.is_empty():
-			case_root = board.selected
-	else:
-		board.selected = board.add_blank_premise(at)
-	_session_changed()
-
-## Choose one field of a premise: "person", "type", "role", "mod", "report", "epoch".
-func set_premise_field(id: String, field: String, value) -> void:
-	if not board.nodes.has(id) or board.nodes[id].kind != "premise":
-		return
-	var node: Dictionary = board.nodes[id]
-	if node.get("draft", false):
-		var pick: Dictionary = node.get("pick", {})
-		if field == "person":
-			pick["target"] = value
-		elif field == "type":
-			pick["type"] = value
-		node["pick"] = pick
-		var type: String = pick.get("type", "")
-		if type == "support":
-			node.erase("draft")
-			node.erase("pick")
-			node.conclusion = {}
-		elif type != "" and pick.has("target"):
-			node.erase("draft")
-			node.erase("pick")
-			node.conclusion = {"type": type, "target": pick.get("target", board._default_target()), "at": board.view.alignment_epoch}
-			_default_detail(node)
-			case_root = id
-	elif field == "type" and value == "support":
-		node.conclusion = {}
-	elif field == "type":
-		var target: String = node.conclusion.get("target", board._default_target())
-		node.conclusion = {"type": value, "target": target, "at": node.conclusion.get("at", board.view.alignment_epoch) if value in EPOCH_TYPES else board.view.alignment_epoch}
-		_default_detail(node)
-		case_root = id
-	elif field == "person":
-		if node.conclusion.is_empty():
-			return
-		node.conclusion.target = value
-		node.conclusion.erase("report")
-		_default_detail(node)
-	elif field == "epoch":
-		node.conclusion.at = value
-	elif field in ["role", "mod", "report", "cause"]:
-		node.conclusion[field] = value
-	board.selected = id
-	_edit()
-
-## Opened from the nomination flow, the Workshop starts the case for you (Michael, Nov 19): the
-## blank premise becomes "<target> is <type>". An existing premise saying just that is
-## selected instead; with no blank premise, a new one is added in view. Returns its id.
-func prefill_premise(target: String, type: String = "evil") -> String:
-	if board == null:
-		return ""
-	for id in board.nodes:
-		var node: Dictionary = board.nodes[id]
-		# The same claim about the same alignment: after a curse, a premise about someone's
-		# original alignment isn't the one to reuse (Codex, #370).
-		var c: Dictionary = node.get("conclusion", {})
-		if node.kind == "premise" and str(c.get("type", "")) == type and str(c.get("target", "")) == target \
-				and (not (type in EPOCH_TYPES) or str(c.get("at", board.view.alignment_epoch)) == str(board.view.alignment_epoch)):
-			board.selected = id
-			case_root = id
-			canvas.centre_on([id])
-			_edit()
-			return id
-	var blank: String = ""
-	for id in board.nodes:
-		var node: Dictionary = board.nodes[id]
-		if node.kind == "premise" and node.get("draft", false) and node.get("pick", {}).is_empty():
-			blank = id
-			break
-	if blank == "":
-		var at: Vector2 = (canvas.size / 2.0 - canvas.pan) / canvas.zoom - Vector2(150, 110)
-		blank = board.add_blank_premise(at)
-	set_premise_field(blank, "person", target)
-	set_premise_field(blank, "type", type)
-	canvas.centre_on([blank])
-	return blank
-
-func _default_detail(node: Dictionary) -> void:
-	var conclusion: Dictionary = node.conclusion
-	match conclusion.get("type", ""):
-		"notrole":
-			if not conclusion.has("role"):
-				var roles: Array = C.GOOD_ROLES
-				var claims: Array = board.view.cards.filter(func(card): return card.source == conclusion.target and card.get("role", "") in roles)
-				conclusion["role"] = claims[0].role if not claims.is_empty() else roles[0]
-		"secret_mod":
-			if not conclusion.has("mod"):
-				conclusion["mod"] = C.SECRET_MOD_LIST[0]
-		"inconsistent":
-			if not conclusion.has("cause"):
-				conclusion["cause"] = "any"
-
-func _reports_for(person: String) -> Array:
-	return board.view.cards.filter(func(card): return card.kind == "report" and card.source == person and not card.has("relay_source") and not card.get("testimony_only", false))
-
-## The premise's third field, when its claim needs one (or the time, in curse games).
-func _detail_label(node: Dictionary) -> Dictionary:
-	var conclusion: Dictionary = node.get("conclusion", {})
-	if node.get("draft", false) or conclusion.is_empty():
-		return {}
-	match conclusion.type:
-		"notrole":
-			return {"field": "role", "text": C.role_name(conclusion.get("role", "")), "icon": WorkshopSkin.tex("ui/roles/" + conclusion.get("role", ""), 0.06),
-				"tip": "The gift this premise is about. It judges the person's own declaration; it doesn't assign an unclaimed role."}
-		"secret_mod":
-			return {"field": "mod", "text": C.secret_name(conclusion.get("mod", "")), "icon": WorkshopSkin.tex("ui/roles/" + conclusion.get("mod", ""), 0.06),
-				"tip": "Which secret modifier you're arguing they hold."}
-		"inconsistent":
-			return {"field": "cause", "text": INCONSISTENT_CAUSE_NAMES.get(conclusion.get("cause", "any"), "Any cause"),
-				"tip": "Link two or more of their readings. The cause decides the blame: a lie raises suspicion of them, poisoning points at whoever was out that night, Delusional clears them."}
-		"lied", "truthful", "misled", "unreliable":
-			var report: Dictionary = {}
-			for card in _reports_for(conclusion.target):
-				if card.id == conclusion.get("report", ""):
-					report = card
-			return {"field": "report", "text": report.text if not report.is_empty() else "Choose the reading", "missing": report.is_empty(),
-				"icon": WorkshopSkin.tex("ui/roles/" + report.role, 0.06) if not report.is_empty() and report.has("role") else null,
-				"tip": "The reading this premise questions. Link that reading and your grounds to the premise. Lying and impairment are different explanations."}
-	if board.view.get("chronology", {}).has("curse") and conclusion.type in EPOCH_TYPES:
-		return {"field": "epoch", "text": "When: " + str(conclusion.at), "tip": "Which time this premise is about (before, during or after the curse)."}
-	return {}
-
-func _field_popup(id: String, field: String) -> void:
-	var node: Dictionary = board.nodes[id]
-	if node.kind == "trace_chain":
-		if field == "sync_trace_chain":
-			board.sync_trace_chain(id)
-			_edit()
-		return
-	if node.kind == "whereabouts":
-		if field == "sync_whereabouts":
-			board.sync_whereabouts(id)
-			_edit()
-		return
-	if node.kind == "profile_info":
-		if field == "profile_person":
-			board.selected = id
-			field_menu.clear()
-			var p_values: Array = []
-			for person in board.view.people:
-				var face = WorkshopSkin.tex("art/portraits/" + person.id, 0.08)
-				var dead: bool = g != null and g.w.by_id.has(person.id) and not g.w.by_id[person.id].alive
-				var p_text: String = person.name + (" (dead)" if dead else "")
-				if face != null:
-					field_menu.add_icon_item(face, p_text, p_values.size())
-				else:
-					field_menu.add_item(p_text, p_values.size())
-				p_values.append(person.id)
-			_field_target = {"id": id, "field": "profile_person", "values": p_values}
-			_sync()
-			canvas.queue_redraw()
-			field_menu.position = Vector2i(get_viewport().get_mouse_position())
-			field_menu.reset_size()
-			field_menu.popup()
-		elif field.begins_with("facet:"):
-			board.toggle_profile_facet(id, field.trim_prefix("facet:"))
-			_edit()
-		elif field == "sync_profile":
-			board.sync_profile_node(id)
-			_edit()
-		return
-	if node.kind != "premise":
-		set_evidence_field(id, field)
-		return
-	board.selected = id
-	field_menu.clear()
-	var values: Array = []
-	match field:
-		"person":
-			for person in board.view.people:
-				var face = WorkshopSkin.tex("art/portraits/" + person.id, 0.08)
-				var dead: bool = g != null and g.w.by_id.has(person.id) and not g.w.by_id[person.id].alive
-				var text: String = person.name + (" (dead)" if dead else "")
-				if face != null:
-					field_menu.add_icon_item(face, text, values.size())
-				else:
-					field_menu.add_item(text, values.size())
-				values.append(person.id)
-		"type":
-			# "Was turned by the curse" only once a curse has fallen, or where already chosen.
-			var cursed: bool = board.view.get("chronology", {}).has("curse")
-			# A hanged person's Demon premise is in the past tense, and only where a Scion
-			# could have risen (CanvasModel.premise_offered; Michael, Nov 19).
-			# A draft holds its person in `pick` until both fields are chosen (Codex on #305).
-			var p_target: String = str(node.get("pick", {}).get("target", "")) if node.get("draft", false) else str(node.get("conclusion", {}).get("target", ""))
-			var types: Array = premise_types().filter(func(t): return (t != "turned" or cursed or str(node.get("conclusion", {}).get("type", "")) == "turned") and board.premise_offered(t, p_target))
-			for i in range(types.size()):
-				field_menu.add_item(board.premise_text(types[i], p_target), values.size())
-				var hanged_demon: bool = types[i] == "demon" and board.premise_text(types[i], p_target) == board.HANGED_DEMON_TEXT
-				if hanged_demon:
-					field_menu.set_item_tooltip(field_menu.item_count - 1, board.HANGED_DEMON_HINT)
-				elif PREMISE_TYPE_HINTS.has(types[i]):
-					field_menu.set_item_tooltip(field_menu.item_count - 1, PREMISE_TYPE_HINTS[types[i]])
-				values.append(types[i])
-		"role":
-			for role in C.GOOD_ROLES:
-				var icon = WorkshopSkin.tex("ui/roles/" + role, 0.06)
-				if icon != null:
-					field_menu.add_icon_item(icon, C.role_name(role), values.size())
-				else:
-					field_menu.add_item(C.role_name(role), values.size())
-				values.append(role)
-		"mod":
-			for kind in C.SECRET_MOD_LIST:
-				field_menu.add_item(C.secret_name(kind), values.size())
-				values.append(kind)
-		"cause":
-			for cause in INCONSISTENT_CAUSES:
-				field_menu.add_item(INCONSISTENT_CAUSE_NAMES[cause], values.size())
-				values.append(cause)
-		"report":
-			for card in _reports_for(node.conclusion.get("target", "")):
-				field_menu.add_item(card.text, values.size())
-				values.append(card.id)
-			if values.is_empty():
-				field_menu.add_item("No readings from this person on the canvas yet", 999)
-				field_menu.set_item_disabled(0, true)
-		"epoch":
-			for epoch in board.view.chronology.epochs.keys():
-				field_menu.add_item(str(epoch), values.size())
-				values.append(epoch)
-	_field_target = {"id": id, "field": field, "values": values}
-	_sync()
-	canvas.queue_redraw()
-	field_menu.position = Vector2i(get_viewport().get_mouse_position())
-	field_menu.reset_size()
-	field_menu.popup()
-
-func _field_chosen(index: int) -> void:
-	if _field_target.is_empty() or index < 0 or index >= _field_target.values.size():
-		return
-	var target: Dictionary = _field_target
-	_field_target = {}
-	if target.field == "new_profile_person":
-		add_profile_info(target.values[index], "home_work")
-		return
-	if target.field == "profile_person":
-		board.set_profile_person(target.id, target.values[index])
-		_edit()
-		return
-	if target.field == "why":
-		var node: Dictionary = board.nodes[target.id]
-		var choice: Array = target.values[index]
-		node.reasons[target.key] = choice[0]
-		if choice[1] != "":
-			node.citations[target.key] = choice[1]
-		else:
-			node.citations.erase(target.key)
-		board.selected = target.id
-		_edit()
-		return
-	set_premise_field(target.id, target.field, target.values[index])
-
 ## Run the test juror on every premise with a claim (after a pause in editing).
 func _run_test_juror() -> void:
 	if board == null or g == null or case_world != g.w:
@@ -1460,56 +1161,3 @@ func _idle_assumptions(node: Dictionary, value: Dictionary, badge: Dictionary) -
 			idle.append(person)
 	if not idle.is_empty():
 		badge["idle"] = idle
-
-# ------------------------------------------------------------ answers on evidence cards
-
-## A click on an evidence card's answer: "pick:<id>", "block:<b>", "resident:<id>",
-## "reg:<reason>", "why:<id>" (opens a menu), "mode:<challenge>".
-func set_evidence_field(id: String, field: String) -> void:
-	var node: Dictionary = board.nodes[id]
-	var card: Dictionary = _report(node.card)
-	var kind: String = field.get_slice(":", 0)
-	var value: String = field.substr(kind.length() + 1)
-	board.selected = id
-	if kind == "mode":
-		var passing_on: bool = str(node.get("attribution", "")) == "transmission"
-		if node.kind == "modifier" and not (value == "unlikely" and (card.get("role", "") != "surveyor" or not card.get("data", {}).has("count"))) \
-				and not (passing_on and value not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES):
-			node.mode = value
-			_edit()
-		return
-	if kind == "side":
-		# A Medium relay's challenged side. The passing-on takes only a lie or a failed gift,
-		# so a mode about the reading itself becomes a lie.
-		if node.kind == "modifier" and card.has("relay_source") and value in preload("res://workshop/reading_challenges.gd").RELAY_ATTRIBUTIONS:
-			node["attribution"] = value
-			if value == "transmission" and node.mode not in preload("res://workshop/reading_challenges.gd").TRANSMISSION_MODES:
-				node.mode = "lying"
-			_edit()
-		return
-	if kind == "why":
-		_reason_menu(id, card, value)
-		return
-	node.answers[card.id] = board.apply_answer(card, node.answers.get(card.id, {}), kind, value)
-	_edit()
-
-## Why someone seen at night was out: unexplained, a walking gift (citing their
-## claim), an evil errand, or a private errand (citing their errand claim).
-func _reason_menu(id: String, card: Dictionary, person: String) -> void:
-	field_menu.clear()
-	var key: String = "%s:%d" % [person, card.get("night", -1)]
-	var options: Array = [["unexplained", ""]]
-	field_menu.add_item("? Unexplained", 0)
-	for claim in board.view.cards.filter(func(c): return c.kind == "claim" and c.subject == person):
-		field_menu.add_item("Out on their gift: " + C.role_name(claim.role) + " claim", options.size())
-		options.append(["gift", claim.id])
-	field_menu.add_item("Evil errand", options.size())
-	options.append(["evil", ""])
-	if board.view.get("live_activity", false):
-		for claim in board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person):
-			field_menu.add_item("Private errand (their own account)", options.size())
-			options.append(["secret", claim.id])
-	_field_target = {"id": id, "field": "why", "values": options, "key": key}
-	field_menu.position = Vector2i(get_viewport().get_mouse_position())
-	field_menu.reset_size()
-	field_menu.popup()

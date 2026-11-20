@@ -118,10 +118,11 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
   on what. Never edit another PR's entry and never append to `docs/handoff_log.md`; a
   follow-up gets its own file. One file per entry is what keeps PRs from conflicting.
 - **Tests:** a suite that needs a particular deal finds a seed with `tools/fixture_seeds.gd`
-  rather than hard-coding one. New suites are `tools/test_*.gd`; add quick ones
-  that cover the judge, the solver or the roles to `tools/ci_fast_suites.txt`, at their
-  alphabetical place (the list is kept sorted so that PRs don't all conflict on its last
-  line).
+  rather than hard-coding one. New suites are `tools/test_*.gd`; add any that runs in
+  under about 15 seconds to `tools/ci_fast_suites.txt`, at its alphabetical place (the list
+  is kept sorted so that PRs don't all conflict on its last line). A slower suite that tests
+  what NPCs do or believe can go on `tools/ci_slow_suites.txt` instead; otherwise it runs
+  on main only.
 - **Two failed attempts at the same problem:** stop and tell Michael, with the exact error.
 
 ## What you may decide, and what waits for Michael

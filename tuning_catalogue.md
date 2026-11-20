@@ -15,7 +15,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | --- | --- | --- | --- |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_answers.gd` |
-| `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
+| `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind_cases.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_shadow.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world_night.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
@@ -41,7 +41,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLAYER_TRUST_JITTER_MAX` | `0.1` |  | `sim/world.gd` |
 | `PLAYER_TRUST_MIN` | `0.1` |  | `sim/world.gd` |
 | `PLAYER_TRUST_MAX` | `0.9` |  | `sim/world.gd` |
-| `OWN_ROLE_CLAIM_WEIGHT` | `1.5` | First-hand knowledge weight of an NPC's own true gift | `sim/mind.gd`, `sim/world.gd` |
+| `OWN_ROLE_CLAIM_WEIGHT` | `1.5` | First-hand knowledge weight of an NPC's own true gift | `sim/mind_shadow.gd`, `sim/world.gd` |
 | `IDLE_HAUNT_CHANCE` | `0.4` | Conversation & movement rates | `sim/world.gd`, `workshop/day_presence.gd` |
 | `HAUNT_SIGHTING_DAYS` | `2` |  | `game/game_day_night.gd` |
 | `HAUNT_SIGHTING_DAYS_TAVERN` | `3` |  | `game/game_day_night.gd` |
@@ -122,15 +122,15 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HONESTY_K` | `0.8` | Credibility (honesty) discounting from evidence against a source (retired legacy aliases retained) | `game/game_screens.gd` |
 | `HONESTY_CAP` | `0.5` |  | `game/game_screens.gd` |
 | `NIGHT_DOUBT_CAP` | `0.9` |  | (unused) |
-| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` | Role-claim & sighting ledger weights | `sim/mind.gd`, `sim/mind_meeting.gd`, `tools/measure_evidence.gd` |
-| `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind.gd` |
-| `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind.gd` |
-| `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind.gd` |
+| `PUBLIC_CLAIM_HEARING_WEIGHT` | `0.5` | Role-claim & sighting ledger weights | `sim/mind_meeting.gd`, `sim/mind_shadow.gd`, `tools/measure_evidence.gd` |
+| `DEMON_VICTIM_CLAIM_BOOST` | `1.95` |  | `sim/mind_ledger.gd` |
+| `BELIEVED_ROLE_MIN_EFF` | `0.12` |  | `sim/mind_ledger.gd` |
+| `HEARD_READING_WEIGHT` | `0.5` |  | `sim/mind_ledger.gd` |
 | `RECONSIDER_TRUST_DELTA` | `0.1` | Reconsideration, gift requests, apologies & shadow self | `sim/mind.gd` |
-| `RECONSIDER_MIN_SHIFT` | `0.03` |  | `sim/mind.gd` |
-| `RECONSIDER_ENTRY_MIN_DELTA` | `0.02` |  | `sim/mind.gd` |
-| `RECONSIDER_CONFIDENCE_DAMP` | `0.6` |  | `sim/mind.gd` |
-| `SHADOW_OWN_READING_WEIGHT` | `1.2` |  | `sim/content.gd`, `sim/mind.gd` |
+| `RECONSIDER_MIN_SHIFT` | `0.03` |  | `sim/mind_ledger.gd` |
+| `RECONSIDER_ENTRY_MIN_DELTA` | `0.02` |  | `sim/mind_ledger.gd` |
+| `RECONSIDER_CONFIDENCE_DAMP` | `0.6` |  | `sim/mind_ledger.gd` |
+| `SHADOW_OWN_READING_WEIGHT` | `1.2` |  | `sim/content.gd`, `sim/mind_shadow.gd` |
 | `APOLOGY_EVIDENCE_INSIGHT_PIVOT` | `0.4` |  | `sim/mind.gd` |
 | `APOLOGY_EVIDENCE_INSIGHT_SLOPE` | `1.2` |  | `sim/mind.gd` |
 | `APOLOGY_EVIDENCE_DAMP_CAP` | `0.6` |  | `sim/mind.gd` |
@@ -142,7 +142,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
-| `SERIOUS_GRIEVANCE` | `0.12` |  | `sim/mind.gd` |
+| `SERIOUS_GRIEVANCE` | `0.12` |  | `sim/mind_base.gd` |
 | `GRIEVANCE_MIN_DROP` | `0.03` |  | `sim/mind.gd` |
 | `APOLOGY_SHARE_SERIOUS` | `0.25` |  | `sim/mind.gd` |
 | `APOLOGY_SHARE_MINOR` | `0.5` |  | `sim/mind.gd` |
@@ -179,11 +179,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXEC_READING_MIN_EVIL_SUSP` | `0.22` |  | `sim/world_meeting.gd` |
 | `CONFIDENCE_BROKEN_BASE` | `0.05` | Broken confidence & spread secrets | `game/game_board.gd` |
 | `CONFIDENCE_BROKEN_PRIVACY` | `0.2` |  | `game/game_board.gd` |
-| `SECRET_SPREAD_BASE` | `0.08` |  | `sim/mind.gd` |
-| `SECRET_SPREAD_PRIVACY` | `0.4` |  | `sim/mind.gd` |
-| `SECRET_SPREAD_REPEAT_MULT` | `0.4` |  | `sim/mind.gd` |
-| `SECRET_CAP_HIGH_PRIVACY` | `0.3` |  | `sim/mind.gd` |
-| `SECRET_CAP_MID_PRIVACY` | `0.6` |  | `sim/mind.gd` |
+| `SECRET_SPREAD_BASE` | `0.08` |  | `sim/mind_cases.gd` |
+| `SECRET_SPREAD_PRIVACY` | `0.4` |  | `sim/mind_cases.gd` |
+| `SECRET_SPREAD_REPEAT_MULT` | `0.4` |  | `sim/mind_cases.gd` |
+| `SECRET_CAP_HIGH_PRIVACY` | `0.3` |  | `sim/mind_cases.gd` |
+| `SECRET_CAP_MID_PRIVACY` | `0.6` |  | `sim/mind_cases.gd` |
 | `CIVIL_TALK_BASE` | `0.04` | Conversation, pressing, promises, nominations, clemency & presentations | `sim/mind_dialogue.gd` |
 | `CIVIL_TALK_PRIVACY_DAMP` | `0.0` | Michael, Nov 18: Privacy no longer damps the civil-talk gain (was 0.5) | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_LIMIT` | `3` |  | `sim/mind_dialogue.gd` |
@@ -199,7 +199,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PROMISE_BROKEN_DROP` | `0.15` |  | `game/game_conversation.gd` |
 | `WARD_SIGIL_BONUS` | `0.05` |  | `game/game_presentation.gd` |
 | `WARD_SIGIL_TARGET_BONUS` | `0.15` |  | `game/game_presentation.gd` |
-| `SELF_SUPPORT_BONUS` | `0.03` |  | `game/workshop_presentation.gd`, `sim/mind.gd` |
+| `SELF_SUPPORT_BONUS` | `0.03` |  | `game/workshop_presentation.gd`, `sim/mind_cases.gd` |
 | `PRESENTATION_REWARD` | `0.02` |  | `game/workshop_presentation.gd` |
 | `PRESENTATION_WRONG_COST` | `0.02` | Premises pass step 1: a clearly wrong premise costs what a good one earns. Agreement is CaseEval.shift (-1..1, how far the evidence moved toward the premise), so "clearly wrong" is the evidence moving a quarter of the way toward the premise being false. | `game/workshop_presentation.gd` |
 | `PRESENTATION_WRONG_AGREEMENT` | `-0.25` |  | `game/workshop_presentation.gd` |
@@ -284,7 +284,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_RELAY_SECRET_COMPOSURE_BASE` | `1.3` |  | `sim/social.gd` |
 | `TAVERN_WHISPER_MIN_CROWD` | `4` |  | `sim/social.gd` |
 | `TAVERN_WHISPER_CHANCE` | `0.5` |  | `sim/social.gd` |
-| `TAVERN_OVERHEAR_MIN_SUSP` | `0.4` |  | `sim/mind.gd` |
+| `TAVERN_OVERHEAR_MIN_SUSP` | `0.4` |  | `sim/mind_cases.gd` |
 | `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social.gd` |
 | `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social.gd` |
 | `TAVERN_TIER1_TARGET` | `2` | Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier). | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
@@ -481,7 +481,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `FEAR_CAP` | `0.85` |  | `sim/mind_dialogue.gd` |
 | `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_press.gd` |
 | `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_press.gd` |
-| `UNMODELLED_CARD_WEIGHT` | `0.5` |  | `sim/mind.gd` |
+| `UNMODELLED_CARD_WEIGHT` | `0.5` |  | `sim/mind_cases.gd` |
 | `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd` |
 | `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd` |
 | `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
@@ -733,7 +733,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
 | `PREMISE_BYSTANDER_SHARE` | `1.0 / 3.0` | Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a card adds when only presented cases brought it, and what a stored case's cards add together, count in full on the case's target and at this share on everyone else. A listener hearing "X is evil" weighs how far the case proves that, and under-registers what it implies about the others. | `workshop/connections.gd` |
 | `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "suspicious", "good", "notdemon", "notrole", "lied", "truth...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret and misled premises name no alignment target. | `workshop/shared_ledger.gd` |
-| `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
+| `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind_ledger.gd` |
 | `SUSPICIOUS_HEARING` | `0.5` | A "suspicious" premise halves its stored case's weight (`Connections.case_weight`): what the case's cards add together counts at this share. Each card alone still counts in full. | `game/workshop_why.gd`, `workshop/connections.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` | The venue's share of connections pressure (`WorkshopPresentation`): private / meeting. | `game/workshop_presentation.gd` |
 | `SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE` | `4.0` | Connections pressure (Michael, Nov 14). "Suspicious" is the early-game tool: one basic incriminating reading should press its subject by about 0.3 at a meeting (with a nomination's 0.4, about one disclosure tier). The rise is how far the case's cards, read by themselves, lift its subject for the average listener; times this, up to the cap, then the venue's share above. Measured Nov 14 on fresh 10-NPC games: a lone Dowser "1 of these 2" lifts its subject 6 to 8 points, a lone Seer "yes" on a pair 3, a Dowser "1 of these 3" about 1. | `game/workshop_presentation.gd` |
