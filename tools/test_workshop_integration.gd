@@ -182,7 +182,7 @@ func _routes() -> void:
 		var ar = off._evaluate_deduction(a, off.board[-1], 0.6, false, venue)
 		var br = on._evaluate_deduction(b, on.board[-1], 0.6, false, venue)
 		check(ar == br and _state(off) == _state(on), "comparison preserves actual shared behavior and RNG at " + venue)
-		check(on.workshop_comparisons[-1].venue == venue and on.workshop_comparisons[-1].actual.model == "shared", "each venue retains side-by-side diagnostics")
+		check(on.workshop_comparisons[-1].venue == venue and on.workshop_comparisons[-1].actual.has("agreement"), "each venue retains side-by-side diagnostics")
 	check(off.workshop_comparisons.is_empty(), "comparison is opt-in")
 
 func _game(size: int):

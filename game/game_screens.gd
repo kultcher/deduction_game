@@ -270,7 +270,6 @@ static func _ending(g) -> void:
 	g._headline("ending", "Victory" if g.w.winner == "good" else "Defeat", g.w.end_reason)
 	var frozen: Dictionary = g.prediction_snapshots[-1] if not g.prediction_snapshots.is_empty() else {}
 	g.case_summary = CaseMetrics.summarize(g.w, frozen, g.prediction_spoiled, g.board, g.prediction_snapshots)
-	g.case_summary["present_fallbacks"] = g.fallback_count
 	g.case_summary["unprepared_refreshes"] = g.unprepared_refreshes.size()
 	g.w.dlog.add("case_summary", "world", "", g.case_summary, "Frozen pre-outcome identification, town survival, and execution attribution.")
 	if g.w.winner == "good":
