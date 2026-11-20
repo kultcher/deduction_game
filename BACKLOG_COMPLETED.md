@@ -3,6 +3,47 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026, reprioritization (Michael; recorded by Claude-Vicar)
+
+- **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
+  Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
+  1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
+  5. When it did, items were garbled at about the designed rate. The limit is supply: news
+  is announced at the meeting and nobody repeats what everyone heard, so NPCs hear under
+  one private reading or sighting a game. Letting everyone pass on more gave no more
+  relays (52 against 60 in 40 games) unless some news also stays private for a while.
+  Options measured or estimated: garble the Muddler's retellings at the meeting; keep
+  night sightings private for a day (Muddler in about half of games, estimated, but news
+  spreads earlier for both sides and the meeting is less of a reveal); garble day
+  sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
+  it for now; he isn't sure the Muddler can work as written without warping the game
+  around it. [open]
+
+  > **Closed Nov 20 (Michael, reprioritization):** the Muddler is removed: the role and its cards ("Remove the Muddler", section 2).
+
+- **Adjudicating a muddled card** (the Muddler secret). Tied to the secrets rework, since the
+  Muddler may go (Lantern, Nov 20). **[later]**
+
+  > **Closed Nov 20 (Michael, reprioritization):** the Muddler is removed.
+
+- **Roster expansion.** Lantern's shortlist from the Clocktower passes (ideas only):
+  `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
+  Registrar, Psychologist, Monitor, Confessor, Sexton and the Brute. Still to come: On Deck
+  gifts (Tracker, Clairvoyant, Beckon, Tallyman, Bellringer, Bellwether…), minions
+  (Framer/Forger with evidence planting, Blackmailer, a two-curse Minion (once
+  called the Hexer; that name now belongs to the day-killing Demon), Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
+  Mesmerize, a daytime "rouse"). Bellwether, the Sower and Dusk Compulsion come from the
+  Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
+  yet. Each needs a hint package and solver support before it goes live. [open]
+
+  > **Closed Nov 20 (Michael, reprioritization):** closed as ongoing.
+
+- **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
+  people who aren't talking or working showing on the map; a wrong role guess blocking
+  process of elimination.
+
+  > **Closed Nov 20 (Michael, reprioritization):** closed.
+
 ## Closed Nov 20, 2026, second pass (Michael; recorded by Claude-Vicar)
 
 - **Privacy without compounding trust penalties.** Remove Privacy from initial player
