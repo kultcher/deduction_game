@@ -44,7 +44,21 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
+### Current baseline (Nov 20, purge 6a, the headline reading removed): `baseline_70141b3`
+
+`tools/golden/baseline_70141b3/` is the capture from `claude/purge-6a-headline` at `70141b3`
+(main at `3b83b61`, with #399, merged in). A duller NPC no longer cites a reading it isn't
+attending to, and the headline nudge is gone from the jury. A cited reading's strength keeps
+its face-value term, so a reason feels as strong as before when it is cited.
+- **Divergence from `baseline_7792e9a`:** 692 from record 201 (day 3 meeting): Bart cites one
+  reason fewer against Hollis. 900 from record 111 (day 3): Jory no longer cites Greta's Seer
+  reading against Odette, and his other reasons against Odette and Isolde weigh a little less.
+  42, 54875 and 98933 are identical.
+- **Outcomes:** unchanged on every seed. 692 hangs Constance on day 3 and 900 hangs Isolde on
+  day 3, with no winner by day 4 either way.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
 
 `tools/golden/baseline_7792e9a/` is the capture from `claude/beadle-symmetric-vote` at `7792e9a`
 (main at `39a57d2`, with #390, merged in). The player's no now pushes later voters toward no, at
