@@ -905,11 +905,14 @@ static func _augment_joint_leave_one_out(
 			found_own_joint = true
 		var why_own: String
 		var why_pub: String
-		if alone:
+		if alone and pid in _mentions(cand):
+			# A reading that names them, cited alone in its own words.
 			var single_why: Array = _report_why_pair(view, cand, pid, self_id)
 			why_own = str(single_why[0])
 			why_pub = str(single_why[1])
 		else:
+			# Taken together, or a reading that moves them only indirectly (one that clears
+			# someone else leaves them among the likelier): say what it actually says (Codex on #444).
 			var whys: Dictionary = joint_whys(view, cand, pid, csrc, self_id, crole, attended)
 			why_own = whys.own
 			why_pub = whys.public
