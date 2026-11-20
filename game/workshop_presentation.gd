@@ -389,7 +389,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		var tier: int = Mind._target_tier(g.w, n)
 		var why: Dictionary = {}
 		if tier >= 2:
-			why = preload("res://sim/mind_podium.gd").press_night(g.w, n, trapped_night, true, true) if venue != "private" else Mind.MindDialogue.trapped_explanation(g.w, n, trapped_night)
+			why = preload("res://sim/mind_podium.gd").press_night(g.w, n, trapped_night, true, true) if venue != "private" else Mind.MindPress.trapped_explanation(g.w, n, trapped_night)
 		g.w.dlog.think(n.id, "admit_out", "Caught out of a home alibi (tier %d): %s." % [tier, "explains the night" if not why.get("lines", []).is_empty() else "says only that being out isn't wicked"])
 		lines.append_array(why.get("lines", []))
 		trapped_facts = why.get("facts", [])
