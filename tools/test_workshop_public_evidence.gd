@@ -106,7 +106,6 @@ func _silence() -> void:
 	var input = g.workshop_snapshot([], observer.id)
 	check(Assess.activity_card(receipt, input).get("context_kind") == "silenced", "a matching silence card retains its public context")
 	var ded = g.file_deduction({"type": "good", "a": target.id}, [number])
-	g.strict_evaluator = true
 	var result = g._evaluate_deduction(observer, g.board[ded - 1], 1.0, false)
 	check(result.get("workshop", false) and receipt.id in observer.workshop_state.facts, "a silence card uses shared strict presentation and exact receipt ownership")
 	check(_close(before, observer.suspicion), "citing already public silence gives no second award")
@@ -170,7 +169,6 @@ func _martyr_roles() -> void:
 	invalid.content.saved = actor.id
 	check(Assess.activity_card(invalid, input).is_empty(), "the same person cannot fill both substitution roles")
 	var ded = g.file_deduction({"type": "good", "a": saved.id}, [number])
-	g.strict_evaluator = true
 	for n in g.w.living():
 		var heard = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		var listener = n.shadow if n.is_evil() else n
