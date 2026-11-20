@@ -65,7 +65,7 @@
   - a dead branch at `game/game.gd:335-336`: `_workshop_native_submission` is only ever set
     together with `_workshop_native_social`.
 - **Measured:**
-  - **Golden:** identical to `baseline_0d796b3` at `--tol 0` after merging main; two captures
+  - **Golden:** identical to `baseline_9ea3f99` at `--tol 0` after merging main (2e4c24f); two captures
     were identical.
   - **Before the merge:** 23 suites passed (every edited suite plus the ownership and
     presentation ones).
