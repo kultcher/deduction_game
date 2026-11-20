@@ -16,6 +16,10 @@
     leave-one-out joint reasons.
   - A leave-one-out card with no partner the model weighed it with is still cited, alone, in
     the card's own words. Its weight was measured in the belief model.
+  - That single-card wording is used only when the reading names the suspect. A reading that
+    moves them only indirectly (one clearing someone else) keeps its own wording, "my reading
+    … leaves them among the likeliest" (Codex on #444). Before that fix, seed 42 had Kiran
+    claim "My own reading pointed at them" of Agnes, whom the reading never named.
   - The "reports considered together" elimination reason is not a pairing, so it's untouched.
 - **MindNomination._resolve_shared_reason** (Beadle's code; his rule, approved Nov 20): an own
   reading's status is the reading's own, not its partners'.
@@ -57,7 +61,7 @@ by one private partner card. Beadle set the rule above (his code), then refined 
 presentation counting for its audience. The presentation suites check that.
 
 ### Golden
-Re-baselined to `baseline_1fe73e4`. Two captures were identical.
+Re-baselined to `baseline_d9f8005`. Two captures were identical.
 - 54875 hangs Edda (the Revenant) a day earlier, and Greta (the Poisoner) instead of Hollis (a
   good Gravedigger).
 - 692 no longer hangs Lian (the Revenant) on day 3.

@@ -44,9 +44,9 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_1fe73e4`
+### Current baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_d9f8005`
 
-`tools/golden/baseline_1fe73e4/` is the capture from `claude/joint-reasons-combined` at `1fe73e4`
+`tools/golden/baseline_d9f8005/` is the capture from `claude/joint-reasons-combined` at `1fe73e4`
 (main at `7005cc6` merged in). A "taken together" reason names only two cards the belief
 model weighed together. An NPC's own reading counts as known to the town or the Demonologist
 by the reading itself (shared, claimed, or cited in a presentation to them), not by the
