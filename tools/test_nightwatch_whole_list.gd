@@ -48,7 +48,7 @@ func _town(seen: String) -> Dictionary:
 		var names: Array = [listener.id, other.id] if seen == "listener" else [other.id]
 		var entry: Dictionary = {"day": 1, "phase": 3, "role": "nightwatch", "shared": true, "true": true,
 			"data": {"block": listener.home_block, "seen": names},
-			"text": "watching %s on the first night, I saw %s pass by" % [listener.home_block, ", ".join(PackedStringArray(names))]}
+			"text": "watching %s on the first night, I saw %s out" % [listener.home_block, ", ".join(PackedStringArray(names))]}
 		watcher.info_log.append(entry)
 		Mind.apply_info(w, listener, watcher, entry, 0.8)
 	var key: String = listener.id + ":good"
@@ -84,7 +84,7 @@ func _three_lists() -> Dictionary:
 	for nd in range(3):
 		listener.history[w.time_key(nd, 3)] = "home:" + listener.home_block
 		var entry: Dictionary = {"day": nd, "phase": 3, "role": "nightwatch", "shared": true, "true": true,
-			"data": {"block": listener.home_block, "seen": [listener.id]}, "text": "I saw %s pass by" % listener.name}
+			"data": {"block": listener.home_block, "seen": [listener.id]}, "text": "I saw %s out" % listener.name}
 		watcher.info_log.append(entry)
 		Mind.apply_info(w, listener, watcher, entry, 0.8)
 	var key: String = listener.id + ":good"

@@ -281,7 +281,8 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
-  - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves);
+  - the Night Watch card's "pass by" is reworded, along with the Vigil tooltip's "passing
+    through": Herald #448;
   - no voiced line says "road": Herald #446, merged.
 
   **Wording approved (Michael, Nov 20):**

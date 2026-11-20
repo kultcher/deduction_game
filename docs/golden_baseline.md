@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
+### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
+
+`tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
+`fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
+pass by", fabricated cards match, and the scapegoat fabrication's logged reason says "watched the
+block of" instead of "the street of".
+- **Divergence from `baseline_b96d2f2`:** text only. 42 and 54875 from record 1, 692 from 45 and
+  98933 from 79, each at a Night Watch card's text (and on 98933 the fabrication's reason). 900 is
+  identical. With " pass by" replaced by " out" and "street of evil" by "block of evil" in the old
+  baseline, all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
 
 `tools/golden/baseline_b96d2f2/` is the capture from `claude/beadle-gravedigger-lean` at `b96d2f2` (main at
 `0b44cae`, merged in). A good Gravedigger always leans a little toward nominating and voting to hang
