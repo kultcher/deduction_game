@@ -30,7 +30,8 @@ const AVERAGE = {"credibility": 0.5, "npc_trust": 0.5, "confidence": 0.5, "insig
 ## effects (Jury), returned as `floors` (the stored cases' accepted challenges, with their
 ## agreement and weight) and `requested_*` (each person's requested suspicion change, as the
 ## refresh would apply it). `plan_*` are the two Shared.prepare plans, for asking another
-## question of the same hearing (SharedLedger.evaluate_question). `profile` overrides AVERAGE's fields; npc_trust
+## question of the same hearing (SharedLedger.evaluate_question), and `counted_*` the stored
+## cases the connections model counted from each (those above CASE_FLOOR, with their challenges). `profile` overrides AVERAGE's fields; npc_trust
 ## may be one number for everyone or a map. `profile.baseline`:
 ##   "marginal" (the default): `before` is the listener as it stands, having heard the case's
 ##     public cards from their tellers; what presenting it would change (the town note).
@@ -145,7 +146,8 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 		"posterior_before": before.posterior, "posterior_after": after.posterior, "case": entry,
 		"floors": after.cases.get("floors", []).duplicate(true),
 		"requested_before": before.get("requested", {}), "requested_after": after.get("requested", {}),
-		"plan_before": before.plan, "plan_after": after.plan}
+		"plan_before": before.plan, "plan_after": after.plan,
+		"counted_before": before.cases.get("entries", []), "counted_after": after.cases.get("entries", [])}
 
 
 ## A presentation snapshot as this listener hears it: nothing private of its own.
@@ -247,7 +249,7 @@ static func _public_hearing(g, value: Dictionary) -> Dictionary:
 static func _evaluate(current: Dictionary, presentations: Dictionary, ledger: Dictionary, focus: Array) -> Dictionary:
 	var plan: Dictionary = Shared.prepare(current, presentations, ledger, {}, focus)
 	if not plan.get("ready", false):
-		return {"ready": false, "issues": plan.get("issues", []).duplicate(), "prior": {}}
+		return {"ready": false, "issues": plan.get("issues", []).duplicate(), "prior": {}, "cases": {}, "plan": {}}
 	var proposal: Dictionary = Shared.evaluate(plan, {}, {}, {}, {})
 	var cx: Dictionary = proposal.get("connections", {})
 	# A person nothing held touches keeps the prior (the model reports no posterior for them).

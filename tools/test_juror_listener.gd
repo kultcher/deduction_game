@@ -154,6 +154,22 @@ func _init() -> void:
 	# an average listener accepts it and presses the Minion as the liar.
 	var outs: Array = r_grounded.get("listener", {}).get("challenges", [])
 	check(outs.size() == 1 and outs[0].kind == "pressed" and outs[0].teller == minion.id and outs[0].witnesses == [seer.id], "with both claiming the Seer, the call is accepted: the badge's data names the teller it presses and the witness (%s)" % str(outs))
+	# A Mistaken call in an earlier case counts only while that case does (Codex on #410): once
+	# it has faded below the connections model's floor, it no longer discounts the reading in the
+	# Demon share either. (Last: filing the earlier case changes the town's record.)
+	RC.clash_rule = "legacy"
+	var earlier: int = Live.file(g, nd_mist)
+	g.public_presentations[earlier] = int(g.w.day)  # put to the town today
+	var share_fresh: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards"}), nd2_v.conclusion)
+	var day_was: int = g.w.day
+	g.w.day = day_was + 30
+	var share_faded: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards"}), nd2_v.conclusion)
+	g.w.day = day_was
+	g.public_presentations.erase(earlier)
+	RC.clash_rule = rule_was
+	check(earlier > 0 and not share_fresh.is_empty() and not share_faded.is_empty(), "(fixture) the earlier called case is filed and the draft still reads (%d)" % earlier)
+	check(float(share_fresh.after) > float(share_mid.after) + 1e-6, "while the earlier case counts, its Mistaken call weakens the reading in the Demon share (%.3f against %.3f without it)" % [float(share_fresh.get("after", -1.0)), float(share_mid.get("after", -1.0))])
+	check(absf(float(share_faded.after) - float(share_mid.after)) < absf(float(share_fresh.after) - float(share_mid.after)) - 1e-6, "once it has faded, the call no longer weakens it (%.3f faded, %.3f fresh, %.3f without)" % [float(share_faded.get("after", -1.0)), float(share_fresh.get("after", -1.0)), float(share_mid.get("after", -1.0))])
 	_draw_and_bare()
 	_top_tier()
 	_lines()

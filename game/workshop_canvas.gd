@@ -340,16 +340,40 @@ static func _demon_share(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
 	var Shared = preload("res://workshop/shared_ledger.gd")
 	var ask: Dictionary = conclusion.duplicate(true)
 	ask.type = "demon"
-	var after: Dictionary = Shared.evaluate_question(pj.get("plan_after", {}), {}, {}, {}, ask)
+	var after: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_after", {}), pj.get("counted_after", [])), {}, {}, {}, ask)
 	if after.is_empty() or after.get("impossible", false):
 		return {}
 	# A listener who holds nothing before the case has no plan to ask: the prior stands.
-	var before: Dictionary = Shared.evaluate_question(pj.get("plan_before", {}), {}, {}, {}, ask)
+	var before: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_before", {}), pj.get("counted_before", [])), {}, {}, {}, ask)
 	var share := func(ev: Dictionary, which: String) -> float:
 		var evil: float = float(ev.get("people", {}).get(target, {}).get(which, 0.0))
 		return clampf(float(ev.get(which, 0.0)) / evil, 0.0, 1.0) if evil > 1e-9 else 1.0
 	var b: float = share.call(before, "posterior") if not (before.is_empty() or before.get("impossible", false)) else share.call(after, "prior")
 	return {"before": b, "after": share.call(after, "posterior")}
+
+## `plan` with only the challenges the connections model still counts: those of the stored
+## cases above its floor (`counted`, Connections.cases' entries, matched by key to the plan's
+## stored cases) and NPC defences, not a faded case's
+## (Codex on #410). The union's challenges are otherwise every presentation's, weighed or not.
+static func _counted_plan(plan: Dictionary, counted: Array) -> Dictionary:
+	if plan.is_empty() or not plan.get("prepared", {}).has("case"):
+		return plan
+	var kept: Dictionary = {}
+	var union: Dictionary = plan.prepared.case.get("reading_challenges", {})
+	for id in union:
+		if bool(union[id].get("npc_defence", false)):
+			kept[id] = union[id]
+	var keys: Array = counted.map(func(e): return str(e.get("key", "")))
+	for cs in plan.get("input", {}).get("listener", {}).get("connections", {}).get("cases", []):
+		if str(cs.get("key", "")) in keys:
+			for id in cs.get("challenges", {}):
+				if union.has(id):
+					kept[id] = union[id]
+	var out: Dictionary = plan.duplicate()
+	out.prepared = plan.prepared.duplicate()
+	out.prepared.case = plan.prepared.case.duplicate(true)
+	out.prepared.case.reading_challenges = kept
+	return out
 
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
