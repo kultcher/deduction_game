@@ -19,20 +19,21 @@ func _init() -> void:
 	requires_execution = true
 
 
-## Nothing to read yet: no one has been hanged this case, and its gift needs a hanging.
-## A good, unbroken Gravedigger leans a little toward one, as a hidden motive (Michael,
-## Nov 17): logged with its reason, never said. These are real people, so the lean is small.
-func _wants_a_reading(w, n) -> bool:
-	return n.role == "gravedigger" and not n.is_evil() and w.executions.is_empty() and not n.gift_broken()
+## The Gravedigger's gift reads the hanged, so it is at its best when someone is hanged every
+## day. A good Gravedigger always leans a little toward a hanging, as a hidden motive (Michael,
+## Nov 17 and Nov 21): logged with its reason, never said. These are real people, so the lean
+## is small. It doesn't depend on whether the gift is broken, which the Gravedigger can't know.
+func _wants_a_hanging(n) -> bool:
+	return n.role == "gravedigger" and not n.is_evil()
 
 
-func nomination_lean(w, n) -> float:
-	return Tuning.Roles.GRAVEDIGGER.nothing_to_read_lean if _wants_a_reading(w, n) else 0.0
+func nomination_lean(_w, n) -> float:
+	return Tuning.Roles.GRAVEDIGGER.hanging_lean if _wants_a_hanging(n) else 0.0
 
 
-func score_vote_reluctance(w, v, _nominee: String, _base: float, _panic: float, parts: Dictionary) -> void:
-	if _wants_a_reading(w, v):
-		parts["gravedigger_nothing_to_read"] = Tuning.Roles.GRAVEDIGGER.nothing_to_read_lean
+func score_vote_reluctance(_w, v, _nominee: String, _base: float, _panic: float, parts: Dictionary) -> void:
+	if _wants_a_hanging(v):
+		parts["gravedigger_wants_hanging"] = Tuning.Roles.GRAVEDIGGER.hanging_lean
 
 
 func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
