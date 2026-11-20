@@ -84,7 +84,6 @@ static func clear_all() -> void:
 	Solver._sig_groups.clear()
 	Solver.question_cache.clear()
 	SupportModel.cache.clear()
-	SupportModel.comparisons.clear()
 	SupportModel.priors.clear()
 	SupportModel.explanations.clear()
 	TraceSolver._compiled_cache.clear()
