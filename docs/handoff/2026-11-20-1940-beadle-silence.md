@@ -8,7 +8,7 @@
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Accusations from starting suspicion read as clues", built as Michael's
   "pressure of silence" [decided]. Pitch and constants approved Nov 20; approved to ship with no
-  cap on the second pass, Nov 21 (via Seneschal).
+  cap on the second pass, Nov 20 evening (via Seneschal).
 
 ## What changed
 

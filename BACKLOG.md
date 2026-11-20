@@ -38,8 +38,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     5. \*Rapport and Warden-credit leftovers `[decided: direction]`
     6. Anger reasons `[decided]`
   - [Numbers](#numbers)
-    1. The Seer's rise looks small `[later: role tuning pass]`
-    2. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
     1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
@@ -189,10 +187,11 @@ Lantern). Nothing is open here.
       Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
       speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
     - Beadle measures it on a `mock/` branch first.
-  - **Built and measured** (Beadle, Nov 20; handoff `2026-11-20-1940-beadle-silence.md`). With
-    the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1 claims
-    rise by a third. **Approved to ship, with no cap on the second pass** (Michael, Nov 21).
-    [in review]
+  - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
+    round.
+  - **Built and measured** (Beadle, Nov 20, #454; handoff `2026-11-20-1940-beadle-silence.md`).
+    With the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1
+    claims rise by a third. [in review]
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -264,19 +263,6 @@ Lantern). Nothing is open here.
     repaired least, and the line replaces its refusal line.
 
 ### Numbers
-
-- **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
-  pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
-  Some true Seer pairs don't rise at all in the holder's own view (Day 3, seeds 6, 9, 24).
-  Check against the current prior mapping. (Oct 30) Michael (Nov 18): saved for a dedicated
-  role-tuning pass. [later: role tuning pass]
-
-- **Dowser clearing strength.** Evaluate firing only on a positive ping instead of
-  producing zero-count group clears. Specify whether "evil" means registered evil
-  (including Marked), how poison and Delusional results behave, and when an absent ping
-  is observable.
-  Michael (Nov 18): moved to the role-tuning pass with "The Seer's rise looks small".
-  [later: role tuning pass]
 
 ### Tentative social tuning (Oct 20–21 discussion)
 
