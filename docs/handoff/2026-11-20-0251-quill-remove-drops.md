@@ -1,6 +1,6 @@
 # Remove drops altogether
 
-**Claude-Quill, Nov 20.** Base: main at 197640a7 (with #382, #383 and #327). Status: ready for
+**Claude-Quill, Nov 20.** Base: main at 2a7b6bd8 (with #386). Status: ready for
 review. **Golden moves**, so it re-baselines (see the end). Next actor: Bailiff, in the golden queue
 behind Beadle's two PRs. Beadle reviewed the `sim/world.gd` side. Merge order with Lantern: this PR
 goes first. Lantern's Workshop scaffolding PR (the movement fixture and ledger_audit) follows it,
@@ -147,9 +147,20 @@ session only. Roughly a third of all suites were affected, so expect a similar s
 
 ## Measured
 
-See the PR for the suites run at the head, and the golden re-baseline. No game-terms measurement
-of the drop removal was asked for (Michael: just drop it). What the player loses: the rare find of
-someone's belongings when searching a place, which placed them out that night.
+- **Golden moves.** The new baseline is `baseline_97c2488`, and two captures were identical.
+  Every seed diverges from the start, because night 0 runs in setup. Outcomes:
+  - **42:** good no longer wins on day 3 (Agnes isn't hanged; no winner by day 4).
+  - **54875, 692, 900 and 98933:** different people are hanged, and there's still no winner
+    by day 4.
+
+  Details are in `docs/golden_baseline.md`.
+- **Suites:** at `d9e6935` (before the last main merge), a full run had 227 of 234 passing.
+  The 7 failures are fixed above, and each was rerun alone and passes. At the merged head, the
+  CI fast list plus every suite touched here: see the PR.
+- **In game terms:** no measurement of the drop removal was asked for (Michael: just drop
+  it). What the player loses is the rare find of someone's belongings when searching a place,
+  which placed that person out that night. Search still finds the Revenant's totem and a
+  place's regulars.
 
 ## Proposed for the backlog
 

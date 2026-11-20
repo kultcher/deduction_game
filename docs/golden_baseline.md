@@ -44,7 +44,28 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
+### Current baseline (Nov 20, drops removed): `baseline_97c2488`
+
+`tools/golden/baseline_97c2488/` is the capture from `claude/remove-drops` at `97c2488` (main at
+`2a7b6bd`, with #386, merged in). Night walkers no longer drop anything on their route
+(Michael, Nov 19, "Remove drops altogether"). The drop rolls no longer draw, so every night
+after the first walker plays out differently. `LEGACY_EXTRA_SHIFT_DRAW` is kept, so deals are
+unchanged.
+- **Divergence from `baseline_9ea3f99`:** every seed, from the meta record. Night 0 runs inside
+  `new_case`, so the world's random state after setup already differs.
+- **Outcomes:**
+  - **42:** main hangs Agnes on day 3 and good wins. Now nobody is hanged and there's no winner
+    by day 4.
+  - **54875:** Edda is hanged on day 3 instead of Greta on day 2. No winner by day 4 either
+    way.
+  - **692:** Constance on day 2 and Lian on day 3, instead of Greta on day 2 and Constance on
+    day 3. No winner by day 4 either way.
+  - **900:** Greta on day 2 instead of Isolde on day 3. No winner by day 4 either way.
+  - **98933:** Agnes on day 2 and Lian on day 3, instead of Merrin on day 2 and Isolde on day
+    3. No winner by day 4 either way.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
 
 `tools/golden/baseline_9ea3f99/` is the capture from `claude/beadle-private-share` at `9ea3f99`
 (main at `561e17f`, with #365, merged in). An NPC who hasn't claimed a gift publicly

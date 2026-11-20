@@ -102,8 +102,7 @@ listener (#273), both Lantern's.
   Beadle reviewing the sim side.
   **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
   Revenant's totem and the place's regulars. **Built** in the drop-removal PR (Quill, Nov 20;
-  handoff `2026-11-20-0251-quill-remove-drops.md`). `LEGACY_EXTRA_SHIFT_DRAW` was split out of
-  it (Seneschal, Nov 20); see "Argon's audit: cleanup". [in review]
+  handoff `2026-11-20-0251-quill-remove-drops.md`). [in review]
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
