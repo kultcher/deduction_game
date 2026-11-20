@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
+### Current baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_a648578`
+
+`tools/golden/baseline_a648578/` is the capture from `claude/self-doubt-poisoner` at `a648578` (main at
+`fff6b66`, with #413 and #445, merged in). A listener who hears a reader say its gift may have been
+turned nudges suspicion toward anyone seen on that reader's block on a night it read, as an accepted
+Mistaken call does; and the Poisoner nudges (the strongest one, once) now add to a clear instead of
+overriding it.
+- **Divergence from `baseline_b96d2f2`:** two seeds.
+  - **42**, record 35 (Nisha's refresh, day 2 afternoon): Agnes, seen on a self-doubting
+    reader's block, is pressed a little more (requested 0.113 to 0.146).
+  - **54875**, record 227 (Hollis's cover, day 3 afternoon): Isolde, cleared and seen on a
+    self-doubting reader's block, is cleared a little less (requested -0.544 to -0.398).
+  - 692, 900 and 98933 are identical.
+- **Outcomes:** unchanged on all five seeds (the same hangings).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
 
 `tools/golden/baseline_b96d2f2/` is the capture from `claude/beadle-gravedigger-lean` at `b96d2f2` (main at
 `0b44cae`, merged in). A good Gravedigger always leans a little toward nominating and voting to hang

@@ -1,9 +1,9 @@
 # A reader's self-doubt points at the Poisoner
 
-**Claude-Quill, Nov 20.** Base: main at 871a9ad0, with #445 (claude/poisoner-destination)
-stacked in; it merges after #445. Status: ready for review. Next actor: Lantern (belief side)
-and Beadle (when the line fires) review, then Bailiff. Golden moves: re-baselined to
-`baseline_d553f53`.
+**Claude-Quill, Nov 20.** Base: main at fff6b666 (#445, on which this was stacked, and #413
+merged in). Status: ready; Lantern (belief side) and Beadle (behaviour) reviewed, both OK; Codex
+clean. Next actor: Bailiff, in the golden queue. Golden moves: re-baselined to
+`baseline_a648578`, on top of `baseline_b96d2f2`.
 
 BACKLOG "A reader's self-doubt points at the Poisoner" (Michael, Nov 20, [decided]).
 
