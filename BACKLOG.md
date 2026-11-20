@@ -72,7 +72,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. Gift doubt for readings the judge doesn't check `[open]`
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
   7. Observable actions as evidence (Stage 1B) `[tentative]`
-  8. A sighting places its teller `[decided]`
+  8. \*A sighting places its teller `[decided]`
   9. Being lied about can pull in evidence that clears the liar `[open]`
 - [Tabled](#tabled)
 - [Closed](#closed)
