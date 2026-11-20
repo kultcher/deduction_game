@@ -170,7 +170,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		var trace_supports: Array = card.get("support_cards", []).filter(func(sc): return sc.get("kind", "") == "trace")
 		if trace_supports.size() >= 2:
 			_dialogue().on_question(w, n)
-			lines.append(say_voiced(n, "pressed_multi_trace_case", "You're stringing scraps from half the village together to hang me. Anyone walking that road in the dark could have tracked those in or left them to frame me."))
+			lines.append(say_voiced(n, "pressed_multi_trace_case", "You're stringing scraps from half the village together to hang me. Anyone out in the dark could have tracked those in or left them to frame me."))
 			var pressed_multi: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 			pressed_multi["dialogue_exchange"] = {"action": "challenge_trace_case", "subject": n.id}
 			return pressed_multi
