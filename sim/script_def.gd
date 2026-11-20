@@ -306,12 +306,18 @@ func to_dict() -> Dictionary:
 		"secrets": secrets.duplicate(), "forced": forced.duplicate()}
 
 
+## Ids that once were on the roster and have been removed. A saved script that still lists
+## one loads without it, so an old custom script keeps working (the Muddler, Nov 20).
+const RETIRED_IDS = ["muddler"]
+
 static func from_dict(d: Dictionary):
 	var s = new()
 	s.name = str(d.get("name", "Untitled"))
 	for key in ["town", "minions", "demons", "secrets", "forced"]:
 		var arr: Array = []
 		for x in d.get(key, []):
+			if str(x) in RETIRED_IDS:
+				continue
 			arr.append(str(x))
 		s.set(key, arr)
 	return s

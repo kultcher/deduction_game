@@ -253,28 +253,26 @@ static func _late_relay(w, n, lines: Array, facts: Array) -> void:
 			if not decide(w, n, "late_relay", parts, "Tell the town what %s told them before dying (%s, day %d)?" % [src_id, str(e.get("role", "")), int(e.get("day", -1))]):
 				continue # they may yet, at a later meeting
 			n.told_to[key] = true
-			var Muddler = preload("res://sim/muddler.gd")
-			var spoken_e: Dictionary = Muddler.maybe_muddle_reading(w, n, src_id, e)
-			var rn: String = C.role_name(spoken_e["role"])
+			var rn: String = C.role_name(e["role"])
 			# Say when, relative to today, once: a "night N" inside the reading's own text (the
 			# Veteran's, the Medium's) is dropped if it's that night, or said as a person would.
-			var rday: int = int(spoken_e.get("day", w.day))
-			var said: String = "%s %s" % [C.spoken_when(rday, w.day), C.third_person(relay_body(reading_body(spoken_e["text"]), rday, w.day))]
+			var rday: int = int(e.get("day", w.day))
+			var said: String = "%s %s" % [C.spoken_when(rday, w.day), C.third_person(relay_body(reading_body(e["text"]), rday, w.day))]
 			lines.append(say_voiced(n, "meeting_late_relay", "Before %s died, they told me they were the %s, and that %s." % [src.name, rn, said],
 				{"dead": src.name, "role": rn, "reading": said}))
-			var f: Dictionary = info_fact(w, src, spoken_e)
+			var f: Dictionary = info_fact(w, src, e)
 			f["via"] = n.id
 			f["public"] = true
-			f["text"] = "%s says the late %s (as %s, night %d) told them: %s." % [n.name, src.name, rn, int(spoken_e.get("day", -1)), said]
+			f["text"] = "%s says the late %s (as %s, night %d) told them: %s." % [n.name, src.name, rn, int(e.get("day", -1)), said]
 			facts.append(f)
 			# Told before the town: public grounds for every mind, the teller's own copy
 			# included (Codex review of PR #77). The source's own statement stays private.
 			for l in w.living():
 				if l != n:
-					apply_info(w, l, src, spoken_e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, false, true)
+					apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, false, true)
 			apply_info(w, n, src, e, Tuning.Meeting.LATE_RELAY_TELLER_MARK, "", false, true)
-			w.public_event("reading", Gifts.implicated(spoken_e), n.id)
-			w.dlog.think(n.id, "relay", "Tells the town %s's private %s reading, heard before they died." % [src_id, spoken_e["role"]], {"src": src_id, "muddled": spoken_e.get("muddled", false)})
+			w.public_event("reading", Gifts.implicated(e), n.id)
+			w.dlog.think(n.id, "relay", "Tells the town %s's private %s reading, heard before they died." % [src_id, e["role"]], {"src": src_id})
 			return
 
 ## Has this reading of src already been told to the whole town?
@@ -602,62 +600,21 @@ static func _heard_reading(w, n, eid: String) -> Dictionary:
 ## claim itself would (C.RELAY_WEIGHT, and through the relayer's credibility), but it
 ## leaves a trail: there's a Seer, and the relayer knows who. Now and then
 ## (C.RELAY_CORROBORATE) the source steps forward and confirms it.
-static func _retire_muddled_reading_in_town(w, src, muddled_e: Dictionary) -> void:
-	var m_eid: String = info_eid(src.id, muddled_e)
-	for l in w.living():
-		if l == src:
-			continue
-		var mind = l.shadow if l.is_evil() and l.shadow != null else l
-		if mind != null and mind.ledger.has(m_eid):
-			mind.ledger[m_eid]["weight"] = 0.0
-			mind.ledger[m_eid]["meta"] = {"kind": "retired_muddle"}
-			refresh_beliefs(w, l, " (muddled reading debunked)")
-
 static func relay_reading(w, n, src, e: Dictionary, lines: Array, facts: Array) -> void:
-	var Muddler = preload("res://sim/muddler.gd")
-	var spoken_e: Dictionary = Muddler.maybe_muddle_reading(w, n, src.id, e)
-	var rn = C.role_name(spoken_e["role"])
-	var said = C.third_person(spoken_e["text"])
+	var rn = C.role_name(e["role"])
+	var said = C.third_person(e["text"])
 	lines.append(say_voiced(n, "meeting_relay_reading", "Word reached me from the %s: %s." % [rn, said], {"role": rn, "reading": said}))
-	facts.append({"kind": "accusation", "subject": Gifts.implicated(spoken_e), "source": n.id, "relay": true, "role": spoken_e["role"],
+	facts.append({"kind": "accusation", "subject": Gifts.implicated(e), "source": n.id, "relay": true, "role": e["role"],
 		"text": "%s says the %s (unnamed) told them: %s." % [n.name, rn, said]})
 	for l in w.living():
 		if l != n and l != src:
-			apply_info(w, l, src, spoken_e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, true)
-	w.dlog.think(n.id, "relay", "Relays %s's private %s reading without naming them." % [src.id, spoken_e["role"]], {"src": src.id, "muddled": spoken_e.get("muddled", false)})
-	if spoken_e.get("muddled", false) and src.alive and not src.silenced:
-		if src.claim_public:
-			lines.append(say_voiced(src, "debunk_muddle_claimed", "Hold on: %s got my %s reading twisted." % [n.name, rn], {"teller": n.name, "role": rn}))
-			_retire_muddled_reading_in_town(w, src, spoken_e)
-			facts.append({"kind": "deprecate_muddle", "source": src.id, "role": spoken_e["role"], "day": spoken_e["day"], "muddled_data": spoken_e["data"].duplicate(true)})
-			for real_e in src.info_log:
-				if int(real_e.get("day", -1)) == int(spoken_e.get("day", -2)) and str(real_e.get("role", "")) == str(spoken_e.get("role", "")) and not real_e.get("disowned", false):
-					if not real_e.get("shared", false):
-						_go_public(w, src, lines, facts)
-					else:
-						lines.append_array(info_lines(w, src, [real_e], "town", true, "volunteer"))
-						facts.append(info_fact(w, src, real_e))
-					break
-			return
-		var cost = reveal_cost(w, src)
-		var harm_bonus: float = 0.25 if Gifts.implicated(spoken_e).any(func(pid): return pid == src.id or src.npc_trust.get(pid, 0.5) >= 0.65) else 0.0
-		var parts = {"muddle_harm": 0.45 + harm_bonus, "confidence": (trait_of(src, "confidence") - 0.5) * 0.6}
-		for k in cost:
-			parts["cost_" + k] = -cost[k]
-		if decide(w, src, "debunk_muddle", parts, "Reveal gift (%s) to debunk %s's muddled relay?" % [spoken_e["role"], n.id]):
-			lines.append(say_voiced(src, "debunk_muddle_reveal", "Wait. That isn't what my gift showed at all; %s got it garbled." % n.name, {"teller": n.name}))
-			_retire_muddled_reading_in_town(w, src, spoken_e)
-			facts.append({"kind": "deprecate_muddle", "source": src.id, "role": spoken_e["role"], "day": spoken_e["day"], "muddled_data": spoken_e["data"].duplicate(true)})
-			_public_disclosure(w, src, lines, facts)
-		else:
-			src.pending_muddle_debunks.append({"teller": n.id, "role": spoken_e["role"], "day": spoken_e["day"], "muddled_entry": spoken_e.duplicate(true)})
-			w.dlog.think(src.id, "withhold", "Holds tongue on %s's muddled %s relay to protect cover; will debunk if revealing later." % [n.id, spoken_e["role"]])
-		return
+			apply_info(w, l, src, e, C.RELAY_WEIGHT * heard_weight(l, n), n.id, true)
+	w.dlog.think(n.id, "relay", "Relays %s's private %s reading without naming them." % [src.id, e["role"]], {"src": src.id})
 	if src.alive and not src.silenced and not src.claim_public and w.decision_roll(src, "corroborate_relay", C.RELAY_CORROBORATE, {}, n.id):
 		lines.append(say_voiced(src, "relay_claim_authorship", "That was me."))
 		for l in w.living():
 			if l != n and l != src:
-				acknowledge_reading(w, l, src, spoken_e, n.id)
+				acknowledge_reading(w, l, src, e, n.id)
 		_public_disclosure(w, src, lines, facts)
 
 ## The source has explicitly said "That was me" in public. Binding this particular
@@ -767,16 +724,6 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 		C.role_def(n.role).on_public_update(w, n, lines, facts, _mind())
 	if share_readings and C.has_readings(n.claimed_role):
 		var PsychRole = preload("res://sim/roles/psychologist.gd")
-		if not n.pending_muddle_debunks.is_empty():
-			for pm in n.pending_muddle_debunks:
-				var m_ent: Dictionary = pm.get("muddled_entry", {})
-				if not m_ent.is_empty():
-					_retire_muddled_reading_in_town(w, n, m_ent)
-					facts.append({"kind": "deprecate_muddle", "source": n.id, "role": m_ent.get("role", n.claimed_role), "day": m_ent.get("day", -1), "muddled_data": m_ent.get("data", {}).duplicate(true)})
-			var t_id0: String = str(n.pending_muddle_debunks[0].get("teller", ""))
-			var t_nm0: String = w.by_id[t_id0].name if w.by_id.has(t_id0) else "someone"
-			lines.append(say_voiced(n, "debunk_muddle_deferred", "And to set the record straight: that earlier %s reading %s passed along was muddled." % [C.role_name(n.claimed_role), t_nm0], {"role": C.role_name(n.claimed_role), "teller": t_nm0}))
-			n.pending_muddle_debunks.clear()
 		var shared_this_turn: Array = []
 		for e in n.info_log:
 			if e["shared"] or e.get("disowned", false):

@@ -32,7 +32,7 @@ func _init() -> void:
 	_check(registry.find_matches("medium confidence; a clerk; veteran sailor; a scion of the family").is_empty(), "ambiguous lowercase prose is not mistaken for roles")
 	_check(_ids(registry.find_matches("The Medium spoke to the Clerk.")) == ["role:medium", "role:clerk"], "canonical role capitalization is recognized in prose")
 	_check(_ids(registry.find_matches("medium clerk nightwatch", {"role_context": true})) == ["role:medium", "role:clerk", "role:nightwatch"], "explicit gift context supports lowercase ambiguous names and role IDs")
-	_check(_ids(registry.find_matches("Merrin is Marked, and the Muddler garbled it.")) == ["person:merrin", "secret:marked", "secret:muddler"], "secrets are recognized by their capitalized names")
+	_check(_ids(registry.find_matches("Merrin is Marked, and the Sleepwalker wandered.")) == ["person:merrin", "secret:marked", "secret:sleepwalker"], "secrets are recognized by their capitalized names")
 	_check(registry.find_matches("marked the spot; a delusional plan").is_empty(), "lowercase prose is not mistaken for secrets")
 	_check(_ids(registry.find_matches("lovers sleepwalker", {"role_context": true})) == ["secret:lovers", "secret:sleepwalker"], "secret context takes secret IDs")
 	_check(registry.lookup("secret:marked").get("icon_path", "") != "" and registry.lookup("secret:marked")["color"] == UITheme.color("role_secret"), "secrets carry their icon and the secret colour")

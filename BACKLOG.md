@@ -57,7 +57,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. The Breathstealer overhaul `[decided: add; option open]`
-  2. The Muddler rarely has anything to muddle `[open]`
+  2. The Muddler rarely has anything to muddle `[in review]`
   3. The secrets rework `[decided; values open]`
   4. Roster expansion `[open]`
   5. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
@@ -79,7 +79,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. The spoken reply to a later-day repeat `[polish]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
-  5. Adjudicating a muddled card `[later]`
+  5. Adjudicating a muddled card `[in review]`
   6. Brute kills scored as hexes on custom scripts `[later]`
   7. Gift doubt for readings the judge doesn't check `[open]`
   8. Higher-Insight NPCs weigh more broken-reading combinations `[tentative]`
@@ -176,7 +176,8 @@ listener (#273), both Lantern's.
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
        whether to do it at all.
-     - Deleting the Muddler is held for the secrets rework.
+     - **Deleting the Muddler: built** (Michael, Nov 20: "everything to do with the Muddler").
+       Quill, `claude/remove-muddler` (handoff `2026-11-20-0725-quill-remove-muddler.md`). [in review]
   3. **File splits,** one file per PR, with no change to play:
      - **Tier 1** follows Beadle's in-flight work (#390, the symmetric vote):
        `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd` (Beadle, with Lantern
@@ -470,13 +471,13 @@ The one performance item, "Late-game meeting and presenting cost", is in
   spreads earlier for both sides and the meeting is less of a reveal); garble day
   sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
   it for now; he isn't sure the Muddler can work as written without warping the game
-  around it. [open]
+  around it. **Removed instead** (Michael, Nov 20; Quill, `claude/remove-muddler`). [in review]
 
 - **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
   [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
   self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
   ones the holder knows about become ordinary claims, which evil can bluff, and the player
-  can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
+  can argue an unclaimed one per case. The Muddler is cut (removed, Nov 20). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
   it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
@@ -640,8 +641,8 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
     - **A possible cap** would be a new constant, Michael's call.
-- **Adjudicating a muddled card** (the Muddler secret). Tied to the secrets rework, since the
-  Muddler may go (Lantern, Nov 20). **[later]**
+- **Adjudicating a muddled card** (the Muddler secret). Goes with the Muddler (removed,
+  Michael, Nov 20; Quill, `claude/remove-muddler`). [in review]
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for

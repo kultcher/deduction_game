@@ -113,8 +113,6 @@ static func _secret_mod_code(mod_name: String) -> int:
 			return 2
 		"sleepwalker":
 			return 3
-		"muddler":
-			return 4
 		_:
 			return -99
 

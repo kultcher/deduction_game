@@ -11,7 +11,6 @@ const Gifts = preload("res://sim/gifts.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
-const Muddler = preload("res://sim/muddler.gd")
 const PsychologistRole = preload("res://sim/roles/psychologist.gd")
 
 static func trait_of(n, t: String) -> float:
@@ -403,8 +402,6 @@ static func _record_direct_statement_for_listener(w, s, l, item: Dictionary, ori
 
 static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: Dictionary = {}) -> void:
 	_mark(s, l, item["key"])
-	if not public and item.get("relay", false):
-		item = Muddler.maybe_muddle_item(w, s, item, l.id)
 	_record_direct_statement_for_listener(w, s, l, item, original)
 	# A relay carries the original teller's "lie" flag (the listener's hearsay keeps it, so
 	# the item stays what the source said). Passing it on is the relayer's lie only if they
@@ -813,13 +810,9 @@ static func gossip_item(w, n) -> Dictionary:
 		var src = w.by_id.get(h["from"])
 		n.told_to["player|hs:%d" % i] = true
 		if h["kind"] == "reading" and src != null:
-			var mh_r: Dictionary = Muddler.maybe_muddle_item(w, n, h)
-			var e: Dictionary = mh_r["entry"]
+			var e: Dictionary = h["entry"]
 			var f = Mind.info_fact(w, src, e)
 			f["via"] = n.id
-			if e.get("muddled", false):
-				f["muddled"] = true
-				f["muddled_by"] = e.get("muddled_by", n.id)
 			f["text"] = "Via %s: " % n.name + f["text"]
 			var out_facts_r: Array = [f] + PsychologistRole.companion_facts(w, src, e, n.id)
 			var role_s: String = C.role_name(e["role"])
@@ -843,7 +836,7 @@ static func gossip_item(w, n) -> Dictionary:
 					"text": "Via %s: %s hinted at %s (%s)." % [n.name, src.name, C.HINT_PACKAGES[hp]["name"],
 						C.package_roles_text(hp, w.case_script)]}]}
 		if h["kind"] == "sighting":
-			var mh_s: Dictionary = Muddler.maybe_muddle_item(w, n, h)
+			var mh_s: Dictionary = h
 			var who = w.by_id[mh_s["about"]]
 			var by = w.by_id[mh_s["from"]].name if w.by_id.has(mh_s["from"]) else "someone"
 			var block_s: String = C.block_name(mh_s["block"])
@@ -851,9 +844,6 @@ static func gossip_item(w, n) -> Dictionary:
 			var sighting_fallback: String = "%s says %s was out on %s %s." % [by, who.name, block_s, night_s]
 			var s_fact_out: Dictionary = {"kind": "sighting", "subject": [who.id], "block": mh_s["block"], "day": mh_s["day"], "phase": C.NIGHT, "source": mh_s["from"], "via": n.id,
 				"text": "Via %s: %s saw %s on %s on night %d." % [n.name, by, who.name, block_s, mh_s["day"]]}
-			if mh_s.get("muddled", false):
-				s_fact_out["muddled"] = true
-				s_fact_out["muddled_by"] = mh_s.get("muddled_by", n.id)
 			return {"lines": [Mind.say_voiced(n, "gossip_sighting", sighting_fallback, {"source": by, "subject": who.name, "block": block_s, "night": night_s})],
 				"facts": [s_fact_out]}
 	return {"lines": [Mind.say_voiced(n, "gossip_empty", "...Well, I thought I had something. The price of bread, mostly.")], "facts": []}
@@ -907,16 +897,13 @@ static func answer_about_role(w, n, role: String) -> Dictionary:
 			facts.append({"kind": "claim", "subject": [sid], "role": role, "source": sid, "via": n.id, "private": true,
 				"text": "Via %s: %s privately claims to be the %s." % [n.name, who.name, rn]})
 			for raw_e in kc["readings"]:
-				var e: Dictionary = Muddler.maybe_muddle_reading(w, n, sid, raw_e)
+				var e: Dictionary = raw_e
 				var said_rd: String = C.third_person(e["text"])
 				var rd_fb: String = "They said %s." % said_rd
 				text += " " + rd_fb
 				voiced_chunks.append(Dialogue.voice_line(n.id, "role_query_reading", rd_fb, {"reading": said_rd}))
 				var f = Mind.info_fact(w, who, e)
 				f["via"] = n.id
-				if e.get("muddled", false):
-					f["muddled"] = true
-					f["muddled_by"] = e.get("muddled_by", n.id)
 				f["text"] = "Via %s: " % n.name + f["text"]
 				facts.append(f)
 				facts.append_array(PsychologistRole.companion_facts(w, who, e, n.id))

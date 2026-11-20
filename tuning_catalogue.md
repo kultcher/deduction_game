@@ -13,7 +13,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
-| `MUDDLER_GOSSIP_FLOOR` | `0.7` | The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret only shows when they relay what they've heard. | `sim/world.gd` |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
@@ -259,7 +258,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_SIGHTING_GOSSIP_SCALE` | `0.8` |  | `sim/social.gd` |
 | `SHARE_SIGHTING_SCENE_BONUS` | `0.4` |  | `sim/social.gd` |
 | `SHARE_ALIBI_WEIGHT` | `0.22` |  | `sim/social.gd` |
-| `MUDDLER_CHANCE` | `0.65` |  | `sim/muddler.gd` |
 | `SHARE_ROLE_HINT_BOND_MIN` | `0.45` | was 0.55 (Nov 5: acquaintances, not only friends) | (unused) |
 | `SHARE_ROLE_HINT_OPENNESS_SCALE` | `0.9` |  | (unused) |
 | `SHARE_ROLE_HINT_BOND_OFFSET` | `0.15` |  | (unused) |

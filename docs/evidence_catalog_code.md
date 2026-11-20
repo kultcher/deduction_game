@@ -113,7 +113,7 @@ Every role's reading is produced by its role file, `sim/roles/<role>.gd` (night 
 
 | Distorter | Where |
 |---|---|
-| Secrets (Marked, Delusional, Lovers, Sleepwalker, Muddler) | `sim/content.gd` (`SECRET_MODS`); `workshop/cs/WorldDomain.cs`; `workshop/solver.gd` (`_secret_mod_code`) |
+| Secrets (Marked, Delusional, Lovers, Sleepwalker; the Muddler was removed Nov 20) | `sim/content.gd` (`SECRET_MODS`); `workshop/cs/WorldDomain.cs`; `workshop/solver.gd` (`_secret_mod_code`) |
 | Red Herring | `RoleConstraints.cs` (`SeerRhWeight`) |
 | Poisoner | `sim/roles/poisoner.gd`; fixtures only in the solver: `workshop/chronology.gd` (`poison_windows`), `workshop/fixtures.gd` |
 | Revenant | `sim/roles/revenant.gd`; `workshop/chronology.gd` |

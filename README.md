@@ -4,7 +4,7 @@ A single-player social deduction game inspired by Blood on the Clocktower. You a
 Demonologist summoned to a small town where a demon has taken a host. Minions serve it (one
 of the Poisoner, Breathstealer, Revenant and Scion in a 7-person town, two in a 10-person
 town), and one innocent townsperson carries a secret (Delusional, Marked, Secret Lovers or
-Sleepwalker; custom scripts add the Muddler) that muddies their gift or puts them out at
+Sleepwalker) that muddies their gift or puts them out at
 night. Over six days (seven
 townsfolk) or eight (ten) you question townsfolk, search crime scenes, listen to gossip and
 sway the town's votes, until the demon's host hangs or the town falls.
