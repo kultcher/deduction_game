@@ -772,7 +772,8 @@ player's case; it doesn't search for theories.**
     explains. Insight also sets how readily an NPC connects what it hears to what it
     knows firsthand: a sharp NPC links more cards to its own readings and nights, a dull
     one only the glaring ones. It never connects public cards that don't touch its own
-    knowledge; that's the player's job. The headline nudge is off. The earlier model, where
+    knowledge; that's the player's job. The headline reading, which let a dull NPC take a strong
+    reading at its word, was removed in purge phase 6a (Nov 20). The earlier model, where
     attention bounded belief, was removed in purge phase 3 (Nov 18); it's on the branch
     `archive/legacy-belief-final`.
 - **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the

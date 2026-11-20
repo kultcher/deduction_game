@@ -320,7 +320,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			prepared.listener.knowledge["presented_reports"] = focus.filter(func(id): return facts.has(id))
 			prepared.listener.knowledge.presented_reports.sort()
 		# Per-card source reliability (Phase 3.2): each spoken card carries its own
-		# source/teller/player trust into CaseEval and _headline individually, so a low-trust
+		# source/teller/player trust into CaseEval individually, so a low-trust
 		# rumor never dilutes a firsthand clue and a firsthand clue never launders a rumor.
 		# Raw NPC discoveries never depend on player credibility unless heard solely via player.
 		var player_cred: float = clampf(float(prepared.listener.trust), 0.0, 1.0)

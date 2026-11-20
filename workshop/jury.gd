@@ -469,13 +469,6 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	return response
 
-## The headline of the strong evil signals about one person, on the alignment scale
-## (0.45 * CaseEval.shift): what the readings literally say, taken as true, with each
-## reading discounted by how far the listener trusts its source (_card_trust) and by any
-## doubt they hold about that reading (CaseEval.reading_error: impairment, challenges).
-## Seer "yes": one of the pair is the Demon (each 1/2). Archivist: one of the pair holds
-## the named evil role (each 1/2). Dowser: count of the group read as evil (each count/n).
-## Several readings combine as independent chances (noisy-or). Only raises suspicion.
 static func _cards_by_ids(view: Dictionary, ids: Array) -> Array:
 	return view.get("cards", []).filter(func(c): return c.get("id", "") in ids)
 
@@ -512,104 +505,6 @@ static func _movement_trace_tail(view: Dictionary, cards: Array) -> String:
 		_:
 			return "The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
 
-static func _headline_group_key(view: Dictionary, card: Dictionary) -> String:
-	var role: String = str(card.get("role", ""))
-	var source: String = str(card.get("source", ""))
-	var data: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
-	var subjects: Array = []
-	if data.get("pair") is Array:
-		subjects = data.pair.duplicate()
-	elif data.get("group") is Array:
-		subjects = data.group.duplicate()
-	elif data.get("trio") is Array:
-		subjects = data.trio.duplicate()
-	elif data.has("nominator") and data.has("nominee"):
-		subjects = [str(data.get("nominator", "")), str(data.get("nominee", ""))]
-	subjects.sort()
-	var result_sig: String = ""
-	match role:
-		"seer":
-			result_sig = "1" if bool(data.get("yes", false)) else "0"
-		"archivist":
-			result_sig = str(data.get("role", ""))
-		"dowser":
-			result_sig = str(int(data.get("count", 0)))
-		_:
-			result_sig = JSON.stringify(data)
-	var obs: Dictionary = card.get("observed_at", {}) if card.get("observed_at", {}) is Dictionary else {}
-	var obs_day: int = int(obs.get("day", card.get("night", 0)))
-	var obs_phase: String = str(obs.get("phase", "night" if int(card.get("night", -1)) >= 0 else "morning"))
-	var scion_epoch: int = 0
-	var executions = view.get("timeline", {}).get("executions", {})
-	if executions is Dictionary:
-		for ex_day_key in executions:
-			var ex_day: int = int(ex_day_key)
-			# Evening execution on day d precedes Night d and any morning/afternoon reading on days > d.
-			if (obs_phase == "night" and ex_day <= obs_day) or (obs_phase != "night" and ex_day < obs_day):
-				scion_epoch += 1
-	return "%s|%s|%s|%s|%d" % [source, role, ",".join(PackedStringArray(subjects)), result_sig, scion_epoch]
-
-static func _headline(view: Dictionary, cards: Array, person: String, prior: float, listener: Dictionary, eval_listener: Dictionary, player_tells: bool) -> float:
-	var own_ids: Array = eval_listener.get("knowledge", {}).get("own_reports", [])
-	if own_ids.is_empty():
-		own_ids = eval_listener.get("knowledge", {}).get("attention_reports", [])
-	var grouped: Dictionary = {}
-	for card in cards:
-		if card.get("kind", "") != "report" or card.get("quoted", false):
-			continue
-		var p: float = _headline_chance(card, person)
-		if p > 0.0:
-			var credence: float = 1.0 - CaseEval.reading_error(view, card, eval_listener, own_ids)
-			var hit: float = clampf(p * credence * _card_trust(card, listener, player_tells or bool(card.get("via_player_only", false))), 0.0, 1.0)
-			var gkey: String = _headline_group_key(view, card)
-			if not grouped.has(gkey):
-				grouped[gkey] = []
-			grouped[gkey].append(hit)
-	var miss: float = 1.0
-	for gkey in grouped:
-		var hits: Array = grouped[gkey]
-		hits.sort_custom(func(a, b): return a > b)
-		var group_miss: float = 1.0 - float(hits[0])
-		var decay: float = Tuning.Workshop.HEADLINE_REPEAT_BUMP
-		for i in range(1, hits.size()):
-			group_miss *= 1.0 - clampf(float(hits[i]) * decay, 0.0, 1.0)
-			decay *= Tuning.Workshop.HEADLINE_REPEAT_BUMP
-		miss *= group_miss
-	var implied: float = 1.0 - miss
-	if implied <= prior:
-		return 0.0
-	return Tuning.Workshop.JURY_ALIGNMENT_COEFF * CaseEval.shift(prior, implied)
-
-static func _headline_chance(card: Dictionary, person: String) -> float:
-	var data = card.get("data", {})
-	if not data is Dictionary:
-		return 0.0
-	match card.get("role", ""):
-		"seer":
-			if data.get("yes", false) and person in data.get("pair", []):
-				return Tuning.Workshop.HEADLINE_SEER / float(maxi(data.pair.size(), 1))
-		"archivist":
-			if person in data.get("pair", []):
-				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(data.pair.size(), 1))
-		"dowser":
-			var group: Array = data.get("group", [])
-			if person in group and int(data.get("count", 0)) > 0:
-				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(group.size())
-		"chronicler":
-			var ctrio: Array = data.get("trio", [])
-			if person in ctrio:
-				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(ctrio.size(), 1))
-		"magistrate":
-			if not bool(data.get("same", true)) and person in [str(data.get("nominator", "")), str(data.get("nominee", ""))]:
-				return Tuning.Workshop.HEADLINE_DOWSER * 0.5
-		"registrar":
-			if bool(data.get("yes", false)) and str(data.get("target", "")) == person and data.get("roles", []).any(func(r): return C.is_minion(str(r))):
-				return Tuning.Workshop.HEADLINE_ARCHIVIST * 0.5
-	return 0.0
-
-## Confidence is directional (Oct 30, docs/social_trust_pass.md): the scale-mode factor
-## (1.4 - 0.8 * confidence) applies only to a move against the listener's current lean;
-## fresh evidence (no clear lean) and moves with the lean come through at 1.0.
 static func _directional(confidence: float, step: float, lean: float, persistence: bool) -> float:
 	if persistence or absf(lean) < Tuning.Workshop.LEAN_MIN:
 		return 1.0 if not persistence else confidence
@@ -700,7 +595,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var compiled = Graph.compile_case(view, value)
 	var scoped = _eval_case(view, compiled, attention, baseline)
 	var attended: Array = Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected)
-	# Source trust and headlines read everything the listener holds, not just what this run
+	# Source trust reads everything the listener holds, not just what this run
 	# attends to, so re-presenting held evidence (which shifts attention) can't move them.
 	var held: Array = Solver.selected(view, value).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
@@ -794,21 +689,6 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if not ev.impossible and str(view.get("chronology", {}).get("curse", {}).get("executed", "")) == id:
 			s = 1.0
 		var alignment: float = Tuning.Workshop.JURY_ALIGNMENT_COEFF * s
-		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
-		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations
-		# the full model weighs. It only ever raises, and fades out with Insight.
-		var headline_signal: float = 0.0
-		var dull: float = 0.0
-		if connections.is_empty():
-			headline_signal = _headline(view, held, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
-			dull = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
-		# Only a strong evil reading about this person blends in: with no headline the model's
-		# own effect (including any clearing) stands unchanged.
-		# The pull grows with the headline's strength (Nov 6): a faint ping can't undo a
-		# clearing; a full one (HEADLINE_FULL_AT or more) blends as before.
-		if headline_signal > 0.0 and headline_signal > alignment:
-			var strength: float = minf(1.0, headline_signal / Tuning.Workshop.HEADLINE_FULL_AT)
-			alignment += dull * strength * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):
 			var pattern_case = belief_case.duplicate(true)
@@ -871,7 +751,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		effects[id] = {"requested": final_req, "raw_requested": raw_req, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
-			"protection_signal": protection_signal, "headline_signal": headline_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
+			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
 			"evil_change": s, "good_change": -s, "prior": odds.prior, "posterior": odds.posterior,
 			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": status}
 	if not refresh and not value.get("circumstantial", []).is_empty():

@@ -103,7 +103,6 @@ func _run_claude_audit_cleanup() -> void:
 # ---------------------------------------------------------------- from test_phase2_bug_sweep
 
 func _run_phase2_bug_sweep() -> void:
-	_test_2_5_headline_firsthand_attention_reports()
 
 
 # ---------------------------------------------------------------- from test_phase4_3_framing_and_vigil_physics
@@ -513,32 +512,6 @@ func _test_jury_persuasion_tail_helper() -> void:
 
 
 # ---- test_phase2_bug_sweep
-
-
-func _test_2_5_headline_firsthand_attention_reports() -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(4, 10)
-	var holder = g.w.living_good()[0]
-	var a = g.w.living_good()[1]
-	var b = g.w.living_good()[2]
-	holder.role = "seer"
-	holder.claimed_role = ""
-	holder.claim_public = false
-	holder.ledger.clear()
-	holder.workshop_state.clear()
-	holder.info_log = [{"role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "seer yes"}]
-	var input: Dictionary = Bridge.capture(g, [], holder.id, "private", holder)
-	var plan: Dictionary = Shared.prepare(input, {}, holder.ledger)
-	_check(plan.ready and plan.prepared.listener.knowledge.get("own_reports", []).is_empty() and not plan.prepared.listener.knowledge.get("attention_reports", []).is_empty(), "SharedLedger moves firsthand report IDs into attention_reports")
-	var h_own: float = Jury._headline(plan.prepared.view, plan.prepared.view.cards, a.id, 0.30, plan.prepared.listener, plan.prepared.listener, false)
-	var stripped_eval: Dictionary = plan.prepared.listener.duplicate(true)
-	stripped_eval.knowledge["attention_reports"] = []
-	var h_default: float = Jury._headline(plan.prepared.view, plan.prepared.view.cards, a.id, 0.30, plan.prepared.listener, stripped_eval, false)
-	_check(h_own > h_default, "Jury._headline uses OWN_ERR via attention_reports instead of DEFAULT_ERR (%.4f > %.4f)" % [h_own, h_default])
-
-
-# ---- test_phase4_3_framing_and_vigil_physics
 
 
 func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
