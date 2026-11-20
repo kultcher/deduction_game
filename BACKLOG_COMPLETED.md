@@ -3,6 +3,32 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026, section 2 answers (Michael; recorded by Claude-Vicar)
+
+- **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on
+  an ordinary night only about 5% of the time, against the Demon heading for the victim's
+  house on kill nights, so one sighting is a large likelihood ratio, and "claimed a day
+  role, seen out at night" reads as open-and-shut. Don't fix it by biasing the Demon
+  toward night-walking roles. Levers, measured with the bot A/B: a higher ordinary
+  out-rate, more good NPCs with secret errands, softer Demon routes, vigil yield.
+  [decided: tune in the balance pass]
+
+  > **Closed Nov 20 (Michael):** ongoing and known.
+
+- **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
+  bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
+  seen out at night, and nobody has claimed Night Watch). This opens double claims (the
+  real Night Watch may just be quiet), which need their own logic; once handled, fake
+  Mediums and evil generally can make bolder lies. (Oct 19) **On hold** (Michael, Nov 19)
+  until "Good NPCs lie tactically" is designed and decided. [decided; on hold]
+  - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
+    bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
+    in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
+    when caught out, and double claims) is in "More rebuttals after a caught lie".
+    **Built** (Beadle, #390).
+
+  > **Closed Nov 20 (Michael):** the case where the hold was lifted (switching when pre-empted) is built in #390. The rest is in "Caught out and pressed again: what's left".
+
 ## Closed Nov 20, 2026, reprioritization (Michael; recorded by Claude-Vicar)
 
 - **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
