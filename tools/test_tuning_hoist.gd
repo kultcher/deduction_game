@@ -113,7 +113,9 @@ func _test_production_wiring_and_aliases() -> void:
 		"res://sim/mind_meeting.gd": ["PUBLIC_CLAIM_FEW_LEFT", "ACCUSE_SUSPICION_PIVOT"],
 		"res://sim/mind_defence.gd": ["DEFENCE_REVEAL_CAP", "DEFENCE_MISLED_RELIEF"],
 		"res://sim/mind_vote.gd": ["VOTE_DISTRUST_NOMINATOR_OFFSET"],
-		"res://sim/social.gd": ["TAVERN_WHISPER_MIN_CROWD", "TAVERN_WHISPER_CHANCE", "WRONG_ROLE_GUESS_STEP", "SHARE_READING_OPENNESS_SCALE", "ROLE_WILLING_THRESHOLD"],
+		"res://sim/social.gd": ["TAVERN_WHISPER_MIN_CROWD", "TAVERN_WHISPER_CHANCE", "SHARE_READING_OPENNESS_SCALE"],
+		"res://sim/social_approaches.gd": ["WRONG_ROLE_GUESS_STEP", "ROLE_WILLING_THRESHOLD"],
+		"res://sim/social_tavern.gd": ["TAVERN_TIER1_TARGET", "TAVERN_GOSSIP_MAX_ITEMS"],
 		"res://sim/evil.gd": ["KILL_VETERAN_UNPOISONED", "KILL_NOISE", "POISON_NOISE", "PLANTER_MINION_BONUS", "SCAPEGOAT_KEEP_BASE"],
 		"res://workshop/source_doubt.gd": ["DOUBT_CAUGHT_ALIBI_NIGHT", "DOUBT_FALSE_NW_GENERAL", "DOUBT_GD_EVIL_SCALE", "History.executed"],
 	}

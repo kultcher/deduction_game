@@ -136,8 +136,8 @@ Lantern). Nothing is open here.
        (#426) and `mind.gd` (#433), Beadle, with Lantern on `mind.gd`'s case side.
      - **Tier 2, under way:** Herald's splits are done: the live Workshop's field editors
        (#438), the canvas's card layouts (#439), and the voices, one file per character in
-       `sim/voices/` (#458). Left: `social.gd` (Beadle, after #431 and #437), and
-       `live_activity` and `case_eval` (Lantern).
+       `sim/voices/` (#458). `social.gd` is in review (Beadle, #452). Left: `live_activity` and
+       `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
 
   [decided]
@@ -337,10 +337,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
   - **Value tiers built** (Quill, Nov 20, `claude/gossip-tiers`; handoff
     `2026-11-20-1215-quill-gossip-tiers.md`), as approved above. Measured: the targets are
     both met on about 4% of tavern evenings today, though the town's news would allow it on
-    about 84%. Beadle's budget is next. [in review]
+    about 84%. Merged (#431, Nov 20).
   - **Budget built** (Beadle, Nov 20, #437; handoff `2026-11-20-1400-beadle-gossip-budget.md`):
     each evening fills its tier-1 and tier-2 targets first, then draws as before. Both targets
-    are met on about 73% of evenings (from 3%). [in review]
+    are met on about 73% of evenings (from 3%). Merged (#437, Nov 20).
 
 ## 4. Major structural work (a week or more; design first)
 

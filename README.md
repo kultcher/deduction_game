@@ -315,7 +315,10 @@ sim/mind_nomination.gd, mind_defence.gd, mind_vote.gd
 sim/mind_press.gd, mind_answers.gd
                   pressing and the caught-out ladder, and answers about a gift, a night and
                   the day; with mind_dialogue.gd they share sim/mind_dialogue_base.gd
-sim/social.gd     NPC-to-NPC exchanges, peer gift talk, approaches, the tavern
+sim/social.gd     NPC-to-NPC exchanges, peer gift talk, agreement trust, confirming readings;
+                  approaches and role questions are in social_approaches.gd and the evening
+                  tavern (gossip, the town's mood) in social_tavern.gd: one inheritance chain
+                  over sim/social_base.gd, so Social's functions are unchanged
 sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
 sim/fabrication_check.gd  whether a fabricated reading would point the town at its teller
 sim/presentation_reply.gd  replies to speech the Workshop doesn't judge; evil's mask
