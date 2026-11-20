@@ -13,7 +13,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
-| `MUDDLER_GOSSIP_FLOOR` | `0.7` | The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret only shows when they relay what they've heard. | `sim/world.gd` |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
@@ -256,7 +255,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_SIGHTING_GOSSIP_SCALE` | `0.8` |  | `sim/social.gd` |
 | `SHARE_SIGHTING_SCENE_BONUS` | `0.4` |  | `sim/social.gd` |
 | `SHARE_ALIBI_WEIGHT` | `0.22` |  | `sim/social.gd` |
-| `MUDDLER_CHANCE` | `0.65` |  | `sim/muddler.gd` |
 | `SHARE_ROLE_HINT_BOND_MIN` | `0.45` | was 0.55 (Nov 5: acquaintances, not only friends) | (unused) |
 | `SHARE_ROLE_HINT_OPENNESS_SCALE` | `0.9` |  | (unused) |
 | `SHARE_ROLE_HINT_BOND_OFFSET` | `0.15` |  | (unused) |
@@ -688,7 +686,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
 | `REFUSAL_LR` | `1.5` |  | `workshop/speech_evidence.gd` |
-| `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "minion": 0.45, "good": -0.4, "marked": -0.1, ...` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
+| `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0....` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
 | `STANCE_ACCEPT` | `0.6` |  | `workshop/consequences.gd`, `workshop/jury.gd` |
 | `STANCE_PARTIAL` | `0.35` |  | `workshop/consequences.gd`, `workshop/jury.gd` |
 | `EXECUTION_PRIORITY_TOP_MARGIN` | `0.12` |  | `workshop/shared_ledger.gd` |
@@ -737,7 +735,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VENUE_MULTS` | `{ "private": 1.0, "meeting": 0.6, "nomination": 0.5, }` | Presentation venue multipliers (`game/workshop_presentation.gd`) | `game/game_meeting.gd`, `game/game_presentation.gd` |
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
 | `PREMISE_BYSTANDER_SHARE` | `1.0 / 3.0` | Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a card adds when only presented cases brought it, and what a stored case's cards add together, count in full on the case's target and at this share on everyone else. A listener hearing "X is evil" weighs how far the case proves that, and under-registers what it implies about the others. | `workshop/connections.gd` |
-| `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrol...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret, misled and conflict premises name no alignment target. | `workshop/shared_ledger.gd` |
+| `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "suspicious", "good", "notdemon", "notrole", "lied", "truth...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret and misled premises name no alignment target. | `workshop/shared_ledger.gd` |
 | `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
 | `SUSPICIOUS_HEARING` | `0.5` | A "suspicious" premise halves its stored case's weight (`Connections.case_weight`): what the case's cards add together counts at this share. Each card alone still counts in full. | `game/workshop_why.gd`, `workshop/connections.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` | The venue's share of connections pressure (`WorkshopPresentation`): private / meeting. | `game/workshop_presentation.gd` |

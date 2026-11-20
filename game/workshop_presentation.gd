@@ -135,8 +135,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	var earlier: Array = state.get("facts", []).duplicate()
 	var novelty_ids = Shared.endorsed_facts(snapshot, snapshot.root)
 	var headline: Dictionary = snapshot.arguments.filter(func(a): return a.board_number == snapshot.root)[0]
-	if headline.conclusion.type == "conflict":
-		novelty_ids = snapshot.selected
 	var fresh: Array = novelty_ids.filter(func(id): return id not in earlier and not state.get("rewarded_facts", {}).has(id))
 	var previous_focus: Array = state.get("attention_focus", []).duplicate()
 	state["attention_focus"] = original_ids.duplicate()
@@ -246,7 +244,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		var after_susp: float = n.suspicion.get(stance_subject, 0.1)
 		already_aligned = stance_before <= 0.15 if headline.conclusion.type in ["good", "marked"] else stance_before >= 0.48
 		text = _belief_stance_text(g, n, headline.conclusion.type, stance_subject, stance_before, assessment.stance, text, fresh.is_empty())
-		if headline.conclusion.type in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
+		if headline.conclusion.type in ["evil", "demon", "suspicious", "good", "marked"]:
 			var b_stance: String = belief_stance(headline.conclusion.type, stance_before, after_susp)
 			# Nothing new (or already convinced) keeps an accepting reply, but only if their belief
 			# didn't move away: a case that lowered their suspicion isn't voiced as agreement
@@ -289,13 +287,11 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# Always judged on the narrower pass: the broader assessment's sign doesn't bound it
 		# (hearsay can lift a case its own cards and the listener's readings argue against;
 		# Codex review of PR #92).
-		var judged: float = float(assessment.agreement)
-		if root.conclusion.type != "conflict":
-			judged = _reward_agreement(plan, snapshot, state.outside, assessment)
+		var judged: float = _reward_agreement(plan, snapshot, state.outside, assessment)
 		if not fresh.is_empty() and judged >= 0.6:
 			Mind.set_trust(g.w, n, n.trust + Tuning.Trust.PRESENTATION_REWARD, "the presented reports support the argument")
 			Mind.refresh_beliefs(g.w, n, " (presentation trust reward)")
-		elif judged <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT and root.conclusion.type != "conflict":
+		elif judged <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT:
 			Mind.set_trust(g.w, n, n.trust - Tuning.Trust.PRESENTATION_WRONG_COST, "the presented reports argue against the claim")
 			Mind.refresh_beliefs(g.w, n, " (presentation wrong-premise cost)")
 		if _challenge_backfired(plan, snapshot, state.outside, assessment):
@@ -346,13 +342,6 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			text += hub_voiced_tail
 	if root.conclusion.type == "suspicious" and direction == "deduction" and not self_support:
 		_suspicious_pressure(g, n, root, snapshot, venue, listener_key, key)
-	if root.conclusion.type == "conflict" and assessment.agreement >= 0.6 and not repeated:
-		if not state.has("scrutinized"):
-			state.scrutinized = {}
-		var sources: Array = snapshot.evidence.filter(func(e): return e.id in snapshot.selected).map(func(e): return e.source)
-		if not state.scrutinized.has(signature) and n.id in sources:
-			n.pressure += 0.1 if venue == "private" else 0.2
-			state.scrutinized[signature] = true
 	if not state.has("discussion"):
 		state.discussion = {}
 	# Trust rewards are part of the new starting inputs on a repeat.
@@ -408,14 +397,14 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	# why (meeting plan M2d, vote resistance lines).
 	var ctype: String = str(root.conclusion.get("type", ""))
 	var ctarget: String = str(root.conclusion.get("a", root.conclusion.get("target", "")))
-	if venue != "private" and voiced_stance == "accept" and ctarget != "" and ctype in ["evil", "demon", "minion", "suspicious"]:
+	if venue != "private" and voiced_stance == "accept" and ctarget != "" and ctype in ["evil", "demon", "suspicious"]:
 		if not n.dialogue_memory.has("accepted_cases"):
 			n.dialogue_memory["accepted_cases"] = {}
 		n.dialogue_memory["accepted_cases"][ctarget] = {"day": g.w.day, "key": key}
 	# A public case that caught the target in a home lie, which they granted (accepted, or
 	# took partly): if they then vote no, they say they believe the lie but won't hang for it
 	# (lie severity, the vote side; since #210 a caught home lie is evidence, not proof).
-	if venue != "private" and voiced_stance in ["accept", "partial"] and ctarget != "" and ctype in ["evil", "demon", "minion", "suspicious"] \
+	if venue != "private" and voiced_stance in ["accept", "partial"] and ctarget != "" and ctype in ["evil", "demon", "suspicious"] \
 			and Mind.catches_home_lie(plan.prepared.view, _weighed(assessment), ctarget):
 		if not n.dialogue_memory.has("granted_lies"):
 			n.dialogue_memory["granted_lies"] = {}
@@ -546,8 +535,8 @@ static func belief_stance(kind: String, before: float, after: float) -> String:
 	return "partial" if toward >= STANCE_MOVE.partial else "reject"
 
 static func _belief_stance_text(g, n, kind: String, subject: String, before: float, scoped: String, text: String, nothing_new: bool = false) -> String:
-	if kind not in ["evil", "demon", "minion", "suspicious", "good", "marked"]:
-		return text  # conflicts and the like say nothing about one person's alignment
+	if kind not in ["evil", "demon", "suspicious", "good", "marked"]:
+		return text  # lie calls and the like say nothing about one person's alignment
 	var after: float = n.suspicion.get(subject, 0.1)
 	var believed: String = belief_stance(kind, before, after)
 	g.w.dlog.trace_event("stance_from_belief", n.id, subject, {"kind": kind, "before": before, "after": after,

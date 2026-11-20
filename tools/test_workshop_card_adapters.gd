@@ -156,7 +156,7 @@ func _totem() -> void:
 		"loc": "well", "day": 1, "phase": 0, "text": "A totem bearing its maker's home material"})
 	var target = g.w.npcs[0]
 	var listener = g.w.living_good().filter(func(p): return p != target)[0]
-	var ded = g.file_deduction({"type": "minion", "a": target.id}, [number])
+	var ded = g.file_deduction({"type": "evil", "a": target.id}, [number])
 	var prepared = Assess.prepare(g.workshop_snapshot([ded], listener.id))
 	check(prepared.ready and prepared.view.world_options.identities, "a valid totem activates joint minion role assignments")
 	if not prepared.ready:

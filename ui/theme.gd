@@ -41,7 +41,7 @@ const HIDDEN_CARD_ALPHA = 0.42
 const DEPRECATED_CARD_ALPHA = 0.5
 
 static func card_color(card: Dictionary, tint: Color = Color.WHITE) -> Color:
-	var alpha: float = HIDDEN_CARD_ALPHA if card.get("hidden", false) else (DEPRECATED_CARD_ALPHA if card.get("deprecated", false) or card.get("withdrawn", false) else 1.0)
+	var alpha: float = HIDDEN_CARD_ALPHA if card.get("hidden", false) else (DEPRECATED_CARD_ALPHA if card.get("withdrawn", false) else 1.0)
 	return tint * Color(1, 1, 1, alpha)
 
 ## A character colour made dark enough to read on cream paper.

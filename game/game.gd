@@ -317,7 +317,7 @@ func _attach_workshop_world() -> void:
 			var endorsed: Array = WorkshopOwnership.Shared.endorsed_facts(captured, card.n)
 			for id in proof.receipts.keys():
 				if id not in endorsed:
-					proof.receipts.erase(id) # Quoting a conflict is not endorsing its accounts.
+					proof.receipts.erase(id) # Quoting a case is not endorsing its accounts.
 		return proof
 	w.workshop_present = func(n, card, targets, direction, venue, speak):
 		var game = weak_game.get_ref()

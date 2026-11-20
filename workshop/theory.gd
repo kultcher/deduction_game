@@ -78,7 +78,7 @@ static func cached(view: Dictionary, value: Dictionary, listener: Dictionary, in
 	if listener.get("confidence_mode", "scale") != "persistence":
 		return {}
 	var key: String = _key(value)
-	if value.conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"] and listener.get("fixed_theory_decisions", {}).has(key):
+	if value.conclusion.type in ["evil", "good", "suspicious", "marked", "demon"] and listener.get("fixed_theory_decisions", {}).has(key):
 		return listener.fixed_theory_decisions[key].duplicate(true)
 	var old: Dictionary = listener.get("theories", {}).get(key, {})
 	if old.get("input_key", "") == _stored_key(view, input_key):
@@ -99,8 +99,8 @@ static func _key(value: Dictionary) -> String:
 	var key: String = value.conclusion.target + "|" + value.conclusion.at
 	if value.conclusion.type == "marked":
 		key += "|marked"
-	elif value.conclusion.type in ["demon", "minion"]:
-		key += "|" + value.conclusion.type
+	elif value.conclusion.type == "demon":
+		key += "|demon"
 	return key
 
 static func _position(view: Dictionary, world: Dictionary, target: String, type: String, epoch: String) -> String:
@@ -109,6 +109,6 @@ static func _position(view: Dictionary, world: Dictionary, target: String, type:
 	var index: int = Solver.person_index(view, target)
 	if type == "marked":
 		return "marked" if world.marked == index else "unmarked"
-	if type in ["demon", "minion"]:
+	if type == "demon":
 		return type if Solver.position_holds(view, world, target, type, epoch) else "not" + type
 	return "evil" if Solver.position_holds(view, world, target, "evil", epoch) else "good"

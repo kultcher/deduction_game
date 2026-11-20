@@ -73,7 +73,7 @@ static func _concl_type_code(c_type: String) -> int:
 	match c_type:
 		"evil", "suspicious":
 			return 0
-		"good", "role":
+		"good":
 			return 1
 		"notrole":
 			return 2
@@ -83,8 +83,6 @@ static func _concl_type_code(c_type: String) -> int:
 			return 4
 		"demon":
 			return 5
-		"minion":
-			return 6
 		"notdemon":
 			return 7
 		"marked":
@@ -103,8 +101,6 @@ static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
 	if "delusional" in mods:
 		w_h += float(maxi(0, g - 1))
 	if "sleepwalker" in mods:
-		w_h += float(g)
-	if "muddler" in mods:
 		w_h += float(g)
 	if "lovers" in mods:
 		w_h += float(g * (g - 1)) * 0.5
@@ -151,7 +147,7 @@ static func _chance_chronicler(view: Dictionary) -> float:
 	if w_h <= 0.0:
 		return 0.15
 	var solo_worlds: float = 0.0
-	for m_kind in ["marked", "delusional", "sleepwalker", "muddler"]:
+	for m_kind in ["marked", "delusional", "sleepwalker"]:
 		if m_kind in mods:
 			solo_worlds += float(g - 1)
 	var lovers_with_src: float = float(g - 1) if "lovers" in mods else 0.0
@@ -353,7 +349,7 @@ static func _build_premise_mask_cs(view: Dictionary, u_key: String, universe: Ar
 	var c_code: int = _concl_type_code(c_type)
 	var target_idx: int = Solver.person_index(view, str(conclusion.get("target", "")))
 	var sec_mod: int = Solver._secret_mod_code(str(conclusion.get("mod", "")))
-	var check_at = conclusion.get("question_at", conclusion.get("at", "")) if c_type in ["lied", "truthful"] else (view.get("alignment_epoch", "") if str(conclusion.get("at", "")) == "" and c_type in ["demon", "minion", "notdemon"] else conclusion.get("at", ""))
+	var check_at = conclusion.get("question_at", conclusion.get("at", "")) if c_type in ["lied", "truthful"] else (view.get("alignment_epoch", "") if str(conclusion.get("at", "")) == "" and c_type in ["demon", "notdemon"] else conclusion.get("at", ""))
 	var conv_evil: bool = Solver._curse_active_at(view, check_at)
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("Solver.premise_mask", pack_u)

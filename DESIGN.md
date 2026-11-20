@@ -376,7 +376,6 @@ count as one). The Default script uses the first four:
 | Marked | Gifts that read them may see them as evil or the demon: Dowser, Surveyor, Martyr and the Seer 50%, the Augur 50%, the Registrar 50% when a minion is on its slate; a Gravedigger or Executor sees a random evil role 30% of the time. |
 | Secret Lovers | Meet at a random block each night (both out), trust each other, know each other's secret, hide it like any secret (may confess). When one dies, the other withdraws: Privacy to the maximum, Gossip to the minimum, Composure up. |
 | Sleepwalker | Leaves home on about half of nights to a random block without knowing it: honestly says they were home, sees nothing while out. |
-| Muddler (custom scripts) | Often muddles one detail when passing on someone else's reading or night sighting. They don't know. |
 
 A Lovers confession names the partner, and the judge treats it as proof that both hold
 the secret: evil never fakes one (#162, `Solver.lovers_needs`).
@@ -629,10 +628,12 @@ and Nov 3 (`docs/archive/legacy_retirement_plan.md`): there are no link template
 
 The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
-  (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
-  suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, "something doesn't add up" (conflict), and "was turned by the curse". The
-  last names the Revenant's turning itself: the person was good before the curse, evil only
+  (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, Marked,
+  suspicious, a modifier holder, doesn't hold their claimed gift (off the menu; saved
+  cases still evaluate), lied, truthful, misled, unreliable, and "was turned by the curse"
+  (Michael, Nov 20: "these reports conflict" was removed, "is a Minion" folded into "is
+  evil" and "holds their claimed gift" merged into "is good"). "Was turned by the curse" names
+  the Revenant's turning itself: the person was good before the curse, evil only
   while it held, and good again after it, so their earlier and later word stands. "Evil
   during the curse" also allows that they were evil all along. It needs a public curse and
   a surviving yes-voter, and it never shows who was turned: it's weighed over the worlds

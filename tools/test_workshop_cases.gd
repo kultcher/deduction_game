@@ -103,27 +103,16 @@ func _init() -> void:
 	check(Jury.evaluate(view, observations, remembered).repeated, "renaming a reasoning line does not create a novel argument")
 	observations.lines[1].test_factor.log2_ratio = 3.0
 	check(Solver.analyze(view, observations).status == "conflicting", "conflicting factors for the same incident are exposed instead of multiplied")
+	# The general contradiction finder (the "these reports conflict" premise it once served
+	# was removed, Michael Nov 20; reading challenges still use it).
 	c = Solver.empty_case()
-	c.cards = ["watch1", "alibi1", "survey"]
-	c.conclusion.type = "conflict"
-	c.conflict_scope = ["watch1", "alibi1"]
+	c.cards = ["watch1", "alibi1"]
+	c.conclusion = {"type": "evil", "target": "constance", "at": view.alignment_epoch}
 	var conflict = Solver.analyze(view, c)
-	check(conflict.entailment == "forced" and conflict.conflicts == [["watch1", "alibi1"]], "conflict scope identifies the minimal alibi/sighting conflict and excludes unrelated cards")
+	check(conflict.entailment == "conflicting" and conflict.conflicts == [["watch1", "alibi1"]], "the minimal alibi/sighting conflict is found among the selected cards")
 	var more = c.duplicate(true)
 	more.cards.append("vigil1")
-	more.conflict_scope.append("vigil1")
 	check(Solver.analyze(view, more).conflicts.size() == 2, "separate minimal conflicts are found when either witness contradicts the alibi")
-	var heard = Jury.evaluate(view, c, listener)
-	check(heard.suspicion_delta == 0.0 and listener.ledger[c.id].has("report_acceptance"), "conflict stores report-level doubt without assigning alignment guilt")
-	check(heard.support_model.report_acceptance.get("alibi1", 0.0) < Support.source_quality(listener, "constance"), "a contradictory alibi loses accuracy weight while the listener retains their own sighting")
-	var unresolved = heard.support_model.report_acceptance.duplicate()
-	c.challenges = {"watch1": ["watch1", "alibi1"]}
-	check(Jury.evaluate(view, c, listener).support_model.report_acceptance == unresolved, "merely choosing which report to question grants no evidence bonus")
-	c.derived = [{"id": "question", "supports": ["watch1", "alibi1"], "text": "Which report is wrong?"}]
-	c.cards.append("question")
-	check(Jury.evaluate(view, c, listener).support_model.report_acceptance == unresolved, "derived conflict question reuses the original evidence without multiplying doubt")
-	c.conflict_scope = ["survey"]
-	check(Solver.analyze(view, c).entailment == "unsupported", "an unrelated selected report is not falsely declared conflicting")
 	c = Solver.empty_case()
 	c.cards = ["lamp1"]
 	c.conclusion = {"type": "suspicious", "target": "agnes", "at": view.alignment_epoch}
