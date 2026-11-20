@@ -1,4 +1,5 @@
 extends SceneTree
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const GamePresentation = preload("res://game/game_presentation.gd")
 const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
@@ -217,8 +218,8 @@ func _ui() -> void:
 	editor.g = g
 	root.add_child(editor)
 	# A fresh Workshop starts blank; these checks argue the old preset premise.
-	editor.set_premise_field(editor.case_root, "type", "evil")
-	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "type", "evil")
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "person", editor.board._default_target())
 	await process_frame
 
 	var premise: String = editor.board.selected

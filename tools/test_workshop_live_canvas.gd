@@ -1,4 +1,5 @@
 extends SceneTree
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const GamePresentation = preload("res://game/game_presentation.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
 const GameBoard = preload("res://game/game_board.gd")
@@ -152,8 +153,8 @@ func _ui(g, report_id: String, trace_id: String) -> void:
 	editor.g = g
 	root.add_child(editor)
 	# A fresh Workshop starts blank; these checks argue the old preset premise.
-	editor.set_premise_field(editor.case_root, "type", "evil")
-	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "type", "evil")
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "person", editor.board._default_target())
 	await process_frame
 	check(editor.canvas.size.x > 1000 and editor.canvas.size.y > 200, "live editor fills the available window and leaves room for its canvas")
 	check(editor.board.view.live and not editor.board.nodes.values().any(func(n): return n.kind == "evidence"), "opening the live Workshop does not automatically transfer board evidence")
@@ -286,8 +287,8 @@ func _main_ui() -> void:
 	await process_frame
 	var editor = main.case_view.workshop.editor
 	# A fresh Workshop starts blank; these checks argue the old preset premise.
-	editor.set_premise_field(editor.case_root, "type", "evil")
-	editor.set_premise_field(editor.case_root, "person", editor.board._default_target())
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "type", "evil")
+	LiveWorkshopFields.set_premise_field(editor, editor.case_root, "person", editor.board._default_target())
 	check(editor.g == main.g and editor.board.view.get("live", false), "main menu opens the live editor rather than the fixture canvas")
 	check(main.get_window().gui_embed_subwindows, "Workshop dialogs are embedded in the game window")
 	check([editor.answer_window, editor.preview_window, editor.progress_window, editor.context_menu].all(func(window): return window.transient and not window.transient_to_focused and window.is_embedded()), "live answer, results, progress and context windows are embedded transient dialogs")
