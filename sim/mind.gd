@@ -1000,10 +1000,6 @@ static func _apply_conclusion_pref(n, c: Dictionary, eff: float) -> void:
 	match ctype:
 		"good":
 			n.protect_pref[target_id] = maxf(n.protect_pref.get(target_id, 0.0), 0.5 * eff)
-		"protect":
-			n.protect_pref[target_id] = maxf(n.protect_pref.get(target_id, 0.0), 1.0 * eff)
-		"spare":
-			n.spare_pref[target_id] = maxf(n.spare_pref.get(target_id, 0.0), 1.0 * eff)
 
 ## Re-weigh what the player has argued, in light of current trust. Firsthand knowledge and
 ## the evidence itself don't change; how much the player's word counts does. Confidence
@@ -1512,7 +1508,7 @@ static func card_clears(card: Dictionary, id: String, claims: bool = false) -> b
 			var conclusion: Dictionary = card.get("conclusion", {})
 			if conclusion.get("a", "") != id or card.get("unfounded", false):
 				return false
-			return conclusion.get("type", "") in ["good", "notdemon", "truthful", "spare", "protect", "secret", "marked", "red_herring"]
+			return conclusion.get("type", "") in ["good", "notdemon", "truthful", "secret", "marked", "red_herring"]
 		"info":
 			return id in Gifts.clears(card)
 		"death", "vigil", "secret":

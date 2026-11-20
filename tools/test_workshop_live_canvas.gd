@@ -72,7 +72,7 @@ func _run() -> void:
 	var result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	check(result.get("workshop", false), "filed live canvas uses the new assessment path")
 	check(listener.workshop_state.facts.size() == 1, "two lines citing one reading share one original fact")
-	check(g.workshop_deliveries[-1].model == "shared", "actual shared delivery is explicitly recorded")
+	check(g.workshop_deliveries[-1].listener == listener.id and g.workshop_deliveries[-1].issues.is_empty(), "the shared delivery is recorded")
 	var requested = listener.workshop_state.requested.duplicate(true)
 	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	check(result.repeated and listener.workshop_state.requested == requested, "unchanged canvas repeat does not stack suspicion")
@@ -238,7 +238,7 @@ func _flow() -> void:
 	g.questions_left = 3
 	g.command("convince %d" % number)
 	check(g.questions_left == 2 and not g.workshop_deliveries.is_empty(), "private canvas presentation uses the normal conversation question budget")
-	check(g.workshop_deliveries[-1].model == "shared", "native-generated private case reaches the shared evaluator")
+	check(not g.workshop_deliveries.is_empty() and g.workshop_deliveries[-1].issues.is_empty(), "native-generated private case reaches the shared evaluator")
 	g.command("bye")
 	g.w.phase = 2
 	g._start_meeting()
@@ -252,7 +252,7 @@ func _flow() -> void:
 	print("Live ten-person town presentation: %d ms; %d listener records" % [Time.get_ticks_msec() - started, g.workshop_deliveries.size()])
 	check(g.presented_today and g.workshop_deliveries.size() == g.w.living().size(), "meeting canvas case reaches every living listener using the ordinary floor action")
 	check(progress_count[0] == g.w.living().size() and not g.workshop_presenting, "town presentation yields before each listener and releases the action lock")
-	check(g.workshop_deliveries.all(func(d): return d.model == "shared" or not d.issues.is_empty()), "every town listener has either a shared evaluation or explicit fallback feedback")
+	check(g.workshop_deliveries.map(func(d): return d.listener).all(func(id): return g.w.by_id[id].alive) and g.workshop_deliveries.all(func(d): return d.has("issues")), "every town listener's delivery is recorded with its issues (there is no fallback route)")
 	var delivery_count: int = g.workshop_deliveries.size()
 	g.command("present %d" % number)
 	check(g.workshop_deliveries.size() == delivery_count, "canvas presentation cannot bypass the once-per-meeting floor limit")
@@ -310,8 +310,9 @@ func _main_ui() -> void:
 	var withdrawal: Window = editor.get_children().filter(func(child): return child is Window and child.title.begins_with("Developer withdrawal"))[0]
 	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded(), "dynamically created withdrawal panel is also an embedded dialog")
 	withdrawal.close_requested.emit()
+	var convinced = main.g.talk_with
 	await editor._send("convince %d" % filed_number)
-	check("Shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
+	check(convinced.name in editor.result_output.text and not ("No case assessment was delivered" in editor.result_output.text) and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and lists the delivery by listener (%s)" % editor.result_output.text.replace("\n", " | "))
 	check(not editor.progress_window.visible and not editor.presenting, "presentation progress closes and releases the editor after delivery")
 	editor.preview_window.hide()
 	main.seed_box.value = 693

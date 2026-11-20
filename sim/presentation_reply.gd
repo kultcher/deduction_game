@@ -2,10 +2,9 @@
 ## (legacy purge phase 4a, docs/archive/legacy_retirement_plan.md). The Workshop judges evidence
 ## (`w.workshop_present`, WorkshopPresentation). This module does what it doesn't:
 ##   - repeat bookkeeping (`n.heard`), so a case told twice is recognised;
-##   - evil listeners' masked answers, and their good self via the shadow (step 2);
-##   - social speech: protect / spare preferences and bare beliefs with no evidence.
-##     These are never evidence (decision Q4); they only feed the listener's own
-##     protect / spare / believed-role preferences through an `arg:` ledger entry.
+##   - evil listeners' masked answers, and their good self via the shadow (step 2).
+## The social route for protect / spare preferences and bare beliefs was removed (Michael,
+## Nov 20): nothing in play reached it.
 ## There is no template evaluator behind it any more: a presentation the Workshop cannot
 ## judge is blocked at the gate (GamePresentation._presentation_gate) with its reason.
 extends RefCounted
@@ -15,11 +14,8 @@ const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 const Deduction = preload("res://sim/deduction.gd")
-const Tuning = preload("res://sim/tuning.gd")
 
 const ACCUSING = Deduction.ACCUSING
-## Conclusions that speak for someone (the rest of the social ones speak against).
-const POSITIVE = ["good", "notdemon", "protect", "spare", "truthful", "secret", "marked", "red_herring"]
 
 
 static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: bool = true) -> Dictionary:
@@ -45,7 +41,9 @@ static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: b
 		var interpreted: Dictionary = w.workshop_present.call(n, ded, [], "deduction", "private" if scale >= 1.0 else ("nomination" if scale <= 0.5 else "meeting"), speak)
 		if not interpreted.is_empty():
 			return interpreted
-	return _social(w, n, ded, board, scale, c, target, supports, facts, times, audience, delivery_memory, trace_id)
+	# Every case a good listener hears is weighed by the shared assessment; there is no other
+	# judge (the social route was removed, Michael, Nov 20). Without one, nothing is said.
+	return {"blocked": true, "lines": [], "facts": [], "agreement": 0.0}
 
 
 # ---------------------------------------------------------------- evil listeners
@@ -71,6 +69,10 @@ static func _evil(w, n, ded: Dictionary, board: Array, scale: float, c: Dictiona
 	# worth it. Arguments about themselves keep the mask ("it's about me").
 	if C.SHADOW_SELF:
 		var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
+		# Refused for their good self (a listener-specific exit): refuse too, as a good
+		# listener would, rather than answer through the mask (Michael, Nov 20: no fallback).
+		if sr != null and sr.get("blocked", false):
+			return {"blocked": true, "lines": sr.get("lines", []), "facts": [], "agreement": 0.0}
 		workshop_covered = sr != null and sr.get("workshop", false)
 		if target != n and sr != null and sr.has("dialogue"):
 			var mine: Dictionary = sr["dialogue"]
@@ -177,64 +179,6 @@ static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionar
 ## preference, or a bare belief with no evidence. It weighs how far they trust the player
 ## and what they already believe about the person; it never changes suspicion. Accepted
 ## positions become protect / spare / believed-role preferences (Mind._apply_conclusion_pref).
-static func _social(w, n, ded: Dictionary, board: Array, scale: float, c: Dictionary, target, supports: Array,
-		facts: Array, times: int, audience: String, delivery_memory: Dictionary, trace_id: int) -> Dictionary:
-	var lines: Array = []
-	var agreement = 0.0
-	var route = "social"
-	if target == n and c["type"] in ["evil", "demon", "lied", "notrole", "suspicious", "unreliable"]:
-		route = "own_knowledge_rejection"
-		Mind.set_trust(w, n, n.trust - Tuning.Presentation.SELF_ACCUSED_TRUST_LOSS, "the Demonologist argued against me to my face")
-	elif target == n:
-		route = "self_support"
-		agreement = 1.0
-	elif target != null:
-		var own: float = Mind.susp(n, target.id)
-		var lean: float = (1.0 - own) if c["type"] in POSITIVE else own
-		agreement = clampf(Tuning.Presentation.SOCIAL_TRUST_WEIGHT * n.trust + Tuning.Presentation.SOCIAL_BELIEF_WEIGHT * lean, 0.0, 1.0)
-	var base: float = agreement * scale
-	var gain = 0.0
-	if base > Tuning.Presentation.SOCIAL_MIN_BASE:
-		gain = _record(w, n, ded, c, supports, board, base, trace_id, agreement)
-	w.dlog.decision(n.id, "argument", "evaluation", agreement,
-		{"route": route, "agreement": agreement, "scale": scale, "base": base, "trust_at_apply": n.trust,
-			"stored_weight_gain": gain, "stance_thresholds": {"accept": 0.6, "partial": 0.35}}, c.get("a", ""), trace_id)
-	w.dlog.add("argument", n.id, c.get("a", ""), {"conclusion": c, "agreement": snappedf(agreement, 0.01), "scale": scale, "social": true},
-		"%s weighs '%s' as speech: agreement %.2f" % [n.name, ded["text"], agreement])
-	var stance = "accept" if agreement >= 0.6 else "partial" if agreement >= 0.35 else "reject"
-	var approved = descriptor(w, c, facts, stance)
-	w.dlog.add("argument_stance", n.id, c.get("a", ""), {"key": Deduction.conclusion_key(c), "stance": stance, "evil": false, "repeat": times > 0})
-	approved["already"] = stance == "accept" and gain < 0.02 and times == 0
-	if route == "own_knowledge_rejection":
-		approved["special"] = "I don't buy it: it's about me, and I know it's false."
-	elif agreement < 0.6:
-		approved["reason"] = "weak"
-	if c["type"] in ["evil", "demon"] and target != n:
-		var ranked: Array = Mind.ranked_suspects(w, n)
-		if not ranked.is_empty() and ranked[0].id != c.get("a", "") and Mind.susp(n, ranked[0].id) > Mind.susp(n, c.get("a", "")) + 0.05:
-			approved["preferred"] = ranked[0].name
-	if not n.silenced:
-		lines.append(line(n, approved, audience, delivery_memory))
-	w.dlog.decision(n.id, "argument", "outcome", approved,
-		{"route": route, "agreement": agreement, "stored_weight_gain": gain}, c.get("a", ""), trace_id)
-	return {"lines": lines, "agreement": agreement, "repeated": times > 0, "dialogue": approved}
-
-
-## The accepted position, as an `arg:` ledger entry the preference pass reads. Social only:
-## the shared model ignores `arg:` entries, so this never moves suspicion.
-static func _record(w, n, ded: Dictionary, c: Dictionary, supports: Array, board: Array, base: float, trace_id: int, agreement: float = -1.0) -> float:
-	var ledger_id = "arg:" + Deduction.conclusion_key(c)
-	if ded.has("workshop_case"):
-		ledger_id = "arg:workshop:%d" % ded.n
-	var h = Mind.ledger_hear(w, n, ledger_id, [], base * (0.5 + n.trust), [],
-		{"kind": "arg", "base": base, "agreement": agreement, "text": Deduction.conclusion_text(w, c),
-			"said": "what you told me, that %s" % Deduction.conclusion_text(w, c),
-			"supports": support_refs(supports, board), "conclusion": c.duplicate(true),
-			"workshop_case": str(ded.get("n", 0)), "workshop_conclusion": c.type})
-	w.dlog.decision(n.id, "argument", "ledger", h, {"ledger_id": ledger_id}, c.get("a", ""), trace_id)
-	return h["gain"]
-
-
 # ---------------------------------------------------------------- shared helpers
 
 static func descriptor(w, c: Dictionary, facts: Array, stance: String) -> Dictionary:

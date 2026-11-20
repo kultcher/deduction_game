@@ -27,12 +27,12 @@ static func view(g) -> Dictionary:
 	for receipt in snapshot.evidence:
 		var content: Dictionary = receipt.content
 		# The note under a Workshop card, in the player's words (Michael, Nov 19). Whether the
-		# Workshop can weigh the card is the `fallback` flag, not the note's wording.
+		# Workshop can weigh the card is the `unweighable` flag, not the note's wording.
 		var note = "The Workshop can't weigh this card yet."
-		var fallback: bool = true
+		var unweighable: bool = true
 		if (receipt.kind == "claim" and content.get("role") in Assess.C.GOOD_ROLES) or (receipt.kind in ["sighting", "alibi"] and receipt.observed_at.phase == "night"):
 			note = "Testimony and circumstance: not proof of evil."
-			fallback = false
+			unweighable = false
 		var activity = Assess.activity_card(receipt, snapshot)
 		if receipt.kind == "info" and content.get("role") == "medium":
 			activity = Assess.medium_card(receipt, snapshot)
@@ -42,24 +42,24 @@ static func view(g) -> Dictionary:
 			activity = Assess.testimony_card(receipt, snapshot)
 		if not activity.is_empty():
 			note = ""
-			fallback = false
+			unweighable = false
 			if activity.kind == "town_hall":
 				note = "Town Hall records: exactly one of these two gifts is in play."
 			elif activity.kind in ["context", "location"]:
 				note = "Where someone was: not a sign of guilt on its own."
 		if receipt.kind == "info" and content.get("role") in Assess.ROLES:
 			note = ""
-			fallback = false
+			unweighable = false
 			if not Assess.Domain.gift_time({"role": content.role, "observed_at": receipt.observed_at}):
 				note = "The Workshop can't weigh a reading from this time yet."
-				fallback = true
+				unweighable = true
 			var ids: Array = snapshot.people.map(func(p): return p.id)
 			if not Assess.reading_valid(receipt, ids, snapshot.rules.modifier_options):
 				note = "This reading is missing details, so the Workshop can't weigh it."
-				fallback = true
+				unweighable = true
 			if content.role == "medium" and activity.is_empty():
 				note = "The Workshop needs the original reading, when it was taken and whose it was before it can weigh this."
-				fallback = true
+				unweighable = true
 		cards.append({"id": receipt.id, "fact_id": receipt.id, "kind": "report" if receipt.kind == "info" else receipt.kind,
 			"source": receipt.source, "subject": receipt.subjects[0] if not receipt.subjects.is_empty() else "", "subjects": receipt.subjects.duplicate(),
 			"role": content.get("role", ""), "data": content.get("data", {}).duplicate(true),
@@ -68,14 +68,14 @@ static func view(g) -> Dictionary:
 			"reported_at": receipt.reported_at if receipt.reported_at != null else {"day": "?"},
 			"learned_at": receipt.learned_at if receipt.learned_at != null else {"day": "?"},
 			"acquired_day": receipt.learned_at.day if receipt.learned_at != null else snapshot.now.day,
-			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "fallback": fallback, "profile_receipt": profile_ids.has(receipt.id)})
+			"text": receipt.text, "short": shorts.get(receipt.id, receipt.text), "support_note": note, "unweighable": unweighable, "profile_receipt": profile_ids.has(receipt.id)})
 		if not activity.is_empty():
 			cards[-1].merge(activity, true)
 			cards[-1].support_note = "A passed-on reading: a challenge says which part failed, the passing-on or the original." if activity.has("relay_source") else note
 			# An adapted relay or teller's testimony is weighable even where the outer reading
 			# alone isn't (Codex, #348): the old note override made these supported.
 			if activity.has("relay_source") or activity.get("testimony_only", false):
-				cards[-1].fallback = false
+				cards[-1].unweighable = false
 			if activity.get("testimony_only", false):
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
 	# Excuses for a caught "I was home" soften or contradict it, as in a listener's view.
@@ -224,7 +224,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	var conclusion = native_conclusion(g, value.conclusion)
 	if previous > 0 and previous <= g.board.size() and g.board[previous - 1].get("workshop_case", {}) == value:
 		return previous
-	# Build native fallback footing through the ordinary filer, then retain the
+	# Build native footing through the ordinary filer, then retain the
 	# entire graph. A unique label prevents text-based card merging across drafts.
 	var old_size: int = g.board.size()
 	var number = g.file_deduction(conclusion, roots.numbers, true)
@@ -320,7 +320,7 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 
 ## The premises and badge bands the "points elsewhere" flag can join (test_juror): an
 ## accusation the case doesn't carry.
-const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "minion", "suspicious"]
+const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "suspicious"]
 const POINTS_ELSEWHERE_BANDS = ["contradicts", "none", "weak"]
 
 ## Which way each premise points an average listener's suspicion of its subject: up for an
