@@ -16,7 +16,7 @@ func _init() -> void:
 	desc = "Starts knowing three roles on the script (at most one minion, never the Demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."
 	shape = "REGISTRAR"
 	marked_registers = true
-	public_threat_bonus = Tuning.Roles.SEER.public_threat_bonus * 0.75
+	public_threat_bonus = Tuning.Roles.REGISTRAR.public_threat_bonus
 	public_threat_key = "registrar"
 	request_agree_line = "Very well. Tonight I'll check %s against my register."
 	request_agree_slot = "target"
