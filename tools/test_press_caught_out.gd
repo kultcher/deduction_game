@@ -5,7 +5,8 @@
 ##     closed, only that, and never "I was at home";
 ##   - the truly home stand by being home;
 ##   - an unaware Sleepwalker doesn't own the night;
-##   - evil keeps its cover;
+##   - evil with nothing to claim owns the night too, and says only that being out isn't
+##     wicked (the caught-out ladder, Michael, Nov 19);
 ##   - without the context, the usual night answer.
 ##   godot --headless --path . --script res://tools/test_press_caught_out.gd
 extends SceneTree
@@ -130,6 +131,7 @@ func _init() -> void:
 	n = s[1]
 	n.history[g.w.time_key(1, C.NIGHT)] = "night:" + n.home_block
 	r = _press(g, n)
-	check(not (TRAPPED in _statements(r)), "evil keeps its cover (%s)" % str(_statements(r)))
+	check(TRAPPED in _statements(r) and not _home(r, n) and r.facts.any(func(f): return f.get("kind", "") == "alibi" and not f.get("home", true) and f.get("excuse", "") == "not_wicked"),
+		"evil with nothing to claim owns the night: being out isn't wicked (%s)" % str(_statements(r)))
 	print("Press caught out: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

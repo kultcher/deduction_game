@@ -79,6 +79,10 @@ func _caught_out_opener() -> void:
 	n.history[w.time_key(0, C.NIGHT)] = "night:docks"
 	n.info_log.append({"role": "warden", "day": 0, "data": {"target": w.living_good()[1].id}, "text": "I stood guard", "shared": false, "true": true})
 	var card = {"kind": "sighting", "phase": C.NIGHT, "day": 0, "source": "player", "subject": [n.id], "block": "docks", "text": "You saw them on the Docks."}
+	# The first press only owns the night and keeps the gift (the caught-out ladder, Michael,
+	# Nov 19); the second names it.
+	var soft: Array = _statements(MindDialogue.press(w, n, card))
+	_check(not soft.is_empty() and soft[0].begins_with("Fine, I was out") and not soft.has("All right, you saw me. Here's why I was out."), "first pressed, the soft tier: %s" % str(soft))
 	var st: Array = _statements(MindDialogue.press(w, n, card))
 	_check(not st.is_empty() and st[0] == "All right, you saw me. Here's why I was out.", "gift reveal under a night card opens caught out: %s" % str(st))
 	var doubted: Array = Voices.VOICES.get(n.id, {}).get("doubted_visual", [])

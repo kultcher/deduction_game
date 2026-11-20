@@ -265,7 +265,6 @@ class Mind:
 	const NIGHT_DOUBT_CAP = 0.9
 
 	## Role-claim & sighting ledger weights
-	const RIVAL_CLAIM_EFF = 0.6  # retired legacy claim-collision weight (shared model owns claims)
 	const PUBLIC_CLAIM_HEARING_WEIGHT = 0.5
 	const DEMON_VICTIM_CLAIM_BOOST = 1.95
 	const BELIEVED_ROLE_MIN_EFF = 0.12
@@ -503,7 +502,6 @@ class Social:
 	const TRUST_VOTED_AGAINST = 0.1
 	const TRUST_VOTED_FOR = 0.03
 	const TRUST_ACCUSED_ME = 0.1
-	const PARANOIA_DRIFT_RATE = 0.06  # unused since Oct 30 (drift removed; see VOTE_URGENCY_PER_DEATH)
 	const APPROACH_PHASE_CHANCE = 0.4
 	const APPROACH_SCORE_THRESHOLD = 0.35
 	const APPROACH_NOISE = 0.2
