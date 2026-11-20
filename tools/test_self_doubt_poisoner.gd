@@ -52,6 +52,14 @@ func _init() -> void:
 	check(RC.self_doubt_floors(_view(no_readings, doubt), {}, _listener(), no_readings).is_empty(), "no reading of theirs held: nothing to read the nights from")
 	var night3: Array = [_report("a", 3), _seen("c", "docks", 1)]
 	check(RC.self_doubt_floors(_view(night3, doubt), {}, _listener(), night3).is_empty(), "seen on a night the reader didn't read: not a candidate")
+	var lamp: Dictionary = {"id": "cl-e", "kind": "claim", "source": "e", "subject": "e", "role": "lamplighter", "night": -1}
+	var with_lamp: Array = cards + [lamp]
+	var lf: Array = RC.self_doubt_floors(_view(with_lamp, doubt), {}, _listener(), with_lamp)
+	check(not lf.is_empty() and not lf[0].candidates.has("e") and lf[0].candidates.has("c"), "a claimed night gift explains the outing: the Lamplighter isn't a candidate (%s)" % (str(lf[0].candidates.keys()) if not lf.is_empty() else "none"))
+	var kg: Dictionary = _listener()
+	kg.knowledge["good"] = ["c"]
+	var kf: Array = RC.self_doubt_floors(_view(cards, doubt), {}, kg, cards)
+	check(not kf.is_empty() and not kf[0].candidates.has("c"), "nor someone the listener knows is good")
 	var v_none: Dictionary = _view(cards, doubt)
 	v_none.script_minions = ["scion", "brute"]
 	check(RC.self_doubt_floors(v_none, {}, _listener(), cards).is_empty(), "no Poisoner on the script: no one is pointed at, as for the Mistaken call")
