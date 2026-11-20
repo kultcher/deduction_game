@@ -625,6 +625,35 @@ static func _outing_explained(cards: Array, person: String, night: int, knowledg
 				return true
 	return false
 
+## An NPC's own "my gift may have been turned" (the public `self_doubt`; Michael, Nov 20): the
+## listener gives the same Poisoner nudge as an accepted Mistaken call (Jury's floor), to
+## everyone seen on the reader's block on any night it read, by `poisoner_candidates`'s rule.
+## Not one night: the doubt comes from the readings as a whole not fitting. It follows what
+## the reader said, not what's true. Agreement is the listener's belief in the reader
+## (1 - its suspicion of them), as for the doubt the same event already casts on those
+## readings (SourceDoubt._gift_self_doubt). Returns [{"source", "agreement", "candidates"}],
+## one per reader who said it; none for the listener's own words, or with no reading held.
+static func self_doubt_floors(view: Dictionary, value: Dictionary, listener: Dictionary, cards: Array) -> Array:
+	var out: Array = []
+	var knowledge: Dictionary = listener.get("knowledge", {})
+	var self_id: String = str(listener.get("id", knowledge.get("self", "")))
+	var seen: Dictionary = {}
+	for ev in view.get("timeline", {}).get("events", []):
+		var by: String = str(ev.get("by", ""))
+		if str(ev.get("kind", "")) != "self_doubt" or by == "" or by == self_id or seen.has(by):
+			continue
+		seen[by] = true
+		var candidates: Dictionary = {}
+		for c in cards:
+			if c.get("kind", "") == "report" and str(c.get("source", "")) == by and not c.get("quoted", false):
+				candidates.merge(poisoner_candidates(view, c, value, cards))
+		candidates.erase(by)
+		if candidates.is_empty():
+			continue
+		var believe: float = clampf(1.0 - float(listener.get("suspicion", {}).get(by, 0.0)), 0.0, 1.0)
+		out.append({"source": by, "agreement": believe, "candidates": candidates})
+	return out
+
 ## Poisoner candidates for a failed gift: people the attended cards saw out on the night
 ## the reading was taken, on the way to the reader's home, with no gift or private errand the
 ## case gives for it. Nobody without such a sighting is a candidate. A sighting off every road

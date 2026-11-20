@@ -597,6 +597,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		belief_case.cards = held.map(func(c): return c.id)
 		belief_cards = held
 		floor_challenges = Support.ReadingChallenges.assess(view, belief_case, baseline, belief_cards)
+	var self_doubt_floors: Array = Support.ReadingChallenges.self_doubt_floors(view, belief_case, baseline, belief_cards)
 	var eval_listener = _eval_listener(baseline, baseline.knowledge.get("own_reports", []), challenged, attention)
 	# The connections model (workshop/connections.gd): on a belief refresh every held card
 	# counts at the value it has alone, whatever attention picked, and the chances it gives
@@ -694,6 +695,11 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			var cands: Dictionary = challenge.get("candidates", {})
 			if challenge.mode == "impaired" and cands.has(id) and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
 				net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement / float(cands.size()))
+		# An NPC's own word that its gift may have been turned points at the same candidates
+		# (Michael, Nov 20), at the same scale, as far as the listener believes the reader.
+		for sd in self_doubt_floors:
+			if sd.candidates.has(id) and float(sd.agreement) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
+				net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * float(sd.agreement) / float(sd.candidates.size()))
 		if not connections.is_empty():
 			# The same two floors for a stored case's challenges, as assessed inside the case
 			# and scaled by its weight, so they fade with it.
