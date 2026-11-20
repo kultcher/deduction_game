@@ -1,10 +1,10 @@
 # The pressure of silence
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `977e15e` (`baseline_7005cc6`)
+- **Base:** main at `fff6b66` (`baseline_b96d2f2`, after #413), merged in; first written on `977e15e`
 - **Branch:** `claude/beadle-silence` (the measured build was `mock/beadle-silence`)
 - **Status:** PR open. Golden moves on every seed from day 1 and is re-baselined here to
-  `baseline_e523a49`. Golden-moving PRs merge one at a time.
+  `baseline_0028b93`. Golden-moving PRs merge one at a time.
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Accusations from starting suspicion read as clues", built as Michael's
   "pressure of silence" [decided]. Pitch and constants approved Nov 20; approved to ship with no
@@ -81,7 +81,13 @@ interjection in the first pass had added a second); and an accusation counts as 
 its reason is actually said and new at the meeting, not for a bare agreement or an echo. The
 second fix makes a second pass a little more likely than in the A/B above, which predates it.
 
-**Golden:** re-baselined to `baseline_e523a49`; two captures were identical. Every seed diverges
+**A fixture test made sturdier:** `tools/test_night_sighting_rebuttal.gd` builds its case on a
+game `tools/fixture_seeds.gd` finds, and the change finds a different one. Its evil defender
+there lived on the victim's block (a neighbour never says "I was never on it", by design) and had
+claimed sleepwalking. The test now picks an evil defender who doesn't live on the victim's block
+and keeps the sleepwalk excuse out of that check. No game code changed for it.
+
+**Golden:** re-baselined to `baseline_0028b93`; two captures were identical. Every seed diverges
 at day 1's first meeting. 42 becomes a good win on day 2 (Agnes, the Demon, hanged); the other
 four seeds hang different people, with no winner by day 4. See "Current baseline" in
 `docs/golden_baseline.md`.
