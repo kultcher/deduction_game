@@ -1118,14 +1118,6 @@ class Workshop:
 	const WALKER_CLAIM_GIFT = 0.95
 	const WALKER_CLAIM_HOME = 0.03
 	const WALKER_CLAIM_SECRET = 0.02
-	const NIGHT_OUT_RATES = {
-		"hunt": 1.0,
-		"minion": 0.25,
-		"gift": 1.0,
-		"secret": 0.55,
-		"ordinary": 0.05,
-	}
-	const HAUNT_VISIT_RATE = 0.7
 	const DEMON_VICTIM_GOOD = 0.95
 	const REFUSAL_LR = 1.5
 
