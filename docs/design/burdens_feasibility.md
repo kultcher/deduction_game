@@ -234,3 +234,22 @@ three enumerate Delusional with its holder.
 
 **Michael chose A** (Nov 20), with C as the fallback if speed turns out to matter. It's
 recorded in [burdens.md](burdens.md) section 9.
+
+## Re-estimate under model A (Argon, Nov 20; relayed by Michael through Seneschal)
+
+- **Speed:** model A is about 10–20% faster per typical day-3+ refresh, and 15–30% on
+  reading-heavy presentations, against main. Lantern's 10–25% holds.
+  - The gain is about half of model B's: an enumerated Marked still splits equivalence
+    classes on `marked_registers` readings, which the Lovers barely did.
+- **Cache hazards improve:**
+  1. The allowance is now structural (Unrequited worlds only), so the cross-unit thrashing risk
+     from #468 goes away. CaseEval's compile key reflects the Unrequited factor and any
+     Unrequited `secret_claim` in the unit.
+  2. Marked claims must still attach to the context and key of `marked_registers` reading
+     units, and a late claim queues a refresh.
+  3. Ill-Omened is keyed on (night, claimant).
+- **Model C isn't needed.**
+  - A to C is only about 5–10% extra wall time.
+  - Model A at 12 NPCs is 13,200 worlds, still under today's 15,120 at 10 NPCs.
+  - C only matters at 12+ NPCs with Minion identities, or at 14–15 NPCs against the 2-second
+    presentation budget.

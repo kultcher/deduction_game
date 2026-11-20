@@ -436,7 +436,8 @@ Decided after Lantern's four worked scenarios (in
   play, so it misses burden bluffs that clash with another burden claim or with a true
   Rumormonger reading. In Lantern's scenarios 2 and 4, a bluff mostly works under B and is
   caught under A.
-- **Argon re-estimates the speed** with Marked enumerated.
+- **Speed under A** (Argon, Nov 20): 10–20% faster per refresh against main. C isn't needed
+  at today's town sizes (section 10).
 
 Nothing in the design is open now. Building waits on Michael's word to Seneschal.
 
@@ -450,4 +451,6 @@ sweeps.
     evil's reactive Marked bluff.
 - **Retirements, by both:** the Lovers and Sleepwalker 1.0.
 - **Stage 2:** Unrequited, Ill-Omened and the hanging cost.
-- **Argon's speed re-estimate** under model A is going to Michael.
+- **Argon's speed re-estimate** under model A (Nov 20): about 10–20% faster per day-3+ refresh,
+  and 15–30% on reading-heavy presentations, against main. The C fallback isn't needed below
+  12+ NPCs with Minion identities. Details in [burdens_feasibility.md](burdens_feasibility.md).
