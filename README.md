@@ -299,8 +299,10 @@ sim/script_def.gd, script_builder.gd
 sim/gifts.gd      what each reading says in general terms (who it points at, clears, names)
 sim/deduction.gd  the conclusion vocabulary, assertions and filing checks for cases
 sim/npc.gd        one NPC's state (receipts, suspicion, rapport, credibility, claims)
-sim/world.gd      case setup and the deal, schedules, sightings, night resolution, traces,
-                  votes, executions, the Town Hall
+sim/world.gd      case setup and the deal, schedules and the day phases; World's state and
+                  helpers are in world_base.gd, the meeting, votes and executions in
+                  world_meeting.gd, and the night (kills, sightings, traces, gifts) in
+                  world_night.gd: one inheritance chain, so World's methods are unchanged
 sim/mind.gd, mind_dialogue.gd, mind_meeting.gd
                   NPC reasoning: claims, conversation answers, testimony, accusations,
                   choosing nominations
