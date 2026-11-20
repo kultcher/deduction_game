@@ -102,7 +102,9 @@ func _test_production_wiring_and_aliases() -> void:
 	)
 
 	var expected_refs: Dictionary = {
-		"res://sim/world.gd": ["PRE_PHASE_CHAT_CHANCE", "SAME_BLOCK_SIGHTING_CHANCE", "NIGHT_SIGHTING_STREET_CHANCE", "CLEMENCY_SPARED_BONUS", "trust_backed_innocent"],
+		"res://sim/world.gd": ["PRE_PHASE_CHAT_CHANCE", "SAME_BLOCK_SIGHTING_CHANCE"],
+		"res://sim/world_night.gd": ["NIGHT_SIGHTING_STREET_CHANCE"],
+		"res://sim/world_meeting.gd": ["CLEMENCY_SPARED_BONUS", "trust_backed_innocent"],
 		"res://sim/mind.gd": ["DEMON_VICTIM_CLAIM_BOOST", "RECONSIDER_MIN_SHIFT", "HEARD_READING_WEIGHT", "SELF_SUPPORT_BONUS"],
 		"res://sim/mind_dialogue.gd": ["QUESTION_FATIGUE_LIMIT", "CIVIL_TALK_BASE"],
 		"res://sim/mind_press.gd": ["PRESSED_EVIDENCE_BASE"],
