@@ -1027,6 +1027,24 @@ static func _player_heard_gossip_key(g, gkey: String) -> bool:
 ## Evening Tavern Gossip: harvests 3-5 anonymized rumours from all non-strategizing
 ## NPC-to-NPC exchanges across the whole day (Morning, Afternoon, and Evening) plus
 ## unlearned profile haunts and public town relationships, favoring unheard items.
+## A tavern gossip item's value to the player (graded gossip; the tiers are a DRAFT awaiting
+## Michael, Nov 20, from Quill and Beadle):
+##   1: something the player can file or check: an anonymous reading, or a night sighting
+##      with a block and a night;
+##   2: useful but softer: a gift claim in circulation, a gift-family hint about a named
+##      person, or a secret about a named person;
+##   3: colour: daytime sightings, haunts and town relationships.
+static func gossip_tier(cand: Dictionary) -> int:
+	var f: Dictionary = cand.get("fact", {})
+	match str(f.get("kind", "")):
+		"info":
+			return 1
+		"sighting":
+			return 1 if int(f.get("phase", -1)) == C.NIGHT and str(f.get("block", "")) != "" else 3
+		"claim", "hint", "secret":
+			return 2
+	return 3
+
 static func tavern_evening_gossip(g) -> Dictionary:
 	var w = g.w
 	var trng := RandomNumberGenerator.new()
@@ -1228,6 +1246,10 @@ static func tavern_evening_gossip(g) -> Dictionary:
 			"body": bbody,
 			"profile_bond": {"key": raw_key, "kind": str(bond.get("kind", "")), "people": people}})
 
+	# Each item's value to the player (graded gossip, Michael, Nov 19). The selection doesn't
+	# use it yet; Beadle's budget will (TAVERN_TIER1_TARGET / TIER2_TARGET).
+	for c in candidates:
+		c["tier"] = gossip_tier(c)
 	# Tiered selection: prefer unheard spoken & profile backfill first; only touch already-heard
 	# spoken items if the unheard pools cannot fill the rolled 3-5 slots.
 	var unheard_pool: Array = candidates.filter(func(c): return not c.get("heard", false))
@@ -1287,7 +1309,8 @@ static func tavern_evening_gossip(g) -> Dictionary:
 	var vibe: Dictionary = town_vibe(g)
 	if not vibe.is_empty():
 		lines.append("  • " + str(vibe["line"]))
-	w.dlog.add("tavern_evening_gossip", "player", "", {"count": chosen.size(), "keys": chosen.map(func(c): return c["gkey"])},
+	w.dlog.add("tavern_evening_gossip", "player", "", {"count": chosen.size(), "keys": chosen.map(func(c): return c["gkey"]),
+		"tiers": chosen.map(func(c): return int(c.get("tier", 3))), "offered_tiers": candidates.map(func(c): return int(c.get("tier", 3)))},
 		"Evening tavern gossip yielded %d item(s)." % chosen.size())
 	return {"lines": lines, "facts": facts, "haunts": haunts, "bonds": bonds, "vibe": vibe}
 

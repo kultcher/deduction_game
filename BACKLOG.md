@@ -344,6 +344,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
   value tiers; plan first. [decided]
   - **Approved (Michael, Nov 19):** new constants `TAVERN_TIER1_TARGET` = 2 and
     `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
+  - **Value tiers built** (Quill, Nov 20, `claude/gossip-tiers`; handoff
+    `2026-11-20-1215-quill-gossip-tiers.md`). The tier definition is a draft awaiting Michael.
+    Measured: the targets are both met on about 2% of tavern evenings today, though the offer
+    allows it on about 88%. Beadle's budget is next. [in review]
 
 ## 4. Major structural work (a week or more; design first)
 

@@ -54,6 +54,7 @@ test_fixes_crowd_augur_lovers_pan
 test_framed_defence
 test_gift_doubt
 test_gift_doubt_good
+test_gossip_tiers
 test_gravedigger_bluff
 test_haunt_learning
 test_headline
