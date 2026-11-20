@@ -51,7 +51,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Vigil request and reward rework `[deferred]`
   3. What does Insight do now? `[deferred]`
   4. The Breathstealer overhaul `[decided: add; option open]`
-  5. The secrets rework `[decided; values open]`
+  5. \*The secrets rework `[decided; values open]`
   6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
   7. Player toolbox `[open]`
   8. Scoring system `[open]`
@@ -462,7 +462,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
   "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
   Marked, Unrequited and Ill-Omened (known); one burden per script for now. Michael
-  answered every open question the same day; the staged plan is next. All in
+  answered every open question the same day, and chose judge model A. **Prototype stage 1
+  started** (Michael approved, Nov 20) on `mock/burdens-slot`: Lantern on the slot world domain
+  with Marked known, Beadle on Marked's disclosure, defence and bluff, and both retiring the
+  Lovers and Sleepwalker 1.0. All in
   [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
