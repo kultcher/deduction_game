@@ -836,7 +836,7 @@ static func gossip_item(w, n) -> Dictionary:
 					"text": "Via %s: %s hinted at %s (%s)." % [n.name, src.name, C.HINT_PACKAGES[hp]["name"],
 						C.package_roles_text(hp, w.case_script)]}]}
 		if h["kind"] == "sighting":
-			var mh_s: Dictionary = h
+			var mh_s: Dictionary = h  # (the item as heard; the Muddler hook is gone)
 			var who = w.by_id[mh_s["about"]]
 			var by = w.by_id[mh_s["from"]].name if w.by_id.has(mh_s["from"]) else "someone"
 			var block_s: String = C.block_name(mh_s["block"])
