@@ -270,6 +270,12 @@ Candidates for a unified retuning proposal, not approved changes.
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
   - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
     the town moves block to block.
+  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
+    the podium press of a sighting and the private press, as speech with no weight; a quiet
+    night isn't argued when the defender knows of a possible thwart. Approved block wording in
+    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
+    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
+    [in review]
 
 ### UI
 
@@ -361,6 +367,12 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
   - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
     totems**. The Revenant is often invisible. (55774) [decided]
+
+  - **Evil's fake self-doubt and the Poisoner nudge** (Beadle's proposal; Michael, Nov 20).
+    Since "A reader's self-doubt points at the Poisoner", evil's fake gift self-doubt also
+    nudges Poisoner suspicion toward whoever was seen on its block, its own teammate
+    included. Smarter evil could aim it (voice the doubt when an innocent was near) or avoid
+    it (stay quiet when a teammate was). Owner Beadle.
 
   [deferred]
 
