@@ -644,7 +644,7 @@ func _challenged_factors() -> void:
 	# silenced nominee (no defence to refresh anyone) can't leave the vote on old beliefs.
 	g.w.defer_beliefs = true
 	g.w.pending_beliefs = []
-	preload("res://sim/mind_meeting.gd").remember_nomination(g.w, p[1], p[3].id, [aug_id])
+	preload("res://sim/mind_nomination.gd").remember_nomination(g.w, p[1], p[3].id, [aug_id])
 	var queued: Array = g.w.pending_beliefs.map(func(e): return e[0].id)
 	var want_ids: Array = g.w.living().filter(func(l): return l.id != p[1].id).map(func(l): return l.id)
 	queued.sort()
