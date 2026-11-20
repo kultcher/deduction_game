@@ -44,10 +44,10 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the pressure of silence): `baseline_ae2a5ee`
+### Current baseline (Nov 21, the pressure of silence): `baseline_e523a49`
 
-`tools/golden/baseline_ae2a5ee/` is the capture from `claude/beadle-silence` at `ae2a5ee` (main at
-`977e15e`). A good NPC needs 0.2 suspicion to accuse in a meeting's first pass; a meeting that
+`tools/golden/baseline_e523a49/` is the capture from `claude/beadle-silence` at `e523a49` (main at
+`021a941`, merged in; with Codex's two fixes on #454). A good NPC needs 0.2 suspicion to accuse in a meeting's first pass; a meeting that
 turns up fewer than three useful things runs its speaking order once more, with the floor waived
 and nervous good NPCs pushed to speak (Michael, Nov 20 and 21).
 - **Divergence from `baseline_7005cc6`:** every seed on day 1, at the first meeting (records 7-11),
@@ -57,7 +57,7 @@ and nervous good NPCs pushed to speak (Michael, Nov 20 and 21).
     day 4 before).
   - **54875:** hangs Edda on day 1 (day 2 before), then Odette and Jory (Hollis before).
   - **692:** the same hangings (Constance, Lian).
-  - **900:** hangs Isolde on day 3 instead of Greta on day 2.
+  - **900:** hangs Isolde on day 2 instead of Greta.
   - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
   - No winner by day 4 on 54875, 692, 900 or 98933.
 - **Stability:** two captures were identical.

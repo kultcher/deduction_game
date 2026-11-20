@@ -4,7 +4,7 @@
 - **Base:** main at `977e15e` (`baseline_7005cc6`)
 - **Branch:** `claude/beadle-silence` (the measured build was `mock/beadle-silence`)
 - **Status:** PR open. Golden moves on every seed from day 1 and is re-baselined here to
-  `baseline_ae2a5ee`. Golden-moving PRs merge one at a time.
+  `baseline_e523a49`. Golden-moving PRs merge one at a time.
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Accusations from starting suspicion read as clues", built as Michael's
   "pressure of silence" [decided]. Pitch and constants approved Nov 20; approved to ship with no
@@ -76,7 +76,12 @@ when the meeting turned up too little; the voiced opener. Also pass: test_tuning
 meeting suites (test_meeting_flow, m2a-m2d, reasons, stage, stream, gossip,
 test_dialogue_fixes_testimony and test_dialogue_fixes_accusations_votes).
 
-**Golden:** re-baselined to `baseline_ae2a5ee`; two captures were identical. Every seed diverges
+**Codex on #454, fixed in `e523a49`:** the second pass now gives each speaker one turn (an
+interjection in the first pass had added a second); and an accusation counts as useful only when
+its reason is actually said and new at the meeting, not for a bare agreement or an echo. The
+second fix makes a second pass a little more likely than in the A/B above, which predates it.
+
+**Golden:** re-baselined to `baseline_e523a49`; two captures were identical. Every seed diverges
 at day 1's first meeting. 42 becomes a good win on day 2 (Agnes, the Demon, hanged); the other
 four seeds hang different people, with no winner by day 4. See "Current baseline" in
 `docs/golden_baseline.md`.
