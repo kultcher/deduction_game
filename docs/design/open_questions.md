@@ -70,8 +70,8 @@ These are the ones under discussion now, roughly by how much they shape other wo
   Lantern measures it for Michael before building it (Lantern's `claude/own-reading-doubt`
   handoff entry, Nov 17, on main: after phase 6b and the double-claim pairing). Still open:
   what the measurement shows, and whether to keep it.
-- **Also open:** DESIGN's Insight row needs new wording (purge plan, decision 6: Lantern
-  drafts it in phase 8, the wording is Michael's).
+- **DESIGN's Insight row:** Lantern's draft is approved (Michael, Nov 20, later); it goes into
+  DESIGN.md's traits table.
 - **Evidence:** `docs/belief_model.md`; `docs/connections_purge_plan.md` sections 7–8 (#174).
 - **Builds:** Lantern.
 
@@ -143,6 +143,8 @@ These are the ones under discussion now, roughly by how much they shape other wo
 | The Hexer: the declaration's default ("walker"?) and the bot's Hexer call (54% right). On hold until Michael plays two-kind scripts | BACKLOG section 4; Bailiff's final handoff | Quill (bot), Herald (UI) |
 | Is the 10-NPC connections gain real? +5.7 on 300 seeds (z +1.9); a 1,000-seed cell would settle it | Bailiff's final handoff | Tally |
 | Storing an NPC defender's challenge as a case, so defences work for both sides `[deferred until after connections]` | BACKLOG section 5 | Lantern, Beadle |
+| ~~Kept as is~~ Decided Nov 20 (later): 6a's face-value term stays in a cited reason's strength; the "not the Demon" badge keeps its approximation (no per-case Demon pool); contradicted relays stay usable (the auto-disclaim rule is removed). | Lantern's 6a handoff; #410; Quill's relay notes | Lantern, Quill |
+| ~~Excuse-softening measurement~~ Closed Nov 20 (later) on the hand-built figures; no sweep | Lantern's caught-lie softening handoff (#372) | Lantern |
 | Presenting a card to one NPC: a case, or a card with a defined interaction; secret awareness and how evil claims a secret | BACKLOG section 2 "Secret awareness and bluffing", section 5 `[design]` | Beadle, Herald |
 
 ---
