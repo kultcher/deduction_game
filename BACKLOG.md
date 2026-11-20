@@ -46,16 +46,16 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. Privacy without compounding trust penalties `[tentative]`
     2. Ward promises should outrank vigil promises `[decided]`
     3. Explicit night-sighting rebuttals `[decided]`
-    4. More rebuttals after a caught lie `[decided; options open]`
-    5. Misled versus reading-lie strength `[open]`
+    4. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
     1. From Playtest Notes 12553
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
-  2. Revenant seeks execution `[decided]`
-  3. Throw a teammate under the bus `[decided: survey first]`
-  4. Graded gossip `[decided]`
+  2. Insight helps an NPC notice its own readings don't fit `[decided; triggers open]`
+  3. Revenant seeks execution `[decided]`
+  4. Throw a teammate under the bus `[decided: survey first]`
+  5. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. The Breathstealer overhaul `[decided: add; option open]`
   2. The Muddler rarely has anything to muddle `[open]`
@@ -256,9 +256,11 @@ listener (#273), both Lantern's.
   - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
     possible forced reveal of the hidden gift or secret, handling genuine home accounts,
     unremembered outings and evil cover.
-  - **From "More rebuttals after a caught lie":** when pressed again, evil backs into a spare
-    or unknown walking gift (the ladder's step 3, with the Demon and Scion careful and a
-    Minion bolder, as decided there).
+  - **From "More rebuttals after a caught lie"** (closed Nov 20; its decisions are in
+    BACKLOG_COMPLETED.md):
+    - when pressed again, evil backs into a spare or unknown walking gift (the ladder's step
+      3, with the Demon and Scion careful and a Minion bolder);
+    - the podium path: the same ladder at the meeting, not only in private.
 
   The first response, "Fine, I was out", is built (#368), and so is the private ladder that
   follows it. On hold until Michael reprioritises. [decided; mechanics open]
@@ -346,6 +348,16 @@ Candidates for a unified retuning proposal, not approved changes.
   Day 1 three of three people stonewalled; Privacy counts in both openness and starting
   trust. The first day swings a lot on how many private characters are dealt.) Consider
   removing the double count or dealing at least one openish person per phase. [tentative]
+  - **Mostly done (Beadle, Nov 20).** #258 took Privacy out of civil talk, and starting trust
+    stopped using Privacy itself on Oct 30. Privacy still scales what a private person would
+    resent, as the item asks.
+  - **Left, Michael's call:**
+    - a newcomer's starting trust still has an openness term, 1 − Privacy
+      (`PLAYER_TRUST_OPENNESS_SCALE`), so a private person starts a little cooler while
+      Privacy also gates disclosure. That's the 54875 double count, smaller;
+    - "deal at least one openish person per phase" was never built.
+
+    Close the item if Michael counts the openness term as fine.
 
 - **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
   and add plausible-success credit for a kept ward followed by a deathless night.
@@ -356,125 +368,6 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-
-- **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
-  walking duties, personal secrets, protecting a confidence. Conceding the statement was
-  false need not concede evil. Evil gets the same excuses, open to later corroboration;
-  the caught lie itself stays. [decided; options open]
-  - **Michael (Nov 19), on Beadle's options:**
-    - **Yes:** an evil NPC borrows the excuses. It claims a walking duty that fits its bluff
-      ("I was keeping the watch"), or says "being out isn't wicked". Each gets a logged
-      reason and a reveal line.
-    - **Yes, as the first line of defence: own the night, keep the gift.** See the shared
-      ladder below. Michael: "duties that aren't mine to tell" isn't the right wording; the
-      default "I'm not ready to share my gift" line (`gift_refusal`) should work in most
-      cases. Herald's call on the final wording.
-    - **After the secrets rework:** a vague errand of its own, which becomes "claim a
-      knowing secret".
-    - **No:** "I gave my word I wouldn't say why". It has no place in the current mechanics.
-    - **How much an excuse softens the caught lie:** a little, until something contradicts
-      the excuse, such as a claimed watch with no watch report. Then the excuse counts as a
-      second caught lie. This needs a new constant; Beadle proposes about half a caught
-      lie's weight.
-    - **Scope:** lies about being home only. Caught reading lies already have "my gift may
-      have been turned".
-  - **When to risk a walking-gift claim (Michael, Nov 19): one ladder for good and evil.**
-    A good walker who hides its gift should behave the same way, so the response isn't a
-    tell.
-    - **What exists (read from main):**
-      - **Evil whose planned bluff walks** already owns the outing with that duty, as a good
-        walker does (`MindDialogue._bluff_outing`).
-      - **A good hidden walker** asked about the night can refuse honestly, lie "home", or
-        stonewall (`lie_or_stonewall`).
-      - **Caught out of a home alibi in private,** a good hidden walker reveals its gift
-        outright (`trapped_explanation` to `answer_gift`). No tier sits between stonewalling
-        and revealing.
-    - **New soft tier, for both:** "Fine, I was out", then the default gift refusal. It
-      claims a night duty without saying which. This keeps 78148's fix: the night is owned
-      first, never a bare gift refusal to a whereabouts case.
-    - **The ladder**, for an NPC caught out of its home alibi:
-      1. If its gift (or evil's bluff) already walks and is claimed, it gives that duty.
-      2. Not yet claimed: the soft tier above.
-      3. Pressed again, in private by the player or at a nomination, it names a gift:
-         - a good walker reveals its real gift;
-         - evil takes the safe spare from its bluff list, if one walks (that list holds only
-           gifts not in play, with one spare beyond the gifts the team uses, `world.gd`
-           `bluffs`), for any evil type;
-         - evil takes an unknown walking gift: the Demon or a Scion only when badly exposed,
-           a Minion when exposed, at the existing blend-or-disrupt odds;
-         - a Minion takes a walking gift someone has already claimed: a deliberate double
-           claim, when confronted privately by the player or nominated. Michael widened this
-           from "nominated only".
-      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff, or
-         a stonewall.
-    - **New: a Minion entering a double claim unprompted.** There's a small chance that an
-      unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
-      it's caught out. The rate would be a new constant, for Beadle to propose with a
-      measurement.
-      - **Michael (Nov 19):** about 0.05 if it's a deliberate opt-in to a double claim, or
-        about 0.15 if it's a Minion accepting the risk that its bluff ends in one. Beadle is
-        confirming which applies, and the value follows from that.
-    - **Retracting a public claim to back into a walker:** Michael (Nov 19) moves it to "Good
-      NPCs lie tactically", since the two share the same space.
-  - **The town's response to a double claim (Michael, Nov 19).** The true holder counterclaims
-    immediately. A Minion's active double claim works in the same framework.
-    - **What exists (read from main):**
-      - **At a meeting,** a public claim of someone's gift moves that person up to speak next,
-        with an openness bonus (`MindMeeting._queue_reactions`, trigger 1;
-        `REACTIVE_OPENNESS_BONUS`). Whether they then claim is still the ordinary
-        `_public_claim_decision` roll, so it isn't certain. An evil NPC whose planned bluff
-        was just claimed gets the same trigger.
-      - **At a nomination,** a hidden holder of the gift the nominee claims comes out: "X is
-        lying. That gift is mine." (`MindSupport`, `counter_claim`).
-      - **Pressed in private** with a rival's claim, a claimant answers "I am the X. If Y says
-        otherwise, Y is lying."
-      - **Belief:** the two claims of one gift are one pairing that raises both claimants and
-        shifts onto the other when one is shown good (#198).
-    - **Proposed (Vicar), for Michael:**
-      - **The true holder counterclaims at once:** at the same meeting, as the next speaker,
-        unless silenced. The trigger-1 reaction becomes a claim, not a roll. If the claim
-        reached it outside a meeting (in private, or through gossip), it counterclaims at the
-        next meeting. A holder hiding its gift for a reason is "Good NPCs lie tactically"
-        territory, not an exception here.
-      - **The Minion's active double claim uses the same trigger:** when a good NPC claims a
-        gift, an unclaimed non-Scion Minion may treat it as "a rival claim on my gift" and
-        counterclaim with the same line, at the small new rate. The rest follows the
-        existing pairing and counter-claim reactions.
-      - **Evil whose planned bluff is claimed by someone else** drops that bluff for a spare,
-        rather than counterclaiming. A Minion may instead take the active double claim above.
-    - **Michael (Nov 19):**
-      - **Immediately, where possible.** A silenced holder counterclaims at its first chance,
-        the next meeting. That's the same rule as for a claim heard outside a meeting.
-      - **Heat lowers a Minion's willingness to risk a double claim,** both the active one and
-        backing into a claimed or unknown gift. Heat here means already being implicated as
-        evil (mainly a Dowser reading, possibly a Surveyor's). Use the general "heat on me"
-        calculation, not special logic: `Evil.exposure`, whose public talk includes the
-        town's reading of those claims.
-      - **A note for the build:** in the ladder, being pressed or nominated is what makes
-        evil answer. The heat already on it is what makes a double claim a poor bet. So the
-        same exposure parts play two roles: the pressure and on-the-block parts push it to
-        answer, and the public-talk part holds it back from a double claim. Beadle to propose
-        how they combine.
-    - **Evil whose planned bluff is claimed first switches to a spare** (Michael, Nov 19:
-      yes). See "Evil backs into a bluff", whose hold is lifted for this case.
-    - **The private "they're lying" refutation** (Michael, Nov 19): a caught-out NPC may call
-      the witness against it a liar in a private press too. Today it does so only in the
-      meeting defence (`mind_meeting.gd`, for Confidence above 0.6). It's a line only, with
-      no extra doubt on the witness. Owner Beadle; Herald's `press_witness_lying` lines are
-      approved.
-    - Owner Beadle; Herald for any new lines.
-
-  Owner Beadle; Herald for the lines.
-  - **Progress (Beadle and Lantern, Nov 20):**
-    - **Built** (moved to BACKLOG_COMPLETED.md, Nov 20): #367, #368, #372.
-    - **Built** (Beadle, #390):
-      - the town's answer to a double claim: the true holder always counterclaims;
-      - evil switches a bluff someone else took;
-      - a Minion double-claims on purpose, from one 5% roll per Minion per game;
-      - the private "<witness> is lying about seeing me" line.
-    - **Left, on hold until Michael reprioritises:** the podium path (the ladder at the
-      meeting, not only in private). Backing into a spare or unknown gift moved to "Caught
-      out and pressed again: what's left" (Nov 20).
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -517,6 +410,13 @@ The one performance item, "Late-game meeting and presenting cost", is in
     resistance.
   - **Explain an execution's purpose:** propose an information-seeking execution (for a
     Gravedigger read) without asserting the target is the Demon.
+
+- **Insight helps an NPC notice its own readings don't fit** (what's left of "NPCs voice
+  doubt about their own readings", Beadle, Nov 20). The doubt and the line are built (#320,
+  #316). Lantern says the judge's clash signal already catches a repeated pair flipping yes
+  and no. The trigger is a flat 30% for everyone, though, and the item asked for higher
+  Insight to notice a mismatch sooner. Close it if Michael counts the flat trigger as enough.
+  Owners Beadle and Lantern. [decided; triggers open]
 
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
