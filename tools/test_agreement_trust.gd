@@ -69,10 +69,11 @@ func _backing() -> void:
 	other.npc_trust = {}
 	l.suspicion[target.id] = Tuning.Meeting.NOMINATION_FLOOR + 0.1
 	other.suspicion[target.id] = 0.05
+	var target_before: float = float(target.npc_trust.get(accuser.id, 0.5))
 	Social.backing_trust(w, target.id, accuser.id, "accused %s, whom I suspect too" % target.id)
 	_check(l.npc_trust.get(accuser.id, 0.5) > 0.5, "someone accusing a person I suspect gains my trust")
 	_check(not other.npc_trust.has(accuser.id), "not the trust of someone who doesn't suspect them")
-	_check(not target.npc_trust.has(accuser.id) or target.npc_trust[accuser.id] <= 0.5, "nor the accused's")
+	_check(float(target.npc_trust.get(accuser.id, 0.5)) <= target_before, "nor the accused's")
 
 func _readings_unchanged() -> void:
 	var w = _world()

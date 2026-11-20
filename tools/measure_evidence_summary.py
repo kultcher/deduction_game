@@ -78,7 +78,7 @@ def other(rows, kinds, hexer=False):
         def split(key):
             if kind in ("night_sighting", "home_alibi", "sighting_vs_alibi", "role_claim"):
                 return "evil" if r.get("subject_evil") else "good"
-            if kind in ("trace", "trace_with_profiles", "dropped_belongings"):
+            if kind in ("trace", "trace_with_profiles"):
                 return "evil" if r.get("target_evil") else "good"
             if kind in ("demon_death", "silenced"):
                 return "evil" if r.get("subject_evil") else "good"
@@ -126,7 +126,7 @@ def main():
     print(readings(rows))
     print("\n## Gift readings (Hexer on the script)\n")
     print(readings(rows, True))
-    kinds = ["night_sighting", "home_alibi", "sighting_vs_alibi", "role_claim", "claim_clash", "demon_death", "silenced", "trace", "trace_with_profiles", "dropped_belongings"]
+    kinds = ["night_sighting", "home_alibi", "sighting_vs_alibi", "role_claim", "claim_clash", "demon_death", "silenced", "trace", "trace_with_profiles"]
     print("\n## Other evidence (default demon)\n")
     print(other(rows, kinds))
     print("\n## Other evidence (Hexer on the script)\n")

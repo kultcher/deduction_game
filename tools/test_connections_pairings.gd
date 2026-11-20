@@ -12,11 +12,13 @@
 extends SceneTree
 
 const Seeds = preload("res://tools/fixture_seeds.gd")
+const Tuning = preload("res://sim/tuning.gd")
 
 const Game = preload("res://game/game.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Mind = preload("res://sim/mind.gd")
+const C = preload("res://sim/content.gd")
 const Connections = preload("res://workshop/connections.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const Caches = preload("res://workshop/caches.gd")
@@ -188,10 +190,15 @@ func _rows_in_game() -> void:
 	var sc = ScriptDef.default_script()
 	sc.demons = ["demon", "daykiller"]
 	sc.forced = sc.forced.filter(func(r): return not r in sc.demons) + ["daykiller"]
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(12, 7, sc)
-	_play(g, 3)
+	# The first deal from 12 that's still going at the day-3 meeting.
+	var g = null
+	for sd in range(12, 42):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(sd, 7, sc)
+		_play(g, 3)
+		if g.state == "meeting":
+			break
 	if g.state != "meeting":
 		check(false, "the two-kind game reaches the day-3 meeting")
 		return
@@ -259,10 +266,11 @@ func _known_game(seed_v: int, day: int):
 ## can't show. {} if no seed searched has one.
 func _framed_case() -> Dictionary:
 	var from: int = Seeds.SEEDS_FROM
-	while from < Seeds.SEEDS_FROM + Seeds.SEEDS_COUNT:
-		var fc: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1, from)
+	while from < Seeds.SEEDS_FROM + Seeds.FRAMED_SEEDS:
+		var fc: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1, from, 0.0, false)
 		if fc.is_empty():
 			return {}
+		_hear_home_alibi(fc.g, fc.bystander, fc.subject, int(fc.night))
 		Connections.force_row = "none"
 		var sg: String = fc.sighter
 		var sub: String = fc.subject
@@ -273,6 +281,24 @@ func _framed_case() -> Dictionary:
 		print("NOTE: seed %d skipped for the framed-sighting checks: %s already holds %s at %.2f without the fake card" % [int(fc.seed), sub, sg, float(eff.get("without", {}).get(sg, -1.0))])
 		from = int(fc.seed) + 1
 	return {}
+
+## The bystander hears the subject's own "I was home" for the framed night, so the sighter
+## contest has the subject's account to weigh the sighting against (Lantern, Nov 20). Handed
+## to them rather than searched for: gossip rarely brings it to a bystander of a frame.
+func _hear_home_alibi(g, by_id: String, sub_id: String, night: int) -> void:
+	var w = g.w
+	var by = w.by_id[by_id]
+	var sub = w.by_id[sub_id]
+	if not Seeds.held_cards(by, func(c):
+		var ct: Dictionary = c.get("content", {}) if c.get("content") is Dictionary else {}
+		var at = c.get("observed_at", ct.get("observed_at", {}))
+		return str(c.get("kind", "")) == "alibi" and str(c.get("source", ct.get("source", ""))) == sub_id and bool(c.get("home", ct.get("home", false))) and at is Dictionary and int(at.get("day", -1)) == night).is_empty():
+		return
+	var card: Dictionary = {"kind": "alibi", "source": sub_id, "via": sub_id, "subject": [sub_id], "home": true, "block": sub.home_block, "day": night, "phase": C.NIGHT,
+		"learned": [{"day": w.day, "phase": w.phase, "via": sub_id}], "text": "test home alibi"}
+	var receipt: Dictionary = Mind.WorkshopLedger.Evidence.normalize_card(card)
+	Mind.ledger_hear(w, by, "heard:" + receipt.id, [], 1.0, [sub_id, night, "alibi"],
+		{"kind": "tell", "workshop_card": receipt, "workshop_teller": sub_id, "workshop_origin": sub_id, "workshop_public": false})
 
 func _chance(g, listener: String, person: String) -> Dictionary:
 	var n = g.w.by_id.get(listener)
@@ -324,8 +350,24 @@ func _fixes_inside_a_night() -> void:
 		check(lift.call(framed, sg) > lift.call(framed_off, sg), "#139 works through #135: more with the sighter contest than without (%+.3f against %+.3f)" % [lift.call(framed, sg), lift.call(framed_off, sg)])
 		check(not watcher.is_empty() and lift.call(watcher, sg) > lift.call(watcher_off, sg), "#135: a bystander weighs the sighter too (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sg), lift.call(watcher_off, sg)])
 		check(lift.call(watcher, sub) < lift.call(watcher_off, sub), "#135: and holds the sighting less against its subject (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sub), lift.call(watcher_off, sub)])
-	var sleepwalker: Dictionary = {} if sleep_case.is_empty() else _chance(sleep_case.g, sleep_case.subject, sleep_case.sighter)
-	check(not sleepwalker.is_empty() and sleepwalker.chance < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied (%.2f; seed %d)" % [sleepwalker.get("chance", -1.0), int(sleep_case.get("seed", -1))])
+	# The sighting's own effect, against the same game read with no sleepwalking doubt (Lantern,
+	# Nov 20): an end state depends on the game's other cards.
+	if sleep_case.is_empty():
+		check(false, "a seed has a Sleepwalker seen by an honest sighter")
+	else:
+		var sw_sub: String = sleep_case.subject
+		var sw_sg: String = sleep_case.sighter
+		var sw_sight = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sw_sg and sw_sub in c.get("subjects", [c.get("subject", "")])
+		var plain_nights = func(v):
+			if v.get("own_home") is Dictionary:
+				for k in v.own_home.get("nights", {}):
+					v.own_home.nights[k] = Tuning.Workshop.OWN_ERR
+		var sw: Dictionary = Seeds.cards_effect(sleep_case.g, sw_sub, [sw_sg], sw_sight)
+		var sw_plain: Dictionary = Seeds.cards_effect(sleep_case.g, sw_sub, [sw_sg], sw_sight, Callable(), plain_nights)
+		var logit = func(p): return log(clampf(p, 1e-9, 1.0 - 1e-9) / (1.0 - clampf(p, 1e-9, 1.0 - 1e-9)))
+		var sw_lift: float = logit.call(float(sw.get("with", {}).get(sw_sg, 0.5))) - logit.call(float(sw.get("without", {}).get(sw_sg, 0.5)))
+		var sw_plain_lift: float = logit.call(float(sw_plain.get("with", {}).get(sw_sg, 0.5))) - logit.call(float(sw_plain.get("without", {}).get(sw_sg, 0.5)))
+		check(not sw.is_empty() and not sw_plain.is_empty() and sw_lift < sw_plain_lift, "a Sleepwalker, seen by an honest sighter, holds the sighting less against them than with no sleepwalking doubt (%+.2f against %+.2f log-odds; seed %d)" % [sw_lift, sw_plain_lift, int(sleep_case.seed)])
 	# What the relay itself does to its relayer (Seeds.relay_effect: with it held, and left
 	# out), not where the relayer ends up: that depends on the game's other cards, which any
 	# change to play reshuffles (the Delusional self-doubt, Nov 17, moved this game's ending
