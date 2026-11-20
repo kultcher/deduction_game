@@ -86,7 +86,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONGOING_INFO_EARLY_CLAIM` | `-0.4` | Nov 10: was -0.45 (case 12926's day-1 wall) | `sim/role_def.gd` |
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
-| `SEER` | `{ "public_threat_bonus": 1.0, "red_herring_defence_eff": -0.12, "focus_base":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
+| `SEER` | `{ "red_herring_defence_eff": -0.12, "focus_base": 0.3, "focus_insight_scale":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
 | `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 | `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
@@ -99,6 +99,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VETERAN` | `{ "quiet_night_effect": -0.06, "quiet_night_claim_weight": 0.025, }` |  | `sim/roles/veteran.gd` |
 | `MARTYR` | `{ "claim_chosen_bonus": 0.4, "pick_min_score": 0.62, "pick_susp_scale": 0.5, ...` |  | `sim/roles/martyr.gd` |
 | `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
+| `REGISTRAR` | `{ "public_threat_bonus": 0.75, # the Demon's extra interest in a claimed Regi...` |  | `sim/roles/registrar.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
 | `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
 | `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
@@ -584,6 +585,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_VOTE_NATURAL_BASE` | `0.35` |  | `sim/evil.gd` |
 | `EVIL_VOTE_NATURAL_CONF_SCALE` | `0.2` |  | `sim/evil.gd` |
 | `KILL_INFO_CLAIM` | `3.0` | Demon kill target scoring | `sim/evil.gd` |
+| `KILL_CLAIM_BY_ROLE` | `{"lamplighter": 2.0, "psychologist": 2.0, "warden": 3.0, "sexton": 2.0}` | What a publicly claimed gift is worth to the Demon, where it isn't KILL_INFO_CLAIM (Michael, Nov 20). A claimed info gift scores KILL_INFO_CLAIM unless listed; a gift that isn't info scores only if listed. The Sexton's counts while its bell is unrung (it can stop a Scion rising). | `sim/evil.gd` |
+| `KILL_IDENTIFIER_ROLES` | `["seer", "augur", "dowser", "confessor"]` | Gifts that can point at the Demon or clear people get one shared bonus on top (Michael, Nov 20; replaces the Seer's own +1.0). | `sim/evil.gd` |
+| `KILL_IDENTIFIER_BONUS` | `1.0` |  | `sim/evil.gd` |
 | `KILL_SPENT_INFO_CLAIM` | `0.0` |  | `sim/evil.gd` |
 | `KILL_IMPLICATES_US` | `2.0` |  | `sim/evil.gd` |
 | `KILL_HOSTILITY_SCALE` | `0.8` |  | `sim/evil.gd` |
