@@ -107,7 +107,7 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			_add(facts, owners, entry.meta.workshop_card, "defence:" + eid)
 		if entry.get("meta", {}).get("kind") in ["role_claim", "role_counter"] and entry.meta.get("how") != "own" and entry.meta.has("workshop_card") and supported(entry.meta.workshop_card):
 			_add(facts, owners, entry.meta.workshop_card, "claim:" + eid)
-	# The connections model (workshop/connections.gd; off by default): each presentation is a
+	# The connections model (workshop/connections.gd): each presentation is a
 	# stored case, with its own cards, premise, challenges and the day it was presented.
 	var stored_cases: Array = []
 	var with_cases: bool = input.get("listener", {}).has("connections")
@@ -629,7 +629,7 @@ static func premise_targets(key: String, presented: Dictionary) -> Array:
 		var is_root: bool = int(argument.get("board_number", -998)) == int(presented.get("root", -999))
 		if not is_root and not key.begins_with("direct:"):
 			continue
-		if str(argument.get("conclusion", {}).get("type", "")) not in Tuning.Workshop.PREMISE_SHAPING_TYPES:
+		if str(argument.get("conclusion", {}).get("type", "")) not in Tuning.Workshop.PREMISE_ALIGNMENT_TYPES:
 			continue
 		var target: String = Assess._target(argument.conclusion)
 		if target != "" and target not in named:

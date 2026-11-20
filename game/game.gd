@@ -90,10 +90,10 @@ var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling
 var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
 var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
-# Every time the legacy rules judged something the shared model couldn't read (always
-# recorded, with or without detailed tracing). See the `fallbacks` command.
-var shared_fallbacks: Array = []
-var _fallbacks_reported = 0
+# Every refresh or presentation the shared model couldn't prepare (the mind kept its last
+# good beliefs; always recorded, with or without detailed tracing). See the `fallbacks` command.
+var unprepared_refreshes: Array = []
+var _unprepared_reported = 0
 const DecisionFeed = preload("res://sim/decision_feed.gd")
 const WorkshopCaches = preload("res://workshop/caches.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -273,8 +273,8 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	watched = []
 	known_relationships = {}
 	fallback_count = 0
-	shared_fallbacks = []
-	_fallbacks_reported = 0
+	unprepared_refreshes = []
+	_unprepared_reported = 0
 	show_hidden = false
 	last_error = ""
 	_trace_export_pending = false
@@ -333,7 +333,7 @@ func _attach_workshop_world() -> void:
 			return {}
 		if game._workshop_native_submission:
 			if not game._workshop_native_social:
-				WorkshopOwnership.fallback(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
+				WorkshopOwnership.unprepared(game, n, "submission", ["The whole audience is using existing response rules for this submission."], card.get("n", 0))
 			return {}
 		return WorkshopPresentation.present(game, n, card, targets, direction, venue, speak)
 	_home_cards()

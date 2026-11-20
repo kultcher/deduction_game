@@ -583,8 +583,8 @@ static func testimony_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		"reported_at": Solver.TimeModel.statement_time(e), "provenance": e.provenance.duplicate(true)}, true)
 	return context
 
-## Explicit capability gate: no graph feature may silently disappear when the
-## restricted live evaluator replaces the native argument path.
+## Explicit capability gate: no graph feature may silently disappear in the live
+## evaluator.
 static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 	var issues: Array = []
 	if value.cards != snapshot.selected and not (value.cards.size() == snapshot.selected.size() and value.cards.all(func(id): return id in snapshot.selected)):
@@ -842,7 +842,7 @@ static func _listener(snapshot: Dictionary, cards: Array) -> Dictionary:
 			"attention_reports": cards.filter(func(c): return c.id in snapshot.private_evidence and (c.source == src.id or c.get("relay_source") == src.id)).map(func(c): return c.id), "own_outings": src.get("own_outings", {}).duplicate(true)},
 		"ledger": {}, "case_memory": {}, "recency": src.get("recency", {}).duplicate(true)}
 	# The connections model's memory for this listener (workshop/connections.gd); only there
-	# when that model is on.
+	# for a real listener's capture (the Test juror and ghost listeners have none).
 	if src.has("connections"):
 		result["connections"] = src.connections.duplicate(true)
 	if public_roles.is_empty():

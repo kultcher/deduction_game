@@ -1,8 +1,8 @@
 ## Original playtest opening through case #85's first vote. Measurements, not tuning.
 ## godot --headless --path . --script res://tools/replay_54875.gd [-- --allow-fallback]
 ## --stage day3-four | day4-six selects an original recorded late continuation.
-## Also the Day 2 performance check: fails if any listener of case #85 used native rules
-## or any workshop_fallback event fired, unless --allow-fallback is given.
+## Also the Day 2 performance check: fails if any listener of case #85 wasn't assessed
+## or any workshop_unprepared event fired, unless --allow-fallback is given.
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Canvas = preload("res://game/workshop_canvas.gd")
@@ -128,22 +128,22 @@ func _init() -> void:
 	var tallies: Array = g.w.dlog.entries.filter(func(e): return e.type == "vote_tally" and e.target == "constance")
 	var result = {"seed": 54875, "npcs": 10, "scope": fixture.scope if late.is_empty() else late[0].scope, "stage": stage, "continuation_steps": continuation_steps, "filed_versions": filed_versions, "profiles": profiles, "errors": errors, "commands": commands,
 		"outcome": {"day": g.w.day, "state": g.state, "winner": g.w.winner, "reason": g.w.end_reason}, "filed_number": filed, "presentation": presentation, "agreement": agreement, "vote_margins": margins, "profile": profile,
-		"tallies": tallies, "legacy_fallbacks": g.shared_fallbacks.duplicate(true), "fallbacks": trace.filter(func(e): return e.type == "workshop_fallback")}
+		"tallies": tallies, "unprepared_refreshes": g.unprepared_refreshes.duplicate(true), "unprepared_events": trace.filter(func(e): return e.type == "workshop_unprepared")}
 	var refreshes: Array = trace.filter(func(e): return e.type == "workshop_ownership")
 	result["refreshes"] = refreshes.size()
 	result["impossible_refreshes"] = refreshes.filter(func(e): return e.data.get("reasoning", {}).get("impossible", false))
 	if not result.impossible_refreshes.is_empty():
 		errors.append("impossible belief refresh")
-	var native: Array = presentation.filter(func(d): return d.model != "shared").map(func(d): return d.listener)
-	if not native.is_empty() or not result.fallbacks.is_empty() or not result.legacy_fallbacks.is_empty():
+	var unassessed: Array = presentation.filter(func(d): return d.model != "shared").map(func(d): return d.listener)
+	if not unassessed.is_empty() or not result.unprepared_events.is_empty() or not result.unprepared_refreshes.is_empty():
 		var allowed: bool = "--allow-fallback" in OS.get_cmdline_user_args()
-		print("%s: shared evaluation incomplete (native listeners %s; %d fallback events). The timing skips their work." % ["WARNING" if allowed else "FAIL", native, result.fallbacks.size() + result.legacy_fallbacks.size()])
+		print("%s: shared evaluation incomplete (unassessed listeners %s; %d unprepared events). The timing skips their work." % ["WARNING" if allowed else "FAIL", unassessed, result.unprepared_events.size() + result.unprepared_refreshes.size()])
 		if not allowed:
 			errors.append("fallback")
 	DirAccess.make_dir_recursive_absolute("res://logs/migration/replay_54875")
 	var out = FileAccess.open("res://logs/migration/replay_54875/measurement.json", FileAccess.WRITE)
 	out.store_string(JSON.stringify(result, "\t"))
-	print("54875 replay: filed #%d; %d shared, %d native; %d vote tallies; errors %s" % [filed,
+	print("54875 replay: filed #%d; %d shared, %d unassessed; %d vote tallies; errors %s" % [filed,
 		presentation.filter(func(d): return d.model == "shared").size(), presentation.filter(func(d): return d.model == "legacy").size(), tallies.size(), errors])
 	for tally in tallies:
 		print("Case #85 day %d vote: %d yes / %d needed; %s" % [tally.day, tally.data.count, tally.data.threshold, tally.data.outcome])

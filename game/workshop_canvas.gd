@@ -662,7 +662,7 @@ static func public_claims_for(g, value: Dictionary) -> Array:
 	return result
 
 ## What presenting this case to the town would add, under the connections model
-## (workshop/connections.gd; nothing with the switch off). The strength chip says whether
+## (workshop/connections.gd). The strength chip says whether
 ## the argument is sound; this says when a sound argument would still move the town
 ## little, from public information and your own public cases only:
 ##   "none"     the case's cards are all public already, and weighed together they add

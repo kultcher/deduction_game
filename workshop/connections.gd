@@ -7,10 +7,10 @@
 ## together where a connection says so (built-in pairings, the NPC's own core, stored
 ## cases).
 ##
-##   judge       today's shared evaluator (CaseEval over the possible worlds) run on a chosen
+##   judge       the shared evaluator (CaseEval over the possible worlds) run on a chosen
 ##               set of the held cards: everyone's chance of being evil given just that set
 ##   prior       the listener's standing suspicion and what it knows about itself, before
-##               any evidence: the judge's "before" side, the same as today's
+##               any evidence: the judge's "before" side, as CaseEval computes it
 ##   baseline    the judge on no cards: the prior plus the public record (deaths, executions),
 ##               which is in every run
 ##   lean        how far a set moves a person from the baseline, in log-odds, so leans add
@@ -66,9 +66,9 @@
 ##
 ## The demon-type declaration decides how movement is read (`row`):
 ##   "none"    no declaration on a script with both kinds: each night by itself. Inside a
-##             night the Demon's movement is today's mix of the two kinds.
+##             night the Demon's movement is CaseEval's mix of the two kinds.
 ##   "walker"  declared, or a walker-only script: every night and trace together, as one
-##             always-on movement connection. This is today's reading.
+##             always-on movement connection. (CaseEval's usual reading.)
 ##   "hexer"   declared, or a Hexer-only script: each night by itself (the Demon doesn't
 ##             walk), and the Hexer's day evidence as one always-on day connection.
 ## The Hexer's day evidence (the Hexer factor: kills against day logs, daytime sightings and
@@ -1271,8 +1271,8 @@ static func case_targets(sc: Dictionary) -> Array:
 		named.append(str(sc.target))
 	return named
 
-## Every reading some stored case challenges, counted or not: with the model on, those
-## challenges act through their case alone.
+## Every reading some stored case challenges, counted or not: those challenges act through
+## their case alone.
 static func challenged_ids(case_list: Array) -> Array:
 	var out: Array = []
 	for cs in case_list:
@@ -1520,7 +1520,7 @@ static func cases(run: Dictionary, item_list: Array, values: Dictionary, own: Di
 	return out
 
 
-## Today's evaluation with everyone's chances replaced by the connections result, so the
+## The CaseEval evaluation with everyone's chances replaced by the connections result, so the
 ## code after it (belief to suspicion, who to hang first, reasons) reads the new chances.
 static func overlay(ev: Dictionary, result: Dictionary) -> Dictionary:
 	var out: Dictionary = ev.duplicate(true)

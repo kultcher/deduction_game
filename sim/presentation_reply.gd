@@ -1,5 +1,5 @@
 ## How a listener answers the player's presentation, around the shared model's judgement
-## (legacy purge phase 4a, docs/legacy_retirement_plan.md). The Workshop judges evidence
+## (legacy purge phase 4a, docs/archive/legacy_retirement_plan.md). The Workshop judges evidence
 ## (`w.workshop_present`, WorkshopPresentation). This module does what it doesn't:
 ##   - repeat bookkeeping (`n.heard`), so a case told twice is recognised;
 ##   - evil listeners' masked answers, and their good self via the shadow (step 2);

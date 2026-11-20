@@ -95,7 +95,7 @@ func _run() -> void:
 	number = Live.file(g, mixed, number)
 	result = g._evaluate_deduction(listener, g.board[number - 1], 1.0)
 	# No legacy route for presentations (Oct 25): an unsupported graph is blocked, not judged natively.
-	check(result.get("blocked", false) and not result.get("workshop", false), "unsupported revised graph is blocked with its reason, not judged by native rules")
+	check(result.get("blocked", false) and not result.get("workshop", false), "unsupported revised graph is blocked with its reason, not judged at all")
 	check(not listener.workshop_state.get("presentations", {}).has(str(number)), "a blocked revision leaves no shared endorsement behind")
 	g.workshop_retract(number, listener.id)
 	check(listener.ledger.get("arg:workshop:%d" % number, {}).get("weight", 0.0) == 0.0, "developer withdrawal leaves no canvas contribution")

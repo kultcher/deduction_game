@@ -1,4 +1,4 @@
-## Reversible application boundary for the opt-in, restricted reading model.
+## Applies a shared belief refresh to a mind: ownership of its cards, the suspicion vector, reasons.
 extends RefCounted
 const Shared = preload("res://workshop/shared_ledger.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
@@ -67,8 +67,8 @@ static func _refresh(g, n, phase: String) -> void:
 		if plan.ready:
 			g._workshop_plans[key] = plan
 		else:
-			# Unprepared refresh (Purge Phase 3): keep the last good shared vector and log the issue.
-			fallback(g, n, "ownership_before", plan.issues)
+			# Unprepared refresh (legacy retirement phase 3, Nov 3): keep the last good shared vector and log the issue.
+			unprepared(g, n, "ownership_before", plan.issues)
 	else:
 		if not g._workshop_plans.has(key):
 			return
@@ -90,7 +90,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.issues = plan.issues
 		if not plan.ready:
 			g._workshop_plans.erase(key)
-			fallback(g, n, "ownership_after", plan.issues)
+			unprepared(g, n, "ownership_after", plan.issues)
 			return
 		g._workshop_plans[key] = plan
 		state.previous_owned = state.get("owned", {}).duplicate(true)
@@ -239,10 +239,10 @@ static func _refresh(g, n, phase: String) -> void:
 			"reasoning": state.reasoning, "reasoning_mode": plan.prepared.listener.reasoning_mode,
 			"confidence_mode": plan.prepared.listener.confidence_mode,
 			"elapsed_ms": Time.get_ticks_msec() - started, "cache_hit": cache_hit}
-		# The connections model (off by default): what each held card added, for the why tool.
+		# The connections model: what each held card added, for the why tool.
 		if proposal.has("connections"):
 			owned_trace["connections"] = Connections.summary(proposal.connections)
-		g.w.dlog.trace_event("workshop_ownership", n.id, "", owned_trace, "One joint vector replaces certified legacy suspicion; preferences and role beliefs retain their owners.")
+		g.w.dlog.trace_event("workshop_ownership", n.id, "", owned_trace, "One joint vector sets suspicion; preferences and role beliefs keep their owners.")
 
 ## Attribute this mind's reasons from its latest refresh, once (purge 2a, deferred).
 static func reasons_for(g, n) -> void:
@@ -275,15 +275,15 @@ static func reasons_for(g, n) -> void:
 	)
 	state.reasons = refresh_reasons
 
-static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
+static func unprepared(g, n, point: String, issues: Array, card: int = 0) -> void:
 	var entry = {"listener": n.id, "point": point, "issues": issues.duplicate(true), "card": card, "day": g.w.day, "phase": g.w.phase}
-	# Count each distinct fallback once per listener per day, so the totals mean
+	# Count each distinct unprepared refresh once per listener per day, so the totals mean
 	# "things not tested", not "how often a refresh ran".
-	var seen: bool = g.shared_fallbacks.any(func(f): return f.listener == entry.listener and f.point == entry.point and f.issues == entry.issues and f.card == entry.card and f.day == entry.day)
+	var seen: bool = g.unprepared_refreshes.any(func(f): return f.listener == entry.listener and f.point == entry.point and f.issues == entry.issues and f.card == entry.card and f.day == entry.day)
 	if not seen:
-		g.shared_fallbacks.append(entry)
-		g.w.dlog.add("legacy_fallback", n.id, "", entry, "Shared refresh kept last good vector (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
-	g.w.dlog.trace_event("workshop_fallback", n.id, "", {"listener": n.id,
+		g.unprepared_refreshes.append(entry)
+		g.w.dlog.add("unprepared_refresh", n.id, "", entry, "Shared refresh kept last good vector (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
+	g.w.dlog.trace_event("workshop_unprepared", n.id, "", {"listener": n.id,
 		"card": card, "exit_point": point, "issues": issues.duplicate(true)},
 		"Shared evaluation unavailable: " + "; ".join(PackedStringArray(issues)))
 

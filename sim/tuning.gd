@@ -1182,26 +1182,26 @@ class Workshop:
 	## listener hearing "X is evil" weighs how far the case proves that, and under-registers
 	## what it implies about the others.
 	const PREMISE_BYSTANDER_SHARE = 1.0 / 3.0
-	## Premise types whose target is an alignment question. Marked, secret, misled and
-	## conflict premises name no alignment target, so their cards spill over in full.
-	const PREMISE_SHAPING_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]
+	## Premise types that ask an alignment question about a person: a stored case's target
+	## (`Shared.premise_targets`). Marked, secret, misled and conflict premises name no
+	## alignment target.
+	const PREMISE_ALIGNMENT_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]
 	## The protect / believed-role preference from a presented premise needs at least this
 	## agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks.
 	const PREMISE_PREF_MIN_AGREEMENT = 0.5
-	## Premises pass step 2: "suspicious" hedges, so the cards only suspicious premises
-	## brought count at this share for everyone (both directions), and the rest of their
-	## full effect on the target becomes pressure, once per filing: the average listener's
-	## full-weight rise times this (private / meeting), so a rise of 0.2 gives the conflict
-	## premise's +0.1 / +0.2.
+	## A "suspicious" premise halves its stored case's weight (`Connections.case_weight`):
+	## what the case's cards add together counts at this share. Each card alone still counts
+	## in full.
 	const SUSPICIOUS_HEARING = 0.5
+	## The venue's share of connections pressure (`WorkshopPresentation`): private / meeting.
 	const SUSPICIOUS_PRESSURE_PER_RISE = {"private": 0.5, "meeting": 1.0}
-	## The same pressure under the connections model (Michael, Nov 14). "Suspicious" is the
-	## early-game tool: one basic incriminating reading should press its subject by about
-	## 0.3 at a meeting (with a nomination's 0.4, about one disclosure tier). The rise is
-	## how far the case's cards, read by themselves, lift its subject for the average
-	## listener; times this, up to the cap, then the venue's share above. Measured Nov 14
-	## on fresh 10-NPC games: a lone Dowser "1 of these 2" lifts its subject 6 to 8 points,
-	## a lone Seer "yes" on a pair 3, a Dowser "1 of these 3" about 1.
+	## Connections pressure (Michael, Nov 14). "Suspicious" is the early-game tool: one
+	## basic incriminating reading should press its subject by about 0.3 at a meeting (with
+	## a nomination's 0.4, about one disclosure tier). The rise is how far the case's cards,
+	## read by themselves, lift its subject for the average listener; times this, up to the
+	## cap, then the venue's share above. Measured Nov 14 on fresh 10-NPC games: a lone
+	## Dowser "1 of these 2" lifts its subject 6 to 8 points, a lone Seer "yes" on a pair 3,
+	## a Dowser "1 of these 3" about 1.
 	const SUSPICIOUS_PRESSURE_CONNECTIONS_SCALE = 4.0
 	const SUSPICIOUS_PRESSURE_CONNECTIONS_CAP = 0.5
 
