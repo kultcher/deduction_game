@@ -25,6 +25,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
   1. Possible bug: the "not the Demon" badge `[decided]`
+  2. NPC defenders weigh secrets the game can't deal `[decided]`
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
@@ -115,6 +116,12 @@ listener (#273), both Lantern's.
 - **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
   ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
   and Herald. [decided]
+- **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`
+  builds the defence view from the whole roster of secrets (`C.SECRET_MOD_LIST`), not from
+  the game's `case_script.secrets`. Fix: read the script's secrets, as the rest of the judge
+  does. It moves golden wherever a defence is scored. Its own small PR, after Quill's #405
+  re-baseline, Lantern's scaffolding PR and the "not the Demon" badge fix. Owner Lantern;
+  approved as a bug fix by Seneschal (Nov 20). [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
