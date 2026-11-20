@@ -150,7 +150,7 @@ const NIGHT_KINDS: Array = ["sighting", "alibi", "coverage", "evening"]
 ## Nov 19: a guard cited with a sighting on the guarded block counted as the sighting alone,
 ## while the Test juror, judging the case whole, counted both).
 const NIGHT_ROLES: Array = ["lamplighter", "nightwatch", "warden"]
-const TRACE_KINDS: Array = ["trace", "dropped"]
+const TRACE_KINDS: Array = ["trace"]
 ## What the Hexer factor reads besides the profile cards (LiveActivity: presence_cards).
 const DAY_KINDS: Array = ["location", "watch_log", "evening"]
 ## Item kinds that are always on for every listener and never merge with anything.

@@ -1218,11 +1218,11 @@ static var _bare_fits_cache: Dictionary = {}
 ## a negative value restores the old mapping (suspicion read as a probability) for comparison.
 static var prior_k: float = Tuning.Workshop.PRIOR_K
 
-const _MOVEMENT_ROLE_KINDS: Array = ["sighting", "evening", "trace", "coverage", "alibi", "dropped"]
+const _MOVEMENT_ROLE_KINDS: Array = ["sighting", "evening", "trace", "coverage", "alibi"]
 
 static func _is_role_card(card: Dictionary) -> bool:
 	var k: String = str(card.get("kind", ""))
-	return k in ["report", "claim", "secret_claim", "totem", "town_hall", "sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (k == "event" and card.get("event") == "martyr") or card.has("relay_source") or str(card.get("role", "")) != ""
+	return k in ["report", "claim", "secret_claim", "totem", "town_hall", "sighting", "evening", "trace", "coverage", "alibi"] or (k == "event" and card.get("event") == "martyr") or card.has("relay_source") or str(card.get("role", "")) != ""
 
 static func _is_movement_role_card(card: Dictionary) -> bool:
 	var k: String = str(card.get("kind", ""))

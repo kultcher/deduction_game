@@ -83,11 +83,8 @@ The behaviour is gone, but its names and plumbing remain:
 
 ### C. Off switches and dead knobs in `sim/tuning.gd`
 
-- `LEGACY_MUD_DROPS_ENABLED = false`, read once (`game_day_night.gd:405`). Its branch is
-  dead.
-- `LEGACY_EXTRA_SHIFT_DRAW = 0.3`: "kept only so setup draws stay aligned". Removing it
-  shifts every seed, so it needs a deliberate golden re-baseline. That's a good thing to
-  fold into the next planned re-baseline.
+- ~~`LEGACY_MUD_DROPS_ENABLED`~~ and ~~`LEGACY_EXTRA_SHIFT_DRAW`~~: removed with the drops
+  (Nov 19, Quill), in one golden re-baseline.
 - `USE_FLAVOR_SECRETS = false` (benched flavour secrets): `world.gd:462` and the content
   behind it. Decide whether this is parked or dead.
 - `CONNECTIONS`: on by default since #160 (Nov 16), and removed with the earlier model in

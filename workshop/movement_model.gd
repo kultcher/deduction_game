@@ -15,7 +15,7 @@ static func claim_refs(view: Dictionary, value: Dictionary) -> Array:
 	return value.get("citations", {}).values()
 
 static func evidence(view: Dictionary, cards: Array) -> Array:
-	return cards.filter(func(c): return c.kind in ["sighting", "coverage", "evening", "trace", "item"] or (c.kind == "alibi" and c.get("quoted", false)) or c.get("role") == "nightwatch") if available(view) else []
+	return cards.filter(func(c): return c.kind in ["sighting", "coverage", "evening", "trace"] or (c.kind == "alibi" and c.get("quoted", false)) or c.get("role") == "nightwatch") if available(view) else []
 
 static func factors(view: Dictionary, cards: Array, value: Dictionary) -> Array:
 	if Live.available(view):
@@ -118,9 +118,6 @@ static func _incident(kind: String, haunt: String, haunt_visit: float, out: bool
 				"trace":
 					var q: Dictionary = trace_distribution(evening, card.data.passers) if kind == "hunt" else passer_distribution(card.data.background, card.data.passers, out and card.data.scene_block in path, evening)
 					incident *= q.get(card.data.material, 0.0)
-				"item":
-					var drop: float = (0.35 if kind == "hunt" else 0.15) * 0.12
-					incident *= drop / maxf(path.size(), 1.0) / card.data.locations_in_block if out and card.block in path else 0.0
 		total += incident
 	return total
 

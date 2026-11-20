@@ -129,8 +129,6 @@ func _joint(view: Dictionary) -> void:
 	_oracle(active, [watch, alibi, seen], {"self": "d", "own_role": "warden", "good": ["d"]}, [watch.id], "Night Watch, physical sighting and caught alibi")
 	var lamp = {"id": "lamp", "kind": "report", "source": "a", "role": "lamplighter", "night": 1, "observed_at": at, "data": {"count": 1}}
 	_oracle(active, [lamp, alibi, seen], {}, [], "joint Lamplighter cardinality and route likelihood")
-	var drop = {"id": "drop", "kind": "dropped", "source": "evidence", "night": 1, "block": "market", "data": {"material": "market"}}
-	_oracle(active, [drop, alibi], {}, [], "physical drop ownership against fallible alibi")
 	var clerk = {"id": "clerk", "kind": "report", "source": "a", "role": "clerk", "night": 0, "observed_at": {"day": 0, "phase": "night"}, "data": {"pair": ["b", "c"], "role": "warden"}}
 	var rival = {"id": "rival", "kind": "claim", "source": "d", "role": "warden", "observed_at": at, "data": {}}
 	_oracle(view, [clerk, rival], {}, [], "joint role completion with competing gift declaration")

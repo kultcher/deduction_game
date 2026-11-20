@@ -69,8 +69,7 @@ Every role's reading is produced by its role file, `sim/roles/<role>.gd` (night 
 | C2 Evening sighting | `activity_card` (`evening`); `live_activity.gd` |
 | C3 Night sighting | made: `sim/social.gd`, `sim/mind_dialogue.gd`, Night Watch; card: `activity_card`; weighed: `live_activity.gd` `factors` / `score`; profiles `Tuning.Workshop.NIGHT_OUT_RATES`, `WALKER_CLAIM_*` |
 | C4 Home alibi | made: `sim/dialogue.gd`, `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_support.gd`; channel: `evidence_channels.gd` (`testimony_honesty`); dispute: `Solver.Graph.valid_dispute` (`workshop/case_graph.gd`) |
-| C5 Dropped belongings | `game/game_day_night.gd` (`_search`, owner branch: a sighting with `dropped`); `activity_card` (`item_drop`) |
-| C6 Mud or soot drop | `_search` (material branch); `activity_card` (`dropped`); `live_activity.gd` (drop owner matching) |
+| C5, C6 Drops | removed (Nov 19) |
 | C7 Vigil | `game/game_day_night.gd` (vigil); `activity_card` (`coverage`, vigil sightings `complete`); `Tuning.Workshop.VIGIL_MISS` (mirrored as `VigilMiss` in `LiveActivity.cs`) |
 
 ## D. Crime scenes and night events

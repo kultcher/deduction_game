@@ -29,7 +29,7 @@ static func available(view: Dictionary) -> bool:
 	return view.get("live_activity", false)
 
 static func relevant(cards: Array) -> Array:
-	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"]))
+	return cards.filter(func(c): return c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"]))
 
 ## Everything routes() and factors() read from a card list: the movement-relevant
 ## cards, relayed cards (in order) and each person's claimed role. Two listeners who
@@ -41,7 +41,7 @@ static func movement_inputs(view: Dictionary, cards: Array, knowledge: Dictionar
 		var role: String = role_of(cards, person.id, knowledge)
 		roles.append([role, role_hearing(cards, person.id, role)] if weighted else role)
 	var has_struct_trace: bool = include_context and cards.any(func(x): return x.kind == "trace" and x.get("data", {}).has("family"))
-	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi", "dropped"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])), roles]
+	return [cards.filter(func(c): return c.has("relay_source") or c.kind in ["sighting", "evening", "trace", "coverage", "alibi"] or (include_context and c.kind == "secret_claim") or (has_struct_trace and ((c.kind == "context" and c.get("context_kind", "") in ["home", "work", "haunt", "bond"]) or c.kind == "location")) or (c.kind == "report" and c.role in ["nightwatch", "warden", "lamplighter", "veteran", "medium", "monitor"])), roles]
 
 static func role_of(cards: Array, person: String, knowledge: Dictionary = {}) -> String:
 	if person == knowledge.get("self", ""):
@@ -167,7 +167,6 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 	card_ints.resize(c_count * _CARD_STRIDE)
 	card_doubles.resize(c_count * 2)
 	var inc_map: Dictionary = {}
-	var drop_map: Dictionary = {}
 	var default_nw_err: float = Tuning.Workshop.NIGHTWATCH_REPORT_ERROR
 
 	for c_i in range(c_count):
@@ -186,8 +185,6 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 				kind_code = 4
 			"alibi":
 				kind_code = 5
-			"dropped":
-				kind_code = 6
 			"report":
 				kind_code = 7
 			"claim":
@@ -215,8 +212,6 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			flags |= (1 << 5)
 		if bool(card.get("duty_only", false)):
 			flags |= (1 << 6)
-		if bool(card.get("item_drop", false)):
-			flags |= (1 << 7)
 		if data.has("family"):
 			flags |= (1 << 8)
 		if bool(C.ROLES.get(role_str, {}).get("night_walk", false)):
@@ -277,7 +272,7 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 					pos_m |= (1 << pos_i)
 			card_ints[off + 6] = pos_m
 			card_ints[off + 17] = int(data.get("count", 0))
-		elif kind_code == 6 or kind_code == 3: # dropped / legacy trace
+		elif kind_code == 3: # legacy trace
 			card_ints[off + 11] = _block_code(str(data.get("material", "")))
 
 		if has_relay:
@@ -301,10 +296,6 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 		else:
 			inc_str = str(card.get("id", ""))
 		card_ints[off + 15] = _intern_tok(inc_map, inc_str)
-
-		if kind_code == 6 or (flags & (1 << 7)) != 0:
-			var df_key: String = str(card.get("fact_id", card.get("id", "")))
-			card_ints[off + 16] = _intern_tok(drop_map, df_key)
 
 		if kind_code == 9:
 			var app: Dictionary = card.get("applies", {})
@@ -590,8 +581,8 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	return top
 
 ## Whether a movement card is certain enough to rule a Lamplighter's count impossible (see
-## _list_mix): the count itself, the listener's (me) own nights and own sightings, or a trace or
-## dropped item seen for itself, not someone's report of it. Anyone else's word can be a lie.
+## _list_mix): the count itself, the listener's (me) own nights and own sightings, or a trace
+## seen for itself, not someone's report of it. Anyone else's word can be a lie.
 static func certain_for_count(c: Dictionary, count_id: String, me: String) -> bool:
 	if str(c.get("id", "")) == count_id:
 		return true
@@ -604,7 +595,7 @@ static func certain_for_count(c: Dictionary, count_id: String, me: String) -> bo
 	match str(c.get("kind", "")):
 		"sighting":
 			return me != "" and str(c.get("source", "")) == me
-		"trace", "dropped":
+		"trace":
 			return true
 	return false
 
