@@ -53,18 +53,38 @@ func _pick_kinds(w, s, l, tries: int) -> Dictionary:
 func _test_confide() -> void:
 	var g = _fresh()
 	var w = g.w
-	var s = w.living_good().filter(func(n): return n.secret.is_empty() and C.hint_package(w, n.role) != "")[0]
-	var l = w.living_good().filter(func(n): return n != s)[0]
-	s.claim_public = false
-	s.protect_lock = false
-	s.pressure = 0.0
-	s.traits["privacy"] = 0.5
-	s.npc_trust[l.id] = 0.5   # a middling listener: a hint is the usual answer
-	l.known_claims.erase(s.id)
-	s.confided = false
-	w.confides_made = 0   # the case's first morning may already have used the town's confidings
-	w.day = 1
-	var on_day1: Dictionary = _pick_kinds(w, s, l, 600)
+	# A teller the day-1 confidant bonus can bring to name its gift, and not yet so open that
+	# it names it every time by day 2 (when the day's own openness takes over): whether it does
+	# also rests on its role's own disclosure score and that day's fear roll, which vary by
+	# deal (Beadle, on #remove-drops: the setup reshuffle made the first candidate a Warden
+	# afraid on day 1, then a Night Watch whose gift holds back its claims).
+	var s = null
+	var l = null
+	var on_day1: Dictionary = {}
+	for cand in w.living_good().filter(func(n): return n.secret.is_empty() and C.hint_package(w, n.role) != ""):
+		var lis = w.living_good().filter(func(n): return n != cand)[0]
+		cand.claim_public = false
+		cand.protect_lock = false
+		cand.pressure = 0.0
+		cand.traits["privacy"] = 0.5
+		cand.npc_trust[lis.id] = 0.5   # a middling listener: a hint is the usual answer
+		lis.known_claims.erase(cand.id)
+		cand.confided = false
+		w.confides_made = 0   # the case's first morning may already have used the town's confidings
+		w.day = 1
+		var kinds: Dictionary = _pick_kinds(w, cand, lis, 600)
+		w.day = 2
+		var later: Dictionary = _pick_kinds(w, cand, lis, 600)
+		w.day = 1
+		# Not so open that it names the gift every time by day 2, or the bonus can't show.
+		if kinds.get("role_claim", 0) > 0 and later.get("role_hint", 0) > 0:
+			s = cand
+			l = lis
+			on_day1 = kinds
+			break
+	if s == null:
+		_check(false, "a teller the day-1 confidant bonus can bring to a claim, in this deal")
+		return
 	w.day = 2
 	var on_day2: Dictionary = _pick_kinds(w, s, l, 600)
 	_check(on_day1.get("role_claim", 0) > on_day2.get("role_claim", 0), "on day 1 the confidant bonus makes the gift itself likelier (%s vs %s)" % [str(on_day1), str(on_day2)])
