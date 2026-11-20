@@ -495,7 +495,7 @@ func _test_final_roles_hooks() -> void:
 	_check(C.role_def("rumormonger").cannot_hold_solo_secret, "Rumormonger RoleDef marks cannot_hold_solo_secret")
 	_check(is_equal_approx(C.role_def("psychologist").conversation_nudge, 0.5), "Psychologist RoleDef sets conversation_nudge = 0.5")
 	_check(C.role_def("warden").hard_to_kill and C.role_def("veteran").hard_to_kill, "Warden and Veteran RoleDefs set hard_to_kill")
-	_check(C.role_def("seer").public_threat_key == "seer" and is_equal_approx(C.role_def("seer").public_threat_bonus, 1.0), "Seer RoleDef sets public_threat_bonus")
+	_check(C.role_def("registrar").public_threat_key == "registrar" and is_equal_approx(C.role_def("registrar").public_threat_bonus, 0.75) and C.role_def("seer").public_threat_bonus == 0.0, "Registrar RoleDef sets public_threat_bonus; the Seer's is the shared identifier bonus now")
 	_check(C.role_def("martyr").can_substitute_execution(w, martyr, vet.id), "Martyr RoleDef can_substitute_execution validates good chosen target")
 
 	# 5. Mind disclosure, alibis, press, defence & Domain.gift_time hooks (Parts 1-3)
@@ -564,7 +564,7 @@ func _test_final_roles_hooks() -> void:
 	_check(is_equal_approx(Mind.SERIOUS_GRIEVANCE, Tuning.Trust.SERIOUS_GRIEVANCE), "Mind constants alias Tuning.Trust")
 	_check(is_equal_approx(Mind.CONSENSUS_BASE, Tuning.Meeting.CONSENSUS_BASE) and is_equal_approx(C.DEFENCE_ROPE, Tuning.Meeting.DEFENCE_ROPE), "Meeting constants alias Tuning.Meeting")
 	_check(is_equal_approx(C.EVIL_CAUTION_DEMON, Tuning.Evil.EVIL_CAUTION_DEMON) and is_equal_approx(Evil.HEAT_FADE, Tuning.Evil.HEAT_FADE), "Evil constants alias Tuning.Evil")
-	_check(is_equal_approx(C.role_def("seer").public_threat_bonus, Tuning.Roles.SEER.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")
+	_check(is_equal_approx(C.role_def("registrar").public_threat_bonus, Tuning.Roles.REGISTRAR.public_threat_bonus) and is_equal_approx(C.role_def("warden").quiet_night_effect, Tuning.Roles.WARDEN.quiet_night_effect), "RoleDefs read per-role tuning from Tuning.Roles")
 	_check(Reasoner.profile(0.2).cards == Tuning.Workshop.PROFILE_LOW.cards and Reasoner.profile(0.5).rivals == Tuning.Workshop.PROFILE_MEDIUM.rivals and Reasoner.profile(0.8).support == Tuning.Workshop.PROFILE_HIGH.support, "Reasoner.profile reads Low/Medium/High profiles from Tuning.Workshop")
 
 

@@ -40,7 +40,7 @@ func _initialize() -> void:
 	var key = hash([universe_key, view.people, card.kind, card.get("event", ""), card.source, card.get("role", ""), card.observed_at, card.data, []])
 	Solver.report_matches[key] = {"inputs": ["simulated hash collision"], "accepted": PackedByteArray()}
 	check(Solver.solve(view, [card]).worlds == before, "exact report inputs reject a colliding cache entry")
-	for fixture in ["core", "movement", "poison", "revenant"]:
+	for fixture in ["core", "poison", "revenant"]:
 		var session = Session.new(692, fixture)
 		var v: Dictionary = session.scenario.public_view
 		var reports: Array = v.cards.filter(func(c): return c.kind == "report" and c.role in ["surveyor", "rumormonger", "dowser"])

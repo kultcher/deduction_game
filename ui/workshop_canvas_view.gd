@@ -55,6 +55,8 @@ const TOP_RING = Color("c9a24a")
 const DAMNING_LINE = "This case is damning: an ordinary townsperson would vote for %s over anyone else."
 const CONCLUSIVE_LINE = "This case is conclusive: an ordinary townsperson would take it as settled that %s."
 ## A lie call the town weighs as one word against another (Lantern's draw; Michael, Nov 19).
+## A weak or contrary accusation whose evidence points more at someone else (Michael, Nov 20).
+const POINTS_ELSEWHERE_TIP = "This evidence may say more about someone else than about %s."
 const STAND_OFF = "Stand-off"
 const STAND_OFF_TIP = "One word against another. Most will wait for more, but a few may take your side."
 var font: Font = CanvasSkin.serif()
@@ -333,6 +335,9 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 				notes.append(Live.lie_call_line(c, func(pid): return Solver.person_name(model.view, pid)))
 			if badge.get("change", "") != "":
 				notes.append(badge.change)
+			if badge.get("points_elsewhere", false) and badge.get("headline", "") == "":
+				chip_text += " · points elsewhere"
+				notes.append(POINTS_ELSEWHERE_TIP % Solver.person_name(model.view, str(conclusion.get("target", ""))))
 			if badge.get("town_note", "") != "":
 				# The one warning shown beside the strength itself (connections model only).
 				chip_text += " · " + {"refresh": "Refresh", "presses": "No new belief"}.get(badge.get("town_note_kind", ""), "No new info")
@@ -349,27 +354,24 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 		var chip = Rect2(rect.position + Vector2(rect.size.x - (cw + 10) * zoom, 7 * zoom), Vector2(cw, 24) * zoom)
 		draw_style_box(CanvasSkin.flat(chip_color, ring if ring != null else chip_color.darkened(0.3), 2 if ring != null else 1, 10, 0), chip)
 		draw_string(font, chip.position + Vector2(9, 17) * zoom, chip_text, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(13), Color("fbf6ea"))
-		tips.append({"rect": chip, "text": tip})
+		tips.append({"rect": chip, "text": tip, "chip": chip_text})
 	var rows: Array = []
 	# Who: portrait and name.
 	var shown: Dictionary = node.get("pick", {}) if draft else conclusion
 	var person: String = shown.get("target", "")
 	var who = Rect2(rect.position + Vector2(12, 48) * zoom, Vector2(WIDTH - 24, 58) * zoom)
-	if shown.get("type", "") != "conflict":
-		_field_box(who, id == model.selected)
-		var center: Vector2 = who.position + Vector2(31, 29) * zoom
-		if person != "":
-			_draw_face(person, center, 23 * zoom)
-			draw_string(font, who.position + Vector2(64, 36) * zoom, Solver.person_name(model.view, person), HORIZONTAL_ALIGNMENT_LEFT, who.size.x - 90 * zoom, _fs(19), ink)
-		else:
-			draw_circle(center, 23 * zoom, Color("d8c7a6"))
-			draw_string(font, center + Vector2(-6, 7) * zoom, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(20), muted)
-			draw_string(font, who.position + Vector2(64, 36) * zoom, "Choose a person", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(17), muted)
-		_caret(who)
-		fields[id] = [{"rect": who, "field": "person"}]
-		tips.append({"rect": who, "text": "Who this premise is about. Click to choose."})
+	_field_box(who, id == model.selected)
+	var center: Vector2 = who.position + Vector2(31, 29) * zoom
+	if person != "":
+		_draw_face(person, center, 23 * zoom)
+		draw_string(font, who.position + Vector2(64, 36) * zoom, Solver.person_name(model.view, person), HORIZONTAL_ALIGNMENT_LEFT, who.size.x - 90 * zoom, _fs(19), ink)
 	else:
-		fields[id] = []
+		draw_circle(center, 23 * zoom, Color("d8c7a6"))
+		draw_string(font, center + Vector2(-6, 7) * zoom, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(20), muted)
+		draw_string(font, who.position + Vector2(64, 36) * zoom, "Choose a person", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(17), muted)
+	_caret(who)
+	fields[id] = [{"rect": who, "field": "person"}]
+	tips.append({"rect": who, "text": "Who this premise is about. Click to choose."})
 	# What: the claim.
 	var what = Rect2(rect.position + Vector2(12, 114) * zoom, Vector2(WIDTH - 24, 34) * zoom)
 	_field_box(what, false)
@@ -692,7 +694,7 @@ func _evidence_card(id: String) -> Dictionary:
 
 ## Clearing premises the top tier can call settled: the juror's chance is the target's chance
 ## of being good, which settles these and no other clearing premise (Codex, #358). Being good
-## doesn't settle "holds their claimed gift", "is Marked" and the like.
+## doesn't settle "is Marked", "holds a secret" and the like.
 const CONCLUSIVE_TYPES = ["good", "notdemon"]
 
 ## The top tier's chip and reason line for premise `id`: Damning when it accuses someone by
@@ -702,7 +704,7 @@ func top_tier(id: String) -> Dictionary:
 	var conclusion: Dictionary = model.nodes[id].get("conclusion", {})
 	var type: String = str(conclusion.get("type", ""))
 	var target: String = str(conclusion.get("target", ""))
-	if target != "" and type != "conflict" and type not in Live.PREMISE_CLEARS:
+	if target != "" and type not in Live.PREMISE_CLEARS:
 		return {"label": "Damning", "line": DAMNING_LINE % Solver.person_name(model.view, target)}
 	if type in CONCLUSIVE_TYPES:
 		return {"label": "Conclusive", "line": CONCLUSIVE_LINE % model.title(id)}
@@ -718,7 +720,7 @@ func lie_call(card_id: String) -> Dictionary:
 	return {}
 
 func _unsupported(card: Dictionary) -> bool:
-	return card.get("fallback", false) or card.get("off_board", false)
+	return card.get("unweighable", false) or card.get("off_board", false)
 
 func _time_text(card: Dictionary) -> String:
 	var at: Dictionary = card.get("observed_at", {})

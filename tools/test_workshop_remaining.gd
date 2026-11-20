@@ -2,8 +2,6 @@ extends SceneTree
 const Session = preload("res://workshop/session.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
-const Support = preload("res://workshop/support_model.gd")
-const Movement = preload("res://workshop/movement_model.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Model = preload("res://workshop/canvas_model.gd")
 const World = preload("res://sim/world.gd")
@@ -17,79 +15,20 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var movement = Session.new(692, "movement")
-	var view: Dictionary = movement.scenario.public_view
-	var cards: Array = [Solver.card_by_id(view, "vigil3")]
-	var one = Movement.likelihood(view, cards, "constance", false)
-	cards.append(cards[0].duplicate(true))
-	check(one == Movement.likelihood(view, cards, "constance", false), "duplicate observations of one incident do not multiply its likelihood")
-	var direct = Movement.factors(view, cards, Solver.empty_case())[0]
-	var two_cards: Array = [Solver.card_by_id(view, "vigil1"), Solver.card_by_id(view, "vigil3")]
-	var two = Movement.factors(view, two_cards, Solver.empty_case())[0]
-	check(two.log2_ratio > direct.log2_ratio, "a second night adds evidence through one persistent activity hypothesis")
-	var eligible = view.duplicate(true)
-	eligible.movement_experiment.gift_destinations.constance["3"] = ["square"]
-	check(Movement.likelihood(eligible, cards, "constance", false, true) > Movement.likelihood(eligible, cards, "constance", false), "credible applicable gift activity makes the observed outing less incriminating")
+	# Choosing a gift citation enrolls that claim in the attention budget, on a
+	# live-activity view (the only movement weighing left).
+	var core_view: Dictionary = Session.new(692).scenario.public_view.duplicate(true)
+	core_view["live_activity"] = true
+	var walker: String = Solver.card_by_id(core_view, "vigil1").subject
 	var cited = Solver.empty_case()
-	cited.cards = ["vigil3"]
-	cited.citations["constance:3"] = "gift_claim"
-	cited.reasons["constance:3"] = "gift"
-	check("gift_claim" in Solver.Graph.compile_case(eligible, cited).cards, "choosing a gift citation in Answer enrolls that reference in the normal attention budget")
-	check(Movement.likelihood(view, cards, "constance", false, false, true) > one, "a supported private errand is an alternative explanation")
-	check(Movement.likelihood(view, cards, "constance", false, false, true, true) == Movement.likelihood(view, cards, "constance", false, false, false, true), "a Marked person cannot receive an additional secret-modifier outing explanation")
-	var absent: Dictionary = Solver.card_by_id(view, "coverage3").duplicate(true)
-	absent.subject = "constance"
-	absent.data.detection = 0.0
-	check(is_equal_approx(Movement.likelihood(view, [absent], "constance", true), 1.0), "zero observation coverage provides no evidence of absence")
-	absent.data.detection = 1.0
-	# A vigil sees residents leaving the block (Nov 17): the relevant coverage is the suspect's
-	# own block.
-	var home: String = str(view.people.filter(func(p): return p.id == "constance")[0].home)
-	absent.block = home
-	check(Movement.likelihood(view, [absent], "constance", true) < Movement.likelihood(view, [absent], "constance", false), "complete relevant coverage can favor a non-hunting explanation without proving good")
-	absent.block = "market" if home != "market" else "docks"
-	check(Movement.likelihood(view, [absent], "constance", true) > 0, "watching a block that isn't the suspect's own does not prove the suspect stayed home")
-	var trace = Movement.trace_distribution("market", ["hill"])
-	check(trace.market == 0.6 and trace.hill == 0.4, "trace mechanism matches the game's eligible-passer 40 percent branch")
-	check(Movement.trace_distribution("market", ["market"]).market == 1.0, "a matching eligible passer does not change the trace material")
-	check(Movement.trace_distribution("market", []).market == 1.0, "without an eligible passer the trace reflects the killer's evening")
-	var soot: Array = [Solver.card_by_id(view, "soot2"), Solver.card_by_id(view, "evening2")]
-	var first = Movement.factors(view, soot, Solver.empty_case())[0]
-	soot.append(Solver.card_by_id(view, "soot3"))
-	soot.append(Solver.card_by_id(view, "evening3"))
-	var repeated = Movement.factors(view, soot, Solver.empty_case())[0]
-	check(repeated.log2_ratio > first.log2_ratio, "repeated soot can favor a shared evening haunt while retaining a passer alternative")
-	check(repeated.good_likelihood > 0, "matching crime-scene material does not eliminate the innocent-passer explanation")
-	var changed_evening = Solver.card_by_id(view, "evening3").duplicate(true)
-	changed_evening.block = "hill"
-	check(Movement.likelihood(view, [Solver.card_by_id(view, "evening2"), changed_evening], "constance", true) > 0, "a preferred haunt does not force the same evening location every day")
-	var quote = Solver.card_by_id(view, "alibi1").duplicate(true)
-	quote["quoted"] = true
-	var vigil: Dictionary = Solver.card_by_id(view, "vigil1")
-	check(Movement.factors(view, [vigil, quote], Solver.empty_case())[0].log2_ratio > Movement.factors(view, [vigil], Solver.empty_case())[0].log2_ratio, "a challenged home account is assessed jointly with the outing, including good concealment alternatives")
+	cited.cards = ["vigil1"]
+	cited.citations[walker + ":1"] = "gift_claim"
+	cited.reasons[walker + ":1"] = "gift"
+	check("gift_claim" in Solver.Graph.compile_case(core_view, cited).cards, "choosing a gift citation in Answer enrolls that reference in the normal attention budget")
 	_calibration()
-	var c = Solver.empty_case()
-	c.cards = ["survey", "rumor", "dowse", "soot2", "evening2", "soot3", "evening3", "vigil3"]
-	var juror: Dictionary = movement.baseline[3].duplicate(true)
-	var result = Jury.evaluate(view, c, juror)
-	check(result.support_model.factors.any(func(f): return f.begins_with("Movement / trace")) and result.effects.constance.pattern_signal == 0, "the common case engine uses the joint movement factor instead of adding the old pattern heuristic")
-	check(result.shared_assessment.compatible == 2, "soft evidence changes preference without deleting the hard-reading mirror")
-	check(result.stance == "accept" and result.shared_assessment.entailment == "possible" and result.response.contains("alternative"), "strong circumstantial evidence can persuade while the NPC acknowledges a surviving logical alternative")
-	var again = Jury.evaluate(view, c, juror)
-	check(again.effects.values().all(func(e): return is_zero_approx(e.delta)), "joint soft evidence is repeat-stable for all character effects")
-	Support.cache.clear()
-	Solver.report_matches.clear()
-	Solver.movement_cache.clear()
-	Movement.cache.clear()
-	var started = Time.get_ticks_msec()
-	var measured = Jury.evaluate(view, c, movement.baseline[3].duplicate(true))
-	var cold_ms = Time.get_ticks_msec() - started
-	started = Time.get_ticks_msec()
-	Jury.evaluate(view, c, movement.baseline[3].duplicate(true))
-	print("Movement model caches cold/cached (one juror): %d/%d ms; %d credibility states; %d explanation checks; %d compatible assignments" % [cold_ms, Time.get_ticks_msec() - started, measured.support_model.states, measured.reasoning.tested, measured.assessment.compatible])
-	movement.case_data = c
-	movement.present(false)
-	_roundtrip(movement, "movement")
+	var view: Dictionary
+	var c
+	var started
 	var poison = Session.new(692, "poison")
 	view = poison.scenario.public_view
 	var bad = Solver.card_by_id(view, "dowse")
@@ -123,8 +62,7 @@ func _run() -> void:
 	poison.present(false)
 	poison.case_data.cards.erase("vial1")
 	poison.revise()
-	var withdrew_support = poison.present(true)
-	check(withdrew_support.all(func(r): return r.support_model.faults.is_empty()), "removing the poison basis retracts its interval support in remembered discussion")
+	poison.present(true)
 	_roundtrip(poison, "poison")
 	var revenant = Session.new(692, "revenant")
 	view = revenant.scenario.public_view
@@ -218,8 +156,6 @@ func _calibration() -> void:
 	var slot0_demon_count = 0
 	var token_count = 0
 	var loc_count = 0
-	var demon_items = 0
-	var good_items = 0
 	killer.work = "bakery"
 	killer.haunts = ["tavern", "mill"]
 	passer.work = "chapel"
@@ -238,16 +174,7 @@ func _calibration() -> void:
 		if dtr.trace_family == "locations":
 			loc_count += 1
 			token_count += int(dtr.trace_subtype == "token")
-		native.dropped.clear()
-		native._maybe_drop(killer, "calibration")
-		for dropped in native.dropped.values():
-			demon_items += int(dropped[0].owner == killer.id)
-		native.dropped.clear()
-		native._maybe_drop(passer, "calibration")
-		for dropped in native.dropped.values():
-			good_items += int(dropped[0].owner == passer.id)
 	check(demon_fit_count == 10000 and loc_count == 10000 and absf(float(token_count) / float(loc_count) - Tuning.Setup.TRACE_TOKEN_PROB) < 0.03 and absf(two_trace_count / 10000.0 - Tuning.Setup.EXTRA_TRACE_CHANCE) < 0.025 and absf(float(slot0_demon_count) / maxf(two_trace_count, 1) - 0.5) < 0.04, "10,000 kill-generator samples always include the Demon trace, hit 100% locations (67/33 token/scent), and roll 45% shuffled passer second traces")
-	check(absf(demon_items / 10000.0 - 0.042) < 0.007 and absf(good_items / 10000.0 - 0.018) < 0.005, "actual drop-generator samples match the conditional 4.2/1.8 percent mechanism, before route/location search")
 
 func _roundtrip(session, label: String) -> void:
 	var restored = Session.new()

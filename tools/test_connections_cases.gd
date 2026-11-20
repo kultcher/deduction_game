@@ -486,6 +486,15 @@ func _fading_and_repeat() -> void:
 	check(not restored.is_empty() and back.size() == 1 and back[0].day == int(g.w.day) and is_equal_approx(back[0].weight, Connections.presenter_trust(g._workshop_plans[n.id + ":good"].prepared.listener, "player")),
 		"presenting it again on a later day restores its weight, and no more (%.3f)" % (back[0].weight if back.size() == 1 else -1.0))
 	check(n.workshop_state.presentations.size() == 1, "it is still one stored case")
+	# The spoken reply matches: a later day's repeat, to a new audience or the same one, is
+	# answered on its merits, not as "the same reports, unchanged" (Nov 20).
+	g.w.day += 1
+	var at_meeting: Dictionary = g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, true, "meeting")
+	var said: String = str(at_meeting.get("dialogue", {}).get("special", ""))
+	check(not ("unchanged" in said) and not ("already" in said), "a later day's repeat at the meeting isn't answered as unchanged (%s)" % said)
+	var same_day: Dictionary = g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, true, "meeting")
+	check("unchanged" in str(same_day.get("dialogue", {}).get("special", "")), "but the same day again is (%s)" % str(same_day.get("dialogue", {}).get("special", "")))
+	g.w.day -= 1
 	g.w.day += 30
 	Mind.refresh_beliefs(g.w, n, " (a month on)")
 	var gone: Dictionary = _proposal(g, n).get("connections", {})
@@ -644,7 +653,7 @@ func _challenged_factors() -> void:
 	# silenced nominee (no defence to refresh anyone) can't leave the vote on old beliefs.
 	g.w.defer_beliefs = true
 	g.w.pending_beliefs = []
-	preload("res://sim/mind_meeting.gd").remember_nomination(g.w, p[1], p[3].id, [aug_id])
+	preload("res://sim/mind_nomination.gd").remember_nomination(g.w, p[1], p[3].id, [aug_id])
 	var queued: Array = g.w.pending_beliefs.map(func(e): return e[0].id)
 	var want_ids: Array = g.w.living().filter(func(l): return l.id != p[1].id).map(func(l): return l.id)
 	queued.sort()

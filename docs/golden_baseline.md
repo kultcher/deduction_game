@@ -44,7 +44,55 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
+### Current baseline (Nov 20, purge 6a, the headline reading removed): `baseline_c712b7a`
+
+`tools/golden/baseline_c712b7a/` is the capture from `claude/purge-6a-headline` at `c712b7a`
+(main at `bd4ac84`, with #405, merged in). A duller NPC no longer cites a reading it isn't
+attending to, and the headline nudge is gone from the jury. A cited reading's strength keeps
+its face-value term, so a reason feels as strong as before when it is cited.
+- **Divergence from `baseline_9fa5a74`:** 42 from record 91, 54875 from 191 and 900 from 52, all
+  in the day 2 meeting, where an NPC cites fewer or weaker reasons:
+  - 42: Isolde's second reason against Nisha weighs about half as much;
+  - 54875: Greta's shadow weighs her reason against Odette a little less;
+  - 900: Jory's first reason against Constance is a different card.
+
+  692 and 98933 are identical.
+- **Outcomes:** unchanged on every seed.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
+
+`tools/golden/baseline_9fa5a74/` is the capture from `claude/remove-muddler` at `9fa5a74` (main with
+#397 merged in). The default script never deals the Muddler. But `reason_attribution`'s defence
+view (an NPC weighing a disclosed fact) built its worlds from the whole secret roster, so NPCs
+weighed impossible Muddler worlds. Those are gone, and a few close weighings shift.
+- **Divergence from `baseline_58cb94a`:** 54875 at record 6 (day 1), 98933 at 22 (day 1), 42 at 44
+  (day 2) and 900 at 85 (day 3). 692 is identical.
+- **Outcomes:** unchanged on every seed. The same people are hanged on the same days, and no
+  seed has a winner by day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, drops removed): `baseline_58cb94a`
+
+`tools/golden/baseline_58cb94a/` is the capture from `claude/remove-drops` at `58cb94a` (main at
+`ec0b48a`, with #394 and #401, merged in). Night walkers no longer drop anything on their route
+(Michael, Nov 19, "Remove drops altogether"). The drop rolls no longer draw, so every night after
+the first walker plays out differently. `LEGACY_EXTRA_SHIFT_DRAW` is kept, so deals are unchanged.
+- **Divergence from `baseline_7792e9a`:** every seed, from the meta record. Night 0 runs inside
+  `new_case`, so the world's random state after setup already differs.
+- **Outcomes:**
+  - **42:** main hangs Agnes on day 3 and good wins. Now nobody is hanged and there's no winner
+    by day 4.
+  - **54875:** main hangs Greta (day 2) and Constance (day 3) and good wins. Now Edda (day 2)
+    and Hollis (day 3) are hanged and there's no winner by day 4.
+  - **692:** Constance on day 2 and Lian on day 3, instead of Constance on day 3 only. No winner
+    by day 4 either way.
+  - **900:** Greta on day 2 instead of Isolde on day 3. No winner by day 4 either way.
+  - **98933:** Agnes on day 2 and Lian on day 3, instead of Merrin on day 2 and Isolde on day 3.
+    No winner by day 4 either way.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
 
 `tools/golden/baseline_7792e9a/` is the capture from `claude/beadle-symmetric-vote` at `7792e9a`
 (main at `39a57d2`, with #390, merged in). The player's no now pushes later voters toward no, at

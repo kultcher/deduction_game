@@ -162,7 +162,7 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	listener.theories = consequences.theories
 	# The headline's original confidence decision remains the reported decision.
 	var theory_key: String = target + "|" + case_data.conclusion.at
-	if case_data.conclusion.type in ["marked", "demon", "minion"]:
+	if case_data.conclusion.type in ["marked", "demon"]:
 		theory_key += "|" + case_data.conclusion.type
 	if primary_listener.theories.has(theory_key):
 		listener.theories[theory_key] = primary_listener.theories[theory_key].duplicate(true)
@@ -181,7 +181,7 @@ static func _evaluate(view: Dictionary, case_data: Dictionary, listener: Diction
 	result.calculation.rule = consequences.rule
 	# Speak about accepted intermediate inferences separately from the headline.
 	if not result.repeated:
-		if effects[target].get("protection_signal", 0.0) < 0 and case_data.conclusion.type != "conflict":
+		if effects[target].get("protection_signal", 0.0) < 0:
 			result.response += " The quiet night gives that protection claim some support, though other explanations remain."
 		for claim in consequences.claims:
 			if claim.conclusion.target != target and claim.conclusion.type == "evil" and claim.status == "entailed_in_attention" and claim.forced_mass > 0:
@@ -310,7 +310,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 	var ev = _case_eval(view, scoped, eval_listener)
 	var agreement: float = clampf(CaseEval.shift(ev.prior, ev.posterior), -1.0, 1.0)
 	var contributing: Array = Solver.selected(view, scoped).filter(func(c): return Solver.tabled(c))
-	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type in ["evil", "good", "suspicious", "marked", "demon", "minion"]:
+	if bounded and reasoning.status in ["provisional", "entailed_in_attention"] and ev.consistent and conclusion.type in ["evil", "good", "suspicious", "marked", "demon"]:
 		agreement = clampf(_provisional(view, conclusion, ev, contributing, listener, eval_listener, reasoning.status == "entailed_in_attention", int(reasoning.get("rivals_tested", 0))), -1.0, 1.0)
 	var pattern = _pattern(view, case_data, listener)
 	if bounded:
@@ -324,7 +324,7 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		best = pattern
 	# The player's chosen answers and positions are a theory: if the conclusion follows
 	# only once they're granted, say so. They never add evidence.
-	if best.kind == "reading" and best.agreement < 0.6 and conclusion.type not in ["conflict", "suspicious"]:
+	if best.kind == "reading" and best.agreement < 0.6 and conclusion.type != "suspicious":
 		var positions: Dictionary = case_data.positions.duplicate(true)
 		positions.erase(target)
 		var answers: Dictionary = case_data.answers.duplicate(true)
@@ -333,10 +333,6 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			if not chosen.worlds.is_empty() and chosen.worlds.all(func(w): return Solver.holds(view, w, conclusion)):
 				best.kind = "conditional"
 	var conflict = assessment.status == "conflicting" or not ev.consistent
-	if conclusion.type == "conflict":
-		var detected: bool = (reasoning.status == "inconsistent" or not reasoning.private_checks.rejected.is_empty()) if bounded else not ev.consistent
-		var value = 1.0 if detected else 0.0
-		best = {"weight": value, "agreement": value, "quality": 1.0, "cards": case_data.cards, "kind": "conflict"}
 	if reasoning.private_checks.fatal or ev.impossible:
 		best.weight = 0.0
 		best.agreement = 0.0
@@ -360,8 +356,6 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		objection = _bounded_objection(reasoning)
 		if reasoning.private_checks.fatal:
 			response = reasoning.private_checks.objections[0]
-		elif conclusion.type == "conflict":
-			response = "The accounts I considered cannot all be accurate. That does not identify anyone as evil." if best.agreement > 0 else "I have not established a conflict among the accounts I considered."
 		elif best.kind == "pattern" and best.weight > 0:
 			response = "That gives me a reason to be suspicious, though it does not establish evil."
 		elif best.kind == "conditional":
@@ -399,9 +393,6 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 			response = "That is the same case; I made the same checks. Repeating it adds no new reason."
 	var target_prefix: String = (Solver.person_name(view, target) + "'s ") if target != "" else ""
 	for note in ev.movement:
-		# "Not that night's killer" says nothing against a minion.
-		if note.begins_with("Seen elsewhere:") and conclusion.type == "minion":
-			continue
 		if note.begins_with("Seen elsewhere:") or note.begins_with("Scattered sightings:"):
 			if target_prefix == "" or note.contains(": " + target_prefix):
 				response += " " + note
@@ -413,16 +404,11 @@ static func _assess_target_eval(view: Dictionary, case_data: Dictionary, listene
 		response += " " + " ".join(PackedStringArray(changes))
 	if not case_data.get("faults", {}).is_empty():
 		response += " Your explanation needs impairment in the selected interval. That remains a hypothesis; readings outside it keep their own support."
-	var support_model = {"agreement": agreement, "evidence_agreement": agreement, "forced_mass": ev.posterior if ev.posterior >= 0.999 else 0.0,
-		"conditional_mass": 0.0, "paths": [paths], "report_acceptance": ev.acceptance, "states": 1, "factors": ev.movement, "atoms": [], "credence": ev.credence,
-		"quoted_cards": scoped.get("quoted_cards", []).duplicate(), "faults": [], "movement_comparison": [], "prior": ev.prior, "posterior": ev.posterior,
-		"category": ev.category, "rivals": ev.rivals, "theory_fit": ev.theory_fit,
-		"model": "CaseEval: likelihood-weighted worlds (docs/CASE_REASONING.md)."}
 	Profiler.close(span)
 	return {"listener": listener.id, "name": listener.name, "version": case_data.version, "stance": stance,
 		"agreement": best.agreement, "quality": best.quality, "strength": strength, "path": best.cards,
 		"path_kind": best.kind, "repeated": repeated, "response": response, "objection": objection, "changes": changes,
-		"assessment": assessment, "shared_assessment": shared, "pattern": pattern, "support_model": support_model, "legacy_path": {"weight": 0.0, "omitted": true},
+		"assessment": assessment,
 		"reasoning": reasoning, "theory": theory, "case_eval": ev,
 		"before_suspicion": before_suspicion, "after_suspicion": listener.suspicion[target], "suspicion_delta": listener.suspicion[target] - before_suspicion,
 		"before_trust": before_trust, "after_trust": listener.trust, "trust_delta": 0.0,
@@ -436,8 +422,6 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 	var conclusion: Dictionary = case_data.conclusion
 	if repeated:
 		return "That is the same case. Repeating it adds no new reason."
-	if conclusion.type == "conflict":
-		return "Those accounts cannot all be accurate. I have reopened which report to believe; this does not establish anyone's alignment." if best.agreement > 0 else "I don't see a conflict among the reports you selected."
 	if best.kind == "pattern" and best.weight > 0:
 		return "That gives me a reason to be suspicious, though it does not establish evil."
 	var response = ""
@@ -469,13 +453,6 @@ static func _eval_response(view: Dictionary, case_data: Dictionary, best: Dictio
 		response += " The supplied test factor changes which remaining explanation I favor; it does not prove it."
 	return response
 
-## The headline of the strong evil signals about one person, on the alignment scale
-## (0.45 * CaseEval.shift): what the readings literally say, taken as true, with each
-## reading discounted by how far the listener trusts its source (_card_trust) and by any
-## doubt they hold about that reading (CaseEval.reading_error: impairment, challenges).
-## Seer "yes": one of the pair is the Demon (each 1/2). Archivist: one of the pair holds
-## the named evil role (each 1/2). Dowser: count of the group read as evil (each count/n).
-## Several readings combine as independent chances (noisy-or). Only raises suspicion.
 static func _cards_by_ids(view: Dictionary, ids: Array) -> Array:
 	return view.get("cards", []).filter(func(c): return c.get("id", "") in ids)
 
@@ -496,7 +473,7 @@ static func _movement_trace_kind(view: Dictionary, cards: Array) -> String:
 	# Only what the case itself cites: scene traces assessed elsewhere on the board are not
 	# "the trace evidence" of a case that never mentions one.
 	var has_trace: bool = cards.any(func(c): return not c.get("quoted", false) and c.get("kind", "") == "trace")
-	var has_move: bool = cards.any(func(c): return not c.get("quoted", false) and (c.get("kind", "") in ["sighting", "alibi", "coverage", "evening", "dropped", "item"] or (c.get("kind", "") == "report" and c.get("role", "") in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])))
+	var has_move: bool = cards.any(func(c): return not c.get("quoted", false) and (c.get("kind", "") in ["sighting", "alibi", "coverage", "evening"] or (c.get("kind", "") == "report" and c.get("role", "") in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])))
 	if has_trace and has_move:
 		return "movement and trace"
 	if has_trace:
@@ -512,104 +489,6 @@ static func _movement_trace_tail(view: Dictionary, cards: Array) -> String:
 		_:
 			return "The routes, observation coverage and traces change which explanation I favor. Lawful activity and eligible passers remain alternatives; this is circumstantial evidence."
 
-static func _headline_group_key(view: Dictionary, card: Dictionary) -> String:
-	var role: String = str(card.get("role", ""))
-	var source: String = str(card.get("source", ""))
-	var data: Dictionary = card.get("data", {}) if card.get("data", {}) is Dictionary else {}
-	var subjects: Array = []
-	if data.get("pair") is Array:
-		subjects = data.pair.duplicate()
-	elif data.get("group") is Array:
-		subjects = data.group.duplicate()
-	elif data.get("trio") is Array:
-		subjects = data.trio.duplicate()
-	elif data.has("nominator") and data.has("nominee"):
-		subjects = [str(data.get("nominator", "")), str(data.get("nominee", ""))]
-	subjects.sort()
-	var result_sig: String = ""
-	match role:
-		"seer":
-			result_sig = "1" if bool(data.get("yes", false)) else "0"
-		"archivist":
-			result_sig = str(data.get("role", ""))
-		"dowser":
-			result_sig = str(int(data.get("count", 0)))
-		_:
-			result_sig = JSON.stringify(data)
-	var obs: Dictionary = card.get("observed_at", {}) if card.get("observed_at", {}) is Dictionary else {}
-	var obs_day: int = int(obs.get("day", card.get("night", 0)))
-	var obs_phase: String = str(obs.get("phase", "night" if int(card.get("night", -1)) >= 0 else "morning"))
-	var scion_epoch: int = 0
-	var executions = view.get("timeline", {}).get("executions", {})
-	if executions is Dictionary:
-		for ex_day_key in executions:
-			var ex_day: int = int(ex_day_key)
-			# Evening execution on day d precedes Night d and any morning/afternoon reading on days > d.
-			if (obs_phase == "night" and ex_day <= obs_day) or (obs_phase != "night" and ex_day < obs_day):
-				scion_epoch += 1
-	return "%s|%s|%s|%s|%d" % [source, role, ",".join(PackedStringArray(subjects)), result_sig, scion_epoch]
-
-static func _headline(view: Dictionary, cards: Array, person: String, prior: float, listener: Dictionary, eval_listener: Dictionary, player_tells: bool) -> float:
-	var own_ids: Array = eval_listener.get("knowledge", {}).get("own_reports", [])
-	if own_ids.is_empty():
-		own_ids = eval_listener.get("knowledge", {}).get("attention_reports", [])
-	var grouped: Dictionary = {}
-	for card in cards:
-		if card.get("kind", "") != "report" or card.get("quoted", false):
-			continue
-		var p: float = _headline_chance(card, person)
-		if p > 0.0:
-			var credence: float = 1.0 - CaseEval.reading_error(view, card, eval_listener, own_ids)
-			var hit: float = clampf(p * credence * _card_trust(card, listener, player_tells or bool(card.get("via_player_only", false))), 0.0, 1.0)
-			var gkey: String = _headline_group_key(view, card)
-			if not grouped.has(gkey):
-				grouped[gkey] = []
-			grouped[gkey].append(hit)
-	var miss: float = 1.0
-	for gkey in grouped:
-		var hits: Array = grouped[gkey]
-		hits.sort_custom(func(a, b): return a > b)
-		var group_miss: float = 1.0 - float(hits[0])
-		var decay: float = Tuning.Workshop.HEADLINE_REPEAT_BUMP
-		for i in range(1, hits.size()):
-			group_miss *= 1.0 - clampf(float(hits[i]) * decay, 0.0, 1.0)
-			decay *= Tuning.Workshop.HEADLINE_REPEAT_BUMP
-		miss *= group_miss
-	var implied: float = 1.0 - miss
-	if implied <= prior:
-		return 0.0
-	return Tuning.Workshop.JURY_ALIGNMENT_COEFF * CaseEval.shift(prior, implied)
-
-static func _headline_chance(card: Dictionary, person: String) -> float:
-	var data = card.get("data", {})
-	if not data is Dictionary:
-		return 0.0
-	match card.get("role", ""):
-		"seer":
-			if data.get("yes", false) and person in data.get("pair", []):
-				return Tuning.Workshop.HEADLINE_SEER / float(maxi(data.pair.size(), 1))
-		"archivist":
-			if person in data.get("pair", []):
-				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(data.pair.size(), 1))
-		"dowser":
-			var group: Array = data.get("group", [])
-			if person in group and int(data.get("count", 0)) > 0:
-				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(group.size())
-		"chronicler":
-			var ctrio: Array = data.get("trio", [])
-			if person in ctrio:
-				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(ctrio.size(), 1))
-		"magistrate":
-			if not bool(data.get("same", true)) and person in [str(data.get("nominator", "")), str(data.get("nominee", ""))]:
-				return Tuning.Workshop.HEADLINE_DOWSER * 0.5
-		"registrar":
-			if bool(data.get("yes", false)) and str(data.get("target", "")) == person and data.get("roles", []).any(func(r): return C.is_minion(str(r))):
-				return Tuning.Workshop.HEADLINE_ARCHIVIST * 0.5
-	return 0.0
-
-## Confidence is directional (Oct 30, docs/social_trust_pass.md): the scale-mode factor
-## (1.4 - 0.8 * confidence) applies only to a move against the listener's current lean;
-## fresh evidence (no clear lean) and moves with the lean come through at 1.0.
 static func _directional(confidence: float, step: float, lean: float, persistence: bool) -> float:
 	if persistence or absf(lean) < Tuning.Workshop.LEAN_MIN:
 		return 1.0 if not persistence else confidence
@@ -700,7 +579,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 	var compiled = Graph.compile_case(view, value)
 	var scoped = _eval_case(view, compiled, attention, baseline)
 	var attended: Array = Solver.selected(view, attention.case).filter(func(c): return c.id not in attention.private_checks.rejected)
-	# Source trust and headlines read everything the listener holds, not just what this run
+	# Source trust reads everything the listener holds, not just what this run
 	# attends to, so re-presenting held evidence (which shifts attention) can't move them.
 	var held: Array = Solver.selected(view, value).filter(func(c): return c.id not in attention.private_checks.rejected)
 	var challenged = Support.ReadingChallenges.assess(view, attention.case, baseline, attended)
@@ -794,21 +673,6 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		if not ev.impossible and str(view.get("chronology", {}).get("curse", {}).get("executed", "")) == id:
 			s = 1.0
 		var alignment: float = Tuning.Workshop.JURY_ALIGNMENT_COEFF * s
-		# Headline reading (Oct 30): a duller listener takes a strong evil signal at its word
-		# ("one of Kiran or Fenwick is the Demon") and skips the subtler counter-explanations
-		# the full model weighs. It only ever raises, and fades out with Insight.
-		var headline_signal: float = 0.0
-		var dull: float = 0.0
-		if connections.is_empty():
-			headline_signal = _headline(view, held, id, odds.prior, baseline, eval_listener, not refresh) if not ev.impossible else 0.0
-			dull = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(baseline.get("insight", 0.5)), 0.0, 1.0))
-		# Only a strong evil reading about this person blends in: with no headline the model's
-		# own effect (including any clearing) stands unchanged.
-		# The pull grows with the headline's strength (Nov 6): a faint ping can't undo a
-		# clearing; a full one (HEADLINE_FULL_AT or more) blends as before.
-		if headline_signal > 0.0 and headline_signal > alignment:
-			var strength: float = minf(1.0, headline_signal / Tuning.Workshop.HEADLINE_FULL_AT)
-			alignment += dull * strength * (headline_signal - alignment)
 		var circumstantial = 0.0
 		if not Movement.available(view):
 			var pattern_case = belief_case.duplicate(true)
@@ -843,7 +707,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 					net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
 		var own_check: Dictionary = belief_case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
-		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at) or value.conclusion.type == "conflict"
+		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at)
 		if direct_fatal:
 			net_weight = 0.0
 		var per_card_trust: bool = bool(baseline.get("per_card_source_trust", false))
@@ -871,7 +735,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 		effects[id] = {"requested": final_req, "raw_requested": raw_req, "source_trust": source_trust, "alignment_signal": alignment, "pattern_signal": circumstantial,
 			"circumstantial_signal": 0.0, "circumstantial_incidents": [],
 			"route": "protection" if protection_signal != 0.0 and net_weight == protection_signal else ("circumstantial" if circumstantial > absf(alignment) else "alignment"),
-			"protection_signal": protection_signal, "headline_signal": headline_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
+			"protection_signal": protection_signal, "evil_agreement": odds.posterior, "good_agreement": 1.0 - odds.posterior,
 			"evil_change": s, "good_change": -s, "prior": odds.prior, "posterior": odds.posterior,
 			"cards": attention.considered.duplicate(), "theory": theory, "reasoning": status}
 	if not refresh and not value.get("circumstantial", []).is_empty():
@@ -954,8 +818,6 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 		pattern_case.cards = pattern_case.cards.filter(func(id): return id not in checks.rejected)
 		pattern = _pattern(view, pattern_case, baseline)
 		agreement = maxf(agreement, pattern.agreement if pattern.weight > 0 else 0.0)
-	if claim_case.conclusion.type == "conflict":
-		agreement = 1.0 if status == "inconsistent" or not ev.consistent or not checks.rejected.is_empty() else 0.0
 	if checks.fatal or ev.impossible:
 		agreement = 0.0
 	var note = "Another explanation remains possible."
@@ -967,8 +829,6 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 		note = "The observations give a circumstantial reason for suspicion; they do not establish evil."
 	elif claim_case.conclusion.type == "suspicious" and not ev.movement.is_empty() and agreement > 0:
 		note = "The joint movement and trace comparison gives a circumstantial reason for suspicion; it does not establish evil."
-	elif claim_case.conclusion.type == "conflict":
-		note = "The considered accounts conflict; that does not identify deliberate deception or evil." if agreement > 0 else "I have not established a conflict in the considered accounts."
 	elif status == "inconsistent" or not ev.consistent:
 		note = "The premises I checked cannot all hold together."
 	elif status == "entailed_in_attention":
@@ -987,8 +847,8 @@ static func _eval_claim(view: Dictionary, argument: Dictionary, claim_case: Dict
 		"parents": argument.parents.duplicate(), "cards": claim_case.cards.duplicate(),
 		"ignored": Graph.compile_case(view, argument.case).cards.filter(func(id): return id not in claim_case.cards),
 		"agreement": agreement, "stance": Consequences._stance(agreement), "status": status,
-		"conditional_mass": 0.0, "forced_mass": 1.0 if status == "entailed_in_attention" and ev.consistent else 0.0,
-		"note": note, "links": [], "support_model": {"agreement": agreement, "prior": ev.prior, "posterior": ev.posterior, "category": ev.category},
+		"forced_mass": 1.0 if status == "entailed_in_attention" and ev.consistent else 0.0,
+		"note": note, "links": [],
 		"reasoning": thought}
 
 static func _bounded_objection(reasoning: Dictionary) -> String:

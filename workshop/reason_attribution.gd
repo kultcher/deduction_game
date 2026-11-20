@@ -1,4 +1,4 @@
-## Shared-model suspicion attribution for Phase 2a of the legacy retirement plan.
+## Suspicion attribution: which held cards an NPC cites for each person it suspects.
 ##
 ## Runs once per shared belief refresh on the listener's active suspects only, scoring
 ## held evidence through the shared model's own report tables, role constraints, movement
@@ -110,7 +110,6 @@ static func _attribute_refresh_impl(
 					lying_by_source[csrc] = []
 				lying_by_source[csrc].append(ch)
 
-	var dull: float = Tuning.Workshop.HEADLINE_WEIGHT * (1.0 - clampf(float(listener.get("insight", 0.5)), 0.0, 1.0))
 	var belief_scale: float = Tuning.Workshop.JURY_BELIEF_SCALE if bool(listener.get("per_card_source_trust", false)) else 1.0
 
 	# Precompute full posterior weights, single-report class weights, and leave-one-out
@@ -206,27 +205,10 @@ static func _attribute_refresh_impl(
 				if pid not in _mentions(card) and csrc != pid and crole not in ["surveyor", "veteran", "augur"]:
 					continue
 				if not attended_map.has(cid):
-					# Unattended reports only contribute via _headline for lower-Insight listeners.
-					if dull > 0.0 and csrc != pid and not (crole == "archivist" and C.ROLES.get(str(card.get("data", {}).get("role", "")), {}).get("align", "good") != "evil"):
-						var u_hl: float = _headline_chance(card, pid)
-						if u_hl > 0.0:
-							var u_err: float = CaseEval.reading_error(view, card, eval_listener, own_ids)
-							var u_hit: float = clampf(u_hl * (1.0 - u_err) * _card_trust(card, listener, bool(card.get("via_player_only", false))), 0.0, 1.0)
-							if u_hit > pr0.evil:
-								var u_contrib: float = dull * 0.45 * CaseEval.shift(pr0.evil, u_hit) * belief_scale
-								if u_contrib >= MIN_ITEM_CONTRIB:
-									var u_why: Array = _report_why_pair(view, card, pid, self_id)
-									_put_item(items_by_id, {
-										"card_id": cid, "card_kind": "report", "channel": "report",
-										"source": csrc, "relay_source": str(card.get("relay_source", "")),
-										"role": crole, "night": int(card.get("night", card.get("observed_at", {}).get("day", -1))),
-										"block": str(card.get("block", "")), "contrib": u_contrib,
-										"strength": clampf(0.80 * u_hl, 0.25, 0.85),
-										"why_own": str(u_why[0]), "why_public": str(u_why[1]),
-										"joint": false, "root_ids": [cid],
-									})
+					# A report the listener isn't attending to isn't cited (purge 6a: the headline
+					# route that let a duller listener cite one is gone).
 					continue
-				var rep_item: Dictionary = _score_single_report(view, cc, reps, team_prior, card, pid, p_idx, pr0, listener, eval_listener, own_ids, knowledge, self_id, dull, belief_scale, single_report_pre.get(cid, {}))
+				var rep_item: Dictionary = _score_single_report(view, cc, reps, team_prior, card, pid, p_idx, pr0, listener, eval_listener, own_ids, knowledge, self_id, belief_scale, single_report_pre.get(cid, {}))
 				if not rep_item.is_empty():
 					_put_item(items_by_id, rep_item)
 
@@ -537,7 +519,7 @@ static func _score_disclosed_fact_in_world_impl(w, defender_mind, fact: Dictiona
 		var d_ratio: float = l_demon / maxf(l_good, 1e-12)
 		return {
 			"contrib": clampf(0.45 * s_mov * Tuning.Workshop.JURY_BELIEF_SCALE, 0.05, 0.40),
-			"strength": _strength_from_shift(s_mov, d_ratio, 0.0, false),
+			"strength": _strength_from_shift(s_mov, d_ratio, false),
 		}
 	elif fkind == "info":
 		return score_reading_entry_in_world(w, str(fact.get("source", "")), {"role": fact.get("role", ""), "day": int(fact.get("day", 0)), "phase": fact.get("phase", C.NIGHT), "data": fact.get("data", {})}, target_id)
@@ -604,7 +586,7 @@ static func _score_reading_entry_in_world_impl(w, src_id: String, entry: Diction
 	for c_idx in range(nc):
 		base_w[c_idx] = cc.count[c_idx] * team_prior[cc.team[c_idx]]
 	var pr0: Dictionary = _person_probs(view, reps, base_w, t_idx)
-	var scored: Dictionary = _score_single_report(view, cc, reps, team_prior, rcard, target_id, t_idx, pr0, neutral, neutral, [], {}, "", 0.0, Tuning.Workshop.JURY_BELIEF_SCALE)
+	var scored: Dictionary = _score_single_report(view, cc, reps, team_prior, rcard, target_id, t_idx, pr0, neutral, neutral, [], {}, "", Tuning.Workshop.JURY_BELIEF_SCALE)
 	if scored.is_empty():
 		return {"contrib": 0.10, "strength": 0.25}
 	return {"contrib": float(scored.contrib), "strength": float(scored.strength)}
@@ -624,7 +606,6 @@ static func _score_single_report(
 	own_ids: Array,
 	knowledge: Dictionary,
 	self_id: String,
-	dull: float,
 	belief_scale: float,
 	precomputed: Dictionary = {}
 ) -> Dictionary:
@@ -652,22 +633,18 @@ static func _score_single_report(
 	var s_evil: float = CaseEval.shift(pr0.evil, pr1.evil)
 	var csrc: String = str(card.get("source", ""))
 	var crole: String = str(card.get("role", ""))
-	var hl_p: float = 0.0
 	var align_c: float = 0.45 * s_evil
+	# How strongly the reading names this person on its face (a Seer's "yes" names each of two
+	# by half): it makes the reason feel stronger when cited, for every listener. It no longer
+	# moves anyone's suspicion (purge 6a removed the headline nudge that did).
+	var face_p: float = 0.0
 	if csrc != pid and not (crole == "archivist" and C.ROLES.get(str(card.get("data", {}).get("role", "")), {}).get("align", "good") != "evil"):
-		hl_p = _headline_chance(card, pid)
-		if hl_p > 0.0:
-			var credence: float = 1.0 - err
-			var hit: float = clampf(hl_p * credence * _card_trust(card, listener, bool(card.get("via_player_only", false))), 0.0, 1.0)
-			if hit > pr0.evil:
-				var hl_sig: float = 0.45 * CaseEval.shift(pr0.evil, hit)
-				if hl_sig > align_c:
-					align_c += dull * (hl_sig - align_c)
+		face_p = _face_value(card, pid)
 	var contrib: float = align_c * belief_scale
 	if contrib < MIN_ITEM_CONTRIB:
 		return {}
 	var d_ratio: float = (pr1.demon / maxf(1.0 - pr1.demon, 1e-6)) / maxf(pr0.demon / maxf(1.0 - pr0.demon, 1e-6), 1e-6)
-	var strength: float = _strength_from_shift(s_evil, d_ratio, hl_p, csrc == pid and str(knowledge.get("own_role", "")) == crole)
+	var strength: float = _strength_from_shift(s_evil, d_ratio, csrc == pid and str(knowledge.get("own_role", "")) == crole, face_p)
 	var cid: String = str(card.get("id", ""))
 	var rsrc_rep: String = str(card.get("relay_source", ""))
 	var eff_src: String = rsrc_rep if rsrc_rep != "" else csrc
@@ -743,7 +720,7 @@ static func _score_movement_sighting(
 	if contrib < MIN_ITEM_CONTRIB:
 		return {}
 	var d_ratio_mov: float = 1.0 + ct * ((l_demon / maxf(l_good, 1e-12)) - 1.0) if l_good > 1e-12 else 6.0
-	var strength: float = _strength_from_shift(s_mov, d_ratio_mov, 0.0, false)
+	var strength: float = _strength_from_shift(s_mov, d_ratio_mov, false)
 	var cid: String = str(card.get("id", ""))
 	var csrc: String = str(card.get("source", ""))
 	var rsrc: String = str(card.get("relay_source", ""))
@@ -899,7 +876,7 @@ static func _augment_joint_leave_one_out(
 			var existing: Dictionary = items_by_id[cid]
 			if joint_contrib > float(existing.get("contrib", 0.0)):
 				existing["contrib"] = joint_contrib
-				existing["strength"] = maxf(float(existing.get("strength", 0.3)), _strength_from_shift(drop, 1.0, 0.0, csrc == self_id))
+				existing["strength"] = maxf(float(existing.get("strength", 0.3)), _strength_from_shift(drop, 1.0, csrc == self_id))
 			continue
 
 		var roots: Array = [cid]
@@ -927,7 +904,7 @@ static func _augment_joint_leave_one_out(
 			"night": int(cand.get("relay_observed_at", {}).get("day", cand.get("night", -1))) if cand_rsrc != "" else int(cand.get("night", cand.get("observed_at", {}).get("day", -1))),
 			"block": str(cand.get("block", "")),
 			"contrib": joint_contrib,
-			"strength": _strength_from_shift(drop, 1.0, 0.0, csrc == self_id),
+			"strength": _strength_from_shift(drop, 1.0, csrc == self_id),
 			"why_own": why_own,
 			"why_public": why_pub,
 			"joint": true,
@@ -1149,11 +1126,11 @@ static func _person_probs(view: Dictionary, reps: Array, weights: PackedFloat64A
 	return {"evil": evil_sum / total, "demon": demon_sum / total, "total": total}
 
 
-static func _strength_from_shift(s_evil: float, d_ratio: float, headline_p: float, own_contradiction: bool) -> float:
+static func _strength_from_shift(s_evil: float, d_ratio: float, own_contradiction: bool, face_p: float = 0.0) -> float:
 	var log2_d: float = log(maxf(d_ratio, 1.0)) / log(2.0)
 	var val: float = maxf(
 		1.15 * s_evil,
-		0.30 * log2_d + 0.45 * s_evil + 0.80 * headline_p
+		0.30 * log2_d + 0.45 * s_evil + 0.80 * face_p
 	)
 	if own_contradiction:
 		val = maxf(val, 0.55 + 0.45 * s_evil)
@@ -1358,7 +1335,9 @@ static func _circumstantial_clause(label: String) -> String:
 	return s[0].to_lower() + s.substr(1)
 
 
-static func _headline_chance(card: Dictionary, person: String) -> float:
+## A reading's share of naming `person` on its face: a Seer's "yes" names each of its pair by
+## half, a Dowser's count of c in n by c/n. Feeds a cited reason's strength only.
+static func _face_value(card: Dictionary, person: String) -> float:
 	var data = card.get("data", {})
 	if not (data is Dictionary):
 		return 0.0
@@ -1366,25 +1345,25 @@ static func _headline_chance(card: Dictionary, person: String) -> float:
 		"seer":
 			var spair: Array = data.get("pair", [])
 			if bool(data.get("yes", false)) and person in spair:
-				return Tuning.Workshop.HEADLINE_SEER / float(maxi(spair.size(), 1))
+				return 1.0 / float(maxi(spair.size(), 1))
 		"archivist":
 			var apair: Array = data.get("pair", [])
 			if person in apair:
-				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(apair.size(), 1))
+				return 1.0 / float(maxi(apair.size(), 1))
 		"dowser":
 			var dgroup: Array = data.get("group", [])
 			if person in dgroup and int(data.get("count", 0)) > 0:
-				return Tuning.Workshop.HEADLINE_DOWSER * float(data.count) / float(maxi(dgroup.size(), 1))
+				return float(data.count) / float(maxi(dgroup.size(), 1))
 		"chronicler":
 			var ctrio: Array = data.get("trio", [])
 			if person in ctrio:
-				return Tuning.Workshop.HEADLINE_ARCHIVIST / float(maxi(ctrio.size(), 1))
+				return 1.0 / float(maxi(ctrio.size(), 1))
 		"magistrate":
 			if not bool(data.get("same", true)) and person in [str(data.get("nominator", "")), str(data.get("nominee", ""))]:
-				return Tuning.Workshop.HEADLINE_DOWSER * 0.5
+				return 0.5
 		"registrar":
 			if bool(data.get("yes", false)) and str(data.get("target", "")) == person and data.get("roles", []).any(func(r): return C.is_minion(str(r))):
-				return Tuning.Workshop.HEADLINE_ARCHIVIST * 0.5
+				return 0.5
 	return 0.0
 
 

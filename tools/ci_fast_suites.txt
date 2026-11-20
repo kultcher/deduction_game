@@ -19,6 +19,7 @@ test_case_script
 test_caught_lie_softening
 test_caught_out_ladder
 test_codex_fixes
+test_confessed_night
 test_connections
 test_connections_cache
 test_connections_cases
@@ -55,7 +56,6 @@ test_gift_doubt
 test_gift_doubt_good
 test_gravedigger_bluff
 test_haunt_learning
-test_headline
 test_held_signals
 test_hint_families
 test_honest_forgetting
@@ -65,6 +65,7 @@ test_judge_for_profile
 test_judgement_boost
 test_juror_claims
 test_juror_listener
+test_kill_score_roles
 test_lamplighter_count_mix
 test_lie_severity
 test_lie_severity_votes
@@ -97,10 +98,12 @@ test_peer_role_gossip
 test_player_failed_gift
 test_playtest_23973
 test_playtest_89077
+test_points_elsewhere
 test_poison_chance
 test_poison_outing
 test_poison_self_doubt
 test_premise_centring
+test_premise_migration
 test_premise_step1
 test_premise_step2
 test_premise_step3

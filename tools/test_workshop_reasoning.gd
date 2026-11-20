@@ -23,10 +23,10 @@ func _init() -> void:
 		clone.insight = insight
 		outcomes.append(Jury.evaluate(view, c, clone))
 		print("%s: %s; agreement %.3f; checked %d worlds" % [outcomes[-1].reasoning.profile, outcomes[-1].reasoning.status, outcomes[-1].agreement, outcomes[-1].reasoning.tested])
-	check(outcomes[0].shared_assessment == outcomes[1].shared_assessment and outcomes[1].shared_assessment == outcomes[2].shared_assessment, "Insight leaves the complete referee answer unchanged")
+	check(outcomes[0].assessment == outcomes[1].assessment and outcomes[1].assessment == outcomes[2].assessment, "Insight leaves the complete referee answer unchanged")
 	check(outcomes[0].reasoning.status == "provisional" and outcomes[0].reasoning.rivals_tested <= Jury.Reasoner.profile(0.1).rivals, "Low Insight provisionally accepts a checked explanation when its brief rival check finds no counterexample")
 	check(not outcomes[0].objection.contains("An alternative still fits") and not outcomes[0].objection.contains("Nisha"), "spoken low-Insight objections cannot leak the referee's unseen Nisha alternative")
-	check(outcomes[0].stance == "accept" and outcomes[0].shared_assessment.entailment == "possible", "trusted coherent case can convince a low-Insight juror without being mislabeled proved")
+	check(outcomes[0].stance == "accept" and Solver.analyze(view, Solver.Graph.compile_case(view, c), {}, false).entailment == "possible", "trusted coherent case can convince a low-Insight juror without being mislabeled proved")
 	check(outcomes[1].reasoning.status == "rival_found" and outcomes[2].reasoning.status == "rival_found", "Medium and High find the Nisha rival")
 	check(outcomes[0].agreement > outcomes[1].agreement, "rival search changes subjective conviction with all other inputs held constant")
 	var force = c.duplicate(true)
@@ -64,7 +64,7 @@ func _init() -> void:
 		{"id": "readings_b", "label": "Readings B", "relation": "supports", "cards": ["dowse"], "positions": {}, "answers": {}},
 		{"id": "movement", "label": "Movement", "relation": "supports", "cards": ["watch1", "watch2"], "positions": {}, "answers": {}, "test_factor": {"target": "constance", "log2_ratio": 1.0}}]
 	var missed_connection = Jury.evaluate(view, joined, small_mind.duplicate(true))
-	check(missed_connection.reasoning.ignored_lines.has("movement") and missed_connection.support_model.factors.is_empty(), "a juror can know the sightings but miss connecting their line to the readings")
+	check(missed_connection.reasoning.ignored_lines.has("movement") and missed_connection.case_eval.movement.is_empty(), "a juror can know the sightings but miss connecting their line to the readings")
 	var hidden_mistake = joined.duplicate(true)
 	hidden_mistake.lines[2].positions = {"hollis": "good"}
 	var missed_mistake = Jury.evaluate(view, hidden_mistake, small_mind.duplicate(true))
@@ -75,10 +75,10 @@ func _init() -> void:
 	inattentive_bart.reasoning_mode = "bounded"
 	inattentive_bart.insight = 0.1
 	var unseen_movements = Jury.evaluate(view, movement_case, inattentive_bart)
-	check(unseen_movements.reasoning.ignored_lines.has("movement") and unseen_movements.pattern.incidents == 0, "direct outing suspicion cannot bypass the evidence attention budget")
+	check(unseen_movements.reasoning.ignored_lines.has("movement") and unseen_movements.path_kind != "pattern", "direct outing suspicion cannot bypass the evidence attention budget")
 	var connected_mind = small_mind.duplicate(true)
 	connected_mind.insight = 0.9
-	check(not Jury.evaluate(view, joined, connected_mind).support_model.factors.is_empty(), "higher attention can connect the movement line and use its supplied factor")
+	check(not Jury.evaluate(view, joined, connected_mind).case_eval.movement.is_empty(), "higher attention can connect the movement line and use its supplied factor")
 	var remembered_group = small_mind.duplicate(true)
 	Jury.evaluate(view, joined, remembered_group)
 	var duplicate = joined.lines[0].duplicate(true)
@@ -106,7 +106,7 @@ func _init() -> void:
 		at_home.reasoning_mode = "bounded"
 		at_home.insight = insight
 		var r = Jury.evaluate(misleading, home_case, at_home)
-		check(r.reasoning.private_checks.rejected.has("false_watch") and r.support_model.report_acceptance.get("false_watch", 0.0) == 0.0, "firsthand whereabouts reject a wrong sighting even outside attention at Insight %.1f" % insight)
+		check(r.reasoning.private_checks.rejected.has("false_watch") and r.case_eval.acceptance.get("false_watch", 0.0) == 0.0, "firsthand whereabouts reject a wrong sighting even outside attention at Insight %.1f" % insight)
 	var wrong_result = Solver.card_by_id(misleading, "survey").duplicate(true)
 	wrong_result.id = "wrong_result"
 	wrong_result.fact_id = "misquoted-survey"
@@ -120,16 +120,7 @@ func _init() -> void:
 	check(receipt.reasoning.private_checks.rejected.has("wrong_result"), "a juror notices a misquoted own reading without assuming its actual result was healthy")
 	bart.reading_reliability[Solver.semantic_key(Solver.card_by_id(view, "survey"))] = 0.0
 	var impaired = Jury.evaluate(view, c, bart)
-	check(impaired.support_model.report_acceptance.survey == 0.0 and not impaired.reasoning.private_checks.fatal, "a juror may doubt their own reading's accuracy while retaining firsthand receipt knowledge")
-	var conflict_case = Solver.empty_case()
-	conflict_case.cards = ["survey", "watch1", "alibi1"]
-	conflict_case.conclusion.type = "conflict"
-	conflict_case.conflict_scope = ["watch1", "alibi1"]
-	var obvious = Jury.evaluate(view, conflict_case, small_mind.duplicate(true))
-	check(obvious.agreement == 1.0 and obvious.reasoning.status == "inconsistent", "even low Insight catches a direct two-account home/sighting contradiction")
-	conflict_case.conflict_scope = ["survey"]
-	var unrelated = Jury.evaluate(view, conflict_case, small_mind.duplicate(true))
-	check(unrelated.agreement == 0.0, "a bounded juror cannot borrow the referee's out-of-scope conflict")
+	check(impaired.case_eval.acceptance.survey == 0.0 and not impaired.reasoning.private_checks.fatal, "a juror may doubt their own reading's accuracy while retaining firsthand receipt knowledge")
 	var empty = Solver.empty_case()
 	check(Jury.evaluate(view, empty, small_mind).strength == 0, "low Insight gives no free weight to an unsupported accusation")
 	var pc = c.duplicate(true)
@@ -169,7 +160,6 @@ func _init() -> void:
 	check(changed_high.theory.status == "retained" and changed_high.theory.position == "evil" and changed_high.strength > changed_low.strength, "high confidence visibly retains a defeasible earlier theory")
 	var unchanged = Jury.evaluate(view, pc, high)
 	check(unchanged.repeated and is_zero_approx(unchanged.suspicion_delta), "repetition cannot incrementally build persistence or persuasion")
-	check(changed_high.support_model.atoms == adopted_high.support_model.atoms, "confidence does not invent a poisoning excuse or change source/reading reliability")
 	pc.lines[1].test_factor.log2_ratio = -4.0
 	var decisive = Jury.evaluate(view, pc, high)
 	check(decisive.theory.status == "revised" and decisive.theory.position == "good", "strong contrary evidence can dislodge the high-confidence theory")

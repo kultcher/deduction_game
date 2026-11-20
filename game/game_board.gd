@@ -29,37 +29,12 @@ static func _break_confidences(g, nums: Array) -> void:
 		g._narr("%s stiffens. You promised to keep that between you." % n.name)
 
 
-static func _deprecate_muddled_matches(g, src_id: String, role: String, day_val: int, muddled_data = null, superseded_by_num: int = 0, real_data = null) -> void:
-	var Muddler = preload("res://sim/muddler.gd")
-	for c in g.board:
-		if c.get("deleted", false) or c.get("tavern_gossip", false):
-			continue
-		if str(c.get("kind", "")) != "info" or str(c.get("source", "")) != src_id or str(c.get("role", "")) != role or int(c.get("day", -2)) != day_val:
-			continue
-		if str(c.get("via", src_id)) == src_id:
-			continue
-		if c.get("deprecated", false):
-			# Already disclaimed (e.g. privately, just before the real reading was added):
-			# point it at the real card if the same source disclaimed it.
-			if superseded_by_num > 0 and int(c.get("superseded_by", 0)) == 0 and str(c.get("disclaimed_by", "")) == src_id:
-				c["superseded_by"] = superseded_by_num
-			continue
-		if muddled_data is Dictionary and c.get("data", {}) == muddled_data:
-			Muddler.deprecate_card(c, src_id, superseded_by_num)
-		elif real_data is Dictionary and c.get("data", {}) != real_data:
-			Muddler.deprecate_card(c, src_id, superseded_by_num)
-
 static func _facts(g, facts: Array) -> void:
 	for f in facts:
-		if f.get("kind", "") == "deprecate_muddle":
-			_deprecate_muddled_matches(g, str(f.get("source", "")), str(f.get("role", "")), int(f.get("day", -1)), f.get("muddled_data", null))
-			continue
 		if f.get("silent", false):
 			_silent_corroboration(g, f)
 			continue
 		var num: int = add_card(g, f)
-		if f.get("kind", "") == "info" and str(f.get("via", f.get("source", ""))) == str(f.get("source", "")) and str(f.get("source", "")) not in ["", "rumour", "player"]:
-			_deprecate_muddled_matches(g, str(f.get("source", "")), str(f.get("role", "")), int(f.get("day", -1)), null, num, f.get("data", {}))
 		if f.get("confidential", "") != "":
 			g.confidences[num] = f["confidential"]
 		g._ev({"k": "card", "n": num})
@@ -342,8 +317,6 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, workshop_
 	conclusion = Deduction.normalize(conclusion.duplicate())
 	var pool: Array = all_receipts(g)
 	var cards: Array = pool.filter(func(x): return x["n"] in supports and not x.get("deleted", false))
-	if conclusion.get("type", "") == "conflict" and conclusion.get("group", []).is_empty():
-		conclusion["group"] = Deduction.group_of(g.w, cards)
 	g.last_error = Deduction.filing_problem(g.w, conclusion, supports, pool, false)
 	if g.last_error != "":
 		g.w.dlog.add("deduction_refused", "player", conclusion.get("a", ""), {"conclusion": conclusion, "supports": supports}, g.last_error)
@@ -362,7 +335,7 @@ static func file_deduction(g, conclusion: Dictionary, supports: Array, workshop_
 	var unfounded: bool = not Deduction.bears_on(g.w, conclusion, cards, active_pool)
 	var labels: Array = supports.map(func(x): return ("P%d" % (-x - 10000)) if x <= -10000 else ("#%d" % x))
 	var basis = " (because %s%s)" % [", ".join(PackedStringArray(labels)), "; unfounded" if unfounded else "; your inference"]
-	var subj: Array = conclusion.get("group", []).duplicate() if conclusion.get("type", "") == "conflict" else ([conclusion["a"]] if conclusion.has("a") else [])
+	var subj: Array = [conclusion["a"]] if conclusion.has("a") else []
 	var card = {
 		"kind": "deduction",
 		"subject": subj,

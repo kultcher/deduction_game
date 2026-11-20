@@ -298,6 +298,13 @@ func run_day_gift(_w, _holder, _mind, _evil) -> void:
 	pass
 
 
+## Whether a claimant's one-shot gift has done all it will, so the Demon no longer values
+## killing them for it (`Evil._public_threat`; Michael, Nov 20). First-night gifts are
+## handled there; the Chronicler and Executor override this.
+func kill_claim_spent(_w, _n) -> bool:
+	return false
+
+
 ## Whether poisoning a public claimant of this role tonight would stop anything (`Evil.gift_live_tonight`).
 func gift_live_tonight(w, _n) -> bool:
 	if first_night:

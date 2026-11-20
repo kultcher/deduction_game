@@ -1,5 +1,5 @@
 ## Workshop and shared-model behaviour pinned by past bugs: juror feedback, connections, presentation replies, ledger guards, caches.
-## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase2_bug_sweep, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
+## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
 const Mind = preload("res://sim/mind.gd")
@@ -14,6 +14,7 @@ const Caches = preload("res://workshop/caches.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindNomination = preload("res://sim/mind_nomination.gd")
 const GhostJuror = preload("res://workshop/ghost_juror.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
@@ -45,7 +46,6 @@ func _main() -> void:
 	_run_backlog_batch4()
 	_run_claude_batch()
 	_run_claude_audit_cleanup()
-	_run_phase2_bug_sweep()
 	_run_phase4_3_framing_and_vig()
 	_run_playtest_nov4_fixes()
 	_run_playtest_regressions()
@@ -98,12 +98,6 @@ func _run_claude_audit_cleanup() -> void:
 	_test_shared_ledger_zero_weight_reading_guard()
 	_test_caches_clear_all_and_constance_inquiry_gate()
 	_test_jury_persuasion_tail_helper()
-
-
-# ---------------------------------------------------------------- from test_phase2_bug_sweep
-
-func _run_phase2_bug_sweep() -> void:
-	_test_2_5_headline_firsthand_attention_reports()
 
 
 # ---------------------------------------------------------------- from test_phase4_3_framing_and_vigil_physics
@@ -303,7 +297,7 @@ func _evil_subject_never_accepts() -> void:
 	for sd in range(4470, 4490):
 		var g = _game(sd)
 		var e = g.w.evil_team()[0]
-		for type in ["minion", "evil", "demon"]:
+		for type in ["evil", "demon"]:
 			var mask: Dictionary = preload("res://sim/presentation_reply.gd")._evil_mask(g.w, e, {"type": type, "a": e.id}, 0, false)
 			tried += 1
 			if mask.get("stance", "") == "accept":
@@ -387,7 +381,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 	})
 	Mind.ledger_hear(w, listener, "heard:sight_off_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_off})
 	Mind.refresh_beliefs(w, listener, " (test off-block sighting)")
-	var reasons_off: Array = MindMeeting.case_against(w, listener, walker.id)
+	var reasons_off: Array = MindNomination.case_against(w, listener, walker.id)
 	_check(not reasons_off.any(func(r): return r.get("channel", "") == "movement_out"), "case_against does not cite an off-murder-block night sighting in shared attribution")
 
 	# Same sighting ON the murder block ("docks") IS cited when walker has no credible walking claim.
@@ -397,7 +391,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 	})
 	Mind.ledger_hear(w, listener, "heard:sight_on_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_on})
 	Mind.refresh_beliefs(w, listener, " (test murder-block sighting)")
-	var reasons_on: Array = MindMeeting.case_against(w, listener, walker.id)
+	var reasons_on: Array = MindNomination.case_against(w, listener, walker.id)
 	_check(reasons_on.any(func(r): return r.get("channel", "") == "movement_out"), "case_against cites a murder-block night sighting when walker has no credible walking claim")
 
 
@@ -512,32 +506,6 @@ func _test_jury_persuasion_tail_helper() -> void:
 		_check(not ("Even so," in stripped) and stripped.begins_with("I checked another explanation"), "Jury.strip_accept_persuasion_tail cleanly removes persuasion tail (%s)" % (kind if kind != "" else "plain"))
 
 
-# ---- test_phase2_bug_sweep
-
-
-func _test_2_5_headline_firsthand_attention_reports() -> void:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(4, 10)
-	var holder = g.w.living_good()[0]
-	var a = g.w.living_good()[1]
-	var b = g.w.living_good()[2]
-	holder.role = "seer"
-	holder.claimed_role = ""
-	holder.claim_public = false
-	holder.ledger.clear()
-	holder.workshop_state.clear()
-	holder.info_log = [{"role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [a.id, b.id], "yes": true}, "true": true, "shared": false, "text": "seer yes"}]
-	var input: Dictionary = Bridge.capture(g, [], holder.id, "private", holder)
-	var plan: Dictionary = Shared.prepare(input, {}, holder.ledger)
-	_check(plan.ready and plan.prepared.listener.knowledge.get("own_reports", []).is_empty() and not plan.prepared.listener.knowledge.get("attention_reports", []).is_empty(), "SharedLedger moves firsthand report IDs into attention_reports")
-	var h_own: float = Jury._headline(plan.prepared.view, plan.prepared.view.cards, a.id, 0.30, plan.prepared.listener, plan.prepared.listener, false)
-	var stripped_eval: Dictionary = plan.prepared.listener.duplicate(true)
-	stripped_eval.knowledge["attention_reports"] = []
-	var h_default: float = Jury._headline(plan.prepared.view, plan.prepared.view.cards, a.id, 0.30, plan.prepared.listener, stripped_eval, false)
-	_check(h_own > h_default, "Jury._headline uses OWN_ERR via attention_reports instead of DEFAULT_ERR (%.4f > %.4f)" % [h_own, h_default])
-
-
 # ---- test_phase4_3_framing_and_vigil_physics
 
 
@@ -620,6 +588,12 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 	w.day = 1
 	w.phase = C.EVENING
 	var goods: Array = w.living_good()
+	# The real Rumormonger, if the deal has one, is the speaker, so no listener holds the gift
+	# it claims (the deal moved when the drop draws went, Nov 19).
+	var real_rm: Array = goods.filter(func(x): return x.role == "rumormonger")
+	if not real_rm.is_empty():
+		goods.erase(real_rm[0])
+		goods.push_front(real_rm[0])
 	var speaker = goods[0]
 	var pair_a = goods[1]
 	var pair_b = goods[2]
@@ -646,7 +620,7 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 	var susp_after: float = Mind.susp(listener, speaker.id)
 	_check(susp_after <= susp_before + 0.03,
 		"Uncorroborated Rumormonger report does not spike speaker suspicion (%.3f -> %.3f)" % [susp_before, susp_after])
-	var reasons: Array = Mind.MindMeeting.case_against(w, listener, speaker.id)
+	var reasons: Array = Mind.MindNomination.case_against(w, listener, speaker.id)
 	_check(not reasons.any(func(r): return "Rumormonger report doesn't fit" in str(r.get("why", ""))),
 		"Uncontradicted Rumormonger reading never emits false 'doesn't fit what we know' reason (%s)" % str(reasons))
 

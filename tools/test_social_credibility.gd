@@ -92,7 +92,6 @@ func _run_phase2_bug_sweep() -> void:
 func _run_phase3_credibility_and_t() -> void:
 	_test_3_1_delta_confidence_and_proof_retraction_overrides()
 	_test_3_2_per_card_source_trust_non_dilution_and_non_laundering()
-	_test_3_2_headline_context_aware_repeat_grouping()
 	_test_3_3_non_circular_credibility_dawn_and_tiered_weights()
 
 
@@ -433,8 +432,8 @@ func _stance_from_belief() -> void:
 	said = Presentation._belief_stance_text(g, n, "evil", t.id, 0.17, "accept", "Taken together, those reports convince me.", true)
 	_check(said == "It holds together, but it doesn't change my mind about %s." % t.name, "a retold case that lowered their suspicion isn't 'already taken into account' (Dorian, 12926) (%s)" % said)
 	_check(Presentation.belief_toward("evil", 0.17, 0.05) < 0.0 and Presentation.belief_toward("good", 0.4, 0.3) > 0.0, "belief_toward is signed toward the claim")
-	said = Presentation._belief_stance_text(g, n, "conflict", t.id, 0.2, "accept", "Those accounts cannot all be accurate.")
-	_check(said == "Those accounts cannot all be accurate.", "conflicts are left alone")
+	said = Presentation._belief_stance_text(g, n, "lied", t.id, 0.2, "accept", "Those accounts cannot all be accurate.")
+	_check(said == "Those accounts cannot all be accurate.", "premises about a reading rather than an alignment are left alone")
 
 
 ## A gift reading against an alibi offers both explanations: the alibi is false (as
@@ -680,41 +679,6 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 	_check(is_equal_approx(endorsed_req, float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))), "player credibility changes do not reweight independently heard reports")
 
 
-func _test_3_2_headline_context_aware_repeat_grouping() -> void:
-	var view: Dictionary = {
-		"people": [{"id": "a"}, {"id": "b"}, {"id": "s1"}, {"id": "s2"}],
-		"timeline": {"executions": {}},
-	}
-	var listener: Dictionary = {
-		"id": "l", "trust": 0.8, "player_credibility": 0.8,
-		"npc_trust": {"s1": 0.9, "s2": 0.9},
-		"knowledge": {"own_reports": []},
-	}
-	var eval_listener: Dictionary = {
-		"id": "l", "reading_reliability": {"c1": 0.95, "c2": 0.95, "c3": 0.95},
-		"knowledge": {"own_reports": []},
-	}
-	var c1: Dictionary = {"id": "c1", "kind": "report", "source": "s1", "role": "seer", "night": 1,
-		"observed_at": {"day": 1, "phase": "night"}, "data": {"pair": ["a", "b"], "yes": true}}
-	var c2_same_seer: Dictionary = {"id": "c2", "kind": "report", "source": "s1", "role": "seer", "night": 2,
-		"observed_at": {"day": 2, "phase": "night"}, "data": {"pair": ["b", "a"], "yes": true}}
-	var c3_second_seer: Dictionary = {"id": "c3", "kind": "report", "source": "s2", "role": "seer", "night": 2,
-		"observed_at": {"day": 2, "phase": "night"}, "data": {"pair": ["a", "b"], "yes": true}}
-
-	var h_single: float = Jury._headline(view, [c1], "a", 0.25, listener, eval_listener, false)
-	var h_repeat: float = Jury._headline(view, [c1, c2_same_seer], "a", 0.25, listener, eval_listener, false)
-	var h_two_sources: float = Jury._headline(view, [c1, c3_second_seer], "a", 0.25, listener, eval_listener, false)
-	_check(h_repeat > h_single and (h_repeat - h_single) < 0.35 * (h_two_sources - h_single),
-		"same-Seer same-epoch repeat gets only diminishing confirmation bump while two distinct claimants combine fully (%.4f, %.4f, %.4f)" % [h_single, h_repeat, h_two_sources])
-
-	# Across a Day 2 execution (potential Scion promotion), Night 1 and Night 2 checks belong to distinct epochs!
-	var view_exec: Dictionary = view.duplicate(true)
-	view_exec.timeline.executions = {2: "x"}
-	var h_post_exec: float = Jury._headline(view_exec, [c1, c2_same_seer], "a", 0.25, listener, eval_listener, false)
-	_check(h_post_exec > h_repeat + 0.02,
-		"checks separated by a public execution land in distinct scion_epochs and are not collapsed as stale repeats (%.4f vs %.4f)" % [h_post_exec, h_repeat])
-
-
 func _test_3_3_non_circular_credibility_dawn_and_tiered_weights() -> void:
 	var g = Game.new()
 	g.detailed_logging = false
@@ -855,6 +819,9 @@ func _test_knob3_zero_walker_daytime_rumor_fuel() -> void:
 	var delivered_count: int = 0
 	for _i in range(25):
 		speaker.told_to.clear()
+		# The speaker's own home alibi for last night is a separate candidate, not daytime fuel,
+		# and it does reach the ledger: count it told, so the pick isn't down to the draw (Nov 20).
+		speaker.told_to[listener.id + "|alibi:%s:%d" % [speaker.id, w.day - 1]] = true
 		var picked = Social._pick_item(w, speaker, listener)
 		if picked != null:
 			_check(picked["kind"] in ["day_sighting", "unease"], "zero-walker pick produces daytime sighting or unease item (%s)" % str(picked["kind"]))
@@ -1016,11 +983,36 @@ func _support_self() -> void:
 	g.command("present %d for %s" % [num, n.id])
 	_check(n.trust == before, "repeated support cannot farm trust")
 	_check(g._route_present(n, "%d against %s" % [num, n.id])["verb"] == "press", "speaking against the listener still challenges them")
-	var deduction = g.add_card({"kind": "deduction", "subject": [n.id], "source": "player", "conclusion": {"type": "notdemon", "a": n.id}, "text": "I believe they are not the Demon."})
+	# A filed case that clears the listener, put to them privately, is self-support too: the
+	# shared presentation thanks them and raises rapport (WorkshopPresentation). A bare belief
+	# with no cards can't be filed, so it isn't tested here (the social route went on Nov 20).
+	var deduction: int = _file_clearing_case(g, n.id)
+	_check(deduction > 0 and not g.board[deduction - 1].get("unfounded", false), "(fixture) a founded case that %s is not the Demon is filed (%s)" % [n.name, g.last_error])
 	_check(g._route_present(n, "%d for %s" % [deduction, n.id])["verb"] == "defend", "explicit support with a deduction is also routed as a defence")
+	g.questions_left = 3
 	before = n.trust
 	g.command("present %d for %s" % [deduction, n.id])
-	_check(n.trust > before, "supportive deductions about the listener can build rapport")
+	_check(n.trust > before, "supportive deductions about the listener can build rapport (%.3f -> %.3f)" % [before, n.trust])
+
+
+## Files a Workshop case that `target` is not the Demon, on a Seer reading that clears
+## them (their pair with another good townsperson read as no evil). Returns its number, or 0.
+func _file_clearing_case(g, target: String) -> int:
+	var Live = preload("res://game/workshop_canvas.gd")
+	var CanvasModel = preload("res://workshop/canvas_model.gd")
+	var goods: Array = g.w.living_good().filter(func(p): return p.id != target)
+	var seer = goods[0]
+	var other = goods[1]
+	var num: int = g.add_card({"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT,
+		"data": {"pair": [target, other.id], "yes": false}, "text": "%s's reading: neither %s nor %s is evil." % [seer.name, target, other.name]})
+	var view: Dictionary = Live.view(g)
+	var model = CanvasModel.new(view)
+	var root: String = model.selected
+	model.nodes[root].conclusion = {"type": "notdemon", "target": target, "at": view.alignment_epoch}
+	var node: String = "e:" + Live.Evidence.normalize_card(g.board[num - 1]).id
+	if model.nodes.has(node):
+		model.connect_cards(node, root)
+	return Live.file(g, model.compile(root), 0)
 
 
 func _public_hearsay_and_self_gossip() -> void:

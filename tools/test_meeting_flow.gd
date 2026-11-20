@@ -236,7 +236,7 @@ func pressed_nights():
 			# Nov 16; BACKLOG "An evil walker's owned lie doesn't follow its disclosure").
 			# The caught-out ladder (Michael, Nov 19): the first press only owns the night and keeps
 			# the bluff back, as a good walker keeps its gift; the second names it.
-			if evil and load("res://sim/mind_dialogue.gd")._bluff_outing(b.w, nb, 1):
+			if evil and preload("res://sim/mind_press.gd")._bluff_outing(b.w, nb, 1):
 				var soft = Mind.press(b.w, nb, card)
 				check(not soft.facts.any(func(f): return f.kind == "claim") and not soft.facts.any(func(f): return f.kind == "alibi" and f.get("home", false)), "a caught evil %s bluff first owns the night, bluff kept back" % mode)
 				var revealed = Mind.press(b.w, nb, card)
@@ -940,7 +940,7 @@ func _test_case_98933_polish_fixes() -> void:
 	Mind.hear_claim(w, hollis, odette.id, "archivist", 0.5, "public")
 	Mind.apply_info(w, hollis, odette, arch_entry, 0.5)
 	Mind.flush_beliefs(w, hollis)
-	var reasons: Array = Mind.MindMeeting.case_against(w, hollis, odette.id)
+	var reasons: Array = Mind.MindNomination.case_against(w, hollis, odette.id)
 	# Superseded by purge phase 2a: reasons now come from the shared model's attribution,
 	# and only for people the shared model actually suspects. This synthetic fixture (legacy
 	# apply_info, no poisoning explanation ruled out) leaves Odette below Hollis's average,

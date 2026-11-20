@@ -78,9 +78,7 @@ const BATCH5_SLOTS = {
 	"present_alt_marked": {"marked": "Isolde"},
 	"present_points_elsewhere": {"target": "Edda", "rival": "Fenwick"},
 	"present_weighs_against": {"target": "Edda"},
-	"present_conflict_found": {},
 	"present_conflict_weighing": {},
-	"present_conflict_none": {},
 	"present_conditional": {},
 	"present_lost_thread": {},
 	"present_partial_attention": {},
@@ -465,7 +463,7 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 257, "Agnes voice pack contains all 257 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 256, "Agnes voice pack contains all 256 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()
@@ -490,6 +488,8 @@ func _test_voice_pack_completeness_and_symmetry() -> void:
 	all_string_keys["defence_lied"] = {"source": "Kiran"}
 	# Doubting one's own gift (Michael, Nov 17): good and evil say the same line.
 	all_string_keys["doubt_own_gift"] = {}
+	# Filling a quiet meeting (Michael, Nov 20): any speaker, evil included, so no slots.
+	all_string_keys["silence_breaker"] = {}
 	# "It's another of us" (89077, Michael, Nov 18): a defence against a reading over a group.
 	all_string_keys["defence_group_named"] = {"source": "Kiran", "others": "Dorian and Bartholomew"}
 	all_string_keys["defence_group_others"] = {"source": "Kiran"}

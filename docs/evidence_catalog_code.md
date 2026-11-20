@@ -10,7 +10,7 @@ Companion to `docs/evidence_catalog.md`, keyed by the same entry numbers. File a
 | Reading content per world | `workshop/solver.gd` (`report_table`, `_report_content_impl`, `_testimony_content`, `source_valid`, `CONTENT_ROLES`) |
 | Reading likelihood | `workshop/case_eval.gd` (`chance_content`, `_chance_content_fixed`, `ROLE_CONTENT_FIXED`, `reading_error`, `_route_credit`), `workshop/cs/CaseEvalKernel.cs` |
 | Role table | `workshop/role_constraints.gd` (`fit_weight`, `bluff_weights`, `_FIXED_ROLES`), `workshop/cs/RoleConstraints.cs` (`FitsViewSingle`, `SeerRhWeight`, `AssignRole`, `BluffWeightsTemporal`) |
-| Movement | `workshop/live_activity.gd` (`routes`, `factors`, `score`, `evaluate_trace_for_person`), `workshop/cs/LiveActivity.cs`, `workshop/movement_model.gd` (fixture experiment) |
+| Movement | `workshop/live_activity.gd` (`routes`, `factors`, `score`, `evaluate_trace_for_person`), `workshop/cs/LiveActivity.cs`, `workshop/movement_model.gd` (the movement gate; the weighing is `live_activity.gd`) |
 | Public factors | `workshop/public_evidence.gd` (`factors`, `victim_ratio`) |
 | Speech factors | `workshop/speech_evidence.gd` (`factors`) |
 | Circumstantial hub | `workshop/circumstantial.gd` (`extract_hub_incidents`, `evaluate_union`, `stage1_gate`, `evaluate_smear_backlash`) |
@@ -68,8 +68,7 @@ Every role's reading is produced by its role file, `sim/roles/<role>.gd` (night 
 | C2 Evening sighting | `activity_card` (`evening`); `live_activity.gd` |
 | C3 Night sighting | made: `sim/social.gd`, `sim/mind_dialogue.gd`, Night Watch; card: `activity_card`; weighed: `live_activity.gd` `factors` / `score`; profiles `Tuning.Workshop.NIGHT_OUT_RATES`, `WALKER_CLAIM_*` |
 | C4 Home alibi | made: `sim/dialogue.gd`, `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_support.gd`; dispute: `Solver.Graph.valid_dispute` (`workshop/case_graph.gd`) |
-| C5 Dropped belongings | `game/game_day_night.gd` (`_search`, owner branch: a sighting with `dropped`); `activity_card` (`item_drop`) |
-| C6 Mud or soot drop | `_search` (material branch); `activity_card` (`dropped`); `live_activity.gd` (drop owner matching) |
+| C5, C6 Drops | removed (Nov 20) |
 | C7 Vigil | `game/game_day_night.gd` (vigil); `activity_card` (`coverage`, vigil sightings `complete`); `Tuning.Workshop.VIGIL_MISS` (mirrored as `VigilMiss` in `LiveActivity.cs`) |
 
 ## D. Crime scenes and night events
@@ -113,7 +112,7 @@ Every role's reading is produced by its role file, `sim/roles/<role>.gd` (night 
 
 | Distorter | Where |
 |---|---|
-| Secrets (Marked, Delusional, Lovers, Sleepwalker, Muddler) | `sim/content.gd` (`SECRET_MODS`); `workshop/cs/WorldDomain.cs`; `workshop/solver.gd` (`_secret_mod_code`) |
+| Secrets (Marked, Delusional, Lovers, Sleepwalker; the Muddler was removed Nov 20) | `sim/content.gd` (`SECRET_MODS`); `workshop/cs/WorldDomain.cs`; `workshop/solver.gd` (`_secret_mod_code`) |
 | Red Herring | `RoleConstraints.cs` (`SeerRhWeight`) |
 | Poisoner | `sim/roles/poisoner.gd`; fixtures only in the solver: `workshop/chronology.gd` (`poison_windows`), `workshop/fixtures.gd` |
 | Revenant | `sim/roles/revenant.gd`; `workshop/chronology.gd` |
