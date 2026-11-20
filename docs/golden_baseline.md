@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+### Current baseline (Nov 20, the Gravedigger's hidden lean): `baseline_68297e3`
+
+`tools/golden/baseline_68297e3/` is the capture from `claude/beadle-gravedigger-lean` at `68297e3` (main at
+`0b44cae`, merged in). A good Gravedigger with no one hanged yet leans a little toward nominating and
+voting to hang (`GRAVEDIGGER.nothing_to_read_lean` 0.08, proposed). It's a hidden motive: a vote part
+and a logged nomination term. This replaces the PR's earlier `baseline_82f6be4`, captured against an
+older main.
+- **Divergence from `baseline_7005cc6`:**
+  - 54875 at record 50 (day 1), 692 at 92 (day 2) and 900 at 69 (day 2), each at the first vote
+    whose record carries the `gravedigger_nothing_to_read` part;
+  - 98933 at record 41 (day 1), a nomination;
+  - 42 is identical.
+- **Outcomes:**
+  - **54875:** Agnes is now hanged as well as Edda, and the game runs longer (328 records against 293).
+    No winner either way.
+  - **692, 900 and 98933:** the same hangings; no winner.
+  - **42:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
 `tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
 `d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
