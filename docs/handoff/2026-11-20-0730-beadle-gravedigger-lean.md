@@ -1,7 +1,7 @@
 # The Gravedigger in a reluctant town: a hidden lean
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `07416df` (`baseline_58cb94a`, after #397)
+- **Base:** main at `0b44cae` (`baseline_7005cc6`), merged in Nov 20; first written on `07416df`
 - **Branch:** `claude/beadle-gravedigger-lean`
 - **Status:** PR open. Golden moves; it's re-baselined in this PR (one seed's day-3 hanging
   changes). Golden-moving PRs merge one at a time.
@@ -39,11 +39,11 @@
 - **Also pass:** test_roles_registry, test_meeting_flow, test_would_vote,
   test_nomination_and_evil_tuning, test_meeting_m2d, test_symmetric_vote and
   test_tuning_hoist.
-- **Golden:** re-baselined to `baseline_82f6be4` on main with #397. Two captures were identical.
-  - **Divergence from `baseline_58cb94a`:** 54875, 692 and 900 at the first vote carrying the
+- **Golden:** re-baselined to `baseline_68297e3` on main at `0b44cae` (replacing `baseline_82f6be4`). Two captures were identical.
+  - **Divergence from `baseline_7005cc6`:** 54875, 692 and 900 at the first vote carrying the
     Gravedigger's part, and 98933 at a day-1 nomination. 42 is identical.
-  - **Outcomes:** 54875's day 3 hangs Agnes instead of Hollis. The other four seeds keep their
-    hangings, and none has a winner by day 4.
+  - **Outcomes:** in 54875, Agnes is now hanged as well as Edda. The other four seeds keep their
+    hangings. No seed has a winner.
   - See "Current baseline" in `docs/golden_baseline.md`.
 
 ## Proposed for the backlog
