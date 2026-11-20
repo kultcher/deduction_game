@@ -1,6 +1,6 @@
 ## Exercises actual UI signals, slot persistence, file replay and the main-menu entry.
 extends SceneTree
-const Workshop = preload("res://ui/case_workshop_lab.tscn")
+const Workshop = preload("res://ui/case_workshop.gd")
 var fails = 0
 var checks = 0
 
@@ -8,7 +8,8 @@ func _init() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var scene = Workshop.instantiate()
+	var scene = Workshop.new()
+	scene.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(scene)
 	await process_frame
 	scene._load_example(3)

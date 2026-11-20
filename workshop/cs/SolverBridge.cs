@@ -52,8 +52,6 @@ public partial class SolverBridge : RefCounted
     public static int GetRegisteredHandleCount() => SolverContext.RegisteredHandleCount;
     public static int GetRegisteredMovementFactorCount() => SolverContext.RegisteredMovementFactorCount;
     public static int GetRegisteredCompiledCaseCount() => SolverContext.RegisteredCompiledCaseCount;
-    public static int GetRegisteredProgramCount() => SolverContext.RegisteredProgramCount;
-    public static int GetRegisteredCircuitCount() => SolverContext.RegisteredCircuitCount;
     public static int GetWorldEntryByteSize() => Unsafe.SizeOf<WorldEntry>();
     public static double GetGdFloor1e30() => SolverContext.GdFloor1e30;
 
@@ -455,12 +453,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeSingleLikelihood(
             personIdx, alignCode, personHomes, personDeathBeforeNight, demonAttackEvents,
-            hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static double[] LiveAllProfiles(
         bool includeConverted,
@@ -470,12 +467,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeAllProfiles(
             includeConverted, personHomes, personDeathBeforeNight, demonAttackEvents,
-            hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static double LiveCrossingProbability(
         int personIdx,
@@ -488,12 +484,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeCrossingProbability(
             personIdx, night, alignCode, sceneBlockCode, personHomes, personDeathBeforeNight,
-            demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static double[] LiveSceneCrossings(
         int night,
@@ -505,12 +500,11 @@ public partial class SolverBridge : RefCounted
         bool hasCurse,
         int curseFrom,
         int curseUntil,
-        double demonDetour,
         int[] cardInts,
         double[] cardDoubles) =>
         LiveActivityKernel.ComputeSceneCrossings(
             night, sceneBlockCode, includeConverted, personHomes, personDeathBeforeNight,
-            demonAttackEvents, hasCurse, curseFrom, curseUntil, demonDetour, cardInts, cardDoubles);
+            demonAttackEvents, hasCurse, curseFrom, curseUntil, cardInts, cardDoubles);
 
     public static int CaseEvalRegisterPresenceWeights(double[] weights) =>
         SolverContext.RegisterPresenceWeights(weights);
@@ -758,61 +752,4 @@ public partial class SolverBridge : RefCounted
             ccHandle, universeHandle, fallbackWorlds, evalInts, tuningDoubles,
             teamPrior, fits, fitsBefore, caseErrs, ownErrs, ownQs,
             counts, ownOf, flatOwnCodes, routeCredits, testLog2Ratios, biasFactor);
-
-    // --- Slice C3: ChannelSumProduct & FactoredChannels Entry Points ---
-
-    public static int[] SumProductCompile(int nInputs, int[] scopeOffsets, int[] scopeVars) =>
-        ChannelSumProductKernel.CompileProgram(nInputs, scopeOffsets, scopeVars);
-
-    public static double[] SumProductEvaluate(
-        int programHandle,
-        int[] fallbackFlatProgram,
-        int[] valOffsets,
-        double[] flatValues,
-        bool marginals) =>
-        ChannelSumProductKernel.EvaluateProgram(
-            programHandle, fallbackFlatProgram, valOffsets, flatValues, marginals);
-
-    public static int[] SumProductCircuit(
-        int programHandle,
-        int[] fallbackFlatProgram,
-        byte[] constFlags,
-        int[] constOffsets,
-        double[] flatConsts) =>
-        ChannelSumProductKernel.CompileCircuit(
-            programHandle, fallbackFlatProgram, constFlags, constOffsets, flatConsts);
-
-    public static double[] SumProductRun(
-        int circuitHandle,
-        int[] fallbackFlatCircuit,
-        int[] valOffsets,
-        double[] flatValues,
-        bool marginals) =>
-        ChannelSumProductKernel.RunCircuit(
-            circuitHandle, fallbackFlatCircuit, valOffsets, flatValues, marginals);
-
-    public static double[] FactoredAssessBatch(
-        int universeHandle,
-        long[] fallbackWorlds,
-        int nPeople,
-        int[] representatives,
-        double[] multiplicity,
-        int circuitHandle,
-        int[] fallbackFlatCircuit,
-        int[] factorSpecs,
-        double[] factorDoubles,
-        int tableStride,
-        byte[] flatByteTables,
-        int[] publicSpecs,
-        double[] publicRatios,
-        long[] condRowSigs,
-        int[] condRowOffsets,
-        double[] flatCondRows,
-        int[] markerFactorIndices,
-        int[] markerAdjRows) =>
-        ChannelSumProductKernel.AssessFactoredBatch(
-            universeHandle, fallbackWorlds, nPeople, representatives, multiplicity,
-            circuitHandle, fallbackFlatCircuit, factorSpecs, factorDoubles,
-            tableStride, flatByteTables, publicSpecs, publicRatios,
-            condRowSigs, condRowOffsets, flatCondRows, markerFactorIndices, markerAdjRows);
 }

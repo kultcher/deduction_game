@@ -9,7 +9,6 @@ const DayPresence = preload("res://workshop/day_presence.gd")
 const Chronology = preload("res://workshop/chronology.gd")
 static var cache = {}
 static var route_cache = {}
-const DEMON_DETOUR = Tuning.Workshop.DEMON_DETOUR
 const VIGIL_MISS = Tuning.Workshop.VIGIL_MISS
 const GOOD_OWN_ALIBI_OUT = Tuning.Workshop.GOOD_OWN_ALIBI_OUT
 const WALKER_CLAIM_GIFT = Tuning.Workshop.WALKER_CLAIM_GIFT
@@ -620,7 +619,7 @@ static func _log_good_of(view: Dictionary, cards: Array) -> float:
 	var env: Dictionary = _pack_view_env(view, ids)
 	var packed: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, {})
 	var raw: PackedFloat64Array = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
-		DEMON_DETOUR, packed.ints, packed.doubles)
+		packed.ints, packed.doubles)
 	var stride: int = 4 if env.has_curse else 3
 	var out: float = 0.0
 	for i in range(ids.size()):
@@ -646,7 +645,7 @@ static func _factors_core(view: Dictionary, cards: Array, observations: Array) -
 	var bridge = SolverBackend._bridge()
 	var raw_prof: PackedFloat64Array = bridge.LiveAllProfiles(
 		has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
-		DEMON_DETOUR, packed_checked.ints, packed_checked.doubles
+		packed_checked.ints, packed_checked.doubles
 	)
 	var n: int = ids.size()
 	var share: float = day_demon_share(view)
@@ -762,7 +761,7 @@ static func _guard_alt(items: Array, env: Dictionary, packed: Dictionary, includ
 				ev_sub.append(int(items[j].target))
 		var raw: PackedFloat64Array = bridge.LiveAllProfiles(
 			include_converted, env.homes, env.deaths, ev_sub, env.has_curse, env.curse_from, env.curse_until,
-			DEMON_DETOUR, packed.ints, packed.doubles)
+			packed.ints, packed.doubles)
 		var col: Array = []
 		for i in range(n):
 			col.append(raw[i * stride + 2])
@@ -845,7 +844,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 		var outside: Array = checked.filter(func(x): return str(x.get("id", "")) not in private_ids)
 		var p_out: Dictionary = _pack_activity_cards(ids, env.homes, outside, {}, {})
 		outsider_with = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
-			DEMON_DETOUR, p_out.ints, p_out.doubles)
+			p_out.ints, p_out.doubles)
 	var evil_n: float = float(view.get("evil_count", 1))
 	var weights: Array = [maxf(0.0, 1.0 - evil_n / float(n)), maxf(0.0, evil_n - 1.0) / float(n), 1.0 / float(n)]
 	# The profile without `full`'s sightings and the ones `cursed` told while converted.
@@ -869,7 +868,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			var packed: Dictionary = _pack_activity_cards(ids, env.homes, minus, {}, {})
 			alt_cache[key] = bridge.LiveAllProfiles(
 				has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
-				DEMON_DETOUR, packed.ints, packed.doubles)
+				packed.ints, packed.doubles)
 			# With quiet-night guards, the same alternative with each guard subset's attacks
 			# (Codex on #243): removing a witness's sightings keeps the guards' evidence.
 			if not guard_items.is_empty():
@@ -879,7 +878,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 				var packed_out: Dictionary = _pack_activity_cards(ids, env.homes, minus_out, {}, {})
 				outsider_cache[key] = bridge.LiveAllProfiles(
 					has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
-					DEMON_DETOUR, packed_out.ints, packed_out.doubles)
+					packed_out.ints, packed_out.doubles)
 		var raw: PackedFloat64Array = alt_cache[key]
 		var b: int = pi * stride
 		var alt: Array = [raw[b], raw[b + 1], raw[b + 2], raw[b + 3] if has_curse else 0.0]
@@ -1359,7 +1358,7 @@ static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Diction
 	SolverBackend.record_boundary_call("LiveActivity._likelihood", pack_u)
 	var cs_val: float = float(SolverBackend._bridge().LiveSingleLikelihood(
 		p_idx, _align_code(alignment), env.homes, env.deaths, env.demon_events,
-		env.has_curse, env.curse_from, env.curse_until, DEMON_DETOUR,
+		env.has_curse, env.curse_from, env.curse_until,
 		packed_cards.ints, packed_cards.doubles
 	))
 	return cs_val
@@ -1531,12 +1530,9 @@ static func demon_routes(home: String, destination: String) -> Array:
 	var key: String = home + ":" + destination
 	if demon_route_cache.has(key):
 		return demon_route_cache[key]
-	var direct: Array = C.route(home, destination)
-	var via: Array = C.BLOCKS.keys().filter(func(block): return block not in direct)
-	var result: Array = [{"path": direct, "weight": 1.0 - DEMON_DETOUR if not via.is_empty() else 1.0}]
-	for block in via:
-		var path: Array = C.route(home, block) + C.route(block, destination).slice(1)
-		result.append({"path": path, "weight": DEMON_DETOUR / via.size()})
+	# The Demon walks the direct way to its victim. It never detours, so inference doesn't
+	# allow one either (Michael, Nov 17).
+	var result: Array = [{"path": C.route(home, destination), "weight": 1.0}]
 	demon_route_cache[key] = result
 	return result
 
@@ -1565,7 +1561,7 @@ static func relationships(view: Dictionary, cards: Array) -> Array:
 				var key: String = id + ":" + str(card.night)
 				if not seen.has(key):
 					seen[key] = true
-					result.append("Seen elsewhere: %s's sighting on night %d argues strongly against being that night's killer; a Demon detour remains possible." % [person.name, card.night])
+					result.append("Seen elsewhere: %s's sighting on night %d argues strongly against being that night's killer." % [person.name, card.night])
 	for id in blocks:
 		var role: String = role_of(cards, id)
 		if blocks[id].size() >= 2 and C.ROLES.get(role, {}).get("night_walk", false):
@@ -1608,11 +1604,11 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 
 		var raw_pre: PackedFloat64Array = bridge.LiveAllProfiles(
 			false, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
-			DEMON_DETOUR, p_pre.ints, p_pre.doubles
+			p_pre.ints, p_pre.doubles
 		)
 		var raw_post: PackedFloat64Array = bridge.LiveAllProfiles(
 			false, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
-			DEMON_DETOUR, p_post.ints, p_post.doubles
+			p_post.ints, p_post.doubles
 		)
 		var pre_profiles: Array = []
 		var post_profiles: Array = []
@@ -1663,7 +1659,7 @@ static func _crossing_probability_dispatch(view: Dictionary, cards: Array, perso
 	var cs_val: float = float(SolverBackend._bridge().LiveCrossingProbability(
 		p_idx, night, _align_code(alignment), _block_code(scene_block),
 		env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
-		DEMON_DETOUR, packed_cards.ints, packed_cards.doubles
+		packed_cards.ints, packed_cards.doubles
 	))
 	return cs_val
 
@@ -1746,7 +1742,7 @@ static func _build_scene_tables_cs(view: Dictionary, ids: Array, env: Dictionary
 			SolverBackend.record_boundary_call("LiveActivity.scene_crossings", 0)
 			var raw_c: PackedFloat64Array = bridge.LiveSceneCrossings(
 				c_night, _block_code(c_block), has_curse, env.homes, env.deaths, env.demon_events,
-				has_curse, env.curse_from, env.curse_until, DEMON_DETOUR, packed_cards.ints, packed_cards.doubles
+				has_curse, env.curse_from, env.curse_until, packed_cards.ints, packed_cards.doubles
 			)
 			c_good.resize(n)
 			c_minion.resize(n)
@@ -1809,7 +1805,7 @@ static func _build_scene_tables_cs(view: Dictionary, ids: Array, env: Dictionary
 			SolverBackend.record_boundary_call("LiveActivity.scene_crossings", 0)
 			var raw_c2: PackedFloat64Array = bridge.LiveSceneCrossings(
 				night, _block_code(scene_block), has_curse, env.homes, env.deaths, env.demon_events,
-				has_curse, env.curse_from, env.curse_until, DEMON_DETOUR, packed_cards.ints, packed_cards.doubles
+				has_curse, env.curse_from, env.curse_until, packed_cards.ints, packed_cards.doubles
 			)
 			cross_good.resize(n)
 			cross_minion.resize(n)
