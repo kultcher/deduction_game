@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, drops removed): `baseline_58cb94a`
+### Current baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
+
+`tools/golden/baseline_9fa5a74/` is the capture from `claude/remove-muddler` at `9fa5a74` (main with
+#397 merged in). The default script never deals the Muddler. But `reason_attribution`'s defence
+view (an NPC weighing a disclosed fact) built its worlds from the whole secret roster, so NPCs
+weighed impossible Muddler worlds. Those are gone, and a few close weighings shift.
+- **Divergence from `baseline_58cb94a`:** 54875 at record 6 (day 1), 98933 at 22 (day 1), 42 at 44
+  (day 2) and 900 at 85 (day 3). 692 is identical.
+- **Outcomes:** unchanged on every seed. The same people are hanged on the same days, and no
+  seed has a winner by day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, drops removed): `baseline_58cb94a`
 
 `tools/golden/baseline_58cb94a/` is the capture from `claude/remove-drops` at `58cb94a` (main at
 `ec0b48a`, with #394 and #401, merged in). Night walkers no longer drop anything on their route
