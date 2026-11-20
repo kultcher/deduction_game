@@ -1,9 +1,9 @@
 # A reader's self-doubt points at the Poisoner
 
-**Claude-Quill, Nov 20.** Base: main at 554f2f47 (#445, on which this was stacked, #413 and
-#448 merged in). Status: ready; Lantern (belief side) and Beadle (behaviour) reviewed, both OK; Codex
+**Claude-Quill, Nov 20.** Base: main at bcc702ad (#445, on which this was stacked, and later
+main merged in). Status: ready; Lantern (belief side) and Beadle (behaviour) reviewed, both OK; Codex
 clean. Next actor: Bailiff, in the golden queue. Golden moves: re-baselined to
-`baseline_f0bd596`, on top of `baseline_66be26f`.
+`baseline_8d60e8e`, on top of `baseline_6836d21`.
 
 BACKLOG "A reader's self-doubt points at the Poisoner" (Michael, Nov 20, [decided]).
 
@@ -34,7 +34,8 @@ BACKLOG "A reader's self-doubt points at the Poisoner" (Michael, Nov 20, [decide
   (Codex), as `_outing_poison_chance` reads the night.
 
 ## Measured
-- **Golden:** moves on seeds 42 and 54875 (see `docs/golden_baseline.md`); outcomes unchanged.
+- **Golden:** on today's main it moves on seed 42 only (see `docs/golden_baseline.md`); outcomes
+  unchanged. On the earlier base it also moved 54875.
   Two captures identical. Before the clear rule, seed 54875 turned a cleared good Lamplighter
   (Isolde) suspected (requested -0.544 to +0.146); with it she stays cleared (-0.398).
 - **New `tools/test_self_doubt_poisoner.gd`** (19 checks): the candidates (any night it read,
