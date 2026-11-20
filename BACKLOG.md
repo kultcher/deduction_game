@@ -8,6 +8,12 @@ still being shaped) live in role_exploration.md. Items being watched, and knobs 
 only if needed (`[watch]`, `[knob]`), live in [BACKLOG_WATCH.md](BACKLOG_WATCH.md); tabled items are
 in the Tabled section at the bottom.
 
+**Priorities (Michael, Nov 20 reprioritization):** clear section 2 (small features and
+tuning) as far as possible, plus "Graded gossip". The rest of sections 3 and 4 waits.
+(Nov 20, later: "Insight helps an NPC notice…" moved into the deferred "What does Insight do
+now?".) Each lead has
+its owners and order from Seneschal.
+
 **State of play (Nov 16):** the connections belief model is on in play, and since purge
 phase 3 (Nov 18) it's the only one (design and spec in [docs/belief_model.md](docs/belief_model.md)).
 The Nov 13 playtest triage is closed: what's left of it is in
@@ -18,59 +24,52 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 **Contents** (every open item, by section; closed ones are in BACKLOG_COMPLETED.md)
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
+  1. Possible bug: the "not the Demon" badge `[decided]`
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
-    1. Evil Martyr bluff can frame a good scapegoat `[decided: direction]`
+    1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. The misframed-case hint `[decided]`
-    2. Reading challenges and further gift adapters `[watch; broader adapters open]`
-    3. Summarised answers at a nomination `[decided]`
-    4. Remove drops altogether `[decided]`
-    5. Argon's audit: cleanup `[decided]`
-    6. The social presentation route `[decided]`
+    2. Summarised answers at a nomination `[decided]`
+    3. Remove drops altogether `[decided]`
+    4. Argon's audit: cleanup `[decided]`
+    5. The social presentation route `[decided]`
+    6. The premise menu, trimmed `[decided]`
+    7. Remove the Muddler `[in review]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided: pitch first]`
     3. The Gravedigger in a reluctant town `[decided]`
     4. Caught out and pressed again: what's left `[decided; mechanics open]`
     5. Good NPCs lie tactically `[open]`
-    6. Evil backs into a bluff `[decided; on hold]`
-    7. Rapport and Warden-credit leftovers `[decided: direction]`
-    8. Anger reasons `[decided]`
+    6. Rapport and Warden-credit leftovers `[decided: direction]`
+    7. Anger reasons `[decided]`
   - [Numbers](#numbers)
-    1. Night sightings are too decisive `[decided]`
-    2. Evil sometimes tells the truth (start by faking it) `[decided: add; t measured]`
-    3. The Seer's rise looks small `[later: role tuning pass]`
-    4. Dowser clearing strength `[later: role tuning pass]`
+    1. The Seer's rise looks small `[later: role tuning pass]`
+    2. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. Ward promises should outrank vigil promises `[decided]`
-    2. Explicit night-sighting rebuttals `[decided]`
-    3. Misled versus reading-lie strength `[open]`
+    1. Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
-    1. From Playtest Notes 12553
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
-  2. Insight helps an NPC notice its own readings don't fit `[decided; triggers open]`
-  3. Revenant seeks execution `[decided]`
-  4. Throw a teammate under the bus `[decided: survey first]`
-  5. Graded gossip `[decided]`
+  2. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
-  1. The Breathstealer overhaul `[decided: add; option open]`
-  2. The Muddler rarely has anything to muddle `[in review]`
-  3. The secrets rework `[decided; values open]`
-  4. Roster expansion `[open]`
-  5. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
-  6. Player toolbox `[open]`
-  7. Scoring system `[open]`
-  8. Storyteller/director and solvability check `[open]`
+  1. Smarter evil `[deferred]`
+  2. Vigil request and reward rework `[deferred]`
+  3. What does Insight do now? `[deferred]`
+  4. The Breathstealer overhaul `[decided: add; option open]`
+  5. The secrets rework `[decided; values open]`
+  6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
+  7. Player toolbox `[open]`
+  8. Scoring system `[open]`
+  9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Minion gifts
   2. A Medium's relayed sighting vs the dead's known vantage
-  3. The Lamplighter's count against alibis and sightings: add a test
-  4. Duty claim vs reading
+  3. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
-  1. An NPC defender's challenge isn't stored as a case
+  1. An NPC defender's challenge isn't stored as a case `[deferred, Michael, Nov 13]`
   2. Presenting a card to one NPC
   3. The Test juror reporting a condition separately `[later]`
   4. Lian's stonewall after "let me tell you in my own words"
@@ -79,18 +78,17 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. The spoken reply to a later-day repeat `[polish]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
-  5. Adjudicating a muddled card `[in review]`
-  6. Brute kills scored as hexes on custom scripts `[later]`
-  7. Gift doubt for readings the judge doesn't check `[open]`
-  8. Higher-Insight NPCs weigh more broken-reading combinations `[tentative]`
-  9. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  10. Observable actions as evidence (Stage 1B) `[tentative]`
+  5. Brute kills scored as hexes on custom scripts `[later]`
+  6. Gift doubt for readings the judge doesn't check `[open]`
+  7. Persistence Confidence: a working theory that colours new evidence `[tentative]`
+  8. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
 Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not chosen yet;
 **[watch]** = no change, keep an eye on it; **[tentative]** = proposal for later design or
-tuning review; **[knob]** = not planned, a balancing tool to reach for only if needed.
+tuning review; **[knob]** = not planned, a balancing tool to reach for only if needed. **[deferred]** = held
+for the bigger design work (Michael, Nov 20).
 Sources (playtest seeds, dates) are in parentheses.
 
 **Tracked in [docs/meeting_flow_plan.md](docs/meeting_flow_plan.md)** (not repeated here):
@@ -114,6 +112,10 @@ from an older compile (#192); an evil Medium's relay about the first victim nami
 (Beadle); a relayer cut from the sighter contest (#265) and a Night Watch list naming the
 listener (#273), both Lantern's.
 
+- **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
+  ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
+  and Herald. [decided]
+
 ## 2. Small features and tuning (a day or so each)
 
 ### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
@@ -122,7 +124,11 @@ listener (#273), both Lantern's.
   choice policy (the user suspects evil often chooses evil). Make choosing a good person,
   helping execute them and claiming non-substitution as evidence against them an active
   scapegoat route. Depends on the item above. An evil-strategy change: design and measure
-  separately. [decided: direction]
+  separately. [decided]
+  - **Michael (Nov 20):** today, Martyr bluffers only ever pick evil teammates. It should be
+    the opposite: they always pick a good NPC, ideally one with some heat on them, so that if
+    that NPC is executed the bluffer can frame it as evil. They shouldn't be loud about
+    pushing that person's execution, since that would be an obvious tell. Owner Beadle.
 
 ### Cases and the Workshop
 
@@ -137,12 +143,6 @@ listener (#273), both Lantern's.
     and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
     else than about <target>." It names no one, and it shows at the same threshold as NPCs'
     "points elsewhere" line. Owner Herald.
-
-- **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
-  skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
-  outcomes, nested relays and conversion histories are still unsupported. See
-  [docs/archive/CASE_WORKSHOP_FINDINGS.md](docs/archive/CASE_WORKSHOP_FINDINGS.md) for the
-  expansion checkpoints. [watch; broader adapters open]
 
 - **Summarised answers at a nomination.** A case presented at a nomination gets
   summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
@@ -176,8 +176,6 @@ listener (#273), both Lantern's.
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
        whether to do it at all.
-     - **Deleting the Muddler: built** (Michael, Nov 20: "everything to do with the Muddler").
-       Quill, `claude/remove-muddler` (handoff `2026-11-20-0725-quill-remove-muddler.md`). [in review]
   3. **File splits,** one file per PR, with no change to play:
      - **Tier 1** follows Beadle's in-flight work (#390, the symmetric vote):
        `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd` (Beadle, with Lantern
@@ -203,6 +201,20 @@ listener (#273), both Lantern's.
     Herald's #395, which also purges every presentation fallback (Michael). Close this item
     when it merges.
 
+- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
+  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
+  - (b) keep "readings don't fit together";
+  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
+    premises step 4;
+  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
+    decided.
+
+  Owner Quill. [decided]
+
+- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
+  and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
+  `2026-11-20-0725-quill-remove-muddler.md`). [in review]
+
 ### NPC behaviour
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
@@ -214,6 +226,8 @@ listener (#273), both Lantern's.
   - the Augur, a Demon-identifier like the Seer, has no bonus;
   - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
     handled separately.
+  - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
+    ratings, and Michael gives quick guidance.
 
   Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
   gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
@@ -277,18 +291,6 @@ listener (#273), both Lantern's.
     (Michael, Nov 19; see "More rebuttals after a caught lie").
   A caught lie still implicates strongly, so both need care. [open]
 
-- **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
-  bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
-  seen out at night, and nobody has claimed Night Watch). This opens double claims (the
-  real Night Watch may just be quiet), which need their own logic; once handled, fake
-  Mediums and evil generally can make bolder lies. (Oct 19) **On hold** (Michael, Nov 19)
-  until "Good NPCs lie tactically" is designed and decided. [decided; on hold]
-  - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
-    bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
-    in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
-    when caught out, and double claims) is in "More rebuttals after a caught lie".
-    **Built** (Beadle, #390).
-
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
   - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
   - evil Wardens faking saves (an evil-strategy change, measured separately);
@@ -303,26 +305,6 @@ listener (#273), both Lantern's.
     repaired least, and the line replaces its refusal line.
 
 ### Numbers
-
-- **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on
-  an ordinary night only about 5% of the time, against the Demon heading for the victim's
-  house on kill nights, so one sighting is a large likelihood ratio, and "claimed a day
-  role, seen out at night" reads as open-and-shut. Don't fix it by biasing the Demon
-  toward night-walking roles. Levers, measured with the bot A/B: a higher ordinary
-  out-rate, more good NPCs with secret errands, softer Demon routes, vigil yield.
-  [decided: tune in the balance pass]
-
-- **Evil sometimes tells the truth (start by faking it).** (user + Claude, Oct 25) A
-  reading from a source who is evil in a world is uninformative there, so a reading that
-  checks out is near-proof its source is good. Make it partial: an evil source's content
-  is true with probability t, noise otherwise. Correct readings then exonerate less;
-  false readings still implicate strongly. Same cost. Set t from the simulation (how often
-  fake readings happen to be true in a bot run), not by hand, and re-measure whenever
-  evil's reading strategy changes. Quill (Nov 18, 40 bot games): fakes are true 38% of the
-  time against 45% by chance, so the judge's side changes nothing today. Michael (Nov 18)
-  wants evil smarter about *when* it lies; options in
-  [docs/design/evil_truth_timing.md](docs/design/evil_truth_timing.md), awaiting his call.
-  [decided: add; t measured]
 
 - **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the
   pair's combined P(evil) by about +0.11 to +0.14; a hand calculation gives about +0.22.
@@ -341,31 +323,11 @@ listener (#273), both Lantern's.
 
 Candidates for a unified retuning proposal, not approved changes.
 
-- **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
-  and add plausible-success credit for a kept ward followed by a deathless night.
-  Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
-  credit on what the listener can observe; avoid crediting promise, protection and
-  outcome twice. [decided: direction; amounts open]
-
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
 
-- **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
-  move a reading at equal effective weight, with night scope and self-knowledge included.
-  [open]
-  Michael (Nov 18): being handled now, with "Recovering from a wrong 'lying' call" and
-  "The player's 'poisoned, not lying' call" (section 2, Cases and the Workshop).
-  Quill (Nov 18): Michael chose three labels after the label audit. "Misled" and "failed
-  gift" are now one honest mistake (honest doubt at the player's credibility, "the reader is
-  good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
-  `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
-
 ### UI
-
-- **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
-  people who aren't talking or working showing on the map; a wrong role guess blocking
-  process of elimination.
 
 ### Performance
 
@@ -393,23 +355,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   - **Explain an execution's purpose:** propose an information-seeking execution (for a
     Gravedigger read) without asserting the target is the Demon.
 
-- **Insight helps an NPC notice its own readings don't fit** (what's left of "NPCs voice
-  doubt about their own readings", Beadle, Nov 20). The doubt and the line are built (#320,
-  #316). Lantern says the judge's clash signal already catches a repeated pair flipping yes
-  and no. The trigger is a flat 30% for everyone, though, and the item asked for higher
-  Insight to notice a mismatch sooner. **Kept, low priority** (Michael, Nov 20). Owners Beadle
-  and Lantern. [decided; triggers open]
-
-- **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
-  totems**. The Revenant is often invisible. (55774) [decided]
-
-- **Throw a teammate under the bus:** a pressured minion distances themselves from the
-  Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
-  decided, but survey what's already built first (he believes a fair amount exists: a
-  Minion distancing itself under pressure, the Demon going along with the town even
-  against a Minion), and report what happens and what's missing before building the gaps.
-  Owner Beadle. [decided: survey first]
-
 - **Graded gossip.** Each gossip occasion has a budget of mixed-value items, so the player
   usually gets at least two useful pieces. (Michael, Nov 19) Owner Beadle, with Quill on the
   value tiers; plan first. [decided]
@@ -417,6 +362,66 @@ The one performance item, "Late-game meeting and presenting cost", is in
     `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
 
 ## 4. Major structural work (a week or more; design first)
+
+- **Smarter evil** (Michael, Nov 20: three items folded into one, deferred with the bigger
+  design features). Options note: [docs/design/evil_truth_timing.md](docs/design/evil_truth_timing.md).
+
+  - **Evil sometimes tells the truth (start by faking it).** (user + Claude, Oct 25) A
+    reading from a source who is evil in a world is uninformative there, so a reading that
+    checks out is near-proof its source is good. Make it partial: an evil source's content
+    is true with probability t, noise otherwise. Correct readings then exonerate less;
+    false readings still implicate strongly. Same cost. Set t from the simulation (how often
+    fake readings happen to be true in a bot run), not by hand, and re-measure whenever
+    evil's reading strategy changes. Quill (Nov 18, 40 bot games): fakes are true 38% of the
+    time against 45% by chance, so the judge's side changes nothing today. Michael (Nov 18)
+    wants evil smarter about *when* it lies; options in
+    [docs/design/evil_truth_timing.md](docs/design/evil_truth_timing.md), awaiting his call.
+    [decided: add; t measured]
+
+  - **Throw a teammate under the bus:** a pressured minion distances themselves from the
+    Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
+    decided, but survey what's already built first (he believes a fair amount exists: a
+    Minion distancing itself under pressure, the Demon going along with the town even
+    against a Minion), and report what happens and what's missing before building the gaps.
+    Owner Beadle. [decided: survey first]
+
+  - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
+    totems**. The Revenant is often invisible. (55774) [decided]
+
+  [deferred]
+
+- **Vigil request and reward rework** (Michael, Nov 20, deferred). It replaces "Ward promises
+  should outrank vigil promises": a vigil no longer makes sense as something an NPC requests
+  for itself, so how vigils are asked for and rewarded needs rethinking. The old item's
+  notes:
+
+  - **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
+    and add plausible-success credit for a kept ward followed by a deathless night.
+    Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
+    credit on what the listener can observe; avoid crediting promise, protection and
+    outcome twice. [decided: direction; amounts open]
+
+  [deferred]
+
+- **What does Insight do now?** (Michael, Nov 20, deferred) A general pass on what Insight
+  does. It bundles two items. Owners Lantern and Beadle.
+
+  - **Insight helps an NPC notice its own readings don't fit** (what's left of "NPCs voice
+    doubt about their own readings", Beadle, Nov 20). The doubt and the line are built (#320,
+    #316). Lantern says the judge's clash signal already catches a repeated pair flipping yes
+    and no. The trigger is a flat 30% for everyone, though, and the item asked for higher
+    Insight to notice a mismatch sooner. **Kept, low priority** (Michael, Nov 20). Owners Beadle
+    and Lantern. [decided; triggers open]
+
+  - **Higher-Insight NPCs weigh more broken-reading combinations** (Michael, Nov 19, with the
+    Steward A3 fix). When a case holds several readings the listener doubts, the role check
+    now weighs them symmetrically: all genuine, or exactly one broken
+    (`CaseEval._doubted_role_fits`). The exact fix also weighs two or more broken at once,
+    at 2^k role checks instead of k. The idea: sharper NPCs take the exact fix, duller ones the
+    symmetric approximation. In 2 ten-NPC games (Nov 19), 43% of the role checks holding any
+    doubted reading held two or more, up to four. Owner Lantern. **[tentative]**
+
+  [deferred]
 
 - **The Breathstealer overhaul** (Michael, Nov 17: needs a thorough rework before any
   more tuning; the items below feed it). **The Breathstealer confirms the good.** It only
@@ -459,25 +464,12 @@ The one performance item, "Late-game meeting and presenting cost", is in
     (`DayPresence.breath_factor`), and since #157 (Nov 14) it assumes a Breathstealer that
     hunts. Check what's still missing for the player before choosing an option. (Folded in Nov 18, Michael.)
 
-- **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
-  Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
-  1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
-  5. When it did, items were garbled at about the designed rate. The limit is supply: news
-  is announced at the meeting and nobody repeats what everyone heard, so NPCs hear under
-  one private reading or sighting a game. Letting everyone pass on more gave no more
-  relays (52 against 60 in 40 games) unless some news also stays private for a while.
-  Options measured or estimated: garble the Muddler's retellings at the meeting; keep
-  night sightings private for a day (Muddler in about half of games, estimated, but news
-  spreads earlier for both sides and the meeting is less of a reveal); garble day
-  sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
-  it for now; he isn't sure the Muddler can work as written without warping the game
-  around it. **Removed instead** (Michael, Nov 20; Quill, `claude/remove-muddler`). [in review]
-
 - **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
   [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
   self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
   ones the holder knows about become ordinary claims, which evil can bluff, and the player
-  can argue an unclaimed one per case. The Muddler is cut (removed, Nov 20). Backlogged by
+  can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
+  Muddler", section 2). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
   it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
@@ -504,16 +496,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
     first-use and repeated breach losses and the permanent caps, keeping a real betrayal
     consequence while allowing proportionate recovery, with apologies and confidentiality
     promises. [decided; values open] (Folded in Nov 18, Michael.)
-
-- **Roster expansion.** Lantern's shortlist from the Clocktower passes (ideas only):
-  `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
-  Registrar, Psychologist, Monitor, Confessor, Sexton and the Brute. Still to come: On Deck
-  gifts (Tracker, Clairvoyant, Beckon, Tallyman, Bellringer, Bellwether…), minions
-  (Framer/Forger with evidence planting, Blackmailer, a two-curse Minion (once
-  called the Hexer; that name now belongs to the day-killing Demon), Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
-  Mesmerize, a daytime "rouse"). Bellwether, the Sower and Dusk Compulsion come from the
-  Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
-  yet. Each needs a hint package and solver support before it goes live. [open]
 
 - **Learning resources: tooltips, an in-game wiki and a tutorial.** (Nov 3 plan v8, zone
   18; restored Nov 8) Three layers, from one data registry so they never drift:
@@ -559,14 +541,6 @@ Workshop and the shared model can't express yet.
   guarded a different block that night, so couldn't have seen what the Medium says.
   Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
   route of the person seen, never against where the sighter was.
-
-- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
-  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
-  world with everyone's routes, so "N others out, and everyone but one home" already points
-  at the one unaccounted, and more people reported out than counted already clashes. Neither
-  case has been measured on its own, so what's left is a test that shows it. Owners Quill
-  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
-  Michael wants it stronger.
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -641,8 +615,6 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
     - **A possible cap** would be a new constant, Michael's call.
-- **Adjudicating a muddled card** (the Muddler secret). Goes with the Muddler (removed,
-  Michael, Nov 20; Quill, `claude/remove-muddler`). [in review]
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
@@ -651,13 +623,6 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   was about 40% of own readings in the Nov 19 measurement. Their clash is weighed through
   movement, or not at all. Extending the doubt there would use the movement factor's own
   "this list or guard was broken" posterior. Owner Lantern. **[open]**
-- **Higher-Insight NPCs weigh more broken-reading combinations** (Michael, Nov 19, with the
-  Steward A3 fix). When a case holds several readings the listener doubts, the role check
-  now weighs them symmetrically: all genuine, or exactly one broken
-  (`CaseEval._doubted_role_fits`). The exact fix also weighs two or more broken at once,
-  at 2^k role checks instead of k. The idea: sharper NPCs take the exact fix, duller ones the
-  symmetric approximation. In 2 ten-NPC games (Nov 19), 43% of the role checks holding any
-  doubted reading held two or more, up to four. Owner Lantern. **[tentative]**
 - **Persistence Confidence: a working theory that colours new evidence** (connections purge,
   Nov 17; Michael asked for it to be kept on the backlog). An experiment for live NPCs: a
   listener committed to a theory about someone (high Confidence) read new evidence through

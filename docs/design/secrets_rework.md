@@ -31,7 +31,7 @@ a twist on Clocktower's Outsiders. Michael's three problems with them as built (
 - **Secrets stay riders on a gift,** not a gift-less character type. "This role × this
   secret" is part of the appeal: a Marked secret on any gift is more interesting than a
   plain Clocktower Recluse.
-- **The Muddler: cut** (removed, Michael, Nov 20). It can't work without stretching the rest of the game
+- **The Muddler: cut** (Michael, Nov 20; was tentatively cut). It can't work without stretching the rest of the game
   around it (BACKLOG section 4: it had something to muddle in 5 games of 40).
 - **The word "secret" may be the limit.** Most secrets work better as something a good NPC
   knows about themselves and doesn't volunteer, but doesn't really try to hide either.
@@ -195,7 +195,7 @@ A Minion whose presence adds secrets to the town. Can the extras come from the f
     Bailiff's #162 note flags this as a landmine.
   - Their nights out are no longer explained by the judge unless claimed or argued.
   - Their "social cost" still needs a form: what does it cost a Lover to admit it?
-- **The Muddler:** cut (removed, Michael, Nov 20).
+- **The Muddler:** cut (Michael, Nov 20).
 - **Gifts built on "a secret means good":** the Rumormonger, the Chronicler's trio, and
   any role check on a secret holder (`sim/roles/*.gd`: Augur, Confessor, Executor,
   Gravedigger, Magistrate, Martyr, Monitor and Registrar all read secrets). Each needs a
