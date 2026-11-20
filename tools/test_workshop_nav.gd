@@ -3,6 +3,7 @@
 ## canvas adds a person's readings, given by them or naming them.
 ##   godot --headless --path . --script res://tools/test_workshop_nav.gd
 extends SceneTree
+const CardLayout = preload("res://ui/workshop_card_layout.gd")
 const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const MainPickers = preload("res://ui/main_pickers.gd")
 
@@ -120,7 +121,7 @@ func _run() -> void:
 	g.board[gone_n - 1].deleted = true
 	ed.refresh()
 	var gone: Dictionary = canvas._evidence_card(id) if ed.board.nodes.has(id) else {}
-	check(gone.get("off_board", false) and canvas._unsupported(gone), "a card no longer on the board is marked unsupported")
+	check(gone.get("off_board", false) and CardLayout.unsupported(canvas, gone), "a card no longer on the board is marked unsupported")
 	check(gone.get("support_note", "") == "This card has changed or is no longer on your board.", "and its note says so plainly (%s)" % gone.get("support_note", ""))
 	g.board[gone_n - 1].deleted = false
 	await _nomination_prefill(scene)
