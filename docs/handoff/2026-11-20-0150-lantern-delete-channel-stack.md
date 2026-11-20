@@ -5,7 +5,7 @@
   item 3). CaseEval replaced the stack, and nothing in play called it. Its only references
   were `Caches.clear_all`, a stage-name comment in `SolverBackend`, its own tests and
   profiler, and parity checks in four role suites.
-- **What went (about 2,600 lines):**
+- **What went (about 3,000 lines):**
   - **Game code:** `workshop/channel_likelihood.gd`, `channel_sum_product.gd`,
     `evidence_channels.gd` and `factored_channels.gd`.
   - **C#:** `workshop/cs/ChannelSumProduct.cs`, its five `SolverBridge` entry points and two
