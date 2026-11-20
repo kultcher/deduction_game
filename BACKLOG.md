@@ -160,7 +160,8 @@ listener (#273), both Lantern's.
   1. **Dead code, zero drift:**
      - the Workshop scaffolding used only by fixtures (Lantern);
      - retired flags and constants that nothing reads (Beadle);
-     - the dev labs and the trace viewer (Herald);
+     - ~~the dev labs and the trace viewer (Herald)~~ **done** (#381; #391 removed the
+       Workshop's fixture-only code they used);
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
@@ -178,8 +179,8 @@ listener (#273), both Lantern's.
   4. **File splits,** one file per PR, with no change to play:
      - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
        the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
-       (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` can go as soon
-       as the leads unpause.
+       (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` is **done**
+       (#387).
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
@@ -192,12 +193,16 @@ listener (#273), both Lantern's.
      - **Zero drift.**
      - **Scheduled with the file splits:** it touches many callers (`add_card` alone has
        about 325 call sites, many in tests), so the merge-conflict risk is the same.
-     - **Herald scopes it first,** saying which forwards, if any, are worth keeping as the
-       game's public interface.
+     - **Scoped and partly done (Herald, Nov 20):** 131 one-line forwards. #385 removed the 25
+       that nothing called. **Left:** repoint the remaining ~106 forwards' callers to their
+       modules and delete the forwards, in two PRs (game, sim and ui callers; then tests and
+       tools). About 18 that the UI and CLI call stay as the game's interface. Waits for
+       Seneschal's go, after Beadle's in-flight PRs merge.
   6. **Two more (Michael, Nov 20):**
      - (a) Retire `tools/connections_prototype.gd`. Owner Lantern.
-     - (b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
-       and drop the dead branch. Owner Herald.
+     - ~~(b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
+       and drop the dead branch.~~ **Done** (Herald, #391). The social-route PR then removes
+       the flag entirely.
   7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
      in play, no listener fails to weigh a case on its own (Herald's check of golden and
      autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
@@ -211,7 +216,9 @@ listener (#273), both Lantern's.
   is worth keeping. Herald scopes it, and a decision follows the scope.
   - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
     play: there are no protect or spare cases and no bare beliefs, and the evil fallback
-    only follows from those. Herald deletes it in a zero-drift PR. **[decided]**
+    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In flight:**
+    built and pushed with Michael's "purge every fallback" request; the PR opens after
+    Lantern's #386, which renames the same reporting.
 
 ### NPC behaviour
 
@@ -714,10 +721,6 @@ Workshop and the shared model can't express yet.
   (the Breathstealer has to be there); a reading that failed on a night someone was near
   the reader's home (the Poisoner's visit); a totem found and the people who live where
   its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
-
-- **Breathstealer by presence:** built (#111, Nov 10; a joint factor over the presence
-  table), and since #157 (Nov 14) it assumes the Breathstealer hunts. The Breathstealer
-  decision (does silence prove the victim good?) is still open, in section 4.
 
 - **Night companions of the proven evil:** out on the same block on the same nights as
   someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1

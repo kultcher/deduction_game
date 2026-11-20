@@ -5,6 +5,12 @@ session notes are kept for the record; code pointers may have moved since.
 
 ## Closed Nov 20, 2026 (Michael; recorded by Claude-Vicar)
 
+- **Breathstealer by presence:** built (#111, Nov 10; a joint factor over the presence
+  table), and since #157 (Nov 14) it assumes the Breathstealer hunts. The Breathstealer
+  decision (does silence prove the victim good?) is still open, in section 4.
+
+  > **Closed Nov 20 (Quill confirmed):** built. The open question lives in "The Breathstealer overhaul", section 4.
+
 - **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
   too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
   over-weighted and always visible" first, then see what's left. [open]
