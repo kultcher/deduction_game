@@ -9,7 +9,6 @@ Companion to `docs/evidence_catalog.md`, keyed by the same entry numbers. File a
 | World enumeration | `workshop/cs/WorldDomain.cs` (`EnumerateWorlds`), `workshop/world_domain.gd` (`healthy`, `gift_time`, `rumor`), `workshop/solver.gd` (`universe`, `_build_universe`) |
 | Reading content per world | `workshop/solver.gd` (`report_table`, `_report_content_impl`, `_testimony_content`, `source_valid`, `CONTENT_ROLES`) |
 | Reading likelihood | `workshop/case_eval.gd` (`chance_content`, `_chance_content_fixed`, `ROLE_CONTENT_FIXED`, `reading_error`, `_route_credit`), `workshop/cs/CaseEvalKernel.cs` |
-| Channel model (reference oracle) | `workshop/evidence_channels.gd` (`compile`, `materialize`), `workshop/channel_likelihood.gd` (`assess`), `workshop/factored_channels.gd` |
 | Role table | `workshop/role_constraints.gd` (`fit_weight`, `bluff_weights`, `_FIXED_ROLES`), `workshop/cs/RoleConstraints.cs` (`FitsViewSingle`, `SeerRhWeight`, `AssignRole`, `BluffWeightsTemporal`) |
 | Movement | `workshop/live_activity.gd` (`routes`, `factors`, `score`, `evaluate_trace_for_person`), `workshop/cs/LiveActivity.cs`, `workshop/movement_model.gd` (fixture experiment) |
 | Public factors | `workshop/public_evidence.gd` (`factors`, `victim_ratio`) |
@@ -39,12 +38,12 @@ Every role's reading is produced by its role file, `sim/roles/<role>.gd` (night 
 | A10 Rumormonger | `world_domain.gd` `rumor`; `_report_content_impl` (marked holder in pair) | `_chance_rumormonger` | |
 | A11 Gravedigger | `RoleConstraints.cs` 6a (executed group, Scion branch, `FlagGravediggerExecOk`); `live_history.gd` (`executed`) | fixed 0.5 | |
 | A12 Executor | `RoleConstraints.cs` 6a (`RoleExecutor`); `_report_content_impl` (executor); `History.died_before_morning` | fixed 0.5 | |
-| A13 Registrar | `RoleConstraints.cs` (`RegistrarMatches`, `RegistrarYesStep`); `role_constraints.gd` (`_registrar_roles_ok`) | fixed 0.5 | Town Hall pool: `factored_channels.gd` |
+| A13 Registrar | `RoleConstraints.cs` (`RegistrarMatches`, `RegistrarYesStep`); `role_constraints.gd` (`_registrar_roles_ok`) | fixed 0.5 | |
 | A14 Monitor | `_report_content_impl` (monitor) | fixed 0.5 | |
-| A15 Psychologist | `_solve` (psychologist pair filter), `factored_channels.gd` (`psych_pairs`) | report table share (likely 1) | `live_evidence.gd` `social_reading` |
+| A15 Psychologist | `_solve` (psychologist pair filter) | report table share (likely 1) | `live_evidence.gd` `social_reading` |
 | A16 Night Watch | `live_activity.gd` `routes`; `_report_content_impl` (NIGHT_ROUTE dead check) | fixed 0.25 | watch claims: `live_assessment.gd` `activity_card` (`watch_claim`) |
 | A17 Lamplighter | `live_activity.gd` `routes` (`forced_lamp`); `LiveActivity.cs` (lamp counts) | table share (1) | |
-| A18 Medium | `live_assessment.gd` `medium_card`; `evidence_channels.gd` (relay channels); `RoleConstraints.cs` step 2 (visits) | the original's | `Tuning.Evil.MEDIUM_USELESS_CHANCE` |
+| A18 Medium | `live_assessment.gd` `medium_card`; `RoleConstraints.cs` step 2 (visits) | the original's | `Tuning.Evil.MEDIUM_USELESS_CHANCE` |
 | A19 Warden | `_report_content_impl` (warden, `saved`); `activity_card` (`guard_claim`, `save_claim`) | fixed 0.5 | |
 | A20 Veteran | `RoleConstraints.cs` step 4 (approach); `live_activity.gd` | fixed 0.5 | |
 | A21 Martyr | `RoleConstraints.cs` (`KindEventMartyr`, `FlagMartyr*`); `public_evidence.gd` `martyr_receipts` | fixed 0.5 | adapter issue in `live_assessment.gd` `prepare` |
@@ -68,7 +67,7 @@ Every role's reading is produced by its role file, `sim/roles/<role>.gd` (night 
 | C1 Day sighting / conversation | made: `game/game_day_night.gd` (`_observe`), `sim/social.gd`; card: `activity_card` (`location`, `orig_kind`); used: `circumstantial.gd` (association, Breathstealer proximity) |
 | C2 Evening sighting | `activity_card` (`evening`); `live_activity.gd` |
 | C3 Night sighting | made: `sim/social.gd`, `sim/mind_dialogue.gd`, Night Watch; card: `activity_card`; weighed: `live_activity.gd` `factors` / `score`; profiles `Tuning.Workshop.NIGHT_OUT_RATES`, `WALKER_CLAIM_*` |
-| C4 Home alibi | made: `sim/dialogue.gd`, `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_support.gd`; channel: `evidence_channels.gd` (`testimony_honesty`); dispute: `Solver.Graph.valid_dispute` (`workshop/case_graph.gd`) |
+| C4 Home alibi | made: `sim/dialogue.gd`, `sim/mind_dialogue.gd`, `sim/mind_podium.gd`, `sim/mind_support.gd`; dispute: `Solver.Graph.valid_dispute` (`workshop/case_graph.gd`) |
 | C5 Dropped belongings | `game/game_day_night.gd` (`_search`, owner branch: a sighting with `dropped`); `activity_card` (`item_drop`) |
 | C6 Mud or soot drop | `_search` (material branch); `activity_card` (`dropped`); `live_activity.gd` (drop owner matching) |
 | C7 Vigil | `game/game_day_night.gd` (vigil); `activity_card` (`coverage`, vigil sightings `complete`); `Tuning.Workshop.VIGIL_MISS` (mirrored as `VigilMiss` in `LiveActivity.cs`) |

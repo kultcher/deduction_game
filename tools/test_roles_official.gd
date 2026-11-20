@@ -2,7 +2,6 @@
 ## Merged from: test_chunk2_world_mask_roles, test_chunk3_executor_registrar, test_workshop_clerk_archivist_seer, test_workshop_surveyor_answers.
 extends SceneTree
 
-const Factored = preload("res://workshop/factored_channels.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -10,7 +9,6 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Game = preload("res://game/game.gd")
 const Caches = preload("res://workshop/caches.gd")
-const Oracle = preload("res://workshop/channel_likelihood.gd")
 const C = preload("res://sim/content.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
@@ -265,7 +263,7 @@ func _test_chronicler_sim_and_workshop() -> void:
 	_check(trio.size() == 3 and chr.id not in trio and orig_minion.id in trio and mk.id in trio and trio.any(func(x): return x in [ord1.id, ord2.id, ord3.id]),
 		"Chronicler Night-3 reading never names self, places Marked in secret slot, and reads case-start Minion/folk across death, Scion, and curse")
 
-	# Workshop Solver + CaseEval + FactoredChannels vs Oracle parity:
+	# Workshop Solver + CaseEval:
 	var people: Array = []
 	for i in range(7):
 		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})
@@ -295,13 +293,6 @@ func _test_chronicler_sim_and_workshop() -> void:
 	_check(not solved_pick.worlds.is_empty() and solved_pick.worlds.all(func(uw): return (int(uw.evil) & (1 << 2)) != 0 and int(uw.demon) != 2),
 		"Selecting a person on Chronicler card pins them as the case-start Minion")
 
-	var fac: Dictionary = Factored.assess(view, [c_chr], {}, {"gift_honesty:" + people[0].id: 0.85, "gift_accuracy:" + people[0].id + ":3": 0.95}, {})
-	var ora: Dictionary = Oracle.assess(view, [c_chr], {}, {"gift_honesty:" + people[0].id: 0.85, "gift_accuracy:" + people[0].id + ":3": 0.95}, {})
-	var max_diff: float = 0.0
-	for idx in range(fac.post.size()):
-		max_diff = maxf(max_diff, absf(fac.post[idx] - ora.post[idx]))
-	_check(max_diff <= 1e-12,
-		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Chronicler (max diff %.3g)" % max_diff)
 
 
 func _test_magistrate_sim_and_workshop() -> void:
@@ -609,25 +600,6 @@ func _test_registrar_workshop_and_parity() -> void:
 	_check(not s_th_two.worlds.is_empty() and s_th_three.worlds.is_empty(),
 		"Registrar 1+ in-play slate constraint composes with Town Hall out-of-play exclusions")
 
-	var fac: Dictionary = Factored.assess(view, [c_slate_min_yes, c_claim_p3, c_reg_no_p3], {}, {
-		"gift_honesty:" + people[0].id: 0.85,
-		"gift_honesty:" + people[3].id: 0.55,
-		"gift_accuracy:" + people[0].id + ":1": 0.95,
-		"gift_accuracy:" + people[0].id + ":2": 0.95,
-		"gift_accuracy:" + people[0].id + ":3": 0.95,
-	}, {})
-	var ora: Dictionary = Oracle.assess(view, [c_slate_min_yes, c_claim_p3, c_reg_no_p3], {}, {
-		"gift_honesty:" + people[0].id: 0.85,
-		"gift_honesty:" + people[3].id: 0.55,
-		"gift_accuracy:" + people[0].id + ":1": 0.95,
-		"gift_accuracy:" + people[0].id + ":2": 0.95,
-		"gift_accuracy:" + people[0].id + ":3": 0.95,
-	}, {})
-	var max_diff: float = 0.0
-	for idx in range(fac.post.size()):
-		max_diff = maxf(max_diff, absf(fac.post[idx] - ora.post[idx]))
-	_check(max_diff <= 1e-12,
-		"FactoredChannels matches exhaustive ChannelLikelihood oracle on Registrar + claim clash (max diff %.3g)" % max_diff)
 
 
 # ---- test_workshop_clerk_archivist_seer
