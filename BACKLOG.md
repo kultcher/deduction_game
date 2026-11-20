@@ -791,7 +791,17 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
     looks less evil to her. A Rumormonger naming a different secret, which implies no
     Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
-    in the Rumormonger. Owner Lantern, who is checking whether it already works. **[decided]**
+    in the Rumormonger. Owner Lantern. **[decided]**, built after the reprioritization.
+    - **Not working today** (Lantern, Nov 20): the Sleepwalker's own home doubt is fixed per
+      game and never reads what she believes about secrets.
+    - **Scope:** her doubt scales with her belief that she holds the Sleepwalker secret:
+      - today's value when she has no evidence;
+      - higher when a Rumormonger she trusts names her;
+      - near zero when another secret is named, or the Sleepwalker is shown to be someone
+        else.
+    - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
+      reading.
+    - **A possible cap** would be a new constant, Michael's call.
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
