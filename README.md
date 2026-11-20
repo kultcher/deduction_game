@@ -326,6 +326,10 @@ sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd, dialogue_presentatio
                   dialogue composer: words decided statements in a character's voice
 sim/voices/       one file per character: that voice's lines (dialogue_voices.gd assembles them)
 sim/devlog.gd     developer trace (JSONL + text, and the .trace.jsonl sidecar)
+workshop/case_eval_base.gd, case_eval_content.gd, case_eval_classes.gd
+                  CaseEval's shared constants, chance of content and premise masks, and
+                  compile() with the class and fit machinery; one inheritance chain under
+                  case_eval.gd, which keeps evaluate(), category() and strength()
 workshop/         the shared case judge: case_eval.gd (possible worlds), connections.gd
                   (how each NPC combines what it holds), jury.gd and
                   shared_ledger.gd (per-listener runs), role_constraints.gd,
