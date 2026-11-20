@@ -78,7 +78,8 @@ listener (#273), both Lantern's.
   built. Lantern owns the belief side (does the case's weight fall more on someone other than
   the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
   Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
-  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
+  (#246) and moved to BACKLOG_COMPLETED.md. [decided] **Michael (Nov 20): it stays.**
+  Herald is first checking whether the existing "Argues against" badge already covers it.
 
 - **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
   skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
@@ -105,62 +106,32 @@ listener (#273), both Lantern's.
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
-  features.
+  features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
   1. **Dead code, zero drift:**
-     - the Workshop scaffolding used only by fixtures (Lantern: the movement fixture,
-       `ledger_audit` and `legacy_evidence`, and the `legacy_path` stub). It starts once
-       Quill's drops PR merges;
-     - retired flags and constants that nothing reads (Beadle): **Beadle's part done**
-       (#380). `STRICT_EVALUATOR` went to Herald. `LEGACY_MUD_DROPS_ENABLED` goes with Quill's
-       drops PR. (`LEGACY_EXTRA_SHIFT_DRAW` stays deferred, below.)
-     - ~~the dev labs and the trace viewer (Herald)~~ **done** (#381; #391 removed the
-       Workshop's fixture-only code they used);
+     - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
+       and `legacy_evidence`, the `legacy_path` stub), together with retiring
+       `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
+     - `LEGACY_MUD_DROPS_ENABLED`, in Quill's drops PR;
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
   2. **Golden-moving:**
-     - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It's split from
-       the drops PR, because it reshuffles every deal and would mean about 25 to 30 suite
-       fixes. Michael decides at the reprioritization whether to do it at all.
+     - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
+       every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
+       whether to do it at all.
      - Deleting the Muddler is held for the secrets rework.
-  3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
-     Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
-     `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
-     the profiler. **Done** (Lantern, Nov 20, `claude/delete-channel-stack`): also took
-     `test_channel_sum_product`, `test_workshop_class_parity`, and the oracle parity checks in
-     four role suites.
-  4. **File splits,** one file per PR, with no change to play:
-     - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
-       the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
-       (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` is **done**
-       (#387).
+  3. **File splits,** one file per PR, with no change to play:
+     - **Tier 1** follows Beadle's in-flight work (#390, the symmetric vote):
+       `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd` (Beadle, with Lantern
+       on `mind.gd`'s case side).
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
-  5. **Point `game.gd`'s passthroughs straight at their modules** (Michael, Nov 19). When
-     `game.gd` was split, it kept forwarding functions. About 138 of its 159 functions are
-     one-line forwards to `GameBoard`, `GamePresentation` and the other `game_*` modules.
-     Callers should use the module directly, and the forwards should go.
-     - **Owner:** Herald (`game/` and the UI), with each lead updating callers in its own
-       files where that's simpler.
-     - **Zero drift.**
-     - **Scheduled with the file splits:** it touches many callers (`add_card` alone has
-       about 325 call sites, many in tests), so the merge-conflict risk is the same.
-     - **Scoped and partly done (Herald, Nov 20):** 131 one-line forwards. #385 removed the 25
-       that nothing called. **Left:** repoint the remaining ~106 forwards' callers to their
-       modules and delete the forwards, in two PRs (game, sim and ui callers; then tests and
-       tools). About 18 that the UI and CLI call stay as the game's interface. Waits for
-       Seneschal's go, after Beadle's in-flight PRs merge.
-  6. **Two more (Michael, Nov 20):**
-     - (a) Retire `tools/connections_prototype.gd`. Owner Lantern, in the same PR as the
-       Workshop scaffolding.
-     - ~~(b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
-       and drop the dead branch.~~ **Done** (Herald, #391). The social-route PR then removes
-       the flag entirely.
-  7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
-     in play, no listener fails to weigh a case on its own (Herald's check of golden and
-     autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
-     case's issues.
+  4. **Point `game.gd`'s remaining passthroughs at their modules** (Herald). Repoint the
+     callers of the remaining ~106 one-line forwards and delete them, in two PRs: game, sim
+     and ui callers first, then tests and tools. About 18 that the UI and CLI call stay as
+     the game's interface. Zero drift. It waits for Seneschal's go, after Beadle's in-flight
+     PRs merge.
 
   [decided]
 
@@ -222,12 +193,17 @@ listener (#273), both Lantern's.
   people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
   for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
 
-- **Follow-up after a false alibi is established.** (44814) **Left:** pressure checks, and a
-  possible forced reveal of the hidden gift or secret, handling genuine home accounts,
-  unremembered outings and evil cover. **Built** (Beadle, #368): the first response, "Fine,
-  I was out. Doesn't mean I was doing anything wrong", which concedes the night without
-  conceding evil. Beadle notes it overlaps the "backing into a spare or unknown gift"
-  remainder of "More rebuttals after a caught lie". [decided; mechanics open]
+- **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
+  remainders.) Owner Beadle.
+  - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
+    possible forced reveal of the hidden gift or secret, handling genuine home accounts,
+    unremembered outings and evil cover.
+  - **From "More rebuttals after a caught lie":** when pressed again, evil backs into a spare
+    or unknown walking gift (the ladder's step 3, with the Demon and Scion careful and a
+    Minion bolder, as decided there).
+
+  The first response, "Fine, I was out", is built (#368), and so is the private ladder that
+  follows it. On hold until Michael reprioritises. [decided; mechanics open]
 
 - **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:
@@ -432,22 +408,15 @@ Candidates for a unified retuning proposal, not approved changes.
 
   Owner Beadle; Herald for the lines.
   - **Progress (Beadle and Lantern, Nov 20):**
-    - **Built:**
-      - Lantern's #367: a sleepwalk claim excuses a caught "I was home" only as far as its
-        claimant may be good.
-      - Beadle's #368: the private caught-out ladder. A good NPC concedes it was out; the
-        admission is tied to a walking duty; evil gets the same excuses; a gift named in
-        private counts as disclosed.
-      - Lantern's #372: excuses soften a caught "I was home", and an NPC's "I was out" reads
-        as what it says.
+    - **Built** (moved to BACKLOG_COMPLETED.md, Nov 20): #367, #368, #372.
     - **In review,** Beadle's #390 (open, zero drift), counted as built once it merges:
       - the town's answer to a double claim: the true holder always counterclaims;
       - evil switches a bluff someone else took;
       - a Minion double-claims on purpose, from one 5% roll per Minion per game;
       - the private "<witness> is lying about seeing me" line.
-    - **Left, on hold until Michael reprioritises:**
-      - the podium path (the ladder at the meeting, not only in private);
-      - backing into a spare or unknown walking gift when pressed again.
+    - **Left, on hold until Michael reprioritises:** the podium path (the ladder at the
+      meeting, not only in private). Backing into a spare or unknown gift moved to "Caught
+      out and pressed again: what's left" (Nov 20).
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -720,7 +689,7 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
 
 **The purge resumes (Michael, Nov 19).** Owner Lantern.
 - Phase 7: **done** (#382).
-- Phase 8: **in review** (#386).
+- Phase 8: **done** (#386).
 - Phase 6b: **done** (built Nov 17, 8fecdad). Re-measured on Nov 20: across 1,182 refreshes,
   reading attended cards against held cards changed no one's chance.
 - Phase 6a waits for the reprioritization.
