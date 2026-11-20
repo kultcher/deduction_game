@@ -39,7 +39,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     6. \*Anger reasons `[decided]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
     1. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
@@ -57,8 +56,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   8. Scoring system `[open]`
   9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
-  1. \*Minion gifts: the Poisoner's visit `[decided]`
-  2. Duty claim vs reading
+  1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case `[deferred, Michael, Nov 13]`
   2. Presenting a card to one NPC
@@ -266,18 +264,6 @@ Lantern). Nothing is open here.
 ### Tentative social tuning (Oct 20–21 discussion)
 
 Candidates for a unified retuning proposal, not approved changes.
-
-- **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
-  that night" or "the death happened on another block", as attributed defences rather
-  than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-  - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
-    the town moves block to block.
-  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
-    the podium press of a sighting and the private press, as speech with no weight; a quiet
-    night isn't argued when the defender knows of a possible thwart. Approved block wording in
-    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
-    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
-    [in review]
 
 ### UI
 
@@ -528,23 +514,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 Patterns that come up in play, or that the mechanics make meaningful, but that the Case
 Workshop and the shared model can't express yet.
-
-- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
-  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
-  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
-  fix Seneschal approved; the route version merged in #429). **Michael (Nov 20, later):** a
-  candidate is a person spotted whose destination was on the failed reader's block, not
-  anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
-  **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
-  Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
-  destination is spread over the town. **Declined (Michael, Nov 20):** the fuller
-  Poisoner-presence factor in the judge. Nobody can verify that a reading was mistaken, so the
-  judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
-  This item closes when #445 merges. The other two Minion gifts are
-  built and closed (Quill, Nov 20). Owner Quill. [decided]
-  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
-    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
-    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
