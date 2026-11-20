@@ -7,6 +7,7 @@
 ##   godot --headless --path . --script res://tools/test_haunt_learning.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
@@ -66,7 +67,7 @@ func _test_search() -> void:
 	if not workers.is_empty():
 		_check(str(workers[0].occupation) in text, "whoever works there points them out (%s)" % text)
 	var learned = regulars.filter(func(n): return l in g.known_haunts.get(n.id, []))
-	_check(learned.any(func(n): return g.profile_receipts_for(n.id).any(func(c): return c.get("kind", "") == "haunt" and c.get("loc", "") == l)),
+	_check(learned.any(func(n): return GameBoard.profile_receipts_for(g, n.id).any(func(c): return c.get("kind", "") == "haunt" and c.get("loc", "") == l)),
 		"it's kept as a haunt receipt on their profile")
 	GameDayNight._search(g)
 	var again: int = regulars.filter(func(n): return l in g.known_haunts.get(n.id, [])).size()

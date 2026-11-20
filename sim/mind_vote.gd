@@ -96,8 +96,6 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		parts["player_votes_no"] = -(Tuning.Meeting.PLAYER_VOTE_NO_SLOPE * v.credibility + Tuning.Meeting.PLAYER_VOTE_NO_OFFSET)
 	if nominator != "player" and susp(v, nominator) > Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_MIN_SUSP:
 		parts["distrusts_nominator"] = Tuning.Meeting.VOTE_DISTRUST_NOMINATOR_OFFSET
-	if v.spare_pref.get(nominee, 0.0) > 0.0:
-		parts["persuaded_to_spare"] = Tuning.Meeting.VOTE_SPARE_PREF_SLOPE * v.spare_pref[nominee]
 	var block: String = w.meeting["block"]
 	if block != "" and block != nominee and (action_susp(v, block) + _mind().resentment_toward(w, v, block)) >= (base + v_resent):
 		parts["prefers_block"] = Tuning.Meeting.VOTE_PREFERS_BLOCK_OFFSET
@@ -123,7 +121,7 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 			"paranoia": paranoia(w, v), "trust": v.trust, "credibility": v.credibility, "trust_in_nominee": v.npc_trust.get(nominee, 0.5), "suspicion": susp(v, nominee)},
 		"threshold_parts": {"base": Tuning.Meeting.VOTE_BASE_NEED,
 			"confidence": conf_need, "early_day": early_need, "paranoia": para_need, "urgency": urg_need},
-		"trust": v.trust, "block": block, "spare_preference": v.spare_pref.get(nominee, 0.0),
+		"trust": v.trust, "block": block,
 		"shared_execution_priority": execution_priority(v, nominee), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
 		"reluctance_rounding": "martyr contribution retains existing two-decimal rounding"}, nominee, trace_id)
 	parts["total"] = snappedf(s, 0.01)
@@ -273,8 +271,8 @@ static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: 
 	if granted_lie:
 		return "vote_no_lie_not_rope"
 	var known: Array = ["suspicion", "town_pressure", "shared_execution_priority", "resentment", "player_votes_yes",
-		"player_votes_no", "distrusts_nominator", "prefers_block", "self_nomination", "persuaded_to_spare"]
-	if float(parts.get("persuaded_to_spare", 0.0)) < 0.0 or parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
+		"player_votes_no", "distrusts_nominator", "prefers_block", "self_nomination"]
+	if parts.keys().any(func(k): return k not in known and float(parts[k]) < 0.0):
 		return "vote_no_reluctant"
 	if float(parts.get("distrusts_nominator", 0.0)) < 0.0 and str(res.get("by", "")) != "player":
 		return "vote_no_distrust_nominator"

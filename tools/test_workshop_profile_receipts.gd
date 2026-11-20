@@ -2,6 +2,8 @@
 ## bereavement dated trait preservation, and Workshop Townsfolk Profile Info nodes.
 extends SceneTree
 
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const WorkshopCanvas = preload("res://game/workshop_canvas.gd")
@@ -43,7 +45,7 @@ func _test_setup_receipts_and_board_cleanup() -> void:
 	var g = _game(692, 10)
 	_check(not g.board.any(func(c): return c.kind in ["home", "work", "haunt"]), "main board has no home, work, or haunt cards")
 	_check(g.profile_receipts.size() == 20, "10-person setup mints 10 home and 10 work hidden receipts")
-	_check(g.profile_receipts.all(func(c): return c.n <= -10001 and g.receipt_by_number(c.n) == c), "negative receipt numbers (-10001..) avoid synthetic draft root -1 and resolve via receipt_by_number")
+	_check(g.profile_receipts.all(func(c): return c.n <= -10001 and GameBoard.receipt_by_number(g, c.n) == c), "negative receipt numbers (-10001..) avoid synthetic draft root -1 and resolve via receipt_by_number")
 
 func _test_immutable_filing_on_new_haunt() -> void:
 	var g = _game(692, 7)
@@ -52,7 +54,7 @@ func _test_immutable_filing_on_new_haunt() -> void:
 	var loc0: String = target.haunts[0]
 	var loc1: String = target.haunts[1]
 	g.known_haunts[target.id] = [loc0]
-	g.add_profile_receipt({"kind": "haunt", "subject": [target.id], "source": speaker.id, "loc": loc0, "locs": [loc0],
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [target.id], "source": speaker.id, "loc": loc0, "locs": [loc0],
 		"block": g.w.loc_block(loc0), "day": 1, "phase": 0, "class": "circumstantial",
 		"text": "%s says %s often goes to %s when not working." % [speaker.name, target.name, g.w.loc_name(loc0)]})
 	var v1: Dictionary = WorkshopCanvas.view(g)
@@ -68,7 +70,7 @@ func _test_immutable_filing_on_new_haunt() -> void:
 	var frozen_cards: Array = g.board[filed_num - 1].workshop_case.cards.duplicate()
 	# Now discover the second haunt later: the already-filed case must NOT mutate.
 	g.known_haunts[target.id].append(loc1)
-	g.add_profile_receipt({"kind": "haunt", "subject": [target.id], "source": speaker.id, "loc": loc1, "locs": [loc1],
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [target.id], "source": speaker.id, "loc": loc1, "locs": [loc1],
 		"block": g.w.loc_block(loc1), "day": 2, "phase": 1, "class": "circumstantial",
 		"text": "%s says %s often goes to %s when not working." % [speaker.name, target.name, g.w.loc_name(loc1)]})
 	_check(g.board[filed_num - 1].workshop_case.cards == frozen_cards, "learning a second haunt does not mutate an already-filed case")
@@ -95,12 +97,12 @@ func _test_bereavement_dated_traits() -> void:
 	b.lover = a.id
 	a.traits["privacy"] = 0.2
 	a.revealed_traits["privacy"] = "low"
-	var r1: int = g._record_trait_receipt(a, "privacy", "low", "player")
+	var r1: int = GameConversation._record_trait_receipt(g, a, "privacy", "low", "player")
 	b.alive = false
 	g.w.day = 2
 	g.w._bereave(b)
-	g.sync_bereaved_traits(a, "player")
-	var traits_for_a: Array = g.profile_receipts_for(a.id, "personality")
+	GameConversation.sync_bereaved_traits(g, a, "player")
+	var traits_for_a: Array = GameBoard.profile_receipts_for(g, a.id, "personality")
 	_check(r1 < 0 and traits_for_a.size() == 2, "bereavement adds a new dated trait receipt rather than overwriting the historical one")
 	_check(traits_for_a[0].tier == "low" and not traits_for_a[0].withdrawn and traits_for_a[1].tier == "high" and traits_for_a[1].withdrawn, "both pre-bereavement and post-bereavement trait tiers are preserved with dates")
 
@@ -109,7 +111,7 @@ func _test_profile_node_person_swap_and_restore() -> void:
 	var a = g.w.npcs[0]
 	var b = g.w.npcs[1]
 	g.known_haunts[a.id] = [a.haunts[0]]
-	g.add_profile_receipt({"kind": "haunt", "subject": [a.id], "source": b.id, "loc": a.haunts[0], "locs": [a.haunts[0]],
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [a.id], "source": b.id, "loc": a.haunts[0], "locs": [a.haunts[0]],
 		"block": g.w.loc_block(a.haunts[0]), "day": 1, "phase": 0, "text": "Haunt A"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var model = CanvasModel.new(view)
@@ -127,8 +129,8 @@ func _test_remove_profile_info_clears_contradiction_prior_links() -> void:
 	var g = _game(692, 7)
 	var a = g.w.npcs[0]
 	var b = g.w.npcs[1]
-	var alibi_n: int = g.add_card({"kind": "alibi", "source": a.id, "subject": [a.id], "day": 1, "phase": C.NIGHT, "block": a.home_block, "text": "%s says they stayed home on night 1." % a.name})
-	var sight_n: int = g.add_card({"kind": "sighting", "source": b.id, "subject": [a.id], "day": 1, "phase": C.NIGHT, "block": "square" if a.home_block != "square" else "market", "text": "%s saw %s out on night 1." % [b.name, a.name]})
+	var alibi_n: int = GameBoard.add_card(g, {"kind": "alibi", "source": a.id, "subject": [a.id], "day": 1, "phase": C.NIGHT, "block": a.home_block, "text": "%s says they stayed home on night 1." % a.name})
+	var sight_n: int = GameBoard.add_card(g, {"kind": "sighting", "source": b.id, "subject": [a.id], "day": 1, "phase": C.NIGHT, "block": "square" if a.home_block != "square" else "market", "text": "%s saw %s out on night 1." % [b.name, a.name]})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var model = CanvasModel.new(view)
 	var prem: String = model.selected

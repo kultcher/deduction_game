@@ -2,6 +2,8 @@
 ## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Mind = preload("res://sim/mind.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
@@ -181,9 +183,9 @@ func _alibi_against_report() -> void:
 	var seen = goods[2]
 	var block: String = seen.home_block
 	g.w.day = 2
-	g.add_card({"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
-	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
-	g.add_card({"kind": "alibi", "subject": [watcher.id], "home": true, "day": 1, "phase": C.NIGHT, "source": watcher.id, "block": watcher.home_block, "text": "%s says they were home on night 1." % watcher.name})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
+	GameBoard.add_card(g, {"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [watcher.id], "home": true, "day": 1, "phase": C.NIGHT, "source": watcher.id, "block": watcher.home_block, "text": "%s says they were home on night 1." % watcher.name})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	var alibi = _node(model, view, func(c): return c.kind == "alibi" and c.subject == seen.id)
@@ -213,7 +215,7 @@ func _test_juror_feedback() -> void:
 	var goods: Array = g.w.living_good()
 	var source = goods[0]
 	g.w.day = 2
-	g.add_card({"kind": "info", "source": source.id, "role": "surveyor", "day": 0, "phase": 3,
+	GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "surveyor", "day": 0, "phase": 3,
 		"data": {"count": 0}, "text": "%s surveyed the town: no block has an evil resident" % source.name})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
@@ -242,8 +244,8 @@ func _connections() -> void:
 	var watcher = goods[1]
 	var seen = goods[2]
 	g.w.day = 2
-	g.add_card({"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": seen.home_block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
-	var alibi_n: int = g.add_card({"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
+	GameBoard.add_card(g, {"kind": "info", "source": watcher.id, "role": "nightwatch", "day": 1, "phase": 3, "data": {"block": seen.home_block, "seen": [seen.id]}, "text": "%s's watch on night 1 saw %s" % [watcher.name, seen.name]})
+	var alibi_n: int = GameBoard.add_card(g, {"kind": "alibi", "subject": [seen.id], "home": true, "day": 1, "phase": C.NIGHT, "source": seen.id, "block": seen.home_block, "text": "%s says they were home on night 1." % seen.name})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	var report = _node(model, view, func(c): return c.kind == "report" and c.source == watcher.id)
@@ -273,9 +275,9 @@ func _sigil_is_an_attack() -> void:
 	# nothing of where they went; a sighting on the target's block does.
 	var witness = w.living_good().filter(func(n): return n != target)[0]
 	w.day = 2
-	g.add_card({"kind": "ward", "source": "player", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "Night 1: you spent your ward on %s's door." % target.name})
-	var seen_n: int = g.add_card({"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": witness.id, "day": 1, "phase": C.NIGHT, "text": "Night 1 sighting: %s saw %s on %s." % [witness.name, demon.name, C.block_name(target.home_block)]})
-	var sigil_n: int = g.add_card({"kind": "scorched_sigil", "source": "evidence", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "You alone found a scorched sigil on %s's door: the Demon came on night 1." % target.name})
+	GameBoard.add_card(g, {"kind": "ward", "source": "player", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "Night 1: you spent your ward on %s's door." % target.name})
+	var seen_n: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": witness.id, "day": 1, "phase": C.NIGHT, "text": "Night 1 sighting: %s saw %s on %s." % [witness.name, demon.name, C.block_name(target.home_block)]})
+	var sigil_n: int = GameBoard.add_card(g, {"kind": "scorched_sigil", "source": "evidence", "subject": [target.id], "target": target.id, "loc": "home_" + target.id, "block": target.home_block, "night": 1, "day": 1, "phase": C.NIGHT, "private": true, "text": "You alone found a scorched sigil on %s's door: the Demon came on night 1." % target.name})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	var seen = _node(model, view, func(c): return c.get("text", "").begins_with("Night 1 sighting"))
@@ -329,12 +331,12 @@ func _test_warden_credit_leak_free_and_sigil_reweigh() -> void:
 	# Next day, showing a scorched sigil on third's door revokes the Warden's mistaken save belief.
 	w.player_ward = ""
 	w.day = 2
-	var sigil_n: int = g.add_card({
+	var sigil_n: int = GameBoard.add_card(g, {
 		"kind": "scorched_sigil", "source": "evidence", "subject": [third.id], "target": third.id,
 		"loc": "home_" + third.id, "block": third.home_block, "night": 1, "day": 1, "phase": C.NIGHT,
 		"private": true, "text": "Scorched sigil on %s's door on night 1." % third.name,
 	})
-	g._show_ward_context(g.board[sigil_n - 1], [warden])
+	GamePresentation._show_ward_context(g, g.board[sigil_n - 1], [warden])
 	_check(not warden.warden_saves.has("1"), "showing a scorched sigil on another villager's door revokes Warden save credit for that night")
 
 	# Showing an un-scorched ward card when a public Veteran also exists drops belief below 0.5.
@@ -343,12 +345,12 @@ func _test_warden_credit_leak_free_and_sigil_reweigh() -> void:
 	w.public_claims.append({"who": goods[3].id, "role": "veteran", "day": 2})
 	w._warden_credit(warden, protectee.id)
 	_check(warden.warden_saves.has("2") and is_equal_approx(warden.warden_saves["2"].belief, 0.5), "Warden starts with 0.5 save belief alongside one living Veteran claim")
-	var ward_n: int = g.add_card({
+	var ward_n: int = GameBoard.add_card(g, {
 		"kind": "ward", "source": "player", "subject": [third.id], "target": third.id,
 		"loc": "home_" + third.id, "block": third.home_block, "night": 2, "day": 2, "phase": C.NIGHT,
 		"private": true, "text": "Night 2: you spent your ward on %s's door." % third.name,
 	})
-	g._show_ward_context(g.board[ward_n - 1], [warden])
+	GamePresentation._show_ward_context(g, g.board[ward_n - 1], [warden])
 	_check(not warden.warden_saves.has("2"), "showing a ward card to the Warden adds the ward alternative and drops 0.5 belief below threshold")
 
 
@@ -524,11 +526,11 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	# Since Nov 17 a vigil sees residents leaving the block: the vigil is on Isolde's own block
 	# (Agnes a neighbour), so a Night Watch who walked out to the Market should have been seen.
 	agnes.home_block = isolde.home_block
-	var c_vigil: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true,
+	var c_vigil: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true,
 		"day": 2, "phase": C.NIGHT, "block": isolde.home_block, "text": "Night 2 vigil on Isolde's block: saw Agnes."})
-	var c_agnes_claim: int = g.add_card({"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium",
+	var c_agnes_claim: int = GameBoard.add_card(g, {"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium",
 		"day": 2, "phase": C.EVENING, "text": "Agnes publicly claims to be the Medium."})
-	var c_isolde_nw: int = g.add_card({"kind": "info", "source": isolde.id, "role": "nightwatch", "subject": [hollis.id],
+	var c_isolde_nw: int = GameBoard.add_card(g, {"kind": "info", "source": isolde.id, "role": "nightwatch", "subject": [hollis.id],
 		"day": 2, "phase": C.NIGHT, "data": {"block": "market", "seen": [hollis.id]},
 		"text": "Isolde (Night Watch): Last night I watched the Market: I saw Hollis pass by."})
 
@@ -545,7 +547,7 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	board.nodes["e:" + id_vigil].citations[agnes.id + ":2"] = id_claim
 	var compiled_case: Dictionary = board.compile(root)
 	var filed_num: int = Live.file(g, compiled_case)
-	var snap: Dictionary = g.workshop_snapshot([filed_num], hollis.id, "meeting")
+	var snap: Dictionary = GamePresentation.workshop_snapshot(g, [filed_num], hollis.id, "meeting")
 	var prep: Dictionary = Assess.prepare(snap)
 	_check(prep.ready, "Vigil + Medium claim + Isolde Night Watch report prepares cleanly (%s)" % str(prep.issues))
 	var ev: Dictionary = Eval.evaluate(prep.view, prep.case, prep.listener)
@@ -615,7 +617,7 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 	var pub_lines: Array = []
 	var pub_facts: Array = []
 	Mind.MindMeeting._go_public(w, speaker, pub_lines, pub_facts)
-	g._facts(pub_facts)
+	GameBoard._facts(g, pub_facts)
 	Mind.refresh_beliefs(w, listener, "after truthful rumormonger reveal")
 	var susp_after: float = Mind.susp(listener, speaker.id)
 	_check(susp_after <= susp_before + 0.03,
@@ -625,6 +627,13 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 		"Uncontradicted Rumormonger reading never emits false 'doesn't fit what we know' reason (%s)" % str(reasons))
 
 	var view: Dictionary = ReasonAttribution.public_view_from_world(w)
+	# A defender's public view weighs only the secrets this game's script can deal, not every
+	# secret on the roster (Lantern's bug, Nov 20).
+	_check(view.world_options.modifiers == w.case_script.secrets, "the public view's secrets are the script's (%s, script %s)" % [str(view.world_options.modifiers), str(w.case_script.secrets)])
+	var secrets_were: Array = w.case_script.secrets.duplicate()
+	w.case_script.secrets = ["marked"]
+	_check(ReasonAttribution.public_view_from_world(w).world_options.modifiers == ["marked"], "a script with only Marked gives a view with only Marked")
+	w.case_script.secrets = secrets_were
 	var rm_card: Dictionary = {
 		"id": "probe_rm", "kind": "report", "source": speaker.id, "role": "rumormonger",
 		"night": 0, "observed_at": {"day": 0, "phase": "night"},
@@ -707,8 +716,8 @@ func playtest_regressions__game():
 func _workshop_merge_order_of_operations() -> void:
 	var g = playtest_regressions__game()
 	var target = g.w.demon()
-	var c_alibi = g.add_card({"kind": "alibi", "subject": [target.id], "source": target.id, "day": 2, "phase": C.NIGHT, "claimed": "home:" + target.home_block, "text": "%s says they stayed home on night 2." % target.name})
-	var c_sight = g.add_card({"kind": "sighting", "subject": [target.id], "source": "player", "day": 2, "phase": C.NIGHT, "block": "docks", "text": "You saw %s on the Docks on night 2." % target.name})
+	var c_alibi = GameBoard.add_card(g, {"kind": "alibi", "subject": [target.id], "source": target.id, "day": 2, "phase": C.NIGHT, "claimed": "home:" + target.home_block, "text": "%s says they stayed home on night 2." % target.name})
+	var c_sight = GameBoard.add_card(g, {"kind": "sighting", "subject": [target.id], "source": "player", "day": 2, "phase": C.NIGHT, "block": "docks", "text": "You saw %s on the Docks on night 2." % target.name})
 	var view: Dictionary = Live.view(g)
 	var alibi: String = "e:" + Live.Evidence.normalize_card(g.board[c_alibi - 1]).id
 	var sight: String = "e:" + Live.Evidence.normalize_card(g.board[c_sight - 1]).id
@@ -780,13 +789,13 @@ func _test_live_voiced_trace_and_hub_delivery() -> void:
 
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
-	var death_num: int = g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
-	var sil_num: int = g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced"})
-	var conv_num: int = g.add_card({"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
-	var tr_num: int = g.add_card(trace_card)
+	var death_num: int = GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	var sil_num: int = GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 1, "phase": C.EVENING, "text": "Silenced"})
+	var conv_num: int = GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [target.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 1, "phase": C.MORNING, "text": "Talking before silence"})
+	var tr_num: int = GameBoard.add_card(g, trace_card)
 	# Being near the silencing is Stage 1 now (Breathstealer by presence), so the hub's Stage 2
 	# incident here is a rivalry with the victim.
-	g.add_profile_receipt({"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": g.w.living_good()[4].id, "day": 1, "phase": 0, "text": "At odds with victim"})
+	GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": [target.id, victim.id], "bond_kind": "rival", "source": g.w.living_good()[4].id, "day": 1, "phase": 0, "text": "At odds with victim"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root_id: String = board.selected
@@ -798,7 +807,7 @@ func _test_live_voiced_trace_and_hub_delivery() -> void:
 	board.connect_cards(pnode, hub_id)
 	board.connect_cards(hub_id, root_id)
 	var filed_ok: int = WorkshopCanvas.file(g, board.compile(root_id))
-	var pres_ok: Dictionary = g._evaluate_deduction(listener, g.board[filed_ok - 1], 1.0, true)
+	var pres_ok: Dictionary = GamePresentation._evaluate_deduction(g, listener, g.board[filed_ok - 1], 1.0, true)
 	var expected_hub_line: String = Dialogue.voice_line(listener.id, "circumstantial_hub_landed", "", {"target": target.name})
 	_check(not pres_ok.lines.is_empty() and expected_hub_line in pres_ok.lines[0].text and not "[PH]" in pres_ok.lines[0].text, "grounded Circumstantial Hub presentation speaks listener's bespoke voice line without [PH]")
 
@@ -815,23 +824,23 @@ func _test_autoplay_workshop_and_hub_builder() -> void:
 	suspect.haunts = ["tavern", "mill"]
 	cleared_other.work = "chapel"
 	cleared_other.haunts = ["well", "graveyard"]
-	g.add_profile_receipt({"kind": "haunt", "subject": [cleared_other.id], "loc": "well", "locs": ["well"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 1"})
-	g.add_profile_receipt({"kind": "haunt", "subject": [cleared_other.id], "loc": "graveyard", "locs": ["graveyard"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 2"})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [cleared_other.id], "loc": "well", "locs": ["well"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 1"})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [cleared_other.id], "loc": "graveyard", "locs": ["graveyard"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 2"})
 	g.w.public_event("demon_death", [victim.id], "town")
 	g.w.public_event("silenced", [silenced_p.id], "town")
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
-	g.add_card({
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": victim.home_block, "text": "Public death"})
+	GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "a brass farthing",
 		"text": "Scene trace: brass farthing (the Bakery or the Tavern).",
 	})
-	g.add_card({"kind": "sighting", "source": "player", "subject": [suspect.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "text": "Player vigil sighting"})
-	g.add_card({"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 2, "phase": C.EVENING, "text": "Silenced"})
-	g.add_card({"kind": "conversation", "source": "player", "subject": [suspect.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.MORNING, "text": "Talking before silence"})
+	GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [suspect.id], "block": victim.home_block, "day": 1, "phase": C.NIGHT, "text": "Player vigil sighting"})
+	GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [silenced_p.id], "day": 2, "phase": C.EVENING, "text": "Silenced"})
+	GameBoard.add_card(g, {"kind": "conversation", "source": "player", "subject": [suspect.id, silenced_p.id], "block": "market", "loc": "bakery", "day": 2, "phase": C.MORNING, "text": "Talking before silence"})
 	# A Stage 2 incident for the hub (being near the silencing is Stage 1 now): at odds with the victim.
-	g.add_profile_receipt({"kind": "bond", "subject": [suspect.id, victim.id], "bond_kind": "rival", "source": cleared_other.id, "day": 1, "phase": 0, "text": "At odds with victim"})
+	GameBoard.add_profile_receipt(g, {"kind": "bond", "subject": [suspect.id, victim.id], "bond_kind": "rival", "source": cleared_other.id, "day": 1, "phase": 0, "text": "At odds with victim"})
 
 	# The analyst reads the board through the shared model (tools/analyst.gd).
 	var Analyst = preload("res://tools/analyst.gd")
@@ -849,7 +858,7 @@ func _test_autoplay_workshop_and_hub_builder() -> void:
 
 	# Also add a public failed vote where suspect voted yes to hang cleared_other so adapted vote cards are tested too
 	g.w.public_event("vote", [cleared_other.id], "town", {"nominee": cleared_other.id, "nominator": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails"})
-	g.add_card({"kind": "vote", "source": "player", "subject": [suspect.id, cleared_other.id], "day": 2, "phase": C.EVENING, "nominee": cleared_other.id, "by": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
+	GameBoard.add_card(g, {"kind": "vote", "source": "player", "subject": [suspect.id, cleared_other.id], "day": 2, "phase": C.EVENING, "nominee": cleared_other.id, "by": suspect.id, "yes": [suspect.id], "no": [silenced_p.id], "player_yes": false, "count": 1, "threshold": 4, "outcome": "fails", "text": "Vote tally"})
 
 	# Full mode (with Hub): files valid Workshop case attaching adapted silenced + conversation + vote cards in hub
 	var sigs_full: Dictionary = {}
@@ -881,22 +890,22 @@ func _test_bears_on_trace_no_hidden_truth_leak() -> void:
 		if pr.get("kind", "") == "work" and (secret_match.id in pr.get("subject", []) or secret_miss.id in pr.get("subject", [])):
 			pr["loc"] = "chapel"
 			pr["block"] = C.LOCATIONS["chapel"]["block"]
-	var tnum: int = g.add_card({
+	var tnum: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": victim.id, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "a brass farthing",
 		"text": "Scene trace: brass farthing (the Bakery or the Tavern).",
 	})
-	var pool_before: Array = g.all_receipts()
+	var pool_before: Array = GameBoard.all_receipts(g)
 	_check(g.Deduction.trace_fit_from_receipts(secret_match.id, g.board[tnum - 1], pool_before) == "unknown" and g.Deduction.trace_fit_from_receipts(secret_miss.id, g.board[tnum - 1], pool_before) == "unknown", "undiscovered haunts stay in unknown state for both secret-match and secret-miss suspects")
-	var d_match: int = g.file_deduction({"type": "demon", "a": secret_match.id}, [tnum])
-	var d_miss: int = g.file_deduction({"type": "demon", "a": secret_miss.id}, [tnum])
+	var d_match: int = GameBoard.file_deduction(g, {"type": "demon", "a": secret_match.id}, [tnum])
+	var d_miss: int = GameBoard.file_deduction(g, {"type": "demon", "a": secret_miss.id}, [tnum])
 	_check(d_match > 0 and d_miss > 0 and g.board[d_match - 1]["unfounded"] == g.board[d_miss - 1]["unfounded"] and not g.board[d_miss - 1]["unfounded"], "filing conclude <suspect> because <trace> never leaks undiscovered haunts via unfounded flag")
 
 	# Once both non-matching haunts of secret_miss are learned, relevance flips to contradicts (unfounded = true).
-	g.add_profile_receipt({"kind": "haunt", "subject": [secret_miss.id], "loc": "well", "locs": ["well"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 1"})
-	g.add_profile_receipt({"kind": "haunt", "subject": [secret_miss.id], "loc": "graveyard", "locs": ["graveyard"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 2"})
-	_check(g.Deduction.trace_fit_from_receipts(secret_miss.id, g.board[tnum - 1], g.all_receipts()) == "contradicts", "learning all contradicting work + haunts resolves trace_fit_from_receipts to contradicts")
-	var d_ruled_out: int = g.file_deduction({"type": "evil", "a": secret_miss.id}, [tnum])
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [secret_miss.id], "loc": "well", "locs": ["well"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 1"})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [secret_miss.id], "loc": "graveyard", "locs": ["graveyard"], "source": "town", "day": 1, "phase": 0, "text": "Haunt 2"})
+	_check(g.Deduction.trace_fit_from_receipts(secret_miss.id, g.board[tnum - 1], GameBoard.all_receipts(g)) == "contradicts", "learning all contradicting work + haunts resolves trace_fit_from_receipts to contradicts")
+	var d_ruled_out: int = GameBoard.file_deduction(g, {"type": "evil", "a": secret_miss.id}, [tnum])
 	_check(d_ruled_out > 0 and g.board[d_ruled_out - 1]["unfounded"], "deduction from trace becomes unfounded once discovered profile receipts rule out all prongs")

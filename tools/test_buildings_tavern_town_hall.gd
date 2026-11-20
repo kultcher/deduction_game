@@ -9,6 +9,8 @@
 ##      C# --tol 0 parity).
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
@@ -162,7 +164,7 @@ func _test_tavern_gossip_rework() -> void:
 	# run (Steward's silent-skip sweep, Nov 19: they had been skipped on every run).
 	var sight_rumours: Array = rumour_cards.filter(func(c): return c.get("kind", "") == "sighting")
 	if sight_rumours.is_empty():
-		g._facts([{"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
+		GameBoard._facts(g, [{"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
 			"source": "rumour", "tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
 			"text": "Tavern rumour: %s was out on the Docks." % target_c.name}])
 		rumour_cards = g.board.filter(func(c): return c.get("tavern_gossip", false))
@@ -173,12 +175,12 @@ func _test_tavern_gossip_rework() -> void:
 		var markers: Array = CardModel.place_markers(rc)
 		_check(not markers.is_empty() and markers[0]["mark"] == "dotted",
 			"Tavern rumour sighting renders 'dotted' outline marker on Places & sightings timeline")
-		var tl_txt: String = g._timeline("")
+		var tl_txt: String = GameBoard._timeline(g, "")
 		_check("?" in tl_txt, "CLI timeline marks tavern rumours with '?'")
 
 		# Now add an attributed witness sighting of the exact same event: must NOT merge into the rumour card!
 		var board_before: int = g.board.size()
-		g._facts([{
+		GameBoard._facts(g, [{
 			"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
 			"source": listener_b.id,
 			"text": "%s saw %s out on the Docks on the night before you arrived." % [listener_b.name, target_c.name],
@@ -189,12 +191,12 @@ func _test_tavern_gossip_rework() -> void:
 	# Case builder, Workshop, and pressing rejection checks. The evening's draw may have been
 	# all haunts and bonds (no card); then a rumour card in the gossip's own shape stands in.
 	if rumour_cards.is_empty():
-		g._facts([{"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
+		GameBoard._facts(g, [{"kind": "sighting", "subject": [target_c.id], "block": "docks", "day": 0, "phase": C.NIGHT,
 			"source": "rumour", "tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
 			"text": "Tavern rumour: %s was out on the Docks." % target_c.name}])
 		rumour_cards = g.board.filter(func(c): return c.get("tavern_gossip", false))
 	var r_num: int = int(rumour_cards[0]["n"])
-	var ded_try: int = g.file_deduction({"type": "suspicious", "a": target_c.id}, [r_num])
+	var ded_try: int = GameBoard.file_deduction(g, {"type": "suspicious", "a": target_c.id}, [r_num])
 	_check(ded_try == -1 and "tavern rumour" in g.last_error.to_lower(),
 		"Case builder refuses deductions resting on tavern rumour cards")
 
@@ -202,7 +204,7 @@ func _test_tavern_gossip_rework() -> void:
 	_check(not wc_view.cards.any(func(c): return c.get("source", "") == "rumour"),
 		"WorkshopCanvas.view excludes tavern rumour cards")
 
-	var snap: Dictionary = g.workshop_snapshot([r_num], listener_b.id, "private")
+	var snap: Dictionary = GamePresentation.workshop_snapshot(g, [r_num], listener_b.id, "private")
 	var prep: Dictionary = LiveAssessment.prepare(snap)
 	_check(not prep.ready and prep.issues.any(func(iss): return "Tavern rumours" in str(iss)),
 		"LiveAssessment.prepare rejects direct tavern rumour snapshots")

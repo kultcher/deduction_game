@@ -4,6 +4,7 @@
 ##   godot --headless --path . --script res://tools/test_location_solver.gd
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const WorkshopBridge = preload("res://game/workshop_bridge.gd")
@@ -138,7 +139,7 @@ func _run() -> void:
 		var filed: int = WorkshopCanvas.file(g, compiled)
 		_check(filed > 0, "and files")
 		var hearer = g.w.living_good()[2]
-		g._evaluate_deduction(hearer, g.board[filed - 1], 1.0, false)
+		GamePresentation._evaluate_deduction(g, hearer, g.board[filed - 1], 1.0, false)
 		var Shared = preload("res://workshop/shared_ledger.gd")
 		var plan: Dictionary = Shared.prepare(WorkshopBridge.capture(g, [], hearer.id), hearer.workshop_state.get("presentations", {}), hearer.ledger, hearer.workshop_state.get("withdrawn", {}), [])
 		var hv2: Dictionary = plan.get("prepared", {}).get("view", {})

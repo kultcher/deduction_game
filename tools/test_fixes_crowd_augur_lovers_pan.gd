@@ -4,6 +4,7 @@
 ## Named test_triage_nov16 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const GameScreens = preload("res://game/game_screens.gd")
 const Live = preload("res://game/workshop_canvas.gd")
@@ -76,12 +77,12 @@ func _augur() -> void:
 	g.w.day = 2
 	g.board.clear()  # only this fixture's cards (the game makes its own work sightings)
 	g._fact_keys.clear()
-	g.add_card({"kind": "info", "source": augur.id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true}, "text": "%s augur day 1: crossed the demon" % augur.id})
-	g.add_card({"kind": "sighting", "subject": [augur.id], "source": "player", "block": "docks", "loc": "wharf", "day": 1, "phase": 0, "text": "You saw the Augur."})
-	g.add_card({"kind": "sighting", "subject": [p[3].id], "source": "player", "block": "docks", "loc": "mill", "day": 1, "phase": 0, "crowd_unseen": 2, "text": "You saw p3 (+2 people there)."})
-	g.add_card({"kind": "sighting", "subject": [p[4].id], "source": "player", "block": "hill", "loc": "chapel", "day": 1, "phase": 0, "text": "You saw p4 elsewhere."})
-	g.add_card({"kind": "sighting", "subject": [p[5].id], "source": "player", "block": "docks", "loc": "mill", "day": 1, "phase": 1, "text": "You saw p5 in the afternoon, Augur unplaced."})
-	g.add_card({"kind": "sighting", "subject": [p[6].id], "source": "player", "block": "docks", "loc": "mill", "day": 2, "phase": 0, "text": "Another day."})
+	GameBoard.add_card(g, {"kind": "info", "source": augur.id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true}, "text": "%s augur day 1: crossed the demon" % augur.id})
+	GameBoard.add_card(g, {"kind": "sighting", "subject": [augur.id], "source": "player", "block": "docks", "loc": "wharf", "day": 1, "phase": 0, "text": "You saw the Augur."})
+	GameBoard.add_card(g, {"kind": "sighting", "subject": [p[3].id], "source": "player", "block": "docks", "loc": "mill", "day": 1, "phase": 0, "crowd_unseen": 2, "text": "You saw p3 (+2 people there)."})
+	GameBoard.add_card(g, {"kind": "sighting", "subject": [p[4].id], "source": "player", "block": "hill", "loc": "chapel", "day": 1, "phase": 0, "text": "You saw p4 elsewhere."})
+	GameBoard.add_card(g, {"kind": "sighting", "subject": [p[5].id], "source": "player", "block": "docks", "loc": "mill", "day": 1, "phase": 1, "text": "You saw p5 in the afternoon, Augur unplaced."})
+	GameBoard.add_card(g, {"kind": "sighting", "subject": [p[6].id], "source": "player", "block": "docks", "loc": "mill", "day": 2, "phase": 0, "text": "Another day."})
 	var view: Dictionary = Live.view(g)
 	var card: Dictionary = {}
 	for c in view.cards:
@@ -100,7 +101,7 @@ func _augur() -> void:
 	lone.new_case(692, 7)
 	lone.board.clear()  # only this fixture's cards (the game makes its own work sightings)
 	lone._fact_keys.clear()
-	lone.add_card({"kind": "info", "source": lone.w.npcs[2].id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": false}, "text": "no crossing"})
+	GameBoard.add_card(lone, {"kind": "info", "source": lone.w.npcs[2].id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": false}, "text": "no crossing"})
 	var lv: Dictionary = Live.view(lone)
 	var lc: Dictionary = {}
 	for c in lv.cards:
@@ -118,9 +119,9 @@ func _augur_two_phases() -> void:
 	g.w.day = 2
 	g.board.clear()
 	g._fact_keys.clear()
-	g.add_card({"kind": "info", "source": augur.id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true}, "text": "%s augur day 1: crossed the demon" % augur.id})
+	GameBoard.add_card(g, {"kind": "info", "source": augur.id, "role": "augur", "day": 1, "phase": 2, "data": {"yes": true}, "text": "%s augur day 1: crossed the demon" % augur.id})
 	for ph in [0, 1]:
-		g.add_card({"kind": "sighting", "subject": [augur.id], "source": "player", "block": "docks", "loc": "wharf", "day": 1, "phase": ph, "crowd_unseen": 2, "text": "You saw the Augur (+2 people there), phase %d." % ph})
+		GameBoard.add_card(g, {"kind": "sighting", "subject": [augur.id], "source": "player", "block": "docks", "loc": "wharf", "day": 1, "phase": ph, "crowd_unseen": 2, "text": "You saw the Augur (+2 people there), phase %d." % ph})
 	var view: Dictionary = Live.view(g)
 	var card: Dictionary = {}
 	for c in view.cards:
@@ -148,7 +149,7 @@ func _lovers() -> void:
 		return
 	var partner = g.w.by_id[x.lover]
 	g.w.day = 2
-	var conf: int = g.add_card({"kind": "secret", "subject": [x.id], "owner": x.id, "source": x.id, "block": partner.home_block, "day": 1, "phase": 3,
+	var conf: int = GameBoard.add_card(g, {"kind": "secret", "subject": [x.id], "owner": x.id, "source": x.id, "block": partner.home_block, "day": 1, "phase": 3,
 		"secret_kind": "lover", "mod": "lovers", "partner": partner.id, "text": "%s confessed: %s" % [x.name, x.secret.text]})
 	var view: Dictionary = Live.view(g)
 	var card: Dictionary = {}

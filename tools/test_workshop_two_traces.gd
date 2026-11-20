@@ -3,6 +3,8 @@
 ## 1-of-2 partial trace cherry-pick dampening, and live two-trace Workshop summary & latency.
 extends SceneTree
 
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -75,7 +77,7 @@ func _test_two_trace_search_and_non_duplication() -> void:
 		if w.scenes[sid]["traces"].size() == 2:
 			found_two = true
 			g.loc = sid
-			g._search()
+			GameDayNight._search(g)
 			var tcards: Array = g.board.filter(func(c): return c.kind == "trace" and c.get("scene", "") == sid)
 			if tcards.size() != 2 or tcards[0].trace_slot != 0 or tcards[1].trace_slot != 1 or tcards[0].scene_trace_count != 2 or tcards[0].trace_key == tcards[1].trace_key:
 				distinct_slots = false
@@ -138,17 +140,17 @@ func _test_live_two_trace_summary_and_latency() -> void:
 	g.profile_receipts.clear()
 	g._profile_card_keys.clear()
 	g._profile_fact_keys.clear()
-	g._home_cards()
+	GameBoard._home_cards(g)
 	w.day = 1
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "%s was killed on night 1." % victim.name})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "%s was killed on night 1." % victim.name})
 	w.public_event("demon_death", [victim.id], "town")
-	var t1_n: int = g.add_card({"kind": "trace", "subject": [], "block": victim.home_block, "source": "evidence", "day": 1, "phase": C.EVENING, "scene": "scene_" + victim.id, "scene_block": victim.home_block, "victim": victim.id, "victim_block": victim.home_block, "crime_night": 1, "trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 2, "trace_key": "locations:bakery:tavern", "locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing", "text": "At %s's scene: a grease-darkened brass farthing (the bakery or the Drowned Lamb tavern)." % victim.name})
-	var t2_n: int = g.add_card({"kind": "trace", "subject": [], "block": victim.home_block, "source": "evidence", "day": 1, "phase": C.EVENING, "scene": "scene_" + victim.id, "scene_block": victim.home_block, "victim": victim.id, "victim_block": victim.home_block, "crime_night": 1, "trace_family": "locations", "trace_subtype": "token", "trace_slot": 1, "scene_trace_count": 2, "trace_key": "locations:smithy:wharf", "locs": ["smithy", "wharf"], "item_label": "a verdigris-stained copper boat-rivet", "text": "At %s's scene: a verdigris-stained copper boat-rivet (the smithy or the wharf)." % victim.name})
-	var vig_n: int = g.add_card({"kind": "sighting", "source": "player", "subject": [walker.id], "day": 1, "phase": C.NIGHT, "block": victim.home_block, "text": "You saw %s on %s on night 1." % [walker.name, C.block_name(victim.home_block)]})
+	var t1_n: int = GameBoard.add_card(g, {"kind": "trace", "subject": [], "block": victim.home_block, "source": "evidence", "day": 1, "phase": C.EVENING, "scene": "scene_" + victim.id, "scene_block": victim.home_block, "victim": victim.id, "victim_block": victim.home_block, "crime_night": 1, "trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 2, "trace_key": "locations:bakery:tavern", "locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing", "text": "At %s's scene: a grease-darkened brass farthing (the bakery or the Drowned Lamb tavern)." % victim.name})
+	var t2_n: int = GameBoard.add_card(g, {"kind": "trace", "subject": [], "block": victim.home_block, "source": "evidence", "day": 1, "phase": C.EVENING, "scene": "scene_" + victim.id, "scene_block": victim.home_block, "victim": victim.id, "victim_block": victim.home_block, "crime_night": 1, "trace_family": "locations", "trace_subtype": "token", "trace_slot": 1, "scene_trace_count": 2, "trace_key": "locations:smithy:wharf", "locs": ["smithy", "wharf"], "item_label": "a verdigris-stained copper boat-rivet", "text": "At %s's scene: a verdigris-stained copper boat-rivet (the smithy or the wharf)." % victim.name})
+	var vig_n: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [walker.id], "day": 1, "phase": C.NIGHT, "block": victim.home_block, "text": "You saw %s on %s on night 1." % [walker.name, C.block_name(victim.home_block)]})
 	for p in [b, walker]:
 		for hl in p.haunts:
 			g.known_haunts[p.id] = g.known_haunts.get(p.id, []) + [hl]
-			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": speaker.id, "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt %s %s" % [p.id, hl]})
+			GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [p.id], "source": speaker.id, "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt %s %s" % [p.id, hl]})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root_id: String = board.selected

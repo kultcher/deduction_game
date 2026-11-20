@@ -7,6 +7,8 @@
 ##   - Everything said is heard by every other living listener.
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
@@ -44,7 +46,7 @@ func _meeting_game(sd: int, day: int = 2):
 	g.w.day = day
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	return g
 
 
@@ -101,7 +103,7 @@ func _test_flow() -> void:
 	_check(g.state == "meeting", "voting after a press resolves the nomination as before")
 	var g2 = _meeting_game(8402)
 	var t2 = _unclaimed(g2)[0]
-	var case2: int = g2.file_deduction({"type": "evil", "a": t2.id}, [g2.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"])[0].n])
+	var case2: int = GameBoard.file_deduction(g2, {"type": "evil", "a": t2.id}, [g2.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"])[0].n])
 	g2.command("nominate %s raw" % t2.name.to_lower())
 	g2.command("case %d" % case2)
 	_check(g2.statement_used and g2.w.meeting.pending.get("press", "") == "closed" and "already had your chance" in g2.command("press night"),

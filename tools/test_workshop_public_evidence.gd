@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Eval = preload("res://workshop/case_eval.gd")
@@ -63,14 +65,14 @@ func _live() -> void:
 		check(listener.workshop_state.active and listener.workshop_state.owned.has(eid), "public death has one shared owner for " + listener.id)
 		check(listener.ledger[eid].effects.is_empty(), "demon_death ledger entry carries empty effects for " + listener.id)
 		check(Mind.susp(listener, victim.id) > 0.0 and Mind.susp(listener, victim.id) < 0.8, "public death lowers suspicion without a reset for " + listener.id)
-	var input = g.workshop_snapshot([], observer.id)
+	var input = GamePresentation.workshop_snapshot(g, [], observer.id)
 	var prepared_listener = Assess._listener(input, [])
 	check(victim.id not in prepared_listener.knowledge.good, "a public victim is absent from hard known-good knowledge")
 	var fixed = observer.suspicion.duplicate(true)
 	var rng = g.w.rng.state
 	Mind.refresh_beliefs(g.w, observer, "unchanged death")
 	check(_close(fixed, observer.suspicion) and g.w.rng.state == rng, "unchanged death refresh is reversible and consumes no RNG")
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1,
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1,
 		"block": victim.home_block, "text": "Another receipt of the public announcement"})
 	Mind.refresh_beliefs(g.w, observer, "board announcement")
 	check(_close(fixed, observer.suspicion), "world announcement and board receipt contribute once together")
@@ -100,13 +102,13 @@ func _silence() -> void:
 		check(Mind.susp(listener, target.id) > 0.0 and Mind.susp(listener, target.id) < 0.8, "silence is finite innocence evidence for " + listener.id)
 	var observer = g.w.living_good()[0]
 	var before = observer.suspicion.duplicate(true)
-	var number = g.add_card({"kind": "silenced", "source": "player", "subject": [target.id], "day": 2, "phase": 2, "text": "Could not speak at the meeting"})
+	var number = GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [target.id], "day": 2, "phase": 2, "text": "Could not speak at the meeting"})
 	var raw: Dictionary = g.board[number - 1]
 	var receipt = preload("res://workshop/live_evidence.gd").normalize_card(raw)
-	var input = g.workshop_snapshot([], observer.id)
+	var input = GamePresentation.workshop_snapshot(g, [], observer.id)
 	check(Assess.activity_card(receipt, input).get("context_kind") == "silenced", "a matching silence card retains its public context")
-	var ded = g.file_deduction({"type": "good", "a": target.id}, [number])
-	var result = g._evaluate_deduction(observer, g.board[ded - 1], 1.0, false)
+	var ded = GameBoard.file_deduction(g, {"type": "good", "a": target.id}, [number])
+	var result = GamePresentation._evaluate_deduction(g, observer, g.board[ded - 1], 1.0, false)
 	check(result.get("workshop", false) and receipt.id in observer.workshop_state.facts, "a silence card uses shared strict presentation and exact receipt ownership")
 	check(_close(before, observer.suspicion), "citing already public silence gives no second award")
 	input.public_events = []
@@ -115,8 +117,8 @@ func _silence() -> void:
 		var bad = raw.duplicate(true)
 		bad.erase("when")
 		bad.merge(changes, true)
-		check(Assess.activity_card(preload("res://workshop/live_evidence.gd").normalize_card(bad), g.workshop_snapshot([])).is_empty(), "malformed or mismatched silence is rejected")
-	var view = Assess.prepare(g.workshop_snapshot([ded], observer.id)).view
+		check(Assess.activity_card(preload("res://workshop/live_evidence.gd").normalize_card(bad), GamePresentation.workshop_snapshot(g, [])).is_empty(), "malformed or mismatched silence is rejected")
+	var view = Assess.prepare(GamePresentation.workshop_snapshot(g, [ded], observer.id)).view
 	var single = Public.factors(view)
 	view.timeline.events.append(view.timeline.events.filter(func(e): return e.kind == "silenced")[0].duplicate(true))
 	check(Public.factors(view) == single, "duplicate silence announcements count once per public event")
@@ -152,9 +154,9 @@ func _martyr_roles() -> void:
 	actor.role = "martyr"
 	actor.alive = false
 	var raw = {"kind": "martyr", "source": "player", "subject": [actor.id, saved.id], "day": 2, "phase": 2, "text": "The Martyr dies in another's place"}
-	var number = g.add_card(raw)
+	var number = GameBoard.add_card(g, raw)
 	var receipt = preload("res://workshop/live_evidence.gd").normalize_card(g.board[number - 1])
-	var input = g.workshop_snapshot([], saved.id)
+	var input = GamePresentation.workshop_snapshot(g, [], saved.id)
 	var adapted = Assess.activity_card(receipt, input)
 	check(receipt.subjects[0] == saved.id and adapted.get("data", {}).get("martyr") == actor.id and adapted.get("data", {}).get("saved") == saved.id, "sorting the public subject set cannot swap Martyr and saved roles")
 	var reordered = raw.duplicate(true)
@@ -168,9 +170,9 @@ func _martyr_roles() -> void:
 	var invalid = receipt.duplicate(true)
 	invalid.content.saved = actor.id
 	check(Assess.activity_card(invalid, input).is_empty(), "the same person cannot fill both substitution roles")
-	var ded = g.file_deduction({"type": "good", "a": saved.id}, [number])
+	var ded = GameBoard.file_deduction(g, {"type": "good", "a": saved.id}, [number])
 	for n in g.w.living():
-		var heard = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
+		var heard = GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false)
 		var listener = n.shadow if n.is_evil() else n
 		check(heard.get("workshop", false) and receipt.id in listener.workshop_state.facts, "a role-preserving Martyr receipt reaches " + n.id)
 
@@ -196,7 +198,7 @@ func _martyr_ownership(size: int) -> void:
 		check(listener.workshop_state.facts.size() == 1 and listener.workshop_state.owners.values()[0] == ["public"], "uncited proof has one automatic public receipt for " + n.id)
 		check([actor.id, saved.id].all(func(person): return person == listener.id or (is_zero_approx(Mind.susp(listener, person)) and is_zero_approx(listener.suspicion[person]) and is_equal_approx(listener.workshop_state.outside[person], 2.4))), "a witnessed proof clears even saturated baselines without destroying them for " + n.id)
 	var before = observer.suspicion.duplicate(true)
-	var number = g.add_card({"kind": "martyr", "source": "player", "subject": [actor.id, saved.id], "martyr": actor.id, "saved": saved.id,
+	var number = GameBoard.add_card(g, {"kind": "martyr", "source": "player", "subject": [actor.id, saved.id], "martyr": actor.id, "saved": saved.id,
 		"day": 2, "phase": 2, "text": "The same witnessed substitution in the notebook"})
 	Mind.refresh_beliefs(g.w, observer, "proof on board")
 	check(_close(before, observer.suspicion) and observer.workshop_state.facts.size() == 1, "World proof and notebook prose share one receipt and one effect")
@@ -206,7 +208,7 @@ func _martyr_ownership(size: int) -> void:
 	check(is_equal_approx(observer.workshop_state.outside[saved.id], 2.52) and is_zero_approx(observer.suspicion[saved.id]), "proof refresh preserves an independent addition under the clear")
 	# The empty direct snapshot has no headline, but its permitted knowledge is
 	# still well-defined independently of any player presentation.
-	var knowledge = Assess._listener(g.workshop_snapshot([], observer.id), []).knowledge
+	var knowledge = Assess._listener(GamePresentation.workshop_snapshot(g, [], observer.id), []).knowledge
 	check(knowledge.public_roles.get(actor.id) == "martyr" and actor.id in knowledge.good and saved.id in knowledge.good, "the witnessed gift and alignments are public knowledge outside attention")
 	Mind.refresh_beliefs(g.w, observer, "shared proof repeat")
 	check(observer.workshop_state.active and is_zero_approx(observer.suspicion[saved.id]) and is_equal_approx(observer.workshop_state.outside[saved.id], 2.52), "repeated refresh preserves the complete independent baseline under the proof")

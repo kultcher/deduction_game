@@ -8,6 +8,8 @@
 ##   - Evil supporters never come out with their real role.
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
@@ -44,7 +46,7 @@ func _meeting_game(sd: int, day: int = 2):
 	g.w.day = day
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	return g
 
 
@@ -116,7 +118,7 @@ func _test_flow() -> void:
 	_check(g.w.meeting.pending.get("supporters_done", false), "skipping the press hands the floor to the supporters")
 	var g2 = _meeting_game(9202)
 	var t2 = _unclaimed(g2)[0]
-	var case2: int = g2.file_deduction({"type": "evil", "a": t2.id}, [g2.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"])[0].n])
+	var case2: int = GameBoard.file_deduction(g2, {"type": "evil", "a": t2.id}, [g2.board.filter(func(c): return c.get("kind", "") in ["sighting", "info", "claim"])[0].n])
 	g2.command("nominate %s raw" % t2.name.to_lower())
 	g2.command("case %d" % case2)
 	_check(g2.w.meeting.pending.get("supporters_done", false) and g2.statement_used,

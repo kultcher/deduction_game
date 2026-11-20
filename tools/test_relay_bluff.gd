@@ -13,6 +13,7 @@
 ##   godot --headless --path . --script res://tools/test_relay_bluff.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Seeds = preload("res://tools/fixture_seeds.gd")
 
 const Game = preload("res://game/game.gd")
@@ -119,7 +120,7 @@ func _built_relay(seed: int, evil_teller: bool, subject: String) -> Dictionary:
 	w.day = 1
 	w._kill(dead)
 	w.day = 2
-	g._facts([{"kind": "death", "subject": [dead.id], "block": dead.home_block, "source": "player", "night": 1, "text": "%s was killed by the demon on night 1." % dead.name}])
+	GameBoard._facts(g, [{"kind": "death", "subject": [dead.id], "block": dead.home_block, "source": "player", "night": 1, "text": "%s was killed by the demon on night 1." % dead.name}])
 	var entry: Dictionary = {"day": 2, "phase": 3, "role": "medium", "shared": true, "true": not evil_teller,
 		"data": {"dead": dead.id, "item": {"type": "sighting", "who": who.id, "block": who.home_block, "night": 0}},
 		"text": "communing with the dead at %s's hearth, I learned they saw %s out the night before you arrived" % [dead.name, who.name]}

@@ -1,6 +1,9 @@
 ## Private conversation about gifts: disclosure tiers and mood, refusals, hints and their follow-ups, repeat questions, protection and secrecy requests.
 ## Merged from: test_backlog_batch2, test_backlog_batch3, test_backlog_batch4, test_fixes, test_phase2_bug_sweep, test_phase4_1_reveal_and_rumor_pacing, test_playtest_followups.
 extends SceneTree
+const GameScreens = preload("res://game/game_screens.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const MainActions = preload("res://ui/main_actions.gd")
 const MainPickers = preload("res://ui/main_pickers.gd")
 
@@ -421,11 +424,11 @@ func hint_options():
 	var n = g.w.living_good()[0]
 	var t = g.w.living_good()[1]
 	n.hints = {}
-	check(not Mind.has_live_hint(g.w, n) and not "ask why" in g._talk_options(n) and not "ask why" in g._help(), "generic help and conversation options omit ask why without a live hint")
+	check(not Mind.has_live_hint(g.w, n) and not "ask why" in GameConversation._talk_options(g, n) and not "ask why" in GameScreens._help(g), "generic help and conversation options omit ask why without a live hint")
 	n.hints[t.id] = {"day": g.w.day}
-	check(Mind.has_live_hint(g.w, n) and "ask why" in g._talk_options(n), "conversation advertises ask why for a living hinted target")
+	check(Mind.has_live_hint(g.w, n) and "ask why" in GameConversation._talk_options(g, n), "conversation advertises ask why for a living hinted target")
 	t.alive = false
-	check(not Mind.has_live_hint(g.w, n) and not "ask why" in g._talk_options(n), "a dead hinted target does not advertise ask why")
+	check(not Mind.has_live_hint(g.w, n) and not "ask why" in GameConversation._talk_options(g, n), "a dead hinted target does not advertise ask why")
 	var state = g.w.rng.state
 	var first = Mind.answer_hint(g.w, n)
 	var second = Mind.answer_hint(g.w, n)
@@ -522,7 +525,7 @@ func confidence_public_notice():
 	check(lines.size() == count, "later public refreshes do not repeat the confidence notice")
 	a.confidences[999] = na.id
 	var trust = na.trust
-	a._break_confidences([999])
+	GameBoard._break_confidences(a, [999])
 	check(na.trust == trust and not a.confidences.has(999), "the existing public-claim exemption still releases the player's confidence")
 	var g = backlog_batch4__fresh()
 	var n = g.w.living_good()[0]
@@ -559,7 +562,7 @@ func seer_space_targets():
 		n.trust = 1.0
 		var others = g.w.living().filter(func(m): return m != n)
 		g.w.rng.seed = 9102
-		var r = g._gift_request(n, "check", others[0].id + separator + others[1].id)
+		var r = GameConversation._gift_request(g, n, "check", others[0].id + separator + others[1].id)
 		if separator == ", ":
 			control_rng = g.w.rng.state
 			control_response = r
@@ -567,7 +570,7 @@ func seer_space_targets():
 		else:
 			check(r == control_response and n.gift_request == control_request and g.w.rng.state == control_rng, "Seer request separator preserves targets, response and exact draw: " + separator)
 		var rng = g.w.rng.state
-		check(g._gift_request(n, "check", "unknown_name " + others[0].id).is_empty() and g.w.rng.state == rng, "invalid Seer names are rejected before any roll")
+		check(GameConversation._gift_request(g, n, "check", "unknown_name " + others[0].id).is_empty() and g.w.rng.state == rng, "invalid Seer names are rejected before any roll")
 
 
 # ---- test_fixes
@@ -742,10 +745,10 @@ func _hint_followup() -> void:
 	_check(told["facts"].all(func(f): return f.get("confidential", "") == n.id or f.get("source", "") != n.id), "and asks you to keep it quiet (cards marked confidential)")
 	_check(not n.hints.has(t.id), "the hint is answered")
 	var before = g.board.size()
-	g._facts(told["facts"])
+	GameBoard._facts(g, told["facts"])
 	_check(g.confidences.size() >= 1 and g.board.size() > before, "the confidential cards are on the board and remembered")
 	var tr = n.trust
-	g._break_confidences(g.confidences.keys())
+	GameBoard._break_confidences(g, g.confidences.keys())
 	_check(n.trust < tr - 0.04 and g.confidences.is_empty(), "using them at the meeting breaks your word (trust %.2f -> %.2f)" % [tr, n.trust])
 	# Evil's free bluff hint: nothing to show for it, so it declines.
 	var e = w.evil_team()[0]
@@ -952,8 +955,8 @@ func approach_fatigue():
 		a.approach = {"npc": n, "agenda": agenda, "what": "ward"}
 		b.approach = {"npc": control, "agenda": agenda, "what": "ward"}
 		var rng = a.w.rng.state
-		a._approach_command("accept", "")
-		b._approach_command("accept", "")
+		GameConversation._approach_command(a, "accept", "")
+		GameConversation._approach_command(b, "accept", "")
 		check(n.pressed_today == 0 and n.trust == control.trust, "accepted %s approach starts with no accumulated question fatigue" % agenda)
 		check(a.w.rng.state == b.w.rng.state and n.role_guesses == 2, "approach reset changes neither existing rolls nor wrong guesses")
 		var before = n.trust
@@ -965,17 +968,17 @@ func approach_fatigue():
 	var n = approach_fixture(g, false)
 	n.pressed_today = 8
 	g.approach = {"npc": n, "agenda": "news"}
-	g._approach_command("decline", "")
+	GameConversation._approach_command(g, "decline", "")
 	check(n.pressed_today == 8, "declining a news approach does not reset fatigue")
 	g.state = "approach"
 	g.approach = {"npc": n, "agenda": "protect", "what": "ward"}
-	g._approach_command("decline", "")
+	GameConversation._approach_command(g, "decline", "")
 	check(n.pressed_today == 8, "declining a protection request does not reset fatigue")
 	g.state = "day"
 	g.divulge_due = [n.id]
 	var before = n.trust
-	var divulged = g._maybe_divulge()
+	var divulged = GameConversation._maybe_divulge(g)
 	check(divulged and n.pressed_today == 0, "promised free disclosure itself resets fatigue before its opening answer (delivered %s, fatigue %d)" % [divulged, n.pressed_today])
 	check(n.trust >= before, "promised disclosure adds no old question-fatigue trust penalty")
-	g._approach_command("accept", "")
+	GameConversation._approach_command(g, "accept", "")
 	check(g.questions_left == 3 and n.pressed_today == 0, "continuing a promised disclosure has a playtest_followups__fresh question allowance")

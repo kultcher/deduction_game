@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Inspector = preload("res://ui/workshop_comparison.gd")
 const UITheme = preload("res://ui/theme.gd")
@@ -19,8 +21,8 @@ func _run() -> void:
 	n.beliefs = []
 	n.known_claims = {}
 	var src = g.w.npcs.filter(func(p): return p != n)[0]
-	var card = g.add_card({"kind": "info", "source": src.id, "role": "surveyor", "day": 0, "data": {"count": 2}, "text": "A Surveyor reported evil on two blocks."})
-	g.file_deduction({"type": "evil", "a": g.w.npcs[2].id}, [card])
+	var card = GameBoard.add_card(g, {"kind": "info", "source": src.id, "role": "surveyor", "day": 0, "data": {"count": 2}, "text": "A Surveyor reported evil on two blocks."})
+	GameBoard.file_deduction(g, {"type": "evil", "a": g.w.npcs[2].id}, [card])
 	var panel = Inspector.new()
 	panel.g = g
 	var font = SystemFont.new()
@@ -37,7 +39,7 @@ func _run() -> void:
 	panel.refresh()
 	check(g.prediction_spoiled and not panel.inspect_button.disabled, "debug inspection is labelled and follows existing scoring rules")
 	g.workshop_compare = true
-	g._evaluate_deduction(n, g.board[-1], 0.6, true, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[-1], 0.6, true, "meeting")
 	panel._records()
 	check("Applied shared assessment" in panel.output.text and not g.workshop_comparisons[-1].has("social"), "recorded applied assessments are labelled shared, with no second comparison")
 	g.workshop_compare = false
@@ -50,7 +52,7 @@ func _run() -> void:
 	check(g.w.rng.state == rng_state, "manual UI preview does not consume game randomness")
 	panel.automatic.button_pressed = true
 	check(g.workshop_compare, "recording control enables the shared venue comparator")
-	g._evaluate_deduction(n, g.board[-1], 0.6, false, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[-1], 0.6, false, "meeting")
 	panel._records()
 	check("Applied shared assessment" in panel.output.text and "meeting" in panel.output.text, "recorded shared assessment and proposal appear together")
 	panel.refresh()
