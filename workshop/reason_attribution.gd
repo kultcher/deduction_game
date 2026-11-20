@@ -973,9 +973,6 @@ static func _needs_fits_recheck(ctx: Dictionary, cand: Dictionary) -> bool:
 		or ctx.attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
 	)
 
-## Why a "taken together" reading moves the listener against pid, as they'd say it
-## (own) and as it reads when the town knows the reading (public). Split out of
-## _augment_joint_leave_one_out so the wording can be checked on its own (Herald, Nov 18).
 ## The card sets the belief model weighed together in this refresh (Jury's `cx`): each item
 ## (a unit, the movement connection, the day connection), the core (its seed and member items
 ## and the firsthand cards, judged jointly), and each stored case it counted. Null when there
@@ -1022,6 +1019,9 @@ static func weighed_together(groups, a: String, b: String) -> bool:
 	return false
 
 
+## Why a "taken together" reading moves the listener against pid, as they'd say it
+## (own) and as it reads when the town knows the reading (public). Split out of
+## _augment_joint_leave_one_out so the wording can be checked on its own (Herald, Nov 18).
 static func joint_whys(view: Dictionary, cand: Dictionary, pid: String, csrc: String, self_id: String, crole: String, attended: Array) -> Dictionary:
 	var has_pid_claim: bool = attended.any(func(o): return not o.get("quoted", false) and str(o.get("source", "")) == pid and str(o.get("kind", "")) in ["report", "claim"])
 	var why_own: String
