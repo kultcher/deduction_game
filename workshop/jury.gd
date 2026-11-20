@@ -491,7 +491,7 @@ static func _movement_trace_kind(view: Dictionary, cards: Array) -> String:
 	# Only what the case itself cites: scene traces assessed elsewhere on the board are not
 	# "the trace evidence" of a case that never mentions one.
 	var has_trace: bool = cards.any(func(c): return not c.get("quoted", false) and c.get("kind", "") == "trace")
-	var has_move: bool = cards.any(func(c): return not c.get("quoted", false) and (c.get("kind", "") in ["sighting", "alibi", "coverage", "evening", "dropped", "item"] or (c.get("kind", "") == "report" and c.get("role", "") in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])))
+	var has_move: bool = cards.any(func(c): return not c.get("quoted", false) and (c.get("kind", "") in ["sighting", "alibi", "coverage", "evening"] or (c.get("kind", "") == "report" and c.get("role", "") in ["nightwatch", "warden", "lamplighter", "veteran", "medium"])))
 	if has_trace and has_move:
 		return "movement and trace"
 	if has_trace:

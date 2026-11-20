@@ -152,13 +152,35 @@ func _test_hint_only_at_moderate_bond() -> void:
 	var g = _game(7103)
 	var w = g.w
 	w.day = 2   # past the day-1 confidant window
-	var pr: Array = _good_pair(w, ["seer", "warden", "clerk"])
-	var s = pr[0]
-	var l = pr[1]
-	_prime(w, s, l, 0.5)
-	s.traits["privacy"] = 0.5
-	var kinds: Dictionary = _kind_counts(w, s, l)
-	_check(kinds.get("role_hint", 0) > kinds.get("role_claim", 0), "at moderate bond a hint is likelier than the gift (%s)" % str(kinds))
+	# A teller whose gift doesn't already push it to claim every time: its role's own
+	# disclosure score varies with the deal (Beadle, on #remove-drops: the setup reshuffle
+	# made the first preferred teller one that always names its gift).
+	var goods: Array = w.living_good()
+	var cands: Array = []
+	for r in ["seer", "warden", "clerk"]:
+		cands.append_array(goods.filter(func(n): return n.role == r))
+	cands.append_array(goods.filter(func(n): return C.hint_package(w, n.role) != "" and not (n in cands)))
+	var s = null
+	var l = null
+	var kinds: Dictionary = {}
+	# Best a teller that sometimes names its gift too, so the comparison means something.
+	for need_claim in [true, false]:
+		for cand in cands:
+			var lis = goods.filter(func(x): return x != cand)[0]
+			_prime(w, cand, lis, 0.5)
+			cand.traits["privacy"] = 0.5
+			var got: Dictionary = _kind_counts(w, cand, lis)
+			if got.get("role_hint", 0) > 0 and (got.get("role_claim", 0) > 0 or not need_claim):
+				s = cand
+				l = lis
+				kinds = got
+				break
+		if s != null:
+			break
+	if s == null:
+		_check(false, "a teller that gives hints at moderate bond, in this deal")
+		return
+	_check(kinds.get("role_hint", 0) > kinds.get("role_claim", 0), "at moderate bond a hint is likelier than the gift (%s: %s)" % [s.role, str(kinds)])
 	var item = _pick_kind(w, s, l, "role_hint")
 	_check(item != null, "a hint is picked to deliver (Steward Nov 19 silent skip)")
 	if item != null:

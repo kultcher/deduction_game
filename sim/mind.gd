@@ -1000,10 +1000,6 @@ static func _apply_conclusion_pref(n, c: Dictionary, eff: float) -> void:
 	match ctype:
 		"good":
 			n.protect_pref[target_id] = maxf(n.protect_pref.get(target_id, 0.0), 0.5 * eff)
-		"protect":
-			n.protect_pref[target_id] = maxf(n.protect_pref.get(target_id, 0.0), 1.0 * eff)
-		"spare":
-			n.spare_pref[target_id] = maxf(n.spare_pref.get(target_id, 0.0), 1.0 * eff)
 		"role":
 			var r: String = str(c.get("role", ""))
 			if r != "" and eff >= Tuning.Mind.BELIEVED_ROLE_MIN_EFF and n.believed_roles.get(target_id, "") != "revenant":
@@ -1516,7 +1512,7 @@ static func card_clears(card: Dictionary, id: String, claims: bool = false) -> b
 			var conclusion: Dictionary = card.get("conclusion", {})
 			if conclusion.get("a", "") != id or card.get("unfounded", false):
 				return false
-			if conclusion.get("type", "") in ["good", "notdemon", "truthful", "spare", "protect", "secret", "marked", "red_herring"]:
+			if conclusion.get("type", "") in ["good", "notdemon", "truthful", "secret", "marked", "red_herring"]:
 				return true
 			return conclusion.get("type", "") == "role" and C.ROLES.get(conclusion.get("role", ""), {}).get("align", "") == "good"
 		"info":

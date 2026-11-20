@@ -32,7 +32,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. The misframed-case hint `[decided]`
     2. Summarised answers at a nomination `[decided]`
-    3. Remove drops altogether `[decided]`
+    3. Remove drops altogether `[in review]`
     4. Argon's audit: cleanup `[decided]`
     5. The social presentation route `[decided]`
     6. The premise menu, trimmed `[decided]`
@@ -166,7 +166,8 @@ listener (#273), both Lantern's.
   is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
   Beadle reviewing the sim side.
   **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
-  Revenant's totem and the place's regulars. [decided]
+  Revenant's totem and the place's regulars. **Built** in the drop-removal PR (Quill, Nov 20;
+  handoff `2026-11-20-0251-quill-remove-drops.md`). [in review]
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger

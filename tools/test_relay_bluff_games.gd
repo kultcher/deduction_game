@@ -45,7 +45,8 @@ func _init() -> void:
 
 
 ## The relayer's chance with every held card isn't more than 2 points below the same refresh
-## with its relays told as its own firsthand sightings.
+## with its relayed sightings told as its own, and isn't lower than with its relayed readings
+## left out.
 func _relay_case(found: Dictionary, label: String) -> void:
 	if found.is_empty():
 		check(false, "%s (no seed searched has the case)" % label)
@@ -54,4 +55,10 @@ func _relay_case(found: Dictionary, label: String) -> void:
 	var with_r: float = float(eff.get("with", -1.0))
 	var without: float = float(eff.get("without", -1.0))
 	var firsthand: float = float(eff.get("firsthand", -1.0))
-	check(not eff.is_empty() and firsthand >= 0.0 and with_r >= firsthand - 0.02, "%s (seed %d: %s on %s, %.2f with the relays, %.2f as its own sightings, %.2f without)" % [label, int(found.seed), found.listener, found.teller, with_r, firsthand, without])
+	var readings_without: float = float(eff.get("readings_without", -1.0))
+	# Relayed sightings against the relayer's own word; relayed readings against leaving them
+	# out (Lantern, Nov 20: recasting a relayed Gravedigger reading as the relayer's own made
+	# a role clash, seed 100009). Either alone is checked only if the relays include it.
+	var sight_ok: bool = int(eff.get("sightings", 0)) == 0 or (firsthand >= 0.0 and with_r >= firsthand - 0.02)
+	var read_ok: bool = int(eff.get("readings", 0)) == 0 or (readings_without >= 0.0 and with_r >= readings_without - 0.01)
+	check(not eff.is_empty() and sight_ok and read_ok, "%s (seed %d: %s on %s, %.2f with the relays, %.2f with the sightings as its own, %.2f with the readings left out, %.2f without; %d sightings, %d readings relayed)" % [label, int(found.seed), found.listener, found.teller, with_r, firsthand, readings_without, without, int(eff.get("sightings", 0)), int(eff.get("readings", 0))])

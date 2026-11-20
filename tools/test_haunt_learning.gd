@@ -3,6 +3,7 @@
 ##     whoever works there (or heard around the place when nobody does).
 ##   - Seeing someone idle at one of their haunts, from the same block, on 2 different days
 ##     (3 for the tavern) teaches it.
+## And searching where the Revenant's totem is hidden finds it.
 ##   godot --headless --path . --script res://tools/test_haunt_learning.gd
 extends SceneTree
 
@@ -25,6 +26,7 @@ func _check(ok: bool, label: String) -> void:
 
 func _init() -> void:
 	_test_search()
+	_test_search_totem()
 	_test_sightings()
 	print("Haunt learning: %d checks, %d failures" % [_checks, _fails])
 	quit(1 if _fails > 0 else 0)
@@ -69,6 +71,22 @@ func _test_search() -> void:
 	GameDayNight._search(g)
 	var again: int = regulars.filter(func(n): return l in g.known_haunts.get(n.id, [])).size()
 	_check(again == after, "a place's regulars are asked about once per game")
+
+
+## Searching where the Revenant's totem is hidden finds and burns it, and puts it on the board.
+## (Search kept its totem and regulars when drops were removed, Michael, Nov 19.)
+func _test_search_totem() -> void:
+	var g = _game(7103)
+	var l: String = "well"
+	var owner = g.w.living()[0]
+	g.w.totem = {"loc": l, "day": g.w.day, "owner": owner.id, "material": owner.home_block}
+	g.loc = l
+	g.moved = true
+	g.events.clear()
+	GameDayNight._search(g)
+	var text: String = g.events.filter(func(e): return e.get("k", "") == "narration").map(func(e): return str(e.text)).reduce(func(a, b): return a + " " + b, "")
+	_check(g.w.totem.is_empty() and "totem" in text, "searching where the totem is hidden finds and burns it (%s)" % text)
+	_check(g.board.any(func(c): return str(c.get("kind", "")) == "totem" and str(c.get("loc", "")) == l), "and the totem goes on the board")
 
 
 func _test_sightings() -> void:

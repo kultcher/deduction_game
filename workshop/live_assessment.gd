@@ -77,7 +77,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 			cards.append(activity)
 			continue
 		if e.kind != "info" or e.content.get("role", "") not in ROLES:
-			if e.kind in ["home", "work", "haunt", "trait", "bond", "conversation", "sighting", "alibi", "totem", "dropped", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]:
+			if e.kind in ["home", "work", "haunt", "trait", "bond", "conversation", "sighting", "alibi", "totem", "trace", "vigil", "quiet", "death", "execution", "martyr", "knell", "secret", "silenced", "refusal", "hint", "vote"]:
 				result.issues.append("Incomplete or invalid %s card (%s)." % [e.kind, e.id])
 			else:
 				result.issues.append("The %s card%s isn't supported yet (%s)." % [e.kind, " (" + str(e.content.get("role")) + ")" if e.content.has("role") else "", e.id])
@@ -132,7 +132,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 	for card in cards:
 		if card.kind == "attack":
 			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})
-	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "dropped", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]) \
+	if cards.any(func(c): return c.has("relay_source") or c.kind in ["sighting", "alibi", "coverage", "evening", "trace", "quiet", "event", "secret_claim", "attack"] or c.get("role") in ["nightwatch", "warden", "veteran", "lamplighter", "medium", "sexton", "martyr"]) \
 			or (LiveActivity.day_demon_share(view) > 0.0 and LiveActivity.has_day_evidence(cards)):
 		view["live_activity"] = true
 		view.world_options["roles"] = true
@@ -392,10 +392,6 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["kind"] = "totem"
 		card["data"] = {"candidates": snapshot.people.filter(func(p): return p.home == block).map(func(p): return p.id)}
 		return card if not card.data.candidates.is_empty() else {}
-	if e.kind == "dropped" and e.source == "evidence" and e.observed_at.phase == "night" and block in C.BLOCKS and e.content.get("material") in C.BLOCKS:
-		card["kind"] = "dropped"
-		card["data"] = {"material": e.content.material}
-		return card
 	if e.kind in ["sighting", "conversation"] and e.observed_at.phase in ["morning", "afternoon", "evening"] and not e.subjects.is_empty() and e.subjects.all(func(id): return id in ids) and block in C.BLOCKS:
 		if e.kind == "conversation" and e.subjects.size() != 2:
 			return {}
@@ -456,8 +452,6 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 			for xf in ["excuse", "excuses_night", "duty_role"]:
 				if e.content.has(xf):
 					card[xf] = e.content[xf]
-			if e.content.get("dropped", false) and e.source == "evidence" and e.subjects.size() == 1:
-				card["item_drop"] = true
 			return card
 	# A scorched sigil: the Demon came to that door that night and the player's ward held.
 	# Read like a murder for routes (the Demon went to the target's home); see the view's

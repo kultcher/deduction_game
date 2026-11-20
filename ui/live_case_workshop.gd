@@ -583,9 +583,9 @@ func _refresh_case() -> void:
 		if str(card.get("support_note", "")) != "":
 			_label(case_box, card.support_note, 17, "accent")
 		var editable: bool = (card.kind == "report" and card.role in Live.Assess.ROLES) or card.kind in ["sighting", "secret_claim"] or card.get("context_kind", "") == "psychologist"
-		if editable and not card.get("fallback", false):
+		if editable and not card.get("unweighable", false):
 			_question(card)
-		elif not card.get("fallback", false):
+		elif not card.get("unweighable", false):
 			_label(case_box, card.text, 18)
 			_label(case_box, "Link this testimony into your argument. Role claims remain conditional on honesty; sightings and alibi discrepancies are circumstantial.", 16)
 		else:
@@ -843,7 +843,7 @@ func _send(command: String) -> void:
 	presenting = false
 	var lines: Array = []
 	for delivery in g.workshop_deliveries:
-		lines.append("%s · %s" % [delivery.name, "Shared evaluator" if delivery.model == "shared" else "Existing rules (explicit route)"])
+		lines.append(delivery.name)
 		for issue in delivery.issues:
 			lines.append("  " + issue)
 	if lines.is_empty():
