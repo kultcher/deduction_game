@@ -21,6 +21,8 @@ const MindNomination = preload("res://sim/mind_nomination.gd")
 const MindDefence = preload("res://sim/mind_defence.gd")
 const MindVote = preload("res://sim/mind_vote.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
+const MindAnswers = preload("res://sim/mind_answers.gd")
 const Presentations = preload("res://sim/dialogue_presentations.gd")
 
 static func _mind():
@@ -1330,31 +1332,31 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	return MindVote._vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, trace_id)
 
 
-# ---------------------------------------------------------------- pressing & conversation (sim/mind_dialogue.gd)
+# ---------------------------------------------------------------- pressing & conversation (sim/mind_dialogue.gd, mind_press.gd, mind_answers.gd)
 
 static func has_live_hint(w, n) -> bool:
-	return MindDialogue.has_live_hint(w, n)
+	return MindPress.has_live_hint(w, n)
 
 static func answer_hint(w, n) -> Dictionary:
-	return MindDialogue.answer_hint(w, n)
+	return MindPress.answer_hint(w, n)
 
 static func _hint_decline(w, n, t) -> Dictionary:
-	return MindDialogue._hint_decline(w, n, t)
+	return MindPress._hint_decline(w, n, t)
 
 static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dictionary:
-	return MindDialogue.press(w, n, card, known_haunts)
+	return MindPress.press(w, n, card, known_haunts)
 
 static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}, already_counted: bool = false) -> Dictionary:
 	return MindDialogue.react_to_trace(w, n, card, known_haunts, already_counted)
 
 static func _gift_outing(w, n, night: int) -> bool:
-	return MindDialogue._gift_outing(w, n, night)
+	return MindPress._gift_outing(w, n, night)
 
 static func sleepwalk_excuse(w, n, where: String) -> Dictionary:
-	return MindDialogue.sleepwalk_excuse(w, n, where)
+	return MindPress.sleepwalk_excuse(w, n, where)
 
 static func _answer_pressed_night(w, n, night: int) -> Dictionary:
-	return MindDialogue._answer_pressed_night(w, n, night)
+	return MindPress._answer_pressed_night(w, n, night)
 
 static func on_question(w, n) -> void:
 	MindDialogue.on_question(w, n)
@@ -1399,37 +1401,37 @@ static func keep_request(w, n, tier: int) -> Dictionary:
 	return MindDialogue.keep_request(w, n, tier)
 
 static func answer_gift(w, n, force_tier: int = 0, count_question: bool = true) -> Dictionary:
-	return MindDialogue.answer_gift(w, n, force_tier, count_question)
+	return MindAnswers.answer_gift(w, n, force_tier, count_question)
 
 static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_question: bool = true) -> Dictionary:
-	return MindDialogue._answer_gift_impl(w, n, force_tier, trace_id, count_question)
+	return MindAnswers._answer_gift_impl(w, n, force_tier, trace_id, count_question)
 
 static func _gossip_share(w, n, topic: String) -> int:
-	return MindDialogue._gossip_share(w, n, topic)
+	return MindAnswers._gossip_share(w, n, topic)
 
 static func warden_door(w, n, nd: int) -> String:
-	return MindDialogue.warden_door(w, n, nd)
+	return MindAnswers.warden_door(w, n, nd)
 
 static func _guard_fact(w, n, nd: int, guarded: String) -> Dictionary:
-	return MindDialogue._guard_fact(w, n, nd, guarded)
+	return MindAnswers._guard_fact(w, n, nd, guarded)
 
 static func _hearth_dead(w, n, nd: int):
-	return MindDialogue._hearth_dead(w, n, nd)
+	return MindAnswers._hearth_dead(w, n, nd)
 
 static func _bluff_hearth(w, n, nd: int) -> String:
-	return MindDialogue._bluff_hearth(w, n, nd)
+	return MindAnswers._bluff_hearth(w, n, nd)
 
 static func _alibi_home(n, nd: int) -> Dictionary:
-	return MindDialogue._alibi_home(n, nd)
+	return MindAnswers._alibi_home(n, nd)
 
 static func answer_night(w, n, night: int = -1) -> Dictionary:
-	return MindDialogue.answer_night(w, n, night)
+	return MindAnswers.answer_night(w, n, night)
 
 static func reading_disclosed(n, entry: Dictionary) -> bool:
-	return MindDialogue.reading_disclosed(n, entry)
+	return MindAnswers.reading_disclosed(n, entry)
 
 static func _fake_watch_entry(n, nd: int) -> Dictionary:
-	return MindDialogue._fake_watch_entry(n, nd)
+	return MindAnswers._fake_watch_entry(n, nd)
 
 static func _spoken_list(items: Array) -> String:
 	return Dialogue.Observations.spoken_list(items)
@@ -1441,13 +1443,13 @@ static func _observation_lines(n, groups: Array, audience: String, speech_act: S
 	return MindDialogue._observation_lines(n, groups, audience, speech_act, preceded, first_relation)
 
 static func sighting_report(w, n, b: Dictionary, nd: int) -> Dictionary:
-	return MindDialogue.sighting_report(w, n, b, nd)
+	return MindAnswers.sighting_report(w, n, b, nd)
 
 static func sighting_is_here(w, b: Dictionary, who: String, near_loc: String = "") -> bool:
-	return MindDialogue.sighting_is_here(w, b, who, near_loc)
+	return MindAnswers.sighting_is_here(w, b, who, near_loc)
 
 static func answer_today(w, n, when: String = "", near_loc: String = "", seen_pairs: Dictionary = {}) -> Dictionary:
-	return MindDialogue.answer_today(w, n, when, near_loc, seen_pairs)
+	return MindAnswers.answer_today(w, n, when, near_loc, seen_pairs)
 
 static func answer_opinion(w, n, t) -> Dictionary:
 	return MindDialogue.answer_opinion(w, n, t)

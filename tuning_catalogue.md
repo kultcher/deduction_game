@@ -14,7 +14,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
-| `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_dialogue.gd` |
+| `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_answers.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
@@ -190,10 +190,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `QUESTION_FATIGUE_BASE` | `0.03` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_PRIVACY` | `0.05` |  | `sim/mind_dialogue.gd` |
 | `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_dialogue.gd` |
+| `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
+| `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
 | `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social.gd` |
-| `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_dialogue.gd` |
+| `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_answers.gd` |
 | `PROMISE_OFFER_BONUS` | `0.03` |  | `game/game_conversation.gd` |
 | `PROMISE_KEPT_BONUS` | `0.06` |  | `game/game_conversation.gd` |
 | `PROMISE_BROKEN_DROP` | `0.15` |  | `game/game_conversation.gd` |
@@ -457,10 +457,10 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TIER_VAGUE` | `0.15` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
 | `TIER_PARTIAL` | `0.45` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
 | `TIER_FULL` | `0.75` |  | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_TRUST_PIVOT` | `0.45` | Hint follow-ups, protection & confidence requests | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_TRUST_SLOPE` | `2.0` |  | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_dialogue.gd` |
-| `HINT_FOLLOWUP_AFRAID_OFFSET` | `-0.3` |  | `sim/mind_dialogue.gd` |
+| `HINT_FOLLOWUP_TRUST_PIVOT` | `0.45` | Hint follow-ups, protection & confidence requests | `sim/mind_press.gd` |
+| `HINT_FOLLOWUP_TRUST_SLOPE` | `2.0` |  | `sim/mind_press.gd` |
+| `HINT_FOLLOWUP_PRIVACY_SLOPE` | `0.8` |  | `sim/mind_press.gd` |
+| `HINT_FOLLOWUP_AFRAID_OFFSET` | `-0.3` |  | `sim/mind_press.gd` |
 | `PROTECTION_REQ_MIN_TRUST` | `0.45` |  | `sim/mind_dialogue.gd` |
 | `PROTECTION_REQ_BASE` | `0.35` |  | `sim/mind_dialogue.gd` |
 | `PROTECTION_REQ_TRUST_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd` |
@@ -478,30 +478,30 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `FEAR_PRESSURE_SCALE` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `FEAR_EASED_MULT` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `FEAR_CAP` | `0.85` |  | `sim/mind_dialogue.gd` |
-| `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_dialogue.gd` |
-| `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_dialogue.gd` |
+| `PRESS_STRENGTH_MIN` | `0.3` | Pressing with evidence Press strength (purge phase 4b): the shared model's weight for the card, floored here; a pressed deduction lands at a fixed strength; cards the model has no entry for count this much against someone they structurally implicate. | `sim/mind_press.gd` |
+| `PRESS_DEDUCTION_STRENGTH` | `0.6` |  | `sim/mind_press.gd` |
 | `UNMODELLED_CARD_WEIGHT` | `0.5` |  | `sim/mind.gd` |
-| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_dialogue.gd` |
-| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_dialogue.gd` |
-| `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_dialogue.gd` |
-| `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `CONFESS_PRIVACY_SLOPE` | `1.0` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `CONFESS_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_dialogue.gd` |
-| `CONFESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
-| `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_dialogue.gd`, `sim/mind_podium.gd` |
-| `HIDDEN_GIFT_DECLINE_BIAS` | `-0.4` |  | `sim/mind_dialogue.gd` |
+| `PRESS_NERVES_HIDING` | `0.6` |  | `sim/mind_press.gd` |
+| `PRESS_NERVES_HONEST` | `0.2` |  | `sim/mind_press.gd` |
+| `PRESS_PRESSURE_GAIN` | `0.35` |  | `sim/mind_press.gd` |
+| `CONFESS_TRUST_PIVOT` | `0.6` | Night whereabouts, confession, stonewalling & slip rates | `sim/mind_answers.gd` |
+| `CONFESS_TRUST_SLOPE` | `1.5` |  | `sim/mind_answers.gd` |
+| `CONFESS_PRIVACY_PIVOT` | `0.4` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `CONFESS_PRIVACY_SLOPE` | `1.0` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `CONFESS_PRESSURE_SLOPE` | `0.8` |  | `sim/mind_answers.gd` |
+| `CONFESS_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_answers.gd` |
+| `LIE_BOLD_CONF_SLOPE` | `1.5` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `LIE_BOLD_PRIVACY_SLOPE` | `0.6` |  | `sim/mind_answers.gd`, `sim/mind_podium.gd` |
+| `HIDDEN_GIFT_DECLINE_BIAS` | `-0.4` |  | `sim/mind_answers.gd` |
 | `PUBLIC_READINGS_MIN_TRUST` | `0.3` |  | `sim/mind_dialogue.gd` |
-| `SLIP_COMPOSURE_SCALE` | `0.25` |  | `sim/mind_dialogue.gd` |
-| `SLIP_PRESSURE_SCALE` | `0.15` |  | `sim/mind_dialogue.gd` |
-| `DIRECT_NIGHT_SIGHTING_SHARE_PROB` | `0.95` |  | `sim/mind_dialogue.gd` |
-| `GOSSIP_SHARE_PRESSURE_SCALE` | `0.5` | Daytime memory, opinion caveats & profile-note sharing | `sim/mind_dialogue.gd` |
-| `GOSSIP_SHARE_MULT` | `3.0` |  | `sim/mind_dialogue.gd` |
-| `DAY_MEMORY_BASE` | `2` |  | `sim/mind_dialogue.gd` |
-| `DAY_MEMORY_INSIGHT_SCALE` | `4.0` |  | `sim/mind_dialogue.gd` |
-| `WORD_DOUBT_BELOW` | `0.75` |  | `sim/mind_dialogue.gd` |
+| `SLIP_COMPOSURE_SCALE` | `0.25` |  | `sim/mind_answers.gd` |
+| `SLIP_PRESSURE_SCALE` | `0.15` |  | `sim/mind_answers.gd` |
+| `DIRECT_NIGHT_SIGHTING_SHARE_PROB` | `0.95` |  | `sim/mind_answers.gd` |
+| `GOSSIP_SHARE_PRESSURE_SCALE` | `0.5` | Daytime memory, opinion caveats & profile-note sharing | `sim/mind_answers.gd` |
+| `GOSSIP_SHARE_MULT` | `3.0` |  | `sim/mind_answers.gd` |
+| `DAY_MEMORY_BASE` | `2` |  | `sim/mind_answers.gd` |
+| `DAY_MEMORY_INSIGHT_SCALE` | `4.0` |  | `sim/mind_answers.gd` |
+| `WORD_DOUBT_BELOW` | `0.75` |  | `sim/mind_dialogue_base.gd` |
 | `SHARE_HAUNTS_BASE` | `0.15` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_GOSSIP_SCALE` | `0.55` |  | `game/game_conversation.gd` |
 | `SHARE_HAUNTS_TRUST_SCALE` | `0.5` |  | `game/game_conversation.gd` |
