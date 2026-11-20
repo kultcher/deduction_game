@@ -1,8 +1,8 @@
 # Burdens: the secrets rework, scoped (design note)
 
 **Status: scoped with Michael (Nov 20, 2026). Design questions are answered (sections 1 to 7),
-and so are the feasibility questions (section 9). Only the new constants they imply
-are left. Nothing is
+and so are the feasibility questions (section 9). The judge's world model waits on
+Lantern's worked scenarios. Nothing is
 built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
@@ -410,10 +410,24 @@ add to sections 1 to 7, and win where they differ.
     in play. A hidden burden's holder doesn't know they carry it."
 24. **Later:** the "drink" Mistaken cause, the Rumormonger phrases and the ~200 voice lines.
 
-### Still to confirm
+### The new constants (Michael, Nov 20)
 
-- **New constants** these imply, each Michael's call:
-  - the Unrequited reveal's trust cost (Q14);
-  - the two caution values behind "bolder with silence" (Q16);
-  - possibly a size for the hanging-cost term, if it can't be derived from the player's vote
-    bump (Q9).
+No exact numbers yet: the builders estimate them, and they're tuned from data.
+- **The hanging cost (Q9): the midpoint of the player's "yes" vote bump.** If the bump runs
+  from 0 to 0.2 with trust, the cost is 0.1. If it were flat, the cost would equal it.
+  - Today the bump is `PLAYER_VOTE_YES_SLOPE` × credibility + `PLAYER_VOTE_YES_OFFSET`
+    (0.18 and −0.04, in `sim/mind_vote.gd`). Over credibility 0 to 1 that runs from −0.04 to
+    0.14, so the starting cost would be about **0.05** (the bump at credibility 0.5). This
+    reading of the code is Vicar's; the builder should confirm it.
+- **The Unrequited reveal's trust cost (Q14):** the same as telling someone's secret. That
+  reuses the existing broken-confidence and spread-secret losses (`Tuning.Social`
+  `CONFIDENCE_BROKEN_*` and `SECRET_SPREAD_*`). The builder confirms which one is the match.
+- **"Bolder with silence" (Q16):** Beadle estimates the two caution values so that a day 1
+  bluff is extremely rare. They're tuned from data afterwards.
+
+### Still open
+
+- **The judge's world model.** Michael wants worked scenarios before he settles it. He asked
+  Lantern (Nov 20) to compare the revised plan (each known burden placed per world) with the
+  cheaper "none" placement, across four Rumormonger, Unrequited and Marked scenarios, with the
+  difference in precision. The answer goes here when it arrives.
