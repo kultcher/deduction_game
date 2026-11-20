@@ -131,9 +131,9 @@ listener (#273), both Lantern's.
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
-  features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
-  Groups 1 and 4 are done (BACKLOG_COMPLETED.md). Keep `ALLOW_NO_GIFT_DENIAL` and
-  `USE_FLAVOR_SECRETS` until the secrets rework decides.
+  features. The parts already done, groups 1 and 4 among them, are in BACKLOG_COMPLETED.md
+  (Nov 20). Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework
+  decides. **Left:**
   2. **Golden-moving:**
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
