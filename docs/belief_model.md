@@ -447,7 +447,11 @@ is false has no honest explanation. That cancelled the relay's weight against it
   alibi, "I know I was home on night 1" (`LiveActivity.own_home_cards`, `FlagKnownSelf`):
   the listener out that night is possible only by its self-doubt, which is the
   Sleepwalker's 10% when that secret is on the script, and the own-reading error
-  otherwise. The routes check skips it, so it never makes a night impossible, and it's
+  otherwise. A Rumormonger's reading the listener holds moves the 10%, weighted by trust
+  in the teller (`WorkshopBridge.sleepwalk_doubt`): named for the Sleepwalker it rises, to
+  at most a coin flip (`SLEEPWALK_CHANCE`); another pair or another secret, true, would
+  rule the listener out, so it falls. The role fits' "am I the Sleepwalker?" mix reads
+  the same value (`own_home.sleep_doubt`). The routes check skips it, so it never makes a night impossible, and it's
   added only when the listener holds some night evidence.
 - The sighting contests take their balance from what an outsider could know: the same
   profiles with the known-home cards left out.

@@ -603,6 +603,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
     - **A possible cap** would be a new constant, Michael's call.
+    - **Built** (Lantern, Nov 20; PR open, waiting on Michael's OK of the cap):
+      `WorkshopBridge.sleepwalk_doubt`. The cap is the existing `SLEEPWALK_CHANCE` (0.5), a
+      placeholder that needs no new constant: at most, she thinks it a coin flip whether her
+      home nights mean anything. The floor is the own-reading error.
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for

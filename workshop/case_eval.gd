@@ -1467,7 +1467,8 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 	# whole case, so the two readings mix whole (Tuning.Workshop.SLEEPWALK_SELF_DOUBT).
 	var home_nights: Array = personal.own_outings.keys().filter(func(k): return not bool(personal.own_outings[k]))
 	if not home_nights.is_empty() and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
-		var d: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT
+		# A Rumormonger's word can move it (WorkshopBridge.sleepwalk_doubt).
+		var d: float = float(view.get("own_home", {}).get("sleep_doubt", Tuning.Workshop.SLEEPWALK_SELF_DOUBT))
 		var walked: Dictionary = personal.duplicate(true)
 		for k in home_nights:
 			walked.own_outings.erase(k)
