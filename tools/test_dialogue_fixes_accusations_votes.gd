@@ -9,6 +9,7 @@ const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 
 var _checks: int = 0
@@ -78,8 +79,8 @@ func _test_vote_line_names_the_nominator() -> void:
 	var v = w.living_good()[0]
 	var t = w.living_good()[1]
 	var nom = w.living_good()[2]
-	var by_npc: Dictionary = MindMeeting._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": nom.id, "prev_block": ""})
-	var by_player: Dictionary = MindMeeting._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": "player", "prev_block": ""})
+	var by_npc: Dictionary = MindVote._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": nom.id, "prev_block": ""})
+	var by_player: Dictionary = MindVote._resistance_line(w, v, t, "vote_no_short_of_rope", {"by": "player", "prev_block": ""})
 	_check(not "Demonologist" in str(by_npc.get("text", "")) and nom.name in str(by_npc.get("text", "")), "a no-vote on an NPC's nomination doesn't hand the Demonologist a case (%s)" % by_npc.get("text", ""))
 	_check("Your case" in str(by_player.get("text", "")), "a no-vote on the Demonologist's nomination still answers them")
 

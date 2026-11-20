@@ -10,6 +10,7 @@ const Tuning = preload("res://sim/tuning.gd")
 const Recency = preload("res://sim/recency.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindNomination = preload("res://sim/mind_nomination.gd")
 var checks = 0
 var fails = 0
 
@@ -131,18 +132,18 @@ func _recall() -> void:
 ## An NPC who states a reason before the town (nomination, public accusation) brings the
 ## cards behind it back to mind for every hearer; a hinted, unshared reason brings nothing.
 func _cited() -> void:
-	check(MindMeeting._reason_cards({"card_id": "fact:a", "root_ids": []}) == ["fact:a"], "a plain reason cites its own card")
-	check(MindMeeting._reason_cards({"card_id": "joint:x", "root_ids": ["fact:b", "fact:c", "fact:b"]}) == ["fact:b", "fact:c"], "a joint reason cites its roots, once each")
-	check(MindMeeting._reason_cards({"card_id": "circ:odette"}).is_empty(), "a circumstantial reason cites no card")
+	check(MindNomination._reason_cards({"card_id": "fact:a", "root_ids": []}) == ["fact:a"], "a plain reason cites its own card")
+	check(MindNomination._reason_cards({"card_id": "joint:x", "root_ids": ["fact:b", "fact:c", "fact:b"]}) == ["fact:b", "fact:c"], "a joint reason cites its roots, once each")
+	check(MindNomination._reason_cards({"card_id": "circ:odette"}).is_empty(), "a circumstantial reason cites no card")
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(692, 7)
 	var w = g.w
 	var n = w.npcs[1]
 	var t = w.npcs[2]
-	MindMeeting.recall_cited(w, n, t.id, [""], [])
+	MindNomination.recall_cited(w, n, t.id, [""], [])
 	check(w.living().all(func(l): return (l.shadow if l.is_evil() and l.shadow != null else l).workshop_state.get("card_refresh", {}).is_empty()), "nothing spoken, nothing recalled")
-	MindMeeting.recall_cited(w, n, t.id, [], ["fact:relayed"])
+	MindNomination.recall_cited(w, n, t.id, [], ["fact:relayed"])
 	check(w.living().all(func(l): return int((l.shadow if l.is_evil() and l.shadow != null else l).workshop_state.get("card_refresh", {}).get("fact:relayed", -1)) == w.day), "a cited card is back on every hearer's mind today, evil covers included")
 	# In play: by day 4 of a passive game the town's nominations and accusations have
 	# recalled cards, and most of them are cards the hearers hold.

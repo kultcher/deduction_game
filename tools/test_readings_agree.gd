@@ -9,6 +9,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 
 var checks = 0
 var fails = 0
@@ -82,11 +83,11 @@ func _vote() -> void:
 	var t = goods[1]
 	v.workshop_state["confirmed_readings"] = {t.id: _rec("known")}
 	var res: Dictionary = {"nominee": t.id, "no": [v.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id}
-	var lines: Array = MindMeeting.vote_resistance_lines(w, res)
+	var lines: Array = MindVote.vote_resistance_lines(w, res)
 	var said: String = " ".join(PackedStringArray(lines.map(func(x): return str(x.get("statement", x.get("text", ""))))))
 	_check("readings agree with what I know" in said, "after a vote, a no-voter whose record confirms the nominee says so (%s)" % said)
 	_check(res.get("resistance_facts", []).size() == 1, "with a card for the player")
 	var v2 = goods[3]
 	var res2: Dictionary = {"nominee": t.id, "no": [v2.id], "yes": [], "voter_parts": {}, "threshold": 6, "count": 0, "by": goods[2].id}
 	v2.workshop_state["confirmed_readings"] = {}
-	_check(MindMeeting.vote_resistance_lines(w, res2).filter(func(x): return "readings agree" in str(x.get("statement", ""))).is_empty(), "no record, nothing said")
+	_check(MindVote.vote_resistance_lines(w, res2).filter(func(x): return "readings agree" in str(x.get("statement", ""))).is_empty(), "no record, nothing said")
