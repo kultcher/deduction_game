@@ -72,6 +72,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. Gift doubt for readings the judge doesn't check `[open]`
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
   7. Observable actions as evidence (Stage 1B) `[tentative]`
+  8. A sighting places its teller `[decided]`
+  9. Being lied about can pull in evidence that clears the liar `[open]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -646,6 +648,35 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     double count in the hub.
 
   **[tentative]**
+
+- **A sighting places its teller** (Michael, Nov 20; from seed 100002, found on #454).
+  - **The change:** an honest street sighting places its teller on that block that night, and
+    a window sighting places them at home. It's a hard fact in the movement check, in both
+    the GDScript and C# paths.
+  - **Why:** today a sighting constrains only the person seen. On 100002, Hollis (the Demon,
+    who lives on the Hill) "saw" Edda on the Market, the block where Agnes was killed that
+    night. Unless he lied, that puts him at the scene, but the judge never sees it, so his lie
+    hardly counts against him: 43% → 45% without Jory's watch.
+  - **Measure, in game terms:**
+    - how much a fake sighting now counts against its teller;
+    - seed 100002, before and after;
+    - the win and hanging shifts over 40 games.
+
+    Re-baseline golden.
+
+  Owner Lantern. [decided]
+
+- **Being lied about can pull in evidence that clears the liar** (Michael, Nov 20; seed
+  100002).
+  - **What happened:** Edda's core, re-anchored on the night she was lied about, takes in a
+    rumour that "one of Bart and Jory is Delusional". That undercuts Jory's watch of Hollis,
+    and Hollis falls 78% → 71% overall.
+  - **Held until "A sighting places its teller" lands.** Lantern then re-runs 100002 and
+    reports whether it still matters.
+  - **Interim:** #454's check (#139) uses Michael's option (a). It reads the card's effect
+    within its own night, and its comment points to this item.
+
+  Owner Lantern. [open]
 
 ## Tabled
 

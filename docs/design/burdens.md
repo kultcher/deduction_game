@@ -265,6 +265,18 @@ feasibility reports, then a `mock/` prototype with paired sweeps, then Michael p
 - **The player arguing an unclaimed burden** (the per-case either/or): tentative, built only
   if needed.
 
+## 7a. Carried in from other work
+
+- **Delusional and Sleepwalker, one per world** (Michael, Nov 20, from seed 100002 via
+  Lantern; deferred to this rework).
+  - **The rule:** in a world where someone else holds a secret, the listener can't be the
+    Sleepwalker.
+  - **In the meantime:** #459's adjustment stands. A Rumormonger reading that names another
+    secret makes the Sleepwalker surer she was home.
+  - **Vicar's note, not checked against the code:** with one burden per script (section 1),
+    the world-level exclusivity probably follows from the script rule. The solver work in
+    workstream 2 should confirm it.
+
 ## 8. Still open
 
 1. **Is a known burden named on the script?** Today the script names any hidden burden.
