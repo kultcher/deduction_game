@@ -39,7 +39,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     6. Anger reasons `[decided]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. \*Explicit night-sighting rebuttals `[in review]`
+    1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
     1. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
@@ -367,6 +367,12 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
   - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
     totems**. The Revenant is often invisible. (55774) [decided]
+
+  - **Evil's fake self-doubt and the Poisoner nudge** (Beadle's proposal; Michael, Nov 20).
+    Since "A reader's self-doubt points at the Poisoner", evil's fake gift self-doubt also
+    nudges Poisoner suspicion toward whoever was seen on its block, its own teammate
+    included. Smarter evil could aim it (voice the doubt when an innocent was near) or avoid
+    it (stay quiet when a teammate was). Owner Beadle.
 
   [deferred]
 
