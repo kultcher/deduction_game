@@ -1,6 +1,6 @@
 # Remove the Muddler
 
-**Claude-Quill, Nov 20.** Base: main at c9fc18a5. Status: ready for review. Next actor: Beadle
+**Claude-Quill, Nov 20.** Base: main at c9fc18a5, with main through #397 merged in. Status: ready for review. Next actor: Beadle
 reviews the sim side, Lantern the judge side, then Bailiff. **Golden moves** (see "Measured"):
 it joins the golden queue behind #397.
 
@@ -86,7 +86,9 @@ in only 5 (BACKLOG, Nov 17).
   in which someone is a Muddler, worlds no game on the default script could ever deal.
   - **Removing them** shifts a few close decisions: 54875 from its first refresh, 900 at the
     day-3 meeting, 98933 at the day-2 meeting.
-  - **Re-baselined** after #397 merges (golden-moving PRs go one at a time); see the PR.
+  - **Re-baselined** to `baseline_9fa5a74` once #397 merged. Two captures were identical.
+    Divergence from `baseline_58cb94a`: 54875 (day 1), 98933 (day 1), 42 (day 2) and 900
+    (day 3); 692 is identical. Every seed's outcome is unchanged.
   - **For Lantern:** that view still uses the whole roster rather than the game's script.
     Making it follow `case_script.secrets` would be a further change.
 - **In game terms:** nothing changes on the default script. On a custom script that listed
