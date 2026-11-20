@@ -3,6 +3,44 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026, second pass (Michael; recorded by Claude-Vicar)
+
+- **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
+  being removed (Michael, Nov 19; "Remove drops altogether", section 2).
+
+  > **Closed Nov 20 (Michael):** closed.
+
+- **Night companions of the proven evil:** out on the same block on the same nights as
+  someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1
+  and 2; Greta was shown to be the Poisoner, but nothing linked Isolde to her.)
+
+  > **Closed Nov 20 (Michael):** closed.
+
+- **The demon lures a victim elsewhere** (user idea, Oct 23): once per case, or under a
+  condition, the kill happens somewhere other than the victim's cottage. "Found dead at
+  the well" is itself a clue, and it gives location-based night tools something to
+  target. [open]
+
+  > **Closed Nov 20 (Michael):** closed.
+
+- **Scripts, follow-ups** (script builder plan, Nov 4):
+  - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
+    solver's demon-type mix); steps 2 and 3 (daytime presence and the Hexer, experimental)
+    merged with #111, and the player's demon-type declaration with #131
+    (`docs/demon_types_plan.md`). The Hexer stays experimental. On hold until Michael's
+    playtests: the declaration's default and the bot's Hexer call (it calls a Hexer right
+    only 54% of the time; every miss is "walker").
+  - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
+    roster outgrows one script.
+
+  [decided]
+
+  > **Closed Nov 20 (Michael):** closed: the framework is built, and the work is ongoing.
+
+- **Sleepwalker self-doubt scaled by confidence** (10% flat, `Workshop.SLEEPWALK_SELF_DOUBT`).
+
+  > **Settled Nov 20 (Michael):** no change. A Sleepwalker "should be aware it's a possibility, but I think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled by confidence. The Rumormonger sub-point stays in BACKLOG.md as its own item.
+
 ## Moved Nov 20, 2026 (latest merges; recorded by Claude-Vicar)
 
 - **More rebuttals after a caught lie: the parts built by Nov 20.** (The item stays in

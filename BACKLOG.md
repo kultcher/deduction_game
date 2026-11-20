@@ -55,27 +55,23 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   1. Expanded dialogue and trust management `[tentative]`
   2. NPCs voice doubt about their own readings `[decided; triggers open]`
   3. Revenant seeks execution `[decided]`
-  4. NPCs find evidence `[decided]`
-  5. Throw a teammate under the bus `[decided: survey first]`
-  6. Graded gossip `[decided]`
+  4. Throw a teammate under the bus `[decided: survey first]`
+  5. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. The Breathstealer overhaul `[decided: add; option open]`
   2. The Muddler rarely has anything to muddle `[open]`
   3. The secrets rework `[decided; values open]`
   4. Roster expansion `[open]`
-  5. Scripts, follow-ups `[decided]`
-  6. The demon lures a victim elsewhere `[open]`
-  7. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
-  8. Player toolbox `[open]`
-  9. Scoring system `[open]`
-  10. Storyteller/director and solvability check `[open]`
+  5. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
+  6. Player toolbox `[open]`
+  7. Scoring system `[open]`
+  8. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Minion gifts
-  2. Night companions of the proven evil
-  3. A Medium's relayed sighting vs the dead's known vantage
-  4. Accounting
-  5. Walker sightings vs the Lamplighter count
-  6. Duty claim vs reading
+  2. A Medium's relayed sighting vs the dead's known vantage
+  3. Accounting
+  4. Walker sightings vs the Lamplighter count
+  5. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case
   2. Presenting a card to one NPC
@@ -85,7 +81,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   1. Honest mistakes against lies in challenges `[open; Michael]`
   2. The spoken reply to a later-day repeat `[polish]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
-  4. Sleepwalker self-doubt scaled by confidence `[decided]`
+  4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Adjudicating a muddled card `[later]`
   6. Brute kills scored as hexes on custom scripts `[later]`
   7. Gift doubt for readings the judge doesn't check `[open]`
@@ -152,8 +148,8 @@ listener (#273), both Lantern's.
   expansion checkpoints. [watch; broader adapters open]
 
 - **Summarised answers at a nomination.** A case presented at a nomination gets
-  summarised answers, the same as at the meeting (#373). (Michael, Nov 19) Owner Herald.
-  [decided]
+  summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
+  only. (Michael, Nov 19) Owner Herald, held for the reprioritization. [decided]
 
 - **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
   - walkers dropping anything on their route, both personal items and the home-block
@@ -290,8 +286,8 @@ listener (#273), both Lantern's.
   - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
     bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
     in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
-    when caught out, and double claims) is in "More rebuttals after a caught lie". **In
-    review:** Beadle's #390 (open).
+    when caught out, and double claims) is in "More rebuttals after a caught lie".
+    **Built** (Beadle, #390).
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
   - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
@@ -473,7 +469,7 @@ Candidates for a unified retuning proposal, not approved changes.
   Owner Beadle; Herald for the lines.
   - **Progress (Beadle and Lantern, Nov 20):**
     - **Built** (moved to BACKLOG_COMPLETED.md, Nov 20): #367, #368, #372.
-    - **In review,** Beadle's #390 (open, zero drift), counted as built once it merges:
+    - **Built** (Beadle, #390):
       - the town's answer to a double claim: the true holder always counterclaims;
       - evil switches a bluff someone else took;
       - a Minion double-claims on purpose, from one 5% roll per Minion per game;
@@ -532,9 +528,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
-
-- **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
-  being removed (Michael, Nov 19; "Remove drops altogether", section 2).
 
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
   Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
@@ -648,23 +641,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
   yet. Each needs a hint package and solver support before it goes live. [open]
 
-- **Scripts, follow-ups** (script builder plan, Nov 4):
-  - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
-    solver's demon-type mix); steps 2 and 3 (daytime presence and the Hexer, experimental)
-    merged with #111, and the player's demon-type declaration with #131
-    (`docs/demon_types_plan.md`). The Hexer stays experimental. On hold until Michael's
-    playtests: the declaration's default and the bot's Hexer call (it calls a Hexer right
-    only 54% of the time; every miss is "walker").
-  - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
-    roster outgrows one script.
-
-  [decided]
-
-- **The demon lures a victim elsewhere** (user idea, Oct 23): once per case, or under a
-  condition, the kill happens somewhere other than the victim's cottage. "Found dead at
-  the well" is itself a clue, and it gives location-based night tools something to
-  target. [open]
-
 - **Learning resources: tooltips, an in-game wiki and a tutorial.** (Nov 3 plan v8, zone
   18; restored Nov 8) Three layers, from one data registry so they never drift:
   1. **Tooltips and terms:** extend `ui/text_terms.gd` beyond roles and people to the
@@ -704,10 +680,6 @@ Workshop and the shared model can't express yet.
   (the Breathstealer has to be there); a reading that failed on a night someone was near
   the reader's home (the Poisoner's visit); a totem found and the people who live where
   its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
-
-- **Night companions of the proven evil:** out on the same block on the same nights as
-  someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1
-  and 2; Greta was shown to be the Poisoner, but nothing linked Isolde to her.)
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
@@ -773,11 +745,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**
-- **Sleepwalker self-doubt scaled by confidence** (10% flat, `Workshop.SLEEPWALK_SELF_DOUBT`).
-  **No change** (Michael, Nov 20): a Sleepwalker "should be aware it's a possibility, but I
-  think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled
-  by confidence. **[settled]**
-  - **What the Rumormonger tells her** (Michael, Nov 20). A Rumormonger she trusts naming
+- **The Sleepwalker's doubt, from what the Rumormonger tells her** (Michael, Nov 20). The
+  flat doubt itself stays as it is (`Workshop.SLEEPWALK_SELF_DOUBT`, not scaled by
+  confidence; moved to BACKLOG_COMPLETED.md). What's left:
+  - **What the Rumormonger tells her.** A Rumormonger she trusts naming
     her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
     looks less evil to her. A Rumormonger naming a different secret, which implies no
     Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
