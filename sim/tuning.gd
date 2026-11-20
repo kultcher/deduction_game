@@ -155,6 +155,10 @@ class Roles:
 
 	const GRAVEDIGGER = {
 		"marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE,
+		# A good Gravedigger always leans a little toward nominating and voting to hang, since
+		# its gift reads the hanged and is best with a hanging every day. It never says why
+		# (Michael, Nov 17: a hidden motive, kept modest; Nov 21: 0.08, and permanent).
+		"hanging_lean": 0.08,
 		"trust_backed_innocent": -0.06,
 		"trust_proven_right_base": 0.08,
 		"trust_proven_right_insight": 0.06,
