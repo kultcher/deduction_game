@@ -25,22 +25,23 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
   1. Possible bug: the "not the Demon" badge `[decided]`
+  2. NPC defenders weigh secrets the game can't deal `[decided]`
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. The misframed-case hint `[decided]`
     2. Summarised answers at a nomination `[decided]`
-    3. Remove drops altogether `[decided]`
+    3. Remove drops altogether `[in review]`
     4. Argon's audit: cleanup `[decided]`
     5. The social presentation route `[decided]`
     6. The premise menu, trimmed `[decided]`
     7. Remove the Muddler `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
-    2. Accusations from starting suspicion read as clues `[decided: pitch first]`
+    2. Accusations from starting suspicion read as clues `[decided]`
     3. The Gravedigger in a reluctant town `[decided]`
-    4. Caught out and pressed again: what's left `[decided; mechanics open]`
+    4. Caught out and pressed again: what's left `[decided]`
     5. Good NPCs lie tactically `[open]`
     6. Rapport and Warden-credit leftovers `[decided: direction]`
     7. Anger reasons `[decided]`
@@ -115,6 +116,12 @@ listener (#273), both Lantern's.
 - **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
   ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
   and Herald. [decided]
+- **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`
+  builds the defence view from the whole roster of secrets (`C.SECRET_MOD_LIST`), not from
+  the game's `case_script.secrets`. Fix: read the script's secrets, as the rest of the judge
+  does. It moves golden wherever a defence is scored. Its own small PR, after Quill's #405
+  re-baseline, Lantern's scaffolding PR and the "not the Demon" badge fix. Owner Lantern;
+  approved as a bug fix by Seneschal (Nov 20). [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -159,7 +166,8 @@ listener (#273), both Lantern's.
   is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
   Beadle reviewing the sim side.
   **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
-  Revenant's totem and the place's regulars. [decided]
+  Revenant's totem and the place's regulars. **Built** in the drop-removal PR (Quill, Nov 20;
+  handoff `2026-11-20-0251-quill-remove-drops.md`). [in review]
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
@@ -254,7 +262,19 @@ listener (#273), both Lantern's.
   Seneschal) before building: how it meets the day-1 accusation floor, what counts as
   useful information, the bonus size, what the extra speakers say (Herald writes any new
   lines), and what it does in play, measured on a `mock/` branch if possible. Owner Beadle.
-  [decided: pitch first]
+  [decided]
+  - **Pitch approved (Michael, Nov 20), "pressure of silence":**
+    - the 0.2 floor on good NPCs' accusations, in the first pass;
+    - a silence check after everyone's turn: with fewer than 3 useful items (claims, shared
+      readings, volunteered sightings, accusations with a reason), the order runs once more;
+    - in that pass, a bonus to speak scaled by low Composure, with the floor waived and no
+      bonus for evil;
+    - constants approved: `GOOD_ACCUSE_MIN_SUSP` 0.2, `SILENCE_USEFUL_MIN` 3,
+      `SILENCE_SPEAK_BONUS` 0.6;
+    - a silence-breaker opener per voice (Herald). **Herald's 15 lines approved** (Michael,
+      Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
+      speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
+    - Beadle measures it on a `mock/` branch first.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -276,7 +296,19 @@ listener (#273), both Lantern's.
     - the podium path: the same ladder at the meeting, not only in private.
 
   The first response, "Fine, I was out", is built (#368), and so is the private ladder that
-  follows it. On hold until Michael reprioritises. [decided; mechanics open]
+  follows it.
+  - **Plan approved (Michael, Nov 20):**
+    - a good NPC that owned the night but kept the reason gets pressure checks that rise
+      with each press, and a pass forces the gift or secret reveal;
+    - a truly-home NPC stays home and grows irritated;
+    - the Sleepwalker keeps its usual "I was at home" lines, and grows irritated the same
+      way;
+    - evil backs into a spare walking gift, the Demon included rather than stonewalling.
+      With no spare, it's wary of a double claim. The Demon and a Scion are careful; a
+      Minion is bolder;
+    - the same ladder runs at the podium: private first, then the podium.
+
+  [decided]
 
 - **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:
@@ -288,13 +320,18 @@ listener (#273), both Lantern's.
     Part of the secrets rework (`docs/design/secrets_rework.md`, sections 2 and 10.1).
   - **Retracting a public claim** to back into another gift, for good and evil, belongs here
     (Michael, Nov 19; see "More rebuttals after a caught lie").
+  - **Gift-hiding fear should follow the gift's value to the Demon** (Beadle's idea, folded
+    in Nov 20). How much a good NPC fears revealing its gift should follow the per-role
+    kill-score table, not be the same for every info gift.
   A caught lie still implicates strongly, so both need care. [open]
 
-- **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
-  - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
-  - evil Wardens faking saves (an evil-strategy change, measured separately);
-  - the Warden telling the town about a save at the meeting, beyond ordinary disclosure;
-  - player wards the Warden knows about counting as an alternative explanation.
+- **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
+  Beadle's proposals):
+  - (a) "caught lying about me" as an NPC-to-NPC trust loss: waits for "Anger reasons";
+  - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
+    meeting: **[decided]**, one PR, owner Beadle;
+  - (d) player wards the Warden knows about counting as an alternative explanation: closed,
+    already built.
 
   [decided: direction]
 

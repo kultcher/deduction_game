@@ -3,13 +3,19 @@
 ## standalone list-experiment scene was retired on Nov 20.
 extends Control
 
-const Session = preload("res://workshop/session.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Graph = preload("res://workshop/case_graph.gd")
 const C = preload("res://sim/content.gd")
 const WorkshopSkin = preload("res://ui/theme.gd")
 
-var session = Session.new()
+## What the Workshop is working on: the view its cards and people come from, and the case the
+## board compiles to. The live Workshop fills both (ui/live_case_workshop.gd). It was a fixture
+## Session (workshop/session.gd), built from seed 692 on every open and then overwritten.
+class WorkshopState:
+	var scenario: Dictionary = {"public_view": {"people": [], "cards": []}}
+	var case_data: Dictionary = Solver.empty_case()
+
+var session = WorkshopState.new()
 var case_box: VBoxContainer
 var status: Label
 var focus_card = "survey"

@@ -150,7 +150,7 @@ func _live() -> void:
 	var legacy = g.add_card({"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2, "block": "market", "text": "Old trace without scene metadata"})
 	var legacy_id: String = Live.Evidence.normalize_card(g.board[legacy - 1]).id
 	var old_view = Live.view(g)
-	check(Solver.card_by_id(old_view, legacy_id).get("fallback", false), "old unstructured trace clearly flags fallback")
+	check(Solver.card_by_id(old_view, legacy_id).get("unweighable", false), "old unstructured trace is marked unweighable")
 	var vigil = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "square", "vigil": true, "text": "Complete positive vigil"})
 	var vigil_card = Solver.card_by_id(Live.view(g), Live.Evidence.normalize_card(g.board[vigil - 1]).id)
 	check(vigil_card.get("complete", false) and victim.id in vigil_card.get("excluded", []), "live positive vigil retains complete coverage and victim exclusion")

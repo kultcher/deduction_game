@@ -56,11 +56,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SAME_BLOCK_SIGHTING_CHANCE` | `0.4` |  | `sim/world.gd` |
 | `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world.gd` |
-| `DROP_CHANCE_DEMON` | `0.35` | Night drops, sightings & crime scene traces | `sim/world.gd` |
-| `DROP_CHANCE_WALKER` | `0.15` |  | `sim/world.gd` |
-| `LEGACY_MUD_DROPS_ENABLED` | `false` |  | `game/game_day_night.gd` |
-| `DROP_OWNED_CHANCE` | `0.12` |  | `sim/world.gd` |
-| `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` |  | `sim/world.gd` |
+| `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world.gd` |
 | `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world.gd` |
 | `NIGHT_NEIGHBOUR_ALIBI_CHANCE` | `0.2` |  | `sim/world.gd` |
 | `MISLEADING_TRACE_CHANCE` | `0.4` | retired structured-trace era constant (kept for compatibility) | (unused) |
@@ -768,12 +764,3 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PROFILE_LOW` | `{ "name": "Low", "cards": 4, "lines": 2, "support": 12, "rivals": 3, "complet...` |  | `workshop/reasoner.gd` |
 | `PROFILE_MEDIUM` | `{ "name": "Medium", "cards": 8, "lines": 3, "support": 24, "rivals": 9, "comp...` |  | `workshop/reasoner.gd` |
 | `PROFILE_HIGH` | `{ "name": "High", "cards": 12, "lines": 4, "support": 48, "rivals": 27, "comp...` |  | `workshop/reasoner.gd` |
-
-## Presentation
-
-| Constant | Value | Note | Used in |
-| --- | --- | --- | --- |
-| `SOCIAL_TRUST_WEIGHT` | `0.5` | Agreement = trust weight x the listener's trust in the player + belief weight x how far their own suspicion already leans the speaker's way. | `sim/presentation_reply.gd` |
-| `SOCIAL_BELIEF_WEIGHT` | `0.5` |  | `sim/presentation_reply.gd` |
-| `SOCIAL_MIN_BASE` | `0.004` | Below this (agreement x venue scale) nothing is recorded. | `sim/presentation_reply.gd` |
-| `SELF_ACCUSED_TRUST_LOSS` | `0.05` | Trust lost when the player accuses a good listener of something they know is false. | `sim/presentation_reply.gd` |
