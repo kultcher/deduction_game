@@ -531,6 +531,9 @@ Workshop and the shared model can't express yet.
   judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
   This item closes when #445 merges. The other two Minion gifts are
   built and closed (Quill, Nov 20). Owner Quill. [decided]
+  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
+    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
+    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
