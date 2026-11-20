@@ -43,39 +43,32 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     3. The Seer's rise looks small `[later: role tuning pass]`
     4. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. Privacy without compounding trust penalties `[tentative]`
-    2. Ward promises should outrank vigil promises `[decided]`
-    3. Explicit night-sighting rebuttals `[decided]`
-    4. More rebuttals after a caught lie `[decided; options open]`
-    5. Misled versus reading-lie strength `[open]`
+    1. Ward promises should outrank vigil promises `[decided]`
+    2. Explicit night-sighting rebuttals `[decided]`
+    3. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
     1. From Playtest Notes 12553
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
-  2. NPCs voice doubt about their own readings `[decided; triggers open]`
+  2. Insight helps an NPC notice its own readings don't fit `[decided; triggers open]`
   3. Revenant seeks execution `[decided]`
-  4. NPCs find evidence `[decided]`
-  5. Throw a teammate under the bus `[decided: survey first]`
-  6. Graded gossip `[decided]`
+  4. Throw a teammate under the bus `[decided: survey first]`
+  5. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. The Breathstealer overhaul `[decided: add; option open]`
   2. The Muddler rarely has anything to muddle `[open]`
   3. The secrets rework `[decided; values open]`
   4. Roster expansion `[open]`
-  5. Scripts, follow-ups `[decided]`
-  6. The demon lures a victim elsewhere `[open]`
-  7. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
-  8. Player toolbox `[open]`
-  9. Scoring system `[open]`
-  10. Storyteller/director and solvability check `[open]`
+  5. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
+  6. Player toolbox `[open]`
+  7. Scoring system `[open]`
+  8. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Minion gifts
-  2. Night companions of the proven evil
-  3. A Medium's relayed sighting vs the dead's known vantage
-  4. Accounting
-  5. Walker sightings vs the Lamplighter count
-  6. Duty claim vs reading
+  2. A Medium's relayed sighting vs the dead's known vantage
+  3. The Lamplighter's count against alibis and sightings: add a test
+  4. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case
   2. Presenting a card to one NPC
@@ -85,7 +78,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   1. Honest mistakes against lies in challenges `[open; Michael]`
   2. The spoken reply to a later-day repeat `[polish]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
-  4. Sleepwalker self-doubt scaled by confidence `[decided]`
+  4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Adjudicating a muddled card `[later]`
   6. Brute kills scored as hexes on custom scripts `[later]`
   7. Gift doubt for readings the judge doesn't check `[open]`
@@ -139,8 +132,11 @@ listener (#273), both Lantern's.
   built. Lantern owns the belief side (does the case's weight fall more on someone other than
   the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
   Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
-  (#246) and moved to BACKLOG_COMPLETED.md. [decided] **Michael (Nov 20): it stays.**
-  Herald is first checking whether the existing "Argues against" badge already covers it.
+  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
+  - **Decided (Michael, Nov 20): a variant of the Test juror chip.** The chip keeps its band
+    and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
+    else than about <target>." It names no one, and it shows at the same threshold as NPCs'
+    "points elsewhere" line. Owner Herald.
 
 - **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
   skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
@@ -149,8 +145,8 @@ listener (#273), both Lantern's.
   expansion checkpoints. [watch; broader adapters open]
 
 - **Summarised answers at a nomination.** A case presented at a nomination gets
-  summarised answers, the same as at the meeting (#373). (Michael, Nov 19) Owner Herald.
-  [decided]
+  summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
+  only. (Michael, Nov 19) Owner Herald, held for the reprioritization. [decided]
 
 - **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
   - walkers dropping anything on their route, both personal items and the home-block
@@ -202,9 +198,9 @@ listener (#273), both Lantern's.
   is worth keeping. Herald scopes it, and a decision follows the scope.
   - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
     play: there are no protect or spare cases and no bare beliefs, and the evil fallback
-    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In flight:**
-    built and pushed with Michael's "purge every fallback" request; the PR opens after
-    Lantern's #386, which renames the same reporting.
+    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
+    Herald's #395, which also purges every presentation fallback (Michael). Close this item
+    when it merges.
 
 ### NPC behaviour
 
@@ -259,9 +255,11 @@ listener (#273), both Lantern's.
   - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
     possible forced reveal of the hidden gift or secret, handling genuine home accounts,
     unremembered outings and evil cover.
-  - **From "More rebuttals after a caught lie":** when pressed again, evil backs into a spare
-    or unknown walking gift (the ladder's step 3, with the Demon and Scion careful and a
-    Minion bolder, as decided there).
+  - **From "More rebuttals after a caught lie"** (closed Nov 20; its decisions are in
+    BACKLOG_COMPLETED.md):
+    - when pressed again, evil backs into a spare or unknown walking gift (the ladder's step
+      3, with the Demon and Scion careful and a Minion bolder);
+    - the podium path: the same ladder at the meeting, not only in private.
 
   The first response, "Fine, I was out", is built (#368), and so is the private ladder that
   follows it. On hold until Michael reprioritises. [decided; mechanics open]
@@ -287,8 +285,8 @@ listener (#273), both Lantern's.
   - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
     bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
     in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
-    when caught out, and double claims) is in "More rebuttals after a caught lie". **In
-    review:** Beadle's #390 (open).
+    when caught out, and double claims) is in "More rebuttals after a caught lie".
+    **Built** (Beadle, #390).
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30):
   - "caught lying about me" as an NPC-to-NPC trust loss (no clean hook yet);
@@ -342,14 +340,6 @@ listener (#273), both Lantern's.
 
 Candidates for a unified retuning proposal, not approved changes.
 
-- **Privacy without compounding trust penalties.** Remove Privacy from initial player
-  trust and benign trust changes; let high Privacy scale only what a private person would
-  resent (intrusive pressure, revealing secrets). Keep the disclosure gates. Distinguish
-  ordinary questions on different topics from repeating a refused question. (54875: on
-  Day 1 three of three people stonewalled; Privacy counts in both openness and starting
-  trust. The first day swings a lot on how many private characters are dealt.) Consider
-  removing the double count or dealing at least one openish person per phase. [tentative]
-
 - **Ward promises should outrank vigil promises.** Raise the value of a kept ward promise
   and add plausible-success credit for a kept ward followed by a deathless night.
   Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
@@ -359,125 +349,6 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-
-- **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
-  walking duties, personal secrets, protecting a confidence. Conceding the statement was
-  false need not concede evil. Evil gets the same excuses, open to later corroboration;
-  the caught lie itself stays. [decided; options open]
-  - **Michael (Nov 19), on Beadle's options:**
-    - **Yes:** an evil NPC borrows the excuses. It claims a walking duty that fits its bluff
-      ("I was keeping the watch"), or says "being out isn't wicked". Each gets a logged
-      reason and a reveal line.
-    - **Yes, as the first line of defence: own the night, keep the gift.** See the shared
-      ladder below. Michael: "duties that aren't mine to tell" isn't the right wording; the
-      default "I'm not ready to share my gift" line (`gift_refusal`) should work in most
-      cases. Herald's call on the final wording.
-    - **After the secrets rework:** a vague errand of its own, which becomes "claim a
-      knowing secret".
-    - **No:** "I gave my word I wouldn't say why". It has no place in the current mechanics.
-    - **How much an excuse softens the caught lie:** a little, until something contradicts
-      the excuse, such as a claimed watch with no watch report. Then the excuse counts as a
-      second caught lie. This needs a new constant; Beadle proposes about half a caught
-      lie's weight.
-    - **Scope:** lies about being home only. Caught reading lies already have "my gift may
-      have been turned".
-  - **When to risk a walking-gift claim (Michael, Nov 19): one ladder for good and evil.**
-    A good walker who hides its gift should behave the same way, so the response isn't a
-    tell.
-    - **What exists (read from main):**
-      - **Evil whose planned bluff walks** already owns the outing with that duty, as a good
-        walker does (`MindDialogue._bluff_outing`).
-      - **A good hidden walker** asked about the night can refuse honestly, lie "home", or
-        stonewall (`lie_or_stonewall`).
-      - **Caught out of a home alibi in private,** a good hidden walker reveals its gift
-        outright (`trapped_explanation` to `answer_gift`). No tier sits between stonewalling
-        and revealing.
-    - **New soft tier, for both:** "Fine, I was out", then the default gift refusal. It
-      claims a night duty without saying which. This keeps 78148's fix: the night is owned
-      first, never a bare gift refusal to a whereabouts case.
-    - **The ladder**, for an NPC caught out of its home alibi:
-      1. If its gift (or evil's bluff) already walks and is claimed, it gives that duty.
-      2. Not yet claimed: the soft tier above.
-      3. Pressed again, in private by the player or at a nomination, it names a gift:
-         - a good walker reveals its real gift;
-         - evil takes the safe spare from its bluff list, if one walks (that list holds only
-           gifts not in play, with one spare beyond the gifts the team uses, `world.gd`
-           `bluffs`), for any evil type;
-         - evil takes an unknown walking gift: the Demon or a Scion only when badly exposed,
-           a Minion when exposed, at the existing blend-or-disrupt odds;
-         - a Minion takes a walking gift someone has already claimed: a deliberate double
-           claim, when confronted privately by the player or nominated. Michael widened this
-           from "nominated only".
-      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff, or
-         a stonewall.
-    - **New: a Minion entering a double claim unprompted.** There's a small chance that an
-      unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
-      it's caught out. The rate would be a new constant, for Beadle to propose with a
-      measurement.
-      - **Michael (Nov 19):** about 0.05 if it's a deliberate opt-in to a double claim, or
-        about 0.15 if it's a Minion accepting the risk that its bluff ends in one. Beadle is
-        confirming which applies, and the value follows from that.
-    - **Retracting a public claim to back into a walker:** Michael (Nov 19) moves it to "Good
-      NPCs lie tactically", since the two share the same space.
-  - **The town's response to a double claim (Michael, Nov 19).** The true holder counterclaims
-    immediately. A Minion's active double claim works in the same framework.
-    - **What exists (read from main):**
-      - **At a meeting,** a public claim of someone's gift moves that person up to speak next,
-        with an openness bonus (`MindMeeting._queue_reactions`, trigger 1;
-        `REACTIVE_OPENNESS_BONUS`). Whether they then claim is still the ordinary
-        `_public_claim_decision` roll, so it isn't certain. An evil NPC whose planned bluff
-        was just claimed gets the same trigger.
-      - **At a nomination,** a hidden holder of the gift the nominee claims comes out: "X is
-        lying. That gift is mine." (`MindSupport`, `counter_claim`).
-      - **Pressed in private** with a rival's claim, a claimant answers "I am the X. If Y says
-        otherwise, Y is lying."
-      - **Belief:** the two claims of one gift are one pairing that raises both claimants and
-        shifts onto the other when one is shown good (#198).
-    - **Proposed (Vicar), for Michael:**
-      - **The true holder counterclaims at once:** at the same meeting, as the next speaker,
-        unless silenced. The trigger-1 reaction becomes a claim, not a roll. If the claim
-        reached it outside a meeting (in private, or through gossip), it counterclaims at the
-        next meeting. A holder hiding its gift for a reason is "Good NPCs lie tactically"
-        territory, not an exception here.
-      - **The Minion's active double claim uses the same trigger:** when a good NPC claims a
-        gift, an unclaimed non-Scion Minion may treat it as "a rival claim on my gift" and
-        counterclaim with the same line, at the small new rate. The rest follows the
-        existing pairing and counter-claim reactions.
-      - **Evil whose planned bluff is claimed by someone else** drops that bluff for a spare,
-        rather than counterclaiming. A Minion may instead take the active double claim above.
-    - **Michael (Nov 19):**
-      - **Immediately, where possible.** A silenced holder counterclaims at its first chance,
-        the next meeting. That's the same rule as for a claim heard outside a meeting.
-      - **Heat lowers a Minion's willingness to risk a double claim,** both the active one and
-        backing into a claimed or unknown gift. Heat here means already being implicated as
-        evil (mainly a Dowser reading, possibly a Surveyor's). Use the general "heat on me"
-        calculation, not special logic: `Evil.exposure`, whose public talk includes the
-        town's reading of those claims.
-      - **A note for the build:** in the ladder, being pressed or nominated is what makes
-        evil answer. The heat already on it is what makes a double claim a poor bet. So the
-        same exposure parts play two roles: the pressure and on-the-block parts push it to
-        answer, and the public-talk part holds it back from a double claim. Beadle to propose
-        how they combine.
-    - **Evil whose planned bluff is claimed first switches to a spare** (Michael, Nov 19:
-      yes). See "Evil backs into a bluff", whose hold is lifted for this case.
-    - **The private "they're lying" refutation** (Michael, Nov 19): a caught-out NPC may call
-      the witness against it a liar in a private press too. Today it does so only in the
-      meeting defence (`mind_meeting.gd`, for Confidence above 0.6). It's a line only, with
-      no extra doubt on the witness. Owner Beadle; Herald's `press_witness_lying` lines are
-      approved.
-    - Owner Beadle; Herald for any new lines.
-
-  Owner Beadle; Herald for the lines.
-  - **Progress (Beadle and Lantern, Nov 20):**
-    - **Built** (moved to BACKLOG_COMPLETED.md, Nov 20): #367, #368, #372.
-    - **In review,** Beadle's #390 (open, zero drift), counted as built once it merges:
-      - the town's answer to a double claim: the true holder always counterclaims;
-      - evil switches a bluff someone else took;
-      - a Minion double-claims on purpose, from one 5% roll per Minion per game;
-      - the private "<witness> is lying about seeing me" line.
-    - **Left, on hold until Michael reprioritises:** the podium path (the ladder at the
-      meeting, not only in private). Backing into a spare or unknown gift moved to "Caught
-      out and pressed again: what's left" (Nov 20).
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -521,17 +392,15 @@ The one performance item, "Late-game meeting and presenting cost", is in
   - **Explain an execution's purpose:** propose an information-seeking execution (for a
     Gravedigger read) without asserting the target is the Demon.
 
-- **NPCs voice doubt about their own readings.** Notice apparently inconsistent results
-  (repeated Seer checks of the same pair changing yes/no) and let the NPC say something's
-  unusual; higher Insight helps notice a mismatch with their leading explanation. Use only
-  what they know, allow legitimate changes such as succession, and keep suspicion of
-  misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
+- **Insight helps an NPC notice its own readings don't fit** (what's left of "NPCs voice
+  doubt about their own readings", Beadle, Nov 20). The doubt and the line are built (#320,
+  #316). Lantern says the judge's clash signal already catches a repeated pair flipping yes
+  and no. The trigger is a flat 30% for everyone, though, and the item asked for higher
+  Insight to notice a mismatch sooner. **Kept, low priority** (Michael, Nov 20). Owners Beadle
+  and Lantern. [decided; triggers open]
 
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
-
-- **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
-  being removed (Michael, Nov 19; "Remove drops altogether", section 2).
 
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
   Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
@@ -645,23 +514,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
   yet. Each needs a hint package and solver support before it goes live. [open]
 
-- **Scripts, follow-ups** (script builder plan, Nov 4):
-  - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
-    solver's demon-type mix); steps 2 and 3 (daytime presence and the Hexer, experimental)
-    merged with #111, and the player's demon-type declaration with #131
-    (`docs/demon_types_plan.md`). The Hexer stays experimental. On hold until Michael's
-    playtests: the declaration's default and the bot's Hexer call (it calls a Hexer right
-    only 54% of the time; every miss is "walker").
-  - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
-    roster outgrows one script.
-
-  [decided]
-
-- **The demon lures a victim elsewhere** (user idea, Oct 23): once per case, or under a
-  condition, the kill happens somewhere other than the victim's cottage. "Found dead at
-  the well" is itself a clue, and it gives location-based night tools something to
-  target. [open]
-
 - **Learning resources: tooltips, an in-game wiki and a tutorial.** (Nov 3 plan v8, zone
   18; restored Nov 8) Three layers, from one data registry so they never drift:
   1. **Tooltips and terms:** extend `ui/text_terms.gd` beyond roles and people to the
@@ -702,18 +554,18 @@ Workshop and the shared model can't express yet.
   the reader's home (the Poisoner's visit); a totem found and the people who live where
   its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
 
-- **Night companions of the proven evil:** out on the same block on the same nights as
-  someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1
-  and 2; Greta was shown to be the Poisoner, but nothing linked Isolde to her.)
-
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
+  Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
+  route of the person seen, never against where the sighter was.
 
-- **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one →
-  the unaccounted person was out.
-
-- **Walker sightings vs the Lamplighter count:** more people reported out than the
-  Lamplighter counted, or a Lamplighter who counted others but was seen nowhere.
+- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
+  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
+  world with everyone's routes, so "N others out, and everyone but one home" already points
+  at the one unaccounted, and more people reported out than counted already clashes. Neither
+  case has been measured on its own, so what's left is a test that shows it. Owners Quill
+  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
+  Michael wants it stronger.
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -770,11 +622,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**
-- **Sleepwalker self-doubt scaled by confidence** (10% flat, `Workshop.SLEEPWALK_SELF_DOUBT`).
-  **No change** (Michael, Nov 20): a Sleepwalker "should be aware it's a possibility, but I
-  think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled
-  by confidence. **[settled]**
-  - **What the Rumormonger tells her** (Michael, Nov 20). A Rumormonger she trusts naming
+- **The Sleepwalker's doubt, from what the Rumormonger tells her** (Michael, Nov 20). The
+  flat doubt itself stays as it is (`Workshop.SLEEPWALK_SELF_DOUBT`, not scaled by
+  confidence; moved to BACKLOG_COMPLETED.md). What's left:
+  - **What the Rumormonger tells her.** A Rumormonger she trusts naming
     her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
     looks less evil to her. A Rumormonger naming a different secret, which implies no
     Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
@@ -789,7 +640,8 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
     - **A possible cap** would be a new constant, Michael's call.
-- **Adjudicating a muddled card** (the Muddler secret). **[later]**
+- **Adjudicating a muddled card** (the Muddler secret). Tied to the secrets rework, since the
+  Muddler may go (Lantern, Nov 20). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
