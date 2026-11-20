@@ -277,6 +277,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SHARE_GIFT_TOPIC_GOSSIP` | `0.2` |  | `sim/social.gd` |
 | `SHARE_GIFT_JITTER` | `0.2` |  | `sim/social.gd` |
 | `SHARE_GIFT_PEER_OFFSET` | `-0.1` | a touch more guarded with a neighbour than with the Demonologist | `sim/social.gd` |
+| `SHARE_UNCLAIMED_DAY_BOOST` | `0.15` | Private sharing grows over the days (Michael, Nov 19): an NPC who hasn't claimed a gift publicly brings up its gift, and its readings, more often in private talk each day past day 1. The weight is multiplied by 1 + this x (day - 1). NPC-to-NPC only; evil's bluffed gift and readings get the same, so it isn't a tell. Michael approved 0.15 (Nov 19). | `sim/social.gd` |
 | `CONFIDE_TRUST_LISTENER` | `0.08` | the listener toward the one who confided | `sim/social.gd` |
 | `CONFIDE_TRUST_TELLER` | `0.04` | the confider toward the listener | `sim/social.gd` |
 | `ROLE_NEWS_LAST_DAY` | `2` | Good NPCs with an untold gift count as having news on these early days. | `sim/social.gd` |

@@ -108,7 +108,9 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 			if was_out(w, subject, int(fs.get("day", -1))) or (how != "" and str(fs.get("how", "")) != how):
 				continue
 			var about = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sighter.id and subject.id in c.get("subjects", [c.get("subject", "")]) and not c.has("relay_source")
-			if held_cards(subject, about).is_empty():
+			# A real frame puts them away from home: a sighting on their own block ("seen
+			# leaving home") barely clashes with having stayed in (seed 100009 under #327).
+			if held_cards(subject, about).is_empty() or held_cards(subject, about).all(func(c): return str(c.get("block", c.get("content", {}).get("block", ""))) == str(subject.home_block)):
 				continue
 			var bystander: String = ""
 			for m in w.living_good():

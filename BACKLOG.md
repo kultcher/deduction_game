@@ -266,6 +266,10 @@ listener (#273), both Lantern's.
   network. (Michael, Nov 19) Owner Beadle, who proposes the size. **In flight:** Beadle's
   #327 (open). Michael approved its new constant, `Social.SHARE_UNCLAIMED_DAY_BOOST` = 0.15, on
   Nov 19: from day 2, good NPCs share privately about a fifth more often. [decided]
+  Built (Nov 19, `claude/beadle-private-share`): the weight of an unclaimed NPC's gift topic
+  and its own readings in private NPC talk is multiplied by 1 + 0.15 x (day - 1). NPC-to-NPC
+  only; evil's bluffed gift and fake readings get the same. Measured on 40 games: see the PR's
+  handoff.
 
 - **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]

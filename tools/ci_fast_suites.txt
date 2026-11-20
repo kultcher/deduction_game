@@ -104,6 +104,7 @@ test_premise_step2
 test_premise_step3
 test_press_caught_out
 test_press_contradiction
+test_private_share_boost
 test_public_revisions
 test_reading_confirm
 test_reading_trust
