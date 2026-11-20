@@ -983,6 +983,8 @@ Items still tagged `[decided]` in BACKLOG.md after they were built. Each was che
 
   > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #307, refreshed in #325, Strong-tier cases in #342. The badge's cut points are a separate item now (section 2, Cases and the Workshop).
 
+  > **Added Nov 20:** word-against-word slate cases, lie calls and their twins, Lantern #414 (no backlog item of its own).
+
 - **Misleading cases on the slate.** (Michael, Nov 19, approved through Seneschal.) The
   slate's chains built about an innocent subject, as they could really arise: an innocent
   out at night, true readings naming them beside the real evil, or a lie told by evil. Then

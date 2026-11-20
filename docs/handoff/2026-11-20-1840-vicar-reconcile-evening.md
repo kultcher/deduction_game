@@ -51,8 +51,11 @@ building it, or its PR is open). Marked from the open PRs and the leads' answers
 Beadle, Lantern and Quill have answered. When Herald answers, the marks are updated in a
 follow-up file.
 
-- **Not tied to an open item:** #414 (case slate lie calls) and Limner's #282 (line boil).
-  I've asked Quill which item #414 is for.
+- **Not tied to an open item:**
+  - #414, the slate's word-against-word lie calls and their twins (Lantern; merged at
+    918a7bd), is noted under the case benchmark slate's completed work;
+  - Limner's #282, the line boil, is an opt-in art experiment that needs no backlog item
+    (Seneschal).
 
 ## Checked
 
