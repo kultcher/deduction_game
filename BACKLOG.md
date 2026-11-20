@@ -67,7 +67,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
   2. \*A reason citing a pairing the model didn't weigh `[polish]`
-  3. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
+  3. \*The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   4. Brute kills scored as hexes on custom scripts `[later]`
   5. Gift doubt for readings the judge doesn't check `[open]`
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
@@ -531,6 +531,9 @@ Workshop and the shared model can't express yet.
   judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
   This item closes when #445 merges. The other two Minion gifts are
   built and closed (Quill, Nov 20). Owner Quill. [decided]
+  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
+    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
+    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -602,11 +605,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
         else.
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
-    - **A possible cap** would be a new constant, Michael's call.
-    - **Built** (Lantern, Nov 20; PR open, waiting on Michael's OK of the cap):
-      `WorkshopBridge.sleepwalk_doubt`. The cap is the existing `SLEEPWALK_CHANCE` (0.5), a
-      placeholder that needs no new constant: at most, she thinks it a coin flip whether her
-      home nights mean anything. The floor is the own-reading error.
+    - **Approved (Michael, Nov 20), as built in Lantern's #459:** her doubt that she stayed
+      home scales with her belief that she holds the Sleepwalker secret. It's capped at a coin
+      flip (reusing `SLEEPWALK_CHANCE`, 0.5), and its floor is the own-reading error. No new
+      constant. This item closes when #459 merges.
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
