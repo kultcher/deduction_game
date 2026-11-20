@@ -7,7 +7,7 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 
 ## Conclusion types. The player builds them as "<name> <is / is not / should be> <status>".
-const CONCLUSION_TYPES = ["good", "evil", "demon", "minion", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
+const CONCLUSION_TYPES = ["good", "evil", "demon", "minion", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable",
 	"suspicious", "secret", "marked", "red_herring", "secret_mod"]
 
 ## Conclusions that speak against someone (as opposed to for them).
@@ -124,8 +124,6 @@ static func assertions(card: Dictionary) -> Array:
 				out.append({"t": "trace_struct", "family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "victim_block": card.get("victim_block", card.get("block", "")), "day": day, "src": src, "card": n})
 			else:
 				out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
-		"dropped":
-			out.append({"t": "dropped", "material": card.get("material", ""), "block": card.get("block", ""), "night": day, "src": src, "card": n})
 		"conversation":
 			for who in subj:
 				out.append({"t": "at", "who": who, "block": card.get("block", ""), "day": day, "phase": ph, "src": src, "card": n})
@@ -202,10 +200,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "%s is misled%s%s" % [a, night, about]
 		"unreliable":
 			return "%s is misled or lying%s%s" % [a, night, about]
-		"protect":
-			return "%s should be protected" % a
-		"spare":
-			return "%s should be spared from execution" % a
 		"conflict":
 			return "Something doesn't add up: one of %s is misled or lying" % _names(w, c.get("group", []))
 		"suspicious":
@@ -383,7 +377,7 @@ static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matc
 			return "Card #%d is an unattributed tavern rumour and cannot be used to build a case." % int(x.get("n", 0))
 	if matched:
 		return ""
-	var positive = (c["type"] in ["role", "good", "notdemon", "truthful", "protect", "spare", "secret", "marked", "red_herring"] and not is_evil_role(c.get("role", ""))) \
+	var positive = (c["type"] in ["role", "good", "notdemon", "truthful", "secret", "marked", "red_herring"] and not is_evil_role(c.get("role", ""))) \
 		or (c["type"] == "secret_mod" and c.get("mod", "") != "delusional")
 	if not positive:
 		return ""

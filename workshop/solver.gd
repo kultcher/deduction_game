@@ -227,7 +227,7 @@ static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Diction
 	# Shrink one conflict, then explore excluding each member to discover other cores.
 	# This avoids enumerating every unrelated subset for a simple alibi conflict.
 	var has_th: bool = cards.any(func(c): return c.kind == "town_hall")
-	var conflict_kinds: Array = ["report", "claim", "town_hall", "sighting", "alibi", "totem", "dropped"] if has_th else ["report", "sighting", "alibi", "totem", "dropped"]
+	var conflict_kinds: Array = ["report", "claim", "town_hall", "sighting", "alibi", "totem"] if has_th else ["report", "sighting", "alibi", "totem"]
 	cards = cards.filter(func(c): return c.kind in conflict_kinds)
 	var result: Array = []
 	_find_conflicts(view, cards, knowledge, result, {})

@@ -503,16 +503,9 @@ Not on any script. It counts evil among two living lane neighbours.
 - **Strength:** weak alone.
 - **Contradicts:** a sighting of them out that night. That conflict is strong against the alibi-giver unless the teller is doubted.
 
-### C5. Dropped belongings (owner known)
-- **Source and timing:** the player, searching a location: someone's belongings, dropped on a known night.
-- **System:** movement, as a certain night sighting. It's physical evidence, so it has no honesty channel.
-- **Strength:** strong: a certain outing.
-- **Becomes useful with:** that night's murder route; the owner's alibi (now contradicted).
-
-### C6. Mud or soot drop (owner's block only)
-- **Says:** someone who lives on a given block passed this location that night.
-- **System:** movement; the drop's owner is matched to residents of that block.
-- **Strength:** weak to moderate, depending on how many residents.
+### C5 and C6. Dropped belongings and mud or soot drops: removed
+Walkers no longer drop anything (Michael, Nov 19). The numbers C5 and C6 are kept so the later
+entries keep theirs.
 
 ### C7. Vigil (player watched a block)
 - **Source and timing:** the player, at night.

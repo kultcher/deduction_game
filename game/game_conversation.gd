@@ -466,7 +466,6 @@ static func _talk_command(g, verb: String, rest: String) -> void:
 			if not g._presentation_gate(g.board[num0 - 1], [n], [], "deduction", "private"):
 				return
 			g._secrets_used(g.board[num0 - 1])
-			g._conflict_pressure(g.board[num0 - 1], 0.1, n)
 			r = g._evaluate_deduction(n, g.board[num0 - 1], 1.0)
 			r["facts"] = []
 			if not r.get("repeated", false) or g.free_repeats >= 1:
