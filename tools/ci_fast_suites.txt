@@ -56,7 +56,6 @@ test_gift_doubt
 test_gift_doubt_good
 test_gravedigger_bluff
 test_haunt_learning
-test_headline
 test_held_signals
 test_hint_families
 test_honest_forgetting
