@@ -73,7 +73,7 @@ static func _concl_type_code(c_type: String) -> int:
 	match c_type:
 		"evil", "suspicious":
 			return 0
-		"good", "role":
+		"good":
 			return 1
 		"notrole":
 			return 2

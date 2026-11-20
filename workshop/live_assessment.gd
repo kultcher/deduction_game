@@ -10,7 +10,7 @@ const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer"
 const Evidence = preload("res://workshop/live_evidence.gd")
 const History = preload("res://workshop/live_history.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
-const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "demon", "notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
+const CONCLUSIONS = ["evil", "good", "marked", "suspicious", "demon", "notdemon", "secret_mod", "notrole", "lied", "truthful", "misled", "unreliable", "inconsistent", "turned"]
 ## Premises step 3: "these readings from X don't fit together", with a named cause.
 const INCONSISTENT_CAUSES = {"any": "misled", "lying": "lying", "impaired": "impaired", "delusional": "delusional"}
 
@@ -140,7 +140,7 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		view.world_options["identities"] = true
 	if cards.any(func(c): return c.has("relay_source") or c.kind in ["claim", "totem", "town_hall"] or c.get("role", "") in ["clerk", "archivist", "seer", "gravedigger", "nightwatch", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar", "psychologist"]):
 		view.world_options["roles"] = true
-	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["role", "notrole", "misled", "unreliable"]):
+	if snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["notrole", "misled", "unreliable"]):
 		view.world_options["roles"] = true
 	if cards.any(func(c): return c.kind == "totem" or c.get("role", "") in ["archivist", "seer", "gravedigger", "chronicler", "augur", "executor", "registrar"]) or snapshot.arguments.any(func(a): return a.conclusion.get("type") in ["demon", "notdemon"] or a.get("workshop_case", {}).get("arguments", []).any(func(q): return q.case.conclusion.type in ["demon", "notdemon"])):
 		view.world_options["identities"] = true
@@ -822,7 +822,7 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 			return ["No curse has fallen on the town, so no one has been turned."]
 		if str(c.get("target", "")) not in curse.get("yes_voters", []) or str(c.get("target", "")) == str(curse.get("executed", "")):
 			return ["Only those who voted to hang the Revenant, and lived, could have been turned."]
-	if c.type in ["role", "notrole"] and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
+	if c.type == "notrole" and not Solver.selected(view, value).any(func(card): return card.kind in ["claim", "report"] and not card.get("testimony_only", false) and card.source == c.target and card.get("role", "") == c.get("role", "") and c.get("role", "") in C.GOOD_ROLES):
 		return ["A role-declaration question needs that person's included claim or reading of the named good gift."]
 	if c.type == "inconsistent":
 		var own: Array = Solver.selected(view, value).filter(func(card): return card.kind == "report" and card.source == c.target and Solver.tabled(card) and not card.has("relay_source") and not card.get("testimony_only", false))

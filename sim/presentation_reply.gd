@@ -19,7 +19,7 @@ const Tuning = preload("res://sim/tuning.gd")
 
 const ACCUSING = Deduction.ACCUSING
 ## Conclusions that speak for someone (the rest of the social ones speak against).
-const POSITIVE = ["good", "notdemon", "protect", "spare", "truthful", "role", "secret", "marked", "red_herring"]
+const POSITIVE = ["good", "notdemon", "protect", "spare", "truthful", "secret", "marked", "red_herring"]
 
 
 static func evaluate(w, n, ded: Dictionary, board: Array, scale: float, speak: bool = true) -> Dictionary:
@@ -132,7 +132,7 @@ static func _evil_reason(w, n, c: Dictionary, ded: Dictionary, approved: Diction
 static func _evil_argument_stakes(w, n, c: Dictionary, target) -> float:
 	if target == null:
 		return 0.2
-	var accusing = c["type"] in ACCUSING or (c["type"] == "role" and Deduction.is_evil_role(c.get("role", "")))
+	var accusing = c["type"] in ACCUSING
 	if target.is_evil():
 		var v = Evil.teammate_value(w, target.id)
 		return v * (0.3 + Evil.public_heat(w, target)) if accusing else 0.4 * v
@@ -149,7 +149,7 @@ static func _evil_mask(w, n, c: Dictionary, times: int, seen: bool) -> Dictionar
 	if times > 0:
 		return {"stance": "partial"}
 	var target = w.by_id.get(c.get("a", ""))
-	var accusing = c["type"] in ACCUSING or (c["type"] == "role" and Deduction.is_evil_role(c.get("role", "")))
+	var accusing = c["type"] in ACCUSING
 	var serves = 0.5
 	if target != null:
 		if target == n and c["type"] in ["misled", "unreliable"]:

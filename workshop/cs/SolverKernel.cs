@@ -53,7 +53,7 @@ internal static class SolverKernel
 
     // Conclusion type codes (holds / _build_premise_mask):
     public const int ConclEvilOrSuspicious = 0;
-    public const int ConclGoodOrRole = 1;
+    public const int ConclGood = 1;
     public const int ConclNotRole = 2;
     public const int ConclLied = 3;
     public const int ConclTruthful = 4;
@@ -1333,10 +1333,10 @@ internal static class SolverKernel
         }
 
         var (evil, _, plain) = GetOrComputeWorldBits(universeHandle, worlds);
-        if (plain && (conclTypeCode == ConclEvilOrSuspicious || conclTypeCode == ConclGoodOrRole))
+        if (plain && (conclTypeCode == ConclEvilOrSuspicious || conclTypeCode == ConclGood))
         {
             long bit = 1L << targetIdx;
-            byte want = conclTypeCode == ConclGoodOrRole ? (byte)0 : (byte)1;
+            byte want = conclTypeCode == ConclGood ? (byte)0 : (byte)1;
             byte alt = (byte)(1 - want);
             for (int i = 0; i < n; i++)
             {
@@ -1352,7 +1352,7 @@ internal static class SolverKernel
             bool holds = conclTypeCode switch
             {
                 ConclEvilOrSuspicious => EvilIndex(w, targetIdx, convEvilAtConcl),
-                ConclGoodOrRole => !EvilIndex(w, targetIdx, convEvilAtConcl),
+                ConclGood => !EvilIndex(w, targetIdx, convEvilAtConcl),
                 ConclNotRole => EvilIndex(w, targetIdx, convEvilAtConcl),
                 ConclLied => EvilIndex(w, targetIdx, convEvilAtConcl),
                 ConclTruthful => !EvilIndex(w, targetIdx, convEvilAtConcl),

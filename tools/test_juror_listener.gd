@@ -151,13 +151,13 @@ func _draw_and_bare() -> void:
 
 
 ## The badge's top tier reads the chance only where it settles the premise (Herald and Codex on
-## #358): accusing premises, "is good", "is not the Demon"; not "holds their gift" and the like.
+## #358): accusing premises, "is good", "is not the Demon"; not "is Marked" and the like.
 func _top_tier() -> void:
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var cat: Callable = func(type: String) -> String: return CaseEval.category(1.1, Live.top_tier_chance(type, 0.95))
 	check(cat.call("evil") == "damning" and cat.call("demon") == "damning" and cat.call("good") == "damning" and cat.call("notdemon") == "damning",
 		"at a 95% chance, an accusing premise, \"is good\" and \"is not the Demon\" reach the top tier")
-	check(cat.call("role") == "none" and cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
+	check(cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
 		and cat.call("secret_mod") == "none",
 		"a clearing premise the target's goodness doesn't settle keeps the tier its strength earns")
 

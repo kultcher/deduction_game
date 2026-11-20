@@ -51,11 +51,11 @@ var presenting = false
 ## a curse has been announced (Michael, Nov 19), or on a premise that already holds it; the
 ## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
 ## as it is for the older off-screen picker, which selects by index.
-const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "role", "inconsistent", "turned"]
+const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "inconsistent", "turned"]
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "holds a secret", "holds their claimed gift", "has readings that don't fit together", "was turned by the Revenant's curse"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "holds a secret", "has readings that don't fit together", "was turned by the Revenant's curse"]
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
 ## Nov 13: "suspicious" is a pressure tool; there's no "one of these two").
@@ -98,7 +98,7 @@ func _premise_details(node: Dictionary) -> void:
 			conclusion["mod"] = kinds[0]
 		choice.select(kinds.find(conclusion.mod))
 		choice.item_selected.connect(func(i): conclusion.mod = kinds[i]; _edit())
-	if conclusion.get("type") in ["role", "notrole"]:
+	if conclusion.get("type") == "notrole":
 		var roles: Array = Live.Assess.C.GOOD_ROLES
 		var choice = _option(case_box, roles.map(func(role): return Live.Assess.C.role_name(role)))
 		if not conclusion.has("role"):
@@ -1191,7 +1191,7 @@ func prefill_premise(target: String, type: String = "evil") -> String:
 func _default_detail(node: Dictionary) -> void:
 	var conclusion: Dictionary = node.conclusion
 	match conclusion.get("type", ""):
-		"role", "notrole":
+		"notrole":
 			if not conclusion.has("role"):
 				var roles: Array = C.GOOD_ROLES
 				var claims: Array = board.view.cards.filter(func(card): return card.source == conclusion.target and card.get("role", "") in roles)
@@ -1212,7 +1212,7 @@ func _detail_label(node: Dictionary) -> Dictionary:
 	if node.get("draft", false) or conclusion.is_empty():
 		return {}
 	match conclusion.type:
-		"role", "notrole":
+		"notrole":
 			return {"field": "role", "text": C.role_name(conclusion.get("role", "")), "icon": WorkshopSkin.tex("ui/roles/" + conclusion.get("role", ""), 0.06),
 				"tip": "The gift this premise is about. It judges the person's own declaration; it doesn't assign an unclaimed role."}
 		"secret_mod":

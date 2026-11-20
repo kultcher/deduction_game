@@ -1821,12 +1821,13 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		# only while it held. Never true with no public curse (no world is turned).
 		"turned": return int(world.get("converted", -1)) == index
 		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
-		"role", "notrole":
+		"notrole":
 			# A declaration question, not an extra hidden role assignment: the live
-			# adapter requires a cited matching claim. Good declarations are binding;
-			# the existing joint role table weighs whether those claims fit together.
-			var claimed: bool = not TimeModel.evil_index(view, world, index, conclusion.at)
-			return claimed if conclusion.type == "role" else not claimed
+			# adapter requires a cited matching claim. Good declarations are binding, so
+			# a bluffed one means evil; the existing joint role table weighs whether those
+			# claims fit together. ("Holds their claimed gift" was merged into "is good",
+			# Michael, Nov 20.)
+			return TimeModel.evil_index(view, world, index, conclusion.at)
 		"lied", "truthful":
 			# Existing challenge semantics: evil-reader versus honest-reader
 			# explanations. Impairment is not deliberate dishonesty.

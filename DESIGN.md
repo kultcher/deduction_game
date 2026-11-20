@@ -632,9 +632,10 @@ and Nov 3 (`docs/archive/legacy_retirement_plan.md`): there are no link template
 The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
   (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, Marked,
-  suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, and "was turned by the curse" ("these reports conflict" was removed, and
-  "is a Minion" folded into "is evil", Michael, Nov 20). "Was turned by the curse" names
+  suspicious, a modifier holder, doesn't hold their claimed gift (off the menu; saved
+  cases still evaluate), lied, truthful, misled, unreliable, and "was turned by the curse"
+  (Michael, Nov 20: "these reports conflict" was removed, "is a Minion" folded into "is
+  evil" and "holds their claimed gift" merged into "is good"). "Was turned by the curse" names
   the Revenant's turning itself: the person was good before the curse, evil only
   while it held, and good again after it, so their earlier and later word stands. "Evil
   during the curse" also allows that they were evil all along. It needs a public curse and

@@ -275,7 +275,9 @@ listener (#273), both Lantern's.
     Part of the secrets rework (`docs/design/secrets_rework.md`, sections 2 and 10.1).
   - **Retracting a public claim** to back into another gift, for good and evil, belongs here
     (Michael, Nov 19; see "More rebuttals after a caught lie").
-  A caught lie still implicates strongly, so both need care. [open]
+  A caught lie still implicates strongly, so both need care. The "holds their claimed
+  gift" premise was merged into "is good" (Michael, Nov 20); revisit if this is decided.
+  [open]
 
 - **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
   bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is

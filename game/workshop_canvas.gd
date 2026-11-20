@@ -315,7 +315,7 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 ## accusation, down for one that clears them. The listener weighs every case through its
 ## subject's chance of being evil, so that is what the juror reads. A premise the judge
 ## couldn't pin on one subject is read through whoever it moves most, upward.
-const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+const PREMISE_CLEARS = ["good", "notdemon", "truthful", "misled", "marked", "secret_mod"]
 ## The clearing premises a listener's chance of the target being good settles outright, for
 ## the badge's top tier (Conclusive): test_juror.
 const TOP_TIER_CLEARS = ["good", "notdemon"]

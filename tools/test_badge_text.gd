@@ -41,8 +41,8 @@ func _run() -> void:
 	check(top.label == "Conclusive" and top.line == "This case is conclusive: an ordinary townsperson would take it as settled that %s is good." % who.name, "any other premise's is Conclusive (%s)" % top.line)
 
 	# Being good doesn't settle every clearing premise: those stop at Strong (Codex, #358).
-	var gift: String = ed.board.add_premise(who.id, "role", Vector2(800, 0))
-	check(canvas.top_tier(gift).is_empty(), "\"holds their claimed gift\" can't be called settled by their being good")
+	var gift: String = ed.board.add_premise(who.id, "marked", Vector2(800, 0))
+	check(canvas.top_tier(gift).is_empty(), "\"is Marked\" can't be called settled by their being good")
 	check(canvas.top_tier(ed.board.add_premise(who.id, "notdemon", Vector2(1200, 0))).get("label", "") == "Conclusive", "\"is not the Demon\" can")
 	canvas.badges = {gift: {"ready": true, "category": "damning", "text": "placeholder", "reason": "", "lr": 5.0}}
 	canvas.queue_redraw()

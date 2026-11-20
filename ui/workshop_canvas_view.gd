@@ -689,7 +689,7 @@ func _evidence_card(id: String) -> Dictionary:
 
 ## Clearing premises the top tier can call settled: the juror's chance is the target's chance
 ## of being good, which settles these and no other clearing premise (Codex, #358). Being good
-## doesn't settle "holds their claimed gift", "is Marked" and the like.
+## doesn't settle "is Marked", "holds a secret" and the like.
 const CONCLUSIVE_TYPES = ["good", "notdemon"]
 
 ## The top tier's chip and reason line for premise `id`: Damning when it accuses someone by

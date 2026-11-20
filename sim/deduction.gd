@@ -7,14 +7,11 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 
 ## Conclusion types. The player builds them as "<name> <is / is not / should be> <status>".
-const CONCLUSION_TYPES = ["good", "evil", "demon", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
+const CONCLUSION_TYPES = ["good", "evil", "demon", "notdemon", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
 	"suspicious", "secret", "marked", "red_herring", "secret_mod"]
 
 ## Conclusions that speak against someone (as opposed to for them).
 const ACCUSING = ["evil", "demon", "lied", "notrole", "unreliable", "suspicious"]
-
-static func is_evil_role(r: String) -> bool:
-	return C.ROLES.has(r) and C.ROLES[r].get("align", "good") == "evil"
 
 ## Old names kept working.
 static func normalize(c: Dictionary) -> Dictionary:
@@ -168,8 +165,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "%s is good" % a
 		"notdemon":
 			return "%s is not the Demon" % a
-		"role":
-			return "%s is the %s" % [a, C.role_name(c["role"])]
 		"notrole":
 			return "%s is not the %s" % [a, C.role_name(c["role"])]
 		"lied":
@@ -353,7 +348,7 @@ static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matc
 			return "Card #%d is an unattributed tavern rumour and cannot be used to build a case." % int(x.get("n", 0))
 	if matched:
 		return ""
-	var positive = (c["type"] in ["role", "good", "notdemon", "truthful", "protect", "spare", "secret", "marked", "red_herring"] and not is_evil_role(c.get("role", ""))) \
+	var positive = c["type"] in ["good", "notdemon", "truthful", "protect", "spare", "secret", "marked", "red_herring"] \
 		or (c["type"] == "secret_mod" and c.get("mod", "") != "delusional")
 	if not positive:
 		return ""

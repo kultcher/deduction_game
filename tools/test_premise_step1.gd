@@ -143,8 +143,8 @@ func _movement_notes() -> void:
 	var assessment = {"case_eval": ev, "reasoning": {"status": "provisional"}, "agreement": 0.7, "path_kind": "reading"}
 	var view = {"listener": {"reasoning_mode": "full"}}
 	var killer = Presentations.render_workshop_reply(g.w, n, {"type": "evil", "a": other.id}, [other.id], assessment, view, {}, "accept", false, false, "Those reports convince me.", {})
-	var role = Presentations.render_workshop_reply(g.w, n, {"type": "role", "a": other.id, "role": "warden"}, [other.id], assessment, view, {}, "accept", false, false, "Those reports convince me.", {})
-	check(killer.text.length() > role.text.length(), "the 'seen elsewhere' note follows a killer-side premise (%d chars) but not a role premise (%d)" % [killer.text.length(), role.text.length()])
+	var marked = Presentations.render_workshop_reply(g.w, n, {"type": "marked", "a": other.id}, [other.id], assessment, view, {}, "accept", false, false, "Those reports convince me.", {})
+	check(killer.text.length() > marked.text.length(), "the 'seen elsewhere' note follows a killer-side premise (%d chars) but not a Marked premise (%d)" % [killer.text.length(), marked.text.length()])
 
 func _preview_hint() -> void:
 	var view = {"people": [{"id": "x", "name": "Xan"}, {"id": "y", "name": "Yara"}]}
