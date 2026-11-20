@@ -270,7 +270,7 @@ func _calibration() -> void:
 	check(absf(demon_items / 10000.0 - 0.042) < 0.007 and absf(good_items / 10000.0 - 0.018) < 0.005, "actual drop-generator samples match the conditional 4.2/1.8 percent mechanism, before route/location search")
 
 func _ui() -> void:
-	var scene = load("res://ui/case_workshop.tscn").instantiate()
+	var scene = _fixture_workshop()
 	root.add_child(scene)
 	await process_frame
 	await process_frame
@@ -330,3 +330,10 @@ func check(okay: bool, label: String) -> void:
 	else:
 		fails += 1
 		push_error("FAIL: " + label)
+
+## The fixture Workshop (fixture 692): the canvas base script as a full-screen control. Its lab
+## scene is gone (dead dev labs, Nov 19); the script is still the live Workshop's base.
+func _fixture_workshop() -> Control:
+	var scene: Control = preload("res://ui/case_workshop_canvas.gd").new()
+	scene.set_anchors_preset(Control.PRESET_FULL_RECT)
+	return scene

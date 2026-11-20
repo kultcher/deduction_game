@@ -1301,7 +1301,7 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   `sim/dialogue_presentations.gd`): presentation only. The simulation decides what is said
   (including evil's fabrications); the composer words it in a character's voice. It never
   sees world state or truth and draws no game RNG. All fifteen characters have voice packs;
-  every voiced line keeps a canonical statement. Workshop: `ui/dialogue_lab.tscn`. Rules:
+  every voiced line keeps a canonical statement. Preview: `tools/dialogue_preview.gd`. Rules:
   `docs/DIALOGUE_DESIGN.md`.
 - **Talking to a group** (3 questions split among anyone at the spot): tabled (Michael,
   Nov 18).
@@ -1362,8 +1362,7 @@ Every event goes to a JSONL log plus a readable transcript: world events, NPC re
 (claims, lies, votes, kill/poison scores, shared-model refreshes and deliveries,
 overrides), suspicion and trust changes with causes, per-phase snapshots (including
 shadows), and hidden state. With detailed logging on, a `.trace.jsonl` sidecar records
-state changes for the case history viewer (`tools/case_viewer.py`,
-`docs/case_viewer.md`). Entry types and filters: README "Dev log"; `tools/trace.py`.
+state changes (its viewer was retired Nov 19). Entry types and filters: README "Dev log"; `tools/trace.py`.
 
 ## Logic depth
 
