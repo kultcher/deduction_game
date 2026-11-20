@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_3add4fb`
+
+`tools/golden/baseline_3add4fb/` is the capture from `claude/beadle-martyr-bluff-quiet` at `3add4fb`
+(main at `554f2f4`, after #448, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_66be26f`:** only 692, at record 236 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
 
 `tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
 `fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
