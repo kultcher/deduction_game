@@ -158,6 +158,9 @@ static func _attribute_refresh_impl(
 		"move_full": move_full, "test_full": test_full, "nc": nc, "memo": {}}
 	loo_ctx["cx"] = cx  # the belief model's own inputs (Jury), for _connections_drop
 	loo_ctx["cx_memo"] = {}
+	# The card sets the belief model weighed together, so a joint reason names only a pairing
+	# the NPC actually put together (section 6; Beadle, Nov 20).
+	loo_ctx["combined"] = combined_groups(cx)
 
 	var out: Dictionary = {}
 	for pid in suspect_ids:
@@ -231,7 +234,7 @@ static func _attribute_refresh_impl(
 						for other_c in held:
 							if other_c.get("quoted", false) or str(other_c.get("id", "")) == cid:
 								continue
-							if str(other_c.get("kind", "")) in ["claim", "report"] and str(other_c.get("role", "")) == clm_role and str(other_c.get("source", "")) != pid:
+							if str(other_c.get("kind", "")) in ["claim", "report"] and str(other_c.get("role", "")) == clm_role and str(other_c.get("source", "")) != pid and weighed_together(loo_ctx.combined, cid, str(other_c.get("id", ""))):
 								var osrc: String = str(other_c.get("source", ""))
 								var pair_fits: PackedFloat64Array = _subset_fits(view, cc, [card, other_c], knowledge)
 								var pair_w: PackedFloat64Array = PackedFloat64Array()
@@ -780,6 +783,8 @@ static func _augment_joint_leave_one_out(
 							continue
 						if int(obs.get("night", -1)) != d_night or str(obs.get("kind", "")) not in ["sighting", "coverage", "alibi"]:
 							continue
+						if not weighed_together(loo_ctx.get("combined", null), str(obs.get("id", "")), str(dcard.get("id", ""))):
+							continue
 						var without_obs: Array = attended.filter(func(x): return str(x.get("id", "")) != str(obs.get("id", "")))
 						if LiveActivity._likelihood(view, without_obs, t_person, "good") > 1e-9:
 							var obs_id: String = str(obs.get("id", ""))
@@ -881,25 +886,41 @@ static func _augment_joint_leave_one_out(
 				existing["strength"] = maxf(float(existing.get("strength", 0.3)), _strength_from_shift(drop, 1.0, csrc == self_id))
 			continue
 
+		# Its partners are the cards the belief model weighed together with it: the suspect's
+		# own, else the other reports. With none, there is no joint reason to give.
+		var groups = loo_ctx.get("combined", null)
 		var roots: Array = [cid]
 		for pc_id in pid_cards:
-			if pc_id != cid and pc_id not in roots:
+			if pc_id != cid and pc_id not in roots and weighed_together(groups, cid, pc_id):
 				roots.append(pc_id)
 		if roots.size() == 1:
 			for oc in attended:
 				var oc_id: String = str(oc.get("id", ""))
-				if not oc.get("quoted", false) and oc_id != cid and str(oc.get("kind", "")) in ["report", "claim"]:
+				if not oc.get("quoted", false) and oc_id != cid and str(oc.get("kind", "")) in ["report", "claim"] and weighed_together(groups, cid, oc_id):
 					roots.append(oc_id)
+		# With no partner the model weighed it with, it is still this card's own measured weight
+		# in the belief: cited alone, in the card's own words, not as a pairing.
+		var alone: bool = roots.size() == 1 and groups != null
 		if csrc == self_id:
 			found_own_joint = true
-		var whys: Dictionary = joint_whys(view, cand, pid, csrc, self_id, crole, attended)
-		var why_own: String = whys.own
-		var why_pub: String = whys.public
+		var why_own: String
+		var why_pub: String
+		if alone and pid in _mentions(cand):
+			# A reading that names them, cited alone in its own words.
+			var single_why: Array = _report_why_pair(view, cand, pid, self_id)
+			why_own = str(single_why[0])
+			why_pub = str(single_why[1])
+		else:
+			# Taken together, or a reading that moves them only indirectly (one that clears
+			# someone else leaves them among the likelier): say what it actually says (Codex on #444).
+			var whys: Dictionary = joint_whys(view, cand, pid, csrc, self_id, crole, attended)
+			why_own = whys.own
+			why_pub = whys.public
 
 		_put_item(items_by_id, {
 			"card_id": cid,
 			"card_kind": str(cand.get("kind", "report")),
-			"channel": "joint_contradiction",
+			"channel": "report" if alone else "joint_contradiction",
 			"source": csrc,
 			"relay_source": cand_rsrc,
 			"role": "medium" if cand_rsrc != "" else crole,
@@ -909,7 +930,7 @@ static func _augment_joint_leave_one_out(
 			"strength": _strength_from_shift(drop, 1.0, csrc == self_id),
 			"why_own": why_own,
 			"why_public": why_pub,
-			"joint": true,
+			"joint": not alone,
 			"root_ids": roots,
 		})
 
@@ -954,6 +975,52 @@ static func _needs_fits_recheck(ctx: Dictionary, cand: Dictionary) -> bool:
 		or l_role in ["gravedigger", "archivist", "clerk", "seer", "martyr", "veteran", "chronicler", "augur", "magistrate", "surveyor", "executor", "registrar"]
 		or ctx.attended.any(func(o): return not o.get("quoted", false) and str(o.get("id", "")) != l_cid and str(o.get("role", "")) == l_role)
 	)
+
+## The card sets the belief model weighed together in this refresh (Jury's `cx`): each item
+## (a unit, the movement connection, the day connection), the core (its seed and member items
+## and the firsthand cards, judged jointly), and each stored case it counted. Null when there
+## is no belief result to read (tests, tools): then nothing is filtered.
+static func combined_groups(cx: Dictionary):
+	var result: Dictionary = cx.get("result", {})
+	if cx.is_empty() or not result.has("items"):
+		return null
+	var groups: Array = []
+	var by_key: Dictionary = {}
+	for it in result.get("items", []):
+		var ids: Array = it.get("cards", [])
+		by_key[str(it.get("key", ""))] = ids
+		if ids.size() > 1:
+			groups.append(_id_set(ids))
+	var core: Dictionary = result.get("core", {})
+	var core_ids: Array = core.get("firsthand", []).duplicate()
+	for key in core.get("seed", []) + core.get("members", []):
+		core_ids.append_array(by_key.get(str(key), []))
+	if core_ids.size() > 1:
+		groups.append(_id_set(core_ids))
+	var counted: Array = []
+	for entry in result.get("cases", {}).get("entries", []):
+		counted.append(str(entry.get("key", "")))
+	for cs in cx.get("state", {}).get("cases", []):
+		if str(cs.get("key", "")) in counted and cs.get("cards", []).size() > 1:
+			groups.append(_id_set(cs.cards))
+	return groups
+
+static func _id_set(ids: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for id in ids:
+		out[str(id)] = true
+	return out
+
+## Whether the belief model weighed cards `a` and `b` together (combined_groups); always true
+## when there is no belief result to read.
+static func weighed_together(groups, a: String, b: String) -> bool:
+	if groups == null:
+		return true
+	for g in groups:
+		if g.has(a) and g.has(b):
+			return true
+	return false
+
 
 ## Why a "taken together" reading moves the listener against pid, as they'd say it
 ## (own) and as it reads when the town knows the reading (public). Split out of
