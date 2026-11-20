@@ -44,17 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_d85bba3`
+### Current baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
 
-`tools/golden/baseline_d85bba3/` is the capture from `claude/herald-nightwatch-card` at `d85bba3`
-(on main). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
-pass by", fabricated cards match, and the scapegoat fabrication's logged reason says "watched the
-block of" instead of "the street of".
-- **Divergence from `baseline_7005cc6`:** text only. 42 and 54875 from record 1, 692 from 45 and
-  98933 from 79, each at a Night Watch card's text (and on 98933 the fabrication's reason). 900 is
-  identical. With " pass by" replaced by " out" and "street of evil" by "block of evil" in the old
-  baseline, all five seeds are identical.
-- **Outcomes:** unchanged on all five seeds.
+`tools/golden/baseline_b96d2f2/` is the capture from `claude/beadle-gravedigger-lean` at `b96d2f2` (main at
+`0b44cae`, merged in). A good Gravedigger always leans a little toward nominating and voting to hang
+(`GRAVEDIGGER.hanging_lean` 0.08; Michael, Nov 21: approved, and permanent, since its gift reads the
+hanged). It's a hidden motive: a vote part (`gravedigger_wants_hanging`) and a logged nomination term.
+This replaces the PR's earlier `baseline_82f6be4` and `baseline_68297e3`, where the lean held only
+until the first hanging.
+- **Divergence from `baseline_7005cc6`:**
+  - 54875 at record 50 (day 1), 692 at 92 (day 2) and 900 at 69 (day 2), each at the first vote
+    whose record carries the `gravedigger_wants_hanging` part;
+  - 98933 at record 41 (day 1), a nomination;
+  - 42 is identical.
+- **Against the until-the-first-hanging version:** 54875, 692 and 900 also differ at day-3 votes,
+  where the lean now stays; every hanging is the same.
+- **Outcomes:**
+  - **54875:** Agnes is now hanged as well as Edda, and the game runs longer (328 records against 293).
+    No winner either way.
+  - **692, 900 and 98933:** the same hangings; no winner.
+  - **42:** unchanged.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
