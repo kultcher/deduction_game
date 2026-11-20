@@ -59,6 +59,16 @@ const CASES = {
 	"lamp_bluff_innocent": "A Minion bluffing the Lamplighter: \"1 other out\" + everyone else's true home alibi (suspicious)",
 	"nw_nobody_innocent": "The Night Watch saw nobody on I's block + a Minion's false sighting of I there",
 	"guard_innocent": "A sighting of I near the guarded door + the Warden's guard, on a quiet night",
+	# Word against word (Lantern, Nov 19, for the player's-judgement boost, #352; Seneschal):
+	# the player calls one teller's reading a lie, on another teller's clashing reading. Each
+	# true call is about the Minion who lied; its "_innocent" twin makes the misleading call,
+	# about the real holder, on the Minion's word.
+	"lie_seer": "A Minion's Seer \"yes\" on two innocents, called a lie on the real Seer's \"no\" (subject: the Minion)",
+	"lie_gravedigger": "A Minion's Gravedigger reading that the hanged innocent was a Minion, called a lie on the real Gravedigger's reading",
+	"lie_seer_reversed": "A Minion's Seer \"no\" on the Demon and an innocent, called a lie on the real Seer's \"yes\"",
+	"lie_seer_innocent": "The real Seer's \"no\" on two innocents, called a lie on a Minion's \"yes\" (subject: the real Seer)",
+	"lie_gravedigger_innocent": "The real Gravedigger's reading of the hanged innocent, called a lie on a Minion's \"a Minion\"",
+	"lie_seer_reversed_innocent": "The real Seer's \"yes\" on the Demon and an innocent, called a lie on a Minion's \"no\"",
 }
 
 var _texts: Dictionary = {}
@@ -132,7 +142,8 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	# the witnesses and gift holders the case draws on.
 	var innocent: bool = name.ends_with("_innocent")
 	var base: String = name.trim_suffix("_innocent")
-	if innocent:
+	var lie_call: bool = base.begins_with("lie_")
+	if innocent and not lie_call:
 		if min_ev == null:
 			return {}
 		s = goods[-1]
@@ -148,7 +159,50 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var sources: Array = []
 	var premise := "evil"
 	var other := "market" if s.home_block != "market" else "docks"
+	var lie_calls: Dictionary = {}  # board number of the reading called a lie -> its grounds' numbers
 	match base:
+		"lie_seer", "lie_seer_reversed", "lie_gravedigger":
+			# Word against word: the Minion bluffs the gift, the real holder reads, the player
+			# calls one of them a liar on the other's reading.
+			if min_ev == null:
+				return {}
+			var gift: String = "gravedigger" if base == "lie_gravedigger" else "seer"
+			var real = _holder(goods, gift, [])
+			if real == null:
+				return {}
+			var rest: Array = goods.filter(func(n): return n != real)
+			if rest.size() < 2:
+				return {}
+			var lie_n: int
+			var true_n: int
+			if gift == "seer":
+				var pair: Array = [rest[0].id, rest[1].id] if base == "lie_seer" else [dem.id, rest[0].id]
+				var says: bool = base == "lie_seer"  # the Minion's word; the real Seer says the opposite
+				var names: String = "%s or %s" % [w.by_id[pair[0]].name, w.by_id[pair[1]].name]
+				lie_n = _add(g, {"kind": "info", "source": min_ev.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": pair, "yes": says},
+					"text": "%s's Seer: %s %s the Demon" % [min_ev.name, names, "is" if says else "isn't"]})
+				true_n = _add(g, {"kind": "info", "source": real.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": pair, "yes": not says},
+					"text": "%s's Seer: %s %s the Demon" % [real.name, names, "isn't" if says else "is"]})
+			else:
+				var hanged = rest[0]
+				hanged.alive = false
+				hanged.death_cause = "executed"
+				w.public_log.append({"day": 2, "kind": "execution", "subjects": [hanged.id], "by": ""})
+				lie_n = _add(g, {"kind": "info", "source": min_ev.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": hanged.id, "role": min_ev.role},
+					"text": "%s's Gravedigger: hanged %s was the %s" % [min_ev.name, hanged.name, min_ev.role]})
+				true_n = _add(g, {"kind": "info", "source": real.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": hanged.id, "role": hanged.role},
+					"text": "%s's Gravedigger: hanged %s was the %s" % [real.name, hanged.name, hanged.role]})
+			var claim_lie: int = _add(g, {"kind": "claim", "subject": [min_ev.id], "role": gift, "source": min_ev.id, "text": "%s claims the %s" % [min_ev.name, gift]})
+			var claim_true: int = _add(g, {"kind": "claim", "subject": [real.id], "role": gift, "source": real.id, "text": "%s claims the %s" % [real.name, gift]})
+			cited += [lie_n, true_n, claim_lie, claim_true]
+			if innocent:
+				s = real
+				lie_calls[true_n] = [lie_n]
+				sources += [min_ev]
+			else:
+				s = min_ev
+				lie_calls[lie_n] = [true_n]
+				sources += [real]
 		"pile":
 			cited.append(_add(g, _sight(goods[0], s, other, 1)))
 			cited.append(_add(g, _sight(goods[1], s, "hill" if s.home_block != "hill" else "square", 2)))
@@ -369,6 +423,12 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			if nd.kind == "evidence" and Solver.card_by_id(view, nd.card).get("text", "") == str(_texts[num]):
 				model.connect_cards(id, p_id)
 	var value: Dictionary = model.compile(p_id)
+	if not lie_calls.is_empty():
+		var challenges: Dictionary = {}
+		for num in lie_calls:
+			var rid: String = Live.Evidence.normalize_card(g.board[int(num) - 1]).id
+			challenges[rid] = {"mode": "lying", "supports": lie_calls[num].map(func(x): return Live.Evidence.normalize_card(g.board[int(x) - 1]).id)}
+		value["reading_challenges"] = challenges
 	var tj: Dictionary = Live.test_juror(g, value)
 	var n_case: int = Live.file(g, value)
 	if n_case <= 0:
@@ -415,6 +475,9 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 				rival = maxf(rival, float(post[id]))
 		row["top"] = mine > rival
 		row["margin"] = mine - rival
+	if not lie_calls.is_empty():
+		# How the average listener takes each lie call (the badge's words): pressed, draw, ...
+		row["lie_calls"] = tj.get("listener", {}).get("challenges", []).map(func(c): return str(c.get("kind", "")))
 	if not blocked.is_empty():
 		row["blocked"] = blocked
 		print("  %s seed %d: %d listeners blocked: %s" % [name, sd, blocked.size(), blocked[0]])
