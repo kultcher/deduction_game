@@ -10,10 +10,15 @@
   - **The top tier was undersold:** the chance of being good is never higher than the chance of
     not being the Demon.
 - **The fix:** the average listener (connections) reports only P(evil), so the juror takes the
-  share of that which is the Demon from CaseEval's own reading of the case (the "demon"
-  question, on the Test juror's view), before and after. P(not Demon) = 1 − P(evil) ×
+  share of that which is the Demon from CaseEval's reading of the same hearing (the "demon"
+  question asked of the listener's own two Shared.prepare plans, through
+  `SharedLedger.evaluate_question`), before and after. So the split weighs the same cards,
+  hearing weights, route trust and challenges as the listener's chances (Codex's three findings
+  on this PR: a challenged card stays, an accepted honest-mistake call discounts it, and a less
+  trusting listener clears less). P(not Demon) = 1 − P(evil) ×
   P(Demon)/P(evil). The badge's strength and its top tier both read that.
-  - New helper: `WorkshopCanvas._demon_share`.
+  - New helper: `WorkshopCanvas._demon_share`. `profile_judge` also returns `plan_before`
+    and `plan_after`.
   - No new constant or mechanic. Every other premise type is unchanged.
   - `TOP_TIER_CLEARS` keeps "notdemon" and now gets the right chance (Herald's request, so
     `CONCLUSIVE_TYPES` stays in step).
