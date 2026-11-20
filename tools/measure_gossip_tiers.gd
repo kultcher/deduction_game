@@ -8,6 +8,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Social = preload("res://sim/social.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 
 func _init() -> void:
@@ -15,10 +16,9 @@ func _init() -> void:
 	var raw: Array = OS.get_cmdline_user_args()
 	for i in range(0, raw.size() - 1, 2):
 		args[str(raw[i]).trim_prefix("--")] = int(raw[i + 1])
-	# The approved targets (Michael, Nov 19). The constants arrive with Beadle's budget PR;
-	# until then these are the same values.
-	var t1: int = 2
-	var t2: int = 1
+	# The approved targets (Michael, Nov 19).
+	var t1: int = Tuning.Social.TAVERN_TIER1_TARGET
+	var t2: int = Tuning.Social.TAVERN_TIER2_TARGET
 	var evenings: int = 0
 	var told: Array = [0, 0, 0, 0]
 	var offered: Array = [0, 0, 0, 0]

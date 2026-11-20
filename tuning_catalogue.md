@@ -287,6 +287,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TAVERN_OVERHEAR_MIN_SUSP` | `0.4` |  | `sim/mind_cases.gd` |
 | `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social.gd` |
 | `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social.gd` |
+| `TAVERN_TIER1_TARGET` | `2` | Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier). | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
+| `TAVERN_TIER2_TARGET` | `1` |  | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
 | `TOWN_VIBE_TREND` | `0.03` | The town's vibe check on the Demonologist (always told at evening tavern gossip): the average rapport (trust) and competence (credibility) of the living good townsfolk, in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average rapport (and below neutral) gets a 'not everyone agrees'. | `sim/social.gd` |
 | `TOWN_VIBE_OUTLIER` | `0.2` |  | `sim/social.gd` |
 | `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social.gd` |

@@ -334,6 +334,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     `2026-11-20-1215-quill-gossip-tiers.md`), as approved above. Measured: the targets are
     both met on about 4% of tavern evenings today, though the town's news would allow it on
     about 84%. Beadle's budget is next. [in review]
+  - **Budget built** (Beadle, Nov 20, #437; handoff `2026-11-20-1400-beadle-gossip-budget.md`):
+    each evening fills its tier-1 and tier-2 targets first, then draws as before. Both targets
+    are met on about 73% of evenings (from 3%). [in review]
 
 ## 4. Major structural work (a week or more; design first)
 
