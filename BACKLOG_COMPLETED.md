@@ -5,6 +5,16 @@ session notes are kept for the record; code pointers may have moved since.
 
 ## Closed Nov 20, 2026, reprioritization (Michael; recorded by Claude-Vicar)
 
+- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
+  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
+  world with everyone's routes, so "N others out, and everyone but one home" already points
+  at the one unaccounted, and more people reported out than counted already clashes. Neither
+  case has been measured on its own, so what's left is a test that shows it. Owners Quill
+  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
+  Michael wants it stronger.
+
+  > **Closed Nov 20 (Lantern):** already tested. `test_lamplighter_count_mix` (#346, on the fast list) covers the accounting case (a count plus everyone else's home alibi supports a case about the one left over, ×1.81), a third party's clashing sighting (it doesn't convict the Lamplighter, ×0.92), the listener's own sighting ruling a count out, and a true count against a lying home alibi. "Seen nowhere" uses the same joint factor, so no item is kept for it.
+
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
   [open]

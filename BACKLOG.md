@@ -71,8 +71,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Minion gifts
   2. A Medium's relayed sighting vs the dead's known vantage
-  3. The Lamplighter's count against alibis and sightings: add a test
-  4. Duty claim vs reading
+  3. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case
   2. Presenting a card to one NPC
@@ -540,14 +539,6 @@ Workshop and the shared model can't express yet.
   guarded a different block that night, so couldn't have seen what the Medium says.
   Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
   route of the person seen, never against where the sighter was.
-
-- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
-  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
-  world with everyone's routes, so "N others out, and everyone but one home" already points
-  at the one unaccounted, and more people reported out than counted already clashes. Neither
-  case has been measured on its own, so what's left is a test that shows it. Owners Quill
-  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
-  Michael wants it stronger.
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
