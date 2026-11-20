@@ -46,6 +46,36 @@ func _default_target() -> String:
 	return "constance" if view.people.any(func(p): return p.id == "constance") else view.people[0].id
 
 ## A premise with no person or claim yet: the player fills it in on the card.
+## Premise types retired on Nov 20 (#416), as a board saved before then now reads them:
+## "is a Minion" becomes "is evil" (the same person, a weaker claim the cards still argue),
+## and "holds their claimed gift" becomes "is good" (Michael's merge). "These reports
+## conflict" had no subject: it becomes an unclaimed premise, its cards and links kept, so
+## the player picks the claim again. Filed cases on the board are history and stay as filed.
+const RETIRED_PREMISES = {"minion": "evil", "role": "good"}
+
+## Brings a saved board's retired premise types up to date (RETIRED_PREMISES). Returns how
+## many premises changed. Run on every board read back from a save or an undo.
+func migrate_retired_premises() -> int:
+	var changed: int = 0
+	for id in nodes:
+		var n = nodes[id]
+		if not n is Dictionary or n.get("kind") != "premise" or not n.get("conclusion") is Dictionary:
+			continue
+		var c: Dictionary = n.conclusion
+		var t: String = str(c.get("type", ""))
+		if RETIRED_PREMISES.has(t):
+			c["type"] = RETIRED_PREMISES[t]
+			c.erase("role")
+			changed += 1
+		elif t == "conflict":
+			n["conclusion"] = {}
+			n["draft"] = true
+			n.erase("pick")
+			changed += 1
+	if changed > 0:
+		version += 1
+	return changed
+
 func add_blank_premise(at: Vector2) -> String:
 	var id: String = add_premise("", "support", at)
 	nodes[id]["draft"] = true
@@ -952,6 +982,7 @@ func restore(value, session) -> String:
 	candidate.version = int(value.version)
 	candidate.serial = int(value.serial)
 	candidate.selected = value.selected
+	candidate.migrate_retired_premises()
 	var evidence: Array = []
 	for id in candidate.nodes:
 		var n = candidate.nodes[id]

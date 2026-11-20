@@ -301,6 +301,7 @@ func refresh() -> void:
 			board.selected = saved.selected
 			board.serial = saved.serial
 			board.version = saved.version
+			board.migrate_retired_premises()
 		else:
 			# A fresh Workshop starts with one blank premise, not a preset accusation.
 			var preset: String = board.selected
@@ -998,6 +999,7 @@ func _undo_remove() -> void:
 	board.selected = saved.selected
 	board.serial = saved.serial
 	board.version = saved.version + 1
+	board.migrate_retired_premises()
 	case_root = _undo.root
 	files = _undo.files.duplicate(true)
 	_undo = {}
