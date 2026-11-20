@@ -536,6 +536,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXPOSURE_PLAYER_SUSPECTS` | `0.3` |  | `sim/evil.gd` |
 | `EXPOSURE_PRESSURE_SCALE` | `0.5` |  | `sim/evil.gd` |
 | `EXPOSURE_ON_BLOCK` | `0.2` |  | `sim/evil.gd` |
+| `MINION_DOUBLE_CLAIM_CHANCE` | `0.05` | A deliberate double claim (Michael, Nov 19-20): the chance, rolled once per Minion per game (never the Demon or a Scion), that this Minion is looking to double-claim: when it hears someone claim a gift, unclaimed, it knowingly takes that same gift as its bluff and claims it. A chosen collision, not a bluff that merely risks one. Once it is looking, heat decides each time whether it acts: already implicated as evil (Evil.exposure's public talk), it lets the chance pass, never at full heat. Michael set 0.05: roughly 1 game in 20 per Minion. | `sim/mind_meeting.gd` |
 | `TEAMMATE_VALUE_DEMON` | `2.0` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_DEMON_WITH_SCION` | `1.1` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_SCION_ACTIVE` | `1.45` |  | `sim/evil.gd` |

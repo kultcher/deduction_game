@@ -3,6 +3,96 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Moved Nov 20, 2026 (latest merges; recorded by Claude-Vicar)
+
+- **More rebuttals after a caught lie: the parts built by Nov 20.** (The item stays in
+  BACKLOG.md with the in-review and on-hold parts.)
+  - Lantern's #367: a sleepwalk claim excuses a caught "I was home" only as far as its
+    claimant may be good.
+  - Beadle's #368: the private caught-out ladder. A good NPC concedes it was out; the
+    admission is tied to a walking duty; evil gets the same excuses; a gift named in private
+    counts as disclosed.
+  - Lantern's #372: excuses soften a caught "I was home", and an NPC's "I was out" reads as
+    what it says.
+
+- **Follow-up after a false alibi is established: the part built.** The first response,
+  "Fine, I was out. Doesn't mean I was doing anything wrong", which concedes the night
+  without conceding evil (Beadle, #368). The rest merged into "Caught out and pressed again:
+  what's left" (Michael, Nov 20).
+
+- **Argon's audit: cleanup, the parts done by Nov 20.** (The item stays in BACKLOG.md with
+  what's left.) The full text before the trim:
+
+  - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
+    `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
+    features.
+    1. **Dead code, zero drift:**
+       - the Workshop scaffolding used only by fixtures (Lantern: the movement fixture,
+         `ledger_audit` and `legacy_evidence`, and the `legacy_path` stub). It starts once
+         Quill's drops PR merges;
+       - retired flags and constants that nothing reads (Beadle): **Beadle's part done**
+         (#380). `STRICT_EVALUATOR` went to Herald. `LEGACY_MUD_DROPS_ENABLED` goes with Quill's
+         drops PR. (`LEGACY_EXTRA_SHIFT_DRAW` stays deferred, below.)
+       - ~~the dev labs and the trace viewer (Herald)~~ **done** (#381; #391 removed the
+         Workshop's fixture-only code they used);
+       - the one-off scripts in `tools/` (Bailiff sweeps).
+
+       Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
+    2. **Golden-moving:**
+       - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It's split from
+         the drops PR, because it reshuffles every deal and would mean about 25 to 30 suite
+         fixes. Michael decides at the reprioritization whether to do it at all.
+       - Deleting the Muddler is held for the secrets rework.
+    3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
+       Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
+       `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
+       the profiler. **Done** (Lantern, Nov 20, `claude/delete-channel-stack`): also took
+       `test_channel_sum_product`, `test_workshop_class_parity`, and the oracle parity checks in
+       four role suites.
+    4. **File splits,** one file per PR, with no change to play:
+       - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
+         the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
+         (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` is **done**
+         (#387).
+       - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
+         (Herald), `live_activity` and `case_eval` (Lantern).
+       - **Tier 3** waits for the purge.
+    5. **Point `game.gd`'s passthroughs straight at their modules** (Michael, Nov 19). When
+       `game.gd` was split, it kept forwarding functions. About 138 of its 159 functions are
+       one-line forwards to `GameBoard`, `GamePresentation` and the other `game_*` modules.
+       Callers should use the module directly, and the forwards should go.
+       - **Owner:** Herald (`game/` and the UI), with each lead updating callers in its own
+         files where that's simpler.
+       - **Zero drift.**
+       - **Scheduled with the file splits:** it touches many callers (`add_card` alone has
+         about 325 call sites, many in tests), so the merge-conflict risk is the same.
+       - **Scoped and partly done (Herald, Nov 20):** 131 one-line forwards. #385 removed the 25
+         that nothing called. **Left:** repoint the remaining ~106 forwards' callers to their
+         modules and delete the forwards, in two PRs (game, sim and ui callers; then tests and
+         tools). About 18 that the UI and CLI call stay as the game's interface. Waits for
+         Seneschal's go, after Beadle's in-flight PRs merge.
+    6. **Two more (Michael, Nov 20):**
+       - (a) Retire `tools/connections_prototype.gd`. Owner Lantern, in the same PR as the
+         Workshop scaffolding.
+       - ~~(b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
+         and drop the dead branch.~~ **Done** (Herald, #391). The social-route PR then removes
+         the flag entirely.
+    7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
+       in play, no listener fails to weigh a case on its own (Herald's check of golden and
+       autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
+       case's issues.
+
+    [decided]
+
+  > **Moved Nov 20 (the owners confirmed):** done:
+  > - the `channel_*` stack (Lantern, #383);
+  > - Beadle's retired flags (#380), with `STRICT_EVALUATOR` to Herald;
+  > - the dev labs and the trace viewer (Herald, #381, #391);
+  > - the `ui/main.gd` split (#387);
+  > - the 25 uncalled `game.gd` forwards (#385);
+  > - 6(b), the two native submission paths merged (#391);
+  > - strict mode removed (#384).
+
 ## Closed Nov 20, 2026 (Michael's calls and the leads' confirmations; recorded by Claude-Vicar)
 
 - **Demon detours exist in inference but not in actual movement.** (77388) The movement
