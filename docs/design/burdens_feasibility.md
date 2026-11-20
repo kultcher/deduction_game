@@ -193,3 +193,44 @@ These replace the addendum's points 1 to 3 where they differ, and settle the Vic
   should re-estimate with Marked enumerated.
 - **Ill-Omened** reuses the Poisoner's reading-failure path. **Unrequited's bluff** fits the
   walker-reason path, with the beloved's block, or the graveyard once the beloved is dead.
+
+## Lantern's worked scenarios, and Michael's choice (Nov 20)
+
+Lantern compared three world models across Michael's four scenarios. It's reasoned from the
+code, not measured. g is the number of good townsfolk, 7 for 10 NPCs.
+
+| | Per evil team | Worlds at 10 NPCs | Fewer than today (15,120) |
+|---|---|---|---|
+| **A:** per-kind, Marked enumerated | 2g + 2 = 16 | 5,760 | 2.6× |
+| **C:** per-kind, Marked under the allowance | g + 3 = 10 | 3,600 | 4.2× |
+| **B:** "none" (Argon's) | g + 1 = 8 | 2,880 | 5.25× |
+
+Speed follows the world count. A gets roughly half of B's speed gain (Argon to confirm). All
+three enumerate Delusional with its holder.
+
+1. **A true Rumormonger names P or Q as Unrequited, and P owns up.** About the same in all
+   three.
+   - **A and C** rule out Delusional and Marked, so every reading is trusted.
+   - **B** keeps about a 1-in-10 "maybe Marked" on anyone a reading calls evil, which makes it
+     slightly too kind to them.
+2. **The same reading, but P is hanged before claiming, and later an evil E outside the pair
+   bluffs Unrequited.**
+   - **A and C catch it:** the holder had to be P or Q. E's claim reads about 10–20%
+     believable.
+   - **B doesn't:** the bluff mostly works, reading 50% or more believable.
+3. **A true Rumormonger names P or Q as Delusional, and later an evil bluffs Unrequited.** All
+   three catch it: the one burden is the hidden one, so no known burden can be in play.
+4. **An evil Rumormonger names its teammate or G as Unrequited, and the real holder M claims
+   Marked.**
+   - **A is sharpest:** the claims clash, and a reading that calls M evil backs M.
+   - **C is close behind.**
+   - **B misses it:** "some known burden" fits both, so the lie stands and the teammate gets
+     cover.
+
+**Lantern's summary:**
+- A and C catch burden bluffs that clash with another burden claim or a true reading; B can't.
+- A against C only matters when a gift reads the Marked holder as evil.
+- Lantern recommended A, with C as the fallback.
+
+**Michael chose A** (Nov 20), with C as the fallback if speed turns out to matter. It's
+recorded in [burdens.md](burdens.md) section 9.
