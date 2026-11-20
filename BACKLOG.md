@@ -15,6 +15,25 @@ The Nov 13 playtest triage is closed: what's left of it is in
 own open items are in [section 6](#6-the-connections-model-open-items). The full triage
 record is `docs/archive/playtest_triage_2026-11-13.md`.
 
+**Contents**
+
+- [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
+- [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
+  - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
+  - [Cases and the Workshop](#cases-and-the-workshop)
+  - [NPC behaviour](#npc-behaviour)
+  - [Numbers](#numbers)
+  - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
+  - [UI](#ui)
+  - [Performance](#performance)
+- [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
+- [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
+- [Workshop gaps (NYI)](#workshop-gaps-nyi)
+- [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
+- [6. The connections model: open items](#6-the-connections-model-open-items)
+- [Tabled](#tabled)
+- [Closed](#closed)
+
 Tags: **[decided]** = direction agreed, ready to build; **[open]** = path not chosen yet;
 **[watch]** = no change, keep an eye on it; **[tentative]** = proposal for later design or
 tuning review; **[knob]** = not planned, a balancing tool to reach for only if needed.
@@ -527,10 +546,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
 - **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
   being removed (Michael, Nov 19; "Remove drops altogether", section 2).
 
-- **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
-  too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
-  over-weighted and always visible" first, then see what's left. [open]
-
 - **Throw a teammate under the bus:** a pressured minion distances themselves from the
   Demon; the Demon goes along with town conclusions to build trust. Michael (Nov 17):
   decided, but survey what's already built first (he believes a fair amount exists: a
@@ -545,12 +560,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
     `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
 
 ## 4. Major structural work (a week or more; design first)
-
-- **Passing through vs stopping.** Sightings say whether someone was passing through a
-  block or out on it ("heading toward the Docks" vs "out on the Docks"). Two "out on"
-  sightings on different blocks are a real contradiction; "passing through" fits a route.
-  Open: who can tell the difference (street observers and vigils, not window glimpses).
-  [open]
 
 - **The Breathstealer overhaul** (Michael, Nov 17: needs a thorough rework before any
   more tuning; the items below feed it). **The Breathstealer confirms the good.** It only
@@ -638,10 +647,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
     first-use and repeated breach losses and the permanent caps, keeping a real betrayal
     consequence while allowing proportionate recovery, with apologies and confidentiality
     promises. [decided; values open] (Folded in Nov 18, Michael.)
-
-- **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
-  Lovers' relationship mods, including the Lovers downside (when one dies, the other
-  withdraws visibly). [open; Lovers downside decided]
 
 - **Roster expansion.** Lantern's shortlist from the Clocktower passes (ideas only):
   `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
@@ -904,6 +909,11 @@ Kept for the record and a later look; not on the active list (Michael, Nov 18).
   logged with its reason ("cover a teammate"), through `evil_override`. Waits until the honest
   version is built and played. Owner Beadle.
   Tabled (Michael, Nov 19).
+
+- **Relationships:** Bonded, Unrequited, Feuding, Hater (role_exploration), and the
+  Lovers' relationship mods, including the Lovers downside (when one dies, the other
+  withdraws visibly). [open; Lovers downside decided]
+  Tabled (Michael, Nov 20).
 
 ## Closed
 

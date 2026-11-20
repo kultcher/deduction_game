@@ -3,6 +3,22 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026 (Michael; recorded by Claude-Vicar)
+
+- **Evil coordination you can see:** daytime evil meetups, with friends and Lovers meeting
+  too as noise. Michael (Nov 17): stays open; finish the [decided] "Evil meetings are
+  over-weighted and always visible" first, then see what's left. [open]
+
+  > **Closed Nov 20 (Michael):** closed, through Seneschal.
+
+- **Passing through vs stopping.** Sightings say whether someone was passing through a
+  block or out on it ("heading toward the Docks" vs "out on the Docks"). Two "out on"
+  sightings on different blocks are a real contradiction; "passing through" fits a route.
+  Open: who can tell the difference (street observers and vigils, not window glimpses).
+  [open]
+
+  > **Closed Nov 20 (Michael):** closed, through Seneschal.
+
 ## Built, reconciled Nov 19, 2026, evening (Michael via Seneschal; recorded by Claude-Vicar)
 
 Checked against main at e517a66.
