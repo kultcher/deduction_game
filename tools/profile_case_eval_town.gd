@@ -9,6 +9,8 @@
 ## Exits with failure if any listener's case wasn't ready (not evaluated): those listeners
 ## add no cost, so the timing would understate the town. --allow-fallback only reports it.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
@@ -39,7 +41,7 @@ func _town(number: int, listeners: Array) -> Array:
 	var rows: Array = []
 	for n in listeners:
 		var t0 = Time.get_ticks_usec()
-		var prepared = Assess.prepare(g.workshop_snapshot([number], n.id, "meeting"))
+		var prepared = Assess.prepare(GamePresentation.workshop_snapshot(g, [number], n.id, "meeting"))
 		capture_us += Time.get_ticks_usec() - t0
 		if not prepared.ready:
 			rows.append("  %s: not ready (%s)" % [n.id, "; ".join(PackedStringArray(prepared.issues))])
@@ -64,7 +66,7 @@ func _run() -> void:
 	for person in g.w.npcs:
 		for reading in person.info_log:
 			if reading.role in Live.Assess.ROLES:
-				reports.append(g.add_card({"kind": "info", "source": person.id, "subject": [], "role": reading.role,
+				reports.append(GameBoard.add_card(g, {"kind": "info", "source": person.id, "subject": [], "role": reading.role,
 					"day": reading.day, "phase": reading.get("phase", 3 if reading.day == 0 else 0),
 					"data": reading.data, "text": "Native %s: %s" % [reading.role, reading.text]}))
 	var target = g.w.living_good()[0]
@@ -75,7 +77,7 @@ func _run() -> void:
 	for row in first[2]:
 		print(row)
 	var worlds = 0
-	var probe = Assess.prepare(g.workshop_snapshot([number], listeners[0].id, "meeting"))
+	var probe = Assess.prepare(GamePresentation.workshop_snapshot(g, [number], listeners[0].id, "meeting"))
 	if probe.ready:
 		worlds = Solver.universe(probe.view).size()
 	# A different premise over most of the same readings.

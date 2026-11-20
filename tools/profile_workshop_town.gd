@@ -1,5 +1,7 @@
 ## Reproducible native-game floor benchmark. Profiling begins after meeting setup.
 extends SceneTree
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
@@ -31,7 +33,7 @@ func _run() -> void:
 	for person in g.w.npcs:
 		for reading in person.info_log:
 			if reading.role in Live.Assess.ROLES:
-				reports.append(g.add_card({"kind": "info", "source": person.id, "subject": [], "role": reading.role,
+				reports.append(GameBoard.add_card(g, {"kind": "info", "source": person.id, "subject": [], "role": reading.role,
 					"day": reading.day, "phase": reading.get("phase", 3 if reading.day == 0 else 0),
 					"data": reading.data, "text": "Native %s: %s" % [reading.role, reading.text]}))
 	var target = g.w.living_good()[0]
@@ -41,25 +43,25 @@ func _run() -> void:
 		g.w.day = 2
 	if "--silenced" in args:
 		g.w.public_log.append({"day": 1, "kind": "silenced", "subjects": [target.id], "by": ""})
-		context.append(g.add_card({"kind": "silenced", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Benchmark public silence"}))
+		context.append(GameBoard.add_card(g, {"kind": "silenced", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "text": "Benchmark public silence"}))
 	if "--refusal" in args:
-		context.append(g.add_card({"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": 3, "fear": true, "text": "Benchmark refusal of whereabouts"}))
+		context.append(GameBoard.add_card(g, {"kind": "refusal", "source": target.id, "subject": [target.id], "day": 1, "phase": 3, "fear": true, "text": "Benchmark refusal of whereabouts"}))
 	if "--gift-hint" in args:
-		context.append(g.add_card({"kind": "hint", "source": target.id, "subject": [target.id], "day": 1, "phase": 0, "package": "official", "text": "Benchmark gift-family hint"}))
+		context.append(GameBoard.add_card(g, {"kind": "hint", "source": target.id, "subject": [target.id], "day": 1, "phase": 0, "package": "official", "text": "Benchmark gift-family hint"}))
 	if "--vote-context" in args:
 		var yes: Array = g.w.npcs.slice(0, 2).map(func(n): return n.id)
 		var no: Array = g.w.npcs.filter(func(n): return n.id not in yes).map(func(n): return n.id)
 		var tally = {"nominee": target.id, "nominator": "player", "yes": yes, "no": no, "player_yes": false,
 			"count": yes.size(), "threshold": g.w.vote_threshold(), "outcome": "fails"}
 		g.w.public_log.append({"day": 1, "kind": "vote", "subjects": [target.id], "by": "town", "data": tally})
-		context.append(g.add_card({"kind": "vote", "source": "player", "subject": yes + [target.id], "day": 1, "phase": 2,
+		context.append(GameBoard.add_card(g, {"kind": "vote", "source": "player", "subject": yes + [target.id], "day": 1, "phase": 2,
 			"nominee": target.id, "by": "player", "yes": yes, "no": no, "player_yes": false, "count": tally.count,
 			"threshold": tally.threshold, "outcome": tally.outcome, "text": "Benchmark public vote"}))
 	if "--outing" in args or "--private-errand" in args:
 		g.w.day = 2
-		context.append(g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Benchmark night outing"}))
+		context.append(GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Benchmark night outing"}))
 	if "--private-errand" in args:
-		context.append(g.add_card({"kind": "secret", "source": target.id, "subject": [target.id], "owner": target.id, "secret_kind": "debt", "day": 1, "phase": 3,
+		context.append(GameBoard.add_card(g, {"kind": "secret", "source": target.id, "subject": [target.id], "owner": target.id, "secret_kind": "debt", "day": 1, "phase": 3,
 			"text": "Benchmark private-errand claim"}))
 	var board = Canvas.new(Live.view(g))
 	var root_id: String = board.selected
@@ -69,7 +71,7 @@ func _run() -> void:
 	var number = Live.file(g, board.compile(root_id))
 	assert(number > 0)
 	if "--nested" in args:
-		number = g.file_deduction({"type": "evil", "a": target.id}, [number])
+		number = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [number])
 		assert(number > 0, "The nested benchmark must retain its original filed case")
 	g.state = "talk"
 	g.talk_with = listener
@@ -77,7 +79,7 @@ func _run() -> void:
 	g.command("convince %d" % number)
 	g.command("bye")
 	g.w.phase = 2
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	g.workshop_deliveries.clear()
 	var before_rng: int = g.w.rng.state
 	print("Profiling native ten-person town, seed %d, %d presented reports" % [seed_value, reports.size()])

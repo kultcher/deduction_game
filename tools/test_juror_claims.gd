@@ -3,6 +3,7 @@
 ## didn't know its subject had claimed Dowser). Private claims stay out.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -34,15 +35,15 @@ func _init() -> void:
 		p.ledger = {}
 	g.w.day = 2
 	var p: Array = g.w.npcs
-	var reading: int = g.add_card({"kind": "info", "source": p[2].id, "role": "seer", "day": 1, "phase": 3,
+	var reading: int = GameBoard.add_card(g, {"kind": "info", "source": p[2].id, "role": "seer", "day": 1, "phase": 3,
 		"data": {"pair": [p[3].id, p[4].id], "yes": true}, "text": "%s seer day 1: one of %s and %s is evil" % [p[2].id, p[3].id, p[4].id]})
 	var was: String = g.state
 	g.state = "meeting"  # said at a meeting: a public disclosure
-	var public_claim: int = g.add_card({"kind": "claim", "subject": [p[3].id], "source": p[3].id, "role": "dowser", "day": 1, "phase": 3, "text": "%s claims to be the Dowser." % p[3].name})
+	var public_claim: int = GameBoard.add_card(g, {"kind": "claim", "subject": [p[3].id], "source": p[3].id, "role": "dowser", "day": 1, "phase": 3, "text": "%s claims to be the Dowser." % p[3].name})
 	g.state = was
-	var private_claim: int = g.add_card({"kind": "claim", "subject": [p[4].id], "source": p[4].id, "role": "clerk", "day": 1, "phase": 1, "private": true, "text": "%s told you privately they are the Clerk." % p[4].name})
+	var private_claim: int = GameBoard.add_card(g, {"kind": "claim", "subject": [p[4].id], "source": p[4].id, "role": "clerk", "day": 1, "phase": 1, "private": true, "text": "%s told you privately they are the Clerk." % p[4].name})
 	g.state = "meeting"
-	var other_claim: int = g.add_card({"kind": "claim", "subject": [p[5].id], "source": p[5].id, "role": "warden", "day": 1, "phase": 3,
+	var other_claim: int = GameBoard.add_card(g, {"kind": "claim", "subject": [p[5].id], "source": p[5].id, "role": "warden", "day": 1, "phase": 3,
 		"text": "%s claims to be the Warden." % p[5].name})
 	g.state = was
 	var view: Dictionary = Live.view(g)
@@ -80,8 +81,8 @@ func _init() -> void:
 	# And it weighs them: the reading's teller and its subject both publicly claim the Seer,
 	# so one of them is lying, and the reading itself names the subject.
 	g.state = "meeting"
-	g.add_card({"kind": "claim", "subject": [p[2].id], "source": p[2].id, "role": "seer", "day": 1, "phase": 3, "text": "%s claims to be the Seer." % p[2].name})
-	g.add_card({"kind": "claim", "subject": [p[3].id], "source": p[3].id, "role": "seer", "day": 2, "phase": 3, "text": "%s claims to be the Seer too." % p[3].name})
+	GameBoard.add_card(g, {"kind": "claim", "subject": [p[2].id], "source": p[2].id, "role": "seer", "day": 1, "phase": 3, "text": "%s claims to be the Seer." % p[2].name})
+	GameBoard.add_card(g, {"kind": "claim", "subject": [p[3].id], "source": p[3].id, "role": "seer", "day": 2, "phase": 3, "text": "%s claims to be the Seer too." % p[3].name})
 	g.state = was
 	var heard: Dictionary = Live.test_juror(g, value)
 	# The juror is an average listener, who always hears the public claims (Michael, Nov 19):
@@ -92,7 +93,7 @@ func _init() -> void:
 	check(why.get("ready", false) and str(why.get("text", "")).length() > 0 and Live.juror_case(g, value).case.cards.size() > value.cards.size(), "the \"why\" readout explains the same claim-aware case the badge judges (Codex on #159)")
 	check(heard.get("ready", false) and deaf.get("ready", false) and float(heard.listener.before) > float(deaf.listener.before), "the claims are heard: the listener holds the subject more suspect before the case (%.2f with them, %.2f without)" % [float(heard.get("listener", {}).get("before", 0.0)), float(deaf.get("listener", {}).get("before", 0.0))])
 	# Triage 5.4: a challenge applies. Judged as if it holds, the challenged reading is set aside.
-	var dowser: int = g.add_card({"kind": "info", "source": p[5].id, "role": "dowser", "day": 1, "phase": 1,
+	var dowser: int = GameBoard.add_card(g, {"kind": "info", "source": p[5].id, "role": "dowser", "day": 1, "phase": 1,
 		"data": {"group": [p[4].id], "count": 0}, "text": "%s dowser day 1: no evil in %s" % [p[5].id, p[4].id]})
 	var view2: Dictionary = Live.view(g)
 	var m2 = CanvasModel.new(view2)

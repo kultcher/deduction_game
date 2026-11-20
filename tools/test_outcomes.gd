@@ -2,6 +2,8 @@
 ## godot --headless --path . --script res://tools/test_outcomes.gd
 extends SceneTree
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
 const Game = preload("res://game/game.gd")
 const Metrics = preload("res://game/case_metrics.gd")
 var fails = 0
@@ -28,7 +30,7 @@ func _init() -> void:
 	var d: String = g.w.demon_id
 	var m: String = g.w.minion_id
 	var innocent = g.w.living_good()[0]
-	g.set_note(d, "The night report conflicts with their account.")
+	GameScreens.set_note(g, d, "The night report conflicts with their account.")
 	g.set_guess(innocent.id, "demon", 1)
 	g.set_guess(d, "demon", 3)
 	g.set_guess(m, "poisoner", 2)
@@ -42,8 +44,8 @@ func _init() -> void:
 		"role and secret guesses, each with its own confidence (1-4), live side by side")
 	g.set_guess(innocent.id, "?", 2)
 	var rng_state = g.w.rng.state
-	var snap = g.capture_prediction("test")
-	g.set_note(d, "Revised note")
+	var snap = GameScreens.capture_prediction(g, "test")
+	GameScreens.set_note(g, d, "Revised note")
 	_check(snap["notes"][d] != g.notes[d] and g.w.rng.state == rng_state, "snapshots are immutable and consume no simulation randomness")
 	_check(not "identified: correct" in g.command("theory"), "theory display provides no correctness feedback")
 	var ending = finish_by_execution(g, d)
@@ -63,7 +65,7 @@ func _init() -> void:
 	_check(g.case_summary["town_saved"] and not g.case_summary["demon_identified"] and g.case_summary["demon_guesses"].is_empty(), "winning without a theory earns no identification credit")
 	g = fresh()
 	g.set_guess(g.w.demon_id, "demon", 2)
-	g.capture_prediction("before_night")
+	GameScreens.capture_prediction(g, "before_night")
 	g.w._finish("evil", "test loss")
 	g.command("look")
 	_check(g.case_summary["identified_but_lost"] and not g.case_summary["minion_identified"], "correct demon but no minion and a lost town receives distinct credit")
@@ -80,7 +82,7 @@ func _init() -> void:
 	g.state = "nomination"
 	g.command("vote no")
 	_check(g.prediction_snapshots[-1]["reason"] == "before_vote", "votes freeze a theory even when no guess is recorded")
-	g._resolve_night()
+	GameDayNight._resolve_night(g)
 	_check(g.prediction_snapshots[-1]["reason"] == "before_night", "night resolution freezes a theory")
 	g = fresh()
 	var goods = g.w.living_good()
@@ -89,7 +91,7 @@ func _init() -> void:
 			"player_nominated": i == 0, "player_yes": i == 0})
 	g.w.dlog.set_time(3, "Evening")
 	g.w.dlog.add("player_statement", "player", goods[2].id, {"statement": "accuse"})
-	var result = Metrics.summarize(g.w, g.capture_prediction("test"), false)
+	var result = Metrics.summarize(g.w, GameScreens.capture_prediction(g, "test"), false)
 	_check(result["executions_good"] == 3 and result["wrongful_backed"] == 1 and result["wrongful_opposed"] == 1 and result["wrongful_mixed"] == 1,
 		"execution attribution distinguishes backed, opposed and mixed actions")
 	g.w.executions = []

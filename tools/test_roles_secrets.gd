@@ -63,7 +63,7 @@ func _run_roster() -> void:
 # ---------------------------------------------------------------- from test_chunk4_psychologist_muddler
 
 func _run_chunk4_psychologist_mudd() -> void:
-	_test_secret_domain_and_channel_parity()
+	_test_secret_domain_and_premise()
 	_test_retired_secret_in_saved_script()
 
 
@@ -169,8 +169,10 @@ func _test_retired_secret_in_saved_script() -> void:
 		"an old saved script with the Muddler loads without it and passes its check (%s)" % str(s.check(7).errors))
 
 
-## (The Muddler went on Nov 20; its simulation and debunking checks went with it.)
-func _test_secret_domain_and_channel_parity() -> void:
+## The full secret-modifier world domain (all four secrets) and a secret premise weighed from
+## a Rumormonger report. (The Muddler went on Nov 20; its simulation and debunking checks went
+## with it.)
+func _test_secret_domain_and_premise() -> void:
 	var people: Array = []
 	for i in range(7):
 		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})

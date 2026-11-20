@@ -31,13 +31,12 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. Kill-score pass on every role `[decided]`
-    2. Accusations from starting suspicion read as clues `[decided]`
-    3. The Gravedigger in a reluctant town `[decided]`
-    4. Caught out and pressed again: what's left `[decided]`
-    5. Good NPCs lie tactically `[open]`
-    6. Rapport and Warden-credit leftovers `[decided: direction]`
-    7. Anger reasons `[decided]`
+    1. Accusations from starting suspicion read as clues `[decided]`
+    2. The Gravedigger in a reluctant town `[decided]`
+    3. Caught out and pressed again: what's left `[decided]`
+    4. Good NPCs lie tactically `[open]`
+    5. Rapport and Warden-credit leftovers `[decided: direction]`
+    6. Anger reasons `[decided]`
   - [Numbers](#numbers)
     1. The Seer's rise looks small `[later: role tuning pass]`
     2. Dowser clearing strength `[later: role tuning pass]`
@@ -69,7 +68,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. The spoken reply to a later-day repeat `[polish]`
+  2. The spoken reply to a later-day repeat
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Brute kills scored as hexes on custom scripts `[later]`
@@ -127,19 +126,16 @@ listener (#273), both Lantern's.
     the opposite: they always pick a good NPC, ideally one with some heat on them, so that if
     that NPC is executed the bluffer can frame it as evil. They shouldn't be loud about
     pushing that person's execution, since that would be an obvious tell. Owner Beadle.
+  - **Michael (Nov 20, later):** the bluffer also copies a real Martyr's reluctance to vote to
+    hang the person it chose.
 
 ### Cases and the Workshop
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
-  features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
-  1. **Dead code, zero drift:**
-     - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
-       and `legacy_evidence`, the `legacy_path` stub), together with retiring
-       `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
-     - the one-off scripts in `tools/` (Bailiff sweeps).
-
-     Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
+  features. The parts already done, groups 1 and 4 among them, are in BACKLOG_COMPLETED.md
+  (Nov 20). Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework
+  decides. **Left:**
   2. **Golden-moving:**
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
@@ -151,40 +147,10 @@ listener (#273), both Lantern's.
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
-  4. **Point `game.gd`'s remaining passthroughs at their modules** (Herald). Repoint the
-     callers of the remaining ~106 one-line forwards and delete them, in two PRs: game, sim
-     and ui callers first, then tests and tools. About 18 that the UI and CLI call stay as
-     the game's interface. Zero drift. It waits for Seneschal's go, after Beadle's in-flight
-     PRs merge.
 
   [decided]
 
 ### NPC behaviour
-
-- **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
-  (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
-  It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
-  Registrar (+0.75 more) have their own bonus. To review role by role:
-  - one-shot gifts that keep the full score after their information is spent: the
-    Chronicler after night 3, the Executor after its assigned person dies;
-  - the Augur, a Demon-identifier like the Seer, has no bonus;
-  - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
-    handled separately.
-  - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
-    ratings, and Michael gives quick guidance.
-  - **Values approved (Michael, Nov 20), in Beadle's #421:**
-    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
-      per-role ratings may come later);
-    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
-    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
-    - `REGISTRAR.public_threat_bonus` stays at 0.75.
-
-    Close this item when #421 merges.
-
-  Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
-  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
-  values is the owner's call; a new per-role bonus constant is new, so propose it through
-  Seneschal first. Owner Beadle. [decided]
 
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
   on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
@@ -228,6 +194,8 @@ listener (#273), both Lantern's.
   a little more toward nominating and voting to hang, but never says so: these are real
   people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
   for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
+  - **Approved (Michael, Nov 20, later):** `GRAVEDIGGER.nothing_to_read_lean` = 0.08. The
+    lean is **permanent** for a good Gravedigger: it doesn't wear off.
 
 - **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
   remainders.) Owner Beadle.
@@ -276,7 +244,8 @@ listener (#273), both Lantern's.
   Beadle's proposals):
   - (a) "caught lying about me" as an NPC-to-NPC trust loss: waits for "Anger reasons";
   - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
-    meeting: **[decided]**, one PR, owner Beadle;
+    meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
+    (Michael, Nov 20, later);
   - (d) player wards the Warden knows about counting as an alternative explanation: closed,
     already built.
 
@@ -308,11 +277,14 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
-  than hidden scaling. Don't clear all movement or ignore thwarted attacks. Built Nov 20
-  (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence, the podium press
-  of a sighting and the private press, as speech with no weight; a quiet night isn't argued
-  when the defender knows of a possible thwart. Placeholder wording, for Michael. See
-  `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md`. [in review]
+  than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
+  - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
+    the town moves block to block.
+  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
+    the podium press of a sighting and the private press, as speech with no weight; a quiet
+    night isn't argued when the defender knows of a possible thwart. Herald is putting the
+    approved block wording in. See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md`.
+    [in review]
 
 ### UI
 
@@ -347,6 +319,13 @@ The one performance item, "Late-game meeting and presenting cost", is in
   value tiers; plan first. [decided]
   - **Approved (Michael, Nov 19):** new constants `TAVERN_TIER1_TARGET` = 2 and
     `TAVERN_TIER2_TARGET` = 1. Tavern readings stay anonymous.
+  - **The tiers (Michael, Nov 20, later):**
+    - **Tier 1:** a reading or other stated information, or a night sighting that names a
+      place;
+    - **Tier 2:** role claims, hints and secrets;
+    - **Tier 3:** everything else.
+
+    The targets stay at 2 and 1, and Beadle's budget calls are approved.
 
 ## 4. Major structural work (a week or more; design first)
 
@@ -522,13 +501,16 @@ Workshop and the shared model can't express yet.
 - **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
   the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
   Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
-  fix Seneschal approved). Whether to add a real per-world Poisoner-presence factor goes to
-  Michael. The other two Minion gifts are built and closed (Quill, Nov 20). Owner Quill.
+  fix Seneschal approved). **Michael (Nov 20, later):** no per-world factor; the Poisoner's
+  presence is limited to a person spotted whose destination was on the reader's block, not
+  anyone whose route passed it. The other two Minion gifts are built and closed (Quill,
+  Nov 20). Owner Quill.
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
   Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
-  route of the person seen, never against where the sighter was.
+  route of the person seen, never against where the sighter was. **Michael (Nov 20,
+  later):** it needs more detail before it's built; Quill is scoping it.
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -581,7 +563,9 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   history, signs of poisoning). Since #296, misled and failed gift are one honest-mistake
   label, "Mistaken". **[open; Michael]**
 - **The spoken reply to a later-day repeat.** Re-presenting a faded case restores its
-  weight, but the reply may still say the assessment is unchanged. **[polish]**
+  weight, but the reply may still say the assessment is unchanged. **Built** on
+  `claude/repeat-reply` (Quill, Nov 20; handoff `2026-11-20-1130-quill-repeat-reply.md`).
+  [in review]
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**

@@ -2,6 +2,9 @@
 ## Merged from: test_chunk2_world_mask_roles, test_chunk3_executor_registrar, test_workshop_clerk_archivist_seer, test_workshop_surveyor_answers.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -462,7 +465,7 @@ func _test_registrar_sim() -> void:
 	var target_good = w_req.living_good().filter(func(m): return m != rg_req)[0]
 	rg_req.registrar_roles = [target_good.role, "warden" if target_good.role != "warden" else "clerk", "poisoner"]
 	g_req.talk_with = rg_req
-	var req_res: Dictionary = g_req._gift_request(rg_req, "check", target_good.name)
+	var req_res: Dictionary = GameConversation._gift_request(g_req, rg_req, "check", target_good.name)
 	_check(bool(req_res.get("agreed", false)) and rg_req.gift_request.get("role", "") == "registrar" and rg_req.gift_request.get("targets", []) == [target_good.id],
 		"Player 'ask check <name>' binds a tonight target request on a claimed Registrar")
 	w_req.day = 1
@@ -711,7 +714,7 @@ func _live() -> void:
 		var data: Dictionary = {"pair": pair, "role": "warden" if role == "clerk" else "poisoner"}
 		if role == "seer":
 			data = {"pair": pair, "yes": false}
-		var number = g.add_card({"kind": "info", "role": role, "source": source.id, "subject": pair,
+		var number = GameBoard.add_card(g, {"kind": "info", "role": role, "source": source.id, "subject": pair,
 			"day": 0, "phase": 3, "data": data, "text": "Regression new role: " + role})
 		var board = Canvas.new(Live.view(g))
 		var root: String = board.selected
@@ -730,10 +733,10 @@ func _live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " reaches actual shared NPC presentation")
 		var vector: Dictionary = listener.workshop_state.requested.duplicate(true)
-		response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.repeated and listener.workshop_state.requested == vector, role + " presentation is repeat-stable")
 		for type in ["demon"]:
 			board.nodes[root].conclusion.type = type
@@ -747,7 +750,7 @@ func _ui() -> void:
 	g.new_case(692, 7)
 	var source = g.w.npcs[0]
 	var pair: Array = g.w.npcs.filter(func(n): return n != source).slice(0, 2).map(func(n): return n.id)
-	var number = g.add_card({"kind": "info", "role": "seer", "source": source.id, "subject": pair,
+	var number = GameBoard.add_card(g, {"kind": "info", "role": "seer", "source": source.id, "subject": pair,
 		"day": 0, "phase": 3, "data": {"pair": pair, "yes": true}, "text": "UI Seer registration regression."})
 	var editor = Editor.new()
 	editor.g = g
@@ -781,9 +784,9 @@ func _claim_routes() -> void:
 	g.new_case(692, 7)
 	var source = g.w.npcs[0]
 	var pair: Array = g.w.npcs.filter(func(n): return n != source).slice(0, 2).map(func(n): return n.id)
-	var reading = g.add_card({"kind": "info", "role": "clerk", "source": source.id, "subject": pair,
+	var reading = GameBoard.add_card(g, {"kind": "info", "role": "clerk", "source": source.id, "subject": pair,
 		"day": 0, "phase": 3, "data": {"pair": pair, "role": "warden"}, "text": "Claim-route Clerk regression."})
-	var claim = g.add_card({"kind": "claim", "role": "warden", "source": pair[0], "subject": [pair[0]],
+	var claim = GameBoard.add_card(g, {"kind": "claim", "role": "warden", "source": pair[0], "subject": [pair[0]],
 		"day": 1, "phase": 0, "text": "Claim-route Warden regression."})
 	var board = Canvas.new(Live.view(g))
 	var root_id: String = board.selected
@@ -802,9 +805,9 @@ func _claim_routes() -> void:
 	n.role = "veteran"
 	n.credibility = 0.0  # how far the player's word counts (credibility since Oct 30)
 	var filed = Live.file(g, board.compile(root_id))
-	var snapshot = g.workshop_snapshot([filed], n.id)
+	var snapshot = GamePresentation.workshop_snapshot(g, [filed], n.id)
 	snapshot.listener.source_doubt[pair[0] + ":*"] = 1.0
 	var assessed = Assess.prepare(snapshot)
 	check(assessed.ready and assessed.listener.reading_reliability[claim_id] == 1.0, "gift impairment cannot discount a role claim")
-	var plan = preload("res://workshop/shared_ledger.gd").prepare(g.workshop_snapshot([], n.id), {str(filed): snapshot}, n.ledger)
+	var plan = preload("res://workshop/shared_ledger.gd").prepare(GamePresentation.workshop_snapshot(g, [], n.id), {str(filed): snapshot}, n.ledger)
 	check(plan.ready and plan.prepared.listener.reading_reliability[claim_id] == 0.5, "player-only role-claim relay retains the player trust factor without a health assumption")

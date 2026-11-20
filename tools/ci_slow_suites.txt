@@ -4,7 +4,13 @@
 # full run found (Michael, Nov 19). Main and the nightly run already run everything. CI deals
 # the list across the four shards in this order (suite i goes to shard i mod 4), so keep it
 # short. Keep it sorted.
+test_conversation_gifts
+test_npc_interactions
 test_own_night_knowledge
 test_relay_bluff_games
 test_self_sighting
+test_shadow
+test_social_credibility
+test_trace_solver
 test_workshop_action
+test_workshop_live_canvas

@@ -3,6 +3,7 @@
 ## Workshop candidate summary, and NPC trace reactions with minion Demon-protection.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -99,11 +100,11 @@ func _test_three_valued_3_to_1_solver_and_summary() -> void:
 	g.profile_receipts.clear()
 	g._profile_card_keys.clear()
 	g._profile_fact_keys.clear()
-	g._home_cards()
+	GameBoard._home_cards(g)
 	w.day = 1
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "%s was killed on night 1." % victim.name})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "%s was killed on night 1." % victim.name})
 	w.public_event("demon_death", [victim.id], "town")
-	var trace_num: int = g.add_card({
+	var trace_num: int = GameBoard.add_card(g, {
 		"kind": "trace", "subject": [], "block": victim.home_block, "source": "evidence",
 		"day": 1, "phase": C.EVENING, "scene": "scene_" + victim.id, "scene_block": victim.home_block,
 		"victim": victim.id, "victim_block": victim.home_block, "crime_night": 1,
@@ -114,11 +115,11 @@ func _test_three_valued_3_to_1_solver_and_summary() -> void:
 	})
 	# Reveal ONLY 1 haunt for partial_npc (mill -> not in {bakery, tavern}, so still unknown, NOT contradicts!)
 	g.known_haunts[partial_npc.id] = ["mill"]
-	g.add_profile_receipt({"kind": "haunt", "subject": [partial_npc.id], "source": speaker.id, "loc": "mill", "locs": ["mill"], "block": "docks", "day": 1, "phase": 0, "text": "Partial haunt 1"})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [partial_npc.id], "source": speaker.id, "loc": "mill", "locs": ["mill"], "block": "docks", "day": 1, "phase": 0, "text": "Partial haunt 1"})
 	# Reveal BOTH haunts for contra_npc (mill, well -> neither in {bakery, tavern}, plus work chapel -> contradicts!)
 	g.known_haunts[contra_npc.id] = ["mill", "well"]
-	g.add_profile_receipt({"kind": "haunt", "subject": [contra_npc.id], "source": speaker.id, "loc": "mill", "locs": ["mill"], "block": "docks", "day": 1, "phase": 0, "text": "Contra haunt 1"})
-	g.add_profile_receipt({"kind": "haunt", "subject": [contra_npc.id], "source": speaker.id, "loc": "well", "locs": ["well"], "block": "square", "day": 1, "phase": 0, "text": "Contra haunt 2"})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [contra_npc.id], "source": speaker.id, "loc": "mill", "locs": ["mill"], "block": "docks", "day": 1, "phase": 0, "text": "Contra haunt 1"})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [contra_npc.id], "source": speaker.id, "loc": "well", "locs": ["well"], "block": "square", "day": 1, "phase": 0, "text": "Contra haunt 2"})
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var board = CanvasModel.new(view)
 	var root_id: String = board.selected
@@ -235,7 +236,7 @@ func _test_npc_trace_reactions_and_minion_guard() -> void:
 		if other not in [speaker, target_p]:
 			other.work = "smithy"
 			other.haunts = ["wharf", "well"]
-	var tnum: int = g_press.add_card({
+	var tnum: int = GameBoard.add_card(g_press, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": vic_p.id, "scene": "scene_" + vic_p.id, "scene_block": vic_p.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "locs": ["bakery", "tavern"],
@@ -245,4 +246,4 @@ func _test_npc_trace_reactions_and_minion_guard() -> void:
 	g_press.talk_with = speaker
 	g_press.questions_left = 3
 	g_press.command("press %d" % tnum)
-	_check("tavern" in g_press.known_haunts.get(target_p.id, []) and not g_press.profile_receipts_for(target_p.id, "haunts").is_empty(), "pressing with a trace card persists any disclosed haunt to known_haunts and profile_receipts")
+	_check("tavern" in g_press.known_haunts.get(target_p.id, []) and not GameBoard.profile_receipts_for(g_press, target_p.id, "haunts").is_empty(), "pressing with a trace card persists any disclosed haunt to known_haunts and profile_receipts")

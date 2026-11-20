@@ -3,6 +3,7 @@
 ## back a case. `m` is the main control.
 extends RefCounted
 
+const LiveWorkshopFields = preload("res://ui/live_workshop_fields.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -72,7 +73,7 @@ static func nomination_menu(m, anchor: Control, id: String) -> void:
 		m._button(v, "File a case against %s in the Workshop" % who.name, func():
 			m.popup.hide()
 			m._open_live_workshop()
-			m.case_view.workshop.editor.prefill_premise(id, "evil"))
+			LiveWorkshopFields.prefill_premise(m.case_view.workshop.editor, id, "evil"))
 	var raw = m._button(v, "Nominate without a case", func():
 		m.popup.hide()
 		m._run("nominate %s raw" % id))

@@ -8,6 +8,8 @@
 ##     other way.
 ## Constructed on seed 692's 7-NPC deal (as the premise suites), flat beliefs.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
@@ -58,7 +60,7 @@ func _game():
 
 
 func _add(g, card: Dictionary) -> int:
-	var number: int = g.add_card(card)
+	var number: int = GameBoard.add_card(g, card)
 	_texts[number] = g.board[number - 1].text
 	return number
 
@@ -126,7 +128,7 @@ func _present(frame_index: int, centring: bool, kind: String = "sighting vs alib
 	g.w.defer_beliefs = false
 	var cards: Array = _cards(g, kind)
 	var filed: int = _file(g, p[frame_index].id, cards)
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	Connections.premise_centring = true
 	return {"g": g, "n": n, "p": p, "post": _chances(g, n), "cx": g._workshop_evaluations[n.id + ":good"].proposal.connections}
 
