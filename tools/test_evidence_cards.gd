@@ -1,4 +1,4 @@
-## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, dropped items, false-reading causes.
+## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, false-reading causes.
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_fixes, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
 

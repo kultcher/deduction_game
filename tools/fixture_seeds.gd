@@ -96,7 +96,11 @@ static func was_out(w, n, nd: int) -> bool:
 ## the sighting, rightly by its own lights).
 ## `subject_trust`: the subject must trust the sighter at least this much, so it hears the
 ## sighting nearly in full (an unshared sighting is weighed by the hearer's trust in its teller).
-static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0, from: int = SEEDS_FROM, subject_trust: float = 0.0) -> Dictionary:
+## How far framed_sighting searches: a frame away from home that a bystander weighs against
+## the subject's own home alibi is rarer than the other cases (Nov 20), so 3× the usual.
+const FRAMED_SEEDS: int = 3 * SEEDS_COUNT
+
+static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0, from: int = SEEDS_FROM, subject_trust: float = 0.0, bystander_alibi: bool = true) -> Dictionary:
 	return search(day, func(g):
 		var w = g.w
 		for key in w.evil_plan.get("fake_sightings", {}):
@@ -118,7 +122,9 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 				continue
 			# A bystander must also hold the subject's own "I was home" for that night, so the
 			# sighter contest has the subject's account to weigh the sighting against (Lantern,
-			# Nov 20).
+			# Nov 20). With `bystander_alibi` false the caller hands it to them instead: a frame
+			# away from home that gossip has also brought the alibi to is rare (none in 60 seeds
+			# after the drop removal, Nov 20).
 			var night: int = int(fs.get("day", -1))
 			var home_alibi = func(c):
 				var ct: Dictionary = c.get("content", {}) if c.get("content") is Dictionary else {}
@@ -127,13 +133,13 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 					and bool(c.get("home", ct.get("home", false))) and at is Dictionary and int(at.get("day", -1)) == night
 			var bystander: String = ""
 			for m in w.living_good():
-				if m != subject and not held_cards(m, about).is_empty() and not held_cards(m, home_alibi).is_empty() and float(m.suspicion.get(sighter.id, 0.0)) >= bystander_doubt:
+				if m != subject and not held_cards(m, about).is_empty() and (not bystander_alibi or not held_cards(m, home_alibi).is_empty()) and float(m.suspicion.get(sighter.id, 0.0)) >= bystander_doubt:
 					bystander = m.id
 					break
 			if need_bystander and bystander == "":
 				continue
-			return {"sighter": sighter.id, "subject": subject.id, "bystander": bystander}
-		return {}, 7, from, SEEDS_FROM + SEEDS_COUNT - from)
+			return {"sighter": sighter.id, "subject": subject.id, "bystander": bystander, "night": night}
+		return {}, 7, from, SEEDS_FROM + FRAMED_SEEDS - from)
 
 
 ## A good person's honest sighting of a real Sleepwalker, out on a night they believe they

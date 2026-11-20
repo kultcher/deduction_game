@@ -35,6 +35,10 @@ func _init() -> void:
 					var dead = w.by_id.get(str(c.data.get("dead", "")))
 					if teller == null or dead == null or not teller.is_evil() or not teller.alive or dead.alive or dead.is_evil():
 						continue
+					# The relayer must have room to rise: a listener already sure of them can't show
+					# the sighting counting against them (seed 100029 at 1.00, Nov 20).
+					if float(_posteriors(g, l).get(teller.id, 1.0)) >= 0.95:
+						continue
 					for s in w.living_good():
 						if s != l and s != dead:
 							return {"listener": l.id, "teller": teller.id, "dead": dead.id, "sighter": s.id, "night": int(c.data.item.get("night", -1))}

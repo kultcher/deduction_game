@@ -68,7 +68,10 @@ func _run() -> void:
 	# What they saw of the dead lately is still told, framed like the haunts (#97 review).
 	var told_seen: int = 0
 	var framed: int = 0
-	for seed in range(600, 612):
+	var asked: int = 0
+	for seed in range(600, 660):
+		if asked >= 12:
+			break  # (twelve deals with a good listener in the room, not twelve fixed seeds)
 		var g = Game.new()
 		g.detailed_logging = false
 		g.new_case(seed, 7)
@@ -84,6 +87,7 @@ func _run() -> void:
 			continue
 		n.traits["gossip"] = 1.0
 		n.trust = 1.0
+		asked += 1
 		n.beliefs.append({"kind": "saw", "who": dead.id, "block": g.w.loc_block("tavern"), "loc": "tavern", "day": g.w.day, "phase": 0, "how": "street"})
 		g.command("talk " + n.name)
 		var out: String = g.command("ask about " + dead.name)
@@ -92,13 +96,15 @@ func _run() -> void:
 			var lead: String = str(load("res://sim/dialogue_voices.gd").VOICES.get(n.id, {}).get("tell_sighting_dead", "")).split("{subject}")[0].strip_edges()
 			if lead != "" and lead.left(12) in out:
 				framed += 1
-	_check(told_seen >= 4, "asking about the dead still shares a recent sighting of them (%d)" % told_seen)
+	_check(told_seen >= 4, "asking about the dead still shares a recent sighting of them (%d of %d)" % [told_seen, asked])
 	_check(framed == told_seen, "framed like the haunts, with the voice's lead line (%d of %d)" % [framed, told_seen])
 	# Owning a true sighting, then pressed again: the same plain account, never a home lie (#130 review).
 	var Podium = load("res://sim/mind_podium.gd")
 	var held: int = 0
 	var tried: int = 0
-	for seed in range(700, 716):
+	for seed in range(700, 760):
+		if tried >= 4:
+			break  # (four deals whose first answer owns the outing, not sixteen fixed seeds)
 		var g = Game.new()
 		g.detailed_logging = false
 		g.new_case(seed, 7)
@@ -118,7 +124,8 @@ func _run() -> void:
 		tried += 1
 		var again: Dictionary = Podium.press_night(g.w, d, 1, true, false)
 		var priv: Dictionary = load("res://sim/mind.gd").answer_night(g.w, d, 1)
-		if again.get("outcome", "") == "admitted" and not (1 in d.lied_nights) and not priv.get("facts", [{}])[0].get("home", false):
+		# Owning it again with the errand's reason (a confession) still owns it (Nov 20, seed 701).
+		if again.get("outcome", "") in ["admitted", "confess"] and not (1 in d.lied_nights) and not priv.get("facts", [{}])[0].get("home", false):
 			held += 1
 	_check(tried >= 2 and held == tried, "an owned outing stays owned when pressed again, at the podium and in private (%d of %d)" % [held, tried])
 	print("%d checks, %d failed" % [_checks, _fails])

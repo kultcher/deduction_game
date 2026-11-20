@@ -18,6 +18,7 @@ const Game = preload("res://game/game.gd")
 const GameMeeting = preload("res://game/game_meeting.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Mind = preload("res://sim/mind.gd")
+const C = preload("res://sim/content.gd")
 const Connections = preload("res://workshop/connections.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const Caches = preload("res://workshop/caches.gd")
@@ -266,10 +267,11 @@ func _known_game(seed_v: int, day: int):
 ## can't show. {} if no seed searched has one.
 func _framed_case() -> Dictionary:
 	var from: int = Seeds.SEEDS_FROM
-	while from < Seeds.SEEDS_FROM + Seeds.SEEDS_COUNT:
-		var fc: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1, from)
+	while from < Seeds.SEEDS_FROM + Seeds.FRAMED_SEEDS:
+		var fc: Dictionary = Seeds.framed_sighting(2, true, "street", 0.1, from, 0.0, false)
 		if fc.is_empty():
 			return {}
+		_hear_home_alibi(fc.g, fc.bystander, fc.subject, int(fc.night))
 		Connections.force_row = "none"
 		var sg: String = fc.sighter
 		var sub: String = fc.subject
@@ -280,6 +282,24 @@ func _framed_case() -> Dictionary:
 		print("NOTE: seed %d skipped for the framed-sighting checks: %s already holds %s at %.2f without the fake card" % [int(fc.seed), sub, sg, float(eff.get("without", {}).get(sg, -1.0))])
 		from = int(fc.seed) + 1
 	return {}
+
+## The bystander hears the subject's own "I was home" for the framed night, so the sighter
+## contest has the subject's account to weigh the sighting against (Lantern, Nov 20). Handed
+## to them rather than searched for: gossip rarely brings it to a bystander of a frame.
+func _hear_home_alibi(g, by_id: String, sub_id: String, night: int) -> void:
+	var w = g.w
+	var by = w.by_id[by_id]
+	var sub = w.by_id[sub_id]
+	if not Seeds.held_cards(by, func(c):
+		var ct: Dictionary = c.get("content", {}) if c.get("content") is Dictionary else {}
+		var at = c.get("observed_at", ct.get("observed_at", {}))
+		return str(c.get("kind", "")) == "alibi" and str(c.get("source", ct.get("source", ""))) == sub_id and bool(c.get("home", ct.get("home", false))) and at is Dictionary and int(at.get("day", -1)) == night).is_empty():
+		return
+	var card: Dictionary = {"kind": "alibi", "source": sub_id, "via": sub_id, "subject": [sub_id], "home": true, "block": sub.home_block, "day": night, "phase": C.NIGHT,
+		"learned": [{"day": w.day, "phase": w.phase, "via": sub_id}], "text": "test home alibi"}
+	var receipt: Dictionary = Mind.WorkshopLedger.Evidence.normalize_card(card)
+	Mind.ledger_hear(w, by, "heard:" + receipt.id, [], 1.0, [sub_id, night, "alibi"],
+		{"kind": "tell", "workshop_card": receipt, "workshop_teller": sub_id, "workshop_origin": sub_id, "workshop_public": false})
 
 func _chance(g, listener: String, person: String) -> Dictionary:
 	var n = g.w.by_id.get(listener)

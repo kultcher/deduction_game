@@ -129,10 +129,11 @@ listener (#273), both Lantern's.
   - the night "out" card a personal item makes for its owner;
   - every mechanic that weighs a drop as evidence.
 
-  No measurement first (Michael). It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the
-  same PR (see "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side.
+  No measurement first (Michael). Owner Quill, with Beadle reviewing the sim side.
   **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
-  Revenant's totem and the place's regulars. [decided]
+  Revenant's totem and the place's regulars. **Built** in the drop-removal PR (Quill, Nov 20;
+  handoff `2026-11-20-0251-quill-remove-drops.md`). `LEGACY_EXTRA_SHIFT_DRAW` was split out of
+  it (Seneschal, Nov 20); see "Argon's audit: cleanup". [in review]
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
@@ -144,9 +145,11 @@ listener (#273), both Lantern's.
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
-  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW` in the same PR as "Remove drops
-     altogether", which already re-baselines. Deleting the Muddler is held for the
-     secrets rework.
+  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW`. It was tried with "Remove drops
+     altogether" and split out (Seneschal, Nov 20): it reshuffles every seed's deal, and about
+     25 to 30 suites hard-code who a seed deals what. Michael decides at the reprioritization
+     whether it's worth those fixes; the drop-removal handoff lists the failing suites.
+     Deleting the Muddler is held for the secrets rework.
   3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
      Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
      `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
