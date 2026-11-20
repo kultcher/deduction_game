@@ -43,6 +43,9 @@ person it claims to protect, which is a plain tell. It now never does, wherever 
 - **No override on its chosen.** Copying only the good self's part would have been hollow: the
   evil side wants the scapegoat hanged and would outvote it nearly every time. The frame comes
   after the hanging anyway, so the bluff has no need to vote for it.
+- **Except for the Demon's own survival** (Codex on #412): a Demon on the block whose chosen is
+  counter-nominated still votes yes to save itself, as any bluff does there. Survival comes
+  before cover, and that yes is a tell the player can catch.
 
 ## Measured
 

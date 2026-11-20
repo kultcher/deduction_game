@@ -59,7 +59,9 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 			return evil_yes
 		if Evil.martyr_bluff_chosen(v) == nominee:
 			# A Martyr bluff votes on its own "chosen" as its good self would, a real Martyr's
-			# reluctance included (Michael, Nov 21): pushing that hanging would be a tell.
+			# reluctance included (Michael, Nov 21): pushing that hanging would be a tell. The one
+			# exception is above: a Demon on the block saving itself by a counter-nomination puts
+			# survival before cover, as it does for any bluff, and that yes is a tell to catch.
 			w.dlog.think(v.id, "team_strategy", "Martyr bluff: votes on %s, its 'chosen', as a real Martyr would." % nominee)
 			return sh_yes
 		var projected: int = have + 1 + expected_later
