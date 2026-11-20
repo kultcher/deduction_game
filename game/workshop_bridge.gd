@@ -113,7 +113,7 @@ static func _collect(g, number, numbers: Array, arguments: Array, issues: Array,
 	numbers.append(number)
 	if card.get("kind") == "deduction":
 		var conclusion = {}
-		for key in ["type", "a", "b", "role", "night", "mod", "group", "card"]:
+		for key in ["type", "a", "b", "role", "night", "mod", "card"]:
 			if card.get("conclusion", {}).has(key):
 				var value = card.conclusion[key]
 				conclusion[key] = value.duplicate(true) if value is Array or value is Dictionary else value

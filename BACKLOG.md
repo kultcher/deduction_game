@@ -30,7 +30,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
-    2. The premise menu, trimmed `[decided]`
+    2. The premise menu, trimmed `[in review]`
     3. Remove the Muddler `[in review]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
@@ -97,7 +97,8 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 **Deferred (Michael, Nov 8)** and not on the active list: premises step 4 (Scion/Revenant
 and movement premises, `docs/premises_plan.md`); contradiction callouts and poses on the
 courtroom stage; the live seat-by-seat player vote (meeting plan stretch A); procedural
-towns.
+towns. The Minion premise was folded into "evil" (Michael, Nov 20); it may return with
+step 4.
 
 ---
 
@@ -169,7 +170,8 @@ listener (#273), both Lantern's.
   - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
     decided.
 
-  Owner Quill. [decided]
+  Owner Quill. **Built** on `claude/premise-trim` (Quill, Nov 20; handoff
+  `2026-11-20-0745-quill-premise-trim.md`). [in review]
 
 - **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
   and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
@@ -284,7 +286,9 @@ listener (#273), both Lantern's.
   - **Gift-hiding fear should follow the gift's value to the Demon** (Beadle's idea, folded
     in Nov 20). How much a good NPC fears revealing its gift should follow the per-role
     kill-score table, not be the same for every info gift.
-  A caught lie still implicates strongly, so both need care. [open]
+  A caught lie still implicates strongly, so both need care. The "holds their claimed
+  gift" premise was merged into "is good" (Michael, Nov 20); revisit if this is decided.
+  [open]
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
   Beadle's proposals):

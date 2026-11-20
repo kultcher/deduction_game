@@ -83,9 +83,6 @@ func _init() -> void:
 	c = Solver.empty_case()
 	c.cards = ["watch1", "alibi1"]
 	check(Solver.analyze(view, c).status == "conflicting", "watch sighting and same-night home alibi conflict")
-	c.conclusion.type = "conflict"
-	c.conflict_scope = ["watch1", "alibi1"]
-	check(Solver.analyze(view, c).entailment == "forced", "the player can conclude that the reports conflict")
 	c.cards = ["watch2", "lamp2"]
 	c.conclusion.type = "evil"
 	var movement = Solver.analyze(view, c)

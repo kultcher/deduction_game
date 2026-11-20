@@ -90,11 +90,6 @@ func _run() -> void:
 	var wrong_gift = Model.new(board.view)
 	wrong_gift.connect_cards("e:gift_claim", "e:alibi1")
 	check(wrong_gift.links[0].kind == "read_together", "a walking claim does not explain a report that the person stayed home")
-	var conflict_root = board.add_premise("constance", "conflict", Vector2.ZERO)
-	var merged: String = board.nodes.keys().filter(func(id): return board.nodes[id].kind == "contradiction")[0]
-	board.connect_cards(merged, conflict_root)
-	check(Solver.analyze(board.view, board.compile(conflict_root)).entailment == "forced" and Jury.evaluate(board.view, board.compile(conflict_root), neutral.duplicate(true)).suspicion_delta == 0, "a conflict premise can ask about the original accounts without assigning alignment guilt")
-	board.unlink(merged, conflict_root)
 	var group: String = board.nodes.keys().filter(func(id): return board.nodes[id].kind == "contradiction")[0]
 	check(board.nodes["e:alibi1"].get("merged") == group and board.nodes["e:vigil1"].get("merged") == group, "merged contradiction retains both hidden original copies")
 	var saved = JSON.parse_string(JSON.stringify(board.export_data()))

@@ -432,7 +432,7 @@ static func endorsed_facts(snapshot: Dictionary, number: int, path: Array = []) 
 	if snapshot.board_map.has(str(number)):
 		return [snapshot.board_map[str(number)]]
 	var arguments: Array = snapshot.arguments.filter(func(a): return a.board_number == number)
-	if arguments.is_empty() or arguments[0].conclusion.get("type") == "conflict":
+	if arguments.is_empty():
 		return []
 	if arguments[0].has("workshop_case"):
 		var value: Dictionary = arguments[0].workshop_case
@@ -509,8 +509,6 @@ static func response(plan: Dictionary, snapshot: Dictionary, baseline: Dictionar
 		for id in listener.knowledge.own_reports:
 			if id not in scoped.case.cards:
 				scoped.case.cards.append(id)
-	if scoped.case.conclusion.type == "conflict":
-		listener.knowledge.own_reports = [] # Test the quoted set, not an unrelated background inconsistency.
 	# The reply's effects are never applied: the union evaluated in the belief refresh
 	# owns them. Reuse its commitments (fixed decisions above) and compute only the
 	# headline's own effect, which the reply text reads.

@@ -320,14 +320,14 @@ static func shape_reading(g, value: Dictionary, hear_claims: bool = true) -> Dic
 
 ## The premises and badge bands the "points elsewhere" flag can join (test_juror): an
 ## accusation the case doesn't carry.
-const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "minion", "suspicious"]
+const POINTS_ELSEWHERE_TYPES = ["evil", "demon", "suspicious"]
 const POINTS_ELSEWHERE_BANDS = ["contradicts", "none", "weak"]
 
 ## Which way each premise points an average listener's suspicion of its subject: up for an
 ## accusation, down for one that clears them. The listener weighs every case through its
-## subject's chance of being evil, so that is what the juror reads. A "conflict" premise has
-## no single subject: it is read through whoever it moves most, upward (one of them lied).
-const PREMISE_CLEARS = ["good", "notdemon", "role", "truthful", "misled", "marked", "secret_mod"]
+## subject's chance of being evil, so that is what the juror reads. A premise the judge
+## couldn't pin on one subject is read through whoever it moves most, upward.
+const PREMISE_CLEARS = ["good", "notdemon", "truthful", "misled", "marked", "secret_mod"]
 ## The clearing premises a listener's chance of the target being good settles outright, for
 ## the badge's top tier (Conclusive): test_juror.
 const TOP_TIER_CLEARS = ["good", "notdemon"]
@@ -335,7 +335,7 @@ const TOP_TIER_CLEARS = ["good", "notdemon"]
 ## The listener's chance as the badge's top tier reads it for a premise of `type`: the chance
 ## itself where it settles the premise, else -1 (no top tier).
 static func top_tier_chance(type: String, chance: float) -> float:
-	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
+	var settles: bool = type in TOP_TIER_CLEARS or type not in PREMISE_CLEARS
 	return chance if settles else -1.0
 
 ## The share of a person's chance of being evil that is the chance of being the Demon, before
@@ -402,7 +402,7 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	var target: String = str(pj.get("target", ""))
 	var before: float = float(pj.get("before", -1.0))
 	var after: float = float(pj.get("after", -1.0))
-	if type == "conflict" or before < 0.0 or after < 0.0:
+	if before < 0.0 or after < 0.0:
 		# The person the case moves most, upward.
 		var best: float = 0.0
 		for id in pj.get("posterior_after", {}):
@@ -798,8 +798,8 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		# doesn't count as an argument of yours here (its cards are still heard).
 		if retired.has(int(number)) or not filed.get("workshop_case", {}).get("reading_challenges", {}).is_empty():
 			continue
-		# Only the cards it argues for count as its argument: a "conflict" case argues for none,
-		# and a quoted-only line's cards are heard but not endorsed (SharedLedger.endorsed_facts).
+		# Only the cards it argues for count as its argument: a quoted-only line's cards are
+		# heard but not endorsed (SharedLedger.endorsed_facts).
 		if filed.has("workshop_case"):
 			ids = _endorsed(filed.workshop_case)
 		if ids.is_empty():
@@ -849,8 +849,8 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	for it in item_list:
 		values[it.key] = Connections.value(run, it)
 	var today: int = int(g.w.day)
-	# The draft's argument is the cards it argues for, as an earlier case's is: a "conflict"
-	# draft argues for none (no note), and quoted-only lines are heard, not endorsed.
+	# The draft's argument is the cards it argues for, as an earlier case's is: quoted-only
+	# lines are heard, not endorsed.
 	var argued: Array = _endorsed(value)
 	if argued.is_empty():
 		return {}
@@ -967,8 +967,6 @@ static func _pressure_spent(g, target: String, numbers: Array) -> bool:
 
 ## The cards a filed Workshop case argues for, as SharedLedger.endorsed_facts reads them.
 static func _endorsed(value: Dictionary) -> Array:
-	if str(value.get("conclusion", {}).get("type", "")) == "conflict":
-		return []
 	var assigned: Array = []
 	var endorsed: Array = []
 	for line in value.get("lines", []):
@@ -1065,7 +1063,7 @@ static func feedback(view: Dictionary, case_data: Dictionary, ev: Dictionary, re
 					unique.append(id)
 			result["clashing"] = unique
 	# Collateral: who this case would mostly raise suspicion of, if not the subject.
-	if case_data.conclusion.get("type", "") in ["evil", "demon", "minion", "suspicious"] and ev.has("people"):
+	if case_data.conclusion.get("type", "") in ["evil", "demon", "suspicious"] and ev.has("people"):
 		var people: Dictionary = ev.people
 		var own: float = people.get(target, {}).get("posterior", 0.0) - people.get(target, {}).get("prior", 0.0)
 		var top = ""
