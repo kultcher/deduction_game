@@ -320,7 +320,7 @@ static func extract_hub_incidents(
 	# Logical Stage-1 cards wired through the hub (reports, traces, night sightings, contradicted alibis,
 	# death receipts, and home/work/haunt context for traces) are valid Stage-1 material rather than smear padding.
 	for c in hub_cards:
-		if c.get("kind", "") in ["report", "trace", "sighting", "alibi", "coverage", "totem", "dropped", "claim", "secret_claim", "gift_hint"]:
+		if c.get("kind", "") in ["report", "trace", "sighting", "alibi", "coverage", "totem", "claim", "secret_claim", "gift_hint"]:
 			stage1_bearing[c.id] = true
 		elif c.get("kind", "") == "context" and c.get("context_kind", "") == "death":
 			stage1_bearing[c.id] = true

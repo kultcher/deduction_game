@@ -587,6 +587,12 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 	w.day = 1
 	w.phase = C.EVENING
 	var goods: Array = w.living_good()
+	# The real Rumormonger, if the deal has one, is the speaker, so no listener holds the gift
+	# it claims (the deal moved when the drop draws went, Nov 19).
+	var real_rm: Array = goods.filter(func(x): return x.role == "rumormonger")
+	if not real_rm.is_empty():
+		goods.erase(real_rm[0])
+		goods.push_front(real_rm[0])
 	var speaker = goods[0]
 	var pair_a = goods[1]
 	var pair_b = goods[2]

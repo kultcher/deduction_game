@@ -84,13 +84,20 @@ func _spillover() -> void:
 	check(low.remembered and high.remembered, "a presented case is remembered: a later refresh reproduces it")
 	check(high.other < high.target, "a case moves its target more than the people it only mentions")
 
+## A Dowser count of 1 on p3 alone: it names p3 evil outright, so "p3 is good" is clearly wrong
+## whatever else the deal holds. (The two-of-three count sat right on the line, -0.252 against
+## -0.25, and a change to the night's draws tipped it over, Nov 20.)
+func _flat_case(g, type: String, target) -> int:
+	var dowser = _read(g, g.w.npcs[2], "dowser", 1, {"group": [target.id], "count": 1})
+	return g.file_deduction({"type": type, "a": target.id}, [dowser])
+
 func _trust_cost() -> void:
 	var p: Array
-	# Wrong: "p3 is good" against a Dowser count that puts two of three evil.
+	# Wrong: "p3 is good" against a Dowser count that names p3 evil.
 	var g = _game()
 	var n = g.w.npcs[0]
 	p = g.w.npcs
-	var wrong = _case(g, "good", p[3])
+	var wrong = _flat_case(g, "good", p[3])
 	var t0: float = n.trust
 	var r = g._evaluate_deduction(n, g.board[wrong - 1], 1.0, false)
 	print("wrong premise: agreement %.3f, trust %.3f -> %.3f" % [r.agreement, t0, n.trust])
@@ -102,7 +109,7 @@ func _trust_cost() -> void:
 	# Right: "p3 is evil" on the same cards earns the reward, not the cost.
 	var g2 = _game()
 	var n2 = g2.w.npcs[0]
-	var right = _case(g2, "evil", g2.w.npcs[3])
+	var right = _flat_case(g2, "evil", g2.w.npcs[3])
 	var t2: float = n2.trust
 	var r2 = g2._evaluate_deduction(n2, g2.board[right - 1], 1.0, false)
 	print("right premise: agreement %.3f, trust %.3f -> %.3f" % [r2.agreement, t2, n2.trust])

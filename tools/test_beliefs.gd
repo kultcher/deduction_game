@@ -143,21 +143,29 @@ func _test_stable_recompute() -> void:
 	_check(before == after, "recomputing with no new evidence changes nothing")
 
 func _test_other_source() -> void:
-	var t = _setup(5205)
-	var w = t["w"]
-	var L = t["L"]
-	var vic = w.npcs.filter(func(p): return p not in [L, t["A"], t["B"], t["C"], t["D"]])[0]
-	vic.home_block = "docks"
-	t["A"].home_block = "square"
-	w.day = 2
-	w._kill(vic)
-	w.day = 3
-	Mind.apply_info(w, L, t["A"], _seer(1, t["C"].id, t["D"].id), 0.5)
-	Mind.apply_info(w, L, t["B"], _watch(2, "docks", [t["A"].id]), 0.8)
-	var s1 = Mind.susp(L, t["A"].id)
-	_doubt(t, t["B"].id, 2)
-	var s2 = Mind.susp(L, t["A"].id)
-	_check(s1 > 0.12 and s2 < s1, "doubting a Night Watch report retracts the suspicion it added")
+	# The first deal from 5205 whose listener isn't the Night Watch itself: a listener holding the
+	# gift takes another's Night Watch report as a false claim, so there's nothing to retract.
+	var s1 := 0.0
+	var s2 := 0.0
+	for sd in range(5205, 5265):
+		var t = _setup(sd)
+		var w = t["w"]
+		var L = t["L"]
+		if L.role == "nightwatch":
+			continue
+		var vic = w.npcs.filter(func(p): return p not in [L, t["A"], t["B"], t["C"], t["D"]])[0]
+		vic.home_block = "docks"
+		t["A"].home_block = "square"
+		w.day = 2
+		w._kill(vic)
+		w.day = 3
+		Mind.apply_info(w, L, t["A"], _seer(1, t["C"].id, t["D"].id), 0.5)
+		Mind.apply_info(w, L, t["B"], _watch(2, "docks", [t["A"].id]), 0.8)
+		s1 = Mind.susp(L, t["A"].id)
+		_doubt(t, t["B"].id, 2)
+		s2 = Mind.susp(L, t["A"].id)
+		break
+	_check(s1 > 0.12 and s2 < s1, "doubting a Night Watch report retracts the suspicion it added (%.3f -> %.3f)" % [s1, s2])
 
 func _test_mutual_accusation() -> void:
 	var t = _setup(5106)
