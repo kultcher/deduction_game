@@ -776,10 +776,6 @@ func vote_requirement_text() -> String:
 	return GameMeeting.vote_requirement_text(self)
 
 
-
-func _last_words(n) -> void:
-	GameMeeting._last_words(self, n)
-
 func _close_meeting() -> void:
 	GameMeeting._close_meeting(self)
 
