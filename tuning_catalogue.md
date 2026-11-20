@@ -159,7 +159,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CRED_MAX` | `0.9` |  | `game/credibility.gd`, `game/demon_declaration.gd`, `workshop/source_doubt.gd` |
 | `CRED_CORROBORATION_MIN` | `0.06` | Minimum independent posterior movement from baseline prior before an NPC scores a recorded player claim at Dawn (unless public alignment proof already exists). | `game/credibility.gd` |
 | `CRED_WEIGHT_FORMAL` | `1.0` | Track-record weights: formal deductions/nominations vs bare meeting statements. | `game/credibility.gd`, `game/game_meeting.gd`, `game/game_presentation.gd`, `game/workshop_presentation.gd` |
-| `CRED_WEIGHT_STATEMENT` | `0.35` |  | (unused) |
+| `CRED_WEIGHT_STATEMENT` | `0.35` |  | `game/game_meeting.gd` |
 | `CRED_WEIGHT_BARE_NOMINATION` | `1.0` |  | `game/game_meeting.gd` |
 | `CRED_DECLARATION_CHANGE` | `0.1` | Changing the demon-type declaration (game/demon_declaration.gd): a straight cut to every NPC's credibility, kept in their track-record target. About one failed case among two claims: CRED_STEP * CRED_SPAN * 0.5. | `game/demon_declaration.gd` |
 | `DISTRUST_EXPLAIN_THRESHOLD` | `0.35` |  | `sim/mind.gd` |
@@ -224,6 +224,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CLEMENCY_TRUSTED_BONUS` | `0.06` |  | `sim/world.gd` |
 | `CLEMENCY_SUSPECTED_DROP` | `0.1` |  | `sim/world.gd` |
 | `VOTED_YES_ON_ME_DROP` | `0.08` |  | `sim/world.gd` |
+| `VOTED_NO_ON_ME_RISE` | `0.04` | A nominee warms to the Demonologist for voting no on them, unless the player nominated them (Michael, Nov 19). | `sim/world.gd` |
 
 ## Social
 
@@ -439,6 +440,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_meeting.gd`, `sim/social.gd` |
 | `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_meeting.gd` |
+| `PLAYER_VOTE_NO_SLOPE` | `0.12` | The player's no pushes later voters toward no, at about two-thirds of the yes push (Michael, Nov 19; there's no abstaining, so every no counts). At a credibility below a quarter it backfires, as a low-credibility yes does. | `sim/mind_meeting.gd` |
+| `PLAYER_VOTE_NO_OFFSET` | `-0.03` |  | `sim/mind_meeting.gd` |
 | `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_meeting.gd` |
 | `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_meeting.gd` |
 | `VOTE_SPARE_PREF_SLOPE` | `-0.5` |  | `sim/mind_meeting.gd` |
@@ -540,6 +543,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXPOSURE_PLAYER_SUSPECTS` | `0.3` |  | `sim/evil.gd` |
 | `EXPOSURE_PRESSURE_SCALE` | `0.5` |  | `sim/evil.gd` |
 | `EXPOSURE_ON_BLOCK` | `0.2` |  | `sim/evil.gd` |
+| `MINION_DOUBLE_CLAIM_CHANCE` | `0.05` | A deliberate double claim (Michael, Nov 19-20): the chance, rolled once per Minion per game (never the Demon or a Scion), that this Minion is looking to double-claim: when it hears someone claim a gift, unclaimed, it knowingly takes that same gift as its bluff and claims it. A chosen collision, not a bluff that merely risks one. Once it is looking, heat decides each time whether it acts: already implicated as evil (Evil.exposure's public talk), it lets the chance pass, never at full heat. Michael set 0.05: roughly 1 game in 20 per Minion. | `sim/mind_meeting.gd` |
 | `TEAMMATE_VALUE_DEMON` | `2.0` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_DEMON_WITH_SCION` | `1.1` |  | `sim/evil.gd` |
 | `TEAMMATE_VALUE_SCION_ACTIVE` | `1.45` |  | `sim/evil.gd` |

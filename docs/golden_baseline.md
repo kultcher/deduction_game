@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
+### Current baseline (Nov 20, the player's no counts too): `baseline_7792e9a`
+
+`tools/golden/baseline_7792e9a/` is the capture from `claude/beadle-symmetric-vote` at `7792e9a`
+(main at `39a57d2`, with #390, merged in). The player's no now pushes later voters toward no, at
+about two-thirds of a yes (`PLAYER_VOTE_NO_SLOPE` 0.12, `PLAYER_VOTE_NO_OFFSET` -0.03), and a
+nominee the player votes to spare trusts them a little more (`VOTED_NO_ON_ME_RISE` 0.04).
+Michael set these on Nov 19.
+- **Divergence from `baseline_9ea3f99`:** every seed, at the first tally where the player votes no.
+  A `player_votes_no` part enters each voter's record. 42 diverges at record 48 (day 2), 54875 at 52
+  (day 1), 692 at 104 (day 2), 900 at 65 (day 2) and 98933 at 52 (day 1).
+- **Outcomes:**
+  - **54875:** good now wins on day 3. Greta is hanged on day 2 as before, then Constance on day 3.
+    Before, there was no winner by day 4.
+  - **692:** only Constance is hanged, on day 3. Before, Greta was also hanged on day 2. There is no
+    winner by day 4 either way.
+  - **42, 900 and 98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
 
 `tools/golden/baseline_9ea3f99/` is the capture from `claude/beadle-private-share` at `9ea3f99`
 (main at `561e17f`, with #365, merged in). An NPC who hasn't claimed a gift publicly

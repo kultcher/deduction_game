@@ -400,6 +400,9 @@ class Trust:
 	const CLEMENCY_TRUSTED_BONUS = 0.06
 	const CLEMENCY_SUSPECTED_DROP = 0.1
 	const VOTED_YES_ON_ME_DROP = 0.08
+	## A nominee warms to the Demonologist for voting no on them, unless the player nominated
+	## them (Michael, Nov 19).
+	const VOTED_NO_ON_ME_RISE = 0.04
 
 
 # ---------------------------------------------------------------- 5. Background Social Gossip & Approaches
@@ -682,6 +685,11 @@ class Meeting:
 	const VOTE_URGENCY_PER_DEATH = 0.02
 	const PLAYER_VOTE_YES_SLOPE = 0.18
 	const PLAYER_VOTE_YES_OFFSET = -0.04
+	## The player's no pushes later voters toward no, at about two-thirds of the yes push
+	## (Michael, Nov 19; there's no abstaining, so every no counts). At a credibility below
+	## a quarter it backfires, as a low-credibility yes does.
+	const PLAYER_VOTE_NO_SLOPE = 0.12
+	const PLAYER_VOTE_NO_OFFSET = -0.03
 	const VOTE_DISTRUST_NOMINATOR_MIN_SUSP = 0.7
 	const VOTE_DISTRUST_NOMINATOR_OFFSET = -0.15
 	const VOTE_SPARE_PREF_SLOPE = -0.5
@@ -804,6 +812,14 @@ class Evil:
 	const EXPOSURE_PLAYER_SUSPECTS = 0.3
 	const EXPOSURE_PRESSURE_SCALE = 0.5
 	const EXPOSURE_ON_BLOCK = 0.2
+	## A deliberate double claim (Michael, Nov 19-20): the chance, rolled once per Minion per
+	## game (never the Demon or a Scion), that this Minion is looking to double-claim: when it
+	## hears someone claim a gift, unclaimed, it knowingly takes that same gift as its bluff and
+	## claims it. A chosen collision, not a bluff that merely risks one. Once it is looking, heat
+	## decides each time whether it acts: already implicated as evil (Evil.exposure's public
+	## talk), it lets the chance pass, never at full heat. Michael set 0.05: roughly 1 game in
+	## 20 per Minion.
+	const MINION_DOUBLE_CLAIM_CHANCE = 0.05
 	const TEAMMATE_VALUE_DEMON = 2.0
 	const TEAMMATE_VALUE_DEMON_WITH_SCION = 1.1
 	const TEAMMATE_VALUE_SCION_ACTIVE = 1.45

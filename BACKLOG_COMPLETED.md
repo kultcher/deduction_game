@@ -3,6 +3,380 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Closed Nov 20, 2026, section 2 answers (Michael; recorded by Claude-Vicar)
+
+- **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on
+  an ordinary night only about 5% of the time, against the Demon heading for the victim's
+  house on kill nights, so one sighting is a large likelihood ratio, and "claimed a day
+  role, seen out at night" reads as open-and-shut. Don't fix it by biasing the Demon
+  toward night-walking roles. Levers, measured with the bot A/B: a higher ordinary
+  out-rate, more good NPCs with secret errands, softer Demon routes, vigil yield.
+  [decided: tune in the balance pass]
+
+  > **Closed Nov 20 (Michael):** ongoing and known.
+
+- **Evil backs into a bluff.** An evil NPC that hasn't claimed yet can switch its planned
+  bluff when another unclaimed gift would serve better (the Poisoner planned Seer, is
+  seen out at night, and nobody has claimed Night Watch). This opens double claims (the
+  real Night Watch may just be quiet), which need their own logic; once handled, fake
+  Mediums and evil generally can make bolder lies. (Oct 19) **On hold** (Michael, Nov 19)
+  until "Good NPCs lie tactically" is designed and decided. [decided; on hold]
+  - **Hold lifted for one case (Michael, Nov 19):** when someone else claims evil's planned
+    bluff first, evil switches to a spare from its bluff list. The list holds only gifts not
+    in play, so a spare has no real holder. Owner Beadle. The rest (backing into a walker
+    when caught out, and double claims) is in "More rebuttals after a caught lie".
+    **Built** (Beadle, #390).
+
+  > **Closed Nov 20 (Michael):** the case where the hold was lifted (switching when pre-empted) is built in #390. The rest is in "Caught out and pressed again: what's left".
+
+## Closed Nov 20, 2026, reprioritization (Michael; recorded by Claude-Vicar)
+
+- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
+  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
+  world with everyone's routes, so "N others out, and everyone but one home" already points
+  at the one unaccounted, and more people reported out than counted already clashes. Neither
+  case has been measured on its own, so what's left is a test that shows it. Owners Quill
+  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
+  Michael wants it stronger.
+
+  > **Closed Nov 20 (Lantern):** already tested. `test_lamplighter_count_mix` (#346, on the fast list) covers the accounting case (a count plus everyone else's home alibi supports a case about the one left over, ×1.81), a third party's clashing sighting (it doesn't convict the Lamplighter, ×0.92), the listener's own sighting ruling a count out, and a true count against a lying home alibi. "Seen nowhere" uses the same joint factor, so no item is kept for it.
+
+- **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
+  move a reading at equal effective weight, with night scope and self-knowledge included.
+  [open]
+  Michael (Nov 18): being handled now, with "Recovering from a wrong 'lying' call" and
+  "The player's 'poisoned, not lying' call" (section 2, Cases and the Workshop).
+  Quill (Nov 18): Michael chose three labels after the label audit. "Misled" and "failed
+  gift" are now one honest mistake (honest doubt at the player's credibility, "the reader is
+  good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
+  `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
+
+  > **Closed Nov 20 (Quill; Michael confirmed the Lying strength):** settled by the Mistaken merge and the Lying retune (#296, Nov 18). Both calls were measured side by side; the table is in `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
+
+- **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
+  Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
+  1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
+  5. When it did, items were garbled at about the designed rate. The limit is supply: news
+  is announced at the meeting and nobody repeats what everyone heard, so NPCs hear under
+  one private reading or sighting a game. Letting everyone pass on more gave no more
+  relays (52 against 60 in 40 games) unless some news also stays private for a while.
+  Options measured or estimated: garble the Muddler's retellings at the meeting; keep
+  night sightings private for a day (Muddler in about half of games, estimated, but news
+  spreads earlier for both sides and the meeting is less of a reveal); garble day
+  sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
+  it for now; he isn't sure the Muddler can work as written without warping the game
+  around it. [open]
+
+  > **Closed Nov 20 (Michael, reprioritization):** the Muddler is removed: the role and its cards ("Remove the Muddler", section 2).
+
+- **Adjudicating a muddled card** (the Muddler secret). Tied to the secrets rework, since the
+  Muddler may go (Lantern, Nov 20). **[later]**
+
+  > **Closed Nov 20 (Michael, reprioritization):** the Muddler is removed.
+
+- **Roster expansion.** Lantern's shortlist from the Clocktower passes (ideas only):
+  `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
+  Registrar, Psychologist, Monitor, Confessor, Sexton and the Brute. Still to come: On Deck
+  gifts (Tracker, Clairvoyant, Beckon, Tallyman, Bellringer, Bellwether…), minions
+  (Framer/Forger with evidence planting, Blackmailer, a two-curse Minion (once
+  called the Hexer; that name now belongs to the day-killing Demon), Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
+  Mesmerize, a daytime "rouse"). Bellwether, the Sower and Dusk Compulsion come from the
+  Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
+  yet. Each needs a hint package and solver support before it goes live. [open]
+
+  > **Closed Nov 20 (Michael, reprioritization):** closed as ongoing.
+
+- **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
+  people who aren't talking or working showing on the map; a wrong role guess blocking
+  process of elimination.
+
+  > **Closed Nov 20 (Michael, reprioritization):** closed.
+
+## Closed Nov 20, 2026, second pass (Michael; recorded by Claude-Vicar)
+
+- **Privacy without compounding trust penalties.** Remove Privacy from initial player
+  trust and benign trust changes; let high Privacy scale only what a private person would
+  resent (intrusive pressure, revealing secrets). Keep the disclosure gates. Distinguish
+  ordinary questions on different topics from repeating a refused question. (54875: on
+  Day 1 three of three people stonewalled; Privacy counts in both openness and starting
+  trust. The first day swings a lot on how many private characters are dealt.) Consider
+  removing the double count or dealing at least one openish person per phase. [tentative]
+  - **Mostly done (Beadle, Nov 20).** #258 took Privacy out of civil talk, and starting trust
+    stopped using Privacy itself on Oct 30. Privacy still scales what a private person would
+    resent, as the item asks.
+  - **Left, Michael's call:**
+    - a newcomer's starting trust still has an openness term, 1 − Privacy
+      (`PLAYER_TRUST_OPENNESS_SCALE`), so a private person starts a little cooler while
+      Privacy also gates disclosure. That's the 54875 double count, smaller;
+    - "deal at least one openish person per phase" was never built.
+
+    Close the item if Michael counts the openness term as fine.
+
+  > **Closed Nov 20 (Michael):** the openness term in starting trust is fine as it is, and "an openish person per phase" is dropped.
+
+- **More rebuttals after a caught lie.** Beyond admitting or stonewalling: concealed
+  walking duties, personal secrets, protecting a confidence. Conceding the statement was
+  false need not concede evil. Evil gets the same excuses, open to later corroboration;
+  the caught lie itself stays. [decided; options open]
+  - **Michael (Nov 19), on Beadle's options:**
+    - **Yes:** an evil NPC borrows the excuses. It claims a walking duty that fits its bluff
+      ("I was keeping the watch"), or says "being out isn't wicked". Each gets a logged
+      reason and a reveal line.
+    - **Yes, as the first line of defence: own the night, keep the gift.** See the shared
+      ladder below. Michael: "duties that aren't mine to tell" isn't the right wording; the
+      default "I'm not ready to share my gift" line (`gift_refusal`) should work in most
+      cases. Herald's call on the final wording.
+    - **After the secrets rework:** a vague errand of its own, which becomes "claim a
+      knowing secret".
+    - **No:** "I gave my word I wouldn't say why". It has no place in the current mechanics.
+    - **How much an excuse softens the caught lie:** a little, until something contradicts
+      the excuse, such as a claimed watch with no watch report. Then the excuse counts as a
+      second caught lie. This needs a new constant; Beadle proposes about half a caught
+      lie's weight.
+    - **Scope:** lies about being home only. Caught reading lies already have "my gift may
+      have been turned".
+  - **When to risk a walking-gift claim (Michael, Nov 19): one ladder for good and evil.**
+    A good walker who hides its gift should behave the same way, so the response isn't a
+    tell.
+    - **What exists (read from main):**
+      - **Evil whose planned bluff walks** already owns the outing with that duty, as a good
+        walker does (`MindDialogue._bluff_outing`).
+      - **A good hidden walker** asked about the night can refuse honestly, lie "home", or
+        stonewall (`lie_or_stonewall`).
+      - **Caught out of a home alibi in private,** a good hidden walker reveals its gift
+        outright (`trapped_explanation` to `answer_gift`). No tier sits between stonewalling
+        and revealing.
+    - **New soft tier, for both:** "Fine, I was out", then the default gift refusal. It
+      claims a night duty without saying which. This keeps 78148's fix: the night is owned
+      first, never a bare gift refusal to a whereabouts case.
+    - **The ladder**, for an NPC caught out of its home alibi:
+      1. If its gift (or evil's bluff) already walks and is claimed, it gives that duty.
+      2. Not yet claimed: the soft tier above.
+      3. Pressed again, in private by the player or at a nomination, it names a gift:
+         - a good walker reveals its real gift;
+         - evil takes the safe spare from its bluff list, if one walks (that list holds only
+           gifts not in play, with one spare beyond the gifts the team uses, `world.gd`
+           `bluffs`), for any evil type;
+         - evil takes an unknown walking gift: the Demon or a Scion only when badly exposed,
+           a Minion when exposed, at the existing blend-or-disrupt odds;
+         - a Minion takes a walking gift someone has already claimed: a deliberate double
+           claim, when confronted privately by the player or nominated. Michael widened this
+           from "nominated only".
+      4. Already claimed a non-walking gift: "being out isn't wicked", the sleepwalk bluff, or
+         a stonewall.
+    - **New: a Minion entering a double claim unprompted.** There's a small chance that an
+      unclaimed Minion, never a Scion, claims a gift someone else has claimed, not because
+      it's caught out. The rate would be a new constant, for Beadle to propose with a
+      measurement.
+      - **Michael (Nov 19):** about 0.05 if it's a deliberate opt-in to a double claim, or
+        about 0.15 if it's a Minion accepting the risk that its bluff ends in one. Beadle is
+        confirming which applies, and the value follows from that.
+    - **Retracting a public claim to back into a walker:** Michael (Nov 19) moves it to "Good
+      NPCs lie tactically", since the two share the same space.
+  - **The town's response to a double claim (Michael, Nov 19).** The true holder counterclaims
+    immediately. A Minion's active double claim works in the same framework.
+    - **What exists (read from main):**
+      - **At a meeting,** a public claim of someone's gift moves that person up to speak next,
+        with an openness bonus (`MindMeeting._queue_reactions`, trigger 1;
+        `REACTIVE_OPENNESS_BONUS`). Whether they then claim is still the ordinary
+        `_public_claim_decision` roll, so it isn't certain. An evil NPC whose planned bluff
+        was just claimed gets the same trigger.
+      - **At a nomination,** a hidden holder of the gift the nominee claims comes out: "X is
+        lying. That gift is mine." (`MindSupport`, `counter_claim`).
+      - **Pressed in private** with a rival's claim, a claimant answers "I am the X. If Y says
+        otherwise, Y is lying."
+      - **Belief:** the two claims of one gift are one pairing that raises both claimants and
+        shifts onto the other when one is shown good (#198).
+    - **Proposed (Vicar), for Michael:**
+      - **The true holder counterclaims at once:** at the same meeting, as the next speaker,
+        unless silenced. The trigger-1 reaction becomes a claim, not a roll. If the claim
+        reached it outside a meeting (in private, or through gossip), it counterclaims at the
+        next meeting. A holder hiding its gift for a reason is "Good NPCs lie tactically"
+        territory, not an exception here.
+      - **The Minion's active double claim uses the same trigger:** when a good NPC claims a
+        gift, an unclaimed non-Scion Minion may treat it as "a rival claim on my gift" and
+        counterclaim with the same line, at the small new rate. The rest follows the
+        existing pairing and counter-claim reactions.
+      - **Evil whose planned bluff is claimed by someone else** drops that bluff for a spare,
+        rather than counterclaiming. A Minion may instead take the active double claim above.
+    - **Michael (Nov 19):**
+      - **Immediately, where possible.** A silenced holder counterclaims at its first chance,
+        the next meeting. That's the same rule as for a claim heard outside a meeting.
+      - **Heat lowers a Minion's willingness to risk a double claim,** both the active one and
+        backing into a claimed or unknown gift. Heat here means already being implicated as
+        evil (mainly a Dowser reading, possibly a Surveyor's). Use the general "heat on me"
+        calculation, not special logic: `Evil.exposure`, whose public talk includes the
+        town's reading of those claims.
+      - **A note for the build:** in the ladder, being pressed or nominated is what makes
+        evil answer. The heat already on it is what makes a double claim a poor bet. So the
+        same exposure parts play two roles: the pressure and on-the-block parts push it to
+        answer, and the public-talk part holds it back from a double claim. Beadle to propose
+        how they combine.
+    - **Evil whose planned bluff is claimed first switches to a spare** (Michael, Nov 19:
+      yes). See "Evil backs into a bluff", whose hold is lifted for this case.
+    - **The private "they're lying" refutation** (Michael, Nov 19): a caught-out NPC may call
+      the witness against it a liar in a private press too. Today it does so only in the
+      meeting defence (`mind_meeting.gd`, for Confidence above 0.6). It's a line only, with
+      no extra doubt on the witness. Owner Beadle; Herald's `press_witness_lying` lines are
+      approved.
+    - Owner Beadle; Herald for any new lines.
+
+  Owner Beadle; Herald for the lines.
+  - **Progress (Beadle and Lantern, Nov 20):**
+    - **Built** (moved to BACKLOG_COMPLETED.md, Nov 20): #367, #368, #372.
+    - **Built** (Beadle, #390):
+      - the town's answer to a double claim: the true holder always counterclaims;
+      - evil switches a bluff someone else took;
+      - a Minion double-claims on purpose, from one 5% roll per Minion per game;
+      - the private "<witness> is lying about seeing me" line.
+    - **Left, on hold until Michael reprioritises:** the podium path (the ladder at the
+      meeting, not only in private). Backing into a spare or unknown gift moved to "Caught
+      out and pressed again: what's left" (Nov 20).
+
+  > **Closed Nov 20 (Beadle confirmed):** built in #368, #372, #367 and #390. The two remainders, the podium path and backing into a spare or unknown gift, are in "Caught out and pressed again: what's left". The decisions above still govern them.
+
+- **NPCs voice doubt about their own readings.** Notice apparently inconsistent results
+  (repeated Seer checks of the same pair changing yes/no) and let the NPC say something's
+  unusual; higher Insight helps notice a mismatch with their leading explanation. Use only
+  what they know, allow legitimate changes such as succession, and keep suspicion of
+  misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
+
+  > **Closed Nov 20 (Lantern and Herald confirmed):** built, except Insight's part. OwnGiftDoubt (#320) weighs whether a reading still holds, which catches a repeated pair flipping and allows succession. The NPC says so to the town (#316), in lines all 15 voices have. Readings the judge can't check are their own item, "Gift doubt for readings the judge doesn't check". Lines naming the specific oddity ("my two readings of the same pair disagree") were declined by Michael on Nov 20: not needed. Beadle (Nov 20) points out that the Insight part was never built (the trigger is a flat 30%), so that remainder stays in BACKLOG.md as "Insight helps an NPC notice its own readings don't fit".
+
+- **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one →
+  the unaccounted person was out.
+
+- **Walker sightings vs the Lamplighter count:** more people reported out than the
+  Lamplighter counted, or a Lamplighter who counted others but was seen nowhere.
+
+  > **Merged Nov 20 (Quill and Lantern):** both read as covered by the joint model. They're one item in BACKLOG.md now, "The Lamplighter's count against alibis and sightings: add a test".
+
+- **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
+  being removed (Michael, Nov 19; "Remove drops altogether", section 2).
+
+  > **Closed Nov 20 (Michael):** closed.
+
+- **Night companions of the proven evil:** out on the same block on the same nights as
+  someone proven evil → likely their teammate. (96773: Isolde out with Greta on nights 1
+  and 2; Greta was shown to be the Poisoner, but nothing linked Isolde to her.)
+
+  > **Closed Nov 20 (Michael):** closed.
+
+- **The demon lures a victim elsewhere** (user idea, Oct 23): once per case, or under a
+  condition, the kill happens somewhere other than the victim's cottage. "Found dead at
+  the well" is itself a clue, and it gives location-based night tools something to
+  target. [open]
+
+  > **Closed Nov 20 (Michael):** closed.
+
+- **Scripts, follow-ups** (script builder plan, Nov 4):
+  - **Multiple demon types:** step 1 is on main (#105: `C.is_demon` / `C.is_day_demon` and the
+    solver's demon-type mix); steps 2 and 3 (daytime presence and the Hexer, experimental)
+    merged with #111, and the player's demon-type declaration with #131
+    (`docs/demon_types_plan.md`). The Hexer stays experimental. On hold until Michael's
+    playtests: the declaration's default and the bot's Hexer call (it calls a Hexer right
+    only 54% of the time; every miss is "walker").
+  - **Builder rules** beyond tag counts (requires/excludes "jinxes", weights) once the
+    roster outgrows one script.
+
+  [decided]
+
+  > **Closed Nov 20 (Michael):** closed: the framework is built, and the work is ongoing.
+
+- **Sleepwalker self-doubt scaled by confidence** (10% flat, `Workshop.SLEEPWALK_SELF_DOUBT`).
+
+  > **Settled Nov 20 (Michael):** no change. A Sleepwalker "should be aware it's a possibility, but I think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled by confidence. The Rumormonger sub-point stays in BACKLOG.md as its own item.
+
+## Moved Nov 20, 2026 (latest merges; recorded by Claude-Vicar)
+
+- **More rebuttals after a caught lie: the parts built by Nov 20.** (The item stays in
+  BACKLOG.md with the in-review and on-hold parts.)
+  - Lantern's #367: a sleepwalk claim excuses a caught "I was home" only as far as its
+    claimant may be good.
+  - Beadle's #368: the private caught-out ladder. A good NPC concedes it was out; the
+    admission is tied to a walking duty; evil gets the same excuses; a gift named in private
+    counts as disclosed.
+  - Lantern's #372: excuses soften a caught "I was home", and an NPC's "I was out" reads as
+    what it says.
+
+- **Follow-up after a false alibi is established: the part built.** The first response,
+  "Fine, I was out. Doesn't mean I was doing anything wrong", which concedes the night
+  without conceding evil (Beadle, #368). The rest merged into "Caught out and pressed again:
+  what's left" (Michael, Nov 20).
+
+- **Argon's audit: cleanup, the parts done by Nov 20.** (The item stays in BACKLOG.md with
+  what's left.) The full text before the trim:
+
+  - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
+    `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
+    features.
+    1. **Dead code, zero drift:**
+       - the Workshop scaffolding used only by fixtures (Lantern: the movement fixture,
+         `ledger_audit` and `legacy_evidence`, and the `legacy_path` stub). It starts once
+         Quill's drops PR merges;
+       - retired flags and constants that nothing reads (Beadle): **Beadle's part done**
+         (#380). `STRICT_EVALUATOR` went to Herald. `LEGACY_MUD_DROPS_ENABLED` goes with Quill's
+         drops PR. (`LEGACY_EXTRA_SHIFT_DRAW` stays deferred, below.)
+       - ~~the dev labs and the trace viewer (Herald)~~ **done** (#381; #391 removed the
+         Workshop's fixture-only code they used);
+       - the one-off scripts in `tools/` (Bailiff sweeps).
+
+       Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
+    2. **Golden-moving:**
+       - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It's split from
+         the drops PR, because it reshuffles every deal and would mean about 25 to 30 suite
+         fixes. Michael decides at the reprioritization whether to do it at all.
+       - Deleting the Muddler is held for the secrets rework.
+    3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
+       Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
+       `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
+       the profiler. **Done** (Lantern, Nov 20, `claude/delete-channel-stack`): also took
+       `test_channel_sum_product`, `test_workshop_class_parity`, and the oracle parity checks in
+       four role suites.
+    4. **File splits,** one file per PR, with no change to play:
+       - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
+         the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
+         (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` is **done**
+         (#387).
+       - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
+         (Herald), `live_activity` and `case_eval` (Lantern).
+       - **Tier 3** waits for the purge.
+    5. **Point `game.gd`'s passthroughs straight at their modules** (Michael, Nov 19). When
+       `game.gd` was split, it kept forwarding functions. About 138 of its 159 functions are
+       one-line forwards to `GameBoard`, `GamePresentation` and the other `game_*` modules.
+       Callers should use the module directly, and the forwards should go.
+       - **Owner:** Herald (`game/` and the UI), with each lead updating callers in its own
+         files where that's simpler.
+       - **Zero drift.**
+       - **Scheduled with the file splits:** it touches many callers (`add_card` alone has
+         about 325 call sites, many in tests), so the merge-conflict risk is the same.
+       - **Scoped and partly done (Herald, Nov 20):** 131 one-line forwards. #385 removed the 25
+         that nothing called. **Left:** repoint the remaining ~106 forwards' callers to their
+         modules and delete the forwards, in two PRs (game, sim and ui callers; then tests and
+         tools). About 18 that the UI and CLI call stay as the game's interface. Waits for
+         Seneschal's go, after Beadle's in-flight PRs merge.
+    6. **Two more (Michael, Nov 20):**
+       - (a) Retire `tools/connections_prototype.gd`. Owner Lantern, in the same PR as the
+         Workshop scaffolding.
+       - ~~(b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
+         and drop the dead branch.~~ **Done** (Herald, #391). The social-route PR then removes
+         the flag entirely.
+    7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
+       in play, no listener fails to weigh a case on its own (Herald's check of golden and
+       autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
+       case's issues.
+
+    [decided]
+
+  > **Moved Nov 20 (the owners confirmed):** done:
+  > - the `channel_*` stack (Lantern, #383);
+  > - Beadle's retired flags (#380), with `STRICT_EVALUATOR` to Herald;
+  > - the dev labs and the trace viewer (Herald, #381, #391);
+  > - the `ui/main.gd` split (#387);
+  > - the 25 uncalled `game.gd` forwards (#385);
+  > - 6(b), the two native submission paths merged (#391);
+  > - strict mode removed (#384).
+
 ## Closed Nov 20, 2026 (Michael's calls and the leads' confirmations; recorded by Claude-Vicar)
 
 - **Demon detours exist in inference but not in actual movement.** (77388) The movement

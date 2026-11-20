@@ -42,6 +42,7 @@ test_dialogue_fixes_testimony
 test_dialogue_opinion_pass
 test_dialogue_voices
 test_double_claim
+test_double_claim_response
 test_evidence_honesty
 test_evil_owned_lie
 test_evil_play
@@ -132,6 +133,7 @@ test_sighting_followup
 test_sleepwalk_bluff
 test_social
 test_state_digest
+test_symmetric_vote
 test_too_clean_bluffs
 test_town_note
 test_town_vibe
