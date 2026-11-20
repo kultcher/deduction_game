@@ -6,6 +6,8 @@
 ## Exits with failure if any listener wasn't assessed: a timing that silently skips the
 ## shared evaluator measures less work. --allow-fallback reports it without failing.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
@@ -31,7 +33,7 @@ func _run() -> void:
 		for person in g.w.npcs:
 			for reading in person.info_log:
 				if reading.role in Live.Assess.ROLES:
-					reports.append(g.add_card({"kind": "info", "source": person.id, "subject": [], "role": reading.role,
+					reports.append(GameBoard.add_card(g, {"kind": "info", "source": person.id, "subject": [], "role": reading.role,
 						"day": reading.day, "phase": reading.get("phase", 3 if reading.day == 0 else 0), "data": reading.data, "text": "Native reading"}))
 		var board = Canvas.new(Live.view(g))
 		var root_id: String = board.selected
@@ -46,7 +48,7 @@ func _run() -> void:
 		Prof.start()
 		var t0 = Time.get_ticks_msec()
 		for n in g.w.living().filter(func(x): return x != target):
-			var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, false, "meeting")
+			var r = GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false, "meeting")
 			if r.get("workshop", false):
 				shared += 1
 			else:

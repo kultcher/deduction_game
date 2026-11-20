@@ -8,6 +8,8 @@
 ##   godot --headless --path . --script res://tools/test_meeting_reasons.gd -- --sweep 25
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
@@ -222,9 +224,9 @@ func _test_vigil_vs_nightwatch_joint_contradiction() -> void:
 	# A vigil sees residents leaving the block (Nov 17): a vigil on Isolde's own block saw only
 	# Agnes (a neighbour) leave, yet Isolde says she walked out to watch the Market.
 	agnes.home_block = isolde.home_block
-	var c_vig: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": isolde.home_block, "text": "Night 2 vigil on Isolde's block: saw only Agnes."})
-	var c_clm: int = g.add_card({"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium", "day": 2, "phase": C.EVENING, "text": "Agnes claims Medium."})
-	var c_nw: int = g.add_card({"kind": "info", "source": isolde.id, "subject": [hollis.id], "role": "nightwatch", "day": 2, "phase": C.NIGHT, "data": {"block": "market", "seen": [hollis.id]}, "text": "Isolde (Night Watch): watched Market, saw Hollis."})
+	var c_vig: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": isolde.home_block, "text": "Night 2 vigil on Isolde's block: saw only Agnes."})
+	var c_clm: int = GameBoard.add_card(g, {"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium", "day": 2, "phase": C.EVENING, "text": "Agnes claims Medium."})
+	var c_nw: int = GameBoard.add_card(g, {"kind": "info", "source": isolde.id, "subject": [hollis.id], "role": "nightwatch", "day": 2, "phase": C.NIGHT, "data": {"block": "market", "seen": [hollis.id]}, "text": "Isolde (Night Watch): watched Market, saw Hollis."})
 	var id_vig: String = Live.Evidence.normalize_card(g.board[c_vig - 1]).id
 	var id_clm: String = Live.Evidence.normalize_card(g.board[c_clm - 1]).id
 	var id_nw: String = Live.Evidence.normalize_card(g.board[c_nw - 1]).id
@@ -246,11 +248,11 @@ func _test_vigil_vs_nightwatch_joint_contradiction() -> void:
 	var num: int = Live.file(g, case_doc)
 	# scale=1.0 is 1-on-1 private ("shared_player": citable to player, withheld from town);
 	# scale=0.85 is town meeting ("public": citable to town).
-	g._evaluate_deduction(listener, g.board[num - 1], 1.0, false, "private")
+	GamePresentation._evaluate_deduction(g, listener, g.board[num - 1], 1.0, false, "private")
 	var priv_reasons: Array = MindNomination.case_against(w, listener, isolde.id)
 	_check(not priv_reasons.is_empty() and priv_reasons[0]["kind"] == "shared_player" and Mind.citable_reason(w, listener, isolde.id, "player") != "" and Mind.citable_reason(w, listener, isolde.id, "town") == "",
 		"1-on-1 Vigil vs Night Watch case stays shared_player until presented publicly (%s)" % str(priv_reasons))
-	g._evaluate_deduction(listener, g.board[num - 1], 0.85, false, "meeting")
+	GamePresentation._evaluate_deduction(g, listener, g.board[num - 1], 0.85, false, "meeting")
 	var pub_reasons: Array = MindNomination.case_against(w, listener, isolde.id)
 	_check(not pub_reasons.is_empty() and pub_reasons[0]["kind"] == "public" and Mind.citable_reason(w, listener, isolde.id, "town") != "",
 		"meeting Vigil vs Night Watch case upgrades to publicly citable contradiction reason (%s)" % str(pub_reasons))

@@ -31,13 +31,12 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. Kill-score pass on every role `[decided]`
-    2. Accusations from starting suspicion read as clues `[decided]`
-    3. The Gravedigger in a reluctant town `[decided]`
-    4. Caught out and pressed again: what's left `[decided]`
-    5. Good NPCs lie tactically `[open]`
-    6. Rapport and Warden-credit leftovers `[decided: direction]`
-    7. Anger reasons `[decided]`
+    1. Accusations from starting suspicion read as clues `[decided]`
+    2. The Gravedigger in a reluctant town `[decided]`
+    3. Caught out and pressed again: what's left `[decided]`
+    4. Good NPCs lie tactically `[open]`
+    5. Rapport and Warden-credit leftovers `[decided: direction]`
+    6. Anger reasons `[decided]`
   - [Numbers](#numbers)
     1. The Seer's rise looks small `[later: role tuning pass]`
     2. Dowser clearing strength `[later: role tuning pass]`
@@ -69,7 +68,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. The spoken reply to a later-day repeat `[in review]`
+  2. The spoken reply to a later-day repeat
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Brute kills scored as hexes on custom scripts `[later]`
@@ -132,15 +131,9 @@ listener (#273), both Lantern's.
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
-  features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
-  1. **Dead code, zero drift:**
-     - ~~the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
-       and `legacy_evidence`, the `legacy_path` stub), together with retiring
-       `tools/connections_prototype.gd`~~. Done (Lantern, Nov 20,
-       `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`);
-     - the one-off scripts in `tools/` (Bailiff sweeps).
-
-     Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
+  features. The parts already done, groups 1 and 4 among them, are in BACKLOG_COMPLETED.md
+  (Nov 20). Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework
+  decides. **Left:**
   2. **Golden-moving:**
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
@@ -152,40 +145,10 @@ listener (#273), both Lantern's.
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
-  4. **Point `game.gd`'s remaining passthroughs at their modules** (Herald). Repoint the
-     callers of the remaining ~106 one-line forwards and delete them, in two PRs: game, sim
-     and ui callers first, then tests and tools. About 18 that the UI and CLI call stay as
-     the game's interface. Zero drift. It waits for Seneschal's go, after Beadle's in-flight
-     PRs merge.
 
   [decided]
 
 ### NPC behaviour
-
-- **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
-  (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
-  It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
-  Registrar (+0.75 more) have their own bonus. To review role by role:
-  - one-shot gifts that keep the full score after their information is spent: the
-    Chronicler after night 3, the Executor after its assigned person dies;
-  - the Augur, a Demon-identifier like the Seer, has no bonus;
-  - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
-    handled separately.
-  - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
-    ratings, and Michael gives quick guidance.
-  - **Values approved (Michael, Nov 20), in Beadle's #421:**
-    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
-      per-role ratings may come later);
-    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
-    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
-    - `REGISTRAR.public_threat_bonus` stays at 0.75.
-
-    Close this item when #421 merges.
-
-  Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
-  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
-  values is the owner's call; a new per-role bonus constant is new, so propose it through
-  Seneschal first. Owner Beadle. [decided]
 
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
   on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,

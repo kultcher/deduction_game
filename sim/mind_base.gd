@@ -26,7 +26,7 @@ static func _mind():
 ## Fields copied once, when the shadow is made (a turned NPC's good mind carries over).
 const SHADOW_COPY = ["traits", "trait_base", "work_phases", "haunts", "friends", "rivals",
 	"suspicion", "npc_trust", "ledger", "honesty", "discounted", "believed_roles",
-	"cleared", "protect_pref", "spare_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure", "claim_record", "resentments"]
+	"cleared", "protect_pref", "known_claims", "known_secrets", "heard", "used_facts", "workshop_state", "consensus_pressure", "claim_record", "resentments"]
 const SHADOW_SAME = ["id", "name", "pron", "style", "blurb", "occupation", "work", "home_block", "ring"]
 const SERIOUS_GRIEVANCE = Tuning.Trust.SERIOUS_GRIEVANCE
 const CONSENSUS_BASE = MindMeeting.CONSENSUS_BASE

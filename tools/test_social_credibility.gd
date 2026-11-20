@@ -2,6 +2,9 @@
 ## Merged from: test_backlog_batch2, test_claude_batch, test_fixes, test_phase2_bug_sweep, test_phase3_credibility_and_trust, test_phase4_1_reveal_and_rumor_pacing, test_phase4_3_framing_and_vigil_physics, test_playtest_followups, test_playtest_regressions, test_social_phase2.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Mind = preload("res://sim/mind.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
@@ -326,13 +329,13 @@ func _relationships() -> void:
 			break
 	var r = {"lines": [], "facts": []}
 	w.rng.state = skip_state
-	g._maybe_tell_relationships(source, a, r)
+	GameConversation._maybe_tell_relationships(g, source, a, r)
 	check(g.known_relationships.is_empty() and r.lines.is_empty(), "haunt-equivalent chance can withhold relationship notes")
 	w.rng.state = reveal_state
 	probe.state = reveal_state
 	probe.randf()
 	var board_before = JSON.stringify(g.board)
-	g._maybe_tell_relationships(source, a, r)
+	GameConversation._maybe_tell_relationships(g, source, a, r)
 	check(g.known_relationships.size() == 2 and w.rng.state == probe.state, "haunt-equivalent all-notes roll reveals both public bonds with one draw")
 	check(r.facts.is_empty() and JSON.stringify(g.board) == board_before, "relationship learning creates profile notes and no evidence")
 	var notes: Array = g.profile_data(a.id).relationships
@@ -340,8 +343,8 @@ func _relationships() -> void:
 	check(g.profile_data(b.id).relationships.size() == 1 and g.profile_data(c.id).relationships.size() == 1, "a learned bond appears on both participants' profiles")
 	check(g.profile_data(hidden_lover.id).relationships.is_empty() and not hidden_lover.name in str(notes), "a secret-added Lover friendship is not disclosed")
 	var state = w.rng.state
-	g._maybe_tell_relationships(source, b, r)
-	g._maybe_tell_relationships(source, a, r)
+	GameConversation._maybe_tell_relationships(g, source, b, r)
+	GameConversation._maybe_tell_relationships(g, source, a, r)
 	check(r.lines.size() == 2 and w.rng.state == state, "reverse and repeated questions cannot rediscover a known bond")
 	g.new_case(4242, 10)
 	check(g.known_relationships.is_empty(), "a new case resets learned relationship notes")
@@ -563,43 +566,43 @@ func _test_3_1_delta_confidence_and_proof_retraction_overrides() -> void:
 	low_conf.traits.confidence = 0.10
 
 	# Day 1: present an accusing Dowser report against `suspect` to both listeners.
-	var c_evil: int = g.add_card({
+	var c_evil: int = GameBoard.add_card(g, {
 		"kind": "info", "source": seer_src.id, "role": "dowser",
 		"day": 1, "phase": 0, "data": {"group": [suspect.id], "count": 1},
 		"text": "%s dowser 1/1 on %s" % [seer_src.id, suspect.id],
 	})
-	var ded_evil: int = g.file_deduction({"type": "evil", "a": suspect.id}, [c_evil])
-	g._evaluate_deduction(high_conf, g.board[ded_evil - 1], 1.0, false)
-	g._evaluate_deduction(low_conf, g.board[ded_evil - 1], 1.0, false)
+	var ded_evil: int = GameBoard.file_deduction(g, {"type": "evil", "a": suspect.id}, [c_evil])
+	GamePresentation._evaluate_deduction(g, high_conf, g.board[ded_evil - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, low_conf, g.board[ded_evil - 1], 1.0, false)
 	var d1_req_hi: float = float(high_conf.workshop_state.requested.get(suspect.id, 0.0))
 	var d1_req_lo: float = float(low_conf.workshop_state.requested.get(suspect.id, 0.0))
 	_check(d1_req_hi > 0.10 and is_equal_approx(d1_req_hi, d1_req_lo),
 		"Day 1 fresh evidence lands equally on high- and low-Confidence listeners before dawn commitment (%.4f vs %.4f)" % [d1_req_hi, d1_req_lo])
 
-	# Simulate Night 1 dawn freeze (same logic as Game._resolve_night).
+	# Simulate Night 1 dawn freeze (same logic as GameDayNight._resolve_night).
 	for listener in [high_conf, low_conf]:
 		listener.workshop_state["committed_lean"] = Mind.suspicion_view(listener).duplicate(true)
 		listener.workshop_state["committed_requested"] = listener.workshop_state.get("requested", {}).duplicate(true)
 	g.w.day = 2
 
 	# Day 2: introduce competing clearing Dowser report on `suspect` from a second source.
-	var c_clear: int = g.add_card({
+	var c_clear: int = GameBoard.add_card(g, {
 		"kind": "info", "source": clear_src.id, "role": "dowser",
 		"day": 2, "phase": 0, "data": {"group": [suspect.id], "count": 0},
 		"text": "%s dowser 0/1 on %s" % [clear_src.id, suspect.id],
 	})
-	var ded_clear: int = g.file_deduction({"type": "good", "a": suspect.id}, [c_clear])
-	g._evaluate_deduction(high_conf, g.board[ded_clear - 1], 1.0, false)
-	g._evaluate_deduction(low_conf, g.board[ded_clear - 1], 1.0, false)
+	var ded_clear: int = GameBoard.file_deduction(g, {"type": "good", "a": suspect.id}, [c_clear])
+	GamePresentation._evaluate_deduction(g, high_conf, g.board[ded_clear - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, low_conf, g.board[ded_clear - 1], 1.0, false)
 	var d2_req_hi: float = float(high_conf.workshop_state.requested.get(suspect.id, 0.0))
 	var d2_req_lo: float = float(low_conf.workshop_state.requested.get(suspect.id, 0.0))
 	_check(d2_req_hi > d2_req_lo + 0.01,
 		"Day 2 contrary evidence damps delta on high-Confidence listener (%.4f vs %.4f)" % [d2_req_hi, d2_req_lo])
 
 	# A profile receipt can remain held without providing standalone guilt evidence.
-	var home: int = g.add_card({"kind": "home", "source": "town", "subject": [suspect.id], "block": suspect.home_block, "text": "Known home of " + suspect.id})
-	var profile_case: int = g.file_deduction({"type": "evil", "a": suspect.id}, [home])
-	g._evaluate_deduction(high_conf, g.board[profile_case - 1], 1.0, false)
+	var home: int = GameBoard.add_card(g, {"kind": "home", "source": "town", "subject": [suspect.id], "block": suspect.home_block, "text": "Known home of " + suspect.id})
+	var profile_case: int = GameBoard.file_deduction(g, {"type": "evil", "a": suspect.id}, [home])
+	GamePresentation._evaluate_deduction(g, high_conf, g.board[profile_case - 1], 1.0, false)
 	# Sole-case retraction override: retracting both presentations snaps requested to 0.0 with zero phantom residue!
 	g.workshop_retract(ded_evil, high_conf.id)
 	g.workshop_retract(ded_clear, high_conf.id)
@@ -607,7 +610,7 @@ func _test_3_1_delta_confidence_and_proof_retraction_overrides() -> void:
 		"withdrawing all supporting presentations snaps requested to exact 0.0 despite prior committed_requested")
 
 	# Hard public proof override: Martyr proof clears stubborn high-Confidence listener immediately to 0.0 suspicion.
-	g._evaluate_deduction(high_conf, g.board[ded_evil - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, high_conf, g.board[ded_evil - 1], 1.0, false)
 	high_conf.workshop_state["committed_lean"] = Mind.suspicion_view(high_conf).duplicate(true)
 	high_conf.workshop_state["committed_requested"] = high_conf.workshop_state.get("requested", {}).duplicate(true)
 	g.w.public_log.append({"day": 2, "kind": "martyr", "subjects": [suspect.id, other.id], "by": other.id})
@@ -668,10 +671,10 @@ func _test_3_2_per_card_source_trust_non_dilution_and_non_laundering() -> void:
 	# Presenting the exact report already independently heard must not endorse it twice.
 	var known_card: Dictionary = single_rumor.duplicate(true)
 	known_card.merge({"kind": "info", "source": rumor_teller.id, "subject": [suspect.id]})
-	var known_num: int = g.add_card(known_card)
-	var repeated_case: int = g.file_deduction({"type": "evil", "a": suspect.id}, [known_num])
+	var known_num: int = GameBoard.add_card(g, known_card)
+	var repeated_case: int = GameBoard.file_deduction(g, {"type": "evil", "a": suspect.id}, [known_num])
 	listener_lo.credibility = 0.9
-	g._evaluate_deduction(listener_lo, g.board[repeated_case - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener_lo, g.board[repeated_case - 1], 1.0, false)
 	var endorsed_req: float = float(listener_lo.workshop_state.requested.get(suspect.id, 0.0))
 	_check(is_equal_approx(lo_req, endorsed_req), "player endorsement cannot boost an independently heard low-trust report")
 	listener_lo.credibility = 0.1
@@ -706,13 +709,13 @@ func _test_3_3_non_circular_credibility_dawn_and_tiered_weights() -> void:
 
 	# 2) Self-validation circularity check: player presents a cherry-picked case to `uninformed`;
 	# `uninformed` still has zero *independent* evidence, so Dawn must NOT self-validate the player's own case!
-	var cherry: int = g.add_card({
+	var cherry: int = GameBoard.add_card(g, {
 		"kind": "info", "source": witness.id, "role": "dowser",
 		"day": 1, "phase": 0, "data": {"group": [innocent.id], "count": 1},
 		"text": "cherry-picked report",
 	})
-	var ded_cherry: int = g.file_deduction({"type": "evil", "a": innocent.id}, [cherry])
-	g._evaluate_deduction(uninformed, g.board[ded_cherry - 1], 1.0, false)
+	var ded_cherry: int = GameBoard.file_deduction(g, {"type": "evil", "a": innocent.id}, [cherry])
+	GamePresentation._evaluate_deduction(g, uninformed, g.board[ded_cherry - 1], 1.0, false)
 	Credibility.dawn(g)
 	_check(is_equal_approx(uninformed.credibility, 0.5),
 		"player-presented case never circularly self-validates at Dawn without independent corroboration (credibility %.3f)" % uninformed.credibility)
@@ -730,7 +733,7 @@ func _test_3_3_non_circular_credibility_dawn_and_tiered_weights() -> void:
 	# and a same-direction 0.35 statement never downgrades an existing 1.0 formal claim!
 	var victim = goods[4]
 	g.w.public_event("demon_death", [victim.id], "town")
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "Death"})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": victim.home_block, "text": "Death"})
 	Mind.refresh_beliefs(g.w, uninformed, "public demon death")
 
 	uninformed.claim_record = {}
@@ -908,7 +911,7 @@ func _test_single_witness_provenance_and_discount_collapse() -> void:
 	# Catching/discounting original planter A collapses hearing_weight on listener C despite high trust in B & D!
 	Mind.refresh_beliefs(w, listener_c, " (planter caught)")
 	listener_c.workshop_state["source_doubt"][planter.id + ":*"] = 1.0
-	var plan = Shared.prepare(g.workshop_snapshot([], listener_c.id), {}, listener_c.ledger)
+	var plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener_c.id), {}, listener_c.ledger)
 	var card_after: Dictionary = plan.prepared.view.cards.filter(func(c): return c.id == receipt_id)[0]
 	_check(is_zero_approx(float(card_after.get("hearing_weight", 1.0))),
 		"discounting original witness A collapses relayed sighting hearing_weight to 0.0 (got %.4f)" % float(card_after.get("hearing_weight", 1.0)))
@@ -937,7 +940,7 @@ func spoken_relationships():
 	var rng = w.rng.state
 	var cards = JSON.stringify(g.board)
 	g._lines(reply.lines)
-	check(g.known_relationships.size() == 1 and g.known_relationship_notes(n.id) == g.known_relationship_notes(t.id), "explicit closeness in an opinion populates both profiles")
+	check(g.known_relationships.size() == 1 and GameConversation.known_relationship_notes(g, n.id) == GameConversation.known_relationship_notes(g, t.id), "explicit closeness in an opinion populates both profiles")
 	var note: Dictionary = g.known_relationships.values()[0]
 	check(note.kind == "friend" and note.source == n.id and str(note.text).contains(n.name), "spoken friendship remains an attributed claim")
 	g._lines(reply.lines)
@@ -947,7 +950,7 @@ func spoken_relationships():
 	var line = Mind.say(n, "%s is my friend. You'll need more than that." % t.name)
 	line["relationship"] = {"kind": "friend", "people": [n.id, t.id]}
 	g._line(line)
-	check(not g.known_relationship_notes(t.id).is_empty(), "an explicit bond to a dead NPC can still be learned")
+	check(not GameConversation.known_relationship_notes(g, t.id).is_empty(), "an explicit bond to a dead NPC can still be learned")
 	g.known_relationships = {}
 	g._line(Mind.say(n, "I have my doubts about %s." % t.name))
 	check(g.known_relationships.is_empty(), "distrust is not silently promoted to a rival relationship")
@@ -971,7 +974,7 @@ func playtest_regressions__game():
 func _support_self() -> void:
 	var g = playtest_regressions__game()
 	var n = g.w.living_good()[0]
-	var num = g.add_card({"kind": "claim", "subject": [n.id], "source": n.id, "role": n.role, "text": "A gift claim."})
+	var num = GameBoard.add_card(g, {"kind": "claim", "subject": [n.id], "source": n.id, "role": n.role, "text": "A gift claim."})
 	g.state = "talk"
 	g.talk_with = n
 	g.questions_left = 3
@@ -982,13 +985,13 @@ func _support_self() -> void:
 	before = n.trust
 	g.command("present %d for %s" % [num, n.id])
 	_check(n.trust == before, "repeated support cannot farm trust")
-	_check(g._route_present(n, "%d against %s" % [num, n.id])["verb"] == "press", "speaking against the listener still challenges them")
+	_check(GamePresentation._route_present(g, n, "%d against %s" % [num, n.id])["verb"] == "press", "speaking against the listener still challenges them")
 	# A filed case that clears the listener, put to them privately, is self-support too: the
 	# shared presentation thanks them and raises rapport (WorkshopPresentation). A bare belief
 	# with no cards can't be filed, so it isn't tested here (the social route went on Nov 20).
 	var deduction: int = _file_clearing_case(g, n.id)
 	_check(deduction > 0 and not g.board[deduction - 1].get("unfounded", false), "(fixture) a founded case that %s is not the Demon is filed (%s)" % [n.name, g.last_error])
-	_check(g._route_present(n, "%d for %s" % [deduction, n.id])["verb"] == "defend", "explicit support with a deduction is also routed as a defence")
+	_check(GamePresentation._route_present(g, n, "%d for %s" % [deduction, n.id])["verb"] == "defend", "explicit support with a deduction is also routed as a defence")
 	g.questions_left = 3
 	before = n.trust
 	g.command("present %d for %s" % [deduction, n.id])
@@ -1003,7 +1006,7 @@ func _file_clearing_case(g, target: String) -> int:
 	var goods: Array = g.w.living_good().filter(func(p): return p.id != target)
 	var seer = goods[0]
 	var other = goods[1]
-	var num: int = g.add_card({"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT,
+	var num: int = GameBoard.add_card(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT,
 		"data": {"pair": [target, other.id], "yes": false}, "text": "%s's reading: neither %s nor %s is evil." % [seer.name, target, other.name]})
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)

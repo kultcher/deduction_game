@@ -11,6 +11,8 @@
 ## - The profiling hooks (Connections.capture, the profiler's spans) record and change nothing.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -102,7 +104,7 @@ func _game():
 
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	var number: int = g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	var number: int = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if role == "seer" else 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 	_texts[number] = g.board[number - 1].text
 	return number
@@ -141,7 +143,7 @@ func _filed(type: String) -> Dictionary:
 	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
 	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
 	var first: int = _file(g, "good", p[4].id, [dowser])
-	g._evaluate_deduction(n, g.board[first - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[first - 1], 1.0, false, "meeting")
 	var filed: int = _file(g, type, p[3].id, [seer, dowser])
 	return {"g": g, "n": n, "p": p, "filed": filed, "first": first, "target": p[3].id}
 
@@ -165,7 +167,7 @@ func _report() -> void:
 	var chance_before: float = float(before_result.get("posterior", {}).get(t, -1.0))
 	var stored_before: float = float(n.suspicion[t])
 	g.workshop_why = true
-	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, false, "meeting")
 	check(g.workshop_whys.size() == 1, "presenting with the record switch on keeps one report")
 	if g.workshop_whys.size() != 1:
 		return
@@ -237,7 +239,7 @@ func _hedged_and_faded() -> void:
 	var g = s.g
 	var n = s.n
 	var was: Dictionary = WorkshopWhy.before(n, g)
-	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, false, "meeting")
 	var b: Dictionary = WorkshopWhy.presentation(g, n, g.board[s.filed - 1], "meeting", was)
 	check(b.get("model", "") == "connections" and b["case"].suspicious and is_equal_approx(float(b["case"].weight), float(b["case"].trust) * Tuning.Workshop.SUSPICIOUS_HEARING)
 		and b.text.contains("\"suspicious\" premise"), "a \"suspicious\" premise shows as half the weight (%.2f of trust %.2f)" % [float(b["case"].weight), float(b["case"].trust)])
@@ -271,7 +273,7 @@ func _masks() -> void:
 	var s: Dictionary = _filed("evil")
 	var g = s.g
 	var n = s.n
-	g._evaluate_deduction(n, g.board[s.filed - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[s.filed - 1], 1.0, false, "meeting")
 	CaseWhy._mask_cache.clear()
 	var cold: Dictionary = WorkshopWhy.presentation(g, n, g.board[s.filed - 1], "meeting").evidence.duplicate(true)
 	check(not CaseWhy._mask_cache.is_empty(), "the premise check keeps its per-world masks")
@@ -287,13 +289,13 @@ func _masks() -> void:
 
 func _profiling() -> void:
 	var plain: Dictionary = _filed("evil")
-	plain.g._evaluate_deduction(plain.n, plain.g.board[plain.filed - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(plain.g, plain.n, plain.g.board[plain.filed - 1], 1.0, false, "meeting")
 	var want: Dictionary = _proposal(plain.g, plain.n).connections.posterior.duplicate()
 	var s: Dictionary = _filed("evil")
 	Connections.capture = true
 	Connections.captured = []
 	Profiler.start()
-	s.g._evaluate_deduction(s.n, s.g.board[s.filed - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(s.g, s.n, s.g.board[s.filed - 1], 1.0, false, "meeting")
 	var profile: Dictionary = Profiler.finish()
 	Connections.capture = false
 	var got: Dictionary = _proposal(s.g, s.n).connections

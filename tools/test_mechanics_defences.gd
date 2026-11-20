@@ -1,4 +1,5 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -50,7 +51,7 @@ func _init() -> void:
 	var result = Mind.defend_self(g.w, d, accuser.id, spoken)
 	var entries: Array = listener.ledger.values().filter(func(e): return e.meta.get("kind") == "defence")
 	check(result.moves == ["reveal"] and entries.size() == 1 and listener.workshop_state.owned.has(entries[0].eid), "gift defence becomes an owned claim; its native bonus is parked")
-	var plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
+	var plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener.id), {}, listener.ledger)
 	var claims: Array = plan.prepared.view.cards.filter(func(card): return card.kind == "claim" and card.source == d.id and card.role == "lamplighter")
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, entries[0].weight), "legacy defence strength and regard become claim hearing weight")
 	var first: Array = listener.workshop_state.facts.duplicate()

@@ -248,7 +248,6 @@ static func _refresh_ledger_preferences(w, n) -> void:
 		if n.believed_roles[k] == "revenant":
 			rev_roles[k] = "revenant"
 	n.protect_pref = {}
-	n.spare_pref = {}
 	n.believed_roles = rev_roles
 	for e in n.ledger.values():
 		var meta: Dictionary = e.get("meta", {})

@@ -3,6 +3,7 @@
 ## supports `-- --out <path.json>` to export frozen receipt-level tuning ablations.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -60,7 +61,7 @@ func _test_phase0_fingerprints_and_credibility_dlog() -> void:
 	var listener = g.w.living_good()[0]
 	var target_good = g.w.living_good()[1]
 	g.w.public_event("demon_death", [target_good.id], "town")
-	g.add_card({"kind": "death", "source": "player", "subject": [target_good.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": target_good.home_block, "text": "Death"})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [target_good.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": target_good.home_block, "text": "Death"})
 	Mind.refresh_beliefs(g.w, listener, "test death")
 	Credibility.record(listener, "evil", target_good.id, 1)
 	Credibility.dawn(g)
@@ -265,26 +266,26 @@ func _test_phase1_6_compiled_trace_chain_speed_and_boundaries() -> void:
 	g.profile_receipts.clear()
 	g._profile_card_keys.clear()
 	g._profile_fact_keys.clear()
-	g._home_cards()
+	GameBoard._home_cards(g)
 	# Unlock full profile for match_p and contra_p, leave unk_p's haunts undiscovered!
 	for p in [match_p, contra_p]:
 		for hl in p.haunts:
-			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "%s haunts %s" % [p.id, hl]})
+			GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [p.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "%s haunts %s" % [p.id, hl]})
 
 	w.day = 2
 	v1.alive = false
 	v2.alive = false
 	w.public_event("demon_death", [v1.id], "town")
 	w.public_event("demon_death", [v2.id], "town")
-	g.add_card({"kind": "death", "source": "player", "subject": [v1.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": v1.home_block, "text": "Death 1"})
-	g.add_card({"kind": "death", "source": "player", "subject": [v2.id], "day": 2, "phase": C.NIGHT, "night": 2, "block": v2.home_block, "text": "Death 2"})
-	var t1_n: int = g.add_card({
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [v1.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": v1.home_block, "text": "Death 1"})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [v2.id], "day": 2, "phase": C.NIGHT, "night": 2, "block": v2.home_block, "text": "Death 2"})
+	var t1_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": v1.id, "scene": "scene_" + v1.id, "scene_block": v1.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
 		"locs": ["bakery", "tavern"], "item_label": "brass token", "text": "Trace N1",
 	})
-	var t2_n: int = g.add_card({
+	var t2_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 2, "phase": C.EVENING, "crime_night": 2,
 		"victim": v2.id, "scene": "scene_" + v2.id, "scene_block": v2.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,

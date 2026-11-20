@@ -1,6 +1,7 @@
 ## A case filed with an answer picked for an earlier case names it (playtest 23973: a Dowser
 ## answer picked for case #38 rode along into case #78, and was easy to miss).
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
@@ -20,7 +21,7 @@ func _run() -> void:
 	var a = others[0]
 	var b = others[1]
 	var c = others[2]
-	var read = g.add_card({"kind": "info", "source": source.id, "subject": [a.id, b.id, c.id], "role": "dowser",
+	var read = GameBoard.add_card(g, {"kind": "info", "source": source.id, "subject": [a.id, b.id, c.id], "role": "dowser",
 		"day": 1, "phase": 0, "data": {"group": [a.id, b.id, c.id], "count": 1}, "text": "Dowser read: one registration."})
 	var view = Live.view(g)
 	var board = Canvas.new(view)

@@ -3,6 +3,7 @@
 ## PortraitBadge grayscale desaturation, and TraceSolverPanel UI integration.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -90,19 +91,19 @@ func _test_matrix_rows_scion_divider_and_portrait_states() -> void:
 	g.profile_receipts.clear()
 	g._profile_card_keys.clear()
 	g._profile_fact_keys.clear()
-	g._home_cards()
+	GameBoard._home_cards(g)
 
 	# Reveal both haunts for full_match (3/3 -> full color), 0 haunts for gray_match (1/3 -> grayscale + green check!),
 	# 1 non-matching haunt ("well") for gray_pigeonhole_out (2/3 -> only 1 unknown slot left!), and 0 haunts for gray_unresolved (1/3 -> ?).
 	for hl in full_match.haunts:
-		g.add_profile_receipt({"kind": "haunt", "subject": [full_match.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "%s visits %s" % [full_match.id, hl]})
-	g.add_profile_receipt({"kind": "haunt", "subject": [gray_pigeonhole_out.id], "source": "town", "loc": "well", "locs": ["well"], "block": w.loc_block("well"), "day": 1, "phase": 0, "text": "%s visits well" % gray_pigeonhole_out.id})
+		GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [full_match.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "%s visits %s" % [full_match.id, hl]})
+	GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [gray_pigeonhole_out.id], "source": "town", "loc": "well", "locs": ["well"], "block": w.loc_block("well"), "day": 1, "phase": 0, "text": "%s visits well" % gray_pigeonhole_out.id})
 
 	# Night 1 murder (1 trace -> matrix should start at max_rows == 1)
 	w.day = 1
 	v1.alive = false
 	w.public_event("demon_death", [v1.id], "town")
-	var t1_n: int = g.add_card({
+	var t1_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": v1.id, "scene": "scene_" + v1.id, "scene_block": v1.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,
@@ -121,14 +122,14 @@ func _test_matrix_rows_scion_divider_and_portrait_states() -> void:
 	# Night 2 murder with TWO traces (expands matrix to max_rows == 2, and sits right after Day 2 hanging!)
 	v2.alive = false
 	w.public_event("demon_death", [v2.id], "town")
-	var t2a_n: int = g.add_card({
+	var t2a_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 2, "phase": C.EVENING, "crime_night": 2,
 		"victim": v2.id, "scene": "scene_" + v2.id, "scene_block": v2.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 2,
 		"locs": ["bakery", "chapel"], "item_label": "a stamped wafer-iron brass pin",
 		"text": "At %s's scene: a stamped wafer-iron brass pin (the Bakery or the Chapel)." % v2.name,
 	})
-	var t2b_n: int = g.add_card({
+	var t2b_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 2, "phase": C.EVENING, "crime_night": 2,
 		"victim": v2.id, "scene": "scene_" + v2.id, "scene_block": v2.home_block,
 		"trace_family": "locations", "trace_subtype": "scent", "trace_slot": 1, "scene_trace_count": 2,
@@ -191,30 +192,30 @@ func _test_trace_chain_canvas_node_compile_and_restore() -> void:
 	g.profile_receipts.clear()
 	g._profile_card_keys.clear()
 	g._profile_fact_keys.clear()
-	g._home_cards()
+	GameBoard._home_cards(g)
 	for p in [cleared_p, walker]:
 		for hl in p.haunts:
-			g.add_profile_receipt({"kind": "haunt", "subject": [p.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt"})
+			GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [p.id], "source": "town", "loc": hl, "locs": [hl], "block": w.loc_block(hl), "day": 1, "phase": 0, "text": "Haunt"})
 
 	w.day = 1
 	v1.alive = false
 	w.public_event("demon_death", [v1.id], "town")
-	g.add_card({"kind": "death", "source": "player", "subject": [v1.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": v1.home_block, "text": "Death"})
-	var t1_n: int = g.add_card({
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [v1.id], "day": 1, "phase": C.NIGHT, "night": 1, "block": v1.home_block, "text": "Death"})
+	var t1_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": v1.id, "scene": "scene_" + v1.id, "scene_block": v1.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 2,
 		"locs": ["bakery", "tavern"], "item_label": "a grease-darkened brass farthing",
 		"text": "Trace 1: farthing.",
 	})
-	var t2_n: int = g.add_card({
+	var t2_n: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": v1.id, "scene": "scene_" + v1.id, "scene_block": v1.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 1, "scene_trace_count": 2,
 		"locs": ["chapel", "wharf"], "item_label": "a salt-dulled alms-box copper piece",
 		"text": "Trace 2: copper piece.",
 	})
-	var vig_n: int = g.add_card({"kind": "sighting", "source": "player", "subject": [walker.id], "day": 1, "phase": C.NIGHT, "block": v1.home_block, "text": "Saw walker on kill block"})
+	var vig_n: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [walker.id], "day": 1, "phase": C.NIGHT, "block": v1.home_block, "text": "Saw walker on kill block"})
 
 	var view: Dictionary = WorkshopCanvas.view(g)
 	var model = CanvasModel.new(view)
@@ -253,7 +254,7 @@ func _test_trace_solver_panel_and_case_view_ui() -> void:
 	g.w.day = 1
 	v1.alive = false
 	g.w.public_event("demon_death", [v1.id], "town")
-	var t_num: int = g.add_card({
+	var t_num: int = GameBoard.add_card(g, {
 		"kind": "trace", "source": "evidence", "day": 1, "phase": C.EVENING, "crime_night": 1,
 		"victim": v1.id, "scene": "scene_" + v1.id, "scene_block": v1.home_block,
 		"trace_family": "locations", "trace_subtype": "token", "trace_slot": 0, "scene_trace_count": 1,

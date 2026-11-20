@@ -6,6 +6,7 @@
 ##   godot --headless --path . --script res://tools/test_judgement_boost.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -43,8 +44,8 @@ func _init() -> void:
 	# The Minion bluffs the Gravedigger and calls the hanged innocent a Minion; the real
 	# Gravedigger gives their true role. The player calls the TRUE reading a lie, on the
 	# Minion's word: a misleading call, where the boost is the player leading the town astray.
-	var bluff: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": hanged.id, "role": f.minion.role}, "text": "B"})
-	var truth: int = g.add_card({"kind": "info", "source": f.gd.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": hanged.id, "role": hanged.role}, "text": "T"})
+	var bluff: int = GameBoard.add_card(g, {"kind": "info", "source": f.minion.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": hanged.id, "role": f.minion.role}, "text": "B"})
+	var truth: int = GameBoard.add_card(g, {"kind": "info", "source": f.gd.id, "role": "gravedigger", "day": 2, "phase": C.NIGHT, "data": {"executed": hanged.id, "role": hanged.role}, "text": "T"})
 	var view: Dictionary = Live.view(g)
 	var b_id: String = _id(g, view, bluff)
 	var t_id: String = _id(g, view, truth)

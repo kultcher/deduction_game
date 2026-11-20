@@ -3,6 +3,7 @@
 ##   godot --headless --path . --script res://tools/test_social.gd
 extends SceneTree
 
+const GameDayNight = preload("res://game/game_day_night.gd")
 const Game = preload("res://game/game.gd")
 const Speech = preload("res://tools/speech.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -161,7 +162,7 @@ func _test_visibility() -> void:
 		wanderer.loc = C.LOCATIONS.keys()[0]
 	g.moved = false
 	_check(not g.can_see(wanderer), "a wanderer is out of sight before you choose a block")
-	_check(g._resolve_go(wanderer.id) == "", "you can't walk straight to someone you can't see")
+	_check(GameDayNight._resolve_go(g, wanderer.id) == "", "you can't walk straight to someone you can't see")
 	for n in w.living():
 		if n.working and not n.at_home():
 			_check(g.can_see(n), "someone at work is always visible")
@@ -339,7 +340,7 @@ func _test_haunts_and_counts() -> void:
 	_check(w.npcs.all(func(n): return n.haunts.size() == 2 and not (n.work in n.haunts)), "everyone has two haunts, not their workplace")
 	var total = 0
 	for l in C.LOCATIONS:
-		total += g.unseen_at(l)
+		total += GameDayNight.unseen_at(g, l)
 	var hidden = w.living().filter(func(n): return not n.at_home() and not g.can_see(n) and C.LOCATIONS.has(n.loc)).size()
 	_check(total == hidden, "unseen counts add up to everyone out of sight (%d)" % total)
 

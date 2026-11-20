@@ -138,6 +138,7 @@ test_social
 test_state_digest
 test_symmetric_vote
 test_too_clean_bluffs
+test_totem_evidence
 test_town_note
 test_town_vibe
 test_turned_premise
