@@ -75,7 +75,7 @@ func _init() -> void:
 		ops.append(3); xs.append(v); ys.append(0.0); expected.append(log(v))
 
 	# 5. Kernel pow call sites:
-	#    a) pow(2.0, log2_ratio) across [-20.0 .. +20.0] (case_eval, factored_channels, support_model)
+	#    a) pow(2.0, log2_ratio) across [-20.0 .. +20.0] (case_eval, support_model)
 	for step_i in range(-80, 81):
 		var lr: float = float(step_i) * 0.25
 		ops.append(4); xs.append(2.0); ys.append(lr); expected.append(pow(2.0, lr))
