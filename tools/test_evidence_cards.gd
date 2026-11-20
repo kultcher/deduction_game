@@ -1,4 +1,4 @@
-## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, dropped items, false-reading causes.
+## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, false-reading causes.
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_fixes, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
 const MainActions = preload("res://ui/main_actions.gd")
@@ -65,7 +65,6 @@ func _run_backlog_batch3() -> void:
 
 func _run_backlog_batch4() -> void:
 	false_reading_causes()
-	dropped_item_search()
 
 
 # ---------------------------------------------------------------- from test_fixes
@@ -271,42 +270,6 @@ func false_reading_causes():
 	var output = g._lies()
 	check(not "(?)" in output and "cause was not recorded" in output and "old fake reason (evil fabrication)" in output, "lies summary handles older missing causes without inventing past impairment")
 	check(g.w.rng.state == rng, "diagnostic cause annotation consumes no random draws")
-
-
-func dropped_item_search():
-	var fixture = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/playtest_37291_drop.json"))
-	var event: Dictionary = fixture.event
-	var g = Game.new()
-	g.detailed_logging = false
-	g.log_dir = "user://batch4_tests"
-	g.new_case(fixture.case.seed, fixture.case.npcs)
-	var owner = g.w.by_id[event.actor]
-	var item = {"night": event.data.night, "material": event.data.material, "owner": owner.id, "who": owner.id, "why": "hunting Jory"}
-	g.w.dropped = {event.data.loc: [item]}
-	g.w.totem = {}
-	g.loc = "mill"
-	g.events = []
-	var rng = g.w.rng.state
-	g._search()
-	check(g.w.dropped.has("wharf") and not g.board.any(func(c): return c.get("dropped", false)), "searching the mill does not consume the wharf's personal item")
-	check(g.w.rng.state == rng, "searching for a stored drop has no discovery roll")
-	g.state = "day"
-	g.moved = false
-	g.command("go wharf")
-	var found = g.command("search")
-	var cards = g.board.filter(func(c): return c.get("dropped", false) and c.get("source", "") == "evidence")
-	check(found.contains("something of " + owner.name) and cards.size() == 1, "ordinary go/search finds Fenwick's original wharf personal item")
-	check(cards[0].subject == [owner.id] and cards[0].loc == "wharf" and cards[0].day == 3 and cards[0].phase == C.NIGHT, "found item produces the existing dated owner sighting card")
-	check(not g.w.dropped.has("wharf"), "all stored drops at the searched location are consumed")
-	g.loc = "wharf"
-	g.events = []
-	rng = g.w.rng.state
-	g._search()
-	check(g.board.filter(func(c): return c.get("dropped", false)).size() == 1 and g.w.rng.state == rng, "searching again cannot duplicate the item and adds no random draw")
-	owner.alive = false
-	g.w.dropped["wharf"] = [item.duplicate(true)]
-	g._search()
-	check(not g.w.dropped.has("wharf"), "an owner's death does not make an unfound stored item inaccessible")
 
 
 # ---- test_fixes
@@ -561,8 +524,9 @@ func playtest_regressions__game():
 func _public_sighting() -> void:
 	var g = playtest_regressions__game()
 	var w = g.w
-	var n = w.by_id["isolde"]
-	var target = w.by_id["merrin"]
+	# An evil teller and a good scapegoat, chosen by alignment so the deal can move.
+	var n = w.by_id[w.minion_ids[0]]
+	var target = w.living_good()[-1]
 	var b = {"kind": "saw", "who": target.id, "day": 1, "phase": C.NIGHT, "block": n.home_block, "how": "window", "detail": "street"}
 	w.evil_plan["fake_sightings"][n.id + ":1"] = b
 	var lines: Array = []

@@ -22,10 +22,10 @@ const VIEW_NAMES = {"places": "Places & sightings", "statements": "Statements", 
 
 ## Kinds the filter menus offer in each view.
 const VIEW_KINDS = {
-	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "ward", "scorched_sigil"],
+	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "totem", "ward", "scorched_sigil"],
 	"statements": ["home", "haunt", "info", "claim", "town_hall", "hint", "refusal", "opinion", "accusation", "secret", "case"],
 	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell"],
-	"all": ["home", "haunt", "sighting", "conversation", "vigil", "alibi", "trace", "dropped", "totem", "ward", "scorched_sigil", "info", "claim", "town_hall", "hint", "refusal",
+	"all": ["home", "haunt", "sighting", "conversation", "vigil", "alibi", "trace", "totem", "ward", "scorched_sigil", "info", "claim", "town_hall", "hint", "refusal",
 		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell", "deduction"],
 }
 
@@ -130,7 +130,7 @@ static func place_markers(card: Dictionary, learned_day: int = -1, learned_phase
 			out.append({"who": who2, "block": card.get("block", ""), "loc": "home_" + who2, "time": t, "mark": "dotted" if is_rumour else "home", "home": true})
 		"vigil":
 			out.append({"who": "", "block": card.get("block", ""), "loc": "", "time": t, "mark": "solid"})
-		"trace", "dropped", "totem", "ward", "scorched_sigil":
+		"trace", "totem", "ward", "scorched_sigil":
 			out.append({"who": "", "block": card.get("block", ""), "loc": card.get("loc", ""), "time": t, "mark": "trace"})
 		"info":
 			var d: Dictionary = card.get("data", {})

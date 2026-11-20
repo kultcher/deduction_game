@@ -338,6 +338,55 @@ static func top_tier_chance(type: String, chance: float) -> float:
 	var settles: bool = type in TOP_TIER_CLEARS or (type not in PREMISE_CLEARS and type != "conflict")
 	return chance if settles else -1.0
 
+## The share of a person's chance of being evil that is the chance of being the Demon, before
+## and after the case, as the listener whose chance of evil it splits hears it: {before, after},
+## or {} if it can't be read. `pj` is that listener's judgement (Connections.judge_for_profile),
+## `conclusion` the case's premise (its subject and time; asked as "is the Demon").
+## The Demon question is asked of the same two Shared.prepare plans (SharedLedger.evaluate_question),
+## so the split weighs the same cards, at the same hearing weights and route trust, with the same
+## challenges as the listener's chances do (Codex on #410, three findings).
+static func _demon_share(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
+	var target: String = str(conclusion.get("target", ""))
+	if not pj.get("ready", false) or target == "":
+		return {}
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	var ask: Dictionary = conclusion.duplicate(true)
+	ask.type = "demon"
+	var after: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_after", {}), pj.get("counted_after", [])), {}, {}, {}, ask)
+	if after.is_empty() or after.get("impossible", false):
+		return {}
+	# A listener who holds nothing before the case has no plan to ask: the prior stands.
+	var before: Dictionary = Shared.evaluate_question(_counted_plan(pj.get("plan_before", {}), pj.get("counted_before", [])), {}, {}, {}, ask)
+	var share := func(ev: Dictionary, which: String) -> float:
+		var evil: float = float(ev.get("people", {}).get(target, {}).get(which, 0.0))
+		return clampf(float(ev.get(which, 0.0)) / evil, 0.0, 1.0) if evil > 1e-9 else 1.0
+	var b: float = share.call(before, "posterior") if not (before.is_empty() or before.get("impossible", false)) else share.call(after, "prior")
+	return {"before": b, "after": share.call(after, "posterior")}
+
+## `plan` with only the challenges the connections model still counts: those of the stored
+## cases above its floor (`counted`, Connections.cases' entries, matched by key to the plan's
+## stored cases) and NPC defences, not a faded case's
+## (Codex on #410). The union's challenges are otherwise every presentation's, weighed or not.
+static func _counted_plan(plan: Dictionary, counted: Array) -> Dictionary:
+	if plan.is_empty() or not plan.get("prepared", {}).has("case"):
+		return plan
+	var kept: Dictionary = {}
+	var union: Dictionary = plan.prepared.case.get("reading_challenges", {})
+	for id in union:
+		if bool(union[id].get("npc_defence", false)):
+			kept[id] = union[id]
+	var keys: Array = counted.map(func(e): return str(e.get("key", "")))
+	for cs in plan.get("input", {}).get("listener", {}).get("connections", {}).get("cases", []):
+		if str(cs.get("key", "")) in keys:
+			for id in cs.get("challenges", {}):
+				if union.has(id):
+					kept[id] = union[id]
+	var out: Dictionary = plan.duplicate()
+	out.prepared = plan.prepared.duplicate()
+	out.prepared.case = plan.prepared.case.duplicate(true)
+	out.prepared.case.reading_challenges = kept
+	return out
+
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
 ## lr (the odds ratio of chance over chance_before)}.
@@ -370,6 +419,15 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 	var clears: bool = type in PREMISE_CLEARS
 	var chance_before: float = 1.0 - before if clears else before
 	var chance: float = 1.0 - after if clears else after
+	if type == "notdemon":
+		# "Not the Demon" also holds for a Minion: the listener reports only the chance of being
+		# evil, so the share of that which is the Demon comes from the judge's own reading of the
+		# case (Seneschal's check, Nov 20: the badge read the chance of being good, so evidence
+		# that the subject is a Minion read as arguing against "not the Demon").
+		var split: Dictionary = _demon_share(pj, conclusion)
+		if not split.is_empty():
+			chance_before = 1.0 - before * float(split.before)
+			chance = 1.0 - after * float(split.after)
 	var lr: float = exp(_logit(chance) - _logit(chance_before))
 	# An accepted lie call presses its teller as the liar rather than moving the odds (the
 	# clash is in the worlds already): the badge's words name it (Herald words the line).
