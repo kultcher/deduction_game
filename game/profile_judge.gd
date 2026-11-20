@@ -11,6 +11,7 @@
 ## Connections.judge_for_profile is the entry point.
 extends RefCounted
 
+const GameBoard = preload("res://game/game_board.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -227,7 +228,7 @@ static func _public_hearing(g, value: Dictionary) -> Dictionary:
 		if not (x in numbers):
 			numbers.append(x)
 	for number in numbers:
-		var card: Dictionary = g.receipt_by_number(int(number))
+		var card: Dictionary = GameBoard.receipt_by_number(g, int(number))
 		if card.is_empty() or card.get("kind", "") == "deduction" or not Meeting.already_public(g, card):
 			continue
 		var receipt: Dictionary = Evidence.normalize_card(card)

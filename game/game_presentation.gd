@@ -7,6 +7,7 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const GameBoard = preload("res://game/game_board.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -150,7 +151,7 @@ static func _presentation_rejection(g, card: Dictionary) -> String:
 	if card.kind == "deduction":
 		var input: Dictionary = workshop_snapshot(g, [card.n])
 		for number in input.board_map:
-			var rec: Dictionary = g.receipt_by_number(int(number))
+			var rec: Dictionary = GameBoard.receipt_by_number(g, int(number))
 			if not rec.is_empty() and input.board_map[number] in input.selected and WorkshopPresentation.Evidence.contains_opinion(rec):
 				speech.append(rec)
 	elif WorkshopPresentation.Evidence.contains_opinion(card):
@@ -220,7 +221,7 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	var snapshot: Dictionary = workshop_snapshot(g, [ded.n], n.id, venue) if g.workshop_compare else {}
 	var before: Dictionary = n.suspicion.duplicate(true) if g.workshop_compare else {}
 	var why_was: Dictionary = preload("res://game/workshop_why.gd").before(n, g) if g.workshop_why else {}
-	var result: Dictionary = PresentationReply.evaluate(g.w, n, ded, g.all_receipts(), scale, speak)
+	var result: Dictionary = PresentationReply.evaluate(g.w, n, ded, GameBoard.all_receipts(g), scale, speak)
 	if result.get("blocked", false):
 		return result
 	if g.workshop_compare:
@@ -467,7 +468,7 @@ static func _present_flat(g, n, num: int, why: String) -> Dictionary:
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 static func _secrets_used(g, ded: Dictionary, depth: int = 0) -> void:
 	for x in ded.get("supports", []):
-		var c: Dictionary = g.receipt_by_number(x)
+		var c: Dictionary = GameBoard.receipt_by_number(g, x)
 		if c.is_empty():
 			continue
 		if c["kind"] == "secret":
@@ -494,7 +495,7 @@ static func _show_ward_context(g, card: Dictionary, listeners: Array) -> Diction
 	var public_show: bool = g.state in ["meeting", "nomination"]
 	if public_show:
 		card["private"] = false
-		g._disclose(card, g._disclosure(card))
+		g._disclose(card, GameBoard._disclosure(g, card))
 	var rewarded: Array = []
 	if card.kind == "scorched_sigil":
 		var heard: Array = g.sigil_heard.get(card.n, [])
@@ -558,7 +559,7 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 		g._ev({"k": "note", "text": "This case is already public knowledge: presenting it again doesn't sway the town further, but it stands on its own merits."})
 	g.public_presentations[num] = int(g.w.day)
 	g.w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
-	g._break_confidences([num] + Array(ded.get("supports", [])))
+	GameBoard._break_confidences(g, [num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)
 	await hear_town(g, g.w.living(), ded, Tuning.Workshop.VENUE_MULTS.meeting, "meeting", progress)
 
@@ -585,6 +586,6 @@ static func hear_town(g, listeners: Array, ded: Dictionary, scale: float, venue:
 		if said is Dictionary and said.has("facts") and not said.has("speaker"):
 			# What a listener told the town in answer (a caught alibi explained) goes on the
 			# board too (Codex on #261).
-			g._facts(said.facts)
+			GameBoard._facts(g, said.facts)
 		else:
 			g._line(said)

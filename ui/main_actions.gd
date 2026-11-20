@@ -3,6 +3,7 @@
 ## Every button becomes the same text command the CLI uses. `m` is the main control.
 extends RefCounted
 
+const GameDayNight = preload("res://game/game_day_night.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Declaration = preload("res://game/demon_declaration.gd")
@@ -241,7 +242,7 @@ static func day(m, w) -> void:
 		m._button(m.actions, "Wait (let the %s pass)" % C.PHASES[w.phase].to_lower(), func(): m._run("wait"))
 		return
 	m.action_title.text = "%s, %s" % [w.loc_name(m.g.loc).capitalize(), C.PHASES[w.phase].to_lower()]
-	var here: Array = m.g._present(m.g.loc)
+	var here: Array = GameDayNight._present(m.g, m.g.loc)
 	for n in here:
 		if n.busy_with == "":
 			m._button(m.actions, "Talk to %s" % n.name, func(): m._run("talk " + n.id), C.npc_color(n.id))
@@ -252,7 +253,7 @@ static func day(m, w) -> void:
 		for l in w.locations_on(w.loc_block(m.g.loc)):
 			if l == m.g.loc or l.begins_with("home_"):
 				continue
-			var who: Array = m.g._present(l).filter(func(x): return x.busy_with == "")
+			var who: Array = GameDayNight._present(m.g, l).filter(func(x): return x.busy_with == "")
 			if not who.is_empty():
 				for n in who:
 					m._button(m.actions, "Talk to %s (at %s)" % [n.name, w.loc_name(l)], func(): m._run("talk " + n.id), C.npc_color(n.id))
