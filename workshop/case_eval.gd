@@ -104,8 +104,6 @@ static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
 		w_h += float(maxi(0, g - 1))
 	if "sleepwalker" in mods:
 		w_h += float(g)
-	if "muddler" in mods:
-		w_h += float(g)
 	if "lovers" in mods:
 		w_h += float(g * (g - 1)) * 0.5
 	return w_h
@@ -151,7 +149,7 @@ static func _chance_chronicler(view: Dictionary) -> float:
 	if w_h <= 0.0:
 		return 0.15
 	var solo_worlds: float = 0.0
-	for m_kind in ["marked", "delusional", "sleepwalker", "muddler"]:
+	for m_kind in ["marked", "delusional", "sleepwalker"]:
 		if m_kind in mods:
 			solo_worlds += float(g - 1)
 	var lovers_with_src: float = float(g - 1) if "lovers" in mods else 0.0

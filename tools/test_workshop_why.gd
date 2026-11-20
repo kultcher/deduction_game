@@ -6,6 +6,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const DevLog = preload("res://sim/devlog.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
@@ -206,7 +207,7 @@ func _vote_bar() -> void:
 	if not b.has("action"):
 		return
 	g.w.meeting = {"block": "", "block_count": 0, "nominated": [], "vote_parts": {}}
-	MindMeeting.vote(g.w, n, p[3].id, "player", false, "", 0)
+	MindVote.vote(g.w, n, p[3].id, "player", false, "", 0)
 	var real: Dictionary = g.w.meeting.vote_parts.get(n.id, {})
 	check(not real.is_empty(), "the real vote recorded its parts")
 	if not real.is_empty():

@@ -11,6 +11,8 @@ const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 
 var _checks: int = 0
 var _fails: int = 0
@@ -87,23 +89,23 @@ func _test_resistance() -> void:
 	var v = good[0]
 	var t = good[1]
 	var blk = good[2]
-	var lines: Array = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, blk.id))
+	var lines: Array = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, blk.id))
 	_check(lines.size() == 1 and blk.name in str(lines[0].get("statement", "")), "a voter who'd sooner hang the one on the block says so")
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"persuaded_to_spare": -0.3}, "margin": -0.6, "yes": false}))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"persuaded_to_spare": -0.3}, "margin": -0.6, "yes": false}))
 	_check(lines.size() == 1 and "not ready to put a rope" in str(lines[0].get("statement", "")), "a voter persuaded to spare them says they aren't ready")
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"martyr_reluctance": -0.5}, "margin": -0.6, "yes": false}))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"martyr_reluctance": -0.5}, "margin": -0.6, "yes": false}))
 	_check(lines.size() == 1 and "not ready to put a rope" in str(lines[0].get("statement", "")), "a role's own reluctance is voiced as reluctance")
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {}, "margin": -0.1, "yes": false}))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {}, "margin": -0.1, "yes": false}))
 	_check(lines.size() == 1 and "just not enough" in str(lines[0].get("statement", "")), "a near miss with no other reason is 'short of rope'")
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {}, "margin": -1.5, "yes": false}))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {}, "margin": -1.5, "yes": false}))
 	_check(lines.is_empty(), "a no that wasn't close and had no reason stays unexplained")
 	var r: Dictionary = _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, blk.id)
 	v.dialogue_memory["accepted_cases"][t.id]["day"] = g.w.day - 1
-	lines = MindMeeting.vote_resistance_lines(g.w, r)
+	lines = MindVote.vote_resistance_lines(g.w, r)
 	_check(lines.is_empty(), "only a case accepted today counts")
 	r = _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, blk.id)
 	v.silenced = true
-	_check(MindMeeting.vote_resistance_lines(g.w, r).is_empty(), "the silenced don't explain their vote")
+	_check(MindVote.vote_resistance_lines(g.w, r).is_empty(), "the silenced don't explain their vote")
 	v.silenced = false
 	# Cap: three who accepted and voted no; two speak.
 	var many: Dictionary = {"nominee": t.id, "by": "player", "yes": [], "no": [], "count": 1, "threshold": 4, "outcome": "fails",
@@ -112,10 +114,10 @@ func _test_resistance() -> void:
 		n.dialogue_memory["accepted_cases"] = {t.id: {"day": g.w.day, "key": "test"}}
 		many.no.append(n.id)
 		many.voter_parts[n.id] = {"parts": {}, "margin": -0.1, "yes": false}
-	_check(MindMeeting.vote_resistance_lines(g.w, many).size() == Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS, "at most %d voters explain themselves" % Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS)
+	_check(MindVote.vote_resistance_lines(g.w, many).size() == Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS, "at most %d voters explain themselves" % Tuning.Meeting.MAX_VOTE_RESISTANCE_SPEAKERS)
 	# Evil: its good self would have voted yes; the no came from the override and is never voiced as such.
 	var evil = g.w.living().filter(func(n): return n.is_evil())[0]
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, evil, t, {"parts": {"suspicion": 0.7}, "margin": 0.3, "yes": true}, blk.id))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, evil, t, {"parts": {"suspicion": 0.7}, "margin": 0.3, "yes": true}, blk.id))
 	_check(lines.size() == 1 and blk.name in str(lines[0].get("statement", "")), "an evil voter covering a no gives an ordinary townsperson's reason")
 
 
@@ -139,7 +141,7 @@ func _test_case_hinge() -> void:
 			g.w.meeting["pending"]["case_card"] = 1
 		var sighting: Dictionary = {"kind": "sighting", "subject": [d.id], "source": seer.id, "day": 1, "phase": C.NIGHT, "block": d.home_block,
 			"text": "%s says they saw %s out on night 1." % [seer.name, d.name]}
-		var df: Dictionary = MindMeeting.defend_self(g.w, d, "player", [sighting])
+		var df: Dictionary = MindDefence.defend_self(g.w, d, "player", [sighting])
 		if case_backed:
 			_check("dispute_night" in df.moves and d.dialogue_memory.get("night_accounts", {}).has("1"),
 				"against a filed case resting on a night sighting, the nominee gives their account of that night (%s)" % ", ".join(PackedStringArray(df.moves)))

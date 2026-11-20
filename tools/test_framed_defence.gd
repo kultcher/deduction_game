@@ -7,6 +7,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
 const C = preload("res://sim/content.gd")
 var checks = 0
 var fails = 0
@@ -60,11 +61,11 @@ func _case(size: int, role: String, secret: Dictionary, was_out: bool) -> void:
 	d.secret_known = false
 	d.history[w.time_key(1, C.NIGHT)] = "night:hill" if was_out else "home:" + d.home_block
 	var spoken: Array = [{"kind": "sighting", "source": accuser.id, "subject": [d.id], "block": "hill", "day": 1, "phase": C.NIGHT}]
-	var items: Array = MindMeeting._disclosed_items_against(w, d, accuser, spoken)
+	var items: Array = MindDefence._disclosed_items_against(w, d, accuser, spoken)
 	var out_items: Array = items.filter(func(x): return x.get("channel", "") == "movement_out")
 	var label: String = "%d NPCs, %s%s, %s:" % [size, role, " with a secret" if not secret.is_empty() else "", "really out" if was_out else "framed (home)"]
 	check(not out_items.is_empty(), label + " the spoken sighting reaches the defence")
-	check(MindMeeting.framed_night_of(w, d, out_items) == (-1 if was_out else 1), label + " framed_night_of names night 1 only for a frame")
+	check(MindDefence.framed_night_of(w, d, out_items) == (-1 if was_out else 1), label + " framed_night_of names night 1 only for a frame")
 	# Force the reveal and confession decisions to go ahead, so only the frame check can stop them.
 	d.traits.privacy = 0.0
 	var res: Dictionary = Mind.defend_self(w, d, accuser.id, spoken)
@@ -79,5 +80,5 @@ func _case(size: int, role: String, secret: Dictionary, was_out: bool) -> void:
 	# The evil bluffer keeps every option: their outing story is a lie either way.
 	var e = w.npcs.filter(func(n): return n.is_evil())[0]
 	e.history[w.time_key(1, C.NIGHT)] = "home:" + e.home_block
-	var e_items: Array = MindMeeting._disclosed_items_against(w, e, accuser, [{"kind": "sighting", "source": accuser.id, "subject": [e.id], "block": "hill", "day": 1, "phase": C.NIGHT}])
-	check(MindMeeting.framed_night_of(w, e, e_items.filter(func(x): return x.get("channel", "") == "movement_out")) == -1, label + " evil defenders are never treated as framed")
+	var e_items: Array = MindDefence._disclosed_items_against(w, e, accuser, [{"kind": "sighting", "source": accuser.id, "subject": [e.id], "block": "hill", "day": 1, "phase": C.NIGHT}])
+	check(MindDefence.framed_night_of(w, e, e_items.filter(func(x): return x.get("channel", "") == "movement_out")) == -1, label + " evil defenders are never treated as framed")

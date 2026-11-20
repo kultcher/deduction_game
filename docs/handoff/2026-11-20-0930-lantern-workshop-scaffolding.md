@@ -1,8 +1,8 @@
 ## Nov 20 — Claude-Lantern: the Workshop's comparison-era scaffolding removed
 
-- **Base:** main `af5c4bb` (#397, drops, merged in).
+- **Base:** main `bd4ac84` (#397 and #405 merged in).
   **Status:** PR open. **Next:** Bailiff. **Zero drift:** golden is identical to
-  `baseline_58cb94a` at `--tol 0`.
+  `baseline_9fa5a74` at `--tol 0`.
 - **What this is:** the first group in Argon's audit cleanup (`BACKLOG.md`, "Dead code, zero
   drift"). Scaffolding from when the judge was compared with the earlier belief model, plus
   every test that existed only for it (Michael's rule).
@@ -52,8 +52,9 @@
   test_workshop, test_workshop_cases, test_workshop_reasoning, test_workshop_canvas and
   test_workshop_consequences. The `shared_assessment` equality checks were tautological and now
   compare `.assessment`.
-- **Renamed:** `test_roles_secrets._test_muddler_domain_and_channel_parity` became
-  `_test_secret_domain_and_muddler_premise`.
+- **Renamed:** `test_roles_secrets`' secret-domain check (#405 had renamed it
+  `_test_secret_domain_and_channel_parity`; the channel stack is long gone) became
+  `_test_secret_domain_and_premise`.
 
 ### Measured
 - Golden is identical on all five seeds. There are no import or parse errors.

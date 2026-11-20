@@ -487,9 +487,8 @@ const SECRET_MODS = {
 	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them."},
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
-	"muddler": {"name": "Muddler", "desc": "Often muddles one detail when passing on someone else's reading or night sighting. They don't know."},
 }
-const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker", "muddler"]
+const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker"]
 
 ## How sure you are of a guess (stored as 1..4).
 const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]

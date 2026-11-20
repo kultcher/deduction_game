@@ -4,7 +4,7 @@ A single-player social deduction game inspired by Blood on the Clocktower. You a
 Demonologist summoned to a small town where a demon has taken a host. Minions serve it (one
 of the Poisoner, Breathstealer, Revenant and Scion in a 7-person town, two in a 10-person
 town), and one innocent townsperson carries a secret (Delusional, Marked, Secret Lovers or
-Sleepwalker; custom scripts add the Muddler) that muddies their gift or puts them out at
+Sleepwalker) that muddies their gift or puts them out at
 night. Over six days (seven
 townsfolk) or eight (ten) you question townsfolk, search crime scenes, listen to gossip and
 sway the town's votes, until the demon's host hangs or the town falls.
@@ -302,8 +302,11 @@ sim/npc.gd        one NPC's state (receipts, suspicion, rapport, credibility, cl
 sim/world.gd      case setup and the deal, schedules, sightings, night resolution, traces,
                   votes, executions, the Town Hall
 sim/mind.gd, mind_dialogue.gd, mind_meeting.gd
-                  NPC reasoning: claims, conversation answers, testimony, nominations,
-                  defences, votes
+                  NPC reasoning: claims, conversation answers, testimony, accusations,
+                  choosing nominations
+sim/mind_nomination.gd, mind_defence.gd, mind_vote.gd
+                  the nominator's case, the nominee's defence, and each NPC's vote; the four
+                  meeting modules share sim/mind_meeting_base.gd
 sim/social.gd     NPC-to-NPC exchanges, peer gift talk, approaches, the tavern
 sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
 sim/fabrication_check.gd  whether a fabricated reading would point the town at its teller

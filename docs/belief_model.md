@@ -155,7 +155,7 @@ Measured before the build (mock branch, 10-NPC towns, seeds 1-10, 10 passive and
 | Headline reading | Off (Insight is out for v1) |
 | Reading challenges on everything the NPC believes | Inside their own case only |
 | A "lying" challenge's floor under its teller | Kept, scaled by the case's weight |
-| Source doubt, rejected cards, hearing weights, relays, Muddler, belief to suspicion, votes, the hub, replies, the bot | Unchanged. **Known gap:** a reason may cite a pairing the model didn't weigh (polish, later) |
+| Source doubt, rejected cards, hearing weights, relays, belief to suspicion, votes, the hub, replies, the bot | Unchanged. **Known gap:** a reason may cite a pairing the model didn't weigh (polish, later) |
 
 ### Where it plugs in
 
