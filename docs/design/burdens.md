@@ -1,7 +1,8 @@
 # Burdens: the secrets rework, scoped (design note)
 
-**Status: scoped with Michael (Nov 20, 2026). Every question so far is answered (section 8).
-Nothing is built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
+**Status: scoped with Michael (Nov 20, 2026). Design questions are answered (sections 1 to 7),
+and so are the feasibility questions (section 9), with two small points to confirm. Nothing is
+built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
 Where the two disagree, this note is the newer one.
@@ -310,6 +311,106 @@ The feasibility reports (Nov 20) raised 24 build-level questions for Michael. Th
 [burdens_perf_feasibility.md](burdens_perf_feasibility.md). Answers are folded in here as
 they arrive.
 
-Before the reports, none were open. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
+Before the reports, none were open. Michael answered the 24 on Nov 20 (section 9); two
+small points are still to confirm. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
 2.1 and 7. Next comes the staged plan (section 5): feasibility reports, then a `mock/`
 prototype.
+
+## 9. Michael's answers to the feasibility questions (Nov 20)
+
+The numbers match the 24 questions in [burdens_feasibility.md](burdens_feasibility.md). These
+add to sections 1 to 7, and win where they differ.
+
+### The judge
+
+1. **An unclaimed Marked is enumerated.** The judge places a possible holder in each world
+   (exact, about 7 worlds per evil team), not a per-person allowance. This answers Quill's
+   warning: a reading that names an unclaimed Marked person needn't look like a lie by the
+   reader.
+2. **The town reasons about which known burden is in play.** A true Rumormonger "Marked" rules
+   out Unrequited, with the usual caveats about what can and can't actually be confirmed.
+3. **The ~10% allowance:** Michael's answer was "Explained to the player? Not directly." Read
+   here as: the allowance works inside NPC reasoning and isn't shown to the player as a
+   number. *Whether it's per person or per oddity explained is still to confirm.*
+4. **A script with no burden in play** (a "none" world): eventually, not now.
+
+### Ill-Omened
+
+5. **The drunk readings work exactly as if poisoned.** DESIGN's Poisoner row: the gift "fails
+   or lies until the next night". It covers everything good learns from the night after the
+   hanging until the start of the following night: a Day 2 hanging affects Night 2 through
+   the start of Night 3. The town can spot it only through contradictions.
+6. **The drunk readers don't know.** Hanging a bluffing Ill-Omened gives no drunk night, and
+   nobody can tell. That's intended: it gives evil power even with a bluff, because good has to
+   consider that its information could be wrong.
+7. **The claim must be restated at the nomination.** An earlier claim under pressure doesn't
+   count on its own.
+8. **Evil plays as its good self** when a real Ill-Omened is claimed. It doesn't push to hang
+   them.
+9. **The cost of a hanging is one general vote term,** fed by the claim, and a reasonably
+   strong deterrent: about enough to cancel the player's "yes" vote bump.
+   - The bump scales with trust (`PLAYER_VOTE_YES_SLOPE` and `_OFFSET` in `sim/tuning.gd`),
+     so the deterrent is sized at the bump for a median-trust listener.
+10. **The player's own night actions aren't affected.** The board marks the possibly-drunk
+    night after any claimed Ill-Omened is hanged, real or bluffed. It's worded as a
+    possibility, not a confirmation.
+
+### Unrequited
+
+11. **No reading or card names the beloved** before the reveal. Once the Unrequited reveals,
+    it produces a card: "X admitted they have an unrequited love for Y".
+12. **Evil can bluff Unrequited,** with a beloved whose home fits the sighting. The bluff only
+    answers:
+    - a sighting on the claimed beloved's block;
+    - a "leaving home" sighting on the bluffer's own block.
+
+    It never answers a sighting that puts the bluffer on some other block.
+13. **What the Unrequited withholds:** only evidence that implicates the beloved, and only a
+    moderate-to-strong implication. A Dowser reading that puts the beloved as one evil among
+    four isn't withheld.
+14. **The reveal's trust cost** falls on good listeners (and evil's shadow listeners, who model
+    good). Its size will be a new constant.
+- **More on the beloved's death** (Michael, Nov 20):
+  - If the beloved dies, the Unrequited visits the graveyard (Chapel Hill) instead of their
+    home.
+  - An evil bluffer keeps the same cover. Seen on a block other than Chapel Hill, it can't
+    claim an unrequited love for a dead person who lived there.
+
+### Marked
+
+15. **The private share scales directly with trust,** to the player as to a friend.
+
+### Evil's burden bluffs
+
+16. **"Bolder with silence" follows the same rules as good,** damped by caution, so a day 1
+    bluff is extremely rare. Evil mostly, but not always, bluffs a burden reactively, as good
+    NPCs reveal theirs.
+17. **An evil NPC bluffing a burden also bluffs a gift,** and must: only good can truly carry
+    a burden, and for good NPCs the burden sits on top of their gift.
+
+### Sleepwalker 2.0 (held)
+
+18. **She sees nothing while walking,** and honestly says "I was home". Work on Sleepwalker 2.0
+    waits until later.
+19. **The "I've been known to sleepwalk" excuse:** deferred.
+
+### UI and wording
+
+20. **The hidden tag** precedes the rules text: "**Hidden**: The holder of this burden does not
+    know they carry it."
+21. **Burden claims show on the sheet,** in exactly the place secrets have now.
+22. **The Workshop's "private errand" retires.**
+23. **The "Burden" tooltip** is approved as drafted: "Burden: something that weighs on a
+    townsperson, on top of their gift. The script lists the possible burdens and how many are
+    in play. A hidden burden's holder doesn't know they carry it."
+24. **Later:** the "drink" Mistaken cause, the Rumormonger phrases and the ~200 voice lines.
+
+### Still to confirm
+
+- **Q3:** is the allowance per person, or per oddity explained? (Its reading above is
+  tentative.)
+- **New constants** these imply, each Michael's call:
+  - the Unrequited reveal's trust cost (Q14);
+  - the two caution values behind "bolder with silence" (Q16);
+  - possibly a size for the hanging-cost term, if it can't be derived from the player's vote
+    bump (Q9).
