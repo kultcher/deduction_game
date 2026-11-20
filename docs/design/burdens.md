@@ -305,6 +305,11 @@ feasibility reports, then a `mock/` prototype with paired sweeps, then Michael p
 
 ## 8. Still open
 
-None. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
+The feasibility reports (Nov 20) raised 24 build-level questions for Michael. They're in
+[burdens_feasibility.md](burdens_feasibility.md), with Argon's detail in
+[burdens_perf_feasibility.md](burdens_perf_feasibility.md). Answers are folded in here as
+they arrive.
+
+Before the reports, none were open. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
 2.1 and 7. Next comes the staged plan (section 5): feasibility reports, then a `mock/`
 prototype.
