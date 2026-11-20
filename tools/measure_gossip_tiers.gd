@@ -8,6 +8,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const Social = preload("res://sim/social.gd")
+const C = preload("res://sim/content.gd")
 
 func _init() -> void:
 	var args: Dictionary = {"seed": 1, "games": 40, "npcs": 10, "days": 5}
@@ -34,7 +35,9 @@ func _init() -> void:
 		var last_day := -1
 		while g.state != "over" and guard < 2000 and g.w.day <= int(args.days):
 			guard += 1
-			if g.state == "meeting" and g.w.day != last_day:
+			# The evening, before the meeting's testimony reaches the board: when the player's
+			# own tavern visit happens (Codex on #431).
+			if g.state == "day" and g.w.phase == C.EVENING and g.w.day != last_day:
 				last_day = g.w.day
 				var before: int = g.w.dlog.entries.size()
 				Social.tavern_evening_gossip(g)
@@ -47,14 +50,32 @@ func _init() -> void:
 						told[int(t)] += 1
 						c[int(t)] += 1
 					var o: Array = [0, 0, 0, 0]
-					for t in d.get("offered_tiers", []):
-						offered[int(t)] += 1
-						o[int(t)] += 1
+					var groups1: Dictionary = {}
+					var groups2: Dictionary = {}
+					var ot: Array = d.get("offered_tiers", [])
+					var og: Array = d.get("offered_groups", [])
+					for i in range(ot.size()):
+						var t: int = int(ot[i])
+						offered[t] += 1
+						o[t] += 1
+						var grp: String = str(og[i]) if i < og.size() else str(i)
+						if t == 1:
+							groups1[grp] = true
+						elif t == 2:
+							groups2[grp] = true
+					# The tavern tells one item per group (Codex on #431): the targets can be met
+					# only by distinct groups, so count groups, not items. A group with both tiers
+					# serves either, so it's enough to have t1 groups with a tier 1, t2 with a
+					# tier 2, and t1 + t2 groups with one or the other.
+					var either: Dictionary = groups1.duplicate()
+					either.merge(groups2)
+					var can1: bool = groups1.size() >= t1
+					var can_both: bool = can1 and groups2.size() >= t2 and either.size() >= t1 + t2
 					hit1 += 1 if c[1] >= t1 else 0
 					hit2 += 1 if c[2] >= t2 else 0
 					both += 1 if (c[1] >= t1 and c[2] >= t2) else 0
-					could1 += 1 if o[1] >= t1 else 0
-					could_both += 1 if (o[1] >= t1 and o[2] >= t2) else 0
+					could1 += 1 if can1 else 0
+					could_both += 1 if can_both else 0
 			match g.state:
 				"approach": g.command("decline")
 				"day": g.command("wait")
@@ -67,5 +88,5 @@ func _init() -> void:
 	print("told per evening: tier1 %.2f tier2 %.2f tier3 %.2f" % [told[1] / e, told[2] / e, told[3] / e])
 	print("offered per evening: tier1 %.2f tier2 %.2f tier3 %.2f" % [offered[1] / e, offered[2] / e, offered[3] / e])
 	print("evenings meeting tier1 target %.0f%%, tier2 %.0f%%, both %.0f%%" % [100.0 * hit1 / e, 100.0 * hit2 / e, 100.0 * both / e])
-	print("evenings where the offer could meet tier1 %.0f%%, both %.0f%%" % [100.0 * could1 / e, 100.0 * could_both / e])
+	print("evenings where the offer (one item per group) could meet tier1 %.0f%%, both %.0f%%" % [100.0 * could1 / e, 100.0 * could_both / e])
 	quit()

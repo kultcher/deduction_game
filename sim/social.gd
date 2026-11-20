@@ -1310,7 +1310,8 @@ static func tavern_evening_gossip(g) -> Dictionary:
 	if not vibe.is_empty():
 		lines.append("  • " + str(vibe["line"]))
 	w.dlog.add("tavern_evening_gossip", "player", "", {"count": chosen.size(), "keys": chosen.map(func(c): return c["gkey"]),
-		"tiers": chosen.map(func(c): return int(c.get("tier", 3))), "offered_tiers": candidates.map(func(c): return int(c.get("tier", 3)))},
+		"tiers": chosen.map(func(c): return int(c.get("tier", 3))), "offered_tiers": candidates.map(func(c): return int(c.get("tier", 3))),
+		"offered_groups": candidates.map(func(c): return str(c.get("group", "")))},
 		"Evening tavern gossip yielded %d item(s)." % chosen.size())
 	return {"lines": lines, "facts": facts, "haunts": haunts, "bonds": bonds, "vibe": vibe}
 
