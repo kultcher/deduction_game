@@ -651,6 +651,13 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 		"Uncontradicted Rumormonger reading never emits false 'doesn't fit what we know' reason (%s)" % str(reasons))
 
 	var view: Dictionary = ReasonAttribution.public_view_from_world(w)
+	# A defender's public view weighs only the secrets this game's script can deal, not every
+	# secret on the roster (Lantern's bug, Nov 20).
+	_check(view.world_options.modifiers == w.case_script.secrets, "the public view's secrets are the script's (%s, script %s)" % [str(view.world_options.modifiers), str(w.case_script.secrets)])
+	var secrets_were: Array = w.case_script.secrets.duplicate()
+	w.case_script.secrets = ["marked"]
+	_check(ReasonAttribution.public_view_from_world(w).world_options.modifiers == ["marked"], "a script with only Marked gives a view with only Marked")
+	w.case_script.secrets = secrets_were
 	var rm_card: Dictionary = {
 		"id": "probe_rm", "kind": "report", "source": speaker.id, "role": "rumormonger",
 		"night": 0, "observed_at": {"day": 0, "phase": "night"},
