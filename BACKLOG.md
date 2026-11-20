@@ -8,6 +8,11 @@ still being shaped) live in role_exploration.md. Items being watched, and knobs 
 only if needed (`[watch]`, `[knob]`), live in [BACKLOG_WATCH.md](BACKLOG_WATCH.md); tabled items are
 in the Tabled section at the bottom.
 
+**Priorities (Michael, Nov 20 reprioritization):** clear section 2 (small features and
+tuning) as far as possible, plus two medium items: "Graded gossip" and "Insight helps an
+NPC notice its own readings don't fit". The rest of sections 3 and 4 waits. Each lead has
+its owners and order from Seneschal.
+
 **State of play (Nov 16):** the connections belief model is on in play, and since purge
 phase 3 (Nov 18) it's the only one (design and spec in [docs/belief_model.md](docs/belief_model.md)).
 The Nov 13 playtest triage is closed: what's left of it is in
@@ -18,6 +23,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 **Contents** (every open item, by section; closed ones are in BACKLOG_COMPLETED.md)
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
+  1. Possible bug: the "not the Demon" badge `[decided]`
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
     1. Evil Martyr bluff can frame a good scapegoat `[decided: direction]`
@@ -28,6 +34,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     4. Remove drops altogether `[decided]`
     5. Argon's audit: cleanup `[decided]`
     6. The social presentation route `[decided]`
+    7. The premise menu, trimmed `[decided]`
+    8. Remove the Muddler `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided: pitch first]`
@@ -47,7 +55,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     2. Explicit night-sighting rebuttals `[decided]`
     3. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
-    1. From Playtest Notes 12553
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
@@ -57,13 +64,11 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. The Breathstealer overhaul `[decided: add; option open]`
-  2. The Muddler rarely has anything to muddle `[open]`
-  3. The secrets rework `[decided; values open]`
-  4. Roster expansion `[open]`
-  5. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
-  6. Player toolbox `[open]`
-  7. Scoring system `[open]`
-  8. Storyteller/director and solvability check `[open]`
+  2. The secrets rework `[decided; values open]`
+  3. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
+  4. Player toolbox `[open]`
+  5. Scoring system `[open]`
+  6. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Minion gifts
   2. A Medium's relayed sighting vs the dead's known vantage
@@ -79,12 +84,11 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. The spoken reply to a later-day repeat `[polish]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
-  5. Adjudicating a muddled card `[later]`
-  6. Brute kills scored as hexes on custom scripts `[later]`
-  7. Gift doubt for readings the judge doesn't check `[open]`
-  8. Higher-Insight NPCs weigh more broken-reading combinations `[tentative]`
-  9. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  10. Observable actions as evidence (Stage 1B) `[tentative]`
+  5. Brute kills scored as hexes on custom scripts `[later]`
+  6. Gift doubt for readings the judge doesn't check `[open]`
+  7. Higher-Insight NPCs weigh more broken-reading combinations `[tentative]`
+  8. Persistence Confidence: a working theory that colours new evidence `[tentative]`
+  9. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -113,6 +117,10 @@ No known bug that moves golden is waiting. Fixed since Nov 17: a case with no ca
 from an older compile (#192); an evil Medium's relay about the first victim naming night 0
 (Beadle); a relayer cut from the sighter contest (#265) and a Night Watch list naming the
 listener (#273), both Lantern's.
+
+- **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
+  ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
+  and Herald. [decided]
 
 ## 2. Small features and tuning (a day or so each)
 
@@ -176,7 +184,6 @@ listener (#273), both Lantern's.
      - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
        every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
        whether to do it at all.
-     - Deleting the Muddler is held for the secrets rework.
   3. **File splits,** one file per PR, with no change to play:
      - **Tier 1** follows Beadle's in-flight work (#390, the symmetric vote):
        `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd` (Beadle, with Lantern
@@ -201,6 +208,19 @@ listener (#273), both Lantern's.
     only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
     Herald's #395, which also purges every presentation fallback (Michael). Close this item
     when it merges.
+
+- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
+  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
+  - (b) keep "readings don't fit together";
+  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
+    premises step 4;
+  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
+    decided.
+
+  Owner Quill. [decided]
+
+- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
+  and Lantern reviewing. [decided]
 
 ### NPC behaviour
 
@@ -362,10 +382,6 @@ Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
 
-- **From Playtest Notes 12553**, still unclear or unchecked: pin cards to the main view;
-  people who aren't talking or working showing on the map; a wrong role guess blocking
-  process of elimination.
-
 ### Performance
 
 The one performance item, "Late-game meeting and presenting cost", is in
@@ -458,25 +474,12 @@ The one performance item, "Late-game meeting and presenting cost", is in
     (`DayPresence.breath_factor`), and since #157 (Nov 14) it assumes a Breathstealer that
     hunts. Check what's still missing for the player before choosing an option. (Folded in Nov 18, Michael.)
 
-- **The Muddler rarely has anything to muddle** (Quill, Nov 17; playtest 26532; details in
-  Quill's handoff entries on #173 and #177). In 40 games with the Muddler forced in (seeds
-  1–40, 10 NPCs, passive player), the Muddler passed on a reading or night sighting in only
-  5. When it did, items were garbled at about the designed rate. The limit is supply: news
-  is announced at the meeting and nobody repeats what everyone heard, so NPCs hear under
-  one private reading or sighting a game. Letting everyone pass on more gave no more
-  relays (52 against 60 in 40 games) unless some news also stays private for a while.
-  Options measured or estimated: garble the Muddler's retellings at the meeting; keep
-  night sightings private for a day (Muddler in about half of games, estimated, but news
-  spreads earlier for both sides and the meeting is less of a reveal); garble day
-  sightings and alibis too (about one more garble per 40 games). Michael (Nov 17): leave
-  it for now; he isn't sure the Muddler can work as written without warping the game
-  around it. [open]
-
 - **The secrets rework.** (Michael with Claude-Vicar, Nov 17; design note
   [docs/design/secrets_rework.md](docs/design/secrets_rework.md)) Two kinds: the
   self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
   ones the holder knows about become ordinary claims, which evil can bluff, and the player
-  can argue an unclaimed one per case. The Muddler is tentatively cut. Backlogged by
+  can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
+  Muddler", section 2). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
   it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
@@ -503,16 +506,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
     first-use and repeated breach losses and the permanent caps, keeping a real betrayal
     consequence while allowing proportionate recovery, with apologies and confidentiality
     promises. [decided; values open] (Folded in Nov 18, Michael.)
-
-- **Roster expansion.** Lantern's shortlist from the Clocktower passes (ideas only):
-  `docs/archive/project-docs/role-shortlist-2026-11-11.md`. Built since Oct 30: Augur, Chronicler, Executor, Magistrate,
-  Registrar, Psychologist, Monitor, Confessor, Sexton and the Brute. Still to come: On Deck
-  gifts (Tracker, Clairvoyant, Beckon, Tallyman, Bellringer, Bellwether…), minions
-  (Framer/Forger with evidence planting, Blackmailer, a two-curse Minion (once
-  called the Hexer; that name now belongs to the day-killing Demon), Informant, the Sower), the Debtor secret, and Demon resilience (Dusk Compulsion /
-  Mesmerize, a daytime "rouse"). Bellwether, the Sower and Dusk Compulsion come from the
-  Nov 3 orchestration plan (v8); their designs aren't written up in role_exploration.md
-  yet. Each needs a hint package and solver support before it goes live. [open]
 
 - **Learning resources: tooltips, an in-game wiki and a tutorial.** (Nov 3 plan v8, zone
   18; restored Nov 8) Three layers, from one data registry so they never drift:
@@ -640,8 +633,6 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
     - **A possible cap** would be a new constant, Michael's call.
-- **Adjudicating a muddled card** (the Muddler secret). Tied to the secrets rework, since the
-  Muddler may go (Lantern, Nov 20). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
