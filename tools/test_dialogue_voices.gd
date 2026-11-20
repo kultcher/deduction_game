@@ -465,7 +465,7 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 258, "Agnes voice pack contains all 258 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 262, "Agnes voice pack contains all 262 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()

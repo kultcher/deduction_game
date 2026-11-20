@@ -357,6 +357,18 @@ static func press_card(w, d, card: Dictionary, grounds: bool) -> Dictionary:
 				r.facts.append(f)
 				_town_hears(w, d, [f])
 				r["outcome"] = "sleepwalk"
+		# Shown a sighting, they may add what the death record says of that night (BACKLOG
+		# "Explicit night-sighting rebuttals"): after the account, speech only, no weight.
+		if kind == "sighting":
+			var defence = load("res://sim/mind_defence.gd")
+			var blk: String = str(card.get("block", ""))
+			var reb: Dictionary = defence.night_route_rebuttal(w, d, nd, blk)
+			if not reb.is_empty():
+				r.lines.append(defence.rebuttal_line(w, d, reb))
+				defence.note_rebuttal(w, d, reb, "At the podium")
+				var s_eid: String = "sighting:%s:%s:%d:%s" % [str(card.get("source", "")), d.id, nd, blk]
+				defence.hear_rebuttal(w, d, defence.rebuttal_scope(reb, s_eid))
+				r["rebuttal"] = reb
 		return r
 	# A reading or anything else about them presses on their gift.
 	var r2: Dictionary = press_readings(w, d) if d.claim_public else press_role(w, d, grounds)

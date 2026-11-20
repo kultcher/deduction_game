@@ -49,7 +49,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. The Seer's rise looks small `[later: role tuning pass]`
     2. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. Explicit night-sighting rebuttals `[decided]`
+    1. Explicit night-sighting rebuttals `[in review]`
   - [UI](#ui)
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
@@ -360,7 +360,11 @@ Candidates for a unified retuning proposal, not approved changes.
 
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
-  than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
+  than hidden scaling. Don't clear all movement or ignore thwarted attacks. Built Nov 20
+  (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence, the podium press
+  of a sighting and the private press, as speech with no weight; a quiet night isn't argued
+  when the defender knows of a possible thwart. Placeholder wording, for Michael. See
+  `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md`. [in review]
 
 ### UI
 
