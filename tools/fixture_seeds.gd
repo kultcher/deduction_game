@@ -204,6 +204,9 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 ## `recast.call(card)` applied to a copy of each card `drop` picks.
 ## With `view_fn`, both refreshes read a copy of the view that `view_fn.call(view)` changed
 ## (say, the listener's own home nights read without sleepwalking doubt).
+## Both refreshes start from an empty connections state, not the listener's stored one. That's
+## fair for the comparison, which shares it, but the absolute chances can differ from the
+## game's (Lantern on #397).
 static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, recast: Callable = Callable(), view_fn: Callable = Callable()) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Jury = preload("res://workshop/jury.gd")
