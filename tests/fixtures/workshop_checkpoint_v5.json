@@ -1765,44 +1765,6 @@
 						"source": "constance",
 						"subject": "constance",
 						"text": "Constance claims a private errand could explain leaving home."
-					},
-					{
-						"acquired_day": 4,
-						"block": "square",
-						"data": {
-							"locations_in_block": 2
-						},
-						"event_ids": [
-							"item:constance:3"
-						],
-						"fact_id": "fixture:item3",
-						"id": "item3",
-						"incident_at": {
-							"day": 3,
-							"phase": "night"
-						},
-						"kind": "item",
-						"learned_at": {
-							"day": 4,
-							"phase": "morning"
-						},
-						"night": 3,
-						"observed_at": {
-							"day": 4,
-							"phase": "morning"
-						},
-						"provenance": {
-							"channel": "firsthand",
-							"origin": "item3",
-							"source": "player"
-						},
-						"reported_at": {
-							"day": 4,
-							"phase": "morning"
-						},
-						"source": "player",
-						"subject": "constance",
-						"text": "A personal item belonging to Constance was found at a searched Square location after night 3. This is a dropped item, not the crime-scene material."
 					}
 				],
 				"day": 4,

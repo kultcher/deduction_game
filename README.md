@@ -257,9 +257,8 @@ the Lamplighter walks every block. A vigil shows you who leaves home on its bloc
 else (not walkers arriving, nor the Lamplighter or Sexton on their tour). The town
 weighs a night sighting by how well it fits the killer's likely route: seen near the
 murder counts heavily, seen elsewhere argues strongly (not absolutely) against being the
-killer, and scattered sightings can back up a walking gift. Walkers
-sometimes drop something on the way: usually their home block's material, rarely a
-personal item. **Searching** finds what was dropped there (and the Revenant's totem); a
+killer, and scattered sightings can back up a walking gift. **Searching** a place finds
+the Revenant's totem if it's hidden there, and turns up one of its regulars; a
 crime scene gives one or two traces (a token or a scent) pointing at places the killer
 frequents, to match against what you know of people's haunts and workplaces.
 

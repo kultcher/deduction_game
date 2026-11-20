@@ -35,7 +35,6 @@ static func configure(base: Dictionary, kind: String, native) -> Dictionary:
 		_add(view, {"id": "vigil3", "kind": "sighting", "subject": base.slots.demon, "night": 3, "block": "square", "text": "You saw Constance on the Square on night 3."})
 		_add(view, {"id": "coverage3", "kind": "coverage", "subject": base.slots.warden, "night": 3, "block": "square", "data": {"seen": false, "detection": 1.0}, "text": "You watched the Square all night 3 and did not see Nisha. This does not cover other blocks."})
 		_add(view, {"id": "secret_claim", "kind": "secret_claim", "source": base.slots.demon, "subject": base.slots.demon, "night": -1, "role": "secret", "applies": {"from": 1, "through": 3}, "text": "Constance claims a private errand could explain leaving home."})
-		_add(view, {"id": "item3", "kind": "item", "subject": base.slots.demon, "night": 3, "block": "square", "data": {"locations_in_block": C.LOCATIONS.values().filter(func(l): return l.block == "square").size()}, "text": "A personal item belonging to Constance was found at a searched Square location after night 3. This is a dropped item, not the crime-scene material."})
 	elif kind == "poison":
 		view.scope += " Poison experiment: one possible Night 1-to-Night 2 impairment interval, supported or unsupported explanations and a Day 3 recovered reading."
 		var poisoner = native.by_id[base.slots.scion]
@@ -162,7 +161,7 @@ static func configure(base: Dictionary, kind: String, native) -> Dictionary:
 static func _add(view: Dictionary, card: Dictionary) -> void:
 	card["source"] = card.get("source", "player")
 	card["data"] = card.get("data", {})
-	var after_night: bool = card.kind in ["trace", "item", "coverage"]
+	var after_night: bool = card.kind in ["trace", "coverage"]
 	card["incident_at"] = {"day": maxi(card.night, 1), "phase": "night"}
 	card["observed_at"] = card.get("observed_at", {"day": maxi(card.night + int(after_night), 1), "phase": "morning" if after_night else ("evening" if card.kind == "evening" else "night")})
 	card["acquired_day"] = card.observed_at.day
