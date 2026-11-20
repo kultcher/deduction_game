@@ -329,9 +329,15 @@ static func top_tier_chance(type: String, chance: float) -> float:
 ## The share of a person's chance of being evil that is the chance of being the Demon, before
 ## and after the case's evidence, as the judge reads the case (CaseEval, on the Test juror's
 ## view): {before, after}, or {} if the case can't be judged. A "was the Demon when hanged"
-## question reads the same way (CaseEval's "demon" premise).
+## question reads the same way (CaseEval's "demon" premise). It reads every card the case
+## cites, challenged ones too (Codex on #410): the listener whose chance of evil this splits
+## keeps a challenged reading (a lie call presses its teller rather than moving the chances; a
+## mistaken one only discounts it), so setting it aside here would split that chance by
+## different evidence.
 static func _demon_share(g, value: Dictionary, target: String) -> Dictionary:
-	var juror: Dictionary = juror_case(g, value)
+	var unchallenged: Dictionary = value.duplicate(true)
+	unchallenged.erase("reading_challenges")
+	var juror: Dictionary = juror_case(g, unchallenged)
 	if not juror.get("ready", false) or target == "":
 		return {}
 	var CaseEval = preload("res://workshop/case_eval.gd")

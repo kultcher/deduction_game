@@ -81,6 +81,17 @@ func _init() -> void:
 		"\"is not the Demon\" on \"neither is the Demon\" reads stronger than \"is good\" on it (x%.3f against x%.3f)" % [float(nd.get("lr", 0.0)), float(gd.get("lr", 0.0))])
 	check(not nd_heard.is_empty() and float(nd_heard.chance) >= 1.0 - float(nd_heard.after) - 1e-9 and float(nd_heard.chance_before) >= 1.0 - float(nd_heard.before) - 1e-9,
 		"its chance is at least the chance of being good, before and after (%.3f, %.3f)" % [float(nd_heard.get("chance_before", -1.0)), float(nd_heard.get("chance", -1.0))])
+	# A bare lie call on that reading leaves the listener believing it, so the Demon share
+	# still reads it (Codex on #410): the call can't turn the badge against the premise.
+	# (The case also cites the Minion's Seer claim, so something is left once the call applies.)
+	var nd2_p: String = model.add_premise(innocent.id, "notdemon", Vector2(0, 800))
+	_link(model, view, nd2_p, [truth_id, _id(g, view, lie)])
+	var nd2: Dictionary = Live.test_juror(g, model.compile(nd2_p))
+	var nd_called: Dictionary = model.compile(nd2_p)
+	nd_called["reading_challenges"] = {truth_id: {"mode": "lying", "supports": []}}
+	var ndc: Dictionary = Live.test_juror(g, nd_called)
+	check(nd2.get("ready", false) and ndc.get("ready", false) and float(ndc.lr) > 1.0 and absf(log(float(ndc.lr)) - log(float(nd2.lr))) < 0.5 * absf(log(float(nd2.lr))),
+		"a bare lie call on \"neither is the Demon\" doesn't turn \"is not the Demon\" against itself (x%.3f, x%.3f uncalled)" % [float(ndc.get("lr", 0.0)), float(nd2.get("lr", 0.0))])
 	# A challenge, weighed as the listener weighs it.
 	var bare: Dictionary = accuse.duplicate(true)
 	bare["reading_challenges"] = {bluff_id: {"mode": "lying", "supports": []}}
