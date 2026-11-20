@@ -29,6 +29,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. \*Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
+    2. A reader's self-doubt points at the Poisoner `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. \*Accusations from starting suspicion read as clues `[decided]`
     2. \*The Gravedigger in a reluctant town `[decided]`
@@ -142,6 +143,15 @@ Lantern). Nothing is open here.
      - **Tier 3** waits for the purge.
 
   [decided]
+
+- **A reader's self-doubt points at the Poisoner** (Michael, Nov 20). When an NPC voices
+  "my readings may have been tampered with" (gift self-doubt), listeners who hear it focus
+  Poisoner suspicion on anyone seen on that reader's block on any night it read.
+  - It works the same way as a Mistaken call's nudge.
+  - It applies even if the reader is Delusional, or wrong to be suspicious.
+  - It reuses the existing weight, scaled by the listener's trust in the reader.
+
+  Owner Quill, with Lantern and Beadle reviewing. [decided]
 
 ### NPC behaviour
 
@@ -517,8 +527,10 @@ Workshop and the shared model can't express yet.
   anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
   **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
   Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
-  destination is spread over the town. The fuller Poisoner-presence factor waits for after
-  this round. The other two Minion gifts are
+  destination is spread over the town. **Declined (Michael, Nov 20):** the fuller
+  Poisoner-presence factor in the judge. Nobody can verify that a reading was mistaken, so the
+  judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
+  This item closes when #445 merges. The other two Minion gifts are
   built and closed (Quill, Nov 20). Owner Quill. [decided]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
