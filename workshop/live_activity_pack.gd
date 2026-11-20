@@ -166,6 +166,10 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			flags |= (1 << 10)  # FlagKnownSelf: the listener's own home night
 		if bool(card.get("admitted", false)):
 			flags |= (1 << 11)  # FlagAdmitted: a person's own "I was out"
+		if kind_code == 1 and teller_place_eligible(card, ids):
+			flags |= (1 << 12)  # FlagTellerAt
+			if homes[ids.find(str(card.source))] == _block_code(str(card.block)):
+				flags |= (1 << 13)  # FlagTellerAtHome: from their window
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))

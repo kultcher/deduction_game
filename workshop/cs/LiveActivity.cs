@@ -70,6 +70,12 @@ internal static class LiveActivityKernel
     /// A person's own "I was out" (LiveAssessment.activity_card): only their word, so it binds
     /// only where they're good, and it's no hard route constraint.
     public const int FlagAdmitted = 1 << 11;
+    /// A sighting that places its teller (LiveActivity.teller_place; Michael, Nov 20): where the
+    /// teller is good, a street sighting puts them out on that block that night, and one from
+    /// their window (FlagTellerAtHome: their own block) at home or out on their own block.
+    /// Heard at cardDoubles[c * 2]: a path that doesn't fit has likelihood 1 - that.
+    public const int FlagTellerAt = 1 << 12;
+    public const int FlagTellerAtHome = 1 << 13;
 
     // Movement role codes (slot 7):
     public const int MoveRoleEmpty = 0;
@@ -979,6 +985,18 @@ internal static class LiveActivityKernel
         {
             case KindSighting:
             {
+                if ((flags & FlagTellerAt) != 0 && cardInts[off + 2] == personIdx)
+                {
+                    if (currentAlign != AlignGood)
+                    {
+                        return 1.0;   // an evil teller's word says nothing of where it was
+                    }
+                    int at = cardInts[off + 10];
+                    bool fits = (flags & FlagTellerAtHome) != 0
+                        ? (!isOut || path.LastBlock == at || path.IsLampTour)
+                        : (isOut && (path.IsLampTour ? path.HasBlock(at) : path.LastBlock == at));
+                    return fits ? 1.0 : (1.0 - cardDoubles[cardIdx * 2]);
+                }
                 if ((cardInts[off + 4] & personBit) != 0)
                 {
                     int blk = cardInts[off + 10];

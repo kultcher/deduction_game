@@ -10,6 +10,9 @@
 ##   - Since Nov 17 a good a's own "home" may itself be false (GOOD_OWN_ALIBI_OUT), so a
 ##     good a and a good c no longer score 0: they score that floor. The checks compare
 ##     against it.
+##   - These checks isolate the contest: the sighting placing its teller (Michael, Nov 20;
+##     LiveActivity.teller_place) is held off for them, and checked on its own at the end
+##     (_teller_place_check).
 extends SceneTree
 
 const Activity = preload("res://workshop/live_activity.gd")
@@ -30,6 +33,7 @@ func check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
+	Activity.teller_place = false
 	var view: Dictionary = _view()
 	var ids: Array = view.people.map(func(p): return p.id)
 	var own: Dictionary = {"id": "own", "fact_id": "own", "kind": "alibi", "source": "a", "subject": "a", "subjects": ["a"], "night": 1, "block": "hill",
@@ -84,6 +88,8 @@ func _init() -> void:
 	var f_mine: Array = Activity.factors(view, [own, mine], {})
 	check(f_mine.is_empty() or not f_mine[0].has("contests"), "a sighting with no in-town sighter (the player's) is never contested")
 	_converted_checks()
+	Activity.teller_place = true
+	_teller_place_check(view, cards, w_a_demon, w_c_demon, w_neither, r_on)
 	print("Sighter contest: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -95,6 +101,37 @@ func _view() -> Dictionary:
 	return {"people": people, "cards": [], "evil_count": 2, "alignment_epoch": "Original alignment", "live_activity": true,
 		"timeline": History.from_events([{"kind": "demon_death", "subjects": ["g"], "at": {"day": 1}}]),
 		"world_options": {"roles": true, "identities": true, "modifiers": []}}
+
+
+## With the sighting placing its teller (Michael, Nov 20): c's street sighting on the Square
+## says c was out there that night, which a good c with no reason to walk rarely is, so c
+## bears more of the clash than the contest alone gives it.
+func _teller_place_check(view: Dictionary, cards: Array, w_a_demon: Dictionary, w_c_demon: Dictionary, w_neither: Dictionary, r_contest: float) -> void:
+	Caches.clear_all()
+	Activity.cache.clear()
+	var f: Array = Activity.factors(view, cards, {})
+	var r_tp: float = Activity.score(w_c_demon, f[0]) / Activity.score(w_a_demon, f[0]) if not f.is_empty() else -1.0
+	check(r_tp > r_contest, "a sighting places its teller: c, out on the Square by its own word, bears more of the clash (%.4f of the subject-Demon world, against %.4f by the contest alone)" % [r_tp, r_contest])
+	# From c's window (c lives on the Market) the sighting puts c at home, which a good c
+	# fits unless it walked elsewhere: it weighs on c far less than the street sighting does.
+	# Against the both-good world, with the rule on and off.
+	var lift = func(cs: Array) -> float:
+		var out: Array = []
+		for on in [true, false]:
+			Activity.teller_place = on
+			Caches.clear_all()
+			Activity.cache.clear()
+			var ff: Array = Activity.factors(view, cs, {})
+			out.append(Activity.score(w_c_demon, ff[0]) / Activity.score(w_neither, ff[0]) if not ff.is_empty() else -1.0)
+		Activity.teller_place = true
+		return out[0] / out[1] if out[1] > 0.0 else -1.0
+	var window: Array = cards.map(func(c): return c.duplicate(true))
+	window[1].block = "market"
+	var lift_street: float = lift.call(cards)
+	var lift_window: float = lift.call(window)
+	check(lift_window >= 1.0 and lift_window < lift_street, "from the teller's own window it weighs on c far less than a street sighting does (x%.2f, against x%.2f)" % [lift_window, lift_street])
+	Caches.clear_all()
+	Activity.cache.clear()
 
 
 ## The Revenant's curse converts a good yes-voter (here c) from day 2's evening. In a world

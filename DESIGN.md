@@ -188,6 +188,13 @@ it means the game must teach its own way of thinking and make evidence very read
   the Revenant's curse is doubted only for what they told while converted. At most
   `SIGHTER_CONTEST_MAX` (2) sighters a person, the most-cited first. For a Medium's
   relayed sighting the relayer is weighed as a possible inventor too (#140).
+- **A sighting places its teller** (Michael, Nov 20): in a world where the teller is good, a
+  street sighting says they were out on that block that night, and one from their window
+  (their own block) that they were home or out on their own block. So "I saw Edda on the
+  Market" from someone with no reason to walk is also "I was out on the Market", and a
+  lie about someone who knows they were home weighs fully against its teller. An evil
+  teller's word says nothing of where it was. It binds as far as the sighting is heard
+  (`LiveActivity.teller_place`; `FlagTellerAt` in the kernel), and is never a hard route.
 - **Self-sightings** (#139): a good NPC's sighting of themselves on a night they know they
   spent at home is kept in the weighing, so it counts against the sighter. With the
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`

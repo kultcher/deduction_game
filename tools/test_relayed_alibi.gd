@@ -37,10 +37,18 @@ func _init() -> void:
 						continue
 					# The relayer must have room to rise: a listener already sure of them can't show
 					# the sighting counting against them (seed 100029 at 1.00, Nov 20).
-					if float(_posteriors(g, l).get(teller.id, 1.0)) >= 0.95:
+					var post: Dictionary = _posteriors(g, l)
+					if float(post.get(teller.id, 1.0)) >= 0.95:
 						continue
+					# A sighter at home that night who saw the dead from their own window (their
+					# block isn't the dead's home), so the honest sighting doesn't also say the sighter was out
+					# (a sighting places its teller, Michael, Nov 20).
 					for s in w.living_good():
-						if s != l and s != dead:
+						# ... and one the listener trusts, so the clash's blame (decided by priors in
+						# the contest) has the relayer to fall on (seed 100047: a sighter held at 0.46
+						# took it all).
+						if s != l and s != dead and s != teller and s.home_block != dead.home_block and not Seeds.was_out(w, s, int(c.data.item.get("night", -1))) \
+								and float(post.get(s.id, 1.0)) < 0.3:
 							return {"listener": l.id, "teller": teller.id, "dead": dead.id, "sighter": s.id, "night": int(c.data.item.get("night", -1))}
 			return {})
 		if not found.is_empty():
@@ -55,12 +63,8 @@ func _init() -> void:
 	var dead = w.by_id[found.dead]
 	var tag: String = "seed %d: %s hears %s's relay that %s was home on night %d" % [int(found.seed), l.id, found.teller, dead.id, found.night]
 	var before: Dictionary = _posteriors(g, l)
-	# An honest sighting of the dead out that night, away from home.
-	var block: String = ""
-	for b in C.BLOCKS:
-		if b != dead.home_block:
-			block = b
-			break
+	# An honest sighting of the dead out that night, away from home: from the sighter's window.
+	var block: String = w.by_id[found.sighter].home_block
 	var card: Dictionary = {"kind": "sighting", "source": found.sighter, "via": found.sighter, "subject": [dead.id], "block": block, "day": found.night, "phase": C.NIGHT,
 		"learned": [{"day": w.day, "phase": w.phase, "via": found.sighter}], "text": "test sighting"}
 	var receipt: Dictionary = Mind.WorkshopLedger.Evidence.normalize_card(card)

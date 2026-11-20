@@ -131,7 +131,10 @@ func _juror() -> void:
 			target = n
 			break
 	var warden = goods.filter(func(n): return n != target)[0]
-	var witness = goods.filter(func(n): return n != target and n != warden)[0]
+	# From their window on the guarded door's block, where one lives there, so the honest
+	# sighting doesn't also say the witness was out (a sighting places its teller, Nov 20).
+	var near: Array = goods.filter(func(n): return n != target and n != warden and n.home_block == target.home_block)
+	var witness = near[0] if not near.is_empty() else goods.filter(func(n): return n != target and n != warden)[0]
 	w.day = 2
 	GameBoard.add_card(g, {"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": witness.id, "day": 1, "phase": C.NIGHT, "text": "Night 1 sighting: %s saw %s on %s." % [witness.name, demon.name, C.block_name(target.home_block)]})
 	GameBoard.add_card(g, {"kind": "info", "source": warden.id, "role": "warden", "day": 1, "phase": C.NIGHT, "data": {"target": target.id, "saved": true}, "text": "%s guarded %s's door on night 1 and turned the Demon away." % [warden.name, target.name]})
