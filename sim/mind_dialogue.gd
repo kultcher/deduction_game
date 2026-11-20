@@ -1137,13 +1137,19 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 		var hiding = "evil work" if n.is_evil() else ("hidden %s gift" % C.role_name(n.role) if C.ROLES[n.role].get("night_walk", false) and n.secret.is_empty() else "secret: %s" % n.secret.get("kind", "?"))
 		var can_confess = not n.is_evil() and not n.secret.is_empty()
 		var confess = false
-		if can_confess:
+		if can_confess and load("res://sim/mind_podium.gd").confessed_before(n, nd):
+			confess = true  # already confessed that night: the same account, not a refusal
+		elif can_confess:
 			confess = decide(w, n, "confess", {"trust": (n.trust - Tuning.Dialogue.CONFESS_TRUST_PIVOT) * Tuning.Dialogue.CONFESS_TRUST_SLOPE, "privacy": (Tuning.Dialogue.CONFESS_PRIVACY_PIVOT - trait_of(n, "privacy")) * Tuning.Dialogue.CONFESS_PRIVACY_SLOPE,
 				"pressure": n.pressure * Tuning.Dialogue.CONFESS_PRESSURE_SLOPE * (1.0 - Tuning.Dialogue.CONFESS_COMPOSURE_DAMP * trait_of(n, "composure")), "insight_none": 0.0},
 				"Confess personal secret (%s)?" % n.secret.get("kind", "?"))
 		if confess:
 			n.secret_known = true
-			lines.append(say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])}))
+			if bool(n.dialogue_memory.get("night_accounts", {}).get(str(nd), {}).get("public", false)):
+				# Told before the town already: no plea to keep it quiet, the podium's words again.
+				lines.append(say_voiced(n, "confess_secret_public", "I wasn't out for anything wicked. I %s." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])}))
+			else:
+				lines.append(say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])}))
 			vantage = block
 			how = "street"
 			facts.append({"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
