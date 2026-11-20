@@ -1,6 +1,8 @@
 ## One supported presentation path: assessment, the told-card receipt, social response.
 ## Runs only on a good mind (including evil's cover). No actual evil intelligence enters.
 extends RefCounted
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -79,7 +81,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 	if not capability.ready:
 		return _unavailable(g, n, card, capability.exit_point, capability.issues)
 	if card.has("workshop_case"):
-		g.workshop_canvas_retire(n, card)
+		GamePresentation.workshop_canvas_retire(g, n, card)
 	var snapshot = _snapshot(g, n, card, targets, direction, venue)
 	if snapshot.is_empty() or not Assess.prepare(snapshot).ready:
 		return _unavailable(g, n, card, "snapshot", ["Evidence changed after the readiness check."])
@@ -230,8 +232,8 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 			var eid = "workshop:tell:%s:%s" % [key, target]
 			var meta = {"kind": "tell", "workshop_card": Evidence.normalize_card(card), "text": card.get("text", ""), "conclusion": root.conclusion.duplicate(true)}
 			if card.get("kind") == "deduction":
-				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "conclusion": root.conclusion.duplicate(true), "workshop_roots": Shared.roots([card], g.all_receipts()),
-					"workshop_case": key, "supports": PresentationReply.support_refs([card], g.all_receipts())}
+				meta = {"kind": "arg", "workshop_conclusion": root.conclusion.type, "conclusion": root.conclusion.duplicate(true), "workshop_roots": Shared.roots([card], GameBoard.all_receipts(g)),
+					"workshop_case": key, "supports": PresentationReply.support_refs([card], GameBoard.all_receipts(g))}
 			var scoped: Array = assessment.claims.filter(func(c): return c.conclusion.target == target and c.conclusion.type == root.conclusion.type)
 			var agreement: float = scoped[0].agreement if not scoped.is_empty() else assessment.agreement
 			Mind.ledger_hear(g.w, n, eid, [], maxf(0.0, agreement), Mind.support_ref(card), meta)

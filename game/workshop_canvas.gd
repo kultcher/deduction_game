@@ -1,5 +1,6 @@
 ## Live canvas boundary. Only player board receipts cross into the editor.
 extends RefCounted
+const GameBoard = preload("res://game/game_board.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -100,10 +101,10 @@ static func _profile_facets(g) -> Dictionary:
 	var out = {}
 	var C = Assess.C
 	for n in g.w.npcs:
-		var hw_recs: Array = g.profile_receipts_for(n.id, "home_work")
-		var haunt_recs: Array = g.profile_receipts_for(n.id, "haunts")
-		var trait_recs: Array = g.profile_receipts_for(n.id, "personality")
-		var bond_recs: Array = g.profile_receipts_for(n.id, "bonds")
+		var hw_recs: Array = GameBoard.profile_receipts_for(g, n.id, "home_work")
+		var haunt_recs: Array = GameBoard.profile_receipts_for(g, n.id, "haunts")
+		var trait_recs: Array = GameBoard.profile_receipts_for(g, n.id, "personality")
+		var bond_recs: Array = GameBoard.profile_receipts_for(g, n.id, "bonds")
 		var haunt_names: Array = haunt_recs.map(func(c): return g.w.loc_name(c.get("loc", c.get("locs", [""])[0])))
 		var latest_traits = {}
 		for c in trait_recs:
@@ -144,7 +145,7 @@ static func _profile_facets(g) -> Dictionary:
 static func supports(g, value: Dictionary) -> Dictionary:
 	var numbers: Array = []
 	var missing: Array = []
-	var pool: Array = g.all_receipts()
+	var pool: Array = GameBoard.all_receipts(g)
 	for id in value.cards:
 		var matches: Array = pool.filter(func(c): return c.kind != "deduction" and not c.get("deleted", false) and Evidence.normalize_card(c).id == id)
 		if matches.is_empty():
@@ -227,7 +228,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	# Build native footing through the ordinary filer, then retain the
 	# entire graph. A unique label prevents text-based card merging across drafts.
 	var old_size: int = g.board.size()
-	var number = g.file_deduction(conclusion, roots.numbers, true)
+	var number = GameBoard.file_deduction(g, conclusion, roots.numbers, true)
 	if number < 1:
 		return number
 	var card: Dictionary = g.board[number - 1].duplicate(true)
@@ -247,7 +248,7 @@ static func file(g, value: Dictionary, previous: int = 0) -> int:
 	if number > old_size:
 		g.board[number - 1] = card
 	else:
-		number = g.add_card(card)
+		number = GameBoard.add_card(g, card)
 	if number < 1:
 		return number
 	g.w.dlog.add("workshop_canvas_filed", "player", conclusion.get("a", ""), {"card": number, "revision": revises > 0, "revises": revises, "case": value, "supports": roots.numbers})
@@ -713,7 +714,7 @@ static func public_claims_for(g, value: Dictionary) -> Array:
 	var roots: Dictionary = supports(g, value)
 	var named: Dictionary = {}
 	for number in roots.numbers:
-		var card: Dictionary = g.receipt_by_number(int(number))
+		var card: Dictionary = GameBoard.receipt_by_number(g, int(number))
 		for field in ["source", "subject"]:
 			var v = card.get(field, "")
 			for id in (v if v is Array else [v]):
@@ -785,7 +786,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 		var ids: Array = Array(filed.get("workshop_case", {}).get("cards", [])).duplicate()
 		if ids.is_empty():
 			for support in filed.get("supports", []):
-				var root: Dictionary = g.receipt_by_number(int(support))  # board cards and profile receipts
+				var root: Dictionary = GameBoard.receipt_by_number(g, int(support))  # board cards and profile receipts
 				if not root.is_empty() and root.get("kind", "") != "deduction":
 					ids.append(Evidence.normalize_card(root).id)
 		var conclusion: Dictionary = filed.get("workshop_case", {}).get("conclusion", {})
@@ -812,7 +813,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	if not roots.issues.is_empty():
 		return {}
 	for number in roots.numbers:
-		var card: Dictionary = g.receipt_by_number(int(number))  # board cards and profile receipts
+		var card: Dictionary = GameBoard.receipt_by_number(g, int(number))  # board cards and profile receipts
 		if card.is_empty() or not (Meeting.already_public(g, card) or said.has(Evidence.normalize_card(card).id)):
 			return {}
 	# The neutral listener's view: this case's cards and your public cases', no watch record.
