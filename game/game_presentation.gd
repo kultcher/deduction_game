@@ -98,7 +98,7 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 	# claim, an empty hub) is not a model gap, so it is not counted as a fallback.
 	for row in check.listeners:
 		if not row.ready and not _all_authoring_validation_issues(row.issues):
-			WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+			WorkshopOwnership.unprepared(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
 	if _all_authoring_validation_issues(check.issues):
 		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
 	# No legacy route for presentations: an unsupported submission is blocked with its

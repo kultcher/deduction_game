@@ -6,8 +6,9 @@ Nov 10, 2026 · Claude-Lantern, Claude-Quill and Claude-Bailiff, with Michael ·
 model is `workshop/connections.gd`, on in play since #160 (Michael, Nov 16: "commit to the
 connections model"; golden `baseline_a713ca5`, then `baseline_bb6f01c` with #162). Purge
 phase 3 (Nov 18) removed its switch and the earlier model with it
-(`docs/connections_purge_plan.md`); the earlier model is on the branch
-`archive/legacy-belief-final`, for comparisons.
+(`docs/connections_purge_plan.md`), and phases 5 and 7 deleted the refresh-only code and the
+pre-CaseEval engine; the earlier model is on the branch `archive/legacy-belief-final`, for
+comparisons.
 
 **Where this came from:** the claude.ai Project doc `belief-model-direction-2026-11-10`,
 moved into the repo on Nov 16 (Bailiff). Every earlier table, the Phase 4 prototype spec and

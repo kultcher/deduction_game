@@ -1,16 +1,14 @@
 ## The connections belief model, step 1 (workshop/connections.gd;
-## docs/belief_model.md, "Phase 6 spec"): the switch and the single-card values.
+## docs/belief_model.md, "Phase 6 spec"): the single-card values.
 ##
-## - The switch is off by default, and with it off a refresh carries no trace of the model.
-## - With it on, every card a listener holds counts once, alone or in a built-in pairing
+## - Every card a listener holds counts once, alone or in a built-in pairing
 ##   (test_connections_pairings), including the ones its attention left out; the ones it
 ##   rejects from its own knowledge don't.
 ## - Each chance is the baseline (the standing view and the public record) plus every
 ##   card's own lean and what the core adds (test_connections_core), in log-odds, then one
 ##   common shift so the chances still sum to the baseline's (the evil count). The "before"
-##   side stays today's.
+##   side stays CaseEval's.
 ## - Headline reading (a low-Insight listener taking a strong reading at its word) is off.
-## - Turning the switch back off gives today's refresh again, exactly.
 extends SceneTree
 
 const Game = preload("res://game/game.gd")

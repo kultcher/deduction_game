@@ -1,4 +1,4 @@
-## One supported presentation path: assessment, parked legacy receipt, social response.
+## One supported presentation path: assessment, the told-card receipt, social response.
 ## Runs only on a good mind (including evil's cover). No actual evil intelligence enters.
 extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
@@ -63,7 +63,7 @@ static func _key(card: Dictionary, targets: Array, direction: String, snapshot: 
 
 static func _unavailable(g, n, card: Dictionary, point: String, issues: Array) -> Dictionary:
 	if not preload("res://game/game_presentation.gd")._all_authoring_validation_issues(issues):
-		Ownership.fallback(g, n, point, issues, card.get("n", 0))
+		Ownership.unprepared(g, n, point, issues, card.get("n", 0))
 	# No legacy route for presentations (user, Oct 25): block with the reason.
 	return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
 
@@ -159,7 +159,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		# an unsupported endorsement behind when blocking the presentation.
 		state.presentations = previous
 		state.attention_focus = previous_focus
-		Mind.refresh_beliefs(g.w, n, " (presentation capability fallback)")
+		Mind.refresh_beliefs(g.w, n, " (presentation not assessed)")
 		return _unavailable(g, n, card, "ownership", state.get("issues", ["Ownership was not activated."]))
 	var plan: Dictionary = g._workshop_plans[listener_key]
 	# Rebuild against final interval reliability, matching the applied union.

@@ -10,8 +10,7 @@
 ##   card cited from an always-on connection never merges.
 ## - A challenge acts inside its own case: the reading's own value is untouched, and the
 ##   floors a challenge puts under people are scaled by the case's weight.
-## - Spillover damping is off: a presentation is weighed as its own cards.
-## - With the switch off, none of it exists.
+## - There is no spillover damping: a presentation is weighed as its own cards.
 extends SceneTree
 
 const Game = preload("res://game/game.gd")

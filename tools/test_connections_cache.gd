@@ -7,7 +7,6 @@
 ## - The key is what a judgement reads: an unrelated card, the meeting's talk or attention's
 ##   bookkeeping keep an answer; the judged card, a death, trust or a Magistrate reading
 ##   with new talk make it be judged again.
-## - With the switch off nothing is kept.
 extends SceneTree
 
 const Game = preload("res://game/game.gd")

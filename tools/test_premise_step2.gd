@@ -4,7 +4,6 @@
 ## a public role claim joins a case that cites it automatically.
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -17,7 +16,7 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
-	# Premises pass step 2: the earlier model's half-weight suspicious premise and held-back press.
+	# Premises pass step 2: a 'suspicious' case halves only what its cards add together, and presses its target.
 	_secret_word()
 	_secret_record()
 	_suspicious()

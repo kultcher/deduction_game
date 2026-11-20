@@ -1,7 +1,6 @@
 ## The Workshop's "No new info" note (WorkshopCanvas.town_note; triage 5.2, Michael's
-## rulings of Nov 14). With the connections switch on, beside the Test juror's strength:
+## rulings of Nov 14). Beside the Test juror's strength:
 ##
-## - nothing with the switch off;
 ## - a case that brings any card the town hasn't heard never gets a note;
 ## - public cards that add little together: "No new info";
 ## - cards you put to the town today already: "No new info"; under a "suspicious"
@@ -11,7 +10,6 @@
 extends SceneTree
 
 const Game = preload("res://game/game.gd")
-const Connections = preload("res://workshop/connections.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")

@@ -9,7 +9,7 @@
 ## also credits a card the attribution's own model under-reads (test_meeting_flow: Hollis's
 ## private Gravedigger reading against Odette, 0.50 -> 0.81 through the core); the
 ## attribution's model only where those inputs are missing (ReasonAttribution.same_model_loo).
-## Games played here with connections on (7 NPCs, to the day-3 meeting), on playtest 89077's
+## Games played here (7 NPCs, to the day-3 meeting), on playtest 89077's
 ## script. For each mind with a "taken together" reason, the reason's weight implies a drop
 ## (weight / 0.45, before the belief scale); what the same model says removing its card does
 ## must be at least half of that, less a small allowance. On the earlier measurement 6 of the

@@ -16,7 +16,7 @@
 ## that person (what it loses without each, and the smallest build-up that reaches it), and
 ## which of them the prototype judges together.
 ##
-## The judge is today's shared evaluator (CaseEval over the possible worlds) run on a chosen
+## The judge is the shared evaluator (CaseEval over the possible worlds) run on a chosen
 ## set of cards: for one listener and one set it gives everyone's chance of being evil and of
 ## being the Demon. Everything below is arithmetic on its answers.
 ##
