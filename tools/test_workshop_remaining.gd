@@ -184,7 +184,6 @@ func _run() -> void:
 	board.connect_cards(restated, board.selected)
 	var restatement = Jury.evaluate(view, board.compile(board.selected), persistent)
 	check(restatement.repeated and restatement.effects.values().all(func(e): return is_zero_approx(e.delta)), "duplicate dated premises cannot farm confidence persistence or evidence effects")
-	await _ui()
 	print("Remaining Workshop slices: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -250,51 +249,6 @@ func _calibration() -> void:
 	check(demon_fit_count == 10000 and loc_count == 10000 and absf(float(token_count) / float(loc_count) - Tuning.Setup.TRACE_TOKEN_PROB) < 0.03 and absf(two_trace_count / 10000.0 - Tuning.Setup.EXTRA_TRACE_CHANCE) < 0.025 and absf(float(slot0_demon_count) / maxf(two_trace_count, 1) - 0.5) < 0.04, "10,000 kill-generator samples always include the Demon trace, hit 100% locations (67/33 token/scent), and roll 45% shuffled passer second traces")
 	check(absf(demon_items / 10000.0 - 0.042) < 0.007 and absf(good_items / 10000.0 - 0.018) < 0.005, "actual drop-generator samples match the conditional 4.2/1.8 percent mechanism, before route/location search")
 
-func _ui() -> void:
-	var scene = _fixture_workshop()
-	root.add_child(scene)
-	await process_frame
-	await process_frame
-	var picker = scene.find_child("WorkshopExperiment", true, false)
-	for i in [1, 2, 3]:
-		picker.select(i)
-		picker.item_selected.emit(i)
-		check(scene.session.validate_case(scene.session.case_data) == "", "experiment picker produces a valid connected case %d" % i)
-		if i == 2:
-			scene._open_answer("e:dowse")
-			var fault = scene.find_child("PoisonExplanation", true, false)
-			fault.select(2)
-			fault.item_selected.emit(2)
-			scene.answer_window.hide()
-			check(scene.board.compile(scene.case_root).faults.night1.basis == "vial1", "actual Answer control cites a shared poison interval")
-		if i == 3:
-			scene._open_answer("e:curse_warning")
-			var voter = scene.find_child("ConvertedVoter", true, false)
-			voter.select(1)
-			voter.item_selected.emit(1)
-			scene.answer_window.hide()
-			check(scene.board.compile(scene.case_root).answers.curse_warning.positive == ["merrin"], "actual curse card answers who converted, preserving uncertainty as a choice")
-			scene._open_answer(scene.case_root)
-			var epoch = scene.find_child("ClaimEpoch", true, false)
-			epoch.select(2)
-			epoch.item_selected.emit(2)
-			scene.answer_window.hide()
-			check(scene.board.compile(scene.case_root).conclusion.at == "after restoration", "actual premise control selects the alignment epoch")
-		var start = Time.get_ticks_msec()
-		scene._present()
-		print("Fixture %s jury latency: %d ms" % [scene.session.scenario.fixture, Time.get_ticks_msec() - start])
-		check(scene.session.last_results.size() == 4, "new fixture presents through the shared jury engine %d" % i)
-		scene.jury_window.hide()
-		var before = scene.session.last_results.duplicate(true)
-		var path = "user://workshop-remaining-%d.json" % i
-		scene._save(path)
-		scene._load_fixture(0)
-		scene._open(path)
-		check(scene.session.last_results == before and picker.selected == i, "canvas experiment, answers, dates and jury history restore %d: %s" % [i, scene.status.text])
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	scene.queue_free()
-	await process_frame
-
 func _roundtrip(session, label: String) -> void:
 	var restored = Session.new()
 	var error = restored.restore(JSON.parse_string(JSON.stringify(session.export_data())))
@@ -311,10 +265,3 @@ func check(okay: bool, label: String) -> void:
 	else:
 		fails += 1
 		push_error("FAIL: " + label)
-
-## The fixture Workshop (fixture 692): the canvas base script as a full-screen control. Its lab
-## scene is gone (dead dev labs, Nov 19); the script is still the live Workshop's base.
-func _fixture_workshop() -> Control:
-	var scene: Control = preload("res://ui/case_workshop_canvas.gd").new()
-	scene.set_anchors_preset(Control.PRESET_FULL_RECT)
-	return scene

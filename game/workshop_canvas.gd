@@ -206,9 +206,7 @@ static func status(g, value: Dictionary) -> Dictionary:
 	var blocked = not supports(g, value).issues.is_empty() or value.cards.is_empty()
 	if value.cards.is_empty():
 		issues.append("Connect evidence to the selected premise before filing.")
-	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked, "issues": issues,
-		# Shown by the Workshop preview (ui/live_case_workshop.gd) until its wording is settled (Michael).
-		"warning": "Fallback evaluates the headline and original cards using the existing argument system. Canvas answers, assumptions, intermediate claims and link meanings are NOT interpreted by that system."}
+	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked, "issues": issues}
 
 static func file(g, value: Dictionary, previous: int = 0) -> int:
 	if g.workshop_presenting:
