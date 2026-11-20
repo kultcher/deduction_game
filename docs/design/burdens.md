@@ -1,9 +1,7 @@
 # Burdens: the secrets rework, scoped (design note)
 
-**Status: scoped with Michael (Nov 20, 2026). Design questions are answered (sections 1 to 7),
-and so are the feasibility questions and the judge's world model (section 9). Nothing is
-open. Nothing is
-built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
+**Status: prototype stage 1 started (Michael approved, Nov 20), on `mock/burdens-slot`,
+which never merges. The design questions are answered (sections 1 to 9).** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
 Where the two disagree, this note is the newer one.
@@ -441,3 +439,15 @@ Decided after Lantern's four worked scenarios (in
 - **Argon re-estimates the speed** with Marked enumerated.
 
 Nothing in the design is open now. Building waits on Michael's word to Seneschal.
+
+## 10. The prototype (Michael approved, Nov 20)
+
+It's on `mock/burdens-slot`, which never merges, and is compared against main with paired
+sweeps.
+- **Stage 1:**
+  - Lantern builds the model-A slot world domain, with Marked known, on the judge side.
+  - Beadle builds Marked's tiered disclosure, the "carried the mark since birth" defence, and
+    evil's reactive Marked bluff.
+- **Retirements, by both:** the Lovers and Sleepwalker 1.0.
+- **Stage 2:** Unrequited, Ill-Omened and the hanging cost.
+- **Argon's speed re-estimate** under model A is going to Michael.
