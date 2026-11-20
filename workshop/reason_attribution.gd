@@ -455,7 +455,9 @@ static func public_view_from_world(w) -> Dictionary:
 		"timeline": History.from_events(pub_events),
 		"chronology": hist.value,
 		"world_options": {
-			"modifiers": C.SECRET_MOD_LIST.duplicate(),
+			# The secrets this game's script can deal, as the town's own view reads them
+			# (WorkshopBridge), not every secret on the roster (Lantern's bug, Nov 20).
+			"modifiers": w.case_script.secrets.duplicate() if w.case_script != null else C.SECRET_MOD_LIST.duplicate(),
 			"roles": true,
 			"identities": true,
 		},
