@@ -16,12 +16,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
 | `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_answers.gd` |
 | `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
-| `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world.gd` |
+| `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world_night.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/world.gd` |
-| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world.gd` |
-| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world.gd` |
+| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd` |
+| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
 | `EXTRA_WORK_SHIFT_CHANCE` | `0.0` | Nov 10: everyone works a single shift (was 0.3) | `sim/world.gd` |
 | `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
@@ -45,7 +45,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `IDLE_HAUNT_CHANCE` | `0.4` | Conversation & movement rates | `sim/world.gd`, `workshop/day_presence.gd` |
 | `HAUNT_SIGHTING_DAYS` | `2` |  | `game/game_day_night.gd` |
 | `HAUNT_SIGHTING_DAYS_TAVERN` | `3` |  | `game/game_day_night.gd` |
-| `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd`, `ui/map_view.gd` |
+| `TOWN_HALL_USES_PER_CASE` | `3` |  | `game/game_day_night.gd`, `sim/world.gd`, `sim/world_base.gd`, `ui/map_view.gd` |
 | `PAIR_SILENCED_WEIGHT` | `0.02` |  | `sim/world.gd` |
 | `PAIR_TRUST_PIVOT` | `0.3` |  | `sim/world.gd` |
 | `PAIR_TRUST_SLOPE` | `2.0` |  | `sim/world.gd` |
@@ -53,27 +53,27 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRE_PHASE_CHAT_CHANCE` | `0.65` |  | `sim/world.gd` |
 | `POST_PHASE_PAIR_MULT` | `0.4` |  | `sim/world.gd` |
 | `SAME_BLOCK_SIGHTING_CHANCE` | `0.4` |  | `sim/world.gd` |
-| `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world.gd` |
-| `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world.gd` |
-| `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world.gd` |
-| `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world.gd` |
-| `NIGHT_NEIGHBOUR_ALIBI_CHANCE` | `0.2` |  | `sim/world.gd` |
+| `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world_night.gd` |
+| `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world_night.gd` |
+| `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world_night.gd` |
+| `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world_night.gd` |
+| `NIGHT_NEIGHBOUR_ALIBI_CHANCE` | `0.2` |  | `sim/world_night.gd` |
 | `MISLEADING_TRACE_CHANCE` | `0.4` | retired structured-trace era constant (kept for compatibility) | (unused) |
-| `TRACE_TOKEN_PROB` | `0.67` |  | `sim/world.gd` |
-| `TRACE_CAST_BAND_LO` | `0.6` |  | `sim/world.gd` |
-| `TRACE_CAST_BAND_HI` | `0.85` |  | `sim/world.gd` |
-| `TRACE_LOCATIONS_BASE_WEIGHT` | `3.5` |  | `sim/world.gd` |
-| `TRACE_QUARTER_BASE_WEIGHT` | `0.0` |  | `sim/world.gd` |
-| `TRACE_CONNECTION_BASE_WEIGHT` | `0.0` |  | `sim/world.gd` |
-| `TRACE_FRESH_FAMILY_WEIGHT` | `1.25` |  | `sim/world.gd` |
-| `EXTRA_TRACE_CHANCE` | `0.45` |  | `sim/world.gd` |
+| `TRACE_TOKEN_PROB` | `0.67` |  | `sim/world_night.gd` |
+| `TRACE_CAST_BAND_LO` | `0.6` |  | `sim/world_night.gd` |
+| `TRACE_CAST_BAND_HI` | `0.85` |  | `sim/world_night.gd` |
+| `TRACE_LOCATIONS_BASE_WEIGHT` | `3.5` |  | `sim/world_night.gd` |
+| `TRACE_QUARTER_BASE_WEIGHT` | `0.0` |  | `sim/world_night.gd` |
+| `TRACE_CONNECTION_BASE_WEIGHT` | `0.0` |  | `sim/world_night.gd` |
+| `TRACE_FRESH_FAMILY_WEIGHT` | `1.25` |  | `sim/world_night.gd` |
+| `EXTRA_TRACE_CHANCE` | `0.45` |  | `sim/world_night.gd` |
 | `TRACE_MATCH_WEIGHT` | `3.0` |  | `workshop/live_activity.gd`, `workshop/trace_solver.gd` |
 | `TRACE_UNKNOWN_WEIGHT` | `1.6` |  | `workshop/live_activity.gd`, `workshop/trace_solver.gd` |
 | `TRACE_CONTRADICT_WEIGHT` | `1.0` |  | `workshop/live_activity.gd`, `workshop/trace_solver.gd` |
 | `TRACE_CONNECTION_MISS_WEIGHT` | `1.5` |  | `workshop/live_activity.gd` |
 | `TRACE_PASSER_PRIOR_FLOOR` | `0.05` |  | `workshop/live_activity.gd` |
-| `NIGHT_PRESSURE_DECAY` | `0.6` |  | `sim/world.gd` |
-| `PSYCH_EVIL_TEAMMATE_TRUST_PROB` | `0.75` |  | `sim/world.gd` |
+| `NIGHT_PRESSURE_DECAY` | `0.6` |  | `sim/world_night.gd` |
+| `PSYCH_EVIL_TEAMMATE_TRUST_PROB` | `0.75` |  | `sim/world_night.gd` |
 
 ## Roles
 
@@ -87,12 +87,12 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
 | `SEER` | `{ "red_herring_defence_eff": -0.12, "focus_base": 0.3, "focus_insight_scale":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
-| `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
+| `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world_night.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 | `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
 | `CLERK` | `{ }` |  | (unused) |
 | `ARCHIVIST` | `{ }` |  | (unused) |
-| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/world.gd` |
+| `GRAVEDIGGER` | `{ "marked_evil_chance": Setup.GRAVEDIGGER_MARKED_EVIL_CHANCE, "trust_backed_i...` |  | `sim/roles/executor.gd`, `sim/roles/gravedigger.gd`, `sim/world_meeting.gd` |
 | `NIGHTWATCH` | `{ "req_already_wondering": 0.3, }` |  | `sim/roles/nightwatch.gd` |
 | `RUMORMONGER` | `{ }` |  | (unused) |
 | `MEDIUM` | `{ "relay_reading_scale": 0.6, "dead_suspicion_min": 0.35, }` |  | `sim/roles/medium.gd` |
@@ -104,9 +104,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
 | `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
 | `REVENANT` | `{ "place_totem_probs": [0.45, 0.6, 1.0], "curse_voter_eff": 0.15, "evil_vote_...` |  | `sim/roles/revenant.gd` |
-| `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/world.gd` |
-| `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world.gd` |
-| `WARDEN_TELL_TRUST` | `0.6` | the Warden tells the protectee when trusting them at least this much | `sim/world.gd` |
+| `WARDEN_SAVE_BELIEF_MIN` | `0.5` | Warden credit for quiet nights (Oct 30): belief = 1 / (1 + known alternatives). | `sim/world_night.gd` |
+| `WARDEN_SAVE_TRUST` | `0.1` | trust gained (x belief) by the Warden in the protectee, and back if believed | `sim/mind.gd`, `sim/world_night.gd` |
+| `WARDEN_TELL_TRUST` | `0.6` | the Warden tells the protectee when trusting them at least this much | `sim/world_night.gd` |
 | `WARDEN_SAVE_RELIABILITY` | `0.7` | how far the model trusts a claimed save (an inference, not a sighting) | `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 
 ## Mind
@@ -163,20 +163,20 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SECRET_KEPT_PRIVACY_SCALE` | `0.04` |  | `sim/mind.gd` |
 | `SECRET_KEPT_RUMOR_MULT` | `0.4` |  | `sim/mind.gd` |
 | `SECRET_KEPT_DECAY` | `0.5` |  | `sim/mind.gd` |
-| `GRIEF_BELIEVED_EVIL` | `0.6` | each later night is worth half the one before (Oct 30) | `sim/mind.gd`, `sim/world.gd` |
-| `GRIEF_FRIEND_MIN_TRUST` | `0.62` |  | `sim/world.gd` |
-| `GRIEF_NPC_NOMINATOR_DROP` | `0.2` |  | `sim/world.gd` |
-| `GRIEF_PLAYER_NOMINATOR_DROP` | `0.3` |  | `sim/world.gd` |
-| `GRIEF_PLAYER_NOMINATOR_CAP` | `0.55` |  | `sim/world.gd` |
-| `GRIEF_PLAYER_VOTER_DROP` | `0.2` |  | `sim/world.gd` |
-| `RESENTMENT_NOMINATOR_SCALE` | `0.30` | Private mourning resentment (Phase 2b): action-only score terms that fade nightly and clear immediately if the hanged friend is later shown/believed evil. | `sim/world.gd` |
-| `RESENTMENT_VOTER_SCALE` | `0.12` |  | `sim/world.gd` |
+| `GRIEF_BELIEVED_EVIL` | `0.6` | each later night is worth half the one before (Oct 30) | `sim/mind.gd`, `sim/world_meeting.gd` |
+| `GRIEF_FRIEND_MIN_TRUST` | `0.62` |  | `sim/world_meeting.gd` |
+| `GRIEF_NPC_NOMINATOR_DROP` | `0.2` |  | `sim/world_meeting.gd` |
+| `GRIEF_PLAYER_NOMINATOR_DROP` | `0.3` |  | `sim/world_meeting.gd` |
+| `GRIEF_PLAYER_NOMINATOR_CAP` | `0.55` |  | `sim/world_meeting.gd` |
+| `GRIEF_PLAYER_VOTER_DROP` | `0.2` |  | `sim/world_meeting.gd` |
+| `RESENTMENT_NOMINATOR_SCALE` | `0.30` | Private mourning resentment (Phase 2b): action-only score terms that fade nightly and clear immediately if the hanged friend is later shown/believed evil. | `sim/world_meeting.gd` |
+| `RESENTMENT_VOTER_SCALE` | `0.12` |  | `sim/world_meeting.gd` |
 | `RESENTMENT_FADE` | `0.35` |  | `sim/mind.gd` |
 | `RESENTMENT_CAP` | `0.45` |  | `sim/mind.gd` |
-| `EXEC_READING_MAX_SOURCE_SUSP` | `0.40` | Post-refresh execution reading rapport gates (`World.on_execution_reading_heard`) | `sim/world.gd` |
-| `EXEC_READING_MIN_SOURCE_REL` | `0.55` |  | `sim/world.gd` |
-| `EXEC_READING_MIN_SOURCE_TRUST` | `0.45` |  | `sim/world.gd` |
-| `EXEC_READING_MIN_EVIL_SUSP` | `0.22` |  | `sim/world.gd` |
+| `EXEC_READING_MAX_SOURCE_SUSP` | `0.40` | Post-refresh execution reading rapport gates (`World.on_execution_reading_heard`) | `sim/world_meeting.gd` |
+| `EXEC_READING_MIN_SOURCE_REL` | `0.55` |  | `sim/world_meeting.gd` |
+| `EXEC_READING_MIN_SOURCE_TRUST` | `0.45` |  | `sim/world_meeting.gd` |
+| `EXEC_READING_MIN_EVIL_SUSP` | `0.22` |  | `sim/world_meeting.gd` |
 | `CONFIDENCE_BROKEN_BASE` | `0.05` | Broken confidence & spread secrets | `game/game_board.gd` |
 | `CONFIDENCE_BROKEN_PRIVACY` | `0.2` |  | `game/game_board.gd` |
 | `SECRET_SPREAD_BASE` | `0.08` |  | `sim/mind.gd` |
@@ -209,18 +209,18 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `READING_TRUST_MODERATE` | `0.12` |  | `sim/social.gd` |
 | `READING_TRUST_KNOWN` | `0.20` |  | `sim/social.gd` |
 | `AGREEMENT_STEP` | `0.02` | Backing a case (Michael, Nov 18; rebalanced Nov 19): a good NPC's trust step toward an ally who votes the same way, or nominates or accuses someone it already suspects. At most once a day for each ally. | `sim/social.gd` |
-| `NOMINATED_PRESSURE` | `0.4` |  | `sim/world.gd` |
-| `NOMINATED_BY_PLAYER_DROP` | `0.15` |  | `sim/world.gd` |
-| `NOMINATED_NPC_TRUST_DROP` | `0.25` |  | `sim/world.gd` |
-| `CLEMENCY_SPARED_BONUS` | `0.15` |  | `sim/world.gd` |
-| `CLEMENCY_OVERRULED_DROP` | `0.08` |  | `sim/world.gd` |
-| `CLEMENCY_OVERRULED_HIGH_SUSP_DROP` | `0.10` |  | `sim/world.gd` |
-| `CLEMENCY_HIGH_SUSP_MIN` | `0.6` |  | `sim/world.gd` |
-| `CLEMENCY_LOW_SUSP_MAX` | `0.35` |  | `sim/world.gd` |
-| `CLEMENCY_TRUSTED_BONUS` | `0.06` |  | `sim/world.gd` |
-| `CLEMENCY_SUSPECTED_DROP` | `0.1` |  | `sim/world.gd` |
-| `VOTED_YES_ON_ME_DROP` | `0.08` |  | `sim/world.gd` |
-| `VOTED_NO_ON_ME_RISE` | `0.04` | A nominee warms to the Demonologist for voting no on them, unless the player nominated them (Michael, Nov 19). | `sim/world.gd` |
+| `NOMINATED_PRESSURE` | `0.4` |  | `sim/world_meeting.gd` |
+| `NOMINATED_BY_PLAYER_DROP` | `0.15` |  | `sim/world_meeting.gd` |
+| `NOMINATED_NPC_TRUST_DROP` | `0.25` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_SPARED_BONUS` | `0.15` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_OVERRULED_DROP` | `0.08` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_OVERRULED_HIGH_SUSP_DROP` | `0.10` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_HIGH_SUSP_MIN` | `0.6` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_LOW_SUSP_MAX` | `0.35` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_TRUSTED_BONUS` | `0.06` |  | `sim/world_meeting.gd` |
+| `CLEMENCY_SUSPECTED_DROP` | `0.1` |  | `sim/world_meeting.gd` |
+| `VOTED_YES_ON_ME_DROP` | `0.08` |  | `sim/world_meeting.gd` |
+| `VOTED_NO_ON_ME_RISE` | `0.04` | A nominee warms to the Demonologist for voting no on them, unless the player nominated them (Michael, Nov 19). | `sim/world_meeting.gd` |
 
 ## Social
 
@@ -296,8 +296,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `GOSSIP_BOND` | `0.02` | Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing. | `sim/social.gd` |
 | `GOSSIP_BELIEVED_BELOW` | `0.4` |  | `sim/mind.gd`, `sim/social.gd` |
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
-| `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world.gd` |
-| `TRUST_VOTED_FOR` | `0.03` |  | `sim/world.gd` |
+| `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world_meeting.gd` |
+| `TRUST_VOTED_FOR` | `0.03` |  | `sim/world_meeting.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
 | `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
@@ -650,13 +650,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `LR_STRONG` | `3.5` |  | `workshop/case_eval.gd` |
 | `LR_DAMNING_CHANCE` | `0.9` | The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the Test juror's average listener at or above this, whatever the strength. On the slate it carries every good vote. | `workshop/case_eval.gd` |
 | `PRIOR_K` | `1.5` | Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x). | `workshop/case_eval.gd` |
-| `HEADLINE_WEIGHT` | `1.0` | Headline reading (`Jury._headline`): how far a listener takes a strong evil reading at its word, on top of the full model. Effect = model + HEADLINE_WEIGHT * (1 - Insight) * (headline - model) where the headline is higher. The per-role values are the chance each named person is evil "if the reading is simply true" (1.0 = full share). | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_FULL_AT` | `0.1` | The blend toward the headline grows with the headline's strength, full at this value (about one Seer ping at default trust). Before Nov 6 any positive headline, however faint, pulled by the whole gap, so a faint ping halved a clearing at Insight 0.5. | `workshop/jury.gd` |
 | `LEAN_MIN` | `0.05` | Directional Confidence: below this lean (suspicion minus the listener's average) there is no hunch to defend, so Confidence doesn't resist (Oct 30). | `workshop/jury.gd` |
-| `HEADLINE_SEER` | `1.0` | "one of A/B is the Demon": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_ARCHIVIST` | `1.0` | "one of A/B holds <evil role>": each 1/2 | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_DOWSER` | `1.0` | "c of these n read as evil": each c/n | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
-| `HEADLINE_REPEAT_BUMP` | `0.15` | Diminishing confirmation weight for same-source, same-epoch repeat readings in _headline. | `workshop/jury.gd` |
 | `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
 | `JURY_CHALLENGE_LYING_MIN_AGR` | `0.3` | A "lying" call on a reading (the floor it puts under its teller's suspicion, scaled by the listener's agreement and the case's weight), and the gate it must pass, shared with the honest mistake's small Poisoner nudge. Nov 18 (Quill, the three labels): 0.6 and 0.12 before. Listeners agree with a contested lie call at 0.30-0.44, so it never passed and a lie call moved no one. Now a lie call, contradicted by a Dowser, raises a good reader's suspicion about 3 points from a middling player and 11 from a trusted one. | `game/workshop_canvas.gd`, `workshop/jury.gd`, `workshop/reading_challenges.gd` |
@@ -686,8 +680,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `WALKER_CLAIM_GIFT` | `0.95` | A good person who claims a walking gift: how the movement model splits their nights between doing the duty, staying home anyway, and a secret's outing (before Nov 5: 0.7 / 0.2 / 0.1, so a missed vigil barely touched the claim). Lovers and the Sleepwalker never go to walking-gift holders. Mirrored in `LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_HOME` | `0.03` |  | `workshop/live_activity.gd` |
 | `WALKER_CLAIM_SECRET` | `0.02` |  | `workshop/live_activity.gd` |
-| `NIGHT_OUT_RATES` | `{ "hunt": 1.0, "minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05, }` |  | `workshop/movement_model.gd` |
-| `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
 | `REFUSAL_LR` | `1.5` |  | `workshop/speech_evidence.gd` |
 | `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0....` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |

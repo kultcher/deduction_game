@@ -216,7 +216,7 @@ static func _listener(g, p: Dictionary, day: int) -> Dictionary:
 		"lean": {}, "committed_requested": {}, "own_gift": "", "suspicion": {}, "npc_trust": trust,
 		"confidence": float(p.confidence), "insight": float(p.insight), "reasoning_mode": "full",
 		"confidence_mode": "scale", "theories": {}, "source_doubt": {}, "known_claims": {},
-		"own_outings": {}, "role_beliefs": {}, "legacy_evidence": [], "disowned_reports": [],
+		"own_outings": {}, "role_beliefs": {}, "disowned_reports": [],
 		"connections": {"day": day, "core": {}, "nominations": []}}
 
 

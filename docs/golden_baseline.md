@@ -44,7 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
+### Current baseline (Nov 20, purge 6a, the headline reading removed): `baseline_c712b7a`
+
+`tools/golden/baseline_c712b7a/` is the capture from `claude/purge-6a-headline` at `c712b7a`
+(main at `bd4ac84`, with #405, merged in). A duller NPC no longer cites a reading it isn't
+attending to, and the headline nudge is gone from the jury. A cited reading's strength keeps
+its face-value term, so a reason feels as strong as before when it is cited.
+- **Divergence from `baseline_9fa5a74`:** 42 from record 91, 54875 from 191 and 900 from 52, all
+  in the day 2 meeting, where an NPC cites fewer or weaker reasons:
+  - 42: Isolde's second reason against Nisha weighs about half as much;
+  - 54875: Greta's shadow weighs her reason against Odette a little less;
+  - 900: Jory's first reason against Constance is a different card.
+
+  692 and 98933 are identical.
+- **Outcomes:** unchanged on every seed.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
 
 `tools/golden/baseline_9fa5a74/` is the capture from `claude/remove-muddler` at `9fa5a74` (main with
 #397 merged in). The default script never deals the Muddler. But `reason_attribution`'s defence

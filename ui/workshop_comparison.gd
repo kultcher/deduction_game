@@ -140,27 +140,38 @@ func _records() -> void:
 			result.venue, label, actual.get("agreement", 0.0), describe(result)])
 	output.text = "\n\n————————————————\n\n".join(lines) if not lines.is_empty() else "No presentations recorded. Enable recording, then present a deduction in a conversation or meeting."
 
+## The text the comparison panel shows for one recorded presentation, in reading order:
+## the new model's stance and words, the conditional worlds, the reasoning and working theory
+## when there are any, then the evidence strength (not applied to the game) line by line.
 static func describe(result: Dictionary) -> String:
 	if not result.ready:
 		return "No numeric comparison:\n• " + "\n• ".join(PackedStringArray(result.issues))
 	var proposal: Dictionary = result.proposal
-	var lines = PackedStringArray(["New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.agreement, result.elapsed_ms],
-		proposal.response, "", "Evidence strength (not applied to the game):"])
+	var assessment: Dictionary = proposal.assessment
+	var reasoning: Dictionary = proposal.get("reasoning", {})
+	var persistent: bool = proposal.get("theory", {}).get("mode") == "persistence"
+	var lines = PackedStringArray([
+		"New model: %s · agreement %.3f · %d ms" % [proposal.stance, proposal.agreement, result.elapsed_ms],
+		proposal.response,
+		"Conditional worlds: %d compatible; %d fit your answers. These are assignments, not odds of guilt." % [assessment.compatible, assessment.proposed]])
+	if not reasoning.is_empty():
+		lines.append("Reasoning: %s · %d reports considered, %d set aside · %d support checks, %d alternative checks · %s." % [reasoning.profile, reasoning.considered.size(), reasoning.ignored.size(), reasoning.support_tested, reasoning.rivals_tested, reasoning.status])
+	# The working theory sits with the reasoning, or just after the blank line without it.
+	var theory_line: String = "Working theory: %s. %s" % [proposal.theory.status, proposal.theory.note] if persistent else ""
+	if persistent and not reasoning.is_empty():
+		lines.append(theory_line)
+	lines.append("")
+	if persistent and reasoning.is_empty():
+		lines.append(theory_line)
+	lines.append("Evidence strength (not applied to the game):")
 	if result.has("audience"):
 		lines.append("Every current listener can evaluate this case." if result.audience.ready else "Some listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(result.audience.issues)))
-	lines.insert(2, "Conditional worlds: %d compatible; %d fit your answers. These are assignments, not odds of guilt." % [proposal.assessment.compatible, proposal.assessment.proposed])
-	for error in proposal.assessment.errors:
+	for error in assessment.errors:
 		lines.append("Explanation issue: " + error)
-	if proposal.assessment.proposed == 0 and proposal.assessment.compatible > 0:
+	if assessment.proposed == 0 and assessment.compatible > 0:
 		lines.append("Answer validity: the selected explanation does not fit. The underlying reports may still have the effects listed above.")
-	if not proposal.assessment.get("hypothetically_released", []).is_empty():
+	if not assessment.get("hypothetically_released", []).is_empty():
 		lines.append("Conditional explanation: fits only after setting aside challenged report contents. This does not establish why those reports are wrong.")
-	var reasoning: Dictionary = proposal.get("reasoning", {})
-	if not reasoning.is_empty():
-		lines.insert(3, "Reasoning: %s · %d reports considered, %d set aside · %d support checks, %d alternative checks · %s." % [reasoning.profile, reasoning.considered.size(), reasoning.ignored.size(), reasoning.support_tested, reasoning.rivals_tested, reasoning.status])
-	var theory: Dictionary = proposal.get("theory", {})
-	if theory.get("mode") == "persistence":
-		lines.insert(4, "Working theory: %s. %s" % [theory.status, theory.note])
 	for person in proposal.effects:
 		var effect: Dictionary = proposal.effects[person]
 		if not is_zero_approx(effect.requested):
@@ -170,8 +181,5 @@ static func describe(result: Dictionary) -> String:
 		lines.append("Claim about %s: %s. %s" % [claim.conclusion.target.capitalize(), claim.stance, claim.note])
 	for challenge in proposal.get("reading_challenges", []):
 		lines.append("%s challenge: %s (agreement %.3f)." % [challenge.mode.capitalize(), challenge.note, challenge.agreement])
-	var audit: Dictionary = result.get("ledger_audit", {})
-	if not audit.is_empty():
-		lines.append("\nExisting evidence: %d reading entries, %d potentially overlapping arguments, %d ambiguous legacy identities.\n%s" % [audit.reading_entries.size(), audit.potential_arguments.size(), audit.aliases.size(), audit.note])
 	lines.append("\n" + result.scope)
 	return "\n".join(lines)

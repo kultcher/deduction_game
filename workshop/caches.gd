@@ -14,7 +14,6 @@ const Chronology = preload("res://workshop/chronology.gd")
 const GhostJuror = preload("res://workshop/ghost_juror.gd")
 const Jury = preload("res://workshop/jury.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
-const MovementModel = preload("res://workshop/movement_model.gd")
 const ReadingChallenges = preload("res://workshop/reading_challenges.gd")
 const ReasonAttribution = preload("res://workshop/reason_attribution.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
@@ -52,7 +51,6 @@ static func clear_all() -> void:
 	LiveActivity._mru_norm = 0
 	LiveActivity._mru_epoch = -1
 	LiveActivity._env_cache.clear()
-	MovementModel.cache.clear()
 	ReadingChallenges.cache.clear()
 	ReadingChallenges.fraction_cache.clear()
 	ReadingChallenges._index_cache.clear()

@@ -72,7 +72,7 @@ func _insight() -> void:
 		check(r.assessment.reasoning.support_tested <= Reasoner.profile(insight).support and r.assessment.reasoning.rivals_tested <= Reasoner.profile(insight).rivals, "live search respects both hard test budgets")
 		check(g.w.rng.state == rng, "cognitive assessment uses no random draws")
 		results.append(r)
-		print("Insight %.1f: %s agreement %.4f; %d/%d checks; compatible %d" % [insight, r.assessment.reasoning.status, r.agreement, r.assessment.reasoning.support_tested, r.assessment.reasoning.rivals_tested, r.assessment.shared_assessment.compatible])
+		print("Insight %.1f: %s agreement %.4f; %d/%d checks; compatible %d" % [insight, r.assessment.reasoning.status, r.agreement, r.assessment.reasoning.support_tested, r.assessment.reasoning.rivals_tested, r.assessment.assessment.compatible])
 		var beliefs = n.suspicion.duplicate(true)
 		var theories = n.workshop_state.theories.duplicate(true)
 		var plan: Dictionary = g._workshop_plans[n.id + ":good"]

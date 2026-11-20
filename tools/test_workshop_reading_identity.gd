@@ -2,7 +2,6 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
-const Audit = preload("res://workshop/ledger_audit.gd")
 var checks = 0
 var fails = 0
 
@@ -65,9 +64,6 @@ func _live(size: int) -> void:
 	for n in g.w.living():
 		var response = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		check(response.get("workshop", false), "same-day exact receipts remain fully shared in strict presentation to " + n.id)
-	var plan = Shared.prepare(g.workshop_snapshot([], observer.id), {}, observer.ledger)
-	var audit = Audit.inspect(plan.input)
-	check(audit.reading_entries.size() == 3 and audit.reading_entries.all(func(entry): return entry.facts.size() == 1), "ownership diagnostics resolve each exact native key without conflating its siblings")
 	# A pre-migration coarse record is safe only when exactly one receipt matches.
 	var original = observer.ledger[Mind.info_eid(source.id, first)].duplicate(true)
 	var coarse = "info:%s:%d:%s" % [source.id, first.day, first.role]
