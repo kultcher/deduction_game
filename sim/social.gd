@@ -1246,8 +1246,7 @@ static func tavern_evening_gossip(g) -> Dictionary:
 			"body": bbody,
 			"profile_bond": {"key": raw_key, "kind": str(bond.get("kind", "")), "people": people}})
 
-	# Each item's value to the player (graded gossip, Michael, Nov 19). The selection doesn't
-	# use it yet; Beadle's budget will (TAVERN_TIER1_TARGET / TIER2_TARGET).
+	# Each item's value to the player (graded gossip, Michael, Nov 19).
 	for c in candidates:
 		c["tier"] = gossip_tier(c)
 	# Tiered selection: prefer unheard spoken & profile backfill first; only touch already-heard
@@ -1256,26 +1255,22 @@ static func tavern_evening_gossip(g) -> Dictionary:
 	var heard_pool: Array = candidates.filter(func(c): return c.get("heard", false))
 	var chosen: Array = []
 	var used_groups: Dictionary = {}
+	# The budget comes first: up to TAVERN_TIER1_TARGET unheard tier-1 items and
+	# TAVERN_TIER2_TARGET unheard tier-2 items, each drawn by weight within its tier, so the
+	# player usually gets at least two useful pieces. Already-heard items don't count: they
+	# aren't news. Whatever the offer lacks, the ordinary draw below fills.
+	var budget: Array = [[1, Tuning.Social.TAVERN_TIER1_TARGET], [2, Tuning.Social.TAVERN_TIER2_TARGET]]
+	for b in budget:
+		var tier_pool: Array = unheard_pool.filter(func(c): return int(c["tier"]) == int(b[0]))
+		_tavern_draw(trng, tier_pool, chosen, used_groups, mini(target_count, chosen.size() + int(b[1])))
 	for pool in [unheard_pool, heard_pool]:
-		var avail: Array = pool.duplicate()
-		while chosen.size() < target_count and not avail.is_empty():
-			avail = avail.filter(func(c): return not used_groups.has(c.get("group", "")))
-			if avail.is_empty():
-				break
-			var tot: float = 0.0
-			for c in avail:
-				tot += maxf(float(c.get("weight", 0.1)), 0.001)
-			var draw: float = trng.randf() * tot
-			var picked_idx: int = avail.size() - 1
-			for idx in range(avail.size()):
-				draw -= maxf(float(avail[idx].get("weight", 0.1)), 0.001)
-				if draw <= 0.0:
-					picked_idx = idx
-					break
-			var sel: Dictionary = avail[picked_idx]
-			chosen.append(sel)
-			used_groups[sel.get("group", "")] = true
-			avail.remove_at(picked_idx)
+		_tavern_draw(trng, pool, chosen, used_groups, target_count)
+	# The budget's picks were drawn first; mix them in so the useful items don't always lead.
+	for i in range(chosen.size() - 1, 0, -1):
+		var j: int = trng.randi_range(0, i)
+		var tmp = chosen[i]
+		chosen[i] = chosen[j]
+		chosen[j] = tmp
 
 	if chosen.is_empty():
 		var quiet_lines: Array = ["You spend the evening nursing a cup in the corner, but the taproom talk turns up nothing beyond the weather."]
@@ -1315,6 +1310,29 @@ static func tavern_evening_gossip(g) -> Dictionary:
 	return {"lines": lines, "facts": facts, "haunts": haunts, "bonds": bonds, "vibe": vibe}
 
 
+
+## The tavern's weighted draw: adds items from `pool` to `chosen` (one per share group, an item
+## not already chosen) until `chosen` holds `up_to` or the pool runs dry.
+static func _tavern_draw(trng: RandomNumberGenerator, pool: Array, chosen: Array, used_groups: Dictionary, up_to: int) -> void:
+	var avail: Array = pool.filter(func(c): return not chosen.has(c))
+	while chosen.size() < up_to and not avail.is_empty():
+		avail = avail.filter(func(c): return not used_groups.has(c.get("group", "")))
+		if avail.is_empty():
+			break
+		var tot: float = 0.0
+		for c in avail:
+			tot += maxf(float(c.get("weight", 0.1)), 0.001)
+		var draw: float = trng.randf() * tot
+		var picked_idx: int = avail.size() - 1
+		for idx in range(avail.size()):
+			draw -= maxf(float(avail[idx].get("weight", 0.1)), 0.001)
+			if draw <= 0.0:
+				picked_idx = idx
+				break
+		var sel: Dictionary = avail[picked_idx]
+		chosen.append(sel)
+		used_groups[sel.get("group", "")] = true
+		avail.remove_at(picked_idx)
 
 ## The town's vibe check on the Demonologist: rapport (trust in you) and competence (your
 ## credibility) averaged over the living good townsfolk. Evil's private view is left out on

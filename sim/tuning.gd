@@ -483,6 +483,11 @@ class Social:
 	const TAVERN_OVERHEAR_MIN_SUSP = 0.4
 	const TAVERN_GOSSIP_MIN_ITEMS = 3
 	const TAVERN_GOSSIP_MAX_ITEMS = 5
+	## Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET
+	## unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of
+	## tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier).
+	const TAVERN_TIER1_TARGET = 2
+	const TAVERN_TIER2_TARGET = 1
 	## The town's vibe check on the Demonologist (always told at evening tavern gossip):
 	## the average rapport (trust) and competence (credibility) of the living good townsfolk,
 	## in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player
