@@ -3,6 +3,20 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+
+## Built, Nov 20, 2026, later (closed by Claude-Vicar)
+
+- **Minion gifts, the two built parts** (from the Workshop gaps item):
+  - **Someone silenced, and who was on their block (the Breathstealer):** built.
+    `DayPresence.breath_factor`, applied in CaseEval, weighs who could have been on the
+    victim's block across the three day phases.
+  - **A totem found, and those living where its material is from (the Revenant):** built
+    since Nov 6 (5048c081). The totem card names the residents of its material's block, and
+    the judge makes one of them the Revenant. The old "54875: the totem card had no Workshop
+    adapter" note was stale. Quill is adding a regression test.
+
+  > **Closed Nov 20 (Quill confirmed).** The Poisoner part stays in BACKLOG.md.
+
 ## Built, Nov 20, 2026 (closed by Claude-Vicar)
 
 - **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's

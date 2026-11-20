@@ -30,8 +30,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
-    2. The premise menu, trimmed `[in review]`
-    3. Remove the Muddler `[in review]`
+    2. The premise menu, trimmed
+    3. Remove the Muddler
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided]`
@@ -61,7 +61,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   8. Scoring system `[open]`
   9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
-  1. Minion gifts
+  1. Minion gifts: the Poisoner's visit
   2. A Medium's relayed sighting vs the dead's known vantage
   3. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -532,10 +532,11 @@ The one performance item, "Late-game meeting and presenting cost", is in
 Patterns that come up in play, or that the mechanics make meaningful, but that the Case
 Workshop and the shared model can't express yet.
 
-- **Minion gifts.** Someone silenced and the people seen on their block that evening
-  (the Breathstealer has to be there); a reading that failed on a night someone was near
-  the reader's home (the Poisoner's visit); a totem found and the people who live where
-  its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
+- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
+  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
+  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
+  fix Seneschal approved). Whether to add a real per-world Poisoner-presence factor goes to
+  Michael. The other two Minion gifts are built and closed (Quill, Nov 20). Owner Quill.
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
