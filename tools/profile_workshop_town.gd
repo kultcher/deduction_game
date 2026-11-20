@@ -14,9 +14,7 @@ func _run() -> void:
 	var args = OS.get_cmdline_user_args()
 	preload("res://workshop/role_constraints.gd").reuse = "--no-role-cache" not in args
 	preload("res://workshop/support_model.gd").reuse_priors = "--no-prior-cache" not in args
-	preload("res://workshop/support_model.gd").reuse_comparisons = "--no-comparison-reuse" not in args
 	preload("res://workshop/reasoner.gd").reuse_matches = "--no-match-cache" not in args
-	preload("res://workshop/support_model.gd").reuse_batches = "--no-batch-reuse" not in args
 	var seed_value = 692
 	if "--seed" in args:
 		seed_value = int(args[args.find("--seed") + 1])
@@ -99,9 +97,7 @@ func _run() -> void:
 	result["cognition"] = "full/scale reference" if "--reference-cognition" in args else "native bounded/persistence"
 	result["reports"] = reports.size()
 	result["optimizations"] = {"priors": preload("res://workshop/support_model.gd").reuse_priors,
-		"comparisons": preload("res://workshop/support_model.gd").reuse_comparisons,
-		"candidate_checks": preload("res://workshop/reasoner.gd").reuse_matches,
-		"mixture_plans": preload("res://workshop/support_model.gd").reuse_batches}
+		"candidate_checks": preload("res://workshop/reasoner.gd").reuse_matches}
 	result["deliveries"] = g.workshop_deliveries.duplicate(true)
 	result["output"] = output
 	result["rng_before"] = str(before_rng)
@@ -119,7 +115,7 @@ func _run() -> void:
 	result["stages"] = totals
 	print("Stage totals: ", JSON.stringify(totals))
 	print("Town: %.2f ms; behavior %s" % [result.elapsed_us / 1000.0, result.behavior_hash])
-	# A listener on native rules does none of the shared work, so the timing would
+	# A listener that wasn't assessed does none of the shared work, so the timing would
 	# understate the town. Fail unless explicitly allowed.
 	var fallbacks: Array = result.deliveries.filter(func(d): return d.get("model", "") != "shared").map(func(d): return d.get("listener", "?"))
 	result["fallback_listeners"] = fallbacks
@@ -130,7 +126,7 @@ func _run() -> void:
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	file.store_string(JSON.stringify(result, "\t"))
 	if not fallbacks.is_empty():
-		print("%s: listeners used native rules, so this timing skips shared work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", fallbacks])
+		print("%s: listeners weren't assessed, so this timing skips their work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", fallbacks])
 		quit(0 if "--allow-fallback" in args else 1)
 		return
 	quit()

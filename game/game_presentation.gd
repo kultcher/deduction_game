@@ -81,11 +81,6 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		g.w.dlog.trace_event("workshop_conclusion_blocked", "player", "", {"card": card.get("n", 0), "kinds": kinds.duplicate()}, "Unsupported conclusion type blocked (no legacy route).")
 		g._err("Cannot present. Card #%d: the town can't weigh a '%s' conclusion. Present it as a case about who is good or evil instead." % [card.get("n", 0), ", ".join(PackedStringArray(kinds))])
 		return false
-	# Per listener: a row blocked only by canvas authoring problems (a missing cited
-	# claim, an empty hub) is not a model gap, so it is not recorded as an unprepared plan.
-	for row in check.listeners:
-		if not row.ready and not _all_authoring_validation_issues(row.issues):
-			WorkshopOwnership.unprepared(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
 	if _all_authoring_validation_issues(check.issues):
 		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission with its reasons.")
 	# No legacy route for presentations: an unsupported submission is blocked with its

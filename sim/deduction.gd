@@ -1,7 +1,7 @@
 ## The conclusion vocabulary (types, normalising, text, keys, filing checks) and card
 ## assertions, used by the board, the Case Workshop canvas and presentations. The old
 ## two-card template matcher and its `link` / `conclude` commands were retired in legacy
-## purge phase 4 (docs/legacy_retirement_plan.md): cases are built in the Workshop.
+## purge phase 4 (docs/archive/legacy_retirement_plan.md): cases are built in the Workshop.
 extends RefCounted
 
 const C = preload("res://sim/content.gd")

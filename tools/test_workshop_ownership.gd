@@ -97,10 +97,10 @@ func _init() -> void:
 	Mind.apply_info(g.w, n, source, entry, 0.5)
 	check(n.workshop_state.active, "supported raw reading reactivates from a clean state")
 	var last_good: Dictionary = n.suspicion.duplicate(true)
-	g.unprepared_plans.clear()
+	g.unprepared_refreshes.clear()
 	g.w.public_log.append({"day": 1, "kind": "curse", "subjects": [target.id], "by": "town"})
 	Mind.refresh_beliefs(g.w, n, "unsupported transition")
-	check(n.workshop_state.active and _close(n.suspicion, last_good) and not g.unprepared_plans.is_empty(), "unsupported chronology keeps the last good shared vector and logs the issue")
+	check(n.workshop_state.active and _close(n.suspicion, last_good) and not g.unprepared_refreshes.is_empty(), "unsupported chronology keeps the last good shared vector and logs the issue")
 	g.w.public_log.clear()
 	Mind.refresh_beliefs(g.w, n, "chronology cleared")
 	# Distinct originals have exact native keys; old coarse records stay ambiguous.
@@ -186,9 +186,9 @@ func _advanced() -> void:
 		check(_close(raw_vector, n.workshop_state.requested), "independently learned readings do not depend on player trust")
 		# An overlapping old card presentation cannot be certified from a coarse ref.
 		var before_overlap: Dictionary = n.suspicion.duplicate(true)
-		g.unprepared_plans.clear()
+		g.unprepared_refreshes.clear()
 		Mind.ledger_hear(g.w, n, "test:mixed-tell", [], 0.5, [source.id, 2, "reading"], {"kind": "tell"})
-		check(_close(n.suspicion, before_overlap) and not g.unprepared_plans.is_empty(), "uncertified card overlap keeps the last good vector and records the unprepared plan")
+		check(_close(n.suspicion, before_overlap) and not g.unprepared_refreshes.is_empty(), "uncertified card overlap keeps the last good vector and logs the unprepared refresh")
 		check(n.workshop_state.issues.any(func(s): return "testimony" in s), "overlap fallback exposes the missing ownership adapter")
 		if size == 7:
 			var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]

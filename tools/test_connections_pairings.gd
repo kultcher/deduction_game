@@ -171,7 +171,7 @@ func _adds_up(c: Dictionary) -> bool:
 		var total: float = float(c.core.lean.get(id, 0.0))
 		for it in c.items:
 			total += float(it.lean.get(id, 0.0))
-		# Stored cases (a game played with the model on has NPC nominations among them).
+		# Stored cases (NPC nominations are among them).
 		total += float(c.get("cases", {}).get("lean", {}).get(id, 0.0))
 		var settled: bool = c.baseline[id] <= Connections.FIXED or c.baseline[id] >= 1.0 - Connections.FIXED
 		var want: float = c.baseline[id] if settled else Connections.chance(Connections.logit(c.baseline[id]) + total + float(c.shift))
@@ -183,8 +183,7 @@ func _adds_up(c: Dictionary) -> bool:
 
 
 ## The three readings of movement on one real state: a script with both kinds of Demon.
-## "Adds up" includes the stored cases' lean: since Nov 16 the game is played with the
-## model on, so NPC nominations are stored cases.
+## "Adds up" includes the stored cases' lean: NPC nominations are stored cases.
 func _rows_in_game() -> void:
 	var sc = ScriptDef.default_script()
 	sc.demons = ["demon", "daykiller"]

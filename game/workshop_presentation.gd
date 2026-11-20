@@ -1,4 +1,4 @@
-## One supported presentation path: assessment, parked legacy receipt, social response.
+## One supported presentation path: assessment, the told-card receipt, social response.
 ## Runs only on a good mind (including evil's cover). No actual evil intelligence enters.
 extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
@@ -61,10 +61,9 @@ static func _key(card: Dictionary, targets: Array, direction: String, snapshot: 
 	var origin = str(card.n) if card.get("n", 0) > 0 else JSON.stringify(ids).sha256_text()
 	return str(card.n) if direction == "deduction" else "direct:%s:%s:%s" % [origin, direction, ",".join(PackedStringArray(people))]
 
+## A listener who can't weigh this case refuses it with the reason; there is no other route
+## (Michael, Nov 20). Only belief refreshes are recorded as unprepared (WorkshopOwnership).
 static func _unavailable(g, n, card: Dictionary, point: String, issues: Array) -> Dictionary:
-	if not preload("res://game/game_presentation.gd")._all_authoring_validation_issues(issues):
-		Ownership.unprepared(g, n, point, issues, card.get("n", 0))
-	# No legacy route for presentations (user, Oct 25): block with the reason.
 	return {"blocked": true, "lines": ["Cannot present card #%d: %s" % [card.get("n", 0), "; ".join(PackedStringArray(issues))]], "facts": [], "agreement": 0.0}
 
 static func present(g, n, card: Dictionary, targets: Array, direction: String, venue: String, speak: bool) -> Dictionary:
@@ -402,7 +401,7 @@ static func _present(g, n, card: Dictionary, targets: Array, direction: String, 
 		"pressure_delta": n.pressure - pressure_before, "requested": state.requested,
 		"circumstantial_requested": state.get("circumstantial_requested", {})}, "One assessment controls supported presentation and shared belief ownership.")
 	g.w.dlog.add("argument_stance", n.id, root.conclusion.get("a", ""), {"key": signature, "stance": voiced_stance, "scoped_stance": assessment.stance,
-		"evil": false, "repeat": repeated})
+		"evil": false, "repeat": repeated, "model": "shared"})
 	# A public case they said they accepted: if they then vote no on that person, they say
 	# why (meeting plan M2d, vote resistance lines).
 	var ctype: String = str(root.conclusion.get("type", ""))

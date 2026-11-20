@@ -64,17 +64,22 @@ The behaviour is gone, but its names and plumbing remain:
   **legacy rules judged** N things" (`game/game.gd:91`, `game/game_day_night.gd:633-652`,
   `case_summary.legacy_fallbacks`). No legacy rules exist to judge anything. Rename it to
   something like "unprepared refreshes".
+  **Resolved Nov 20 (purge phase 8):** renamed to "unprepared refresh" throughout.
 - **The Workshop canvas still advertises a legacy mode.** `game/workshop_canvas.gd:180-181`
   returns `"mode": "legacy"` with the warning "Fallback evaluates … using the existing
   argument system". That system (`sim/argue.gd`) was deleted in Phase 4d, and
   `game_presentation.gd` blocks the submission instead. The `"Adapter available" /
   "FALLBACK"` notes (lines 19-53) date from the same era.
+  **Nov 20:** the notes are gone; Herald's strict-mode PR removes `"mode": "legacy"`, and the
+  warning's wording waits on Michael.
 - **`legacy_evidence`** is built in `game/workshop_bridge.gd:180` and passed in empty
   stubs (`workshop_canvas.gd` ×3, `workshop_why.gd`, `ghost_juror.gd`). Its only reader is
   `workshop/ledger_audit.gd:23`. Check whether the audit still needs it.
+  **Nov 20:** it goes with `ledger_audit.gd` in the Workshop scaffolding PR (Lantern).
 - **`fallback_count` / `present_fallbacks`** (`game/game.gd:90`,
   `game_presentation.gd:379`): check what still increments it now that there's no legacy
   route.
+  **Nov 20:** still live and not legacy: `present` counts cards it can't point either way.
 - `sim/deduction.gd:3`: a docs link to `docs/legacy_retirement_plan.md` (now under
   `docs/archive/`). The `normalize()` comment says "old names kept working". Check whether
   any save or log still uses the old names.

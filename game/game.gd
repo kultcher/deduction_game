@@ -89,9 +89,10 @@ var regulars_searched = {}   # place -> true: a place's regulars can be asked ab
 var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
 var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
-## Listener-specific exits where the shared plan couldn't be prepared (WorkshopOwnership.unprepared),
-## once per listener, point, card and day: diagnosis only, since none should happen.
-var unprepared_plans: Array = []
+# Every refresh or presentation the shared model couldn't prepare (the mind kept its last
+# good beliefs; always recorded, with or without detailed tracing). See the `fallbacks` command.
+var unprepared_refreshes: Array = []
+var _unprepared_reported = 0
 const DecisionFeed = preload("res://sim/decision_feed.gd")
 const WorkshopCaches = preload("res://workshop/caches.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -265,7 +266,8 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	haunt_sightings = {}
 	watched = []
 	known_relationships = {}
-	unprepared_plans = []
+	unprepared_refreshes = []
+	_unprepared_reported = 0
 	show_hidden = false
 	last_error = ""
 	_trace_export_pending = false
@@ -521,7 +523,6 @@ func _presentation_gate(card: Dictionary, listeners: Array, targets: Array, dire
 func _unsupported_conclusions(issues: Array) -> Array:
 	return GamePresentation._unsupported_conclusions(issues)
 
-
 func _presentation_rejection(card: Dictionary) -> String:
 	return GamePresentation._presentation_rejection(self, card)
 
@@ -554,6 +555,8 @@ func _dispatch(text: String) -> void:
 		"help", "?", "h":
 			_screen(_help())
 			return
+		"fallbacks":
+			_screen(_fallbacks_text())
 			return
 		"look", "l":
 			_look()
@@ -704,6 +707,9 @@ func _night_command(verb: String, rest: String) -> void:
 
 func _resolve_night() -> void:
 	GameDayNight._resolve_night(self)
+
+func _fallbacks_text() -> String:
+	return GameDayNight._fallbacks_text(self)
 
 func _morning_report() -> void:
 	GameDayNight._morning_report(self)

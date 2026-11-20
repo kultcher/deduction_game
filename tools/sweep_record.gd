@@ -218,6 +218,6 @@ static func build(g, ctx: Dictionary) -> Dictionary:
 	rec["wall_s"] = ctx.get("wall_s", 0.0)
 	rec["guard"] = ctx.get("guard", 0)
 	rec["stuck"] = bool(ctx.get("stuck", false))
-	rec["unprepared_plans"] = summary.get("unprepared_plans", 0)
+	rec["unprepared_refreshes"] = summary.get("unprepared_refreshes", 0)
 	rec["complete"] = summary.get("complete", w.game_over)
 	return rec

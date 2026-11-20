@@ -5,8 +5,6 @@
 ## Gathered from the Legacy Purge phase 2b suite on 2026-11-04.
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
-
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -25,7 +23,7 @@ func _check(ok: bool, label: String) -> void:
 
 
 func _init() -> void:
-	# Its fixtures set up suspicion with the earlier model's numbers (the freed-soul pre-turn floor).
+	# The freed-soul check compares against its own pre-turn suspicion, not a fixed cap (purge phase 2).
 	_test_gravedigger_rapport()
 	_test_revenant_curse()
 	_test_grief_resentments()

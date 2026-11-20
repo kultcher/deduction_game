@@ -4,7 +4,6 @@
 ## never weight. Also the headline blend's strength scaling (folded in with recency).
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -15,7 +14,7 @@ var checks = 0
 var fails = 0
 
 func _init() -> void:
-	# Recency and bounded attention as the earlier model reads them (drift, re-presenting).
+	# Recency and bounded attention: what is cited drifts; belief doesn't.
 	_fade()
 	_topic()
 	_ranking()

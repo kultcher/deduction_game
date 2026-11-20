@@ -1,11 +1,10 @@
 ## Premises pass step 1 (docs/premises_plan.md): a presented premise shapes beliefs by its
 ## target (the target takes the full effect, everyone else what the cards say at any
-## Insight, and the shaping is remembered), a clearly wrong premise costs trust, a rejected premise steers no
+## Insight, and a later refresh reproduces it), a clearly wrong premise costs trust, a rejected premise steers no
 ## preference, the movement notes only follow killer-side premises, and the test juror says
 ## when a defence's evidence points the other way.
 extends SceneTree
 
-const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -82,7 +81,7 @@ func _spillover() -> void:
 	# a case moves the people it only mentions by what its cards say, at any Insight. (The
 	# earlier model scaled them by Insight; that went with the purge, phase 2.)
 	check(low.other > 0.0 and is_equal_approx(low.other, high.other), "everyone else moves by what the cards say, the same at any Insight")
-	check(low.remembered and high.remembered, "the shaping is remembered: a later refresh reproduces it")
+	check(low.remembered and high.remembered, "a presented case is remembered: a later refresh reproduces it")
 	check(high.other < high.target, "a case moves its target more than the people it only mentions")
 
 func _trust_cost() -> void:

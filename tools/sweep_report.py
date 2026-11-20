@@ -58,9 +58,10 @@ def cell_key(r):
 def cell_label(k):
     npcs, mode, ins = k
     forced = ""
+    # Only records from before Nov 18 carry a "_connections" mode; play is always on it now.
     if mode.endswith("_connections"):
         mode = mode[: -len("_connections")]
-        forced = ", connections on"
+        forced = ", connections (pre-Nov 18 record)"
     if "_force_" in mode:
         mode, d = mode.split("_force_", 1)
         forced = ", %s forced%s" % (d, forced)
@@ -399,7 +400,8 @@ def main():
         out.append("  - Most common lines:")
         for line, c in sorted(sample.items(), key=lambda x: -x[1])[:8]:
             out.append("    - %d× `%s`" % (c, line.replace("`", "'")))
-    out.append("- Unprepared shared plans: %d games with any" % sum(1 for r in games if r.get("unprepared_plans", 0)))
+    # Records from before Nov 20 carry the old key, legacy_fallbacks.
+    out.append("- Unprepared refreshes: %d games with any" % sum(1 for r in games if r.get("unprepared_refreshes", r.get("legacy_fallbacks", 0))))
     out.append("")
     out.append("| Cell | Median wall (s) | p90 | Max |")
     out.append("|---|---|---|---|")

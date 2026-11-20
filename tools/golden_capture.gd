@@ -85,7 +85,7 @@ func _capture(out: String, sd: int, size: int, day_limit: int) -> void:
 		_write(_step_record(g, steps, cmd, reply))
 		steps += 1
 	_write({"k": "end", "steps": steps, "day": g.w.day, "phase": g.w.phase, "over": g.w.game_over,
-		"winner": g.w.winner, "refreshes": _refreshes, "fallbacks": g.unprepared_plans.duplicate(true),  # key kept: the baselines record it
+		"winner": g.w.winner, "refreshes": _refreshes, "fallbacks": g.unprepared_refreshes.duplicate(true),
 		"executions": g.w.executions.duplicate(true)})
 	_file.close()
 	_g = null

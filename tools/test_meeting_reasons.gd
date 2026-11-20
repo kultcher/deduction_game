@@ -376,7 +376,7 @@ func _measure_passive_nominations(n_games: int, sizes: Array = [7, 10]) -> Dicti
 						cmd = "vote no"
 					"night": cmd = "sleep"
 				g.command(cmd)
-			fallbacks += g.unprepared_plans.size()
+			fallbacks += g.unprepared_refreshes.size()
 	return {
 		"fallbacks": fallbacks,
 		"total_npc_noms": total_npc_noms,
