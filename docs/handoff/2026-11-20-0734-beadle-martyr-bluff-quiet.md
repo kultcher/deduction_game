@@ -4,9 +4,9 @@
 - **Base:** main at `0b44cae` (`baseline_7005cc6`), merged in Nov 21; first written on `ad33789`
 - **Branch:** `claude/beadle-martyr-bluff-quiet`
 - **Status:** draft PR. Golden moves (one seed's vote parts; no outcome changes) and is
-  re-baselined here to `baseline_bb8cd47`. It's marked ready once the A/B is in. Golden-moving
-  PRs merge one at a time.
-- **Next actor:** Beadle (the A/B), then Bailiff.
+  re-baselined here to `baseline_bb8cd47`. The A/B is in, so it's ready. Golden-moving PRs merge
+  one at a time.
+- **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Evil Martyr bluff can frame a good scapegoat" [decided] (Michael, Nov 20).
   From the overnight queue.
 
@@ -62,8 +62,25 @@ person it claims to protect, which is a plain tell. It now never does, wherever 
   identical. Only 692 diverges, at record 236 (day 3): Hollis, a Martyr bluff, now carries the
   reluctance on its chosen and its no vote gets firmer. The hangings (Constance, Lian) are the same,
   and no seed has a winner. 42, 54875, 900 and 98933 are identical.
-- **A/B:** to follow, 40 passive games against main. It counts Martyr-bluff frames, the chosen
-  hanged, and winners and hangings.
+- **A/B (Nov 21):** 40 passive games, seeds 5000-5039, against main at `0b44cae`. Eight games on
+  each side have an evil Martyr bluff.
+
+  | | main | this PR |
+  |---|---|---|
+  | The bluff nominates its chosen | 2 | 0 |
+  | The bluff accuses its chosen | 2 | 0 |
+  | The bluff votes to hang its chosen | 3 | 0 |
+  | The bluff votes against hanging its chosen | 3 | 3 |
+  | Times it holds back (logged "Martyr bluff: ...") | 0 | 11 |
+  | Its chosen hanged, then framed as evil | 1 | 1 |
+  | Hangings, evil / good | 58 / 38 | 62 / 37 |
+  | Wins, good / evil | 20 / 20 | 22 / 18 |
+
+  In game terms: an evil Martyr bluff no longer leads the push against the person it says it gave
+  its life for. On main it nominated or accused them four times and voted to hang them three
+  times, all tells a real Martyr wouldn't give. Now it leaves that to others, and the frame after
+  the hanging still happens. Wins move by two games in 40, within noise for a bluff seen in a
+  fifth of games.
 
 ## Proposed for the backlog
 
