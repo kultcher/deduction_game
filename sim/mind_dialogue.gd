@@ -1072,6 +1072,12 @@ static func _alibi_home(n, nd: int) -> Dictionary:
 	return {"kind": "alibi", "subject": [n.id], "home": true, "day": nd, "phase": C.NIGHT, "source": n.id, "block": n.home_block,
 		"text": "%s says they were home (on %s) on night %d." % [n.name, C.block_name(n.home_block), nd]}
 
+## Already confessed that night's errand before the town (the stored account is public).
+static func confessed_before_town(n, nd: int) -> bool:
+	var prior: Dictionary = n.dialogue_memory.get("night_accounts", {}).get(str(nd), {})
+	return prior.get("kind", "") == "secret" and prior.get("owner", "") == n.id and bool(prior.get("public", false))
+
+
 static func answer_night(w, n, night: int = -1) -> Dictionary:
 	on_question(w, n)
 	var lines: Array = []
@@ -1145,7 +1151,7 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				"Confess personal secret (%s)?" % n.secret.get("kind", "?"))
 		if confess:
 			n.secret_known = true
-			if bool(n.dialogue_memory.get("night_accounts", {}).get(str(nd), {}).get("public", false)):
+			if confessed_before_town(n, nd):
 				# Told before the town already: no plea to keep it quiet, the podium's words again.
 				lines.append(say_voiced(n, "confess_secret_public", "I wasn't out for anything wicked. I %s." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])}))
 			else:
@@ -1185,7 +1191,10 @@ static func answer_night(w, n, night: int = -1) -> Dictionary:
 				facts.append({"kind": "refusal", "subject": [n.id], "source": n.id, "day": nd, "phase": C.NIGHT,
 					"text": "%s refused to say where they were on night %d." % [n.name, nd]})
 	var accounts: Dictionary = n.dialogue_memory.get("night_accounts", {})
+	var told_town: bool = confessed_before_town(n, nd)
 	accounts[str(nd)] = facts[0].duplicate(true)
+	if told_town and accounts[str(nd)].get("kind", "") == "secret":
+		accounts[str(nd)]["public"] = true  # a private retelling doesn't unsay the public confession (Codex on #399)
 	n.dialogue_memory["night_accounts"] = accounts
 	if duty_role != "":
 		if _night_gift_result(w, n, nd, duty_role, lines, facts):

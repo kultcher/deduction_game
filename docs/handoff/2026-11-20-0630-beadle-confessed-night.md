@@ -27,13 +27,16 @@ or told a home lie about the very night it had owned.
 - **After a confession before the town,** the private retelling uses the podium's existing line,
   "I wasn't out for anything wicked. I ...". Before, it was the private plea, "Please, keep it
   quiet". No new wording.
+- **The account stays marked as told before the town** (`MindDialogue.confessed_before_town`).
+  Before, a private retelling overwrote it, so a second private question brought the plea back
+  (Codex on #399).
 
 ## Measured
 
 - **New:** `tools/test_confessed_night.gd` (5 checks), on the fast list. Three of them fail on
   main.
-  - After a public confession, the private answer is the confession: never a refusal or a lie,
-    and with no plea to keep it quiet.
+  - After a public confession, the private answer is the confession, asked three times on the
+    same NPC: never a refusal or a lie, and with no plea to keep it quiet.
   - The same after a private confession.
   - Pressed again at the podium, it confesses again.
   - A control: with nothing confessed, an unwilling NPC still keeps its errand.

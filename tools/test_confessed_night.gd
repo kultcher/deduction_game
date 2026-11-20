@@ -68,16 +68,17 @@ func _private_after_public() -> void:
 		var g = _game(i)
 		var n = _setup(g)
 		_confessed(n, true)
-		var res: Dictionary = MindDialogue.answer_night(g.w, n, 1)
-		var kinds: Array = _kinds(res["facts"])
-		if not ("secret" in kinds) or "refusal" in kinds or 1 in n.lied_nights:
-			_check(false, "after a confession before the town, asked in private, tells it again (try %d: %s)" % [i, kinds])
-			return
-		if "keep it quiet" in _text(res):
-			_check(false, "no plea to keep quiet what the town already heard (try %d)" % i)
-			return
-	_check(true, "after a confession before the town, asked in private, tells it again, never a refusal or a lie")
-	_check(true, "no plea to keep quiet what the town already heard")
+		for ask in 3:  # asked again and again, on the same NPC (Codex on #399)
+			var res: Dictionary = MindDialogue.answer_night(g.w, n, 1)
+			var kinds: Array = _kinds(res["facts"])
+			if not ("secret" in kinds) or "refusal" in kinds or 1 in n.lied_nights:
+				_check(false, "after a confession before the town, asked in private, tells it again (try %d, ask %d: %s)" % [i, ask, kinds])
+				return
+			if "keep it quiet" in _text(res):
+				_check(false, "no plea to keep quiet what the town already heard (try %d, ask %d)" % [i, ask])
+				return
+	_check(true, "after a confession before the town, asked in private again and again, tells it again, never a refusal or a lie")
+	_check(true, "no plea to keep quiet what the town already heard, however often asked")
 
 func _private_after_private() -> void:
 	var g = _game()
