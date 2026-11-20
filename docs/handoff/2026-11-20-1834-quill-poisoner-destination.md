@@ -30,7 +30,11 @@ home, setting out, or where they went.
 ## Measured
 - **Golden:** identical to `baseline_7005cc6` at `--tol 0`, all 5 seeds. The candidates are
   read only when the player calls a reading Mistaken in the Workshop, which no golden seed does.
-- **Suites:** test_review_fixes, test_medium_relay_challenge and test_totem_evidence pass.
+- **Suites:** the ten that touch failed-gift challenges and Poisoner candidates pass
+  (test_connections_cases, test_honest_mistake, test_juror_claims, test_juror_listener,
+  test_medium_relay_challenge, test_player_failed_gift, test_poison_outing, test_premise_step3,
+  test_review_fixes, test_warden_challenge), and test_totem_evidence. test_premise_step3's
+  candidate was seen only on their own block; that fixture sighting is now on the reader's.
 - **In game terms:** when the player calls a failed reading Mistaken, the Workshop's list of who
   could have poisoned it no longer names people only seen leaving their own houses, or seen out
   with no place given. Not measured: how often that shortens the list in played games.
