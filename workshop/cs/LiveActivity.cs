@@ -9,7 +9,7 @@ namespace Demonologist.Workshop;
 /// <summary>
 /// Slice C2 1:1 port of workshop/live_activity.gd.
 /// Covers:
-///   - Night route bitmask enumeration, drop owner Hall matching & Lamplighter counts (routes / _paths)
+///   - Night route bitmask enumeration, Lamplighter counts (routes / _paths)
 ///   - Persistent night-walk / habitual evening block likelihoods (_likelihood / _profile_paths / _observed)
 ///   - Scene crossing probabilities (crossing_probability)
 ///   - Three-valued structured trace evaluation (evaluate_trace_for_person: locations, quarter, connection)
@@ -48,7 +48,7 @@ internal static class LiveActivityKernel
     public const double WalkerClaimHome = 0.03;
     public const double WalkerClaimSecret = 0.02;
     public const int KindAlibi = 5;
-    public const int KindDropped = 6;
+    // 6 was KindDropped (drops removed, Nov 19).
     public const int KindReport = 7;
     public const int KindClaim = 8;
     public const int KindSecretClaim = 9;
@@ -61,7 +61,7 @@ internal static class LiveActivityKernel
     public const int FlagComplete = 1 << 4;
     public const int FlagHasGuardClaim = 1 << 5;
     public const int FlagDutyOnly = 1 << 6;
-    public const int FlagItemDrop = 1 << 7;
+    // 1 << 7 was FlagItemDrop (drops removed, Nov 19).
     public const int FlagTraceHasFamily = 1 << 8;
     public const int FlagRoleIsNightWalk = 1 << 9;
     /// The listener's own knowledge of a night it spent at home (WorkshopBridge, the listener's
@@ -310,7 +310,6 @@ internal static class LiveActivityKernel
         || kind == KindTrace
         || kind == KindCoverage
         || kind == KindAlibi
-        || kind == KindDropped
         || (kind == KindReport && ((moveRoleCode >= MoveRoleNightwatch && moveRoleCode <= MoveRoleMedium) || moveRoleCode == MoveRoleMonitor));
 
     /// <summary>
@@ -648,58 +647,6 @@ internal static class LiveActivityKernel
                 }
             }
 
-            // Collect drops deduplicated by DropFactToken (slot 16) in insertion order
-            var dropTokens = new List<int>(4);
-            var dropMasks = new List<int>(4);
-            for (int c = 0; c < cardCount; c++)
-            {
-                int off = c * CardStride;
-                int flags = cardInts[off + 1];
-                if (cardInts[off + 9] != night || (flags & FlagQuoted) != 0)
-                {
-                    continue;
-                }
-                int kind = cardInts[off];
-                if (kind != KindDropped && (flags & FlagItemDrop) == 0)
-                {
-                    continue;
-                }
-                int blk = cardInts[off + 10];
-                int matOrSubj = kind == KindDropped ? cardInts[off + 11] : cardInts[off + 3];
-                int candidates = 0;
-                for (int i = 0; i < n; i++)
-                {
-                    bool matchesOwner = kind == KindDropped
-                        ? (matOrSubj >= 0 && personHomes[i] == matOrSubj)
-                        : (i == matOrSubj);
-                    if (!matchesOwner)
-                    {
-                        continue;
-                    }
-                    var opts = personOptions[i];
-                    for (int k = 0; k < opts.Count; k++)
-                    {
-                        if (opts[k].HasBlock(blk))
-                        {
-                            candidates |= (1 << i);
-                            break;
-                        }
-                    }
-                }
-
-                int fTok = cardInts[off + 16];
-                int existingIdx = dropTokens.IndexOf(fTok);
-                if (existingIdx >= 0)
-                {
-                    dropMasks[existingIdx] = candidates;
-                }
-                else
-                {
-                    dropTokens.Add(fTok);
-                    dropMasks.Add(candidates);
-                }
-            }
-
             // Collect active Lamplighter count cards on this night
             var lampSources = new List<int>(2);
             var lampCounts = new List<int>(2);
@@ -719,7 +666,6 @@ internal static class LiveActivityKernel
                 lampPosMasks.Add(cardInts[off + 6]);
             }
 
-            ReadOnlySpan<int> dropSpan = CollectionsMarshal.AsSpan(dropMasks);
             int compatibleCount = 0;
             int commonForcedOut = (1 << n) - 1;
             int maskLimit = 1 << n;
@@ -744,7 +690,7 @@ internal static class LiveActivityKernel
                         break;
                     }
                 }
-                if (valid && DropOwners(dropSpan, dropSpan.Length - 1, mask))
+                if (valid)
                 {
                     compatibleCount++;
                     commonForcedOut &= mask;
@@ -776,25 +722,6 @@ internal static class LiveActivityKernel
         result[baseN] = mCount;
         Array.Copy(nightResults, 0, result, baseN + 1, nightResults.Length);
         return result;
-    }
-
-    private static bool DropOwners(ReadOnlySpan<int> groups, int idx, int available)
-    {
-        if (idx < 0)
-        {
-            return true;
-        }
-        int candidates = groups[idx] & available;
-        while (candidates != 0)
-        {
-            int bit = candidates & -candidates;
-            if (DropOwners(groups, idx - 1, available & ~bit))
-            {
-                return true;
-            }
-            candidates &= ~bit;
-        }
-        return false;
     }
 
     // --- 2. LiveActivity._likelihood & crossing_probability ---

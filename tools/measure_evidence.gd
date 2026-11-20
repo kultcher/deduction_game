@@ -526,15 +526,6 @@ func _measure_player(g) -> void:
 		var nums: Array = range(before + 1, g.board.size() + 1)
 		if not nums.is_empty():
 			finds.append({"evidence": "trace", "nums": nums, "target": w.demon_id, "scene": sid})
-	for loc in w.dropped.keys().duplicate():
-		var owners: Array = w.dropped[loc].map(func(it): return str(it.get("owner", ""))).filter(func(o): return o != "")
-		var before: int = g.board.size()
-		g.loc = loc
-		GameDayNight._search(g)
-		var nums: Array = range(before + 1, g.board.size() + 1)
-		var target: String = owners[0] if not owners.is_empty() else ""
-		if not nums.is_empty() and target != "":
-			finds.append({"evidence": "dropped_belongings", "nums": nums, "target": target})
 	# Partner for traces: everyone's workplace and haunts as profile cards (what a player
 	# learns about town), cited with the trace.
 	var profile_nums: Array = []

@@ -855,6 +855,9 @@ func _test_knob3_zero_walker_daytime_rumor_fuel() -> void:
 	var delivered_count: int = 0
 	for _i in range(25):
 		speaker.told_to.clear()
+		# The speaker's own home alibi for last night is a separate candidate, not daytime fuel,
+		# and it does reach the ledger: count it told, so the pick isn't down to the draw (Nov 20).
+		speaker.told_to[listener.id + "|alibi:%s:%d" % [speaker.id, w.day - 1]] = true
 		var picked = Social._pick_item(w, speaker, listener)
 		if picked != null:
 			_check(picked["kind"] in ["day_sighting", "unease"], "zero-walker pick produces daytime sighting or unease item (%s)" % str(picked["kind"]))

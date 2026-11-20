@@ -56,11 +56,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `SAME_BLOCK_SIGHTING_CHANCE` | `0.4` |  | `sim/world.gd` |
 | `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world.gd` |
-| `DROP_CHANCE_DEMON` | `0.35` | Night drops, sightings & crime scene traces | `sim/world.gd` |
-| `DROP_CHANCE_WALKER` | `0.15` |  | `sim/world.gd` |
-| `LEGACY_MUD_DROPS_ENABLED` | `false` |  | `game/game_day_night.gd` |
-| `DROP_OWNED_CHANCE` | `0.12` |  | `sim/world.gd` |
-| `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` |  | `sim/world.gd` |
+| `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world.gd` |
 | `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world.gd` |
 | `NIGHT_NEIGHBOUR_ALIBI_CHANCE` | `0.2` |  | `sim/world.gd` |
 | `MISLEADING_TRACE_CHANCE` | `0.4` | retired structured-trace era constant (kept for compatibility) | (unused) |
