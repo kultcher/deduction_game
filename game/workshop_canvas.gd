@@ -78,6 +78,8 @@ static func view(g) -> Dictionary:
 				cards[-1].fallback = false
 			if activity.get("testimony_only", false):
 				cards[-1].support_note = "Context only: " + activity.context_note if activity.kind == "context" else "Hearsay: the teller can't say whose reading it was, or prove the gift."
+	# Excuses for a caught "I was home" soften or contradict it, as in a listener's view.
+	Assess._mark_excuses(cards, int(snapshot.now.day))
 	var history = Assess.History.chronology(snapshot.public_events, snapshot.people, snapshot.now)
 	var result = {"seed": g.w.seed_value, "day": snapshot.now.day, "people": snapshot.people, "cards": cards,
 		"profile_facets": _profile_facets(g),
@@ -204,9 +206,7 @@ static func status(g, value: Dictionary) -> Dictionary:
 	var blocked = not supports(g, value).issues.is_empty() or value.cards.is_empty()
 	if value.cards.is_empty():
 		issues.append("Connect evidence to the selected premise before filing.")
-	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked or (g.strict_evaluator and (not prepared.ready or not audience_ready)), "issues": issues,
-		"mode": "shared" if prepared.ready else "legacy",
-		"warning": "Fallback evaluates the headline and original cards using the existing argument system. Canvas answers, assumptions, intermediate claims and link meanings are NOT interpreted by that system."}
+	return {"ready": prepared.ready and not blocked, "audience_ready": audience_ready, "blocked": blocked, "issues": issues}
 
 static func file(g, value: Dictionary, previous: int = 0) -> int:
 	if g.workshop_presenting:

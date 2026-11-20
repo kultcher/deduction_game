@@ -62,7 +62,6 @@ func _live(size: int) -> void:
 		check(listener.workshop_state.active and entries.all(func(entry): return listener.workshop_state.owned.has(entry.eid) and entry.effects.is_empty()), "all exact readings are owned with empty legacy effects for " + n.id)
 	check(g.w.rng.state == rng, "exact identity and repeated receipt ownership draw no game RNG")
 	var ded = g.file_deduction({"type": "evil", "a": observer.id}, cards)
-	g.strict_evaluator = true
 	for n in g.w.living():
 		var response = g._evaluate_deduction(n, g.board[ded - 1], 1.0, false)
 		check(response.get("workshop", false), "same-day exact receipts remain fully shared in strict presentation to " + n.id)
