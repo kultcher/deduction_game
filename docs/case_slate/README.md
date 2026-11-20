@@ -100,6 +100,13 @@ issues. On the slate, that means the case or the judge is broken.
 
 ## Votes
 
+The six `lie_*` cases (Nov 20) are word against word: the player calls one teller's reading a
+lie on another teller's clashing reading, as a challenge on the case (`reading_challenges`,
+mode "lying"). Their rows also record `lie_calls`, how the average listener takes each call:
+"pressed" (accepted, so the teller is pressed as the liar), "draw", "unestablished" or "bare".
+They keep the player's-judgement boost (#352) measured: in `lie_seer_reversed` the Minion's
+plausible lie wins today, the true call only draws and its misleading twin is pressed.
+
 Each row also records how the good townsfolk would vote on the subject if a neutral
 nominator put them up, with the player's vote left out (`yes_before`, `yes_after`,
 `voters_good`, `threshold`, `crosses`), through Beadle's `MindMeeting.would_vote` (#347). A
