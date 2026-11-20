@@ -17,6 +17,25 @@ session notes are kept for the record; code pointers may have moved since.
 
   > **Closed Nov 20 (Quill confirmed).** The Poisoner part stays in BACKLOG.md.
 
+- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
+  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
+  - (b) keep "readings don't fit together";
+  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
+    premises step 4;
+  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
+    decided.
+
+  Owner Quill. **Built** on `claude/premise-trim` (Quill, Nov 20; handoff
+  `2026-11-20-0745-quill-premise-trim.md`).
+
+  > **Closed Nov 20 (Quill confirmed, through Seneschal):** merged in #416.
+
+- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
+  and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
+  `2026-11-20-0725-quill-remove-muddler.md`).
+
+  > **Closed Nov 20 (Quill confirmed, through Seneschal):** merged in #405.
+
 ## Built, Nov 20, 2026 (closed by Claude-Vicar)
 
 - **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's

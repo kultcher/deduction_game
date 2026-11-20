@@ -30,8 +30,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
-    2. The premise menu, trimmed
-    3. Remove the Muddler
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided]`
@@ -160,21 +158,6 @@ listener (#273), both Lantern's.
      PRs merge.
 
   [decided]
-
-- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
-  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
-  - (b) keep "readings don't fit together";
-  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
-    premises step 4;
-  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
-    decided.
-
-  Owner Quill. **Built** on `claude/premise-trim` (Quill, Nov 20; handoff
-  `2026-11-20-0745-quill-premise-trim.md`). [in review]
-
-- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
-  and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
-  `2026-11-20-0725-quill-remove-muddler.md`). [in review]
 
 ### NPC behaviour
 
