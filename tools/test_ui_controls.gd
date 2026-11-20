@@ -1,6 +1,7 @@
 ## UI controls and help: menus and pickers, headlines, help text, the map and visits, grimoire and Roles windows.
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_fixes, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
+const MainRoles = preload("res://ui/main_roles.gd")
 
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
@@ -193,7 +194,7 @@ func setup_counts():
 		main.g.w.minion_ids = []
 		for n in main.g.w.npcs:
 			n.secret_mod = "lovers"
-		main._open_roles()
+		MainRoles.open(main)
 		await process_frame
 		var summary = main.roles_box.get_node("SetupSummary")
 		check(summary.text == expected[count], "script summary uses setup counts and one secret, including Lovers")
@@ -306,7 +307,7 @@ func demon_night_wording():
 	var g = backlog_batch4__fresh()
 	scene.g = g
 	var rng = g.w.rng.state
-	scene._open_roles()
+	MainRoles.open(scene)
 	var labels = scene.roles_box.find_children("DemonNightRule", "Label", true, false)
 	check(labels.size() == 1 and labels[0].text == C.DEMON_NIGHT_RULE and C.DEMON_NIGHT_RULE in g._script(), "both graphical and typed Roles state the night-0 and night-1 rule")
 	check(g.w.rng.state == rng, "Roles wording does not advance RNG")
@@ -508,33 +509,33 @@ func presentation_options():
 	var phase = g.w.phase
 	var cards = JSON.stringify(g.board)
 	var roles_count = g.w.case_script.town.size() + g.w.case_script.demons.size() + g.w.case_script.minions.size() + g.w.case_script.secrets.size()
-	scene._open_roles()
+	MainRoles.open(scene)
 	var content = scene.roles_content
 	check(not scene.roles_pinned and scene.roles_win.visible and not scene.roles_dock.visible, "Roles starts as the existing movable window")
 	scene.roles_pin.button_pressed = true
 	check(scene.roles_pinned and scene.roles_dock.visible and not scene.roles_win.visible and content.get_parent() == scene.roles_dock, "pin moves the same Roles content beside the town profile")
 	check(_roles_columns(scene.roles_box) == [1] and _roles_rows(scene.roles_box) == roles_count, "pinned Roles has all gifts and secrets in one scrollable column")
 	var summary = scene.roles_box.find_child("SetupSummary", true, false)
-	check(summary != null and summary.text == scene.setup_summary(g.w.n_npcs), "pinned Roles retains rule-based setup counts")
+	check(summary != null and summary.text == MainRoles.setup_summary(g.w.n_npcs), "pinned Roles retains rule-based setup counts")
 	var n = g.w.npcs[0]
 	n.claimed_role = "seer"
 	n.max_tier = 3
 	scene._refresh_all()
-	check(scene._roles_signature == scene._roles_state_key() and _roles_rows(scene.roles_box) == roles_count, "pinned Roles refreshes the same existing claim content without duplicating rows")
+	check(scene._roles_signature == MainRoles.state_key(scene) and _roles_rows(scene.roles_box) == roles_count, "pinned Roles refreshes the same existing claim content without duplicating rows")
 	# Keep the fixture-only disclosure out of the observational comparison.
 	n.claimed_role = ""
 	n.max_tier = 0
 	scene._open_case_view()
-	scene._open_roles()
+	MainRoles.open(scene)
 	check(scene.roles_pinned and scene.roles_win.visible and content.get_parent() == scene.roles_window_box, "case-board Roles can still open the shared window while retaining the pin preference")
 	scene.case_view.hide()
 	check(scene.roles_dock.visible and content.get_parent() == scene.roles_dock and not scene.roles_win.visible, "returning to town restores the pinned Roles panel")
-	scene._hide_roles()
+	MainRoles.hide(scene)
 	check(not scene.roles_showing and not scene.roles_dock.visible, "Hide closes the pinned reference without changing its session preference")
 	scene.case_view.show()
 	scene.case_view.hide()
 	check(not scene.roles_dock.visible, "screen changes do not reopen a panel the player hid")
-	scene._open_roles()
+	MainRoles.open(scene)
 	scene.roles_pin.button_pressed = false
 	check(not scene.roles_pinned and scene.roles_win.visible and content.get_parent() == scene.roles_window_box and _roles_columns(scene.roles_box) == [2], "unpin restores the two-column Roles window")
 	check(g.w.rng.state == rng and g.w.phase == phase and JSON.stringify(g.board) == cards, "Roles layout, navigation and toggles change no game data or RNG")
@@ -600,12 +601,12 @@ func presentation_options():
 	check(not scene.map._name_labels.any(func(label): return label.id == elsewhere.id), "layout never pulls a name from another block into the zoomed street")
 	check(scene.map._name_labels.size() == g.w.living().size() - 1, "the viewed block retains all its residents after another person leaves")
 	check(g.w.rng.state == rng and g.w.phase == phase, "flash timers and rendered label layout consume no game RNG or time")
-	scene._set_roles_pinned(true)
+	MainRoles.set_pinned(scene, true)
 	for index in range(scene.size_opt.item_count):
 		if scene.size_opt.get_item_metadata(index) == 7: scene.size_opt.select(index)
 	scene._new_case()
 	check(scene.roles_pinned and scene.roles_dock.visible and scene.roles_content.get_parent() == scene.roles_dock, "new case retains this session's visible pin preference")
-	check(scene.roles_box.find_child("SetupSummary", true, false).text == scene.setup_summary(7), "new case updates pinned setup counts from its new setup rules")
+	check(scene.roles_box.find_child("SetupSummary", true, false).text == MainRoles.setup_summary(7), "new case updates pinned setup counts from its new setup rules")
 	check(scene.profile.bars.flashes.is_empty(), "new case does not replay previous trait discovery flashes")
 	scene.free()
 

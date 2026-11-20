@@ -222,6 +222,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			flags |= (1 << 9)
 		if bool(card.get("known_self", false)):
 			flags |= (1 << 10)  # FlagKnownSelf: the listener's own home night
+		if bool(card.get("admitted", false)):
+			flags |= (1 << 11)  # FlagAdmitted: a person's own "I was out"
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))
@@ -311,7 +313,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			card_ints[off + 19] = int(app.get("through", -1))
 
 		card_doubles[c_i * 2] = (1.0 - float(card.get("self_doubt", 0.0))) if card.get("known_self", false) else float(card.get("hearing_weight", 1.0))
-		card_doubles[c_i * 2 + 1] = clampf(float(card.get("report_error", default_nw_err)), 0.02, 0.45)
+		# The second slot: a report's error, or an alibi's good out-rate (out_rate, an excused lie).
+		card_doubles[c_i * 2 + 1] = float(card.get("out_rate", GOOD_OWN_ALIBI_OUT)) if kind_code == 5 else clampf(float(card.get("report_error", default_nw_err)), 0.02, 0.45)
 
 	return {"ints": card_ints, "doubles": card_doubles}
 
@@ -338,8 +341,8 @@ static func _paths(view: Dictionary, person: Dictionary, night: int, cards: Arra
 				okay = okay and out and path.back() == hearth
 			if card.get("night", -1) != night or card.get("quoted", false):
 				continue
-			if card.kind == "sighting" and card.get("hearing_weight", 1.0) < 1.0:
-				continue
+			if card.kind == "sighting" and (card.get("hearing_weight", 1.0) < 1.0 or card.get("admitted", false)):
+				continue  # (an admitted outing is only the teller's word: no hard route)
 			if card.kind == "sighting" and person.id in card.get("subjects", [card.get("subject", "")]):
 				okay = okay and out and (card.block == "" or (C.vigil_sees_path(card.block, path, str(person.get("home", ""))) if card.get("complete", false) else card.block in path))
 				if card.has("guard_claim"):
@@ -1978,7 +1981,17 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 		"sighting":
 			if person in card.get("subjects", [card.get("subject", "")]):
 				var matches_block: bool = card.block == "" or (C.vigil_sees_path(card.block, path, _home_of(view, person)) if card.get("complete", false) else card.block in path)
-				return 1.0 if out and matches_block else 1.0 - float(card.get("hearing_weight", 1.0))
+				var hw: float = float(card.get("hearing_weight", 1.0))
+				if card.get("admitted", false) and alignment != "good":
+					# An evil teller owns the outing but may lie about where (Codex on #372): a
+					# place it truly went, or one picked among the blocks. No one admits a night
+					# out they didn't take. Weighed, like any sighting, by how far the listener
+					# credits hearing it.
+					var told: float = 0.0
+					if out:
+						told = 1.0 if matches_block else 1.0 / float(C.BLOCKS.size())
+					return hw * told + (1.0 - hw)
+				return 1.0 if out and matches_block else 1.0 - hw
 			if card.get("complete", false) and person not in card.get("excluded", []):
 				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS
 		"evening":
@@ -2000,7 +2013,8 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				# (GOOD_OWN_ALIBI_OUT, Nov 17); an evil subject may be covering a night out,
 				# priced like a relayed alibi.
 				if not card.get("quoted", false) and alignment == "good":
-					return 1.0 if not out else GOOD_OWN_ALIBI_OUT
+					# out_rate: higher while an excuse for a caught lie stands (LiveAssessment._mark_excuses).
+					return 1.0 if not out else float(card.get("out_rate", GOOD_OWN_ALIBI_OUT))
 				return (0.7 if alignment != "good" else 0.3) if out else 0.9
 		"report":
 			if card.role == "warden" and card.source == person:

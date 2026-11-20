@@ -10,6 +10,7 @@
 ##     gift shares every sighting they remember.
 ##   godot --headless --path . --script res://tools/test_control_flow.gd
 extends SceneTree
+const MainActions = preload("res://ui/main_actions.gd")
 
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -96,7 +97,7 @@ func _test_approach(scene) -> void:
 		_check(g.state == "approach" and g.w.phase == ph, "a %s approach waits for an answer: 'wait' doesn't get past it" % agenda)
 		scene._run("go tavern")
 		_check(g.state == "approach" and not g.moved, "nor does walking off (%s)" % agenda)
-		scene._refresh_actions()
+		MainActions.refresh(scene)
 		_check(not _labels(scene).any(func(t): return t.begins_with("Wait")), "the pane offers only the answers (%s)" % str(_labels(scene)))
 	g.command("no")
 	_check(g.state == "day", "an answer moves on")
@@ -156,7 +157,7 @@ func _test_lock(scene) -> void:
 	var mv = scene.meeting_view
 	mv._res = {"order": []}
 	mv._t = 0.0
-	scene._refresh_actions()
+	MainActions.refresh(scene)
 	_check(_labels(scene) == ["Finish the count"], "while the hand goes round, the pane offers only finishing the count")
 	mv.finish()
 	scene._refresh_all()

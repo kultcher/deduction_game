@@ -16,6 +16,7 @@ test_buildings_tavern_town_hall
 test_card_wording_fixes
 test_case_metrics_dead
 test_case_script
+test_caught_lie_softening
 test_caught_out_ladder
 test_codex_fixes
 test_connections
