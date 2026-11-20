@@ -26,7 +26,7 @@ const SEEDS_TRIED: int = 20
 const Connections = preload("res://workshop/connections.gd")
 const Game = preload("res://game/game.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
-## Playtest 89077's script.
+## Playtest 89077's script, as recorded. Its Muddler is dropped on load (ScriptDef.RETIRED_IDS, Nov 20).
 const SCRIPT: Dictionary = {"demons": ["demon"], "forced": [], "minions": ["breathstealer", "poisoner", "revenant", "scion"], "name": "Dynamic #89077",
 	"secrets": ["delusional", "marked", "muddler", "sleepwalker"], "town": ["archivist", "clerk", "gravedigger", "lamplighter", "magistrate", "medium",
 	"nightwatch", "psychologist", "registrar", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]}

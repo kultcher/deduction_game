@@ -9,6 +9,7 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
 const Social = preload("res://sim/social.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -139,7 +140,7 @@ func _test_ledger_receipts_and_ownership() -> void:
 	Mind.hear_claim(w, listener, saved.id, "warden", 0.5, "public")
 	walker.silence_pending = 2
 	w.begin_meeting()
-	MindMeeting.defend_self(w, walker, "player")
+	MindDefence.defend_self(w, walker, "player")
 
 	martyr.role = "martyr"
 	martyr.martyr_target = saved.id

@@ -11,7 +11,7 @@ Every piece of evidence lands in one or more of these:
 1. **World solver.** Enumerates every legal hidden setup (a "world"):
    - who is evil;
    - which evil player is the Demon;
-   - one secret modifier and its holder(s): Marked, Delusional, Lovers, Sleepwalker or Muddler;
+   - one secret modifier and its holder(s): Marked, Delusional, Lovers or Sleepwalker;
    - the Revenant's conversion, when there is one.
 
    A live town has around 15,000 worlds (CaseEval's own figure). A card can rule worlds out (a hard constraint) or reweight them.
@@ -72,7 +72,7 @@ A reading's reliability for a listener is its hearing weight × `(0.5 + 0.5 × t
 | **R** | Mis-registration: Marked registers as evil or the Demon, or the Seer's Red Herring | in the worlds (Marked) and the role table (Red Herring) |
 | **D** | Delusional source: the gift gives arbitrary information | in the worlds |
 | **P** | Poisoned that night | **not in the worlds**; only through `err` (reliability), and the player's "failed gift" challenge |
-| **H** | Hearsay drift: relayed, muddled (Muddler) or misheard | the route's reliability; the Muddler is a world modifier |
+| **H** | Hearsay drift: relayed or misheard (the Muddler, removed Nov 20) | the route's reliability |
 | **O** | Honest outing: the person was out for a gift, a secret or an errand | the movement profiles |
 
 ### Strength tiers (judged)
@@ -151,7 +151,7 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 | G5 | Holds their claimed gift | the role table | as "good" | — | — | — |
 | G6 | Conflict premise | case consistency | as its cards | — | — | — |
 | G7 | Reading challenge (misled / lying / failed gift / Delusional / these don't fit) | leave-one-out, reliability | moderate when grounded | — | no | grounds cards |
-| H | Distorters: Marked, Red Herring, Delusional, Poisoner, Muddler, Sleepwalker, Lovers, curse, Scion, Brute, Breathstealer, Sexton's bell | — | — | — | — | — |
+| H | Distorters: Marked, Red Herring, Delusional, Poisoner, Sleepwalker, Lovers, curse, Scion, Brute, Breathstealer, Sexton's bell | — | — | — | — | — |
 
 ## A. Gift readings
 
@@ -285,7 +285,7 @@ Strengths assume a reference listener: Insight 0.5, trust 0.7 in the source, the
 
 ### A10. Rumormonger (one of two carries secret S)
 - **Source and timing:** Rumormonger, first night.
-- **Says:** one of two people carries a particular secret (Marked, Delusional, Lovers, Sleepwalker, Muddler).
+- **Says:** one of two people carries a particular secret (Marked, Delusional, Lovers, Sleepwalker).
 - **System:** worlds (the modifier and its holders).
 - **Constrains:** who holds the case's one secret. That also rules out every other secret elsewhere, since there's one per case.
 - **Wrong when:** defaults.
@@ -654,7 +654,6 @@ These aren't evidence. They're what makes evidence wrong, and each entry above l
 | Red Herring (Seer) | One good soul reads as the Demon to the Seer, all case. | role table |
 | Delusional (secret) | Gift gives arbitrary information; the holder doesn't know. | worlds |
 | Poisoner | One person's gift fails or lies until the next night. | **not in worlds**: reading error and challenges only |
-| Muddler (secret) | Often muddles one detail when passing on someone else's reading or sighting. | world modifier; route reliability |
 | Sleepwalker (secret) | Leaves home each night without knowing it. Honest false alibis. | worlds and movement |
 | Lovers (secret) | Two townsfolk meet at night. Honest outings. | worlds and movement |
 | Revenant curse | A good voter turns evil for a window. | chronology; live histories only partly adapted |

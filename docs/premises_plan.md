@@ -117,7 +117,7 @@ A premise can matter only if the solver can check it against a world. A world re
 | --- | --- | --- | --- | --- |
 | X is evil / good (at a chosen time) | 1 | World alignment and curse epochs | Cheap: a yes/no per world | Asked, never acted on |
 | X is the Demon / not the Demon / a Minion | 1 | World Demon identity, Scion epochs | Cheap | Asked, never acted on |
-| X holds a modifier (Marked, Delusional, Lovers, Sleepwalker, Muddler) | 1 | World modifier holders | Cheap | Asked, never acted on |
+| X holds a modifier (Marked, Delusional, Lovers, Sleepwalker) | 1 | World modifier holders | Cheap | Asked, never acted on |
 | These reports conflict | 1 | Case consistency | Cheap | Works (quotes the cards) |
 | X is the role X claims ("X really is the Seer") | 1 | Good claims are binding, so this is "X is good" plus the role table's fit | Cheap | Asked; reduces to "X is good" |
 | Reading R is false | 2 | Report truth table per world | Cheap | Partly (via misled) |
@@ -233,7 +233,6 @@ The per-card "evil or Marked" pick is decorative: canvas answers are scored for 
 | Delusional | X's own readings | X's readings being wrong, without X being evil |
 | Sleepwalker | Sightings of X out at night | X being out without a gift or motive (the movement model already handles Sleepwalker claimants) |
 | Lovers | Sightings of the pair together, or away from home | Their secret meetings |
-| Muddler | Readings or sightings X passed on | One detail of a relay being wrong |
 
 In the challenge design, these premises are the causes that explain a reading without blaming anyone evil. A challenge with cause "misled by a Marked player" is the same as linking the reading to "X is Marked".
 
