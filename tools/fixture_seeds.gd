@@ -6,10 +6,8 @@
 ## range of seeds for the scenario itself, so a test keeps testing the same thing however
 ## play changes. Each returns {} if no seed in the range has it; the caller fails loudly.
 ##
-## Games are played passively (decline, wait, sleep, vote no) to the day-`day` meeting. The
-## search plays them on the earlier belief model, which is several times faster (as
-## test_connections_pairings' _known_game does), and restores the switch for the caller's
-## reading of the game it found.
+## Games are played passively (decline, wait, sleep, vote no) to the day-`day` meeting.
+## Each game is played on the connections model, like play itself.
 extends RefCounted
 
 const Game = preload("res://game/game.gd")

@@ -943,7 +943,7 @@ static var same_model_loo: bool = true
 ## What leaving card `cid` out changes in the belief model itself (the connections refresh
 ## that formed this belief, Jury's inputs in ctx.cx): the shift in `pid`'s chance of being
 ## evil from the prior with every held card, less the same without this one. null when the
-## inputs aren't there (the earlier model, tools), so the caller falls back to its own model.
+## inputs aren't there (a Test juror or ghost listener, tools), so the caller falls back to its own model.
 ## One connections refresh per card, memoised for every suspect.
 static func _connections_drop(ctx: Dictionary, cid: String, pid: String, pr0: Dictionary) -> Variant:
 	var cx: Dictionary = ctx.get("cx", {})

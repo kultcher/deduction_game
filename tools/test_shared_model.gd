@@ -1,7 +1,7 @@
 ## The NPCs' shared belief model: what reaches the ledger and who owns it, source doubt
 ## (caught liars, demon victims), Seer clearing and metadata preferences, impossible
 ## Gravedigger reports, keeping the last good beliefs through a failed refresh, and a
-## multi-day smoke run (0 fallbacks, flat outside layer, idempotent RNG-free refreshes).
+## multi-day smoke run (0 unprepared refreshes, flat outside layer, idempotent RNG-free refreshes).
 ## Gathered from the Legacy Purge phase 2b/2c/3 suites on 2026-11-04.
 extends SceneTree
 
@@ -288,12 +288,12 @@ func _test_gravedigger_missing_execution_ready_and_catches_liar() -> void:
 	Mind.refresh_beliefs(g.w, listener, " (warden role)")
 
 	# No execution occurred on Day 1: faker claims a Night 1 Gravedigger reading on innocent anyway.
-	g.shared_fallbacks.clear()
+	g.unprepared_refreshes.clear()
 	var bogus_entry = {"day": 1, "phase": 3, "role": "gravedigger", "data": {"executed": innocent.id, "role": "poisoner"}, "text": "dug up %s as Poisoner" % innocent.name}
 	Mind.apply_info(g.w, listener, faker, bogus_entry, 0.8)
 
-	_check(g.shared_fallbacks.is_empty() and listener.workshop_state.get("active", false) and listener.workshop_state.get("issues", []).is_empty(),
-		"Gravedigger report with no matching public execution refreshes cleanly with 0 fallbacks")
+	_check(g.unprepared_refreshes.is_empty() and listener.workshop_state.get("active", false) and listener.workshop_state.get("issues", []).is_empty(),
+		"Gravedigger report with no matching public execution refreshes cleanly with 0 unprepared refreshes")
 	_check(is_equal_approx(float(listener.workshop_state.get("source_doubt", {}).get(faker.id + ":*", 0.0)), 1.0),
 		"SourceDoubt marks claimant of unexecuted Gravedigger report as caught liar (source:* = 1.0)")
 	_check(float(listener.workshop_state.get("requested", {}).get(faker.id, 0.0)) > 0.25,
@@ -345,7 +345,7 @@ func _test_unready_refresh_keeps_last_good_vector_and_logs() -> void:
 	var last_good_act: Dictionary = listener.workshop_state.get("action", {}).duplicate(true)
 
 	# Inject malformed bare curse public event (missing vote/execution) to force Shared.prepare unready.
-	g.shared_fallbacks.clear()
+	g.unprepared_refreshes.clear()
 	g.w.public_log.append({"day": 1, "kind": "curse", "subjects": [target_a.id], "by": "town"})
 	Mind.refresh_beliefs(g.w, listener, " (forced unready refresh)")
 
@@ -353,8 +353,8 @@ func _test_unready_refresh_keeps_last_good_vector_and_logs() -> void:
 		"Unready refresh keeps the NPC's last good shared suspicion vector intact")
 	_check(_close_dict(listener.workshop_state.get("requested", {}), last_good_req) and listener.workshop_state.get("action", {}) == last_good_act,
 		"Unready refresh preserves last good requested vector and action scores")
-	_check(not g.shared_fallbacks.is_empty() and not listener.workshop_state.get("issues", []).is_empty(),
-		"Unready refresh logs the issue in g.shared_fallbacks and workshop_state.issues")
+	_check(not g.unprepared_refreshes.is_empty() and not listener.workshop_state.get("issues", []).is_empty(),
+		"Unready refresh logs the issue in g.unprepared_refreshes and workshop_state.issues")
 
 	# Outside adjustments while unready are preserved cleanly once the chronology issue clears.
 	Mind.adjust(g.w, listener, target_a.id, 0.07, "outside test bump", "", false)
@@ -397,7 +397,7 @@ func _test_multi_day_smoke() -> void:
 		if g.state == "over" or g.w.day < 4:
 			continue
 		reached += 1
-		if not g.shared_fallbacks.is_empty():
+		if not g.unprepared_refreshes.is_empty():
 			all_clean = false
 		var rng_before: int = g.w.rng.state
 		for p in g.w.living_good():
@@ -412,4 +412,4 @@ func _test_multi_day_smoke() -> void:
 				all_clean = false
 		if g.w.rng.state != rng_before:
 			all_clean = false
-	_check(all_clean and reached == 4, "4 seeds reach Day 4 with 0 fallbacks, active shared state, a flat 0.1 outside layer, and idempotent, RNG-free refresh_beliefs")
+	_check(all_clean and reached == 4, "4 seeds reach Day 4 with 0 unprepared refreshes, active shared state, a flat 0.1 outside layer, and idempotent, RNG-free refresh_beliefs")

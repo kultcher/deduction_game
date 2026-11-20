@@ -237,10 +237,9 @@ static func _parts(res: Dictionary, old: Dictionary, p: String, case_key: String
 		rows.append({"stage": row[0], "label": row[1], "before": then.get(row[0], null), "after": float(now[row[0]])})
 	return {"rows": rows, "pinned": str(now.pinned), "before": then.get("chance", null), "after": float(now.chance), "other_cases": now.other_keys}
 
-## Why a presented case moved a listener, with the connections model on: read from the
-## breakdown the applied refresh stored (and the one before it, from `before`). Nothing is
-## re-run except the premise's own single-listener check (Why.evidence), which the switch
-## doesn't change.
+## Why a presented case moved a listener: read from the breakdown the applied refresh
+## stored (and the one before it, from `before`). Nothing is re-run except the premise's own
+## single-listener check (Why.evidence).
 static func _connections_report(g, real, n, card: Dictionary, venue: String, was: Dictionary, started: int, scoped: Dictionary) -> Dictionary:
 	var state: Dictionary = n.workshop_state
 	var key: String = str(card.get("n", 0))
@@ -374,7 +373,7 @@ static func _connections_report(g, real, n, card: Dictionary, venue: String, was
 		out["action"] = _action(g, n, target)
 
 	# Does the case support its premise? The single-listener check, as this listener hears
-	# the cards. The switch doesn't change it.
+	# the cards.
 	out["read_ms"] = Time.get_ticks_msec() - started
 	var outside: Dictionary = state.get("outside", n.suspicion).duplicate(true)
 	var doubt: Dictionary = SourceDoubt.derive(plan, n.ledger, state.get("manual_source_doubt", {}))
@@ -529,7 +528,7 @@ static func describe_connections(g, b: Dictionary, view: Dictionary) -> String:
 		lines.append("  (suspicion %.2f + town pressure %.2f + execution priority %.2f + resentment %.2f; the player's own vote and statement would add to this)" % [
 			float(a.suspicion), float(a.town_pressure), float(a.execution_priority), float(a.resentment)])
 	lines.append("")
-	lines.append("Does the case support its own premise? (All its cards read together by %s alone; the same check with the model on or off.)" % b.name)
+	lines.append("Does the case support its own premise? (All its cards read together by %s alone.)" % b.name)
 	lines.append(Why.describe(view, b.evidence, _numbers(g)))
 	return "\n".join(lines)
 

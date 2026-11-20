@@ -1,9 +1,9 @@
 ## A live town presentation through the real game path (shared effects on): every native
 ## reading filed as one case and presented to every living listener at a meeting. Reports
-## how many listeners used the shared assessment, why the rest used native rules, the
+## how many listeners used the shared assessment, why the rest weren't assessed, the
 ## wall time, and the slowest profiled stages.
 ##   godot --headless --path . --script res://tools/profile_live_presentation.gd -- [--seed N] [--allow-fallback]
-## Exits with failure if any listener used native rules: a timing that silently skips the
+## Exits with failure if any listener wasn't assessed: a timing that silently skips the
 ## shared evaluator measures less work. --allow-fallback reports it without failing.
 extends SceneTree
 const Game = preload("res://game/game.gd")
@@ -41,7 +41,7 @@ func _run() -> void:
 			board.connect_cards("e:" + Evidence.normalize_card(g.board[number - 1]).id, root_id)
 		var number = Live.file(g, board.compile(root_id))
 		var shared = 0
-		var native: Array = []
+		var unassessed: Array = []
 		var why = {}
 		Prof.start()
 		var t0 = Time.get_ticks_msec()
@@ -50,7 +50,7 @@ func _run() -> void:
 			if r.get("workshop", false):
 				shared += 1
 			else:
-				native.append(n.id)
+				unassessed.append(n.id)
 				for issue in n.workshop_state.get("issues", []):
 					var kind: String = issue.get_slice(":", 0)
 					why[kind] = why.get(kind, 0) + 1
@@ -61,14 +61,14 @@ func _run() -> void:
 			stages[row.stage] = stages.get(row.stage, 0) + row.self_us
 		var keys = stages.keys()
 		keys.sort_custom(func(a, b): return stages[a] > stages[b])
-		print("seed %d: %d readings; %d shared, %d native %s; %d ms" % [seed_value, reports.size(), shared, native.size(), native, elapsed])
-		if not native.is_empty():
-			fell_back.append("seed %d: %s" % [seed_value, native])
+		print("seed %d: %d readings; %d shared, %d unassessed %s; %d ms" % [seed_value, reports.size(), shared, unassessed.size(), unassessed, elapsed])
+		if not unassessed.is_empty():
+			fell_back.append("seed %d: %s" % [seed_value, unassessed])
 		for kind in why:
-			print("  native because: %s (%d)" % [kind, why[kind]])
+			print("  unassessed because: %s (%d)" % [kind, why[kind]])
 		print("  slowest: " + ", ".join(PackedStringArray(keys.slice(0, 4).map(func(k): return "%s %.0f ms" % [k, stages[k] / 1000.0]))))
 	if not fell_back.is_empty():
-		print("%s: listeners used native rules, so these timings skip shared work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", "; ".join(PackedStringArray(fell_back))])
+		print("%s: listeners weren't assessed, so these timings skip their work: %s" % ["WARNING" if "--allow-fallback" in args else "FAIL", "; ".join(PackedStringArray(fell_back))])
 		quit(0 if "--allow-fallback" in args else 1)
 		return
 	quit()

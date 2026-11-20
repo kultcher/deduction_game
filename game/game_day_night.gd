@@ -630,27 +630,27 @@ static func _resolve_night(g) -> void:
 	g._maybe_approach()
 
 
-## Developer report: what the legacy rules judged because the shared model couldn't.
+## Developer report: refreshes the shared model couldn't prepare (each kept the last good beliefs).
 static func _fallbacks_text(g) -> String:
-	if g.shared_fallbacks.is_empty():
-		return "No legacy fallbacks this game: everything was judged by the shared model."
+	if g.unprepared_refreshes.is_empty():
+		return "No unprepared refreshes this game: the shared model judged everything."
 	var by_point = {}
-	for f in g.shared_fallbacks:
+	for f in g.unprepared_refreshes:
 		by_point[f.point] = by_point.get(f.point, 0) + 1
-	var out = PackedStringArray(["%d legacy fallbacks this game:" % g.shared_fallbacks.size()])
+	var out = PackedStringArray(["%d unprepared refreshes this game:" % g.unprepared_refreshes.size()])
 	for point in by_point:
 		out.append("  %s: %d" % [point, by_point[point]])
 	out.append("Most recent:")
-	for f in g.shared_fallbacks.slice(maxi(0, g.shared_fallbacks.size() - 10)):
+	for f in g.unprepared_refreshes.slice(maxi(0, g.unprepared_refreshes.size() - 10)):
 		out.append("  day %d %s, %s (%s): %s" % [f.day, f.phase, f.listener, f.point, "; ".join(PackedStringArray(f.issues))])
 	return "\n".join(out)
 
 
 static func _morning_report(g) -> void:
 	g._hdr("Day %d, Morning" % g.w.day)
-	if g.shared_fallbacks.size() > g._fallbacks_reported:
-		g._narr("[dev] The legacy rules judged %d thing(s) the shared model couldn't read since the last report. Type 'fallbacks' for details." % (g.shared_fallbacks.size() - g._fallbacks_reported))
-		g._fallbacks_reported = g.shared_fallbacks.size()
+	if g.unprepared_refreshes.size() > g._unprepared_reported:
+		g._narr("[dev] %d refresh(es) the shared model couldn't prepare since the last report kept the last good beliefs. Type 'fallbacks' for details." % (g.unprepared_refreshes.size() - g._unprepared_reported))
+		g._unprepared_reported = g.unprepared_refreshes.size()
 	if g.w.day > 1 or not g.w.deaths_last_night.is_empty():
 		if g.w.deaths_last_night.is_empty():
 			g._narr("Dawn breaks. Nobody died in the night.")
