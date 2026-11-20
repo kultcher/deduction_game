@@ -6,6 +6,7 @@
 ##   godot --headless --path . --script res://tools/test_warden_quiet_route.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 const History = preload("res://workshop/live_history.gd")
@@ -132,8 +133,8 @@ func _juror() -> void:
 	var warden = goods.filter(func(n): return n != target)[0]
 	var witness = goods.filter(func(n): return n != target and n != warden)[0]
 	w.day = 2
-	g.add_card({"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": witness.id, "day": 1, "phase": C.NIGHT, "text": "Night 1 sighting: %s saw %s on %s." % [witness.name, demon.name, C.block_name(target.home_block)]})
-	g.add_card({"kind": "info", "source": warden.id, "role": "warden", "day": 1, "phase": C.NIGHT, "data": {"target": target.id, "saved": true}, "text": "%s guarded %s's door on night 1 and turned the Demon away." % [warden.name, target.name]})
+	GameBoard.add_card(g, {"kind": "sighting", "subject": [demon.id], "block": target.home_block, "source": witness.id, "day": 1, "phase": C.NIGHT, "text": "Night 1 sighting: %s saw %s on %s." % [witness.name, demon.name, C.block_name(target.home_block)]})
+	GameBoard.add_card(g, {"kind": "info", "source": warden.id, "role": "warden", "day": 1, "phase": C.NIGHT, "data": {"target": target.id, "saved": true}, "text": "%s guarded %s's door on night 1 and turned the Demon away." % [warden.name, target.name]})
 	var view = Live.view(g)
 	var model = CanvasModel.new(view)
 	var seen_id: String = _node(model, view, func(c): return c.get("text", "").begins_with("Night 1 sighting"))

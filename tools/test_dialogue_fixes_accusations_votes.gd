@@ -5,6 +5,7 @@
 ## Named test_playtest_1709 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -101,7 +102,7 @@ func _test_silenced_conversation() -> void:
 	g.command("ask gift")
 	_check(g.questions_left == before, "asking a silenced townsperson costs nothing (they can't answer)")
 	var other = g.w.living_good()[1]
-	var num: int = g.add_card({"kind": "sighting", "source": "player", "subject": [other.id], "block": "market", "day": 1, "phase": C.MORNING, "text": "A sighting to show"})
+	var num: int = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [other.id], "block": "market", "day": 1, "phase": C.MORNING, "text": "A sighting to show"})
 	g.command("present %d against %s" % [num, other.id])
 	var spoke2: bool = g.last_events.any(func(e): return e.get("k", "") == "speech" and e.get("speaker", "") == n.id)
 	_check(g.questions_left == before - 1 and not spoke2, "showing them a card costs a question, and they don't answer (%d left)" % g.questions_left)

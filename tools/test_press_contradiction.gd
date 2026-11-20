@@ -7,6 +7,7 @@
 ##   godot --headless --path . --script res://tools/test_press_contradiction.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Conv = preload("res://game/game_conversation.gd")
@@ -33,9 +34,9 @@ func _setup() -> Array:
 
 ## A pressed "suspicious" case on `n` citing the given board cards.
 func _case(g, n, cards: Array) -> Dictionary:
-	var nums: Array = cards.map(func(c): return g.add_card(c))
+	var nums: Array = cards.map(func(c): return GameBoard.add_card(g, c))
 	var pc: Dictionary = {"kind": "deduction", "conclusion": {"type": "suspicious", "a": n.id}, "subject": [n.id], "supports": nums, "text": "A case"}
-	pc["support_cards"] = g.all_receipts().filter(func(x): return x["n"] in nums)
+	pc["support_cards"] = GameBoard.all_receipts(g).filter(func(x): return x["n"] in nums)
 	return {"pc": pc, "nums": nums}
 
 

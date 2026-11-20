@@ -8,6 +8,7 @@
 ##   godot --headless --path . --script res://tools/test_caught_lie_softening.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -62,10 +63,10 @@ func _views() -> void:
 	var f: Dictionary = _game()
 	var g = f.g
 	var x = f.x
-	g.add_card({"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": true, "block": x.home_block, "text": "HOME1"})
-	g.add_card({"kind": "alibi", "subject": [x.id], "source": x.id, "day": 2, "phase": C.NIGHT, "home": true, "block": x.home_block, "text": "HOME2"})
-	g.add_card({"kind": "alibi", "subject": [x.id], "source": x.id, "day": 2, "phase": C.NIGHT, "home": false, "block": f.other, "text": "OUT2"})
-	g.add_card({"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": false, "block": "", "excuse": "admit", "excuses_night": 1, "text": "ADMIT1"})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": true, "block": x.home_block, "text": "HOME1"})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [x.id], "source": x.id, "day": 2, "phase": C.NIGHT, "home": true, "block": x.home_block, "text": "HOME2"})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [x.id], "source": x.id, "day": 2, "phase": C.NIGHT, "home": false, "block": f.other, "text": "OUT2"})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": false, "block": "", "excuse": "admit", "excuses_night": 1, "text": "ADMIT1"})
 	var view: Dictionary = Live.view(g)
 	var out2: Dictionary = _card(view, "OUT2")
 	check(str(out2.get("kind", "")) == "sighting" and out2.get("admitted", false) and str(out2.get("block", "")) == f.other,
@@ -77,8 +78,8 @@ func _views() -> void:
 	var h: Dictionary = _game()
 	var g2 = h.g
 	var y = h.x
-	g2.add_card({"kind": "alibi", "subject": [y.id], "source": y.id, "day": 1, "phase": C.NIGHT, "home": true, "block": y.home_block, "text": "HOMEY"})
-	g2.add_card({"kind": "alibi", "subject": [y.id], "source": y.id, "day": 1, "phase": C.NIGHT, "home": false, "block": h.other, "watch_claim": true,
+	GameBoard.add_card(g2, {"kind": "alibi", "subject": [y.id], "source": y.id, "day": 1, "phase": C.NIGHT, "home": true, "block": y.home_block, "text": "HOMEY"})
+	GameBoard.add_card(g2, {"kind": "alibi", "subject": [y.id], "source": y.id, "day": 1, "phase": C.NIGHT, "home": false, "block": h.other, "watch_claim": true,
 		"excuse": "duty", "excuses_night": 1, "duty_role": "nightwatch", "text": "WATCHY"})
 	var view2: Dictionary = Live.view(g2)
 	check(_card(view2, "HOMEY").get("excuse_contradicted", false) and not _card(view2, "HOMEY").has("out_rate"),
@@ -91,12 +92,12 @@ func _softer() -> void:
 	var f: Dictionary = _game()
 	var g = f.g
 	var x = f.x
-	var home: int = g.add_card({"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": true, "block": x.home_block, "text": "HOMEX"})
-	var seen: int = g.add_card({"kind": "sighting", "subject": [x.id], "source": "player", "day": 1, "phase": C.NIGHT, "block": f.other, "text": "SEENX"})
+	var home: int = GameBoard.add_card(g, {"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": true, "block": x.home_block, "text": "HOMEX"})
+	var seen: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [x.id], "source": "player", "day": 1, "phase": C.NIGHT, "block": f.other, "text": "SEENX"})
 	var plain: Dictionary = Live.shape_reading(g, _case(g, x.id, ["HOMEX", "SEENX"]))
 	# A case is judged on its own cards, so the excuse counts where the case cites it (a
 	# listener's own view holds every card it has heard).
-	g.add_card({"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": false, "block": "", "excuse": "admit", "excuses_night": 1, "text": "ADMITX"})
+	GameBoard.add_card(g, {"kind": "alibi", "subject": [x.id], "source": x.id, "day": 1, "phase": C.NIGHT, "home": false, "block": "", "excuse": "admit", "excuses_night": 1, "text": "ADMITX"})
 	var excused: Dictionary = Live.shape_reading(g, _case(g, x.id, ["HOMEX", "SEENX", "ADMITX"]))
 	check(plain.get("ready", false) and excused.get("ready", false) and float(excused.lr) < float(plain.lr),
 		"with \"Fine, I was out\" standing, the caught lie weighs less against them (x%.3f against x%.3f)" % [float(excused.get("lr", 0.0)), float(plain.get("lr", 0.0))])

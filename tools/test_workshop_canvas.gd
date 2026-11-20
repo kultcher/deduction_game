@@ -1,4 +1,5 @@
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Session = preload("res://workshop/session.gd")
 const Model = preload("res://workshop/canvas_model.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -122,10 +123,10 @@ func _ui() -> void:
 	g.new_case(5, 10)
 	g.w.day = 2
 	var goods: Array = g.w.living_good()
-	var reading: int = g.add_card({"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3,
+	var reading: int = GameBoard.add_card(g, {"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3,
 		"data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": "%s's Archivist reading: one of %s and %s is the Poisoner" % [goods[0].name, goods[2].name, goods[3].name]})
 	var group: Array = goods.slice(1, 5).map(func(n): return n.id)
-	var dowse: int = g.add_card({"kind": "info", "source": goods[5].id, "role": "dowser", "day": 1, "phase": 1,
+	var dowse: int = GameBoard.add_card(g, {"kind": "info", "source": goods[5].id, "role": "dowser", "day": 1, "phase": 1,
 		"data": {"group": group, "count": 2, "block": "market"}, "text": "%s's Dowser reading: two evil among four on the Market" % goods[5].name})
 	var scene = Editor.new()
 	scene.g = g

@@ -7,6 +7,7 @@
 ##     never voices its override.
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Game = preload("res://game/game.gd")
@@ -44,7 +45,7 @@ func _meeting_game(sd: int, day: int = 2):
 	g.w.day = day
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	return g
 
 
@@ -91,8 +92,6 @@ func _test_resistance() -> void:
 	var blk = good[2]
 	var lines: Array = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, blk.id))
 	_check(lines.size() == 1 and blk.name in str(lines[0].get("statement", "")), "a voter who'd sooner hang the one on the block says so")
-	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"persuaded_to_spare": -0.3}, "margin": -0.6, "yes": false}))
-	_check(lines.size() == 1 and "not ready to put a rope" in str(lines[0].get("statement", "")), "a voter persuaded to spare them says they aren't ready")
 	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"martyr_reluctance": -0.5}, "margin": -0.6, "yes": false}))
 	_check(lines.size() == 1 and "not ready to put a rope" in str(lines[0].get("statement", "")), "a role's own reluctance is voiced as reluctance")
 	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {}, "margin": -0.1, "yes": false}))

@@ -57,7 +57,6 @@ test_gift_doubt_good
 test_gossip_tiers
 test_gravedigger_bluff
 test_haunt_learning
-test_headline
 test_held_signals
 test_hint_families
 test_honest_forgetting
@@ -105,6 +104,7 @@ test_poison_chance
 test_poison_outing
 test_poison_self_doubt
 test_premise_centring
+test_premise_migration
 test_premise_step1
 test_premise_step2
 test_premise_step3
@@ -139,6 +139,7 @@ test_social
 test_state_digest
 test_symmetric_vote
 test_too_clean_bluffs
+test_totem_evidence
 test_town_note
 test_town_vibe
 test_turned_premise

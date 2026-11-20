@@ -2,6 +2,8 @@
 ## Merged from: test_mechanics_warden, test_roster, test_warden_credit, test_workshop_protection.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const C = preload("res://sim/content.gd")
@@ -83,9 +85,9 @@ func _run_mechanics_warden() -> void:
 	var resident = goods[1]
 	var observer = goods[2]
 	var raw = {"kind": "sighting", "source": guard.id, "subject": [guard.id], "block": resident.home_block, "guard_claim": resident.id, "day": 1, "phase": 3, "text": "Guarded this door."}
-	var number = g.add_card(raw)
-	var filed = g.file_deduction({"type": "evil", "a": resident.id}, [number], true)
-	var prepared = Live.Assess.prepare(g.workshop_snapshot([filed], observer.id))
+	var number = GameBoard.add_card(g, raw)
+	var filed = GameBoard.file_deduction(g, {"type": "evil", "a": resident.id}, [number], true)
+	var prepared = Live.Assess.prepare(GamePresentation.workshop_snapshot(g, [filed], observer.id))
 	var id: String = Live.Evidence.normalize_card(raw).id
 	var card = Solver.card_by_id(prepared.view, id)
 	check(prepared.ready and card.kind == "report" and card.role == "warden" and card.data.target == resident.id, "guard statement becomes a structured Warden receipt")
@@ -102,11 +104,11 @@ func _run_mechanics_warden() -> void:
 	check(not Eval.evaluate(view, prepared.case, prepared.listener).impossible, "false or impaired protection remains possible rather than voiding the case")
 	var malformed = raw.duplicate(true)
 	malformed.guard_claim = guard.id
-	check(Live.Assess.activity_card(Live.Evidence.normalize_card(malformed), g.workshop_snapshot([], observer.id)).is_empty(), "a self-guard is rejected")
+	check(Live.Assess.activity_card(Live.Evidence.normalize_card(malformed), GamePresentation.workshop_snapshot(g, [], observer.id)).is_empty(), "a self-guard is rejected")
 	guard.warden_log = {"1": resident.id}
-	var own = g.workshop_snapshot([], guard.id)
+	var own = GamePresentation.workshop_snapshot(g, [], guard.id)
 	check(own.private_evidence.has(id), "own guard memory shares the public statement's exact identity")
-	var other = g.workshop_snapshot([], observer.id)
+	var other = GamePresentation.workshop_snapshot(g, [], observer.id)
 	check(not other.private_evidence.has(id), "another person's private guard target is not exported")
 
 
@@ -273,8 +275,8 @@ func _live() -> void:
 	listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	listener.suspicion[claimant.id] = 0.5
 	listener.npc_trust[claimant.id] = 0.6
-	var q = g.add_card({"kind": "quiet", "source": "player", "subject": [], "night": 1, "day": 1, "phase": 3, "ward": "", "text": "No deaths on N1"})
-	var c = g.add_card({"kind": "claim", "source": claimant.id, "subject": [claimant.id], "role": "warden", "day": 1, "phase": 0, "text": "I am Warden"})
+	var q = GameBoard.add_card(g, {"kind": "quiet", "source": "player", "subject": [], "night": 1, "day": 1, "phase": 3, "ward": "", "text": "No deaths on N1"})
+	var c = GameBoard.add_card(g, {"kind": "claim", "source": claimant.id, "subject": [claimant.id], "role": "warden", "day": 1, "phase": 0, "text": "I am Warden"})
 	var eid = "quiet:1>" + claimant.id
 	Mind.ledger_hear(g.w, listener, eid, [], 1.0, [claimant.id, -1, "report"], {"kind": "proof"})
 	var outside_base: float = listener.suspicion[claimant.id]
@@ -288,15 +290,15 @@ func _live() -> void:
 	var preview = Ghost.live(Live.snapshot(g, value))
 	check(preview.ready and preview.proposal.effects[claimant.id].requested < 0, "quiet-night ghost shows circumstantial exoneration")
 	var filed = Live.file(g, value)
-	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "quiet-night case reaches shared presentation")
 	check(listener.workshop_state.get("owned", {}).has(eid) and listener.ledger[eid].effects.is_empty(), "quiet-night receipt is owned with empty legacy effects")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "quiet-night repeat is stable")
 	g.workshop_retract(filed, listener.id)
 	check(is_equal_approx(listener.suspicion[claimant.id], outside_base), "withdrawing the argument restores the outside baseline")
-	var veteran = g.add_card({"kind": "info", "source": claimant.id, "subject": [], "role": "veteran", "day": 1, "phase": 3, "data": {"attacked": 1, "block": "market"}, "text": "Veteran attack report"})
+	var veteran = GameBoard.add_card(g, {"kind": "info", "source": claimant.id, "subject": [], "role": "veteran", "day": 1, "phase": 3, "data": {"attacked": 1, "block": "market"}, "text": "Veteran attack report"})
 	var fresh = Canvas.new(Live.view(g))
 	fresh.nodes[fresh.selected].conclusion.target = claimant.id
 	fresh.connect_cards("e:" + Live.Evidence.normalize_card(g.board[veteran - 1]).id, fresh.selected)

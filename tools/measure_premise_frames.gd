@@ -7,6 +7,8 @@
 ## connections reading then; its starting beliefs are printed once for reference.
 ## Run: godot --headless --path . --script res://tools/measure_premise_frames.gd
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Connections = preload("res://workshop/connections.gd")
@@ -50,7 +52,7 @@ func _game():
 
 
 func _add(g, card: Dictionary) -> int:
-	var number: int = g.add_card(card)
+	var number: int = GameBoard.add_card(g, card)
 	_texts[number] = g.board[number - 1].text
 	return number
 
@@ -120,7 +122,7 @@ func _run(kind: String, frame: String, rule: Array) -> Dictionary:
 	var trust0: float = n.trust
 	var cards: Array = _cards(g, kind)
 	var filed: int = _file(g, who[frame], cards)
-	var r: Dictionary = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	var r: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	var after: Dictionary = _posteriors(g, n)
 	var out: Dictionary = {"trust": n.trust - trust0, "agreement": float(r.get("agreement", -1.0))}
 	for k in who:

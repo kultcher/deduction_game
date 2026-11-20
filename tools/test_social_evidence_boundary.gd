@@ -1,5 +1,7 @@
 ## The crowd can influence action without supplying alignment evidence.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Social = preload("res://sim/social.gd")
@@ -90,18 +92,18 @@ func _opinions() -> void:
 	var relay = {"role": "medium", "day": 1, "data": {"dead": subject.id, "item": {"type": "suspicion", "about": target.id}}}
 	Mind.apply_info(g.w, listener, source, relay, 1.0)
 	check(listener.ledger[Mind.info_eid(source.id, relay)].effects.is_empty() and is_equal_approx(listener.suspicion[target.id], settled), "a dead person's opinion has no alignment effect")
-	var number = g.add_card({"kind": "info", "source": source.id, "role": "medium", "day": 1, "data": relay.data, "text": "The deceased distrusted them"})
+	var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "medium", "day": 1, "data": relay.data, "text": "The deceased distrusted them"})
 	var value = preload("res://workshop/solver.gd").empty_case()
 	value.cards = [Live.Evidence.normalize_card(g.board[number - 1]).id]
 	value.conclusion = {"type": "evil", "target": target.id, "at": "Original alignment"}
 	var prepared = Live.Assess.prepare(Live.snapshot(g, value, listener.id))
 	check(not prepared.ready and prepared.issues.any(func(issue): return "opinion is not evidence" in issue), "a presented Medium opinion receives an explicit semantic rejection")
-	check("opinion is not evidence" in g._presentation_rejection(g.board[number - 1]), "ordinary play rejects a Medium opinion before choosing a fallback engine")
-	var wrapper = g.add_card({"kind": "deduction", "conclusion": {"type": "evil", "a": target.id}, "supports": [number], "text": "A wrapper around an opinion"})
-	check("opinion is not evidence" in g._presentation_rejection(g.board[wrapper - 1]), "a deduction wrapper cannot turn a relayed opinion into evidence")
+	check("opinion is not evidence" in GamePresentation._presentation_rejection(g, g.board[number - 1]), "ordinary play rejects a Medium opinion before choosing a fallback engine")
+	var wrapper = GameBoard.add_card(g, {"kind": "deduction", "conclusion": {"type": "evil", "a": target.id}, "supports": [number], "text": "A wrapper around an opinion"})
+	check("opinion is not evidence" in GamePresentation._presentation_rejection(g, g.board[wrapper - 1]), "a deduction wrapper cannot turn a relayed opinion into evidence")
 	var nested = g.board[number - 1].duplicate(true)
 	nested.data.item = {"type": "reading", "entry": {"role": "medium", "day": 1, "data": relay.data}}
-	check("opinion is not evidence" in g._presentation_rejection(nested), "nesting the Medium transmission does not hide the original opinion")
+	check("opinion is not evidence" in GamePresentation._presentation_rejection(g, nested), "nesting the Medium transmission does not hide the original opinion")
 	check(Mind.card_weight_against(g.w, nested, target.id) == 0 and not Mind.card_clears(nested, target.id), "social reactions assign no accusation or defence weight to the same opinion")
 	check(Mind.Gifts.implicated(g.board[number - 1]).is_empty(), "the common gift summary does not identify an opinion as implicating its target")
 

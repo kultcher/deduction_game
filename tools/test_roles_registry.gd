@@ -11,6 +11,8 @@ const Evil = preload("res://sim/evil.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Game = preload("res://game/game.gd")
+const GameBoard = preload("res://game/game_board.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
 const C = preload("res://sim/content.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const World = preload("res://sim/world.gd")
@@ -96,7 +98,7 @@ func _run_chunk5_cs_tables() -> void:
 	g.w.dlog.detailed = false
 	g.w.day = 3
 	var obs = g.w.living_good()[0]
-	var prepared = Live.Assess.prepare(g.workshop_snapshot([], obs.id))
+	var prepared = Live.Assess.prepare(GamePresentation.workshop_snapshot(g, [], obs.id))
 	var view: Dictionary = prepared.view
 	var ids: Array = view.people.map(func(p): return p.id)
 	var src: String = ids[1]
@@ -314,9 +316,9 @@ func _test_role_in_group_hooks() -> void:
 	_check(grave_r.get("data", {}).get("executed", "") == subject_good.id and grave_r.get("data", {}).get("role", "") == subject_good.role, "Gravedigger generate_reading reports true role of executed person")
 
 	# 3. Workshop solver & live assessment integration for ROLE_IN_GROUP
-	var c_card = g.add_card({"kind": "info", "source": clerk.id, "role": "clerk", "day": 0, "data": clerk_r["data"], "subject": [], "text": clerk_r["text"]})
-	var a_card = g.add_card({"kind": "info", "source": arch.id, "role": "archivist", "day": 0, "data": arch_r["data"], "subject": [], "text": arch_r["text"]})
-	var snap = g.workshop_snapshot([c_card, a_card], clerk.id)
+	var c_card = GameBoard.add_card(g, {"kind": "info", "source": clerk.id, "role": "clerk", "day": 0, "data": clerk_r["data"], "subject": [], "text": clerk_r["text"]})
+	var a_card = GameBoard.add_card(g, {"kind": "info", "source": arch.id, "role": "archivist", "day": 0, "data": arch_r["data"], "subject": [], "text": arch_r["text"]})
+	var snap = GamePresentation.workshop_snapshot(g, [c_card, a_card], clerk.id)
 	var prep = Assess.prepare(snap)
 	var solved = Solver.solve(prep.view, prep.view.cards).worlds
 	_check(not solved.is_empty(), "Workshop solver/assessment validates Clerk and Archivist ROLE_IN_GROUP readings")
@@ -352,8 +354,8 @@ func _test_role_at_site_hooks() -> void:
 	_check(Gifts.implicated(dw_zero).is_empty() and Gifts.clears(dw_zero) == [victim.id, other.id], "Dowser count 0 clears group via ROLE_AT_SITE shape")
 	_check(Gifts.implicated(dw_one) == [victim.id, other.id] and Gifts.clears(dw_one).is_empty(), "Dowser count > 0 implicates group via ROLE_AT_SITE shape")
 
-	var dw_card = g.add_card({"kind": "info", "source": dowser.id, "role": "dowser", "day": 1, "phase": C.MORNING, "data": dw_zero["data"], "subject": [victim.id, other.id], "text": "on %s I sensed 0 evil" % C.block_name(dowser.home_block)})
-	var dw_snap = g.workshop_snapshot([dw_card], dowser.id)
+	var dw_card = GameBoard.add_card(g, {"kind": "info", "source": dowser.id, "role": "dowser", "day": 1, "phase": C.MORNING, "data": dw_zero["data"], "subject": [victim.id, other.id], "text": "on %s I sensed 0 evil" % C.block_name(dowser.home_block)})
+	var dw_snap = GamePresentation.workshop_snapshot(g, [dw_card], dowser.id)
 	var dw_prep = Assess.prepare(dw_snap)
 	_check(not Solver.solve(dw_prep.view, dw_prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Dowser ROLE_AT_SITE group_count reading")
 
@@ -426,10 +428,10 @@ func _test_count_and_route_hooks() -> void:
 	_check(Gifts.implicated(watch_entry) == [walker.id] and Gifts.clears(watch_entry).is_empty(), "Night Watch NIGHT_ROUTE shape implicates seen walkers")
 
 	# 4. Workshop solver & live assessment for Surveyor, Lamplighter, Night Watch
-	var s_card = g.add_card({"kind": "info", "source": surv.id, "role": "surveyor", "day": 0, "data": surv_r["data"], "subject": [], "text": surv_r["text"]})
-	var l_card = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 0, "data": lamp_r["data"], "subject": [], "text": lamp_r["text"]})
-	var w_card = g.add_card({"kind": "info", "source": watch.id, "role": "nightwatch", "day": 1, "data": watch_r["data"], "subject": [walker.id], "text": watch_r["text"]})
-	var snap = g.workshop_snapshot([s_card, l_card, w_card], surv.id)
+	var s_card = GameBoard.add_card(g, {"kind": "info", "source": surv.id, "role": "surveyor", "day": 0, "data": surv_r["data"], "subject": [], "text": surv_r["text"]})
+	var l_card = GameBoard.add_card(g, {"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 0, "data": lamp_r["data"], "subject": [], "text": lamp_r["text"]})
+	var w_card = GameBoard.add_card(g, {"kind": "info", "source": watch.id, "role": "nightwatch", "day": 1, "data": watch_r["data"], "subject": [walker.id], "text": watch_r["text"]})
+	var snap = GamePresentation.workshop_snapshot(g, [s_card, l_card, w_card], surv.id)
 	var prep = Assess.prepare(snap)
 	_check(not Solver.solve(prep.view, prep.view.cards).worlds.is_empty(), "Workshop solver/assessment validates Surveyor, Lamplighter, and Night Watch readings")
 
@@ -531,7 +533,6 @@ func _test_final_roles_hooks() -> void:
 	# 7. GameBoard & GamePresentation module extraction checks
 	_check(g.GameBoard != null and g.GamePresentation != null, "Game preloads GameBoard and GamePresentation modules")
 	_check(g.filter_cards("") == g.GameBoard.filter_cards(g, ""), "Game.filter_cards forwards identically to GameBoard.filter_cards")
-	_check(g.timeline_data() == g.GameBoard.timeline_data(g), "Game.timeline_data forwards identically to GameBoard.timeline_data")
 
 	# 8. Codex review regressions: raw-data implicated/clears & single Martyr registration roll
 	_check(vet.id in C.role_def("dowser").implicated({"group": [vet.id, sexton.id], "count": 1, "block": vet.home_block}), "Dowser implicated() accepts a raw data dict and names the group member")

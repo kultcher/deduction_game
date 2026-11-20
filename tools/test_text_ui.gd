@@ -2,6 +2,7 @@
 ## godot --headless --path . --script res://tools/test_text_ui.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
 const LogText = preload("res://ui/log_text.gd")
@@ -26,7 +27,7 @@ func _run() -> void:
 	var person = g.w.npcs[0]
 	var other = g.w.npcs[1]
 	var card_text = "%s says %s could be the Seer, not the Poisoner. [b]literal[/b]" % [person.name, other.name]
-	var number = g.add_card({"kind": "opinion", "source": person.id, "subject": [other.id], "text": card_text})
+	var number = GameBoard.add_card(g, {"kind": "opinion", "source": person.id, "subject": [other.id], "text": card_text})
 	var original = JSON.stringify(g.board)
 	var rng_state = g.w.rng.state
 	person.claim_public = false
