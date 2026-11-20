@@ -106,11 +106,19 @@ func _init() -> void:
 	var nd_plain: Dictionary = model.compile(nd2_p)
 	if bluff_id not in nd_plain.cards:
 		nd_plain.cards.append(bluff_id)
-	var share_mist: Dictionary = Live._demon_share(g, nd_mist, innocent.id)
-	var share_plain: Dictionary = Live._demon_share(g, nd_plain, innocent.id)
+	var Conn = preload("res://workshop/connections.gd")
+	var share_mist: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd_mist, {"baseline": "without_cards"}), nd_mist.conclusion)
+	var share_plain: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd_plain, {"baseline": "without_cards"}), nd_plain.conclusion)
 	RC.clash_rule = rule_was
 	check(not share_mist.is_empty() and not share_plain.is_empty() and float(share_mist.after) > float(share_plain.after) + 1e-6,
 		"a Mistaken call on \"neither is the Demon\" weakens it in the Demon share too (share of evil that is the Demon %.3f, %.3f uncalled)" % [float(share_mist.get("after", -1.0)), float(share_plain.get("after", -1.0))])
+	# The split hears the reading as the listener does (Codex on #410): a listener who trusts
+	# the town less takes less from the Seer's "neither is the Demon", in the Demon share too.
+	var nd2_v: Dictionary = model.compile(nd2_p)
+	var share_mid: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards"}), nd2_v.conclusion)
+	var share_low: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards", "npc_trust": 0.1}), nd2_v.conclusion)
+	check(not share_mid.is_empty() and not share_low.is_empty() and float(share_mid.after) < float(share_mid.before) and float(share_low.after) > float(share_mid.after) + 1e-6,
+		"a less trusting listener clears less in the Demon share too (share after %.3f at trust 0.1, %.3f at 0.5; %.3f before)" % [float(share_low.get("after", -1.0)), float(share_mid.get("after", -1.0)), float(share_mid.get("before", -1.0))])
 	# A challenge, weighed as the listener weighs it.
 	var bare: Dictionary = accuse.duplicate(true)
 	bare["reading_challenges"] = {bluff_id: {"mode": "lying", "supports": []}}

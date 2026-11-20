@@ -327,47 +327,29 @@ static func top_tier_chance(type: String, chance: float) -> float:
 	return chance if settles else -1.0
 
 ## The share of a person's chance of being evil that is the chance of being the Demon, before
-## and after the case's evidence, as the judge reads the case (CaseEval, on the Test juror's
-## view): {before, after}, or {} if the case can't be judged. A "was the Demon when hanged"
-## question reads the same way (CaseEval's "demon" premise). It weighs the case's challenges
-## as the listener whose chance of evil it splits does (Codex on #410): every cited card stays,
-## challenged ones too, with the reliability each challenge's assessment gives them
-## (Connections.lean_challenged's way: a lie call presses its teller rather than moving the
-## chances; an accepted honest-mistake call discounts the reading), so the split reads the
-## same evidence.
-static func _demon_share(g, value: Dictionary, target: String) -> Dictionary:
-	var challenges: Dictionary = value.get("reading_challenges", {})
-	var unchallenged: Dictionary = value.duplicate(true)
-	unchallenged.erase("reading_challenges")
-	var juror: Dictionary = juror_case(g, unchallenged)
-	if not juror.get("ready", false) or target == "":
+## and after the case, as the listener whose chance of evil it splits hears it: {before, after},
+## or {} if it can't be read. `pj` is that listener's judgement (Connections.judge_for_profile),
+## `conclusion` the case's premise (its subject and time; asked as "is the Demon").
+## The Demon question is asked of the same two Shared.prepare plans (SharedLedger.evaluate_question),
+## so the split weighs the same cards, at the same hearing weights and route trust, with the same
+## challenges as the listener's chances do (Codex on #410, three findings).
+static func _demon_share(pj: Dictionary, conclusion: Dictionary) -> Dictionary:
+	var target: String = str(conclusion.get("target", ""))
+	if not pj.get("ready", false) or target == "":
 		return {}
-	var CaseEval = preload("res://workshop/case_eval.gd")
-	var view: Dictionary = juror.prepared.view
-	var asked: Dictionary = juror.case.duplicate(true)
-	asked.conclusion = asked.conclusion.duplicate(true)
-	asked.conclusion.type = "demon"
-	asked.conclusion.target = target
-	# The Test juror's own listener: the average listener, nothing first-hand.
-	var listener: Dictionary = juror.prepared.listener.duplicate(true)
-	var named: Dictionary = {}
-	for id in challenges:
-		if id in asked.cards:
-			named[id] = challenges[id]
-	if not named.is_empty():
-		var cited: Array = asked.cards.map(func(id): return preload("res://workshop/solver.gd").card_by_id(view, id)).filter(func(c): return not c.is_empty())
-		var assessed: Dictionary = preload("res://workshop/reading_challenges.gd").assess(view, {"reading_challenges": named}, listener, cited)
-		if not (assessed.reports.is_empty() and assessed.sources.is_empty()):
-			listener["challenge_reports"] = assessed.reports
-			listener["challenge_sources"] = assessed.sources
-		asked["reading_challenges"] = named.duplicate(true)
-	var ev: Dictionary = CaseEval.evaluate(view, asked, listener)
-	if ev.get("impossible", false):
+	var Shared = preload("res://workshop/shared_ledger.gd")
+	var ask: Dictionary = conclusion.duplicate(true)
+	ask.type = "demon"
+	var after: Dictionary = Shared.evaluate_question(pj.get("plan_after", {}), {}, {}, {}, ask)
+	if after.is_empty() or after.get("impossible", false):
 		return {}
-	var person: Dictionary = ev.get("people", {}).get(target, {})
-	var share := func(demon: float, evil: float) -> float: return clampf(demon / evil, 0.0, 1.0) if evil > 1e-9 else 1.0
-	return {"before": share.call(float(ev.get("prior", 0.0)), float(person.get("prior", 0.0))),
-		"after": share.call(float(ev.get("posterior", 0.0)), float(person.get("posterior", 0.0)))}
+	# A listener who holds nothing before the case has no plan to ask: the prior stands.
+	var before: Dictionary = Shared.evaluate_question(pj.get("plan_before", {}), {}, {}, {}, ask)
+	var share := func(ev: Dictionary, which: String) -> float:
+		var evil: float = float(ev.get("people", {}).get(target, {}).get(which, 0.0))
+		return clampf(float(ev.get(which, 0.0)) / evil, 0.0, 1.0) if evil > 1e-9 else 1.0
+	var b: float = share.call(before, "posterior") if not (before.is_empty() or before.get("impossible", false)) else share.call(after, "prior")
+	return {"before": b, "after": share.call(after, "posterior")}
 
 ## How an average listener takes `value`: {ready, issues, before, after (the subject's
 ## chance of being evil), chance_before, chance (the premise's chance, its side of that),
@@ -406,7 +388,7 @@ static func listener_reading(g, value: Dictionary) -> Dictionary:
 		# evil, so the share of that which is the Demon comes from the judge's own reading of the
 		# case (Seneschal's check, Nov 20: the badge read the chance of being good, so evidence
 		# that the subject is a Minion read as arguing against "not the Demon").
-		var split: Dictionary = _demon_share(g, value, target)
+		var split: Dictionary = _demon_share(pj, conclusion)
 		if not split.is_empty():
 			chance_before = 1.0 - before * float(split.before)
 			chance = 1.0 - after * float(split.after)
