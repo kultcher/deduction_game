@@ -1,5 +1,5 @@
-## Case 12926 (a Hexer playtest): the Muddler is a fair gossip, and a reading about someone
-## else is named when it's the reason for an accusation.
+## Case 12926 (a Hexer playtest): a reading about someone else is named when it's the reason
+## for an accusation. (Its Muddler check went with the Muddler, Nov 20.)
 ##   godot --headless --path . --script res://tools/test_dialogue_fixes_gossip_reasons.gd
 ## Named test_playtest_12926 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
@@ -26,22 +26,6 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var low_ok: bool = true
-	var dealt: int = 0
-	for seed in range(7000, 7012):
-		var sc = ScriptDef.default_script()
-		sc.secrets = ["delusional", "marked", "lovers", "muddler"]
-		sc.forced = sc.forced + ["muddler"]
-		var g = Game.new()
-		g.detailed_logging = false
-		g.new_case(seed, 7, sc)
-		for n in g.w.npcs:
-			if n.secret_mod == "muddler":
-				dealt += 1
-				low_ok = low_ok and float(n.traits.gossip) >= Tuning.Setup.MUDDLER_GOSSIP_FLOOR
-	_check(dealt == 12, "the forced Muddler is dealt every case (%d)" % dealt)
-	_check(low_ok, "every Muddler is at least a fair gossip")
-
 	var view: Dictionary = {"people": [{"id": "hollis", "name": "Hollis"}, {"id": "fenwick", "name": "Fenwick"}, {"id": "nisha", "name": "Nisha"}]}
 	var reading: Dictionary = {"id": "r1", "kind": "report", "source": "hollis", "role": "confessor", "data": {"good": true, "target": "fenwick"}}
 	_check(RA._reading_gist(view, reading, "nisha", "hollis") == "cleared Fenwick", "a Confessor reading that cleared someone else says so")

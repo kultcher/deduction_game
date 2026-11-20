@@ -376,7 +376,6 @@ count as one). The Default script uses the first four:
 | Marked | Gifts that read them may see them as evil or the demon: Dowser, Surveyor, Martyr and the Seer 50%, the Augur 50%, the Registrar 50% when a minion is on its slate; a Gravedigger or Executor sees a random evil role 30% of the time. |
 | Secret Lovers | Meet at a random block each night (both out), trust each other, know each other's secret, hide it like any secret (may confess). When one dies, the other withdraws: Privacy to the maximum, Gossip to the minimum, Composure up. |
 | Sleepwalker | Leaves home on about half of nights to a random block without knowing it: honestly says they were home, sees nothing while out. |
-| Muddler (custom scripts) | Often muddles one detail when passing on someone else's reading or night sighting. They don't know. |
 
 A Lovers confession names the partner, and the judge treats it as proof that both hold
 the secret: evil never fakes one (#162, `Solver.lovers_needs`).

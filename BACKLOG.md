@@ -31,7 +31,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
     2. The premise menu, trimmed `[in review]`
-    3. Remove the Muddler `[decided]`
+    3. Remove the Muddler `[in review]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided]`
@@ -173,7 +173,8 @@ listener (#273), both Lantern's.
   `2026-11-20-0745-quill-premise-trim.md`). [in review]
 
 - **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
-  and Lantern reviewing. [decided]
+  and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
+  `2026-11-20-0725-quill-remove-muddler.md`). [in review]
 
 ### NPC behaviour
 

@@ -56,9 +56,13 @@ func _read(g, source, role: String, day: int, data: Dictionary) -> int:
 
 ## A Seer "yes" on p3 and p4, presented as "p3 holds <mod>". The baseline is the same
 ## presentation with the player's word switched off (same cards, same weighting).
-func _seer_case(mod: String, credibility: float, words: bool = true) -> Dictionary:
+## `off_script`: a secret taken off this game's script first, so the premise names a secret
+## the case can't have.
+func _seer_case(mod: String, credibility: float, words: bool = true, off_script: String = "") -> Dictionary:
 	Shared.player_words = words
 	var g = _game(credibility)
+	if off_script != "" and g.w.case_script != null:
+		g.w.case_script.secrets.erase(off_script)
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var seer = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
@@ -76,9 +80,9 @@ func _secret_word() -> void:
 	var word: Dictionary = _seer_case("marked", 0.7)
 	var base_low: Dictionary = _seer_case("marked", 0.2, false)
 	var word_low: Dictionary = _seer_case("marked", 0.2)
-	var foreign: Dictionary = _seer_case("muddler", 0.7)
+	var foreign: Dictionary = _seer_case("sleepwalker", 0.7, true, "sleepwalker")
 	print("secret word: modifiers %s; baseline p3 %.3f p4 %.3f; word p3 %.3f p4 %.3f; low credibility baseline p3 %.3f, word p3 %.3f" % [word.modifiers, base.p3, base.p4, word.p3, word.p4, base_low.p3, word_low.p3])
-	check("muddler" not in word.modifiers and "marked" in word.modifiers, "the fixture case has Marked but not Muddler")
+	check("marked" in word.modifiers and "sleepwalker" not in foreign.modifiers, "the fixture case has Marked, and the foreign one has no Sleepwalker")
 	check(word.workshop and base.workshop and word.word and not base.word, "a presented secret premise adds the player's word to the listener's evidence")
 	check(not foreign.word, "a secret this case can't have adds nothing")
 	check(word.p3 < base.p3, "the word that p3 is Marked takes the Seer ping's blame off p3")

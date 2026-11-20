@@ -14,6 +14,7 @@ const Caches = preload("res://workshop/caches.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
 const TraceSolver = preload("res://workshop/trace_solver.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindNomination = preload("res://sim/mind_nomination.gd")
 const GhostJuror = preload("res://workshop/ghost_juror.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Assess = preload("res://workshop/live_assessment.gd")
@@ -387,7 +388,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 	})
 	Mind.ledger_hear(w, listener, "heard:sight_off_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_off})
 	Mind.refresh_beliefs(w, listener, " (test off-block sighting)")
-	var reasons_off: Array = MindMeeting.case_against(w, listener, walker.id)
+	var reasons_off: Array = MindNomination.case_against(w, listener, walker.id)
 	_check(not reasons_off.any(func(r): return r.get("channel", "") == "movement_out"), "case_against does not cite an off-murder-block night sighting in shared attribution")
 
 	# Same sighting ON the murder block ("docks") IS cited when walker has no credible walking claim.
@@ -397,7 +398,7 @@ func _test_case_against_skips_non_incriminating_sightings() -> void:
 	})
 	Mind.ledger_hear(w, listener, "heard:sight_on_block", [], 1.0, [other.id, 1, "report"], {"kind": "tell", "workshop_card": wcard_on})
 	Mind.refresh_beliefs(w, listener, " (test murder-block sighting)")
-	var reasons_on: Array = MindMeeting.case_against(w, listener, walker.id)
+	var reasons_on: Array = MindNomination.case_against(w, listener, walker.id)
 	_check(reasons_on.any(func(r): return r.get("channel", "") == "movement_out"), "case_against cites a murder-block night sighting when walker has no credible walking claim")
 
 
@@ -652,7 +653,7 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 	var susp_after: float = Mind.susp(listener, speaker.id)
 	_check(susp_after <= susp_before + 0.03,
 		"Uncorroborated Rumormonger report does not spike speaker suspicion (%.3f -> %.3f)" % [susp_before, susp_after])
-	var reasons: Array = Mind.MindMeeting.case_against(w, listener, speaker.id)
+	var reasons: Array = Mind.MindNomination.case_against(w, listener, speaker.id)
 	_check(not reasons.any(func(r): return "Rumormonger report doesn't fit" in str(r.get("why", ""))),
 		"Uncontradicted Rumormonger reading never emits false 'doesn't fit what we know' reason (%s)" % str(reasons))
 
