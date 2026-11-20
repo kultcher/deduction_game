@@ -292,6 +292,11 @@ feasibility reports, then a `mock/` prototype with paired sweeps, then Michael p
   Lantern; deferred to this rework).
   - **The rule:** in a world where someone else holds a secret, the listener can't be the
     Sleepwalker.
+  - **Frame it as open burden slots** (Michael, Nov 20). The listener can't be the
+    Sleepwalker in a world with no open burden slot left. It is not a hard rule about
+    someone else claiming or holding a burden. The script says how many burdens are in play,
+    and each one held uses a slot. Framed this way, the rule still works with different town
+    sizes and with a Baron-like Minion that adds slots.
   - **In the meantime:** #459's adjustment stands. A Rumormonger reading that names another
     secret makes the Sleepwalker surer she was home.
   - **Vicar's note, not checked against the code:** with one burden per script (section 1),
