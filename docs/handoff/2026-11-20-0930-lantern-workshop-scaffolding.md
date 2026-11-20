@@ -1,8 +1,8 @@
 ## Nov 20 — Claude-Lantern: the Workshop's comparison-era scaffolding removed
 
-- **Base:** main `3b83b61`. Main gets merged in once #397 (drops) lands, per the backlog order.
+- **Base:** main `af5c4bb` (#397, drops, merged in).
   **Status:** PR open. **Next:** Bailiff. **Zero drift:** golden is identical to
-  `baseline_7792e9a` at `--tol 0`.
+  `baseline_58cb94a` at `--tol 0`.
 - **What this is:** the first group in Argon's audit cleanup (`BACKLOG.md`, "Dead code, zero
   drift"). Scaffolding from when the judge was compared with the earlier belief model, plus
   every test that existed only for it (Michael's rule).

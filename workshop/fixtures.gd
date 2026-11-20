@@ -138,7 +138,7 @@ static func configure(base: Dictionary, kind: String, native) -> Dictionary:
 static func _add(view: Dictionary, card: Dictionary) -> void:
 	card["source"] = card.get("source", "player")
 	card["data"] = card.get("data", {})
-	var after_night: bool = card.kind in ["trace", "item", "coverage"]
+	var after_night: bool = card.kind in ["trace", "coverage"]
 	card["incident_at"] = {"day": maxi(card.night, 1), "phase": "night"}
 	card["observed_at"] = card.get("observed_at", {"day": maxi(card.night + int(after_night), 1), "phase": "morning" if after_night else ("evening" if card.kind == "evening" else "night")})
 	card["acquired_day"] = card.observed_at.day
