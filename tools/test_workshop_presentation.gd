@@ -131,7 +131,7 @@ func _conflicts() -> void:
 	var before = n.suspicion.duplicate(true)
 	var result = g._evaluate_deduction(n, g.board[conflict - 1], 1.0, true)
 	if not result.get("workshop", false) or result.dialogue.stance != "accept":
-		print("Conflict diagnostic: ", JSON.stringify({"agreement": result.get("agreement"), "dialogue": result.get("dialogue"), "scope": result.get("assessment", {}).get("shared_assessment", {})}))
+		print("Conflict diagnostic: ", JSON.stringify({"agreement": result.get("agreement"), "dialogue": result.get("dialogue"), "scope": result.get("assessment", {}).get("assessment", {})}))
 	check(result.get("workshop", false) and result.dialogue.stance == "accept", "a cross-role contradiction is assessed by shared logic")
 	check(n.workshop_state.active and n.workshop_state.facts.is_empty(), "conflict receipts are quoted without endorsing either report")
 	check(_close(before, n.suspicion) and n.discounted.is_empty(), "establishing a conflict awards no guilt and invents no blanket all-night impairment")
@@ -235,7 +235,7 @@ func _scrutiny_and_cover() -> void:
 	var previous: float = n.pressure
 	var rejected = g._evaluate_deduction(n, g.board[coherent - 1], 1.0, true)
 	if not rejected.get("workshop", false) or rejected.agreement != 0.0:
-		print("Coherent diagnostic: ", JSON.stringify({"agreement": rejected.agreement, "dialogue": rejected.get("dialogue"), "shared": rejected.get("assessment", {}).get("shared_assessment", {}), "issues": n.workshop_state.get("issues", [])}))
+		print("Coherent diagnostic: ", JSON.stringify({"agreement": rejected.agreement, "dialogue": rejected.get("dialogue"), "shared": rejected.get("assessment", {}).get("assessment", {}), "issues": n.workshop_state.get("issues", [])}))
 	check(rejected.get("workshop", false) and rejected.agreement == 0.0 and is_equal_approx(n.pressure, previous), "an unsubstantiated conflict creates no assessment-based scrutiny")
 	# Cover reasoning receives reports on repetitions too, even if the real evil
 	# chooses a different public stance for strategic reasons.

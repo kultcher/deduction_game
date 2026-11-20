@@ -35,7 +35,7 @@ func _init() -> void:
 	check(no_survey.strength > 0, "doubting Bart's reading preserves the independent Dowser route")
 	listener.reading_reliability[Solver.semantic_key(Solver.card_by_id(view, "rumor"))] = 0.0
 	var no_rumor = Jury.evaluate(view, c, listener.duplicate(true))
-	check(is_zero_approx(no_rumor.support_model.forced_mass), "doubting the shared Rumormonger reading breaks both proof routes")
+	check(no_rumor.case_eval.posterior < 0.999, "doubting the shared Rumormonger reading breaks both proof routes")
 	listener = s.baseline[3].duplicate(true)
 	for id in listener.suspicion:
 		listener.suspicion[id] = 0.0 if id == listener.id else 0.1
@@ -43,9 +43,10 @@ func _init() -> void:
 	c.conclusion.target = "constance"
 	c.lines = [line("readings", ["survey", "rumor", "dowse"]), line("nisha", ["warden_claim"]), line("movement", ["watch1", "watch2"])]
 	var neutral = Jury.evaluate(view, c, listener.duplicate(true))
+	var neutral_worlds: int = Solver.analyze(view, Solver.Graph.compile_case(view, c), {}, false).compatible
 	c.lines[1].test_factor = {"target": "nisha", "log2_ratio": -2.0}
 	var supporting = Jury.evaluate(view, c, listener.duplicate(true))
-	check(supporting.strength > neutral.strength and supporting.shared_assessment.compatible == neutral.shared_assessment.compatible, "a supplied factor favoring Nisha good strengthens Constance evil without eliminating a logical world")
+	check(supporting.strength > neutral.strength and Solver.analyze(view, Solver.Graph.compile_case(view, c), {}, false).compatible == neutral_worlds, "a supplied factor favoring Nisha good strengthens Constance evil without eliminating a logical world")
 	c.lines[1].test_factor.log2_ratio = 0.0
 	var equal = Jury.evaluate(view, c, listener.duplicate(true))
 	check(is_equal_approx(equal.strength, neutral.strength), "a factor equally expected in both alternatives adds no preference")
@@ -115,13 +116,13 @@ func _init() -> void:
 	check(Solver.analyze(view, more).conflicts.size() == 2, "separate minimal conflicts are found when either witness contradicts the alibi")
 	var heard = Jury.evaluate(view, c, listener)
 	check(heard.suspicion_delta == 0.0 and listener.ledger[c.id].has("report_acceptance"), "conflict stores report-level doubt without assigning alignment guilt")
-	check(heard.support_model.report_acceptance.get("alibi1", 0.0) < Support.source_quality(listener, "constance"), "a contradictory alibi loses accuracy weight while the listener retains their own sighting")
-	var unresolved = heard.support_model.report_acceptance.duplicate()
+	check(heard.case_eval.acceptance.get("alibi1", 0.0) < Support.source_quality(listener, "constance"), "a contradictory alibi loses accuracy weight while the listener retains their own sighting")
+	var unresolved = heard.case_eval.acceptance.duplicate()
 	c.challenges = {"watch1": ["watch1", "alibi1"]}
-	check(Jury.evaluate(view, c, listener).support_model.report_acceptance == unresolved, "merely choosing which report to question grants no evidence bonus")
+	check(Jury.evaluate(view, c, listener).case_eval.acceptance == unresolved, "merely choosing which report to question grants no evidence bonus")
 	c.derived = [{"id": "question", "supports": ["watch1", "alibi1"], "text": "Which report is wrong?"}]
 	c.cards.append("question")
-	check(Jury.evaluate(view, c, listener).support_model.report_acceptance == unresolved, "derived conflict question reuses the original evidence without multiplying doubt")
+	check(Jury.evaluate(view, c, listener).case_eval.acceptance == unresolved, "derived conflict question reuses the original evidence without multiplying doubt")
 	c.conflict_scope = ["survey"]
 	check(Solver.analyze(view, c).entailment == "unsupported", "an unrelated selected report is not falsely declared conflicting")
 	c = Solver.empty_case()
@@ -184,8 +185,8 @@ func _init() -> void:
 		uncertain.reading_reliability[key] = 0.5
 	tick = Time.get_ticks_usec()
 	var broad_result = Jury.evaluate(view, broad, uncertain)
-	check(broad_result.has("support_model") and broad_result.pattern.has("incidents"), "all claim and report types can be selected together without confusing claims with readings")
-	print("Broad all-readings stress (one juror): %.1f ms; %d credibility states" % [(Time.get_ticks_usec() - tick) / 1000.0, broad_result.support_model.states])
+	check(broad_result.has("case_eval") and broad_result.has("assessment"), "all claim and report types can be selected together without confusing claims with readings")
+	print("Broad all-readings stress (one juror): %.1f ms" % [(Time.get_ticks_usec() - tick) / 1000.0])
 	print("Workshop cases: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 

@@ -5,38 +5,14 @@ const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
-const KINDS = ["core", "movement", "poison", "revenant"]
-const NAMES = ["692 · Reading chains", "Movement & soot", "Poison & recovery", "Revenant & restoration"]
+const KINDS = ["core", "poison", "revenant"]
+const NAMES = ["692 · Reading chains", "Poison & recovery", "Revenant & restoration"]
 
 static func configure(base: Dictionary, kind: String, native) -> Dictionary:
 	base["fixture"] = kind
 	var view: Dictionary = base.public_view
 	view["fixture"] = kind
-	if kind == "movement":
-		view.day = 4
-		view.scope += " Movement experiment: dawn 4, a third scripted attack, fixed public route/haunt hypotheses. No hidden cause is an assessment input."
-		view["movement_experiment"] = {"version": 1, "subjects": [base.slots.demon, base.slots.warden],
-			"haunt_visit": 0.7,
-			"scenes": {"1": "docks", "2": "docks", "3": "square"},
-			"gift_destinations": {},
-			"note": "Fixture priors: evil = 1/3 hunting Demon + 2/3 minion (1/4 walks); good = ordinary/gift/secret mixture. Haunt persists across nights. Rates are hypotheses, not calibrated town prevalence."}
-		view.people.filter(func(p): return p.id == base.slots.lamplighter)[0].alive = false
-		view.movement_experiment.gift_destinations[base.slots.demon] = {"1": [], "2": [], "3": ["docks"]}
-		view.movement_experiment.gift_destinations[base.slots.warden] = {"1": C.BLOCKS.keys(), "2": C.BLOCKS.keys(), "3": ["square", "market", "hill"]}
-		base.timeline.append({"night": 3, "attack": base.slots.lamplighter, "survived": false})
-		for night in [2, 3]:
-			var block: String = view.movement_experiment.scenes[str(night)]
-			var background = {"square": 0.25, "market": 0.25, "docks": 0.25, "hill": 0.25}
-			_add(view, {"id": "soot%d" % night, "kind": "trace", "subject": base.slots.demon, "night": night, "block": block,
-				"data": {"scene_block": block, "material": "market", "passers": ["hill"], "background": background},
-				"text": "Market soot at the night %d murder scene. An eligible passer can leave misleading evening material." % night})
-			_add(view, {"id": "evening%d" % night, "kind": "evening", "subject": base.slots.demon, "night": night, "block": "market",
-				"text": "You saw Constance at the Market bakery on evening %d." % night})
-		_add(view, {"id": "vigil3", "kind": "sighting", "subject": base.slots.demon, "night": 3, "block": "square", "text": "You saw Constance on the Square on night 3."})
-		_add(view, {"id": "coverage3", "kind": "coverage", "subject": base.slots.warden, "night": 3, "block": "square", "data": {"seen": false, "detection": 1.0}, "text": "You watched the Square all night 3 and did not see Nisha. This does not cover other blocks."})
-		_add(view, {"id": "secret_claim", "kind": "secret_claim", "source": base.slots.demon, "subject": base.slots.demon, "night": -1, "role": "secret", "applies": {"from": 1, "through": 3}, "text": "Constance claims a private errand could explain leaving home."})
-		_add(view, {"id": "item3", "kind": "item", "subject": base.slots.demon, "night": 3, "block": "square", "data": {"locations_in_block": C.LOCATIONS.values().filter(func(l): return l.block == "square").size()}, "text": "A personal item belonging to Constance was found at a searched Square location after night 3. This is a dropped item, not the crime-scene material."})
-	elif kind == "poison":
+	if kind == "poison":
 		view.scope += " Poison experiment: one possible Night 1-to-Night 2 impairment interval, supported or unsupported explanations and a Day 3 recovered reading."
 		var poisoner = native.by_id[base.slots.scion]
 		poisoner.role = "poisoner"

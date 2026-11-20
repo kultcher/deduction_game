@@ -1504,7 +1504,7 @@ func _reason_menu(id: String, card: Dictionary, person: String) -> void:
 		options.append(["gift", claim.id])
 	field_menu.add_item("Evil errand", options.size())
 	options.append(["evil", ""])
-	if board.view.get("live_activity", false) or board.view.has("movement_experiment"):
+	if board.view.get("live_activity", false):
 		for claim in board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person):
 			field_menu.add_item("Private errand (their own account)", options.size())
 			options.append(["secret", claim.id])

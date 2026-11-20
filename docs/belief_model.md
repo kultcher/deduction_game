@@ -163,7 +163,7 @@ Measured before the build (mock branch, 10-NPC towns, seeds 1-10, 10 passive and
 - One call site, `Jury._consequences_eval`, on the refresh path.
 - Memory lives in `n.workshop_state.connections`. `Ownership._refresh` commits it, and the cached input carries it.
 - The breakdown goes in the `workshop_ownership` trace for the why tool.
-- The prototype tool (`tools/connections_prototype.gd`) is a harness over the module, so offline and in-game numbers can't drift apart.
+- The offline prototype harness is gone: the module is the game's own now. Exercise it with `tools/case_slate.gd` (the case benchmark slate) or `tools/autoplay.gd` (whole games).
 
 ### Build order
 

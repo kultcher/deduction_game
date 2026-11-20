@@ -4,7 +4,6 @@ const Tuning = preload("res://sim/tuning.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
-const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 const C = preload("res://sim/content.gd")
 const ROLES = ["surveyor", "rumormonger", "dowser", "clerk", "archivist", "seer", "nightwatch", "warden", "gravedigger", "veteran", "lamplighter", "medium", "martyr", "sexton", "psychologist", "chronicler", "augur", "magistrate", "executor", "registrar", "monitor", "confessor"]
 const Evidence = preload("res://workshop/live_evidence.gd")
@@ -702,10 +701,6 @@ static func evaluate(snapshot: Dictionary) -> Dictionary:
 	var result = {"ready": prepared.ready, "issues": prepared.issues, "scope": prepared.scope,
 		"format": "demonologist-live-comparison-1", "listener": snapshot.get("listener", {}).get("id", ""),
 		"proposal": {}, "elapsed_ms": 0}
-	result["ledger_audit"] = LedgerAudit.inspect(snapshot)
-	if not result.ledger_audit.aliases.is_empty():
-		result.ready = false
-		result.issues.append("Several statements share an unresolved original reading identity; numeric comparison is deferred.")
 	if result.ready:
 		result.proposal = Jury.evaluate(prepared.view, prepared.case, prepared.listener, {"venue": snapshot.venue})
 		result["world_count"] = Domain.worlds(prepared.view).size()

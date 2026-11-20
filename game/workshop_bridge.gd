@@ -149,7 +149,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 		"confidence_mode": n.workshop_state.get("confidence_mode", "scale"),
 		"theories": n.workshop_state.get("theories", {}).duplicate(true),
 		"source_doubt": n.workshop_state.get("source_doubt", {}).duplicate(true),
-		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true), "legacy_evidence": []}
+		"known_claims": {}, "own_outings": {}, "role_beliefs": n.believed_roles.duplicate(true)}
 	# The connections model: the day, what this mind's core held at its last refresh (so
 	# the core is rebuilt at dawn and otherwise only tests newly held cards), and the cards
 	# NPC nominators cited to it (stored cases; Shared.prepare adds the player's
@@ -158,26 +158,6 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	input.listener["connections"] = {"day": int(now.get("day", -1)), "core": remembered.get("core", {}).duplicate(true),
 		"nominations": remembered.get("nominations", []).duplicate(true)}
 	input.listener["disowned_reports"] = []
-	for entry in n.ledger.values():
-		if entry.get("meta", {}).get("kind", "") not in ["reading", "arg", "tell"]:
-			continue
-		var supports: Array = entry.get("meta", {}).get("supports", []).duplicate(true)
-		for justification in entry.get("justs", []):
-			for support in justification.get("supports", []):
-				if support not in supports:
-					supports.append(support.duplicate())
-		var id: String = entry.get("eid", "")
-		var relation: Array = entry.get("rel", []).duplicate(true)
-		var receipts: Array = entry.meta.get("workshop_receipts", {}).values()
-		if not receipts.is_empty() and receipts.all(func(receipt): return receipt.get("content", {}).get("anonymous", false)):
-			# The native compatibility key contains referee identity. It is not
-			# permitted provenance for an unnamed public report.
-			id = "anonymous:" + str(receipts[0].id)
-			if not relation.is_empty():
-				relation[0] = ""
-			supports = []
-		input.listener.legacy_evidence.append({"id": id, "kind": entry.meta.kind,
-			"rel": relation, "supports": supports})
 	for key in n.history:
 		if str(key).ends_with(":3"):
 			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")

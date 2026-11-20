@@ -612,7 +612,7 @@ static func juror_case(g, value: Dictionary, hear_claims: bool = true) -> Dictio
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"ready": false, "issues": prepared.issues.duplicate()}
@@ -767,7 +767,7 @@ static func town_note(g, value: Dictionary, little: float = NOTE_ADDS_LITTLE) ->
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input["watched"] = []
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {}
@@ -1166,7 +1166,7 @@ static func trace_summary(g, value: Dictionary) -> Dictionary:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Trace check", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"has_traces": false}
@@ -1274,7 +1274,7 @@ static func circumstantial_summary(g, value: Dictionary) -> Dictionary:
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input["watched"] = []  # a listener's view: no raw watch record (see GhostJuror.live)
 	input.listener = {"id": "ghost", "name": "Hub check", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	if not prepared.ready:
 		return {"has_hub": false}

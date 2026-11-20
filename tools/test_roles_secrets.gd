@@ -65,7 +65,7 @@ func _run_roster() -> void:
 
 func _run_chunk4_psychologist_mudd() -> void:
 	_test_muddler_simulation_and_debunking()
-	_test_muddler_domain_and_channel_parity()
+	_test_secret_domain_and_muddler_premise()
 
 
 # ---- test_roster
@@ -266,7 +266,9 @@ func _test_muddler_simulation_and_debunking() -> void:
 		_check(m_facts.any(func(f): return f.get("kind") == "deprecate_muddle"), "Revealing source immediately debunks muddled public relay")
 
 
-func _test_muddler_domain_and_channel_parity() -> void:
+## The full secret-modifier world domain (all five, the Muddler included) and a Muddler
+## premise weighed from a Rumormonger report.
+func _test_secret_domain_and_muddler_premise() -> void:
 	var people: Array = []
 	for i in range(7):
 		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})
