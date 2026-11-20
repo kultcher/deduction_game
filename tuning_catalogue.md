@@ -24,7 +24,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world.gd` |
 | `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world.gd` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
-| `FRIEND_PAIR_CUTOFF` | `0.2` | Schedule & relationship generation | `sim/world.gd` |
+| `EXTRA_WORK_SHIFT_CHANCE` | `0.0` | Nov 10: everyone works a single shift (was 0.3) | `sim/world.gd` |
+| `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
+| `FRIEND_PAIR_CUTOFF` | `0.2` |  | `sim/world.gd` |
 | `RIVAL_PAIR_CUTOFF` | `0.32` |  | `sim/world.gd` |
 | `INITIAL_SUSPICION_BASE` | `0.1` | Initial NPC-to-NPC suspicion & trust priors | `sim/world.gd` |
 | `INITIAL_SUSPICION_RIVAL` | `0.0` |  | `sim/world.gd` |

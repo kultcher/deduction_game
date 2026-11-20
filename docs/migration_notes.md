@@ -83,8 +83,11 @@ The behaviour is gone, but its names and plumbing remain:
 
 ### C. Off switches and dead knobs in `sim/tuning.gd`
 
-- ~~`LEGACY_MUD_DROPS_ENABLED`~~ and ~~`LEGACY_EXTRA_SHIFT_DRAW`~~: removed with the drops
-  (Nov 19, Quill), in one golden re-baseline.
+- ~~`LEGACY_MUD_DROPS_ENABLED`~~: removed with the drops (Nov 20, Quill).
+- `LEGACY_EXTRA_SHIFT_DRAW = 0.3`: "kept only so setup draws stay aligned". Removing it
+  reshuffles every seed's deal. Tried with the drop removal (Nov 20) and split out: about 25 to 30
+  suites hard-code who a seed deals what, and break. Michael decides at the reprioritization
+  whether it's worth those fixes (see the drop removal's handoff for the list).
 - `USE_FLAVOR_SECRETS = false` (benched flavour secrets): `world.gd:462` and the content
   behind it. Decide whether this is parked or dead.
 - `CONNECTIONS`: on by default since #160 (Nov 16), and removed with the earlier model in

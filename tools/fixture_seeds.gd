@@ -94,7 +94,9 @@ static func was_out(w, n, nd: int) -> bool:
 ## seen leaving home), or any. `bystander_doubt`: a bystander must hold the sighter at least
 ## this suspect, so it isn't one who already clears the sighter outright (it would believe
 ## the sighting, rightly by its own lights).
-static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0, from: int = SEEDS_FROM) -> Dictionary:
+## `subject_trust`: the subject must trust the sighter at least this much, so it hears the
+## sighting nearly in full (an unshared sighting is weighed by the hearer's trust in its teller).
+static func framed_sighting(day: int, need_bystander: bool = false, how: String = "", bystander_doubt: float = 0.0, from: int = SEEDS_FROM, subject_trust: float = 0.0) -> Dictionary:
 	return search(day, func(g):
 		var w = g.w
 		for key in w.evil_plan.get("fake_sightings", {}):
@@ -107,12 +109,25 @@ static func framed_sighting(day: int, need_bystander: bool = false, how: String 
 				continue
 			if was_out(w, subject, int(fs.get("day", -1))) or (how != "" and str(fs.get("how", "")) != how):
 				continue
-			var about = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sighter.id and subject.id in c.get("subjects", [c.get("subject", "")]) and not c.has("relay_source")
-			if held_cards(subject, about).is_empty():
+			if float(subject.npc_trust.get(sighter.id, 0.5)) < subject_trust:
 				continue
+			var about = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sighter.id and subject.id in c.get("subjects", [c.get("subject", "")]) and not c.has("relay_source")
+			# A real frame puts them away from home: a sighting on their own block ("seen
+			# leaving home") barely clashes with having stayed in (seed 100009 under #327).
+			if held_cards(subject, about).is_empty() or held_cards(subject, about).all(func(c): return str(c.get("block", c.get("content", {}).get("block", ""))) == str(subject.home_block)):
+				continue
+			# A bystander must also hold the subject's own "I was home" for that night, so the
+			# sighter contest has the subject's account to weigh the sighting against (Lantern,
+			# Nov 20).
+			var night: int = int(fs.get("day", -1))
+			var home_alibi = func(c):
+				var ct: Dictionary = c.get("content", {}) if c.get("content") is Dictionary else {}
+				var at = c.get("observed_at", ct.get("observed_at", {}))
+				return str(c.get("kind", "")) == "alibi" and str(c.get("source", ct.get("source", ""))) == subject.id \
+					and bool(c.get("home", ct.get("home", false))) and at is Dictionary and int(at.get("day", -1)) == night
 			var bystander: String = ""
 			for m in w.living_good():
-				if m != subject and not held_cards(m, about).is_empty() and float(m.suspicion.get(sighter.id, 0.0)) >= bystander_doubt:
+				if m != subject and not held_cards(m, about).is_empty() and not held_cards(m, home_alibi).is_empty() and float(m.suspicion.get(sighter.id, 0.0)) >= bystander_doubt:
 					bystander = m.id
 					break
 			if need_bystander and bystander == "":
@@ -183,7 +198,9 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 ## flips between calls (LiveActivity.sighter_contests_enabled) takes effect. {} if the
 ## listener has no plan. With `recast`, also "recast": {id: chance} with every held card and
 ## `recast.call(card)` applied to a copy of each card `drop` picks.
-static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, recast: Callable = Callable()) -> Dictionary:
+## With `view_fn`, both refreshes read a copy of the view that `view_fn.call(view)` changed
+## (say, the listener's own home nights read without sleepwalking doubt).
+static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, recast: Callable = Callable(), view_fn: Callable = Callable()) -> Dictionary:
 	var Connections = preload("res://workshop/connections.gd")
 	var Jury = preload("res://workshop/jury.gd")
 	var Mind = preload("res://sim/mind.gd")
@@ -211,13 +228,17 @@ static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, rec
 		for id in it.cards:
 			if id not in held:
 				held.append(id)
-	var dropped: Array = plan.prepared.view.cards.filter(func(c): return drop.call(c)).map(func(c): return c.id)
-	var state: Dictionary = baseline.get("connections", {})
+	var view0: Dictionary = plan.prepared.view
+	if view_fn.is_valid():
+		view0 = view0.duplicate(true)
+		view_fn.call(view0)
+	var dropped: Array = view0.cards.filter(func(c): return drop.call(c)).map(func(c): return c.id)
+	var state: Dictionary = {} if view_fn.is_valid() else baseline.get("connections", {})
 	var was_cache: bool = Connections.cache_enabled
 	Connections.cache_enabled = false
 	preload("res://workshop/caches.gd").clear_all()
-	var with_: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held, state)
-	var without: Dictionary = Connections.refresh(plan.prepared.view, plan.prepared.case, weigher, held.filter(func(id): return id not in dropped), state)
+	var with_: Dictionary = Connections.refresh(view0, plan.prepared.case, weigher, held, state)
+	var without: Dictionary = Connections.refresh(view0, plan.prepared.case, weigher, held.filter(func(id): return id not in dropped), state)
 	var recast_r: Dictionary = {}
 	if recast.is_valid():
 		preload("res://workshop/caches.gd").clear_all()
