@@ -136,7 +136,6 @@ var dialogue_memory = {}     # presentation only: delivered statements / variant
 var secret_spread_by_npc = false   # someone other than the player spread their secret
 ## Effects of the player's arguments (stage 3).
 var protect_pref = {}        # id -> how strongly they've been persuaded to protect/keep them
-var spare_pref = {}          # id -> how strongly they've been persuaded not to execute them
 var believed_roles = {}      # id -> role they've been persuaded someone holds
 var discounted = {}          # derived: "source:night|*" -> doubt in that source's readings (0..0.9)
 ## Evidence ledger (see Mind.ledger_hear): eid -> {effects, weight, rel, applied, meta, times}.

@@ -704,7 +704,6 @@ func _test_bandwagon_pullback_vs_model_standout() -> void:
 	voter.traits["confidence"] = 0.5
 	voter.traits["composure"] = 0.5
 	voter.cleared.clear()
-	voter.spare_pref.clear()
 	for m in w.npcs:
 		voter.suspicion[m.id] = 0.10
 		voter.npc_trust[m.id] = 0.50
@@ -752,7 +751,6 @@ func _test_death_spiral_pullback_and_threshold_parts_parity() -> void:
 	voter.traits["confidence"] = 0.5
 	voter.traits["composure"] = 0.5
 	voter.cleared.clear()
-	voter.spare_pref.clear()
 	voter.workshop_state.clear()
 	for m in w.npcs:
 		voter.suspicion[m.id] = 0.40
