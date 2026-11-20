@@ -360,21 +360,18 @@ func _draw_premise(id: String, rect: Rect2) -> void:
 	var shown: Dictionary = node.get("pick", {}) if draft else conclusion
 	var person: String = shown.get("target", "")
 	var who = Rect2(rect.position + Vector2(12, 48) * zoom, Vector2(WIDTH - 24, 58) * zoom)
-	if shown.get("type", "") != "conflict":
-		_field_box(who, id == model.selected)
-		var center: Vector2 = who.position + Vector2(31, 29) * zoom
-		if person != "":
-			_draw_face(person, center, 23 * zoom)
-			draw_string(font, who.position + Vector2(64, 36) * zoom, Solver.person_name(model.view, person), HORIZONTAL_ALIGNMENT_LEFT, who.size.x - 90 * zoom, _fs(19), ink)
-		else:
-			draw_circle(center, 23 * zoom, Color("d8c7a6"))
-			draw_string(font, center + Vector2(-6, 7) * zoom, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(20), muted)
-			draw_string(font, who.position + Vector2(64, 36) * zoom, "Choose a person", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(17), muted)
-		_caret(who)
-		fields[id] = [{"rect": who, "field": "person"}]
-		tips.append({"rect": who, "text": "Who this premise is about. Click to choose."})
+	_field_box(who, id == model.selected)
+	var center: Vector2 = who.position + Vector2(31, 29) * zoom
+	if person != "":
+		_draw_face(person, center, 23 * zoom)
+		draw_string(font, who.position + Vector2(64, 36) * zoom, Solver.person_name(model.view, person), HORIZONTAL_ALIGNMENT_LEFT, who.size.x - 90 * zoom, _fs(19), ink)
 	else:
-		fields[id] = []
+		draw_circle(center, 23 * zoom, Color("d8c7a6"))
+		draw_string(font, center + Vector2(-6, 7) * zoom, "?", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(20), muted)
+		draw_string(font, who.position + Vector2(64, 36) * zoom, "Choose a person", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(17), muted)
+	_caret(who)
+	fields[id] = [{"rect": who, "field": "person"}]
+	tips.append({"rect": who, "text": "Who this premise is about. Click to choose."})
 	# What: the claim.
 	var what = Rect2(rect.position + Vector2(12, 114) * zoom, Vector2(WIDTH - 24, 34) * zoom)
 	_field_box(what, false)
@@ -697,7 +694,7 @@ func _evidence_card(id: String) -> Dictionary:
 
 ## Clearing premises the top tier can call settled: the juror's chance is the target's chance
 ## of being good, which settles these and no other clearing premise (Codex, #358). Being good
-## doesn't settle "holds their claimed gift", "is Marked" and the like.
+## doesn't settle "is Marked", "holds a secret" and the like.
 const CONCLUSIVE_TYPES = ["good", "notdemon"]
 
 ## The top tier's chip and reason line for premise `id`: Damning when it accuses someone by
@@ -707,7 +704,7 @@ func top_tier(id: String) -> Dictionary:
 	var conclusion: Dictionary = model.nodes[id].get("conclusion", {})
 	var type: String = str(conclusion.get("type", ""))
 	var target: String = str(conclusion.get("target", ""))
-	if target != "" and type != "conflict" and type not in Live.PREMISE_CLEARS:
+	if target != "" and type not in Live.PREMISE_CLEARS:
 		return {"label": "Damning", "line": DAMNING_LINE % Solver.person_name(model.view, target)}
 	if type in CONCLUSIVE_TYPES:
 		return {"label": "Conclusive", "line": CONCLUSIVE_LINE % model.title(id)}

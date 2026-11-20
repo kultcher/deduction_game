@@ -141,18 +141,6 @@ func _flags(g, value: Dictionary) -> void:
 		if receipt.id in input.selected:
 			receipt.observed_at = {"day": 1, "phase": "night"}
 	check(Assess.prepare(input).issues.any(func(issue): return "gift interval" in issue), "out-of-scope reading time is reported rather than treated as a healthy reading")
-	var board = Canvas.new(Live.view(g))
-	var main: String = board.selected
-	var conflict: String = board.add_premise(value.conclusion.target, "conflict", Vector2.ZERO)
-	board.connect_cards("e:" + value.cards[0], conflict)
-	board.connect_cards(conflict, main)
-	var quoted = Live.snapshot(g, board.compile(main))
-	check(Shared.endorsed_facts(quoted, quoted.root).is_empty(), "a conflict intermediate quotes reports without endorsing their contents")
-	check(not Live.status(g, board.compile(main)).ready, "an embedded conflict is flagged until both quotation ownership and scoped assessment are supported")
-	var group: String = board.add_premise(value.conclusion.target, "support", Vector2.ZERO)
-	board.connect_cards(conflict, group)
-	board.connect_cards(group, main)
-	check(Live.status(g, board.compile(main)).issues.any(func(issue): return "quoted-evidence" in issue), "nested quotation through a grouping card is explicitly flagged instead of endorsing the quoted reports")
 
 func _ui(g, report_id: String, trace_id: String) -> void:
 	root.size = Vector2i(1400, 950)

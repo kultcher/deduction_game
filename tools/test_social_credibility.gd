@@ -433,8 +433,8 @@ func _stance_from_belief() -> void:
 	said = Presentation._belief_stance_text(g, n, "evil", t.id, 0.17, "accept", "Taken together, those reports convince me.", true)
 	_check(said == "It holds together, but it doesn't change my mind about %s." % t.name, "a retold case that lowered their suspicion isn't 'already taken into account' (Dorian, 12926) (%s)" % said)
 	_check(Presentation.belief_toward("evil", 0.17, 0.05) < 0.0 and Presentation.belief_toward("good", 0.4, 0.3) > 0.0, "belief_toward is signed toward the claim")
-	said = Presentation._belief_stance_text(g, n, "conflict", t.id, 0.2, "accept", "Those accounts cannot all be accurate.")
-	_check(said == "Those accounts cannot all be accurate.", "conflicts are left alone")
+	said = Presentation._belief_stance_text(g, n, "lied", t.id, 0.2, "accept", "Those accounts cannot all be accurate.")
+	_check(said == "Those accounts cannot all be accurate.", "premises about a reading rather than an alignment are left alone")
 
 
 ## A gift reading against an alibi offers both explanations: the alibi is false (as

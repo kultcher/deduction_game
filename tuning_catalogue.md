@@ -86,7 +86,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `ONGOING_INFO_EARLY_CLAIM` | `-0.4` | Nov 10: was -0.45 (case 12926's day-1 wall) | `sim/role_def.gd` |
 | `ONGOING_INFO_CLAIM_D2` | `-0.2` |  | `sim/role_def.gd` |
 | `ONE_SHOT_GIFT_CLAIM` | `0.3` |  | `sim/role_def.gd`, `sim/roles/chronicler.gd`, `sim/roles/executor.gd` |
-| `SEER` | `{ "public_threat_bonus": 1.0, "red_herring_defence_eff": -0.12, "focus_base":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
+| `SEER` | `{ "red_herring_defence_eff": -0.12, "focus_base": 0.3, "focus_insight_scale":...` | Per-role tuning blocks (`sim/roles/*.gd`) | `sim/roles/registrar.gd`, `sim/roles/seer.gd` |
 | `WARDEN` | `{ "quiet_night_effect": -0.15, "quiet_night_claim_weight": 0.06, "pick_noise"...` |  | `sim/mind.gd`, `sim/role_def.gd`, `sim/roles/warden.gd`, `sim/world_night.gd`, `workshop/live_activity.gd`, `workshop/live_assessment.gd` |
 | `DOWSER` | `{ # A bluffing Dowser's count (sim/roles/dowser.gd generate_bluff_reading; tr...` |  | `sim/roles/dowser.gd` |
 | `HEARTHWITCH` | `{ }` |  | (unused) |
@@ -99,6 +99,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VETERAN` | `{ "quiet_night_effect": -0.06, "quiet_night_claim_weight": 0.025, }` |  | `sim/roles/veteran.gd` |
 | `MARTYR` | `{ "claim_chosen_bonus": 0.4, "pick_min_score": 0.62, "pick_susp_scale": 0.5, ...` |  | `sim/roles/martyr.gd` |
 | `SEXTON` | `{ "toll_few_left": 0.35, "toll_per_dead": 0.1, # Telling of the toll. The bel...` |  | `sim/roles/sexton.gd` |
+| `REGISTRAR` | `{ "public_threat_bonus": 0.75, # the Demon's extra interest in a claimed Regi...` |  | `sim/roles/registrar.gd` |
 | `PSYCHOLOGIST` | `{ "conversation_nudge": 0.5, }` |  | `sim/roles/psychologist.gd` |
 | `HEXER` | `{"phase_probs": [0.25, 0.4, 0.6], "threat_slope": 0.3, "busy_slope": 0.08, "o...` | The Hexer, a day-killing demon (sim/roles/daykiller.gd): its chance to hex where it stands, by phase, before threat and crowd; the evening floor so it isn't trapped by its own schedule. | `sim/roles/daykiller.gd`, `workshop/live_activity.gd` |
 | `BREATHSTEALER` | `{ # Nov 14 (Michael: silence on about 90% of days): it hunts in free phases (...` |  | `sim/roles/breathstealer.gd`, `workshop/day_presence.gd` |
@@ -584,6 +585,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_VOTE_NATURAL_BASE` | `0.35` |  | `sim/evil.gd` |
 | `EVIL_VOTE_NATURAL_CONF_SCALE` | `0.2` |  | `sim/evil.gd` |
 | `KILL_INFO_CLAIM` | `3.0` | Demon kill target scoring | `sim/evil.gd` |
+| `KILL_CLAIM_BY_ROLE` | `{"lamplighter": 2.0, "psychologist": 2.0, "warden": 3.0, "sexton": 2.0}` | What a publicly claimed gift is worth to the Demon, where it isn't KILL_INFO_CLAIM (Michael, Nov 20). A claimed info gift scores KILL_INFO_CLAIM unless listed; a gift that isn't info scores only if listed. The Sexton's counts while its bell is unrung (it can stop a Scion rising). | `sim/evil.gd` |
+| `KILL_IDENTIFIER_ROLES` | `["seer", "augur", "dowser", "confessor"]` | Gifts that can point at the Demon or clear people get one shared bonus on top (Michael, Nov 20; replaces the Seer's own +1.0). | `sim/evil.gd` |
+| `KILL_IDENTIFIER_BONUS` | `1.0` |  | `sim/evil.gd` |
 | `KILL_SPENT_INFO_CLAIM` | `0.0` |  | `sim/evil.gd` |
 | `KILL_IMPLICATES_US` | `2.0` |  | `sim/evil.gd` |
 | `KILL_HOSTILITY_SCALE` | `0.8` |  | `sim/evil.gd` |
@@ -686,7 +690,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HAUNT_VISIT_RATE` | `0.7` |  | `workshop/movement_model.gd` |
 | `DEMON_VICTIM_GOOD` | `0.95` |  | `workshop/public_evidence.gd` |
 | `REFUSAL_LR` | `1.5` |  | `workshop/speech_evidence.gd` |
-| `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "minion": 0.45, "good": -0.4, "marked": -0.1, ...` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
+| `CONCLUSION_COEFFS` | `{ "evil": 0.45, "demon": 0.45, "good": -0.4, "marked": -0.1, "suspicious": 0....` | Consequence & Jury conclusion weights and stance thresholds | `workshop/jury.gd` |
 | `STANCE_ACCEPT` | `0.6` |  | `workshop/consequences.gd`, `workshop/jury.gd` |
 | `STANCE_PARTIAL` | `0.35` |  | `workshop/consequences.gd`, `workshop/jury.gd` |
 | `EXECUTION_PRIORITY_TOP_MARGIN` | `0.12` |  | `workshop/shared_ledger.gd` |
@@ -735,7 +739,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VENUE_MULTS` | `{ "private": 1.0, "meeting": 0.6, "nomination": 0.5, }` | Presentation venue multipliers (`game/workshop_presentation.gd`) | `game/game_meeting.gd`, `game/game_presentation.gd` |
 | `STANCE_MOVE` | `{ "accept": 0.06, "partial": 0.02, }` |  | `game/workshop_presentation.gd` |
 | `PREMISE_BYSTANDER_SHARE` | `1.0 / 3.0` | Premise centring, option B (Michael, Nov 18; docs/design/premise_centring.md): what a card adds when only presented cases brought it, and what a stored case's cards add together, count in full on the case's target and at this share on everyone else. A listener hearing "X is evil" weighs how far the case proves that, and under-registers what it implies about the others. | `workshop/connections.gd` |
-| `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrol...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret, misled and conflict premises name no alignment target. | `workshop/shared_ledger.gd` |
+| `PREMISE_ALIGNMENT_TYPES` | `["evil", "demon", "suspicious", "good", "notdemon", "notrole", "lied", "truth...` | Premise types that ask an alignment question about a person: a stored case's target (`Shared.premise_targets`). Marked, secret and misled premises name no alignment target. | `workshop/shared_ledger.gd` |
 | `PREMISE_PREF_MIN_AGREEMENT` | `0.5` | The protect / believed-role preference from a presented premise needs at least this agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks. | `sim/mind.gd` |
 | `SUSPICIOUS_HEARING` | `0.5` | A "suspicious" premise halves its stored case's weight (`Connections.case_weight`): what the case's cards add together counts at this share. Each card alone still counts in full. | `game/workshop_why.gd`, `workshop/connections.gd` |
 | `SUSPICIOUS_PRESSURE_PER_RISE` | `{"private": 0.5, "meeting": 1.0}` | The venue's share of connections pressure (`WorkshopPresentation`): private / meeting. | `game/workshop_presentation.gd` |
