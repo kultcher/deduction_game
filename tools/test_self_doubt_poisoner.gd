@@ -63,6 +63,11 @@ func _init() -> void:
 	var v_none: Dictionary = _view(cards, doubt)
 	v_none.script_minions = ["scion", "brute"]
 	check(RC.self_doubt_floors(v_none, {}, _listener(), cards).is_empty(), "no Poisoner on the script: no one is pointed at, as for the Mistaken call")
+	var Jury = load("res://workshop/jury.gd")
+	check(is_equal_approx(Jury.poisoner_floor(0.0, 0.1), 0.1) and is_equal_approx(Jury.poisoner_floor(0.02, 0.1), 0.1), "someone not cleared reaches the floor, as before")
+	check(is_equal_approx(Jury.poisoner_floor(0.3, 0.1), 0.3), "someone already more suspected keeps their own weight")
+	check(is_equal_approx(Jury.poisoner_floor(-0.54, 0.146), -0.394), "a strongly cleared candidate stays cleared: only less so (%.3f)" % Jury.poisoner_floor(-0.54, 0.146))
+	check(is_equal_approx(Jury.poisoner_floor(-0.01, 0.1), 0.09), "a mild clear moves toward the floor, never past it (%.3f)" % Jury.poisoner_floor(-0.01, 0.1))
 	_in_play()
 	print("Self-doubt Poisoner: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

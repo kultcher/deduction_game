@@ -569,6 +569,13 @@ static func _mentions(card: Dictionary) -> Array:
 				out.append(v)
 	return out
 
+## A Poisoner nudge on someone (an accepted Mistaken call's candidates, or a reader's own
+## self-doubt's): for anyone not cleared, a floor; for someone cleared, added, never past the
+## floor, so a weak "seen near the reader's door" leaves a strong clear a clear (Lantern, Nov
+## 20). Continuous at 0, no new number.
+static func poisoner_floor(net_weight: float, floor_w: float) -> float:
+	return maxf(net_weight, floor_w) if net_weight >= 0.0 else minf(net_weight + floor_w, floor_w)
+
 ## Effects on everyone from one CaseEval pass over the same attended evidence, plus the
 ## intermediate claims.
 ## headline is {} for a belief refresh: no person is special, and refresh skips the
@@ -694,12 +701,12 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 			# Premises step 3: an accepted failed-gift challenge points at the Poisoner candidates.
 			var cands: Dictionary = challenge.get("candidates", {})
 			if challenge.mode == "impaired" and cands.has(id) and challenge.agreement >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
-				net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement / float(cands.size()))
+				net_weight = poisoner_floor(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement / float(cands.size()))
 		# An NPC's own word that its gift may have been turned points at the same candidates
 		# (Michael, Nov 20), at the same scale, as far as the listener believes the reader.
 		for sd in self_doubt_floors:
 			if sd.candidates.has(id) and float(sd.agreement) >= Tuning.Workshop.JURY_CHALLENGE_LYING_MIN_AGR:
-				net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * float(sd.agreement) / float(sd.candidates.size()))
+				net_weight = poisoner_floor(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * float(sd.agreement) / float(sd.candidates.size()))
 		if not connections.is_empty():
 			# The same two floors for a stored case's challenges, as assessed inside the case
 			# and scaled by its weight, so they fade with it.
@@ -710,7 +717,7 @@ static func _consequences_eval(view: Dictionary, value: Dictionary, baseline: Di
 					net_weight = maxf(net_weight, Tuning.Workshop.JURY_CHALLENGE_LYING_SCALE * challenge.agreement * float(challenge.weight))
 				var case_cands: Dictionary = challenge.get("candidates", {})
 				if challenge.mode == "impaired" and case_cands.has(id):
-					net_weight = maxf(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
+					net_weight = poisoner_floor(net_weight, Tuning.Workshop.CHALLENGE_POISONER_SCALE * challenge.agreement * float(challenge.weight) / float(case_cands.size()))
 		var own_check: Dictionary = belief_case.duplicate(true)
 		own_check.conclusion = {"type": "evil", "target": id, "at": value.conclusion.at}
 		var direct_fatal: bool = invalid or ev.impossible or Reasoner.direct_checks(view, own_check, baseline.knowledge).fatal or TimeModel.known_good(view, baseline.knowledge, id, value.conclusion.at)
