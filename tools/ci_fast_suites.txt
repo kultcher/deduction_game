@@ -1,5 +1,7 @@
-# Suites CI runs on every pull request (main runs everything). Keep this to the suites
-# that cover the shared model, the C# solver and its boundaries, and the roles.
+# Suites CI runs on every pull request (main runs everything). The shared model, the C#
+# solver and its boundaries, the roles, and every suite that runs in under about 15 seconds,
+# Workshop, UI and text included (Quill's audit, Nov 20: two suites outside both lists broke
+# main unseen that day).
 # Keep the list sorted: add a new suite at its alphabetical place, not at the end, so two
 # PRs that each add a suite rarely touch the same line (Nov 17). CI deals the list out
 # to the four shards in this order (suite i goes to shard i mod 4).
@@ -11,9 +13,13 @@ test_badge_text
 test_bare_compile
 test_beliefs
 test_bluff_blend
+test_board
 test_bot_m4
 test_buildings_tavern_town_hall
+test_canvas_card_text
 test_card_wording_fixes
+test_carried_answers
+test_case_eval
 test_case_metrics_dead
 test_case_script
 test_caught_lie_softening
@@ -36,14 +42,18 @@ test_defence_grounds
 test_defence_repeats
 test_delusional_reading
 test_delusional_self_doubt
+test_demon_types
 test_demon_when_hanged
 test_dialogue
 test_dialogue_decisions
+test_dialogue_fixes_accusations_votes
+test_dialogue_fixes_gossip_reasons
 test_dialogue_fixes_testimony
 test_dialogue_opinion_pass
 test_dialogue_voices
 test_double_claim
 test_double_claim_response
+test_evidence_context
 test_evidence_honesty
 test_evil_owned_lie
 test_evil_play
@@ -55,8 +65,10 @@ test_framed_defence
 test_gift_doubt
 test_gift_doubt_good
 test_gravedigger_bluff
+test_group_defence
 test_haunt_learning
 test_held_signals
+test_hint_cards
 test_hint_families
 test_honest_forgetting
 test_honest_mistake
@@ -69,7 +81,9 @@ test_kill_score_roles
 test_lamplighter_count_mix
 test_lie_severity
 test_lie_severity_votes
+test_location_art
 test_location_solver
+test_map_return
 test_mechanics_claims
 test_mechanics_conclusions
 test_mechanics_defences
@@ -91,10 +105,15 @@ test_mistake_signpost
 test_new_case_memory
 test_night0_fake_sightings
 test_nightwatch_whole_list
+test_nomination_and_evil_tuning
 test_nomination_case
+test_npc_chatter
 test_npc_fixes_shifts_dead_haunt
 test_npc_openness
+test_outcomes
+test_own_alibi_lies
 test_peer_role_gossip
+test_place_icons
 test_player_failed_gift
 test_playtest_23973
 test_playtest_89077
@@ -107,8 +126,11 @@ test_premise_migration
 test_premise_step1
 test_premise_step2
 test_premise_step3
+test_presentation_contracts
 test_press_caught_out
 test_press_contradiction
+test_press_night_case
+test_prior_mapping
 test_private_share_boost
 test_public_revisions
 test_reading_confirm
@@ -135,24 +157,65 @@ test_sighter_contest
 test_sighting_followup
 test_sleepwalk_bluff
 test_social
+test_social_evidence_boundary
+test_social_trust
+test_soundtrack
 test_state_digest
 test_symmetric_vote
+test_term_defs
+test_text_formatter
+test_text_terms
+test_text_ui
 test_too_clean_bluffs
 test_town_note
+test_town_ui
 test_town_vibe
+test_trace_art
+test_trapped_explanation
 test_turned_premise
 test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge
 test_warden_quiet_route
 test_wave_once
+test_withdraw_ui
 test_wording_23973
 test_wording_89077
+test_workshop
+test_workshop_attention
+test_workshop_canvas
+test_workshop_card_adapters
+test_workshop_card_answers
+test_workshop_cases
+test_workshop_circumstantial_hub
+test_workshop_consequences
 test_workshop_efficiency
+test_workshop_factor_cache
+test_workshop_hints
 test_workshop_integration
+test_workshop_live
+test_workshop_live_activity
+test_workshop_live_cognition
+test_workshop_live_ui
+test_workshop_nav
+test_workshop_nested_cases
 test_workshop_ownership
+test_workshop_pan
+test_workshop_presentation
+test_workshop_profile_receipts
+test_workshop_profiling
+test_workshop_provenance
+test_workshop_public_evidence
 test_workshop_reading_challenges
+test_workshop_reading_identity
+test_workshop_reasoning
+test_workshop_refusals
 test_workshop_regressions
+test_workshop_remaining
+test_workshop_secrets
+test_workshop_tuning_probe
+test_workshop_ui_selection
 test_workshop_vote_and_alibi
+test_workshop_votes
 test_workshop_why
 test_would_vote
