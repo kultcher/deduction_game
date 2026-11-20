@@ -81,6 +81,16 @@ func _run(g, size: int) -> void:
 	check(r_off.get("cites", {}).get("deaths", []) == [victim.id], tag + " other_block cites the public death")
 	check(MindDefence.night_route_rebuttal(w, d, 1, on_b).is_empty(), tag + " a sighting on the victim's home block gives nothing")
 	check(MindDefence.night_route_rebuttal(w, d, 1, d.home_block).is_empty(), tag + " a sighting on the defender's own block gives nothing")
+	# A neighbour of the victim, home all night on that block, was on it: never "I was never on".
+	var own_home: String = d.home_block
+	d.home_block = victim.home_block
+	var far_b: String = ""
+	for b in C.BLOCKS.keys():
+		if b != victim.home_block:
+			far_b = b
+			break
+	check(MindDefence.night_route_rebuttal(w, d, 1, far_b).is_empty(), tag + " a defender living on the victim's block, home that night, gives no other_block")
+	d.home_block = own_home
 	var r_q: Dictionary = MindDefence.night_route_rebuttal(w, d, 2, off_b)
 	check(str(r_q.get("variant", "")) == "no_death", tag + " a quiet night gives no_death (%s)" % [r_q])
 	check(MindDefence.night_route_rebuttal(w, d, 0, off_b).is_empty(), tag + " night 0 never")

@@ -268,6 +268,11 @@ static func night_route_rebuttal(w, d, nd: int, block: String) -> Dictionary:
 			victims.append(v.id)
 		if block in on_route:
 			return {}
+		# "I was never on {block}" must be true of the night they spent at home too: a defender
+		# who lives on a victim's block was on it, out or not (Codex on #415).
+		for vid in victims:
+			if w.by_id[vid].home_block == d.home_block:
+				return {}
 		# True as stated: they weren't really out on their own or a victim's block themselves.
 		var where: String = str(d.history.get(w.time_key(nd, C.NIGHT), ""))
 		if where.begins_with("night:") and w.loc_block(where) in on_route:

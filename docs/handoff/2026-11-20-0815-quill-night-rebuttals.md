@@ -66,6 +66,18 @@ argue from the public death record, in their own words:
   that night. It's broader than `World._quiet_night`, which counts only claims living that
   night, and errs toward not making the argument.
 
+## After approval (Nov 20, later)
+- **Approved wording** in block terms (Herald, `2026-11-20-1807-herald-night-rebuttal-lines.md`);
+  comments, test labels and this entry now say blocks, not roads.
+- **"No one died" only after an account that owns the outing** (Codex): it opens "I was seen
+  out", so after a home alibi, a refusal or no account it would retract what the defender
+  said. `MindDefence.rebuttal_fits_account` gates it at the meeting, the podium and the private
+  press; "another block" fits any account.
+- **No "I was never on" for a victim's neighbour** (Codex): a defender who lives on a victim's
+  block was on it all night, so the other-block line isn't said.
+- Golden identical to `baseline_7005cc6` after both; test_night_sighting_rebuttal,
+  test_dialogue_voices, test_dialogue, test_meeting_flow and test_confessed_night pass.
+
 ## Measured
 
 - **New suite** `tools/test_night_sighting_rebuttal.gd` (in `ci_fast_suites.txt`): 7- and 10-NPC
