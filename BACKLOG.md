@@ -29,7 +29,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     1. \*Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
-    2. A reader's self-doubt points at the Poisoner `[decided]`
+    2. \*A reader's self-doubt points at the Poisoner `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. \*Accusations from starting suspicion read as clues `[decided]`
     2. \*The Gravedigger in a reluctant town `[decided]`
