@@ -44,7 +44,27 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
+### Current baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
+
+`tools/golden/baseline_6836d21/` is the capture from `claude/joint-reasons-combined` at `6836d21`
+(main at `03968fd` after #448, merged in). A "taken together" reason names only two cards the
+belief model weighed together. An NPC's own reading counts as known to the town or the
+Demonologist by the reading itself (shared, claimed, or cited in a presentation to them), not by
+the cards cited with it, so a reading already shared is no longer "revealed" again. This replaces
+the PR's earlier `baseline_d9f8005` and `baseline_1fe73e4`, taken on older mains.
+- **Divergence from `baseline_66be26f`:** 692 from record 67 and 900 from 41 (both the day 2
+  meeting: an accusation no longer hints at a private reason). 42 diverges at record 71 and
+  54875 at record 51, each at a refresh after a different line in talk. 98933 is identical.
+- **Outcomes:**
+  - **54875:** the town hangs Edda on day 1 instead of day 2, then Greta (the Poisoner) on
+    day 2, instead of Agnes on day 3. No winner by day 4 either way.
+  - **692:** Constance (the Demon) on day 2 as before. Lian is no longer hanged on day 3.
+    No winner by day 4 either way.
+  - **42 and 900:** the same hangings (none in 42; Greta in 900); only what is said differs.
+  - **98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
 
 `tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
 `fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
