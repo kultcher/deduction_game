@@ -1,7 +1,7 @@
 # Graded gossip: value tiers and their measurement
 
 **Claude-Quill, Nov 20.** Base: main at 6cdafd17. Status: ready for review. Next actor: Beadle
-(review, then his budget PR on top), then Bailiff. Zero drift. **The tier definition is a
+(review, then their budget PR on top), then Bailiff. Zero drift. **The tier definition is a
 draft awaiting Michael** (sent to Seneschal, Nov 20).
 
 ## What changed and why

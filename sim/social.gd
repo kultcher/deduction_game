@@ -1024,9 +1024,6 @@ static func _player_heard_gossip_key(g, gkey: String) -> bool:
 			return true
 	return false
 
-## Evening Tavern Gossip: harvests 3-5 anonymized rumours from all non-strategizing
-## NPC-to-NPC exchanges across the whole day (Morning, Afternoon, and Evening) plus
-## unlearned profile haunts and public town relationships, favoring unheard items.
 ## A tavern gossip item's value to the player (graded gossip; the tiers are a DRAFT awaiting
 ## Michael, Nov 20, from Quill and Beadle):
 ##   1: something the player can file or check: an anonymous reading, or a night sighting
@@ -1045,6 +1042,9 @@ static func gossip_tier(cand: Dictionary) -> int:
 			return 2
 	return 3
 
+## Evening Tavern Gossip: harvests 3-5 anonymized rumours from all non-strategizing
+## NPC-to-NPC exchanges across the whole day (Morning, Afternoon, and Evening) plus
+## unlearned profile haunts and public town relationships, favoring unheard items.
 static func tavern_evening_gossip(g) -> Dictionary:
 	var w = g.w
 	var trng := RandomNumberGenerator.new()
