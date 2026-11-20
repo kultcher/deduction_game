@@ -75,6 +75,39 @@ func _run() -> void:
 	check("would vote for %s over anyone else" % who.name in tip and not ("placeholder" in tip), "the drawn chip's tooltip gives the Damning line, not the placeholder")
 	check("Your word against %s's." % who.name in tip, "and the lie call's line (%s)" % tip.replace("\n", " | "))
 	check(canvas.lie_call("card-x").get("kind", "") == "draw" and canvas.lie_call("other").is_empty(), "a lie call is found by its card")
+
+	# Points elsewhere (Michael, Nov 20): the band, then "· points elsewhere", naming no one.
+	var other = g.w.npcs[1]
+	canvas.badges = {accuse: {"ready": true, "category": "weak", "text": "placeholder", "reason": "", "points_elsewhere": true}}
+	canvas.queue_redraw()
+	await process_frame
+	await process_frame
+	var pe: Dictionary = {}
+	for t in canvas.tips:
+		if "Test juror: placeholder" in str(t.text):
+			pe = t
+	check(pe.get("chip", "") == "Weak · points elsewhere", "a misframed accusation's chip reads \"Weak · points elsewhere\" (%s)" % pe.get("chip", ""))
+	check(("This evidence may say more about someone else than about %s." % who.name) in str(pe.get("text", "")) and not (other.name in str(pe.get("text", ""))), "its tooltip says so without naming anyone else")
+	canvas.badges[accuse].erase("points_elsewhere")
+	pe = {}
+	canvas.queue_redraw()
+	await process_frame
+	await process_frame
+	for t in canvas.tips:
+		if "Test juror: placeholder" in str(t.text):
+			pe = t
+	check(pe.get("chip", "") == "Weak" and not ("someone else" in str(pe.get("text", ""))), "without the flag it's the band alone (%s)" % pe.get("chip", ""))
+
+	# The rule is the one a listener uses to name the rival: living, not skipped, its chance
+	# raised by more than 0.2 to above a half, and only the likeliest rival is considered.
+	var Presentations = preload("res://sim/dialogue_presentations.gd")
+	var r_ok = {"id": other.id, "shift": 0.3, "posterior": 0.6}
+	check(Presentations.points_elsewhere(g.w, [r_ok], [who.id]) == other.id, "a rival raised past a half is found")
+	check(Presentations.points_elsewhere(g.w, [r_ok], [other.id]) == "", "a skipped one isn't")
+	check(Presentations.points_elsewhere(g.w, [{"id": other.id, "shift": 0.1, "posterior": 0.6}], []) == "", "nor one the case barely moved")
+	check(Presentations.points_elsewhere(g.w, [{"id": other.id, "shift": 0.3, "posterior": 0.4}], []) == "", "nor one still under a half")
+	check(Presentations.points_elsewhere(g.w, [{"id": who.id, "shift": 0.05, "posterior": 0.9}, r_ok], []) == "", "only the likeliest eligible rival counts")
+	check(Presentations.points_elsewhere(g.w, [{"id": "nobody", "shift": 0.5, "posterior": 0.9}, r_ok], []) == other.id, "someone not in town is passed over")
 	print("Badge text: %d checks, %d failures" % [checks, fails])
 	scene.queue_free()
 	quit(1 if fails else 0)
