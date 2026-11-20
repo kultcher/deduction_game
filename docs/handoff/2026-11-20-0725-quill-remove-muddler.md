@@ -47,8 +47,7 @@ in only 5 (BACKLOG, Nov 17).
   - `test_text_terms`'s secret-name sentence.
 - **Docs:** DESIGN's secrets table, README, `belief_model`, the evidence catalogues,
   `premises_plan`, `secrets_rework` and `open_questions` ("tentatively cut" is now "cut"),
-  and `tuning_catalogue`. BACKLOG: "The Muddler rarely has anything to muddle", "Adjudicating
-  a muddled card", and the audit's "Deleting the Muddler" are marked built, [in review].
+  and `tuning_catalogue`. BACKLOG: "Remove the Muddler" is marked built, [in review]. Vicar had already folded the old Muddler items into it.
 
 **Added:**
 - **`ScriptDef.RETIRED_IDS`** (`["muddler"]`): `from_dict` drops a retired id. An old saved
