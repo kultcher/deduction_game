@@ -462,7 +462,7 @@ The one performance item, "Late-game meeting and presenting cost", is in
   Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
   "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
   Marked, Unrequited and Ill-Omened (known); one burden per script for now. Michael
-  answered most of the open questions the same day; five remain. All in
+  answered every open question the same day; the staged plan is next. All in
   [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
