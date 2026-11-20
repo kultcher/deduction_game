@@ -634,11 +634,17 @@ static func _score_single_report(
 	var csrc: String = str(card.get("source", ""))
 	var crole: String = str(card.get("role", ""))
 	var align_c: float = 0.45 * s_evil
+	# How strongly the reading names this person on its face (a Seer's "yes" names each of two
+	# by half): it makes the reason feel stronger when cited, for every listener. It no longer
+	# moves anyone's suspicion (purge 6a removed the headline nudge that did).
+	var face_p: float = 0.0
+	if csrc != pid and not (crole == "archivist" and C.ROLES.get(str(card.get("data", {}).get("role", "")), {}).get("align", "good") != "evil"):
+		face_p = _face_value(card, pid)
 	var contrib: float = align_c * belief_scale
 	if contrib < MIN_ITEM_CONTRIB:
 		return {}
 	var d_ratio: float = (pr1.demon / maxf(1.0 - pr1.demon, 1e-6)) / maxf(pr0.demon / maxf(1.0 - pr0.demon, 1e-6), 1e-6)
-	var strength: float = _strength_from_shift(s_evil, d_ratio, csrc == pid and str(knowledge.get("own_role", "")) == crole)
+	var strength: float = _strength_from_shift(s_evil, d_ratio, csrc == pid and str(knowledge.get("own_role", "")) == crole, face_p)
 	var cid: String = str(card.get("id", ""))
 	var rsrc_rep: String = str(card.get("relay_source", ""))
 	var eff_src: String = rsrc_rep if rsrc_rep != "" else csrc
@@ -1120,11 +1126,11 @@ static func _person_probs(view: Dictionary, reps: Array, weights: PackedFloat64A
 	return {"evil": evil_sum / total, "demon": demon_sum / total, "total": total}
 
 
-static func _strength_from_shift(s_evil: float, d_ratio: float, own_contradiction: bool) -> float:
+static func _strength_from_shift(s_evil: float, d_ratio: float, own_contradiction: bool, face_p: float = 0.0) -> float:
 	var log2_d: float = log(maxf(d_ratio, 1.0)) / log(2.0)
 	var val: float = maxf(
 		1.15 * s_evil,
-		0.30 * log2_d + 0.45 * s_evil
+		0.30 * log2_d + 0.45 * s_evil + 0.80 * face_p
 	)
 	if own_contradiction:
 		val = maxf(val, 0.55 + 0.45 * s_evil)
@@ -1327,6 +1333,38 @@ static func _circumstantial_clause(label: String) -> String:
 	if s.begins_with("Guarded "):
 		return "their demeanor has been guarded"
 	return s[0].to_lower() + s.substr(1)
+
+
+## A reading's share of naming `person` on its face: a Seer's "yes" names each of its pair by
+## half, a Dowser's count of c in n by c/n. Feeds a cited reason's strength only.
+static func _face_value(card: Dictionary, person: String) -> float:
+	var data = card.get("data", {})
+	if not (data is Dictionary):
+		return 0.0
+	match str(card.get("role", "")):
+		"seer":
+			var spair: Array = data.get("pair", [])
+			if bool(data.get("yes", false)) and person in spair:
+				return 1.0 / float(maxi(spair.size(), 1))
+		"archivist":
+			var apair: Array = data.get("pair", [])
+			if person in apair:
+				return 1.0 / float(maxi(apair.size(), 1))
+		"dowser":
+			var dgroup: Array = data.get("group", [])
+			if person in dgroup and int(data.get("count", 0)) > 0:
+				return float(data.count) / float(maxi(dgroup.size(), 1))
+		"chronicler":
+			var ctrio: Array = data.get("trio", [])
+			if person in ctrio:
+				return 1.0 / float(maxi(ctrio.size(), 1))
+		"magistrate":
+			if not bool(data.get("same", true)) and person in [str(data.get("nominator", "")), str(data.get("nominee", ""))]:
+				return 0.5
+		"registrar":
+			if bool(data.get("yes", false)) and str(data.get("target", "")) == person and data.get("roles", []).any(func(r): return C.is_minion(str(r))):
+				return 0.5
+	return 0.0
 
 
 static func _card_trust(card: Dictionary, listener: Dictionary, player_tells: bool) -> float:

@@ -1,5 +1,5 @@
 ## Workshop and shared-model behaviour pinned by past bugs: juror feedback, connections, presentation replies, ledger guards, caches.
-## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase2_bug_sweep, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
+## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
 const Mind = preload("res://sim/mind.gd")
@@ -45,7 +45,6 @@ func _main() -> void:
 	_run_backlog_batch4()
 	_run_claude_batch()
 	_run_claude_audit_cleanup()
-	_run_phase2_bug_sweep()
 	_run_phase4_3_framing_and_vig()
 	_run_playtest_nov4_fixes()
 	_run_playtest_regressions()
@@ -98,11 +97,6 @@ func _run_claude_audit_cleanup() -> void:
 	_test_shared_ledger_zero_weight_reading_guard()
 	_test_caches_clear_all_and_constance_inquiry_gate()
 	_test_jury_persuasion_tail_helper()
-
-
-# ---------------------------------------------------------------- from test_phase2_bug_sweep
-
-func _run_phase2_bug_sweep() -> void:
 
 
 # ---------------------------------------------------------------- from test_phase4_3_framing_and_vigil_physics
@@ -511,7 +505,7 @@ func _test_jury_persuasion_tail_helper() -> void:
 		_check(not ("Even so," in stripped) and stripped.begins_with("I checked another explanation"), "Jury.strip_accept_persuasion_tail cleanly removes persuasion tail (%s)" % (kind if kind != "" else "plain"))
 
 
-# ---- test_phase2_bug_sweep
+# ---- test_phase4_3_framing_and_vigil_physics
 
 
 func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
