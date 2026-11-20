@@ -89,10 +89,15 @@ func _second_pass() -> void:
 	var g = _case()
 	var w = g.w
 	var st: Dictionary = MindMeeting.testimony_start(w)
+	st["speakers"].insert(3, st["speakers"][0])  # an interjection: a second turn in the first pass
 	st["i"] = st["speakers"].size()
 	st["useful"] = 0
 	var step: Dictionary = MindMeeting.testimony_step(w, st)
 	_check(st.get("second_pass", false), "a meeting with nothing useful runs its speaking order once more")
+	var ids: Dictionary = {}
+	for m in st["speakers"]:
+		ids[m.id] = true
+	_check(ids.size() == st["speakers"].size() and ids.size() == w.living().filter(func(m): return not m.silenced).size(), "each living speaker gets one turn in the second pass, interjections or not")
 	_check(w.meeting["testimony"].get("second_pass", false), "and the meeting knows it is in the second pass")
 	var opener: String = ""
 	var expected: String = ""

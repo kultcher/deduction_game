@@ -95,7 +95,13 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		var useful: int = int(st.get("useful", 0))
 		if useful < Tuning.Meeting.SILENCE_USEFUL_MIN:
 			st["second_pass"] = true
-			st["speakers"] = st["speakers"].filter(func(m): return m.alive and not m.silenced)
+			# Each living, unsilenced speaker once, in first-pass order (an interjection added a
+			# second turn to the first pass's list; it doesn't carry over).
+			var order: Array = []
+			for m in st["speakers"]:
+				if m.alive and not m.silenced and not order.has(m):
+					order.append(m)
+			st["speakers"] = order
 			st["i"] = 0
 			w.dlog.add("silence_check", "", "", {"useful": useful, "second_pass": true, "speakers": st["speakers"].size()},
 				"The meeting has gone quiet (%d useful item(s)); the speaking order runs once more." % useful)
@@ -968,6 +974,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
 	load("res://sim/social.gd").backing_trust(w, t.id, n.id, "accused %s, whom I suspect too" % t.id)
 	var line: Dictionary
+	var reasoned: bool = false  # a reason actually said, new at this meeting (the silence check)
 	# Agreeing needs someone else to agree with (a speaker who interjects can come round again).
 	var others_earlier: Array = earlier.filter(func(a): return a.get("by", "") != n.id and w.by_id.has(a.get("by", "")))
 	if not others_earlier.is_empty():
@@ -975,6 +982,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 		# their own (their reading, what they saw) are worth adding.
 		var first = w.by_id[others_earlier[0]["by"]]
 		var own = why.begins_with("my own") or why.begins_with("I ")
+		reasoned = own and not hint
 		var canonical_extra = " I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
 		var voiced_extra = (" " + Dialogue.voice_line(n.id, "nomination_held_reason", "I have my own reason, but I'm not ready to share it yet.")) if hint else canonical_extra
 		var canonical_agree = "I agree with %s about %s.%s" % [first.name, t.name, canonical_extra]
@@ -995,13 +1003,14 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 					{"target": t.name, "speaker": w.by_id[echo_of].name, "reason": lc})
 			else:
 				line = say_voiced(n, "meeting_accuse_reason", canonical_accuse, {"target": t.name, "reason": reason_s})
+				reasoned = true
 			_note_said(w, n, "reason:" + reason_s)
 		else:
 			line = say_voiced(n, "meeting_accuse_vibes", canonical_accuse, {"target": t.name})
 	if w.meeting.has("accusations"):
 		w.meeting["accusations"].append({"by": n.id, "target": t.id})
 	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
-	return {"line": line, "reasoned": not hint and why != "",
+	return {"line": line, "reasoned": reasoned,
 		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": text, "hint": hint}}
 
 ## n has already accused t at the current meeting (testimony or a supporter's pile-on).
