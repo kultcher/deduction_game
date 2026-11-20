@@ -547,6 +547,14 @@ static func most_trusted_good(w, exclude: Array = []):
 	return best
 
 ## The living good person under the most public heat (the likeliest to hang), or null.
+## Whom an evil Martyr bluff says it gave its life over for ("" if none): the made-up choice
+## as it stands, told or still to tell (Martyr.generate_bluff_reading).
+static func martyr_bluff_chosen(n) -> String:
+	for e in n.info_log:
+		if e.get("fake", false) and e.get("role", "") == "martyr" and bool(e.get("data", {}).get("chosen", false)):
+			return str(e["data"].get("target", ""))
+	return ""
+
 static func hottest_good(w, exclude: Array = []):
 	var best = null
 	var best_h: float = -1.0
