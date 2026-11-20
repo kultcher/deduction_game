@@ -120,7 +120,6 @@ class Roles:
 
 	## Per-role tuning blocks (`sim/roles/*.gd`)
 	const SEER = {
-		"public_threat_bonus": 1.0,
 		"red_herring_defence_eff": -0.12,
 		"focus_base": 0.3,
 		"focus_insight_scale": 0.5,
@@ -208,6 +207,10 @@ class Roles:
 		"reveal_early_trust": 0.8,
 		"claim_wait": 2.5,       # meeting claim term while the bell still holds
 		"claim_after_toll": 1.4,  # meeting claim term once it has worn off
+	}
+
+	const REGISTRAR = {
+		"public_threat_bonus": 0.75,  # the Demon's extra interest in a claimed Registrar (was the Seer's 1.0 x 0.75)
 	}
 
 	const PSYCHOLOGIST = {
@@ -888,6 +891,15 @@ class Evil:
 
 	## Demon kill target scoring
 	const KILL_INFO_CLAIM = 3.0
+	## What a publicly claimed gift is worth to the Demon, where it isn't KILL_INFO_CLAIM
+	## (Michael, Nov 20). A claimed info gift scores KILL_INFO_CLAIM unless listed; a gift
+	## that isn't info scores only if listed. The Sexton's counts while its bell is unrung
+	## (it can stop a Scion rising).
+	const KILL_CLAIM_BY_ROLE = {"lamplighter": 2.0, "psychologist": 2.0, "warden": 3.0, "sexton": 2.0}
+	## Gifts that can point at the Demon or clear people get one shared bonus on top
+	## (Michael, Nov 20; replaces the Seer's own +1.0).
+	const KILL_IDENTIFIER_ROLES = ["seer", "augur", "dowser", "confessor"]
+	const KILL_IDENTIFIER_BONUS = 1.0
 	# A first-night gift already public, its knowledge already out: no more worth killing than
 	# anyone else (triage 3.4, Michael: prefer a random target). Was 1.0 (and its shared
 	# readings still scored implicates_us).
