@@ -1,6 +1,8 @@
 ## Private conversation about gifts: disclosure tiers and mood, refusals, hints and their follow-ups, repeat questions, protection and secrecy requests.
 ## Merged from: test_backlog_batch2, test_backlog_batch3, test_backlog_batch4, test_fixes, test_phase2_bug_sweep, test_phase4_1_reveal_and_rumor_pacing, test_playtest_followups.
 extends SceneTree
+const MainActions = preload("res://ui/main_actions.gd")
+const MainPickers = preload("res://ui/main_pickers.gd")
 
 const Game = preload("res://game/game.gd")
 const Social = preload("res://sim/social.gd")
@@ -442,7 +444,7 @@ func readings_ask():
 	for status in [0, 1, 2]:
 		n.max_tier = 3 if status == 1 else 0
 		n.claim_public = status == 2
-		scene._refresh_actions()
+		MainActions.refresh(scene)
 		await process_frame
 		# Find the gift ask by its label, not its position: since the daytime conversation
 		# view (Oct 28) the talk actions sit in its controls, behind a "Look at the map" toggle.
@@ -452,7 +454,7 @@ func readings_ask():
 		check(("readings" in text) == (status != 0) and text != "", "gift action label follows private or public disclosure")
 		if buttons.is_empty():
 			continue
-		scene._ask_gift_picker(buttons[0])
+		MainPickers.ask_gift(scene, buttons[0])
 		var choices = scene.popup.find_children("*", "Button", true, false)
 		check(choices.any(func(b): return b.text == ("about their readings" if status != 0 else "about their gift")), "gift picker keeps its ask-gift command behind the matching readings label")
 		scene.popup.hide()
