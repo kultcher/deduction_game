@@ -718,7 +718,7 @@ func lie_call(card_id: String) -> Dictionary:
 	return {}
 
 func _unsupported(card: Dictionary) -> bool:
-	return card.get("fallback", false) or card.get("off_board", false)
+	return card.get("unweighable", false) or card.get("off_board", false)
 
 func _time_text(card: Dictionary) -> String:
 	var at: Dictionary = card.get("observed_at", {})

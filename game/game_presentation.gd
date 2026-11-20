@@ -82,12 +82,12 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 		g._err("Cannot present. Card #%d: the town can't weigh a '%s' conclusion. Present it as a case about who is good or evil instead." % [card.get("n", 0), ", ".join(PackedStringArray(kinds))])
 		return false
 	# Per listener: a row blocked only by canvas authoring problems (a missing cited
-	# claim, an empty hub) is not a model gap, so it is not counted as a fallback.
+	# claim, an empty hub) is not a model gap, so it is not recorded as an unprepared plan.
 	for row in check.listeners:
 		if not row.ready and not _all_authoring_validation_issues(row.issues):
-			WorkshopOwnership.fallback(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
+			WorkshopOwnership.unprepared(g, g.w.by_id[row.listener], "preflight_" + row.exit_point, row.issues, card.get("n", 0))
 	if _all_authoring_validation_issues(check.issues):
-		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission without legacy fallback.")
+		g.w.dlog.trace_event("workshop_validation_blocked", "player", "", {"card": card.get("n", 0), "issues": check.issues.duplicate(true)}, "Blocked incomplete canvas submission with its reasons.")
 	# No legacy route for presentations: an unsupported submission is blocked with its
 	# reason, so a playtest always tests the shared model (user, Oct 25).
 	# A Mistaken call on a reading an earlier case called a lie: say how to take the lie back
@@ -234,7 +234,6 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 		comparison["card"] = ded.n
 		comparison["venue"] = venue
 		comparison["actual"] = {
-			"model": "shared" if result.get("workshop", false) else "unassessed",
 			"agreement": result.get("agreement", 0.0),
 			"before": before,
 			"after": n.suspicion.duplicate(true),
@@ -251,18 +250,15 @@ static func _evaluate_deduction_inner(g, n, ded: Dictionary, scale: float, speak
 	if ded.has("workshop_case"):
 		var capability: Dictionary = _canvas_status(g, ded.workshop_case)
 		var issues: Array = capability.issues.duplicate()
-		if not result.get("workshop", false) and issues.is_empty():
-			issues.append("This listener could not weigh this case.")
 		g.workshop_deliveries.append({
 			"listener": n.id,
 			"name": n.name,
 			"card": ded.n,
 			"venue": venue,
-			"model": "shared" if result.get("workshop", false) else "unassessed",
 			"issues": issues,
 		})
 		g.w.dlog.trace_event("workshop_delivery", n.id, ded.conclusion.get("a", ""), g.workshop_deliveries[-1],
-			"Actual live-canvas presentation model and player-safe fallback feedback.")
+			"Live-canvas presentation delivered, with any issues the player should see.")
 		if g.workshop_deliveries.size() > 100:
 			g.workshop_deliveries.pop_front()
 	return result
@@ -442,7 +438,7 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 		return {"verb": "trace_ask", "rest": str(num), "note": "You ask %s what they make of the scene trace." % n.name}
 	var targets: Array = [who.id] if who != null else subj.filter(func(x): return x != n.id and x != card.get("source", "") and g.w.by_id.has(x) and g.w.by_id[x].alive)
 	if targets.is_empty():
-		return _present_fallback(g, n, num, "the card isn't about anyone living")
+		return _present_flat(g, n, num, "the card isn't about anyone living")
 	if dir == "":
 		# Which way the card points, from its structure alone (purge phase 4b): who it
 		# implicates and who it speaks for. A secret both points at its owner and partly
@@ -457,7 +453,7 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 		elif dfn and not inc:
 			dir = "for"
 		else:
-			return _present_fallback(g, n, num, "no clear direction (incriminating %s, clearing %s)" % [str(inc), str(dfn)])
+			return _present_flat(g, n, num, "no clear direction (incriminating %s, clearing %s)" % [str(inc), str(dfn)])
 	var names = Deduction._names(g.w, targets)
 	var ids = ",".join(PackedStringArray(targets))
 	if dir == "for":
@@ -467,27 +463,10 @@ static func _route_present(g, n, rest: String) -> Dictionary:
 
 ## The card has no direction of its own: it falls flat, costs no question, and is logged
 ## so we can see which cards keep landing here.
-static func _present_fallback(g, n, num: int, why: String) -> Dictionary:
-	g.fallback_count += 1
-	g.w.dlog.add("present_fallback", "player", n.id, {"card": num, "kind": g.board[num - 1]["kind"], "why": why},
+static func _present_flat(g, n, num: int, why: String) -> Dictionary:
+	g.w.dlog.add("present_flat", "player", n.id, {"card": num, "kind": g.board[num - 1]["kind"], "why": why},
 		"present couldn't tell what the card was meant to prove (%s)" % why)
 	return {"verb": "", "rest": "", "note": "", "flat": "%s: \"I'm not sure what you're trying to prove.\" (You can say 'present %d for <name>' or 'against <name>'.)" % [n.name, num]}
-
-
-## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
-## them; privately, only the listener if they're one of them.
-static func _conflict_pressure(g, ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	if not fallback:
-		return # The supported assessment owns scrutiny; unsupported paths retain native behavior.
-	var c: Dictionary = ded.get("conclusion", {})
-	if c.get("type", "") != "conflict":
-		return
-	for id in c.get("group", []):
-		var m = g.w.by_id[id]
-		if not m.alive or (listener != null and m != listener):
-			continue
-		m.pressure += amount
-		g.w.dlog.think(m.id, "pressed", "Under scrutiny: the Demonologist says something doesn't add up (pressure +%.2f -> %.2f)." % [amount, m.pressure])
 
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
@@ -586,7 +565,6 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	g.w.dlog.add("player_present", "player", ded["conclusion"].get("a", ""), {"card": num})
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)
-	_conflict_pressure(g, ded, 0.2, null)
 	# Every listener weighs the case, then the town's answers are given summarised: those who
 	# answered alike speak as one, a representative in full and the rest in a word (Michael,
 	# Nov 19; game/response_bundles.gd). The log keeps every answer.

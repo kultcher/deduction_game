@@ -26,7 +26,7 @@ static func _intro(g) -> void:
 
 static func _help(g) -> String:
 	return """Commands
-  Anytime : look | map | cast | profile <name> | board [filter] | timeline [filter] | roles | tools | help | log | fallbacks
+  Anytime : look | map | cast | profile <name> | board [filter] | timeline [filter] | roles | tools | help | log
             filters: person, block, location, kind, class, d2 / n1, or any text
   Case    : build cases in the Case Workshop; present them at the meeting
             hide <#> | unhide <#> | showhidden | delete <#> (your own deductions only)
@@ -270,8 +270,7 @@ static func _ending(g) -> void:
 	g._headline("ending", "Victory" if g.w.winner == "good" else "Defeat", g.w.end_reason)
 	var frozen: Dictionary = g.prediction_snapshots[-1] if not g.prediction_snapshots.is_empty() else {}
 	g.case_summary = CaseMetrics.summarize(g.w, frozen, g.prediction_spoiled, g.board, g.prediction_snapshots)
-	g.case_summary["present_fallbacks"] = g.fallback_count
-	g.case_summary["legacy_fallbacks"] = g.shared_fallbacks.size()
+	g.case_summary["unprepared_plans"] = g.unprepared_plans.size()
 	g.w.dlog.add("case_summary", "world", "", g.case_summary, "Frozen pre-outcome identification, town survival, and execution attribution.")
 	if g.w.winner == "good":
 		g._narr("*** VICTORY ***  " + g.w.end_reason)

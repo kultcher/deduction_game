@@ -399,7 +399,7 @@ def main():
         out.append("  - Most common lines:")
         for line, c in sorted(sample.items(), key=lambda x: -x[1])[:8]:
             out.append("    - %d× `%s`" % (c, line.replace("`", "'")))
-    out.append("- Shared-model fallbacks: %d games with any" % sum(1 for r in games if r.get("legacy_fallbacks", 0)))
+    out.append("- Unprepared shared plans: %d games with any" % sum(1 for r in games if r.get("unprepared_plans", 0)))
     out.append("")
     out.append("| Cell | Median wall (s) | p90 | Max |")
     out.append("|---|---|---|---|")

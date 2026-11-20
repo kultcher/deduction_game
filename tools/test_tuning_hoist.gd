@@ -165,7 +165,7 @@ func _run_seed_signature(seed_val: int, npc_count: int) -> Dictionary:
 			reasons_by_npc[p.id] = Mind.reason_status(g.w, p, top[0].id)
 	return {
 		"rng_state": g.w.rng.state,
-		"fallbacks": g.shared_fallbacks.size(),
+		"fallbacks": g.unprepared_plans.size(),
 		"suspicion": sus_by_npc,
 		"doubt": doubt_by_npc,
 		"reasons": reasons_by_npc,

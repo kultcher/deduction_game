@@ -56,14 +56,14 @@ func _live(size: int) -> void:
 	# Anonymous accounts are now weak teller testimony, without a gift identity.
 	Mind.apply_info(g.w, observer, source, reading, 0.25, source.id, true)
 	check(observer.workshop_state.active and observer.workshop_state.has("action"), "supported anonymous testimony retains a current shared action")
-	# An unready refresh keeps the last good vector and logs the fallback (Purge Phase 3).
+	# An unready refresh keeps the last good vector and records the unprepared plan (Purge Phase 3).
 	var prev_susp: Dictionary = observer.suspicion.duplicate(true)
 	var prev_act: Dictionary = observer.workshop_state.action.duplicate(true)
-	g.shared_fallbacks.clear()
+	g.unprepared_plans.clear()
 	var invalid: Dictionary = reading.duplicate(true)
 	invalid.data.count = 99
 	Mind.apply_info(g.w, observer, source, invalid, 0.5)
-	check(observer.workshop_state.active and observer.suspicion == prev_susp and observer.workshop_state.action == prev_act and not g.shared_fallbacks.is_empty(), "invalid report content keeps the last good vector and logs the fallback")
+	check(observer.workshop_state.active and observer.suspicion == prev_susp and observer.workshop_state.action == prev_act and not g.unprepared_plans.is_empty(), "invalid report content keeps the last good vector and records the unprepared plan")
 	check(Shared.evaluate({"ready": false}, {}, {}).is_empty() and not Shared.evaluate({"ready": true, "empty": true}, {}, {}).has("action"), "failed and evidence-free plans do not manufacture an action")
 
 func _decisions() -> void:

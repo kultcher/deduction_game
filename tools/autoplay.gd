@@ -194,8 +194,8 @@ func _init() -> void:
 		stats[r["winner"]] += 1
 		for k in keys:
 			stats[k] += r[k]
-		print("case %d: %s wins on day %d | exec good=%d evil=%d | kills=%d | lies=%d | noms=%d | pairs=%d | legacy=%d | %s" %
-			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["metrics"].get("legacy_fallbacks", 0), r["reason"]])
+		print("case %d: %s wins on day %d | exec good=%d evil=%d | kills=%d | lies=%d | noms=%d | pairs=%d | unprepared=%d | %s" %
+			[seed_v, r["winner"], r["days"], r["exec_good"], r["exec_evil"], r["kills"], r["lies"], r["nominations"], r["pairs"], r["metrics"].get("unprepared_plans", 0), r["reason"]])
 	if games > 1:
 		var gf = float(games)
 		print("\n%sSUMMARY over %d cases: good %d / evil %d (%.0f%%), avg days %.1f, wrongful executions %.2f/case, evil executed %.2f/case," %
@@ -354,10 +354,10 @@ func _play(seed_v: int, npc_count: int, log_dir: String, echo: bool) -> Dictiona
 	r["metrics"]["suspicion_days"] = scale_days
 	r["metrics"]["votes"] = _vote_records()
 	var points = {}
-	for f in g.shared_fallbacks:
+	for f in g.unprepared_plans:
 		points[f.point] = points.get(f.point, 0) + 1
-	r["metrics"]["legacy_fallbacks"] = g.shared_fallbacks.size()
-	r["metrics"]["legacy_fallback_points"] = points
+	r["metrics"]["unprepared_plans"] = g.unprepared_plans.size()
+	r["metrics"]["unprepared_points"] = points
 	r["metrics"]["workshop_cases"] = workshop_cases_filed
 	r["metrics"]["hub_cases"] = hub_cases_filed
 	r["metrics"]["cross_cases"] = cross_cases_filed

@@ -630,27 +630,8 @@ static func _resolve_night(g) -> void:
 	g._maybe_approach()
 
 
-## Developer report: what the legacy rules judged because the shared model couldn't.
-static func _fallbacks_text(g) -> String:
-	if g.shared_fallbacks.is_empty():
-		return "No legacy fallbacks this game: everything was judged by the shared model."
-	var by_point = {}
-	for f in g.shared_fallbacks:
-		by_point[f.point] = by_point.get(f.point, 0) + 1
-	var out = PackedStringArray(["%d legacy fallbacks this game:" % g.shared_fallbacks.size()])
-	for point in by_point:
-		out.append("  %s: %d" % [point, by_point[point]])
-	out.append("Most recent:")
-	for f in g.shared_fallbacks.slice(maxi(0, g.shared_fallbacks.size() - 10)):
-		out.append("  day %d %s, %s (%s): %s" % [f.day, f.phase, f.listener, f.point, "; ".join(PackedStringArray(f.issues))])
-	return "\n".join(out)
-
-
 static func _morning_report(g) -> void:
 	g._hdr("Day %d, Morning" % g.w.day)
-	if g.shared_fallbacks.size() > g._fallbacks_reported:
-		g._narr("[dev] The legacy rules judged %d thing(s) the shared model couldn't read since the last report. Type 'fallbacks' for details." % (g.shared_fallbacks.size() - g._fallbacks_reported))
-		g._fallbacks_reported = g.shared_fallbacks.size()
 	if g.w.day > 1 or not g.w.deaths_last_night.is_empty():
 		if g.w.deaths_last_night.is_empty():
 			g._narr("Dawn breaks. Nobody died in the night.")

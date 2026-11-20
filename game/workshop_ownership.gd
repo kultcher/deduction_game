@@ -68,7 +68,7 @@ static func _refresh(g, n, phase: String) -> void:
 			g._workshop_plans[key] = plan
 		else:
 			# Unprepared refresh (Purge Phase 3): keep the last good shared vector and log the issue.
-			fallback(g, n, "ownership_before", plan.issues)
+			unprepared(g, n, "ownership_before", plan.issues)
 	else:
 		if not g._workshop_plans.has(key):
 			return
@@ -90,7 +90,7 @@ static func _refresh(g, n, phase: String) -> void:
 		state.issues = plan.issues
 		if not plan.ready:
 			g._workshop_plans.erase(key)
-			fallback(g, n, "ownership_after", plan.issues)
+			unprepared(g, n, "ownership_after", plan.issues)
 			return
 		g._workshop_plans[key] = plan
 		state.previous_owned = state.get("owned", {}).duplicate(true)
@@ -275,17 +275,20 @@ static func reasons_for(g, n) -> void:
 	)
 	state.reasons = refresh_reasons
 
-static func fallback(g, n, point: String, issues: Array, card: int = 0) -> void:
+
+## A listener-specific exit that should not happen: the shared plan couldn't be prepared for
+## this listener (their stored cases or ledger don't line up). Their last good beliefs stand,
+## and a presentation to them is refused with the reason. Recorded for diagnosis only; there
+## is no other route (Michael, Nov 20).
+static func unprepared(g, n, point: String, issues: Array, card: int = 0) -> void:
 	var entry = {"listener": n.id, "point": point, "issues": issues.duplicate(true), "card": card, "day": g.w.day, "phase": g.w.phase}
-	# Count each distinct fallback once per listener per day, so the totals mean
-	# "things not tested", not "how often a refresh ran".
-	var seen: bool = g.shared_fallbacks.any(func(f): return f.listener == entry.listener and f.point == entry.point and f.issues == entry.issues and f.card == entry.card and f.day == entry.day)
+	var seen: bool = g.unprepared_plans.any(func(f): return f.listener == entry.listener and f.point == entry.point and f.issues == entry.issues and f.card == entry.card and f.day == entry.day)
 	if not seen:
-		g.shared_fallbacks.append(entry)
-		g.w.dlog.add("legacy_fallback", n.id, "", entry, "Shared refresh kept last good vector (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
-	g.w.dlog.trace_event("workshop_fallback", n.id, "", {"listener": n.id,
+		g.unprepared_plans.append(entry)
+		g.w.dlog.add("unprepared", n.id, "", entry, "Shared plan unprepared (%s): %s" % [point, "; ".join(PackedStringArray(issues))])
+	g.w.dlog.trace_event("workshop_unprepared", n.id, "", {"listener": n.id,
 		"card": card, "exit_point": point, "issues": issues.duplicate(true)},
-		"Shared evaluation unavailable: " + "; ".join(PackedStringArray(issues)))
+		"Shared plan unprepared: " + "; ".join(PackedStringArray(issues)))
 
 ## Conservative disclosure: a joint inference is not automatically this NPC's
 ## own gift to reveal. Only explicit presentations/disclosures make roots citable.

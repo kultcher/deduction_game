@@ -332,7 +332,7 @@ func workshop_nightwatch_grav__live() -> void:
 		board.connect_cards("e:" + id, root)
 		var value = board.compile(root)
 		check(Live.status(g, value).ready, role + " live case is supported")
-		check(not Solver.card_by_id(board.view, id).get("fallback", false), role + " live card is one the Workshop can weigh")
+		check(not Solver.card_by_id(board.view, id).get("unweighable", false), role + " live card is one the Workshop can weigh")
 		var preview = Ghost.live(Live.snapshot(g, value))
 		check(preview.ready and preview.proposal.assessment.compatible > 0, role + " ghost preview finds legal explanations")
 		var filed = Live.file(g, value)

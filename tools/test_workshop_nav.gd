@@ -63,7 +63,7 @@ func _run() -> void:
 	check(not (int(reading.n) in ed.readings_for(named, true)) or named == reader, "FROM someone it only names doesn't")
 	var rid: String = ed.Live.Evidence.normalize_card(reading).id
 	var rcs: Array = ed.board.view.cards.filter(func(c): return c.id == rid)
-	if not rcs.is_empty() and str(reading.get("role", "")) != "medium" and not rcs[0].get("fallback", false):
+	if not rcs.is_empty() and str(reading.get("role", "")) != "medium" and not rcs[0].get("unweighable", false):
 		check(rcs[0].get("support_note", "x") == "", "a weighable reading carries no note (%s)" % rcs[0].get("support_note", ""))
 
 	# Adding a card centres it and marks it fresh.

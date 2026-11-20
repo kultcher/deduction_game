@@ -951,9 +951,9 @@ func _test_case_98933_polish_fixes() -> void:
 	_check(odette_req <= 0.0 or reasons.any(func(rr): return rr["kind"] == "private" and rr["entry"] == gd_entry),
 		"case_against cites Hollis's private Gravedigger reading whenever the shared model suspects Odette (%s)" % str(reasons))
 
-	# 3) Authoring validation block (citing 'gift' without walking-role claim card) leaves legacy_fallbacks at 0.
-	g.shared_fallbacks.clear()
-	var fb_before: int = w.dlog.entries.filter(func(e): return e.get("type", "") == "legacy_fallback").size()
+	# 3) Authoring validation block (citing 'gift' without walking-role claim card) records no unprepared plan.
+	g.unprepared_plans.clear()
+	var fb_before: int = w.dlog.entries.filter(func(e): return e.get("type", "") == "unprepared").size()
 	var c_vig: int = g.add_card({"kind": "sighting", "source": "player", "subject": [agnes.id], "vigil": true, "day": 2, "phase": C.NIGHT, "block": "market", "text": "Vigil saw Agnes."})
 	var c_clm: int = g.add_card({"kind": "claim", "source": agnes.id, "subject": [agnes.id], "role": "medium", "day": 2, "phase": C.EVENING, "text": "Agnes Medium."})
 	var id_clm: String = Live.Evidence.normalize_card(g.board[c_clm - 1]).id
@@ -972,9 +972,9 @@ func _test_case_98933_polish_fixes() -> void:
 	}
 	var bad_num: int = Live.file(g, bad_case)
 	var gate_ok: bool = g._presentation_gate(g.board[bad_num - 1], w.living(), ["isolde"], "deduction", "meeting")
-	var fb_after: int = w.dlog.entries.filter(func(e): return e.get("type", "") == "legacy_fallback").size()
-	_check(not gate_ok and g.shared_fallbacks.is_empty() and fb_after == fb_before,
-		"Incomplete canvas authoring validation block returns false with 0 legacy_fallbacks")
+	var fb_after: int = w.dlog.entries.filter(func(e): return e.get("type", "") == "unprepared").size()
+	_check(not gate_ok and g.unprepared_plans.is_empty() and fb_after == fb_before,
+		"Incomplete canvas authoring validation block returns false with no unprepared plan")
 
 	# 4) Jury rival-world formatting omits ';  Marked' when marked == ''.
 	var snap_ok: Dictionary = g.workshop_snapshot([bad_num], hollis.id, "meeting")

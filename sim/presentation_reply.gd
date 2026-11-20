@@ -69,6 +69,10 @@ static func _evil(w, n, ded: Dictionary, board: Array, scale: float, c: Dictiona
 	# worth it. Arguments about themselves keep the mask ("it's about me").
 	if C.SHADOW_SELF:
 		var sr = Mind.shadow_eval(w, n, func(sh): return evaluate(w, sh, ded, board, scale, false))
+		# Refused for their good self (a listener-specific exit): refuse too, as a good
+		# listener would, rather than answer through the mask (Michael, Nov 20: no fallback).
+		if sr != null and sr.get("blocked", false):
+			return {"blocked": true, "lines": sr.get("lines", []), "facts": [], "agreement": 0.0}
 		workshop_covered = sr != null and sr.get("workshop", false)
 		if target != n and sr != null and sr.has("dialogue"):
 			var mine: Dictionary = sr["dialogue"]

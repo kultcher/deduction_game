@@ -89,11 +89,9 @@ var regulars_searched = {}   # place -> true: a place's regulars can be asked ab
 var haunt_sightings = {}     # "npc:place" -> [days]: the player saw them idling there
 var watched = []             # [{day, phase, block, at: {loc: [ids]}}]: who the player saw at each public place on the block they spent a day phase on
 var known_relationships = {} # Public town bonds actually learned, with their source.
-var fallback_count = 0      # times 'present' couldn't tell what a card was meant to prove
-# Every time the legacy rules judged something the shared model couldn't read (always
-# recorded, with or without detailed tracing). See the `fallbacks` command.
-var shared_fallbacks: Array = []
-var _fallbacks_reported = 0
+## Listener-specific exits where the shared plan couldn't be prepared (WorkshopOwnership.unprepared),
+## once per listener, point, card and day: diagnosis only, since none should happen.
+var unprepared_plans: Array = []
 const DecisionFeed = preload("res://sim/decision_feed.gd")
 const WorkshopCaches = preload("res://workshop/caches.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -118,7 +116,7 @@ var _workshop_reason_ctx = {} # deferred reason attribution inputs per mind (pur
 var _workshop_responses = {}
 var workshop_comparisons: Array = []
 var workshop_draft: Dictionary = {} # case-local canvas layout and filed premise numbers
-var workshop_deliveries: Array = [] # explicit actual model/fallback feedback
+var workshop_deliveries: Array = [] # each listener who heard a filed case, with any issues
 var workshop_presenting = false
 var trace_build = ""
 var trace_tuning = ""
@@ -267,9 +265,7 @@ func new_case(seed_in: int, npc_count: int = 7, case_script = null) -> String:
 	haunt_sightings = {}
 	watched = []
 	known_relationships = {}
-	fallback_count = 0
-	shared_fallbacks = []
-	_fallbacks_reported = 0
+	unprepared_plans = []
 	show_hidden = false
 	last_error = ""
 	_trace_export_pending = false
@@ -558,8 +554,6 @@ func _dispatch(text: String) -> void:
 		"help", "?", "h":
 			_screen(_help())
 			return
-		"fallbacks":
-			_screen(_fallbacks_text())
 			return
 		"look", "l":
 			_look()
@@ -711,9 +705,6 @@ func _night_command(verb: String, rest: String) -> void:
 func _resolve_night() -> void:
 	GameDayNight._resolve_night(self)
 
-func _fallbacks_text() -> String:
-	return GameDayNight._fallbacks_text(self)
-
 func _morning_report() -> void:
 	GameDayNight._morning_report(self)
 
@@ -835,14 +826,9 @@ func file_deduction(conclusion: Dictionary, supports: Array, workshop_filing: bo
 ## About the listener -> press them. A deduction -> argue it. A plain card about others ->
 ## a case for or against them, direction read from the card itself (a Seer "yes" accuses, a
 ## Seer "no" clears), split across everyone it names. for/against is only an override; if
-## the card has no direction of its own, it falls flat (logged as a fallback).
+## the card has no direction of its own, it falls flat (logged as "present_flat").
 func _route_present(n, rest: String) -> Dictionary:
 	return GamePresentation._route_present(self, n, rest)
-
-## "Something doesn't add up" puts the people involved under scrutiny: publicly, all of
-## them; privately, only the listener if they're one of them.
-func _conflict_pressure(ded: Dictionary, amount: float, listener, fallback: bool = false) -> void:
-	GamePresentation._conflict_pressure(self, ded, amount, listener, fallback)
 
 ## A deduction resting on someone's confessed secret spreads it, just like citing it.
 ## Meeting plan M2a, for the nomination picker: the case on deck against `id`, every live
