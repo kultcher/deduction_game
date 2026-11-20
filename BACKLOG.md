@@ -31,13 +31,12 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. Kill-score pass on every role `[decided]`
-    2. Accusations from starting suspicion read as clues `[decided]`
-    3. The Gravedigger in a reluctant town `[decided]`
-    4. Caught out and pressed again: what's left `[decided]`
-    5. Good NPCs lie tactically `[open]`
-    6. Rapport and Warden-credit leftovers `[decided: direction]`
-    7. Anger reasons `[decided]`
+    1. Accusations from starting suspicion read as clues `[decided]`
+    2. The Gravedigger in a reluctant town `[decided]`
+    3. Caught out and pressed again: what's left `[decided]`
+    4. Good NPCs lie tactically `[open]`
+    5. Rapport and Warden-credit leftovers `[decided: direction]`
+    6. Anger reasons `[decided]`
   - [Numbers](#numbers)
     1. The Seer's rise looks small `[later: role tuning pass]`
     2. Dowser clearing strength `[later: role tuning pass]`
@@ -156,31 +155,6 @@ listener (#273), both Lantern's.
   [decided]
 
 ### NPC behaviour
-
-- **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
-  (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
-  It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
-  Registrar (+0.75 more) have their own bonus. To review role by role:
-  - one-shot gifts that keep the full score after their information is spent: the
-    Chronicler after night 3, the Executor after its assigned person dies;
-  - the Augur, a Demon-identifier like the Seer, has no bonus;
-  - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
-    handled separately.
-  - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
-    ratings, and Michael gives quick guidance.
-  - **Values approved (Michael, Nov 20), in Beadle's #421:**
-    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
-      per-role ratings may come later);
-    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
-    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
-    - `REGISTRAR.public_threat_bonus` stays at 0.75.
-
-    Close this item when #421 merges.
-
-  Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
-  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
-  values is the owner's call; a new per-role bonus constant is new, so propose it through
-  Seneschal first. Owner Beadle. [decided]
 
 - **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
   on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,

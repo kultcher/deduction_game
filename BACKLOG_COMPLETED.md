@@ -14,6 +14,31 @@ session notes are kept for the record; code pointers may have moved since.
 
   > **Closed Nov 20 (through Seneschal).** Groups 1 to 3 of the item stay in BACKLOG.md.
 
+- **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
+  (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
+  It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
+  Registrar (+0.75 more) have their own bonus. To review role by role:
+  - one-shot gifts that keep the full score after their information is spent: the
+    Chronicler after night 3, the Executor after its assigned person dies;
+  - the Augur, a Demon-identifier like the Seer, has no bonus;
+  - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
+    handled separately.
+  - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
+    ratings, and Michael gives quick guidance.
+  - **Values approved (Michael, Nov 20), in Beadle's #421:**
+    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
+      per-role ratings may come later);
+    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
+    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
+    - `REGISTRAR.public_threat_bonus` stays at 0.75.
+
+  Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
+  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
+  values is the owner's call; a new per-role bonus constant is new, so propose it through
+  Seneschal first. Owner Beadle. [decided]
+
+  > **Closed Nov 20:** built, Beadle #421.
+
 ## Built, Nov 20, 2026, later (closed by Claude-Vicar)
 
 - **Minion gifts, the two built parts** (from the Workshop gaps item):

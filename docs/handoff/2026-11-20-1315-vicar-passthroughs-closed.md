@@ -19,3 +19,8 @@ was nothing to do.
 ## Checked
 
 #435 is merged on origin/main (ed858c1e).
+
+## Also: the kill-score pass is closed
+
+Beadle's #421 (the approved kill-score values) is merged (174191ee), so "Kill-score pass on
+every role" moved to BACKLOG_COMPLETED.md, as the item itself said to do.
