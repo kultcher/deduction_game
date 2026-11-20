@@ -192,7 +192,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
-| `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social.gd` |
+| `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social_approaches.gd` |
 | `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_answers.gd` |
 | `PROMISE_OFFER_BONUS` | `0.03` |  | `game/game_conversation.gd` |
 | `PROMISE_KEPT_BONUS` | `0.06` |  | `game/game_conversation.gd` |
@@ -228,7 +228,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | --- | --- | --- | --- |
 | `NEWS_BONUS_EVIL` | `0.6` |  | `sim/social.gd` |
 | `NEWS_BONUS_GOOD` | `0.5` |  | `sim/social.gd` |
-| `GOOD_NEWS_TRUST_MIN` | `0.6` |  | `sim/social.gd` |
+| `GOOD_NEWS_TRUST_MIN` | `0.6` |  | `sim/social.gd`, `sim/social_base.gd` |
 | `PLANTER_WHISPER_BONUS` | `0.65` |  | `sim/social.gd` |
 | `PLANTER_TARGET_GOSSIP_MIN` | `0.45` |  | `sim/social.gd` |
 | `PLANTER_TARGET_TRUST_MIN` | `0.48` |  | `sim/social.gd` |
@@ -285,41 +285,41 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TAVERN_WHISPER_MIN_CROWD` | `4` |  | `sim/social.gd` |
 | `TAVERN_WHISPER_CHANCE` | `0.5` |  | `sim/social.gd` |
 | `TAVERN_OVERHEAR_MIN_SUSP` | `0.4` |  | `sim/mind_cases.gd` |
-| `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social.gd` |
-| `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social.gd` |
-| `TAVERN_TIER1_TARGET` | `2` | Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier). | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
-| `TAVERN_TIER2_TARGET` | `1` |  | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
-| `TOWN_VIBE_TREND` | `0.03` | The town's vibe check on the Demonologist (always told at evening tavern gossip): the average rapport (trust) and competence (credibility) of the living good townsfolk, in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average rapport (and below neutral) gets a 'not everyone agrees'. | `sim/social.gd` |
-| `TOWN_VIBE_OUTLIER` | `0.2` |  | `sim/social.gd` |
-| `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social.gd` |
-| `TAVERN_BACKFILL_PROFILE_WEIGHT` | `1.2` |  | `sim/social.gd` |
-| `TAVERN_HEARD_SPOKEN_WEIGHT` | `0.2` |  | `sim/social.gd` |
-| `TAVERN_YESTERDAY_MULT` | `0.6` | Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8). | `sim/social.gd` |
+| `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social_tavern.gd` |
+| `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social_tavern.gd` |
+| `TAVERN_TIER1_TARGET` | `2` | Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier). | `sim/social_tavern.gd`, `tools/measure_gossip_tiers.gd` |
+| `TAVERN_TIER2_TARGET` | `1` |  | `sim/social_tavern.gd`, `tools/measure_gossip_tiers.gd` |
+| `TOWN_VIBE_TREND` | `0.03` | The town's vibe check on the Demonologist (always told at evening tavern gossip): the average rapport (trust) and competence (credibility) of the living good townsfolk, in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average rapport (and below neutral) gets a 'not everyone agrees'. | `sim/social_tavern.gd` |
+| `TOWN_VIBE_OUTLIER` | `0.2` |  | `sim/social_tavern.gd` |
+| `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social_tavern.gd` |
+| `TAVERN_BACKFILL_PROFILE_WEIGHT` | `1.2` |  | `sim/social_tavern.gd` |
+| `TAVERN_HEARD_SPOKEN_WEIGHT` | `0.2` |  | `sim/social_tavern.gd` |
+| `TAVERN_YESTERDAY_MULT` | `0.6` | Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8). | `sim/social_tavern.gd` |
 | `GOSSIP_BOND` | `0.02` | Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing. | `sim/social.gd` |
 | `GOSSIP_BELIEVED_BELOW` | `0.4` |  | `sim/mind.gd`, `sim/social.gd` |
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world_meeting.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world_meeting.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
-| `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
-| `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
-| `APPROACH_NOISE` | `0.2` |  | `sim/social.gd` |
-| `APPROACH_NEWS_MIN_TRUST` | `0.5` |  | `sim/social.gd` |
-| `APPROACH_NEWS_OFFSET` | `0.6` |  | `sim/social.gd` |
-| `APPROACH_GOSSIP_MIN` | `0.6` |  | `sim/social.gd` |
-| `APPROACH_GOSSIP_OFFSET` | `0.3` |  | `sim/social.gd` |
-| `APPROACH_PROTECT_COMPOSURE_SCALE` | `0.5` |  | `sim/social.gd` |
-| `APPROACH_PROTECT_OFFSET` | `0.4` |  | `sim/social.gd` |
-| `APPROACH_SECRET_DIRECT_BASE` | `0.5` |  | `sim/social.gd` |
-| `APPROACH_SECRET_DIRECT_GOSSIP_SCALE` | `0.3` |  | `sim/social.gd` |
-| `PROTECTION_MIN_TRUST` | `0.45` |  | `sim/social.gd` |
-| `ROLE_OWN_UP_BASE` | `0.15` |  | `sim/social.gd` |
-| `ROLE_OWN_UP_TRUST_SCALE` | `0.2` |  | `sim/social.gd` |
-| `ROLE_WILLING_GOSSIP_SCALE` | `0.7` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `ROLE_WILLING_TRUST_SCALE` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `ROLE_WILLING_PRESSURE_SCALE` | `0.3` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `ROLE_WILLING_THRESHOLD` | `0.55` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.5` |  | `sim/social.gd` |
+| `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social_approaches.gd` |
+| `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social_approaches.gd` |
+| `APPROACH_NOISE` | `0.2` |  | `sim/social_approaches.gd` |
+| `APPROACH_NEWS_MIN_TRUST` | `0.5` |  | `sim/social_approaches.gd` |
+| `APPROACH_NEWS_OFFSET` | `0.6` |  | `sim/social_approaches.gd` |
+| `APPROACH_GOSSIP_MIN` | `0.6` |  | `sim/social_approaches.gd` |
+| `APPROACH_GOSSIP_OFFSET` | `0.3` |  | `sim/social_approaches.gd` |
+| `APPROACH_PROTECT_COMPOSURE_SCALE` | `0.5` |  | `sim/social_approaches.gd` |
+| `APPROACH_PROTECT_OFFSET` | `0.4` |  | `sim/social_approaches.gd` |
+| `APPROACH_SECRET_DIRECT_BASE` | `0.5` |  | `sim/social_approaches.gd` |
+| `APPROACH_SECRET_DIRECT_GOSSIP_SCALE` | `0.3` |  | `sim/social_approaches.gd` |
+| `PROTECTION_MIN_TRUST` | `0.45` |  | `sim/social_approaches.gd` |
+| `ROLE_OWN_UP_BASE` | `0.15` |  | `sim/social_approaches.gd` |
+| `ROLE_OWN_UP_TRUST_SCALE` | `0.2` |  | `sim/social_approaches.gd` |
+| `ROLE_WILLING_GOSSIP_SCALE` | `0.7` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `ROLE_WILLING_TRUST_SCALE` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `ROLE_WILLING_PRESSURE_SCALE` | `0.3` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `ROLE_WILLING_THRESHOLD` | `0.55` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.5` |  | `sim/social_approaches.gd` |
 
 ## Meeting
 
