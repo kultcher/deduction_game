@@ -139,8 +139,11 @@ listener (#273), both Lantern's.
   built. Lantern owns the belief side (does the case's weight fall more on someone other than
   the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
   Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
-  (#246) and moved to BACKLOG_COMPLETED.md. [decided] **Michael (Nov 20): it stays.**
-  Herald is first checking whether the existing "Argues against" badge already covers it.
+  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
+  - **Decided (Michael, Nov 20): a variant of the Test juror chip.** The chip keeps its band
+    and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
+    else than about <target>." It names no one, and it shows at the same threshold as NPCs'
+    "points elsewhere" line. Owner Herald.
 
 - **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
   skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
