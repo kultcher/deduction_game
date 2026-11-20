@@ -5,6 +5,37 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+
+## Built or dropped, Nov 20, 2026, evening (closed by Claude-Vicar)
+
+- **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`
+  builds the defence view from the whole roster of secrets (`C.SECRET_MOD_LIST`), not from
+  the game's `case_script.secrets`. Fix: read the script's secrets, as the rest of the judge
+  does. It moves golden wherever a defence is scored. Its own small PR, after Quill's #405
+  re-baseline, Lantern's scaffolding PR and the "not the Demon" badge fix. Owner Lantern;
+  approved as a bug fix by Seneschal (Nov 20). [decided]
+
+  > **Closed Nov 20:** fixed, Lantern #432 (zero drift).
+
+- **The spoken reply to a later-day repeat.** Re-presenting a faded case restores its
+  weight, but the reply may still say the assessment is unchanged. **Built** on
+  `claude/repeat-reply` (Quill, Nov 20; handoff `2026-11-20-1130-quill-repeat-reply.md`).
+
+  > **Closed Nov 20:** built, Quill #428.
+
+- **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
+  guarded a different block that night, so couldn't have seen what the Medium says.
+  Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
+  route of the person seen, never against where the sighter was. **Michael (Nov 20,
+  later):** it needs more detail before it's built; Quill is scoping it.
+
+  > **Closed Nov 20 (Michael dropped it):** Quill measured 20 games. None of 125 told
+  > sightings came from somewhere the teller couldn't have seen it, because the sim only lets
+  > an NPC tell sightings that fit its own account, evil fakes included (65 of the 125 were
+  > evil fakes; 10-NPC town, passive play). The one opening left, not measured: an NPC tells a
+  > window sighting and later admits being out elsewhere that night, which needs the player to
+  > ask the right question.
+
 ## Built, Nov 20, 2026, afternoon (closed by Claude-Vicar)
 
 - **Argon's audit, group 4: point `game.gd`'s remaining passthroughs at their modules**
@@ -951,6 +982,8 @@ Items still tagged `[decided]` in BACKLOG.md after they were built. Each was che
   [decided]
 
   > **Closed Nov 19 (BACKLOG reconcile; Michael via Seneschal):** built. Quill #307, refreshed in #325, Strong-tier cases in #342. The badge's cut points are a separate item now (section 2, Cases and the Workshop).
+
+  > **Added Nov 20:** word-against-word slate cases, lie calls and their twins, Lantern #414 (no backlog item of its own).
 
 - **Misleading cases on the slate.** (Michael, Nov 19, approved through Seneschal.) The
   slate's chains built about an innocent subject, as they could really arise: an innocent
