@@ -1,8 +1,8 @@
 # Vicar: a bug for section 1, NPC defenders weigh undealt secrets
 
 - **Agent:** Claude-Vicar
-- **Base:** `claude/vicar-beadle-proposals` (#406)
-- **Status:** docs only, ready for Bailiff
+- **Base:** main (after #406)
+- **Status:** docs only; held to batch with the next docs changes
 - **Next actor:** Lantern, in the order below
 
 ## What changed and why
