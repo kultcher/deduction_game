@@ -44,14 +44,16 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_9c570ec`
+### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
 
-`tools/golden/baseline_9c570ec/` is the capture from `claude/beadle-martyr-bluff-quiet` at `9c570ec`
-(main at `fff6b66`, after #413, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
-now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
-- **Divergence from `baseline_b96d2f2`:** only 692, at record 236 (day 3): Hollis, a Martyr bluff,
-  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
-  are identical.
+`tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
+`fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
+pass by", fabricated cards match, and the scapegoat fabrication's logged reason says "watched the
+block of" instead of "the street of".
+- **Divergence from `baseline_b96d2f2`:** text only. 42 and 54875 from record 1, 692 from 45 and
+  98933 from 79, each at a Night Watch card's text (and on 98933 the fabrication's reason). 900 is
+  identical. With " pass by" replaced by " out" and "street of evil" by "block of evil" in the old
+  baseline, all five seeds are identical.
 - **Outcomes:** unchanged on all five seeds.
 - **Stability:** two captures were identical.
 

@@ -532,7 +532,7 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 		"day": 2, "phase": C.EVENING, "text": "Agnes publicly claims to be the Medium."})
 	var c_isolde_nw: int = GameBoard.add_card(g, {"kind": "info", "source": isolde.id, "role": "nightwatch", "subject": [hollis.id],
 		"day": 2, "phase": C.NIGHT, "data": {"block": "market", "seen": [hollis.id]},
-		"text": "Isolde (Night Watch): Last night I watched the Market: I saw Hollis pass by."})
+		"text": "Isolde (Night Watch): Last night I watched the Market: I saw Hollis out."})
 
 	var board = Canvas.new(Live.view(g))
 	var root: String = board.selected

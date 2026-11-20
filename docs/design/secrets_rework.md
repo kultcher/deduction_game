@@ -1,6 +1,6 @@
 # Secrets: a rework (design note)
 
-**Status: backlogged (Michael, Nov 17; BACKLOG section 4). Direction in section 2, with Michael's Nov 18 decisions (good NPCs lying about their gift, unique secrets, one hidden kind per script); nothing built.** Started
+**Superseded in part (Nov 20): the rework is now scoped as "burdens" in [burdens.md](burdens.md), which wins where the two differ. This note keeps the earlier reasoning.** **Status: backlogged (Michael, Nov 17; BACKLOG section 4). Direction in section 2, with Michael's Nov 18 decisions (good NPCs lying about their gift, unique secrets, one hidden kind per script); nothing built.** Started
 Nov 17 from a talk between Michael and Claude-Vicar. Whoever builds it: Lantern and
 Quill (the judge), Beadle (how NPCs claim, hide and bluff), Herald (wording, UI).
 Performance figures here are counts read from the code, not timings; Argon would measure.

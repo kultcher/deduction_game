@@ -10,7 +10,7 @@ const MECHANICS = [
 	{"id": "on_the_block", "label": "On the Block", "aliases": [{"text": "on the block"}],
 		"tooltip": "On the Block: the person the town will hang at the day's end, unless a later nomination draws more votes. A tie clears the block."},
 	{"id": "vigil", "label": "Vigil", "aliases": [{"text": "Vigil", "case_sensitive": true}, {"text": "vigil", "case_sensitive": true}],
-		"tooltip": "Vigil: you spend the night watching one block. You see its residents leave home; not those only passing through. An empty vigil means no one on that block left their home by normal means."},
+		"tooltip": "Vigil: you spend the night watching one block. You only see if its residents leave home. You do not see people arrive on this block from elsewhere."},
 	{"id": "ward", "label": "Ward", "aliases": [{"text": "Ward", "case_sensitive": true}],
 		"tooltip": "Ward: once per case, you sign a door at night and the Demon cannot kill there. A stopped kill leaves a scorched sigil, which you can show the town."},
 	{"id": "clemency", "label": "Clemency", "aliases": [{"text": "Clemency"}],
