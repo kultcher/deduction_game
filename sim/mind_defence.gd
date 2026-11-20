@@ -301,16 +301,16 @@ static func knows_of_thwart(w, d, nd: int) -> bool:
 					return true
 	return false
 
-## The rebuttal's line, for the town (meeting and podium) or the Demonologist alone. Placeholder
-## wording, for Michael: the voice keys defence_night_* / private_night_* carry the same text in
-## every voice until he words them.
+## The rebuttal's line, for the town (meeting and podium) or the Demonologist alone, in the
+## speaker's voice (defence_night_* / private_night_*; Michael, Nov 20). In block terms: people
+## move from block to block, there are no roads.
 static func rebuttal_line(w, d, reb: Dictionary, private: bool = false) -> Dictionary:
 	var nd: int = int(reb["night"])
 	var when: String = C.spoken_when(nd, w.day)
 	if str(reb["variant"]) == "other_block":
 		var bname: String = C.block_name(str(reb["cites"]["victim_block"]))
 		return say_voiced(d, "private_night_other_block" if private else "defence_night_other_block",
-			"Someone died on %s that night; I was nowhere near the road there." % bname, {"block": bname, "when": when})
+			"Someone died on %s that night; I was never on %s." % [bname, bname], {"block": bname, "when": when})
 	return say_voiced(d, "private_night_no_death" if private else "defence_night_no_death",
 		"I was seen out %s, but no one died that night." % when, {"when": when})
 

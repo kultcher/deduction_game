@@ -490,6 +490,11 @@ func _test_voice_pack_completeness_and_symmetry() -> void:
 	all_string_keys["doubt_own_gift"] = {}
 	# Filling a quiet meeting (Michael, Nov 20): any speaker, evil included, so no slots.
 	all_string_keys["silence_breaker"] = {}
+	# Night-sighting rebuttals (Michael, Nov 20): block terms, said by good and evil alike.
+	for nk in ["defence_night_other_block", "private_night_other_block"]:
+		all_string_keys[nk] = {"block": "Mill Lane"}
+	for nk in ["defence_night_no_death", "private_night_no_death"]:
+		all_string_keys[nk] = {"when": "on the second night"}
 	# "It's another of us" (89077, Michael, Nov 18): a defence against a reading over a group.
 	all_string_keys["defence_group_named"] = {"source": "Kiran", "others": "Dorian and Bartholomew"}
 	all_string_keys["defence_group_others"] = {"source": "Kiran"}

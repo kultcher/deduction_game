@@ -121,7 +121,7 @@ func _run(g, size: int) -> void:
 		check(not thinks.is_empty() and "misleading" in str(thinks[-1]["reason"]), tag + " evil's rebuttal is logged with its reason")
 
 	# The meeting defence: an added line and ledger entry, and no belief moves.
-	for case in [[1, off_b, "other_block", "nowhere near the road"], [2, off_b, "no_death", "no one died that night"]]:
+	for case in [[1, off_b, "other_block", "I was never on"], [2, off_b, "no_death", "no one died that night"]]:
 		var nd: int = case[0]
 		var lab: String = "%s night %d, %s:" % [tag, nd, case[2]]
 		var spoken: Array = [_sighting(accuser, d, nd, case[1])]
@@ -161,7 +161,7 @@ func _run(g, size: int) -> void:
 	var card: Dictionary = _sighting(accuser, d, 1, off_b)
 	var pr: Dictionary = MindPodium.press_card(w, d, card, true)
 	check(str(pr.get("rebuttal", {}).get("variant", "")) == "other_block", tag + " the podium press of an off-route sighting adds the rebuttal")
-	check(pr.lines.any(func(l): return l is Dictionary and "nowhere near the road" in str(l.get("statement", ""))), tag + " the podium line is said")
+	check(pr.lines.any(func(l): return l is Dictionary and "I was never on" in str(l.get("statement", ""))), tag + " the podium line is said")
 	var card_on: Dictionary = _sighting(accuser, d, 1, on_b)
 	check(MindPodium.press_card(w, d, card_on, true).get("rebuttal", {}).is_empty(), tag + " the podium press of an on-route sighting adds nothing")
 
