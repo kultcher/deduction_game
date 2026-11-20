@@ -124,6 +124,14 @@ committed), the four quick ones passed, so they're fits to that night, not drop 
   (`podium_confess`, seed 701), which still owns it.
 - `test_own_gift_doubt`: "doubted below its prior" is its own search. The doubting game
   judged only the night it doubts.
+- `test_relay_bluff_games` (main-only) now lands on seed 100009, where Odette relays a dead
+  Gravedigger's reading.
+  - **The old check** recast every relay as the relayer's own card, so it made her the
+    Gravedigger. That role clash put her at 0.39, against 0.19 with the relays. It's no
+    laundering (Lantern traced it, Nov 20).
+  - **Now** `Seeds.relay_effect` recasts only relayed sightings, and holds relayed readings to
+    "doesn't clear its relayer" (with them at least as high as without, less 0.01). The test
+    checks each kind it finds: here 0.19 with, against 0.14 without the reading.
 - `fixture_seeds.framed_sighting` searches 3× further (`FRAMED_SEEDS`). Its bystander
   home-alibi rule (Lantern's) can be switched off with `bystander_alibi = false`:
   - In 60 seeds, 3 frames were away from home, and in none of them did a bystander also hold

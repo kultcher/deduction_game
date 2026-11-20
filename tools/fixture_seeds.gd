@@ -179,19 +179,33 @@ static func relay(day: int, relayer_ok: Callable, about_listener: bool = false, 
 ## connections: {"with", "without"}, the teller's chance with every held card, and with the
 ## cards the teller relayed left out. Both from one refresh's own inputs (the jury's
 ## weigher), so the difference is the relays' alone. {} if the listener has no plan.
-## "firsthand": the teller's chance with the relays recast as the teller's own sightings (the
-## same cards, told by them, no dead in between), so a relay can be held to what its relayer's
-## own word would do.
+## "firsthand": the teller's chance with the relayed *sightings* recast as the teller's own
+## sightings (the same cards, told by them, no dead in between), so a relayed sighting can be
+## held to what its relayer's own word would do. Relayed readings stay relayed there: recast,
+## a dead Gravedigger's reading would make the teller the Gravedigger, a role clash no
+## firsthand telling could create (Lantern, Nov 20, seed 100009). "readings_without": the
+## teller's chance with only the relayed readings left out, so a relayed reading is held to
+## "doesn't clear its relayer". "sightings" and "readings" count each kind relayed.
 static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionary:
+	var is_relay = func(c): return str(c.get("relay_source", "")) == teller_id
 	var recast = func(c: Dictionary) -> void:
+		if str(c.get("kind", "")) != "sighting":
+			return
 		c.erase("relay_source")
 		c.erase("relay_role")
 		c.erase("relay_observed_at")
 		c["source"] = teller_id
-	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], func(c): return str(c.get("relay_source", "")) == teller_id, recast)
+	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], is_relay, recast)
 	if eff.is_empty():
 		return {}
-	return {"with": float(eff.with[teller_id]), "without": float(eff.without[teller_id]), "firsthand": float(eff.recast[teller_id]), "relayed": int(eff.dropped)}
+	var readings: Dictionary = cards_effect(g, listener_id, [teller_id], func(c): return is_relay.call(c) and str(c.get("kind", "")) != "sighting")
+	var counts := {"sightings": 0, "readings": 0}
+	var plan: Dictionary = g._workshop_plans.get(listener_id + ":good", {})
+	for c in plan.get("prepared", {}).get("view", {}).get("cards", []):
+		if is_relay.call(c):
+			counts["sightings" if str(c.get("kind", "")) == "sighting" else "readings"] += 1
+	return {"with": float(eff.with[teller_id]), "without": float(eff.without[teller_id]), "firsthand": float(eff.recast[teller_id]), "relayed": int(eff.dropped),
+		"readings_without": float(readings.get("without", {}).get(teller_id, -1.0)) if not readings.is_empty() else -1.0, "sightings": counts.sightings, "readings": counts.readings}
 
 
 ## What some of a listener's held cards do, under connections: {"with": {id: chance},
