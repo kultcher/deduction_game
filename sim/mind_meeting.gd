@@ -678,7 +678,7 @@ static func _accuse_tier_impl(w, n, t, s2: float) -> Dictionary:
 	return {"tier": "hint", "why": "", "eid": rs.get("eid", "")}
 
 ## Called at the actual disclosure, including inside a streamed speaker's turn.
-## The promise itself still lapses through Game._break_confidences as before.
+## The promise itself still lapses through GameBoard._break_confidences as before.
 static func _public_disclosure(w, n, lines: Array, facts: Array, share_readings: bool = true) -> void:
 	if not n.claim_public and n.dialogue_memory.get("confidence_requested", false):
 		lines.append(say_voiced(n, "release_confidence_public", "I've decided the town should hear it."))

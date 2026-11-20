@@ -2,6 +2,9 @@
 ## Merged from: test_backlog_batch2, test_claude_audit_cleanup, test_fixes, test_phase2_bug_sweep, test_phase4_1_reveal_and_rumor_pacing, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions.
 extends SceneTree
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Evil = preload("res://sim/evil.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -274,19 +277,19 @@ func _test_2_6_scion_revenant_scoring_and_grimoire() -> void:
 	var scion = g.w.by_id[g.w.minion_ids[0]]
 	scion.role = "scion"
 	g.set_guess(orig_demon.id, "demon", 4)
-	g.capture_prediction("before_execution", {"on_block": orig_demon.id})
+	GameScreens.capture_prediction(g, "before_execution", {"on_block": orig_demon.id})
 	g.w.executions.append({"day": 2, "id": orig_demon.id, "nominator": "player", "yes": [], "player_yes": true, "player_nominated": true})
 	C.role_def("scion").promote_to_demon(g.w, scion)
 	# Player later updates Demon guess to chase a wrong new suspect after Scion rises.
 	var wrong_suspect = g.w.living_good()[0]
 	g.set_guess(wrong_suspect.id, "demon", 2)
-	var final_snap: Dictionary = g.capture_prediction("before_night")
+	var final_snap: Dictionary = GameScreens.capture_prediction(g, "before_night")
 	var summary_pre: Dictionary = CaseMetrics.summarize(g.w, final_snap, false, g.board, g.prediction_snapshots)
 	_check(summary_pre["demon_identified"], "CaseMetrics credits Demon identification when pre-execution snapshot named the hung original Demon")
 
 	# Also credits naming the promoted Scion directly at the end.
 	g.set_guess(scion.id, "demon", 4)
-	var snap_scion: Dictionary = g.capture_prediction("before_execution", {"on_block": scion.id})
+	var snap_scion: Dictionary = GameScreens.capture_prediction(g, "before_execution", {"on_block": scion.id})
 	var summary_scion: Dictionary = CaseMetrics.summarize(g.w, snap_scion, false, g.board, [])
 	_check(summary_scion["demon_identified"], "CaseMetrics credits naming the active promoted Scion Demon")
 
@@ -294,7 +297,7 @@ func _test_2_6_scion_revenant_scoring_and_grimoire() -> void:
 	var cursed_good = g.w.living_good()[1]
 	cursed_good.role = "warden"
 	g.w.turn_evil(cursed_good, "Revenant curse")
-	var grim: String = g._grimoire()
+	var grim: String = GameScreens._grimoire(g)
 	_check("Scion (promoted to Demon)" in grim, "Grimoire labels promoted Scion clearly")
 	var cursed_line: String = ""
 	for line in grim.split("\n"):
@@ -357,11 +360,11 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 
 	# 5) Spoken unshared bluff claims (`watch_claim` / `duty_claim`) normalize to `report` and support `lying` challenges.
 	var bluffer = g.w.demon()
-	var watch_card_num: int = g.add_card({
+	var watch_card_num: int = GameBoard.add_card(g, {
 		"kind": "sighting", "subject": [bluffer.id], "block": "hill", "day": 1, "phase": C.NIGHT,
 		"source": bluffer.id, "watch_claim": true, "text": "%s says they kept watch on Chapel Hill on night 1." % bluffer.name,
 	})
-	var vig_num: int = g.add_card({
+	var vig_num: int = GameBoard.add_card(g, {
 		"kind": "vigil", "subject": [], "block": "hill", "day": 1, "phase": C.NIGHT,
 		"source": "player", "vigil": true, "text": "Night 1 vigil on Chapel Hill: nobody stirred.",
 	})
@@ -379,7 +382,7 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 	var preview: Dictionary = Ghost.live(WorkshopCanvas.snapshot(g, cm.compile(root_id)))
 	_check(preview.ready, "spoken watch_claim with lying challenge evaluates cleanly in live Workshop")
 
-	var lamp_duty_num: int = g.add_card({
+	var lamp_duty_num: int = GameBoard.add_card(g, {
 		"kind": "sighting", "subject": [bluffer.id], "block": "hill", "day": 1, "phase": C.NIGHT,
 		"source": bluffer.id, "duty_claim": true, "duty": "lamplighter", "text": "%s says they were out on Chapel Hill on night 1 (the lamp route)." % bluffer.name,
 	})
@@ -492,7 +495,7 @@ func _test_evil_daily_planter_and_meeting_patience() -> void:
 	w.scenes["scene_test"] = {"day": 1, "block": "market", "victim": victim.id}
 
 	# Even if the player privately kept a Vigil on Market (seeing nobody), Evil cannot peek at it!
-	g.add_card({"kind": "vigil", "source": "player", "subject": [], "day": 1, "phase": C.NIGHT, "block": "market", "text": "Cold vigil on Market: nobody."})
+	GameBoard.add_card(g, {"kind": "vigil", "source": "player", "subject": [], "day": 1, "phase": C.NIGHT, "block": "market", "text": "Cold vigil on Market: nobody."})
 	Evil.plan_daily_frame(w)
 	var planter_id: String = str(w.evil_plan.get("daily_planter", ""))
 	var ps: Dictionary = w.evil_plan.get("planter_sighting", {})
@@ -547,7 +550,7 @@ func _test_evil_promised_vigil_and_ward_avoidance() -> void:
 	same_block_good.claimed_role = "seer"
 	w.public_claims.append({"day": 1, "who": same_block_good.id, "role": "seer"})
 	# Demon receives a vigil promise on their own home block (like Jory in 95955).
-	g._offer_command(d, "vigil", true)
+	GameConversation._offer_command(g, d, "vigil", true)
 	_check(Evil._knows_promised_vigil_tonight(d, d.home_block, w.day),
 		"GameConversation._offer_command records promised vigil block in evil recipient's intel")
 	var kt: String = Evil.choose_kill_target(w)
@@ -559,7 +562,7 @@ func _test_evil_promised_vigil_and_ward_avoidance() -> void:
 	w.day = 2
 	m.home_block = alt_blk
 	g.offer = {}
-	g._offer_command(m, "vigil", false)
+	GameConversation._offer_command(g, m, "vigil", false)
 	_check(Evil._knows_promised_vigil_tonight(m, alt_blk, 2) and not Evil._knows_promised_vigil_tonight(d, alt_blk, 2),
 		"Minion vigil promise is not telepathically known to Demon before conversing")
 	Social.converse(w, d, m, "afternoon")

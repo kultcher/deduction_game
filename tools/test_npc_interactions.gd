@@ -4,6 +4,8 @@
 ##   godot --headless --path . --script res://tools/test_npc_interactions.gd
 extends SceneTree
 
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Evil = preload("res://sim/evil.gd")
@@ -64,7 +66,7 @@ func _traits_through_others() -> void:
 	var text_ok = true
 	for i in range(40):
 		var r = {"lines": [], "facts": []}
-		g._maybe_tell_trait(n, t, r)
+		GameConversation._maybe_tell_trait(g, n, t, r)
 		if r.has("narration"):
 			learned = true
 			var key: String = t.revealed_traits.keys()[t.revealed_traits.size() - 1]
@@ -77,7 +79,7 @@ func _traits_through_others() -> void:
 	quiet.pressure = 0.0
 	var before = t.revealed_traits.size()
 	for i in range(20):
-		g._maybe_tell_trait(quiet, _goods(w)[3], {"lines": [], "facts": []})
+		GameConversation._maybe_tell_trait(g, quiet, _goods(w)[3], {"lines": [], "facts": []})
 	_check(not _goods(w)[3].revealed_traits.is_empty() and t.revealed_traits.size() == before, "low Gossip still permits occasional trait sharing without changing another person's profile")
 
 func _lovers_grieve() -> void:
@@ -127,7 +129,7 @@ func _confidence_request() -> void:
 	_check(g.confidences.values().has(n.id), "cards from that answer are confidential")
 	var num = g.confidences.keys()[0]
 	var tr: float = n.trust
-	g._break_confidences([num])
+	GameBoard._break_confidences(g, [num])
 	var expected: float = 0.05 + 0.2 * n.traits["privacy"]
 	_check(absf((tr - n.trust) - expected) < 0.011, "using one at the meeting costs 0.05 + 0.2 x Privacy (%.2f)" % expected)
 	# No: the refusal they'd have given, still free; anything else is also no.
@@ -145,7 +147,7 @@ func _confidence_request() -> void:
 	g.confidences[999] = n.id
 	n.claim_public = true
 	var tr2: float = n.trust
-	g._break_confidences([999])
+	GameBoard._break_confidences(g, [999])
 	_check(n.trust == tr2, "the promise lapses once they've gone public")
 
 func _protection_kinds() -> void:
@@ -196,7 +198,7 @@ func _protection_flow() -> void:
 					n.working = false
 					n.busy_with = ""
 					var cards: int = g.board.size()
-					if g._maybe_divulge():
+					if GameConversation._maybe_divulge(g):
 						var claimed: bool = g.board.slice(cards).any(func(c): return c["kind"] == "claim" and n.id in c["subject"])
 						if claimed and g.state == "approach" and g.approach["agenda"] == "divulge" and not n.protect_lock:
 							divulged += 1

@@ -2,6 +2,9 @@
 ## godot --headless --path . --script res://tools/test_sighting_followup.gd
 extends SceneTree
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
 const Game = preload("res://game/game.gd")
 const Recent = preload("res://game/recent_sightings.gd")
 const C = preload("res://sim/content.gd")
@@ -35,19 +38,19 @@ func _workers() -> void:
 	for phase in [C.MORNING, C.AFTERNOON, C.EVENING]:
 		w.phase = phase
 		w.start_phase()
-		g._phase_header()
+		GameConversation._phase_header(g)
 		var cards: Array = g.board.filter(func(c): return c.get("work_sighting", false) and c["day"] == w.day and c["phase"] == phase)
 		var workers: Array = w.living().filter(func(n): return n.working and not n.at_home() and n.loc == n.work)
 		_check(cards.size() == workers.size(), "phase %d records every visible worker exactly once" % phase)
 		_check(cards.all(func(c): return c["source"] == "player" and c["class"] == "concrete" and c["loc"] == w.by_id[c["subject"][0]].work and CardModel.place_markers(c)[0]["mark"] == "solid"), "phase %d cards retain observed location, time and firsthand status" % phase)
 		var count: int = g.board.size()
-		g._phase_header()
+		GameConversation._phase_header(g)
 		_check(g.board.size() == count, "looking again in phase %d does not duplicate cards" % phase)
 	w.day += 1
 	w.phase = C.MORNING
 	w.start_phase()
 	w.deaths_last_night = []
-	g._morning_report()
+	GameDayNight._morning_report(g)
 	_check(g.board.any(func(c): return c.get("work_sighting", false) and c["day"] == w.day), "the following dawn records a new day's work observations")
 	w.day += 1 # A fresh frame ensures deduplication cannot conceal an invalid observation.
 	for n in w.living():
@@ -56,19 +59,19 @@ func _workers() -> void:
 	worker.working = true
 	worker.loc = "home_" + worker.id
 	var count: int = g.board.size()
-	g._card_workers()
+	GameScreens._card_workers(g)
 	_check(g.board.size() == count, "a work flag alone does not reveal someone at home")
 	worker.loc = worker.work
 	worker.alive = false
-	g._card_workers()
+	GameScreens._card_workers(g)
 	_check(g.board.size() == count, "a dead person is never recorded as working")
 	worker.alive = true
 	worker.working = false
-	g._card_workers()
+	GameScreens._card_workers(g)
 	_check(g.board.size() == count, "being at a workplace without working does not create an automatic observation")
 	w.phase = C.NIGHT
 	worker.working = true
-	g._card_workers()
+	GameScreens._card_workers(g)
 	_check(g.board.size() == count, "night does not generate public work cards")
 	# Actual command transitions, rather than only the report helpers.
 	var live = _game()

@@ -17,6 +17,8 @@
 ##   python3 tools/case_slate_report.py FILE [BASELINE]   (the report; against a baseline)
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -380,7 +382,7 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var heard: Array = []
 	var blocked: Array = []
 	for l in listeners:
-		var res: Dictionary = g._evaluate_deduction(l, g.board[n_case - 1], 1.0, false)
+		var res: Dictionary = GamePresentation._evaluate_deduction(g, l, g.board[n_case - 1], 1.0, false)
 		if res.get("blocked", false):
 			blocked.append("%s: %s" % [l.id, " ".join(PackedStringArray(res.get("lines", [])))])
 		else:
@@ -447,6 +449,6 @@ func _mean(ls: Array, s) -> float:
 
 
 func _add(g, card: Dictionary) -> int:
-	var n: int = g.add_card(card)
+	var n: int = GameBoard.add_card(g, card)
 	_texts[n] = card.text
 	return n

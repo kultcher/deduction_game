@@ -1,5 +1,7 @@
 ## A confessed private errand is a dated alternative, not an innocence guarantee.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Solver = preload("res://workshop/solver.gd")
@@ -29,10 +31,10 @@ func _run() -> void:
 	var listener = g.w.living_good()[0]
 	var target = g.w.npcs.filter(func(n): return n != listener)[0]
 	var teller = g.w.npcs.filter(func(n): return n != target and n != listener)[0]
-	var out = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Seen out on night 1"})
+	var out = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Seen out on night 1"})
 	var confession = {"kind": "secret", "source": target.id, "subject": [target.id], "owner": target.id,
 		"secret_kind": "debt", "day": 1, "phase": 3, "block": "market", "text": "A confessed private errand"}
-	var number = g.add_card(confession)
+	var number = GameBoard.add_card(g, confession)
 	var out_id: String = Live.Evidence.normalize_card(g.board[out - 1]).id
 	var secret_id: String = Live.Evidence.normalize_card(g.board[number - 1]).id
 	var value = Solver.empty_case()
@@ -59,7 +61,7 @@ func _run() -> void:
 	var repeated = confession.duplicate(true)
 	repeated.source = teller.id
 	repeated.text = "Another teller repeats the same private explanation"
-	var second = g.add_card(repeated)
+	var second = GameBoard.add_card(g, repeated)
 	var duplicate = value.duplicate(true)
 	duplicate.cards.append(Live.Evidence.normalize_card(g.board[second - 1]).id)
 	var dupe = Live.Assess.prepare(Live.snapshot(g, duplicate, listener.id))
@@ -67,13 +69,13 @@ func _run() -> void:
 	var lover = confession.duplicate(true)
 	lover.secret_kind = "lover"
 	lover["mod"] = "lovers"
-	var lover_number = g.add_card(lover)
+	var lover_number = GameBoard.add_card(g, lover)
 	var lover_case = value.duplicate(true)
 	lover_case.cards = [out_id, Live.Evidence.normalize_card(g.board[lover_number - 1]).id]
 	lover_case.citations = {}
 	var lover_context = Live.Assess.prepare(Live.snapshot(g, lover_case, listener.id))
 	check(CaseEval.evaluate(lover_context.view, lover_context.case, lover_context.listener).people == result.people, "a claimed lover story supplies an errand alternative without asserting the Lovers modifier")
-	var new_out = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 2, "phase": 3, "block": "market", "text": "Seen out on night 2"})
+	var new_out = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 2, "phase": 3, "block": "market", "text": "Seen out on night 2"})
 	var later = value.duplicate(true)
 	later.cards = [Live.Evidence.normalize_card(g.board[new_out - 1]).id]
 	later.citations = {}
@@ -88,17 +90,17 @@ func _run() -> void:
 	check(not Live.Assess.prepare(Live.snapshot(g, wrong, listener.id)).ready, "an inapplicable night citation is rejected explicitly")
 	wrong.citations = {teller.id + ":1": secret_id}
 	check(not Live.Assess.prepare(Live.snapshot(g, wrong, listener.id)).ready, "another person's secret cannot explain this person's outing")
-	var raw = g.workshop_snapshot([out], listener.id)
+	var raw = GamePresentation.workshop_snapshot(g, [out], listener.id)
 	for edit in [{"owner": teller.id}, {"secret_kind": "invented"}, {"block": "unknown"}]:
 		var invalid = confession.duplicate(true)
 		invalid.merge(edit, true)
 		check(Live.Assess.activity_card(Live.Evidence.normalize_card(invalid), raw).is_empty(), "incomplete secret semantics receive no guessed explanation")
 	var filed = Live.file(g, value)
 	check(filed > 0, "the supported explanation files as an ordinary case")
-	var heard = g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+	var heard = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false)
 	check(heard.get("workshop", false) and secret_id in listener.workshop_state.facts, "an actual strict presentation retains the secret's exact shared root")
 	var before = listener.suspicion.duplicate(true)
-	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false)
 	check(before == listener.suspicion, "repeating the explanation does not add another innocence award")
 	print("Secret claims: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

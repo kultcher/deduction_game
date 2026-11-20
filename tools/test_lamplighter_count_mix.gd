@@ -8,6 +8,7 @@
 ##   godot --headless --path . --script res://tools/test_lamplighter_count_mix.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -47,10 +48,10 @@ func _count_with_alibis(f: Dictionary) -> void:
 	var g = f.g
 	var lamp = f.lamp
 	var s = f.subject
-	var nums: Array = [g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "L: 1 other out"})]
+	var nums: Array = [GameBoard.add_card(g, {"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "L: 1 other out"})]
 	for n in g.w.npcs:
 		if n.alive and n != s and n != lamp:
-			nums.append(g.add_card({"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: home" % n.name}))
+			nums.append(GameBoard.add_card(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: home" % n.name}))
 	var value: Dictionary = _case(g, s.id, "evil", nums)
 	var mixed: Dictionary = Live.shape_reading(g, value)
 	SourceDoubt.list_mix_enabled = false
@@ -68,8 +69,8 @@ func _impossible_count(f: Dictionary) -> void:
 	var g = f.g
 	var lamp = f.lamp
 	var out_one = f.subject
-	var seen: int = g.add_card({"kind": "sighting", "subject": [out_one.id], "block": "market" if out_one.home_block != "market" else "docks", "source": f.witness.id, "day": 1, "phase": C.NIGHT, "text": "W saw X out"})
-	var count0: int = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 0}, "text": "L: nobody out"})
+	var seen: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [out_one.id], "block": "market" if out_one.home_block != "market" else "docks", "source": f.witness.id, "day": 1, "phase": C.NIGHT, "text": "W saw X out"})
+	var count0: int = GameBoard.add_card(g, {"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 0}, "text": "L: nobody out"})
 	var with_count: Dictionary = Live.shape_reading(g, _case(g, lamp.id, "evil", [seen, count0]))
 	var witness: Dictionary = Live.shape_reading(g, _case(g, f.witness.id, "evil", [seen, count0]))
 	check(with_count.get("ready", false) and float(with_count.lr) < 1.5,
@@ -94,11 +95,11 @@ func _impossible_count(f: Dictionary) -> void:
 func _testimony_clash(f: Dictionary) -> void:
 	var g = f.g
 	var lamp = f.lamp
-	var count1: int = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "L: 1 other out"})
+	var count1: int = GameBoard.add_card(g, {"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 1}, "text": "L: 1 other out"})
 	var alibis: Array = []
 	for n in g.w.npcs:
 		if n.alive and n != lamp:
-			alibis.append(g.add_card({"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: home" % n.name}))
+			alibis.append(GameBoard.add_card(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: home" % n.name}))
 	var r: Dictionary = Live.shape_reading(g, _case(g, lamp.id, "evil", [count1] + alibis))
 	var d: Dictionary = Live.shape_reading(g, _case(g, f.subject.id, "evil", [count1] + alibis))
 	check(r.get("ready", false) and float(r.lr) < 1.5,
@@ -112,8 +113,8 @@ func _listener_keyed(f: Dictionary) -> void:
 	var g = f.g
 	var lamp = f.lamp
 	var out_one = f.subject
-	var seen: int = g.add_card({"kind": "sighting", "subject": [out_one.id], "block": "market" if out_one.home_block != "market" else "docks", "source": f.witness.id, "day": 1, "phase": C.NIGHT, "text": "W saw X out (keyed)"})
-	var count0: int = g.add_card({"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 0}, "text": "L: nobody out (keyed)"})
+	var seen: int = GameBoard.add_card(g, {"kind": "sighting", "subject": [out_one.id], "block": "market" if out_one.home_block != "market" else "docks", "source": f.witness.id, "day": 1, "phase": C.NIGHT, "text": "W saw X out (keyed)"})
+	var count0: int = GameBoard.add_card(g, {"kind": "info", "source": lamp.id, "role": "lamplighter", "day": 1, "phase": C.NIGHT, "data": {"count": 0}, "text": "L: nobody out (keyed)"})
 	var view: Dictionary = Live.view(g)
 	var cards: Array = view.cards.filter(func(c): return str(c.get("text", "")).ends_with("(keyed)")).map(func(c): return c.duplicate(true))
 	for c in cards:

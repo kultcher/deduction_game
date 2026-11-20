@@ -10,6 +10,8 @@
 ##   godot --headless --path . --script res://tools/test_vigil_nightwatch.gd
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -127,7 +129,7 @@ func _one(sd: int, vigil: String, where: String, mode: String, seen_spec: Array,
 
 func _card(g, card: Dictionary) -> int:
 	card["text"] = "%s %s night 1 %s" % [card.get("source", ""), card.get("kind", ""), JSON.stringify(card.get("data", card.get("subject", [])))] + str(_texts.size())
-	var number: int = g.add_card(card)
+	var number: int = GameBoard.add_card(g, card)
 	_texts[number] = g.board[number - 1].text
 	return number
 
@@ -141,7 +143,7 @@ func _present(g, listeners: Array, number: int) -> void:
 	if number <= 0:
 		return
 	for n in listeners:
-		g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+		GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 
 func _node(model, view, number: int) -> String:
 	for id in model.nodes:

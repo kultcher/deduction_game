@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Social = preload("res://sim/social.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -41,10 +43,10 @@ func _init() -> void:
 	l.npc_trust[s.id] = trust_before # Hold trust fixed; the conversation itself changes the bond.
 	Social._deliver(g.w, s, l, sight)
 	check(l.workshop_state.facts.size() == heard and l.workshop_state.requested == first, "same sighting does not stack on repetition")
-	var weak = Shared.prepare(g.workshop_snapshot([], l.id), {}, l.ledger)
+	var weak = Shared.prepare(GamePresentation.workshop_snapshot(g, [], l.id), {}, l.ledger)
 	var old_weight: float = l.ledger[key].weight
 	l.ledger[key].weight = 1.0
-	var strong = Shared.prepare(g.workshop_snapshot([], l.id), {}, l.ledger)
+	var strong = Shared.prepare(GamePresentation.workshop_snapshot(g, [], l.id), {}, l.ledger)
 	var weak_card: Dictionary = weak.prepared.view.cards.filter(func(c): return c.id == receipt.id)[0]
 	var strong_card: Dictionary = strong.prepared.view.cards.filter(func(c): return c.id == receipt.id)[0]
 	check(weak_card.hearing_weight < strong_card.hearing_weight and strong_card.hearing_weight == 1.0, "teller hearing weight reaches the movement model")
@@ -69,8 +71,8 @@ func _init() -> void:
 	var implied: Dictionary = l.ledger[Mind.claim_eid(s.id, "surveyor")].meta.workshop_card
 	check(l.workshop_state.facts.size() == before_reading + 1 and implied.id == reading.id, "a relayed reading's implied gift claim reuses the same evidence receipt")
 	check(implied.observed_at.day == 0 and implied.provenance.via == s.id, "the implied declaration retains original reading time and teller provenance")
-	var number = g.add_card({"kind": "info", "source": s.id, "role": "surveyor", "subject": [], "day": 0, "phase": 3, "data": {"count": 2}, "text": "Shared reading"})
-	var filed = g.file_deduction({"type": "evil", "a": "constance"}, [number], true)
+	var number = GameBoard.add_card(g, {"kind": "info", "source": s.id, "role": "surveyor", "subject": [], "day": 0, "phase": 3, "data": {"count": 2}, "text": "Shared reading"})
+	var filed = GameBoard.file_deduction(g, {"type": "evil", "a": "constance"}, [number], true)
 	var item = {"kind": "case", "about": "constance", "card": g.board[filed - 1], "from": "player", "key": "case:" + str(filed)}
 	Social._deliver(g.w, s, l, item)
 	var wrappers: Array = l.ledger.keys().filter(func(id): return str(id).begins_with("relayed-case:"))

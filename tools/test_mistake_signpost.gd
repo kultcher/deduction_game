@@ -7,6 +7,8 @@
 ##   godot --headless --path . --script res://tools/test_mistake_signpost.gd
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -37,7 +39,7 @@ func _seed() -> int:
 
 func _reading(g, goods: Array) -> String:
 	var text: String = "%s's Archivist reading: one of %s and %s is the Poisoner" % [goods[0].name, goods[2].name, goods[3].name]
-	g.add_card({"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
+	GameBoard.add_card(g, {"kind": "info", "source": goods[0].id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
 	return text
 
 ## A canvas case that `who` is good, citing the reading called `mode`.
@@ -75,7 +77,7 @@ func _game_side(sd: int) -> void:
 	var a: int = Live.file(g, lie.value)
 	check(a > 0, "the lie-call case files (#%d)" % a)
 	check(not Live.was_presented(g, a), "nobody has heard it yet")
-	g._evaluate_deduction(goods[1], g.board[a - 1], 1.0)
+	GamePresentation._evaluate_deduction(g, goods[1], g.board[a - 1], 1.0)
 	check(Live.was_presented(g, a), "once presented, it has been heard")
 	# A case put in a private accusation or defence is held under a "direct:" key (Codex, #363).
 	var direct: int = Live.file(g, _case(g, text, goods[3].id, "lying").value)
@@ -97,9 +99,9 @@ func _game_side(sd: int) -> void:
 	check(draft > a and not Live.was_presented(g, draft), "a newer, unheard case calls the same lie (#%d)" % draft)
 	check(Live.player_issues(g, honest.value, raw) == [want], "the signpost still names the heard case #%d" % a)
 	# Two heard cases making the call: revising one wouldn't clear the refusal, so no signpost.
-	g._evaluate_deduction(goods[1], g.board[draft - 1], 1.0)
+	GamePresentation._evaluate_deduction(g, goods[1], g.board[draft - 1], 1.0)
 	check(Live.was_presented(g, draft) and Live.player_issues(g, honest.value, raw) == raw, "two heard cases calling the lie keep the plain refusal")
-	g._workshop_retract(draft, goods[1].id)
+	GamePresentation._workshop_retract(g, draft, goods[1].id)
 	g.board[draft - 1].deleted = true
 	# A call on the other side of a Medium's relay isn't settled by switching the mode: no signpost.
 	var other_side: Dictionary = honest.value.duplicate(true)
@@ -110,14 +112,14 @@ func _game_side(sd: int) -> void:
 	var medium = goods[1]
 	var dead = goods[4]
 	var entry = {"role": "seer", "day": 0, "data": {"pair": [goods[2].id, goods[3].id], "yes": true}, "text": "Original Seer reading"}
-	var mn: int = g.add_card({"kind": "info", "source": medium.id, "subject": [], "role": "medium", "day": 2, "phase": 3,
+	var mn: int = GameBoard.add_card(g, {"kind": "info", "source": medium.id, "subject": [], "role": "medium", "day": 2, "phase": 3,
 		"data": {"dead": dead.id, "item": {"type": "reading", "entry": entry}}, "text": "Medium repeats dead Seer"})
 	var mid: String = Live.Evidence.normalize_card(g.board[mn - 1]).id
 	check(Live._challenged_teller(g, mid, "original") == dead.id and Live._challenged_teller(g, mid, "transmission") == medium.id, "a relay's original side names the dead reader, its passing-on the Medium")
 	var b: int = Live.file(g, honest.value)
 	check(b > 0, "the second case files (#%d)" % b)
 	g.events = []
-	var ok: bool = g._presentation_gate(g.board[b - 1], [goods[1]], [goods[3].id], "deduction", "private")
+	var ok: bool = GamePresentation._presentation_gate(g, g.board[b - 1], [goods[1]], [goods[3].id], "deduction", "private")
 	var said: String = " ".join(PackedStringArray(g.events.map(func(e): return str(e.get("text", "")))))
 	check(not ok and want in said, "presenting the second case to someone who heard the first gives the signpost (%s)" % said)
 	check(not ("Remove the unsupported card" in said), "and not the advice to remove a card")
@@ -134,7 +136,7 @@ func _game_side(sd: int) -> void:
 	var pending: Array = Live.player_issues(g, honest.value, raw)
 	check(pending == [Live.SIGNPOST_PRESENTED % [goods[0].name, a, r]], "until the revision is heard, the signpost names case #%d and the revision #%d (%s)" % [a, r, str(pending)])
 	g.events = []
-	g._presentation_gate(g.board[r - 1], [goods[1]], [goods[2].id], "deduction", "private")
+	GamePresentation._presentation_gate(g, g.board[r - 1], [goods[1]], [goods[2].id], "deduction", "private")
 	var rsaid: String = " ".join(PackedStringArray(g.events.map(func(e): return str(e.get("text", "")))))
 	check(not ("Conflicting reading" in rsaid) and not ("You called" in rsaid), "presenting the revision to someone who heard the lie isn't refused for it (%s)" % rsaid)
 
@@ -173,7 +175,7 @@ func _workshop_side(sd: int) -> void:
 	ed.context_menu.hide()
 
 	# Heard: the tooltip names the case, and after the switch Present says it replaces it.
-	g._evaluate_deduction(goods[1], g.board[a - 1], 1.0)
+	GamePresentation._evaluate_deduction(g, goods[1], g.board[a - 1], 1.0)
 	g.state = "meeting"
 	ed._context(mod)
 	at = ed.context_menu.get_item_index(ed.TAKE_BACK_LIE)

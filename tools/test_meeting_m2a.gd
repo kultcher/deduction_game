@@ -49,7 +49,7 @@ func _meeting_game(sd: int):
 	g.w.day = 2
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	return g
 
 

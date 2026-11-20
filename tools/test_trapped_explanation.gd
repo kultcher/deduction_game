@@ -3,6 +3,7 @@
 ## errand, or the gift that took it out. Tier 1, evil, or no honest reason: the line stands
 ## alone. Setup as test_workshop_presentation's _trapped_group_response.
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
@@ -77,8 +78,8 @@ func _presented(open: bool) -> void:
 	n.pressure = 1.0 if open else 0.0
 	var block: String = _out(g, n)
 	var others = w.npcs.filter(func(p): return p != n)
-	var alibi = g.add_card({"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
-	var sight = g.add_card({"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
+	var alibi = GameBoard.add_card(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
+	var sight = GameBoard.add_card(g, {"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
 	var canvas = Canvas.new(LiveCanvas.view(g))
 	var root: String = canvas.add_premise(n.id, "evil", Vector2.ZERO)
 	var a: String = "e:" + Evidence.normalize_card(g.board[alibi - 1]).id

@@ -5,6 +5,8 @@
 ## out that night); and "these readings from one person don't fit together" works the same
 ## way on the group.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -52,7 +54,7 @@ func _game():
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	return GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if role == "seer" else 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 
 func _node(model, view, number: int) -> String:
@@ -99,7 +101,7 @@ func _present(g, type: String, target: String, support: Array, challenged: int =
 	var filed: int = Live.file(g, value)
 	check(filed > 0, "the %s case files (%s)" % [type, g.last_error])
 	var trust0: float = n.trust
-	var r = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	var r = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	return {"r": r, "n": n, "trust": n.trust - trust0, "results": r.get("assessment", {}).get("reading_challenges", [])}
 
 func _result_for(results: Array, mode: String) -> Dictionary:
@@ -164,7 +166,7 @@ func _impaired() -> void:
 	var seer = _remember(g, _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true}))
 	var d1 = _remember(g, _read(g, p[5], "dowser", 1, {"group": [p[3].id], "count": 0}))
 	var d2 = _remember(g, _read(g, p[6], "dowser", 1, {"group": [p[4].id], "count": 0}))
-	var seen = _remember(g, g.add_card({"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[1].home_block,
+	var seen = _remember(g, GameBoard.add_card(g, {"kind": "sighting", "subject": [p[1].id], "day": 1, "phase": 3, "source": p[6].id, "block": p[1].home_block,
 		"text": "%s saw %s out on night 1." % [p[6].name, p[1].name]}))
 	var res: Dictionary = _present(g, "evil", p[1].id, [seer, d1, d2, seen], seer, "impaired", [d1, d2])
 	var ir: Dictionary = _result_for(res.results, "impaired")

@@ -9,6 +9,8 @@
 ##   godot --headless --path . --script res://tools/test_player_failed_gift.gd
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -37,7 +39,7 @@ func _game(failed_gift: bool) -> Dictionary:
 	var reader = goods[0]
 	g.w.day = 2
 	var text: String = "%s's Archivist reading: one of %s and %s is the Poisoner" % [reader.name, goods[2].name, goods[3].name]
-	g.add_card({"kind": "info", "source": reader.id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
+	GameBoard.add_card(g, {"kind": "info", "source": reader.id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
@@ -62,7 +64,7 @@ func _hear(made: Dictionary, listener_index: int, trust: float) -> Dictionary:
 	listener.trust = trust
 	listener.credibility = trust
 	g._workshop_evaluations.erase(listener.id + ":good")
-	g._evaluate_deduction(listener, g.board[made.filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[made.filed - 1], 1.0, false)
 	var plan: Dictionary = g._workshop_plans.get(listener.id + ":good", {})
 	if plan.is_empty():
 		return {}

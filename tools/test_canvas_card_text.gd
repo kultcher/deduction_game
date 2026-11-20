@@ -2,6 +2,7 @@
 ## sentence for the hover (Michael, Nov 18: the fewest words on a card).
 ##   godot --headless --path . --script res://tools/test_canvas_card_text.gd
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CardModel = preload("res://game/card_model.gd")
@@ -21,7 +22,7 @@ func _init() -> void:
 	g.new_case(692, 7)
 	var a = g.w.npcs[0]
 	var b = g.w.npcs[1]
-	var n: int = g.add_card({"kind": "accusation", "source": a.id, "subject": [b.id], "day": 1, "phase": 1,
+	var n: int = GameBoard.add_card(g, {"kind": "accusation", "source": a.id, "subject": [b.id], "day": 1, "phase": 1,
 		"text": "%s publicly accused %s at the meeting on the first day." % [a.name, b.name]})
 	var view: Dictionary = Live.view(g)
 	var full: String = g.board[n - 1].text
