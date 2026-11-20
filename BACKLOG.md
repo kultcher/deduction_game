@@ -330,6 +330,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
     - **Tier 3:** everything else.
 
     The targets stay at 2 and 1, and Beadle's budget calls are approved.
+  - **Value tiers built** (Quill, Nov 20, `claude/gossip-tiers`; handoff
+    `2026-11-20-1215-quill-gossip-tiers.md`), as approved above. Measured: the targets are
+    both met on about 4% of tavern evenings today, though the town's news would allow it on
+    about 84%. Beadle's budget is next. [in review]
 
 ## 4. Major structural work (a week or more; design first)
 
