@@ -5,6 +5,7 @@ const Support = preload("res://workshop/support_model.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
 const Reasoner = preload("res://workshop/reasoner.gd")
+const Jury = preload("res://workshop/jury.gd")
 var checks = 0
 var fails = 0
 
@@ -54,11 +55,9 @@ func _initialize() -> void:
 		if fixture == "movement":
 			proposal.cards.append_array(["soot2", "evening2"])
 		Support.reuse_priors = false
-		Support.reuse_comparisons = false
-		var old = Support.assess(experiment.scenario.public_view, proposal, experiment.baseline[0])
+		var old = Jury.evaluate(experiment.scenario.public_view, proposal, experiment.baseline[0].duplicate(true)).effects
 		Support.reuse_priors = true
-		Support.reuse_comparisons = true
-		check(Support.assess(experiment.scenario.public_view, proposal, experiment.baseline[0]) == old, fixture + " support results match exactly with both optimizations")
+		check(Jury.evaluate(experiment.scenario.public_view, proposal, experiment.baseline[0].duplicate(true)).effects == old, fixture + " case results match exactly with prior reuse")
 	var live: Dictionary = view.duplicate(true)
 	live.world_options = {"modifiers": ["marked", "delusional", "lovers", "sleepwalker"]}
 	var claim = Solver.empty_case()

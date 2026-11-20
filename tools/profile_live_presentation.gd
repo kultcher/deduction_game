@@ -2,7 +2,7 @@
 ## reading filed as one case and presented to every living listener at a meeting. Reports
 ## how many listeners used the shared assessment, why the rest used native rules, the
 ## wall time, and the slowest profiled stages.
-##   godot --headless --path . --script res://tools/profile_live_presentation.gd -- [--legacy] [--seed N] [--allow-fallback]
+##   godot --headless --path . --script res://tools/profile_live_presentation.gd -- [--seed N] [--allow-fallback]
 ## Exits with failure if any listener used native rules: a timing that silently skips the
 ## shared evaluator measures less work. --allow-fallback reports it without failing.
 extends SceneTree
@@ -18,13 +18,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var args = OS.get_cmdline_user_args()
-	if "--legacy" in args:
-		Jury.engine = "legacy"
 	var seeds: Array = [692, 4242, 1234, 77]
 	var fell_back: Array = []
 	if "--seed" in args:
 		seeds = [int(args[args.find("--seed") + 1])]
-	print("Engine: %s" % Jury.engine)
 	for seed_value in seeds:
 		var g = Game.new()
 		g.new_case(seed_value, 10)

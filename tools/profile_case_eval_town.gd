@@ -39,7 +39,7 @@ func _town(number: int, listeners: Array) -> Array:
 	var rows: Array = []
 	for n in listeners:
 		var t0 = Time.get_ticks_usec()
-		var prepared = Assess.prepare(g.workshop_snapshot([number], n.id, "meeting"), false)
+		var prepared = Assess.prepare(g.workshop_snapshot([number], n.id, "meeting"))
 		capture_us += Time.get_ticks_usec() - t0
 		if not prepared.ready:
 			rows.append("  %s: not ready (%s)" % [n.id, "; ".join(PackedStringArray(prepared.issues))])
@@ -75,7 +75,7 @@ func _run() -> void:
 	for row in first[2]:
 		print(row)
 	var worlds = 0
-	var probe = Assess.prepare(g.workshop_snapshot([number], listeners[0].id, "meeting"), false)
+	var probe = Assess.prepare(g.workshop_snapshot([number], listeners[0].id, "meeting"))
 	if probe.ready:
 		worlds = Solver.universe(probe.view).size()
 	# A different premise over most of the same readings.
