@@ -132,6 +132,9 @@ class Roles:
 		"pick_pref_scale": 1.2,
 		"req_trust_scale": 1.0,
 		"req_susp_scale": 1.0,
+		# A save the Warden believes in, as a reason to claim at the meeting (Michael, Nov 20;
+		# proposed value, for him to confirm). It offsets most of the Warden's hiding floor.
+		"save_claim_bonus": 0.3,
 	}
 
 	const DOWSER = {
@@ -483,6 +486,11 @@ class Social:
 	const TAVERN_OVERHEAR_MIN_SUSP = 0.4
 	const TAVERN_GOSSIP_MIN_ITEMS = 3
 	const TAVERN_GOSSIP_MAX_ITEMS = 5
+	## Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET
+	## unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of
+	## tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier).
+	const TAVERN_TIER1_TARGET = 2
+	const TAVERN_TIER2_TARGET = 1
 	## The town's vibe check on the Demonologist (always told at evening tavern gossip):
 	## the average rapport (trust) and competence (credibility) of the living good townsfolk,
 	## in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player

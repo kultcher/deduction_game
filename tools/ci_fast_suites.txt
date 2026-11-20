@@ -64,6 +64,7 @@ test_fixes_crowd_augur_lovers_pan
 test_framed_defence
 test_gift_doubt
 test_gift_doubt_good
+test_gossip_tiers
 test_gravedigger_bluff
 test_group_defence
 test_haunt_learning
@@ -178,6 +179,7 @@ test_vigil_nightwatch
 test_vote_shape
 test_warden_challenge
 test_warden_quiet_route
+test_warden_saves
 test_wave_once
 test_withdraw_ui
 test_wording_23973

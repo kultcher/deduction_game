@@ -1,0 +1,67 @@
+# Vicar: evening backlog reconcile, and in-progress marks in the contents list
+
+- **Agent:** Claude-Vicar
+- **Base:** main (after #441, #442)
+- **Status:** docs only
+- **Next actor:** Bailiff
+
+## What changed and why
+
+Michael asked, through Seneschal, for a full reconcile against main (Nov 20).
+
+**Closed** (moved to BACKLOG_COMPLETED.md, "Built or dropped, Nov 20, evening"):
+- **NPC defenders weigh secrets the game can't deal:** fixed, Lantern #432 (Lantern
+  confirmed). Section 1 now has no open items.
+- **The spoken reply to a later-day repeat:** built, Quill #428.
+- **A Medium's relayed sighting vs the dead's known vantage (12a):** Michael dropped it, on
+  Quill's measurement. No design note held it.
+
+**Updated:**
+- **Minion gifts: the Poisoner's visit (12b):**
+  - Michael's rule: a candidate is someone spotted whose destination was on the failed
+    reader's block, not anyone whose route passed it;
+  - Quill is applying it to the filter from #429;
+  - the fuller factor waits for after this round;
+  - tagged `[decided]`.
+- **Argon's audit, file splits:**
+  - Tier 1 is done (#404, #417, #426, #433);
+  - Tier 2 is under way. The Workshop UI is done (#438, #439). Left: Herald's
+    `dialogue_voices.gd` (after #415 and #446), Beadle's `social.gd` (after #431 and #437),
+    and Lantern's `live_activity` and `case_eval` (after the joint-reasons PR).
+- **New UI item, accepted by Michael (Nov 20):** "Movement wording: 'pass by' and 'road'".
+  - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves);
+  - no voiced line says "road".
+
+  Owner Herald.
+
+**The contents list now marks in-progress items with `\*`** (Michael's rule: a lead is
+building it, or its PR is open). Ten are marked, from the open PRs and the leads' answers:
+
+| Item | Why |
+|---|---|
+| Evil Martyr bluff | Beadle #412 |
+| Argon's audit: cleanup | Tier 2 splits under way |
+| Accusations from starting suspicion | Beadle, `mock/beadle-silence` A/B (no PR yet) |
+| The Gravedigger in a reluctant town | Beadle #413 |
+| Rapport and Warden-credit leftovers | Beadle #409 |
+| Explicit night-sighting rebuttals | #415 |
+| Graded gossip | #431, #437 |
+| Minion gifts: the Poisoner's visit | Quill, applying the destination rule |
+| A reason citing a pairing the model didn't weigh | Lantern, `claude/joint-reasons-combined` |
+| Movement wording: "pass by" and "road" | Herald #446 ("road"); the "pass by" draft is with Michael |
+
+All four leads (Beadle, Lantern, Quill, Herald) answered. Not in progress:
+- Caught out and pressed again: not started (Beadle);
+- Anger reasons: Herald has planned the lines with Beadle, waiting on Beadle's hook;
+- the Sleepwalker's doubt from the Rumormonger: not started (Lantern).
+
+- **Not tied to an open item:**
+  - #414, the slate's word-against-word lie calls and their twins (Lantern; merged at
+    918a7bd), is noted under the case benchmark slate's completed work;
+  - Limner's #282, the line boil, is an opt-in art experiment that needs no backlog item
+    (Seneschal).
+
+## Checked
+
+Each closure's merge is on origin/main: #432 (136c197e), #428 (6cdafd17), #429 (389a3a51).
+Docs only.
