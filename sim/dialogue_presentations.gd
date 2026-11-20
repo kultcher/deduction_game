@@ -211,6 +211,23 @@ static func render_self_support(n, variant: String, canonical: String, tic_memor
 ## The line after a clash opener. Some voices' "still, it moves me" leans toward suspicion
 ## ("it weighs with me against {target}"), so a case for someone's innocence takes the
 ## neutral line every voice shares (Codex, #219).
+## The likeliest other evil a case points at, or "" if none stands out: the first rival
+## (CaseEval's, likeliest first) who is living and not in `skip`, if the case raised their
+## chance by more than 0.2 and leaves it above a half (Case 12926: Edda named Nisha, hanged
+## two days before). A listener names them ("present_points_elsewhere"); the Workshop's
+## test juror flags the case without naming anyone ("· points elsewhere").
+static func points_elsewhere(w, rivals: Array, skip: Array) -> String:
+	for rv in rivals:
+		if not rv is Dictionary:
+			continue
+		var cand: String = str(rv.get("id", ""))
+		if cand == "" or cand in skip or not w.by_id.has(cand) or not w.by_id[cand].alive:
+			continue
+		if float(rv.get("shift", 0.0)) > 0.2 and float(rv.get("posterior", 0.0)) > 0.5:
+			return cand
+		return ""
+	return ""
+
 static func _clash_follow(listener, key: String, ctype: String, target_label: String) -> String:
 	const NEUTRAL: String = "Still, it changes how I see %s."
 	if key != "present_clashes_moved":
@@ -340,20 +357,9 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 			var b_key: String = ("present_clashes_moved" if clashes else "present_accept_open") if believed_stance == "accept" else "present_partial"
 			parts.append(_clash_follow(listener, b_key, ctype, target_label))
 	elif agreement <= -0.2 or (status == "counterexample_found" and bool(reasoning.get("support_exhausted", false))):
-		var rivals: Array = ev.get("rivals", [])
 		var rival_id: String = ""
-		# The likeliest other evil the case points at: someone living, not the listener or
-		# the target (Case 12926: Edda named Nisha, hanged two days before).
 		if believed_stance != "accept":
-			for rv in rivals:
-				if not rv is Dictionary:
-					continue
-				var cand_r: String = str(rv.get("id", ""))
-				if cand_r == "" or cand_r == listener.id or cand_r == stance_subject or not w.by_id.has(cand_r) or not w.by_id[cand_r].alive:
-					continue
-				if float(rv.get("shift", 0.0)) > 0.2 and float(rv.get("posterior", 0.0)) > 0.5:
-					rival_id = cand_r
-				break
+			rival_id = points_elsewhere(w, ev.get("rivals", []), [listener.id, stance_subject])
 		if rival_id != "":
 			primary_key = "present_points_elsewhere"
 			named.append(rival_id)
