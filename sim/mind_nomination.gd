@@ -165,15 +165,28 @@ static func _resolve_shared_reason(w, mind, real_npc, t_id: String, raw: Diction
 		var told_direct: bool = idx >= 0 and idx < real_npc.told_readings
 		var board_plr: bool = player_ids.has(cid)
 		# Whether an own reading is revealable is a matter of the reading itself: whether the town
-		# (or the Demonologist) has it and knows it's theirs. The cards cited with it don't decide
-		# it (Beadle, Nov 20): a reading already shared and claimed isn't "revealed" again because
-		# a partner card is private, and one on the board only anonymously (a relay, a rumour)
-		# while the gift is unclaimed stays theirs to reveal.
+		# (or the Demonologist) has it and knows it's theirs (shared by them, the gift claimed, or
+		# a presentation to that audience citing it). The cards cited with it don't decide it
+		# (Beadle, Nov 20): a reading already shared isn't "revealed" again because a partner card
+		# is private, and one on the board only anonymously (a relay, a rumour) while the gift is
+		# unclaimed stays theirs to reveal.
+		# A presentation that cites the reading names it as theirs to the audience that heard it
+		# (the town at a meeting; the Demonologist in any venue), the same as their sharing it.
+		var pres_town: bool = false
+		var pres_plr: bool = false
+		var st_w: Dictionary = mind.workshop_state.get("withdrawn", {})
+		var st_p: Dictionary = mind.workshop_state.get("presentations", {})
+		for pkey in st_p:
+			if st_w.has(pkey) or st_w.has(str(pkey)) or cid not in st_p[pkey].get("selected", []):
+				continue
+			pres_plr = true
+			if str(st_p[pkey].get("venue", "private")) != "private":
+				pres_town = true
 		var r_kind: String = "private"
 		var r_why: String = str(raw.get("why_own", ""))
-		if self_shared or (board_pub and real_npc.claim_public):
+		if self_shared or (board_pub and (real_npc.claim_public or pres_town)):
 			r_kind = "public"
-		elif told_direct or (board_plr and real_npc.claim_public):
+		elif told_direct or (board_plr and (real_npc.claim_public or pres_plr)):
 			r_kind = "player"
 		return {
 			"eid": r_eid,
