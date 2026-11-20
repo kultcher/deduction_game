@@ -439,7 +439,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLAYER_VOTE_NO_OFFSET` | `-0.03` |  | `sim/mind_vote.gd` |
 | `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_vote.gd` |
 | `VOTE_DISTRUST_NOMINATOR_OFFSET` | `-0.15` |  | `sim/mind_vote.gd` |
-| `VOTE_SPARE_PREF_SLOPE` | `-0.5` |  | `sim/mind_vote.gd` |
 | `VOTE_PREFERS_BLOCK_OFFSET` | `-0.4` |  | `sim/mind_vote.gd` |
 | `VOTE_SELF_NOMINATION_MARGIN` | `0.02` |  | `sim/mind_vote.gd` |
 

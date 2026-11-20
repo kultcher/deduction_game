@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, purge 6a, the headline reading removed): `baseline_c712b7a`
+### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+
+`tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
+`d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
+term, constant and trace entries. Nothing wrote to it after #395.
+- **Divergence from `baseline_c712b7a`:** every seed from record 1, but only because each NPC record
+  (real and shadow) no longer carries the always-empty `spare_pref` key. With that key ignored
+  (`golden_diff.py --ignore engine,spare_pref`), all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, purge 6a, the headline reading removed): `baseline_c712b7a`
 
 `tools/golden/baseline_c712b7a/` is the capture from `claude/purge-6a-headline` at `c712b7a`
 (main at `bd4ac84`, with #405, merged in). A duller NPC no longer cites a reading it isn't
