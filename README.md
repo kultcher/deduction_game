@@ -322,6 +322,10 @@ sim/presentation_reply.gd  replies to speech the Workshop doesn't judge; evil's 
 sim/dialogue.gd, dialogue_voices.gd, dialogue_decisions.gd, dialogue_presentations.gd
                   dialogue composer: words decided statements in a character's voice
 sim/devlog.gd     developer trace (JSONL + text, and the .trace.jsonl sidecar)
+workshop/case_eval_base.gd, case_eval_content.gd, case_eval_classes.gd
+                  CaseEval's shared constants, chance of content and premise masks, and
+                  compile() with the class and fit machinery; one inheritance chain under
+                  case_eval.gd, which keeps evaluate(), category() and strength()
 workshop/         the shared case judge: case_eval.gd (possible worlds), connections.gd
                   (how each NPC combines what it holds), jury.gd and
                   shared_ledger.gd (per-listener runs), role_constraints.gd,
