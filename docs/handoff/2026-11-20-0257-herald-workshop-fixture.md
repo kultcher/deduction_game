@@ -15,6 +15,11 @@ This follows the dead-labs PR (#381): the standalone Workshop lab scenes are gon
 - **Kept as stubs:** ten methods (seven in the base, three in the canvas) that shared helpers call but only a subclass defines (base: `_active_choices`, `_card_available`, `_edit`, `_refresh_case`, `_identity_hint`, `_marked_answers`, `_auto_claims`; canvas: `_session_changed`, `_sync`, `_extend_context`). GDScript needs them declared where they're called, and each notes which class overrides it.
 - **The jury window's "Show calculation" block** is gone with the jury window, so `jury.gd`'s `legacy_path` stub has no reader.
 
+## Two small items folded in (Michael, Nov 20, via Seneschal)
+
+- **(b) One native flag.** `_workshop_native_submission` was only ever set together with `_workshop_native_social`, so they are now one flag (`_workshop_native_social`), reset in the same places. The callback's branch for "native but not social", which logged a whole-audience fallback, could never run and is gone. Zero drift. The social route itself is removed in the next PR (Michael, Nov 20).
+- **The preview's false fallback sentence.** The Workshop preview no longer says "No effectiveness estimate is available for the existing-rules fallback." and no longer appends the readiness `warning` ("Fallback evaluates…"); there is no fallback. When a case can't be weighed, the preview shows only its issues, which it already listed. The `warning` field is gone from the readiness. `test_workshop_live_canvas` now checks the field is absent, and the label of the check above it no longer says "requires fallback".
+
 ## The four suites (per Seneschal: move what the live Workshop still has, cut fixture-only checks)
 
 **Moved to the live Workshop** (a new section in `test_workshop_canvas`, on real readings in a live game):
@@ -42,7 +47,7 @@ This follows the dead-labs PR (#381): the standalone Workshop lab scenes are gon
 
 - **Golden:** identical at `--tol 0` on all five seeds.
 - **The four suites:** pass (canvas 69 checks, consequences 44, remaining 51, ui 3).
-- **The fast list plus every `test_workshop*`, `test_ui*` and `test_mistake_signpost` suite:** see the PR.
+- **The fast list plus every `test_workshop*`, `test_ui*` and `test_mistake_signpost` suite:** see the PR. After the two folded-in items: test_workshop_live_canvas, test_mechanics_conclusions, test_presentation_contracts, test_workshop_live_ui, test_workshop_integration and the four suites pass; golden identical.
 
 ## Proposed for the backlog
 None.

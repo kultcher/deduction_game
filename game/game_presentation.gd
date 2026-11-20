@@ -66,16 +66,14 @@ static func workshop_readiness(g, card: Dictionary, listeners: Array, targets: A
 
 
 static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: Array, direction: String, venue: String) -> bool:
-	g._workshop_native_submission = false
+	g._workshop_native_social = false
 	var rejected: String = _presentation_rejection(g, card)
 	if rejected != "":
 		g._err(rejected)
 		return false
-	g._workshop_native_social = false
 	if card.get("conclusion", {}).get("type", "") in ["protect", "spare"]:
 		# Mechanics-support item 0: a preference is social speech even when the
 		# speaker attaches a card. It is not an unsupported evidence conclusion.
-		g._workshop_native_submission = true
 		g._workshop_native_social = true
 		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A protection or mercy preference: native social response.")
 		return true
@@ -85,7 +83,6 @@ static func _presentation_gate(g, card: Dictionary, listeners: Array, targets: A
 	if _bare_speech(check.issues):
 		# No evidence at all ("I believe they're not the Demon"): speech, which stays
 		# social and native (like accusing or defending without a card).
-		g._workshop_native_submission = true
 		g._workshop_native_social = true
 		g.w.dlog.add("social_presentation", "player", "", {"card": card.get("n", 0)}, "A bare belief with no evidence: native social response.")
 		return true

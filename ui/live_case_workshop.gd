@@ -812,8 +812,6 @@ func _preview_effectiveness() -> void:
 		result_output.text += "\n\n" + csum_prev.text
 	var readiness = Live.status(g, board.compile(board.selected))
 	result_output.text += "\n\nEvery current listener can evaluate this case." if readiness.get("audience_ready", false) else "\n\nSome listeners cannot evaluate this case:\n• " + "\n• ".join(PackedStringArray(readiness.issues))
-	if not result.ready:
-		result_output.text += "\n\nNo effectiveness estimate is available for the existing-rules fallback. " + Live.status(g, board.compile(board.selected)).warning
 
 func _present() -> void:
 	if present_button.disabled:
