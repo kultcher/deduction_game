@@ -26,7 +26,7 @@ This closes the Night Watch half of the UI item "Movement wording: 'pass by' and
 - **Three or more names stay comma-joined,** as the world's name list already does ("I saw Agnes, Bart, Cora out"). Two names read "Agnes and Bart".
 
 ## Measured
-- **Golden: moves, text only. Re-baselined to `baseline_d85bba3`.** Four seeds diverge at a Night Watch card's text, and 98933 also at the fabrication's logged reason. 900 is identical. With the same substitution applied to the old baseline, all five seeds are identical, and outcomes are unchanged. Two captures were identical.
+- **Golden: moves, text only. Re-baselined to `baseline_66be26f`, on top of #413's `baseline_b96d2f2`.** Four seeds diverge at a Night Watch card's text, and 98933 also at the fabrication's logged reason. 900 is identical. With the same substitution applied to the old baseline, all five seeds are identical, and outcomes are unchanged. Two captures were identical.
 - **Suites:** 13/13 pass: test_vigil_nightwatch, test_nightwatch_whole_list, test_nightwatch_bluff_teammates, test_term_defs, test_evil_owned_lie, test_evil_play, test_fabrication_check, test_social, test_conversation_nights, test_dialogue_voices, test_workshop_regressions, test_dialogue and test_text_terms.
 
 ## Proposed for the backlog
