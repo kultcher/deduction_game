@@ -192,7 +192,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `QUESTION_FATIGUE_COMPOSURE_DAMP` | `0.5` |  | `sim/mind_dialogue.gd` |
 | `PRESSED_EVIDENCE_BASE` | `0.03` |  | `sim/mind_podium.gd`, `sim/mind_press.gd` |
 | `PRESSED_EVIDENCE_PRIVACY` | `0.06` |  | `sim/mind_press.gd` |
-| `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social.gd` |
+| `WRONG_ROLE_GUESS_STEP` | `0.02` |  | `sim/social_approaches.gd` |
 | `SHARED_GIFT_FIRST_TIME_BONUS` | `0.03` |  | `sim/mind_answers.gd` |
 | `PROMISE_OFFER_BONUS` | `0.03` |  | `game/game_conversation.gd` |
 | `PROMISE_KEPT_BONUS` | `0.06` |  | `game/game_conversation.gd` |
@@ -228,7 +228,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | --- | --- | --- | --- |
 | `NEWS_BONUS_EVIL` | `0.6` |  | `sim/social.gd` |
 | `NEWS_BONUS_GOOD` | `0.5` |  | `sim/social.gd` |
-| `GOOD_NEWS_TRUST_MIN` | `0.6` |  | `sim/social.gd` |
+| `GOOD_NEWS_TRUST_MIN` | `0.6` |  | `sim/social.gd`, `sim/social_base.gd` |
 | `PLANTER_WHISPER_BONUS` | `0.65` |  | `sim/social.gd` |
 | `PLANTER_TARGET_GOSSIP_MIN` | `0.45` |  | `sim/social.gd` |
 | `PLANTER_TARGET_TRUST_MIN` | `0.48` |  | `sim/social.gd` |
@@ -285,41 +285,41 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `TAVERN_WHISPER_MIN_CROWD` | `4` |  | `sim/social.gd` |
 | `TAVERN_WHISPER_CHANCE` | `0.5` |  | `sim/social.gd` |
 | `TAVERN_OVERHEAR_MIN_SUSP` | `0.4` |  | `sim/mind_cases.gd` |
-| `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social.gd` |
-| `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social.gd` |
-| `TAVERN_TIER1_TARGET` | `2` | Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier). | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
-| `TAVERN_TIER2_TARGET` | `1` |  | `sim/social.gd`, `tools/measure_gossip_tiers.gd` |
-| `TOWN_VIBE_TREND` | `0.03` | The town's vibe check on the Demonologist (always told at evening tavern gossip): the average rapport (trust) and competence (credibility) of the living good townsfolk, in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average rapport (and below neutral) gets a 'not everyone agrees'. | `sim/social.gd` |
-| `TOWN_VIBE_OUTLIER` | `0.2` |  | `sim/social.gd` |
-| `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social.gd` |
-| `TAVERN_BACKFILL_PROFILE_WEIGHT` | `1.2` |  | `sim/social.gd` |
-| `TAVERN_HEARD_SPOKEN_WEIGHT` | `0.2` |  | `sim/social.gd` |
-| `TAVERN_YESTERDAY_MULT` | `0.6` | Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8). | `sim/social.gd` |
+| `TAVERN_GOSSIP_MIN_ITEMS` | `3` |  | `sim/social_tavern.gd` |
+| `TAVERN_GOSSIP_MAX_ITEMS` | `5` |  | `sim/social_tavern.gd` |
+| `TAVERN_TIER1_TARGET` | `2` | Graded gossip (Michael, Nov 19): each tavern evening first draws up to TAVERN_TIER1_TARGET unheard items of tier 1 (something the player can file or check) and TAVERN_TIER2_TARGET of tier 2 (useful but softer), then fills the rest by weight as before (Social.gossip_tier). | `sim/social_tavern.gd`, `tools/measure_gossip_tiers.gd` |
+| `TAVERN_TIER2_TARGET` | `1` |  | `sim/social_tavern.gd`, `tools/measure_gossip_tiers.gd` |
+| `TOWN_VIBE_TREND` | `0.03` | The town's vibe check on the Demonologist (always told at evening tavern gossip): the average rapport (trust) and competence (credibility) of the living good townsfolk, in 0.1-wide bands centred on neutral 0.5. A move of TOWN_VIBE_TREND since the player last heard it is called out; one good townsfolk TOWN_VIBE_OUTLIER below the average rapport (and below neutral) gets a 'not everyone agrees'. | `sim/social_tavern.gd` |
+| `TOWN_VIBE_OUTLIER` | `0.2` |  | `sim/social_tavern.gd` |
+| `TAVERN_UNHEARD_SPOKEN_WEIGHT` | `4.0` |  | `sim/social_tavern.gd` |
+| `TAVERN_BACKFILL_PROFILE_WEIGHT` | `1.2` |  | `sim/social_tavern.gd` |
+| `TAVERN_HEARD_SPOKEN_WEIGHT` | `0.2` |  | `sim/social_tavern.gd` |
+| `TAVERN_YESTERDAY_MULT` | `0.6` | Yesterday's NPC-to-NPC talk still circulates at the tavern, less than today's (Nov 8). | `sim/social_tavern.gd` |
 | `GOSSIP_BOND` | `0.02` | Gossip and the teller (Oct 30): +GOSSIP_BOND trust when believed (suspicion of the teller below GOSSIP_BELIEVED_BELOW), -GOSSIP_BOND when it runs down someone the listener trusts at least GOSSIP_SMEAR_TRUST, otherwise nothing. | `sim/social.gd` |
 | `GOSSIP_BELIEVED_BELOW` | `0.4` |  | `sim/mind.gd`, `sim/social.gd` |
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world_meeting.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world_meeting.gd` |
 | `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
-| `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social.gd` |
-| `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social.gd` |
-| `APPROACH_NOISE` | `0.2` |  | `sim/social.gd` |
-| `APPROACH_NEWS_MIN_TRUST` | `0.5` |  | `sim/social.gd` |
-| `APPROACH_NEWS_OFFSET` | `0.6` |  | `sim/social.gd` |
-| `APPROACH_GOSSIP_MIN` | `0.6` |  | `sim/social.gd` |
-| `APPROACH_GOSSIP_OFFSET` | `0.3` |  | `sim/social.gd` |
-| `APPROACH_PROTECT_COMPOSURE_SCALE` | `0.5` |  | `sim/social.gd` |
-| `APPROACH_PROTECT_OFFSET` | `0.4` |  | `sim/social.gd` |
-| `APPROACH_SECRET_DIRECT_BASE` | `0.5` |  | `sim/social.gd` |
-| `APPROACH_SECRET_DIRECT_GOSSIP_SCALE` | `0.3` |  | `sim/social.gd` |
-| `PROTECTION_MIN_TRUST` | `0.45` |  | `sim/social.gd` |
-| `ROLE_OWN_UP_BASE` | `0.15` |  | `sim/social.gd` |
-| `ROLE_OWN_UP_TRUST_SCALE` | `0.2` |  | `sim/social.gd` |
-| `ROLE_WILLING_GOSSIP_SCALE` | `0.7` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `ROLE_WILLING_TRUST_SCALE` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `ROLE_WILLING_PRESSURE_SCALE` | `0.3` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `ROLE_WILLING_THRESHOLD` | `0.55` |  | `sim/mind_dialogue.gd`, `sim/social.gd` |
-| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.5` |  | `sim/social.gd` |
+| `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social_approaches.gd` |
+| `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social_approaches.gd` |
+| `APPROACH_NOISE` | `0.2` |  | `sim/social_approaches.gd` |
+| `APPROACH_NEWS_MIN_TRUST` | `0.5` |  | `sim/social_approaches.gd` |
+| `APPROACH_NEWS_OFFSET` | `0.6` |  | `sim/social_approaches.gd` |
+| `APPROACH_GOSSIP_MIN` | `0.6` |  | `sim/social_approaches.gd` |
+| `APPROACH_GOSSIP_OFFSET` | `0.3` |  | `sim/social_approaches.gd` |
+| `APPROACH_PROTECT_COMPOSURE_SCALE` | `0.5` |  | `sim/social_approaches.gd` |
+| `APPROACH_PROTECT_OFFSET` | `0.4` |  | `sim/social_approaches.gd` |
+| `APPROACH_SECRET_DIRECT_BASE` | `0.5` |  | `sim/social_approaches.gd` |
+| `APPROACH_SECRET_DIRECT_GOSSIP_SCALE` | `0.3` |  | `sim/social_approaches.gd` |
+| `PROTECTION_MIN_TRUST` | `0.45` |  | `sim/social_approaches.gd` |
+| `ROLE_OWN_UP_BASE` | `0.15` |  | `sim/social_approaches.gd` |
+| `ROLE_OWN_UP_TRUST_SCALE` | `0.2` |  | `sim/social_approaches.gd` |
+| `ROLE_WILLING_GOSSIP_SCALE` | `0.7` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `ROLE_WILLING_TRUST_SCALE` | `0.5` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `ROLE_WILLING_PRESSURE_SCALE` | `0.3` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `ROLE_WILLING_THRESHOLD` | `0.55` |  | `sim/mind_dialogue.gd`, `sim/social_approaches.gd` |
+| `CORRECT_ROLE_GUESS_BONUS_PROB` | `0.5` |  | `sim/social_approaches.gd` |
 
 ## Meeting
 
@@ -626,14 +626,14 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
-| `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval.gd`, `workshop/live_activity.gd` |
+| `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval_base.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity.gd` |
-| `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity.gd` |
+| `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X out") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity.gd` |
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity.gd` |
-| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval.gd` |
+| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval_classes.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
 | `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |
@@ -649,11 +649,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `HEX_OWN_WORK_WEIGHT` | `0.4` | Time a person spends at their own workplace, as a place they might have hexed: the Hexer's own-workplace wariness (about (0.4 - 0.25) / 0.4 at midday). | `workshop/live_activity.gd` |
 | `HEX_SEEK_SHARE` | `0.25` | The share of a free phase a Hexer gives to seeking its target at the target's work (sim HEXER.seek_target_chance, Nov 10), as the solver models it. | `workshop/live_activity.gd` |
 | `BREATH_HUNT_REACH` | `0.7` | A hunting Breathstealer in a free phase: the chance it is on its victim's block, for the presence reasoning (workshop/day_presence.gd hunt_block; Nov 14). It seeks its preferred target's workplace (sim BREATHSTEALER.seek_target_chance 0.6) or goes where good people are working. | `workshop/day_presence.gd` |
-| `LR_WEAK` | `1.25` | The badge's cut points on a case's strength (the odds ratio on its premise), Michael Nov 19: from the case slate's vote measure (docs/case_slate/), a Weak case sways one or two good votes, a Moderate one about half, a Strong one most (it carries a nomination with the player's vote about 9 times in 10). Below Weak the badge reads Negligible. | `workshop/case_eval.gd` |
-| `LR_MODERATE` | `2.0` |  | `workshop/case_eval.gd` |
-| `LR_STRONG` | `3.5` |  | `workshop/case_eval.gd` |
-| `LR_DAMNING_CHANCE` | `0.9` | The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the Test juror's average listener at or above this, whatever the strength. On the slate it carries every good vote. | `workshop/case_eval.gd` |
-| `PRIOR_K` | `1.5` | Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x). | `workshop/case_eval.gd` |
+| `LR_WEAK` | `1.25` | The badge's cut points on a case's strength (the odds ratio on its premise), Michael Nov 19: from the case slate's vote measure (docs/case_slate/), a Weak case sways one or two good votes, a Moderate one about half, a Strong one most (it carries a nomination with the player's vote about 9 times in 10). Below Weak the badge reads Negligible. | `workshop/case_eval_base.gd` |
+| `LR_MODERATE` | `2.0` |  | `workshop/case_eval_base.gd` |
+| `LR_STRONG` | `3.5` |  | `workshop/case_eval_base.gd` |
+| `LR_DAMNING_CHANCE` | `0.9` | The badge's top tier (Damning / Conclusive, Michael Nov 19): the premise's chance for the Test juror's average listener at or above this, whatever the strength. On the slate it carries every good vote. | `workshop/case_eval_base.gd` |
+| `PRIOR_K` | `1.5` | Listener prior (`CaseEval._team_prior`): odds of evil = exp(PRIOR_K * suspicion), a relative nudge from the suspicion the shared model doesn't own. Reading suspicion as a probability (pre Oct 30) let 0.0-vs-0.1 seeds outweigh a Seer reading (about 5x vs 3x). | `workshop/case_eval_classes.gd` |
 | `LEAN_MIN` | `0.05` | Directional Confidence: below this lean (suspicion minus the listener's average) there is no hunch to defend, so Confidence doesn't resist (Oct 30). | `workshop/jury.gd` |
 | `JURY_BELIEF_SCALE` | `1.35` | Calibrated outer belief scale when source reliability is applied per-card upstream. | `workshop/jury.gd`, `workshop/reason_attribution.gd` |
 | `JURY_ALIGNMENT_COEFF` | `0.45` |  | `workshop/jury.gd` |
@@ -676,7 +676,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CHALLENGE_BACKFIRE_SHIFT` | `0.25` | Premises step 3: a challenge backfires (and costs the presentation trust) when the rest of the evidence moves the reading's content this far toward certainly holding (CaseEval.shift of its share of worlds; the mirror of PRESENTATION_WRONG_AGREEMENT). The plan's "0.1 below the prior" can't be reached: the chance a reading is wrong can only fall to (1 - r) q / ((1 - r) q + r), about 0.09 below the prior at default trust. | `workshop/reading_challenges.gd` |
 | `CHALLENGE_POISONER_SCALE` | `0.12` | An accepted "the gift failed" challenge raises its Poisoner candidates by this share of its agreement, split among them. | `workshop/jury.gd` |
 | `BLUFF_WEIGHT` | `0.92` | Role constraints, movement & public/speech evidence (`workshop/*.gd`) | `workshop/role_constraints.gd` |
-| `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval.gd` |
+| `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval_content.gd` |
 | `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity.gd` |
 | `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity.gd` |
 | `EXCUSED_OWN_ALIBI_OUT` | `0.35` | While an excuse for a caught "I was home" stands ("Fine, I was out", a walking duty that fits, "being out isn't wicked"; Beadle's caught-out ladder), that night's own "home" alibi reads as a good person's at this out-rate instead of GOOD_OWN_ALIBI_OUT (Michael, Nov 19, Quill's form): the lie softens a little. | `workshop/live_assessment.gd` |

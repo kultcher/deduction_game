@@ -960,7 +960,7 @@ class Workshop:
 	## A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown
 	## haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1.
 	const HEX_UNKNOWN_FLOOR = 0.15
-	## A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil
+	## A sighting (or a Night Watch's "I saw X out") in a world where its sighter is evil
 	## may be invented. It still counts this share of the time, since evil tells the truth
 	## when it suits them; otherwise it counts as an invented sighting, as likely as an honest
 	## one on average, so a sighter's word against a subject's alibi is decided by priors

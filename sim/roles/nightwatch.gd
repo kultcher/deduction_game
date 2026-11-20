@@ -74,7 +74,7 @@ func generate_reading(w, n, ctx: Dictionary, _mind) -> Dictionary:
 		"data": {"block": watch_block, "seen": seen},
 		"true": seen == real,
 		"text": "I watched %s: %s" % [content().block_name(watch_block),
-			("I saw " + w._names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"],
+			("I saw " + w._names(seen) + " out") if not seen.is_empty() else "nobody stirred"],
 	}
 
 
@@ -93,21 +93,21 @@ func generate_bluff_reading(w, n, plan: Dictionary, s: String, _mate, asked: Arr
 	var why: String = ""
 	if not (s in seen) and w.day >= 1 and w.by_id[s].home_block == block:
 		seen.append(s)
-		why = "watched the street of evil's scapegoat, and added a false sighting of %s to the true ones" % s
+		why = "watched the block of evil's scapegoat, and added a false sighting of %s to the true ones" % s
 	else:
 		why = "told of the walkers they knew of on that street, leaving out their fellow evil"
 	plan["fake_watch"][str(w.day)] = block
 	var entry: Dictionary = {
 		"data": {"block": block, "seen": seen},
 		"text": "I watched %s: %s" % [content().block_name(block),
-			("I saw " + w._names(seen) + " pass by") if not seen.is_empty() else "nobody stirred"],
+			("I saw " + w._names(seen) + " out") if not seen.is_empty() else "nobody stirred"],
 	}
 	return {"entry": entry, "why": why}
 
 
 func fake_medium_reading(_w, _n, dd, s: String, sg, _d, _goods: Array, _other: Callable, e: Dictionary, _demon_implicated: bool) -> Dictionary:
 	e["data"] = {"block": dd.home_block, "seen": [s]}
-	e["text"] = "I watched %s: I saw %s pass by" % [content().block_name(dd.home_block), sg.name]
+	e["text"] = "I watched %s: I saw %s out" % [content().block_name(dd.home_block), sg.name]
 	return {"entry": e, "why": "made up a reading from the late Night Watch %s that saw %s, evil's scapegoat, on their last watch" % [dd.id, s], "frames": true}
 
 

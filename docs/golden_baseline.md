@@ -44,22 +44,17 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the pressure of silence): `baseline_0028b93`
+### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
 
-`tools/golden/baseline_0028b93/` is the capture from `claude/beadle-silence` at `0028b93` (main at
-`fff6b66`, after #413, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion to accuse in a meeting's first pass; a meeting that
-turns up fewer than three useful things runs its speaking order once more, with the floor waived
-and nervous good NPCs pushed to speak (Michael, Nov 20 and 21).
-- **Divergence from `baseline_b96d2f2`:** every seed on day 1, at the first meeting (records 7-11),
-  where an accusation under the floor no longer happens and the beliefs that follow differ.
-- **Outcomes:**
-  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
-    day 4 before).
-  - **54875:** hangs Edda on day 1 (day 2 before), then Odette and Jory (Agnes before).
-  - **692:** the same hangings (Constance, Lian).
-  - **900:** hangs Isolde on day 2 instead of Greta.
-  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
-  - No winner by day 4 on 54875, 692, 900 or 98933.
+`tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
+`fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
+pass by", fabricated cards match, and the scapegoat fabrication's logged reason says "watched the
+block of" instead of "the street of".
+- **Divergence from `baseline_b96d2f2`:** text only. 42 and 54875 from record 1, 692 from 45 and
+  98933 from 79, each at a Night Watch card's text (and on 98933 the fabrication's reason). 900 is
+  identical. With " pass by" replaced by " out" and "street of evil" by "block of evil" in the old
+  baseline, all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`
