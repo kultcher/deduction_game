@@ -172,8 +172,21 @@ listener (#273), both Lantern's.
        about 325 call sites, many in tests), so the merge-conflict risk is the same.
      - **Herald scopes it first,** saying which forwards, if any, are worth keeping as the
        game's public interface.
+  6. **Two more (Michael, Nov 20):**
+     - (a) Retire `tools/connections_prototype.gd`. Owner Lantern.
+     - (b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
+       and drop the dead branch. Owner Herald.
+  7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
+     in play, no listener fails to weigh a case on its own (Herald's check of golden and
+     autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
+     case's issues.
 
   [decided]
+
+- **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
+  player presents should move onto the current social plumbing, not the old
+  `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
+  is worth keeping. Herald scopes it, and a decision follows the scope. **[open]**
 
 ### NPC behaviour
 
@@ -767,8 +780,10 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**
-- **Sleepwalker self-doubt scaled by confidence** (10% flat for now,
-  `Workshop.SLEEPWALK_SELF_DOUBT`). **[later]**
+- **Sleepwalker self-doubt scaled by confidence** (10% flat, `Workshop.SLEEPWALK_SELF_DOUBT`).
+  **No change** (Michael, Nov 20): a Sleepwalker "should be aware it's a possibility, but I
+  think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled
+  by confidence. **[settled]**
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
