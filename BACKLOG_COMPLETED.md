@@ -5,6 +5,22 @@ session notes are kept for the record; code pointers may have moved since.
 
 ## Closed Nov 20, 2026, second pass (Michael; recorded by Claude-Vicar)
 
+- **NPCs voice doubt about their own readings.** Notice apparently inconsistent results
+  (repeated Seer checks of the same pair changing yes/no) and let the NPC say something's
+  unusual; higher Insight helps notice a mismatch with their leading explanation. Use only
+  what they know, allow legitimate changes such as succession, and keep suspicion of
+  misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
+
+  > **Closed Nov 20 (Lantern and Herald confirmed):** built. OwnGiftDoubt (#320) weighs whether a reading still holds, which catches a repeated pair flipping and allows succession. The NPC says so to the town (#316), in lines all 15 voices have. Readings the judge can't check are their own item, "Gift doubt for readings the judge doesn't check". Herald notes no line names the specific oddity; specific lines would be Michael's call.
+
+- **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one →
+  the unaccounted person was out.
+
+- **Walker sightings vs the Lamplighter count:** more people reported out than the
+  Lamplighter counted, or a Lamplighter who counted others but was seen nowhere.
+
+  > **Merged Nov 20 (Quill and Lantern):** both read as covered by the joint model. They're one item in BACKLOG.md now, "The Lamplighter's count against alibis and sightings: add a test".
+
 - **NPCs find evidence** (traces). [decided] Personal items are no longer part of it: they're
   being removed (Michael, Nov 19; "Remove drops altogether", section 2).
 

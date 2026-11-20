@@ -53,10 +53,9 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
-  2. NPCs voice doubt about their own readings `[decided; triggers open]`
-  3. Revenant seeks execution `[decided]`
-  4. Throw a teammate under the bus `[decided: survey first]`
-  5. Graded gossip `[decided]`
+  2. Revenant seeks execution `[decided]`
+  3. Throw a teammate under the bus `[decided: survey first]`
+  4. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
   1. The Breathstealer overhaul `[decided: add; option open]`
   2. The Muddler rarely has anything to muddle `[open]`
@@ -69,9 +68,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Minion gifts
   2. A Medium's relayed sighting vs the dead's known vantage
-  3. Accounting
-  4. Walker sightings vs the Lamplighter count
-  5. Duty claim vs reading
+  3. The Lamplighter's count against alibis and sightings: add a test
+  4. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case
   2. Presenting a card to one NPC
@@ -520,12 +518,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
   - **Explain an execution's purpose:** propose an information-seeking execution (for a
     Gravedigger read) without asserting the target is the Demon.
 
-- **NPCs voice doubt about their own readings.** Notice apparently inconsistent results
-  (repeated Seer checks of the same pair changing yes/no) and let the NPC say something's
-  unusual; higher Insight helps notice a mismatch with their leading explanation. Use only
-  what they know, allow legitimate changes such as succession, and keep suspicion of
-  misdirection apart from admitting a lie. (Oct 21) [decided; triggers open]
-
 - **Revenant seeks execution** (draws suspicion on purpose) and **NPCs search for
   totems**. The Revenant is often invisible. (55774) [decided]
 
@@ -683,12 +675,16 @@ Workshop and the shared model can't express yet.
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
+  Still a gap (Quill and Lantern, Nov 20): the movement model checks a sighting against the
+  route of the person seen, never against where the sighter was.
 
-- **Accounting:** a Lamplighter's "N others out" plus home alibis for everyone but one →
-  the unaccounted person was out.
-
-- **Walker sightings vs the Lamplighter count:** more people reported out than the
-  Lamplighter counted, or a Lamplighter who counted others but was seen nowhere.
+- **The Lamplighter's count against alibis and sightings: add a test.** Quill and Lantern
+  (Nov 20) read both old gaps as covered by the joint model. The count is weighed world by
+  world with everyone's routes, so "N others out, and everyone but one home" already points
+  at the one unaccounted, and more people reported out than counted already clashes. Neither
+  case has been measured on its own, so what's left is a test that shows it. Owners Quill
+  and Lantern. "Counted others but was seen nowhere" stays weak evidence by design, unless
+  Michael wants it stronger.
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -763,7 +759,8 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
       reading.
     - **A possible cap** would be a new constant, Michael's call.
-- **Adjudicating a muddled card** (the Muddler secret). **[later]**
+- **Adjudicating a muddled card** (the Muddler secret). Tied to the secrets rework, since the
+  Muddler may go (Lantern, Nov 20). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
