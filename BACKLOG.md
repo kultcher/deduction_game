@@ -282,8 +282,9 @@ Candidates for a unified retuning proposal, not approved changes.
     the town moves block to block.
   - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
     the podium press of a sighting and the private press, as speech with no weight; a quiet
-    night isn't argued when the defender knows of a possible thwart. Herald is putting the
-    approved block wording in. See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md`.
+    night isn't argued when the defender knows of a possible thwart. Approved block wording in
+    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
+    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
     [in review]
 
 ### UI

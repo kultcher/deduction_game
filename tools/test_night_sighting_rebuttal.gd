@@ -71,7 +71,7 @@ func _run(g, size: int) -> void:
 	var tag: String = "%d NPCs:" % size
 	var on_b: String = victim.home_block
 	var off_b: String = _off_route(d.home_block, victim.home_block)
-	check(off_b != "", tag + " the town has a block off the road from %s to %s" % [d.home_block, victim.home_block])
+	check(off_b != "", tag + " the town has a block that is neither %s nor %s" % [d.home_block, victim.home_block])
 	d.history[w.time_key(1, C.NIGHT)] = "home:" + d.home_block
 	d.history[w.time_key(2, C.NIGHT)] = "home:" + d.home_block
 
@@ -79,8 +79,8 @@ func _run(g, size: int) -> void:
 	var r_off: Dictionary = MindDefence.night_route_rebuttal(w, d, 1, off_b)
 	check(str(r_off.get("variant", "")) == "other_block" and int(r_off.get("night", -1)) == 1, tag + " an off-route sighting on a death night gives other_block (%s)" % [r_off])
 	check(r_off.get("cites", {}).get("deaths", []) == [victim.id], tag + " other_block cites the public death")
-	check(MindDefence.night_route_rebuttal(w, d, 1, on_b).is_empty(), tag + " a sighting on the road to the victim's home gives nothing")
-	check(MindDefence.night_route_rebuttal(w, d, 1, d.home_block).is_empty(), tag + " a sighting on the defender's own block (the road's start) gives nothing")
+	check(MindDefence.night_route_rebuttal(w, d, 1, on_b).is_empty(), tag + " a sighting on the victim's home block gives nothing")
+	check(MindDefence.night_route_rebuttal(w, d, 1, d.home_block).is_empty(), tag + " a sighting on the defender's own block gives nothing")
 	var r_q: Dictionary = MindDefence.night_route_rebuttal(w, d, 2, off_b)
 	check(str(r_q.get("variant", "")) == "no_death", tag + " a quiet night gives no_death (%s)" % [r_q])
 	check(MindDefence.night_route_rebuttal(w, d, 0, off_b).is_empty(), tag + " night 0 never")
@@ -101,9 +101,9 @@ func _run(g, size: int) -> void:
 	w.dlog.add("warden_tells_save", accuser.id, d.id, {"night": 2, "belief": 1.0})
 	check(MindDefence.night_route_rebuttal(w, d, 2, off_b).is_empty(), tag + " a quiet night a Warden told them of saving gives nothing")
 	w.dlog.entries.pop_back()
-	# Truly out on that road: never other_block, whatever the sighting says.
+	# Truly out on the victim's block: never other_block, whatever the sighting says.
 	d.history[w.time_key(1, C.NIGHT)] = "night:" + on_b
-	check(MindDefence.night_route_rebuttal(w, d, 1, off_b).is_empty(), tag + " someone truly out on the road never says they were nowhere near it")
+	check(MindDefence.night_route_rebuttal(w, d, 1, off_b).is_empty(), tag + " someone truly out on the victim's block never says they were never on it")
 	d.history[w.time_key(1, C.NIGHT)] = "home:" + d.home_block
 
 	# Evil: only when true as stated, and logged as true but misleading.
@@ -113,7 +113,7 @@ func _run(g, size: int) -> void:
 	e.history[w.time_key(1, C.NIGHT)] = "night:" + victim.home_block
 	check(MindDefence.night_route_rebuttal(w, e, 1, victim.home_block).is_empty(), tag + " evil never claims other_block for a sighting on the route")
 	if e_off != "":
-		check(MindDefence.night_route_rebuttal(w, e, 1, e_off).is_empty(), tag + " evil that walked the road never claims other_block, even sighted off it")
+		check(MindDefence.night_route_rebuttal(w, e, 1, e_off).is_empty(), tag + " evil that was out on the victim's block never claims other_block, even sighted elsewhere")
 		e.history[w.time_key(1, C.NIGHT)] = "home:" + e.home_block
 		var e_res: Dictionary = Mind.defend_self(w, e, accuser.id, [_sighting(accuser, e, 1, e_off)])
 		check("rebuttal" in e_res.moves, tag + " evil at home, sighted off the route, says it (%s)" % [e_res.moves])

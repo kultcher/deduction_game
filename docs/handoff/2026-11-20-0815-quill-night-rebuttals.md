@@ -15,9 +15,10 @@ voice until he words them.
 BACKLOG "Explicit night-sighting rebuttals" (decided): a defender seen out at night may now
 argue from the public death record, in their own words:
 
-- **other_block:** "Someone died on {block} that night; I was nowhere near the road there."
-  When a Demon death was announced for that night and the block they were seen on isn't on the
-  road from their home to the victim's home.
+- **other_block:** "Someone died on {block} that night; I was never on {block}." (Approved
+  wording, Herald's `2026-11-20-1807-herald-night-rebuttal-lines.md`.) When a Demon death was
+  announced for that night and the block they were seen on is neither their own home block nor
+  the victim's.
 - **no_death:** "I was seen out {when}, but no one died that night." When the morning announced a
   quiet night and the defender knows of nothing that could have turned the Demon away.
 
@@ -38,15 +39,15 @@ argue from the public death record, in their own words:
 ## Decisions
 
 - **Speech only, no weight.** The judge already reasons from the same record
-  (`LiveActivity._profile_paths` sends the Demon to the victim's home by `demon_routes`, the
-  direct road), so the line carries no belief weight. It has no new constant, no apply_info, and
+  (`LiveActivity._profile_paths` sends the Demon to the victim's home by `demon_routes`, straight
+  from its home block), so the line carries no belief weight. It has no new constant, no apply_info, and
   no suspicion change. A `rebuttal` scope is a non-claim defence, so `shared_ledger` treats it as
   owned speech.
 - **The route notion:** the judge's, for the defender as the Demon: `C.route(d.home_block,
-  victim.home_block)` for each Demon victim that night. A sighting block on it, or the
-  defender's own block (where the road starts), gets no other_block. An empty block gets none.
-- **True as stated, for everyone:** if the defender was really out that night on a block of that
-  road, they never say it (good or evil). Evil says it only when it's true as stated. Its dev-log
+  victim.home_block)` for each Demon victim that night. Every pair of blocks is joined, so that is
+  just the defender's home block and the victim's: a sighting on either gets no other_block. An empty block gets none.
+- **True as stated, for everyone:** if the defender was really out that night on their own or the
+  victim's block, they never say it (good or evil). Evil says it only when it's true as stated. Its dev-log
   reason reads "True but misleading"; good's reads "from the public record".
 - **Night 0 is skipped** (no kill), and so is any night not yet past.
 - **Knows of a thwart (public signals only):** any public Warden or Veteran claim; a
@@ -70,7 +71,7 @@ argue from the public death record, in their own words:
 - **New suite** `tools/test_night_sighting_rebuttal.gd` (in `ci_fast_suites.txt`): 7- and 10-NPC
   games from `fixture_seeds.search`, with the nights hand-built. It covers off-route against
   on-route, a quiet night with and without a known thwart (Warden claim, Veteran claim, a public
-  ward, a ward shown to someone else, a told save), night 0, a defender truly on the road, evil
+  ward, a ward shown to someone else, a told save), night 0, a defender truly on the victim's block, evil
   on the route and evil that walked it, the evil log reason, the ledger entry at weight 0 for
   every listener, listeners' suspicions identical with the entry held and removed, the line
   following the night account, the podium, and the private press.

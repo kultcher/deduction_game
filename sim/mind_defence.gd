@@ -235,18 +235,19 @@ static func _disclosed_items_against(w, d, accuser, disclosed_facts: Array) -> A
 ## "Explicit night-sighting rebuttals", Michael): an argument from the public death record,
 ## said in the defender's own words. Speech only: it carries no weight and changes no belief,
 ## since the judge already reasons from the same record (LiveActivity._profile_paths sends the
-## Demon straight to a victim's home on a death night, by `demon_routes`, the direct road).
+## Demon straight to a victim's home on a death night, by `demon_routes`: from its home block to the victim's).
 ## Returns {} or {"variant": "other_block"|"no_death", "night": nd, "cites": {...}}.
-##   other_block: a public Demon death on night nd, and `block` (where they were seen) is not on
-##     the road from the defender's own home to any victim's home, so had they been the Demon
-##     they could not have been seen there on the way (the judge's route for that person).
+##   other_block: a public Demon death on night nd, and `block` (where they were seen) is neither
+##     the defender's own home block nor any victim's home block, so had they been the Demon
+##     they could not have been seen there (people move straight from block to block; the
+##     judge's outing for that person).
 ##   no_death: nobody died on night nd (the morning's public "quiet night"), and the defender
 ##     knows of nothing that could have turned the Demon away that night.
 ## Night 0 never (the Demon doesn't kill then, so a quiet night 0 argues nothing). Only public
 ## or held knowledge: deaths and quiet nights are announced; a thwart counts only when the
 ## defender could know of it (a public Warden or Veteran claim, a ward the player showed them or
 ## the town, a Warden telling them of a save, or their own protective gift). It never says what
-## isn't so: if they were truly out on that road, there is no other_block (good or evil alike),
+## isn't so: if they were truly out on their own or a victim's block, there is no other_block (good or evil alike),
 ## so evil only ever says it when it's true as stated.
 static func night_route_rebuttal(w, d, nd: int, block: String) -> Dictionary:
 	if nd < 1 or nd >= w.day:
@@ -267,7 +268,7 @@ static func night_route_rebuttal(w, d, nd: int, block: String) -> Dictionary:
 			victims.append(v.id)
 		if block in on_route:
 			return {}
-		# True as stated: they weren't really out on that road themselves.
+		# True as stated: they weren't really out on their own or a victim's block themselves.
 		var where: String = str(d.history.get(w.time_key(nd, C.NIGHT), ""))
 		if where.begins_with("night:") and w.loc_block(where) in on_route:
 			return {}
