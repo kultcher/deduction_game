@@ -30,6 +30,11 @@ func gift_live_tonight(w, _n) -> bool:
 	return w.day == 3
 
 
+## After night 3 its one reading is in (Michael, Nov 20: spent one-shots score nothing).
+func kill_claim_spent(w, _n) -> bool:
+	return w.day > 3
+
+
 ## Before night 3 the gift is still to come (the base day-tapered ongoing-info terms);
 ## after it, the one reading is spent, like a first-night gift.
 func score_public_claim(w, _n, parts: Dictionary) -> void:

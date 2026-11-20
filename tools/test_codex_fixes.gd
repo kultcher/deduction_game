@@ -12,6 +12,7 @@ const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindAnswers = preload("res://sim/mind_answers.gd")
 const WorkshopLedger = preload("res://workshop/shared_ledger.gd")
 
 var _checks: int = 0
@@ -104,11 +105,11 @@ func _test_owned_night_private() -> void:
 	var block: String = sx.history[w.time_key(1, C.NIGHT)].substr(6)
 	# The honest-outing decision held at "withhold" for this day.
 	sx.dialogue_memory["honest_outing"] = {"1:2": {"v": "withhold", "p": 1.0, "nom": true}}
-	var before: Dictionary = MindDialogue.answer_night(w, sx, 1)
+	var before: Dictionary = MindAnswers.answer_night(w, sx, 1)
 	_check(before.facts.any(func(f): return f.kind == "refusal"), "not yet owned: they still keep the night to themself")
 	# Owned at the podium: "I was out on ..., the why is my own."
 	sx.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi", "home": false, "source": sx.id, "day": 1, "block": block}}
-	var res: Dictionary = MindDialogue.answer_night(w, sx, 1)
+	var res: Dictionary = MindAnswers.answer_night(w, sx, 1)
 	var text: String = " ".join(PackedStringArray(res.lines.map(func(l): return str(l.get("text", "")))))
 	_check(not res.facts.any(func(f): return f.kind == "refusal"), "owned: no refusal in private (%s)" % text)
 	_check(res.facts.any(func(f): return f.kind == "alibi" and not f.get("home", true) and f.get("block", "") == block), "owned: the same plain account, out on that block")

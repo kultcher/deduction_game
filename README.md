@@ -307,6 +307,9 @@ sim/mind.gd, mind_dialogue.gd, mind_meeting.gd
 sim/mind_nomination.gd, mind_defence.gd, mind_vote.gd
                   the nominator's case, the nominee's defence, and each NPC's vote; the four
                   meeting modules share sim/mind_meeting_base.gd
+sim/mind_press.gd, mind_answers.gd
+                  pressing and the caught-out ladder, and answers about a gift, a night and
+                  the day; with mind_dialogue.gd they share sim/mind_dialogue_base.gd
 sim/social.gd     NPC-to-NPC exchanges, peer gift talk, approaches, the tavern
 sim/evil.gd       evil team AI: plan, bluffs, scapegoat, kill/poison choice, fabrications
 sim/fabrication_check.gd  whether a fabricated reading would point the town at its teller

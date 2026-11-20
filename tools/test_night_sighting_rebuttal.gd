@@ -10,7 +10,7 @@ const FixtureSeeds = preload("res://tools/fixture_seeds.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindDefence = preload("res://sim/mind_defence.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
-const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
 const C = preload("res://sim/content.gd")
 
 var checks = 0
@@ -166,7 +166,7 @@ func _run(g, size: int) -> void:
 	check(MindPodium.press_card(w, d, card_on, true).get("rebuttal", {}).is_empty(), tag + " the podium press of an on-route sighting adds nothing")
 
 	# In private: pressed with the sighting.
-	var priv: Dictionary = MindDialogue.press(w, d, _sighting(accuser, d, 2, off_b))
+	var priv: Dictionary = MindPress.press(w, d, _sighting(accuser, d, 2, off_b))
 	check(priv.lines.any(func(l): return l is Dictionary and "no one died that night" in str(l.get("statement", ""))), tag + " the private press over a quiet night adds the rebuttal")
 
 func _sighting(src, subj, nd: int, block: String) -> Dictionary:

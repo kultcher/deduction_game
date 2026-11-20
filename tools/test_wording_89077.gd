@@ -14,6 +14,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
 const C = preload("res://sim/content.gd")
 const COUNT_LINE: String = "count of folk abroad that night doesn't square with what we've been told"
 var checks = 0
@@ -86,7 +87,7 @@ func _pressed_first() -> void:
 	n.max_tier = 0
 	n.history[w.time_key(1, C.NIGHT)] = "home:" + n.home_block
 	n.dialogue_memory = {}
-	var first: String = _text(MindDialogue._answer_pressed_night(w, n, 1))
+	var first: String = _text(MindPress._answer_pressed_night(w, n, 1))
 	check("home" in first.to_lower() and not "stand by" in first and not "unchanged" in first and not "isn't changing" in first,
 		"pressed for the first time, a home alibi doesn't claim an earlier account: " + first)
 	# ...and it's their own voice's alibi, as asking about the night would give it (Michael, Nov 17).
@@ -112,7 +113,7 @@ func _pressed_first() -> void:
 	m.max_tier = 0
 	m.history[w2.time_key(1, C.NIGHT)] = "home:" + m.home_block
 	m.dialogue_memory = {"night_accounts": {"1": {"kind": "alibi", "home": true}}}
-	var again: String = _text(MindDialogue._answer_pressed_night(w2, m, 1))
+	var again: String = _text(MindPress._answer_pressed_night(w2, m, 1))
 	check("at home" in again, "with an earlier account, the home alibi still stands: " + again)
 
 func _home_alibi_ordinal() -> void:
