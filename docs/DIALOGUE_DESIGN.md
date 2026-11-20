@@ -451,10 +451,9 @@ Avoid a second independent dialogue pipeline. Expand `sim/dialogue.gd`, voice da
 
 ## 11. Testing and acceptance criteria
 
-Use the existing lab and tests as a starting point:
+Use the existing preview and tests as a starting point:
 
 ```sh
-godot --path . res://ui/dialogue_lab.tscn
 godot --headless --path . --script res://tools/dialogue_preview.gd
 godot --headless --path . --script res://tools/test_dialogue.gd
 godot --headless --path . --script res://tools/test_dialogue_decisions.gd
