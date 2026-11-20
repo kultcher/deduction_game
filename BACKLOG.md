@@ -129,8 +129,9 @@ listener (#273), both Lantern's.
   - the night "out" card a personal item makes for its owner;
   - every mechanic that weighs a drop as evidence.
 
-  No measurement first (Michael). It moves golden, so `LEGACY_EXTRA_SHIFT_DRAW` goes in the
-  same PR (see "Argon's audit: cleanup"). Owner Quill, with Beadle reviewing the sim side.
+  No measurement first (Michael). It moves golden and ships alone: `LEGACY_EXTRA_SHIFT_DRAW`
+  is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
+  Beadle reviewing the sim side.
   **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
   Revenant's totem and the place's regulars. [decided]
 
@@ -144,9 +145,11 @@ listener (#273), both Lantern's.
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
-  2. **Golden-moving:** remove `LEGACY_EXTRA_SHIFT_DRAW` in the same PR as "Remove drops
-     altogether", which already re-baselines. Deleting the Muddler is held for the
-     secrets rework.
+  2. **Golden-moving:**
+     - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It's split from
+       the drops PR, because it reshuffles every deal and would mean about 25 to 30 suite
+       fixes. Michael decides at the reprioritization whether to do it at all.
+     - Deleting the Muddler is held for the secrets rework.
   3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
      Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
      `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
@@ -784,6 +787,21 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   **No change** (Michael, Nov 20): a Sleepwalker "should be aware it's a possibility, but I
   think the odds are more likely it's a frame." The flat doubt stays, and it won't be scaled
   by confidence. **[settled]**
+  - **What the Rumormonger tells her** (Michael, Nov 20). A Rumormonger she trusts naming
+    her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
+    looks less evil to her. A Rumormonger naming a different secret, which implies no
+    Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
+    in the Rumormonger. Owner Lantern. **[decided]**, built after the reprioritization.
+    - **Not working today** (Lantern, Nov 20): the Sleepwalker's own home doubt is fixed per
+      game and never reads what she believes about secrets.
+    - **Scope:** her doubt scales with her belief that she holds the Sleepwalker secret:
+      - today's value when she has no evidence;
+      - higher when a Rumormonger she trusts names her;
+      - near zero when another secret is named, or the Sleepwalker is shown to be someone
+        else.
+    - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
+      reading.
+    - **A possible cap** would be a new constant, Michael's call.
 - **Adjudicating a muddled card** (the Muddler secret). **[later]**
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
