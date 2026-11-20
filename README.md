@@ -304,6 +304,9 @@ sim/world.gd      case setup and the deal, schedules, sightings, night resolutio
 sim/mind.gd, mind_dialogue.gd, mind_meeting.gd
                   NPC reasoning: claims, conversation answers, testimony, accusations,
                   choosing nominations
+sim/mind_shadow.gd, mind_cases.gd, mind_ledger.gd
+                  evil's shadow self, case and card evaluation, and the evidence ledger;
+                  one inheritance chain under mind.gd over sim/mind_base.gd
 sim/mind_nomination.gd, mind_defence.gd, mind_vote.gd
                   the nominator's case, the nominee's defence, and each NPC's vote; the four
                   meeting modules share sim/mind_meeting_base.gd
