@@ -12,6 +12,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
 const C = preload("res://sim/content.gd")
 var checks = 0
 var fails = 0
@@ -197,13 +198,13 @@ func _defence_day_sighting(size: int) -> void:
 			check("dispute_night" in res.moves, label + " a night sighting still gets the night account (control): " + t)
 		else:
 			check(not "dispute_night" in res.moves and not "where I was" in t, label + " a sighting by day isn't answered as last night: " + t)
-			var items: Array = MindMeeting._disclosed_items_against(w, d, accuser, spoken)
+			var items: Array = MindDefence._disclosed_items_against(w, d, accuser, spoken)
 			check(items.all(func(x): return x.get("channel", "") != "movement_out"), label + " a sighting by day isn't a night outing")
 			# The accuser also saw them out on the night of the same number: citing the day
 			# sighting doesn't put that night in the case (Steward A5, Nov 17).
 			accuser.beliefs.append({"kind": "saw", "who": d.id, "block": "hill", "day": 1, "phase": C.NIGHT, "how": "street"})
 			Mind.refresh_beliefs(w, accuser, " (test)")
-			var both: Array = MindMeeting._disclosed_items_against(w, d, accuser, spoken)
+			var both: Array = MindDefence._disclosed_items_against(w, d, accuser, spoken)
 			var night_item: Array = both.filter(func(x): return str(x.get("eid", "")).begins_with("sighting:"))
 			check(both.any(func(x): return str(x.get("eid", "")).begins_with("sighting_day:") and x.get("in_case", false)), label + " the day sighting is in the case")
 			check(night_item.all(func(x): return not x.get("in_case", false)), label + " the same-numbered night is not in the case (%s)" % str(night_item.map(func(x): return x.eid)))

@@ -296,7 +296,11 @@ func _test_2_6_scion_revenant_scoring_and_grimoire() -> void:
 	g.w.turn_evil(cursed_good, "Revenant curse")
 	var grim: String = g._grimoire()
 	_check("Scion (promoted to Demon)" in grim, "Grimoire labels promoted Scion clearly")
-	_check("turned evil by the Revenant on day" in grim and not ("bluffed Warden" in grim), "Grimoire labels Revenant-cursed Good villager without 'bluffed Warden'")
+	var cursed_line: String = ""
+	for line in grim.split("\n"):
+		if cursed_good.name in line and "turned evil" in line:
+			cursed_line = line
+	_check(cursed_line != "" and not ("bluffed Warden" in cursed_line), "Grimoire labels Revenant-cursed Good villager without 'bluffed Warden' (%s)" % cursed_line.strip_edges())
 
 
 func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
@@ -350,14 +354,6 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 	var expected_only: Array = [pool[0].id, pool[1].id]
 	expected_only.sort()
 	_check(picked_pair == expected_only, "Seer scattered look selects the remaining unchecked pair instead of repeating a checked pair")
-
-	# 4) Legacy street mud drops suppressed during Game._search while personal belongings still surface.
-	var loc_key: String = C.LOCATIONS.keys()[0]
-	g.w.dropped[loc_key] = [{"night": 1, "material": "market", "owner": "", "who": nominee.id, "why": "walk"}]
-	var cards_before: int = g.board.size()
-	g.loc = loc_key
-	g._search()
-	_check(g.board.size() == cards_before, "unowned legacy street mud drops do not mint board cards during search")
 
 	# 5) Spoken unshared bluff claims (`watch_claim` / `duty_claim`) normalize to `report` and support `lying` challenges.
 	var bluffer = g.w.demon()

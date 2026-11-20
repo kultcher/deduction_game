@@ -43,8 +43,6 @@ func _live(size: int) -> void:
 	var plan = Shared.prepare(input, {}, observer.ledger)
 	check(plan.ready and plan.prepared.view.cards[0].get("testimony_only", false), "an unresolved anonymous reading is weak teller testimony")
 	check(observer.workshop_state.active and observer.workshop_state.owned.has(eid) and plan.prepared.view.cards[0].source == teller.id, "ownership judges only the known teller, not a hidden original identity")
-	var exported = input.listener.legacy_evidence.filter(func(item): return item.kind == "reading")
-	check(exported.size() == 1 and exported[0].id == "anonymous:" + anonymous.id and exported[0].rel[0] == "" and exported[0].supports.is_empty(), "the portable compatibility reference also redacts hidden source identity")
 	check(input.listener.known_claims.is_empty(), "an anonymous gift-holder does not become a named role claim")
 	var weight: float = observer.ledger[eid].weight
 	# Merely hearing the same reading from a named person does not prove that they

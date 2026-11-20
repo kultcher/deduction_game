@@ -1,5 +1,5 @@
 ## CaseEval foundation checks (docs/CASE_REASONING.md).
-## Runs the six model-v5 checkpoint specimens through the new evaluator, prints how each
+## Runs the five model-v5 checkpoint specimens through the new evaluator, prints how each
 ## compares with the old model, and asserts the semantics the new model must keep.
 ##   godot --headless --path . --script res://tools/test_case_eval.gd
 extends SceneTree

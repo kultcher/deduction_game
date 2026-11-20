@@ -9,6 +9,7 @@ const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
 const Social = preload("res://sim/social.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Credibility = preload("res://game/credibility.gd")
@@ -139,7 +140,7 @@ func _test_ledger_receipts_and_ownership() -> void:
 	Mind.hear_claim(w, listener, saved.id, "warden", 0.5, "public")
 	walker.silence_pending = 2
 	w.begin_meeting()
-	MindMeeting.defend_self(w, walker, "player")
+	MindDefence.defend_self(w, walker, "player")
 
 	martyr.role = "martyr"
 	martyr.martyr_target = saved.id
@@ -192,12 +193,12 @@ func _test_seer_cleared_and_metadata_preferences() -> void:
 	_check(seer.cleared.has(a.id) and seer.cleared.has(b.id) and not seer.cleared.has(c.id) and not a.cleared.has(b.id),
 		"RoleDef.on_reading_heard marks cleared subjects only on a Seer's own fresh NO reading")
 
-	# Metadata-derived believed_roles, protect_pref, and spare_pref
+	# Metadata-derived believed_roles and protect_pref ("protect" and "spare" conclusions were
+	# removed with the social route, Michael, Nov 20; a "good" one still leans toward protecting)
 	Mind.hear_claim(w, seer, a.id, "warden", 0.5, "public")
-	Mind.ledger_hear(w, seer, "arg:protect:" + a.id, [], 0.5, [], {"kind": "arg", "conclusion": {"type": "protect", "a": a.id}})
-	Mind.ledger_hear(w, seer, "arg:spare:" + b.id, [], 0.4, [], {"kind": "arg", "conclusion": {"type": "spare", "a": b.id}})
-	_check(seer.believed_roles.get(a.id, "") == "warden" and seer.protect_pref.get(a.id, 0.0) > 0.0 and seer.spare_pref.get(b.id, 0.0) > 0.0,
-		"refresh_beliefs derives believed_roles, protect_pref, and spare_pref from ledger metadata without effects arrays")
+	Mind.ledger_hear(w, seer, "arg:good:" + a.id, [], 0.5, [], {"kind": "arg", "conclusion": {"type": "good", "a": a.id}})
+	_check(seer.believed_roles.get(a.id, "") == "warden" and seer.protect_pref.get(a.id, 0.0) > 0.0,
+		"refresh_beliefs derives believed_roles and protect_pref from ledger metadata without effects arrays")
 
 	# answer_opinion word-doubt caveat reads reliability / source_doubt without n.honesty
 	seer.suspicion[c.id] = 0.2

@@ -133,8 +133,8 @@ func _records() -> void:
 		return
 	var lines = PackedStringArray()
 	for result in g.workshop_comparisons:
-		var actual: Dictionary = result.get("actual", result.get("social", {}))
-		var label = "Applied shared assessment" if actual.get("model") == "shared" else "Original agreement"
+		var actual: Dictionary = result.get("actual", {})
+		var label = "Applied shared assessment"  # the only route since Nov 20
 		lines.append("Card #%d · %s · %s\n%s %.3f\n%s" % [result.card,
 			g.w.by_id[result.listener].name if g.w.by_id.has(result.listener) else result.listener,
 			result.venue, label, actual.get("agreement", 0.0), describe(result)])
@@ -170,8 +170,5 @@ static func describe(result: Dictionary) -> String:
 		lines.append("Claim about %s: %s. %s" % [claim.conclusion.target.capitalize(), claim.stance, claim.note])
 	for challenge in proposal.get("reading_challenges", []):
 		lines.append("%s challenge: %s (agreement %.3f)." % [challenge.mode.capitalize(), challenge.note, challenge.agreement])
-	var audit: Dictionary = result.get("ledger_audit", {})
-	if not audit.is_empty():
-		lines.append("\nExisting evidence: %d reading entries, %d potentially overlapping arguments, %d ambiguous legacy identities.\n%s" % [audit.reading_entries.size(), audit.potential_arguments.size(), audit.aliases.size(), audit.note])
 	lines.append("\n" + result.scope)
 	return "\n".join(lines)

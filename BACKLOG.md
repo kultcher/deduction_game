@@ -24,19 +24,12 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 **Contents** (every open item, by section; closed ones are in BACKLOG_COMPLETED.md)
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
-  1. Possible bug: the "not the Demon" badge `[decided]`
-  2. NPC defenders weigh secrets the game can't deal `[decided]`
+  1. NPC defenders weigh secrets the game can't deal `[decided]`
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
     1. Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
-    1. The misframed-case hint `[decided]`
-    2. Summarised answers at a nomination `[decided]`
-    3. Remove drops altogether `[decided]`
-    4. Argon's audit: cleanup `[decided]`
-    5. The social presentation route `[decided]`
-    6. The premise menu, trimmed `[decided]`
-    7. Remove the Muddler `[decided]`
+    1. Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
     1. Kill-score pass on every role `[decided]`
     2. Accusations from starting suspicion read as clues `[decided]`
@@ -66,7 +59,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   8. Scoring system `[open]`
   9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
-  1. Minion gifts
+  1. Minion gifts: the Poisoner's visit
   2. A Medium's relayed sighting vs the dead's known vantage
   3. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -76,7 +69,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
   1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. The spoken reply to a later-day repeat `[polish]`
+  2. The spoken reply to a later-day repeat `[in review]`
   3. A reason citing a pairing the model didn't weigh `[polish]`
   4. The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
   5. Brute kills scored as hexes on custom scripts `[later]`
@@ -102,7 +95,8 @@ vote resistance lines, including "when they agree and still vote no, they say wh
 **Deferred (Michael, Nov 8)** and not on the active list: premises step 4 (Scion/Revenant
 and movement premises, `docs/premises_plan.md`); contradiction callouts and poses on the
 courtroom stage; the live seat-by-seat player vote (meeting plan stretch A); procedural
-towns.
+towns. The Minion premise was folded into "evil" (Michael, Nov 20); it may return with
+step 4.
 
 ---
 
@@ -113,9 +107,6 @@ from an older compile (#192); an evil Medium's relay about the first victim nami
 (Beadle); a relayer cut from the sighter contest (#265) and a Night Watch list naming the
 listener (#273), both Lantern's.
 
-- **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
-  ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
-  and Herald. [decided]
 - **NPC defenders weigh secrets the game can't deal.** `workshop/reason_attribution.gd`
   builds the defence view from the whole roster of secrets (`C.SECRET_MOD_LIST`), not from
   the game's `case_script.secrets`. Fix: read the script's secrets, as the rest of the judge
@@ -139,43 +130,14 @@ listener (#273), both Lantern's.
 
 ### Cases and the Workshop
 
-- **The misframed-case hint** (what's left of "The premise should matter", point 3). When a
-  case's evidence points at someone other than the premise's subject, the Workshop preview
-  says so without naming them ("this evidence may say more about someone else"). Never
-  built. Lantern owns the belief side (does the case's weight fall more on someone other than
-  the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
-  Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
-  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
-  - **Decided (Michael, Nov 20): a variant of the Test juror chip.** The chip keeps its band
-    and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
-    else than about <target>." It names no one, and it shows at the same threshold as NPCs'
-    "points elsewhere" line. Owner Herald.
-
-- **Summarised answers at a nomination.** A case presented at a nomination gets
-  summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
-  only. (Michael, Nov 19) Owner Herald, held for the reprioritization. [decided]
-
-- **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
-  - walkers dropping anything on their route, both personal items and the home-block
-    material drops (already dead);
-  - the search finding them;
-  - the night "out" card a personal item makes for its owner;
-  - every mechanic that weighs a drop as evidence.
-
-  No measurement first (Michael). It moves golden and ships alone: `LEGACY_EXTRA_SHIFT_DRAW`
-  is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
-  Beadle reviewing the sim side.
-  **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
-  Revenant's totem and the place's regulars. [decided]
-
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
   features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
   1. **Dead code, zero drift:**
-     - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
+     - ~~the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
        and `legacy_evidence`, the `legacy_path` stub), together with retiring
-       `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
-     - `LEGACY_MUD_DROPS_ENABLED`, in Quill's drops PR;
+       `tools/connections_prototype.gd`~~. Done (Lantern, Nov 20,
+       `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`);
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
@@ -198,29 +160,6 @@ listener (#273), both Lantern's.
 
   [decided]
 
-- **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
-  player presents should move onto the current social plumbing, not the old
-  `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
-  is worth keeping. Herald scopes it, and a decision follows the scope.
-  - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
-    play: there are no protect or spare cases and no bare beliefs, and the evil fallback
-    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
-    Herald's #395, which also purges every presentation fallback (Michael). Close this item
-    when it merges.
-
-- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
-  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
-  - (b) keep "readings don't fit together";
-  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
-    premises step 4;
-  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
-    decided.
-
-  Owner Quill. [decided]
-
-- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
-  and Lantern reviewing. [decided]
-
 ### NPC behaviour
 
 - **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
@@ -234,6 +173,14 @@ listener (#273), both Lantern's.
     handled separately.
   - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
     ratings, and Michael gives quick guidance.
+  - **Values approved (Michael, Nov 20), in Beadle's #421:**
+    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
+      per-role ratings may come later);
+    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
+    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
+    - `REGISTRAR.public_threat_bonus` stays at 0.75.
+
+    Close this item when #421 merges.
 
   Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
   gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
@@ -322,7 +269,9 @@ listener (#273), both Lantern's.
   - **Gift-hiding fear should follow the gift's value to the Demon** (Beadle's idea, folded
     in Nov 20). How much a good NPC fears revealing its gift should follow the per-role
     kill-score table, not be the same for every info gift.
-  A caught lie still implicates strongly, so both need care. [open]
+  A caught lie still implicates strongly, so both need care. The "holds their claimed
+  gift" premise was merged into "is good" (Michael, Nov 20); revisit if this is decided.
+  [open]
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
   Beadle's proposals):
@@ -567,10 +516,11 @@ The one performance item, "Late-game meeting and presenting cost", is in
 Patterns that come up in play, or that the mechanics make meaningful, but that the Case
 Workshop and the shared model can't express yet.
 
-- **Minion gifts.** Someone silenced and the people seen on their block that evening
-  (the Breathstealer has to be there); a reading that failed on a night someone was near
-  the reader's home (the Poisoner's visit); a totem found and the people who live where
-  its material is from (the Revenant). (54875: the totem card had no Workshop adapter.)
+- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
+  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
+  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
+  fix Seneschal approved). Whether to add a real per-world Poisoner-presence factor goes to
+  Michael. The other two Minion gifts are built and closed (Quill, Nov 20). Owner Quill.
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
@@ -628,7 +578,9 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   history, signs of poisoning). Since #296, misled and failed gift are one honest-mistake
   label, "Mistaken". **[open; Michael]**
 - **The spoken reply to a later-day repeat.** Re-presenting a faded case restores its
-  weight, but the reply may still say the assessment is unchanged. **[polish]**
+  weight, but the reply may still say the assessment is unchanged. **Built** on
+  `claude/repeat-reply` (Quill, Nov 20; handoff `2026-11-20-1130-quill-repeat-reply.md`).
+  [in review]
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**

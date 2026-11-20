@@ -15,6 +15,7 @@ signal view_changed                # pan/zoom or the initial fit changed
 signal person_context_requested(id) # right-click a person's row label
 signal card_context_requested(num, at)
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const CardModel = preload("res://game/card_model.gd")
 const BoardModel = preload("res://game/board_model.gd")
@@ -89,7 +90,7 @@ func rebuild() -> void:
 	context_numbers = EvidenceContext.numbers(g)
 	var cards: Array = state.apply(g)
 	cards += g.board.filter(func(c): return c.get("kind", "") == "deduction" and not c.get("deleted", false) and (g.show_hidden or not c.get("hidden", false)) and c.get("pins", {}).has(board_view()))
-	var ctx = {"day": g.w.day, "phase": g._phase_now(), "rows_by": state.rows_by,
+	var ctx = {"day": g.w.day, "phase": GameBoard._phase_now(g), "rows_by": state.rows_by,
 		"people": g.w.npcs.map(func(n): return {"id": n.id, "name": n.name, "alive": n.alive}),
 		"blocks": C.BLOCKS.keys(), "hide_unselected": state.hide_unselected, "selected_people": state.people.keys(),
 		"selected_blocks": state.places.keys().map(func(key): return key if C.BLOCKS.has(key) else g.w.loc_block(key))}

@@ -15,7 +15,7 @@ const CaseEval = preload("res://workshop/case_eval.gd")
 const LiveActivity = preload("res://workshop/live_activity.gd")
 
 ## Board evidence the juror reads (per WorkshopCanvas.view card kinds).
-const EVIDENCE_KINDS = ["report", "death", "context", "sighting", "alibi", "trace", "claim", "coverage", "dropped", "location", "evening"]
+const EVIDENCE_KINDS = ["report", "death", "context", "sighting", "alibi", "trace", "claim", "coverage", "location", "evening"]
 ## Most cards a built case uses, and how many candidates it weighs.
 const MAX_CASE_CARDS = 8
 const MAX_CANDIDATES = 12
@@ -112,7 +112,7 @@ static func evaluate(g, view: Dictionary, ids: Array, profiles: Dictionary, targ
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Analyst", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	var prepared = Assess.prepare(input)
 	state.evals += 1
 	if not prepared.ready:
@@ -295,7 +295,7 @@ static func demon_type_odds(g, state: Dictionary) -> float:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Analyst", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	# The movement factor is built in Assess.prepare from the snapshot's rules, so the
 	# town's mix is set there (as the game's bridge does), once per kind.
 	var sums: Dictionary = {}

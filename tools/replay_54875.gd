@@ -108,7 +108,7 @@ func _init() -> void:
 				var n = real.shadow if real.is_evil() else real
 				var response: Dictionary = g._workshop_responses.get(real.id + (":cover" if real.is_evil() else ":good"), {}).get("assessment", {})
 				var reasoning: Dictionary = response.get("reasoning", {})
-				presentation.append({"day": g.w.day, "filed": filed, "listener": real.id, "model": delivery.model, "issues": delivery.issues,
+				presentation.append({"day": g.w.day, "filed": filed, "listener": real.id, "issues": delivery.issues,
 					"suspicion": Mind.susp(n, "constance") if n != null else null,
 					"considered": reasoning.get("considered", []), "ignored": reasoning.get("ignored", []),
 					"held_facts": n.workshop_state.get("facts", []).size() if n != null else 0,
@@ -134,17 +134,16 @@ func _init() -> void:
 	result["impossible_refreshes"] = refreshes.filter(func(e): return e.data.get("reasoning", {}).get("impossible", false))
 	if not result.impossible_refreshes.is_empty():
 		errors.append("impossible belief refresh")
-	var unassessed: Array = presentation.filter(func(d): return d.model != "shared").map(func(d): return d.listener)
-	if not unassessed.is_empty() or not result.unprepared_events.is_empty() or not result.unprepared_refreshes.is_empty():
+	if not result.unprepared_events.is_empty() or not result.unprepared_refreshes.is_empty():
 		var allowed: bool = "--allow-fallback" in OS.get_cmdline_user_args()
-		print("%s: shared evaluation incomplete (unassessed listeners %s; %d unprepared events). The timing skips their work." % ["WARNING" if allowed else "FAIL", unassessed, result.unprepared_events.size() + result.unprepared_refreshes.size()])
+		print("%s: shared evaluation incomplete (%d unprepared refreshes). The timing skips their work." % ["WARNING" if allowed else "FAIL", result.unprepared_events.size() + result.unprepared_refreshes.size()])
 		if not allowed:
 			errors.append("fallback")
 	DirAccess.make_dir_recursive_absolute("res://logs/migration/replay_54875")
 	var out = FileAccess.open("res://logs/migration/replay_54875/measurement.json", FileAccess.WRITE)
 	out.store_string(JSON.stringify(result, "\t"))
-	print("54875 replay: filed #%d; %d shared, %d social; %d vote tallies; errors %s" % [filed,
-		presentation.filter(func(d): return d.model == "shared").size(), presentation.filter(func(d): return d.model == "social").size(), tallies.size(), errors])
+	print("54875 replay: filed #%d; %d deliveries; %d vote tallies; errors %s" % [filed,
+		presentation.size(), tallies.size(), errors])
 	for tally in tallies:
 		print("Case #85 day %d vote: %d yes / %d needed; %s" % [tally.day, tally.data.count, tally.data.threshold, tally.data.outcome])
 	print("Measurement: logs/migration/replay_54875/measurement.json")

@@ -11,6 +11,7 @@
 ## Connections.judge_for_profile is the entry point.
 extends RefCounted
 
+const GameBoard = preload("res://game/game_board.gd")
 const Bridge = preload("res://game/workshop_bridge.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -21,14 +22,17 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const AVERAGE = {"credibility": 0.5, "npc_trust": 0.5, "confidence": 0.5, "insight": 0.5}
 
 ## {"ready", "issues", "target", "before", "after", "shift", "posterior_before",
-## "posterior_after", "case", "floors", "requested_before", "requested_after"}: the target's
+## "posterior_after", "case", "floors", "requested_before", "requested_after", "plan_before",
+## "plan_after"}: the target's
 ## chance of being evil without and with the case, each person's chance both ways, and the
 ## case's own entry among the stored cases (its weight on the filing day and its lean).
 ## An accepted "lying" challenge doesn't move these chances (the clash is already in the
 ## worlds; ReadingChallenges.assess): it floors the teller's suspicion through the refresh's
 ## effects (Jury), returned as `floors` (the stored cases' accepted challenges, with their
 ## agreement and weight) and `requested_*` (each person's requested suspicion change, as the
-## refresh would apply it). `profile` overrides AVERAGE's fields; npc_trust
+## refresh would apply it). `plan_*` are the two Shared.prepare plans, for asking another
+## question of the same hearing (SharedLedger.evaluate_question), and `counted_*` the stored
+## cases the connections model counted from each (those above CASE_FLOOR, with their challenges). `profile` overrides AVERAGE's fields; npc_trust
 ## may be one number for everyone or a map. `profile.baseline`:
 ##   "marginal" (the default): `before` is the listener as it stands, having heard the case's
 ##     public cards from their tellers; what presenting it would change (the town note).
@@ -142,7 +146,9 @@ static func judge(g, value: Dictionary, profile: Dictionary = {}) -> Dictionary:
 		"shift": a - b if a >= 0.0 and b >= 0.0 else 0.0,
 		"posterior_before": before.posterior, "posterior_after": after.posterior, "case": entry,
 		"floors": after.cases.get("floors", []).duplicate(true),
-		"requested_before": before.get("requested", {}), "requested_after": after.get("requested", {})}
+		"requested_before": before.get("requested", {}), "requested_after": after.get("requested", {}),
+		"plan_before": before.plan, "plan_after": after.plan,
+		"counted_before": before.cases.get("entries", []), "counted_after": after.cases.get("entries", [])}
 
 
 ## A presentation snapshot as this listener hears it: nothing private of its own.
@@ -210,7 +216,7 @@ static func _listener(g, p: Dictionary, day: int) -> Dictionary:
 		"lean": {}, "committed_requested": {}, "own_gift": "", "suspicion": {}, "npc_trust": trust,
 		"confidence": float(p.confidence), "insight": float(p.insight), "reasoning_mode": "full",
 		"confidence_mode": "scale", "theories": {}, "source_doubt": {}, "known_claims": {},
-		"own_outings": {}, "role_beliefs": {}, "legacy_evidence": [], "disowned_reports": [],
+		"own_outings": {}, "role_beliefs": {}, "disowned_reports": [],
 		"connections": {"day": day, "core": {}, "nominations": []}}
 
 
@@ -227,7 +233,7 @@ static func _public_hearing(g, value: Dictionary) -> Dictionary:
 		if not (x in numbers):
 			numbers.append(x)
 	for number in numbers:
-		var card: Dictionary = g.receipt_by_number(int(number))
+		var card: Dictionary = GameBoard.receipt_by_number(g, int(number))
 		if card.is_empty() or card.get("kind", "") == "deduction" or not Meeting.already_public(g, card):
 			continue
 		var receipt: Dictionary = Evidence.normalize_card(card)
@@ -244,7 +250,7 @@ static func _public_hearing(g, value: Dictionary) -> Dictionary:
 static func _evaluate(current: Dictionary, presentations: Dictionary, ledger: Dictionary, focus: Array) -> Dictionary:
 	var plan: Dictionary = Shared.prepare(current, presentations, ledger, {}, focus)
 	if not plan.get("ready", false):
-		return {"ready": false, "issues": plan.get("issues", []).duplicate(), "prior": {}}
+		return {"ready": false, "issues": plan.get("issues", []).duplicate(), "prior": {}, "cases": {}, "plan": {}}
 	var proposal: Dictionary = Shared.evaluate(plan, {}, {}, {}, {})
 	var cx: Dictionary = proposal.get("connections", {})
 	# A person nothing held touches keeps the prior (the model reports no posterior for them).
@@ -253,4 +259,4 @@ static func _evaluate(current: Dictionary, presentations: Dictionary, ledger: Di
 	var requested: Dictionary = {}
 	for id in proposal.get("effects", {}):
 		requested[id] = float(proposal.effects[id].get("requested", 0.0))
-	return {"ready": true, "issues": [], "posterior": post, "prior": cx.get("prior", {}), "cases": cx.get("cases", {}), "requested": requested}
+	return {"ready": true, "issues": [], "posterior": post, "prior": cx.get("prior", {}), "cases": cx.get("cases", {}), "requested": requested, "plan": plan}

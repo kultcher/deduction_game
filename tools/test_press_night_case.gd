@@ -6,6 +6,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
 
 var checks = 0
 var fails = 0
@@ -42,7 +43,7 @@ func _night_case(ctype: String) -> void:
 	var alibi = {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "text": "I stayed home."}
 	var vigil = {"kind": "vigil", "subject": [n.id], "source": "player", "day": 1, "phase": C.NIGHT, "text": "You watched them leave."}
 	var case = {"kind": "deduction", "conclusion": {"type": ctype, "a": n.id}, "subject": [n.id], "support_cards": [alibi, vigil], "text": "A case"}
-	var r: Dictionary = MindDialogue.press(w, n, case)
+	var r: Dictionary = MindPress.press(w, n, case)
 	_check(str(r.get("dialogue_exchange", {}).get("action", "")) == "challenge_night",
 		"a \"%s\" case resting on the first night is answered about that night (%s)" % [ctype, str(r.get("dialogue_exchange", {}))])
 
@@ -52,5 +53,5 @@ func _day_case_still_gift() -> void:
 	var n = gn[1]
 	var reading = {"kind": "info", "subject": [n.id], "source": w.living_good()[1].id, "role": "seer", "day": 1, "data": {"pair": [n.id, w.living_good()[2].id], "yes": true}, "text": "One of them"}
 	var case = {"kind": "deduction", "conclusion": {"type": "suspicious", "a": n.id}, "subject": [n.id], "support_cards": [reading], "text": "A case"}
-	var r: Dictionary = MindDialogue.press(w, n, case)
+	var r: Dictionary = MindPress.press(w, n, case)
 	_check(str(r.get("dialogue_exchange", {}).get("action", "")) == "challenge_gift" and not r.get("lines", []).is_empty(), "a case with no night evidence still goes to the gift answer (%s; Steward Nov 19 E1a: not just 'not the night one')" % str(r.get("dialogue_exchange", {})))

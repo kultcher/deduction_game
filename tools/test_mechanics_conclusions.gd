@@ -24,7 +24,7 @@ func _run() -> void:
 	g.w.dlog.detailed = false
 	var number = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "subject": [], "day": 0, "phase": 3, "data": {"count": 1}, "text": "Mechanics Surveyor."})
 	var other = g.add_card({"kind": "info", "role": "dowser", "source": "odette", "subject": ["greta"], "day": 1, "phase": 1, "data": {"group": ["greta", "hollis"], "count": 1}, "text": "Independent mechanics support."})
-	for type in ["notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]:
+	for type in ["notdemon", "secret_mod", "notrole", "lied", "truthful", "misled", "unreliable"]:
 		var conclusion = {"type": type, "a": "greta", "role": "surveyor", "mod": "delusional", "card": number}
 		var filed = g.file_deduction(conclusion, [number, other], true)
 		check(filed > 0, type + " files: " + g.last_error)
@@ -50,11 +50,6 @@ func _run() -> void:
 	for type in ["secret", "red_herring"]:
 		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], true)
 		check(not Assess.prepare(g.workshop_snapshot([filed], "nisha")).ready, type + " stays explicit without a represented fact")
-	for type in ["protect", "spare"]:
-		var filed = g.file_deduction({"type": type, "a": "greta"}, [number, other], true)
-		var before: int = g.w.dlog.entries.filter(func(e): return e.type == "unprepared_refresh").size()
-		check(g._presentation_gate(g.board[filed - 1], [g.w.by_id.nisha], [], "", "meeting") and g._workshop_native_social, type + " is social speech")
-		check(g.w.dlog.entries.filter(func(e): return e.type == "unprepared_refresh").size() == before, type + " does not count as an unprepared refresh")
 	await _ui(g, number, other)
 	print("Mechanics conclusion checks: %d; failures: %d" % [checks, fails])
 	quit(1 if fails else 0)
@@ -66,7 +61,7 @@ func _ui(g, number: int, other: int) -> void:
 	await process_frame
 	editor.add_evidence(number)
 	editor.add_evidence(other)
-	for type in ["secret_mod", "role", "unreliable"]:
+	for type in ["secret_mod", "notrole", "unreliable"]:
 		editor._add_premise()
 		var id: String = editor.board.selected
 		check(editor.board.nodes[id].get("draft", false), "Add premise adds a blank premise")
@@ -80,7 +75,7 @@ func _ui(g, number: int, other: int) -> void:
 		check(not choices.is_empty(), type + " exposes its question controls")
 		if type == "secret_mod":
 			choices[0].item_selected.emit(Assess.C.SECRET_MOD_LIST.find("delusional"))
-		elif type == "role":
+		elif type == "notrole":
 			choices[0].item_selected.emit(Assess.C.GOOD_ROLES.find("surveyor"))
 		else:
 			choices[0].item_selected.emit(1)

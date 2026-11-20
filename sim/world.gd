@@ -53,7 +53,6 @@ var deaths_last_night: Array = []
 var executed_today = ""
 var executions: Array = []          # {day, id, nominator, yes, player_yes, player_nominated}
 var night_walkers: Array = []       # last night: {id, block, path, why}
-var dropped = {}                    # location -> [{night, material (block), owner, who, why}] not yet found
 var town_relationships: Array = [] # Rolled public bonds, captured before secret Lovers add a friendship.
 var public_claims: Array = []       # {day, who, role}
 var stances = {}                    # accuser id -> {target, day}: their latest public accusation
@@ -573,10 +572,6 @@ func _assign_secret_mod() -> void:
 			return
 	var a = goods[0]
 	a.secret_mod = k
-	if k == "muddler":
-		# A Muddler only matters if they pass things on (Case 12926: a private Muddler muddled
-		# nothing), so they're at least a fair gossip.
-		a.traits["gossip"] = maxf(float(a.traits.get("gossip", 0.0)), Tuning.Setup.MUDDLER_GOSSIP_FLOOR)
 	if k == "lovers":
 		var b = goods[1]
 		b.secret_mod = "lovers"
@@ -1532,23 +1527,6 @@ func _walk(n, block: String, why: String, path: Array = []) -> void:
 	n.night_path = C.route(n.home_block, block) if path.is_empty() else path.duplicate()
 	n.loc = "night:" + block
 	night_walkers.append({"id": n.id, "block": block, "path": n.night_path, "why": why})
-	_maybe_drop(n, why)
-
-## Something a night walker may leave behind somewhere along their route: usually a
-## material from their own home block (mud, chalk, soot, straw); rarely something of theirs.
-func _maybe_drop(n, why: String) -> void:
-	var p = Tuning.Setup.DROP_CHANCE_DEMON if n.id == demon_id else Tuning.Setup.DROP_CHANCE_WALKER
-	if not chance(p):
-		return
-	var blk: String = pick(n.night_path)
-	var l: String = pick(C.LOCATIONS.keys().filter(func(x): return C.LOCATIONS[x]["block"] == blk))
-	var owned = chance(Tuning.Setup.DROP_OWNED_CHANCE)
-	var item = {"night": day, "material": n.home_block, "owner": n.id if owned else "", "who": n.id, "why": why}
-	if not dropped.has(l):
-		dropped[l] = []
-	dropped[l].append(item)
-	dlog.add("dropped", n.id, "", {"loc": l, "night": day, "owned": owned, "material": n.home_block},
-		"%s dropped %s at %s while %s." % [n.name, ("a personal item" if owned else C.BLOCKS[n.home_block]["trace"]), C.loc_name(l), why])
 
 func _night_sightings() -> void:
 	player_vigil_seen = []

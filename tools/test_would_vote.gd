@@ -1,5 +1,5 @@
 ## The vote hook for the case slate (Michael, Nov 19: how a case moves votes):
-## MindMeeting.would_vote counts how the good townsfolk would vote on a nominee, with the
+## MindVote.would_vote counts how the good townsfolk would vote on a nominee, with the
 ## player's vote left out, and leaves nothing behind:
 ##   - no random draw, no log entry (nor trace event or live-feed record), the meeting state as it was;
 ##   - it agrees with the real vote for each good voter;
@@ -9,6 +9,7 @@ extends SceneTree
 
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const Feed = preload("res://sim/decision_feed.gd")
 
 var checks = 0
@@ -32,7 +33,7 @@ func _init() -> void:
 	var rng_state = w.rng.state
 	var log_size: int = w.dlog.entries.size()
 	var meeting_was: Dictionary = w.meeting.duplicate(true)
-	var r: Dictionary = MindMeeting.would_vote(w, nominee.id)
+	var r: Dictionary = MindVote.would_vote(w, nominee.id)
 	_check(w.rng.state == rng_state, "no random draw")
 	_check(w.dlog.entries.size() == log_size, "no log entry")
 	_check(w.meeting == meeting_was, "the meeting state as it was")
@@ -47,7 +48,7 @@ func _init() -> void:
 	for v in goods:
 		if v == nominee:
 			continue
-		var real: bool = MindMeeting._vote_impl(w, v, nominee.id, "", false, "", 0, 0)
+		var real: bool = MindVote._vote_impl(w, v, nominee.id, "", false, "", 0, 0)
 		if real != (v.id in r.yes):
 			agree = false
 	w.meeting = meeting_was
@@ -57,7 +58,7 @@ func _init() -> void:
 		if v != nominee:
 			v.suspicion[nominee.id] = 1.5
 			v.trust_at_reconsider = v.trust
-	var sure: Dictionary = MindMeeting.would_vote(w, nominee.id)
+	var sure: Dictionary = MindVote.would_vote(w, nominee.id)
 	_check(sure.yes.size() >= sure.threshold and sure.crosses, "with every good voter sure of the nominee, it crosses (%d of %d needed)" % [sure.yes.size(), sure.threshold])
 	# With detailed logging and a live decision feed on, neither takes the votes (Codex on #347).
 	var g2 = Game.new()
@@ -70,7 +71,7 @@ func _init() -> void:
 	w2.attach_decision_feed(feed)
 	var trace_n: int = w2.dlog.trace_events().size()
 	var feed_n: int = feed.records.size()
-	MindMeeting.would_vote(w2, w2.living_good()[0].id)
+	MindVote.would_vote(w2, w2.living_good()[0].id)
 	_check(w2.dlog.trace_events().size() == trace_n and feed.records.size() == feed_n and w2.dlog.detailed and w2.dlog.live_feed == feed,
 		"no detailed trace event or live-feed record, and both are back on after (%d, %d)" % [w2.dlog.trace_events().size() - trace_n, feed.records.size() - feed_n])
 	print("Would vote: %d checks, %d failures" % [checks, fails])

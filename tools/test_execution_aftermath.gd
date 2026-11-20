@@ -10,6 +10,7 @@ const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 
 var checks: int = 0
 var fails: int = 0
@@ -186,7 +187,7 @@ func _test_grief_resentments() -> void:
 		"resentment adds directly to mourner's own nomination action score (+%.3f)" % (nom_score_nominator - nom_score_bystander))
 
 	w.meeting["block"] = ""
-	MindMeeting.vote(w, mourner_no, nominator.id, gd_reader.id, false, "", 0)
+	MindVote.vote(w, mourner_no, nominator.id, gd_reader.id, false, "", 0)
 	var eval_entries: Array = w.dlog.trace_events().filter(func(en): return en.get("type", "") == "decision" and en.get("actor", "") == mourner_no.id and en.get("data", {}).get("kind", "") == "vote" and en.get("data", {}).get("stage", "") == "evaluation")
 	var last_vote_data: Dictionary = eval_entries[-1]["data"]["details"]
 	var parts_sum: float = 0.0

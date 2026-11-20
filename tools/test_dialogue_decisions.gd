@@ -89,6 +89,9 @@ func _live() -> void:
 	g.command("nominate " + target.id)
 	g.command("press skip") # the supporters (M2c) speak before the vote; the vote itself is silent
 	g.command("vote yes")
-	_check(g.last_events.filter(func(e): return e["k"] == "speech").is_empty(), "votes are counted without vote speeches")
+	# After the tally, a voter who voted no may say why (meeting plan M2d); nobody else speaks.
+	var tally: Dictionary = w.meeting.get("results", [{}])[-1] if not w.meeting.get("results", []).is_empty() else {}
+	var speakers: Array = g.last_events.filter(func(e): return e["k"] == "speech").map(func(e): return e["speaker"])
+	_check(speakers.all(func(sp): return sp in tally.get("no", [])), "votes are counted without vote speeches; only no voters explain themselves after the tally (%s)" % str(speakers))
 	g.new_case(4242, 10)
 	_check(g.w.npcs.all(func(x): return x.dialogue_memory.is_empty()), "new case resets delivery history")

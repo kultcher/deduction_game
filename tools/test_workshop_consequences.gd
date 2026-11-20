@@ -29,7 +29,7 @@ func _run() -> void:
 	var first = Jury.evaluate(view, c, heard_by)
 	print("Reading effects: " + str(_effects(first)))
 	check(first.effects.hollis.applied > 0 and first.effects.lian.applied > 0, "Hollis and unclaimed Lian become more suspicious under a Constance headline")
-	check(first.effects.hollis.applied > first.effects.constance.applied and first.shared_assessment.compatible == 2, "established Hollis implication is stronger than the unresolved Constance accusation")
+	check(first.effects.hollis.applied > first.effects.constance.applied and Solver.analyze(view, Solver.Graph.compile_case(view, c), {}, false).compatible == 2, "established Hollis implication is stronger than the unresolved Constance accusation")
 	var h = _claim(first, hollis)
 	var main = _claim(first, root)
 	check(h.status == "entailed_in_attention" and main.status == "rival_found", "intermediate Hollis implication and unresolved parent are assessed separately")
@@ -96,7 +96,7 @@ func _run() -> void:
 	var complete = Jury.evaluate(view, combined.compile(combined.selected), listener.duplicate(true))
 	var suspicious: String = combined.nodes.keys().filter(func(id): return combined.nodes[id].kind == "premise" and combined.nodes[id].conclusion.get("type") == "suspicious")[0]
 	check(_claim(complete, suspicious).note.contains("circumstantial") and complete.effects.constance.applied > first.effects.constance.applied, "contradiction through a suspiciousness claim strengthens Constance's case")
-	check(complete.effects.hollis.applied > 0 and complete.shared_assessment.compatible == 2, "converging alibi branch preserves Hollis's effect and both Constance/Nisha worlds")
+	check(complete.effects.hollis.applied > 0 and Solver.analyze(view, Solver.Graph.compile_case(view, combined.compile(combined.selected)), {}, false).compatible == 2, "converging alibi branch preserves Hollis's effect and both Constance/Nisha worlds")
 	var ce: Dictionary = complete.effects.constance
 	# Since Oct 30 the step scales by trust in the sources, and Confidence only resists moves
 	# against a standing hunch (this fixture listener has none, so it doesn't apply).
