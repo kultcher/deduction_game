@@ -346,7 +346,7 @@ Do not implement “truth voice” vs “lying voice.” That would undermine de
 ### 8.1 The daytime-whereabouts defence (wording settled by Michael, Nov 17)
 
 For a defence against a case built on where someone was by day (BACKLOG, owner Beadle). The
-voice lines are in `sim/dialogue_voices.gd`. The generic fallbacks, passed by the caller:
+voice lines are in `sim/voices/<character>.gd`. The generic fallbacks, passed by the caller:
 
 | Key | Fallback |
 | --- | --- |
@@ -423,7 +423,7 @@ or unsupported forms retain their full approved statements. This does not imply
 shared travel, a joint arrival or precise simultaneity.
 
 **Where it stands (Nov 4).** All fifteen characters have a live voice pack in
-`sim/dialogue_voices.gd`, each with the same set of about 230 keys, and no `[PH]`
+`sim/voices/<character>.gd` (assembled by `sim/dialogue_voices.gd`), each with the same set of about 230 keys, and no `[PH]`
 placeholders remain. The packs cover the composer intents, greetings (including
 contextual openers after a murder, an execution or a friend's death), gift disclosure
 and refusals, night alibis and pressed-night reconfirmations, opinions, approaches,
