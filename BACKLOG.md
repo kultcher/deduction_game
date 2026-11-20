@@ -53,7 +53,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
     1. Ward promises should outrank vigil promises `[decided]`
     2. Explicit night-sighting rebuttals `[decided]`
-    3. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
@@ -369,16 +368,6 @@ Candidates for a unified retuning proposal, not approved changes.
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
   that night" or "the death happened on another block", as attributed defences rather
   than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-
-- **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
-  move a reading at equal effective weight, with night scope and self-knowledge included.
-  [open]
-  Michael (Nov 18): being handled now, with "Recovering from a wrong 'lying' call" and
-  "The player's 'poisoned, not lying' call" (section 2, Cases and the Workshop).
-  Quill (Nov 18): Michael chose three labels after the label audit. "Misled" and "failed
-  gift" are now one honest mistake (honest doubt at the player's credibility, "the reader is
-  good"), labelled "Mistaken". Delusional is unchanged. Measurements are in
-  `docs/handoff/2026-11-18-2331-quill-honest-mistake.md`.
 
 ### UI
 

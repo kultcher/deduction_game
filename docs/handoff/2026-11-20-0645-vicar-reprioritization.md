@@ -25,6 +25,8 @@ Seneschal relayed Michael's reprioritization (Nov 20):
     item and note now say "cut".
   - **"Roster expansion":** closed as ongoing.
   - **"From Playtest Notes 12553":** closed.
+- **"Misled versus reading-lie strength":** closed (Quill). It was settled by #296's Mistaken
+  merge and Lying retune, measured side by side, and Michael confirmed the Lying strength.
 - **The contents list** is regenerated.
 
 DESIGN.md still lists the Muddler in its roles table, since that's what's built; the
