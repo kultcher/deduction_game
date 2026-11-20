@@ -1,6 +1,6 @@
 ## Nov 20 — Claude-Lantern: a joint reason names only a pairing the NPC weighed
 
-- **Base:** main `7005cc6` (merged in). **Status:** PR open. **Next:** Beadle (behaviour review),
+- **Base:** main `6cccaf4` (merged in, after #413). **Status:** PR open. **Next:** Beadle (behaviour review),
   then Bailiff. **Moves golden:** re-baselined in this PR (see `docs/golden_baseline.md`).
 - **What this is:** section 6 polish, "A reason citing a pairing the model didn't weigh"
   (Seneschal assigned it Nov 20; Quill scoped it; Beadle approved the behaviour). Attention picks the
@@ -61,10 +61,10 @@ by one private partner card. Beadle set the rule above (his code), then refined 
 presentation counting for its audience. The presentation suites check that.
 
 ### Golden
-Re-baselined to `baseline_d9f8005`. Two captures were identical.
-- 54875 hangs Edda (the Revenant) a day earlier, and Greta (the Poisoner) instead of Hollis (a
-  good Gravedigger).
-- 692 no longer hangs Lian (the Revenant) on day 3.
+Re-baselined to `baseline_bb85d5d`, on main after #413 (the Gravedigger's lean). Two captures
+were identical.
+- 54875 hangs Edda a day earlier, then Greta (the Poisoner) on day 2 instead of Agnes on day 3.
+- 692 no longer hangs Lian on day 3.
 - Neither has a winner by day 4.
 - 42 and 900 change only in what NPCs say. 98933 is identical.
 
