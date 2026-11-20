@@ -3,6 +3,62 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+## Built, Nov 20, 2026 (closed by Claude-Vicar)
+
+- **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
+  ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
+  and Herald. [decided]
+
+  > **Closed Nov 20:** fixed, #410.
+
+- **The misframed-case hint** (what's left of "The premise should matter", point 3). When a
+  case's evidence points at someone other than the premise's subject, the Workshop preview
+  says so without naming them ("this evidence may say more about someone else"). Never
+  built. Lantern owns the belief side (does the case's weight fall more on someone other than
+  the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
+  Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
+  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
+  - **Decided (Michael, Nov 20): a variant of the Test juror chip.** The chip keeps its band
+    and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
+    else than about <target>." It names no one, and it shows at the same threshold as NPCs'
+    "points elsewhere" line. Owner Herald.
+
+  > **Closed Nov 20:** built, Herald #398.
+
+- **Summarised answers at a nomination.** A case presented at a nomination gets
+  summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
+  only. (Michael, Nov 19) Owner Herald, held for the reprioritization. [decided]
+
+  > **Closed Nov 20:** built, Herald #411.
+
+- **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
+  - walkers dropping anything on their route, both personal items and the home-block
+    material drops (already dead);
+  - the search finding them;
+  - the night "out" card a personal item makes for its owner;
+  - every mechanic that weighs a drop as evidence.
+
+  No measurement first (Michael). It moves golden and ships alone: `LEGACY_EXTRA_SHIFT_DRAW`
+  is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
+  Beadle reviewing the sim side.
+  **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
+  Revenant's totem and the place's regulars. **Built** in the drop-removal PR (Quill, Nov 20;
+  handoff `2026-11-20-0251-quill-remove-drops.md`). [in review]
+
+  > **Closed Nov 20:** built, Quill #397 (with `LEGACY_MUD_DROPS_ENABLED`).
+
+- **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
+  player presents should move onto the current social plumbing, not the old
+  `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
+  is worth keeping. Herald scopes it, and a decision follows the scope.
+  - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
+    play: there are no protect or spare cases and no bare beliefs, and the evil fallback
+    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
+    Herald's #395, which also purges every presentation fallback (Michael). Close this item
+    when it merges.
+
+  > **Closed Nov 20:** removed, Herald #395, which also purged every presentation fallback.
+
 ## Closed Nov 20, 2026, section 2 answers (Michael; recorded by Claude-Vicar)
 
 - **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on

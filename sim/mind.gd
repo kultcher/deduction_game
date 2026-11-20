@@ -17,6 +17,9 @@ const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindNomination = preload("res://sim/mind_nomination.gd")
+const MindDefence = preload("res://sim/mind_defence.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
 const MindPress = preload("res://sim/mind_press.gd")
 const MindAnswers = preload("res://sim/mind_answers.gd")
@@ -1202,7 +1205,7 @@ static func tell_save(w, warden, protectee, night: int, belief: float) -> void:
 static func warden_target(w, n) -> String:
 	return C.role_def("warden").pick_targets(w, n, _mind())
 
-# ---------------------------------------------------------------- town meeting (sim/mind_meeting.gd)
+# ---------------------------------------------------------------- town meeting (sim/mind_meeting.gd, mind_nomination.gd, mind_defence.gd, mind_vote.gd)
 
 const CONSENSUS_BASE = MindMeeting.CONSENSUS_BASE
 const CONSENSUS_FADE = MindMeeting.CONSENSUS_FADE
@@ -1309,28 +1312,28 @@ static func next_nomination(w):
 	return MindMeeting.next_nomination(w)
 
 static func case_against(w, n, t_id: String, limit: int = 3) -> Array:
-	return MindMeeting.case_against(w, n, t_id, limit)
+	return MindNomination.case_against(w, n, t_id, limit)
 
 static func nomination_case(w, n, t, already: String) -> Dictionary:
-	return MindMeeting.nomination_case(w, n, t, already)
+	return MindNomination.nomination_case(w, n, t, already)
 
 static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = []) -> Dictionary:
-	return MindMeeting.defend_self(w, d, nominator_id, disclosed_facts)
+	return MindDefence.defend_self(w, d, nominator_id, disclosed_facts)
 
 static func defence_line(w, n) -> Dictionary:
-	return MindMeeting.defence_line(w, n)
+	return MindDefence.defence_line(w, n)
 
 static func vote(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int) -> bool:
-	return MindMeeting.vote(w, v, nominee, nominator, player_yes, statement, yes_so_far)
+	return MindVote.vote(w, v, nominee, nominator, player_yes, statement, yes_so_far)
 
 static func vote_resistance_lines(w, res: Dictionary) -> Array:
-	return MindMeeting.vote_resistance_lines(w, res)
+	return MindVote.vote_resistance_lines(w, res)
 
 static func catches_home_lie(view: Dictionary, ids: Array, target: String) -> bool:
-	return MindMeeting.catches_home_lie(view, ids, target)
+	return MindVote.catches_home_lie(view, ids, target)
 
 static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: bool, statement: String, yes_so_far: int, trace_id: int) -> bool:
-	return MindMeeting._vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, trace_id)
+	return MindVote._vote_impl(w, v, nominee, nominator, player_yes, statement, yes_so_far, trace_id)
 
 
 # ---------------------------------------------------------------- pressing & conversation (sim/mind_dialogue.gd, mind_press.gd, mind_answers.gd)
