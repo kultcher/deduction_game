@@ -623,7 +623,7 @@ static func react_to_trace(w, n, card: Dictionary, known_haunts: Dictionary = {}
 			"locations":
 				var places: String = C.loc_list_or(card.get("locs", []))
 				var item_lbl: String = card.get("item_label", "that")
-				lines.append(say_voiced(n, "trace_fit_locations", "Plenty of us pass through %s every week. Finding %s hardly pins a murder on me." % [places, item_lbl], {"places": places, "item": item_lbl}))
+				lines.append(say_voiced(n, "trace_fit_locations", "Plenty of us go by %s every week. Finding %s hardly pins a murder on me." % [places, item_lbl], {"places": places, "item": item_lbl}))
 			"quarter":
 				var hb_lbl: String = C.block_name(card.get("trace_home_block", "square"))
 				var eb_lbl: String = C.block_name(card.get("trace_evening_block", "square"))
