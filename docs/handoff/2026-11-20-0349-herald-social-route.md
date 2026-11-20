@@ -67,5 +67,7 @@ Zero drift: golden is identical.
 - **Golden:** identical at `--tol 0` on all five seeds, after each stage (route, constants, purge, merge with #386).
 - **CI fast and slow lists plus every touched suite (163):** run locally after the merge with #386. 162 passed. `test_workshop_live_ui` failed on the comparison inspector's label, which still read the removed "model" field. The label is now always "Applied shared assessment", and the suite passes (10 checks).
 
+- **After Bailiff's local run (157 of 158):** `test_workshop_live_canvas` still checked for the removed "Shared evaluator" label in the delivery panel. It isn't on the CI lists, and my earlier run missed it. It now checks that the panel lists the listener by name and that a delivery was made, and it passes. After merging main (baseline_7792e9a), golden is identical on all five seeds, and test_workshop_live_canvas, test_workshop_live_ui and test_presentation_contracts pass.
+
 ## Proposed for the backlog
 None.

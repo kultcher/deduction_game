@@ -322,8 +322,9 @@ func _main_ui() -> void:
 	var withdrawal: Window = editor.get_children().filter(func(child): return child is Window and child.title.begins_with("Developer withdrawal"))[0]
 	check(withdrawal.visible and withdrawal.transient and withdrawal.is_embedded(), "dynamically created withdrawal panel is also an embedded dialog")
 	withdrawal.close_requested.emit()
+	var convinced = main.g.talk_with
 	await editor._send("convince %d" % filed_number)
-	check("Shared evaluator" in editor.result_output.text and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and displays shared delivery")
+	check(convinced.name in editor.result_output.text and not ("No case assessment was delivered" in editor.result_output.text) and main.g.questions_left == 2, "live screen submits a home-context case through the main callback and lists the delivery by listener (%s)" % editor.result_output.text.replace("\n", " | "))
 	check(not editor.progress_window.visible and not editor.presenting, "presentation progress closes and releases the editor after delivery")
 	editor.preview_window.hide()
 	main.seed_box.value = 693
