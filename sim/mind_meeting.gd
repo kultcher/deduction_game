@@ -1108,8 +1108,9 @@ static func _good_nomination_impl(w, n, m: Dictionary, block: String, trace_id: 
 		var cooloff: float = nomination_cooloff(w, n.id, t.id)
 		var clear_adj: float = -Tuning.Meeting.NOMINATION_OWN_CLEAR_RELIEF if n.cleared.has(t.id) else 0.0
 		var resent: float = _mind().resentment_toward(w, n, t.id)
-		var s: float = action_susp(n, t.id) + resent + clear_adj - cooloff
-		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s,
+		var role_lean: float = C.role_def(n.role).nomination_lean(w, n)
+		var s: float = action_susp(n, t.id) + resent + clear_adj - cooloff + role_lean
+		w.dlog.decision(n.id, "nomination", "evaluation", s >= thr, {"score": s, "role_lean": role_lean,
 			"raw_suspicion": susp(n, t.id), "town_pressure": action_susp(n, t.id) - execution_priority_contribution(n, t.id) - susp(n, t.id),
 			"resentment": resent, "own_clear_adjustment": clear_adj, "nomination_cooloff": -cooloff,
 			"shared_execution_priority": execution_priority(n, t.id), "shared_execution_weight": C.SHARED_EXECUTION_PRIORITY_WEIGHT,
