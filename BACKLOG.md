@@ -15,22 +15,83 @@ The Nov 13 playtest triage is closed: what's left of it is in
 own open items are in [section 6](#6-the-connections-model-open-items). The full triage
 record is `docs/archive/playtest_triage_2026-11-13.md`.
 
-**Contents**
+**Contents** (every open item, by section; closed ones are in BACKLOG_COMPLETED.md)
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
   - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
+    1. Evil Martyr bluff can frame a good scapegoat `[decided: direction]`
   - [Cases and the Workshop](#cases-and-the-workshop)
+    1. The misframed-case hint `[decided]`
+    2. Reading challenges and further gift adapters `[watch; broader adapters open]`
+    3. Summarised answers at a nomination `[decided]`
+    4. Remove drops altogether `[decided]`
+    5. Argon's audit: cleanup `[decided]`
+    6. The social presentation route `[decided]`
   - [NPC behaviour](#npc-behaviour)
+    1. Kill-score pass on every role `[decided]`
+    2. Accusations from starting suspicion read as clues `[decided: pitch first]`
+    3. The Gravedigger in a reluctant town `[decided]`
+    4. Caught out and pressed again: what's left `[decided; mechanics open]`
+    5. Good NPCs lie tactically `[open]`
+    6. Evil backs into a bluff `[decided; on hold]`
+    7. Rapport and Warden-credit leftovers `[decided: direction]`
+    8. Anger reasons `[decided]`
   - [Numbers](#numbers)
+    1. Night sightings are too decisive `[decided]`
+    2. Evil sometimes tells the truth (start by faking it) `[decided: add; t measured]`
+    3. The Seer's rise looks small `[later: role tuning pass]`
+    4. Dowser clearing strength `[later: role tuning pass]`
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
+    1. Privacy without compounding trust penalties `[tentative]`
+    2. Ward promises should outrank vigil promises `[decided]`
+    3. Explicit night-sighting rebuttals `[decided]`
+    4. More rebuttals after a caught lie `[decided; options open]`
+    5. Misled versus reading-lie strength `[open]`
   - [UI](#ui)
+    1. From Playtest Notes 12553
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
+  1. Expanded dialogue and trust management `[tentative]`
+  2. NPCs voice doubt about their own readings `[decided; triggers open]`
+  3. Revenant seeks execution `[decided]`
+  4. NPCs find evidence `[decided]`
+  5. Throw a teammate under the bus `[decided: survey first]`
+  6. Graded gossip `[decided]`
 - [4. Major structural work (a week or more; design first)](#4-major-structural-work-a-week-or-more-design-first)
+  1. The Breathstealer overhaul `[decided: add; option open]`
+  2. The Muddler rarely has anything to muddle `[open]`
+  3. The secrets rework `[decided; values open]`
+  4. Roster expansion `[open]`
+  5. Scripts, follow-ups `[decided]`
+  6. The demon lures a victim elsewhere `[open]`
+  7. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
+  8. Player toolbox `[open]`
+  9. Scoring system `[open]`
+  10. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
+  1. Minion gifts
+  2. Night companions of the proven evil
+  3. A Medium's relayed sighting vs the dead's known vantage
+  4. Accounting
+  5. Walker sightings vs the Lamplighter count
+  6. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
+  1. An NPC defender's challenge isn't stored as a case
+  2. Presenting a card to one NPC
+  3. The Test juror reporting a condition separately `[later]`
+  4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
+  1. Honest mistakes against lies in challenges `[open; Michael]`
+  2. The spoken reply to a later-day repeat `[polish]`
+  3. A reason citing a pairing the model didn't weigh `[polish]`
+  4. Sleepwalker self-doubt scaled by confidence `[decided]`
+  5. Adjudicating a muddled card `[later]`
+  6. Brute kills scored as hexes on custom scripts `[later]`
+  7. Gift doubt for readings the judge doesn't check `[open]`
+  8. Higher-Insight NPCs weigh more broken-reading combinations `[tentative]`
+  9. Persistence Confidence: a working theory that colours new evidence `[tentative]`
+  10. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -78,7 +139,8 @@ listener (#273), both Lantern's.
   built. Lantern owns the belief side (does the case's weight fall more on someone other than
   the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
   Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
-  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
+  (#246) and moved to BACKLOG_COMPLETED.md. [decided] **Michael (Nov 20): it stays.**
+  Herald is first checking whether the existing "Argues against" badge already covers it.
 
 - **Reading challenges and further gift adapters.** Misled and lying modifiers, Surveyor
   skepticism, alibi support and the Clerk, Archivist and Seer adapters are built. Dated
@@ -105,62 +167,32 @@ listener (#273), both Lantern's.
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
   `docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.md`). Before any more larger
-  features.
+  features. The parts already done are in BACKLOG_COMPLETED.md (Nov 20). **Left:**
   1. **Dead code, zero drift:**
-     - the Workshop scaffolding used only by fixtures (Lantern: the movement fixture,
-       `ledger_audit` and `legacy_evidence`, and the `legacy_path` stub). It starts once
-       Quill's drops PR merges;
-     - retired flags and constants that nothing reads (Beadle): **Beadle's part done**
-       (#380). `STRICT_EVALUATOR` went to Herald. `LEGACY_MUD_DROPS_ENABLED` goes with Quill's
-       drops PR. (`LEGACY_EXTRA_SHIFT_DRAW` stays deferred, below.)
-     - ~~the dev labs and the trace viewer (Herald)~~ **done** (#381; #391 removed the
-       Workshop's fixture-only code they used);
+     - the Workshop scaffolding used only by fixtures (the movement fixture, `ledger_audit`
+       and `legacy_evidence`, the `legacy_path` stub), together with retiring
+       `tools/connections_prototype.gd`. Lantern; it starts once Quill's drops PR merges;
+     - `LEGACY_MUD_DROPS_ENABLED`, in Quill's drops PR;
      - the one-off scripts in `tools/` (Bailiff sweeps).
 
      Keep `ALLOW_NO_GIFT_DENIAL` and `USE_FLAVOR_SECRETS` until the secrets rework decides.
   2. **Golden-moving:**
-     - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It's split from
-       the drops PR, because it reshuffles every deal and would mean about 25 to 30 suite
-       fixes. Michael decides at the reprioritization whether to do it at all.
+     - **Removing `LEGACY_EXTRA_SHIFT_DRAW` is deferred** (Michael, Nov 20). It reshuffles
+       every deal, about 25 to 30 suite fixes. Michael decides at the reprioritization
+       whether to do it at all.
      - Deleting the Muddler is held for the secrets rework.
-  3. **The `channel_*` factored-evidence stack:** about 2,400 lines with no live caller.
-     Deleting it removes `test_workshop_channels`, `test_workshop_channel_likelihood` and
-     `profile_channel_likelihood`. Lantern, alongside the purge phases; Argon is told about
-     the profiler. **Done** (Lantern, Nov 20, `claude/delete-channel-stack`): also took
-     `test_channel_sum_product`, `test_workshop_class_parity`, and the oracle parity checks in
-     four role suites.
-  4. **File splits,** one file per PR, with no change to play:
-     - **Tier 1** follows Beadle's in-flight work (#365, #327, #368, the symmetric vote,
-       the double claims): `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd`
-       (Beadle, with Lantern on `mind.gd`'s case side). Herald's `ui/main.gd` is **done**
-       (#387).
+  3. **File splits,** one file per PR, with no change to play:
+     - **Tier 1** follows Beadle's in-flight work (#390, the symmetric vote):
+       `mind_meeting.gd`, `mind_dialogue.gd`, `world.gd` and `mind.gd` (Beadle, with Lantern
+       on `mind.gd`'s case side).
      - **Tier 2** follows Tier 1: the voices (Herald), `social.gd` (Beadle), the Workshop UI
        (Herald), `live_activity` and `case_eval` (Lantern).
      - **Tier 3** waits for the purge.
-  5. **Point `game.gd`'s passthroughs straight at their modules** (Michael, Nov 19). When
-     `game.gd` was split, it kept forwarding functions. About 138 of its 159 functions are
-     one-line forwards to `GameBoard`, `GamePresentation` and the other `game_*` modules.
-     Callers should use the module directly, and the forwards should go.
-     - **Owner:** Herald (`game/` and the UI), with each lead updating callers in its own
-       files where that's simpler.
-     - **Zero drift.**
-     - **Scheduled with the file splits:** it touches many callers (`add_card` alone has
-       about 325 call sites, many in tests), so the merge-conflict risk is the same.
-     - **Scoped and partly done (Herald, Nov 20):** 131 one-line forwards. #385 removed the 25
-       that nothing called. **Left:** repoint the remaining ~106 forwards' callers to their
-       modules and delete the forwards, in two PRs (game, sim and ui callers; then tests and
-       tools). About 18 that the UI and CLI call stay as the game's interface. Waits for
-       Seneschal's go, after Beadle's in-flight PRs merge.
-  6. **Two more (Michael, Nov 20):**
-     - (a) Retire `tools/connections_prototype.gd`. Owner Lantern, in the same PR as the
-       Workshop scaffolding.
-     - ~~(b) Merge `game.gd`'s `_workshop_native_submission` into `_workshop_native_social`,
-       and drop the dead branch.~~ **Done** (Herald, #391). The social-route PR then removes
-       the flag entirely.
-  7. **Strict mode, removed** (Herald's #384; Michael, Nov 20). A partly-ready case is moot:
-     in play, no listener fails to weigh a case on its own (Herald's check of golden and
-     autoplay). The preview's false "fallback" sentence goes, and the preview shows only the
-     case's issues.
+  4. **Point `game.gd`'s remaining passthroughs at their modules** (Herald). Repoint the
+     callers of the remaining ~106 one-line forwards and delete them, in two PRs: game, sim
+     and ui callers first, then tests and tools. About 18 that the UI and CLI call stay as
+     the game's interface. Zero drift. It waits for Seneschal's go, after Beadle's in-flight
+     PRs merge.
 
   [decided]
 
@@ -222,12 +254,17 @@ listener (#273), both Lantern's.
   people who wouldn't hang a neighbour to read the body. No new lines; a logged reason
   for the lean, as for any decision. Keep the lean modest. Owner Beadle. [decided]
 
-- **Follow-up after a false alibi is established.** (44814) **Left:** pressure checks, and a
-  possible forced reveal of the hidden gift or secret, handling genuine home accounts,
-  unremembered outings and evil cover. **Built** (Beadle, #368): the first response, "Fine,
-  I was out. Doesn't mean I was doing anything wrong", which concedes the night without
-  conceding evil. Beadle notes it overlaps the "backing into a spare or unknown gift"
-  remainder of "More rebuttals after a caught lie". [decided; mechanics open]
+- **Caught out and pressed again: what's left.** (Michael, Nov 20: one item from two
+  remainders.) Owner Beadle.
+  - **From "Follow-up after a false alibi is established"** (44814): pressure checks, and a
+    possible forced reveal of the hidden gift or secret, handling genuine home accounts,
+    unremembered outings and evil cover.
+  - **From "More rebuttals after a caught lie":** when pressed again, evil backs into a spare
+    or unknown walking gift (the ladder's step 3, with the Demon and Scion careful and a
+    Minion bolder, as decided there).
+
+  The first response, "Fine, I was out", is built (#368), and so is the private ladder that
+  follows it. On hold until Michael reprioritises. [decided; mechanics open]
 
 - **Good NPCs lie tactically.** (Nov 3 plan v8, zone 17; reframed Nov 18, Michael) Hiding a
   secret errand already exists (Beadle verified, Nov 18). Two cases are open:
@@ -432,22 +469,15 @@ Candidates for a unified retuning proposal, not approved changes.
 
   Owner Beadle; Herald for the lines.
   - **Progress (Beadle and Lantern, Nov 20):**
-    - **Built:**
-      - Lantern's #367: a sleepwalk claim excuses a caught "I was home" only as far as its
-        claimant may be good.
-      - Beadle's #368: the private caught-out ladder. A good NPC concedes it was out; the
-        admission is tied to a walking duty; evil gets the same excuses; a gift named in
-        private counts as disclosed.
-      - Lantern's #372: excuses soften a caught "I was home", and an NPC's "I was out" reads
-        as what it says.
+    - **Built** (moved to BACKLOG_COMPLETED.md, Nov 20): #367, #368, #372.
     - **In review,** Beadle's #390 (open, zero drift), counted as built once it merges:
       - the town's answer to a double claim: the true holder always counterclaims;
       - evil switches a bluff someone else took;
       - a Minion double-claims on purpose, from one 5% roll per Minion per game;
       - the private "<witness> is lying about seeing me" line.
-    - **Left, on hold until Michael reprioritises:**
-      - the podium path (the ladder at the meeting, not only in private);
-      - backing into a spare or unknown walking gift when pressed again.
+    - **Left, on hold until Michael reprioritises:** the podium path (the ladder at the
+      meeting, not only in private). Backing into a spare or unknown gift moved to "Caught
+      out and pressed again: what's left" (Nov 20).
 
 - **Misled versus reading-lie strength.** Compare how far "misled" and "lying" challenges
   move a reading at equal effective weight, with night scope and self-knowledge included.
@@ -720,7 +750,7 @@ From the belief-model doc's open items (`docs/belief_model.md`), as of Nov 16.
 
 **The purge resumes (Michael, Nov 19).** Owner Lantern.
 - Phase 7: **done** (#382).
-- Phase 8: **in review** (#386).
+- Phase 8: **done** (#386).
 - Phase 6b: **done** (built Nov 17, 8fecdad). Re-measured on Nov 20: across 1,182 refreshes,
   reading attended cards against held cards changed no one's chance.
 - Phase 6a waits for the reprioritization.
