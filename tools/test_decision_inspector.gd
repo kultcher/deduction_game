@@ -1,5 +1,6 @@
 ## Observational debug capture: analytical chances, UI controls and gameplay/RNG parity.
 extends SceneTree
+const MainRoles = preload("res://ui/main_roles.gd")
 const Feed = preload("res://sim/decision_feed.gd")
 const World = preload("res://sim/world.gd")
 const Game = preload("res://game/game.gd")
@@ -164,7 +165,7 @@ func _main_ui() -> void:
 	scene.debug_check.button_pressed = true
 	scene.roll_button.pressed.emit()
 	_check(scene.roll_button.visible and scene.roll_window.visible and scene.g.prediction_spoiled and scene.g.w.rng.state == state, "Debug opens inspector without RNG and preserves unscored identification rule")
-	scene._set_roles_pinned(true)
+	MainRoles.set_pinned(scene, true)
 	_check(scene.roles_dock.visible and scene.roll_window.visible and scene.g.w.rng.state == state, "pinned Roles and live inspector coexist without changing game RNG")
 	scene._new_case()
 	_check(scene.roles_pinned and scene.g.debug_overlay and scene.roll_window.feed == scene.g.decision_feed and not scene.g.decision_feed.records.is_empty(), "new case preserves pin/debug preferences and binds the inspector to fresh setup checks")
