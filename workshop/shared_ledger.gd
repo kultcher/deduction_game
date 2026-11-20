@@ -335,10 +335,15 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			adapted[card.id] = card
 		var seed_doubt: Dictionary = input.listener.get("source_doubt", input.listener.get("discounted", {}))
 		var prep_doubt: Dictionary = SourceDoubt.derive({"ready": true, "prepared": prepared, "input": input, "owned": owned, "owners": owners}, ledger, seed_doubt).full
+		var rumours: Dictionary = {}
 		for id in facts:
 			var card_ref: Dictionary = adapted.get(id, {})
 			var route_info: Dictionary = _card_route_trust(facts[id], card_ref, owners[id], ledger, input.listener.id, prepared.listener.npc_trust, player_cred)
 			var best_trust: float = float(route_info.trust)
+			# A Rumormonger reading moves the listener's Sleepwalker doubt as far as its route
+			# is trusted, however it was learned (Codex on #459): heard, presented, or shared.
+			if str(card_ref.get("role", "")) == "rumormonger" and str(card_ref.get("source", "")) != str(input.listener.id) and card_ref.get("data", {}) is Dictionary and card_ref.data.has("pair"):
+				rumours[id] = {"pair": card_ref.data.pair, "secret": str(card_ref.data.get("secret", "")), "trust": best_trust}
 			if not card_ref.is_empty() and bool(route_info.via_player_only):
 				card_ref["via_player_only"] = true
 			var claim_hearing = -1.0
@@ -415,6 +420,15 @@ static func _prepare_impl(current: Dictionary, presentations: Dictionary, ledger
 			if shared and not owners[id].any(func(owner): return owner == "learned" or owner.begins_with("reading:") or owner.begins_with("case:")):
 				rel_scale = clampf(rel_base + rel_slope * (best_trust * maxf(hearing, 0.35)), rel_base, 1.0)
 			prepared.listener.reading_reliability[id] *= rel_scale
+		# A reading the listener disbelieves outright (reliability 0) moves nothing. By id, so
+		# each is counted once, in a fixed order.
+		var held_rumours: Array = []
+		var r_ids: Array = rumours.keys()
+		r_ids.sort()
+		for id in r_ids:
+			if float(prepared.listener.reading_reliability.get(id, 1.0)) > 0.0:
+				held_rumours.append(rumours[id])
+		SourceDoubt.apply_sleepwalk_doubt(prepared.view, held_rumours, str(input.listener.id))
 		_add_player_words(prepared, presentations, withdrawn, owners, player_weight, input.get("now", {}))
 	return {"ready": issues.is_empty(), "empty": facts.is_empty() and circumstantial_hubs.is_empty() and preload("res://workshop/public_evidence.gd").factors(prepared.view).is_empty() and not prepared.view.get("chronology", {}).has("curse"), "issues": issues, "owned": owned if issues.is_empty() else {},
 		"prepared": prepared, "facts": facts.keys(), "owners": owners, "quotations": quotations, "input": input,

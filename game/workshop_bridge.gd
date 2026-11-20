@@ -212,68 +212,16 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not
 ## evidence: it never enters the ledger, ownership, citations or the world domain. Only a
 ## Sleepwalker could have walked unknowing, so with that secret on the script a night
-## carries sleepwalk_doubt (SLEEPWALK_SELF_DOUBT unless a Rumormonger's word moved it);
-## otherwise the tiny own-reading error. "sleep_doubt" is the same value, for the role
-## fits' "am I the Sleepwalker?" mix (CaseEval).
+## carries SLEEPWALK_SELF_DOUBT; otherwise the tiny own-reading error. The Rumormonger
+## readings the listener holds move the first, once each is weighed by its route
+## (SharedLedger.prepare, SourceDoubt.apply_sleepwalk_doubt).
 static func own_home(w, n, outings: Dictionary) -> Dictionary:
-	var doubt: float = sleepwalk_doubt(w, n) if w.case_script != null and "sleepwalker" in w.case_script.secrets else Tuning.Workshop.OWN_ERR
+	var doubt: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT if w.case_script != null and "sleepwalker" in w.case_script.secrets else Tuning.Workshop.OWN_ERR
 	var nights: Dictionary = {}
 	for k in outings:
 		if not bool(outings[k]):
 			nights[str(k)] = doubt
-	return {"self": n.id, "block": n.home_block, "nights": nights, "sleep_doubt": doubt}
-
-
-## How unsure an NPC is that it is not the Sleepwalker, on a script that has one. Without
-## a Rumormonger's word it is SLEEPWALK_SELF_DOUBT. Each Rumormonger reading it holds moves
-## its chance of carrying the secret, believed as far as it trusts the teller: one naming it
-## for the Sleepwalker makes it a coin flip with the other name, if true; any other (another
-## pair, or another secret) rules it out, if true, since a case has one secret on one
-## townsfolk. The doubt scales with that chance against the starting one, between the
-## own-reading error and SLEEPWALK_CHANCE (a coin flip whether its home nights mean
-## anything). A Rumormonger never names itself, so only heard readings count.
-static var rumour_moves_sleepwalk_doubt: bool = true  # test switch: off, it stays SLEEPWALK_SELF_DOUBT
-
-static func sleepwalk_doubt(w, n) -> float:
-	var base: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT
-	if not rumour_moves_sleepwalk_doubt:
-		return base
-	var secrets: Array = w.case_script.secrets
-	var goods: int = w.npcs.filter(func(m): return not m.is_evil()).size()
-	if secrets.is_empty() or goods < 1:
-		return base
-	var p0: float = 1.0 / float(secrets.size()) / float(goods)
-	var p: float = p0
-	var moved := false
-	for source in n.known_claims:
-		var claim: Dictionary = n.known_claims[source]
-		for e in claim.get("readings", []):
-			if str(e.get("role", claim.get("role", ""))) != "rumormonger" or e.get("disowned", false):
-				continue
-			var d = e.get("data", {})
-			if not d is Dictionary or not d.has("pair"):
-				continue
-			var c: float = _route_trust(n, str(source), str(claim.get("via", "")))
-			if n.id in d.pair and str(d.get("secret", "")) == "sleepwalker":
-				p = c * 0.5 + (1.0 - c) * p
-			else:
-				p = (1.0 - c) * p
-			moved = true
-	if not moved:
-		return base
-	return clampf(base * p / p0, Tuning.Workshop.OWN_ERR, Tuning.Setup.SLEEPWALK_CHANCE)
-
-
-## How far an NPC believes a reading from `source` that reached it through `via`: its trust
-## in the source, or, relayed, the mean of its trust in the source and in whoever passed it
-## on, as the shared ledger weighs the card (SharedLedger._card_route_trust; Codex on #459).
-static func _route_trust(n, source: String, via: String) -> float:
-	var trust_of = func(id: String) -> float:
-		return float(n.credibility) if id == "player" else float(n.npc_trust.get(id, 0.5))
-	var t: float = trust_of.call(source)
-	if via != "" and via != source and via != n.id:
-		t = 0.5 * (t + trust_of.call(via))
-	return clampf(t, 0.0, 1.0)
+	return {"self": n.id, "block": n.home_block, "nights": nights}
 
 
 ## The haunts an NPC knows without being told (regulars know regulars): their own, and

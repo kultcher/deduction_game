@@ -193,7 +193,7 @@ it means the game must teach its own way of thinking and make evidence very read
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`
   (0.1) doubt. A Rumormonger's reading moves it, as far as they trust the teller: named for
   the Sleepwalker, it rises to at most `SLEEPWALK_CHANCE` (a coin flip); any other reading
-  rules them out if true, so it falls (`WorkshopBridge.sleepwalk_doubt`). A Night Watch list that wrongly names them is still set aside.
+  rules them out if true, so it falls (`SourceDoubt.sleepwalk_doubt`). A Night Watch list that wrongly names them is still set aside.
 - **Vigils see who leaves:** a player vigil on a block sees its residents leaving home, and
   no one else: not walkers arriving from another block or passing through, nor the
   Lamplighter or Sexton on their tour of every block, who are seen only from their own home
