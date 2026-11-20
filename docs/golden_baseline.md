@@ -44,7 +44,28 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
+### Current baseline (Nov 20, the town's response to a double claim): `baseline_c7c2199`
+
+`tools/golden/baseline_c7c2199/` is the capture from `claude/beadle-double-claims` at `c7c2199`
+(main at `8c45a7c`, with #327, merged in).
+- **What changed:**
+  - The true holder counterclaims at its first chance.
+  - Evil whose planned bluff is taken switches to a spare.
+  - An unclaimed Minion may knowingly double-claim a gift it has just heard claimed
+    (`MINION_DOUBLE_CLAIM_CHANCE` 0.05, scaled down by heat). Its roll draws its own number,
+    so the world's stream moves only when a double claim is made.
+- **Divergence from `baseline_9ea3f99`:** two seeds, each where a Minion double-claims the
+  Rumormonger. 42 diverges at record 31 (day 2), 54875 at record 13 (day 1). 692, 900 and
+  98933 are identical.
+- **Outcomes:**
+  - **42:** main hangs Agnes on day 3 and good wins. Now it hangs Merrin on day 2, with no
+    winner by day 4.
+  - **54875:** main hangs Greta on day 2. Now it hangs Edda on day 1 and Jory on day 2, with
+    no winner by day 4 either way.
+  - **692, 900 and 98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, private sharing grows each day): `baseline_9ea3f99`
 
 `tools/golden/baseline_9ea3f99/` is the capture from `claude/beadle-private-share` at `9ea3f99`
 (main at `561e17f`, with #365, merged in). An NPC who hasn't claimed a gift publicly
