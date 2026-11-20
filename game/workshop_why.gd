@@ -537,8 +537,8 @@ static func _view_card(view: Dictionary, id: String) -> Dictionary:
 	return c if not c.is_empty() else {"id": id, "kind": "reading"}
 
 ## Where the listener stands against the vote and nomination bars for `target` right now,
-## with no statement from the player. The same parts Mind's vote adds up (mind_meeting.gd
-## `_vote_impl`, `_good_nomination_impl`), read without rolling or logging anything.
+## with no statement from the player. The same parts Mind's vote adds up (mind_vote.gd
+## `_vote_impl`, mind_meeting.gd `_good_nomination_impl`), read without rolling or logging anything.
 static func _action(g, n, target: String) -> Dictionary:
 	var w = g.w
 	var score: float = Mind.action_susp(n, target) + Mind.resentment_toward(w, n, target)

@@ -6,6 +6,7 @@
 ##   godot --headless --path . --script res://tools/test_juror_listener.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -36,10 +37,10 @@ func _init() -> void:
 	var other = found.other
 	# The Minion bluffs the Seer and names the innocent; the real Seer read the same pair
 	# and saw no Demon there.
-	var lie: int = g.add_card({"kind": "claim", "subject": [minion.id], "role": "seer", "source": minion.id, "text": "%s claims the Seer" % minion.name})
-	var bluff: int = g.add_card({"kind": "info", "source": minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": true}, "text": "%s's Seer: %s or %s is the Demon" % [minion.name, innocent.name, other.name]})
-	var truth: int = g.add_card({"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": false}, "text": "%s's Seer: neither %s nor %s is the Demon" % [seer.name, innocent.name, other.name]})
-	g.add_card({"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+	var lie: int = GameBoard.add_card(g, {"kind": "claim", "subject": [minion.id], "role": "seer", "source": minion.id, "text": "%s claims the Seer" % minion.name})
+	var bluff: int = GameBoard.add_card(g, {"kind": "info", "source": minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": true}, "text": "%s's Seer: %s or %s is the Demon" % [minion.name, innocent.name, other.name]})
+	var truth: int = GameBoard.add_card(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [innocent.id, other.id], "yes": false}, "text": "%s's Seer: neither %s nor %s is the Demon" % [seer.name, innocent.name, other.name]})
+	GameBoard.add_card(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
@@ -67,6 +68,58 @@ func _init() -> void:
 	_link(model, view, good_p, [bluff_id])
 	var clear: Dictionary = Live.test_juror(g, model.compile(good_p))
 	check(clear.get("ready", false) and absf(log(float(clear.lr)) + log(float(r.lr))) < 1e-6, "\"is good\" on the same card reads the inverse strength (x%.3f against x%.3f)" % [float(clear.get("lr", 0.0)), float(r.get("lr", 0.0))])
+	# "Is not the Demon" reads the chance of not being the Demon, which a Minion also meets, not
+	# the chance of being good (Seneschal's check, Nov 20). The real Seer's "neither is the
+	# Demon" says nothing about a Minion, so it clears the Demon question further than "good".
+	var nd_p: String = model.add_premise(innocent.id, "notdemon", Vector2(0, 400))
+	_link(model, view, nd_p, [truth_id])
+	var nd: Dictionary = Live.test_juror(g, model.compile(nd_p))
+	var gd_p: String = model.add_premise(innocent.id, "good", Vector2(0, 600))
+	_link(model, view, gd_p, [truth_id])
+	var gd: Dictionary = Live.test_juror(g, model.compile(gd_p))
+	var nd_heard: Dictionary = nd.get("listener", {})
+	check(nd.get("ready", false) and gd.get("ready", false) and float(nd.lr) > float(gd.lr) and float(nd.lr) > 1.0,
+		"\"is not the Demon\" on \"neither is the Demon\" reads stronger than \"is good\" on it (x%.3f against x%.3f)" % [float(nd.get("lr", 0.0)), float(gd.get("lr", 0.0))])
+	check(not nd_heard.is_empty() and float(nd_heard.chance) >= 1.0 - float(nd_heard.after) - 1e-9 and float(nd_heard.chance_before) >= 1.0 - float(nd_heard.before) - 1e-9,
+		"its chance is at least the chance of being good, before and after (%.3f, %.3f)" % [float(nd_heard.get("chance_before", -1.0)), float(nd_heard.get("chance", -1.0))])
+	# A bare lie call on that reading leaves the listener believing it, so the Demon share
+	# still reads it (Codex on #410): the call can't turn the badge against the premise.
+	# (The case also cites the Minion's Seer claim, so something is left once the call applies.)
+	var nd2_p: String = model.add_premise(innocent.id, "notdemon", Vector2(0, 800))
+	_link(model, view, nd2_p, [truth_id, _id(g, view, lie)])
+	var nd2: Dictionary = Live.test_juror(g, model.compile(nd2_p))
+	var nd_called: Dictionary = model.compile(nd2_p)
+	nd_called["reading_challenges"] = {truth_id: {"mode": "lying", "supports": []}}
+	var ndc: Dictionary = Live.test_juror(g, nd_called)
+	check(nd2.get("ready", false) and ndc.get("ready", false) and float(ndc.lr) > 1.0 and absf(log(float(ndc.lr)) - log(float(nd2.lr))) < 0.5 * absf(log(float(nd2.lr))),
+		"a bare lie call on \"neither is the Demon\" doesn't turn \"is not the Demon\" against itself (x%.3f, x%.3f uncalled)" % [float(ndc.get("lr", 0.0)), float(nd2.get("lr", 0.0))])
+	# An honest-mistake call the listener takes discounts the reading in the Demon share too
+	# (Codex on #410), as it does in the listener's own chances: the share moves with the call.
+	# Word against word (the Minion's bluff against the real Seer) an average listener doesn't
+	# take the call, so the grounds are taken as true here (the "legacy" clash rule) to reach it.
+	var RC = preload("res://workshop/reading_challenges.gd")
+	var rule_was: String = RC.clash_rule
+	RC.clash_rule = "legacy"
+	var nd_mist: Dictionary = model.compile(nd2_p)
+	nd_mist["reading_challenges"] = {truth_id: {"mode": "impaired", "supports": [bluff_id]}}
+	if bluff_id not in nd_mist.cards:
+		nd_mist.cards.append(bluff_id)
+	var nd_plain: Dictionary = model.compile(nd2_p)
+	if bluff_id not in nd_plain.cards:
+		nd_plain.cards.append(bluff_id)
+	var Conn = preload("res://workshop/connections.gd")
+	var share_mist: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd_mist, {"baseline": "without_cards"}), nd_mist.conclusion)
+	var share_plain: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd_plain, {"baseline": "without_cards"}), nd_plain.conclusion)
+	RC.clash_rule = rule_was
+	check(not share_mist.is_empty() and not share_plain.is_empty() and float(share_mist.after) > float(share_plain.after) + 1e-6,
+		"a Mistaken call on \"neither is the Demon\" weakens it in the Demon share too (share of evil that is the Demon %.3f, %.3f uncalled)" % [float(share_mist.get("after", -1.0)), float(share_plain.get("after", -1.0))])
+	# The split hears the reading as the listener does (Codex on #410): a listener who trusts
+	# the town less takes less from the Seer's "neither is the Demon", in the Demon share too.
+	var nd2_v: Dictionary = model.compile(nd2_p)
+	var share_mid: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards"}), nd2_v.conclusion)
+	var share_low: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards", "npc_trust": 0.1}), nd2_v.conclusion)
+	check(not share_mid.is_empty() and not share_low.is_empty() and float(share_mid.after) < float(share_mid.before) and float(share_low.after) > float(share_mid.after) + 1e-6,
+		"a less trusting listener clears less in the Demon share too (share after %.3f at trust 0.1, %.3f at 0.5; %.3f before)" % [float(share_low.get("after", -1.0)), float(share_mid.get("after", -1.0)), float(share_mid.get("before", -1.0))])
 	# A challenge, weighed as the listener weighs it.
 	var bare: Dictionary = accuse.duplicate(true)
 	bare["reading_challenges"] = {bluff_id: {"mode": "lying", "supports": []}}
@@ -102,6 +155,22 @@ func _init() -> void:
 	# an average listener accepts it and presses the Minion as the liar.
 	var outs: Array = r_grounded.get("listener", {}).get("challenges", [])
 	check(outs.size() == 1 and outs[0].kind == "pressed" and outs[0].teller == minion.id and outs[0].witnesses == [seer.id], "with both claiming the Seer, the call is accepted: the badge's data names the teller it presses and the witness (%s)" % str(outs))
+	# A Mistaken call in an earlier case counts only while that case does (Codex on #410): once
+	# it has faded below the connections model's floor, it no longer discounts the reading in the
+	# Demon share either. (Last: filing the earlier case changes the town's record.)
+	RC.clash_rule = "legacy"
+	var earlier: int = Live.file(g, nd_mist)
+	g.public_presentations[earlier] = int(g.w.day)  # put to the town today
+	var share_fresh: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards"}), nd2_v.conclusion)
+	var day_was: int = g.w.day
+	g.w.day = day_was + 30
+	var share_faded: Dictionary = Live._demon_share(Conn.judge_for_profile(g, nd2_v, {"baseline": "without_cards"}), nd2_v.conclusion)
+	g.w.day = day_was
+	g.public_presentations.erase(earlier)
+	RC.clash_rule = rule_was
+	check(earlier > 0 and not share_fresh.is_empty() and not share_faded.is_empty(), "(fixture) the earlier called case is filed and the draft still reads (%d)" % earlier)
+	check(float(share_fresh.after) > float(share_mid.after) + 1e-6, "while the earlier case counts, its Mistaken call weakens the reading in the Demon share (%.3f against %.3f without it)" % [float(share_fresh.get("after", -1.0)), float(share_mid.get("after", -1.0))])
+	check(absf(float(share_faded.after) - float(share_mid.after)) < absf(float(share_fresh.after) - float(share_mid.after)) - 1e-6, "once it has faded, the call no longer weakens it (%.3f faded, %.3f fresh, %.3f without)" % [float(share_faded.get("after", -1.0)), float(share_fresh.get("after", -1.0)), float(share_mid.get("after", -1.0))])
 	_draw_and_bare()
 	_top_tier()
 	_lines()
@@ -115,8 +184,8 @@ func _init() -> void:
 func _draw_and_bare() -> void:
 	var f: Dictionary = _deal()
 	var g = f.g
-	var bluff: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": true}, "text": "B2"})
-	var truth: int = g.add_card({"kind": "info", "source": f.seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "T2"})
+	var bluff: int = GameBoard.add_card(g, {"kind": "info", "source": f.minion.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": true}, "text": "B2"})
+	var truth: int = GameBoard.add_card(g, {"kind": "info", "source": f.seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "T2"})
 	var view: Dictionary = Live.view(g)
 	var b_id: String = _id(g, view, bluff)
 	var t_id: String = _id(g, view, truth)
@@ -127,7 +196,7 @@ func _draw_and_bare() -> void:
 	uncited.reading_challenges = {b_id: {"mode": "lying", "supports": []}}
 	# A "no" reading is likely true from the start (a "yes" isn't: one in five, in ten), so a
 	# bare call on it has nothing to stand on.
-	var likely: int = g.add_card({"kind": "info", "source": f.minion.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "N2"})
+	var likely: int = GameBoard.add_card(g, {"kind": "info", "source": f.minion.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [f.innocent.id, f.other.id], "yes": false}, "text": "N2"})
 	var n_id: String = _id(g, Live.view(g), likely)
 	var alone = value.duplicate(true)
 	alone.conclusion = {"type": "good", "target": f.innocent.id, "at": view.alignment_epoch}
@@ -151,14 +220,14 @@ func _draw_and_bare() -> void:
 
 
 ## The badge's top tier reads the chance only where it settles the premise (Herald and Codex on
-## #358): accusing premises, "is good", "is not the Demon"; not "holds their gift" and the like.
+## #358): accusing premises, "is good", "is not the Demon"; not "is Marked" and the like.
 func _top_tier() -> void:
 	var CaseEval = preload("res://workshop/case_eval.gd")
 	var cat: Callable = func(type: String) -> String: return CaseEval.category(1.1, Live.top_tier_chance(type, 0.95))
 	check(cat.call("evil") == "damning" and cat.call("demon") == "damning" and cat.call("good") == "damning" and cat.call("notdemon") == "damning",
 		"at a 95% chance, an accusing premise, \"is good\" and \"is not the Demon\" reach the top tier")
-	check(cat.call("role") == "none" and cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
-		and cat.call("secret_mod") == "none" and cat.call("conflict") == "none",
+	check(cat.call("misled") == "none" and cat.call("truthful") == "none" and cat.call("marked") == "none"
+		and cat.call("secret_mod") == "none",
 		"a clearing premise the target's goodness doesn't settle keeps the tier its strength earns")
 
 

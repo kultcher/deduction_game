@@ -35,6 +35,8 @@
 ## --force-roles a,b: put these roles on the script and deal them.
 ## --declare: stands in for the demon-type declaration (LiveActivity.declared_demon_type).
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -526,26 +528,17 @@ func _measure_player(g) -> void:
 		var nums: Array = range(before + 1, g.board.size() + 1)
 		if not nums.is_empty():
 			finds.append({"evidence": "trace", "nums": nums, "target": w.demon_id, "scene": sid})
-	for loc in w.dropped.keys().duplicate():
-		var owners: Array = w.dropped[loc].map(func(it): return str(it.get("owner", ""))).filter(func(o): return o != "")
-		var before: int = g.board.size()
-		g.loc = loc
-		GameDayNight._search(g)
-		var nums: Array = range(before + 1, g.board.size() + 1)
-		var target: String = owners[0] if not owners.is_empty() else ""
-		if not nums.is_empty() and target != "":
-			finds.append({"evidence": "dropped_belongings", "nums": nums, "target": target})
 	# Partner for traces: everyone's workplace and haunts as profile cards (what a player
 	# learns about town), cited with the trace.
 	var profile_nums: Array = []
 	for m in w.npcs:
 		if str(m.get("work")) != "" and C.LOCATIONS.has(str(m.work)):
-			profile_nums.append(g.add_profile_receipt({"kind": "work", "subject": [m.id], "source": "town", "loc": m.work, "block": w.loc_block(m.work),
-				"day": w.day, "phase": g._phase_now(), "class": "circumstantial", "text": "%s works at %s." % [m.name, w.loc_name(m.work)]}))
+			profile_nums.append(GameBoard.add_profile_receipt(g, {"kind": "work", "subject": [m.id], "source": "town", "loc": m.work, "block": w.loc_block(m.work),
+				"day": w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": "%s works at %s." % [m.name, w.loc_name(m.work)]}))
 		for h in m.haunts:
 			if C.LOCATIONS.has(str(h)):
-				profile_nums.append(g.add_profile_receipt({"kind": "haunt", "subject": [m.id], "source": "town", "loc": h, "locs": [h], "block": w.loc_block(h),
-					"day": w.day, "phase": g._phase_now(), "class": "circumstantial", "text": "%s often goes to %s when off work." % [m.name, w.loc_name(h)]}))
+				profile_nums.append(GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [m.id], "source": "town", "loc": h, "locs": [h], "block": w.loc_block(h),
+					"day": w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": "%s often goes to %s when off work." % [m.name, w.loc_name(h)]}))
 	var with_profile: Array = []
 	for f in finds:
 		if f.evidence == "trace":
@@ -564,8 +557,8 @@ func _measure_player(g) -> void:
 			var d = _delta(g, l, {}, func(n):
 				n.credibility = t
 				n.trust = t
-				var ded: int = g.file_deduction({"type": "evil", "a": target}, f.nums)
-				g._evaluate_deduction(n, g.board[ded - 1], 1.0, false))
+				var ded: int = GameBoard.file_deduction(g, {"type": "evil", "a": target}, f.nums)
+				GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false))
 			if not d.is_empty():
 				var kinds: Array = f.nums.filter(func(k): return k > 0).map(func(k): return str(g.board[k - 1].get("kind", "")) + ":" + str(g.board[k - 1].get("trace_family", "")))
 				rows.append(_row(g, f.evidence, {"trust": t, "mode": "presented", "cards": kinds, "target": target, "target_evil": w.by_id[target].is_evil(),
@@ -861,7 +854,7 @@ func _measure_premises(g) -> void:
 							var s0: Dictionary = n.suspicion.duplicate(true)
 							CaseEval.captured = []
 							CaseEval.capture_worlds = true
-							var er: Dictionary = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+							var er: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 							CaseEval.capture_worlds = false
 							if OS.has_environment("MEASURE_DEBUG"):
 								print("    eval keys ", er.keys(), " ", str(er).left(300), " err=", g.last_error)
@@ -911,7 +904,7 @@ func _board_reading(g, s, e: Dictionary) -> int:
 	var card: Dictionary = Bridge._reading(s.id, e)
 	if str(card.text) == "":
 		card.text = "%s's %s reading, day %d: %s" % [s.name, e.role, int(e.get("day", 0)), JSON.stringify(e.get("data", {}))]
-	return g.add_card(card)
+	return GameBoard.add_card(g, card)
 
 ## File a canvas case: premise (type, target) supported by `support`; with case_def.challenge,
 ## that challenge on board card `challenged`, grounded by the other support cards.
@@ -1223,7 +1216,7 @@ func _present(g, n, filed: int) -> void:
 	var s0: Dictionary = n.suspicion.duplicate(true)
 	CaseEval.captured = []
 	CaseEval.capture_worlds = true
-	var er: Dictionary = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+	var er: Dictionary = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 	CaseEval.capture_worlds = false
 	var post: Dictionary = {}
 	for cap in CaseEval.captured:
@@ -1269,12 +1262,12 @@ func _profile_receipts(g) -> Array:
 	var nums: Array = []
 	for m in w.npcs:
 		if str(m.get("work")) != "" and C.LOCATIONS.has(str(m.work)):
-			nums.append(g.add_profile_receipt({"kind": "work", "subject": [m.id], "source": "town", "loc": m.work, "block": w.loc_block(m.work),
-				"day": w.day, "phase": g._phase_now(), "class": "circumstantial", "text": "%s works at %s." % [m.name, w.loc_name(m.work)]}))
+			nums.append(GameBoard.add_profile_receipt(g, {"kind": "work", "subject": [m.id], "source": "town", "loc": m.work, "block": w.loc_block(m.work),
+				"day": w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": "%s works at %s." % [m.name, w.loc_name(m.work)]}))
 		for h in m.haunts:
 			if C.LOCATIONS.has(str(h)):
-				nums.append(g.add_profile_receipt({"kind": "haunt", "subject": [m.id], "source": "town", "loc": h, "locs": [h], "block": w.loc_block(h),
-					"day": w.day, "phase": g._phase_now(), "class": "circumstantial", "text": "%s often goes to %s when off work." % [m.name, w.loc_name(h)]}))
+				nums.append(GameBoard.add_profile_receipt(g, {"kind": "haunt", "subject": [m.id], "source": "town", "loc": h, "locs": [h], "block": w.loc_block(h),
+					"day": w.day, "phase": GameBoard._phase_now(g), "class": "circumstantial", "text": "%s often goes to %s when off work." % [m.name, w.loc_name(h)]}))
 	return nums
 
 ## Whether a trace's places fit this person's work or haunts.
@@ -1305,8 +1298,8 @@ func _case_step(g, l, target: String, nums: Array, inject = null):
 			inject.call(n)
 		n.credibility = 0.8
 		n.trust = 0.8
-		var ded: int = g.file_deduction({"type": "evil", "a": target}, nums)
-		g._evaluate_deduction(n, g.board[ded - 1], 1.0, false))
+		var ded: int = GameBoard.file_deduction(g, {"type": "evil", "a": target}, nums)
+		GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false))
 	return d
 
 func _measure_traces(g) -> void:
@@ -1483,8 +1476,8 @@ func _measure_support(g) -> void:
 			for cond in ["alone", "with_traces"]:
 				var nums: Array = profile_nums if cond == "alone" else profile_nums + found.all
 				var rd: Dictionary = _real_delta(g, l, func(n):
-					var ded: int = g.file_deduction({"type": "evil", "a": target}, nums)
-					g._evaluate_deduction(n, g.board[ded - 1], 1.0, false))
+					var ded: int = GameBoard.file_deduction(g, {"type": "evil", "a": target}, nums)
+					GamePresentation._evaluate_deduction(g, n, g.board[ded - 1], 1.0, false))
 				if not out.has("before"):
 					out["before"] = info.call(_top_alive(g, rd.base, l.id))
 				out[tk + "_" + cond] = {"top": info.call(_top_alive(g, rd.after, l.id)), "target_after": float(rd.after.get(target, 0.0)), "target_before": float(rd.base.get(target, 0.0)),

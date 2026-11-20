@@ -3,9 +3,12 @@
 ## report the solver's own numbers, and it must change nothing.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const DevLog = preload("res://sim/devlog.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
@@ -54,7 +57,7 @@ func _game(insight: float = 0.5):
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	return GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if day == 0 else 0, "data": data,
 		"text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 
@@ -75,7 +78,7 @@ func _prepared(g, value: Dictionary) -> Dictionary:
 	input.private_evidence = []
 	input.evidence = input.evidence.filter(func(e): return e.id in input.selected)
 	input.listener = {"id": "ghost", "name": "Test juror", "trust": 0.5, "confidence": 0.5,
-		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": "", "legacy_evidence": []}
+		"insight": 0.5, "npc_trust": {}, "suspicion": {}, "source_doubt": {}, "own_gift": ""}
 	return Assess.prepare(input)
 
 func _state(g) -> Dictionary:
@@ -200,13 +203,13 @@ func _vote_bar() -> void:
 	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
 	var number: int = Live.file(g, _value(g, "evil", p[3], [dowser]), 0)
 	var was: Dictionary = WorkshopWhy.before(n)
-	g._evaluate_deduction(n, g.board[number - 1], 1.0, false, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false, "meeting")
 	var b: Dictionary = WorkshopWhy.presentation(g, n, g.board[number - 1], "meeting", was)
 	check(b.has("action"), "the readout has the action bars")
 	if not b.has("action"):
 		return
 	g.w.meeting = {"block": "", "block_count": 0, "nominated": [], "vote_parts": {}}
-	MindMeeting.vote(g.w, n, p[3].id, "player", false, "", 0)
+	MindVote.vote(g.w, n, p[3].id, "player", false, "", 0)
 	var real: Dictionary = g.w.meeting.vote_parts.get(n.id, {})
 	check(not real.is_empty(), "the real vote recorded its parts")
 	if not real.is_empty():
@@ -227,10 +230,10 @@ func _neutral_when_on() -> void:
 		var second: int = Live.file(g, _value(g, "demon", p[3], [dowser, seer]), 0)
 		for q in p:
 			if q.alive:
-				g._evaluate_deduction(q, g.board[first - 1], 1.0, false, "meeting")
+				GamePresentation._evaluate_deduction(g, q, g.board[first - 1], 1.0, false, "meeting")
 		for q in p:
 			if q.alive:
-				g._evaluate_deduction(q, g.board[second - 1], 1.0, false, "meeting")
+				GamePresentation._evaluate_deduction(g, q, g.board[second - 1], 1.0, false, "meeting")
 		for q in p:
 			Mind.refresh_beliefs(g.w, q, " (after)")
 		var people: Array = []

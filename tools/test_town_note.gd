@@ -9,6 +9,7 @@
 ## - the player's watch record doesn't enter it.
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const CanvasModel = preload("res://workshop/canvas_model.gd")
@@ -50,7 +51,7 @@ func _game():
 
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	var number: int = g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	var number: int = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if role == "seer" else 0, "data": data, "text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 	_texts[number] = g.board[number - 1].text
 	return number
@@ -143,8 +144,6 @@ func _notes() -> void:
 	_retired_and_challenged()
 	_profile_and_upgrade()
 	_deleted_and_faded()
-	_conflict_quotes()
-	_conflict_draft()
 	_supersets()
 	_spent_pressure()
 	_press_from_posterior()
@@ -237,40 +236,6 @@ func _deleted_and_faded() -> void:
 	g.w.day += 8
 	var other: Dictionary = _value(g, "good", p[4].id, [seer, dowser])
 	check(_kind(g, other) == "refresh", "long after, when the argument has faded out, the same cards under another premise refresh it (%s)" % _kind(g, other))
-
-
-## Codex on #154 (fourth pass): a public "these reports conflict" case quotes its cards but
-## argues for none of them, so a firm case on those cards isn't a repeat.
-func _conflict_quotes() -> void:
-	var g = _game()
-	var p: Array = g.w.npcs
-	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
-	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
-	g.public_citations[seer] = true
-	g.public_citations[dowser] = true
-	var conflict: Dictionary = _value(g, "conflict", p[3].id, [seer, dowser])
-	var firm: Dictionary = _value(g, "evil", p[3].id, [seer, dowser])
-	check(str(conflict.get("conclusion", {}).get("type", "")) == "conflict" and conflict.cards.size() == 2, "(fixture) a conflict case on the two cards (%s)" % str(conflict.get("conclusion", {})))
-	var filed: int = Live.file(g, conflict)
-	g.public_presentations[filed] = int(g.w.day)
-	check(_kind(g, firm) not in ["repeat", "presses"], "a firm case on cards a public conflict case only quoted isn't a repeat (%s)" % _kind(g, firm))
-
-
-## Codex on #154 (fifth pass): a "conflict" draft argues for none of its cards, so it can't
-## refresh (or repeat) a firm case on them.
-func _conflict_draft() -> void:
-	var g = _game()
-	var p: Array = g.w.npcs
-	var seer: int = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
-	var dowser: int = _read(g, p[5], "dowser", 1, {"group": [p[4].id], "count": 0})
-	g.public_citations[seer] = true
-	g.public_citations[dowser] = true
-	var firm: Dictionary = _value(g, "evil", p[3].id, [seer, dowser])
-	var filed: int = Live.file(g, firm)
-	g.public_presentations[filed] = int(g.w.day)
-	g.w.day += 1
-	var conflict: Dictionary = _value(g, "conflict", p[3].id, [seer, dowser])
-	check(Live.town_note(g, conflict).is_empty(), "a conflict draft on a firm case's cards gets no note, not a refresh (%s)" % _kind(g, conflict))
 
 
 ## Codex on #154 (sixth pass), now that the note follows the arithmetic: a larger case that

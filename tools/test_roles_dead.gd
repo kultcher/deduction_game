@@ -2,6 +2,8 @@
 ## Merged from: test_chunk3_executor_registrar, test_chunk6a_sexton_brute, test_roster, test_workshop_martyr_sexton, test_workshop_medium.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const C = preload("res://sim/content.gd")
@@ -198,24 +200,24 @@ func _run() -> void:
 	var medium = g.w.npcs[0]
 	var dead = g.w.npcs[1]
 	var pair: Array = g.w.npcs.filter(func(n): return n != medium and n != dead).slice(0, 2).map(func(n): return n.id)
-	g.add_card({"kind": "death", "source": "player", "subject": [dead.id], "night": 1, "text": "Public death"})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [dead.id], "night": 1, "text": "Public death"})
 	var entry = {"role": "seer", "day": 0, "data": {"pair": pair, "yes": true}, "text": "Original Seer reading", "why": "HIDDEN CAUSE", "true": false, "fake": true}
-	var number = g.add_card({"kind": "info", "source": medium.id, "subject": [], "role": "medium", "day": 2, "phase": 3,
+	var number = GameBoard.add_card(g, {"kind": "info", "source": medium.id, "subject": [], "role": "medium", "day": 2, "phase": 3,
 		"data": {"dead": dead.id, "item": {"type": "reading", "entry": entry, "lie": true}}, "text": "Medium repeats dead Seer"})
 	var id: String = Live.Evidence.normalize_card(g.board[number - 1]).id
 	var view = Live.view(g)
 	var card = Solver.card_by_id(view, id)
 	check(card.role == "seer" and card.source == dead.id and card.relay_source == medium.id, "relay retains original evaluator and both speakers")
 	check(card.observed_at.day == 0 and card.relay_observed_at.day == 2, "original reading and Medium acquisition keep distinct times")
-	check(not card.get("fallback", true), "a supported Medium relay is weighable, not marked fallback (Codex, #348)")
+	check(not card.get("unweighable", true), "a supported Medium relay is weighable, not marked unweighable (Codex, #348)")
 	# Without the public death, the same item is the Medium's own testimony: still weighable.
 	var g2 = Game.new()
 	g2.new_case(692, 7)
 	g2.w.dlog.detailed = false
-	var n2 = g2.add_card(g.board[number - 1].duplicate(true))
+	var n2 = GameBoard.add_card(g2, g.board[number - 1].duplicate(true))
 	var told = Solver.card_by_id(Live.view(g2), Live.Evidence.normalize_card(g2.board[n2 - 1]).id)
 	check(told.get("testimony_only", false) and not told.has("relay_source"), "without the public death the Medium item is teller testimony")
-	check(not told.get("fallback", true), "and that testimony is weighable, not marked fallback (Codex, #348)")
+	check(not told.get("unweighable", true), "and that testimony is weighable, not marked unweighable (Codex, #348)")
 	check(told.get("support_note", "") == "Hearsay: the teller can't say whose reading it was, or prove the gift.", "and its note calls it hearsay (%s)" % told.get("support_note", ""))
 	var serialized = JSON.stringify(Live.Evidence.normalize_card(g.board[number - 1]))
 	check(not serialized.contains("HIDDEN CAUSE") and not serialized.contains('"fake"') and not serialized.contains('"lie"'), "nested referee cause fields do not cross the evidence boundary")
@@ -229,7 +231,7 @@ func _run() -> void:
 	check(prepared.ready, "Medium source knowledge is complete for neutral assessment")
 	var preview = Ghost.live(Live.snapshot(g, value))
 	check(preview.ready, "Medium gets neutral preview")
-	var direct_number = g.add_card({"kind": "info", "source": dead.id, "subject": [], "role": "seer", "day": 0, "phase": 3, "data": entry.data, "text": entry.text})
+	var direct_number = GameBoard.add_card(g, {"kind": "info", "source": dead.id, "subject": [], "role": "seer", "day": 0, "phase": 3, "data": entry.data, "text": entry.text})
 	var combined = Canvas.new(Live.view(g))
 	combined.nodes[combined.selected].conclusion = value.conclusion.duplicate(true)
 	combined.connect_cards("e:" + id, combined.selected)
@@ -261,10 +263,10 @@ func _run() -> void:
 	npc.beliefs = []
 	npc.role = "warden"
 	npc.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	var response = g._evaluate_deduction(npc, g.board[filed - 1], 1.0)
+	var response = GamePresentation._evaluate_deduction(g, npc, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "Medium presentation reaches shared owner")
 	var before: Dictionary = npc.workshop_state.get("requested", {}).duplicate(true)
-	response = g._evaluate_deduction(npc, g.board[filed - 1], 1.0)
+	response = GamePresentation._evaluate_deduction(g, npc, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and npc.workshop_state.get("requested", {}) == before, "Medium repeat does not stack")
 	check(board.add_modifier("e:" + id, "lying") != "", "ambiguous relay blame cannot silently accuse the wrong speaker")
 	var alive_input = _ghost_input(g, value)
@@ -436,10 +438,10 @@ func _live() -> void:
 	var source = g.w.npcs[0]
 	var target = g.w.npcs[4]
 	for i in range(1, 4):
-		g.add_card({"kind": "execution", "source": "player", "subject": [g.w.npcs[i].id], "day": i, "phase": 2, "text": "Public execution %d" % i})
+		GameBoard.add_card(g, {"kind": "execution", "source": "player", "subject": [g.w.npcs[i].id], "day": i, "phase": 2, "text": "Public execution %d" % i})
 	for role in ["martyr", "sexton"]:
 		var data: Dictionary = {"target": target.id, "chosen": true} if role == "martyr" else {"night": 3}
-		var number = g.add_card({"kind": "info", "source": source.id, "subject": [], "role": role, "day": 3 if role == "sexton" else 1, "phase": 3, "data": data, "text": role + " use claim"})
+		var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "subject": [], "role": role, "day": 3 if role == "sexton" else 1, "phase": 3, "data": data, "text": role + " use claim"})
 		var board = Canvas.new(Live.view(g))
 		var root: String = board.selected
 		board.nodes[root].conclusion = {"type": "suspicious", "target": target.id, "at": "Original alignment"}
@@ -457,15 +459,15 @@ func _live() -> void:
 		listener.ledger = {}
 		listener.role = "warden"
 		listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-		var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("workshop", false), role + " actual presentation uses shared owner")
 		var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-		response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+		response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 		check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, role + " presentation repeat is stable")
 		check(board.add_modifier("e:" + id, "misled") == "", role + " supports reading modifier")
 		check(Live.status(g, board.compile(root)).ready, role + " modifier retains capability")
 		if role == "martyr":
-			var execution = g.add_card({"kind": "execution", "source": "player", "subject": [target.id], "day": 2, "phase": 2, "text": "Target executed after promise"})
+			var execution = GameBoard.add_card(g, {"kind": "execution", "source": "player", "subject": [target.id], "day": 2, "phase": 2, "text": "Target executed after promise"})
 			var changed_view = Live.view(g)
 			board = Canvas.new(changed_view)
 			root = board.selected

@@ -3,9 +3,12 @@
 ## errand, or the gift that took it out. Tier 1, evil, or no honest reason: the line stands
 ## alone. Setup as test_workshop_presentation's _trapped_group_response.
 extends SceneTree
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const MindDialogue = preload("res://sim/mind_dialogue.gd")
+const MindPress = preload("res://sim/mind_press.gd")
+const MindAnswers = preload("res://sim/mind_answers.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const LiveCanvas = preload("res://game/workshop_canvas.gd")
@@ -46,24 +49,24 @@ func _helper() -> void:
 	var n = w.living_good().filter(func(x): return not preload("res://sim/content.gd").ROLES[x.role].get("night_walk", false))[0]
 	_out(g, n)
 	n.secret = {"kind": "errand", "text": "tends a sick aunt", "me": "was tending my sick aunt"}
-	var r: Dictionary = MindDialogue.trapped_explanation(w, n, 1)
+	var r: Dictionary = MindPress.trapped_explanation(w, n, 1)
 	_check(r.get("lines", []).size() == 1 and r.get("facts", []).any(func(f): return f.get("kind", "") == "secret"), "a good NPC with a secret errand explains the night (%s)" % str(r.get("lines", [])))
 	# Asked about the night again (the confession roll aside): the owned account stands, not
 	# the home alibi it replaced (Codex on #261).
 	n.dialogue_memory["night_accounts"] = {"1": {"kind": "alibi", "home": true, "source": n.id, "subject": [n.id], "day": 1, "phase": 3}}
 	n.secret = {"kind": "errand", "text": "tends a sick aunt", "me": "was tending my sick aunt"}
-	MindDialogue.trapped_explanation(w, n, 1)
+	MindPress.trapped_explanation(w, n, 1)
 	n.secret = {}
-	var again: Dictionary = MindDialogue.answer_night(w, n, 1)
+	var again: Dictionary = MindAnswers.answer_night(w, n, 1)
 	var home_again: bool = again.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and bool(f.get("home", false)))
 	var out_again: bool = again.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and not bool(f.get("home", true)))
 	_check(out_again and not home_again, "asked again after explaining, it keeps to being out, not home (%s)" % str(again.get("facts", []).map(func(f): return f.get("text", ""))))
 	n.secret = {}
 	n.dialogue_memory["night_accounts"] = {}
-	_check(MindDialogue.trapped_explanation(w, n, 1).is_empty(), "with no honest reason to give, nothing follows")
+	_check(MindPress.trapped_explanation(w, n, 1).is_empty(), "with no honest reason to give, nothing follows")
 	var e = w.evil_team()[0]
 	_out(g, e)
-	_check(MindDialogue.trapped_explanation(w, e, 1).is_empty(), "an evil NPC never explains its night")
+	_check(MindPress.trapped_explanation(w, e, 1).is_empty(), "an evil NPC never explains its night")
 
 func _presented(open: bool) -> void:
 	var g = _game()
@@ -77,8 +80,8 @@ func _presented(open: bool) -> void:
 	n.pressure = 1.0 if open else 0.0
 	var block: String = _out(g, n)
 	var others = w.npcs.filter(func(p): return p != n)
-	var alibi = g.add_card({"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
-	var sight = g.add_card({"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
+	var alibi = GameBoard.add_card(g, {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
+	var sight = GameBoard.add_card(g, {"kind": "sighting", "subject": [n.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
 	var canvas = Canvas.new(LiveCanvas.view(g))
 	var root: String = canvas.add_premise(n.id, "evil", Vector2.ZERO)
 	var a: String = "e:" + Evidence.normalize_card(g.board[alibi - 1]).id
@@ -114,5 +117,5 @@ func _walking_gift() -> void:
 	n.secret = {}
 	n.secret_mod = ""
 	_out(g, n)
-	var r: Dictionary = MindDialogue.trapped_explanation(w, n, 1)
+	var r: Dictionary = MindPress.trapped_explanation(w, n, 1)
 	_check(not r.get("lines", []).is_empty(), "a good Night Watch out on its gift explains the night (%s)" % str(r.get("lines", []).map(func(l): return l.get("statement", "") if l is Dictionary else str(l))))

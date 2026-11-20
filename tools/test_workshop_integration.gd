@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Domain = preload("res://workshop/world_domain.gd")
@@ -6,7 +8,6 @@ const Assess = preload("res://workshop/live_assessment.gd")
 const Solver = preload("res://workshop/solver.gd")
 const TimeModel = preload("res://workshop/chronology.gd")
 const Mind = preload("res://sim/mind.gd")
-const LedgerAudit = preload("res://workshop/ledger_audit.gd")
 var checks = 0
 var fails = 0
 
@@ -20,11 +21,11 @@ func _init() -> void:
 		n.beliefs = []
 		var source = g.w.npcs.filter(func(p): return p != n)[0]
 		var target = g.w.npcs.filter(func(p): return p != n and p != source)[0]
-		var card = g.add_card({"kind": "info", "source": source.id, "role": "surveyor", "day": 0,
+		var card = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "surveyor", "day": 0,
 			"data": {"count": 2}, "subject": [], "text": "Surveyor report"})
-		var ded = g.file_deduction({"type": "evil", "a": target.id}, [card])
+		var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [card])
 		Mind.apply_info(g.w, n, source, {"day": 0, "role": "surveyor", "data": {"count": 2}}, 0.5)
-		var input = g.workshop_snapshot([ded], n.id)
+		var input = GamePresentation.workshop_snapshot(g, [ded], n.id)
 		var prepared = Assess.prepare(input)
 		check(prepared.ready, "count reading is supported without a hidden modifier lookup")
 		var worlds = Domain.worlds(prepared.view)
@@ -75,17 +76,9 @@ func _init() -> void:
 		var result = g.workshop_preview(ded, n.id)
 		print("Live comparison %d people: %d ms" % [size, Time.get_ticks_msec() - start])
 		check(result.ready and result.proposal.effects.size() == size, "live assessment produces collateral proposals for every person")
-		check(not result.ledger_audit.reading_entries.is_empty() and not result.ledger_audit.safe_to_apply_additively, "real raw-reading entries are identified before applying an overlapping proposal")
 		check(before == _state(g), "preview does not mutate beliefs, ledger, RNG or time")
-		var ambiguous = input.duplicate(true)
-		var variant: Dictionary = ambiguous.evidence.filter(func(e): return e.kind == "info")[0].duplicate(true)
-		variant.id += ":variant"
-		variant.content.data.count = 3
-		ambiguous.evidence.append(variant)
-		ambiguous.private_evidence.append(variant.id)
-		check(not Assess.evaluate(ambiguous).ready, "unresolved shared reading identities prevent false precision")
-		var child = g.file_deduction({"type": "evil", "a": source.id}, [card])
-		var nested = g.file_deduction({"type": "evil", "a": target.id}, [card, child])
+		var child = GameBoard.file_deduction(g, {"type": "evil", "a": source.id}, [card])
+		var nested = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [card, child])
 		var nested_result = g.workshop_preview(nested, n.id)
 		check(nested_result.ready and nested_result.proposal.claims.size() == 2, "nested live deductions retain separately assessed intermediate claims")
 		check(result.proposal.effects.keys().all(func(id): return is_equal_approx(result.proposal.effects[id].requested, nested_result.proposal.effects[id].requested)), "sharing evidence through a live intermediate claim does not multiply its consequences")
@@ -100,17 +93,16 @@ func _init() -> void:
 				person.role = "poisoner"
 			person.poisoned = true
 			person.secret_mod = "marked"
-		check(input == g.workshop_snapshot([ded], n.id), "changing hidden causes does not change comparison inputs")
+		check(input == GamePresentation.workshop_snapshot(g, [ded], n.id), "changing hidden causes does not change comparison inputs")
 		var again = g.workshop_preview(ded, n.id)
 		check(result.proposal.effects == again.proposal.effects, "hidden changes do not change proposed consequences")
 		g.w.public_event("curse", [source.id], source.id)
 		check(not g.workshop_preview(ded, n.id).ready, "unsupported live transitions prevent numeric comparison")
 		g.w.public_log = []
-		var unsupported = g.add_card({"kind": "info", "source": source.id, "role": "seer", "day": 1, "data": {"pair": [source.id, target.id], "yes": true}, "text": "Seer report"})
-		var other = g.file_deduction({"type": "evil", "a": target.id}, [unsupported])
+		var unsupported = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "seer", "day": 1, "data": {"pair": [source.id, target.id], "yes": true}, "text": "Seer report"})
+		var other = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [unsupported])
 		check(not g.workshop_preview(other, n.id).ready, "unsupported roles do not silently become unconditional good-source constraints")
 	_routes()
-	_audit()
 	_rumormonger_fallback()
 	print("Workshop integration: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -144,45 +136,23 @@ func _rumormonger_fallback() -> void:
 	var card = {"kind": "report", "source": source.id, "role": "rumormonger", "observed_at": {"day": 0, "phase": "night"}, "data": {"pair": [other, g.w.living_good()[2].id], "secret": "marked"}}
 	check(not Solver._report_holds(view, world, card, {}), "a world where the Rumormonger holds the secret alone can't produce its report")
 
-func _audit() -> void:
-	var input = {"evidence": [], "listener": {"legacy_evidence": [
-		{"id": "info:bart:2:dowser", "kind": "reading", "rel": [], "supports": []},
-		{"id": "arg:evil:hollis", "kind": "arg", "rel": [], "supports": [["bart", 2, "reading"]]},
-		{"id": "ordinary", "kind": "tell", "rel": ["bart", 2, "report"], "supports": []}]}}
-	for id in ["first", "changed"]:
-		input.evidence.append({"id": id, "kind": "info", "source": "bart", "observed_at": {"day": 2}, "content": {"role": "dowser"}})
-	var result = LedgerAudit.inspect(input)
-	check(result.aliases.size() == 1 and result.aliases[0].facts.size() == 2, "same-day legacy collisions are exposed rather than silently merged")
-	check(result.potential_arguments.size() == 1 and result.potential_arguments[0].certainty == "coarse_dependency", "argument dependencies are identified without treating ordinary testimony as gift evidence")
-	check(not result.safe_to_apply_additively, "audit findings never authorize stacking or deleting effects")
-	var g = _game(7)
-	var listener = g.w.living_good()[0]
-	var source = g.w.npcs.filter(func(n): return n != listener)[0]
-	var other = g.w.npcs.filter(func(n): return n != listener and n != source)[0]
-	var entry = {"day": 1, "phase": 1, "role": "dowser", "data": {"group": [source.id, other.id], "count": 1}}
-	var number = g.add_card({"kind": "info", "source": source.id, "role": "dowser", "day": 1, "phase": 1,
-		"data": entry.data, "text": "Dowser group"})
-	Mind.apply_info(g.w, listener, source, entry, 0.5)
-	var audit = LedgerAudit.inspect(g.workshop_snapshot([number], listener.id))
-	check(listener.ledger[Mind.info_eid(source.id, entry)].effects.is_empty() and not audit.reading_entries.is_empty(), "audit detects a learned Dowser reading receipt with empty legacy effects")
-
 func _routes() -> void:
 	var off = _game(7)
 	var on = _game(7)
 	for g in [off, on]:
 		var src = g.w.npcs[0]
-		var num = g.add_card({"kind": "info", "source": src.id, "role": "surveyor", "day": 0, "data": {"count": 2}, "text": "Count"})
-		g.file_deduction({"type": "evil", "a": g.w.npcs[1].id}, [num])
+		var num = GameBoard.add_card(g, {"kind": "info", "source": src.id, "role": "surveyor", "day": 0, "data": {"count": 2}, "text": "Count"})
+		GameBoard.file_deduction(g, {"type": "evil", "a": g.w.npcs[1].id}, [num])
 	on.workshop_compare = true
 	for venue in ["private", "meeting", "nomination"]:
 		var a = off.w.living_good()[0]
 		var b = on.w.by_id[a.id]
 		a.info_log = []
 		b.info_log = []
-		var ar = off._evaluate_deduction(a, off.board[-1], 0.6, false, venue)
-		var br = on._evaluate_deduction(b, on.board[-1], 0.6, false, venue)
+		var ar = GamePresentation._evaluate_deduction(off, a, off.board[-1], 0.6, false, venue)
+		var br = GamePresentation._evaluate_deduction(on, b, on.board[-1], 0.6, false, venue)
 		check(ar == br and _state(off) == _state(on), "comparison preserves actual shared behavior and RNG at " + venue)
-		check(on.workshop_comparisons[-1].venue == venue and on.workshop_comparisons[-1].actual.model == "shared", "each venue retains side-by-side diagnostics")
+		check(on.workshop_comparisons[-1].venue == venue and on.workshop_comparisons[-1].actual.has("agreement"), "each venue retains side-by-side diagnostics")
 	check(off.workshop_comparisons.is_empty(), "comparison is opt-in")
 
 func _game(size: int):

@@ -2,6 +2,8 @@
 ## Merged from: test_chunk2_world_mask_roles, test_chunk4_psychologist_muddler, test_chunk5_monitor_confessor, test_roster, test_workshop_psychologist.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const World = preload("res://sim/world.gd")
 const C = preload("res://sim/content.gd")
@@ -339,7 +341,7 @@ func _family(size: int) -> void:
 	var target = g.w.npcs[2]
 	var reading = {"role": "psychologist", "day": 1, "phase": 3,
 		"data": {"subject": subject.id, "trusts": target.id, "suspects": source.id}, "text": "Publicly reported social preferences"}
-	var number = g.add_card({"kind": "info", "source": source.id, "role": reading.role, "day": reading.day,
+	var number = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": reading.role, "day": reading.day,
 		"phase": reading.phase, "data": reading.data, "text": reading.text})
 	var fact: String = Live.Evidence.normalize_card(g.board[number - 1]).id
 	var value = Solver.empty_case()
@@ -349,28 +351,28 @@ func _family(size: int) -> void:
 	check(filed > 0, "a Psychologist context case files for a %d-person town" % size)
 	for real in g.w.living():
 		var n = real.shadow if real.is_evil() else real
-		var prepared = Live.Assess.prepare(g.workshop_snapshot([filed], real.id))
+		var prepared = Live.Assess.prepare(GamePresentation.workshop_snapshot(g, [filed], real.id))
 		check(prepared.ready and prepared.view.cards.any(func(c): return c.id == fact and c.kind == "context" and c.data == reading.data), "every listener receives the same structured context: " + real.id)
 		if not prepared.ready:
 			continue
 		var ev = CaseEval.evaluate(prepared.view, prepared.case, prepared.listener)
 		check(ev.people.values().all(func(p): return is_equal_approx(p.prior, p.posterior)), "social preferences alone change no alignment posterior: " + real.id)
 		var before = n.suspicion.duplicate(true)
-		var result = g._evaluate_deduction(n, g.board[filed - 1], 1.0, false)
+		var result = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0, false)
 		check(result.get("workshop", false) and n.workshop_state.active and fact in n.workshop_state.facts and n.suspicion == before, "shared ownership preserves the context without a guilt award: " + real.id)
 	var listener = g.w.living_good()[0]
 	Mind.apply_info(g.w, listener, source, reading, 1.0)
 	check(fact in listener.workshop_state.facts and listener.workshop_state.owned.has(Mind.info_eid(source.id, reading)), "learned Psychologist receipts use the same owner as player presentations")
-	var input = g.workshop_snapshot([filed], listener.id)
+	var input = GamePresentation.workshop_snapshot(g, [filed], listener.id)
 	for edit in [{"subject": "unknown"}, {"trusts": subject.id}, {"suspects": ""}]:
 		var bad = input.duplicate(true)
 		bad.evidence.filter(func(e): return e.id == fact)[0].content.data.merge(edit, true)
 		check(not Live.Assess.prepare(bad).ready, "malformed social-reading identities are not guessed")
 	# The same social observation remains context when a Medium faithfully relays it.
 	g.w.day = 3
-	g.add_card({"kind": "death", "source": "player", "subject": [source.id], "night": 1, "text": "Public death"})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [source.id], "night": 1, "text": "Public death"})
 	var medium = g.w.npcs[3]
-	number = g.add_card({"kind": "info", "source": medium.id, "role": "medium", "day": 2, "phase": 3,
+	number = GameBoard.add_card(g, {"kind": "info", "source": medium.id, "role": "medium", "day": 2, "phase": 3,
 		"data": {"dead": source.id, "item": {"type": "reading", "entry": reading}}, "text": "Medium relays the social reading"})
 	value.cards = [Live.Evidence.normalize_card(g.board[number - 1]).id]
 	var prepared = Live.Assess.prepare(Live.snapshot(g, value, listener.id))
@@ -454,7 +456,7 @@ func _test_psychologist_simulation_and_companion_cards() -> void:
 	w.day = 2
 	var before_board: int = g.board.size()
 	var ans_gift: Dictionary = Mind.answer_gift(w, psych, 4)
-	g._facts(ans_gift["facts"])
+	GameBoard._facts(g, ans_gift["facts"])
 	_check(g.board.size() >= before_board + 3, "Psychologist sharing a pair reading adds companion cards for relayed statements onto g.board")
 
 
@@ -488,7 +490,7 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 	w.phase = phase0
 	w.day = 2
 	var shared: Dictionary = Mind.answer_gift(w, psych, 4)
-	g._facts(shared["facts"])
+	GameBoard._facts(g, shared["facts"])
 
 	var cview: Dictionary = WorkshopCanvas.view(g)
 	var model = CanvasModel.new(cview)
@@ -556,9 +558,9 @@ func _test_psychologist_workshop_solver_and_challenges() -> void:
 	_give_role(w2, psych2, "psychologist")
 	w2.day = 1
 	var nf_entry: Dictionary = {"day": 1, "role": "psychologist", "data": {"mode": "none_false", "day_heard": 1}, "true": false, "fake": true, "shared": true, "text": "none of the information I heard on day 1 was a lie or misread"}
-	var c_nf_num: int = g2.add_card({"kind": "info", "source": psych2.id, "role": "psychologist", "day": 1, "data": nf_entry.data, "subject": [], "text": "Psychologist none_false"})
-	var c_sight_num: int = g2.add_card({"kind": "sighting", "source": wit.id, "subject": [walker.id], "block": wit.home_block, "day": 0, "phase": C.NIGHT, "text": "%s saw %s" % [wit.name, walker.name]})
-	var c_alibi_num: int = g2.add_card({"kind": "alibi", "source": walker.id, "subject": [walker.id], "home": true, "block": walker.home_block, "day": 0, "phase": C.NIGHT, "text": "%s says home" % walker.name})
+	var c_nf_num: int = GameBoard.add_card(g2, {"kind": "info", "source": psych2.id, "role": "psychologist", "day": 1, "data": nf_entry.data, "subject": [], "text": "Psychologist none_false"})
+	var c_sight_num: int = GameBoard.add_card(g2, {"kind": "sighting", "source": wit.id, "subject": [walker.id], "block": wit.home_block, "day": 0, "phase": C.NIGHT, "text": "%s saw %s" % [wit.name, walker.name]})
+	var c_alibi_num: int = GameBoard.add_card(g2, {"kind": "alibi", "source": walker.id, "subject": [walker.id], "home": true, "block": walker.home_block, "day": 0, "phase": C.NIGHT, "text": "%s says home" % walker.name})
 	var v2: Dictionary = WorkshopCanvas.view(g2)
 	var id_nf: String = Evidence.normalize_card(g2.board[c_nf_num - 1]).id
 	var id_sg: String = Evidence.normalize_card(g2.board[c_sight_num - 1]).id

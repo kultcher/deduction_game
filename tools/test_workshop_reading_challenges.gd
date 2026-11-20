@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Live = preload("res://game/workshop_canvas.gd")
 const Canvas = preload("res://workshop/canvas_model.gd")
@@ -37,9 +39,9 @@ func _alibis() -> void:
 	# A vigil sees residents leaving the block (Nov 17): it watches Nisha's own block, and
 	# Constance is made her neighbour so both can be seen going out.
 	g.w.by_id.constance.home_block = n.home_block
-	var vigil = g.add_card({"kind": "sighting", "source": "player", "subject": ["constance", "nisha"], "vigil": true,
+	var vigil = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": ["constance", "nisha"], "vigil": true,
 		"day": 1, "phase": 3, "block": n.home_block, "text": "Regression vigil: Constance and Nisha leaving home."})
-	var home = g.add_card({"kind": "alibi", "source": "nisha", "subject": ["nisha"], "day": 1, "phase": 3,
+	var home = GameBoard.add_card(g, {"kind": "alibi", "source": "nisha", "subject": ["nisha"], "day": 1, "phase": 3,
 		"block": "docks", "text": "Regression Nisha says she was home."})
 	for reverse in [false, true]:
 		var board = Canvas.new(Live.view(g))
@@ -60,29 +62,29 @@ func _alibis() -> void:
 		check(preview.ready and preview.proposal.effects.nisha.requested > 0, "ghost sees circumstantial suspicion")
 		var filed = Live.file(g, value)
 		check(g.board[filed - 1].supports.size() == 2, "filing retains both original board cards")
-		var response = g._evaluate_deduction(n, g.board[filed - 1], 1.0)
+		var response = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0)
 		if not response.get("workshop", false):
 			print("Alibi fallback: ", n.workshop_state.get("issues", []), " / ", response)
-			var captured = g.workshop_snapshot([filed], n.id)
+			var captured = GamePresentation.workshop_snapshot(g, [filed], n.id)
 			print("Prepare: ", Live.Assess.prepare(captured).issues)
-			print("Union: ", preload("res://workshop/shared_ledger.gd").prepare(g.workshop_snapshot([], n.id), {str(filed): captured}, n.ledger).issues)
+			print("Union: ", preload("res://workshop/shared_ledger.gd").prepare(GamePresentation.workshop_snapshot(g, [], n.id), {str(filed): captured}, n.ledger).issues)
 		check(response.get("workshop", false), "live presentation uses shared evaluation")
 		check(response.get("repeated", false) or str(response.get("lines", [])).contains("Fine, I was out"), "good NPC admits a known false home account or retains that response on repetition")
 		var applied = n.workshop_state.requested.duplicate(true)
-		g._evaluate_deduction(n, g.board[filed - 1], 1.0)
+		GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0)
 		check(n.workshop_state.requested == applied, "repeated alibi challenge does not stack")
 		board.unmerge(merged)
 		check(board.nodes.has(v) and board.nodes.has(h) and not board.nodes[v].has("merged") and not board.nodes[h].has("merged"), "unmerge restores both originals as visible evidence")
 	n.secret_mod = "sleepwalker"
-	check(g.workshop_snapshot([], n.id).listener.own_outings.get("1") == false, "live adapter cannot give a Sleepwalker knowledge of an unremembered outing")
+	check(GamePresentation.workshop_snapshot(g, [], n.id).listener.own_outings.get("1") == false, "live adapter cannot give a Sleepwalker knowledge of an unremembered outing")
 
 func _readings() -> void:
 	var g = Game.new()
 	g.new_case(44814, 10)
 	g.w.dlog.detailed = false
-	var count1 = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "subject": [],
+	var count1 = GameBoard.add_card(g, {"kind": "info", "role": "surveyor", "source": "greta", "subject": [],
 		"day": 0, "phase": 3, "data": {"count": 1}, "text": "Regression Surveyor one block."})
-	var count3 = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "subject": [],
+	var count3 = GameBoard.add_card(g, {"kind": "info", "role": "surveyor", "source": "greta", "subject": [],
 		"day": 0, "phase": 3, "data": {"count": 3}, "text": "Regression Surveyor three blocks."})
 	for number in [count1, count3]:
 		var board = Canvas.new(Live.view(g))
@@ -137,7 +139,7 @@ func _graded_content() -> void:
 	var a = goods[1]
 	var b = goods[2]
 	var card: Dictionary = Bridge._reading(t.id, {"role": "archivist", "data": {"pair": [a.id, b.id], "role": "poisoner"}, "day": 0, "text": "Regression Archivist pair."})
-	var view: Dictionary = Live.Assess.prepare(g.workshop_snapshot([g.add_card(card)], goods[3].id)).view
+	var view: Dictionary = Live.Assess.prepare(GamePresentation.workshop_snapshot(g, [GameBoard.add_card(g, card)], goods[3].id)).view
 	var report: Dictionary = view.cards.filter(func(c): return c.get("role", "") == "archivist")[0]
 	var worlds: Array = Solver.universe(view)
 	var holds: PackedByteArray = Solver.reading_holds_table(view, report)
@@ -177,10 +179,10 @@ func _graded_content() -> void:
 	var hanged = goods2[1]
 	hanged.alive = false
 	g2.w.executions.append({"day": 1, "id": hanged.id, "yes": [], "no": []})
-	g2._facts([{"kind": "execution", "subject": [hanged.id], "source": "player", "day": 1, "phase": 2, "alive_before": g2.w.living().size() + 1,
+	GameBoard._facts(g2, [{"kind": "execution", "subject": [hanged.id], "source": "player", "day": 1, "phase": 2, "alive_before": g2.w.living().size() + 1,
 		"text": "Regression: %s was executed on day 1." % hanged.name}])
 	var gd: Dictionary = Bridge._reading(goods2[0].id, {"role": "gravedigger", "data": {"executed": hanged.id, "role": "poisoner"}, "day": 1, "text": "Regression Gravedigger reading."})
-	var view2: Dictionary = Live.Assess.prepare(g2.workshop_snapshot([g2.add_card(gd)], goods2[3].id)).view
+	var view2: Dictionary = Live.Assess.prepare(GamePresentation.workshop_snapshot(g2, [GameBoard.add_card(g2, gd)], goods2[3].id)).view
 	var rep2: Array = view2.cards.filter(func(c): return c.get("role", "") == "gravedigger")
 	if rep2.is_empty():
 		check(false, "graded holds mask: the Gravedigger reading reaches the view")
@@ -209,7 +211,7 @@ func _ui() -> void:
 	var g = Game.new()
 	g.new_case(44814, 10)
 	g.w.dlog.detailed = false
-	var number = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "day": 0, "phase": 3,
+	var number = GameBoard.add_card(g, {"kind": "info", "role": "surveyor", "source": "greta", "day": 0, "phase": 3,
 		"subject": [], "data": {"count": 3}, "text": "UI ordinary Surveyor regression."})
 	var editor = Editor.new()
 	editor.g = g
@@ -260,7 +262,7 @@ func _ownership() -> void:
 	n.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
 	n.trust = 0.8
 	n.npc_trust.greta = 0.9
-	var number = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "day": 0, "phase": 3,
+	var number = GameBoard.add_card(g, {"kind": "info", "role": "surveyor", "source": "greta", "day": 0, "phase": 3,
 		"subject": [], "data": {"count": 1}, "text": "Owned Surveyor one regression."})
 	var board = Canvas.new(Live.view(g))
 	var root_id: String = board.selected
@@ -268,21 +270,21 @@ func _ownership() -> void:
 	var id: String = Live.Evidence.normalize_card(g.board[number - 1]).id
 	board.connect_cards("e:" + id, root_id)
 	var filed = Live.file(g, board.compile(root_id))
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0)
 	var initial: Dictionary = n.workshop_state.requested.duplicate(true)
 	board.add_modifier("e:" + id, "unlikely")
 	var modifier: String = board.selected
 	filed = Live.file(g, board.compile(root_id), filed)
 	check(n.workshop_state.requested == initial, "editing and filing alone do not change live challenge effects")
-	var response = g._evaluate_deduction(n, g.board[filed - 1], 1.0)
+	var response = GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false) and not response.get("reading_challenges", response.get("assessment", {}).get("reading_challenges", [])).is_empty(), "challenge reaches actual shared response")
 	var challenged: Dictionary = n.workshop_state.requested.duplicate(true)
 	check(challenged.get("hollis", 0.0) < initial.get("hollis", 0.0), "accepted skepticism reduces the actual owned report effect")
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0)
 	check(n.workshop_state.requested == challenged, "repeated challenge cannot stack discount")
 	board.remove_modifier(modifier)
 	filed = Live.file(g, board.compile(root_id), filed)
-	g._evaluate_deduction(n, g.board[filed - 1], 1.0)
+	GamePresentation._evaluate_deduction(g, n, g.board[filed - 1], 1.0)
 	check(n.workshop_state.requested == initial, "heard revision retracts exclusive challenge and restores original report weight")
 	g.workshop_retract(filed, n.id)
 	check(n.workshop_state.get("requested", {}).values().all(func(v): return is_zero_approx(v)), "withdrawal removes case-only report and challenge effects")

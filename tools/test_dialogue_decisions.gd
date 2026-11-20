@@ -2,6 +2,7 @@
 ## godot --headless --path . --script res://tools/test_dialogue_decisions.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -57,8 +58,8 @@ func _live() -> void:
 	var n = w.living_good()[0]
 	var target = w.living().filter(func(x): return x != n)[0]
 	# A deliberately weak, freeform argument: a claim alone does not establish evil.
-	var k = g.add_card({"kind": "claim", "source": target.id, "subject": [target.id], "role": "surveyor", "text": "I am the Surveyor."})
-	var dn = g.file_deduction({"type": "evil", "a": target.id}, [k])
+	var k = GameBoard.add_card(g, {"kind": "claim", "source": target.id, "subject": [target.id], "role": "surveyor", "text": "I am the Surveyor."})
+	var dn = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [k])
 	_check(dn > 0, "fixture can file a weak accusation")
 	if dn <= 0:
 		return
@@ -89,6 +90,9 @@ func _live() -> void:
 	g.command("nominate " + target.id)
 	g.command("press skip") # the supporters (M2c) speak before the vote; the vote itself is silent
 	g.command("vote yes")
-	_check(g.last_events.filter(func(e): return e["k"] == "speech").is_empty(), "votes are counted without vote speeches")
+	# After the tally, a voter who voted no may say why (meeting plan M2d); nobody else speaks.
+	var tally: Dictionary = w.meeting.get("results", [{}])[-1] if not w.meeting.get("results", []).is_empty() else {}
+	var speakers: Array = g.last_events.filter(func(e): return e["k"] == "speech").map(func(e): return e["speaker"])
+	_check(speakers.all(func(sp): return sp in tally.get("no", [])), "votes are counted without vote speeches; only no voters explain themselves after the tally (%s)" % str(speakers))
 	g.new_case(4242, 10)
 	_check(g.w.npcs.all(func(x): return x.dialogue_memory.is_empty()), "new case resets delivery history")

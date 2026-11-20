@@ -7,14 +7,11 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 
 ## Conclusion types. The player builds them as "<name> <is / is not / should be> <status>".
-const CONCLUSION_TYPES = ["good", "evil", "demon", "minion", "notdemon", "role", "notrole", "lied", "truthful", "misled", "unreliable", "protect", "spare",
+const CONCLUSION_TYPES = ["good", "evil", "demon", "notdemon", "notrole", "lied", "truthful", "misled", "unreliable",
 	"suspicious", "secret", "marked", "red_herring", "secret_mod"]
 
 ## Conclusions that speak against someone (as opposed to for them).
-const ACCUSING = ["evil", "demon", "minion", "lied", "notrole", "unreliable", "suspicious"]
-
-static func is_evil_role(r: String) -> bool:
-	return C.ROLES.has(r) and C.ROLES[r].get("align", "good") == "evil"
+const ACCUSING = ["evil", "demon", "lied", "notrole", "unreliable", "suspicious"]
 
 ## Old names kept working.
 static func normalize(c: Dictionary) -> Dictionary:
@@ -22,26 +19,6 @@ static func normalize(c: Dictionary) -> Dictionary:
 	if t == "poisoned" or t == "mistaken":
 		c["type"] = "misled"
 	return c
-
-## The people a set of cards rests on: who said or reported them (and who claimed what).
-## Excludes you, physical evidence, and anyone the demon killed (known good).
-static func group_of(w, cards: Array) -> Array:
-	var out: Array = []
-	for x in cards:
-		var ids: Array = []
-		var src: String = x.get("source", "")
-		if w.by_id.has(src):
-			ids.append(src)
-		if x.get("kind", "") == "claim":
-			ids += x.get("subject", [])
-		for id in ids:
-			if w.by_id.has(id) and not (id in out) and not (not w.by_id[id].alive and w.by_id[id].death_cause == "demon"):
-				out.append(id)
-	out.sort()
-	return out
-
-static func conflict_of(w, cards: Array) -> Dictionary:
-	return {"type": "conflict", "a": "", "group": group_of(w, cards)}
 
 static func _names(w, ids: Array) -> String:
 	var names: Array = ids.map(func(x): return _nm(w, x))
@@ -124,8 +101,6 @@ static func assertions(card: Dictionary) -> Array:
 				out.append({"t": "trace_struct", "family": card.get("trace_family", ""), "locs": card.get("locs", []), "home_block": card.get("trace_home_block", ""), "evening_block": card.get("trace_evening_block", ""), "victim": card.get("victim", ""), "victim_block": card.get("victim_block", card.get("block", "")), "day": day, "src": src, "card": n})
 			else:
 				out.append({"t": "trace", "block": card.get("block", ""), "day": day, "src": src, "card": n})
-		"dropped":
-			out.append({"t": "dropped", "material": card.get("material", ""), "block": card.get("block", ""), "night": day, "src": src, "card": n})
 		"conversation":
 			for who in subj:
 				out.append({"t": "at", "who": who, "block": card.get("block", ""), "day": day, "phase": ph, "src": src, "card": n})
@@ -144,7 +119,7 @@ static func assertions(card: Dictionary) -> Array:
 			var dc: Dictionary = card.get("conclusion", {})
 			if dc.get("type", "") in ["good", "marked", "red_herring"] or (dc.get("type", "") == "secret_mod" and dc.get("mod", "") != "delusional"):
 				out.append({"t": "proven_good", "who": dc.get("a", ""), "how": "deduced", "src": src, "card": n})
-			if dc.get("type", "") in ["evil", "demon", "minion"]:
+			if dc.get("type", "") in ["evil", "demon"]:
 				out.append({"t": "believed_evil", "who": dc.get("a", ""), "eid": "arg:" + conclusion_key(dc), "src": src, "card": n})
 			if dc.get("type", "") in ["misled", "unreliable"] and dc.has("night"):
 				out.append({"t": "ded_misled", "who": dc.get("a", ""), "night": dc["night"], "src": src, "card": n})
@@ -171,8 +146,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 	var night = (" on night %d" % c["night"]) if c.has("night") else ""
 	var about = (" (card #%d)" % c["card"]) if c.get("card", -1) > 0 else ""
 	match c["type"]:
-		"minion":
-			return "%s is a minion" % a
 		"evil":
 			return "%s is evil" % a
 		"demon":
@@ -190,8 +163,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "%s is good" % a
 		"notdemon":
 			return "%s is not the Demon" % a
-		"role":
-			return "%s is the %s" % [a, C.role_name(c["role"])]
 		"notrole":
 			return "%s is not the %s" % [a, C.role_name(c["role"])]
 		"lied":
@@ -202,12 +173,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 			return "%s is misled%s%s" % [a, night, about]
 		"unreliable":
 			return "%s is misled or lying%s%s" % [a, night, about]
-		"protect":
-			return "%s should be protected" % a
-		"spare":
-			return "%s should be spared from execution" % a
-		"conflict":
-			return "Something doesn't add up: one of %s is misled or lying" % _names(w, c.get("group", []))
 		"suspicious":
 			return "%s is suspicious" % a
 		"turned":
@@ -232,8 +197,6 @@ static func conclusion_text(w, c: Dictionary) -> String:
 
 ## A key for "the same conclusion": type, person and its qualifier.
 static func conclusion_key(c: Dictionary) -> String:
-	if c.get("type", "") == "conflict":
-		return "conflict:" + ",".join(PackedStringArray(c.get("group", [])))
 	return "%s:%s:%s:%s" % [c.get("type", ""), c.get("a", ""), c.get("role", c.get("mod", "")), str(c.get("night", c.get("card", "")))]
 
 ## Three-valued trace relevance from ONLY discovered board/profile receipts (`matches` | `unknown` | `contradicts`).
@@ -354,8 +317,6 @@ static func trace_fit_from_receipts(person_id: String, trace_card: Dictionary, r
 ## Do these cards actually say something about the conclusion's subject?
 ## Uses only discovered `known_receipts` (falling back to `cards`) so filing never leaks hidden truth.
 static func bears_on(w, c: Dictionary, cards: Array, known_receipts: Array = []) -> bool:
-	if c.get("type", "") == "conflict":
-		return c.get("group", []).size() >= 2
 	var a: String = c.get("a", "")
 	var pool: Array = known_receipts if not known_receipts.is_empty() else cards
 	for x in cards:
@@ -372,8 +333,6 @@ static func bears_on(w, c: Dictionary, cards: Array, known_receipts: Array = [])
 static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matched: bool) -> String:
 	if supports.is_empty():
 		return "Pick at least one card as evidence."
-	if c.get("type", "") == "conflict" and c.get("group", []).size() < 2:
-		return "Those cards only rest on one person's word. Name them instead (e.g. 'is misled or lying')."
 	var a: String = c.get("a", "")
 	var cards: Array = board.filter(func(x): return x["n"] in supports)
 	if cards.is_empty():
@@ -383,7 +342,7 @@ static func filing_problem(w, c: Dictionary, supports: Array, board: Array, matc
 			return "Card #%d is an unattributed tavern rumour and cannot be used to build a case." % int(x.get("n", 0))
 	if matched:
 		return ""
-	var positive = (c["type"] in ["role", "good", "notdemon", "truthful", "protect", "spare", "secret", "marked", "red_herring"] and not is_evil_role(c.get("role", ""))) \
+	var positive = c["type"] in ["good", "notdemon", "truthful", "secret", "marked", "red_herring"] \
 		or (c["type"] == "secret_mod" and c.get("mod", "") != "delusional")
 	if not positive:
 		return ""

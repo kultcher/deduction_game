@@ -1,15 +1,18 @@
 ## BACKLOG "Lie severity", the vote side (Michael, Nov 17; Quill's judge side is #210). Since
 ## #210 a caught "I was home" is evidence, not proof, so a listener can believe the lie and
 ## still vote no. Checked here:
-##   - `MindMeeting.catches_home_lie`: a case's own "home" for a night plus something that puts
+##   - `MindVote.catches_home_lie`: a case's own "home" for a night plus something that puts
 ##     them out that night, by the judge's own dispute rule;
 ##   - a voter who accepted such a case and voted no says they believe the lie but won't hang
 ##     for it, ahead of the generic "not enough" line, and even when the miss wasn't close.
 extends SceneTree
 
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const MindMeeting = preload("res://sim/mind_meeting.gd")
+const MindVote = preload("res://sim/mind_vote.gd")
 const Presentation = preload("res://game/workshop_presentation.gd")
 const Evidence = preload("res://workshop/live_evidence.gd")
 const LiveCanvas = preload("res://game/workshop_canvas.gd")
@@ -48,12 +51,12 @@ func _catches_home_lie() -> void:
 	var other: Dictionary = _card("s3", "sighting", {"subject": "b", "subjects": ["b"]})
 	var walk: Dictionary = _card("r1", "report", {"source": "a", "role": "lamplighter", "data": {"count": 1}})
 	var view: Dictionary = {"cards": [own, seen, seen_n2, other, walk]}
-	check(MindMeeting.catches_home_lie(view, ["own", "s1"], "a"), "'home' and a sighting of them out that night: a caught home lie")
-	check(not MindMeeting.catches_home_lie(view, ["own", "s2"], "a"), "a sighting on another night doesn't catch it")
-	check(not MindMeeting.catches_home_lie(view, ["own", "s3"], "a"), "a sighting of someone else doesn't catch it")
-	check(not MindMeeting.catches_home_lie(view, ["s1"], "a"), "a sighting with no 'home' on record isn't a lie")
-	check(MindMeeting.catches_home_lie(view, ["own", "r1"], "a"), "'home' and their own walking gift's reading that night: caught")
-	check(not MindMeeting.catches_home_lie(view, ["own", "s1"], "b"), "only the case's target counts")
+	check(MindVote.catches_home_lie(view, ["own", "s1"], "a"), "'home' and a sighting of them out that night: a caught home lie")
+	check(not MindVote.catches_home_lie(view, ["own", "s2"], "a"), "a sighting on another night doesn't catch it")
+	check(not MindVote.catches_home_lie(view, ["own", "s3"], "a"), "a sighting of someone else doesn't catch it")
+	check(not MindVote.catches_home_lie(view, ["s1"], "a"), "a sighting with no 'home' on record isn't a lie")
+	check(MindVote.catches_home_lie(view, ["own", "r1"], "a"), "'home' and their own walking gift's reading that night: caught")
+	check(not MindVote.catches_home_lie(view, ["own", "s1"], "b"), "only the case's target counts")
 
 
 ## A synthetic tally, as test_meeting_m2d builds it: v accepted the player's case against t
@@ -78,40 +81,40 @@ func _voter_says_lie_not_rope() -> void:
 	g.w.day = 2
 	g.w.phase = C.EVENING
 	g.stream_meeting = false
-	g._start_meeting()
+	GameMeeting._start_meeting(g)
 	var good: Array = g.w.living().filter(func(n): return not n.is_evil())
 	var v = good[0]
 	var t = good[1]
 	var blk = good[2]
 	var near: Dictionary = {"parts": {}, "margin": -0.1, "yes": false}
 	var far: Dictionary = {"parts": {}, "margin": -1.5, "yes": false}
-	var lines: Array = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, near, true))
+	var lines: Array = MindVote.vote_resistance_lines(g.w, _res(g, v, t, near, true))
 	check(lines.size() == 1 and "lied about where they were" in _said(lines) and t.name in _said(lines),
 		"accepted a case that caught a home lie, voted no: says they believe the lie but won't hang (%s)" % _said(lines))
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, far, true))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, far, true))
 	check(lines.size() == 1 and "lied about where they were" in _said(lines), "said even when the miss wasn't close")
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, near, false))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, near, false))
 	check(lines.size() == 1 and not ("lied about" in _said(lines)), "a case with no caught lie keeps the usual line (%s)" % _said(lines))
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, far, false))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, far, false))
 	check(lines.is_empty(), "no caught lie and no close miss: still unexplained")
-	lines = MindMeeting.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, true, blk.id))
+	lines = MindVote.vote_resistance_lines(g.w, _res(g, v, t, {"parts": {"prefers_block": -0.4}, "margin": -0.2, "yes": false}, true, blk.id))
 	check(lines.size() == 1 and blk.name in _said(lines), "preferring the one on the block still comes first")
 	# Granted the lie (took the case partly) but didn't accept the case: still says so.
 	v.dialogue_memory["accepted_cases"] = {}
 	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day}}
 	var only_lie: Dictionary = {"nominee": t.id, "by": "player", "yes": [], "no": [v.id], "count": 1, "threshold": 4,
 		"outcome": "fails", "prev_block": "", "prev_block_count": 0, "voter_parts": {v.id: far}}
-	lines = MindMeeting.vote_resistance_lines(g.w, only_lie)
+	lines = MindVote.vote_resistance_lines(g.w, only_lie)
 	check(lines.size() == 1 and "lied about where they were" in _said(lines), "granted the lie without accepting the case: still says it")
 	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day - 1}}
-	check(MindMeeting.vote_resistance_lines(g.w, only_lie).is_empty(), "a lie granted on an earlier day doesn't count")
+	check(MindVote.vote_resistance_lines(g.w, only_lie).is_empty(), "a lie granted on an earlier day doesn't count")
 	# The player withdrew the case that caught the lie: the grant goes with it (Codex P2).
 	v.dialogue_memory["granted_lies"] = {t.id: {"day": g.w.day, "key": "lie-case"}}
 	v.workshop_state["withdrawn"] = {"lie-case": true}
-	check(MindMeeting.vote_resistance_lines(g.w, only_lie).is_empty(), "a withdrawn case takes the granted lie with it")
+	check(MindVote.vote_resistance_lines(g.w, only_lie).is_empty(), "a withdrawn case takes the granted lie with it")
 	v.workshop_state["withdrawn"] = {}
 	# Michael's wording (Nov 17, via Herald).
-	lines = MindMeeting.vote_resistance_lines(g.w, only_lie)
+	lines = MindVote.vote_resistance_lines(g.w, only_lie)
 	check(_said(lines) == "I'll grant %s lied about where they were that night. But there's many a reason to be abroad at night that isn't the Demon's work, and I won't hang them for it." % t.name, "the agreed line (%s)" % _said(lines))
 	# A report the listener's own knowledge rejected isn't weighed (Codex P2).
 	var Presentation = load("res://game/workshop_presentation.gd")
@@ -145,10 +148,10 @@ func _presented_case_records_the_lie() -> void:
 		t.history[g.w.time_key(1, 3)] = "night:" + block
 		var canvas = Canvas.new(LiveCanvas.view(g))
 		var root: String = canvas.add_premise(t.id, "evil", Vector2.ZERO)
-		var sight = g.add_card({"kind": "sighting", "subject": [t.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
+		var sight = GameBoard.add_card(g, {"kind": "sighting", "subject": [t.id], "source": "player", "day": 1, "phase": 3, "block": block, "text": "Seen away from home."})
 		var b: String = "e:" + Evidence.normalize_card(g.board[sight - 1]).id
 		if with_alibi:
-			var alibi = g.add_card({"kind": "alibi", "subject": [t.id], "source": t.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
+			var alibi = GameBoard.add_card(g, {"kind": "alibi", "subject": [t.id], "source": t.id, "day": 1, "phase": 3, "home": true, "text": "I stayed home."})
 			canvas = Canvas.new(LiveCanvas.view(g))
 			root = canvas.add_premise(t.id, "evil", Vector2.ZERO)
 			var a: String = "e:" + Evidence.normalize_card(g.board[alibi - 1]).id

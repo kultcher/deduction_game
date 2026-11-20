@@ -1,4 +1,5 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -31,7 +32,7 @@ func _init() -> void:
 	var eid: String = Mind.claim_eid(rival.id, "seer")
 	check(listener.workshop_state.owned.has(eid) and listener.workshop_state.owned.has(Mind.claim_eid(listener.id, "seer")), "both sides of a double claim acquire shared ownership")
 	check(is_zero_approx(Mind.claim_credence(listener, rival.id, "seer")), "owned legacy claim credence is parked")
-	var plan = Shared.prepare(g.workshop_snapshot([], listener.id), {}, listener.ledger)
+	var plan = Shared.prepare(GamePresentation.workshop_snapshot(g, [], listener.id), {}, listener.ledger)
 	var claims: Array = plan.prepared.view.cards.filter(func(c): return c.kind == "claim" and c.source == rival.id)
 	check(plan.ready and claims.size() == 1 and is_equal_approx(claims[0].hearing_weight, 0.5), "a public rival declaration enters once at its hearing weight")
 	var before: Dictionary = listener.workshop_state.requested.duplicate(true)
@@ -53,7 +54,7 @@ func _init() -> void:
 	check(is_zero_approx(Mind.claim_credence(listener, rival.id, "seer")) and listener.workshop_state.get("active", false) and listener.workshop_state.owned.has(eid), "the shared model keeps owning the claim; legacy credence stays parked")
 	var report = {"id": "anonymous", "kind": "report", "source": "a", "role": "seer", "testimony_only": true}
 	var view = {"cards": [report]}
-	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "role", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")
+	check(not Assess.conclusion_issues(view, {"cards": [report.id], "conclusion": {"type": "notrole", "target": "a", "role": "seer"}}).is_empty(), "an anonymous reading retold by a teller is not their gift declaration")
 	var claim = {"kind": "claim", "source": "a", "role": "seer", "hearing_weight": 0.2}
 	check(is_equal_approx(Activity.role_hearing([report, claim], "a", "seer"), 0.2), "anonymous reading content cannot strengthen a separate gift claim")
 	print("Claim mechanics: %d checks; failures: %d" % [checks, fails])

@@ -1,4 +1,6 @@
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Activity = preload("res://workshop/live_activity.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Ghost = preload("res://workshop/ghost_juror.gd")
@@ -120,10 +122,10 @@ func _live() -> void:
 	g.w.dlog.detailed = false
 	var target = g.w.npcs[0]
 	var victim = g.w.npcs[1]
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "text": "Public victim"})
-	var number = g.add_card({"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2,
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "text": "Public victim"})
+	var number = GameBoard.add_card(g, {"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2,
 		"material": "market", "block": "market", "scene": "scene_" + victim.id, "scene_block": victim.home_block, "victim": victim.id, "crime_night": 1, "text": "Structured scene trace"})
-	var evening = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "block": "market", "text": "Evening observation"})
+	var evening = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 2, "block": "market", "text": "Evening observation"})
 	var board = Canvas.new(Live.view(g))
 	var root: String = board.selected
 	board.nodes[root].conclusion = {"type": "suspicious", "target": target.id, "at": "Original alignment"}
@@ -142,15 +144,15 @@ func _live() -> void:
 	listener.ledger = {}
 	listener.role = "warden"
 	listener.workshop_state = {"reasoning_mode": "full", "confidence_mode": "scale"}
-	var response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	var response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("workshop", false), "trace presentation uses actual shared owner")
 	var before: Dictionary = listener.workshop_state.get("requested", {}).duplicate(true)
-	response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
+	response = GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0)
 	check(response.get("repeated", false) and listener.workshop_state.get("requested", {}) == before, "repeated trace presentation does not stack")
-	var legacy = g.add_card({"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2, "block": "market", "text": "Old trace without scene metadata"})
+	var legacy = GameBoard.add_card(g, {"kind": "trace", "source": "evidence", "subject": [], "day": 1, "phase": 2, "block": "market", "text": "Old trace without scene metadata"})
 	var legacy_id: String = Live.Evidence.normalize_card(g.board[legacy - 1]).id
 	var old_view = Live.view(g)
-	check(Solver.card_by_id(old_view, legacy_id).get("fallback", false), "old unstructured trace clearly flags fallback")
-	var vigil = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "square", "vigil": true, "text": "Complete positive vigil"})
+	check(Solver.card_by_id(old_view, legacy_id).get("unweighable", false), "old unstructured trace is marked unweighable")
+	var vigil = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "square", "vigil": true, "text": "Complete positive vigil"})
 	var vigil_card = Solver.card_by_id(Live.view(g), Live.Evidence.normalize_card(g.board[vigil - 1]).id)
 	check(vigil_card.get("complete", false) and victim.id in vigil_card.get("excluded", []), "live positive vigil retains complete coverage and victim exclusion")

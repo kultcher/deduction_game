@@ -3,6 +3,8 @@
 ##   godot --headless --path . --script res://tools/test_poison_outing.gd
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const RC = preload("res://workshop/reading_challenges.gd")
 const History = preload("res://workshop/live_history.gd")
 const Game = preload("res://game/game.gd")
@@ -78,7 +80,7 @@ func _track_record() -> void:
 	var listener = goods[1]
 	g.w.day = 2
 	var text: String = "%s's Archivist reading: one of %s and %s is the Poisoner" % [reader.name, goods[2].name, goods[3].name]
-	g.add_card({"kind": "info", "source": reader.id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
+	GameBoard.add_card(g, {"kind": "info", "source": reader.id, "role": "archivist", "day": 0, "phase": 3, "data": {"pair": [goods[2].id, goods[3].id], "role": "poisoner"}, "text": text})
 	var view: Dictionary = Live.view(g)
 	var model = CanvasModel.new(view)
 	model.contradiction_links = true
@@ -95,7 +97,7 @@ func _track_record() -> void:
 	if filed <= 0:
 		return
 	listener.claim_record.erase(reader.id)
-	g._evaluate_deduction(listener, g.board[filed - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, listener, g.board[filed - 1], 1.0, false)
 	var rec: Dictionary = listener.claim_record.get(reader.id, {})
 	check(str(rec.get("type", "")) == "good", "the listener records that the player called %s good (%s)" % [reader.name, str(rec)])
 	check(str(listener.claim_record.get(goods[2].id, {}).get("type", "")) == "good", "and the case's own conclusion as before")
@@ -115,7 +117,7 @@ func _track_record() -> void:
 	var filed2: int = Live.file(g, model2.compile(premise2))
 	if filed2 > 0:
 		var other = goods[4]
-		g._evaluate_deduction(other, g.board[filed2 - 1], 1.0, false)
+		GamePresentation._evaluate_deduction(g, other, g.board[filed2 - 1], 1.0, false)
 		check(str(other.claim_record.get(reader.id, {}).get("type", "")) == "evil", "a case's stated conclusion about the reader stands over the failed-gift call (%s)" % str(other.claim_record.get(reader.id, {})))
 	else:
 		check(false, "the second case can be filed (%s)" % g.last_error)

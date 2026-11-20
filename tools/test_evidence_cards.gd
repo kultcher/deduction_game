@@ -1,6 +1,11 @@
-## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, dropped items, false-reading causes.
+## Evidence on the board: cards and their provenance, corroboration, sightings and vigils, wards, traces, false-reading causes.
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_fixes, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
+const GameScreens = preload("res://game/game_screens.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const MainActions = preload("res://ui/main_actions.gd")
 const MainPickers = preload("res://ui/main_pickers.gd")
 
@@ -65,7 +70,6 @@ func _run_backlog_batch3() -> void:
 
 func _run_backlog_batch4() -> void:
 	false_reading_causes()
-	dropped_item_search()
 
 
 # ---------------------------------------------------------------- from test_fixes
@@ -112,7 +116,7 @@ func ward_warnings():
 	var g = scene.g
 	var person = g.w.living_good()[0]
 	g.events = []
-	g._offer_command(person, "ward")
+	GameConversation._offer_command(g, person, "ward")
 	check(g.w.tools.ward == 1 and g.offer.ward == person.id and Game.render(g.events).contains("Promising does not spend your ward; keeping the promise does"), "ward promises explain the limit and do not consume the tool")
 	g.state = "night"
 	scene._ward_target = person.id
@@ -137,7 +141,7 @@ func totem_signpost():
 	g.events = []
 	var rng = g.w.rng.state
 	g.loc = "well"
-	g._search()
+	GameDayNight._search(g)
 	check(g.board.any(func(c): return c.kind == "totem" and "will seek a new hiding place" in c.text), "totem-burned receipt warns of a new hiding place")
 	check(g.events.any(func(e): return e.k == "headline" and e.kind == "totem" and "will seek a new hiding place" in e.subtitle), "totem warning also appears as a headline")
 	check(g.w.totem.is_empty() and g.w.rng.state == rng, "totem signpost preserves burn behavior and RNG")
@@ -183,10 +187,10 @@ func ward_evidence():
 	g.command("present %d" % sigil.n)
 	check(is_equal_approx(target.trust, trust_now) and g.shown_protection.size() == 1, "a protection receipt is shown to the town once")
 	check(g.workshop_deliveries.size() == deliveries, "showing protection context does not invent a shared-model adapter")
-	var second = g.add_card({"kind": "scorched_sigil", "subject": [other.id], "source": "evidence", "target": other.id, "text": "Another distinct sigil", "private": true})
+	var second = GameBoard.add_card(g, {"kind": "scorched_sigil", "subject": [other.id], "source": "evidence", "target": other.id, "text": "Another distinct sigil", "private": true})
 	other.trust = 0.49
 	other.trust_cap = 0.5
-	g._show_ward_context(g.board[second - 1], [other])
+	GamePresentation._show_ward_context(g, g.board[second - 1], [other])
 	check(is_equal_approx(other.trust, 0.5), "sigil trust honors existing caps")
 	g.new_case(4242, 10)
 	check(g.sigil_heard.is_empty(), "new cases reset per-sigil reward ownership")
@@ -268,45 +272,9 @@ func false_reading_causes():
 	check(n.info_log[-1].why.begins_with("fallback:") and not n.info_log[-1]["true"], "unrecorded cause is explicit fallback without changing truth status")
 	g.w.dlog.add("info", n.id, "", {"text": "old missing reason", "true": false, "why": "?"})
 	g.w.dlog.add("fake_info", n.id, "", {"text": "old fake reason"})
-	var output = g._lies()
+	var output = GameScreens._lies(g)
 	check(not "(?)" in output and "cause was not recorded" in output and "old fake reason (evil fabrication)" in output, "lies summary handles older missing causes without inventing past impairment")
 	check(g.w.rng.state == rng, "diagnostic cause annotation consumes no random draws")
-
-
-func dropped_item_search():
-	var fixture = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/playtest_37291_drop.json"))
-	var event: Dictionary = fixture.event
-	var g = Game.new()
-	g.detailed_logging = false
-	g.log_dir = "user://batch4_tests"
-	g.new_case(fixture.case.seed, fixture.case.npcs)
-	var owner = g.w.by_id[event.actor]
-	var item = {"night": event.data.night, "material": event.data.material, "owner": owner.id, "who": owner.id, "why": "hunting Jory"}
-	g.w.dropped = {event.data.loc: [item]}
-	g.w.totem = {}
-	g.loc = "mill"
-	g.events = []
-	var rng = g.w.rng.state
-	g._search()
-	check(g.w.dropped.has("wharf") and not g.board.any(func(c): return c.get("dropped", false)), "searching the mill does not consume the wharf's personal item")
-	check(g.w.rng.state == rng, "searching for a stored drop has no discovery roll")
-	g.state = "day"
-	g.moved = false
-	g.command("go wharf")
-	var found = g.command("search")
-	var cards = g.board.filter(func(c): return c.get("dropped", false) and c.get("source", "") == "evidence")
-	check(found.contains("something of " + owner.name) and cards.size() == 1, "ordinary go/search finds Fenwick's original wharf personal item")
-	check(cards[0].subject == [owner.id] and cards[0].loc == "wharf" and cards[0].day == 3 and cards[0].phase == C.NIGHT, "found item produces the existing dated owner sighting card")
-	check(not g.w.dropped.has("wharf"), "all stored drops at the searched location are consumed")
-	g.loc = "wharf"
-	g.events = []
-	rng = g.w.rng.state
-	g._search()
-	check(g.board.filter(func(c): return c.get("dropped", false)).size() == 1 and g.w.rng.state == rng, "searching again cannot duplicate the item and adds no random draw")
-	owner.alive = false
-	g.w.dropped["wharf"] = [item.duplicate(true)]
-	g._search()
-	check(not g.w.dropped.has("wharf"), "an owner's death does not make an unfound stored item inaccessible")
 
 
 # ---- test_fixes
@@ -411,14 +379,14 @@ func _corroboration() -> void:
 	var y: String = ids[1]
 	var wit = w.by_id[ids[2]]
 	var listener = w.by_id[ids[3]]
-	var mine = g.add_card({"kind": "conversation", "subject": [x, y], "block": "square", "loc": "tavern", "day": 1, "phase": 0, "source": "player", "text": "You saw X and Y talking"})
-	var theirs = g.add_card({"kind": "sighting", "subject": [x], "block": "square", "day": 1, "phase": 0, "source": wit.id, "text": "W saw X on the square"})
+	var mine = GameBoard.add_card(g, {"kind": "conversation", "subject": [x, y], "block": "square", "loc": "tavern", "day": 1, "phase": 0, "source": "player", "text": "You saw X and Y talking"})
+	var theirs = GameBoard.add_card(g, {"kind": "sighting", "subject": [x], "block": "square", "day": 1, "phase": 0, "source": wit.id, "text": "W saw X on the square"})
 	_check(wit.id in g.board[mine - 1].get("corroborated_by", []) and "player" in g.board[theirs - 1].get("corroborated_by", []), "the same fact from you and a witness: each card names the other source")
 	_check("also seen by" in CardList.line_for(g.board[mine - 1]), "the card list says who else saw it")
 	var plain = {"kind": "sighting", "subject": [x], "source": "player", "text": "x"}
 	_check(not g.board[mine - 1].get("corroborated_by", []).is_empty() and plain.get("corroborated_by", []).is_empty(), "corroborated card records its independent witness while an uncorroborated card stays bare")
 	# A witness asked about a pair you saw yourself leaves it out and backs your card instead.
-	var seen = g.seen_pairs()
+	var seen = GameBoard.seen_pairs(g)
 	_check(not seen.is_empty(), "your own conversation cards are known as seen pairs")
 	var n = w.by_id[ids[4]]
 	n.traits["gossip"] = 1.0
@@ -430,7 +398,7 @@ func _corroboration() -> void:
 	var t: String = Speech.said(r["lines"][0])
 	_check(not (w.by_id[x].name + " at") in t, "a pair you saw yourself isn't repeated to you (%s)" % t)
 	_check(r["facts"].any(func(f): return f.get("silent", false)), "...but it's kept as silent backing")
-	g._facts(r["facts"])
+	GameBoard._facts(g, r["facts"])
 	_check(n.id in g.board[mine - 1].get("corroborated_by", []), "...which lands on your card")
 
 
@@ -526,25 +494,25 @@ func ward_promise():
 	g.protect_pending[n.id] = true
 	g.ward_log[w.day] = n.id
 	var rng = w.rng.state
-	g._settle_offers()
+	GameConversation._settle_offers(g)
 	check(is_equal_approx(n.trust, 0.56) and n.fear_eased and n.id in g.divulge_due, "a ward on the promised person's door keeps their vigil promise and promised disclosure")
 	check(is_equal_approx(neighbour.trust, 0.35) and not neighbour.fear_eased, "a ward does not fulfil another resident's vigil promise")
 	check(g.offer.is_empty() and g.protect_pending.is_empty() and w.rng.state == rng, "settlement clears obligations without RNG draws")
-	g._settle_offers()
+	GameConversation._settle_offers(g)
 	check(is_equal_approx(n.trust, 0.56), "settlement rewards only once")
 	n.trust = 0.5
 	g.offer = {"ward": n.id, "vigil": {n.id: "square"}}
-	g._settle_offers()
+	GameConversation._settle_offers(g)
 	check(is_equal_approx(n.trust, 0.56), "a ward satisfying both offers to one NPC does not pay twice")
 	n.trust = 0.5
 	g.offer = {"vigil": {n.id: "square"}}
 	g.ward_log = {w.day - 1: n.id}
-	g._settle_offers()
+	GameConversation._settle_offers(g)
 	check(is_equal_approx(n.trust, 0.35), "yesterday's ward does not keep tonight's promise")
 	n.trust = 0.5
 	w.player_vigil = "square"
 	g.offer = {"vigil": {n.id: "square"}}
-	g._settle_offers()
+	GameConversation._settle_offers(g)
 	check(is_equal_approx(n.trust, 0.56), "ordinary promised vigils retain their reward")
 
 
@@ -561,8 +529,9 @@ func playtest_regressions__game():
 func _public_sighting() -> void:
 	var g = playtest_regressions__game()
 	var w = g.w
-	var n = w.by_id["isolde"]
-	var target = w.by_id["merrin"]
+	# An evil teller and a good scapegoat, chosen by alignment so the deal can move.
+	var n = w.by_id[w.minion_ids[0]]
+	var target = w.living_good()[-1]
 	var b = {"kind": "saw", "who": target.id, "day": 1, "phase": C.NIGHT, "block": n.home_block, "how": "window", "detail": "street"}
 	w.evil_plan["fake_sightings"][n.id + ":1"] = b
 	var lines: Array = []
@@ -576,8 +545,8 @@ func _public_sighting() -> void:
 	Mind._public_accusation(w, n, lines, facts)
 	_check(facts.size() == 1 and facts[0]["subject"] == [target.id] and facts[0]["source"] == n.id and facts[0]["day"] == 1, "a publicly cited fake sighting becomes usable, attributed evidence")
 	var before: int = g.board.size()
-	g._facts(facts)
-	g._facts(facts)
+	GameBoard._facts(g, facts)
+	GameBoard._facts(g, facts)
 	_check(g.board.size() == before + 1, "repeating the same public sighting does not duplicate its card")
 
 
@@ -630,8 +599,8 @@ func _multi_subject_vigil_no_collateral_note() -> void:
 	target.home_block = "docks"
 	bystander.home_block = "market"
 	victim.home_block = "hill"
-	g.add_card({"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": "hill", "text": "Killed on hill"})
-	var vig = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id, bystander.id], "day": 1, "phase": C.NIGHT, "block": "docks", "vigil": true, "text": "Night 1 vigil: saw both on the Docks."})
+	GameBoard.add_card(g, {"kind": "death", "source": "player", "subject": [victim.id], "night": 1, "block": "hill", "text": "Killed on hill"})
+	var vig = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id, bystander.id], "day": 1, "phase": C.NIGHT, "block": "docks", "vigil": true, "text": "Night 1 vigil: saw both on the Docks."})
 	var view: Dictionary = Live.view(g)
 	var m = Canvas.new(view)
 	var p = m.add_premise(target.id, "evil", Vector2.ZERO)

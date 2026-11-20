@@ -113,8 +113,6 @@ static func _secret_mod_code(mod_name: String) -> int:
 			return 2
 		"sleepwalker":
 			return 3
-		"muddler":
-			return 4
 		_:
 			return -99
 
@@ -145,8 +143,6 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	case_data = Graph.compile_case(view, case_data)
 	var cards = selected(view, case_data)
 	case_data = with_hanged_refuters(view, case_data, cards, true)
-	if case_data.conclusion.type == "conflict":
-		cards = cards.filter(func(c): return c.id in Graph.roots(case_data, case_data.conflict_scope) or c.id in knowledge.get("own_reports", []))
 	var base = solve(view, cards, {}, {}, knowledge)
 	var proposed_cards = TimeModel.hypothetical_cards(view, case_data, cards)
 	var positions: Dictionary = case_data.positions.duplicate(true)
@@ -205,14 +201,10 @@ static func analyze(view: Dictionary, case_data: Dictionary, knowledge: Dictiona
 	var entailment = "possible"
 	if base.worlds.is_empty() or not base.movement_ok:
 		entailment = "conflicting"
-	elif conclusion.type == "conflict":
-		entailment = "unsupported"
 	elif n == base.worlds.size():
 		entailment = "forced"
 	elif n == 0:
 		entailment = "unsupported"
-	if conclusion.type == "conflict" and (base.worlds.is_empty() or not base.movement_ok):
-		entailment = "forced"
 	var conflicts: Array = []
 	if include_conflicts and (base.worlds.is_empty() or not base.movement_ok):
 		conflicts = minimal_conflicts(view, cards, knowledge)
@@ -229,7 +221,7 @@ static func minimal_conflicts(view: Dictionary, cards: Array, knowledge: Diction
 	# Shrink one conflict, then explore excluding each member to discover other cores.
 	# This avoids enumerating every unrelated subset for a simple alibi conflict.
 	var has_th: bool = cards.any(func(c): return c.kind == "town_hall")
-	var conflict_kinds: Array = ["report", "claim", "town_hall", "sighting", "alibi", "totem", "dropped"] if has_th else ["report", "sighting", "alibi", "totem", "dropped"]
+	var conflict_kinds: Array = ["report", "claim", "town_hall", "sighting", "alibi", "totem"] if has_th else ["report", "sighting", "alibi", "totem"]
 	cards = cards.filter(func(c): return c.kind in conflict_kinds)
 	var result: Array = []
 	_find_conflicts(view, cards, knowledge, result, {})
@@ -1817,7 +1809,7 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		if hd >= 0:
 			return (hd == 1) == (conclusion.type == "demon")
 	match conclusion.type:
-		"demon", "minion": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
+		"demon": return position_holds(view, world, conclusion.target, conclusion.type, conclusion.at)
 		"notdemon": return not position_holds(view, world, conclusion.target, "demon", conclusion.at)
 		"evil", "suspicious": return TimeModel.evil_index(view, world, index, conclusion.at)
 		"good": return not TimeModel.evil_index(view, world, index, conclusion.at)
@@ -1827,12 +1819,13 @@ static func holds(view: Dictionary, world: Dictionary, conclusion: Dictionary) -
 		# only while it held. Never true with no public curse (no world is turned).
 		"turned": return int(world.get("converted", -1)) == index
 		"secret_mod": return world.get("modifier", "marked") == conclusion.get("mod", "") and (int(world.get("holders", 1 << world.marked)) & (1 << index)) != 0
-		"role", "notrole":
+		"notrole":
 			# A declaration question, not an extra hidden role assignment: the live
-			# adapter requires a cited matching claim. Good declarations are binding;
-			# the existing joint role table weighs whether those claims fit together.
-			var claimed: bool = not TimeModel.evil_index(view, world, index, conclusion.at)
-			return claimed if conclusion.type == "role" else not claimed
+			# adapter requires a cited matching claim. Good declarations are binding, so
+			# a bluffed one means evil; the existing joint role table weighs whether those
+			# claims fit together. ("Holds their claimed gift" was merged into "is good",
+			# Michael, Nov 20.)
+			return TimeModel.evil_index(view, world, index, conclusion.at)
 		"lied", "truthful":
 			# Existing challenge semantics: evil-reader versus honest-reader
 			# explanations. Impairment is not deliberate dishonesty.

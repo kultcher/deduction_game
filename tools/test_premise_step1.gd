@@ -5,6 +5,8 @@
 ## when a defence's evidence points the other way.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Tuning = preload("res://sim/tuning.gd")
@@ -48,7 +50,7 @@ func _game(insight: float = 0.5):
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	return GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if day == 0 else 0, "data": data,
 		"text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 
@@ -56,7 +58,7 @@ func _read(g, source, role: String, day: int, data: Dictionary) -> int:
 func _case(g, type: String, target) -> int:
 	var p: Array = g.w.npcs
 	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 2})
-	return g.file_deduction({"type": type, "a": target.id}, [dowser])
+	return GameBoard.file_deduction(g, {"type": type, "a": target.id}, [dowser])
 
 func _moves(insight: float) -> Dictionary:
 	var g = _game(insight)
@@ -65,7 +67,7 @@ func _moves(insight: float) -> Dictionary:
 	Mind.refresh_beliefs(g.w, n, " (baseline)")
 	var before: Dictionary = n.suspicion.duplicate(true)
 	var number = _case(g, "evil", p[3])
-	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var after: Dictionary = n.suspicion.duplicate(true)
 	Mind.refresh_beliefs(g.w, n, " (later refresh)")
 	return {"target": after[p[3].id] - before[p[3].id], "other": after[p[4].id] - before[p[4].id],
@@ -84,27 +86,34 @@ func _spillover() -> void:
 	check(low.remembered and high.remembered, "a presented case is remembered: a later refresh reproduces it")
 	check(high.other < high.target, "a case moves its target more than the people it only mentions")
 
+## A Dowser count of 1 on p3 alone: it names p3 evil outright, so "p3 is good" is clearly wrong
+## whatever else the deal holds. (The two-of-three count sat right on the line, -0.252 against
+## -0.25, and a change to the night's draws tipped it over, Nov 20.)
+func _flat_case(g, type: String, target) -> int:
+	var dowser = _read(g, g.w.npcs[2], "dowser", 1, {"group": [target.id], "count": 1})
+	return GameBoard.file_deduction(g, {"type": type, "a": target.id}, [dowser])
+
 func _trust_cost() -> void:
 	var p: Array
-	# Wrong: "p3 is good" against a Dowser count that puts two of three evil.
+	# Wrong: "p3 is good" against a Dowser count that names p3 evil.
 	var g = _game()
 	var n = g.w.npcs[0]
 	p = g.w.npcs
-	var wrong = _case(g, "good", p[3])
+	var wrong = _flat_case(g, "good", p[3])
 	var t0: float = n.trust
-	var r = g._evaluate_deduction(n, g.board[wrong - 1], 1.0, false)
+	var r = GamePresentation._evaluate_deduction(g, n, g.board[wrong - 1], 1.0, false)
 	print("wrong premise: agreement %.3f, trust %.3f -> %.3f" % [r.agreement, t0, n.trust])
 	check(r.agreement <= Tuning.Trust.PRESENTATION_WRONG_AGREEMENT, "the evidence clearly argues against the premise")
 	check(is_equal_approx(n.trust, t0 - Tuning.Trust.PRESENTATION_WRONG_COST), "a clearly wrong premise costs the trust a good one earns")
 	var t1: float = n.trust
-	g._evaluate_deduction(n, g.board[wrong - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[wrong - 1], 1.0, false)
 	check(is_equal_approx(n.trust, t1), "repeating it costs nothing more")
 	# Right: "p3 is evil" on the same cards earns the reward, not the cost.
 	var g2 = _game()
 	var n2 = g2.w.npcs[0]
-	var right = _case(g2, "evil", g2.w.npcs[3])
+	var right = _flat_case(g2, "evil", g2.w.npcs[3])
 	var t2: float = n2.trust
-	var r2 = g2._evaluate_deduction(n2, g2.board[right - 1], 1.0, false)
+	var r2 = GamePresentation._evaluate_deduction(g2, n2, g2.board[right - 1], 1.0, false)
 	print("right premise: agreement %.3f, trust %.3f -> %.3f" % [r2.agreement, t2, n2.trust])
 	check(n2.trust >= t2, "a supported premise never costs trust")
 
@@ -114,15 +123,15 @@ func _preference() -> void:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var rejected = _case(g, "good", p[3])
-	g._evaluate_deduction(n, g.board[rejected - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[rejected - 1], 1.0, false)
 	check(float(n.protect_pref.get(p[3].id, 0.0)) == 0.0, "a rejected 'X is good' doesn't steer Warden and Martyr picks toward X")
 	# Accepted: a Dowser clear of p6 backs "p6 is good".
 	var g2 = _game()
 	var n2 = g2.w.npcs[0]
 	var q: Array = g2.w.npcs
 	var clear = _read(g2, q[2], "dowser", 1, {"group": [q[6].id], "count": 0})
-	var accepted = g2.file_deduction({"type": "good", "a": q[6].id}, [clear])
-	var r = g2._evaluate_deduction(n2, g2.board[accepted - 1], 1.0, false)
+	var accepted = GameBoard.file_deduction(g2, {"type": "good", "a": q[6].id}, [clear])
+	var r = GamePresentation._evaluate_deduction(g2, n2, g2.board[accepted - 1], 1.0, false)
 	print("accepted defence: agreement %.3f, protect %.3f" % [r.agreement, float(n2.protect_pref.get(q[6].id, 0.0))])
 	check(r.agreement >= Tuning.Workshop.PREMISE_PREF_MIN_AGREEMENT and float(n2.protect_pref.get(q[6].id, 0.0)) > 0.0, "an accepted 'X is good' still steers protection toward X")
 	Mind.refresh_beliefs(g2.w, n2, " (later refresh)")
@@ -143,8 +152,8 @@ func _movement_notes() -> void:
 	var assessment = {"case_eval": ev, "reasoning": {"status": "provisional"}, "agreement": 0.7, "path_kind": "reading"}
 	var view = {"listener": {"reasoning_mode": "full"}}
 	var killer = Presentations.render_workshop_reply(g.w, n, {"type": "evil", "a": other.id}, [other.id], assessment, view, {}, "accept", false, false, "Those reports convince me.", {})
-	var role = Presentations.render_workshop_reply(g.w, n, {"type": "role", "a": other.id, "role": "warden"}, [other.id], assessment, view, {}, "accept", false, false, "Those reports convince me.", {})
-	check(killer.text.length() > role.text.length(), "the 'seen elsewhere' note follows a killer-side premise (%d chars) but not a role premise (%d)" % [killer.text.length(), role.text.length()])
+	var marked = Presentations.render_workshop_reply(g.w, n, {"type": "marked", "a": other.id}, [other.id], assessment, view, {}, "accept", false, false, "Those reports convince me.", {})
+	check(killer.text.length() > marked.text.length(), "the 'seen elsewhere' note follows a killer-side premise (%d chars) but not a Marked premise (%d)" % [killer.text.length(), marked.text.length()])
 
 func _preview_hint() -> void:
 	var view = {"people": [{"id": "x", "name": "Xan"}, {"id": "y", "name": "Yara"}]}

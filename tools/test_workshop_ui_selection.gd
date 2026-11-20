@@ -4,6 +4,7 @@
 ## Named test_workshop_ui_1110 until Nov 19 (renamed by what it guards; the provenance above stays).
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const CaseView = preload("res://ui/case_view.gd")
@@ -54,7 +55,7 @@ func _run() -> void:
 	var people: Array = g.w.npcs.slice(0, 3)
 	for i in range(3):
 		var who = people[i]
-		nums.append(g.add_card({"kind": "sighting", "subject": [who.id], "block": "square", "loc": "tavern", "day": 1, "phase": C.MORNING,
+		nums.append(GameBoard.add_card(g, {"kind": "sighting", "subject": [who.id], "block": "square", "loc": "tavern", "day": 1, "phase": C.MORNING,
 			"source": "player", "text": "You saw %s at the tavern, day 1 Morning." % who.name}))
 	cv.refresh()
 	await process_frame

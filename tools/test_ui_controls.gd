@@ -1,6 +1,10 @@
 ## UI controls and help: menus and pickers, headlines, help text, the map and visits, grimoire and Roles windows.
 ## Merged from: test_backlog_batch3, test_backlog_batch4, test_fixes, test_playtest_followups, test_playtest_regressions.
 extends SceneTree
+const GameScreens = preload("res://game/game_screens.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameConversation = preload("res://game/game_conversation.gd")
 const MainRoles = preload("res://ui/main_roles.gd")
 
 const C = preload("res://sim/content.gd")
@@ -121,14 +125,14 @@ func headlines():
 		victim.max_tier = 3
 		victim.claim_public = public_claim
 		g.events = []
-		g._morning_report()
+		GameDayNight._morning_report(g)
 		var notices = g.events.filter(func(e): return e.k == "headline" and e.kind == "death")
 		check(notices.size() == 1 and ("claimed to be" if public_claim else "told you they were") in notices[0].text and "Seer" in notices[0].text, "death notice uses only the player's public/private claim knowledge")
 		check(notices[0].subtitle == "A Demon hides among 9 remaining townsfolk", "death subtitle reports living count")
 	victim.max_tier = 0
 	victim.claim_public = false
 	g.events = []
-	g._morning_report()
+	GameDayNight._morning_report(g)
 	check(g.events.any(func(e): return e.k == "headline" and e.kind == "death" and e.text == victim.name), "unknown gift death reveals only the name")
 	root.size = Vector2i(1200, 800)
 	root.content_scale_size = root.size
@@ -296,7 +300,7 @@ func backlog_batch4__fresh():
 func vote_help():
 	var g = backlog_batch4__fresh()
 	var rng = g.w.rng.state
-	check("11 voters, including you" in g._help() and g.w.voter_count() == 11, "help explains the existing player-inclusive voter count")
+	check("11 voters, including you" in GameScreens._help(g) and g.w.voter_count() == 11, "help explains the existing player-inclusive voter count")
 	check(g.w.rng.state == rng, "vote help changes no RNG or voting rules")
 
 
@@ -309,14 +313,14 @@ func demon_night_wording():
 	var rng = g.w.rng.state
 	MainRoles.open(scene)
 	var labels = scene.roles_box.find_children("DemonNightRule", "Label", true, false)
-	check(labels.size() == 1 and labels[0].text == C.DEMON_NIGHT_RULE and C.DEMON_NIGHT_RULE in g._script(), "both graphical and typed Roles state the night-0 and night-1 rule")
+	check(labels.size() == 1 and labels[0].text == C.DEMON_NIGHT_RULE and C.DEMON_NIGHT_RULE in GameScreens._script(g), "both graphical and typed Roles state the night-0 and night-1 rule")
 	check(g.w.rng.state == rng, "Roles wording does not advance RNG")
 	for day in [1, 2]:
 		g.w.day = day
 		g.state = "meeting"
 		g.w.meeting = {"block": ""}
 		g.events = []
-		g._close_meeting()
+		GameMeeting._close_meeting(g)
 		var text = Game.render(g.events)
 		check((C.DEMON_NIGHT_RULE in text) == (day == 1) and g.state == "night", "the explanatory line appears at the first night prompt only")
 	for i in range(3): await process_frame
@@ -357,7 +361,7 @@ func approach_arrival():
 	source.role = "clerk"
 	due.divulge_due = [source.id]
 	due.events = []
-	check(due._maybe_divulge() and Game.render(due.events).contains("finds you at " + due.w.loc_name(source.loc)), "a promised approach names the meeting place before acceptance")
+	check(GameConversation._maybe_divulge(due) and Game.render(due.events).contains("finds you at " + due.w.loc_name(source.loc)), "a promised approach names the meeting place before acceptance")
 	var old_loc = due.loc
 	var old_phase = due.w.phase
 	due.command("decline")
@@ -438,7 +442,7 @@ func new_actions_help():
 	var g = backlog_batch4__fresh()
 	var rng = g.w.rng.state
 	var st0: String = g.state  # a seed may open on an approach; help must leave it as it was
-	var text = g._help()
+	var text = GameScreens._help(g)
 	for action in ["offer ward", "offer vigil", "apologise <number>", "yes | no", "ask check <name>", "ask guard <name>", "ask watch <block>", "ask about <gift>", "ward or scorched-sigil card#"]:
 		check(action in text, "help documents newer action: " + action)
 	check("pending request" in text and "disclosed that gift" in text and "privately or at the meeting" in text, "help explains the action contexts")
@@ -453,7 +457,7 @@ func night_home_listing():
 	var n = g.w.living()[0]
 	n.loc = "night:" + n.home_block
 	var rng = g.w.rng.state
-	var summary = g._night_homes()
+	var summary = GameDayNight._night_homes(g)
 	for block in C.BLOCKS:
 		check(C.block_name(block) + ":" in summary, "night list includes block " + block)
 	for living in g.w.living():
@@ -470,11 +474,11 @@ func grimoire_modifiers():
 	var st1: String = g.state
 	for mod in C.SECRET_MOD_LIST:
 		n.secret_mod = mod
-		var lines = Array(g._grimoire().split("\n"))
+		var lines = Array(GameScreens._grimoire(g).split("\n"))
 		var row = lines.filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0]
 		check("secret modifier: " + C.secret_name(mod) in row and "keeps a private diary" in row, "grimoire shows personal secret and modifier together: " + mod)
 	n.secret_mod = ""
-	check(not Array(g._grimoire().split("\n")).filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0].contains("secret modifier:"), "no invented modifier is printed for an unmodified NPC")
+	check(not Array(GameScreens._grimoire(g).split("\n")).filter(func(line): return line.strip_edges().begins_with(n.name + " "))[0].contains("secret modifier:"), "no invented modifier is printed for an unmodified NPC")
 	check(g.w.rng.state == rng and g.state == st1, "developer summary formatting does not change the game")
 
 

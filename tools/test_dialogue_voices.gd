@@ -2,6 +2,9 @@
 ## Merged from: test_backlog_batch2, test_backlog_batch4, test_dialogue_batches_5_6_7, test_fixes, test_playtest_followups, test_playtest_nov4_fixes, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Game = preload("res://game/game.gd")
 const Evil = preload("res://sim/evil.gd")
@@ -78,9 +81,7 @@ const BATCH5_SLOTS = {
 	"present_alt_marked": {"marked": "Isolde"},
 	"present_points_elsewhere": {"target": "Edda", "rival": "Fenwick"},
 	"present_weighs_against": {"target": "Edda"},
-	"present_conflict_found": {},
 	"present_conflict_weighing": {},
-	"present_conflict_none": {},
 	"present_conditional": {},
 	"present_lost_thread": {},
 	"present_partial_attention": {},
@@ -278,19 +279,19 @@ func first_person_notes():
 			probe.state = reveal_state
 			probe.randf()
 			var reply = {"lines": [], "facts": []}
-			g._maybe_tell_relationships(n, t, reply)
+			GameConversation._maybe_tell_relationships(g, n, t, reply)
 			var expected = t.name + (" and I are close." if kind == "friend" else " and I don't get along.")
 			check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text) == expected and t.name in reply.lines[0].text, "both pair orders and bond kinds use first person about the speaker")
 			var note = g.known_relationships.values()[0]
 			check(note.text == n.name + ' says "' + expected + '"' and note.source == n.id and note.people == order and reply.facts.is_empty(), "first-person profile note retains attribution and original bond identity without cards")
 			check(w.rng.state == probe.state, "first-person relationship wording keeps the original single roll")
-			g._maybe_tell_relationships(n, t, reply)
+			GameConversation._maybe_tell_relationships(g, n, t, reply)
 			check(w.rng.state == probe.state and reply.lines.size() == 1, "known first-person bonds do not repeat or roll again")
 	w.town_relationships = [{"kind": "friend", "people": [t.id, other.id]}]
 	g.known_relationships = {}
 	w.rng.state = reveal_state
 	var third = {"lines": [], "facts": []}
-	g._maybe_tell_relationships(n, t, third)
+	GameConversation._maybe_tell_relationships(g, n, t, third)
 	check(third.lines[0].get("statement", third.lines[0].text) == "%s and %s are close." % [t.name, other.name] and t.name in third.lines[0].text and other.name in third.lines[0].text, "third-party relationship wording retains canonical bond and names")
 	n.friends = []
 	n.rivals = []
@@ -307,7 +308,7 @@ func first_person_notes():
 			probe.randf()
 			probe.randi_range(0, 0)
 			var reply = {"lines": [], "facts": []}
-			g._maybe_tell_trait(n, n, reply)
+			GameConversation._maybe_tell_trait(g, n, n, reply)
 			check(reply.lines.size() == 1 and reply.lines[0].get("statement", reply.lines[0].text).begins_with("I'd call myself ") and not n.name in reply.lines[0].text and not "their" in reply.lines[0].text and not "themselves" in reply.lines[0].text, "self-trait wording uses first person")
 			check(n.revealed_traits[key] == C.tier(n.traits[key]) and w.rng.state == probe.state and reply.facts.is_empty(), "self-trait phrasing retains the selected trait, learning and exact RNG draws")
 
@@ -346,7 +347,7 @@ func _dated_sighting_wording() -> void:
 		n.working = false
 		n.busy_with = ""
 	speaker.loc = "tavern"
-	var overview = g._map()
+	var overview = GameScreens._map(g)
 	_check("Total out of sight:" in overview and "includes the anonymous counts above" in overview, "overview totals explicitly include rather than add to anonymous counts")
 
 
@@ -465,7 +466,7 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 257, "Agnes voice pack contains all 257 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 256, "Agnes voice pack contains all 256 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()
@@ -490,6 +491,8 @@ func _test_voice_pack_completeness_and_symmetry() -> void:
 	all_string_keys["defence_lied"] = {"source": "Kiran"}
 	# Doubting one's own gift (Michael, Nov 17): good and evil say the same line.
 	all_string_keys["doubt_own_gift"] = {}
+	# Filling a quiet meeting (Michael, Nov 20): any speaker, evil included, so no slots.
+	all_string_keys["silence_breaker"] = {}
 	# "It's another of us" (89077, Michael, Nov 18): a defence against a reading over a group.
 	all_string_keys["defence_group_named"] = {"source": "Kiran", "others": "Dorian and Bartholomew"}
 	all_string_keys["defence_group_others"] = {"source": "Kiran"}
@@ -596,7 +599,7 @@ func _test_live_presentation_and_evil_parity() -> void:
 	g.w.phase = C.EVENING
 
 	var seer_src = g.w.living_good()[2]
-	g._facts([{
+	GameBoard._facts(g, [{
 		"kind": "claim", "source": seer_src.id, "subject": [seer_src.id], "role": "seer",
 		"day": 1, "phase": C.MORNING, "private": false,
 		"text": "%s claims to be the Seer." % seer_src.name,
@@ -609,21 +612,21 @@ func _test_live_presentation_and_evil_parity() -> void:
 	var ded_num: int = _file_case(g, target.id, [1, 2])
 	_check(ded_num > 0, "test case against the target files through the Workshop")
 	var ded: Dictionary = g.board[ded_num - 1]
-	var r_good: Dictionary = g._evaluate_deduction(good_listener, ded, 1.0, true, "private")
-	var r_evil: Dictionary = g._evaluate_deduction(evil_listener, ded, 1.0, true, "private")
+	var r_good: Dictionary = GamePresentation._evaluate_deduction(g, good_listener, ded, 1.0, true, "private")
+	var r_evil: Dictionary = GamePresentation._evaluate_deduction(g, evil_listener, ded, 1.0, true, "private")
 	_check(not r_good.lines.is_empty() and not ("[PH]" in r_good.lines[0].text) and r_good.lines[0].has("statement"), "Good Workshop presentation speaks character voice with zero [PH] and canonical statement")
 	_check(not r_evil.lines.is_empty() and not ("[PH]" in r_evil.lines[0].text) and r_evil.lines[0].has("statement"), "Evil Workshop presentation speaks character voice with zero [PH] and canonical statement")
 
 	var self_ded_num: int = _file_case(g, evil_listener.id, [1, 2])
 	_check(self_ded_num > 0, "test case against the evil listener files through the Workshop")
-	var r_self_evil: Dictionary = g._evaluate_deduction(evil_listener, g.board[self_ded_num - 1], 1.0, true, "private")
+	var r_self_evil: Dictionary = GamePresentation._evaluate_deduction(g, evil_listener, g.board[self_ded_num - 1], 1.0, true, "private")
 	var expected_self: String = Dialogue.voice_line(evil_listener.id, "present_false_self", "")
 	_check(not r_self_evil.lines.is_empty() and r_self_evil.lines[0].text == expected_self, "Evil self-accusation uses character's present_false_self line")
 
 	# Self-support thanks needs a card that clears the listener (their own claim does).
 	var own_claims: Dictionary = {}
 	for who in [good_listener, evil_listener]:
-		g._facts([{"kind": "claim", "source": who.id, "subject": [who.id], "role": "clerk",
+		GameBoard._facts(g, [{"kind": "claim", "source": who.id, "subject": [who.id], "role": "clerk",
 			"day": 2, "phase": C.MORNING, "private": false, "text": "%s claims to be the Clerk." % who.name}])
 		own_claims[who.id] = g.board.back()
 	var sup_good: Dictionary = Mind.hear_defence(g.w, good_listener, [good_listener], own_claims[good_listener.id])

@@ -3,6 +3,139 @@
 Items moved out of BACKLOG.md once built, verified or settled. Newest first. Original wording, tags and
 session notes are kept for the record; code pointers may have moved since.
 
+
+
+## Built, Nov 20, 2026, afternoon (closed by Claude-Vicar)
+
+- **Argon's audit, group 4: point `game.gd`'s remaining passthroughs at their modules**
+  (Herald). Callers were repointed to the modules and the one-line forwards deleted, in
+  #385, #424 and #435, with zero drift. `game.gd` keeps only the 23 public forwards the UI
+  and CLI use, and its header names them.
+
+  > **Closed Nov 20 (through Seneschal).** Groups 2 and 3 of the item stay in BACKLOG.md.
+
+- **Argon's audit, group 1: dead code, zero drift.**
+  - The Workshop scaffolding used only by fixtures was removed and
+    `tools/connections_prototype.gd` retired (Lantern, Nov 20,
+    `docs/handoff/2026-11-20-0930-lantern-workshop-scaffolding.md`).
+  - Bailiff swept the one-off scripts in `tools/`. #379 dropped the Oct 30 prior experiment;
+    the rest are still in use, as the table in its handoff shows.
+
+  > **Closed Nov 20 (through Seneschal).**
+
+- **Kill-score pass on every role.** (Nov 10, Michael) The Demon's target score
+  (`Evil._kill_score`, `sim/evil.gd`) gives every publicly claimed info gift the same +3.0.
+  It drops to 0 after day 1 for first-night gifts (triage 3.4, Nov 16; was +1.0). Only the Seer (+1.0 more) and the
+  Registrar (+0.75 more) have their own bonus. To review role by role:
+  - one-shot gifts that keep the full score after their information is spent: the
+    Chronicler after night 3, the Executor after its assigned person dies;
+  - the Augur, a Demon-identifier like the Seer, has no bonus;
+  - protective gifts (Warden, Martyr, Sexton) aren't on the info list. The Veteran is
+    handled separately.
+  - **In this round (Michael, Nov 20), as a naive eyeball pass:** Beadle lists the current
+    ratings, and Michael gives quick guidance.
+  - **Values approved (Michael, Nov 20), in Beadle's #421:**
+    - `KILL_IDENTIFIER_BONUS` 1.0 for the Seer, Augur, Dowser and Confessor (shared for now;
+      per-role ratings may come later);
+    - `KILL_CLAIM_BY_ROLE`: Lamplighter and Psychologist 2.0, Warden 3.0, Sexton 2.0;
+    - a spent Chronicler and a spent Executor at 0, with the Gravedigger staying at 3.0;
+    - `REGISTRAR.public_threat_bonus` stays at 0.75.
+
+  Use the measured strengths in `docs/evidence_catalog_measured.md` as a guide to which
+  gifts actually threaten evil. Michael (Nov 17): review and tune. Adjusting existing
+  values is the owner's call; a new per-role bonus constant is new, so propose it through
+  Seneschal first. Owner Beadle. [decided]
+
+  > **Closed Nov 20:** built, Beadle #421.
+
+## Built, Nov 20, 2026, later (closed by Claude-Vicar)
+
+- **Minion gifts, the two built parts** (from the Workshop gaps item):
+  - **Someone silenced, and who was on their block (the Breathstealer):** built.
+    `DayPresence.breath_factor`, applied in CaseEval, weighs who could have been on the
+    victim's block across the three day phases.
+  - **A totem found, and those living where its material is from (the Revenant):** built
+    since Nov 6 (5048c081). The totem card names the residents of its material's block, and
+    the judge makes one of them the Revenant. The old "54875: the totem card had no Workshop
+    adapter" note was stale. Quill is adding a regression test.
+
+  > **Closed Nov 20 (Quill confirmed).** The Poisoner part stays in BACKLOG.md.
+
+- **The premise menu, trimmed** (Michael, Nov 20, approving Quill's premise check):
+  - (a) remove "these reports conflict" (Quill, with Herald and Lantern);
+  - (b) keep "readings don't fit together";
+  - (c) fold "Minion" into "evil", keeping "Demon" and "not the Demon"; revisit with
+    premises step 4;
+  - (d) merge "holds their gift" into "good"; revisit if "Good NPCs lie tactically" is
+    decided.
+
+  Owner Quill. **Built** on `claude/premise-trim` (Quill, Nov 20; handoff
+  `2026-11-20-0745-quill-premise-trim.md`).
+
+  > **Closed Nov 20 (Quill confirmed, through Seneschal):** merged in #416.
+
+- **Remove the Muddler** (Michael, Nov 20): the role and its cards. Owner Quill, with Beadle
+  and Lantern reviewing. **Built** on `claude/remove-muddler` (Quill, Nov 20; handoff
+  `2026-11-20-0725-quill-remove-muddler.md`).
+
+  > **Closed Nov 20 (Quill confirmed, through Seneschal):** merged in #405.
+
+## Built, Nov 20, 2026 (closed by Claude-Vicar)
+
+- **Possible bug: the "not the Demon" badge.** It shows the chance of being good, but it's
+  ranked as a conclusive clear. (Michael, Nov 20, from Quill's premise check) Owners Lantern
+  and Herald. [decided]
+
+  > **Closed Nov 20:** fixed, #410.
+
+- **The misframed-case hint** (what's left of "The premise should matter", point 3). When a
+  case's evidence points at someone other than the premise's subject, the Workshop preview
+  says so without naming them ("this evidence may say more about someone else"). Never
+  built. Lantern owns the belief side (does the case's weight fall more on someone other than
+  the subject?), Herald the hint, and Michael the wording. Whether it's still wanted is
+  Michael's call; Lantern would keep it. The rest of the item, centring B at 1/3, is built
+  (#246) and moved to BACKLOG_COMPLETED.md. [decided]
+  - **Decided (Michael, Nov 20): a variant of the Test juror chip.** The chip keeps its band
+    and adds "· points elsewhere", with the tooltip "This evidence may say more about someone
+    else than about <target>." It names no one, and it shows at the same threshold as NPCs'
+    "points elsewhere" line. Owner Herald.
+
+  > **Closed Nov 20:** built, Herald #398.
+
+- **Summarised answers at a nomination.** A case presented at a nomination gets
+  summarised answers, the same as at the meeting. **Not built:** #373 covered the meeting
+  only. (Michael, Nov 19) Owner Herald, held for the reprioritization. [decided]
+
+  > **Closed Nov 20:** built, Herald #411.
+
+- **Remove drops altogether.** (Michael's own item, Nov 19) Remove:
+  - walkers dropping anything on their route, both personal items and the home-block
+    material drops (already dead);
+  - the search finding them;
+  - the night "out" card a personal item makes for its owner;
+  - every mechanic that weighs a drop as evidence.
+
+  No measurement first (Michael). It moves golden and ships alone: `LEGACY_EXTRA_SHIFT_DRAW`
+  is split off and deferred (Nov 20; see "Argon's audit: cleanup"). Owner Quill, with
+  Beadle reviewing the sim side.
+  **`search` stays at the eight town locations** (Michael, Nov 19). It still finds the
+  Revenant's totem and the place's regulars. **Built** in the drop-removal PR (Quill, Nov 20;
+  handoff `2026-11-20-0251-quill-remove-drops.md`). [in review]
+
+  > **Closed Nov 20:** built, Quill #397 (with `LEGACY_MUD_DROPS_ENABLED`).
+
+- **The social presentation route.** (Michael, Nov 20) What's weighed socially when the
+  player presents should move onto the current social plumbing, not the old
+  `PresentationReply._social` route. Michael doubts the town-wide "protect this person" path
+  is worth keeping. Herald scopes it, and a decision follows the scope.
+  - **Decided (Michael, Nov 20): remove it.** Herald's scope found the route unreachable in
+    play: there are no protect or spare cases and no bare beliefs, and the evil fallback
+    only follows from those. Herald deletes it in a zero-drift PR. **[decided]** **In review:**
+    Herald's #395, which also purges every presentation fallback (Michael). Close this item
+    when it merges.
+
+  > **Closed Nov 20:** removed, Herald #395, which also purged every presentation fallback.
+
 ## Closed Nov 20, 2026, section 2 answers (Michael; recorded by Claude-Vicar)
 
 - **Night sightings are too decisive.** (user, Oct 25, case 22485) A good person is out on

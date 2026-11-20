@@ -11,6 +11,7 @@
 ##   godot --headless --path . --script res://tools/test_press_caught_out.gd
 extends SceneTree
 
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const C = preload("res://sim/content.gd")
 const Conv = preload("res://game/game_conversation.gd")
@@ -59,9 +60,9 @@ func _out(g, n, block: String, open: bool) -> void:
 func _press(g, n, with_context: bool = true) -> Dictionary:
 	var alibi: Dictionary = {"kind": "alibi", "subject": [n.id], "source": n.id, "day": 1, "phase": C.NIGHT, "home": true, "block": n.home_block, "text": "%s: at home the first night." % n.name}
 	var seen: Dictionary = {"kind": "sighting", "subject": [n.id], "block": n.home_block, "source": "player", "day": 1, "phase": C.NIGHT, "vigil": true, "text": "Night 1 vigil: you saw %s go out." % n.name}
-	var nums: Array = [alibi, seen].map(func(c): return g.add_card(c))
+	var nums: Array = [alibi, seen].map(func(c): return GameBoard.add_card(g, c))
 	var pc: Dictionary = {"kind": "deduction", "conclusion": {"type": "suspicious", "a": n.id}, "subject": [n.id], "supports": nums, "text": "A case"}
-	pc["support_cards"] = g.all_receipts().filter(func(x): return x["n"] in nums)
+	pc["support_cards"] = GameBoard.all_receipts(g).filter(func(x): return x["n"] in nums)
 	if with_context:
 		var contra: Dictionary = Conv.press_contradiction(g, n, pc)
 		if not contra.is_empty():
@@ -99,7 +100,7 @@ func _init() -> void:
 	check(_statements(r) == [TRAPPED] and not _home(r, n), "closed, it says only that it was out, and not that it was home")
 	check(r.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and f.get("source", "") == n.id and not f.get("home", true) and int(f.get("day", -1)) == 1), "and the player's card says it admits being out that night")
 	# The admission sticks: asked about that night again, it doesn't go back to "at home" (Codex on #330).
-	var again: Dictionary = Mind.MindDialogue.answer_night(g.w, n, 1)
+	var again: Dictionary = Mind.MindAnswers.answer_night(g.w, n, 1)
 	var again_said: Array = again.get("lines", []).filter(func(l): return l is Dictionary).map(func(l): return str(l.get("statement", l.get("text", ""))))
 	check(not again_said.any(func(t): return "at home" in t) and not again.get("facts", []).any(func(f): return f.get("kind", "") == "alibi" and f.get("home", false)), "asked about that night again, it doesn't say it was home (%s)" % str(again_said))
 	# Without the context: the usual night answer (not the caught-out line).

@@ -2,6 +2,8 @@
 ## (blocked presentations cost nothing and say why), case revisions, and free repeats.
 ## (Was test_legacy_migration; renamed 2026-11-04.)
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -66,9 +68,9 @@ func _reversible_totals() -> void:
 func _blocked_submission() -> void:
 	var g = _clean()
 	var target = g.w.living_good()[0]
-	var totem = g.add_card({"kind": "totem", "source": "evidence", "subject": [target.id], "block": "unknown", "day": 1, "phase": 0, "text": "An incomplete totem receipt."})
-	var ded = g.file_deduction({"type": "evil", "a": target.id}, [totem])
-	var check = g.workshop_readiness(g.board[ded - 1], g.w.living(), [], "deduction", "meeting")
+	var totem = GameBoard.add_card(g, {"kind": "totem", "source": "evidence", "subject": [target.id], "block": "unknown", "day": 1, "phase": 0, "text": "An incomplete totem receipt."})
+	var ded = GameBoard.file_deduction(g, {"type": "evil", "a": target.id}, [totem])
+	var check = GamePresentation.workshop_readiness(g, g.board[ded - 1], g.w.living(), [], "deduction", "meeting")
 	check(not check.ready and check.listeners.size() == g.w.living().size(), "readiness checks the entire real audience")
 	check(check.issues.any(func(s): return "totem" in s), "unsupported reason names the totem card")
 	var before = _state(g)
@@ -87,12 +89,11 @@ func _blocked_submission() -> void:
 	g.statement_used = false
 	var vote_reply = g.command("case %d" % ded)
 	check("Cannot present" in vote_reply and not g.statement_used and _state(g) == before, "blocked nomination does not spend the statement or disclose evidence")
-	check(g.w.dlog.trace_events().any(func(e): return e.type == "workshop_unprepared"), "every rejected submission records an unprepared reason")
 	g.state = "talk"
 	g.questions_left = 3
 	var ordinary = g.command("convince %d" % ded)
 	# No legacy route for presentations (Oct 25): ordinary play blocks it too, with the reason.
-	check("Cannot present" in ordinary and g.questions_left == 3 and g.unprepared_refreshes.size() > 0, "ordinary play blocks an unsupported presentation with its reason and records the unprepared refresh")
+	check("Cannot present" in ordinary and "totem" in ordinary and g.questions_left == 3, "ordinary play blocks an unsupported presentation with its reason (a refusal, not an unprepared refresh)")
 
 func _state(g) -> String:
 	return JSON.stringify([g.w.rng.state, g.w.npcs.map(func(n): return [n.trust, n.pressure, n.suspicion, n.ledger, n.secret_spread, n.workshop_state, n.shadow.suspicion if n.shadow != null else {}])])
@@ -106,9 +107,9 @@ func _revision_fixture():
 	var source = people[0]
 	var target = people[1]
 	var other = people[2]
-	var a = g.add_card({"kind": "info", "source": source.id, "role": "dowser", "day": 1, "phase": 0,
+	var a = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "dowser", "day": 1, "phase": 0,
 		"data": {"group": [target.id, other.id], "count": 1}, "text": "One registration in the pair."})
-	var b = g.add_card({"kind": "info", "source": source.id, "role": "dowser", "day": 2, "phase": 0,
+	var b = GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": "dowser", "day": 2, "phase": 0,
 		"data": {"group": [other.id], "count": 0}, "text": "The other person registered clean."})
 	var canvas = Canvas.new(LiveCanvas.view(g))
 	canvas.nodes[canvas.selected].conclusion.target = target.id
@@ -123,20 +124,20 @@ func _revisions_and_repeats() -> void:
 	var canvas = fixture.canvas
 	canvas.connect_cards(fixture.a, canvas.selected)
 	var original = LiveCanvas.file(g, canvas.compile(canvas.selected))
-	g._evaluate_deduction(n, g.board[original - 1], 1.0, true)
+	GamePresentation._evaluate_deduction(g, n, g.board[original - 1], 1.0, true)
 	var effect: float = n.workshop_state.requested.get(fixture.target.id, 0.0)
 	var beliefs: Dictionary = n.suspicion.duplicate(true)
 	canvas.connect_cards(fixture.b, canvas.selected)
 	var revised = LiveCanvas.file(g, canvas.compile(canvas.selected), original)
 	check(revised > original and g.board[original - 1].superseded_by == revised and g.board[revised - 1].revises == original, "revisions preserve both historical card numbers")
 	check(n.suspicion == beliefs and n.workshop_state.presentations.has(str(original)), "filing alone leaves the listener on the version actually heard")
-	g._evaluate_deduction(n, g.board[revised - 1], 1.0, true)
+	GamePresentation._evaluate_deduction(g, n, g.board[revised - 1], 1.0, true)
 	check(n.workshop_state.facts.size() == 2 and n.workshop_state.requested.get(fixture.target.id, 0.0) >= effect, "new corroboration counts in full without demoting the old support")
 	var control = _revision_fixture()
 	control.canvas.connect_cards(control.a, control.canvas.selected)
 	control.canvas.connect_cards(control.b, control.canvas.selected)
 	var fresh = LiveCanvas.file(control.g, control.canvas.compile(control.canvas.selected))
-	control.g._evaluate_deduction(control.n, control.g.board[fresh - 1], 1.0, true)
+	GamePresentation._evaluate_deduction(control.g, control.n, control.g.board[fresh - 1], 1.0, true)
 	for pair in [[g, n], [control.g, control.n]]:
 		pair[1].trust = 0.7
 		Mind.refresh_beliefs(pair[0].w, pair[1], "fixed trust parity")
@@ -144,7 +145,7 @@ func _revisions_and_repeats() -> void:
 	for id in n.workshop_state.requested:
 		equal = equal and absf(n.workshop_state.requested[id] - control.n.workshop_state.requested.get(id, 0.0)) < 0.000001
 	check(equal, "a revised case has the same evidence effect as first hearing its complete support")
-	g._evaluate_deduction(n, g.board[revised - 1], 0.6, true, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[revised - 1], 0.6, true, "meeting")
 	g.state = "talk"
 	g.talk_with = n
 	g.questions_left = 3

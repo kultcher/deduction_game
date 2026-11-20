@@ -5,6 +5,9 @@
 ## UI panels (`ui/`) and test suites can continue calling `g.<fn>(...)` unchanged.
 extends RefCounted
 
+const GameScreens = preload("res://game/game_screens.gd")
+const GameDayNight = preload("res://game/game_day_night.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const C = preload("res://sim/content.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -15,6 +18,7 @@ const CardModel = preload("res://game/card_model.gd")
 const Deduction = preload("res://sim/deduction.gd")
 const MindPodium = preload("res://sim/mind_podium.gd")
 const MindSupport = preload("res://sim/mind_support.gd")
+const GamePresentation = preload("res://game/game_presentation.gd")
 
 
 static func _start_meeting(g) -> void:
@@ -26,7 +30,7 @@ static func _start_meeting(g) -> void:
 	for sid in g.w.meeting.get("silenced", []):
 		var sn = g.w.by_id[sid]
 		g._narr("%s rises to speak, but no sound comes. Their voice has been stolen; they can still vote." % sn.name)
-		g._facts([{"kind": "silenced", "subject": [sid], "source": "player", "day": g.w.day, "phase": C.EVENING,
+		GameBoard._facts(g, [{"kind": "silenced", "subject": [sid], "source": "player", "day": g.w.day, "phase": C.EVENING,
 			"text": "Day %d: %s could not speak at the meeting (silenced; can still vote)." % [g.w.day, sn.name]}])
 	g._testimony = Mind.testimony_start(g.w)
 	g._testimony["spoken"] = 0
@@ -63,7 +67,7 @@ static func _testimony_turn(g) -> void:
 		for fact in t.get("facts", []):
 			Social.deliver_public_sighting(g.w, speaker, fact)
 		g._lines(t["lines"])
-		g._facts(t["facts"])
+		GameBoard._facts(g, t["facts"])
 	if not g._testimony["done"]:
 		return
 	var spoken: int = g._testimony["spoken"]
@@ -87,7 +91,7 @@ static func _meeting_opened(g) -> void:
 static func _meeting_command(g, verb: String, rest: String) -> void:
 	match verb:
 		"present":
-			g._present_deduction(rest)
+			GamePresentation._present_deduction(g, rest)
 		"nominate", "nom":
 			_player_nomination(g, rest)
 		"declare":
@@ -142,7 +146,7 @@ static func _player_nomination(g, rest: String, progress: Callable = Callable())
 		if not _case_names(card, n.id):
 			g._err("Case #%d doesn't name %s as one to suspect." % [num, n.name])
 			return
-	if not card.is_empty() and not g._presentation_gate(card, g.w.living().filter(func(v): return v != n), [n.id], "deduction", "nomination"):
+	if not card.is_empty() and not GamePresentation._presentation_gate(g, card, g.w.living().filter(func(v): return v != n), [n.id], "deduction", "nomination"):
 		return
 	g.w.open_nomination("player", n.id)
 	Credibility.record_public(g, "evil", n.id, Tuning.Trust.CRED_WEIGHT_FORMAL if not card.is_empty() else Tuning.Trust.CRED_WEIGHT_BARE_NOMINATION)
@@ -156,8 +160,8 @@ static func _player_nomination(g, rest: String, progress: Callable = Callable())
 		var repeat: bool = g.public_presentations.has(int(card.n))
 		g.w.meeting["pending"]["case_card"] = int(card.n)
 		g.w.meeting["pending"]["case_facts"] = Array(card.get("supports", [])).filter(func(x): return int(x) >= 1 and int(x) <= g.board.size()).map(func(x): return g.board[int(x) - 1])
-		g._break_confidences([card.n] + Array(card.get("supports", [])))
-		g._secrets_used(card)
+		GameBoard._break_confidences(g, [card.n] + Array(card.get("supports", [])))
+		GamePresentation._secrets_used(g, card)
 		if repeat and not preload("res://game/workshop_presentation.gd").faded(g, card):
 			note_already_public(g, true, false)
 		else:
@@ -166,7 +170,7 @@ static func _player_nomination(g, rest: String, progress: Callable = Callable())
 				if v != n:
 					if progress.is_valid():
 						await progress.call(v.name)
-					g._evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
+					GamePresentation._evaluate_deduction(g, v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
 	g.w.dlog.add("player_nomination", "player", n.id, {"case": int(card.get("n", 0)), "raw": card.is_empty()})
 	_defend_pending(g)
 	_show_nomination(g)
@@ -200,11 +204,10 @@ static func already_public(g, card: Dictionary) -> bool:
 	return g.public_citations.has(int(card.get("n", 0))) or CardModel.disclosure_scope(card) == "public"
 
 
-## Is this filed case about `id`: does its headline name them, for or against? A conflict
-## names everyone in its group.
+## Is this filed case about `id`: does its headline name them, for or against?
 static func case_about(card: Dictionary, id: String) -> bool:
 	var c: Dictionary = card.get("conclusion", {})
-	return str(c.get("a", "")) == id or str(c.get("b", "")) == id or id in c.get("group", [])
+	return str(c.get("a", "")) == id or str(c.get("b", "")) == id
 
 
 ## Which way a case about `id` speaks at their nomination: "defend" when its headline clears
@@ -251,7 +254,7 @@ static func _next_npc_nomination(g) -> bool:
 	g._line(nm["speech"])
 	for l in nm.get("case_lines", []):
 		g._line(l)
-	g._facts(nm.get("case_facts", []))
+	GameBoard._facts(g, nm.get("case_facts", []))
 	_defend_pending(g)
 	_show_nomination(g)
 	return true
@@ -270,7 +273,7 @@ static func _defend_pending(g) -> void:
 	var df = Mind.defend_self(g.w, g.w.by_id[nm["nominee"]], nm["by"], nm.get("case_facts", []) + nm.get("spoken_facts", []))
 	for l in df["lines"]:
 		g._line(l)
-	g._facts(df["facts"])
+	GameBoard._facts(g, df["facts"])
 
 
 ## Presentation only: describe the existing threshold/high-water rules without changing voting.
@@ -326,7 +329,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 				g._err(why)
 				return
 			_run_supporters(g)
-			if not g._presentation_gate(card, g.w.living().filter(func(v): return v != t), [t.id], "deduction", "nomination"):
+			if not GamePresentation._presentation_gate(g, card, g.w.living().filter(func(v): return v != t), [t.id], "deduction", "nomination"):
 				return
 			g.statement_used = true
 			if nm.get("press", "") == "open":
@@ -337,13 +340,10 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 			var direction: String = case_direction(card, t.id)
 			Credibility.record_public(g, "evil" if direction == "accuse" else "good", t.id, Tuning.Trust.CRED_WEIGHT_FORMAL)
 			g._narr("You lay case #%d before the town: %s" % [card["n"], card["text"]])
-			g._break_confidences([card["n"]] + Array(card.get("supports", [])))
-			g._secrets_used(card)
-			for v in g.w.living():
-				if v != t:
-					if progress.is_valid():
-						await progress.call(v.name)
-					g._evaluate_deduction(v, card, Tuning.Workshop.VENUE_MULTS.nomination, false, "nomination")
+			GameBoard._break_confidences(g, [card["n"]] + Array(card.get("supports", [])))
+			GamePresentation._secrets_used(g, card)
+			# The town answers aloud, summarised as at the meeting's floor (Michael, Nov 19).
+			await GamePresentation.hear_town(g, g.w.living().filter(func(v): return v != t), card, Tuning.Workshop.VENUE_MULTS.nomination, "nomination", progress)
 			g.w.dlog.add("player_statement", "player", t.id, {"statement": direction, "card": int(card.n), "case": true})
 			g._prompt("'vote yes' or 'vote no'%s." % (", or 'clemency'" if g.w.tools["clemency"] > 0 and nm["by"] != "player" else ""))
 		"press":
@@ -372,7 +372,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 				g._err("'vote yes' or 'vote no'.")
 				return
 			_run_supporters(g)
-			g.capture_prediction("before_vote", {"nominee": t.id, "player_yes": yes})
+			GameScreens.capture_prediction(g, "before_vote", {"nominee": t.id, "player_yes": yes})
 			var res: Dictionary = g.w.vote_pending(yes)
 			# A yes is a weak public claim that the nominee is evil, for the track record (Michael,
 			# Nov 19). A no claims nothing: it's the default. Your own nominee is already on record.
@@ -385,7 +385,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 				", ".join(PackedStringArray(yes_names)) if not yes_names.is_empty() else "nobody"])
 			var subj: Array = res["yes"].duplicate()
 			subj.append(t.id)
-			g._facts([{"kind": "vote", "subject": subj, "source": "player", "day": g.w.day, "phase": C.EVENING,
+			GameBoard._facts(g, [{"kind": "vote", "subject": subj, "source": "player", "day": g.w.day, "phase": C.EVENING,
 				"nominee": t.id, "by": res["by"], "yes": res["yes"].duplicate(), "no": res["no"].duplicate(), "player_yes": res["player_yes"],
 				"outcome": res["outcome"], "count": res["count"], "threshold": res["threshold"],
 				"text": "Day %d vote on %s (nominated by %s): for = %s." % [g.w.day, t.name,
@@ -405,7 +405,7 @@ static func _nomination_command(g, verb: String, rest: String, progress: Callabl
 					g._narr("The nomination fails.")
 			# Step 6: a voter or two who might surprise you say why (meeting plan M2d).
 			g._lines(Mind.vote_resistance_lines(g.w, res))
-			g._facts(res.get("resistance_facts", []))  # "their readings agree with what I know" cards
+			GameBoard._facts(g, res.get("resistance_facts", []))  # "their readings agree with what I know" cards
 			_after_vote(g)
 		_:
 			g._err("On this nomination: %scase <case#> | %svote yes | vote no" % ["press role | press night [N] | press card <#> | hear | " if nm.get("press", "") == "open" else ("hear | " if not nm.get("supporters_done", false) else ""), "clemency | " if g.w.tools["clemency"] > 0 else ""])
@@ -467,7 +467,7 @@ static func _press(g, t, r: String) -> void:
 				g._err("Card #%d isn't about %s, so there's nothing to press them on." % [num, t.name])
 				return
 			g._narr("You hold up card #%d and turn to %s: %s" % [num, t.name, card.get("text", "")])
-			g._break_confidences([num])
+			GameBoard._break_confidences(g, [num])
 			if not already_public(g, card):
 				g.public_citations[num] = true
 				Mind.public_case(g.w, t, card, "accuse")
@@ -478,7 +478,7 @@ static func _press(g, t, r: String) -> void:
 	nm["press"] = "done"
 	nm["press_mode"] = res.get("mode", mode)
 	g._lines(res.get("lines", []))
-	g._facts(res.get("facts", []))
+	GameBoard._facts(g, res.get("facts", []))
 	var cf: Array = nm.get("case_facts", [])
 	cf.append_array(res.get("facts", []).map(func(f): return f.duplicate(true)))
 	nm["case_facts"] = cf
@@ -517,7 +517,7 @@ static func _run_supporters(g) -> void:
 	if res.get("lines", []).is_empty():
 		return
 	g._lines(res.lines)
-	g._facts(res.get("facts", []))
+	GameBoard._facts(g, res.get("facts", []))
 
 
 ## The night a 'press night' with no number asks about: the latest night the case on the
@@ -539,35 +539,35 @@ static func _after_vote(g) -> void:
 static func _last_words(g, n) -> void:
 	var response = Mind.last_words(g.w, n)
 	g._lines(response.lines)
-	g._facts(response.facts)
+	GameBoard._facts(g, response.facts)
 
 
 static func _close_meeting(g) -> void:
 	if g.w.meeting.get("closed", false): return
-	var frozen = g.capture_prediction("before_execution", {"on_block": g.w.meeting["block"]})
+	var frozen = GameScreens.capture_prediction(g, "before_execution", {"on_block": g.w.meeting["block"]})
 	if g.w.meeting["block"] != "":
 		g.w.dlog.add("player_execution_context", "player", g.w.meeting["block"], {"prediction_id": frozen["id"],
 			"known_cards": g.board.filter(func(c): return not c.get("deleted", false)).map(func(c): return c["n"])},
 			"Evidence and private theory available before execution; no automatic judgement of whether a mistake was reasonable.")
-	var ex = g.w.end_meeting(g._last_words)
+	var ex = g.w.end_meeting(func(n): _last_words(g, n))
 	if ex != "" and g.w.meeting.has("martyr"):
 		var mt = g.w.by_id[g.w.meeting["martyr"]["martyr"]]
 		var sv = g.w.by_id[g.w.meeting["martyr"]["saved"]]
 		g._narr("The meeting closes. As the noose tightens on %s, %s cries out and falls dead. %s is cut down alive: the Martyr has died in their place." % [sv.name, mt.name, sv.name])
 		g._headline("martyr", "%s dies in %s's place" % [mt.name, sv.name])
-		g._facts([{"kind": "martyr", "subject": [mt.id, sv.id], "martyr": mt.id, "saved": sv.id, "source": "player", "day": g.w.day, "phase": C.EVENING,
+		GameBoard._facts(g, [{"kind": "martyr", "subject": [mt.id, sv.id], "martyr": mt.id, "saved": sv.id, "source": "player", "day": g.w.day, "phase": C.EVENING,
 			"text": "Day %d: %s died in %s's place at the gallows. Both are proven good." % [g.w.day, mt.name, sv.name]}])
 	elif ex != "":
 		var n = g.w.by_id[ex]
 		g._narr("The meeting closes. %s is hanged at dusk." % n.name)
 		g._headline("execution", "%s is hanged at dusk" % n.name)
 		# How many were alive at the hanging: with five or more, a Scion could have taken over.
-		g._facts([{"kind": "execution", "subject": [ex], "source": "player", "day": g.w.day, "phase": C.EVENING, "alive_before": g.w.living().size() + 1,
+		GameBoard._facts(g, [{"kind": "execution", "subject": [ex], "source": "player", "day": g.w.day, "phase": C.EVENING, "alive_before": g.w.living().size() + 1,
 			"text": "%s was executed on day %d." % [n.name, g.w.day]}])
 		if g.w.meeting.get("curse", false):
 			g._narr("As %s swings, a cold wind moans through Hollowmere. A curse has taken one of those who voted to hang them: someone among you has turned." % n.name)
 			g._headline("curse", "A Revenant's curse takes hold", "One of the voters has turned.")
-			g._facts([{"kind": "curse", "subject": [ex], "source": "player", "day": g.w.day, "phase": C.EVENING,
+			GameBoard._facts(g, [{"kind": "curse", "subject": [ex], "source": "player", "day": g.w.day, "phase": C.EVENING,
 				"text": "Day %d: as %s was hanged, a Revenant's curse turned one of those who voted for it. Find its totem to break the curse." % [g.w.day, n.name]}])
 	else:
 		g._narr("The meeting closes with nobody on the block. Nobody is executed.")
@@ -580,7 +580,7 @@ static func _close_meeting(g) -> void:
 				g._narr(t)
 	g.state = "night"
 	g._hdr("Night %d" % g.w.day)
-	g._narr(g._night_homes())
+	g._narr(GameDayNight._night_homes(g))
 	if g.w.day == 1: g._narr(C.DEMON_NIGHT_RULE)
 	var opts = "'vigil <block>' (watch who goes out from a block at night)"
 	if g.w.tools["ward"] > 0:

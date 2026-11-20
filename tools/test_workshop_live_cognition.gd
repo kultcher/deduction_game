@@ -1,6 +1,8 @@
 ## Live NPC cognitive profiles, committed union memory, scoped replies and reversible ownership.
 extends SceneTree
 
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
 const Shared = preload("res://workshop/shared_ledger.gd")
@@ -47,7 +49,7 @@ func _game():
 	return g
 
 func _read(g, source, role: String, day: int, data: Dictionary) -> int:
-	return g.add_card({"kind": "info", "source": source.id, "role": role, "day": day,
+	return GameBoard.add_card(g, {"kind": "info", "source": source.id, "role": role, "day": day,
 		"phase": 3 if day == 0 else 0, "data": data,
 		"text": "%s %s day %d: %s" % [source.id, role, day, JSON.stringify(data)]})
 
@@ -55,7 +57,7 @@ func _proof(g) -> int:
 	var p: Array = g.w.npcs
 	var rumor = _read(g, p[1], "rumormonger", 0, {"pair": [p[4].id, p[5].id], "secret": "marked"})
 	var dowser = _read(g, p[2], "dowser", 1, {"group": [p[3].id, p[4].id, p[5].id], "count": 3})
-	return g.file_deduction({"type": "evil", "a": p[3].id}, [rumor, dowser])
+	return GameBoard.file_deduction(g, {"type": "evil", "a": p[3].id}, [rumor, dowser])
 
 func _insight() -> void:
 	var results: Array = []
@@ -65,14 +67,14 @@ func _insight() -> void:
 		n.traits.insight = insight
 		var number = _proof(g)
 		var rng: int = g.w.rng.state
-		var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, true)
+		var r = GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, true)
 		check(r.get("workshop", false), "native cognitive profile uses shared presentation")
 		check(r.assessment.reasoning.profile == Reasoner.profile(insight).name and r.assessment.theory.mode == "persistence", "live traits select the bounded profile and persistent confidence")
 		check(r.assessment.calculation.confidence_factor == 1.0, "persistent confidence does not stack the old incoming-effect multiplier")
 		check(r.assessment.reasoning.support_tested <= Reasoner.profile(insight).support and r.assessment.reasoning.rivals_tested <= Reasoner.profile(insight).rivals, "live search respects both hard test budgets")
 		check(g.w.rng.state == rng, "cognitive assessment uses no random draws")
 		results.append(r)
-		print("Insight %.1f: %s agreement %.4f; %d/%d checks; compatible %d" % [insight, r.assessment.reasoning.status, r.agreement, r.assessment.reasoning.support_tested, r.assessment.reasoning.rivals_tested, r.assessment.shared_assessment.compatible])
+		print("Insight %.1f: %s agreement %.4f; %d/%d checks; compatible %d" % [insight, r.assessment.reasoning.status, r.agreement, r.assessment.reasoning.support_tested, r.assessment.reasoning.rivals_tested, r.assessment.assessment.compatible])
 		var beliefs = n.suspicion.duplicate(true)
 		var theories = n.workshop_state.theories.duplicate(true)
 		var plan: Dictionary = g._workshop_plans[n.id + ":good"]
@@ -85,7 +87,7 @@ func _insight() -> void:
 		var twice = Shared.evaluate(next_plan, n.workshop_state.outside, sd_map)
 		check(once == twice, "a committed live theory returns the exact same assessment on unchanged input")
 		for venue in ["private", "meeting", "nomination", "private"]:
-			g._evaluate_deduction(n, g.board[number - 1], 0.6, true, venue)
+			GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 0.6, true, venue)
 			check(_close(beliefs, n.suspicion) and n.workshop_state.theories == theories, "repeated venues cannot sharpen a native theory or compound suspicion")
 		# The first meeting presentation puts its subject on the town's topic (recency), a real
 		# input change; after that, nothing has changed and a refresh reuses the assessment.
@@ -101,12 +103,15 @@ func _insight() -> void:
 		Mind.refresh_beliefs(g.w, n, "new date, original alignment unchanged")
 		# The connections model (purge phase 2): a presented case fades by the day, so the
 		# people it named drop a little at the new date and the others take up the slack. A
-		# second award would raise them instead.
+		# second award would raise them instead. Measured as the group: the ones the case only
+		# mentions can take up a sliver of the slack from its subject (Nov 20, +0.001 on 692).
 		var named: Array = [g.w.npcs[3].id, g.w.npcs[4].id, g.w.npcs[5].id]
-		check(n.workshop_state.theories == theories and named.all(func(id): return float(n.suspicion[id]) <= float(beliefs[id]) + 0.000001), "day advance does not reset original-alignment theories or award evidence again")
+		var named_sum = func(m: Dictionary) -> float:
+			return named.reduce(func(acc, id): return acc + float(m[id]), 0.0)
+		check(n.workshop_state.theories == theories and named_sum.call(n.suspicion) <= named_sum.call(beliefs) + 0.000001, "day advance does not reset original-alignment theories or award evidence again")
 		if insight < 0.2:
 			n.traits.insight = 0.9
-			var revised = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+			var revised = GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 			check(not revised.repeated and revised.assessment.reasoning.profile == "High" and n.workshop_state.reasoning.profile == "High", "a changed live trait invalidates both assessment caches and repetition status")
 		g.workshop_retract(number, n.id)
 		check(n.workshop_state.facts.is_empty() and _close(n.suspicion, n.workshop_state.outside), "sole-case retraction removes all persuasion even while theory memory remains")
@@ -125,8 +130,8 @@ func _attention() -> void:
 	var cards: Array = []
 	for day in range(1, 7):
 		cards.append(_read(g, p[1], "dowser", day, {"group": [p[3].id], "count": 0}))
-	var number = g.file_deduction({"type": "good", "a": p[3].id}, cards)
-	var r = g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	var number = GameBoard.file_deduction(g, {"type": "good", "a": p[3].id}, cards)
+	var r = GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	check(r.get("workshop", false), "seven legal receipts fit the unchanged workload capability gate")
 	# Premises step 0b: the listener's own reading is pinned outside the budget, beside the case.
 	check(r.assessment.reasoning.considered.size() == cards.size() + 1 and own_id in r.assessment.reasoning.considered, "all six presented cards are read, and the listener's own reading stays in view")
@@ -144,7 +149,7 @@ func _cover_and_fallback() -> void:
 	var g = _game()
 	var n = g.w.npcs[0]
 	var number = _proof(g)
-	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var committed = n.workshop_state.theories.duplicate(true)
 	var last_good = n.suspicion.duplicate(true)
 	g.unprepared_refreshes.clear()
@@ -157,8 +162,8 @@ func _cover_and_fallback() -> void:
 	var evil = g.w.npcs.filter(func(p): return p.is_evil())[0]
 	Mind.shadow_run(g.w, evil, func(_cover): pass)
 	var real_before = [evil.suspicion.duplicate(true), evil.intel.duplicate(true)]
-	g._evaluate_deduction(evil, g.board[number - 1], 1.0, true)
-	check(evil.shadow.workshop_state.get("active", false) and g.workshop_snapshot([number], evil.id).listener.reasoning_mode == "bounded", "evil's cover receives the bounded native profile")
+	GamePresentation._evaluate_deduction(g, evil, g.board[number - 1], 1.0, true)
+	check(evil.shadow.workshop_state.get("active", false) and GamePresentation.workshop_snapshot(g, [number], evil.id).listener.reasoning_mode == "bounded", "evil's cover receives the bounded native profile")
 	check(real_before == [evil.suspicion, evil.intel] and not evil.workshop_state.has("theories"), "cover cognition never changes the real evil mind or supplies evil intelligence")
 	g.new_case(692, 7)
 	check(g.w.npcs.all(func(p): return p.workshop_state.get("presentations", {}).is_empty() and p.workshop_state.get("discussion", {}).is_empty()), "new case clears prior presentations")
@@ -168,10 +173,10 @@ func _registration() -> void:
 	var p: Array = g.w.npcs
 	var n = p[0]
 	var number = _proof(g)
-	g._evaluate_deduction(n, g.board[number - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var centred: Dictionary = _brought(g, n)
-	var marked = g.file_deduction({"type": "marked", "a": p[4].id}, g.board[number - 1].supports)
-	var r = g._evaluate_deduction(n, g.board[marked - 1], 1.0, false)
+	var marked = GameBoard.file_deduction(g, {"type": "marked", "a": p[4].id}, g.board[number - 1].supports)
+	var r = GamePresentation._evaluate_deduction(g, n, g.board[marked - 1], 1.0, false)
 	var key: String = p[4].id + "|Original alignment|marked"
 	check(r.get("workshop", false) and n.workshop_state.theories.has(key), "live Marked questions persist a separate registration theory")
 	# Premise centring (#246): cards only presented cases brought count in full on those
@@ -183,7 +188,7 @@ func _registration() -> void:
 		"a Marked question names no alignment target, so it leaves its cards unshaped (centred on %s before, %s after)" % [str(centred.values()), str(_brought(g, n).values())])
 	var after = n.suspicion.duplicate(true)
 	var memory = n.workshop_state.theories.duplicate(true)
-	g._evaluate_deduction(n, g.board[marked - 1], 0.6, true, "meeting")
+	GamePresentation._evaluate_deduction(g, n, g.board[marked - 1], 0.6, true, "meeting")
 	check(n.workshop_state.theories == memory and _close(after, n.suspicion), "repeating registration claims cannot sharpen alignment or registration commitment")
 	check(r.assessment.theory == n.workshop_state.theories[key].decision, "scoped registration reply uses the committed union decision")
 	# Its target does (premise centring, #246, Michael's option B): the same cards aimed at
@@ -192,16 +197,16 @@ func _registration() -> void:
 	var p2: Array = g2.w.npcs
 	var n2 = p2[0]
 	var first = _proof(g2)
-	g2._evaluate_deduction(n2, g2.board[first - 1], 1.0, false)
+	GamePresentation._evaluate_deduction(g2, n2, g2.board[first - 1], 1.0, false)
 	var before2 = n2.suspicion.duplicate(true)
 	# The premise's type doesn't move beliefs: the same cards argued as "demon" about the same
 	# target weigh as they did. (In a game of their own: after a Marked question, any later
 	# case of the player's citing the same cards takes its place, and with it its frame.)
-	var retyped = g2.file_deduction({"type": "demon", "a": p2[3].id}, g2.board[first - 1].supports)
-	g2._evaluate_deduction(n2, g2.board[retyped - 1], 1.0, false)
+	var retyped = GameBoard.file_deduction(g2, {"type": "demon", "a": p2[3].id}, g2.board[first - 1].supports)
+	GamePresentation._evaluate_deduction(g2, n2, g2.board[retyped - 1], 1.0, false)
 	check(_close(before2, n2.suspicion), "the same cards under another premise type about the same target move beliefs no differently")
-	var retargeted = g2.file_deduction({"type": "evil", "a": p2[5].id}, g2.board[first - 1].supports)
-	g2._evaluate_deduction(n2, g2.board[retargeted - 1], 1.0, false)
+	var retargeted = GameBoard.file_deduction(g2, {"type": "evil", "a": p2[5].id}, g2.board[first - 1].supports)
+	GamePresentation._evaluate_deduction(g2, n2, g2.board[retargeted - 1], 1.0, false)
 	var aimed: Dictionary = _brought(g2, n2)
 	check(not aimed.is_empty() and aimed.values().all(func(t): return p2[3].id in t and p2[5].id in t) and float(n2.suspicion[p2[5].id]) > float(before2[p2[5].id]),
 		"aiming the same cards at someone else centres them on both targets, so the new one rises (%.3f -> %.3f)" % [float(before2[p2[5].id]), float(n2.suspicion[p2[5].id])])

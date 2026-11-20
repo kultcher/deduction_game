@@ -625,8 +625,11 @@ static func info_implicates(w, e: Dictionary) -> bool:
 
 static func _public_threat(w, n) -> Dictionary:
 	var parts = {}
-	if n.claim_public and n.claimed_role in C.INFO_ROLES:
-		parts["info_claim"] = Tuning.Evil.KILL_INFO_CLAIM
+	var claim: float = claim_threat(w, n)
+	if claim != 0.0:
+		parts["info_claim" if n.claimed_role in C.INFO_ROLES else "gift_claim"] = claim
+		if n.claimed_role in Tuning.Evil.KILL_IDENTIFIER_ROLES:
+			parts["identifier"] = Tuning.Evil.KILL_IDENTIFIER_BONUS
 		var cdef = C.role_def(n.claimed_role)
 		if cdef != null and cdef.public_threat_bonus != 0.0 and cdef.public_threat_key != "":
 			parts[cdef.public_threat_key] = cdef.public_threat_bonus
@@ -634,6 +637,23 @@ static func _public_threat(w, n) -> Dictionary:
 		if e["shared"] and info_implicates(w, e):
 			parts["implicates_us"] = Tuning.Evil.KILL_IMPLICATES_US
 	return parts
+
+## What a public claim is worth to the Demon, before the first-night drop: KILL_INFO_CLAIM
+## for an info gift, or its KILL_CLAIM_BY_ROLE entry; nothing once a one-shot is spent, or
+## for a Sexton whose bell evil has heard of (Michael, Nov 20).
+static func claim_threat(w, n) -> float:
+	if not n.claim_public:
+		return 0.0
+	var r: String = n.claimed_role
+	var table: Dictionary = Tuning.Evil.KILL_CLAIM_BY_ROLE
+	if not (r in C.INFO_ROLES or table.has(r)):
+		return 0.0
+	var cdef = C.role_def(r)
+	if cdef != null and cdef.kill_claim_spent(w, n):
+		return 0.0
+	if r == "sexton" and int(w.evil_plan.get("bell_believed", -1)) >= 0:  # what evil has heard, not the truth
+		return 0.0
+	return float(table.get(r, Tuning.Evil.KILL_INFO_CLAIM))
 
 static func choose_kill_target(w) -> String:
 	ensure_scapegoat(w)

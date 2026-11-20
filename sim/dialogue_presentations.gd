@@ -8,10 +8,10 @@ const C = preload("res://sim/content.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Solver = preload("res://workshop/solver.gd")
 
-const ACCUSING_TYPES = ["evil", "demon", "minion", "lied", "notrole", "suspicious", "unreliable"]
+const ACCUSING_TYPES = ["evil", "demon", "lied", "notrole", "suspicious", "unreliable"]
 ## Premises the "seen elsewhere / the traces" movement notes can speak to: whether someone is
 ## on the killer's side. Role, secret, Marked and misled premises don't.
-const MOVEMENT_NOTE_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon"]
+const MOVEMENT_NOTE_TYPES = ["evil", "demon", "suspicious", "good", "notdemon"]
 const MARKED_PING_ROLES = ["seer", "dowser", "clerk", "gravedigger", "hearthwitch", "surveyor", "augur", "magistrate", "executor", "registrar"]
 
 const FALSE_SELF_EXPRESSIONS = {
@@ -155,7 +155,7 @@ static func _append_movement_notes(w, listener_id: String, ctype: String, stance
 	re_role.compile("^Scattered sightings:\\s+(.+?)'s movements fit the claimed (.+?) gift\\.")
 	for raw_note in mov:
 		var note: String = str(raw_note)
-		if note.begins_with("Seen elsewhere:") and ctype != "minion":
+		if note.begins_with("Seen elsewhere:"):
 			if target_prefix == "" or note.contains(": " + target_prefix):
 				var m_seen: RegExMatch = re_seen.search(note)
 				if m_seen != null:
@@ -211,6 +211,23 @@ static func render_self_support(n, variant: String, canonical: String, tic_memor
 ## The line after a clash opener. Some voices' "still, it moves me" leans toward suspicion
 ## ("it weighs with me against {target}"), so a case for someone's innocence takes the
 ## neutral line every voice shares (Codex, #219).
+## The likeliest other evil a case points at, or "" if none stands out: the first rival
+## (CaseEval's, likeliest first) who is living and not in `skip`, if the case raised their
+## chance by more than 0.2 and leaves it above a half (Case 12926: Edda named Nisha, hanged
+## two days before). A listener names them ("present_points_elsewhere"); the Workshop's
+## test juror flags the case without naming anyone ("· points elsewhere").
+static func points_elsewhere(w, rivals: Array, skip: Array) -> String:
+	for rv in rivals:
+		if not rv is Dictionary:
+			continue
+		var cand: String = str(rv.get("id", ""))
+		if cand == "" or cand in skip or not w.by_id.has(cand) or not w.by_id[cand].alive:
+			continue
+		if float(rv.get("shift", 0.0)) > 0.2 and float(rv.get("posterior", 0.0)) > 0.5:
+			return cand
+		return ""
+	return ""
+
 static func _clash_follow(listener, key: String, ctype: String, target_label: String) -> String:
 	const NEUTRAL: String = "Still, it changes how I see %s."
 	if key != "present_clashes_moved":
@@ -247,16 +264,12 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 		primary_key = "present_false_self" if about_me else "present_false_known"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		allow_lean = false
-	elif ctype == "conflict":
-		primary_key = "present_conflict_found" if agreement > 0.0 else "present_conflict_none"
-		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
-		allow_lean = false
 	elif path_kind == "pattern" and agreement > 0.0:
 		primary_key = "present_circumstantial_only"
 		parts.append(Dialogue.voice_line(listener.id, primary_key, canonical))
 		used_circumstantial = true
 		allow_lean = false
-		if ctype in ["evil", "demon", "minion", "good", "marked"] and believed_stance in ["accept", "partial"]:
+		if ctype in ["evil", "demon", "good", "marked"] and believed_stance in ["accept", "partial"]:
 			var follow_k: String = "present_accept_open" if believed_stance == "accept" else "present_partial"
 			parts.append(Dialogue.voice_line(listener.id, follow_k, canonical, {"target": target_label}))
 	elif path_kind == "conditional" and believed_stance == "reject":
@@ -340,20 +353,9 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 			var b_key: String = ("present_clashes_moved" if clashes else "present_accept_open") if believed_stance == "accept" else "present_partial"
 			parts.append(_clash_follow(listener, b_key, ctype, target_label))
 	elif agreement <= -0.2 or (status == "counterexample_found" and bool(reasoning.get("support_exhausted", false))):
-		var rivals: Array = ev.get("rivals", [])
 		var rival_id: String = ""
-		# The likeliest other evil the case points at: someone living, not the listener or
-		# the target (Case 12926: Edda named Nisha, hanged two days before).
 		if believed_stance != "accept":
-			for rv in rivals:
-				if not rv is Dictionary:
-					continue
-				var cand_r: String = str(rv.get("id", ""))
-				if cand_r == "" or cand_r == listener.id or cand_r == stance_subject or not w.by_id.has(cand_r) or not w.by_id[cand_r].alive:
-					continue
-				if float(rv.get("shift", 0.0)) > 0.2 and float(rv.get("posterior", 0.0)) > 0.5:
-					rival_id = cand_r
-				break
+			rival_id = points_elsewhere(w, ev.get("rivals", []), [listener.id, stance_subject])
 		if rival_id != "":
 			primary_key = "present_points_elsewhere"
 			named.append(rival_id)
@@ -388,7 +390,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 					primary_key = "present_unmoved"
 					parts.append(Dialogue.voice_line(listener.id, primary_key, canonical, {"target": target_label}))
 
-	if bounded and primary_key not in ["present_lost_thread", "present_clashes_own", "present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none"]:
+	if bounded and primary_key not in ["present_lost_thread", "present_clashes_own", "present_false_self", "present_false_known"]:
 		var ignored_arr: Array = reasoning.get("ignored", [])
 		var pres_rep: Array = snapshot.get("selected", []) if snapshot.has("selected") else view.get("listener", {}).get("knowledge", {}).get("presented_reports", [])
 		var ignored_presented: bool = ignored_arr.any(func(id): return id in pres_rep)
@@ -398,7 +400,7 @@ static func render_workshop_reply(w, listener, root_conclusion: Dictionary, targ
 	# The movement notes ("seen elsewhere, so not the killer", "the traces incline me") only
 	# fit premises about whether someone is the killer's side (premises pass step 1; playtest
 	# issue #5: "Dorian is the Warden" drew a killer clause).
-	if primary_key not in ["present_false_self", "present_false_known", "present_conflict_found", "present_conflict_none", "present_conditional"] and ctype in MOVEMENT_NOTE_TYPES:
+	if primary_key not in ["present_false_self", "present_false_known", "present_conditional"] and ctype in MOVEMENT_NOTE_TYPES:
 		_append_movement_notes(w, listener.id, ctype, stance_subject, ev, parts, used_circumstantial, allow_lean)
 
 	var joined: String = " ".join(PackedStringArray(parts.filter(func(s): return str(s).strip_edges() != "")))
@@ -423,10 +425,6 @@ static func render_evil_override(w, n, conclusion: Dictionary, stance: String, a
 			var self_def: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, "present_false_self", canonical), tic_memory)
 			return _attach_expression(n.id, {"speaker": n.id, "name": n.name, "text": self_def, "statement": canonical}, "present_false_self")
 		return render_self_support(n, "thanks", canonical, tic_memory)
-	if ctype == "conflict":
-		var ck: String = "present_conflict_found" if stance != "reject" else "present_conflict_none"
-		var cv: String = Dialogue.apply_tics(n.id, Dialogue.voice_line(n.id, ck, canonical), tic_memory)
-		return {"speaker": n.id, "name": n.name, "text": cv, "statement": canonical}
 	var target_label: String = w.by_id[target_id].name if (target_id != "" and w.by_id.has(target_id)) else "that"
 	var key: String = "present_unmoved"
 	var slots: Dictionary = {"target": target_label}
@@ -441,7 +439,7 @@ static func render_evil_override(w, n, conclusion: Dictionary, stance: String, a
 		# Evil may cite its non-evil scapegoat as top Demon suspect (+ #2 non-evil suspect).
 		var sg_id: String = str(w.evil_plan.get("scapegoat", ""))
 		var h: int = absi(hash(n.id + "|evil_pres|" + ctype + "|" + target_id + "|" + str(w.day)))
-		if ctype in ["evil", "demon", "minion", "suspicious"] and sg_id != "" and sg_id != target_id and sg_id != n.id and w.by_id.has(sg_id) and w.by_id[sg_id].alive and not w.by_id[sg_id].is_evil() and (h % 2 == 0):
+		if ctype in ["evil", "demon", "suspicious"] and sg_id != "" and sg_id != target_id and sg_id != n.id and w.by_id.has(sg_id) and w.by_id[sg_id].alive and not w.by_id[sg_id].is_evil() and (h % 2 == 0):
 			var non_evil_others: Array = []
 			var sh_susp: Dictionary = n.shadow.suspicion if n.shadow != null else n.suspicion
 			for p in w.living():

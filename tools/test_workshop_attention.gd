@@ -1,5 +1,7 @@
 ## Presented observations are compulsory; Insight still limits links and rivals.
 extends SceneTree
+const GamePresentation = preload("res://game/game_presentation.gd")
+const GameBoard = preload("res://game/game_board.gd")
 const Session = preload("res://workshop/session.gd")
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
@@ -61,11 +63,11 @@ func _live() -> void:
 	listener.traits.insight = 0.1
 	listener.workshop_state.reasoning_mode = "bounded"
 	var target = g.w.npcs.filter(func(p): return p != listener)[0]
-	var alibi = g.add_card({"kind": "alibi", "source": target.id, "subject": [target.id], "day": 1, "phase": 3, "text": "Home at night"})
-	var sight = g.add_card({"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Seen out"})
-	var number = g.file_deduction({"type": "suspicious", "a": target.id}, [alibi, sight])
+	var alibi = GameBoard.add_card(g, {"kind": "alibi", "source": target.id, "subject": [target.id], "day": 1, "phase": 3, "text": "Home at night"})
+	var sight = GameBoard.add_card(g, {"kind": "sighting", "source": "player", "subject": [target.id], "day": 1, "phase": 3, "block": "market", "text": "Seen out"})
+	var number = GameBoard.file_deduction(g, {"type": "suspicious", "a": target.id}, [alibi, sight])
 	var required = [Evidence.normalize_card(g.board[alibi - 1]).id, Evidence.normalize_card(g.board[sight - 1]).id]
-	var result = g._evaluate_deduction(listener, g.board[number - 1], 1.0, false)
+	var result = GamePresentation._evaluate_deduction(g, listener, g.board[number - 1], 1.0, false)
 	check(result.get("workshop", false) and listener.workshop_state.active, "a real crowded listener uses the shared presentation route")
 	check(required.all(func(id): return id in listener.workshop_state.reasoning.considered), "the applied belief refresh includes the presented roots")
 	var response: Dictionary = g._workshop_responses[listener.id + ":good"].assessment

@@ -211,13 +211,11 @@ it means the game must teach its own way of thinking and make evidence very read
 - **Second traces:** when another walker passed the victim's cottage that night, 45% of
   scenes carry a second trace from the passer, in random order. The judge scores both
   assignments jointly. The grimoire says who left which.
-- **Drops:** each walker may drop something on their route (demon 35%, others 15%): a
-  home-block material (88%) or a personal item (12%). `search` finds everything dropped at
-  a location. A personal item becomes a night "out" card for its owner. **Drops are to
-  be removed altogether,** personal items and home-block materials alike (Michael, Nov 19;
-  BACKLOG "Remove drops altogether", Quill).
-- Category traces are common. (Owner-identifying items, later plantable by a Framer, go with
-  the drops.)
+- **Drops: removed** (Michael, Nov 19). Walkers used to drop a home-block material or,
+  rarely, a personal item on their route, which `search` found. The materials had been off
+  since before Nov 17, and the personal item went with them. `search` still finds the
+  Revenant's totem and a place's regulars, and a crime scene still gives its traces.
+- Category traces are common.
 
 ### Decided and open directions (world)
 
@@ -378,7 +376,6 @@ count as one). The Default script uses the first four:
 | Marked | Gifts that read them may see them as evil or the demon: Dowser, Surveyor, Martyr and the Seer 50%, the Augur 50%, the Registrar 50% when a minion is on its slate; a Gravedigger or Executor sees a random evil role 30% of the time. |
 | Secret Lovers | Meet at a random block each night (both out), trust each other, know each other's secret, hide it like any secret (may confess). When one dies, the other withdraws: Privacy to the maximum, Gossip to the minimum, Composure up. |
 | Sleepwalker | Leaves home on about half of nights to a random block without knowing it: honestly says they were home, sees nothing while out. |
-| Muddler (custom scripts) | Often muddles one detail when passing on someone else's reading or night sighting. They don't know. |
 
 A Lovers confession names the partner, and the judge treats it as proof that both hold
 the secret: evil never fakes one (#162, `Solver.lovers_needs`).
@@ -631,10 +628,12 @@ and Nov 3 (`docs/archive/legacy_retirement_plan.md`): there are no link template
 
 The red-string board (**More > Case Workshop**; `ui/live_case_workshop.gd`):
 - **Premise:** a conclusion about a person or a piece of evidence. Supported types
-  (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, a minion, Marked,
-  suspicious, a modifier holder, holds / doesn't hold a gift, lied, truthful, misled,
-  unreliable, "something doesn't add up" (conflict), and "was turned by the curse". The
-  last names the Revenant's turning itself: the person was good before the curse, evil only
+  (`LiveAssessment.CONCLUSIONS`): evil, good, the Demon, not the Demon, Marked,
+  suspicious, a modifier holder, doesn't hold their claimed gift (off the menu; saved
+  cases still evaluate), lied, truthful, misled, unreliable, and "was turned by the curse"
+  (Michael, Nov 20: "these reports conflict" was removed, "is a Minion" folded into "is
+  evil" and "holds their claimed gift" merged into "is good"). "Was turned by the curse" names
+  the Revenant's turning itself: the person was good before the curse, evil only
   while it held, and good again after it, so their earlier and later word stands. "Evil
   during the curse" also allows that they were evil all along. It needs a public curse and
   a surviving yes-voter, and it never shows who was turned: it's weighed over the worlds
@@ -772,7 +771,8 @@ player's case; it doesn't search for theories.**
     explains. Insight also sets how readily an NPC connects what it hears to what it
     knows firsthand: a sharp NPC links more cards to its own readings and nights, a dull
     one only the glaring ones. It never connects public cards that don't touch its own
-    knowledge; that's the player's job. The headline nudge is off. The earlier model, where
+    knowledge; that's the player's job. The headline reading, which let a dull NPC take a strong
+    reading at its word, was removed in purge phase 6a (Nov 20). The earlier model, where
     attention bounded belief, was removed in purge phase 3 (Nov 18); it's on the branch
     `archive/legacy-belief-final`.
 - **Suspicion change** = 0.45 × the shift from prior to posterior, scaled by how far the
