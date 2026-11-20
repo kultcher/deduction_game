@@ -4,7 +4,7 @@
 - **Base:** main with #344 (`baseline_ee15238`)
 - **Branch:** `claude/beadle-private-share`
 - **Status:** PR open. Michael approved the new constant at 0.15 and the small calls (Nov 19), so
-  it's no longer held. It moves golden and re-baselines to `baseline_a260209` (main with #349).
+  it's no longer held. It moves golden and re-baselines to `baseline_9ea3f99` (main with #365).
 - **Next actor:** Bailiff (review and merge).
 - **BACKLOG item:** "A daily nudge to share a gift privately" (Michael, Nov 19). The built note
   is added.
