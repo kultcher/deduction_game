@@ -13,9 +13,6 @@ extends RefCounted
 
 # ---------------------------------------------------------------- 1. World Setup, Movement & Night Traces
 class Setup:
-	## The Muddler's Gossip trait is at least this (world._assign_secret_mod): their secret
-	## only shows when they relay what they've heard.
-	const MUDDLER_GOSSIP_FLOOR = 0.7
 	## Case sizes: townsfolk (one carries the secret), minions, demon.
 	const SETUPS = {
 		7: {"town": 5, "minions": 1, "secrets": 1},
@@ -439,7 +436,6 @@ class Social:
 	const SHARE_SIGHTING_GOSSIP_SCALE = 0.8
 	const SHARE_SIGHTING_SCENE_BONUS = 0.4
 	const SHARE_ALIBI_WEIGHT = 0.22
-	const MUDDLER_CHANCE = 0.65
 	## Peer role hints and claims (meeting plan M1). A hint names only the gift's family
 	## (HINT_PACKAGES); a claim names the role, even for gifts with no readings to share.
 	const SHARE_ROLE_HINT_BOND_MIN = 0.45  # was 0.55 (Nov 5: acquaintances, not only friends)
@@ -1129,11 +1125,9 @@ class Workshop:
 	const CONCLUSION_COEFFS = {
 		"evil": 0.45,
 		"demon": 0.45,
-		"minion": 0.45,
 		"good": -0.4,
 		"marked": -0.1,
 		"suspicious": 0.3,
-		"conflict": 0.0,
 	}
 	const STANCE_ACCEPT = 0.6
 	const STANCE_PARTIAL = 0.35
@@ -1207,9 +1201,9 @@ class Workshop:
 	## what it implies about the others.
 	const PREMISE_BYSTANDER_SHARE = 1.0 / 3.0
 	## Premise types that ask an alignment question about a person: a stored case's target
-	## (`Shared.premise_targets`). Marked, secret, misled and conflict premises name no
+	## (`Shared.premise_targets`). Marked, secret and misled premises name no
 	## alignment target.
-	const PREMISE_ALIGNMENT_TYPES = ["evil", "demon", "minion", "suspicious", "good", "notdemon", "role", "notrole", "lied", "truthful"]
+	const PREMISE_ALIGNMENT_TYPES = ["evil", "demon", "suspicious", "good", "notdemon", "notrole", "lied", "truthful"]
 	## The protect / believed-role preference from a presented premise needs at least this
 	## agreement (CaseEval.shift). A rejected "X is good" no longer steers Warden picks.
 	const PREMISE_PREF_MIN_AGREEMENT = 0.5

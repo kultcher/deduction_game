@@ -121,15 +121,6 @@ func _init() -> void:
 	bart.reading_reliability[Solver.semantic_key(Solver.card_by_id(view, "survey"))] = 0.0
 	var impaired = Jury.evaluate(view, c, bart)
 	check(impaired.support_model.report_acceptance.survey == 0.0 and not impaired.reasoning.private_checks.fatal, "a juror may doubt their own reading's accuracy while retaining firsthand receipt knowledge")
-	var conflict_case = Solver.empty_case()
-	conflict_case.cards = ["survey", "watch1", "alibi1"]
-	conflict_case.conclusion.type = "conflict"
-	conflict_case.conflict_scope = ["watch1", "alibi1"]
-	var obvious = Jury.evaluate(view, conflict_case, small_mind.duplicate(true))
-	check(obvious.agreement == 1.0 and obvious.reasoning.status == "inconsistent", "even low Insight catches a direct two-account home/sighting contradiction")
-	conflict_case.conflict_scope = ["survey"]
-	var unrelated = Jury.evaluate(view, conflict_case, small_mind.duplicate(true))
-	check(unrelated.agreement == 0.0, "a bounded juror cannot borrow the referee's out-of-scope conflict")
 	var empty = Solver.empty_case()
 	check(Jury.evaluate(view, empty, small_mind).strength == 0, "low Insight gives no free weight to an unsupported accusation")
 	var pc = c.duplicate(true)

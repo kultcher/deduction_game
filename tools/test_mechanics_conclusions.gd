@@ -24,7 +24,7 @@ func _run() -> void:
 	g.w.dlog.detailed = false
 	var number = g.add_card({"kind": "info", "role": "surveyor", "source": "greta", "subject": [], "day": 0, "phase": 3, "data": {"count": 1}, "text": "Mechanics Surveyor."})
 	var other = g.add_card({"kind": "info", "role": "dowser", "source": "odette", "subject": ["greta"], "day": 1, "phase": 1, "data": {"group": ["greta", "hollis"], "count": 1}, "text": "Independent mechanics support."})
-	for type in ["notdemon", "secret_mod", "role", "notrole", "lied", "truthful", "misled", "unreliable"]:
+	for type in ["notdemon", "secret_mod", "notrole", "lied", "truthful", "misled", "unreliable"]:
 		var conclusion = {"type": type, "a": "greta", "role": "surveyor", "mod": "delusional", "card": number}
 		var filed = g.file_deduction(conclusion, [number, other], true)
 		check(filed > 0, type + " files: " + g.last_error)
@@ -61,7 +61,7 @@ func _ui(g, number: int, other: int) -> void:
 	await process_frame
 	editor.add_evidence(number)
 	editor.add_evidence(other)
-	for type in ["secret_mod", "role", "unreliable"]:
+	for type in ["secret_mod", "notrole", "unreliable"]:
 		editor._add_premise()
 		var id: String = editor.board.selected
 		check(editor.board.nodes[id].get("draft", false), "Add premise adds a blank premise")
@@ -75,7 +75,7 @@ func _ui(g, number: int, other: int) -> void:
 		check(not choices.is_empty(), type + " exposes its question controls")
 		if type == "secret_mod":
 			choices[0].item_selected.emit(Assess.C.SECRET_MOD_LIST.find("delusional"))
-		elif type == "role":
+		elif type == "notrole":
 			choices[0].item_selected.emit(Assess.C.GOOD_ROLES.find("surveyor"))
 		else:
 			choices[0].item_selected.emit(1)

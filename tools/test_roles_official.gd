@@ -735,7 +735,7 @@ func _live() -> void:
 		var vector: Dictionary = listener.workshop_state.requested.duplicate(true)
 		response = g._evaluate_deduction(listener, g.board[filed - 1], 1.0)
 		check(response.repeated and listener.workshop_state.requested == vector, role + " presentation is repeat-stable")
-		for type in ["demon", "minion"]:
+		for type in ["demon"]:
 			board.nodes[root].conclusion.type = type
 			var identities = Ghost.live(Live.snapshot(g, board.compile(root)))
 			check(identities.ready, role + " supports explicit " + type + " questions")
