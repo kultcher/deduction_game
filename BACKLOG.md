@@ -500,6 +500,9 @@ Workshop and the shared model can't express yet.
   presence is limited to a person spotted whose destination was on the reader's block, not
   anyone whose route passed it. The other two Minion gifts are built and closed (Quill,
   Nov 20). Owner Quill.
+  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
+    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
+    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **A Medium's relayed sighting vs the dead's known vantage:** the dead watched or
   guarded a different block that night, so couldn't have seen what the Medium says.
