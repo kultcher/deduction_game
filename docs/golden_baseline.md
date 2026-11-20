@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
+### Current baseline (Nov 20, the dead spare_pref removed): `baseline_6ab77dc`
+
+`tools/golden/baseline_6ab77dc/` is the capture from `claude/beadle-spare-pref-dead` at `6ab77dc` (main at
+`bd4ac84`, with #404 and #405). The dead "persuaded to spare" preference is gone: its field, vote
+term, constant and trace entries. Nothing wrote to it after #395.
+- **Divergence from `baseline_9fa5a74`:** every seed from record 1, but only because each NPC record
+  (real and shadow) no longer carries the always-empty `spare_pref` key. With that key ignored
+  (`golden_diff.py --ignore engine,spare_pref`), all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Muddler removed): `baseline_9fa5a74`
 
 `tools/golden/baseline_9fa5a74/` is the capture from `claude/remove-muddler` at `9fa5a74` (main with
 #397 merged in). The default script never deals the Muddler. But `reason_attribution`'s defence

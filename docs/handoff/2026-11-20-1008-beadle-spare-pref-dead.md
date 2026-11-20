@@ -1,7 +1,7 @@
 # Remove the dead "persuaded to spare" preference (spare_pref)
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `de0fa80` (`baseline_58cb94a`, with #404)
+- **Base:** main at `bd4ac84` (`baseline_9fa5a74`, with #404 and #405)
 - **Branch:** `claude/beadle-spare-pref-dead`
 - **Status:** PR open. Play is unchanged. Golden is re-baselined only because every NPC record
   loses the always-empty `spare_pref` key; see Measured.
@@ -27,7 +27,7 @@
 ## Measured
 
 - **Golden:** two captures were identical.
-  - **Against `baseline_58cb94a`:** every seed differs only in the missing `spare_pref` key on
+  - **Against `baseline_9fa5a74`:** every seed differs only in the missing `spare_pref` key on
     each NPC (real and shadow).
   - **With that key ignored** (`golden_diff.py --ignore engine,spare_pref`): identical on all
     five seeds.
