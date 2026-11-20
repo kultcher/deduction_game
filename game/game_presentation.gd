@@ -611,18 +611,23 @@ static func _present_deduction(g, rest: String, progress: Callable = Callable())
 	g._break_confidences([num] + Array(ded.get("supports", [])))
 	_secrets_used(g, ded)
 	_conflict_pressure(g, ded, 0.2, null)
-	# Every listener weighs the case, then the town's answers are given summarised: those who
-	# answered alike speak as one, a representative in full and the rest in a word (Michael,
-	# Nov 19; game/response_bundles.gd). The log keeps every answer.
+	await hear_town(g, g.w.living(), ded, Tuning.Workshop.VENUE_MULTS.meeting, "meeting", progress)
+
+
+## Every listener weighs a case put to the whole town, then the town's answers are given
+## summarised: those who answered alike speak as one, a representative in full and the rest in
+## a word (Michael, Nov 19; game/response_bundles.gd). The log keeps every answer. Used at the
+## meeting's floor and for a case laid before a nomination.
+static func hear_town(g, listeners: Array, ded: Dictionary, scale: float, venue: String, progress: Callable = Callable()) -> void:
 	var target: String = str(ded.get("conclusion", {}).get("a", ""))
 	var answers: Array = []
 	var seat: int = 0
-	for n in g.w.living():
+	for n in listeners:
 		if progress.is_valid():
 			await progress.call(n.name)
 		var mind = n.shadow if n.is_evil() and n.shadow != null else n
 		var before: float = float(mind.suspicion.get(target, 0.0))
-		var r: Dictionary = _evaluate_deduction(g, n, ded, Tuning.Workshop.VENUE_MULTS.meeting, true, "meeting")
+		var r: Dictionary = _evaluate_deduction(g, n, ded, scale, true, venue)
 		answers.append({"id": n.id, "name": n.name, "lines": r.get("lines", []), "facts": r.get("facts", []),
 			"agreement": float(r.get("agreement", 0.0)), "stance": str(r.get("dialogue", {}).get("stance", "")),
 			"delta": float(mind.suspicion.get(target, 0.0)) - before, "trust": float(n.trust), "seat": seat})
