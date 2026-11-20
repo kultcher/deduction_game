@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
+### Current baseline (Nov 20, the Night Watch card says "out"): `baseline_d85bba3`
+
+`tools/golden/baseline_d85bba3/` is the capture from `claude/herald-nightwatch-card` at `d85bba3`
+(on main). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
+pass by", fabricated cards match, and the scapegoat fabrication's logged reason says "watched the
+block of" instead of "the street of".
+- **Divergence from `baseline_7005cc6`:** text only. 42 and 54875 from record 1, 692 from 45 and
+  98933 from 79, each at a Night Watch card's text (and on 98933 the fabrication's reason). 900 is
+  identical. With " pass by" replaced by " out" and "street of evil" by "block of evil" in the old
+  baseline, all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the dead spare_pref removed): `baseline_7005cc6`
 
 `tools/golden/baseline_7005cc6/` is the capture from `claude/beadle-spare-pref-dead` at `7005cc6` (main at
 `d242a1f`, with #418, merged in). The dead "persuaded to spare" preference is gone: its field, vote
