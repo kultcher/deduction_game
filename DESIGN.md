@@ -175,10 +175,12 @@ it means the game must teach its own way of thinking and make evidence very read
   model gives each possible world a likelihood for every sighting and trace. Good people
   are out about 5% of nights with no walking gift, always on a walking-gift duty, and
   about 55% with a night secret; minions about 25%; the Demon goes to the victim's home on
-  kill nights, with a 5% chance of a detour, so being seen elsewhere argues strongly but
-  not absolutely against being the killer. Scattered sightings corroborate a walking-gift
-  claim; previews and replies name both relationships ("Seen elsewhere", "Scattered
-  sightings"). The live Demon never actually detours (BACKLOG).
+  kill nights by the direct way, never a detour (Michael, Nov 17: the live Demon never
+  detours, so inference doesn't allow one). An honest sighting off that route rules a
+  person out as that night's killer; a sighting can still be a lie or a mistake, so as a
+  claim it argues strongly rather than absolutely. Scattered sightings corroborate a
+  walking-gift claim; previews and replies name both relationships ("Seen elsewhere",
+  "Scattered sightings").
 - **Sighter contests** (#135): in a world where a sighter is evil, their sighting (or a
   Night Watch's "I saw X pass by") counts only `Workshop.EVIL_SIGHTER_TRUTH` (0.15) of the
   time and otherwise as an invented one, as likely on average as an honest one, so a
