@@ -41,15 +41,22 @@ func _init() -> void:
 	_check(o.npc_trust[b.id] >= 0.9, "and it trusts the beloved near the maximum")
 	# Visits: about UNREQUITED_VISIT_CHANCE of nights, to the beloved's block.
 	var visits: int = 0
+	var gap: int = 0
+	var worst_gap: int = 0
 	for d in range(1, 41):
 		w.day = d
 		o.out_last_night = false
 		var v: String = Burdens.unrequited_visit(w, o)
 		if v != "":
 			visits += 1
+			gap = 0
 			if v != b.home_block:
 				_check(false, "a visit goes to the beloved's block")
-	_check(visits > 8 and visits < 32, "it visits on some nights, not all (%d of 40)" % visits)
+		else:
+			gap += 1
+			worst_gap = maxi(worst_gap, gap)
+	_check(visits > 20 and visits < 40, "it visits on most nights, not all (%d of 40)" % visits)
+	_check(worst_gap <= 1, "never two nights running without a visit (Michael, Nov 21)")
 	o.out_last_night = true
 	_check(Burdens.unrequited_visit(w, o) == "", "not on a night it's already out on other business")
 	o.out_last_night = false
@@ -66,6 +73,23 @@ func _init() -> void:
 	var fact: Dictionary = Burdens.with_errand(w, o, {"kind": "secret", "subject": [o.id], "owner": o.id, "source": o.id, "secret_kind": "unrequited", "text": "old"})
 	_check(fact["beloved"] == b.id and fact["burden"] and fact["text"] == "%s admitted they have an unrequited love for %s." % [o.name, b.name], "a confession names the love, and carries the beloved")
 	_check(fact.has("observed_at"), "and is dated")
+	# The reveal's cost: a listener trusts the Unrequited less, once.
+	var l = goods[3]
+	l.npc_trust[o.id] = 0.6
+	Burdens.reveal_cost(w, o, [l])
+	var expect: float = 0.6 - (Tuning.Trust.SECRET_SPREAD_BASE + Tuning.Trust.SECRET_SPREAD_PRIVACY * float(o.traits.get("privacy", 0.5)))
+	_check(is_equal_approx(l.npc_trust[o.id], expect), "hearing the reveal, a listener trusts the Unrequited less, by the secret-spread amount")
+	Burdens.reveal_cost(w, o, [l])
+	_check(is_equal_approx(l.npc_trust[o.id], expect), "only once")
+	# The spell breaks at the level that drives a good NPC's accusations.
+	o.suspicion[b.id] = Tuning.Meeting.ACCUSE_SUSPICION_PIVOT - 0.05
+	_check(Burdens.spell_breaks(w, o).is_empty(), "below the accusing level, the spell holds")
+	o.suspicion[b.id] = Tuning.Meeting.ACCUSE_SUSPICION_PIVOT + 0.01
+	var sb: Dictionary = Burdens.spell_breaks(w, o)
+	_check(not sb.is_empty() and sb["fact"].get("spell_broken", false) and sb["fact"].get("public", false), "at it, the Unrequited gives the burden up before the town")
+	_check(not Burdens.withholds_for_beloved(w, o, strong) and Burdens.unrequited_visit(w, o) == "", "and stops shielding and visiting them")
+	o.dialogue_memory.erase("unrequited_spell_broken")
+	o.suspicion[b.id] = 0.1
 	# The grave.
 	b.alive = false
 	var grave: String = ""

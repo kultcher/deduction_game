@@ -461,6 +461,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		if decide(w, d, "defence_confess", confess_parts, "Confess my secret to explain being out?"):
 			d.secret_known = true
 			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
+			Burdens.reveal_cost(w, d, w.living())
 			facts.append(Burdens.with_errand(w, d, {"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
 				"secret_kind": d.secret.get("kind", ""), "text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]}))
 			moves.append("secret")

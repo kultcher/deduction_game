@@ -494,6 +494,8 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		"secret":
 			var owner = w.by_id[item["about"]]
 			l.known_secrets[owner.id] = s.id
+			if owner == s:
+				Burdens.reveal_cost(w, s, [l])  # an Unrequited confiding its love (burdens prototype)
 			if owner != s:
 				owner.secret_spread_by_npc = true
 			elif str(item.get("burden", "")) != "":
