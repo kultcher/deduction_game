@@ -249,7 +249,7 @@ static func _script(g) -> String:
 	out.append(C.DEMON_NIGHT_RULE)
 	for r in sc.minions:
 		out.append("  %-12s %s" % [C.role_name(r), C.ROLES[r]["desc"]])
-	out.append("Secrets (one in play, laid on a townsfolk on top of their gift):")
+	out.append("Burdens (one in play, laid on a townsfolk on top of their gift):")
 	for k in sc.secrets:
 		out.append("  %-12s %s" % [C.secret_name(k), C.SECRET_MODS[k]["desc"]])
 	return "\n".join(out)

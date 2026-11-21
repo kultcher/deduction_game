@@ -270,7 +270,7 @@ const LINES = {
 	"anger_voted_to_hang_me": "I saw your hand go up when I was on the block. I'm trying to let it go, but it isn't easy.",
 	"anger_overruled_my_nomination": "I had good reason to name {subject}, and you swept it aside. I'd have liked a word first, at least.",
 	"anger_spared_my_suspect": "You let {subject} off the rope. I pray you're right about them, love, because I'm not so sure.",
-	"anger_pressed_with_evidence": "You came at me with your evidence as if I were the guilty one, dear. What is it you want now?",
+	"anger_pressed_with_evidence": "You came at me with your evidence as if I were the guilty one. What is it you want now?",
 	"anger_pressed_before_town": "You put me on the spot before all our neighbours, and for nothing. They'll remember it, and so do I.",
 	"anger_too_many_questions": "You've worn me down with questions today. I've nothing left to give you.",
 	"anger_guessed_my_gift_wrong": "You keep trying to guess what I am, and getting it wrong. It doesn't make me want to tell you.",
@@ -283,4 +283,19 @@ const LINES = {
 	"anger_hanged_my_friend": "Your hand went up for {subject}. I'm still grieving them. Give me time.",
 	"anger_accused_my_friend": "You named {subject} in front of everyone. They're dear to me, and that stung.",
 	"anger_backed_hanging": "You pushed for {subject} to hang, and I didn't want it. I'm still sore about it.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Oh, I know how that sounds. I've carried the mark since I was born, and gifts have always read me crooked. That's what {reader} saw, not wickedness.",
+	"burden_marked_counterclaim": "I'm sorry, but that's not so. The mark is mine, and there's only ever one of us. Whatever {claimant} carries, it isn't that.",
+	"burden_marked_private": "I'll trust you with this, love, and I'd ask you keep it close. I'm Marked. If some gift ever calls me evil, you'll know the reason.",
+	"burden_marked_public": "Better you hear it from me, neighbours: I'm Marked. Should a gift ever name me evil, please remember I told you first.",
+	"burden_unrequited_reveal": "If you must know... I went to {beloved}'s door. I've cared for them a long while, and they've no idea. That's all it was.",
+	"burden_unrequited_defend": "No. Not {beloved}. I'll not hear it on so little. Bring me something sound and I'll listen.",
+	"burden_unrequited_spell_breaks": "I kept telling myself {beloved} was good. I can't keep telling myself that, not after this.",
+	"burden_unrequited_grave": "I was at the graveyard. At {beloved}'s grave. I loved them, and now they'll never know.",
+	"burden_ill_omened_counterclaim": "That isn't true of {claimant}, and I'm sorry to say it so plainly. The omen is mine. There's only one.",
+	"burden_denial": "Me, {burden}? No. Someone's told you wrong.",
+	"burden_double_claim": "Now {a} and {b} can't both be {burden}. There's only ever one. One of them isn't telling us the truth.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before you vote, please hear me: I'm Ill-Omened. If you hang me, it won't end with me. It'll come with a cost to all of us.",
+	"burden_ill_omened_early": "I'd rather not say this, but you're leaving me little choice. I'm Ill-Omened. Hang me, and the whole town pays for it.",
 }

@@ -282,4 +282,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I'm still grieving them, and I don't grieve easy.",
 	"anger_accused_my_friend": "You accused {subject} before the whole town. They're one of the few I trust.",
 	"anger_backed_hanging": "You backed hanging {subject}. I didn't want that.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "I've carried the mark since birth. Gifts read me crooked; that's all {reader} saw, so stop gawping.",
+	"burden_marked_counterclaim": "{claimant} isn't Marked. I am, and there's only the one. Count it yourself.",
+	"burden_marked_private": "Keep your mouth shut about this: I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "Hear it from me before some fool twists it: I'm Marked. A gift may call me evil, and it'll be wrong.",
+	"burden_unrequited_reveal": "Fine. I went to {beloved}'s door. I care for them, and they don't know. That's all.",
+	"burden_unrequited_defend": "{beloved}? I don't believe it. Bring me more than that.",
+	"burden_unrequited_spell_breaks": "I've stood up for {beloved} long enough. I can't any more.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. I cared for them. They never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} is lying. The omen's mine, and there's only one.",
+	"burden_denial": "Me, {burden}? No. Whoever fed you that is wrong.",
+	"burden_double_claim": "{a} and {b} both say they're {burden}. There's only one. Somebody's lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Listen before you raise your hands. I'm Ill-Omened. Hang me, and you'll all pay for it.",
+	"burden_ill_omened_early": "Watch where you're taking this. I'm Ill-Omened. Hang me and the town pays.",
 }

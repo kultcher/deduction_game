@@ -282,4 +282,19 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I am grieving them still.",
 	"anger_accused_my_friend": "You accused {subject} before the whole parish. They are dear to me.",
 	"anger_backed_hanging": "You supported the hanging of {subject}. I did not wish it.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "I have borne the mark since birth. Gifts misread me; that, and nothing more, is what {reader} observed.",
+	"burden_marked_counterclaim": "{claimant} is not Marked. The mark is mine, and there is only one in any parish.",
+	"burden_marked_private": "I ask your discretion in this: I am Marked. Should a gift ever name me evil, that is the reason.",
+	"burden_marked_public": "The parish ought to know that I am Marked. A gift may read me as evil; it would be in error.",
+	"burden_unrequited_reveal": "I was abroad because I went to {beloved}'s door. I hold them in deep regard. They are unaware of it.",
+	"burden_unrequited_defend": "I cannot believe that of {beloved}. You will require more than that.",
+	"burden_unrequited_spell_breaks": "I have defended {beloved} as long as conscience permits. I can do so no longer.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. I cared for them deeply, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} speaks a falsehood. I am the Ill-Omened, and there is only one.",
+	"burden_denial": "I am not {burden}. Whoever told you so is mistaken.",
+	"burden_double_claim": "{a} and {b} both profess to be {burden}. There is but one; one of them is lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before the parish votes, know this: I am Ill-Omened. Hang me, and the cost will fall upon us all.",
+	"burden_ill_omened_early": "Take care where this leads. I am Ill-Omened, and my hanging would cost the parish dearly.",
 }

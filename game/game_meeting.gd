@@ -542,6 +542,21 @@ static func _last_words(g, n) -> void:
 	GameBoard._facts(g, response.facts)
 
 
+## The Ill-Omened board marker (Michael, Nov 21): when a claimed Ill-Omened is hanged, real
+## or bluffed, the board says the omen may have fallen. Worded as a possibility; its tooltip
+## (the "omen" term) is the burden's rules text. It covers the night after the hanging and
+## the next day.
+const OMEN_MARKER = "The omen claimed by {name} may have fallen, poisoning the town's gifts."
+
+static func _omen_marker(g, n) -> void:
+	var hanged: bool = g.w.public_log.any(func(e): return e.get("kind", "") == "omen_hanged" and n.id in e.get("subjects", []) and int(e.get("day", -1)) == g.w.day)
+	if not hanged:
+		return
+	var text: String = OMEN_MARKER.replace("{name}", n.name)
+	g._narr(text)
+	GameBoard._facts(g, [{"kind": "omen", "subject": [n.id], "source": "player", "day": g.w.day, "phase": C.EVENING,
+		"from_night": g.w.day, "until_day": g.w.day + 1, "text": text}])
+
 static func _close_meeting(g) -> void:
 	if g.w.meeting.get("closed", false): return
 	var frozen = GameScreens.capture_prediction(g, "before_execution", {"on_block": g.w.meeting["block"]})
@@ -569,6 +584,7 @@ static func _close_meeting(g) -> void:
 			g._headline("curse", "A Revenant's curse takes hold", "One of the voters has turned.")
 			GameBoard._facts(g, [{"kind": "curse", "subject": [ex], "source": "player", "day": g.w.day, "phase": C.EVENING,
 				"text": "Day %d: as %s was hanged, a Revenant's curse turned one of those who voted for it. Find its totem to break the curse." % [g.w.day, n.name]}])
+		_omen_marker(g, n)
 	else:
 		g._narr("The meeting closes with nobody on the block. Nobody is executed.")
 	if g.w.game_over:

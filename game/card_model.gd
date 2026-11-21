@@ -24,9 +24,9 @@ const VIEW_NAMES = {"places": "Places & sightings", "statements": "Statements", 
 const VIEW_KINDS = {
 	"places": ["sighting", "conversation", "vigil", "alibi", "trace", "totem", "ward", "scorched_sigil"],
 	"statements": ["home", "haunt", "info", "claim", "town_hall", "hint", "refusal", "opinion", "accusation", "secret", "case"],
-	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell"],
+	"process": ["vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "omen", "silenced", "knell"],
 	"all": ["home", "haunt", "sighting", "conversation", "vigil", "alibi", "trace", "totem", "ward", "scorched_sigil", "info", "claim", "town_hall", "hint", "refusal",
-		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "silenced", "knell", "deduction"],
+		"opinion", "accusation", "secret", "vote", "execution", "death", "quiet", "martyr", "curse", "curse_lifted", "omen", "silenced", "knell", "deduction"],
 }
 
 ## Facts that can reach you more than once (told privately, then publicly; relayed by

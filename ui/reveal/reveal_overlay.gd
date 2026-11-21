@@ -253,7 +253,7 @@ func _final_screen() -> Control:
 		nm.text = s.name
 		grid.add_child(nm)
 		var tr = Label.new()
-		tr.text = "%s, %s%s" % [s.role_text, s.align_text, (" · " + s.burden) if s.burden != "" else ""]
+		tr.text = "%s, %s%s" % [s.role_text, s.align_text, (" · " + s.burden_name) if s.burden_name != "" else ""]
 		tr.add_theme_color_override("font_color", UITheme.color("role_evil") if s.evil else UITheme.color("text"))   # board colours: this grid sits on the dark overlay (Codex)
 		grid.add_child(tr)
 		var gs = Label.new()
