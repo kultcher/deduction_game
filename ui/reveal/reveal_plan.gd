@@ -160,7 +160,8 @@ static func guess_correct(guess: String, n) -> bool:
 
 
 ## Up to two key moments, the most telling first: what was false (a poisoning, a Delusional or
-## Marked gift, a made-up reading, a lie about their gift), then a true claim, then how they died.
+## Marked gift, a made-up reading, a lie about their gift), then a true claim, then how they died,
+## then a poisoning that spoiled no reading.
 static func key_moments(g, n) -> Array:
 	var w = g.w
 	var out: Array = []
@@ -204,8 +205,6 @@ static func key_moments(g, n) -> Array:
 		out.append(MOMENT_ONE_LIE if lies == 1 else MOMENT_LIES % lies)
 	if told and n.claimed_role == n.role and out.size() < MAX_MOMENTS:
 		out.append(MOMENT_CLAIM_TRUE % C.role_name(n.role))
-	if quiet.size() > 0 and misled.is_empty() and out.size() < MAX_MOMENTS:
-		out.append(MOMENT_POISONED_QUIET % _night(quiet[0]))
 	if not n.alive and out.size() < MAX_MOMENTS:
 		match n.death_cause:
 			"demon":
@@ -215,6 +214,9 @@ static func key_moments(g, n) -> Array:
 				out.append(MOMENT_MARTYR % _day(n.death_day))
 			_:
 				out.append(MOMENT_HANGED % _day(n.death_day))
+	# A quiet poisoning is a footnote: after how they died, not before it.
+	if quiet.size() > 0 and misled.is_empty() and out.size() < MAX_MOMENTS:
+		out.append(MOMENT_POISONED_QUIET % _night(quiet[0]))
 	return out.slice(0, MAX_MOMENTS)
 
 
