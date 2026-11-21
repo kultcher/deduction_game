@@ -1,7 +1,7 @@
 # Anger reasons: a distrustful refusal says why
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `c2c5653` (`baseline_1d59c5a`, after #412)
+- **Base:** main at `03451a8` (`baseline_5f4629f`, after #454), merged in; first built on `c2c5653`
 - **Branch:** `claude/beadle-anger-reasons`
 - **Status:** PR open. Golden is identical at `--tol 0` on all five seeds; no re-baseline.
 - **Next actor:** Bailiff (review and merge).
@@ -46,7 +46,7 @@
   grievance list before checking the outsider line. It now clears both. No game code changed
   for it.
 - **Also pass:** test_dialogue.
-- **Golden:** a capture against `baseline_1d59c5a` was identical on every seed. The golden
+- **Golden:** a capture against `baseline_1d59c5a` (before #454) was identical on every seed. The golden
   games never reach a distrust refusal that has a grievance behind it.
 
 ## Proposed for the backlog
