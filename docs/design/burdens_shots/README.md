@@ -37,3 +37,15 @@ Michael's morning review. Seneschal asked for them. This is a mock branch: it ne
   has no "Hidden:" tag.
 - **The sheet's heading:** it is a plain label, so "Burdens" has no tooltip on the sheet
   itself. The term's tooltip appears only in prose.
+
+## Retaken at `1710adeb`, after Herald's fixes (`after_1710adeb/`)
+
+Taken with the same script and the same staging.
+
+- **`4b_reveal_tag`:** both key-moment lines now sit clear below the sheet. Fixed.
+- **`2b_burden_tooltip`:** the tooltip now fits on the screen, all four lines. Fixed.
+- **`3e_board_card_hover`:** hovering the omen card now shows Ill-Omened's rules text. Fixed.
+- **`1_script_sheet` and the profile:** the guess row reads "Burden:". The typed script's
+  heading matches the sheet's, with "Hidden:".
+- **Still open, and mine:** the tag overlaps the card edge slightly. That's in RevealCard
+  on main.
