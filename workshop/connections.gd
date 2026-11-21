@@ -92,10 +92,15 @@ const Profiler = preload("res://workshop/profiler.gd")
 ## the town's demon mix is. It changes the grouping, not the mix the judge uses. Empty in play.
 static var force_row: String = ""
 
-## Tests and tools only: whether a sighting of the listener on a night it knows it spent at
-## home is firsthand knowledge (it seeds the core). On in play; a tool turns it off to
-## measure what it changes.
-static var seed_wrong_sightings: bool = true
+## Whether a sighting of the listener on a night it knows it spent at home is firsthand
+## knowledge that seeds the core. Off in play (Lantern, Nov 21, #506 on seed 100100): the
+## sighting sits in the night's movement item, so seeding pulled that whole item into the core,
+## and the core's correction for the item's overlap with the listener's own readings (there
+## before the sighting was told) landed as if the sighting caused it: Lian's false sighting of
+## Constance added +0.86 log-odds against him as an item and -1.02 through the core, so it
+## cleared him. The sighting still counts in full through its item, against its teller (the
+## sighter contest with the listener's own home night). A tool turns it on to compare.
+static var seed_wrong_sightings: bool = false
 ## Measurement switches (on in play), for showing what each rule changes on a replay:
 ## - reuse_rule: a presenter's case that reuses its own cards doesn't stack (case_plan's
 ##   replacement, case_step's shared part).

@@ -45,7 +45,10 @@ func check(ok: bool, label: String) -> void:
 func _init() -> void:
 	check(is_equal_approx(Connections.join_bar({"insight": 0.0}), 0.8) and is_equal_approx(Connections.join_bar({"insight": 1.0}), 0.1) and is_equal_approx(Connections.join_bar({}), 0.45),
 		"an item joins the core at 0.8 for the dullest listener, 0.1 for the sharpest, 0.45 with no Insight given")
-	check(Connections.seed_wrong_sightings, "a wrong sighting of the listener is firsthand knowledge in play")
+	# Off in play since #506 (Lantern, Nov 21): seeding pulled the sighting's whole movement item
+	# into the core. The mechanism is still checked below, with the switch on.
+	check(not Connections.seed_wrong_sightings, "a wrong sighting of the listener doesn't seed the core in play")
+	Connections.seed_wrong_sightings = true
 	_firsthand()
 	_tests_and_members()
 	_arithmetic()
@@ -64,7 +67,7 @@ func _init() -> void:
 	_baseline_has_no_cards()
 	_in_game(900, 7, 3)
 	Connections.force_row = ""
-	Connections.seed_wrong_sightings = true
+	Connections.seed_wrong_sightings = false
 	print("Connections core: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 

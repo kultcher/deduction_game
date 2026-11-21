@@ -62,7 +62,16 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	# could know (the sighting contests' balance, without the listener's own nights):
 	# prod outsider good(sound) / prod outsider good(broken). No new number.
 	var broken_cards: Array = cards.map(func(c): return duty if c.get("id", "") == list.id else c)
-	var private_free: Callable = func(cs: Array) -> Array: return cs.filter(func(x): return not x.get("known_self", false))
+	# Nor a card the listener's own knowledge proves false: a sighting of the listener out on a
+	# night it knows it spent at home can't make a count look honest (#506, seed 100100: Lian's
+	# false sighting of Constance supplied one of his count's "others", so his lie spoke for him).
+	var own: Dictionary = view.get("own_home", {})
+	var me_id: String = str(own.get("self", ""))
+	var home_nights: Dictionary = own.get("nights", {})
+	var known_false := func(x: Dictionary) -> bool:
+		return me_id != "" and str(x.get("kind", "")) == "sighting" and not x.get("quoted", false) \
+			and home_nights.has(str(int(x.get("night", -1)))) and me_id in x.get("subjects", [x.get("subject", "")])
+	var private_free: Callable = func(cs: Array) -> Array: return cs.filter(func(x): return not x.get("known_self", false) and not known_false.call(x))
 	var log_scale: float = _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
 	# A count that no route mask of the other movement evidence fits makes the sound branch
 	# impossible (Lantern, Nov 19): it scores 0, so the count tells against its teller by fit.
