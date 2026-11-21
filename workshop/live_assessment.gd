@@ -134,7 +134,10 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		"regular_haunts": snapshot.get("regular_haunts", {}).duplicate(true),
 		# The nights the listener knows it spent at home (WorkshopBridge.own_home), for the
 		# movement model only (LiveActivity.own_home_cards); the Demonologist's view has none.
-		"own_home": snapshot.get("own_home", {}).duplicate(true)}
+		"own_home": snapshot.get("own_home", {}).duplicate(true),
+		# What a good listener knows of its own burden (WorkshopBridge.own_burden): its worlds
+		# drop the burdens it knows it doesn't hold (CaseEval._own_burden_dead).
+		"own_burden": snapshot.get("own_burden", {}).duplicate(true)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
 	# Ill-Omened (burdens prototype): a claimed Ill-Omened hanged after restating it at the

@@ -122,6 +122,7 @@ test_npc_fixes_shifts_dead_haunt
 test_npc_openness
 test_outcomes
 test_own_alibi_lies
+test_own_burden_knowledge
 test_peer_role_gossip
 test_place_icons
 test_player_failed_gift

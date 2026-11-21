@@ -178,6 +178,8 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	if w != null:
 		input["regular_haunts"] = known_haunts(w, n)
 		input["own_home"] = own_home(w, n, input.listener.own_outings)
+		if not n.is_evil():
+			input["own_burden"] = own_burden(n)
 	for belief in n.beliefs:
 		if belief.get("kind") != "saw":
 			continue
@@ -207,6 +209,14 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 	card["when"] = CardModel.when(card, card.day, -1)
 	return card
 
+
+## What a good NPC knows of its own burden (view.own_burden; Michael's design, Nov 21 via
+## Seneschal): {"self", "kind"}. A burden is known to its holder unless it's hidden
+## (ScriptDef.HIDDEN_SECRETS: the Delusional), so "kind" is the burden it holds and knows,
+## or "" for none it would know of. An evil NPC passes none: its view is its good self's.
+static func own_burden(n) -> Dictionary:
+	var held: String = str(n.secret_mod)
+	return {"self": n.id, "kind": held if held != "" and bool(n.burden_self_known) and held not in ScriptDef.HIDDEN_SECRETS else ""}
 
 ## The nights an NPC knows it spent at home, for its movement model (view.own_home):
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not

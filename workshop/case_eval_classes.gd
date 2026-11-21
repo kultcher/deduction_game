@@ -3,6 +3,8 @@
 ## `workshop/case_eval.gd`; part of CaseEval's inheritance chain).
 extends "res://workshop/case_eval_content.gd"
 
+const ScriptDefRef = preload("res://sim/script_def.gd")
+
 static var _cc_handles: Dictionary = {}
 static var _cc_handles_epoch: int = -1
 ## Bumped whenever the C# compiled cases are dropped (context epoch, the 32-entry cap).
@@ -71,6 +73,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 			key_input.append(str(view.get("own_home", {}).get("self", "")))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
+	if not view.get("own_burden", {}).is_empty():
+		key_input.append(["own_burden", view.own_burden])
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
 		key_input.append(case_data.get("reading_challenges", {}).keys())
 	if not view.get("regular_haunts", {}).is_empty():
@@ -136,6 +140,8 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		valids.append(_valid_table(view, card))
 	var premise = _premise_mask(view, conclusion)
 	var live: bool = Domain.live(view)
+	if live:
+		_own_burden_dead(view, universe, dead)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(PublicEvidence.factors(view))
 	movement.append_array(SpeechEvidence.factors(cards))
@@ -302,6 +308,31 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	return out
 
 static var _coarse_cache: Dictionary = {}
+
+## A good listener knows its own burden unless it's hidden (WorkshopBridge.own_burden;
+## ScriptDef.HIDDEN_SECRETS), so its worlds where it holds a burden it would know of, other
+## than the one it knows, are impossible: it can't be Marked unaware, and, one burden to a
+## game, a known holder rules out every other. Marks those worlds dead (dead is in the class
+## key, so classes split by it). A hidden burden on the listener stays possible.
+static func _own_burden_dead(view: Dictionary, universe: Array, dead: PackedByteArray) -> void:
+	var ob: Dictionary = view.get("own_burden", {})
+	if ob.is_empty():
+		return
+	var me: int = Solver.person_index(view, str(ob.get("self", "")))
+	if me < 0:
+		return
+	var known: String = str(ob.get("kind", ""))
+	var hidden: Array = ScriptDefRef.HIDDEN_SECRETS
+	for i in range(universe.size()):
+		var w: Dictionary = universe[i]
+		var mine: String = ""
+		if int(w.get("marked", -1)) == me:
+			mine = "marked"
+		elif int(w.get("holders", 0)) & (1 << me):
+			mine = str(w.get("modifier", ""))
+		var ok: bool = mine == known or (mine in hidden and known == "")
+		if not ok:
+			dead[i] = 1
 
 ## A world's movement/trace likelihood ratio (good everywhere = 1), as the support
 ## model's world_score without its prior ranks.
