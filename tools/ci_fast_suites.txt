@@ -36,6 +36,7 @@ test_connections_why
 test_control_flow
 test_conversation_nights
 test_csharp_slice_c0
+test_daily_guess
 test_day_defence
 test_day_presence
 test_daytime_defence_lines

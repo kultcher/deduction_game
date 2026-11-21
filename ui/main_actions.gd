@@ -139,7 +139,7 @@ static func refresh(m) -> void:
 			if nom.disabled:
 				nom.tooltip_text = "No nominations remaining"
 			nom.pressed.connect(func(): Pickers.people(m, nom, "Nominate whom?", func(id): Pickers.nomination_menu(m, nom, id), func(n): return w.can_nominate("player", n.id) == ""))
-			var done = m._button(m.actions, "Close the meeting", func(): m._run("done"))
+			var done = m._button(m.actions, "Close the meeting", func(): m.close_meeting())
 			done.disabled = not m.g.town_quiet
 			if not m.g.town_quiet:
 				done.tooltip_text = "Let the town speak first (wait) until nobody else rises."
