@@ -147,6 +147,7 @@ test_relay_challenge_menu
 test_relay_lie_attribution
 test_relayed_alibi
 test_response_bundles
+test_reveal_card
 test_review_fixes
 test_role_check_doubt
 test_roles_dead
