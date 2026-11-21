@@ -17,7 +17,7 @@ I've taken the PLACEHOLDER markers off all three and noted the approval in the c
 
 ## A fix on the way
 
-Quill's premise rename had swallowed the "turned" entry of `PREMISE_TEXT` (`workshop/canvas_model.gd`) into the placeholder comment. A turned premise read "is turned" instead of "was turned by the Revenant's curse". That entry is restored.
+Quill's premise rename had swallowed the "turned" entry of `PREMISE_TEXT` (`workshop/canvas_model.gd`) into the placeholder comment. A turned premise read "is turned" instead of "was turned by the Revenant's curse". Quill restored it at the same time (f106cea6), and I kept Quill's version.
 
 ## Still with me from earlier today
 
