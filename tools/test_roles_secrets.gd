@@ -194,6 +194,22 @@ func _test_burden_claim() -> void:
 	var y2: float = post.call([xm, yi], "evil", 2)
 	print("Two burden claims, one burden dealt: X %.3f, Y %.3f (prior %.3f)" % [x2, y2, prior])
 	_check(x2 > prior + 0.15 and y2 > prior + 0.15, "with one burden dealt, two burden claims cast suspicion on both claimants (X %.3f, Y %.3f, prior %.3f)" % [x2, y2, prior])
+	# Timing (Michael, Nov 21): a claim that answers an evil reading of its claimant is weighed by
+	# how often evil bluffs then, against a holder (measured, softened), so the claimant looks
+	# likelier evil; an earlier telling dates the claim and keeps it unprompted.
+	var seer: Dictionary = {"id": "bs1", "fact_id": "bs1", "kind": "report", "role": "seer", "source": people[4].id,
+		"observed_at": {"day": 0, "phase": "night"}, "reported_at": {"day": 1, "phase": "morning"}, "night": 0,
+		"data": {"pair": [people[1].id, people[3].id], "yes": true}, "text": "Seer yes"}
+	var late: Dictionary = claim.call(1, "marked", "bc4")
+	late.observed_at = {"day": 1, "phase": "afternoon"}
+	var early: Dictionary = claim.call(1, "marked", "bc5")
+	early.observed_at = {"day": 0, "phase": "afternoon"}
+	var read_only: float = post.call([seer], "evil", 1)
+	var reactive: float = post.call([seer, late], "evil", 1)
+	var dated: float = post.call([early, seer, late], "evil", 1)
+	print("Seer yes: X evil %.3f; then X claims Marked %.3f; with an earlier telling %.3f" % [read_only, reactive, dated])
+	_check(reactive > read_only + 0.15, "a Marked claim answering an evil reading makes its claimant likelier evil (%.3f -> %.3f)" % [read_only, reactive])
+	_check(dated < reactive - 0.15, "an earlier telling dates the claim, so it isn't counted as answering the reading (%.3f against %.3f)" % [dated, reactive])
 	var both: Array = Solver.solve(view, [xm, claim.call(2, "marked", "bc3")]).worlds
 	var both_good: bool = both.any(func(w): return not (int(w.evil) & (1 << 1)) and not (int(w.evil) & (1 << 2)))
 	_check(not both.is_empty() and not both_good, "two Marked claims can't both come from good people (%d worlds left)" % both.size())

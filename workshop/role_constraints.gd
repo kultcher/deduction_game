@@ -47,10 +47,9 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 ## own burden); an evil one's may be a bluff. Two claims to the one burden dealt can't both be
 ## honest.
 const BURDEN_CODES: Dictionary = {"delusional": 1, "marked": 2, "ill_omened": 3, "unrequited": 4}
-## A claim alone leaves its claimant's alignment where it was (Michael, Nov 21, option B): a
-## world where the claimant is evil is weighed by the chance a good claimant would hold that
-## burden, read off the deal (burden_claim_factors), so its force is only in what it explains
-## and contradicts. No tuning number. The switch is for measuring it against claims as context.
+## A world where the claimant is evil is weighed by how likely evil is to make that claim
+## against a real holder, by whether it answers an evil reading (burden_claim_factors; Michael,
+## Nov 21). The switch is for measuring it against claims as context.
 static var burden_claims_bind: bool = true
 
 # Fixed role slots matching workshop/cs/RoleConstraints.cs:
@@ -559,14 +558,79 @@ static func burden_code(card: Dictionary) -> int:
 		return 0
 	return int(BURDEN_CODES.get(str(card.get("data", {}).get("secret_kind", "")), 0))
 
+## Measurement switch: when >= 0, every claimed burden takes this factor instead.
+static var burden_factor_override: float = -1.0
+static var _names_evil_cache: Dictionary = {}
+
+## Whether an unquoted reading card points at `who` being evil: over the deal's worlds, its
+## content holds more often where `who` is evil than where they're good and hold no burden
+## (a Seer's yes in a pair with them, a Dowser count over a group with them). General: read
+## off the judge, no list of gifts.
+static func names_evil(view: Dictionary, card: Dictionary, who: int) -> bool:
+	if card.get("kind", "") != "report" or card.get("quoted", false) or ids_of(view).find(str(card.get("source", ""))) == who:
+		return false
+	var Solver = load("res://workshop/solver.gd")
+	var key: String = str([Solver._universe_key(view), str(card.get("id", "")), who])
+	if _names_evil_cache.has(key):
+		return bool(_names_evil_cache[key])
+	var worlds: Array = Solver.universe(view)
+	var table: PackedByteArray = Solver.reading_holds_table(view, card)
+	var e_n := 0
+	var e_h := 0
+	var g_n := 0
+	var g_h := 0
+	for i in range(mini(worlds.size(), table.size())):
+		var w: Dictionary = worlds[i]
+		if int(w.evil) & (1 << who):
+			e_n += 1
+			e_h += int(table[i])
+		elif int(w.get("marked", -1)) != who and not (int(w.get("holders", 0)) & (1 << who)):
+			g_n += 1
+			g_h += int(table[i])
+		if _names_evil_cache.size() > 4096:
+			_names_evil_cache.clear()
+	var evil_rate: float = float(e_h) / float(e_n) if e_n > 0 else 0.0
+	var good_rate: float = float(g_h) / float(g_n) if g_n > 0 else 0.0
+	var out: bool = evil_rate > good_rate * 1.05 + 1e-9
+	_names_evil_cache[key] = out
+	return out
+
 static var _burden_share_cache: Dictionary = {}
 
-## For each claimed burden, [who, factor, statement tick]: the factor on worlds where the
-## claimant was evil when they spoke is the share of the deal's worlds with the claimant good
-## in which they hold that burden. Then the claim alone moves nothing about their alignment.
+## The share of the deal's worlds with `who` good in which they hold burden `kind`.
+static func _deal_share(view: Dictionary, who: int, kind: String) -> float:
+	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), who, kind])
+	if not _burden_share_cache.has(ckey):
+		var good: int = 0
+		var held: int = 0
+		for w in Domain.worlds(view):
+			if int(w.evil) & (1 << who):
+				continue
+			good += 1
+			if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & (1 << who)):
+				held += 1
+		_burden_share_cache[ckey] = float(held) / float(good) if good > 0 else 1.0
+	return float(_burden_share_cache[ckey])
+
+static func ids_of(view: Dictionary) -> Array:
+	return view.people.map(func(p): return p.id)
+
+## When `card` was first said: the time it was observed (a relay or a later retelling keeps
+## the first telling's time), else when it was reported.
+static func _first_told_tick(card: Dictionary) -> int:
+	return Chronology.tick(card.observed_at) if card.get("observed_at") is Dictionary else Chronology.tick(Chronology.statement_time(card))
+
+## For each claimed burden, [who, factor, statement tick]: the factor weighs a world where the
+## claimant was evil when they spoke. It's how much likelier an evil player is to make the
+## claim than a real holder, measured (Tuning.Workshop.BURDEN_BLUFF_*), by whether the claim
+## answers an evil reading: one the listener holds that names the claimant evil and was told
+## no later than the claimant first told of the burden. An earlier telling (to a friend, to
+## the player) dates the claim, so a later public claim with it isn't counted as reactive
+## (Michael, Nov 21). The judge can't tell a faked earlier telling from a real one.
 static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
 	var out: Array = []
-	var ids: Array = view.people.map(func(p): return p.id)
+	var ids: Array = ids_of(view)
+	var held: Array = view.get("cards", [])
 	var seen: Dictionary = {}
 	for card in cards:
 		var code: int = burden_code(card)
@@ -575,18 +639,19 @@ static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
 			continue
 		seen["%d:%d" % [who, code]] = true
 		var kind: String = str(card.data.secret_kind)
-		var ckey: String = str([ids, view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), who, kind])
-		if not _burden_share_cache.has(ckey):
-			var good: int = 0
-			var held: int = 0
-			for w in Domain.worlds(view):
-				if int(w.evil) & (1 << who):
-					continue
-				good += 1
-				if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & (1 << who)):
-					held += 1
-			_burden_share_cache[ckey] = float(held) / float(good) if good > 0 else 1.0
-		out.append([who, float(_burden_share_cache[ckey]), Chronology.tick(Chronology.statement_time(card))])
+		var first: int = _first_told_tick(card)
+		for c in held + cards:
+			if burden_code(c) == code and str(c.get("source", "")) == ids[who]:
+				first = mini(first, _first_told_tick(c))
+		var reactive: bool = false
+		for r in held + cards:
+			if Chronology.tick(Chronology.statement_time(r)) <= first and names_evil(view, r, who):
+				reactive = true
+				break
+		var factor: float = Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED
+		if not reactive and factor < 0.0:
+			factor = _deal_share(view, who, kind)
+		out.append([who, factor if burden_factor_override < 0.0 else burden_factor_override, Chronology.tick(Chronology.statement_time(card)), reactive])
 	return out
 
 static func _scion_exec_alive_demon_mask(view: Dictionary, ids: Array, target_id: String) -> int:

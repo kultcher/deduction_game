@@ -102,7 +102,9 @@ static func normalize(input: Dictionary) -> Dictionary:
 
 static func normalize_card(card: Dictionary) -> Dictionary:
 	var kind: String = card.get("kind", "unknown")
-	var observed = stamp(card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
+	# A burden fact carries when it was first said (burdens prototype: a relay keeps the
+	# holder's own telling), which dates the claim for the judge (RoleConstraints).
+	var observed = stamp(card.observed_at if card.get("observed_at") is Dictionary else card.get("when", {"day": card.get("day", -1), "phase": card.get("phase", 3 if kind == "info" else -1)}))
 	var content = {"kind": kind, "source": card.get("source", ""),
 		"subjects": card.get("subject", []).duplicate(), "observed_at": observed}
 	if kind == "info" and card.get("anonymous", false):
@@ -245,7 +247,13 @@ static func report_data(role: String, data: Dictionary) -> Dictionary:
 
 static func stamp(value: Dictionary) -> Dictionary:
 	var phase = value.get("phase", -1)
-	return {"day": int(value.get("day", -1)), "phase": ["morning", "afternoon", "evening", "night"][phase] if phase is int and phase >= 0 and phase < 4 else "unknown"}
+	var names: Array = ["morning", "afternoon", "evening", "night"]
+	if phase is String:
+		# A named phase (burden facts, burdens prototype); "day" with no finer phase reads as
+		# the afternoon.
+		var p: String = "afternoon" if phase == "day" else phase
+		return {"day": int(value.get("day", -1)), "phase": p if p in names else "unknown"}
+	return {"day": int(value.get("day", -1)), "phase": names[phase] if phase is int and phase >= 0 and phase < 4 else "unknown"}
 
 static func canonical(value):
 	if value is Dictionary:

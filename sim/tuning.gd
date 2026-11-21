@@ -1104,6 +1104,19 @@ class Workshop:
 
 	## Role constraints, movement & public/speech evidence (`workshop/*.gd`)
 	const BLUFF_WEIGHT = 0.92
+	## A claimed burden (burdens prototype; Michael, Nov 21): how much likelier an evil player is
+	## to make the claim than a real holder, by whether it answers an evil reading of them
+	## (`RoleConstraints.burden_claim_factors`). Measured from evil's bluffs and holders' claims
+	## (Beadle's burden sweeps). STAND-INS until that run lands: reactive, from Beadle's bluff
+	## formula (about 0.55 of evil players read evil claim, against every holder); unprompted,
+	## below zero means the deal's own share (the chance a good claimant holds that burden),
+	## which leaves an unprompted claim neutral (Michael's option B).
+	const BURDEN_BLUFF_REACTIVE = 0.55
+	const BURDEN_BLUFF_UNPROMPTED = -1.0
+	## Softens the reactive ratio so a claim answering an evil reading leaves its claimant about
+	## 70% evil in the dead-holder Seer case rather than about 80% (Michael, Nov 21: "a tad
+	## softer").
+	const BURDEN_REACTIVE_SOFTEN = 0.55
 	## Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds
 	## where a report's content holds).
 	const CHANCE_CONTENT_FLOOR = 0.01
