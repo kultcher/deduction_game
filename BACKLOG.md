@@ -48,8 +48,9 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. \*The secrets rework `[decided; values open]`
   6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
   7. Player toolbox `[open]`
-  8. Scoring system `[open]`
-  9. Storyteller/director and solvability check `[open]`
+  8. A case archive `[decided: direction]`
+  9. Scoring system `[open]`
+  10. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
@@ -425,6 +426,11 @@ The one performance item, "Late-game meeting and presenting cost", is in
 - **Player toolbox:** Autopsy, Séance, Scry, Binding circle; demon types with bestiary
   entries; exorcism / true-name alternate win. [open]
 
+- **A case archive** (Michael, Nov 21). Past cases are kept per profile, with lifetime
+  stats (Demons named, lies caught and so on), and each one can be replayed through the grim
+  reveal. It's part of progression and shares the end screen with the reveal and scoring
+  ([grim_reveal.md](docs/design/grim_reveal.md)). The details wait for the progression
+  design note. Owner Herald. [decided: direction]
 - **Scoring system:** identification credit (separating evil alignment, the exact minion
   gift and a useful execution), accuracy of guesses with confidence, and why the player
   lost (wrong read / missed / never available / failed to persuade). Absorbs the removed
