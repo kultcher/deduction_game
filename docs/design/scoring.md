@@ -175,8 +175,11 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
   - **There's no end-of-game "Seal my verdict":** a chance early hanging of the Demon would
     be spoiled by it. The last locked daily guess is scored. No window opens when a game ends
     overnight.
-  - **Guess changes are limited,** so that naming whoever is about to hang isn't the best
-    play. Herald is proposing the count.
+  - **Guess changes are limited** (Michael, Nov 21): only the Demon pick costs a change, with
+    one initial selection plus two changes per case. Minion picks and types are free.
+  - **Each change costs a little score** (Michael, Nov 21), so players lean toward being sure
+    rather than guessing that someone might happen to be the Demon. The game shows no line
+    about that cost. *Open: how much.*
   - **The profile's Demon and Minion marks** prefill the window, greyed out, for the player
     to change or confirm.
   - This replaces DESIGN's "latest pre-outcome copy" rule.
