@@ -317,6 +317,11 @@ static func anger_reason(w, n) -> Dictionary:
 		var id: String = anger_id(why)
 		if id == "":
 			continue
+		if id == "too_many_questions" and int(g["day"]) != w.day:
+			continue  # its line speaks of today's questioning
+		var left: float = float(g["drop"]) - float(g.get("repaired", 0.0))
+		if left <= 0.001:
+			continue  # fully repaid (fading or an apology): no longer a standing grievance
 		var slots: Dictionary = {}
 		var subject_id: String = str(g.get("subject", ""))
 		for prefix in ANGER_PREFIXES:
@@ -331,7 +336,6 @@ static func anger_reason(w, n) -> Dictionary:
 			slots["day"] = ("%s day" % C.ORDINALS[d - 1]) if d >= 1 and d <= C.ORDINALS.size() else "day %d" % d
 		if id == "broke_your_word":
 			slots["promise"] = why.trim_prefix("the Demonologist broke their word (").trim_suffix(")")
-		var left: float = float(g["drop"]) - float(g.get("repaired", 0.0))
 		if best.is_empty() or left > best_left:
 			best_left = left
 			var fallback: String = ANGER_FALLBACKS[id]

@@ -114,6 +114,22 @@ func _voiced() -> void:
 	n.trust = 0.05
 	line = _refusal(w, n)
 	_check("vigil" in str(line.get("text", "")) and "{" not in str(line.get("text", "")), "a broken promise names what was promised (\"%s\")" % line.get("text", ""))
+	# A fully repaid incident no longer speaks.
+	n.grievances[0]["repaired"] = n.grievances[0]["drop"]
+	n.distrust_memory = {}
+	line = _refusal(w, n)
+	_check(str(line.get("statement", "")) == "You're an outsider, I'm not sure I can trust you.", "a grievance fully repaid by fading no longer speaks")
+	# Question fatigue speaks only on its own day.
+	n.grievances.clear()
+	Mind.set_trust(w, n, 0.9, "test")
+	Mind.set_trust(w, n, 0.5, "pressed with 4 questions today")
+	n.trust = 0.05
+	line = _refusal(w, n)
+	_check(str(line.get("statement", "")) == Mind.ANGER_FALLBACKS["too_many_questions"], "too many questions today speaks today")
+	w.day += 1
+	line = _refusal(w, n)
+	_check(str(line.get("statement", "")) != Mind.ANGER_FALLBACKS["too_many_questions"], "but not the next day")
+	w.day -= 1
 	# No grievance a line covers: the old refusal.
 	n.grievances.clear()
 	n.distrust_memory = {}

@@ -33,12 +33,15 @@
 
 ## Measured
 
-- **New:** `tools/test_anger_reasons.gd` (13 checks), on the fast list. It checks:
+- **New:** `tools/test_anger_reasons.gd` (16 checks), on the fast list. It checks:
   - every reason is reachable, and nothing else maps;
   - every voice has every line, and every reason has its plain form;
   - the grievance repaired least speaks, and an apologised one is passed over;
   - slots are filled, including the nominee and the promise;
+  - a fully repaid grievance no longer speaks, and the questions line only on its own day;
   - the outsider line still plays with no grievance, and no line at all when trust is high.
+- **Codex on #487, fixed:** a grievance fully repaid by fading was still named; yesterday's question
+  fatigue was voiced as "today".
 - **Fixed fixture:** `tools/test_social_credibility.gd` cleared the remembered slight but not the
   grievance list before checking the outsider line. It now clears both. No game code changed
   for it.
