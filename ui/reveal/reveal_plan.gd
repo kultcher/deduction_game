@@ -30,6 +30,8 @@ const MOMENT_ONE_LIE = "Told one lie."
 const MOMENT_KILLED = "Killed by the Demon on the %s."
 const MOMENT_HANGED = "Hanged on the %s."
 const MOMENT_MARTYR = "Died at the gallows in another's place on the %s."
+## The burden tag that drops in after the role (grim_reveal.md section 3: "…and Delusional").
+const BURDEN_TAG = "…and %s"
 const MOMENT_TURNED = "Turned evil by the Revenant's curse on the %s."
 
 ## Fakeouts (the pitch's Q4): eligible people, a chance tied to how strong the false belief
@@ -126,7 +128,8 @@ static func step_for(g, n, verdict: Dictionary) -> Dictionary:
 		roles.append(n.role)
 	var guess: String = str(verdict.get(n.id, "?"))
 	var step: Dictionary = {"npc": n.id, "name": n.name, "roles": roles, "role": n.role, "evil": n.is_evil(),
-		"dead": not n.alive, "burden": C.secret_name(n.secret_mod) if n.secret_mod != "" else "",
+		"dead": not n.alive, "burden": (BURDEN_TAG % C.secret_name(n.secret_mod)) if n.secret_mod != "" else "",
+		"burden_name": C.secret_name(n.secret_mod) if n.secret_mod != "" else "",
 		"fakeout_role": "", "align_text": ALIGN_EVIL if n.is_evil() else ALIGN_GOOD,
 		"role_text": "Scion (promoted to Demon)" if n.id == w.scion_rose else C.role_name(n.role),
 		"moments": key_moments(g, n)}

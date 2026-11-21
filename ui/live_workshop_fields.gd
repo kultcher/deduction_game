@@ -163,7 +163,7 @@ static func detail_label(m, node: Dictionary) -> Dictionary:
 				"tip": "The gift this premise is about. It judges the person's own declaration; it doesn't assign an unclaimed role."}
 		"secret_mod":
 			return {"field": "mod", "text": m.C.secret_name(conclusion.get("mod", "")), "icon": m.WorkshopSkin.tex("ui/roles/" + conclusion.get("mod", ""), 0.06),
-				"tip": "Which hidden secret you're arguing they hold, unknown even to them."}
+				"tip": "Which hidden burden you're arguing they hold, unknown even to them."}
 		"inconsistent":
 			return {"field": "cause", "text": m.INCONSISTENT_CAUSE_NAMES.get(conclusion.get("cause", "any"), "Any cause"),
 				"tip": "Link two or more of their readings. The cause decides the blame: a lie raises suspicion of them, poisoning points at whoever was out that night, Delusional clears them."}

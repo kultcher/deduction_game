@@ -154,7 +154,7 @@ static func evidence_layout(m, id: String) -> Dictionary:
 		y += 172.0
 	elif card.kind == "report" and role == "chronicler":
 		var trio: Array = card.get("data", {}).get("trio", [])
-		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Case start: 1 folk, 1 secret, 1 Minion"})
+		els.append({"t": "label", "at": Vector2(16, y + 14), "text": "Case start: 1 folk, 1 burden, 1 Minion"})
 		y += 26.0
 		var cx0: float = m.WIDTH / 2.0 - (trio.size() - 1) * m.FACE_STEP * 0.6
 		for i in range(trio.size()):

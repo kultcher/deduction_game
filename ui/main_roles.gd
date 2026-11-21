@@ -5,6 +5,7 @@ extends RefCounted
 
 const C = preload("res://sim/content.gd")
 const UITheme = preload("res://ui/theme.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 
 ## Team colours on the script sheet: blue gifts, violet secrets, red for the demon's side.
 const ROLE_TEAM_COLOR = {"good": "role_good_ink", "secret": "role_secret_ink", "evil": "role_evil_ink"}
@@ -15,9 +16,9 @@ static var _icon_shader: Shader = null
 ## The roles list (the script, as in Clocktower): the town's gifts on the left; the demon's
 ## side and the secrets on the right. Each with its icon, what it does, and who has claimed it.
 static func setup_summary(count: int) -> String:
-	# Setup rules count secrets, not holders; a pair of Lovers is one secret.
+	# Setup rules count burdens (code: secrets), not holders.
 	var rules: Dictionary = C.SETUPS.get(count, {"town": count - 2, "minions": 1, "secrets": 1})
-	return "Good: %d gifted townsfolk / %d secret%s · Evil: %d minion%s / 1 demon" % [rules.town, rules.secrets, "" if rules.secrets == 1 else "s", rules.minions, "" if rules.minions == 1 else "s"]
+	return "Good: %d gifted townsfolk / %d burden%s · Evil: %d minion%s / 1 demon" % [rules.town, rules.secrets, "" if rules.secrets == 1 else "s", rules.minions, "" if rules.minions == 1 else "s"]
 
 static func set_pinned(m, on: bool) -> void:
 	m.roles_pinned = on
@@ -45,7 +46,8 @@ static func open(m) -> void:
 		m.roles_win.popup_centered()
 
 static func state_key(m) -> String:
-	return JSON.stringify([m.g.w.n_npcs, m.g.w.minion_ids.size(), m.g.w.npcs.map(func(n): return [n.id, n.claimed_role, n.max_tier >= 3, n.claim_public])])
+	return JSON.stringify([m.g.w.n_npcs, m.g.w.minion_ids.size(), m.g.w.npcs.map(func(n): return [n.id, n.claimed_role, n.max_tier >= 3, n.claim_public]),
+		m.g.w.burden_claims, m.g.w.burden_told.keys()])
 
 static func build(m, embedded: bool) -> void:
 	m._roles_signature = state_key(m)
@@ -62,7 +64,7 @@ static func build(m, embedded: bool) -> void:
 	var sc = m.g.w.case_script
 	var minions: int = m.g.w.minion_ids.size()
 	group(m, sections, "Gifts of the town", sc.town, "good", embedded)
-	group(m, sections, "Secrets: one in play, on top of a gift", sc.secrets, "secret", embedded)
+	group(m, sections, burden_heading(sc.secrets_in_play), sc.secrets, "secret", embedded)
 	group(m, sections, "Minions: %d in play" % minions, sc.minions, "evil", embedded)
 	var demon_box = group(m, sections, "Demon" if sc.demons.size() == 1 else "Demons: one in play", sc.demons, "evil", embedded)
 	var night_rule = Label.new()
@@ -80,6 +82,22 @@ static func build(m, embedded: bool) -> void:
 	var bottom_pad = Control.new()
 	bottom_pad.custom_minimum_size = Vector2(0, 12)
 	m.roles_box.add_child(bottom_pad)
+
+## The burdens section's heading (Michael, Nov 21: "secret" becomes "burden" on the sheet).
+static func burden_heading(in_play: int) -> String:
+	return "Burdens: %s in play, on top of a gift" % ("one" if in_play == 1 else str(in_play))
+
+## Who the player knows has claimed burden `kind`: before the town, or to the player alone
+## (as gifts are shown, so a double claim stands out; Michael, Q21).
+static func burden_claimers(w, kind: String) -> Array:
+	var out: Array = []
+	var public: Array = w.burden_claims.get(kind + ":public", [])
+	for id in w.burden_claims.get(kind, []):
+		if id in public:
+			out.append("%s (to the town)" % w.by_id[id].name)
+		elif w.burden_told.has("%s|player" % id):
+			out.append("%s (told you)" % w.by_id[id].name)
+	return out
 
 static func team_icon_material(team_color: Color) -> ShaderMaterial:
 	if _icon_shader == null:
@@ -141,22 +159,28 @@ static func group(m, parent: Container, title: String, roles: Array, team: Strin
 		col.add_theme_constant_override("separation", 0)
 		row.add_child(col)
 		var nm = Label.new()
-		nm.text = C.role_name(r)
+		nm.text = C.role_name(r) if C.ROLES.has(r) else C.secret_name(r)
 		nm.add_theme_font_size_override("font_size", 16)
 		nm.add_theme_color_override("font_color", team_color)
 		col.add_child(nm)
 		var d = Label.new()
-		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else C.SECRET_MODS[r]["desc"]
+		d.name = "Desc_" + r
+		# A hidden burden's rules text leads with its tag (Michael, Nov 21: "Hidden: ...").
+		d.text = C.ROLES[r]["desc"] if C.ROLES.has(r) else (("Hidden: " if r in ScriptDef.HIDDEN_SECRETS else "") + C.SECRET_MODS[r]["desc"])
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.add_theme_font_size_override("font_size", 14)
 		d.add_theme_color_override("font_color", UITheme.color("ink_soft"))
 		col.add_child(d)
 		var who: Array = []
-		for n in m.g.w.npcs:
-			if n.claimed_role == r and (n.claim_public or n.max_tier >= 3):
-				who.append("%s (%s)" % [n.name, "to the town" if n.claim_public else "told you"])
+		if team == "secret":
+			who = burden_claimers(m.g.w, r)
+		else:
+			for n in m.g.w.npcs:
+				if n.claimed_role == r and (n.claim_public or n.max_tier >= 3):
+					who.append("%s (%s)" % [n.name, "to the town" if n.claim_public else "told you"])
 		if not who.is_empty():
 			var c2 = Label.new()
+			c2.name = "Claims_" + r
 			c2.text = "Claimed by: " + ", ".join(PackedStringArray(who))
 			c2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			c2.add_theme_font_size_override("font_size", 13)

@@ -483,13 +483,12 @@ static func is_minion(r: String) -> bool:
 ## Secret modifiers: one per case, laid on a townsfolk (two for the Lovers), on top of
 ## their gift. Good townsfolk only.
 const SECRET_MODS = {
-	"delusional": {"name": "Delusional", "desc": "Their gift does not work and gives arbitrary information. They don't know."},
-	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them."},
+	"delusional": {"name": "Delusional", "desc": "The holder of this burden does not know they carry it. Their gift does not work and gives arbitrary information."},
+	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them. They know."},
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
-	# Burdens prototype, stage 2. Ill-Omened's text is Michael's (burdens.md section 11);
-	# Unrequited's approved text is on Herald's held branch, this is the design's summary.
-	"unrequited": {"name": "Unrequited", "desc": "Carries a one-sided love for one person, who may be evil, and visits their home at night."},
+	# Burdens prototype: the rules text is Michael's, approved Nov 21 (docs/design/burdens_wording.md).
+	"unrequited": {"name": "Unrequited", "desc": "Loves one townsperson, who doesn't know. Visits their home at night, and is slow to suspect them."},
 	"ill_omened": {"name": "Ill-Omened", "desc": "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night."},
 }
 const SECRET_MOD_LIST = ["delusional", "marked", "unrequited", "ill_omened"]  # burdens prototype: the Lovers and Sleepwalker 1.0 retired

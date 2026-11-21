@@ -35,6 +35,13 @@ const MECHANICS = [
 		"tooltip": "Insight: how hard they are to sway with a weak argument."},
 	{"id": "trait_composure", "label": "Composure", "aliases": [{"text": "Composure", "case_sensitive": true}],
 		"tooltip": "Composure: how much their face gives away."},
+	# Burdens (Michael, Nov 21: approved).
+	{"id": "burden", "label": "Burden", "aliases": [{"text": "Burden", "case_sensitive": true}, {"text": "Burdens", "case_sensitive": true},
+		{"text": "burden", "case_sensitive": true}, {"text": "burdens", "case_sensitive": true}],
+		"tooltip": "Burden: something that weighs on a townsperson, on top of their gift. The script lists the possible burdens and how many are in play. A hidden burden's holder doesn't know they carry it."},
+	# The Ill-Omened board marker's tooltip is the burden's rules text (Michael, Nov 21).
+	{"id": "omen", "label": "Omen", "aliases": [{"text": "omen", "case_sensitive": true}, {"text": "Omen", "case_sensitive": true}],
+		"tooltip": "Ill-Omened: If hanged after claiming this burden, every good person is poisoned that night until the start of the next night."},
 ]
 
 ## Mistaken (Michael, Nov 19): the honest-failure label for a reading. Its tooltip names
