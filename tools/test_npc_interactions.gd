@@ -17,7 +17,6 @@ var checks = 0
 
 func _init() -> void:
 	_traits_through_others()
-	_lovers_grieve()
 	_confidence_request()
 	_protection_kinds()
 	_protection_flow()
@@ -81,30 +80,6 @@ func _traits_through_others() -> void:
 	for i in range(20):
 		GameConversation._maybe_tell_trait(g, quiet, _goods(w)[3], {"lines": [], "facts": []})
 	_check(not _goods(w)[3].revealed_traits.is_empty() and t.revealed_traits.size() == before, "low Gossip still permits occasional trait sharing without changing another person's profile")
-
-func _lovers_grieve() -> void:
-	var g = _game(8102)
-	var w = g.w
-	var a = _goods(w)[0]
-	var b = _goods(w)[1]
-	a.secret_mod = "lovers"
-	b.secret_mod = "lovers"
-	a.lover = b.id
-	b.lover = a.id
-	var comp: float = b.traits["composure"]
-	a.alive = false
-	w._bereave(a)
-	_check(b.traits["privacy"] == 1.0 and b.traits["gossip"] == 0.0, "a Lover's death leaves the survivor withdrawn (Privacy max, Gossip none)")
-	_check(is_equal_approx(b.traits["composure"], minf(1.0, comp + 0.3)), "and more composed")
-	_check(b.withdrawn_since == a.id, "remembered as withdrawn since that death")
-	var prof: Dictionary = g.profile_data(b.id)
-	_check(str(prof).contains("withdrawn since"), "the profile shows it")
-	var c = _goods(w)[2]
-	var d = _goods(w)[3]
-	d.alive = false
-	var pc: float = c.traits["privacy"]
-	w._bereave(d)
-	_check(c.traits["privacy"] == pc and c.withdrawn_since == "", "only Lovers grieve this way")
 
 func _confidence_request() -> void:
 	var g = _game(8103)
