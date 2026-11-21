@@ -139,6 +139,19 @@ func _check_martyr(g: Game) -> void:
 	n.alive = keep[0]
 	n.death_cause = keep[1]
 	n.death_day = keep[2]
+	# Codex on #499: a made-up daytime reading (the Augur's, at evening) is dated by day.
+	var liar = g.w.npcs.filter(func(x): return x.is_evil())[0]
+	var entries: Array = g.w.dlog.entries
+	var saved: Array = entries.filter(func(e): return e["type"] == "fake_info" and e["actor"] == liar.id)
+	for e in saved:
+		entries.erase(e)
+	entries.append({"type": "fake_info", "actor": liar.id, "target": "", "day": 2, "phase": "Evening", "data": {}, "reason": ""})
+	check(RevealPlan.key_moments(g, liar).has(RevealPlan.MOMENT_FABRICATED % "second day"), "a made-up evening reading is dated by day (got %s)" % str(RevealPlan.key_moments(g, liar)))
+	entries.pop_back()
+	entries.append({"type": "fake_info", "actor": liar.id, "target": "", "day": 2, "phase": "Night", "data": {}, "reason": ""})
+	check(RevealPlan.key_moments(g, liar).has(RevealPlan.MOMENT_FABRICATED % "second night"), "a made-up night reading is dated by night")
+	entries.pop_back()
+	entries.append_array(saved)
 
 func _check_overlay(g: Game, verdict: Dictionary) -> void:
 	var host = Control.new()

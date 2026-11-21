@@ -164,6 +164,7 @@ static func key_moments(g, n) -> Array:
 	var poisoned: Array = []
 	var false_nights: Dictionary = {}
 	var fabricated: int = -1
+	var fabricated_night: bool = true   # a daytime gift (the Augur) is made up by day (Codex on #499)
 	var lies: int = 0
 	for e in w.dlog.entries:
 		if e["type"] == "poison" and e["target"] == n.id:
@@ -172,6 +173,7 @@ static func key_moments(g, n) -> Array:
 			false_nights[int(e["day"])] = true
 		elif e["type"] == "fake_info" and e["actor"] == n.id and fabricated < 0:
 			fabricated = int(e["day"])
+			fabricated_night = int(e["day"]) == 0 or str(e.get("phase", "Night")).to_lower() in ["night", "setup"]
 		elif e["type"] == "think" and e["actor"] == n.id and e["data"].get("topic", "") == "lie":
 			lies += 1
 	# A poisoning matters most when it made a reading false; a night with no reading is a footnote.
@@ -191,7 +193,7 @@ static func key_moments(g, n) -> Array:
 	elif told and n.claimed_role != "" and n.claimed_role != "none" and n.claimed_role != n.role:
 		out.append(MOMENT_CLAIM_FALSE % C.role_name(n.claimed_role))
 	if fabricated >= 0:
-		out.append(MOMENT_FABRICATED % _night(fabricated))
+		out.append(MOMENT_FABRICATED % (_night(fabricated) if fabricated_night else _day(fabricated)))
 	if n.secret_mod == "marked":
 		out.append(MOMENT_MARKED)
 	if lies > 0 and out.size() < MAX_MOMENTS and n.is_evil():
