@@ -258,6 +258,9 @@ Lantern). Nothing is open here.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
   - **Approved (Michael, Nov 19):** the NPC voices the standing grievance the player has
     repaired least, and the line replaces its refusal line.
+  - **Lines approved (Michael, Nov 21):** Herald's 17-reason batch, as drafted. The
+    broken-promise line stays generic for wards and vigils; a vigil-specific line waits for
+    "Vigil request and reward rework" (section 4).
 
 ### Numbers
 
@@ -376,6 +379,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
     credit on what the listener can observe; avoid crediting promise, protection and
     outcome twice. [decided: direction; amounts open]
+  - **A vigil-specific anger line** (Michael, Nov 21): the broken-promise anger line stays
+    generic for wards and vigils until this rework settles how vigils are asked for; then
+    Herald writes the vigil one.
 
   [deferred]
 

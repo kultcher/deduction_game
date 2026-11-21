@@ -454,3 +454,14 @@ sweeps.
 - **Argon's speed re-estimate** under model A (Nov 20): about 10–20% faster per day-3+ refresh,
   and 15–30% on reading-heavy presentations, against main. The C fallback isn't needed below
   12+ NPCs with Minion identities. Details in [burdens_feasibility.md](burdens_feasibility.md).
+
+## 11. Wording approved (Michael, Nov 21)
+
+Herald's draft batch of burdens lines is approved:
+- **Voices:** "honest gift" is fine in a voice.
+- **The Unrequited's graveyard line** is its own voice key.
+- **The Mistaken cause:** "drink, after an Ill-Omened hanging".
+- **The board marker** after a claimed Ill-Omened is hanged: "The omen may have fallen: if
+  {name} was truly Ill-Omened, every good gift was drunk last night."
+- **The script-sheet rules text** is approved as drafted. It's in Herald's batch, alongside
+  section 9's "Hidden" line and tooltip.
