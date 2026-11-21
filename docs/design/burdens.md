@@ -523,20 +523,24 @@ stage-1 NPC side is built on `mock/burdens-slot` (ea0ad8f).
 Relayed by Seneschal, refining what Seneschal called "option B". That label belongs to the
 claim-weighting options; it isn't the judge's world model, which stays model A (section 9).
 
-- **A claim that answers an evil reading counts against the claimant.** The weight comes from
-  the measured rates: how often evil bluffs a burden reactively, against how often honest
-  holders claim one. It's softened from the raw odds.
-  - **The target:** when the Demon reads someone as evil and they then claim Marked, the
-    judge should end up thinking they're about 70% likely evil.
-  - **Why:** on the game's own odds, evil is the likelier explanation. The judge had been
-    trusting such a claim about ten times too much.
-- **An unprompted claim stays near neutral.**
+- **A claim that answers an evil reading leaves the claimant about where the reading left
+  them** (revised by Michael, Nov 20). Claiming should be roughly neutral against staying
+  silent. The weight comes from Beadle's measured rates: how often evil bluffs a burden
+  reactively, against how often honest holders claim one.
+  - **The first target was about 70% evil,** in the case where the Demon reads someone as evil
+    and they then claim Marked. It was dropped because claiming then made the claimant far more
+    suspicious than silence would have: 38% evil if silent, 69% after the claim. That made
+    evil's reactive bluff a blunder and punished honest holders for speaking.
+  - **Michael:** "if it keeps things neutral for the town, then it becomes mostly an obstacle
+    for the player, which is fine."
+  - **What still works against a bluffer:** the counter-claim and the clash.
+- **An unprompted or corroborated claim stays neutral.**
 - **It applies to any burden only one person can hold,** not just Marked.
 - **Corroboration earns credit.** A holder who told someone privately before going public
   gets credit for it, so their later claim doesn't count as purely reactive.
 - **Deferred to the "smarter evil" work:** evil faking that corroboration by lying privately
   first.
-- **The accepted trade-off:** an honest holder with the same cards looks just as guilty. Honest
-  holders do best to speak early.
 - **An option, not decided:** a Marked holder can't be the Seer's Red Herring. It's held until
   the timing results are in.
+- **Open:** whether the town can recover from a bluff nobody contests now rests on how much a
+  second reading is worth. That's a separate question.
