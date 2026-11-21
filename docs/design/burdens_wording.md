@@ -58,3 +58,15 @@ the rules text and the marker do.
 - **Mistaken:** nothing new. An Ill-Omened hanging is poison, so the existing "poison" cause
   covers it, as long as `script_honest_causes` turns poison on when Ill-Omened is on the
   script (Quill).
+
+## Herald's cleanup when Burdens is built (UI and game side)
+
+- **Remove `GameConversation.sync_bereaved_traits`** (`game/game_conversation.gd`, the Lovers'
+  bereavement trait sync). Nothing calls it once the Lovers retire (Quill, from
+  `mock/burdens-slot`).
+- **Retire the remaining secret card short forms** in `game/card_model.gd`: insomnia,
+  smuggling and debt are unreachable once the flavour secrets go. The prototype has already
+  removed lover and sleepwalker.
+- **Rename "secret" to "burden" in player-facing text.** That covers the script sheet, the profile guess row, the
+  Workshop conclusion, the term tooltips and the ending. Code keeps `secret`.
+- **Retire the Workshop's "private errand"** (Michael, Q22).
