@@ -1,8 +1,8 @@
 # Burdens feasibility: combined summary (Nov 20)
 
 **Status: Seneschal's summary of the five feasibility reports, committed by Claude-Vicar
-(Nov 20). The 24 questions at the end wait for Michael. As his answers arrive they're folded
-into [burdens.md](burdens.md).** Argon's detail is in
+(Nov 20). The 24 questions at the end are answered: Michael, Nov 20, in [burdens.md](burdens.md)
+section 9.** Argon's detail is in
 [burdens_perf_feasibility.md](burdens_perf_feasibility.md).
 
 Sources: Lantern (judge and belief model), Quill (evidence and the Workshop), Beadle (NPC
@@ -131,3 +131,125 @@ Then paired sweeps against main. Ill-Omened, Unrequited and Sleepwalker 2.0 foll
     their gift. The script lists the possible burdens and how many are in play. A hidden
     burden's holder doesn't know they carry it."
 24. **Later:** the "drink" Mistaken cause, the Rumormonger phrases and the ~200 voice lines.
+
+## Addendum: Lantern (Nov 20, through Seneschal)
+
+1. **Question 2, sharpened: where the known burden sits in a world.**
+   - **Argon's "none" placement:** 7 + 1 = 8 choices per team, about 2,880 worlds.
+   - **Lantern's per-known-kind placement:** 7 + 3 = 10 per team, about 3,600 worlds.
+   - **Why it matters:** with per-kind placement, a true Rumormonger or Chronicler reading of a
+     known burden ("one of A, B is Unrequited") can rule out "it's Marked" world by world,
+     instead of only through the allowance.
+   - **Lantern's view:** both work, and Argon's is about 20% cheaper. Lantern would accept
+     "none" unless Michael wants readings of known burdens to be decisive.
+2. **An unclaimed Marked, under the allowance:**
+   - P(a reading calls X evil | X good) = a × P(it reads Marked as evil) + (1 − a) × the normal
+     false-positive rate.
+   - A claimed Marked X registers evil only in worlds where X is good.
+3. **The allowance formula:**
+   - a = P(a known burden is in play) / (goods not ruled out). That's about 0.75 / 7 ≈ 0.11 per
+     person in the 10-NPC town, which matches Michael's ~10%.
+   - Each other burden claim multiplies it by (1 − 0.3 × trust in the claimant).
+   - A Rumormonger or Chronicler reading raises a inside the named pair and lowers it outside,
+     never to zero.
+   - a is quantized for caching.
+4. **Ill-Omened:**
+   - It's an independent failure cause: P(sound) = (1 − p_poison)(1 − d)(1 − p_delusional),
+     where d applies only in worlds where the hanged claimant was good.
+   - A self-doubt on a drunk night carries the Ill-Omened cause, so #455's Poisoner nudge skips
+     it.
+5. **Argon's three cache hazards, confirmed, with additions:**
+   - the allowance also enters CaseEval's key;
+   - a Marked claim arriving after a reading queues a refresh;
+   - the Ill-Omened night is keyed on (night, claimant).
+
+   Sleepwalker 2.0 adds a new multi-block path kind for its holder.
+
+### Vicar's note: how this meets Michael's answers ([burdens.md](burdens.md) section 9)
+
+The addendum and Michael's answers were written in parallel. Two places need the leads to
+reconcile them:
+- **Point 1:** Michael answered Q2 "yes, the town reasons about which known burden is in
+  play". That reads as wanting readings of known burdens to count world by world, which points
+  to Lantern's per-kind placement (about 3,600 worlds) over "none". Worth confirming with him
+  in one line.
+- **Points 2 and 3:** Michael answered Q1 "enumerate" for an unclaimed Marked. So point 2's
+  allowance form no longer applies to Marked: Marked is placed in the worlds like the hidden
+  burden. The allowance in point 3 would then cover only the known burdens that aren't
+  enumerated. Lantern should confirm how much of point 3 still applies.
+
+## Lantern's revised numbers, after Michael's answers (Nov 20, through Seneschal)
+
+These replace the addendum's points 1 to 3 where they differ, and settle the Vicar's note above.
+- **The allowance now covers only the Unrequited's night walks.** It's per person (1/g, about
+  1 in 7) inside worlds where Unrequited is in play, and zero elsewhere. So Q3 resolves to
+  per person, Unrequited only.
+- **Worlds per evil team:** 2g + 2. That's g for Delusional (hidden), g for Marked
+  (enumerated), plus 1 each for Unrequited and Ill-Omened. Each known burden has its own
+  place, so a reading of a known burden counts world by world, as Michael's Q2 answer wants.
+  - 10 NPCs: 16 per team, 5,760 worlds against 15,120 today, about 2.6× fewer.
+  - 7 NPCs: 504 against 1,050.
+- **Speed:** a smaller gain than Argon's 20–40%, roughly 10–25% by Lantern's guess. Argon
+  should re-estimate with Marked enumerated.
+- **Ill-Omened** reuses the Poisoner's reading-failure path. **Unrequited's bluff** fits the
+  walker-reason path, with the beloved's block, or the graveyard once the beloved is dead.
+
+## Lantern's worked scenarios, and Michael's choice (Nov 20)
+
+Lantern compared three world models across Michael's four scenarios. It's reasoned from the
+code, not measured. g is the number of good townsfolk, 7 for 10 NPCs.
+
+| | Per evil team | Worlds at 10 NPCs | Fewer than today (15,120) |
+|---|---|---|---|
+| **A:** per-kind, Marked enumerated | 2g + 2 = 16 | 5,760 | 2.6× |
+| **C:** per-kind, Marked under the allowance | g + 3 = 10 | 3,600 | 4.2× |
+| **B:** "none" (Argon's) | g + 1 = 8 | 2,880 | 5.25× |
+
+Speed follows the world count. A gets roughly half of B's speed gain (Argon to confirm). All
+three enumerate Delusional with its holder.
+
+1. **A true Rumormonger names P or Q as Unrequited, and P owns up.** About the same in all
+   three.
+   - **A and C** rule out Delusional and Marked, so every reading is trusted.
+   - **B** keeps about a 1-in-10 "maybe Marked" on anyone a reading calls evil, which makes it
+     slightly too kind to them.
+2. **The same reading, but P is hanged before claiming, and later an evil E outside the pair
+   bluffs Unrequited.**
+   - **A and C catch it:** the holder had to be P or Q. E's claim reads about 10–20%
+     believable.
+   - **B doesn't:** the bluff mostly works, reading 50% or more believable.
+3. **A true Rumormonger names P or Q as Delusional, and later an evil bluffs Unrequited.** All
+   three catch it: the one burden is the hidden one, so no known burden can be in play.
+4. **An evil Rumormonger names its teammate or G as Unrequited, and the real holder M claims
+   Marked.**
+   - **A is sharpest:** the claims clash, and a reading that calls M evil backs M.
+   - **C is close behind.**
+   - **B misses it:** "some known burden" fits both, so the lie stands and the teammate gets
+     cover.
+
+**Lantern's summary:**
+- A and C catch burden bluffs that clash with another burden claim or a true reading; B can't.
+- A against C only matters when a gift reads the Marked holder as evil.
+- Lantern recommended A, with C as the fallback.
+
+**Michael chose A** (Nov 20), with C as the fallback if speed turns out to matter. It's
+recorded in [burdens.md](burdens.md) section 9.
+
+## Re-estimate under model A (Argon, Nov 20; relayed by Michael through Seneschal)
+
+- **Speed:** model A is about 10–20% faster per typical day-3+ refresh, and 15–30% on
+  reading-heavy presentations, against main. Lantern's 10–25% holds.
+  - The gain is about half of model B's: an enumerated Marked still splits equivalence
+    classes on `marked_registers` readings, which the Lovers barely did.
+- **Cache hazards improve:**
+  1. The allowance is now structural (Unrequited worlds only), so the cross-unit thrashing risk
+     from #468 goes away. CaseEval's compile key reflects the Unrequited factor and any
+     Unrequited `secret_claim` in the unit.
+  2. Marked claims must still attach to the context and key of `marked_registers` reading
+     units, and a late claim queues a refresh.
+  3. Ill-Omened is keyed on (night, claimant).
+- **Model C isn't needed.**
+  - A to C is only about 5–10% extra wall time.
+  - Model A at 12 NPCs is 13,200 worlds, still under today's 15,120 at 10 NPCs.
+  - C only matters at 12+ NPCs with Minion identities, or at 14–15 NPCs against the 2-second
+    presentation budget.
