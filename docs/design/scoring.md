@@ -161,6 +161,9 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
 5. **Good case:** measure on the whole town, or only on the voters who acted next?
 6. ~~**"Why you lost"**~~: in the first version (section 9).
 7. ~~**Shown how**~~: a total with a breakdown (section 9).
+8. **The change cost against "positive only"** (principle 1). A Demon-pick change costing
+   score is a subtraction. It could be framed as a bonus for unused changes instead, which
+   adds up the same and keeps the principle. Michael's call.
 
 ## 9. Decided (Michael, Nov 20, relayed by Seneschal)
 
