@@ -947,6 +947,12 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		weights = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx)
 	var has_weights: bool = not weights.is_empty()
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
+	# Counting readings a Marked person can sway (Solver.marked_counts): weighed by the chance
+	# of the registration that fits, in worlds where its reader is good, healthy and sound
+	# (Quill's Dowser check, Nov 21). Memoised by what the weight reads.
+	var counting: Array = cards.filter(func(card): return Solver.marked_counts(card))
+	var self_id: String = str(knowledge.get("self", ""))
+	var mc_memo: Dictionary = {}
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1
 	for x in range(which.size()):
@@ -970,6 +976,14 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			if not rel_readings.is_empty():
 				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
 				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
+		if content > 0.0 and not counting.is_empty():
+			var w_rep2: Dictionary = reps[x] if cc_reps_handle < 0 else universe[cc.rep[which[x]]]
+			if int(w_rep2.get("marked", -1)) >= 0:
+				for card in counting:
+					var mk: Array = [card.get("id", ""), int(w_rep2.evil), int(w_rep2.get("converted", -1)), int(w_rep2.marked), str(w_rep2.get("modifier", "")), int(w_rep2.get("holders", 0))]
+					if not mc_memo.has(mk):
+						mc_memo[mk] = _marked_count_weight(view, w_rep2, card, self_id)
+					content *= float(mc_memo[mk])
 		var w_mult: float = w_all[which[x]] if has_w_all else (weights[x] if has_weights else 1.0)
 		out[which[x]] = content * w_mult
 	return out
@@ -1053,3 +1067,22 @@ static func _expand(cc: Dictionary, oc: Dictionary, w: PackedFloat64Array) -> Pa
 		var k: int = class_of[i] * ns + (of[i] if ns > 1 else 0)
 		out[i] = w[k] / counts[k] if counts[k] > 0.0 else 0.0
 	return out
+
+
+## A counting reading's Marked weight in one world (Solver.marked_count_weight), only where its
+## content is read: a good reader (Solver.source_valid), not the world's Delusional holder
+## (unless it's the listener's own reading), and not under a fallen omen.
+static func _marked_count_weight(view: Dictionary, world: Dictionary, card: Dictionary, self_id: String) -> float:
+	if not Solver.source_valid(view, world, card):
+		return 1.0
+	var src: int = Solver.person_index(view, str(card.get("source", "")))
+	var mod: String = str(world.get("modifier", ""))
+	var holders: int = int(world.get("holders", 0))
+	if src >= 0 and mod == "delusional" and (holders & (1 << src)) and str(card.get("source", "")) != self_id:
+		return 1.0
+	if mod == "ill_omened":
+		for cid in card.get("omen_claimants", []):
+			var ci: int = Solver.person_index(view, str(cid))
+			if ci >= 0 and (holders & (1 << ci)):
+				return 1.0
+	return Solver.marked_count_weight(view, world, card)

@@ -12,6 +12,7 @@ const UITheme = preload("res://ui/theme.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Solver = preload("res://workshop/solver.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Social = preload("res://sim/social.gd")
 
 var checks = 0
@@ -65,6 +66,7 @@ func _run_chunk4_psychologist_mudd() -> void:
 	_test_secret_domain_and_premise()
 	_test_burden_claim()
 	_test_seer_before_scion()
+	_test_marked_count_weight()
 	_test_omen_window()
 	_test_retired_secret_in_saved_script()
 
@@ -315,3 +317,45 @@ func _test_omen_window() -> void:
 	var under: float = post.call([omen_claim, poisoned])
 	print("Omen window: P(the Seer's pair-mate is the Demon) prior %.3f, the yes %.3f, the yes under a fallen omen %.3f" % [prior, plain, under])
 	_check(under < plain - 0.02 and under > prior, "a reading under a fallen omen counts for less than the same reading, but still counts (%.3f < %.3f, > %.3f)" % [under, plain, prior])
+
+
+## A counting reading (Dowser, Surveyor, Hearthwitch, Magistrate) that a Marked person sways
+## is weighed by the chance of the registration that fits (Tuning.Setup.MARKED_EVIL_CHANCE),
+## as the Seer's is, not taken either way in full (Quill's Dowser check, Nov 21).
+func _test_marked_count_weight() -> void:
+	var people: Array = []
+	for i in range(10):
+		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})
+	var D: String = people[0].id
+	var grp: Array = [people[1].id, people[2].id, people[3].id]
+	var view: Dictionary = {"people": people, "evil_count": 3, "alignment_epoch": "Original alignment",
+		"world_options": {"modifiers": ["delusional", "marked", "ill_omened", "unrequited"], "roles": true, "identities": true, "bluffs": true}}
+	var claim: Dictionary = {"id": "mcc", "fact_id": "mcc", "kind": "claim", "source": D, "subject": D, "role": "dowser", "observed_at": {"day": 1, "phase": "morning"}, "text": "claims Dowser"}
+	var rep = func(count: int) -> Dictionary:
+		return {"id": "mcr%d" % count, "fact_id": "mcr%d" % count, "kind": "report", "role": "dowser", "source": D,
+			"observed_at": {"day": 1, "phase": "afternoon"}, "reported_at": {"day": 1, "phase": "afternoon"}, "night": -1,
+			"data": {"group": grp, "count": count, "block": "market"}, "text": "dowser"}
+	var p: float = Tuning.Setup.MARKED_EVIL_CHANCE
+	# One world: nobody in the group evil, the first member Marked.
+	var world: Dictionary = {"evil": (1 << 7) | (1 << 8) | (1 << 9), "demon": 9, "marked": 1, "modifier": "marked", "holders": 0}
+	var w1: float = Solver.marked_count_weight(view, world, rep.call(1))
+	var w0: float = Solver.marked_count_weight(view, world, rep.call(0))
+	var outside: Dictionary = world.duplicate()
+	outside.marked = 5
+	var wout: float = Solver.marked_count_weight(view, outside, rep.call(0))
+	_check(is_equal_approx(w1, p) and is_equal_approx(w0, 1.0 - p) and is_equal_approx(wout, 1.0),
+		"a Marked member explains a Dowser 1 at its registration chance (%.2f), a 0 at the other (%.2f); one outside the group changes nothing (%.2f)" % [w1, w0, wout])
+	var marked_after = func(card: Dictionary, on: bool) -> float:
+		Solver.marked_count_weighting = on
+		preload("res://workshop/caches.gd").clear_all()
+		var cs = Solver.empty_case()
+		cs.conclusion = {"type": "marked", "target": grp[0], "at": "Original alignment"}
+		cs.cards = ["mcc", card.id]
+		view["cards"] = [claim, card]
+		return float(CaseEval.evaluate(view, cs).posterior)
+	var off1: float = marked_after.call(rep.call(1), false)
+	var on1: float = marked_after.call(rep.call(1), true)
+	Solver.marked_count_weighting = true
+	preload("res://workshop/caches.gd").clear_all()
+	print("Dowser 1 on a group of 3, member Marked: %.3f taken either way in full, %.3f weighed" % [off1, on1])
+	_check(on1 < off1 * 0.8, "a Dowser 1 is explained by a Marked member less readily once the registration is weighed (%.3f against %.3f)" % [on1, off1])

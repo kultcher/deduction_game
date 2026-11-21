@@ -593,7 +593,8 @@ static func _routing_cards(cards: Array) -> Array:
 	return out
 
 static func seer_flag(cards: Array) -> bool:
-	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"]
+	# Counting readings a Marked person sways read world.marked too (Solver.marked_counts).
+	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar", "dowser", "hearthwitch", "surveyor", "magistrate"]
 		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")
 		or (forbidden_burdens(c) & (1 << 1)) != 0))  # a claimed role the deal never makes Marked: the key tells Marked apart
 
