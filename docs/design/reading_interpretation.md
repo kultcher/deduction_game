@@ -202,6 +202,27 @@ Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
 
 The last two are on the backlog (Michael, Nov 21).
 
+**As built, not otherwise recorded here** (Beadle's check, Nov 21; 80 passive 10-NPC games):
+- **Player requests:** the Seer can be asked to look at someone. It agrees or refuses by its
+  trust in the player, whether it has already looked, and whether it would be doubting a friend.
+  When it refuses, it names who it would rather look at.
+- **Dull Seers scatter:** a focused look happens 30% of the time plus half the Seer's Insight.
+  Otherwise it looks at two random people it hasn't paired before.
+- **Settled after two yeses:** a sharp Seer whose top suspect has been in two "yes" readings
+  stops re-checking them and looks at two fresh people.
+- **No repeats:** it never repeats a pair.
+- **Reactive reveals:** most reveals are triggered at the meeting, not timed. The triggers are
+  someone else claiming Seer, the Seer being named in an accusation, or the Seer holding a
+  reading that clears someone accused. In 40 baseline games, 12 of 18 Seer claims were reactive.
+- **Today's timing:** 36 of 42 good Seers claimed, at a mean of day 2.1. Six held one reading
+  when they claimed, 20 held two and 10 held three. Six died on day 2 or 3 unclaimed. The timed
+  part is a calendar-day taper shared by every gift that keeps giving readings; nothing counts
+  readings or the town's size.
+- **Defences when named:** after one shared "yes", the nominee points at the other name ("One
+  of the two, X said. It isn't me, so look at Y."). After two, it uses the Red Herring defence
+  ("…keeps finding me because I'm the one the Seer always misreads"). That threshold dates from
+  the Oct 19 meeting-flow work.
+
 **Reading with other readings** (Michael, Nov 21):
 - **With its own readings:** two "yes" readings that both include A strongly suggest that A is
   the Demon, the Red Herring or Marked. They moderately suggest the Seer isn't Delusional. The
@@ -246,10 +267,14 @@ reading, shared with the time it was taken.
 6. if A is Marked, A may have misregistered.
 
 **Target choice:** none. There's no manual targeting: the reading is wherever the Dowser's day
-takes it.
+takes it. It doesn't steer toward crowds, and the player can't ask it to look anywhere
+(confirmed in Beadle's check, Nov 21).
 
 **Hiding and revealing:** still cautious, but a little earlier than the Seer, around day 2 on
 average.
+- **As built** (Beadle's check, Nov 21): the Dowser uses the same calendar-day taper as the
+  Seer. 18 of 24 good Dowsers claimed, at a mean of day 2.3, later than the Seer's 2.1,
+  probably because some days give it no crowd to read. Six died on day 1 unclaimed.
 
 **Reading with other readings:**
 - **With its own readings:**
@@ -275,3 +300,21 @@ average.
   - Nothing is remembered: confidence built up on earlier days isn't kept once the evidence
     behind it is forgotten or contested. That's the tentative "Persistence Confidence" item in
     BACKLOG section 6.
+- **From Beadle's check (Nov 21), for Michael:**
+  - **The Seer's later picks** rank people by how evil it thinks they are, not by how likely
+    each is to be the Demon. That's a bug against this note; a fix needs a Demon-specific belief
+    from Lantern.
+  - **Narrowing after a "yes"** re-checks the Seer's current top suspect with someone unknown,
+    which doesn't isolate who triggered it. That's a bug against this note.
+  - **The Seer's reveal** averages day 2.1 against the note's 2.5. "At least two readings"
+    mostly holds already; whether to move the average later is Michael's choice.
+  - **The Dowser's reveal** averages day 2.3, later than the Seer, against the note's "a little
+    earlier". It needs a Dowser-specific claim term, a new constant, or a retune of the shared
+    taper, which moves every reading gift.
+  - **A "no" is final to the Seer itself:** it marks both people cleared outright, where the note
+    leaves room for poison or Delusion. Lantern and Beadle are to reconcile it.
+  - **The Red Herring defence after two yeses:** Beadle recommends keeping the threshold. If it
+    were available from the first yes, it would need a different line, since this one says
+    "keeps".
+  - **Unverified:** whether evil reasons that a good claim of one of its bluff roles is a lie
+    (section 1.6).
