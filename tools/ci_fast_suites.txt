@@ -6,6 +6,7 @@
 # PRs that each add a suite rarely touch the same line (Nov 17). CI deals the list out
 # to the four shards in this order (suite i goes to shard i mod 4).
 test_agreement_trust
+test_anger_reasons
 test_ask_night_results
 test_attention_0b
 test_augur_wording

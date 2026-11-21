@@ -266,6 +266,7 @@ func _distrust() -> void:
 		gift = Mind.answer_gift(w, n)
 		check(gift.lines.size() == 2 and "promise" in gift.lines[1].text, "a gift refusal may explain again the next day")
 		n.distrust_memory = {}
+		n.grievances = []  # no remembered grievance either: anger reasons speak from these
 		n.distrust_explained_day = -1
 		n.pressed_today = 0
 		n.secret_mod = ""
