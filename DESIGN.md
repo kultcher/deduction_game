@@ -1326,6 +1326,15 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   - *Planned (Michael, Nov 20; not built):* the scored guess becomes the last one locked in
     the daily evil-team guess window, not the latest pre-outcome copy. See
     [grim_reveal.md](docs/design/grim_reveal.md#2a-the-daily-evil-team-guess).
+- **The daily evil-team guess** (Michael, Nov 21; `ui/daily_guess.gd`): closing each day's
+  meeting fades to a window with a Demon circle and one Minion circle per Minion in play, each
+  with a type menu (the Demon's type is given on single-Demon scripts; the Demon picker crosses
+  out its victims). The last guesses locked here are the verdict the grim reveal plays against;
+  there's no end-of-game seal (it would give away the outcome). The window keeps its own locked
+  guesses: Demon and Minion picks in the profile prefill empty circles, greyed, until confirmed,
+  and it never writes back to the profile. Confirm, Skip, or turn it off for the case; it's also
+  under More. No confidence marks. The Demon guess is limited: the first pick is free, then two
+  changes a case, each confirmed in a dialog; Minion picks and types are free.
 - **Results** distinguish identifying the demon, identifying a minion, saving the town and
   preserving good townsfolk. "Identified but lost" is descriptive partial credit.
 - **Executions** log nomination, votes and explicit statements; the player's stance is

@@ -19,6 +19,7 @@ const LogText = preload("res://ui/log_text.gd")
 const Layout = preload("res://ui/main_layout.gd")
 const Roles = preload("res://ui/main_roles.gd")
 const Actions = preload("res://ui/main_actions.gd")
+const DailyGuess = preload("res://ui/daily_guess.gd")
 
 var g
 var out: RichTextLabel
@@ -51,6 +52,8 @@ var _deferred_log_events: Array = []  # the phase change after a conversation th
 ## A reading (Town Hall records, tavern gossip, a crime scene's traces) that ended the phase:
 ## the screen holds the old phase until the last page is done (Michael, Nov 19).
 var _phase_held: bool = false
+var daily_guess_open: bool = false   # the guess window is up: no commands until it closes (Codex on #496)
+var daily_guess_off_for = null   # the game whose daily guess the player turned off ("Don't ask again this case")
 const READING_VERBS = ["gossip", "records", "register", "town_hall", "inspect", "search", "s"]
 var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
 var conversation_finished = false
@@ -183,13 +186,13 @@ func _new_case() -> void:
 	if is_inside_tree() and show_script_at_start:
 		Roles.open(self)
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible:
+	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible and not daily_guess_open:
 		input.grab_focus()
 func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
 
-enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE }
+enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS }
 
 func _on_more(i: int) -> void:
 	match i:
@@ -205,12 +208,34 @@ func _on_more(i: int) -> void:
 			_open_live_workshop()
 		MoreItem.NEW_CASE:
 			_open_new_case_screen()
+		MoreItem.SUSPICIONS:
+			open_daily_guess(Callable())
+
+## The daily evil-team guess (ui/daily_guess.gd). `then(confirmed)` runs once it closes.
+func open_daily_guess(then: Callable) -> void:
+	if g == null or g.w.game_over or daily_guess_open:
+		return
+	daily_guess_open = true
+	input.release_focus()
+	DailyGuess.open(self, func(confirmed):
+		daily_guess_open = false
+		_refresh_all()
+		if then.is_valid():
+			then.call(confirmed),
+		func(): daily_guess_off_for = g)
+
+## Closing the meeting: the daily guess comes first, unless it's off for this case.
+func close_meeting() -> void:
+	if daily_guess_off_for == g:
+		_run("done")
+		return
+	open_daily_guess(func(_confirmed): _run("done"))
 ## The Case Workshop lives on the case board as a pull-out sheet.
 func _open_live_workshop(number: int = 0) -> void:
 	case_view.refresh()
 	case_view.open_workshop(number)
 func _run_workshop(cmd: String, progress: Callable) -> void:
-	if conversation_finished or _phase_held:
+	if conversation_finished or _phase_held or daily_guess_open:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
