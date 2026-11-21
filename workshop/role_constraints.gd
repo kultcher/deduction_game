@@ -39,7 +39,6 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 			"populated": false,
 			"seer": seer_flag(cards),
 			"mediums": relay_mediums(ids, cards),
-			"walkers": 0,  # the Sleepwalker retired (burdens rework); the C# plumbing is Lantern's
 		}
 	return cache[key]
 
@@ -81,7 +80,7 @@ static func _fit_weight_dispatch(view: Dictionary, world: Dictionary, cards: Arr
 		var bridge = SolverBackend._bridge()
 		if bool(entry.populated):
 			var packed_w: int = SolverBackend.pack_world(world)
-			var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), -1, PackedInt32Array(), PackedInt64Array([packed_w]), bool(entry.seer), int(entry.mediums), int(entry.walkers))
+			var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), -1, PackedInt32Array(), PackedInt64Array([packed_w]), bool(entry.seer), int(entry.mediums))
 			if not hit.is_empty():
 				return hit[0]
 		var res: PackedFloat64Array = _eval_cs_weights(view, ids, [world], -1, PackedInt32Array(), cards, knowledge, answers, bluffs, true, int(entry.slot))
@@ -125,7 +124,7 @@ static func _fits_weights_dispatch(view: Dictionary, universe: Array, cards: Arr
 		var fallback_all: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 		if u_handle >= 0:
 			SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-		var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), u_handle, sub_indices, fallback_all, bool(entry.seer), int(entry.mediums), int(entry.walkers))
+		var hit: PackedFloat64Array = bridge.RoleTryLookupMemoByHandle(int(entry.slot), ids.size(), u_handle, sub_indices, fallback_all, bool(entry.seer), int(entry.mediums))
 		if not hit.is_empty():
 			return hit
 	var res: PackedFloat64Array = _eval_cs_weights(view, ids, universe, u_handle, sub_indices, cards, knowledge, answers, bluffs, true, int(entry.slot))
@@ -216,7 +215,6 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 
 	var seer_on: bool = seer_flag(cards)
 	var mediums_mask: int = relay_mediums(ids, cards)
-	var walkers_mask: int = 0  # the Sleepwalker retired (burdens rework)
 
 	var header := PackedInt32Array([
 		ids.size(),
@@ -233,7 +231,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		1 if use_coarse_memo else 0,
 		1 if seer_on else 0,
 		mediums_mask,
-		walkers_mask,
+		0,  # reserved: was the Sleepwalker claimants (retired, burdens rework)
 	])
 
 	var events: Array = view.get("timeline", {}).get("events", [])
@@ -307,9 +305,6 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		card_ints[off + 9] = c_night
 		var data: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
 		card_ints[off + 10] = int(data.get("night", -1))
-
-		if kind_code == 3 and data.get("secret_kind", "") == "sleepwalker":
-			flags |= (1 << 11)
 
 		if kind_code == 1 and not quoted:
 			if role_str == "martyr":
@@ -476,47 +471,38 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		return SolverBackend._bridge().RoleFitsWeightsMemoByHandle(memo_slot, u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 	return SolverBackend._bridge().RoleFitsWeightsByHandle(u_handle, sub_indices, fallback_worlds, header, pub_roles, forced_lamp, card_ints)
 
-static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
+static func coarse_mask(people: int, world: Dictionary, seer: bool, mediums: int) -> int:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var packed: int = SolverBackend.pack_world(world)
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("RoleConstraints.coarse_mask", pack_u)
-	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, seer, mediums, walkers))
+	var cs_val: int = int(SolverBackend._bridge().RoleCoarseMask(people, packed, seer, mediums))
 	return cs_val
 
-static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, walkers: int = 0, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
+static func coarse_masks(people: int, universe: Array, seer: bool, mediums: int, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedInt64Array:
 	if not SolverBackend.profiling_enabled:
-		return _coarse_masks_dispatch(people, universe, seer, mediums, walkers, u_handle, sub_indices)
+		return _coarse_masks_dispatch(people, universe, seer, mediums, u_handle, sub_indices)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, walkers, u_handle, sub_indices)
+	var out: PackedInt64Array = _coarse_masks_dispatch(people, universe, seer, mediums, u_handle, sub_indices)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, walkers: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
+static func _coarse_masks_dispatch(people: int, universe: Array, seer: bool, mediums: int, u_handle: int, sub_indices: PackedInt32Array) -> PackedInt64Array:
 	var fallback: PackedInt64Array = _pack_worlds_if_needed("RoleConstraints.coarse_masks", universe, u_handle)
 	if u_handle >= 0:
 		SolverBackend.record_boundary_call("RoleConstraints.coarse_masks", 0)
-	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, seer, mediums, walkers)
+	var cs_out: PackedInt64Array = SolverBackend._bridge().RoleCoarseMasksByHandle(people, u_handle, sub_indices, fallback, seer, mediums)
 	return cs_out
 
-static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums: int, walkers: int = 0) -> int:
+static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums: int) -> int:
 	var n: int = people + 1
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
 	if mediums != 0:
 		var deluded: int = int(world.get("holders", 0)) & mediums if world.get("modifier", "marked") == "delusional" else 0
 		mask = mask * (1 << people) + deluded
-	if walkers != 0:
-		var asleep: int = int(world.get("holders", 0)) & walkers if world.get("modifier", "marked") == "sleepwalker" else 0
-		mask = mask * (1 << people) + asleep
 	if world.has("converted"):
 		mask = mask * n + int(world.converted) + 1
 	return mask
-
-## The Sleepwalker retired with the burdens rework (docs/design/burdens.md): no claim makes
-## anyone a sleepwalker now. Kept as a stub for its callers in the judge (Lantern's to strip,
-## with the C# walkers plumbing).
-static func sleepwalk_claimants(_ids: Array, _cards: Array) -> int:
-	return 0
 
 ## The people whose being the Delusional holder changes the role check, so the coarse
 ## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of every

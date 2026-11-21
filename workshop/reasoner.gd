@@ -662,7 +662,6 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 		if role == "chronicler" or (role == "rumormonger" and card.get("data", {}).get("secret", "marked") != "marked"):
 			needs_holders = true
 	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
-	var walkers: int = Solver.Roles.sleepwalk_claimants(ids, cards)
 	var bits: Dictionary = Solver.world_bits(view)
 	var evil_arr: PackedInt64Array = bits.evil
 	var deluded_arr: PackedInt64Array = bits.deluded
@@ -672,7 +671,7 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 	var by_team: Dictionary = {}
 	var team_order: Array = []
 	var n1: int = n_people + 2
-	var holder_mult: int = (1 << (n_people + 3)) if (needs_holders or mediums != 0 or walkers != 0) else 1
+	var holder_mult: int = (1 << (n_people + 3)) if (needs_holders or mediums != 0) else 1
 	for i in range(universe.size()):
 		var evil_bits: int = evil_arr[i]
 		if fast_holds:
@@ -721,8 +720,6 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 			holder_part = (Solver.C.SECRET_MOD_LIST.find(mod_str) + 1) * (1 << n_people) + holders_bits
 		elif mediums != 0 and mod_str == "delusional" and (holders_bits & mediums) != 0:
 			holder_part = (1 << n_people) + (holders_bits & mediums)
-		elif walkers != 0 and mod_str == "sleepwalker" and (holders_bits & walkers) != 0:
-			holder_part = (2 << n_people) + (holders_bits & walkers)
 		var eq_key: int = (((evil_bits * n1 + conv_part + 1) * n1 + demon_part + 1) * n1 + marked_part + 1) * holder_mult + holder_part
 		if seen_eq.has(eq_key):
 			continue

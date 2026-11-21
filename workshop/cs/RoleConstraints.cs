@@ -51,7 +51,7 @@ internal static class RoleConstraintsKernel
     public const int FlagMarkedRegisters = 1 << 8;
     public const int FlagReadRoleEvil = 1 << 9;
     public const int FlagSeerYes = 1 << 10;
-    public const int FlagSecretSleepwalker = 1 << 11;
+    // 1 << 11 was FlagSecretSleepwalker (retired, burdens rework).
     public const int FlagSextonEnvOk = 1 << 12;
     public const int FlagExecutorDeadOk = 1 << 13;
     public const int FlagExecutorRoleRead = 1 << 14;
@@ -71,7 +71,7 @@ internal static class RoleConstraintsKernel
     public const int PoolAny = 3;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static long CoarseMask(int people, WorldEntry w, bool seer, int mediums, int walkers)
+    public static long CoarseMask(int people, WorldEntry w, bool seer, int mediums)
     {
         long n = people + 1L;
         long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + (seer ? ((long)w.Marked + 1L) : 0L);
@@ -80,11 +80,6 @@ internal static class RoleConstraintsKernel
             long deluded = (w.EffectiveModifier == WorldEntry.ModDelusional) ? (w.Holders & mediums) : 0L;
             mask = mask * (1L << people) + deluded;
         }
-        if (walkers != 0)
-        {
-            long asleep = (w.EffectiveModifier == WorldEntry.ModSleepwalker) ? (w.Holders & walkers) : 0L;
-            mask = mask * (1L << people) + asleep;
-        }
         if (w.HasConverted)
         {
             mask = mask * n + (long)w.ConvertedRaw + 1L;
@@ -92,12 +87,12 @@ internal static class RoleConstraintsKernel
         return mask;
     }
 
-    public static long[] CoarseMasks(int people, long[] packedWorlds, bool seer, int mediums, int walkers)
+    public static long[] CoarseMasks(int people, long[] packedWorlds, bool seer, int mediums)
     {
         long[] outMasks = new long[packedWorlds.Length];
         for (int i = 0; i < packedWorlds.Length; i++)
         {
-            outMasks[i] = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums, walkers);
+            outMasks[i] = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums);
         }
         return outMasks;
     }
@@ -206,7 +201,7 @@ internal static class RoleConstraintsKernel
         return nCandidates > 0 ? totalWeight / (double)nCandidates : 0.0;
     }
 
-    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, bool seer, int mediums, int walkers)
+    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, bool seer, int mediums)
     {
         var memo = SolverContext.GetRoleConstraintMemo(memoSlot);
         if (memo == null || memo.Count == 0)
@@ -217,7 +212,7 @@ internal static class RoleConstraintsKernel
         var outWeights = new double[n];
         for (int i = 0; i < n; i++)
         {
-            long mask = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums, walkers);
+            long mask = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums);
             if (!memo.TryGetValue(mask, out double val))
             {
                 return Array.Empty<double>();
@@ -246,7 +241,6 @@ internal static class RoleConstraintsKernel
         bool reuseMemo = headerInts[11] != 0;
         bool seerFlag = headerInts[12] != 0;
         int mediumsMask = headerInts[13];
-        int walkersMask = headerInts[14];
 
         int baseCardCount = cardInts.Length / CardStride;
         var relayInferredSources = new List<int>(4);
@@ -282,7 +276,7 @@ internal static class RoleConstraintsKernel
         for (int i = 0; i < uLen; i++)
         {
             var world = new WorldEntry(packedWorlds[i]);
-            long mask = CoarseMask(peopleCount, world, seerFlag, mediumsMask, walkersMask);
+            long mask = CoarseMask(peopleCount, world, seerFlag, mediumsMask);
             if (!memo.TryGetValue(mask, out double w))
             {
                 w = FitsViewSingle(
@@ -336,17 +330,6 @@ internal static class RoleConstraintsKernel
         int ownRoleId = headerInts[8];
         bool routesAvailable = headerInts[9] != 0;
         bool routesOkay = headerInts[10] != 0;
-        int walkersMask = headerInts[14];
-
-        // 1. Sleepwalker secret claim check (lines 139-143)
-        if (walkersMask != 0)
-        {
-            int asleep = world.EffectiveModifier == WorldEntry.ModSleepwalker ? world.Holders : 0;
-            if ((walkersMask & ~world.Evil & ~asleep) != 0)
-            {
-                return 0.0;
-            }
-        }
 
         // 2. Medium relay source health, alive_at_night, and duplicate visit checks (lines 144-153)
         if (relayMediumSourceIndices.Length > 0)

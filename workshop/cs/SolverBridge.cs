@@ -306,11 +306,11 @@ public partial class SolverBridge : RefCounted
 
     // --- Slice C1: RoleConstraints Entry Points (Direct & Handle-Backed) ---
 
-    public static long RoleCoarseMask(int people, long packedWorld, bool seer, int mediums, int walkers) =>
-        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), seer, mediums, walkers);
+    public static long RoleCoarseMask(int people, long packedWorld, bool seer, int mediums) =>
+        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), seer, mediums);
 
-    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, bool seer, int mediums, int walkers) =>
-        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, seer, mediums, walkers);
+    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, bool seer, int mediums) =>
+        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, seer, mediums);
 
     public static long[] RoleCoarseMasksByHandle(
         int people,
@@ -318,10 +318,9 @@ public partial class SolverBridge : RefCounted
         int[] subsetIndices,
         long[] fallbackWorlds,
         bool seer,
-        int mediums,
-        int walkers) =>
+        int mediums) =>
         RoleConstraintsKernel.CoarseMasks(
-            people, SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), seer, mediums, walkers);
+            people, SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), seer, mediums);
 
     public static double RoleSeerRhWeight(int candidatesMask, int demon, int marked, int[] readingInts) =>
         RoleConstraintsKernel.SeerRhWeight(candidatesMask, demon, marked, readingInts);
@@ -362,15 +361,13 @@ public partial class SolverBridge : RefCounted
         int[] subsetIndices,
         long[] fallbackWorlds,
         bool seer,
-        int mediums,
-        int walkers) =>
+        int mediums) =>
         RoleConstraintsKernel.TryLookupMemo(
             memoSlot,
             people,
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
             seer,
-            mediums,
-            walkers);
+            mediums);
 
     public static double[] RoleFitsWeightsMemoByHandle(
         int memoSlot,

@@ -177,7 +177,6 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	var has_curse: bool = view.get("chronology", {}).has("curse")
 	var seer: bool = Solver.Roles.seer_flag(cards)
 	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
-	var walkers: int = Solver.Roles.sleepwalk_claimants(ids, cards)
 	var curr_conv: bool = Solver._curse_active_at(view, "Current alignment")
 	var concl_at = conclusion.get("at", view.get("alignment_epoch", ""))
 	var concl_conv: bool = Solver._curse_active_at(view, concl_at)
@@ -251,7 +250,7 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 		1 if has_curse else 0,
 		1 if seer else 0,
 		mediums,
-		walkers,
+		0,  # reserved: was the Sleepwalker claimants (retired, burdens rework)
 		1 if curr_conv else 0,
 		1 if concl_conv else 0,
 		k,

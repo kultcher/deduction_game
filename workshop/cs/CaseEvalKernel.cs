@@ -234,7 +234,7 @@ internal static class CaseEvalKernel
         //  [3] hasCurse (0/1)
         //  [4] seer (0/1)
         //  [5] mediums
-        //  [6] walkers
+        //  [6] reserved, always 0 (was the Sleepwalker claimants, retired with the burdens rework)
         //  [7] currentEpochConvEvil (0/1)
         //  [8] conclEpochConvEvil (0/1)
         //  [9] k (reports count)
@@ -245,7 +245,6 @@ internal static class CaseEvalKernel
         bool hasCurse = headerInts[3] != 0;
         bool seer = headerInts[4] != 0;
         int mediums = headerInts[5];
-        int walkers = headerInts[6];
         bool currentEpochConvEvil = headerInts[7] != 0;
         bool conclEpochConvEvil = headerInts[8] != 0;
         int k = headerInts[9];
@@ -265,8 +264,7 @@ internal static class CaseEvalKernel
             rmBound = (1L << nPeople)
                 * (nPeople + 2L)
                 * (nPeople + 2L)
-                * (mediums != 0 ? (1L << nPeople) : 1L)
-                * (walkers != 0 ? (1L << nPeople) : 1L);
+                * (mediums != 0 ? (1L << nPeople) : 1L);
             if (hasCurse)
             {
                 rmBound *= (nPeople + 1L);
@@ -315,7 +313,7 @@ internal static class CaseEvalKernel
         }
         else if (rolesOn || seer)
         {
-            rms = RoleConstraintsKernel.CoarseMasks(nPeople, worlds, seer, mediums, walkers);
+            rms = RoleConstraintsKernel.CoarseMasks(nPeople, worlds, seer, mediums);
         }
         else if (hasCurse)
         {
