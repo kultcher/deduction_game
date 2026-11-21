@@ -24,6 +24,9 @@ func _run() -> void:
 	listener.info_log = []
 	listener.known_claims = {}
 	listener.ledger = {}
+	# Nothing of its own either: a deal can give the listener a first-hand sighting (692 does,
+	# since the burdens prototype's deal), a second, unrelated fact the checks below don't mean.
+	listener.beliefs = []
 	listener.role = "warden"
 	var source = g.w.npcs.filter(func(n): return n != listener)[0]
 	var candidates = g.w.npcs.filter(func(n): return n != listener and n != source)
