@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
+### Current baseline (Nov 21, a sighting places its teller): `baseline_b810754`
+
+`tools/golden/baseline_b810754/` is the capture from `claude/sighting-places-teller` at `b810754` (main at
+`03451a8` after #454, merged in). In a world where its teller is good, a street sighting puts
+the teller out on that block that night, and a window sighting puts them home or on their own
+block (`LiveActivity.teller_place`). A teller who was converted when they told it is left
+unconstrained, as the sighter contests do. This replaces the PR's earlier `baseline_e8ff7e0`,
+`baseline_7af7d2a` and `baseline_6f80578`.
+- **Divergence from `baseline_5f4629f`:** every seed, at a refresh or the first step: 98933 at
+  record 1 and 54875 at 4 (day 1), 42 at 41, 900 at 46 and 692 at 50 (day 2).
+- **Outcomes:**
+  - **54875:** Dorian on day 2 and Odette (a good Veteran) on day 3, instead of Edda (the Revenant)
+    on day 1, Odette on day 2 and Jory on day 3.
+  - **692:** Constance (the Demon) on day 3 alone, instead of Constance on day 2 and Lian on day 3.
+  - **98933:** Agnes (a good Medium) on day 2 instead of day 3.
+  - **42 and 900:** the same: the town hangs Agnes, the Demon, on day 2 (a good win), and Isolde
+    on day 2. No winner by day 4 on the others.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
 
 `tools/golden/baseline_5f4629f/` is the capture from `claude/beadle-silence` at `5f4629f` (main at
 `c2c5653`, after #412, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion
