@@ -2,6 +2,7 @@
 ## Counts measure compatible assignments, NOT posterior probabilities.
 extends RefCounted
 const C = preload("res://sim/content.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Domain = preload("res://workshop/world_domain.gd")
 const Roles = preload("res://workshop/role_constraints.gd")
 const History = preload("res://workshop/live_history.gd")
@@ -1295,6 +1296,49 @@ static func augur_world_outcome_prob(world: Dictionary, spec: Dictionary) -> flo
 	var p_yes: float = 1.0 - (1.0 - trig0) * (1.0 - trig1)
 	return p_yes if bool(spec.yes) else (1.0 - p_yes)
 
+## Which registrations of the world's Marked person a counting reading's content check tries
+## (both by default; marked_count_weight pins one to weigh it).
+static var _mark_reads_only: int = -1
+
+static func _mark_options(required: bool) -> Array:
+	if required:
+		return [true]
+	if _mark_reads_only >= 0:
+		return [_mark_reads_only == 1]
+	return [false, true]
+
+## Whether a reading counts people and a Marked person among them registers evil by chance
+## (Tuning.Setup.MARKED_EVIL_CHANCE, sim World.registers_evil): the Dowser and Hearthwitch
+## (a group count), the Surveyor (blocks, or a parity of a block), the Magistrate (parity).
+static func marked_counts(card: Dictionary) -> bool:
+	if str(card.get("kind", "")) != "report" or card.get("quoted", false):
+		return false
+	var role: String = str(card.get("role", ""))
+	if role in ["surveyor", "magistrate"]:
+		return true
+	var rdef = C.role_def(role)
+	return rdef != null and ((rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count") or (rdef.shape == "GROUP_COUNT" and rdef.count_mode == "blocks"))
+
+## How well a counting reading fits this world when its content holds only under one
+## registration of the world's Marked person: the chance of that registration (Michael's
+## design: Marked registers evil half the time), as the Seer's Marked weight does. 1 when the
+## Marked person doesn't change the count, or there's none; the content table handles a miss.
+## Measurement switch: on in play; off, a counting reading takes either registration in full.
+static var marked_count_weighting: bool = true
+
+static func marked_count_weight(view: Dictionary, world: Dictionary, card: Dictionary) -> float:
+	if not marked_count_weighting or int(world.get("marked", -1)) < 0 or not marked_counts(card):
+		return 1.0
+	_mark_reads_only = 1
+	var as_evil: bool = _report_content(view, world, card, {})
+	_mark_reads_only = 0
+	var as_good: bool = _report_content(view, world, card, {})
+	_mark_reads_only = -1
+	if as_evil == as_good:
+		return 1.0
+	var p: float = Tuning.Setup.MARKED_EVIL_CHANCE
+	return p if as_evil else 1.0 - p
+
 ## What a report says, given a valid source (see source_valid): does it hold here?
 static func _report_content(view: Dictionary, world: Dictionary, card: Dictionary, answer: Dictionary) -> bool:
 	return _report_content_impl(view, world, card, answer, false)
@@ -1501,7 +1545,7 @@ static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dict
 				p_evil_bits |= (1 << int(world.converted))
 		var grp_sz: int = popcount(p_group_m)
 		var want_same: bool = bool(d.get("same", false))
-		for mark_reads in ([true] if not p_req_marked.is_empty() else [false, true]):
+		for mark_reads in _mark_options(not p_req_marked.is_empty()):
 			var pos_m: int = p_evil_bits | ((1 << int(world.marked)) if (mark_reads and int(world.marked) >= 0) else 0)
 			if not p_ans_pos.is_empty() and (pos_m & p_ans_m) != p_ans_m:
 				continue
@@ -1544,7 +1588,7 @@ static func _report_content_impl(view: Dictionary, world: Dictionary, card: Dict
 	for id in required_marked:
 		if person_index(view, id) != world.marked:
 			return false
-	for mark_reads in ([true] if not required_marked.is_empty() else [false, true]):
+	for mark_reads in _mark_options(not required_marked.is_empty()):
 		var pos_mask: int = evil_bits | ((1 << world.marked) if (mark_reads and world.marked >= 0) else 0)
 		if (pos_mask & ans_mask) != ans_mask:
 			continue

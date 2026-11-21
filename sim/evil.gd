@@ -1311,6 +1311,9 @@ static func evil_vote(w, v, nominee: String, yes_so_far: int, player_yes: bool =
 	elif block != "" and w.by_id[block].is_evil() and block != nominee:
 		yes = true
 		why = "A teammate is on the block; votes to replace them with a good NPC."
+	elif load("res://sim/burdens.gd").omen_push(w, v, nominee):
+		yes = true
+		why = "A real Ill-Omened: hanging them poisons every good gift for a night."
 	elif nominee == w.evil_plan["scapegoat"]:
 		yes = true
 		why = "Votes to hang the scapegoat."

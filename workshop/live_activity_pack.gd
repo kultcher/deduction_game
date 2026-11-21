@@ -174,6 +174,12 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 				flags |= (1 << 14)  # FlagTellerToldCursed
 		if kind_code == 9 and claim_walks(card):
 			flags |= (1 << 15)  # FlagClaimWalks: an Unrequited claim
+		if kind_code == 5 and bool(card.get("known_self", false)) and card.has("route"):
+			flags |= (1 << 16)  # FlagKnownRoute: the listener's own walk that night
+			var r_mask: int = 0
+			for b in card.route:
+				r_mask |= 1 << _block_code(str(b))
+			card_ints[off + 17] = r_mask
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))

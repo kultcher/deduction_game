@@ -18,8 +18,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world_night.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/world.gd` |
-| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd` |
-| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd` |
+| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd`, `workshop/solver.gd` |
+| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd`, `workshop/cs/RoleConstraints.cs` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
 | `EXTRA_WORK_SHIFT_CHANCE` | `0.0` | Nov 10: everyone works a single shift (was 0.3) | `sim/world.gd` |
 | `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
@@ -174,8 +174,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EXEC_READING_MIN_EVIL_SUSP` | `0.22` |  | `sim/world_meeting.gd` |
 | `CONFIDENCE_BROKEN_BASE` | `0.05` | Broken confidence & spread secrets | `game/game_board.gd` |
 | `CONFIDENCE_BROKEN_PRIVACY` | `0.2` |  | `game/game_board.gd` |
-| `SECRET_SPREAD_BASE` | `0.08` |  | `sim/mind_cases.gd` |
-| `SECRET_SPREAD_PRIVACY` | `0.4` |  | `sim/mind_cases.gd` |
+| `SECRET_SPREAD_BASE` | `0.08` |  | `sim/burdens.gd`, `sim/mind_cases.gd` |
+| `SECRET_SPREAD_PRIVACY` | `0.4` |  | `sim/burdens.gd`, `sim/mind_cases.gd` |
 | `SECRET_SPREAD_REPEAT_MULT` | `0.4` |  | `sim/mind_cases.gd` |
 | `SECRET_CAP_HIGH_PRIVACY` | `0.3` |  | `sim/mind_cases.gd` |
 | `SECRET_CAP_MID_PRIVACY` | `0.6` |  | `sim/mind_cases.gd` |
@@ -387,7 +387,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `REVEAL_SUSPICION_PIVOT` | `0.45` |  | `sim/mind_meeting.gd`, `sim/mind_nomination.gd` |
 | `REVEAL_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd`, `sim/mind_nomination.gd` |
 | `REVEAL_CONFIDENCE_SLOPE` | `0.6` |  | `sim/mind_meeting.gd` |
-| `ACCUSE_SUSPICION_PIVOT` | `0.6` |  | `sim/mind_meeting.gd` |
+| `ACCUSE_SUSPICION_PIVOT` | `0.6` |  | `sim/burdens.gd`, `sim/mind_meeting.gd` |
 | `ACCUSE_SUSPICION_SLOPE` | `1.5` |  | `sim/mind_meeting.gd` |
 | `ACCUSE_CONFIDENCE_SLOPE` | `0.8` |  | `sim/mind_meeting.gd`, `sim/mind_support.gd` |
 | `ACCUSE_PRESSURE_DEFLECT` | `0.4` |  | `sim/mind_meeting.gd` |
@@ -525,6 +525,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_CAUTION_MINION` | `0.7` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_ID_DRIFT` | `0.08` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_CAUTION_FLOOR` | `0.25` |  | `sim/content.gd`, `sim/evil.gd` |
+| `OMEN_PUSH_STAKES` | `0.35` | A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the usual exposure cost. Sized so that on a close vote a Minion under about the median scrutiny votes yes, and under heavy scrutiny keeps cover. | `sim/mind_meeting.gd`, `sim/mind_vote.gd` |
 | `DEMON_CAUTION_FLOOR` | `0.45` |  | `sim/evil.gd` |
 | `DEMON_CAUTION_DRIFT` | `0.03` |  | `sim/evil.gd` |
 | `HEAT_FADE` | `0.75` |  | `sim/evil.gd` |
@@ -629,14 +630,14 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `BLUFF_RUMORMONGER_DAMP` | `0.5` |  | `sim/burdens.gd` |
 | `SILENCE_START` | `0.05` | Evil's unprompted claim at the meeting ("bolder with silence", Michael Q16): the public share x (SILENCE_START + SILENCE_PER_DAY x silent days) x (1 - caution). With caution about 0.7, about 1 in 400 per evil NPC on day 1. Beadle's estimates. | `sim/burdens.gd` |
 | `SILENCE_PER_DAY` | `0.3` |  | `sim/burdens.gd` |
-| `UNREQUITED_VISIT_CHANCE` | `0.5` | The Unrequited's night visit to the beloved's door (or grave): the chance each night. PLACEHOLDER, awaiting Michael (proposed via Seneschal, Nov 21); Lantern's movement allowance assumes the same value. | `sim/burdens.gd` |
+| `UNREQUITED_VISIT_CHANCE` | `0.65` | The Unrequited's night visit to the beloved's door (or grave): the chance each night, and never two nights running without one (Michael, Nov 21). | `sim/burdens.gd`, `workshop/live_activity.gd`, `workshop/live_activity_factors.gd`, `workshop/live_activity_profiles.gd` |
 
 ## Workshop
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval_base.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/source_doubt.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/live_activity_profiles.gd`, `workshop/source_doubt.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity_pack.gd`, `workshop/live_activity_profiles.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity_factors.gd` |
@@ -688,6 +689,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `BURDEN_BLUFF_REACTIVE` | `0.11` | A claimed burden (burdens prototype; Michael, Nov 21): how much likelier an evil player is to make the claim than a real holder, by whether it answers an evil reading of them (`RoleConstraints.burden_claim_factors`). Measured (Beadle, 277 passive 10-NPC games, seeds 7000-7276, 142 dealt Marked): read evil, evil bluffed Marked in 20 of 180 chances, and all 18 holders read evil claimed. Unprompted: below zero means the deal's own share (the chance a good claimant holds that burden), which leaves an unprompted claim neutral (Michael); measured, it was about 0.08 (27 claims from 831 evil players against 56 of 142 holders). | `workshop/role_constraints.gd` |
 | `BURDEN_BLUFF_UNPROMPTED` | `-1.0` |  | `workshop/role_constraints.gd` |
 | `BURDEN_REACTIVE_SOFTEN` | `0.68` | Softens the reactive ratio so a claim answering an evil reading leaves its claimant about where the reading left them (Michael, Nov 21, revised: neutral against silence): within about 2 points either side after a Seer's yes in the 7- and 10-person towns. | `workshop/role_constraints.gd` |
+| `BURDEN_BLUFF_UNREQUITED_SIGHTED` | `0.85` | An Unrequited claim told only after its claimant was seen out at night (and with no evil reading of them first): how much likelier an evil player is to make it than a real holder. Set by feel so the claim lands about where the sighting left them (Michael, Nov 21, provisional): in the 7-person test, seen out twice on the beloved's block, 37.6% evil with no claim, 36.7% with it (it was 5.0% at the Marked reactive weight). No sweep has measured it: passive games make no Unrequited claims. | `workshop/role_constraints.gd` |
 | `CHANCE_CONTENT_FLOOR` | `0.01` | Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds where a report's content holds). | `workshop/case_eval_content.gd` |
 | `VIGIL_MISS` | `0.05` | A player vigil that should have seen someone and didn't: the town's allowance that the Demonologist missed them (the player can't be wrong; the town doesn't know that). With the walker-claim split below, an empty vigil on a claimed walker's block is about 10:1 against the claim (strong, not certain). Mirrored as `VigilMiss` in `workshop/cs/LiveActivity.cs`. | `workshop/live_activity_base.gd` |
 | `GOOD_OWN_ALIBI_OUT` | `0.2` | A good person who was out at night still telling the town "I was home": hiding a night gift or a personal secret, or a Sleepwalker who believes it. Measured Nov 17 (40 passive 10-NPC games, every NPC asked each morning): 26% of good people who were out said "home" to the player (51 of 199); good people at home always said so. Before Nov 17 the judge took a good person's own alibi as certain, so a caught "home" lie was proof of evil (Michael: "a caught lie from someone who could be good stops being proof"). Evil's own alibi stays 0.7 out / 0.9 home. A witness's alibi for someone else stays hard. Mirrored as `GoodOwnAlibiOut` in `workshop/cs/LiveActivity.cs`. | `workshop/cs/LiveActivity.cs`, `workshop/live_activity_base.gd` |

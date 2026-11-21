@@ -68,9 +68,13 @@ static func _list_mix(view: Dictionary, cards: Array, observations: Array, lists
 	var own: Dictionary = view.get("own_home", {})
 	var me_id: String = str(own.get("self", ""))
 	var home_nights: Dictionary = own.get("nights", {})
+	var out_nights: Dictionary = own.get("out_nights", {})
 	var known_false := func(x: Dictionary) -> bool:
-		return me_id != "" and str(x.get("kind", "")) == "sighting" and not x.get("quoted", false) \
-			and home_nights.has(str(int(x.get("night", -1)))) and me_id in x.get("subjects", [x.get("subject", "")])
+		if me_id == "" or str(x.get("kind", "")) != "sighting" or x.get("quoted", false) or not me_id in x.get("subjects", [x.get("subject", "")]):
+			return false
+		var nk: String = str(int(x.get("night", -1)))
+		# Home that night, or out on other blocks than the one it puts me on (gap 2).
+		return home_nights.has(nk) or (out_nights.has(nk) and str(x.get("block", "")) not in out_nights[nk])
 	var private_free: Callable = func(cs: Array) -> Array: return cs.filter(func(x): return not x.get("known_self", false) and not known_false.call(x))
 	var log_scale: float = _log_good_of(view, private_free.call(cards)) - _log_good_of(view, private_free.call(broken_cards))
 	# A count that no route mask of the other movement evidence fits makes the sound branch

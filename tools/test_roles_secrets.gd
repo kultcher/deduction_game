@@ -12,6 +12,7 @@ const UITheme = preload("res://ui/theme.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
 const ScriptDef = preload("res://sim/script_def.gd")
 const Solver = preload("res://workshop/solver.gd")
+const Tuning = preload("res://sim/tuning.gd")
 const Social = preload("res://sim/social.gd")
 
 var checks = 0
@@ -64,6 +65,8 @@ func _run_roster() -> void:
 func _run_chunk4_psychologist_mudd() -> void:
 	_test_secret_domain_and_premise()
 	_test_burden_claim()
+	_test_seer_before_scion()
+	_test_marked_count_weight()
 	_test_omen_window()
 	_test_retired_secret_in_saved_script()
 
@@ -254,6 +257,37 @@ func _test_burden_claim() -> void:
 ## worlds where the claimant truly held the burden (every good person was poisoned), so it
 ## counts for less than the same reading outside one, but not nothing (the claimant may have
 ## bluffed).
+## A Seer reading made before a Scion rose reads the Demon of its night (reading-note gap 1,
+## Nov 21): a true early "yes" on the Demon later hanged, with the Scion risen, must not push
+## the suspicion onto the other person named.
+func _test_seer_before_scion() -> void:
+	var people: Array = []
+	for i in range(7):
+		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": i != 1})
+	var hanged: String = people[1].id
+	var view: Dictionary = {
+		"people": people, "evil_count": 2, "alignment_epoch": "Original alignment", "script_minions": ["scion"],
+		"world_options": {"modifiers": ["delusional", "marked"], "roles": true, "identities": true, "bluffs": true},
+		"timeline": {"events": [], "deaths": {hanged: 2}, "death_ticks": {hanged: 2 * 4 + 2}, "executions": {"2": [hanged]}},
+	}
+	var claim: Dictionary = {"id": "sc0", "fact_id": "sc0", "kind": "claim", "source": people[4].id, "subject": people[4].id, "role": "seer",
+		"observed_at": {"day": 1, "phase": "morning"}, "text": "claims Seer"}
+	var yes: Dictionary = {"id": "sy0", "fact_id": "sy0", "kind": "report", "role": "seer", "source": people[4].id,
+		"observed_at": {"day": 0, "phase": "night"}, "reported_at": {"day": 1, "phase": "morning"}, "night": 0,
+		"data": {"pair": [hanged, people[3].id], "yes": true}, "text": "Seer yes on the later-hanged and another"}
+	var post = func(cards: Array, who: int) -> float:
+		var cs = Solver.empty_case()
+		cs.conclusion = {"type": "evil", "target": people[who].id, "at": "Original alignment"}
+		cs.cards = cards.map(func(c): return c.id)
+		view["cards"] = cards
+		return float(CaseEval.evaluate(view, cs).posterior)
+	var other_claim: float = post.call([claim], 3)
+	var other_yes: float = post.call([claim, yes], 3)
+	var hanged_yes: float = post.call([claim, yes], 1)
+	print("Seer yes on night 0 for the later-hanged %s and %s, a Scion since risen: %s %.3f -> %.3f evil; %s %.3f" % [hanged, people[3].id, people[3].id, other_claim, other_yes, hanged, hanged_yes])
+	# Before the fix both rose alike (0.288 -> 0.326 each); now the yes leans on the hanged.
+	_check(hanged_yes > other_yes + 0.05 and other_yes - other_claim < 0.02, "an early yes on a Demon later hanged, the Scion risen, points at the hanged Demon, not the other person (%.3f against %.3f)" % [hanged_yes, other_yes])
+
 func _test_omen_window() -> void:
 	var people: Array = []
 	for i in range(7):
@@ -283,3 +317,45 @@ func _test_omen_window() -> void:
 	var under: float = post.call([omen_claim, poisoned])
 	print("Omen window: P(the Seer's pair-mate is the Demon) prior %.3f, the yes %.3f, the yes under a fallen omen %.3f" % [prior, plain, under])
 	_check(under < plain - 0.02 and under > prior, "a reading under a fallen omen counts for less than the same reading, but still counts (%.3f < %.3f, > %.3f)" % [under, plain, prior])
+
+
+## A counting reading (Dowser, Surveyor, Hearthwitch, Magistrate) that a Marked person sways
+## is weighed by the chance of the registration that fits (Tuning.Setup.MARKED_EVIL_CHANCE),
+## as the Seer's is, not taken either way in full (Quill's Dowser check, Nov 21).
+func _test_marked_count_weight() -> void:
+	var people: Array = []
+	for i in range(10):
+		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})
+	var D: String = people[0].id
+	var grp: Array = [people[1].id, people[2].id, people[3].id]
+	var view: Dictionary = {"people": people, "evil_count": 3, "alignment_epoch": "Original alignment",
+		"world_options": {"modifiers": ["delusional", "marked", "ill_omened", "unrequited"], "roles": true, "identities": true, "bluffs": true}}
+	var claim: Dictionary = {"id": "mcc", "fact_id": "mcc", "kind": "claim", "source": D, "subject": D, "role": "dowser", "observed_at": {"day": 1, "phase": "morning"}, "text": "claims Dowser"}
+	var rep = func(count: int) -> Dictionary:
+		return {"id": "mcr%d" % count, "fact_id": "mcr%d" % count, "kind": "report", "role": "dowser", "source": D,
+			"observed_at": {"day": 1, "phase": "afternoon"}, "reported_at": {"day": 1, "phase": "afternoon"}, "night": -1,
+			"data": {"group": grp, "count": count, "block": "market"}, "text": "dowser"}
+	var p: float = Tuning.Setup.MARKED_EVIL_CHANCE
+	# One world: nobody in the group evil, the first member Marked.
+	var world: Dictionary = {"evil": (1 << 7) | (1 << 8) | (1 << 9), "demon": 9, "marked": 1, "modifier": "marked", "holders": 0}
+	var w1: float = Solver.marked_count_weight(view, world, rep.call(1))
+	var w0: float = Solver.marked_count_weight(view, world, rep.call(0))
+	var outside: Dictionary = world.duplicate()
+	outside.marked = 5
+	var wout: float = Solver.marked_count_weight(view, outside, rep.call(0))
+	_check(is_equal_approx(w1, p) and is_equal_approx(w0, 1.0 - p) and is_equal_approx(wout, 1.0),
+		"a Marked member explains a Dowser 1 at its registration chance (%.2f), a 0 at the other (%.2f); one outside the group changes nothing (%.2f)" % [w1, w0, wout])
+	var marked_after = func(card: Dictionary, on: bool) -> float:
+		Solver.marked_count_weighting = on
+		preload("res://workshop/caches.gd").clear_all()
+		var cs = Solver.empty_case()
+		cs.conclusion = {"type": "marked", "target": grp[0], "at": "Original alignment"}
+		cs.cards = ["mcc", card.id]
+		view["cards"] = [claim, card]
+		return float(CaseEval.evaluate(view, cs).posterior)
+	var off1: float = marked_after.call(rep.call(1), false)
+	var on1: float = marked_after.call(rep.call(1), true)
+	Solver.marked_count_weighting = true
+	preload("res://workshop/caches.gd").clear_all()
+	print("Dowser 1 on a group of 3, member Marked: %.3f taken either way in full, %.3f weighed" % [off1, on1])
+	_check(on1 < off1 * 0.8, "a Dowser 1 is explained by a Marked member less readily once the registration is weighed (%.3f against %.3f)" % [on1, off1])

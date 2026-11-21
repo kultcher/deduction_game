@@ -496,6 +496,13 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 				elif reg == "marked":
 					reg_code = 3
 				card_ints[off + 19] = reg_code
+				# A reading from before a Scion rose reads the Demon of its night (reading-note
+				# gap 1, Nov 21): the hangings after it that a succession could follow, latest
+				# first, as (hanged, alive mask) in slots 20-23 (Gravedigger's Scion mask).
+				var later: Array = _seer_later_hangings(view, ids, c_night)
+				for k in range(2):
+					card_ints[off + 20 + 2 * k] = int(later[k][0]) if k < later.size() else -1
+					card_ints[off + 21 + 2 * k] = int(later[k][1]) if k < later.size() else 0
 
 		card_ints[off + 1] = flags
 
@@ -629,7 +636,8 @@ static func marked_mask(ids: Array, cards: Array) -> int:
 	return mask
 
 static func seer_flag(cards: Array) -> bool:
-	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"]
+	# Counting readings a Marked person sways read world.marked too (Solver.marked_counts).
+	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar", "dowser", "hearthwitch", "surveyor", "magistrate"]
 		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")))
 
 ## Packs [source, relayer, stmt_tick, forbidden_bits] quads for every claim card with
@@ -819,14 +827,42 @@ static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
 			if burden_code(c) == code and str(c.get("source", "")) == ids[who]:
 				first = mini(first, _first_told_tick(c))
 		var reactive: bool = false
+		var by_reading: bool = false
 		for r in held + cards:
 			if _reading_known_tick(r) <= first and explains_against(view, card, r, who):
 				reactive = true
-				break
-		var factor: float = Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED
+				if names_evil(view, r, who):
+					by_reading = true
+					break
+		# A claim that answers only a sighting (Unrequited explaining a walk) has its own
+		# weight, set so it lands about where the sighting left the claimant (Michael, Nov 21:
+		# provisional, until a sweep can measure how often evil bluffs it).
+		var factor: float = Tuning.Workshop.BURDEN_BLUFF_UNREQUITED_SIGHTED if reactive and not by_reading \
+			else (Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED)
 		if not reactive and factor < 0.0:
 			factor = _deal_share(view, who, kind)
 		out.append([who, factor if burden_factor_override < 0.0 else burden_factor_override, Chronology.tick(Chronology.statement_time(card)), reactive])
+	return out
+
+## The hangings after a Seer reading's night that a Scion's rise could follow: [hanged index,
+## alive-before mask], latest first (at most two are packed).
+static func _seer_later_hangings(view: Dictionary, ids: Array, night: int) -> Array:
+	var out: Array = []
+	var minions: Array = view.get("script_minions", [])
+	if night < 0 or not view.has("timeline") or not (minions.is_empty() or "scion" in minions):
+		return out  # no Scion on the script: no succession (Solver.hanged_context)
+	var execs: Dictionary = view.get("timeline", {}).get("executions", {})
+	var days: Array = execs.keys().map(func(d): return int(d))
+	days.sort()
+	days.reverse()
+	for day in days:
+		if day <= night:
+			continue
+		for target in execs[str(day)]:
+			var idx: int = ids.find(str(target))
+			var mask: int = _scion_exec_alive_demon_mask(view, ids, str(target))
+			if idx >= 0 and mask != 0:
+				out.append([idx, mask])
 	return out
 
 static func _scion_exec_alive_demon_mask(view: Dictionary, ids: Array, target_id: String) -> int:

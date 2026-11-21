@@ -810,6 +810,11 @@ class Evil:
 	const EVIL_CAUTION_MINION = 0.7
 	const MINION_ID_DRIFT = 0.08
 	const MINION_CAUTION_FLOOR = 0.25
+	## A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant
+	## (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the
+	## usual exposure cost. Sized so that on a close vote a Minion under about the median
+	## scrutiny votes yes, and under heavy scrutiny keeps cover.
+	const OMEN_PUSH_STAKES = 0.35
 	const DEMON_CAUTION_FLOOR = 0.45
 	const DEMON_CAUTION_DRIFT = 0.03
 	const HEAT_FADE = 0.75
@@ -1129,6 +1134,13 @@ class Workshop:
 	## where the reading left them (Michael, Nov 21, revised: neutral against silence): within
 	## about 2 points either side after a Seer's yes in the 7- and 10-person towns.
 	const BURDEN_REACTIVE_SOFTEN = 0.68
+	## An Unrequited claim told only after its claimant was seen out at night (and with no evil
+	## reading of them first): how much likelier an evil player is to make it than a real
+	## holder. Set by feel so the claim lands about where the sighting left them (Michael, Nov
+	## 21, provisional): in the 7-person test, seen out twice on the beloved's block, 37.6% evil
+	## with no claim, 36.7% with it (it was 5.0% at the Marked reactive weight). No sweep has
+	## measured it: passive games make no Unrequited claims.
+	const BURDEN_BLUFF_UNREQUITED_SIGHTED = 0.85
 	## Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds
 	## where a report's content holds).
 	const CHANCE_CONTENT_FLOOR = 0.01

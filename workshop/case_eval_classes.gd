@@ -77,7 +77,7 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		key_input.append(case_data.get("reading_challenges", {}).keys())
 	if not view.get("regular_haunts", {}).is_empty():
 		key_input.append(view.regular_haunts)  # traces and presence read the listener's regular knowledge
-	if not view.get("own_home", {}).get("nights", {}).is_empty():
+	if not view.get("own_home", {}).get("nights", {}).is_empty() or not view.get("own_home", {}).get("out_nights", {}).is_empty():
 		key_input.append(view.own_home)  # the movement model reads the listener's known home nights
 	if view.get("timeline", {}).get("events", []).any(func(e): return e.get("kind", "") == "silenced"):
 		key_input.append(view.get("watched", []))  # Breathstealer by presence reads the watch record
@@ -181,6 +181,39 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	var curse_from: int = int(chrono.curse.get("from", 0)) if has_curse else 0
 	var curse_until: int = int(chrono.curse.get("until", 0)) if has_curse else 0
 	var marked_m: int = Solver.Roles.marked_mask(ids, cards)
+	for card in cards:
+		if card.get("quoted", false):
+			continue
+		var cdata: Dictionary = card.get("data", {}) if card.get("data") is Dictionary else {}
+		if card.get("kind", "") == "report" and str(card.get("role", "")) == "seer" and card.get("testimony_only", false):
+			for person in cdata.get("pair", []):
+				var pi: int = ids.find(str(person))
+				if pi >= 0:
+					marked_m |= 1 << pi
+		if Solver.marked_counts(card):
+			var role_s: String = str(card.get("role", ""))
+			if role_s == "magistrate":
+				for person in cdata.get("group", cdata.get("pair", [])):
+					var pi: int = ids.find(str(person))
+					if pi >= 0:
+						marked_m |= 1 << pi
+			elif role_s == "surveyor":
+				if cdata.has("block") and cdata.has("same"):
+					var blk_s: String = str(cdata.get("block", ""))
+					for p_i in range(n_people):
+						if str(view.people[p_i].get("home", "")) == blk_s:
+							marked_m |= 1 << p_i
+				else:
+					marked_m |= (1 << n_people) - 1
+			else:
+				var rdef = Solver.C.role_def(role_s)
+				if rdef != null and rdef.shape == "ROLE_AT_SITE" and rdef.site_mode == "group_count":
+					for person in cdata.get(rdef.site_group_key, []):
+						var pi: int = ids.find(str(person))
+						if pi >= 0:
+							marked_m |= 1 << pi
+				else:
+					marked_m |= (1 << n_people) - 1
 	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
 	var forbidden_specs: PackedInt32Array = Solver.Roles.forbidden_specs(ids, cards) if (live and roles_on) else PackedInt32Array()
 	var curr_conv: bool = Solver._curse_active_at(view, "Current alignment")
@@ -974,6 +1007,12 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 		weights = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, sub_idx)
 	var has_weights: bool = not weights.is_empty()
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
+	# Counting readings a Marked person can sway (Solver.marked_counts): weighed by the chance
+	# of the registration that fits, in worlds where its reader is good, healthy and sound
+	# (Quill's Dowser check, Nov 21). Memoised by what the weight reads.
+	var counting: Array = cards.filter(func(card): return Solver.marked_counts(card))
+	var self_id: String = str(knowledge.get("self", ""))
+	var mc_memo: Dictionary = {}
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1
 	for x in range(which.size()):
@@ -997,6 +1036,14 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			if not rel_readings.is_empty():
 				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
 				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
+		if content > 0.0 and not counting.is_empty():
+			var w_rep2: Dictionary = reps[x] if cc_reps_handle < 0 else universe[cc.rep[which[x]]]
+			if int(w_rep2.get("marked", -1)) >= 0:
+				for card in counting:
+					var mk: Array = [card.get("id", ""), int(w_rep2.evil), int(w_rep2.get("converted", -1)), int(w_rep2.marked), str(w_rep2.get("modifier", "")), int(w_rep2.get("holders", 0))]
+					if not mc_memo.has(mk):
+						mc_memo[mk] = _marked_count_weight(view, w_rep2, card, self_id)
+					content *= float(mc_memo[mk])
 		var w_mult: float = w_all[which[x]] if has_w_all else (weights[x] if has_weights else 1.0)
 		out[which[x]] = content * w_mult
 	return out
@@ -1085,3 +1132,22 @@ static func _expand(cc: Dictionary, oc: Dictionary, w: PackedFloat64Array) -> Pa
 		var k: int = class_of[i] * ns + o
 		out[i] = w[k] / counts[k] if counts[k] > 0.0 else 0.0
 	return out
+
+
+## A counting reading's Marked weight in one world (Solver.marked_count_weight), only where its
+## content is read: a good reader (Solver.source_valid), not the world's Delusional holder
+## (unless it's the listener's own reading), and not under a fallen omen.
+static func _marked_count_weight(view: Dictionary, world: Dictionary, card: Dictionary, self_id: String) -> float:
+	if not Solver.source_valid(view, world, card):
+		return 1.0
+	var src: int = Solver.person_index(view, str(card.get("source", "")))
+	var mod: String = str(world.get("modifier", ""))
+	var holders: int = int(world.get("holders", 0))
+	if src >= 0 and mod == "delusional" and (holders & (1 << src)) and str(card.get("source", "")) != self_id:
+		return 1.0
+	if mod == "ill_omened":
+		for cid in card.get("omen_claimants", []):
+			var ci: int = Solver.person_index(view, str(cid))
+			if ci >= 0 and (holders & (1 << ci)):
+				return 1.0
+	return Solver.marked_count_weight(view, world, card)

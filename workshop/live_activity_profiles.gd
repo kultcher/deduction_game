@@ -108,6 +108,12 @@ static func own_home_cards(view: Dictionary) -> Array:
 		out.append({"id": "own-home:%s:%d" % [me, nd], "kind": "alibi", "source": me, "subject": me, "subjects": [me],
 			"block": str(own.get("block", "")), "night": nd, "observed_at": {"day": nd, "phase": "night"}, "data": {},
 			"known_self": true, "self_doubt": float(own.nights[k])})
+	# Nights out: "I know where I walked" (reading-note gap 2), the same soft knowledge.
+	for k in own.get("out_nights", {}):
+		var nd: int = int(k)
+		out.append({"id": "own-out:%s:%d" % [me, nd], "kind": "alibi", "source": me, "subject": me, "subjects": [me],
+			"block": str(own.get("block", "")), "night": nd, "observed_at": {"day": nd, "phase": "night"}, "data": {},
+			"known_self": true, "route": own.out_nights[k].duplicate(), "self_doubt": Tuning.Workshop.OWN_ERR})
 	out.sort_custom(func(a, b): return a.night < b.night)
 	return out
 
@@ -741,8 +747,19 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 				return 1.0 if not C.vigil_sees_path(card.block, path, _home_of(view, person)) else VIGIL_MISS
 		"alibi":
 			if card.get("known_self", false):
-				# "I know I was home": only a Sleepwalker's doubt leaves room for being out.
-				return 1.0 if card.subject != person or not out else float(card.get("self_doubt", 0.0))
+				if card.subject != person:
+					return 1.0
+				if card.has("route"):
+					# "I know where I walked": out on exactly those blocks (FlagKnownRoute in C#).
+					var walked: Dictionary = {}
+					for b in path:
+						walked[b] = true
+					var known: Dictionary = {}
+					for b in card.route:
+						known[b] = true
+					return 1.0 if out and walked.keys().all(func(b): return known.has(b)) and known.keys().all(func(b): return walked.has(b)) else float(card.get("self_doubt", 0.0))
+				# "I know I was home": only its tiny self-doubt leaves room for being out.
+				return 1.0 if not out else float(card.get("self_doubt", 0.0))
 			if card.subject == person:
 				# Someone else's word on a person's night (a witness) stays hard.
 				if not card.get("quoted", false) and card.get("source", "") != person:
