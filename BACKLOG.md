@@ -64,7 +64,9 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Brute kills scored as hexes on custom scripts `[later]`
   3. Gift doubt for readings the judge doesn't check `[open]`
   4. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  5. Observable actions as evidence (Stage 1B) `[tentative]`
+  5. \*Per-person Demon odds for gifts that target the Demon `[decided]`
+  6. "Not being seen out" as evidence `[open]`
+  7. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -540,6 +542,17 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   refresh never read through a theory and live play didn't use it by default, so it is
   deleted with the purge. Revisit for the connections model. The code survives on the
   branch `archive/legacy-belief-final`. **[tentative]**
+- **Per-person Demon odds for gifts that target the Demon** (Michael, Nov 21). A Seer picks
+  the person most likely to be the Demon, not the most likely evil. That needs each NPC to hold
+  a per-person chance of being the Demon specifically. Being built on the Burdens prototype. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1. Owner Lantern;
+  Beadle uses it for the Seer's picks. **[decided]**
+- **"Not being seen out" as evidence** (Michael, Nov 21). Today nothing clears someone for not
+  having been seen out at night: the judge ignores the chance of being spotted, and only a
+  complete watch list or coverage says someone wasn't out. It goes under the circumstantial
+  hub, since it's hard to confirm and subject to chance. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 1.3. Owner
+  Lantern. **[open]**
 - **Observable actions as evidence (Stage 1B)** (may scale with Insight, like the exact
   broken-reading weighing from Steward A3). Votes, nominations, who defended whom and
   tie-breaks as soft per-world likelihood factors: "voted to execute someone who is good in
