@@ -290,6 +290,60 @@ reveal timing across all roles at once.
 - **With other signs of good:** a stronger clearing, and support for the Dowser not being
   Delusional.
 
+### 2.3 The Surveyor (Michael, Nov 21)
+
+**What the reading does.** The Surveyor starts knowing whether all the residents of one random
+block share the same alignment. The block is never its own, and always has at least two
+residents. The answer is "same" or "mixed".
+
+**What the Surveyor knows about its rules:**
+- a Marked good resident can register as evil, half the time, if Marked is on the script;
+- there's no Red Herring;
+- the block is random, not chosen;
+- it's a reading from before the game starts, so nobody has been turned.
+- **Poison applies:** the Poisoner acts on night 0, before anyone learns anything. Verified in
+  `sim/world_night.gd`: the night-0 poison lands before that night's readings are received.
+
+**How the Surveyor reads its own reading:**
+- **"Same":** all good or all evil. All evil is plausible only on a two-person block, and
+  unlikely even there. On three or more residents it's close to a hard clear of the block. It
+  also means no Marked resident misregistered.
+- **"Mixed":** at least one resident is evil, or a Marked good resident registered as evil. On
+  a two-person block it's sharp: one of the two.
+- **Either answer** can be wrong if the Surveyor was poisoned on night 0 or is Delusional.
+
+**How a resident reads it.** R, good and not Marked:
+- **On "same":** the others on my block are good too, unless the Surveyor is poisoned,
+  Delusional or an evil bluffer, lying.
+- **On "mixed":**
+  1. another resident is evil;
+  2. another resident is Marked and misregistered;
+  3. the Surveyor is poisoned or Delusional;
+  4. the Surveyor is an evil bluffer, lying.
+
+  On a two-person block, 1 and 2 point straight at the other resident.
+- **If R is Marked:** on "mixed", R may be the cause.
+
+**Target choice:** none.
+
+**Hiding and revealing:** it holds one reading, and once that's out it has nothing more for the
+Demon to fear. It's likely to reveal on day 1 (Michael, Nov 21). "Same" clears people, and
+"mixed" on a small block is close to an accusation.
+
+**Reading with other readings:**
+- **With its own readings:** there are none.
+- **With night sightings:** a resident of a "mixed" block seen out at night is moderate
+  evidence that they're the evil one, if they've claimed a role that doesn't walk at night or
+  haven't claimed at all. Otherwise it's weak (Michael, Nov 21).
+- **With alignment readings on residents:**
+  - a good reading on one resident of a two-person "mixed" block strongly points at the other;
+  - an evil reading on a resident of a "same" block means one of the readings is wrong or a
+    lie: the Surveyor or the other reader may be poisoned, Delusional, or an evil bluffer.
+- **With the Dowser** (Michael, Nov 21):
+  - a Dowser clear on a resident is moderate support that the resident is good;
+  - a Dowser ping that includes a resident of a "mixed" block is weak support that they're one
+    of the evil ones on that block.
+
 ## 3. Open questions for the cross-check
 
 - **Agreement lowering self-doubt** (Michael, Nov 21): the more a reader's readings line up
