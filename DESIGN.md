@@ -1323,6 +1323,9 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   frozen before votes, executions and nights. The latest pre-outcome copy is scored at the
   end; abandoned earlier guesses are kept but don't count. One candidate per evil identity.
   Opening a debug grimoire (or the debug overlay) disqualifies identification credit.
+  - *Planned (Michael, Nov 20; not built):* the scored guess becomes the last one locked in
+    the daily evil-team guess window, not the latest pre-outcome copy. See
+    [grim_reveal.md](docs/design/grim_reveal.md#2a-the-daily-evil-team-guess).
 - **Results** distinguish identifying the demon, identifying a minion, saving the town and
   preserving good townsfolk. "Identified but lost" is descriptive partial credit.
 - **Executions** log nomination, votes and explicit statements; the player's stance is
