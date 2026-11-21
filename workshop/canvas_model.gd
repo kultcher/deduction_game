@@ -16,6 +16,15 @@ var serial = 0
 ## Whether answers can say "registered as Marked" (premises step 2: the live editor says
 ## Marked with a secret premise instead, and turns this off).
 var marked_answers: bool = true
+
+## Whether Marked is on the case's script (the view's world options; unknown keeps it), so a
+## "registered as Marked" answer is never offered when it can't be true (reading_interpretation.md §2.1).
+func marked_possible() -> bool:
+	return "marked" in view.get("world_options", {}).get("modifiers", ["marked"])
+
+## Marked answers, where the board allows them and the script has Marked.
+func marked_answers_open() -> bool:
+	return marked_answers and marked_possible()
 ## Claim cards the last compile() brought in by itself (premises step 2).
 var auto_cards: Array = []
 ## Whether two contradicting cards stay separate, joined by a "contradicts" link (the live
@@ -1125,7 +1134,7 @@ func apply_answer(card: Dictionary, previous: Dictionary, kind: String, value: S
 				else:
 					answer["in_play_role"] = value
 		"reg":
-			if value != "marked" or marked_answers:
+			if value != "marked" or marked_answers_open():
 				answer["registration"] = value
 		"pick":
 			if (role in ["dowser", "magistrate"] or is_parity_surv) and not marked_answers:
