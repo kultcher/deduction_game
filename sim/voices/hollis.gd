@@ -294,4 +294,7 @@ const LINES = {
 	"burden_ill_omened_counterclaim": "{claimant} is lying. I am the Ill-Omened, and there is only one.",
 	"burden_denial": "I am not {burden}. Your informant is mistaken.",
 	"burden_double_claim": "{a} and {b} both profess to be {burden}. There is only one; one of them is lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before the vote, let it be recorded: I am Ill-Omened. Hang me, and a cost falls on us all.",
+	"burden_ill_omened_early": "Consider where this leads. I am Ill-Omened, and my hanging would cost the town.",
 }
