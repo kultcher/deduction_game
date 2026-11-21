@@ -489,6 +489,10 @@ Michael ruled that no NPC line may mention the effect.
   - **The counter-claim** is unchanged.
 - **The script sheet:** "If hanged after claiming this burden, every good person is poisoned
   until the start of the next night."
+  - *Pending Michael (Quill's question):* a meeting-time hanging happens during the day, so
+    "until the start of the next night" only covers the rest of that day, and the night's
+    readings come out clean. The old "drunk" version covered that night. Seneschal suggests
+    "until the next dawn".
 - **The board marker** after a claimed Ill-Omened is hanged stays vague, e.g. "The omen may
   have fallen", with no mention of poison. Herald drafts it, and the wording is Michael's.
 - **No new Mistaken cause.** The existing poison cause covers it. The #455 Poisoner nudge still

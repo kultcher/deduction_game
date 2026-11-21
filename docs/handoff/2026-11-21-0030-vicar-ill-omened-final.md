@@ -18,3 +18,7 @@ Michael's Ill-Omened answers (Nov 21, through Seneschal), in `docs/design/burden
 
 Section 11 is rewritten. The table in 2.1 and section 9's Q5, Q6, Q10 and Q24 now say
 "poisoned".
+
+**Added (pending):** Quill's question on the window, now with Michael. "Until the start of the
+next night" after a daytime hanging misses that night's readings. Seneschal suggests "until
+the next dawn". It's noted as pending in section 11.
