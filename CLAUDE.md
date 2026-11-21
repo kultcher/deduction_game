@@ -102,11 +102,17 @@ The cloud environment's setup script installs Godot at `/usr/local/bin/godot`
   explain, resolve it, then comment `@codex review` (the one `@` mention allowed in
   GitHub text). Its findings have nearly always been real. A follow-up commit that changes
   only strings, docs or tests needs no new review (Michael, Nov 19).
-- **How Bailiff checks a PR before merging (Michael, Nov 19):**
+- **How Bailiff checks a PR before merging (Michael, Nov 21; replaces the Nov 19 rule):**
   - **Zero-drift and text-only PRs:** Bailiff relies on CI, with no local re-run. CI's
     golden diff and suites run on the PR merged with main.
-  - **Golden-moving PRs and changes to what NPCs believe (`sim/`, `workshop/`):** Bailiff
-    still runs them locally on the current main.
+  - **Golden-moving PRs and changes to what NPCs believe (`sim/`, `workshop/`):** when
+    CI's last run included every code merge to main since, Bailiff relies on CI's suites
+    and runs only a quick local check on current main: a golden capture against the
+    PR's baseline, the catalogue check (`tools/tuning_index.py` leaves
+    `tuning_catalogue.md` unchanged), and the suites the PR touches. About 5 to 10
+    minutes.
+  - **A full local run (about an hour)** only when CI's run is stale against code merged
+    to main since, or the PR's files overlap a recent merge.
   - **Wording and docs PRs:** may be batched into one merge pass.
 - **Git:** never force-push, never delete remote branches (Michael does), never rewrite
   main. Branches are `claude/<topic>`; `mock/<topic>` is for experiments that must never
