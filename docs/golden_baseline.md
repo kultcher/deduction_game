@@ -44,7 +44,32 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
+
+`tools/golden/baseline_1d59c5a/` is the capture from `claude/beadle-martyr-bluff-quiet` at `1d59c5a`
+(main at `8d60e8e`, after #455, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_8d60e8e`:** only 692, at record 228 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
+
+`tools/golden/baseline_8d60e8e/` is the capture from `claude/self-doubt-poisoner` at `8d60e8e` (main at
+`bcc702a`, merged in). A listener who hears a reader say its gift may have been turned nudges
+suspicion toward anyone seen on that reader's block on a night it read, as an accepted Mistaken call
+does; and the Poisoner nudges (the strongest one, once) now add to a clear instead of overriding it.
+- **Divergence from `baseline_6836d21`:** one seed.
+  - **42**, record 35 (Nisha's refresh, day 2 afternoon): Agnes, seen on a self-doubting
+    reader's block, is pressed a little more (requested 0.113 to 0.146).
+  - 54875, 692, 900 and 98933 are identical. (On earlier baselines 54875 also moved, where a
+    cleared Isolde was nudged; since #444 that refresh no longer arises.)
+- **Outcomes:** unchanged on all five seeds (the same hangings).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
 
 `tools/golden/baseline_6836d21/` is the capture from `claude/joint-reasons-combined` at `6836d21`
 (main at `03968fd` after #448, merged in). A "taken together" reason names only two cards the
