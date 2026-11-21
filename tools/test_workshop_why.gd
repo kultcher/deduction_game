@@ -123,7 +123,7 @@ func _evidence() -> void:
 	var card: Dictionary = Solver.card_by_id(prepared.view, row.id)
 	var universe: Array = Solver.universe(prepared.view)
 	var idx: Array = [p[3].id, p[4].id, p[5].id].map(func(id): return Solver.person_index(prepared.view, id))
-	var holds := 0
+	var holds := 0.0
 	var valid := 0
 	for world in universe:
 		if not Solver.source_valid(prepared.view, world, card):
@@ -133,10 +133,17 @@ func _evidence() -> void:
 		for i in idx:
 			if (int(world.evil) >> i) & 1 == 1:
 				evil_n += 1
-		# A Marked member may register either way; count only the plain worlds' rule here.
-		if evil_n == 2:
-			holds += 1
-	var brute: float = float(holds) / float(valid)
+		# A good Marked member registers evil half the time (Tuning.Setup.MARKED_EVIL_CHANCE).
+		# With four burdens dealt (burdens prototype) the plain rule alone fell outside the
+		# tolerance, so the brute count takes the Marked member in too.
+		var m: int = int(world.get("marked", -1))
+		var marked_in: bool = m >= 0 and m in idx and (int(world.evil) >> m) & 1 == 0
+		if not marked_in:
+			holds += 1.0 if evil_n == 2 else 0.0
+		else:
+			var pm: float = Tuning.Setup.MARKED_EVIL_CHANCE
+			holds += (pm if evil_n == 1 else 0.0) + ((1.0 - pm) if evil_n == 2 else 0.0)
+	var brute: float = holds / float(valid)
 	print("dowser 2-of-3: world share %.4f, brute count %.4f, q used %.4f" % [row.world_share, brute, row.q_used])
 	check(absf(float(row.world_share) - brute) < 0.06, "the card's world share matches a count over the worlds (%.3f vs %.3f)" % [row.world_share, brute])
 	check(is_equal_approx(float(row.q_used), CaseEval.chance_content(prepared.view, card)), "q is the model's own chance_content")

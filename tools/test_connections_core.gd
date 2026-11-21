@@ -276,10 +276,17 @@ func _same(a: Dictionary, b: Dictionary) -> bool:
 
 
 func _states(seed_v: int, npcs: int, day: int, most: int, need_arrival: bool = true) -> int:
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, npcs)
-	_play(g, day)
+	# From seed_v on, the first game that reaches the meeting (seed 900 ends on day 2 since the
+	# burdens deal moved its game; tools/fixture_seeds.gd practice).
+	var g = null
+	for s_try in range(seed_v, seed_v + 10):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(s_try, npcs)
+		_play(g, day)
+		if g.state == "meeting":
+			seed_v = s_try
+			break
 	var tag: String = "seed %d" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])
@@ -440,10 +447,17 @@ func _refresh(g, n) -> Dictionary:
 func _in_game(seed_v: int, npcs: int, day: int) -> void:
 	LiveActivity.cache.clear()
 	Caches.clear_all()
-	var g = Game.new()
-	g.detailed_logging = false
-	g.new_case(seed_v, npcs)
-	_play(g, day)
+	# From seed_v on, the first game that reaches the meeting (seed 900 ends on day 2 since the
+	# burdens deal moved its game; tools/fixture_seeds.gd practice).
+	var g = null
+	for s_try in range(seed_v, seed_v + 10):
+		g = Game.new()
+		g.detailed_logging = false
+		g.new_case(s_try, npcs)
+		_play(g, day)
+		if g.state == "meeting":
+			seed_v = s_try
+			break
 	var tag: String = "seed %d, model on" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])
