@@ -11,6 +11,11 @@ extends RefCounted
 const Tuning = preload("res://sim/tuning.gd")
 
 # Core identity & script metadata (mirrors C.ROLES dictionary entries)
+## Presentation only: the current case's possible burdens, set by Game.new_case, so a card's
+## reminder can leave out a burden that isn't on the script. Empty means unknown (keep all).
+## The simulation never reads it.
+static var script_secrets: Array = []
+
 var id: String = ""
 var display_name: String = ""
 var align: String = "good"        # "good" | "evil"

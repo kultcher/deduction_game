@@ -69,7 +69,9 @@ static func cause_reaches(cause: String, card: Dictionary, transmission: bool = 
 	if rdef == null:
 		return false
 	if cause == "red_herring":
-		return rdef.red_herring_registers
+		# The Red Herring reads falsely as the Demon, so it explains only a reading that points
+		# at someone (a Seer's "yes"), never one that clears them (docs/design/reading_interpretation.md §2.1).
+		return rdef.red_herring_registers and not rdef.implicated(card.get("data", {})).is_empty()
 	if cause == "marked":
 		var data: Dictionary = card.get("data", {})
 		return rdef.marked_registers and (not rdef.implicated(data).is_empty() or rdef.clears(data).is_empty())
@@ -86,7 +88,8 @@ static func poison_reaches(card: Dictionary, transmission: bool = false) -> bool
 
 ## Whether a Mistaken call on this reading is allowed: some cause the case's world allows
 ## reaches it. The view knows the script's minions and secrets; a Red Herring is judged by
-## the reading itself, since a Seer's reading means a Seer is on the script.
+## the reading itself, since a Seer's reading means a Seer is on the script (and it reaches
+## only a "yes").
 static func honest_allowed(view: Dictionary, card: Dictionary, attribution: String = "") -> bool:
 	var transmission: bool = card.has("relay_source") and attribution == "transmission"
 	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
