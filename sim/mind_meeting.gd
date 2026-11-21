@@ -773,9 +773,11 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 				for seen_id in e.get("data", {}).get("seen", []):
 					n.told_to["town|sighting:%s:%s:%d:%d:%s" % [n.id, str(seen_id), nw_day, C.NIGHT, nw_blk]] = true
 			shared_this_turn.append(e)
-			# A reading naming a good townsperson alone as evil: they know it's false (caught lying).
+			# Anyone the reading names who knows it's false about them (caught lying): caught_lying
+			# decides per person (a route report by their own nights; an evil reading only when it
+			# names them alone).
 			for t_id in implicated(e):
-				if implicated(e).size() == 1 and w.by_id.has(t_id):
+				if w.by_id.has(t_id):
 					load("res://sim/social.gd").caught_lying(w, w.by_id[t_id], n.id, "reading", {"entry": e})
 			var pub_fact: Dictionary = info_fact(w, n, e)
 			facts.append(pub_fact)

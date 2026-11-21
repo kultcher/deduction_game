@@ -532,8 +532,10 @@ static func caught_lying(w, target, teller_id: String, kind: String, data: Dicti
 			if not target.id in e.get("data", {}).get("seen", []):
 				return false
 			return caught_lying(w, target, teller_id, "sighting", {"day": int(e.get("day", -1))})
-		if str(e.get("role", "")) == "medium":
-			return false  # a relayed reading: the Medium vouches for what it heard, not its content
+		if str(e.get("role", "")) in ["medium", "registrar"]:
+			# A Medium relays what it heard; a Registrar's yes says it holds one of the listed
+			# roles, good ones included, not that it's evil (Codex on #506). Neither asserts evil.
+			return false
 		if target.is_evil() or Gifts.implicated(e) != [target.id]:
 			return false
 		key = "caught:%s:reading:%d:%s" % [teller_id, int(e.get("day", -1)), str(e.get("role", ""))]

@@ -73,6 +73,15 @@ func _init() -> void:
 	_check(not Social.caught_lying(w, me, watcher.id, "reading", {"entry": route_out}), "a Night Watch truly seeing it out is no lie")
 	var route_home: Dictionary = {"role": "nightwatch", "day": 1, "data": {"seen": [me.id], "block": "market"}, "text": "x"}
 	_check(Social.caught_lying(w, me, watcher.id, "reading", {"entry": route_home}), "but one placing it out on a night it was home is")
+	# A Night Watch route naming several, one of them home that night (Codex on #506).
+	var other2 = goods[7] if goods.size() > 7 else goods[5]
+	var watcher2 = goods[5] if other2 != goods[5] else goods[4]
+	me.dialogue_memory.erase("caught:%s:sighting:1" % watcher2.id)
+	var route_many: Dictionary = {"role": "nightwatch", "day": 1, "data": {"seen": [other2.id, me.id], "block": "market"}, "text": "x"}
+	_check(Social.caught_lying(w, me, watcher2.id, "reading", {"entry": route_many}), "a route naming several still catches the one it puts out wrongly")
+	# A Registrar's yes says it holds a listed role, good ones included: no evil asserted.
+	var reg: Dictionary = {"role": "registrar", "day": 1, "data": {"target": me.id, "yes": true, "roles": ["clerk", "poisoner"]}, "text": "x"}
+	_check(not Social.caught_lying(w, me, goods[6].id, "reading", {"entry": reg}), "a Registrar's yes isn't an evil reading")
 	# Evil isn't caught out by a true evil reading of it.
 	var ev = w.npcs.filter(func(m): return m.is_evil())[0]
 	var e2: Dictionary = {"role": "martyr", "day": 1, "data": {"target": ev.id, "evil": true}, "text": "x"}
