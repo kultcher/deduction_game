@@ -1,5 +1,6 @@
 ## Restricted live comparison. Pure inputs/outputs; no simulation objects or effects.
 extends RefCounted
+const Chronology = preload("res://workshop/chronology.gd")
 const Tuning = preload("res://sim/tuning.gd")
 ## The burdens a confession can name (docs/design/burdens.md): those a script deals, plus the
 ## first slate's other known burdens, so a claimed Unrequited night visit can explain an outing
@@ -136,6 +137,21 @@ static func prepare(snapshot: Dictionary) -> Dictionary:
 		"own_home": snapshot.get("own_home", {}).duplicate(true)}
 	if not history.value.is_empty():
 		view["chronology"] = history.value
+	# Ill-Omened (burdens prototype): a claimed Ill-Omened hanged after restating it at the
+	# nomination may have poisoned every good person from that night until the next night
+	# starts. Each reading observed inside such a window carries the claimants whose hanging it
+	# could have fallen under; the judge reads it as unhealthy in worlds where one of them truly
+	# held the burden (Solver.valid_table, RoleConstraints).
+	var omens: Array = snapshot.public_events.filter(func(e): return e.kind == "omen_hanged" and e.subjects.size() == 1)
+	if not omens.is_empty():
+		view["omen_windows"] = omens.map(func(e): return {"claimant": e.subjects[0], "from": int(e.at.day) * 4 + 3, "until": (int(e.at.day) + 1) * 4 + 3})
+		for card in cards:
+			if card.kind != "report" or card.get("quoted", false):
+				continue
+			var t: int = Chronology.tick(card.observed_at)
+			var under: Array = view.omen_windows.filter(func(o): return t >= o.from and t < o.until).map(func(o): return o.claimant)
+			if not under.is_empty():
+				card["omen_claimants"] = under
 	for card in cards:
 		if card.kind == "attack":
 			view.timeline.events.append({"kind": "demon_attack", "subjects": [card.data.target], "at": {"day": card.night, "phase": "night"}, "by": ""})

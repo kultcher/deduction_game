@@ -704,7 +704,17 @@ static func valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
 static func _valid_table_dispatch(view: Dictionary, card: Dictionary) -> PackedByteArray:
 	var u_key: String = _universe_key(view)
 	var u_worlds: Array = universe(view)
-	return _valid_table_cs(view, u_key, u_worlds, card)
+	var out: PackedByteArray = _valid_table_cs(view, u_key, u_worlds, card)
+	var omen: int = Roles.omen_mask(person_ids(view), card)
+	if omen != 0:
+		# A reading inside a fallen omen's window is unhealthy wherever its claimant truly held
+		# Ill-Omened (burdens prototype): every good person was poisoned then.
+		out = out.duplicate()
+		for i in range(mini(out.size(), u_worlds.size())):
+			var w: Dictionary = u_worlds[i]
+			if str(w.get("modifier", "")) == "ill_omened" and (int(w.get("holders", 0)) & omen) != 0:
+				out[i] = 0
+	return out
 
 static func _valid_table_cs(view: Dictionary, u_key: String, u_worlds: Array, card: Dictionary) -> PackedByteArray:
 	var u_handle: int = SolverBackend.get_universe_handle(u_key, u_worlds)
