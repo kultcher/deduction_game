@@ -8,6 +8,28 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+
+## Built, Nov 21, 2026 (closed by Claude-Vicar)
+
+- **A sighting places its teller** (Michael, Nov 20; from seed 100002, found on #454).
+  - **The change:** an honest street sighting places its teller on that block that night, and
+    a window sighting places them at home. It's a hard fact in the movement check, in both
+    the GDScript and C# paths.
+  - **Why:** today a sighting constrains only the person seen. On 100002, Hollis (the Demon,
+    who lives on the Hill) "saw" Edda on the Market, the block where Agnes was killed that
+    night. Unless he lied, that puts him at the scene, but the judge never sees it, so his lie
+    hardly counts against him: 43% → 45% without Jory's watch.
+  - **Measure, in game terms:**
+    - how much a fake sighting now counts against its teller;
+    - seed 100002, before and after;
+    - the win and hanging shifts over 40 games.
+
+    Re-baseline golden.
+
+  Owner Lantern. [decided]
+
+  > **Closed Nov 21:** built, Lantern #474 (f8bc26d). On 100002 the teller's lie now counts against them by about 7 points.
+
 ## Built, Nov 20, 2026, late (closed by Claude-Vicar)
 
 - **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
