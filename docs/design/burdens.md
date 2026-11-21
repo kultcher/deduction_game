@@ -517,3 +517,26 @@ testing:
 
 The names are as relayed; the code on the prototype branch is the authority. Beadle's
 stage-1 NPC side is built on `mock/burdens-slot` (ea0ad8f).
+
+## 13. Burden claims weigh by timing (Michael, Nov 20)
+
+Relayed by Seneschal, refining what Seneschal called "option B". That label belongs to the
+claim-weighting options; it isn't the judge's world model, which stays model A (section 9).
+
+- **A claim that answers an evil reading counts against the claimant.** The weight comes from
+  the measured rates: how often evil bluffs a burden reactively, against how often honest
+  holders claim one. It's softened from the raw odds.
+  - **The target:** when the Demon reads someone as evil and they then claim Marked, the
+    judge should end up thinking they're about 70% likely evil.
+  - **Why:** on the game's own odds, evil is the likelier explanation. The judge had been
+    trusting such a claim about ten times too much.
+- **An unprompted claim stays near neutral.**
+- **It applies to any burden only one person can hold,** not just Marked.
+- **Corroboration earns credit.** A holder who told someone privately before going public
+  gets credit for it, so their later claim doesn't count as purely reactive.
+- **Deferred to the "smarter evil" work:** evil faking that corroboration by lying privately
+  first.
+- **The accepted trade-off:** an honest holder with the same cards looks just as guilty. Honest
+  holders do best to speak early.
+- **An option, not decided:** a Marked holder can't be the Seer's Red Herring. It's held until
+  the timing results are in.
