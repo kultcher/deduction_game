@@ -22,3 +22,7 @@ Section 11 is rewritten. The table in 2.1 and section 9's Q5, Q6, Q10 and Q24 no
 **Added (pending):** Quill's question on the window, now with Michael. "Until the start of the
 next night" after a daytime hanging misses that night's readings. Seneschal suggests "until
 the next dawn". It's noted as pending in section 11.
+
+**Settled:** Michael's final script-sheet wording is "…every good person is poisoned that
+night until the start of the next night". The window is the night after the hanging plus the
+following day.
