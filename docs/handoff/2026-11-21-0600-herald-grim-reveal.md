@@ -49,7 +49,7 @@ on Lantern's event graph.
   - Watch again, and Close.
 - **Reduced motion:** a check item under More ▾, passed to the card.
 
-## Wording: drafts awaiting Michael
+## Wording: approved by Michael (Nov 21)
 
 All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`:
 - **the lead lines:** "Here is how the town truly stood, one soul at a time." and "It came down
@@ -86,9 +86,9 @@ All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`
 - **Stage 2:** swap `RevealPlan.reveal_order` and the key-moment choice for Lantern's reveal
   plan. The step shape stays the same.
 - **Stage 3:** scoring, once Michael decides the draft.
-- **Michael's answers still pending:** the wording, and the guess-change limit (#496). The
-  limit's second rule, that a guess counts only if locked before that person's hanging day,
-  would also change how the reveal marks guesses.
+- **Approved (Michael, Nov 21):** all the wording, with "Your guess" as the column head and
+  "You named %d of the %d evil rightly." as the summary, in place of the "verdict" drafts.
+  The hanging-day rule was dropped, so the reveal marks every locked guess as it stands.
 
 ## Proposed for the backlog
 

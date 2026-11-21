@@ -2,7 +2,7 @@
 ## A full-screen sheet over the town: a lead line, Limner's RevealCard for one person at a
 ## time (about 90% x 74% of the screen), their key moments beneath, a row of the town's
 ## portraits, and Next / Skip. After the last person, or on Skip, the final screen: every
-## truth at once, the sealed verdict against it (right or wrong only; scoring comes later),
+## truth at once, the player's locked guesses against it (right or wrong only; scoring comes later),
 ## the detail views as tabs, and Watch again. Presentation only.
 extends Control
 
@@ -12,7 +12,7 @@ const GameScreens = preload("res://game/game_screens.gd")
 const UITheme = preload("res://ui/theme.gd")
 const C = preload("res://sim/content.gd")
 
-## Wording: drafts awaiting Michael (Herald, Nov 21).
+## Wording (Michael, Nov 21: approved).
 const NEXT = "Next"
 const SKIP = "Skip to the end"
 const FINAL_TITLE = "The grimoire"
@@ -24,12 +24,12 @@ const TAB_LIES = "Every lie"
 const TAB_TALK = "Who told whom what"
 const HEAD_PERSON = "Person"
 const HEAD_TRUTH = "Truly"
-const HEAD_GUESS = "Your verdict"
+const HEAD_GUESS = "Your guess"
 const HEAD_MOMENT = "Key moment"
 const RIGHT = "✓"
 const WRONG = "✗"
 const NO_GUESS = "—"
-const SUMMARY = "Your verdict: %d of %d evil named rightly."
+const SUMMARY = "You named %d of the %d evil rightly."
 
 const CARD_W = 0.90
 const CARD_H = 0.74
@@ -51,7 +51,7 @@ var _tiles: Dictionary = {}
 var _on_close: Callable
 
 
-## Opens over `parent` and starts the reveal. `verdict` maps person ids to the sealed guesses.
+## Opens over `parent` and starts the reveal. `verdict` maps person ids to the guesses locked in the daily windows.
 static func open(parent: Control, game, verdict: Dictionary, on_close: Callable = Callable(), reduced: bool = false) -> Control:
 	var v = load("res://ui/reveal/reveal_overlay.gd").new()
 	v.name = "GrimReveal"

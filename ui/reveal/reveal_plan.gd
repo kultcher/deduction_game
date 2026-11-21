@@ -8,7 +8,7 @@ extends RefCounted
 const C = preload("res://sim/content.gd")
 const World = preload("res://sim/world.gd")
 
-## Wording: drafts awaiting Michael (Herald, Nov 21).
+## Wording (Michael, Nov 21: approved).
 const LEAD_TIMELINE = "Here is how the town truly stood, one soul at a time."
 const LEAD_FINAL_THREE = "It came down to the last three."
 const ALIGN_GOOD = "Good"
