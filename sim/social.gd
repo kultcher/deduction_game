@@ -399,6 +399,7 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		if item["kind"] == "secret":
 			l.known_secrets[item["about"]] = s.id
 		return
+	_check_caught_lying(w, l, item)
 	# Repeats are handled by the listener's ledger (same reading never stacks).
 	# The teller's credibility is applied live by the listener's ledger (rel = the source).
 	var wgt = clampf(Tuning.Social.HEARSAY_TRUST_SCALE * l.npc_trust.get(s.id, 0.5), 0.0, Tuning.Social.HEARSAY_WEIGHT_CAP)
@@ -496,6 +497,49 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 ## How a private share changes the listener's trust in the teller (Oct 30): a small gain
 ## when the listener believes them (they don't suspect the teller), nothing otherwise, and
 ## a small loss when it runs down someone the listener trusts.
+## "Caught lying about me" (Michael, Nov 21; social trust pass Oct 30): told something about
+## itself that its own knowledge proves false, the listener trusts the teller less, by the
+## public-accusation loss. Only the teller (the original source), never a relayer. A share item
+## carries the claim; see caught_lying for what counts.
+static func _check_caught_lying(w, l, item: Dictionary) -> void:
+	if str(item.get("about", "")) == l.id and item.get("kind", "") == "sighting":
+		caught_lying(w, l, str(item.get("from", "")), "sighting", {"day": int(item.get("day", -1))})
+	elif item.get("kind", "") == "reading" and item.get("entry") is Dictionary:
+		caught_lying(w, l, str(item.get("from", "")), "reading", {"entry": item["entry"]})
+
+## What `target` knows to be false about itself, said by `teller_id`:
+## - "sighting": out on night `day`, when it spent that night at home;
+## - "reading": a reading that names it alone as evil, when it is good.
+## It can't tell a lie from a mistake (a poisoned reader, say), so it reacts to the falsehood
+## itself. Once per teller and claim. Returns whether it reacted.
+static func caught_lying(w, target, teller_id: String, kind: String, data: Dictionary) -> bool:
+	if target == null or not target.alive or teller_id == "" or teller_id == target.id or teller_id == "player" or not w.by_id.has(teller_id):
+		return false
+	var key: String = ""
+	var what: String = ""
+	if kind == "sighting":
+		var nd: int = int(data.get("day", -1))
+		if nd < 0 or not str(target.history.get(w.time_key(nd, C.NIGHT), "")).begins_with("home:"):
+			return false
+		key = "caught:%s:sighting:%d" % [teller_id, nd]
+		what = "said I was out on night %d, and I was home" % nd
+	elif kind == "reading":
+		var e: Dictionary = data.get("entry", {})
+		if target.is_evil() or Gifts.implicated(e) != [target.id]:
+			return false
+		key = "caught:%s:reading:%d:%s" % [teller_id, int(e.get("day", -1)), str(e.get("role", ""))]
+		what = "claimed a reading that names me evil, and I'm not"
+	else:
+		return false
+	if target.dialogue_memory.get(key, false):
+		return false
+	target.dialogue_memory[key] = true
+	var before: float = float(target.npc_trust.get(teller_id, 0.5))
+	target.npc_trust[teller_id] = clampf(before - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
+	w.dlog.add("npc_trust", target.id, teller_id, {"from": snappedf(before, 0.01), "to": snappedf(target.npc_trust[teller_id], 0.01), "why": "caught_lying", "claim": kind},
+		"%s trusts %s less: %s %s." % [target.name, w.by_id[teller_id].name, w.by_id[teller_id].name, what])
+	return true
+
 static func gossip_bond(l, s, item: Dictionary) -> float:
 	var about: String = item.get("about", "")
 	var against: bool = item["kind"] in ["opinion", "unease", "case", "sighting"] or (item["kind"] == "reading" and _implicates(item))

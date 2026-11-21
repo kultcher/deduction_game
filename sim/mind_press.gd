@@ -136,6 +136,9 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 		pressed["dialogue_exchange"] = {"action": "challenge_gift", "subject": n.id}
 		return pressed
 	if night >= 0:
+		# Shown someone's sighting of a night it spent at home, it knows that person lied about it.
+		if kind == "sighting" and str(card.get("source", "")) != "player":
+			load("res://sim/social.gd").caught_lying(w, n, str(card.get("source", "")), "sighting", {"day": int(night)})
 		# Shown a sighting of themselves, they may add what the death record says of that night
 		# (BACKLOG "Explicit night-sighting rebuttals"): after whatever else they answer, speech
 		# only, to the Demonologist alone (no one else hears it, so no ledger entry).
