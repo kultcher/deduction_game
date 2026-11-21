@@ -295,4 +295,7 @@ const LINES = {
 	"burden_ill_omened_counterclaim": "That isn't true of {claimant}, and I'm sorry to say it so plainly. The omen is mine. There's only one.",
 	"burden_denial": "Me, {burden}? No. Someone's told you wrong.",
 	"burden_double_claim": "Now {a} and {b} can't both be {burden}. There's only ever one. One of them isn't telling us the truth.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before you vote, please hear me: I'm Ill-Omened. If you hang me, it won't end with me. It'll come with a cost to all of us.",
+	"burden_ill_omened_early": "I'd rather not say this, but you're leaving me little choice. I'm Ill-Omened. Hang me, and the whole town pays for it.",
 }

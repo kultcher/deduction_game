@@ -313,4 +313,7 @@ const LINES = {
 	"burden_ill_omened_counterclaim": "{claimant} is lying! I'm the Ill-Omened, and there's only one such part.",
 	"burden_denial": "Me, {burden}? Miscast, my friend! Whoever told you that is wrong.",
 	"burden_double_claim": "{a} and {b} both play {burden}? There's only one such part; one of them is lying.",
+	# Ill-Omened warnings (Michael, Nov 21): the cost is never named.
+	"burden_ill_omened_nomination": "Before the final act, hear me: I'm Ill-Omened! Hang me, and the whole company pays the cost.",
+	"burden_ill_omened_early": "Mind how this scene ends, my friend. I'm Ill-Omened, and hanging me would cost the town.",
 }
