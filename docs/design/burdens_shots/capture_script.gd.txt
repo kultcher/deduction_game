@@ -1,0 +1,181 @@
+## Limner probe (never committed): screenshots of Herald's Burdens UI on mock/burdens-slot.
+##   xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1920x1080 --script res://tools/_probe_burdens_capture.gd -- <out_dir>
+## A real case from main.tscn; the claims, the omen hanging and the game's end are staged.
+extends SceneTree
+
+const Game = preload("res://game/game.gd")
+const GameMeeting = preload("res://game/game_meeting.gd")
+const MainRoles = preload("res://ui/main_roles.gd")
+const RevealOverlay = preload("res://ui/reveal/reveal_overlay.gd")
+const C = preload("res://sim/content.gd")
+
+var out_dir: String
+var scene
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+func _shot(name: String) -> void:
+	for _i in range(4):
+		await process_frame
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("%s/%s.png" % [out_dir, name])
+	print("SHOT ", name)
+
+func _find_seed() -> int:
+	for s in range(1, 400):
+		var g = Game.new()
+		g.detailed_logging = false
+		g.new_case(s, 10)
+		var sec: Array = g.w.case_script.secrets
+		if "delusional" in sec and "unrequited" in sec and "ill_omened" in sec:
+			print("SEED ", s, " secrets ", sec)
+			return s
+	return -1
+
+## Hover the first spot in `label` whose tooltip starts with `prefix`, and wait for the tip.
+func _hover(label: Control, prefix: String) -> bool:
+	var r: Rect2 = label.get_global_rect()
+	var y = r.size.y - 4.0
+	while y > 2.0:
+		var x = 2.0
+		while x < r.size.x:
+			var tip: String = label.get_tooltip(Vector2(x, y))
+			if tip.begins_with(prefix):
+				var p = r.position + Vector2(x + 3, y)
+				Input.warp_mouse(p)
+				for k in range(3):
+					var ev = InputEventMouseMotion.new()
+					ev.position = p + Vector2(k, 0)
+					ev.global_position = ev.position
+					Input.parse_input_event(ev)
+					await process_frame
+				var t0 = Time.get_ticks_msec()
+				while Time.get_ticks_msec() - t0 < 1400:
+					await process_frame
+				return true
+			x += 4.0
+		y -= 4.0
+	print("NO TOOLTIP FOUND for ", prefix)
+	return false
+
+func _run() -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	out_dir = args[0] if args.size() > 0 else "/tmp/burden_shots"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	var s = _find_seed()
+	scene = load("res://ui/main.tscn").instantiate()
+	scene.show_script_at_start = false
+	root.add_child(scene)
+	await process_frame
+	scene.new_case_screen.hide()
+	for i in range(scene.size_opt.item_count):
+		if int(scene.size_opt.get_item_metadata(i)) == 10:
+			scene.size_opt.select(i)
+	scene.seed_box.value = s
+	scene._new_case()
+	scene.headlines.clear()
+	scene.new_case_screen.hide()
+	var g = scene.g
+	var w = g.w
+	print("script secrets ", w.case_script.secrets, " in play ", w.case_script.secrets_in_play)
+	var good: Array = w.npcs.filter(func(n): return not n.is_evil())
+	var a = good[0]
+	var b = w.npcs.filter(func(n): return n.is_evil())[0]
+	var c = good[1]
+	# A double claim of Unrequited (one true holder or not, both to the town), and an
+	# Ill-Omened claim told to the player alone.
+	w.burden_claims = {"unrequited": [a.id, b.id], "unrequited:public": [a.id, b.id], "ill_omened": [c.id]}
+	w.burden_told = {"%s|player" % c.id: {"day": 1, "phase": 1}}
+	MainRoles.open(scene)
+	await _shot("1_script_sheet")
+	scene.roles_win.hide()
+
+	# The "Burden" tooltip: the text script command names Burdens in prose.
+	scene._run("script")
+	await _shot("2a_script_text")
+	if await _hover(scene.out, "Burden:"):
+		await _shot("2b_burden_tooltip")
+	# A burden name's own tooltip in prose.
+	if await _hover(scene.out, "Delusional (burden)"):
+		await _shot("2c_delusional_tooltip")
+
+	# Ill-Omened: c claimed it publicly and is hanged; the marker.
+	w.burden_claims["ill_omened:public"] = [c.id]
+	w.day = 2
+	w.phase = C.EVENING
+	w.public_event("omen_hanged", [c.id], "world")
+	g.events = []
+	GameMeeting._omen_marker(g, c)
+	scene._log_events(g.events)
+	scene._refresh_all()
+	await _shot("3a_omen_log")
+	if await _hover(scene.out, "Ill-Omened: If hanged"):
+		await _shot("3b_omen_tooltip")
+	for l in scene.find_children("*", "RichTextLabel", true, false):
+		if l.is_visible_in_tree() and l != scene.out and "omen claimed" in l.get_parsed_text():
+			print("side label ", l.get_path())
+			if await _hover(l, "Ill-Omened: If hanged"):
+				await _shot("3d_omen_side_tooltip")
+	Input.warp_mouse(Vector2(1900, 300))
+	var mv = InputEventMouseMotion.new()
+	mv.position = Vector2(1900, 300)
+	mv.global_position = mv.position
+	Input.parse_input_event(mv)
+	scene._open_case_view()
+	scene.case_state.set_view("process")
+	await _shot("3c_case_board")
+	for l in scene.case_view.find_children("*", "Control", true, false):
+		if l.get_script() != null and l.get_script().resource_path.ends_with("board_view.gd") and l.is_visible_in_tree():
+			print("board view ", l.get_path(), " ", l.size)
+			if await _hover(l, "Ill-Omened: If hanged"):
+				await _shot("3e_board_omen_tooltip")
+			else:
+				var tip = l.get_tooltip(Vector2(1370, 420) - l.get_global_rect().position)
+				print("board tooltip at card: [", tip, "]")
+				Input.warp_mouse(Vector2(1370, 420))
+				for k in range(3):
+					var ev = InputEventMouseMotion.new()
+					ev.position = Vector2(1370 + k, 420)
+					ev.global_position = ev.position
+					Input.parse_input_event(ev)
+					await process_frame
+				var t0 = Time.get_ticks_msec()
+				while Time.get_ticks_msec() - t0 < 1400:
+					await process_frame
+				await _shot("3e_board_card_hover")
+	print("case_view children: ", scene.case_view.get_child_count())
+	scene.case_view.visible = false
+
+	# The grim reveal: the case ends; walk to the Delusional holder.
+	var holder = null
+	for n in w.npcs:
+		if n.secret_mod == "delusional":
+			holder = n
+	if holder == null:
+		for n in w.npcs:
+			if n.secret_mod != "":
+				holder = n
+				break
+		print("STAGED: ", holder.name, " was ", holder.secret_mod)
+		holder.secret_mod = "delusional"
+		print("STAGED delusional on ", holder.name)
+	else:
+		print("REAL delusional holder ", holder.name)
+	w.game_over = true
+	var v = RevealOverlay.open(scene, g, {}, Callable(), false)
+	v.card.set_process(false)
+	for _i in range(60):
+		if v.index >= 0 and v.index < v.plan.steps.size() and v.plan.steps[v.index].npc == holder.id:
+			break
+		v.card.skip_to_end()
+		v.next()
+	# Play it: land, then the tag.
+	while v.card.t < v.card.landed_at() + 0.2:
+		v.card.advance(1.0 / 30.0)
+	await _shot("4a_reveal_landed")
+	v.card.skip_to_end()
+	await _shot("4b_reveal_tag")
+	v.show_final()
+	await _shot("4c_reveal_final")
+	quit(0)
