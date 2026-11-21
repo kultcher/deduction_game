@@ -112,7 +112,7 @@ static func _log_good_of(view: Dictionary, cards: Array) -> float:
 			checked.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
 	var ids: Array = view.people.map(func(p): return p.id)
 	var env: Dictionary = _pack_view_env(view, ids)
-	var packed: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, {})
+	var packed: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, {}, view.get("chronology", {}).get("curse", {}))
 	var raw: PackedFloat64Array = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
 		packed.ints, packed.doubles)
 	var stride: int = 4 if env.has_curse else 3
@@ -132,7 +132,7 @@ static func _factors_core(view: Dictionary, cards: Array, observations: Array) -
 	var ids: Array = view.people.map(func(p): return p.id)
 	var env: Dictionary = _pack_view_env(view, ids)
 	var role_tok_map: Dictionary = {}
-	var packed_checked: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, role_tok_map)
+	var packed_checked: Dictionary = _pack_activity_cards(ids, env.homes, checked, {}, role_tok_map, view.get("chronology", {}).get("curse", {}))
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.factors_profiles", pack_u)
 
@@ -337,7 +337,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 	var outsider_with: PackedFloat64Array = PackedFloat64Array()
 	if not private_ids.is_empty():
 		var outside: Array = checked.filter(func(x): return str(x.get("id", "")) not in private_ids)
-		var p_out: Dictionary = _pack_activity_cards(ids, env.homes, outside, {}, {})
+		var p_out: Dictionary = _pack_activity_cards(ids, env.homes, outside, {}, {}, view.get("chronology", {}).get("curse", {}))
 		outsider_with = SolverBackend._bridge().LiveAllProfiles(env.has_curse, env.homes, env.deaths, env.demon_events, env.has_curse, env.curse_from, env.curse_until,
 			p_out.ints, p_out.doubles)
 	var evil_n: float = float(view.get("evil_count", 1))
@@ -360,7 +360,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 			for night in mv.nights:
 				for person in mv.nights[night].forced_out:
 					minus.append({"id": "inferred-out:%s:%s" % [person, night], "kind": "sighting", "source": "evidence", "subject": person, "subjects": [person], "block": "", "night": int(night)})
-			var packed: Dictionary = _pack_activity_cards(ids, env.homes, minus, {}, {})
+			var packed: Dictionary = _pack_activity_cards(ids, env.homes, minus, {}, {}, view.get("chronology", {}).get("curse", {}))
 			alt_cache[key] = bridge.LiveAllProfiles(
 				has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
 				packed.ints, packed.doubles)
@@ -370,7 +370,7 @@ static func _sighting_contests(view: Dictionary, ids: Array, env: Dictionary, ca
 				guard_cache[key] = _guard_alt(guard_items, env, packed, has_curse, stride)
 			if not private_ids.is_empty():
 				var minus_out: Array = minus.filter(func(x): return str(x.get("id", "")) not in private_ids)
-				var packed_out: Dictionary = _pack_activity_cards(ids, env.homes, minus_out, {}, {})
+				var packed_out: Dictionary = _pack_activity_cards(ids, env.homes, minus_out, {}, {}, view.get("chronology", {}).get("curse", {}))
 				outsider_cache[key] = bridge.LiveAllProfiles(
 					has_curse, env.homes, env.deaths, env.demon_events, has_curse, env.curse_from, env.curse_until,
 					packed_out.ints, packed_out.doubles)
@@ -811,8 +811,8 @@ static func _scion_succession_splits_cs(view: Dictionary, ids: Array, env: Dicti
 		var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 		var rmap_pre: Dictionary = {}
 		var rmap_post: Dictionary = {}
-		var p_pre: Dictionary = _pack_activity_cards(ids, env.homes, pre_cards, {}, rmap_pre)
-		var p_post: Dictionary = _pack_activity_cards(ids, env.homes, post_cards, {}, rmap_post)
+		var p_pre: Dictionary = _pack_activity_cards(ids, env.homes, pre_cards, {}, rmap_pre, view.get("chronology", {}).get("curse", {}))
+		var p_post: Dictionary = _pack_activity_cards(ids, env.homes, post_cards, {}, rmap_post, view.get("chronology", {}).get("curse", {}))
 		var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 		SolverBackend.record_boundary_call("LiveActivity.scion_split_profiles", pack_u)
 
