@@ -65,6 +65,10 @@ internal static class RoleConstraintsKernel
     public const int FlagMartyrPromise = 1 << 17;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
+    // Burden codes for a KindSecretClaim card (slot 19; role_constraints.gd BURDEN_CODES).
+    public const int BurdenMarked = 1;
+    public const int BurdenDelusional = 2;
+
     public const int PoolGood = 0;
     public const int PoolMinion = 1;
     public const int PoolDemon = 2;
@@ -559,6 +563,38 @@ internal static class RoleConstraintsKernel
                 int saved = cardInts[off + 14];
                 if (actor < 0 || saved < 0 || (evil & ((1 << actor) | (1 << saved))) != 0
                     || !AssignRole(assignRoles, assignMasks, ref assignCount, RoleMartyr, 1 << actor))
+                {
+                    return 0.0;
+                }
+                continue;
+            }
+            if (kind == KindSecretClaim)
+            {
+                // A claimed burden (docs/design/burdens.md). A good claimant knows their own
+                // burden, so their claim holds; an evil claimant (by alignment when they spoke,
+                // as for readings) may be bluffing, so the claim says nothing. Two claims to a
+                // one-holder burden then can't both come from good people.
+                int claimant = cardInts[off + 2];
+                int burden = cardInts[off + 19];
+                if (claimant < 0 || burden == 0 || (flags & FlagContentOnly) != 0)
+                {
+                    continue;
+                }
+                bool claimantEvil = (evil & (1 << claimant)) != 0;
+                if (worldHasConverted && !viewIsEmpty)
+                {
+                    int claimTick = cardInts[off + 12];
+                    claimantEvil = claimantEvil || (worldConverted == claimant && hasCurse && claimTick >= curseFrom && claimTick < curseUntil);
+                }
+                if (claimantEvil)
+                {
+                    continue;
+                }
+                if (burden == BurdenMarked && world.Marked != claimant)
+                {
+                    return 0.0;
+                }
+                if (burden == BurdenDelusional && (world.EffectiveModifier != WorldEntry.ModDelusional || (world.Holders & (1 << claimant)) == 0))
                 {
                     return 0.0;
                 }

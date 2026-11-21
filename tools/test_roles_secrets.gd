@@ -63,6 +63,7 @@ func _run_roster() -> void:
 
 func _run_chunk4_psychologist_mudd() -> void:
 	_test_secret_domain_and_premise()
+	_test_burden_claim()
 	_test_retired_secret_in_saved_script()
 
 
@@ -154,3 +155,56 @@ func _test_secret_domain_and_premise() -> void:
 	view["cards"] = [rumor_sw]
 	var ev_mud: Dictionary = CaseEval.evaluate(view, c_mud)
 	_check(ev_mud.posterior > ev_mud.prior and ev_mud.lr > 3.0, "CaseEval evaluates a secret_mod premise from a Rumormonger secret report")
+
+
+## A claimed burden (burdens prototype): a good claimant knows their own burden, so their
+## Marked claim holds; an evil claimant may be bluffing. So a lone claim makes "X is Marked"
+## likely but not certain (X may be evil), and two claims can't both come from good people.
+func _test_burden_claim() -> void:
+	var RC = preload("res://workshop/role_constraints.gd")
+	var was_bind: bool = RC.burden_claims_bind
+	RC.burden_claims_bind = true
+	var people: Array = []
+	for i in range(7):
+		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": true})
+	var claim = func(who: int, cid: String) -> Dictionary:
+		return {"id": cid, "fact_id": cid, "kind": "secret_claim", "source": people[who].id, "subject": people[who].id,
+			"observed_at": {"day": 1, "phase": "day"}, "night": -1, "applies": {"from": 0, "through": 1},
+			"data": {"secret_kind": "marked"}, "text": "%s says they are Marked" % people[who].name}
+	var view: Dictionary = {
+		"people": people, "evil_count": 2, "alignment_epoch": "Original alignment",
+		"world_options": {"modifiers": ["delusional", "marked"], "roles": true, "identities": true, "bluffs": true},
+	}
+	var c1: Dictionary = claim.call(1, "bc1")
+	var c2: Dictionary = claim.call(2, "bc2")
+	view["cards"] = [c1]
+	var case_m = Solver.empty_case()
+	case_m.conclusion = {"type": "marked", "target": people[1].id, "at": "Original alignment"}
+	case_m.cards = ["bc1"]
+	var ev: Dictionary = CaseEval.evaluate(view, case_m)
+	print("Marked claim: P(claimant is Marked) %.3f -> %.3f" % [ev.prior, ev.posterior])
+	# Counted over the worlds: a good claimant must hold it (5 teams of 15 leave the claimant
+	# good, 1 layout each: 30 worlds); an evil claimant's claim says nothing (6 teams, 10
+	# layouts: 120). So 30 / 150 = 0.2, from a prior of 1 in 14.
+	_check(absf(ev.posterior - 0.2) < 0.01, "a lone Marked claim lifts its claimant's chance of being Marked to the honest count (%.3f -> %.3f, want 0.200)" % [ev.prior, ev.posterior])
+	# The usual case: the claim answers a Seer's yes on the claimant. Being Marked then explains
+	# the reading, and the claim moves it further.
+	var seer: Dictionary = {"id": "bs1", "fact_id": "bs1", "kind": "report", "role": "seer", "source": people[4].id,
+		"observed_at": {"day": 0, "phase": "night"}, "night": 0, "data": {"pair": [people[1].id, people[3].id], "yes": true}, "text": "Seer yes"}
+	view["cards"] = [seer]
+	var case_r = Solver.empty_case()
+	case_r.conclusion = case_m.conclusion
+	case_r.cards = ["bs1"]
+	var ev_r: Dictionary = CaseEval.evaluate(view, case_r)
+	view["cards"] = [seer, c1]
+	var case_rc = Solver.empty_case()
+	case_rc.conclusion = case_m.conclusion
+	case_rc.cards = ["bs1", "bc1"]
+	var ev_rc: Dictionary = CaseEval.evaluate(view, case_rc)
+	print("Seer yes on the claimant: P(Marked) %.3f without the claim, %.3f with it" % [ev_r.posterior, ev_rc.posterior])
+	_check(ev_rc.posterior > ev_r.posterior + 0.1 and ev_rc.posterior < 0.95, "after a Seer's yes, the Marked claim raises the claimant's chance of being Marked, short of certain (%.3f -> %.3f)" % [ev_r.posterior, ev_rc.posterior])
+	view["cards"] = [c1]
+	var both: Array = Solver.solve(view, [c1, c2]).worlds
+	var both_good: bool = both.any(func(w): return not (int(w.evil) & (1 << 1)) and not (int(w.evil) & (1 << 2)))
+	_check(not both.is_empty() and not both_good, "two Marked claims can't both come from good people (%d worlds left)" % both.size())
+	RC.burden_claims_bind = was_bind
