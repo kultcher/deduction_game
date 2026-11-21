@@ -72,6 +72,11 @@ const CASES = {
 	"lie_seer_innocent": "The real Seer's \"no\" on two innocents, called a lie on a Minion's \"yes\" (subject: the real Seer)",
 	"lie_gravedigger_innocent": "The real Gravedigger's reading of the hanged innocent, called a lie on a Minion's \"a Minion\"",
 	"lie_seer_reversed_innocent": "The real Seer's \"yes\" on the Demon and an innocent, called a lie on a Minion's \"no\"",
+	# Burdens prototype (Quill, mock/burdens-slot): "I've carried the mark since birth" against a
+	# reading that calls its holder evil, argued as "is Marked". The rescue is true (a good,
+	# Marked townsperson M); the bluff is the Demon's, against the real Seer's true "yes".
+	"marked_rescue": "The real Seer's \"yes\" on a Marked good townsperson M and another + M's Marked claim, argued \"M is Marked\" (subject M)",
+	"marked_bluff": "The real Seer's \"yes\" on S and another + S's Marked claim (a bluff), argued \"S is Marked\"",
 }
 
 var _texts: Dictionary = {}
@@ -164,6 +169,33 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 	var other := "market" if s.home_block != "market" else "docks"
 	var lie_calls: Dictionary = {}  # board number of the reading called a lie -> its grounds' numbers
 	match base:
+		"marked_rescue", "marked_bluff":
+			# The subject is the one who claims the mark: a real good holder (rescue), or the
+			# Demon bluffing it (bluff). The real Seer reads them with another good soul.
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			if base == "marked_rescue":
+				s = pool[-1]
+				pool = pool.filter(func(n): return n != s)
+				for n in w.npcs:
+					if n.secret_mod == "marked":
+						n.secret_mod = ""
+				s.secret_mod = "marked"
+				w.burden_holder_id = s.id
+			var mate = pool[0]
+			var names: String = "%s or %s" % [s.name, mate.name]
+			var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, mate.id], "yes": true},
+				"text": "%s's Seer: %s is the Demon" % [seer.name, names]})
+			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+			var mark: int = _add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "marked", "day": 2, "phase": 0,
+				"text": "%s: I've carried the mark since birth" % s.name})
+			cited += [reading, claim_s, mark]
+			sources += [seer, s]
+			premise = "marked"
 		"lie_seer", "lie_seer_reversed", "lie_gravedigger":
 			# Word against word: the Minion bluffs the gift, the real holder reads, the player
 			# calls one of them a liar on the other's reading.
