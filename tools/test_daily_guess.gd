@@ -122,7 +122,9 @@ func _init() -> void:
 		w._pick_type(1, sc.minions[0])
 		w._pick_type(2, sc.minions[0])
 		check(w.picks[2].type == sc.minions[0] and w.picks[1].type == "", "choosing a type already in another circle moves it")
-	w._pick(0, people[6])
+	# (This game has used both Demon changes by now: keep the locked Demon, change a Minion.)
+	w.picks[0] = DailyGuess.locked(g)[0]
+	w._pick(1, people[6])
 	w._finish(true)
 	check(done == [true] and DailyGuess.verdict(g)[people[6]] != "?", "Confirm locks the new guess and calls back")
 	var before = g.get_meta(DailyGuess.META_LOCKED).duplicate(true)
@@ -145,6 +147,63 @@ func _init() -> void:
 	check(w4._note.visible and w4._circles[0].face.modulate == DailyGuess.GREYED, "a profile pick shows greyed, with the note")
 	w4._pick(0, g2.w.npcs[1].id)
 	check(not w4._note.visible and w4._circles[0].face.modulate == Color(1, 1, 1), "picking someone new clears the grey and the note")
+
+	# The Demon guess limit (Michael, Nov 21): the first pick free, then two changes; Minion
+	# picks and types free; clearing counts; a changed Demon asks first.
+	var g3 = _game(10)
+	var sc3 = g3.w.case_script
+	var ids: Array = g3.w.npcs.map(func(n): return n.id)
+	var first: Array = DailyGuess.prefill(g3)
+	first[0] = {"id": ids[0], "type": sc3.demons[0]}
+	DailyGuess.apply(g3, first)
+	check(DailyGuess.demon_changes_left(g3) == DailyGuess.DEMON_CHANGES, "the first Demon pick is free")
+	var mins: Array = DailyGuess.prefill(g3)
+	mins[1] = {"id": ids[1], "type": sc3.minions[0]}
+	DailyGuess.apply(g3, mins)
+	var retype: Array = DailyGuess.prefill(g3)
+	retype[1] = {"id": ids[2], "type": ""}
+	retype[0]["type"] = sc3.demons[-1]
+	DailyGuess.apply(g3, retype)
+	check(DailyGuess.demon_changes_left(g3) == DailyGuess.DEMON_CHANGES, "Minion picks and type changes are free")
+	var swap: Array = DailyGuess.prefill(g3)
+	swap[0] = {"id": ids[3], "type": sc3.demons[0]}
+	check(DailyGuess.changes_demon(g3, swap), "swapping the Demon guess is a change")
+	DailyGuess.apply(g3, swap)
+	check(DailyGuess.demon_changes_left(g3) == DailyGuess.DEMON_CHANGES - 1, "a Demon change uses one up")
+	var clear: Array = DailyGuess.prefill(g3)
+	clear[0] = {"id": "", "type": sc3.demons[0]}
+	DailyGuess.apply(g3, clear)
+	check(DailyGuess.demon_changes_left(g3) == 0, "clearing a locked Demon counts as a change")
+	var refill: Array = DailyGuess.prefill(g3)
+	refill[0] = {"id": ids[4], "type": sc3.demons[0]}
+	DailyGuess.apply(g3, refill)
+	check(DailyGuess.verdict(g3)[ids[4]] == sc3.demons[0], "after a clear, a new Demon pick is a first pick again")
+	var over: Array = DailyGuess.prefill(g3)
+	over[0] = {"id": ids[5], "type": sc3.demons[0]}
+	check(not DailyGuess.apply(g3, over) and DailyGuess.verdict(g3)[ids[4]] == sc3.demons[0], "with no changes left, the Demon guess can't change")
+	var m3 = _Host.new()
+	m3.g = g3
+	root.add_child(m3)
+	var w5 = DailyGuess.open(m3, func(_ok): pass, Callable())
+	check(w5._circles[0].face.disabled and w5._circles[0].face.tooltip_text == DailyGuess.NO_CHANGES_TIP, "with none left, the Demon picker is disabled, with its tooltip")
+	var g4 = _game(10)
+	var ids4: Array = g4.w.npcs.map(func(n): return n.id)
+	var p4: Array = DailyGuess.prefill(g4)
+	p4[0] = {"id": ids4[0], "type": g4.w.case_script.demons[0]}
+	DailyGuess.apply(g4, p4)
+	var m4 = _Host.new()
+	m4.g = g4
+	root.add_child(m4)
+	var closed: Array = []
+	var w6 = DailyGuess.open(m4, func(ok): closed.append(ok), Callable())
+	w6.confirm()
+	check(closed == [true] and w6._change_dialog == null, "an unchanged Demon confirms at once")
+	var w7 = DailyGuess.open(m4, func(ok): closed.append(ok), Callable())
+	w7._pick(0, ids4[1])
+	w7.confirm()
+	check(closed.size() == 1 and w7._change_dialog != null and w7._change_dialog.dialog_text == DailyGuess.CHANGE_DIALOG % DailyGuess.DEMON_CHANGES, "a changed Demon asks first, with the count")
+	w7._change_dialog.confirmed.emit()
+	check(closed == [true, true] and DailyGuess.verdict(g4)[ids4[1]] != "?", "confirming the dialog locks the change")
 
 	print("Daily evil-team guess: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)

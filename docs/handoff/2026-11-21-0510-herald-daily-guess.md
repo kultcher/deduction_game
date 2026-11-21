@@ -4,7 +4,13 @@
 - there's no fade line;
 - the window's locked guesses are the verdict, and there's no end-of-game seal;
 - profile picks prefill empty circles, greyed, with a note, and the window never writes back to the profile;
-- a limit on changes is proposed to Michael and will come as a follow-up commit.
+- **the Demon-guess limit (Michael, Nov 21):**
+  - the first pick is free, then two changes a case;
+  - a change asks first: "Change your Demon selection? You can only do this two times per case. (n change(s) remaining).";
+  - clearing a locked Demon counts as a change;
+  - with none left, the Demon picker is disabled, with "No changes left this case";
+  - Minion picks and types are free;
+- **all the window's wording is approved** (Michael: "we can tweak it later if needed").
 
 Sections below that describe writing to the private theory are superseded by this.
 

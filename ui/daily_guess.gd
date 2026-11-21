@@ -12,21 +12,27 @@ const C = preload("res://sim/content.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const UITheme = preload("res://ui/theme.gd")
 
-## Wording (Michael, Nov 21: approved, except where marked as a draft).
+## Wording (Michael, Nov 21: all approved; "we can tweak it later if needed").
 const TITLE = "Your suspicions"
-const DEMON_LABEL = "DEMON"            # draft, awaiting Michael
-const MINION_LABEL = "MINION"          # draft, awaiting Michael
+const DEMON_LABEL = "DEMON"
+const MINION_LABEL = "MINION"
 const EMPTY_CIRCLE = "Choose…"
 const PICK_DEMON = "Who is the Demon?"
 const PICK_MINION = "Who is a Minion?"
 const DEMON_KILLED_TIP = "Killed by the Demon; it cannot be them."
 const TYPE_PLACEHOLDER = "What kind?"
-const CLEAR_PICK = "No one"            # draft, awaiting Michael
-const PROFILE_NOTE = "Greyed: from your notes. Pick someone new, or confirm to lock them in."   # draft
+const CLEAR_PICK = "No one"
+const PROFILE_NOTE = "Greyed: from your notes. Pick someone new, or confirm to lock them in."
 const CONFIRM = "Confirm"
 const SKIP = "Skip"
 const DONT_ASK = "Don't ask again this case"
 const MENU_ENTRY = "Your suspicions"
+const CHANGE_DIALOG = "Change your Demon selection? You can only do this two times per case. (%d change(s) remaining)."
+const NO_CHANGES_TIP = "No changes left this case"
+
+## The Demon guess (Michael, Nov 21): the first pick is free, then two changes a case. Minion
+## picks and every type are free. Clearing a locked Demon counts as a change.
+const DEMON_CHANGES = 2
 
 const META_LOCKED = "daily_guess_locked"   # on the game: {"picks": [...], "history": [{"day", "picks"}]}
 const PORTRAIT_SIZE = 112
@@ -120,13 +126,31 @@ static func apply(g, picks: Array) -> bool:
 			else:
 				seen_types[q.type] = true
 		clean.append(q)
+	var costs: bool = changes_demon(g, clean)
+	if costs and demon_changes_left(g) <= 0:
+		return false   # no changes left: the window disables the Demon picker, so this is a guard
 	var store: Dictionary = g.get_meta(META_LOCKED, {}).duplicate(true) if g.has_meta(META_LOCKED) else {}
+	if costs:
+		store["demon_changes"] = int(store.get("demon_changes", 0)) + 1
 	store["picks"] = clean
 	var history: Array = store.get("history", [])
 	history.append({"day": g.w.day, "picks": clean.duplicate(true)})
 	store["history"] = history
 	g.set_meta(META_LOCKED, store)
 	return true
+
+
+## Changes of the Demon guess left this case.
+static func demon_changes_left(g) -> int:
+	var used: int = int(g.get_meta(META_LOCKED, {}).get("demon_changes", 0)) if g.has_meta(META_LOCKED) else 0
+	return maxi(0, DEMON_CHANGES - used)
+
+
+## Whether locking these picks changes a Demon guess already locked (which costs a change). The
+## first Demon pick, and confirming the same Demon, cost nothing.
+static func changes_demon(g, picks: Array) -> bool:
+	var before: String = str(locked(g)[0].get("id", ""))
+	return before != "" and str(picks[0].get("id", "")) != before
 
 
 ## The verdict the reveal plays against: person id -> guess ("?" for anyone not locked in).
@@ -151,6 +175,7 @@ var _panel: PanelContainer
 var _circles: Array = []
 var _picker: PopupPanel
 var _note: Label
+var _change_dialog: ConfirmationDialog
 
 ## Opens over the main screen. `on_done(confirmed: bool)` runs after Confirm or Skip; the caller
 ## closes the meeting then. `dont_ask` runs when the player turns the window off for the case.
@@ -208,11 +233,11 @@ func build(dont_ask: Callable) -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	buttons.add_theme_constant_override("separation", 12)
 	box.add_child(buttons)
-	var confirm = Button.new()
-	confirm.name = "Confirm"
-	confirm.text = CONFIRM
-	confirm.pressed.connect(func(): _finish(true))
-	buttons.add_child(confirm)
+	var confirm_button = Button.new()
+	confirm_button.name = "Confirm"
+	confirm_button.text = CONFIRM
+	confirm_button.pressed.connect(confirm)
+	buttons.add_child(confirm_button)
 	var skip = Button.new()
 	skip.name = "Skip"
 	skip.text = SKIP
@@ -274,6 +299,9 @@ func _refresh_circle(i: int) -> void:
 	var id: String = str(picks[i].get("id", ""))
 	c.face.texture_normal = _portrait(id) if id != "" else null
 	c.face.tooltip_text = PICK_DEMON if _slots[i].role == "demon" else PICK_MINION
+	if i == 0 and _demon_frozen():
+		c.face.disabled = true
+		c.face.tooltip_text = NO_CHANGES_TIP
 	c.name.text = g.w.by_id[id].name if id != "" else EMPTY_CIRCLE
 	c.face.modulate = GREYED if picks[i].get("from_profile", false) else Color(1, 1, 1)
 	if _note != null:
@@ -345,6 +373,24 @@ func _pick_type(i: int, t: String) -> void:
 	picks[i]["type"] = t
 	picks[i]["from_profile"] = false
 	_refresh_circle(i)
+
+## The Demon circle can't change once a Demon is locked and no changes are left.
+func _demon_frozen() -> bool:
+	return str(locked(g)[0].get("id", "")) != "" and demon_changes_left(g) <= 0
+
+## Confirm: a changed Demon guess asks first (Michael, Nov 21); anything else locks at once.
+func confirm() -> void:
+	if not changes_demon(g, picks):
+		_finish(true)
+		return
+	var dlg = ConfirmationDialog.new()
+	dlg.name = "ChangeDemon"
+	dlg.dialog_text = CHANGE_DIALOG % demon_changes_left(g)
+	dlg.confirmed.connect(func(): _finish(true))
+	add_child(dlg)
+	_change_dialog = dlg
+	if is_inside_tree():
+		dlg.popup_centered()
 
 func _finish(confirmed: bool) -> void:
 	if confirmed:
