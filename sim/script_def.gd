@@ -68,7 +68,9 @@ const JINXES = []
 const PLACEMENT_RULES = [
 	{"except": ["lovers"], "not_on_flag": "cannot_hold_solo_secret",
 		"why": "the Rumormonger's gift can't name its own holder, so it never holds a secret alone"},
-	{"only": ["lovers", "sleepwalker"], "not_on_flag": "night_walk",
+	# Unrequited (Michael, Nov 21): a holder whose gift already takes them out at night (a
+	# Lamplighter, a Warden on duty) never visits the beloved (Beadle), so it isn't dealt there.
+	{"only": ["lovers", "sleepwalker", "unrequited"], "not_on_flag": "night_walk",
 		"why": "these send their holder out at night, so never on a role already out at night"},
 ]
 const TAG_NAMES = {

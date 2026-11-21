@@ -165,7 +165,6 @@ test_shared_model
 test_sighter_contest
 test_sighting_followup
 test_silence_pressure
-test_sleepwalk_bluff
 test_social
 test_social_evidence_boundary
 test_social_trust

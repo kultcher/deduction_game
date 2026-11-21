@@ -214,6 +214,24 @@ func _test_burden_claim() -> void:
 	var both: Array = Solver.solve(view, [xm, claim.call(2, "marked", "bc3")]).worlds
 	var both_good: bool = both.any(func(w): return not (int(w.evil) & (1 << 1)) and not (int(w.evil) & (1 << 2)))
 	_check(not both.is_empty() and not both_good, "two Marked claims can't both come from good people (%d worlds left)" % both.size())
+	# Impossible pairs (Michael, Nov 21): the deal's placement table never puts some burdens on
+	# some gifts, so a good person can't truly claim both; one general rule, read from the table.
+	var gift = func(who: int, role: String, cid: String) -> Dictionary:
+		return {"id": cid, "fact_id": cid, "kind": "claim", "source": people[who].id, "subject": people[who].id, "role": role,
+			"observed_at": {"day": 1, "phase": "morning"}, "text": "%s claims %s" % [people[who].name, role]}
+	view.world_options.modifiers = ["delusional", "marked", "ill_omened", "unrequited"]
+	var good_of = func(cards: Array, who: int) -> int:
+		return Solver.solve(view, cards).worlds.filter(func(w): return not (int(w.evil) & (1 << who))).size()
+	var pairs: Array = [
+		["unrequited", "lamplighter", "seer", "Unrequited with a night-walking gift (a Lamplighter)"],
+		["marked", "rumormonger", "seer", "a burden with the Rumormonger (never its lone holder)"],
+	]
+	for pr in pairs:
+		var with_gift: int = good_of.call([gift.call(3, pr[1], "pg1"), claim.call(3, pr[0], "pb1")], 3)
+		var gift_alone: int = good_of.call([gift.call(3, pr[1], "pg1")], 3)
+		var allowed: int = good_of.call([gift.call(3, pr[2], "pg2"), claim.call(3, pr[0], "pb1")], 3)
+		_check(with_gift == 0 and gift_alone > 0 and allowed > 0,
+			"%s: no good claimant can claim both (%d good worlds; the gift alone %d; with a %s instead %d)" % [pr[3], with_gift, gift_alone, pr[2], allowed])
 	RC.burden_claims_bind = was_bind
 
 

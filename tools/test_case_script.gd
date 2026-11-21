@@ -179,6 +179,8 @@ func _init() -> void:
 	_check(dealt_marked.roles.values().any(func(x): return x[0] == "magistrate"), "a forced playtest role is dealt")
 	# Placement rules: Lovers and Sleepwalker never on a night-walker; the Rumormonger never holds one alone.
 	_check(not ScriptDef.placement_allows("sleepwalker", "warden") and ScriptDef.placement_allows("delusional", "warden")
+		and not ScriptDef.placement_allows("unrequited", "lamplighter") and not ScriptDef.placement_allows("unrequited", "warden")
+		and ScriptDef.placement_allows("unrequited", "seer") and ScriptDef.placement_allows("ill_omened", "lamplighter")
 		and not ScriptDef.placement_allows("marked", "rumormonger") and ScriptDef.placement_allows("lovers", "rumormonger"), "secret placement rules read from the table")
 	_check(spares_ok and ideal_ok, "every deal guarantee has spare roles on a dynamic script (all 4 start-knowledge gifts, 3+ identifiers)")
 	_check(distinct.size() >= 30, "dynamic scripts vary (%d different town lists in 40)" % distinct.size())

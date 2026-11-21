@@ -595,6 +595,19 @@ internal static class RoleConstraintsKernel
                 {
                     continue;
                 }
+                // Impossible pairs (slot 13; RoleConstraints.forbidding_claim_tick): the deal
+                // never puts this burden on a gift the claimant also claimed, so a good
+                // claimant (good when they claimed the gift too) can't truly claim both.
+                int forbidTick = cardInts[off + 13];
+                if (forbidTick >= 0)
+                {
+                    bool roleClaimEvil = worldHasConverted && !viewIsEmpty && worldConverted == claimant && hasCurse
+                        && forbidTick >= curseFrom && forbidTick < curseUntil;
+                    if (!roleClaimEvil)
+                    {
+                        return 0.0;
+                    }
+                }
                 int burdenMod = burden - 1;
                 bool holds = burdenMod == WorldEntry.ModMarked
                     ? world.Marked == claimant

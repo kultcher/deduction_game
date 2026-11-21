@@ -381,13 +381,19 @@ static func _judge_key_fast(ctx: Dictionary, template_case: Dictionary, listener
 ## view, which the rest of the key leaves out (Lantern, Nov 19; the Lamplighter fix (b)). Exact
 ## whatever the chance reads; only makes the key finer, so lists stay as they were.
 static func _mix_key(view: Dictionary, listener: Dictionary, cards: Array) -> int:
+	# A claimed burden's weight reads every card the listener holds (the earliest telling, and
+	# whether an evil reading came first: RoleConstraints.burden_claim_factors), not only the
+	# judged ones, so it is keyed itself (Argon on #507).
+	var burden: int = 0
+	if cards.any(func(c): return Solver.Roles.burden_code(c) > 0):
+		burden = hash(Solver.Roles.burden_claim_factors(view, cards))
 	if not cards.any(func(c): return str(c.get("kind", "")) == "report" and str(c.get("role", "")) in ["nightwatch", "lamplighter"]):
-		return 0
+		return burden
 	var mixed: Array = []
 	for c in CaseEval._list_broken(view, cards, listener):
 		if c.has("broken_chance") or c.get("count_mix", false):
 			mixed.append([str(c.get("id", "")), float(c.get("broken_chance", 0.0)), bool(c.get("count_mix", false))])
-	return hash(mixed)
+	return hash(mixed) if burden == 0 else hash([hash(mixed), burden])
 
 
 static func judge(view: Dictionary, template_case: Dictionary, listener: Dictionary, ids: Array, hex: bool = false, key_ctx: Dictionary = {}) -> Dictionary:

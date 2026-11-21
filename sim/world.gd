@@ -202,7 +202,8 @@ func _assign_secret_mod() -> void:
 	var forced_secret: Array = case_script.forced_in(case_script.secrets)
 	var k: String = forced_secret[0] if not forced_secret.is_empty() else pick(case_script.secrets)
 	# Placement rules (ScriptDef.PLACEMENT_RULES): the Rumormonger never holds a secret
-	# alone; Lovers and Sleepwalker never land on a night-walker (Case 22485). Each rule
+	# alone; Unrequited (like the retired Lovers and Sleepwalker) never lands on a night-walker
+	# (Case 22485). Each rule
 	# narrows the candidates in turn, as the hand-written checks always did.
 	for rule in ScriptDef.PLACEMENT_RULES:
 		if rule.has("except") and k in rule.except:

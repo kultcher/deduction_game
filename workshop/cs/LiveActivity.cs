@@ -80,6 +80,12 @@ internal static class LiveActivityKernel
     /// statement time inside the curse window): in a world where the teller is the converted
     /// person, it is an evil teller's word, whatever night it is about (Codex on #474).
     public const int FlagTellerToldCursed = 1 << 14;
+    /// A burden claim that explains its claimant's night walks (burdens prototype: Unrequited).
+    public const int FlagClaimWalks = 1 << 15;
+
+    /// The generic secret errand (every good person ~10% likely to walk on an errand): retired
+    /// with the flavour secrets (Michael, Nov 21); the switch is for measuring it.
+    public static bool SecretErrand = false;
 
     // Movement role codes (slot 7):
     public const int MoveRoleEmpty = 0;
@@ -803,6 +809,22 @@ internal static class LiveActivityKernel
             outProfWeights[2] = gift ? WalkerClaimSecret : 0.1;
             profCount = 3;
         }
+        if (!SecretErrand)
+        {
+            // Retired: the errand's share stays home. An Unrequited claim still raises its
+            // claimant's ordinary walk rate (FlagClaimWalks, in BuildProfilePaths).
+            for (int p = 0; p < profCount; p++)
+            {
+                if (outProfKinds[p] == ProfSecret)
+                {
+                    outProfWeights[0] += outProfWeights[p];
+                    outProfKinds[p] = outProfKinds[profCount - 1];
+                    outProfWeights[p] = outProfWeights[profCount - 1];
+                    profCount -= 1;
+                    break;
+                }
+            }
+        }
     }
 
     private static List<PathSpec> BuildProfilePaths(
@@ -834,6 +856,7 @@ internal static class LiveActivityKernel
                 int off = c * CardStride;
                 int flags = cardInts[off + 1];
                 if (cardInts[off] == KindSecretClaim && (flags & FlagQuoted) == 0
+                    && (SecretErrand || (flags & FlagClaimWalks) != 0)
                     && cardInts[off + 3] == personIdx
                     && night >= cardInts[off + 18] && night <= cardInts[off + 19])
                 {

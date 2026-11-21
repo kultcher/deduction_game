@@ -117,9 +117,15 @@ func _test_layout_rows() -> void:
 
 ## Play a few phases and check every board view lays out without stray items.
 func _test_layout_real_game() -> void:
-	var g = _game(8104)
-	for cmd in ["go tavern", "talk %s" % g.w.npcs[0].id, "ask night", "ask today", "ask gift", "go well", "wait", "go tavern", "wait", "wait", "done", "vigil square", "go tavern", "wait"]:
-		g.command(cmd)
+	# The first game from 8104 whose scripted talk yields a statement (the deal and the town's
+	# beliefs move which one does; burdens prototype).
+	var g = null
+	for game_seed in range(8104, 8124):
+		g = _game(game_seed)
+		for cmd in ["go tavern", "talk %s" % g.w.npcs[0].id, "ask night", "ask today", "ask gift", "go well", "wait", "go tavern", "wait", "wait", "done", "vigil square", "go tavern", "wait"]:
+			g.command(cmd)
+		if BoardModel.layout(g.board, "statements", _ctx(g, "person"))["items"].size() > 0:
+			break
 	var bad = 0
 	var counts = {}
 	for v in ["places", "statements", "process"]:

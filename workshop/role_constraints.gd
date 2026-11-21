@@ -6,6 +6,7 @@ const Activity = preload("res://workshop/live_activity.gd")
 const History = preload("res://workshop/live_history.gd")
 const Chronology = preload("res://workshop/chronology.gd")
 const Domain = preload("res://workshop/world_domain.gd")
+const ScriptDef = preload("res://sim/script_def.gd")
 static var cache: Dictionary = {}
 static var cache_epoch: int = -1
 static var reuse = true
@@ -371,6 +372,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		if kind_code == 3:
 			# A claimed burden (docs/design/burdens.md): which world field the claim names.
 			card_ints[off + 19] = burden_code(card)
+			card_ints[off + 13] = forbidding_claim_tick(card, live_cards)
 
 		if kind_code == 4: # totem
 			var t_cands: int = 0
@@ -572,10 +574,36 @@ static func seer_flag(cards: Array) -> bool:
 		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")))
 
 ## A claimed burden this card's claimant must hold if good (0 for none, or the switch off).
+## Only a person's own claim binds: someone retelling another's burden is not claiming it.
 static func burden_code(card: Dictionary) -> int:
 	if not burden_claims_bind or card.get("kind", "") != "secret_claim" or card.get("quoted", false) or card.get("content_only", false):
 		return 0
+	var subject = card.get("subject", "")
+	if str(subject[0] if subject is Array and not subject.is_empty() else subject) != str(card.get("source", "")):
+		return 0
 	return int(BURDEN_CODES.get(str(card.get("data", {}).get("secret_kind", "")), 0))
+
+## Impossible pairs (Michael, Nov 21): the deal never puts some burdens on some gifts
+## (ScriptDef.PLACEMENT_RULES: Unrequited never on a night-walking gift, the Rumormonger never
+## a burden's lone holder), so a good person can't truly claim both. The statement time of the
+## claimant's earliest own role claim that the placement table rules out alongside this burden
+## claim, or -1. Read from the table, not a list of roles.
+static func forbidding_claim_tick(card: Dictionary, cards: Array) -> int:
+	if burden_code(card) == 0:
+		return -1
+	var kind: String = str(card.data.secret_kind)
+	var src: String = str(card.get("source", ""))
+	var out: int = -1
+	for c in cards:
+		if str(c.get("kind", "")) != "claim" or c.get("quoted", false) or c.get("content_only", false) or c.get("inferred", false) \
+				or c.get("testimony_only", false) or str(c.get("source", "")) != src:
+			continue
+		var role: String = str(c.get("role", ""))
+		if role == "" or ScriptDef.placement_allows(kind, role):
+			continue
+		var t: int = Chronology.tick(Chronology.statement_time(c))
+		out = t if out < 0 else mini(out, t)
+	return out
 
 ## Measurement switch: when >= 0, every claimed burden takes this factor instead.
 static var burden_factor_override: float = -1.0

@@ -77,7 +77,9 @@ func _run() -> void:
 	var later_effect = CaseEval.evaluate(later_plain.view, later_plain.case, later_plain.listener)
 	later.cards.append(secret_id)
 	var later_context = Live.Assess.prepare(Live.snapshot(g, later, listener.id))
-	check(CaseEval.evaluate(later_context.view, later_context.case, later_context.listener).people == later_effect.people, "a night-1 confession cannot change night-2 activity likelihoods")
+	# Approximately: a claimed burden binds the world domain (a good claimant holds it), at a
+	# neutral weight that can move the last digit of a product (burdens prototype).
+	check(_same_people(CaseEval.evaluate(later_context.view, later_context.case, later_context.listener).people, later_effect.people), "a night-1 confession cannot change night-2 activity likelihoods")
 	var wrong = value.duplicate(true)
 	wrong.citations = {target.id + ":2": secret_id}
 	check(not Live.Assess.prepare(Live.snapshot(g, wrong, listener.id)).ready, "an inapplicable night citation is rejected explicitly")
@@ -137,3 +139,12 @@ func check(ok: bool, label: String) -> void:
 	if not ok:
 		fails += 1
 		push_error("FAIL: " + label)
+
+static func _same_people(a: Dictionary, b: Dictionary) -> bool:
+	if a.keys() != b.keys():
+		return false
+	for pid in a:
+		for k in ["prior", "posterior"]:
+			if absf(float(a[pid].get(k, 0.0)) - float(b[pid].get(k, 0.0))) > 1e-9:
+				return false
+	return true

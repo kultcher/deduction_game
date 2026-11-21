@@ -127,6 +127,8 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
 		var strength: float = role_hearing(cards, person.id, role)
 		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, WALKER_CLAIM_HOME if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, WALKER_CLAIM_GIFT if gift else 0.0, strength)}, {"kind": "secret", "weight": lerpf(0.1, WALKER_CLAIM_SECRET if gift else 0.1, strength)}]
+	if alignment in ["good", "converted"] and not secret_errand:
+		profiles = _without_errand(profiles)
 	var reports_by_night: Array = []
 	for night in nights:
 		var reports: Array = []
@@ -240,7 +242,8 @@ static func _profile_paths(view: Dictionary, person: Dictionary, night: int, pro
 		rate = 0.0  # no guard on night 0 (triage 7.1): a night-0 outing isn't the Warden's gift
 	if profile == "ordinary":
 		for card in cards:
-			if card.kind == "secret_claim" and not card.get("quoted", false) and card.subject == person.id and night >= card.applies.from and night <= card.applies.through:
+			if card.kind == "secret_claim" and not card.get("quoted", false) and card.subject == person.id and night >= card.applies.from and night <= card.applies.through \
+					and (secret_errand or claim_walks(card)):
 				rate = maxf(rate, lerpf(float(rates.ordinary), float(rates.secret), float(card.get("hearing_weight", 1.0))))
 	if not History.alive_at_night(view, person.id, night):
 		return [{"path": [], "weight": 1.0}]
@@ -330,6 +333,8 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 	if alignment in ["good", "converted"] and role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
 		var strength: float = role_hearing(cards, person.id, role)
 		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, WALKER_CLAIM_HOME if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, WALKER_CLAIM_GIFT if gift else 0.0, strength)}, {"kind": "secret", "weight": lerpf(0.1, WALKER_CLAIM_SECRET if gift else 0.1, strength)}]
+	if alignment in ["good", "converted"] and not secret_errand:
+		profiles = _without_errand(profiles)
 	var night_obs: Array = []
 	var seen_inc: Array = []
 	for c in relevant(cards):
@@ -491,6 +496,36 @@ static func _alibi_incident(card: Dictionary) -> String:
 	if card.get("known_self", false):
 		return "alibi:" + subject + ":known"  # the listener's own knowledge, not a told alibi
 	return "alibi:" + subject + (":self" if str(card.get("source", "")) == subject else "")
+
+## The generic secret errand (every good person ~10% likely to be out on an errand of their
+## own): retired with the flavour secrets (Michael, Nov 21; burdens prototype). Only a burden
+## that walks (Unrequited) explains a good person's walk now, in the worlds that hold it, and
+## only a claim of one raises its claimant's walk rate. Measurement switch: off in play; set it
+## with set_secret_errand, which also sets the C# kernel, and clear the CaseEval caches after.
+static var secret_errand: bool = false
+
+static func set_secret_errand(on: bool) -> void:
+	secret_errand = on
+	SolverBackend._bridge().ActivitySetSecretErrand(on)
+
+## Profiles without the errand: its weight stays home (ordinary).
+static func _without_errand(profiles: Array) -> Array:
+	var out: Array = []
+	var spare: float = 0.0
+	for prof in profiles:
+		if prof.kind == "secret":
+			spare += float(prof.weight)
+		else:
+			out.append(prof.duplicate())
+	for prof in out:
+		if prof.kind == "ordinary":
+			prof.weight = float(prof.weight) + spare
+			break
+	return out
+
+## Whether a burden claim explains its claimant's night walks (FlagClaimWalks in C#).
+static func claim_walks(card: Dictionary) -> bool:
+	return str(card.get("data", {}).get("secret_kind", "")) == "unrequited"
 
 ## A sighting places its teller (Michael, Nov 20; BACKLOG "A sighting places its teller"): in a
 ## world where its teller is honest, a street sighting puts them out on that block that night,

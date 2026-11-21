@@ -172,6 +172,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 				flags |= (1 << 13)  # FlagTellerAtHome: from their window
 			if teller_told_cursed(curse, card):
 				flags |= (1 << 14)  # FlagTellerToldCursed
+		if kind_code == 9 and claim_walks(card):
+			flags |= (1 << 15)  # FlagClaimWalks: an Unrequited claim
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))

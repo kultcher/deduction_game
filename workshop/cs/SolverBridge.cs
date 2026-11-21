@@ -345,6 +345,8 @@ public partial class SolverBridge : RefCounted
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
             headerInts, publicRolesInts, forcedLampIndices, cardInts);
 
+    public static void ActivitySetSecretErrand(bool on) => LiveActivityKernel.SecretErrand = on;
+
     public static int GetUniverseSize(int handle) =>
         SolverContext.GetUniverseSize(handle);
 
