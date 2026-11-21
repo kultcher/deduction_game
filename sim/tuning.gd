@@ -934,6 +934,29 @@ class Evil:
 	const POISON_NOISE = 1.5
 
 
+# ---------------------------------------------------------------- 8b. Burdens (prototype; mock/burdens-slot)
+class Burden:
+	## Marked's disclosure (Michael, Nov 20): announced at the first meeting, shared privately
+	## (the share scaling with trust), or held until nominated or named in an evil reading.
+	const MARKED_SHARE = {"public": 0.15, "private": 0.40}
+	## Private sharing: a peer-talk weight of SCALE x (trust - FLOOR), as a held secret is
+	## shared; to the player, the same expression is the chance when it tells its gift.
+	## Beadle's estimates, not yet approved.
+	const MARKED_PRIVATE_SHARE_SCALE = 3.0
+	const MARKED_PRIVATE_SHARE_FLOOR = 0.5
+	## Evil's reactive burden bluff, faced with an evil reading of it: REACTIVE, plus
+	## SILENCE_PER_DAY for each day past the first with no burden claimed, halved if a
+	## Rumormonger is publicly claimed, times (1 - caution). Beadle's estimates.
+	const BLUFF_REACTIVE = 0.5
+	const BLUFF_SILENCE_PER_DAY = 0.1
+	const BLUFF_RUMORMONGER_DAMP = 0.5
+	## Evil's unprompted claim at the meeting ("bolder with silence", Michael Q16): the public
+	## share x (SILENCE_START + SILENCE_PER_DAY x silent days) x (1 - caution). With caution
+	## about 0.7, about 1 in 400 per evil NPC on day 1. Beadle's estimates.
+	const SILENCE_START = 0.05
+	const SILENCE_PER_DAY = 0.3
+
+
 # ---------------------------------------------------------------- 9. Workshop Evaluator, Bounded Reasoner & Presentation
 class Workshop:
 	## CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`)

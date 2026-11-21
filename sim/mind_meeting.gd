@@ -59,6 +59,14 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 			_public_disclosure(w, n, lines, facts)
 		elif n.claim_public:
 			_public_disclosure(w, n, lines, facts)  # already out: share any new readings
+		# A known burden (burdens prototype): a counter-claim, a "public" holder's first-meeting
+		# announcement, or evil's claim after days of silence.
+		var bc: Dictionary = Burdens.counterclaim(w, n)
+		if bc.is_empty():
+			bc = Burdens.evil_silence_claim(w, n) if n.is_evil() else Burdens.testimony_claim(w, n)
+		if not bc.is_empty():
+			lines.append(bc["line"])
+			facts.append(bc["fact"])
 		var acc = _public_accusation(w, n, lines, facts)
 		if acc != null:
 			lines.append(acc["line"])

@@ -114,6 +114,11 @@ static func _answer_gift_impl(w, n, force_tier: int, trace_id: int, count_questi
 	if first_time:
 		set_trust(w, n, n.trust + Tuning.Trust.SHARED_GIFT_FIRST_TIME_BONUS, "shared their gift with the Demonologist")
 	n.max_tier = maxi(n.max_tier, 3)
+	# A known burden, told in the same breath as the gift, as trust allows (burdens prototype).
+	var told_burden: Dictionary = Burdens.tell_player(w, n)
+	if not told_burden.is_empty():
+		lines.append(told_burden["line"])
+		facts.append(told_burden["fact"])
 	var rdef = C.role_def(role)
 	if rdef != null:
 		var custom: Dictionary = rdef.answer_gift_custom(w, n, first_time, tier, lines, facts, _mind(), C.night_name, C.block_name)

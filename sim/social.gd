@@ -113,6 +113,10 @@ static func _pick_item(w, s, l):
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])
 		if not s.secret.is_empty() and not l.known_secrets.has(s.id):
 			cands.append([(1.0 - priv) * maxf(0.0, bond - Tuning.Social.SHARE_SECRET_BOND_FLOOR) * Tuning.Social.SHARE_SECRET_SLOPE, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id}])
+		# A known burden, shared privately as trust allows (burdens prototype).
+		var burden_w: float = Burdens.private_share_weight(w, s, bond)
+		if burden_w > 0.0 and not l.known_secrets.has(s.id):
+			cands.append([burden_w, {"kind": "secret", "about": s.id, "from": s.id, "key": "secret:" + s.id, "burden": s.secret_mod}])
 		var ranked = Mind.ranked_suspects(w, s).filter(func(m): return m != l)
 		if not ranked.is_empty() and Mind.susp(s, ranked[0].id) >= Tuning.Social.SHARE_OPINION_MIN_SUSP and not _told(s, l, "opinion:" + ranked[0].id):
 			var t = ranked[0]
@@ -398,6 +402,8 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		Evil.intel_from_share(w, l, s, item)
 		if item["kind"] == "secret":
 			l.known_secrets[item["about"]] = s.id
+			if item["about"] == s.id and str(item.get("burden", "")) != "":
+				Burdens.claim(w, s, str(item["burden"]), false, "trusting %s" % l.name, l.id)
 		return
 	# Repeats are handled by the listener's ledger (same reading never stacks).
 	# The teller's credibility is applied live by the listener's ledger (rel = the source).
@@ -490,6 +496,8 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 			l.known_secrets[owner.id] = s.id
 			if owner != s:
 				owner.secret_spread_by_npc = true
+			elif str(item.get("burden", "")) != "":
+				Burdens.claim(w, s, str(item["burden"]), false, "trusting %s" % l.name, l.id)
 	if not public:
 		l.npc_trust[s.id] = clampf(l.npc_trust.get(s.id, 0.5) + gossip_bond(l, s, item), 0.0, 1.0)
 
@@ -546,7 +554,7 @@ static func _describe(w, s, item: Dictionary) -> String:
 			return "they are the %s" % C.role_name(item["role"])
 		"secret":
 			var o = w.by_id[item["about"]]
-			return "%s's secret: %s %s" % [o.name, o.name, o.secret.get("text", "?")]
+			return "%s's secret: %s %s" % [o.name, o.name, Burdens.phrase(o)]
 	return item["kind"]
 
 ## Evil members in the same crowded tavern can pass word unobserved (slow, partial).

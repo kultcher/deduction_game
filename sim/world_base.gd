@@ -81,6 +81,7 @@ var initial_minion_ids: Array = []  # Minion ids dealt at case start (unaffected
 var initial_evil_ids: Array = []    # Initial evil ids dealt at case start (unaffected by Revenant curse)
 var initial_secret_holders: Array = [] # Good townsfolk dealt a secret modifier at case start
 var burden_holder_id: String = ""       # the burden's holder ("" if none); secret_mod stays the source of truth
+var burden_claims: Dictionary = {}  # burden kind -> who has claimed it, in order (burdens prototype)
 var town_hall_uses_left: int = Tuning.Setup.TOWN_HALL_USES_PER_CASE
 var town_hall_shown_roles: Array = []
 var _town_hall_rng: RandomNumberGenerator = null

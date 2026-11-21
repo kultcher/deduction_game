@@ -511,6 +511,18 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 						src_id = sn.id
 				if not rd.is_empty():
 					break
+		# A reading that calls them evil, answered by Marked (burdens prototype): a real holder's
+		# forced reveal, or evil's bluff. It explains the reading, so no "they're lying" follows.
+		var burden_ans: Dictionary = Burdens.answer_evil_reading(w, d, rd, true) if not rd.is_empty() else {}
+		if not burden_ans.is_empty():
+			lines.append(burden_ans["line"])
+			if not burden_ans["fact"].is_empty():
+				facts.append(burden_ans["fact"])
+			moves.append("marked")
+			move_strengths["marked"] = 1.0
+			move_scales["marked"] = absf(float(Tuning.Meeting.DEFENCE_MISLED_RELIEF))
+			defence_scopes["marked"] = {"type": "secret_claim", "owner": d.id, "kind": "marked"}
+			rd = {}
 		if not rd.is_empty():
 			var dd: Dictionary = rd.get("data", {})
 			var pair: Array = dd.get("pair", [])
