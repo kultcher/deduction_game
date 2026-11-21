@@ -550,10 +550,12 @@ func _pose_deal(p: Dictionary, D: Vector2, k: float) -> void:
 			var v = u / 0.22
 			_place(c, D + Vector2(side * 30 * v, -30 * v) * k, 1.0 + 0.05 * v, 0, v, 0.3 * v, 40 + i)
 		elif u < 0.78:        # arc up and out to the side, and down beside the deck
+			# From where the flip left it, (30, -30), to where the slide back starts,
+			# (250, 30), bulging up on the way; size and shadow meet both ends too.
 			var v = _smooth((u - 0.22) / 0.56)
 			var a = PI * v
-			var off = Vector2(side * (30 + 250 * sin(a)), -30 - 90 * cos(a) * (1.0 - v) - 40 * sin(a) + 60 * v)
-			_place(c, D + off * k, 1.05 + 0.1 * sin(a), side * -12 * sin(a), 1.0, 0.3 + 0.4 * sin(a), 40 + i)
+			var off = Vector2(side * (30 + 220 * v + 40 * sin(a)), -30 + 60 * v - 80 * sin(a))
+			_place(c, D + off * k, 1.05 - 0.05 * v + 0.1 * sin(a), side * -12 * sin(a), 1.0, 0.3 - 0.2 * v + 0.4 * sin(a), 40 + i)
 		else:                 # slide back in under the deck
 			var v = _smooth((u - 0.78) / 0.22)
 			_place(c, D + Vector2(side * 250 * (1.0 - v), 30 * (1.0 - v)) * k, 1.0, 0, 1.0, 0.1, -10)

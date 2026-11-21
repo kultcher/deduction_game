@@ -49,9 +49,11 @@
   - the card back is dark red with a gold star in a ring;
   - nothing needs new art. Drawn card, seal or tag art can replace the procedural ones
     later.
-- **`tools/test_reveal_card.gd`:** 32 checks, about 1 s. Added to `tools/ci_fast_suites.txt`.
+- **`tools/test_reveal_card.gd`:** 33 checks, about 1 s. Added to `tools/ci_fast_suites.txt`.
   It covers:
   - the timing;
+  - that dealt cards move continuously, with no jump between their flip, arc and slide
+    back (Codex);
   - the signal order, and that each signal fires once;
   - that skipping emits both signals once;
   - that the deal never shows the true or fakeout role;
@@ -72,7 +74,7 @@ speed.
 
 ## Measured
 
-- **Suites:** `test_reveal_card` 32/32 and `test_day_conversation_view` pass, both through
+- **Suites:** `test_reveal_card` 33/33 and `test_day_conversation_view` pass, both through
   the runner.
 - **Golden:** not captured. No game logic changed: the diff touches only `ui/reveal/`, two
   new tools and the fast-suite list. CI runs golden.
