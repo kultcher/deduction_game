@@ -345,9 +345,9 @@ static func set_evidence_field(m, id: String, field: String) -> void:
 ## Why someone seen at night was out: unexplained, a walking gift (citing their
 ## claim), an evil errand, or love (citing their own Unrequited claim). The private errand
 ## retired with the Burdens rework (Michael, Q22).
-## PLACEHOLDER wording (Herald, for Michael's review): the walker reason an Unrequited claim gives.
+## The walker reason an Unrequited claim gives (Michael, Nov 21: approved).
 const UNREQUITED_REASON = "For love (their Unrequited claim)"
-## PLACEHOLDER wording: the canvas tag for that reason (was "errand").
+## The canvas tag for that reason, was "errand" (Michael, Nov 21: approved).
 const UNREQUITED_TAG = "love"
 
 static func reason_menu(m, id: String, card: Dictionary, person: String) -> void:

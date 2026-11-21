@@ -51,11 +51,13 @@ In game terms:
 - `test_press_caught_out` (Beadle's): it checks the retired Sleepwalker ("an unaware Sleepwalker doesn't own the night").
 - `test_connections_pairings` (Lantern's).
 
-## Placeholders (Michael's wording, drafts)
+## Wording (approved by Michael, Nov 21, through Seneschal)
 
-- "carries a hidden burden": the premise, formerly "holds a secret". The town's ledger line is "The Demonologist says X carries a hidden burden: Delusional."
-- "Out for love — choose their Unrequited claim": the older editor. Herald's live menu reads "For love (their Unrequited claim)", and the two should match whichever Michael picks.
-- Slate-only card texts, which the player never sees: "hang me and you'll all pay for it".
+- "carries a hidden burden": the premise, formerly "holds a secret". The town's ledger line reads "The Demonologist says X carries a hidden burden: Delusional."
+- "For love (their Unrequited claim)": the reason a burden gives for being out at night. Herald's `UNREQUITED_REASON` is used by both the live Workshop and the older editor.
+- Slate-only card texts, which the player never sees, stay as they are: "hang me and you'll all pay for it".
+
+**A fix after the push:** my first premise rename put a comment mid-line in `canvas_model.gd` `PREMISE_TEXT`, which commented out "was turned by the Revenant's curse". The "turned" premise's title had gone missing. It's restored, and the placeholder comment is gone now that the wording is approved.
 
 ## Small calls made on Michael's behalf
 
