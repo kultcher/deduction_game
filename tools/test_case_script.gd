@@ -59,14 +59,14 @@ func _init() -> void:
 
 	# Forced roles are always dealt.
 	var forced = ScriptDef.default_script()
-	forced.forced = ["sexton", "veteran", "scion", "sleepwalker"]
+	forced.forced = ["sexton", "veteran", "scion", "unrequited"]
 	var always = true
 	for sd in range(500, 520):
 		var r = _deal(sd, 7, forced)
 		var dealt: Array = r.roles.values().map(func(x): return x[0])
 		var mods: Array = r.roles.values().map(func(x): return x[1])
-		always = always and "sexton" in dealt and "veteran" in dealt and "scion" in dealt and "sleepwalker" in mods
-	_check(always, "forced Sexton, Veteran, Scion and Sleepwalker are always in play")
+		always = always and "sexton" in dealt and "veteran" in dealt and "scion" in dealt and "unrequited" in mods
+	_check(always, "forced Sexton, Veteran, Scion and Unrequited are always in play")
 
 	# Checks: too few to deal a size is an error for that size only.
 	var small = ScriptDef.default_script()

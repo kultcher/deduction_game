@@ -19,7 +19,7 @@ const DEFAULT_TOWN = ["archivist", "clerk", "dowser", "gravedigger", "lamplighte
 	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
 ## Burdens prototype (mock/burdens-slot, Michael Nov 20-21): the first slate lists only
 ## Delusional (hidden) and Marked (known); the Lovers and Sleepwalker 1.0 are retired.
-const DEFAULT_SECRETS = ["delusional", "marked"]
+const DEFAULT_SECRETS = ["delusional", "marked", "unrequited", "ill_omened"]
 ## Burdens whose holder doesn't know they carry it. At most one per script.
 const HIDDEN_SECRETS = ["delusional"]
 const USER_DIR = "user://scripts"

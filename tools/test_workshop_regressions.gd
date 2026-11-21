@@ -2,6 +2,7 @@
 ## Merged from: test_backlog_batch4, test_claude_audit_cleanup, test_claude_batch, test_phase4_3_framing_and_vigil_physics, test_playtest_nov4_fixes, test_playtest_regressions, test_workshop_slice5_voices_and_bot.
 extends SceneTree
 
+const ScriptDef = preload("res://sim/script_def.gd")
 const GamePresentation = preload("res://game/game_presentation.gd")
 const GameBoard = preload("res://game/game_board.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -514,7 +515,7 @@ func _test_jury_persuasion_tail_helper() -> void:
 func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 	var g = Game.new()
 	g.detailed_logging = false
-	g.new_case(98933, 10)
+	g.new_case(98933, 10, _two_burden_script())
 	var w = g.w
 	w.day = 3
 	w.phase = C.EVENING
@@ -585,7 +586,7 @@ func _test_vigil_vs_nightwatch_self_walk_and_challenge() -> void:
 
 func _test_rumormonger_and_chronicler_chance_content() -> void:
 	var g = Game.new()
-	g.new_case(95955, 10)
+	g.new_case(95955, 10, _two_burden_script())
 	var w = g.w
 	w.day = 1
 	w.phase = C.EVENING
@@ -911,3 +912,11 @@ func _test_bears_on_trace_no_hidden_truth_leak() -> void:
 	_check(g.Deduction.trace_fit_from_receipts(secret_miss.id, g.board[tnum - 1], GameBoard.all_receipts(g)) == "contradicts", "learning all contradicting work + haunts resolves trace_fit_from_receipts to contradicts")
 	var d_ruled_out: int = GameBoard.file_deduction(g, {"type": "evil", "a": secret_miss.id}, [tnum])
 	_check(d_ruled_out > 0 and g.board[d_ruled_out - 1]["unfounded"], "deduction from trace becomes unfounded once discovered profile receipts rule out all prongs")
+
+## These fixtures reproduce playtests dealt with Delusional and Marked only, and test other
+## mechanics; the burdens prototype's four-burden deal moved them (Agnes Unrequited on 98933,
+## a Delusional rumour's prior halved on 95955), so they're dealt the two-burden script.
+func _two_burden_script():
+	var s = ScriptDef.default_script()
+	s.secrets = ["delusional", "marked"]
+	return s

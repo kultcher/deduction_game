@@ -214,9 +214,12 @@ func _assign_secret_mod() -> void:
 	var a = goods[0]
 	a.secret_mod = k
 	a.burden_self_known = k not in ScriptDef.HIDDEN_SECRETS
+	if k == "unrequited":
+		# The beloved: anyone else, who may be evil, and doesn't know (burdens.md section 2.1).
+		a.beloved = pick(npcs.filter(func(n): return n != a)).id
 	burden_holder_id = a.id
 	initial_secret_holders = npcs.filter(func(n): return not n.is_evil() and n.secret_mod != "").map(func(n): return n.id)
-	dlog.add("secret_mod", a.id, "", {"mod": k}, "Secret: %s is %s." % [a.name, C.secret_name(k)])
+	dlog.add("secret_mod", a.id, a.beloved, {"mod": k, "beloved": a.beloved}, "Secret: %s is %s%s." % [a.name, C.secret_name(k), (", in love with %s" % by_id[a.beloved].name) if a.beloved != "" else ""])
 
 func _assign_relationships() -> void:
 	for i in range(npcs.size()):
@@ -255,7 +258,7 @@ func _log_grimoire() -> void:
 		g.append({"id": n.id, "occupation": n.occupation, "work_phases": n.work_phases, "role": n.role,
 			"align": n.alignment, "home": n.home_block, "ring": n.ring, "friends": n.friends, "rivals": n.rivals,
 			"traits": n.traits, "trait_base": n.trait_base, "secret": n.secret.get("kind", ""),
-			"red_herring": n.red_herring, "trust": snappedf(n.trust, 0.01), "secret_mod": n.secret_mod})
+			"red_herring": n.red_herring, "trust": snappedf(n.trust, 0.01), "secret_mod": n.secret_mod, "beloved": n.beloved})
 	dlog.add("grimoire", "world", "", {"npcs": g, "bluffs": bluffs, "plan": evil_plan},
 		"Hidden setup. Demon=%s, minions=%s, bluffs=%s" % [demon_id, ", ".join(PackedStringArray(minion_ids.map(func(i): return "%s (%s)" % [i, by_id[i].role]))), str(bluffs)])
 

@@ -135,9 +135,9 @@ func _test_secret_domain_and_premise() -> void:
 	}
 	var worlds: Array = Domain.worlds(view)
 	# 7 people, 2 evil (21 teams * 2 demons = 42): per team, over the 5 good people,
-	# delusional 5 + marked 5 = 10 layouts -> 42 * 10 = 420 worlds (burdens prototype: the
-	# Lovers and Sleepwalker retired)
-	_check(worlds.size() == 420, "WorldDomain enumerates exactly 420 worlds with the script's secrets (%d)" % worlds.size())
+	# 4 burdens x 5 good holders = 20 layouts -> 42 * 20 = 840 worlds (burdens prototype: the
+	# Lovers and Sleepwalker retired; Unrequited and Ill-Omened placed like the others)
+	_check(worlds.size() == 840, "WorldDomain enumerates exactly 840 worlds with the script's secrets (%d)" % worlds.size())
 	var keys: Dictionary = {}
 	for w in worlds:
 		keys[Domain.key(view, w)] = true

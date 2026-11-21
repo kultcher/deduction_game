@@ -29,7 +29,7 @@ func _init() -> void:
 		var prepared = Assess.prepare(input)
 		check(prepared.ready, "count reading is supported without a hidden modifier lookup")
 		var worlds = Domain.worlds(prepared.view)
-		check(worlds.size() == (210 if size == 7 else 1680), "the script's legal modifier kinds (burdens prototype: Delusional and Marked) have the expected public domain (%d)" % worlds.size())
+		check(worlds.size() == (420 if size == 7 else 3360), "the script's legal modifier kinds (burdens prototype: all four burdens, each placed) have the expected public domain (%d)" % worlds.size())
 		var unique = {}
 		for world in worlds:
 			unique[TimeModel.key(prepared.view, world)] = true

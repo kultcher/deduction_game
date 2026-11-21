@@ -487,8 +487,12 @@ const SECRET_MODS = {
 	"marked": {"name": "Marked", "desc": "May register as evil, or as the Demon, to gifts that read them."},
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
+	# Burdens prototype, stage 2. Ill-Omened's text is Michael's (burdens.md section 11);
+	# Unrequited's approved text is on Herald's held branch, this is the design's summary.
+	"unrequited": {"name": "Unrequited", "desc": "Carries a one-sided love for one person, who may be evil, and visits their home at night."},
+	"ill_omened": {"name": "Ill-Omened", "desc": "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night."},
 }
-const SECRET_MOD_LIST = ["delusional", "marked"]  # burdens prototype: the Lovers and Sleepwalker 1.0 retired
+const SECRET_MOD_LIST = ["delusional", "marked", "unrequited", "ill_omened"]  # burdens prototype: the Lovers and Sleepwalker 1.0 retired
 
 ## How sure you are of a guess (stored as 1..4).
 const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]
