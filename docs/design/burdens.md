@@ -459,8 +459,9 @@ through a `claude/` branch cut from it, never directly ("How it lands", below).
 
 ### How it lands (Michael, Nov 21)
 
-- **One PR, or two at most** if Bailiff wants the judge separate, **with a single golden
-  re-baseline.** It doesn't port to main stage by stage.
+- **One PR with a single golden re-baseline.** It doesn't port to main stage by stage.
+  Michael allowed two if Bailiff wanted the judge separate; Bailiff chose one PR, reviewed by
+  area, so golden moves once (Nov 21).
 - **When:** after Michael playtests the prototype.
 - **How:** Lantern cuts `claude/burdens` from `mock/burdens-slot`, cleaned of scaffolding.
   This is an explicit exception to "`mock/` branches never merge": the code lands through a
