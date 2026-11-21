@@ -1333,7 +1333,8 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   there's no end-of-game seal (it would give away the outcome). The window keeps its own locked
   guesses: Demon and Minion picks in the profile prefill empty circles, greyed, until confirmed,
   and it never writes back to the profile. Confirm, Skip, or turn it off for the case; it's also
-  under More. No confidence marks; a limit on changes is pending Michael.
+  under More. No confidence marks. The Demon guess is limited: the first pick is free, then two
+  changes a case, each confirmed in a dialog; Minion picks and types are free.
 - **Results** distinguish identifying the demon, identifying a minion, saving the town and
   preserving good townsfolk. "Identified but lost" is descriptive partial credit.
 - **Executions** log nomination, votes and explicit statements; the player's stance is
