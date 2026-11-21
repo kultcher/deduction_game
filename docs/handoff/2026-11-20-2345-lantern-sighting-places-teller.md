@@ -1,7 +1,9 @@
 ## Nov 20 — Claude-Lantern: a sighting places its teller
 
-- **Base:** main after #455 (merged in). **Status:** PR ready. **Next:** Bailiff. **Moves golden:**
-  re-baselined in this PR (`baseline_7af7d2a`).
+- **Base:** main after #412 (merged in). **Status:** PR ready. **Next:** Bailiff. **Moves golden:**
+  re-baselined in this PR (`baseline_6f80578`, after #412; it was `baseline_7af7d2a` on #455).
+- **Codex follow-up (Nov 21):** a teller converted when they told the sighting is unconstrained
+  in its base world too (`FlagTellerToldCursed`, `_teller_place_converted`). Zero drift.
 - **What this is:** BACKLOG section 6, "A sighting places its teller", `[decided]` (Michael, Nov 20,
   from seed 100002 on #454).
 
