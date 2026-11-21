@@ -351,6 +351,10 @@ add to sections 1 to 7, and win where they differ.
    count on its own.
 8. **Evil plays as its good self** when a real Ill-Omened is claimed. It doesn't push to hang
    them.
+   - **Revised for Minions** (Michael, Nov 21): non-Scion Minions get a bump toward hanging an
+     Ill-Omened claimant they believe is real, scaled down by their own exposure. They risk it
+     when there's little heat on them, and blend in under scrutiny. The bump's size is a new
+     constant, which Beadle proposes. See section 16.
 9. **The cost of a hanging is one general vote term,** fed by the claim, and a reasonably
    strong deterrent: about enough to cancel the player's "yes" vote bump.
    - The bump scales with trust (`PLAYER_VOTE_YES_SLOPE` and `_OFFSET` in `sim/tuning.gd`),
@@ -628,5 +632,12 @@ Relayed by Seneschal; the wording follows his message closely.
   claimed.
 - **Wording approved:** "carries a hidden burden", "For love (their Unrequited claim)", and
   "love".
-- **Pending:** whether being lied about clears the liar. Lantern is listing what counts as
-  firsthand. Michael's view is that what others say is secondhand.
+- **Being lied about clears the liar:** decided (Michael, Nov 21). Firsthand means only what
+  the NPC itself read, saw or did; see `docs/belief_model.md`.
+- **Ill-Omened, evil's play** (Michael, Nov 21): non-Scion Minions get a bump toward hanging an
+  Ill-Omened claimant they believe is real, scaled down by their own exposure, so they take the
+  risk under little heat and blend in under scrutiny. This revises item 8 in section 9 for
+  Minions only. The bump's size is a new constant, which Beadle proposes.
+  - **Measured:** under the belief-weighted cost, the poison falls once in 40 passive games, so
+    the cost is unchanged.
+  - **Still open:** whether a holder turned evil and then hanged triggers the poison.
