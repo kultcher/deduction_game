@@ -487,8 +487,11 @@ Michael ruled that no NPC line may mention the effect.
   - **Gossip:** "…is Ill-Omened, and hanging them would cost the town dear".
   - **The Rumormonger:** "…is Ill-Omened, and their hanging would bring a cost".
   - **The counter-claim** is unchanged.
-- **The script sheet:** "If hanged after claiming this burden, every good person is poisoned
-  until the start of the next night."
+- **The script sheet** (final, Michael, Nov 21): "If hanged after claiming this burden, every
+  good person is poisoned that night until the start of the next night."
+  - **The window** is the night after the hanging plus the following day, and it ends when the
+    next night begins. So that night's readings and the next day's day gifts are poisoned.
+    This settles Quill's question about a daytime hanging.
 - **The board marker** after a claimed Ill-Omened is hanged stays vague, e.g. "The omen may
   have fallen", with no mention of poison. Herald drafts it, and the wording is Michael's.
 - **No new Mistaken cause.** The existing poison cause covers it. The #455 Poisoner nudge still
