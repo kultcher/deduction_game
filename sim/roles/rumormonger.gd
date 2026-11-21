@@ -65,7 +65,13 @@ func generate_bluff_reading(w, n, _plan: Dictionary, s: String, mate, _asked: Ar
 	var other = w.pick(w.living_good().filter(func(x): return x.id != s))
 	var pair: Array = w.shuffled([mate.id, other.id])
 	var sk: String = w.pick(w.case_script.secrets)
-	var why: String = "gave %s, a fellow evil, a harmless secret to own to" % mate.id
+	# Each burden covers a fellow evil differently (burdens prototype): every lie has its reason.
+	var cover: Dictionary = {
+		"marked": "a reason any evil reading of them could be put down to the mark",
+		"ill_omened": "a reason the town should fear to hang them",
+		"unrequited": "a reason to have been out at night",
+	}
+	var why: String = "gave %s, a fellow evil, %s" % [mate.id, cover.get(sk, "a harmless secret to own to")]
 	var entry: Dictionary = {
 		"data": {"pair": pair, "secret": sk},
 		"text": "I heard that one of %s is %s" % [w._names(pair), w._secret_phrase(sk)],
