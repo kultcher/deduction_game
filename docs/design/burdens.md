@@ -610,3 +610,20 @@ Relayed by Seneschal. It resolves the hold in section 14.
   - Marked may also be unplaced at 12 to 13 NPCs.
 - **Rejected:** the per-case "touched-set" hybrid. It fragments the single cached universe,
   and by days 3 to 4 it saves little.
+
+## 16. More stage-2 decisions (Michael, Nov 21, later)
+
+Relayed by Seneschal; the wording follows his message closely.
+
+- **Ill-Omened:** the cost is weighted by belief, and split when claims clash. The poison should
+  be able to fall in play; Beadle is measuring which levers make that happen.
+- **The Unrequited bluff:** a claim that explains a sighting is roughly neutral, like a claim
+  made after an evil reading (section 13).
+- **Marked with four burdens on the script:** accepted for now. It's revisited after the role
+  breakdown, along with the Unrequited numbers.
+- **Impossible pairs** (the placement-rule check in section 10) also cover holders who haven't
+  claimed.
+- **Wording approved:** "carries a hidden burden", "For love (their Unrequited claim)", and
+  "love".
+- **Pending:** whether being lied about clears the liar. Lantern is listing what counts as
+  firsthand. Michael's view is that what others say is secondhand.
