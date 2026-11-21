@@ -44,21 +44,15 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, a sighting places its teller): `baseline_7af7d2a`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
 
-`tools/golden/baseline_7af7d2a/` is the capture from `claude/sighting-places-teller` at `7af7d2a` (main at
-`70223ca` after #455, merged in). In a world where its teller is good, a street sighting puts
-the teller out on that block that night, and a window sighting puts them home or on their own
-block (`LiveActivity.teller_place`). This replaces the PR's earlier `baseline_e8ff7e0`.
-- **Divergence from `baseline_8d60e8e`:** every seed, at a refresh: 98933 at record 1, 54875 at 4
-  (day 1), 42 at 29, 900 at 32 and 692 at 53 (day 2).
-- **Outcomes:**
-  - **54875:** Edda (the Revenant) on day 1 as before, then Odette (a good Veteran) on day 2 and
-    Isolde (a good Lamplighter) on day 3, instead of Greta (the Poisoner) on day 2.
-  - **692:** Constance (the Demon) on day 2 as before, and now Lian (the Revenant) on day 3.
-  - **98933:** Agnes (a good Medium) on day 2 as before; Lian (a good Psychologist) is no longer
-    hanged on day 3.
-  - **42 and 900:** the same hangings (none; Greta). No winner by day 4 anywhere.
+`tools/golden/baseline_1d59c5a/` is the capture from `claude/beadle-martyr-bluff-quiet` at `1d59c5a`
+(main at `8d60e8e`, after #455, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_8d60e8e`:** only 692, at record 228 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
