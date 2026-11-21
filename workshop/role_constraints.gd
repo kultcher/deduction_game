@@ -620,11 +620,22 @@ static func ids_of(view: Dictionary) -> Array:
 static func _first_told_tick(card: Dictionary) -> int:
 	return Chronology.tick(card.observed_at) if card.get("observed_at") is Dictionary else Chronology.tick(Chronology.statement_time(card))
 
+## When a reading could first have been told: the morning after a night reading, else when it
+## was observed. Not when this listener learned it, which can be later than the claim it
+## prompted (a reading heard second-hand on day 3 still answered a day-2 claim).
+static func _reading_known_tick(card: Dictionary) -> int:
+	var obs = card.get("observed_at")
+	if not obs is Dictionary:
+		return Chronology.tick(Chronology.statement_time(card))
+	if str(obs.get("phase", "")) == "night":
+		return Chronology.tick({"day": int(obs.get("day", 0)) + 1, "phase": "morning"})
+	return Chronology.tick(obs)
+
 ## For each claimed burden, [who, factor, statement tick]: the factor weighs a world where the
 ## claimant was evil when they spoke. It's how much likelier an evil player is to make the
 ## claim than a real holder, measured (Tuning.Workshop.BURDEN_BLUFF_*), by whether the claim
-## answers an evil reading: one the listener holds that names the claimant evil and was told
-## no later than the claimant first told of the burden. An earlier telling (to a friend, to
+## answers an evil reading: one the listener holds that names the claimant evil and could have
+## been told no later than the claimant first told of the burden (_reading_known_tick). An earlier telling (to a friend, to
 ## the player) dates the claim, so a later public claim with it isn't counted as reactive
 ## (Michael, Nov 21). The judge can't tell a faked earlier telling from a real one.
 static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
@@ -645,7 +656,7 @@ static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
 				first = mini(first, _first_told_tick(c))
 		var reactive: bool = false
 		for r in held + cards:
-			if Chronology.tick(Chronology.statement_time(r)) <= first and names_evil(view, r, who):
+			if _reading_known_tick(r) <= first and names_evil(view, r, who):
 				reactive = true
 				break
 		var factor: float = Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED
