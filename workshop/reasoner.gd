@@ -718,8 +718,9 @@ static func _ordered_live_candidates(view: Dictionary, cards: Array, value: Dict
 		var holder_part: int = 0
 		if needs_holders:
 			holder_part = (Solver.C.SECRET_MOD_LIST.find(mod_str) + 1) * (1 << n_people) + holders_bits
-		elif mediums != 0 and mod_str == "delusional" and (holders_bits & mediums) != 0:
-			holder_part = (1 << n_people) + (holders_bits & mediums)
+		elif mediums != 0 and mod_str != "marked" and (holders_bits & mediums) != 0:
+			# A Delusional relayer or teller, or a burden's claimant (burdens prototype).
+			holder_part = (SolverBackend.modifier_code(candidate) + 1) * (1 << n_people) + (holders_bits & mediums)
 		var eq_key: int = (((evil_bits * n1 + conv_part + 1) * n1 + demon_part + 1) * n1 + marked_part + 1) * holder_mult + holder_part
 		if seen_eq.has(eq_key):
 			continue

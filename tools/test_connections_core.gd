@@ -50,7 +50,15 @@ func _init() -> void:
 	_tests_and_members()
 	_arithmetic()
 	_combine()
-	_states(900, 7, 3, 99)
+	# A game whose cores have members and a card that arrives late in the day: searched for
+	# (seed 900 had one until the burdens prototype's deal), so play changes don't break it.
+	var found_arrival := false
+	for sd in range(900, 910):
+		if _states(sd, 7, 3, 99, false) > 0:
+			found_arrival = true
+			print("late arrival found at seed %d" % sd)
+			break
+	check(found_arrival, "some game in seeds 900-909 has cores with members and a late arrival tried")
 	_states(902, 10, 3, 3)
 	_wrong_sighting()
 	_baseline_has_no_cards()
@@ -267,7 +275,7 @@ func _same(a: Dictionary, b: Dictionary) -> bool:
 	return a.size() == b.size()
 
 
-func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
+func _states(seed_v: int, npcs: int, day: int, most: int, need_arrival: bool = true) -> int:
 	var g = Game.new()
 	g.detailed_logging = false
 	g.new_case(seed_v, npcs)
@@ -275,7 +283,7 @@ func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
 	var tag: String = "seed %d" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])
-		return
+		return 0
 	var seeded := 0
 	var joined := 0
 	var arrivals := 0
@@ -337,8 +345,9 @@ func _states(seed_v: int, npcs: int, day: int, most: int) -> void:
 			check(late not in before.core.members and not after.core.rebuilt and after.core.tested.keys() == [late] and after.core.members == core.members and _same(after.posterior, r.posterior),
 				"%s: a card heard during the day is tested when it arrives, and only it (%s)" % [who, late])
 	check(seeded > 0, "%s: listeners with firsthand cards to test (%d, %d cards and pairings joined)" % [tag, seeded, joined])
-	if most > 3:
+	if most > 3 and need_arrival:
 		check(joined > 0 and arrivals > 0, "%s: some cores have members, and a late arrival was tried" % tag)
+	return arrivals if joined > 0 else 0
 
 
 ## Seed 100034, day 2: the evil Constance says she saw Odette out; Odette was home.

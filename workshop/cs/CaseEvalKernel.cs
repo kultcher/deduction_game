@@ -264,7 +264,7 @@ internal static class CaseEvalKernel
             rmBound = (1L << nPeople)
                 * (nPeople + 2L)
                 * (nPeople + 2L)
-                * (mediums != 0 ? (1L << nPeople) : 1L);
+                * (mediums != 0 ? (1L << nPeople) * 5L : 1L);
             if (hasCurse)
             {
                 rmBound *= (nPeople + 1L);
