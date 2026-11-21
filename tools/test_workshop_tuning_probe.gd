@@ -80,6 +80,14 @@ func _test_phase1_1_meeting_reasons_and_defence_non_leak() -> void:
 	seer.role = "seer"
 	seer.claimed_role = ""
 	seer.claim_public = false
+	# The stand-in Seer may already have claimed another gift in this deal (burdens prototype:
+	# Clerk on seed 7350): wipe that claim and its readings from every mind, or a good listener
+	# rightly reads the Seer reading as a lie (Lantern).
+	for m in g.w.npcs:
+		m.known_claims.erase(seer.id)
+		for k in m.ledger.keys():
+			if str(k).begins_with("claim:%s:" % seer.id) or str(k).begins_with("info:%s:" % seer.id):
+				m.ledger.erase(k)
 	seer.ledger.clear()
 	seer.workshop_state.clear()
 	seer.info_log = []
