@@ -63,7 +63,8 @@ yet.** Written by Claude-Vicar.
 - **The witness alibi:** a neighbour at home sometimes notices someone stayed in (20%). It's
   weak, but true.
 - **The vote record:** who was nominated, who voted, and how many votes put someone on the
-  block or clear it.
+  block or clear it. By design, the judge gives votes no weight on alignment (Lantern's
+  check, Nov 21).
 - **Silencing:** who was silenced, and so that a Breathstealer is in play.
 - **The Revenant's curse:** that it happened, and so that the person just hanged was the
   Revenant and evil, and that someone has been turned. Nobody knows who, so it's "one more
@@ -173,7 +174,8 @@ explanations:
 **The player's side of a "yes"** (as built): the Workshop asks which explanation the player is
 arguing (the Demon, the Red Herring or Marked, and who), and the case is graded on that choice.
 
-*A named in a "no"* (Vicar's draft, to confirm): B isn't the Demon, and I'm not the Red
+*A named in a "no"* (Vicar's draft; it matches the judge, per Lantern's check, Nov 21;
+Michael to confirm): B isn't the Demon, and I'm not the Red
 Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
 
 **Target choice:**

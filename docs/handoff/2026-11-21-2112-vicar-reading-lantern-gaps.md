@@ -19,3 +19,9 @@ Lantern is fixing gaps 1 and 2 as bugs, and is checking gap 6.
 ## What I measured
 
 Nothing; it's docs only.
+
+## Also, from Lantern's full report
+
+- A named person's reading of a "no" (section 2.1) matches the judge. It's still my draft until
+  Michael confirms it.
+- Section 1.3 now says that, by design, the judge gives votes no weight on alignment.
