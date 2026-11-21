@@ -1,10 +1,10 @@
 # The pressure of silence
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `554f2f4` (`baseline_66be26f`, after #448), merged in; first written on `977e15e`
+- **Base:** main at `c2c5653` (`baseline_1d59c5a`, after #412), merged in; first written on `977e15e`
 - **Branch:** `claude/beadle-silence` (the measured build was `mock/beadle-silence`)
 - **Status:** PR open. Golden moves on every seed from day 1 and is re-baselined here to
-  `baseline_c1cce1b`. Golden-moving PRs merge one at a time.
+  `baseline_5f4629f`. Golden-moving PRs merge one at a time.
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Accusations from starting suspicion read as clues", built as Michael's
   "pressure of silence" [decided]. Pitch and constants approved Nov 20; approved to ship with no
@@ -87,9 +87,9 @@ there lived on the victim's block (a neighbour never says "I was never on it", b
 claimed sleepwalking. The test now picks an evil defender who doesn't live on the victim's block
 and keeps the sleepwalk excuse out of that check. No game code changed for it.
 
-**Golden:** re-baselined to `baseline_c1cce1b`; two captures were identical. Every seed diverges
-at day 1's first meeting. 42 becomes a good win on day 2 (Agnes, the Demon, hanged); the other
-four seeds hang different people, with no winner by day 4. See "Current baseline" in
+**Golden:** re-baselined to `baseline_5f4629f` on main after #412; two captures were identical.
+Every seed diverges at day 1's first meeting. 42 becomes a good win on day 2 (Agnes, the Demon,
+hanged); the other four seeds hang different people, with no winner by day 4. See "Current baseline" in
 `docs/golden_baseline.md`.
 
 ## Proposed for the backlog
