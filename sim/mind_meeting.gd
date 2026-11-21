@@ -25,7 +25,8 @@ static func meeting_testimony(w) -> Array:
 static func testimony_start(w) -> Dictionary:
 	w.defer_beliefs = true
 	var st: Dictionary = {"speakers": w.shuffled(w.living()), "i": 0, "done": false,
-		"substantive_turns": 0, "reactive": {}, "interjected": {}, "spoke_ids": {}}
+		"substantive_turns": 0, "reactive": {}, "interjected": {}, "spoke_ids": {},
+		"useful": 0, "second_pass": false, "silence_checked": false}
 	_sync_testimony_ctx(w, st)
 	return st
 
@@ -33,7 +34,8 @@ static func testimony_start(w) -> Dictionary:
 ## counts only, so meeting state stays comparable between runs).
 static func _sync_testimony_ctx(w, st: Dictionary) -> void:
 	if w.meeting is Dictionary:
-		w.meeting["testimony"] = {"reactive": st.get("reactive", {}), "substantive_turns": int(st.get("substantive_turns", 0)), "done": bool(st.get("done", false))}
+		w.meeting["testimony"] = {"reactive": st.get("reactive", {}), "substantive_turns": int(st.get("substantive_turns", 0)), "done": bool(st.get("done", false)),
+			"second_pass": bool(st.get("second_pass", false))}
 
 ## One step: the next speaker's turn ({who, lines, facts}; lines may be empty), or once
 ## everyone has spoken, one of the belief refreshes still waiting ({}). Sets st.done after
@@ -60,13 +62,25 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		elif n.claim_public:
 			_public_disclosure(w, n, lines, facts)  # already out: share any new readings
 		var acc = _public_accusation(w, n, lines, facts)
+		var reasoned_acc: int = 0
 		if acc != null:
 			lines.append(acc["line"])
 			facts.append(acc["fact"])
+			reasoned_acc = 1 if acc.get("reasoned", false) else 0
 		_late_relay(w, n, lines, facts)
 		_volunteer_night_sightings(w, n, lines, facts)
 		st["reactive"].erase(n.id)
 		st["spoke_ids"][n.id] = true
+		# What the town learned (the silence check): gift claims, shared readings (a reading
+		# relayed anonymously with an accusation among them), volunteered sightings and
+		# accusations that give a reason.
+		st["useful"] = int(st.get("useful", 0)) + reasoned_acc + facts.filter(func(f): return str(f.get("kind", "")) in ["claim", "info", "sighting"] or bool(f.get("relay", false))).size()
+		if st.get("second_pass", false) and not lines.is_empty() and not st.get("broke_silence", {}).has(n.id):
+			# Filling the silence: a short opener, for anyone speaking in this pass, good or evil.
+			if not st.has("broke_silence"):
+				st["broke_silence"] = {}
+			st["broke_silence"][n.id] = true
+			lines.insert(0, say_voiced(n, "silence_breaker", "Well, someone ought to say something."))
 		if facts.any(func(f): return str(f.get("kind", "")) in ["claim", "info", "accusation"]):
 			st["substantive_turns"] += 1
 		if not facts.is_empty():
@@ -75,7 +89,27 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		if reacting and not lines.is_empty():
 			w.dlog.think(n.id, "testimony", "Speaks up in reaction to what was just said.", {"reactive": true})
 		return {"who": n.id, "lines": lines, "facts": facts}
-	# Everyone has spoken: the remaining refreshes, one mind per step, in queue order.
+	# Everyone has spoken. The pressure of silence: if the town learned little, the speaking
+	# order runs once more (once per meeting).
+	if not st.get("silence_checked", false):
+		st["silence_checked"] = true
+		var useful: int = int(st.get("useful", 0))
+		if useful < Tuning.Meeting.SILENCE_USEFUL_MIN:
+			st["second_pass"] = true
+			# Each living, unsilenced speaker once, in first-pass order (an interjection added a
+			# second turn to the first pass's list; it doesn't carry over).
+			var order: Array = []
+			for m in st["speakers"]:
+				if m.alive and not m.silenced and not order.has(m):
+					order.append(m)
+			st["speakers"] = order
+			st["i"] = 0
+			w.dlog.add("silence_check", "", "", {"useful": useful, "second_pass": true, "speakers": st["speakers"].size()},
+				"The meeting has gone quiet (%d useful item(s)); the speaking order runs once more." % useful)
+			_sync_testimony_ctx(w, st)
+			return testimony_step(w, st)
+		w.dlog.add("silence_check", "", "", {"useful": useful, "second_pass": false}, "The meeting produced %d useful item(s)." % useful)
+	# The remaining refreshes, one mind per step, in queue order.
 	if not w.pending_beliefs.is_empty():
 		flush_beliefs(w, w.pending_beliefs[0][0])
 	if w.pending_beliefs.is_empty():
@@ -163,7 +197,20 @@ static func _testimony_sighting_bar(w, n) -> float:
 	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
 	if st == null or st.get("done", true) or st["reactive"].has(n.id):
 		return 0.0
-	return float(st.get("substantive_turns", 0)) * Tuning.Meeting.CROWD_FADE_SIGHTING_BAR
+	return float(st.get("substantive_turns", 0)) * Tuning.Meeting.CROWD_FADE_SIGHTING_BAR - _silence_bonus(w, n)
+
+## The meeting's second pass (the pressure of silence): a good NPC's extra willingness to
+## speak, larger the less composed they are. Evil gets none: its speech is planned.
+static func _silence_bonus(w, n) -> float:
+	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
+	if st == null or st.get("done", true) or not st.get("second_pass", false) or n.is_evil():
+		return 0.0
+	return Tuning.Meeting.SILENCE_SPEAK_BONUS * (1.0 - trait_of(n, "composure"))
+
+## Is the meeting in its first pass (where good NPCs' accusation floor applies)?
+static func _first_pass(w) -> bool:
+	var st = w.meeting.get("testimony", null) if w.meeting is Dictionary else null
+	return st == null or not st.get("second_pass", false)
 
 ## How safe nominee d is because someone else is already firmly on the block (0..1, public
 ## information only; plan Step 2). Feeds the defence, and later the Podium Press and supporters.
@@ -422,6 +469,9 @@ static func _public_claim_decision(w, n) -> String:
 	var opening: float = _testimony_openness(w, n)
 	if opening != 0.0:
 		parts["reactive" if opening > 0.0 else "crowd_fade"] = opening
+	var silence: float = _silence_bonus(w, n)
+	if silence > 0.0:
+		parts["silence"] = silence
 	# Promised to tell the Demonologist first once protected, or offered them a deal for it
 	# today (a vigil, a ward, or keeping it quiet): hold it back until that's settled
 	# (triage 3.2: Odette asked for a vigil, then claimed at that evening's meeting).
@@ -855,6 +905,9 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 		t = ranked[0]
 		s2 = susp(n, t.id)
 		acc_resent = _mind().resentment_toward(w, n, t.id)
+		if s2 < Tuning.Meeting.GOOD_ACCUSE_MIN_SUSP and _first_pass(w):
+			w.observe_decision(n, "accuse", false, {"gate": "below the accusation floor in the first pass", "suspicion": s2, "floor": Tuning.Meeting.GOOD_ACCUSE_MIN_SUSP}, t.id)
+			return null
 	if already_accused(w, n, t.id):
 		return null # They've said it at this meeting already; once is enough.
 	var parts = {"suspicion": (s2 - Tuning.Meeting.ACCUSE_SUSPICION_PIVOT) * Tuning.Meeting.ACCUSE_SUSPICION_SLOPE, "confidence": (trait_of(n, "confidence") - 0.5) * Tuning.Meeting.ACCUSE_CONFIDENCE_SLOPE,
@@ -864,6 +917,9 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 	var acc_opening: float = _testimony_openness(w, n)
 	if acc_opening != 0.0:
 		parts["reactive" if acc_opening > 0.0 else "crowd_fade"] = acc_opening
+	var acc_silence: float = _silence_bonus(w, n)
+	if acc_silence > 0.0:
+		parts["silence"] = acc_silence
 	if not decide(w, n, "accuse", parts, "Publicly accuse %s?" % t.id):
 		return null
 	return _accusation_body(w, n, t, s2, why, lines, facts)
@@ -924,6 +980,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 	t.npc_trust[n.id] = clampf(t.npc_trust.get(n.id, 0.5) - Tuning.Social.TRUST_ACCUSED_ME, 0.0, 1.0)
 	load("res://sim/social.gd").backing_trust(w, t.id, n.id, "accused %s, whom I suspect too" % t.id)
 	var line: Dictionary
+	var reasoned: bool = false  # a reason actually said, new at this meeting (the silence check)
 	# Agreeing needs someone else to agree with (a speaker who interjects can come round again).
 	var others_earlier: Array = earlier.filter(func(a): return a.get("by", "") != n.id and w.by_id.has(a.get("by", "")))
 	if not others_earlier.is_empty():
@@ -931,6 +988,7 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 		# their own (their reading, what they saw) are worth adding.
 		var first = w.by_id[others_earlier[0]["by"]]
 		var own = why.begins_with("my own") or why.begins_with("I ")
+		reasoned = own and not hint
 		var canonical_extra = " I have my own reason, but I'm not ready to share it yet." if hint else ((" " + why[0].to_upper() + why.substr(1) + ".") if own else "")
 		var voiced_extra = (" " + Dialogue.voice_line(n.id, "nomination_held_reason", "I have my own reason, but I'm not ready to share it yet.")) if hint else canonical_extra
 		var canonical_agree = "I agree with %s about %s.%s" % [first.name, t.name, canonical_extra]
@@ -951,13 +1009,14 @@ static func _accusation_body(w, n, t, s2: float, why: String, lines: Array, fact
 					{"target": t.name, "speaker": w.by_id[echo_of].name, "reason": lc})
 			else:
 				line = say_voiced(n, "meeting_accuse_reason", canonical_accuse, {"target": t.name, "reason": reason_s})
+				reasoned = true
 			_note_said(w, n, "reason:" + reason_s)
 		else:
 			line = say_voiced(n, "meeting_accuse_vibes", canonical_accuse, {"target": t.name})
 	if w.meeting.has("accusations"):
 		w.meeting["accusations"].append({"by": n.id, "target": t.id})
 	var text = ("%s publicly accused %s, hinting at a private reason they won't share yet." if hint else "%s publicly accused %s.") % [n.name, t.name]
-	return {"line": line,
+	return {"line": line, "reasoned": reasoned,
 		"fact": {"kind": "accusation", "subject": [t.id], "source": n.id, "text": text, "hint": hint}}
 
 ## n has already accused t at the current meeting (testimony or a supporter's pile-on).

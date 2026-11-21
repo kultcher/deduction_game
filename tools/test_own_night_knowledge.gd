@@ -108,7 +108,10 @@ func _init() -> void:
 		var expect: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT if "sleepwalker" in g.w.case_script.secrets else Tuning.Workshop.OWN_ERR
 		check(own.all(func(c): return absf(float(c.get("self_doubt", -1.0)) - expect) < 1e-9), "%s: the cards carry the self-doubt the script calls for (%s)" % [label, expect])
 		check(not e.view.cards.any(func(c): return c.get("known_self", false)), "%s: they're knowledge for the movement model, not cards in the shared view" % label)
-		check(e.with - e.without >= 0.15, "%s: the fake sighting raises the planter by 15 points or more (%+.3f)" % [label, e.with - e.without])
+		# In log-odds, as the relay check below: a planter the rest already holds near certain
+		# has no 15 points left to gain (seed 100074 on #454: 0.894 without it, 0.993 with).
+		var lift1: float = _logit(e.with) - _logit(e.without)
+		check(lift1 >= _logit(0.65) - _logit(0.5), "%s: the fake sighting raises the planter at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label, lift1, e.with - e.without])
 	# 2. An evil Medium's invented relay of the listener, out on a night they were home.
 	var r: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
 	if r.is_empty():
