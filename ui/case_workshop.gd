@@ -236,7 +236,7 @@ func _question(card: Dictionary) -> void:
 			var labels: Array = ["? Unexplained", "Night gift â€” choose supporting claim", "Possibly evil activity"]
 			var reasons = ["unexplained", "gift", "evil"]
 			if session.scenario.public_view.get("live_activity", false):
-				labels.append(preload("res://ui/live_workshop_fields.gd").UNREQUITED_REASON) # PLACEHOLDER wording, shared with the live Workshop
+				labels.append(preload("res://ui/live_workshop_fields.gd").UNREQUITED_REASON) # Michael's wording (Nov 21), shared with the live Workshop
 				reasons.append("secret")
 			var option = _option(box, labels)
 			option.select(reasons.find(current.reasons.get(key, "unexplained")))
