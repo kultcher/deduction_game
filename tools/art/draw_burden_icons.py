@@ -3,6 +3,7 @@
 style (Limner, Nov 21). Run from any directory: python3 tools/art/draw_burden_icons.py
 Writes the icons, plus sheet.png comparing them with existing icons, into the current directory."""
 import math
+import os
 from PIL import Image, ImageDraw
 INK = (13, 21, 30, 255); GOLD = (210, 150, 60, 255); CREAM = (235, 207, 170, 255)
 S = 1200; OUT = 300
@@ -102,7 +103,7 @@ for name, fn in [('unrequited', unrequited), ('ill_omened', ill_omened)]:
     sq.resize((OUT, OUT), Image.LANCZOS).save(name + '.png')
 # A contact sheet next to existing icons, on the sheet's paper, plain and violet-tinted.
 import numpy as np
-R = '/home/user/deduction_game/assets/ui/roles/'
+R = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'ui', 'roles') + os.sep   # the repository's own icons, wherever it's checked out
 names = ['delusional', 'marked', 'lovers', 'unrequited', 'ill_omened']
 sheet = Image.new('RGBA', (5 * 160, 2 * 160), (240, 227, 196, 255))
 for i, n in enumerate(names):
