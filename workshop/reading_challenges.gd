@@ -33,7 +33,9 @@ const HONEST_CAUSES = ["poison", "delusion", "red_herring", "marked"]
 ## among its secrets, a Red Herring with a town gift that registers one (the Seer).
 static func script_honest_causes(minions: Array, secrets: Array, town: Array) -> Array:
 	var out: Array = []
-	if minions.is_empty() or "poisoner" in minions:
+	# An Ill-Omened hanging poisons every good gift for a night and a day (burdens rework,
+	# Michael, Nov 21), so poison is an honest cause on its scripts even with no Poisoner.
+	if minions.is_empty() or "poisoner" in minions or "ill_omened" in secrets:
 		out.append("poison")
 	if "delusional" in secrets:
 		out.append("delusion")
@@ -89,7 +91,7 @@ static func honest_allowed(view: Dictionary, card: Dictionary, attribution: Stri
 	var transmission: bool = card.has("relay_source") and attribution == "transmission"
 	var mods: Array = view.get("world_options", {}).get("modifiers", ["marked"])
 	var causes: Array = ["red_herring"]
-	if poisoner_possible(view):
+	if poisoner_possible(view) or "ill_omened" in mods:
 		causes.append("poison")
 	if "delusional" in mods:
 		causes.append("delusion")

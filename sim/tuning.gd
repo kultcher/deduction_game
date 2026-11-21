@@ -20,11 +20,9 @@ class Setup:
 	}
 
 	## Rule & mechanic toggles
-	const ALLOW_NO_GIFT_DENIAL = false
 	const SHADOW_SELF = true
 	const INFO_BEFORE_KILL = true
 	const DEFENCE_MOVES = true
-	const USE_FLAVOR_SECRETS = false
 	const SHARED_EXECUTION_PRIORITY_WEIGHT = 0.22
 
 	## Marked registration probabilities
@@ -47,7 +45,6 @@ class Setup:
 	const INITIAL_TRUST_JITTER = 0.05
 	const INITIAL_TRUST_RIVAL = -0.25
 	const INITIAL_TRUST_FRIEND = 0.25
-	const INITIAL_TRUST_LOVER = 0.9
 
 	## Initial NPC-to-Player trust prior
 	# Starting rapport no longer depends on Privacy (Oct 30): the old mean at privacy 0.5.
@@ -75,8 +72,6 @@ class Setup:
 	const PRE_PHASE_CHAT_CHANCE = 0.65
 	const POST_PHASE_PAIR_MULT = 0.4
 	const SAME_BLOCK_SIGHTING_CHANCE = 0.4
-	const SLEEPWALK_CHANCE = 0.5
-	const FLAVOR_SECRET_WALK_CHANCE = 0.55
 
 	## Night sightings & crime scene traces
 	const NIGHT_SIGHTING_STREET_CHANCE = 0.5

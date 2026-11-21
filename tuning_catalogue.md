@@ -14,11 +14,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `SETUPS` | `{ 7: {"town": 5, "minions": 1, "secrets": 1}, 10: {"town": 7, "minions": 2, "...` | Case sizes: townsfolk (one carries the secret), minions, demon. | `game/workshop_bridge.gd`, `sim/content.gd`, `sim/script_def.gd`, `sim/world.gd`, `tools/autoplay.gd`, `ui/main_roles.gd`, `ui/new_case_screen.gd`, `workshop/reason_attribution.gd` |
-| `ALLOW_NO_GIFT_DENIAL` | `false` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_answers.gd` |
-| `SHADOW_SELF` | `true` |  | `sim/content.gd`, `sim/mind_cases.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_shadow.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
+| `SHADOW_SELF` | `true` | Rule & mechanic toggles | `sim/content.gd`, `sim/mind_cases.gd`, `sim/mind_dialogue.gd`, `sim/mind_meeting.gd`, `sim/mind_shadow.gd`, `sim/mind_vote.gd`, `sim/presentation_reply.gd`, `sim/world.gd` |
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world_night.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
-| `USE_FLAVOR_SECRETS` | `false` |  | `sim/content.gd`, `sim/world.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/world.gd` |
 | `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd` |
 | `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd` |
@@ -34,7 +32,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `INITIAL_TRUST_JITTER` | `0.05` |  | `sim/world.gd` |
 | `INITIAL_TRUST_RIVAL` | `-0.25` |  | `sim/world.gd` |
 | `INITIAL_TRUST_FRIEND` | `0.25` |  | `sim/world.gd` |
-| `INITIAL_TRUST_LOVER` | `0.9` |  | `sim/world.gd` |
 | `PLAYER_TRUST_BASE` | `0.425` | Initial NPC-to-Player trust prior | `sim/world.gd` |
 | `PLAYER_TRUST_OPENNESS_SCALE` | `0.0` |  | `sim/world.gd` |
 | `PLAYER_TRUST_JITTER_MIN` | `-0.05` |  | `sim/world.gd` |
@@ -53,8 +50,6 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRE_PHASE_CHAT_CHANCE` | `0.65` |  | `sim/world.gd` |
 | `POST_PHASE_PAIR_MULT` | `0.4` |  | `sim/world.gd` |
 | `SAME_BLOCK_SIGHTING_CHANCE` | `0.4` |  | `sim/world.gd` |
-| `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world_night.gd` |
-| `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world_night.gd` |
 | `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world_night.gd` |
 | `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world_night.gd` |
 | `NIGHT_NEIGHBOUR_ALIBI_CHANCE` | `0.2` |  | `sim/world_night.gd` |

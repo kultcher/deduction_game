@@ -169,8 +169,7 @@ static func gossip_item(w, n) -> Dictionary:
 			var secret_fallback: String = "Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]]
 			return {"lines": [Mind.say_voiced(n, "gossip_secret", secret_fallback, {"subject": o.name, "secret": o.secret["text"]})],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
-					"secret_kind": o.secret.get("kind", ""), "mod": "lovers" if o.secret.get("kind", "") == "lover" else "", "partner": str(o.secret.get("with", "")) if o.secret.get("kind", "") == "lover" else "",
-					"text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
+					"secret_kind": o.secret.get("kind", ""), "text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
 	for it in items:
 		if it[0] != "hearsay":
 			continue

@@ -86,7 +86,6 @@ var town_hall_shown_roles: Array = []
 var _town_hall_rng: RandomNumberGenerator = null
 var player_ward = ""
 var ward_saves: Array = [] # Player-only aftermath, recorded only when their sigil stops an attack.
-var sleepwalk_claims: Array = [] # who has said "I've been known to sleepwalk" (to anyone)
 var player_vigil = ""
 var player_vigil_seen: Array = []
 var player_loc = ""

@@ -119,8 +119,7 @@ static func _day_when(w, sd: int, sp: int) -> String:
 
 ## The night a good defender was framed on: every sighting against them names a night
 ## they (honestly) spent at home. -1 if evil, if any sighting is of a real outing, or if
-## no sighting names a night. Anyone recorded as out is not framed (a Sleepwalker's walk
-## can't be told from a gift's duty here, so they keep today's defence).
+## no sighting names a night. Anyone recorded as out is not framed.
 ## The group a reading says holds evil, for "it's another of us": a count over a group or
 ## site, a role found within a group, a Chronicler's three, or a Surveyor's mixed block. Not a pair (its own defence),
 ## and not a Night Watch list, whose people were each seen, not grouped.
@@ -456,23 +455,11 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			d.secret_known = true
 			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
 			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
-				"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "", "partner": str(d.secret.get("with", "")) if d.secret.get("kind", "") == "lover" else "",
-				"text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
+				"secret_kind": d.secret.get("kind", ""), "text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
 			moves.append("secret")
 			move_strengths["secret"] = minf(Tuning.Meeting.DEFENCE_SECRET_CAP, out_weight)
 			move_scales["secret"] = 1.0
 			defence_scopes["secret"] = {"type": "secret_claim", "owner": d.id, "kind": d.secret.get("kind", "")}
-	# 2b. "I've been known to sleepwalk": the real Sleepwalker (who can't know they were
-	# out, only that they've walked before) or an evil bluffer whose cover needs it.
-	if not day_first and moves.is_empty() and not out_items.is_empty():
-		var excuse: Dictionary = sleepwalk_excuse(w, d, "the meeting")
-		if not excuse.is_empty():
-			lines.append(excuse["line"])
-			facts.append(excuse["fact"])
-			moves.append("sleepwalk")
-			move_strengths["sleepwalk"] = 1.0
-			move_scales["sleepwalk"] = 1.0
-			defence_scopes["sleepwalk"] = {"type": "secret_claim", "owner": d.id, "kind": "sleepwalker"}
 	# 2c. The case hangs on a night sighting their gift or a confession hasn't explained,
 	# or they were framed with one: they give their account of that night, before the town
 	# (the podium press's answer).
@@ -575,12 +562,11 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_strengths["group_other"] = 1.0
 					move_scales["group_other"] = Tuning.Meeting.DEFENCE_PAIR_OTHER_DELTA
 					defence_scopes["group_other"] = {"type": "rival", "source": src_id, "others": pointed}
-			# A good defender who knows the sighting is true (they were out that night, and
-			# aren't a sleepwalker who believes they slept) owns it and gives their account,
+			# A good defender who knows the sighting is true (they were out that night) owns it and gives their account,
 			# rather than calling the watcher a liar (Case 12926: Nisha, the Sexton, out
 			# tolling the bell, called Fenwick's and Hollis's sightings fabricated).
 			var saw_me_true: bool = false
-			if not d.is_evil() and bool(rd.get("true", false)) and d.id in dd.get("seen", []) and d.secret_mod != "sleepwalker":
+			if not d.is_evil() and bool(rd.get("true", false)) and d.id in dd.get("seen", []):
 				var nd_s: int = int(rd.get("day", -1))
 				saw_me_true = nd_s >= 0 and str(d.history.get(w.time_key(nd_s, C.NIGHT), "")).begins_with("night:")
 				if saw_me_true and moves.size() < 2 and not ("dispute_night" in moves):
@@ -594,7 +580,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					move_strengths["dispute_night"] = 1.0
 					move_scales["dispute_night"] = absf(float(Tuning.Meeting.DEFENCE_PLEA_RELIEF))
 					defence_scopes["dispute_night"] = {"type": "plea"}
-			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves) and not ("group_other" in moves) and not ("sleepwalk" in moves):
+			if not saw_me_true and moves.size() < 2 and not ("red_herring" in moves) and not ("pair_other" in moves) and not ("group_other" in moves):
 				if hinge_at >= 0:
 					lines[hinge_at] = say_voiced(d, "defence_case_hinge_reading_wrong", "Your whole case rests on %s's reading, and that reading is wrong." % src.name, {"source": src.name})
 				if trait_of(d, "confidence") > 0.6:

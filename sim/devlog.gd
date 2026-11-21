@@ -23,7 +23,7 @@ var echo = false  # print each entry to stdout as it is logged
 # Detailed trace is a separate, versioned sidecar. Legacy entries and text stay intact.
 const TRACE_SCHEMA = 1
 const TRACE_FIELDS = ["name", "traits", "role", "alignment", "alive", "death_day",
-	"death_cause", "poisoned", "secret_mod", "lover", "red_herring", "loc",
+	"death_cause", "poisoned", "secret_mod", "red_herring", "loc",
 	"trust", "trust_cap", "trust_at_reconsider", "npc_trust", "suspicion",
 	"pressure", "consensus_pressure", "pressed_today", "role_guesses",
 	"claimed_role", "claim_public", "max_tier", "told_readings", "secret_known",

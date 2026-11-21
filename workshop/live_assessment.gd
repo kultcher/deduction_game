@@ -310,14 +310,13 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["data"] = e.content.data.duplicate(true)
 		return card # Legacy opinion Psychologist readings stay context.
 	if e.kind == "secret" and e.source in ids and e.subjects.size() == 1 and e.subjects[0] in ids and e.content.get("owner", "") == e.subjects[0]:
-		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) + ["lover", "sleepwalker"] or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
+		# The Lovers and the Sleepwalker retired with the burdens rework (docs/design/burdens.md).
+		if e.content.get("secret_kind", "") not in C.SECRETS.map(func(secret): return secret.kind) or e.observed_at.day < 0 or e.observed_at.phase == "unknown" or (block != "" and block not in C.BLOCKS):
 			return {}
 		card["kind"] = "secret_claim"
 		card["night"] = -1 # Confessing an explanation does not prove an outing.
 		card["applies"] = {"from": night if e.observed_at.phase == "night" else 0, "through": night if e.observed_at.phase == "night" else snapshot.now.day}
 		card["data"] = {"secret_kind": e.content.secret_kind}
-		if str(e.content.get("partner", "")) in ids:
-			card.data["partner"] = str(e.content.partner)  # a Lovers confession names the other (triage 5.9)
 		return card
 	if e.kind in ["home", "work", "haunt", "trait"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):

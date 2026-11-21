@@ -188,7 +188,6 @@ static func block_safety(w, d) -> float:
 ## A volunteer never invents a cover or reveals an undisclosed walk. Reuse the
 ## known account and walking-gift/reading constraints used by private followups.
 static func _public_sighting_allowed(w, n, b: Dictionary) -> bool:
-	if n.secret_mod == "sleepwalker": return false
 	if n.is_evil() and Evil.is_teammate(w, n, b.who): return false
 	var pre_def = C.role_def(n.claimed_role)
 	if pre_def != null:

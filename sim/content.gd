@@ -542,9 +542,6 @@ const DEMON_MOODS = ["vengeful", "cunning", "hungry"]
 ## ("Fenwick cannot sleep..."); "me" is how they put it themselves ("I can't sleep...").
 ## (The Secret Lovers are a secret modifier now; see SECRET_MODS.) Benched for now: with the
 ## secret modifiers in play these put too many innocents out at night.
-## Tuning knob: may a cautious NPC deny having any gift ("I'm only the baker")? Off: evil
-## almost never bluffed it, so a denial was close to proof of good.
-const ALLOW_NO_GIFT_DENIAL = Tuning.Setup.ALLOW_NO_GIFT_DENIAL
 ## Shadow good self for evil NPCs (docs/shadow_self_plan.md). Step 1: built and fed, but
 ## nothing reads it, so switching it off must not change a single case.
 const SHADOW_SELF = Tuning.Setup.SHADOW_SELF
@@ -576,7 +573,6 @@ const EVIL_CAUTION_DEMON = Tuning.Evil.EVIL_CAUTION_DEMON
 const EVIL_CAUTION_MINION = Tuning.Evil.EVIL_CAUTION_MINION
 const MINION_ID_DRIFT = Tuning.Evil.MINION_ID_DRIFT
 const MINION_CAUTION_FLOOR = Tuning.Evil.MINION_CAUTION_FLOOR
-const USE_FLAVOR_SECRETS = Tuning.Setup.USE_FLAVOR_SECRETS
 const SECRETS = [
 	{"kind": "insomnia", "text": "cannot sleep and walks to the chapel to pray", "me": "can't sleep, so I walk to the chapel to pray", "dest": "hill"},
 	{"kind": "smuggling", "text": "trades contraband with river smugglers at the docks", "me": "trade contraband with the river smugglers at the docks", "dest": "docks"},

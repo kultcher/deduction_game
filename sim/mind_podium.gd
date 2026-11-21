@@ -166,9 +166,6 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 	var outcome: String = ""
 	var where: String = d.history.get(w.time_key(nd, C.NIGHT), "home:" + d.home_block)
 	var was_out: bool = where.begins_with("night:")
-	if d.secret_mod == "sleepwalker" and was_out:
-		w.dlog.think(d.id, "unaware", "Sleepwalker: was out on %s on night %d but honestly believes they slept at home." % [where, nd])
-		was_out = false
 	var block: String = where.substr(where.find(":") + 1)
 	var vantage: String = ""
 	var how: String = "window"
@@ -234,7 +231,7 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				var me: String = d.secret.get("me", d.secret.get("text", ""))
 				lines.append(_say(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % me, {"secret": me}))
 				facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "block": block, "day": nd, "phase": C.NIGHT, "source": d.id,
-					"secret_kind": d.secret.get("kind", ""), "mod": "lovers" if d.secret.get("kind", "") == "lover" else "", "partner": str(d.secret.get("with", "")) if d.secret.get("kind", "") == "lover" else "", "public": true,
+					"secret_kind": d.secret.get("kind", ""), "public": true,
 					"text": "%s confessed before the town they were out on %s %s: %s %s." % [d.name, C.block_name(block), C.spoken_when(nd, w.day), d.name, d.secret.get("text", "")]})
 				vantage = block
 				how = "street"
@@ -352,17 +349,6 @@ static func press_card(w, d, card: Dictionary, grounds: bool) -> Dictionary:
 	if nd >= 0 and nd < w.day:
 		var r: Dictionary = press_night(w, d, nd, grounds)
 		r["mode"] = "night"
-		# Shown a sighting of themselves out that night, someone who stands by home may offer
-		# that they sleepwalk (the real Sleepwalker, or evil cover), as in a private press.
-		if kind == "sighting" and r.get("outcome", "") in ["home", "lie"] and str(d.history.get(w.time_key(nd, C.NIGHT), "")).begins_with("night:"):
-			var excuse: Dictionary = _mind().sleepwalk_excuse(w, d, "the meeting")
-			if not excuse.is_empty():
-				r.lines.append(excuse["line"])
-				var f: Dictionary = excuse["fact"].duplicate(true)
-				f["public"] = true
-				r.facts.append(f)
-				_town_hears(w, d, [f])
-				r["outcome"] = "sleepwalk"
 		# Shown a sighting, they may add what the death record says of that night (BACKLOG
 		# "Explicit night-sighting rebuttals"): after the account, speech only, no weight.
 		if kind == "sighting":
