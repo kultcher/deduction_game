@@ -29,4 +29,11 @@ knows, believes or decides. Moved out of BACKLOG.md on Oct 26; same tags.
   - **Interim:** #454's check (#139) uses Michael's option (a). It reads the card's effect
     within its own night, and its comment points to this item.
 
-  Owner Lantern. [open]
+  - **Decided (Michael, Nov 21):** firsthand means only what the NPC itself read, saw or did.
+    Someone else's sighting of it on a night it was home no longer seeds its core, but still
+    counts fully against the teller. Lantern's figures, as relayed: Lian 82% → 92% on 100100,
+    and 62% → 99% on 100027. Built on `mock/burdens-slot`; it lands with Burdens, and
+    this item closes then. Still being measured: whether the NPC's own sightings and vigils
+    should seed its core. See `docs/belief_model.md`.
+
+  Owner Lantern. [decided; lands with Burdens]
