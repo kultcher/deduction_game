@@ -125,7 +125,10 @@ func _check_plan(g: Game) -> void:
 
 ## Codex on #499: a Martyr who died in another's place isn't reported as hanged.
 func _check_martyr(g: Game) -> void:
-	var n = g.w.npcs.filter(func(x): return not x.is_evil())[0]
+	# Someone good with room for a death line: at most one key moment of their own while alive
+	# (a fixed seed's game moves as beliefs change; Lantern, Nov 21).
+	var goods: Array = g.w.npcs.filter(func(x): return not x.is_evil() and x.alive and RevealPlan.key_moments(g, x).size() < RevealPlan.MAX_MOMENTS)
+	var n = goods[0] if not goods.is_empty() else g.w.npcs.filter(func(x): return not x.is_evil())[0]
 	var keep = [n.alive, n.death_cause, n.death_day]
 	n.alive = false
 	n.death_cause = "martyr"
