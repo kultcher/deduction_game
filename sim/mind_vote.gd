@@ -100,6 +100,9 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 	if block != "" and block != nominee and (action_susp(v, block) + _mind().resentment_toward(w, v, block)) >= (base + v_resent):
 		parts["prefers_block"] = Tuning.Meeting.VOTE_PREFERS_BLOCK_OFFSET
 	C.role_def(v.role).score_vote_reluctance(w, v, nominee, base, paranoia(w, v), parts)
+	var omen_cost: float = Burdens.omen_vote_cost(w, nominee)  # a claimed Ill-Omened (burdens prototype)
+	if omen_cost != 0.0:
+		parts["ill_omened_cost"] = omen_cost
 	for k in parts:
 		if k not in ["suspicion", "town_pressure", "shared_execution_priority"]:
 			s += parts[k]

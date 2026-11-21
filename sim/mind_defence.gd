@@ -381,6 +381,13 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	var moves: Array = []
 	if d.silenced:
 		return {"lines": [{"speaker": d.id, "name": d.name, "text": "...", "silent": true}], "facts": [], "moves": ["silenced"]}
+	# Ill-Omened (burdens prototype): the nominee cites the omen before anything else. Only
+	# this restatement arms it (Michael, Nov 20).
+	var omen: Dictionary = Burdens.omen_at_nomination(w, d)
+	if not omen.is_empty():
+		lines.append(omen["line"])
+		facts.append(omen["fact"])
+		moves.append("ill_omened")
 	var accuser = w.by_id.get(nominator_id) if nominator_id != "player" else null
 	if accuser == null:
 		var best = 0.0

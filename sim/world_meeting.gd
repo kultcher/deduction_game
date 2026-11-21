@@ -202,6 +202,7 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 		"no": res.get("no", []).duplicate(), "player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
 	dlog.add("execution", "world", id, {"role": n.role, "align": n.alignment},
 		"%s (%s) executed by town vote." % [n.name, n.role])
+	load("res://sim/burdens.gd").on_executed(self, n)  # a restated Ill-Omened (burdens prototype)
 	mart_def.on_chosen_executed(self, mart, n)
 	mart_def.on_bluff_chosen_executed(self, n)
 	C.role_def(n.role).on_executed(self, n, res, Mind)

@@ -24,6 +24,7 @@ var alive = true
 var death_day = -1
 var death_cause = ""     # "demon" | "executed"
 var poisoned = false
+var omen_poisoned_day: int = -1  # a fallen Ill-Omened's poison: the hanging day, -1 when clear (burdens prototype)
 
 var loc = ""             # current location id, "home", or "night:<block>"
 var working = false      # at work this phase
@@ -166,7 +167,7 @@ var red_herring = ""
 
 ## Their gift does nothing real tonight/today: poisoned, or Delusional.
 func gift_broken() -> bool:
-	return poisoned or secret_mod == "delusional"
+	return poisoned or omen_poisoned_day >= 0 or secret_mod == "delusional"
 
 func is_evil() -> bool:
 	return alignment == "evil"

@@ -87,11 +87,13 @@ static func phrase(o) -> String:
 		return str(o.secret.get("text", ""))
 	if o.secret_mod == "marked":
 		return "carries the mark: a gift may read them as evil"
+	if o.secret_mod == "ill_omened":
+		return "is Ill-Omened, and hanging them would cost the town dear"
 	return ""
 
 ## Claim `kind` (Marked, for now), publicly or to one listener. Records the claim, and for a
 ## real holder speaking publicly, that its burden is out. Returns {line, fact}.
-static func claim(w, n, kind: String, public: bool, why: String, audience: String = "town") -> Dictionary:
+static func claim(w, n, kind: String, public: bool, why: String, audience: String = "town", extra: Dictionary = {}) -> Dictionary:
 	for k in [kind, kind + ":public"]:
 		if not w.burden_claims.has(k):
 			w.burden_claims[k] = []
@@ -104,7 +106,11 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 		n.secret_known = true
 	var line: Dictionary
 	var text: String
-	if not rival.is_empty() and not n.is_evil():
+	if kind == "ill_omened":
+		var omen: Dictionary = _omen_words(w, n, rival, bool(extra.get("at_nomination", false)))
+		line = omen["line"]
+		text = omen["text"]
+	elif not rival.is_empty() and not n.is_evil():
 		# The real holder answers a claim already made: one of them is lying.
 		var r = w.by_id[rival[0]]
 		line = _mind().say_voiced(n, "burden_counterclaim_marked", "%s isn't Marked. I am: I've carried the mark since birth." % r.name, {"rival": r.name})
@@ -115,13 +121,16 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 	var told: Dictionary = told_at(w)
 	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id, "secret_kind": kind,
 		"mod": kind, "burden": true, "public": public, "text": text, "observed_at": told}
+	fact.merge(extra, true)
 	if not public:
 		fact["private"] = true
 		# Corroboration (Michael, Nov 21): when this listener heard it, so a later relay keeps the date.
 		var key: String = "%s|%s" % [n.id, audience]
 		if not w.burden_told.has(key):
 			w.burden_told[key] = told
-	w.dlog.add("burden_claim", n.id, audience, {"kind": kind, "public": public, "evil": n.is_evil(), "why": why, "rival": rival},
+	var claim_data: Dictionary = {"kind": kind, "public": public, "evil": n.is_evil(), "why": why, "rival": rival}
+	claim_data.merge(extra, true)
+	w.dlog.add("burden_claim", n.id, audience, claim_data,
 		"%s claims to be %s%s (%s)%s." % [n.name, C.secret_name(kind), " before the town" if public else " to " + audience, why, " [LIE]" if n.is_evil() else ""])
 	if n.is_evil():
 		w.dlog.think(n.id, "lie", "Claims to carry the mark, to explain %s." % why, {"lie": true, "burden": kind})
@@ -161,13 +170,14 @@ static func testimony_claim(w, n) -> Dictionary:
 ## A real holder whose burden someone else has claimed counter-claims at its next meeting
 ## turn, whatever its tier: a second claim means a liar (burdens are unique).
 static func counterclaim(w, n) -> Dictionary:
-	if n.silenced or not holds_known(n, "marked") or n.dialogue_memory.get("burden_counterclaimed", false):
+	var kind: String = str(n.secret_mod)
+	if n.silenced or not kind in ["marked", "ill_omened"] or not holds_known(n, kind) or n.dialogue_memory.get("burden_counterclaimed", false):
 		return {}
-	var others: Array = known_claimants(w, n, "marked").filter(func(id): return id != n.id)
+	var others: Array = known_claimants(w, n, kind).filter(func(id): return id != n.id)
 	if others.is_empty():
 		return {}
 	n.dialogue_memory["burden_counterclaimed"] = true
-	return claim(w, n, "marked", true, "someone else claimed my burden")
+	return claim(w, n, kind, true, "someone else claimed my burden")
 
 ## The forced reveal: a reading that calls them evil, faced at the meeting or in private.
 ## A real holder always gives it (Michael: held until "named in an evil reading"); evil may
@@ -212,25 +222,29 @@ static func tell_player(w, n) -> Dictionary:
 ## own seeded draw: REACTIVE, halved if a Rumormonger is publicly claimed (it could name the
 ## real holder), raised by the days of silence, damped by its caution.
 static func evil_marked_bluff(w, n, why: String) -> bool:
-	if not n.is_evil() or not on_script(w, "marked") or not known_claimants(w, n, "marked").is_empty():
+	return evil_burden_bluff(w, n, "marked", why)
+
+## The same draw for any known burden evil might bluff (Ill-Omened at a nomination too).
+static func evil_burden_bluff(w, n, kind: String, why: String) -> bool:
+	if not n.is_evil() or not on_script(w, kind) or not known_claimants(w, n, kind).is_empty():
 		return false
 	if str(w.evil_plan.get("bluffs", {}).get(n.id, "")) == "" and not n.turned:
 		return false
 	if w.evil_plan.has("burden_bluffs") and w.evil_plan["burden_bluffs"].has(n.id):
-		return str(w.evil_plan["burden_bluffs"][n.id]) == "marked"
+		return str(w.evil_plan["burden_bluffs"][n.id]) == kind
 	var p: float = Tuning.Burden.BLUFF_REACTIVE + Tuning.Burden.BLUFF_SILENCE_PER_DAY * silent_days(w)
 	if w.public_claims.any(func(pc): return str(pc.get("role", "")) == "rumormonger"):
 		p *= Tuning.Burden.BLUFF_RUMORMONGER_DAMP
 	p *= 1.0 - _evil().caution(w, n)
 	var r := RandomNumberGenerator.new()
-	r.seed = hash([w.seed_value, w.day, n.id, "burden_bluff", why])
+	r.seed = hash([w.seed_value, w.day, n.id, "burden_bluff", why] if kind == "marked" else [w.seed_value, w.day, n.id, "burden_bluff", kind, why])
 	var draw: float = r.randf()
-	w.dlog.think(n.id, "burden_bluff", "Evil: bluff Marked to explain %s? -> %s (p=%.2f)" % [why, "yes" if draw < p else "no", p], {"result": draw < p, "p": p, "why": why})
+	w.dlog.think(n.id, "burden_bluff", "Evil: bluff %s to %s? -> %s (p=%.2f)" % [C.secret_name(kind), ("explain " + why) if kind == "marked" else why, "yes" if draw < p else "no", p], {"result": draw < p, "p": p, "why": why, "kind": kind})
 	if draw >= p:
 		return false
 	if not w.evil_plan.has("burden_bluffs"):
 		w.evil_plan["burden_bluffs"] = {}
-	w.evil_plan["burden_bluffs"][n.id] = "marked"
+	w.evil_plan["burden_bluffs"][n.id] = kind
 	return true
 
 ## Proactive, at the meeting: evil claims Marked unprompted only after days of silence, at the
@@ -250,3 +264,72 @@ static func evil_silence_claim(w, n) -> Dictionary:
 		w.evil_plan["burden_bluffs"] = {}
 	w.evil_plan["burden_bluffs"][n.id] = "marked"
 	return claim(w, n, "marked", true, "the town's silence about burdens (p=%.3f)" % p)
+
+# ---------------------------------------------------------------- Ill-Omened (stage 2)
+
+## Its words (Michael's revised wording, Nov 21): never the effect, only a cost to the town.
+static func _omen_words(w, n, rival: Array, at_nomination: bool) -> Dictionary:
+	if not rival.is_empty() and not n.is_evil():
+		var r = w.by_id[rival[0]]
+		return {"line": _mind().say_voiced(n, "burden_ill_omened_counterclaim", "That isn't true of %s. The omen is mine. There's only one." % r.name, {"claimant": r.name}),
+			"text": "%s says they, not %s, are Ill-Omened: hanging them would cost the town." % [n.name, r.name]}
+	if at_nomination:
+		return {"line": _mind().say_voiced(n, "burden_ill_omened_nomination", "I am Ill-Omened. Hang me, and it'll come with a cost to us all."),
+			"text": "%s, nominated, says they are Ill-Omened: hanging them would cost the town." % n.name}
+	return {"line": _mind().say_voiced(n, "burden_ill_omened_early", "Be careful where this goes. I'm Ill-Omened, and hanging me would cost the town."),
+		"text": "%s says they are Ill-Omened: hanging them would cost the town." % n.name}
+
+## Nominated: a real holder always cites the omen (Michael: "always cites it before an
+## execution"), restating it if it said so earlier. Evil restates a bluff it already made, or
+## may start one now with the same reactive draw as Marked, if the omen is on the script and
+## unclaimed. Only this restatement arms the omen (a hard rule, Nov 20). {} if nothing is said.
+static func omen_at_nomination(w, n) -> Dictionary:
+	if n.silenced:
+		return {}
+	var real: bool = holds_known(n, "ill_omened")
+	if not real and not (n.is_evil() and (claimed_by(w, n) == "ill_omened" or evil_burden_bluff(w, n, "ill_omened", "stay off the rope"))):
+		return {}
+	w.omen_restated[n.id] = w.day
+	return claim(w, n, "ill_omened", true, "nominated for hanging", "town", {"at_nomination": true})
+
+## Earlier, under pressure (Michael: "sometimes earlier, if pressure is high or the town is
+## already turning on them"): the first time it's accused before the town, a real holder warns
+## once. Evil doesn't: its bluff waits for the nomination, where it's needed.
+static func omen_early_warning(w, n) -> Dictionary:
+	if n.silenced or not holds_known(n, "ill_omened") or n.id in public_claimants(w, "ill_omened"):
+		return {}
+	return claim(w, n, "ill_omened", true, "the town turning on me", "town", {"at_nomination": false})
+
+## The cost of hanging a publicly claimed Ill-Omened, as a vote term: about enough to cancel
+## the player's yes for a median-trust listener (design §9 item 9). Derived from that bump, so
+## no new constant. Evil's good self weighs it too, so evil votes as its good self would.
+static func omen_vote_cost(w, nominee: String) -> float:
+	if not nominee in public_claimants(w, "ill_omened"):
+		return 0.0
+	return -(Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * 0.5 + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET)
+
+## A hanging: if it restated the omen at today's nomination, the town marks it, and if it was
+## the real holder, every good person is poisoned from now until the next night but one
+## begins (the night after the hanging and the following day; design §9 item 5). A bluffer's
+## hanging poisons nobody, and nobody can tell (item 6).
+static func on_executed(w, n) -> void:
+	if int(w.omen_restated.get(n.id, -1)) != w.day:
+		return
+	var real: bool = n.secret_mod == "ill_omened" and not n.is_evil()
+	w.dlog.add("omen_hanged", "world", n.id, {"day": w.day},
+		"%s, who claimed to be Ill-Omened when nominated, is hanged.%s" % [n.name, "" if real else " [BLUFF: no effect]"])
+	if not real:
+		return
+	w.omen_nights.append({"executed": n.id, "day": w.day, "night": w.day})
+	for m in w.npcs:
+		if m.alive and not m.is_evil():
+			m.omen_poisoned_day = w.day
+	w.dlog.add("omen_poison", "world", n.id, {"executed": n.id, "day": w.day, "from_night": w.day, "until": w.day + 1},
+		"The omen falls: every good person's gift fails from this night until the next night begins.")
+
+## The start of a night: the omen's poison lifts once the night after the hanging and the
+## following day have passed.
+static func lift_omen(w) -> void:
+	for m in w.npcs:
+		if int(m.omen_poisoned_day) >= 0 and w.day > int(m.omen_poisoned_day):
+			m.omen_poisoned_day = -1

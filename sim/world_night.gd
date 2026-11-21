@@ -17,6 +17,7 @@ func resolve_night() -> void:
 		n.busy_with = ""
 		n.pressure = n.pressure * Tuning.Setup.NIGHT_PRESSURE_DECAY
 	Mind.end_of_day_trust(self)
+	load("res://sim/burdens.gd").lift_omen(self)  # a fallen Ill-Omened's poison (burdens prototype)
 
 	# The Sexton's bell (start of night, once per case from night 1): suppresses all minions
 	var sexton = living_with_role("sexton")
@@ -582,7 +583,7 @@ func _add_info(n, entry: Dictionary, quiet: bool = false) -> void:
 	if not entry.has("true"):
 		entry["true"] = true
 	if n.gift_broken() and entry.get("why", "") == "":
-		entry["why"] = ("poisoned" if n.poisoned else "delusional")
+		entry["why"] = ("poisoned" if (n.poisoned or n.omen_poisoned_day >= 0) else "delusional")
 	if not entry["true"]:
 		entry["why"] = false_reading_reason(entry)
 	if phase != C.NIGHT:
@@ -638,7 +639,7 @@ func _receive_info(n, watch_block: String, medium_t: String = "", lamp = null, c
 	if entry.is_empty():
 		return
 	if broken:
-		entry["why"] = "%s" % ("poisoned" if n.poisoned else "delusional")
+		entry["why"] = "%s" % ("poisoned" if (n.poisoned or n.omen_poisoned_day >= 0) else "delusional")
 	_add_info(n, entry)
 
 static func _secret_phrase(k: String) -> String:

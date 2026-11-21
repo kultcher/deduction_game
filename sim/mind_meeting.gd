@@ -62,6 +62,8 @@ static func testimony_step(w, st: Dictionary) -> Dictionary:
 		# A known burden (burdens prototype): a counter-claim, a "public" holder's first-meeting
 		# announcement, or evil's claim after days of silence.
 		var bc: Dictionary = Burdens.counterclaim(w, n)
+		if bc.is_empty() and w.meeting.get("accusations", []).any(func(a): return str(a.get("target", "")) == n.id):
+			bc = Burdens.omen_early_warning(w, n)  # Ill-Omened: the town is turning on them
 		if bc.is_empty():
 			bc = Burdens.evil_silence_claim(w, n) if n.is_evil() else Burdens.testimony_claim(w, n)
 		if not bc.is_empty():
