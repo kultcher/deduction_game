@@ -42,6 +42,16 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 		}
 	return cache[key]
 
+## The burdens a secret_claim card can name, as RoleConstraints.cs reads them (slot 19):
+## a good claimant's claim holds in the world (they know their own burden); an evil one's is
+## a bluff and says nothing. Unrequited and Ill-Omened have no world field yet (stage 2).
+const BURDEN_CODES: Dictionary = {"marked": 1, "delusional": 2}
+## Prototype switch, off: a burden claim stays context, as before. On, a good claimant's claim
+## binds as above. Counted over worlds as they stand, a lone Marked claim then makes its
+## claimant about 80% evil in a 7-person town (a good one has to be the one Marked), so how it
+## should weigh waits for Michael (Lantern's note to Seneschal, Nov 21).
+static var burden_claims_bind: bool = false
+
 # Fixed role slots matching workshop/cs/RoleConstraints.cs:
 const _FIXED_ROLES = {
 	"medium": 0,
@@ -341,8 +351,11 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 							vet_mask |= (1 << d_i)
 				card_ints[off + 11] = vet_mask
 
-		if kind_code == 1 or kind_code == 2:
+		if kind_code == 1 or kind_code == 2 or kind_code == 3:
 			card_ints[off + 12] = Chronology.tick(Chronology.statement_time(card))
+		if kind_code == 3:
+			# A claimed burden (docs/design/burdens.md): which world field the claim names.
+			card_ints[off + 19] = BURDEN_CODES.get(str(data.get("secret_kind", "")), 0) if burden_claims_bind else 0
 
 		if kind_code == 4: # totem
 			var t_cands: int = 0
@@ -516,8 +529,9 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 			var medium: int = ids.find(card.relay_source)
 			if medium >= 0:
 				bits |= 1 << medium
-		# Independent of the relay: a relayed reading needs its teller in the key too.
-		if card.get("kind", "") == "report":
+		# Independent of the relay: a relayed reading needs its teller in the key too, and so
+		# does whoever claims to be the Delusional (their claim is checked in good worlds).
+		if card.get("kind", "") == "report" or (burden_claims_bind and card.get("kind", "") == "secret_claim" and str(card.get("data", {}).get("secret_kind", "")) == "delusional"):
 			var teller: int = ids.find(str(card.get("source", "")))
 			if teller >= 0:
 				bits |= 1 << teller
@@ -534,7 +548,8 @@ static func _routing_cards(cards: Array) -> Array:
 	return out
 
 static func seer_flag(cards: Array) -> bool:
-	return cards.any(func(c): return c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"] and not c.get("quoted", false))
+	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"]
+		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")))
 
 static func _scion_exec_alive_demon_mask(view: Dictionary, ids: Array, target_id: String) -> int:
 	if target_id == "" or not view.has("timeline"):
