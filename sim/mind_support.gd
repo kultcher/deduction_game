@@ -102,6 +102,10 @@ static func choose(w, s, d, ctx: Dictionary) -> Dictionary:
 	# Piling on is restating an accusation: not twice at one meeting by the same speaker.
 	if pick.get("move", "") == "pile_on" and MindMeeting.already_accused(w, s, d.id):
 		return {}
+	# A Martyr bluff doesn't speak against its own "chosen" (Michael, Nov 20): too loud a tell.
+	if s.is_evil() and pick.get("side", "") == "against" and Evil.martyr_bluff_chosen(s) == d.id:
+		w.dlog.think(s.id, "team_strategy", "Martyr bluff: keeps quiet on %s, its 'chosen'." % d.id)
+		return {}
 	return pick
 
 

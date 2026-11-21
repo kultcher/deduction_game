@@ -150,6 +150,9 @@ Lantern). Nothing is open here.
   - It reuses the existing weight, scaled by the listener's trust in the reader.
 
   Owner Quill, with Lantern and Beadle reviewing. [decided]
+  - **Built** (Quill, Nov 20, `claude/self-doubt-poisoner`, stacked on #445; handoff
+    `2026-11-20-1945-quill-self-doubt-poisoner.md`). With it, both Poisoner floors add to
+    a clear rather than override it (Lantern). [in review]
 
 ### NPC behaviour
 
@@ -189,6 +192,9 @@ Lantern). Nothing is open here.
     - Beadle measures it on a `mock/` branch first.
   - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
     round.
+  - **Built and measured** (Beadle, Nov 20, #454; handoff `2026-11-20-1940-beadle-silence.md`).
+    With the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1
+    claims rise by a third. [in review]
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so

@@ -346,7 +346,16 @@ func _fixes_inside_a_night() -> void:
 		var watcher_off: Dictionary = Seeds.cards_effect(g, by, [sg, sub], fake)
 		LiveActivity.sighter_contests_enabled = true
 		var tag: String = "seed %d, %s framed by %s, bystander %s" % [int(framed_case.seed), sub, sg, by]
-		check(not framed.is_empty() and int(framed.dropped) > 0 and lift.call(framed, sg) > 0.0, "#139: the fake sighting counts against its sighter for the subject, who knows they were home (%+.3f; %s)" % [lift.call(framed, sg), tag])
+		# Inside its own night, not overall: as firsthand knowledge (Michael, Nov 12) the card
+		# also reseeds the subject's core, which can pull in other cards that clear the sighter
+		# (seed 100002 on #454: a "one of Bart and Jory is Delusional" rumour undercuts Jory's
+		# watch of Hollis, so overall Hollis falls 0.78 -> 0.71). Interim, Michael Nov 20: the
+		# overall change is printed, not checked, until BACKLOG "Being lied about can pull in
+		# evidence that clears the liar" (Lantern) is settled, after "A sighting places its
+		# teller" lands.
+		var night_lift: float = float(framed.get("item_with", {}).get(sg, 0.0)) - float(framed.get("item_without", {}).get(sg, 0.0))
+		print("NOTE: #139 overall, the fake sighting moves the subject's chance its sighter is evil by %+.3f (%s)" % [lift.call(framed, sg), tag])
+		check(not framed.is_empty() and int(framed.dropped) > 0 and night_lift > 0.0, "#139: the fake sighting counts against its sighter in its night, for the subject, who knows they were home (%+.3f log-odds; %s)" % [night_lift, tag])
 		check(lift.call(framed, sg) > lift.call(framed_off, sg), "#139 works through #135: more with the sighter contest than without (%+.3f against %+.3f)" % [lift.call(framed, sg), lift.call(framed_off, sg)])
 		check(not watcher.is_empty() and lift.call(watcher, sg) > lift.call(watcher_off, sg), "#135: a bystander weighs the sighter too (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sg), lift.call(watcher_off, sg)])
 		check(lift.call(watcher, sub) < lift.call(watcher_off, sub), "#135: and holds the sighting less against its subject (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sub), lift.call(watcher_off, sub)])

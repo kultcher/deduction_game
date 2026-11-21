@@ -59,7 +59,7 @@ Where the two disagree, this note is the newer one.
 | **Delusional** | hidden | Stays exactly as built: the holder's gift gives false readings and the holder doesn't know. | evil |
 | **Marked** | known | Kept as built (may read as evil to gifts), but the holder now knows. | evil, through the bluff |
 | **Unrequited** | known | A one-sided infatuation with one person, who may be evil. Visits that person's home at night, and takes more to be swayed against them. | evil, if the beloved is evil |
-| **Ill-Omened** | known | Hang them and every good gift is drunk that night. Evil's gifts are unaffected. | evil; its bluff is the risk to watch |
+| **Ill-Omened** | known | Hang them (after a claim at the nomination) and every good person is poisoned until the start of the next night. Evil is unaffected. | evil; its bluff is the risk to watch |
 
 The test for each burden: on balance, it either helps evil a little or gives evil a bluff
 worth making. Michael's read of the old set fails it twice: the Sleepwalker was too weak for
@@ -101,8 +101,9 @@ never reveals.
   considered and dropped: if the beloved is the Demon, a follower would trail it to the
   kill, the same gift to good that the Lovers gave.
 
-**Ill-Omened** (Nov 20). Michael wants to try the "everyone is drunk" version first:
-- **What it does:** when the holder is hanged, every good gift is drunk that night. Evil is
+**Ill-Omened** (Nov 20). Michael wants to try the "everyone is poisoned" version first (it
+was called "drunk" until Nov 21):
+- **What it does:** when the holder is hanged, every good person is poisoned that night. Evil is
   unaffected.
 - **Only a hanging sets it off,** and only if the holder **claimed Ill-Omened when
   nominated** (a hard rule, Nov 20). A night death doesn't set it off.
@@ -115,7 +116,7 @@ never reveals.
 - It's in the Saint family: a cost at the hanging.
 - **Michael's earlier lean was the other version**, in which the affected holders know their
   gifts failed. That makes the outcome public, so a claim can be checked after the hanging.
-  The drunk version is the one to try first.
+  The poisoned version is the one to try first.
 
 ### 2.2 On deck (mechanics deferred)
 
@@ -339,11 +340,11 @@ add to sections 1 to 7, and win where they differ.
 
 ### Ill-Omened
 
-5. **The drunk readings work exactly as if poisoned.** DESIGN's Poisoner row: the gift "fails
+5. **The readings are poisoned** (called "drunk" until Nov 21). DESIGN's Poisoner row: the gift "fails
    or lies until the next night". It covers everything good learns from the night after the
    hanging until the start of the following night: a Day 2 hanging affects Night 2 through
    the start of Night 3. The town can spot it only through contradictions.
-6. **The drunk readers don't know.** Hanging a bluffing Ill-Omened gives no drunk night, and
+6. **The poisoned readers don't know.** Hanging a bluffing Ill-Omened gives no poisoned night, and
    nobody can tell. That's intended: it gives evil power even with a bluff, because good has to
    consider that its information could be wrong.
 7. **The claim must be restated at the nomination.** An earlier claim under pressure doesn't
@@ -354,7 +355,7 @@ add to sections 1 to 7, and win where they differ.
    strong deterrent: about enough to cancel the player's "yes" vote bump.
    - The bump scales with trust (`PLAYER_VOTE_YES_SLOPE` and `_OFFSET` in `sim/tuning.gd`),
      so the deterrent is sized at the bump for a median-trust listener.
-10. **The player's own night actions aren't affected.** The board marks the possibly-drunk
+10. **The player's own night actions aren't affected.** The board marks the possibly-poisoned
     night after any claimed Ill-Omened is hanged, real or bluffed. It's worded as a
     possibility, not a confirmation.
 
@@ -406,7 +407,8 @@ add to sections 1 to 7, and win where they differ.
 23. **The "Burden" tooltip** is approved as drafted: "Burden: something that weighs on a
     townsperson, on top of their gift. The script lists the possible burdens and how many are
     in play. A hidden burden's holder doesn't know they carry it."
-24. **Later:** the "drink" Mistaken cause, the Rumormonger phrases and the ~200 voice lines.
+24. **Later:** the Rumormonger phrases and the ~200 voice lines. (No "drink" Mistaken cause:
+    see section 11.)
 
 ### The new constants (Michael, Nov 20)
 
@@ -457,31 +459,61 @@ sweeps.
 
 ## 11. Wording approved (Michael, Nov 21)
 
-**Revised the same day (Michael, through Seneschal): no NPC line about Ill-Omened mentions the
-drunk effect.** The warnings, counter-claim, gossip and Rumormonger phrase stay vague ("It'll
-come with a cost"), and Herald is redrafting them. Three items are pending Michael's answer:
-the board marker, the script-sheet text and the Mistaken cause. Everything else below stands.
+Herald's burdens lines are approved. The Ill-Omened lines were revised the same day, when
+Michael ruled that no NPC line may mention the effect.
 
-Herald's draft batch of burdens lines is approved:
-- **Voices:** "honest gift" is fine in a voice.
-- **The Unrequited's graveyard line** is its own voice key.
-- **The Mistaken cause:** "drink, after an Ill-Omened hanging". *Pending Michael's answer
-  under the revision.*
-- **The board marker** after a claimed Ill-Omened is hanged: "The omen may have fallen: if
-  {name} was truly Ill-Omened, every good gift was drunk last night." *Pending.*
-- **The script-sheet rules text** is approved as drafted for Marked, Unrequited and Delusional.
-  *Ill-Omened's is pending.* It's in Herald's batch, alongside
-  section 9's "Hidden" line and tooltip.
-- **The keys** (Herald, Nov 21). Drafts are in Seneschal's batch, with a fallback plus Agnes
-  for each key:
+**All burdens:**
+- **Voices:** "honest gift" is fine in a voice. The fallback voice keeps "good gift".
+- **"Good person" replaces "good gift" in rules text.**
+- **The keys** (Herald). Drafts are in Seneschal's batch, a fallback plus Agnes for each key:
   - **Marked:** since birth, the counter-claim, the private share, the public announcement;
-  - **Unrequited:** the reveal, defending within reason, the spell breaking, the graveyard;
-  - **Ill-Omened:** the nomination warning, the early warning, the counter-claim. *Being
-    redrafted without the drunk effect;*
+  - **Unrequited:** the reveal, defending within reason, the spell breaking, the graveyard (its
+    own key);
+  - **Ill-Omened:** the nomination warning, the early warning, the counter-claim;
   - **Shared:** the denial, and the double-claim challenge.
-- **Burden gossip** goes through `gossip_secret`, with new phrases for each burden. The
-  fallback voice keeps "good gift".
-- **The Rumormonger's phrases:** Unrequited's is approved as drafted. Ill-Omened's is being
-  redrafted without the drunk effect, as is its burden gossip.
-- **When it's built:** only with the burdens work itself. Herald is writing the other 14 voices
-  now and holding them on a branch.
+- **Burden gossip** goes through `gossip_secret`, with new phrases for each burden.
+- **The script-sheet rules text** is approved for all four burdens, Ill-Omened in Michael's
+  wording below.
+- **When it's built:** only with the burdens work itself. Herald's lines for all 15 voices,
+  burdens and anger alike, are written and held on `claude/herald-burden-anger-lines`.
+
+**Ill-Omened** (revised, Nov 21):
+- **The effect is "poisoned", not "drunk",** throughout the design.
+- **NPC speech never mentions the effect.** It stays vague:
+  - **The nomination warning:** "I am Ill-Omened. Hang me, and it'll come with a cost to us
+    all."
+  - **The early warning:** "Be careful where this goes. I'm Ill-Omened, and hanging me would
+    cost the town."
+  - **Gossip:** "…is Ill-Omened, and hanging them would cost the town dear".
+  - **The Rumormonger:** "…is Ill-Omened, and their hanging would bring a cost".
+  - **The counter-claim** is unchanged.
+- **The script sheet** (final, Michael, Nov 21): "If hanged after claiming this burden, every
+  good person is poisoned that night until the start of the next night."
+  - **The window** is the night after the hanging plus the following day, and it ends when the
+    next night begins. So that night's readings and the next day's day gifts are poisoned.
+    This settles Quill's question about a daytime hanging.
+- **The board marker** (Michael, Nov 21), after a claimed Ill-Omened is hanged: "The omen
+  claimed by {name} may have fallen, poisoning the town's gifts." Its tooltip shows the
+  script-sheet rules text.
+- **No new Mistaken cause.** The existing poison cause covers it. The #455 Poisoner nudge still
+  skips Ill-Omened poisoning, so a self-doubt on that night doesn't point at a Poisoner.
+
+**Unrequited:** the Rumormonger phrase is approved as drafted.
+
+## 12. Stage-1 values (Michael, Nov 21)
+
+Michael approved Beadle's seven `Tuning.Burden` values as the stage-1 baseline, to be tuned in
+testing:
+
+| Constant | Value |
+|---|---|
+| `MARKED_PRIVATE_SHARE_SCALE` | 3.0 |
+| `MARKED_PRIVATE_SHARE_FLOOR` | 0.5 |
+| `BLUFF_REACTIVE` | 0.5 |
+| `BLUFF_SILENCE_PER_DAY` | 0.1 |
+| `BLUFF_RUMORMONGER_DAMP` | 0.5 |
+| `SILENCE_START` | 0.05 |
+| `SILENCE_PER_DAY` | 0.3 |
+
+The names are as relayed; the code on the prototype branch is the authority. Beadle's
+stage-1 NPC side is built on `mock/burdens-slot` (ea0ad8f).
