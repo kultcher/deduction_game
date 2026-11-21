@@ -261,6 +261,11 @@ Lantern). Nothing is open here.
   - **Lines approved (Michael, Nov 21):** Herald's 17-reason batch, as drafted. The
     broken-promise line stays generic for wards and vigils; a vigil-specific line waits for
     "Vigil request and reward rework" (section 4).
+    - The broken promise keeps "You promised me a {promise}…" for both wards and vigils.
+    - `spread_my_secret` keeps "I won't forget that easily".
+    - `nominated_my_friend` keeps "I can't look at you the same".
+    - **When it's built:** when Beadle's anger hook lands, in batches if that's easier. Herald is
+      writing the other 14 voices now.
 
 ### Numbers
 

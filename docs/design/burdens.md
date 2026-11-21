@@ -465,3 +465,14 @@ Herald's draft batch of burdens lines is approved:
   {name} was truly Ill-Omened, every good gift was drunk last night."
 - **The script-sheet rules text** is approved as drafted. It's in Herald's batch, alongside
   section 9's "Hidden" line and tooltip.
+- **The keys** (Herald, Nov 21). Drafts are in Seneschal's batch, with a fallback plus Agnes
+  for each key:
+  - **Marked:** since birth, the counter-claim, the private share, the public announcement;
+  - **Unrequited:** the reveal, defending within reason, the spell breaking, the graveyard;
+  - **Ill-Omened:** the nomination warning, the early warning, the counter-claim;
+  - **Shared:** the denial, and the double-claim challenge.
+- **Burden gossip** goes through `gossip_secret`, with new phrases for each burden. The
+  fallback voice keeps "good gift".
+- **The Rumormonger's phrases** for Unrequited and Ill-Omened are approved as drafted.
+- **When it's built:** only with the burdens work itself. Herald is writing the other 14 voices
+  now and holding them on a branch.
