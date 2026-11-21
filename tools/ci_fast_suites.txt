@@ -155,6 +155,7 @@ test_roles_people
 test_roles_registry
 test_roles_secrets
 test_roles_shelter
+test_self_doubt_poisoner
 test_shared_model
 test_sighter_contest
 test_sighting_followup

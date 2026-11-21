@@ -44,21 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, a sighting places its teller): `baseline_e8ff7e0`
+### Current baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
 
-`tools/golden/baseline_e8ff7e0/` is the capture from `claude/sighting-places-teller` at `e8ff7e0` (main at
-`bcc702a` after #444, merged in). In a world where its teller is good, a street sighting puts
-the teller out on that block that night, and a window sighting puts them home or on their own
-block (`LiveActivity.teller_place`).
-- **Divergence from `baseline_6836d21`:** every seed, at a refresh: 98933 at record 1, 54875 at 4
-  (day 1), 42 at 29, 900 at 32 and 692 at 53 (day 2).
-- **Outcomes:**
-  - **54875:** Edda (the Revenant) on day 1 as before, then Odette (a good Veteran) on day 2 and
-    Isolde (a good Lamplighter) on day 3, instead of Greta (the Poisoner) on day 2.
-  - **692:** Constance (the Demon) on day 2 as before, and now Lian (the Revenant) on day 3.
-  - **98933:** Agnes (a good Medium) on day 2 as before; Lian (a good Psychologist) is no longer
-    hanged on day 3.
-  - **42 and 900:** the same hangings (none; Greta). No winner by day 4 anywhere.
+`tools/golden/baseline_8d60e8e/` is the capture from `claude/self-doubt-poisoner` at `8d60e8e` (main at
+`bcc702a`, merged in). A listener who hears a reader say its gift may have been turned nudges
+suspicion toward anyone seen on that reader's block on a night it read, as an accepted Mistaken call
+does; and the Poisoner nudges (the strongest one, once) now add to a clear instead of overriding it.
+- **Divergence from `baseline_6836d21`:** one seed.
+  - **42**, record 35 (Nisha's refresh, day 2 afternoon): Agnes, seen on a self-doubting
+    reader's block, is pressed a little more (requested 0.113 to 0.146).
+  - 54875, 692, 900 and 98933 are identical. (On earlier baselines 54875 also moved, where a
+    cleared Isolde was nudged; since #444 that refresh no longer arises.)
+- **Outcomes:** unchanged on all five seeds (the same hangings).
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
