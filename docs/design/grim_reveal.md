@@ -47,8 +47,8 @@ for every lie and every poisoning, so the reveal can say *why*, not only *what*.
   - **Timing:** about 3 seconds per reveal.
   - **Space:** the reveal has the whole screen, so space isn't a constraint.
 - **Watch again** is in: the player can replay the reveal.
-- **The end-of-game verdict** is prefilled from the player's latest daily guesses (section
-  2a), which can be adjusted before sealing.
+- **There's no end-of-game verdict screen** (corrected by Michael, Nov 20). The scored
+  verdict is the last guess locked in a daily window (section 2a).
 - **Stage 1** shows each guess as right or wrong only, with no points. Scoring follows; see
   the scoring note.
 
@@ -66,12 +66,33 @@ New (Michael, Nov 20). It has **no mechanical effect**; it's the player's own bo
   - the Demon's victims are crossed out in the Demon picker;
   - they stay selectable for the Minions, in case the Demon ever kills a Minion.
 - **Pre-fill:** on scripts with a single Demon type, the Demon's type is filled in.
-- **Buttons:** Confirm, Skip, and "Don't show again for this case".
+- **Buttons:** Confirm, Skip, and "Don't ask again this case".
 - **Access:** it's also reachable from the Main Menu button.
-- **Seneschal's small calls,** which Herald may flag:
-  - the number of circles follows the script's evil count;
-  - each confirmed guess is a dated snapshot, reusing DESIGN's Private theory;
-  - there's no burden guess until Burdens ships.
+- **The number of circles** follows the script's evil count (Seneschal's small call).
+- **No burden guess** until Burdens ships (Seneschal's small call).
+
+### Corrections (Michael, Nov 20, relayed by Seneschal)
+
+- **No end-of-game "Seal my verdict".**
+  - **Why:** the town may hang the Demon by chance early, before the player has built a
+    case. A verdict screen at the end would tell the player that the person just hanged was
+    the Demon, which kills the drama.
+  - **The scored verdict** is the last guess locked in a daily window, after the meeting and
+    before the execution result. No extra window opens when a game ends overnight.
+  - This replaces DESIGN's "Private theory" rule of scoring the last copy before the
+    outcome.
+- **Guess changes are limited,** so that naming whoever is about to hang isn't the best play.
+  Herald is proposing the count and the details for Michael.
+- **The profile guesses feed the window (a hybrid).**
+  - If the player has marked someone as Demon or Minion in their profile, the window prefills
+    that person, greyed out.
+  - A note tells the player they can pick someone new, or just confirm to lock it in.
+  - This replaces the earlier small call that the two share one source.
+- **Wording:**
+  - there's no line on the fade;
+  - Herald's other drafts are approved: "Your suspicions", "Choose…", "Who is the Demon?",
+    "Who is a Minion?", "Killed by the Demon; it cannot be them.", "What kind?", "Confirm",
+    "Skip" and "Don't ask again this case".
 
 ## 3. The order: a walk through the game
 
@@ -127,8 +148,8 @@ misread). It can measure each one's weight by asking what would have changed wit
   - "Claimed Seer on day 2. True."
   - "Lied about being home on the first night, to cover the kill."
   - "Poisoned on the second night. That 'yes' was false."
-- **The player's guess** from the verdict sheet, which the daily guesses prefill, shows under the portrait while the reel spins
-  ("You guessed: Minion"). It builds tension at no cost, and ties the score into the reveal.
+- **The player's guess,** the last one locked in a daily window, shows under the portrait
+  while the reel spins ("You guessed: Minion"). It builds tension at no cost, and ties the score into the reveal.
 - **Dead NPCs' portraits** stay greyed until their turn, so the board reads as the town that
   ended the game.
 
@@ -147,7 +168,7 @@ misread). It can measure each one's weight by asking what would have changed wit
   few.
 - **Skip** goes straight to the final screen; **click** advances as fast as the player likes.
 - **Reduced motion:** a setting that replaces the spin with a plain reveal.
-- **The final screen:** every NPC's truth at once, the verdict sheet against the truth, then
+- **The final screen:** every NPC's truth at once, the player's locked guess against the truth, then
   the score. The detail views (every lie, who told whom what) stay one click away.
 
 ## 7. Who would build what
@@ -156,10 +177,11 @@ misread). It can measure each one's weight by asking what would have changed wit
   only, so golden doesn't move.
 - **Lantern, with Quill:** the event graph and the falsehood-impact measure (section 3.2), on
   the belief and evidence side, run once at the end of a game.
-- **Scoring** (its own note, in draft): the verdict sheet and the score lines share the final
+- **Scoring** (its own note, in draft): the locked guess and the score lines share the final
   screen, so the two notes should agree on its layout.
-  - DESIGN's "Private theory" (the timestamped profile guesses, scored from the last copy
-    before the outcome) is reused for the daily guess's dated snapshots (section 2a).
+  - DESIGN's "Private theory" rule (scoring the last copy before the outcome) is replaced by
+    the last locked daily guess (section 2a). DESIGN needs updating to match when this is
+    built.
 - **Herald:** also the daily guess window (section 2a).
 
 ## 8. Open questions
