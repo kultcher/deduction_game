@@ -83,11 +83,19 @@ func _init() -> void:
 ## else's, R's reading's pair included, is exactly what it is without it (R's readings are
 ## discounted once, by SourceDoubt, not again here).
 func _in_play() -> void:
-	# The refresh caches its result, so each side gets a fresh, identical game.
-	var off: Dictionary = _played(false)
-	var on: Dictionary = _played(true)
-	if off.is_empty() or on.is_empty():
-		return
+	# The refresh caches its result, so each side gets a fresh, identical game. The floor only
+	# lifts someone below it (Jury.poisoner_floor): take the first person off the reader's
+	# block the listener doesn't already suspect past it (the burdens deal moved 9503's game,
+	# and its first such person sat at 0.315 either way).
+	var off: Dictionary = {}
+	var on: Dictionary = {}
+	for pick in range(6):
+		off = _played(false, pick)
+		on = _played(true, pick)
+		if off.is_empty() or on.is_empty():
+			return
+		if float(off["suspicion"].get(str(off["x"]), 0.0)) < 0.2:
+			break
 	var x: String = str(on["x"])
 	var s_off: Dictionary = off["suspicion"]
 	var s_on: Dictionary = on["suspicion"]
@@ -96,7 +104,7 @@ func _in_play() -> void:
 	var moved: Array = s_on.keys().filter(func(p): return p != x and absf(float(s_on[p]) - float(s_off.get(p, 0.0))) > 1e-9)
 	check(moved.is_empty(), "nobody else moves, the reading's pair included: R's readings aren't discounted twice (%s)" % str(moved))
 
-func _played(nudge: bool) -> Dictionary:
+func _played(nudge: bool, pick: int = 0) -> Dictionary:
 	var Game = load("res://game/game.gd")
 	var Mind = load("res://sim/mind.gd")
 	var C = load("res://sim/content.gd")
@@ -116,7 +124,7 @@ func _played(nudge: bool) -> Dictionary:
 	if xs.is_empty():
 		check(false, "the town has someone living off the reader's block")
 		return {}
-	var x = xs[0]
+	var x = xs[mini(pick, xs.size() - 1)]
 	var pair: Array = others.filter(func(n): return n != x).slice(0, 2).map(func(n): return n.id)
 	r.role = "seer"
 	r.claimed_role = "seer"
