@@ -282,4 +282,16 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I'm still... I'm still grieving them.",
 	"anger_accused_my_friend": "You accused {subject} in front of the whole town. They're dear to me, you know.",
 	"anger_backed_hanging": "You backed hanging {subject}. I didn't want that, sorry.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "I know how this sounds, sorry—I've carried the mark since birth. Gifts read me wrong; that's all {reader} saw.",
+	"burden_marked_counterclaim": "Sorry, but {claimant} isn't Marked. I am—and there's only the one.",
+	"burden_marked_private": "Please keep this between us—I'm Marked. If a gift ever names me evil, that's why, I swear.",
+	"burden_marked_public": "I should just say it, sorry: I'm Marked. A gift may read me as evil, but it'd be wrong.",
+	"burden_unrequited_reveal": "I was out because I went to {beloved}'s door. I—I care for them. They don't know. Please don't tell them.",
+	"burden_unrequited_defend": "Sorry, I just can't believe that of {beloved}. You'd need more than that.",
+	"burden_unrequited_spell_breaks": "I've defended {beloved} for so long... I can't any more. Sorry.",
+	"burden_unrequited_grave": "I was at {beloved}'s grave. I cared for them, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} is lying, sorry. I'm the Ill-Omened, and there's only one.",
+	"burden_denial": "I'm not {burden}! Sorry, whoever told you that is wrong.",
+	"burden_double_claim": "Wait, {a} and {b} both say they're {burden}? There's only one, so one of them is lying.",
 }

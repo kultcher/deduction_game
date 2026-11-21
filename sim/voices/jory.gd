@@ -282,4 +282,16 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. I... still miss them. Still grieving.",
 	"anger_accused_my_friend": "You accused {subject} in front of everyone! They're my friend!",
 	"anger_backed_hanging": "You backed hanging {subject}. Didn't want that!",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Marked since birth, that's me! Gifts read me wrong. That's all {reader} saw!",
+	"burden_marked_counterclaim": "{claimant}? Not Marked. I am! There's only the one.",
+	"burden_marked_private": "Keep this quiet, will you? I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "Listen up, all of you: I'm Marked! A gift might read me evil. It'd be wrong!",
+	"burden_unrequited_reveal": "Fine—I went to {beloved}'s door. I care for them. They don't know!",
+	"burden_unrequited_defend": "{beloved}? Not a chance! You'll need far more than that.",
+	"burden_unrequited_spell_breaks": "I've stuck up for {beloved} long enough. Can't any more.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. Cared for them. They never knew.",
+	"burden_ill_omened_counterclaim": "{claimant}'s lying! I'm the Ill-Omened. There's only one!",
+	"burden_denial": "Me? {burden}? No! Whoever told you that's got it wrong.",
+	"burden_double_claim": "Wait—{a} and {b} both say they're {burden}? There's only one! Somebody's lying!",
 }
