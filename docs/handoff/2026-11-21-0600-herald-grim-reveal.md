@@ -15,13 +15,10 @@ on Lantern's event graph.
 
 - **When the case closes,** the reveal opens by itself once, and a **"The grim reveal"**
   button replays it.
-- **The verdict** it plays against:
-  - when the case ended at a meeting, it's the private theory frozen just before the final
-    hanging, so that day's guess window was the seal;
-  - after an overnight ending, the guess window opens once more as **"Seal your verdict"**
-    (Seneschal's recommendation, pending Michael). It records the verdict for the reveal only
-    and leaves the frozen theory alone;
-  - if there's neither, the last frozen theory stands (the fallback).
+- **The verdict** it plays against is the last guesses locked in a daily window (#496;
+  Michael, Nov 21 "Corrections"). There's no end-of-game seal, which would give away who was
+  just hanged or that the game had ended. After an overnight ending, the last locked guesses
+  stand.
 - **The plan** (`ui/reveal/reveal_plan.gd`) reads the finished game and changes nothing.
   - **Order:** deaths and hangings in the order they happened, the living in cast order, the
     Demon last. In a final-three game the last hanging goes last.
@@ -54,8 +51,7 @@ on Lantern's event graph.
 
 ## Wording: drafts awaiting Michael
 
-All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`, plus
-`DailyGuess.SEAL_TITLE` and `SEAL_BUTTON`:
+All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`:
 - **the lead lines:** "Here is how the town truly stood, one soul at a time." and "It came down
   to the last three.";
 - **about 15 key-moment templates**, e.g.:
@@ -68,15 +64,15 @@ All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`
 
 ## Measured
 
-- **New `tools/test_grim_reveal`** (fast list): 41 checks pass, 37 s. It plays passive 7-NPC
+- **New `tools/test_grim_reveal`** (fast list): 37 checks pass, about 37 s. It plays passive 7-NPC
   games to their end, finds one that ended at a meeting and one that ended overnight, and
   checks:
   - the order, including the final-three rule;
   - the fakeout rules and their determinism;
   - the key-moment count, and that everyone who died has one;
   - right and wrong guesses;
-  - that the verdict is the frozen theory at a meeting and the seal overnight, and that
-    sealing leaves the theory alone;
+  - that the verdict is the daily window's last lock, and that it stands after an overnight
+    ending;
   - the overlay's flow: Next to the final screen, the truth grid, the tabs, Watch again, Skip
     and reduced motion.
 - **The plan read on seeds 1–3:** the lines and fakeouts were sensible. One fix came out of
@@ -90,7 +86,9 @@ All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`
 - **Stage 2:** swap `RevealPlan.reveal_order` and the key-moment choice for Lantern's reveal
   plan. The step shape stays the same.
 - **Stage 3:** scoring, once Michael decides the draft.
-- **Michael's answers still pending:** the wording, and the overnight seal.
+- **Michael's answers still pending:** the wording, and the guess-change limit (#496). The
+  limit's second rule, that a guess counts only if locked before that person's hanging day,
+  would also change how the reveal marks guesses.
 
 ## Proposed for the backlog
 

@@ -1,7 +1,8 @@
 ## The grim reveal, stage 1 (ui/reveal/reveal_plan.gd, ui/reveal/reveal_overlay.gd): plays
 ## passive games to their end and checks the reveal's order (deaths in order, the Demon last,
-## a final-three game's last hanging last), its key moments and fakeouts, the sealed verdict
-## (frozen at the last meeting, or sealed after an overnight ending), and the overlay's flow.
+## a final-three game's last hanging last), its key moments and fakeouts, the verdict (the last
+## guesses locked in a daily window, whether the case ended at a meeting or overnight; no
+## end-of-game seal, Michael Nov 21), and the overlay's flow.
 ##   godot --headless --path . --script res://tools/test_grim_reveal.gd
 extends SceneTree
 
@@ -9,7 +10,6 @@ const Game = preload("res://game/game.gd")
 const RevealPlan = preload("res://ui/reveal/reveal_plan.gd")
 const RevealOverlay = preload("res://ui/reveal/reveal_overlay.gd")
 const DailyGuess = preload("res://ui/daily_guess.gd")
-const Main = preload("res://ui/main.gd")
 const C = preload("res://sim/content.gd")
 
 var checks = 0
@@ -21,8 +21,8 @@ func check(ok: bool, label: String) -> void:
 	if not ok:
 		fails += 1
 
-## A passive game played to its end. Before the first meeting closes, the player names the
-## true Demon (so the verdict has something right in it) and a good person as a Minion.
+## A passive game played to its end. At the first meeting the player locks in, in the daily
+## window, the true Demon (so the verdict has something right in it) and a good person as a Minion.
 func _play(seed_v: int, size: int) -> Game:
 	var g = Game.new()
 	g.log_dir = "user://test_logs"
@@ -35,9 +35,12 @@ func _play(seed_v: int, size: int) -> Game:
 		if g.state == "meeting" and not guessed:
 			guessed = true
 			var demon = g.w.npcs.filter(func(n): return C.is_demon(n.role))[0]
-			g.set_guess(demon.id, demon.role, 3)
 			var good = g.w.living_good()[0]
-			g.set_guess(good.id, "evil", 2)
+			var picks: Array = DailyGuess.prefill(g)
+			picks[0] = {"id": demon.id, "type": demon.role}
+			if picks.size() > 1:
+				picks[1] = {"id": good.id, "type": ""}
+			DailyGuess.apply(g, picks)
 		var cmd: String = "look"
 		match g.state:
 			"approach": cmd = "decline"
@@ -56,7 +59,7 @@ func _init() -> void:
 		var g = _play(seed_v, 7)
 		if not g.w.game_over:
 			continue
-		if Main.ended_at_meeting(g):
+		if _ended_at_meeting(g):
 			if at_meeting == null:
 				at_meeting = g
 		elif overnight == null:
@@ -70,18 +73,16 @@ func _init() -> void:
 			continue
 		_check_plan(g)
 	if at_meeting != null:
-		var v = Main.sealed_verdict(at_meeting)
-		check(v != null, "a case that ended at a meeting needs no seal: the theory frozen before the hanging is the verdict")
-		_check_overlay(at_meeting, v)
+		_check_overlay(at_meeting, DailyGuess.verdict(at_meeting))
 	if overnight != null:
-		check(Main.sealed_verdict(overnight) == null, "a case that ended overnight asks for the seal first")
-		_check_seal(overnight)
+		var v: Dictionary = DailyGuess.verdict(overnight)
+		check(v.values().any(func(x): return x != "?"), "after an overnight ending, the last locked guesses stand as the verdict")
 	print("Grim reveal (stage 1): %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
 func _check_plan(g: Game) -> void:
 	var w = g.w
-	var verdict: Dictionary = Main.sealed_verdict(g, true)
+	var verdict: Dictionary = DailyGuess.verdict(g)
 	var plan: Dictionary = RevealPlan.build(g, verdict)
 	var ids: Array = plan.steps.map(func(s): return s.npc)
 	var tag: String = "seed %d" % w.seed_value
@@ -144,21 +145,17 @@ func _check_overlay(g: Game, verdict: Dictionary) -> void:
 	var reduced = RevealOverlay.open(host, g, verdict, Callable(), true)
 	check(reduced.card.reduced_motion, "the reduced-motion setting reaches the card")
 
-func _check_seal(g: Game) -> void:
-	var host = _Host.new()
-	host.g = g
-	root.add_child(host)
-	var theory = g.guesses.duplicate(true)
-	var w = DailyGuess.open(host, func(_ok): pass, Callable(), true)
-	check(w.find_child("Skip", true, false).visible == false and w.find_child("DontAsk", true, false).visible == false, "the seal window offers only the seal")
-	var demon = g.w.npcs.filter(func(n): return C.is_demon(n.role))[0]
-	w._pick(0, demon.id)
-	w._finish(true)
-	check(g.guesses == theory, "sealing doesn't touch the frozen theory")
-	var sealed = Main.sealed_verdict(g)
-	check(sealed != null and sealed.get(demon.id, "") == w.picks[0].type if w.picks[0].type != "" else sealed.get(demon.id, "") == "evil",
-		"the seal becomes the verdict")
+## Whether the case ended at a meeting: no kill after the last frozen theory.
+func _ended_at_meeting(g) -> bool:
+	var last_snap: int = -1
+	var entries: Array = g.w.dlog.entries
+	for i in range(entries.size()):
+		if entries[i]["type"] == "prediction_snapshot":
+			last_snap = i
+	if last_snap < 0:
+		return false
+	for i in range(last_snap + 1, entries.size()):
+		if entries[i]["type"] == "kill":
+			return false
+	return true
 
-
-class _Host extends Control:
-	var g

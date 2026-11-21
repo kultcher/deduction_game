@@ -225,49 +225,14 @@ func open_daily_guess(then: Callable) -> void:
 			then.call(confirmed),
 		func(): daily_guess_off_for = g)
 
-## The grim reveal, once the case is over. The verdict is the private theory frozen before the
-## final hanging when the case ended at a meeting (that day's guess window was the seal); after
-## an overnight ending, the seal window opens once more first.
+## The grim reveal, once the case is over. Its verdict is the last guesses the player locked in
+## a daily window (Michael, Nov 21): there's no end-of-game seal, which would give away the
+## outcome, and after an overnight ending the last locked guesses stand.
 func open_reveal() -> void:
-	if g == null or not g.w.game_over or has_node("GrimReveal") or has_node("DailyGuess"):
+	if g == null or not g.w.game_over or has_node("GrimReveal"):
 		return
 	reveal_seen_for = g
-	var verdict = sealed_verdict(g)
-	if verdict == null:
-		DailyGuess.open(self, func(_ok): RevealOverlay.open(self, g, sealed_verdict(g, true), Callable(), reduced_motion), Callable(), true)
-		return
-	RevealOverlay.open(self, g, verdict, Callable(), reduced_motion)
-
-## The sealed verdict (person id -> guess), or null when the seal window must open first.
-static func sealed_verdict(game, fallback: bool = false):
-	if game.has_meta(DailyGuess.META_VERDICT):
-		return game.get_meta(DailyGuess.META_VERDICT)
-	if not game.prediction_snapshots.is_empty() and (fallback or ended_at_meeting(game)):
-		var out: Dictionary = {}
-		var frozen: Dictionary = game.prediction_snapshots[-1].get("guesses", {})
-		for id in frozen:
-			out[id] = str(frozen[id].get("guess", "?"))
-		return out
-	if fallback:
-		var out2: Dictionary = {}
-		for id in game.guesses:
-			out2[id] = str(game.guesses[id].get("guess", "?"))
-		return out2
-	return null
-
-## Whether the case ended at a meeting: no kill after the last frozen theory.
-static func ended_at_meeting(game) -> bool:
-	var last_snap: int = -1
-	var entries: Array = game.w.dlog.entries
-	for i in range(entries.size()):
-		if entries[i]["type"] == "prediction_snapshot":
-			last_snap = i
-	if last_snap < 0:
-		return false
-	for i in range(last_snap + 1, entries.size()):
-		if entries[i]["type"] == "kill":
-			return false
-	return true
+	RevealOverlay.open(self, g, DailyGuess.verdict(g), Callable(), reduced_motion)
 
 ## Closing the meeting: the daily guess comes first, unless it's off for this case.
 func close_meeting() -> void:
