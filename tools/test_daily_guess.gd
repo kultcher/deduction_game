@@ -107,6 +107,10 @@ func _init() -> void:
 	root.add_child(m)
 	var done: Array = []
 	var off: Array = []
+	# (Earlier checks used both Demon changes; give this view a fresh budget.)
+	var st: Dictionary = g.get_meta(DailyGuess.META_LOCKED)
+	st["demon_changes"] = 0
+	g.set_meta(DailyGuess.META_LOCKED, st)
 	var w = DailyGuess.open(m, func(ok): done.append(ok), func(): off.append(true))
 	check(m.get_node_or_null("DailyGuess") == w, "the window opens over the main screen")
 	check(w._circles.size() == ss.size(), "it shows one circle per slot (got %d)" % w._circles.size())
@@ -186,6 +190,19 @@ func _init() -> void:
 	root.add_child(m3)
 	var w5 = DailyGuess.open(m3, func(_ok): pass, Callable())
 	check(w5._circles[0].face.disabled and w5._circles[0].face.tooltip_text == DailyGuess.NO_CHANGES_TIP, "with none left, the Demon picker is disabled, with its tooltip")
+	# Codex on #496: once frozen, the Demon can't be taken by a Minion circle, and a lock that
+	# can't be saved leaves the window open.
+	w5._pick(1, ids[4])
+	check(w5.picks[0].id == ids[4] and w5.picks[1].id != ids[4], "a frozen Demon can't be moved into a Minion circle")
+	w5._open_picker(1, w5._circles[1].face)
+	var frozen_btn = w5._picker.find_child("Pick_" + ids[4], true, false)
+	check(frozen_btn != null and frozen_btn.disabled, "the Minion picker shows the frozen Demon disabled")
+	var closed5: Array = []
+	w5._on_done = func(ok): closed5.append(ok)
+	w5.picks[0] = {"id": ids[6], "type": sc3.demons[0]}
+	w5._finish(true)
+	check(closed5.is_empty() and DailyGuess.verdict(g3)[ids[4]] == sc3.demons[0], "a lock that can't be saved keeps the window open")
+
 	var g4 = _game(10)
 	var ids4: Array = g4.w.npcs.map(func(n): return n.id)
 	var p4: Array = DailyGuess.prefill(g4)

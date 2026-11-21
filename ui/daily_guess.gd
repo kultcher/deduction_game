@@ -335,10 +335,13 @@ func _open_picker(i: int, anchor: Control) -> void:
 		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
 		var ok: bool = pickable(g, _slots[i].role, n.id)
-		b.disabled = not ok
+		var frozen_demon: bool = i != 0 and n.id == str(picks[0].get("id", "")) and _demon_frozen()
+		b.disabled = not ok or frozen_demon
 		if not ok:
 			b.text = "✕ " + n.name
 			b.tooltip_text = DEMON_KILLED_TIP
+		elif frozen_demon:
+			b.tooltip_text = NO_CHANGES_TIP
 		elif not n.alive:
 			b.modulate = Color(1, 1, 1, 0.6)
 		var id: String = n.id
@@ -353,6 +356,9 @@ func _open_picker(i: int, anchor: Control) -> void:
 		_picker.popup(Rect2i(Vector2i(anchor.get_screen_position() + Vector2(0, anchor.size.y)), Vector2i.ZERO))
 
 func _pick(i: int, id: String) -> void:
+	# The Demon can't be moved out of its circle once it's frozen (Codex on #496).
+	if _demon_frozen() and ((i == 0 and id != str(picks[0].get("id", ""))) or (i != 0 and id != "" and id == str(picks[0].get("id", "")))):
+		return
 	# A person sits in one circle at a time.
 	for k in range(picks.size()):
 		if k != i and id != "" and picks[k].get("id", "") == id:
@@ -393,8 +399,9 @@ func confirm() -> void:
 		dlg.popup_centered()
 
 func _finish(confirmed: bool) -> void:
-	if confirmed:
-		apply(g, picks)
+	# A lock that can't be saved keeps the window open rather than closing unsaved (Codex on #496).
+	if confirmed and not apply(g, picks):
+		return
 	var cb: Callable = _on_done
 	queue_free()
 	if cb.is_valid():
