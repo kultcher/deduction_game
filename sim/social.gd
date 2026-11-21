@@ -525,6 +525,15 @@ static func caught_lying(w, target, teller_id: String, kind: String, data: Dicti
 		what = "said I was out on night %d, and I was home" % nd
 	elif kind == "reading":
 		var e: Dictionary = data.get("entry", {})
+		# A movement report (a Night Watch's route) names who was out, not who is evil: it's a
+		# sighting, false only if it puts them out on a night they spent at home (Codex on #506).
+		var rdef = C.role_def(str(e.get("role", ""))) if C.has_role_def(str(e.get("role", ""))) else null
+		if rdef != null and str(rdef.get("shape")) == "NIGHT_ROUTE":
+			if not target.id in e.get("data", {}).get("seen", []):
+				return false
+			return caught_lying(w, target, teller_id, "sighting", {"day": int(e.get("day", -1))})
+		if str(e.get("role", "")) == "medium":
+			return false  # a relayed reading: the Medium vouches for what it heard, not its content
 		if target.is_evil() or Gifts.implicated(e) != [target.id]:
 			return false
 		key = "caught:%s:reading:%d:%s" % [teller_id, int(e.get("day", -1)), str(e.get("role", ""))]

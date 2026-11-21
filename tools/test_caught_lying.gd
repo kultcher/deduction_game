@@ -66,6 +66,13 @@ func _init() -> void:
 	# A reading that names it among others proves nothing to it.
 	var pair: Dictionary = {"role": "seer", "day": 1, "data": {"pair": [me.id, goods[5].id], "yes": true}, "text": "x"}
 	_check(not Social.caught_lying(w, me, goods[5].id, "reading", {"entry": pair}), "one naming it among others proves nothing")
+	# A Night Watch's route names who was out, not who's evil (Codex on #506).
+	var watcher = goods[6]
+	me.npc_trust[watcher.id] = 0.6
+	var route_out: Dictionary = {"role": "nightwatch", "day": 0, "data": {"seen": [me.id], "block": "market"}, "text": "x"}
+	_check(not Social.caught_lying(w, me, watcher.id, "reading", {"entry": route_out}), "a Night Watch truly seeing it out is no lie")
+	var route_home: Dictionary = {"role": "nightwatch", "day": 1, "data": {"seen": [me.id], "block": "market"}, "text": "x"}
+	_check(Social.caught_lying(w, me, watcher.id, "reading", {"entry": route_home}), "but one placing it out on a night it was home is")
 	# Evil isn't caught out by a true evil reading of it.
 	var ev = w.npcs.filter(func(m): return m.is_evil())[0]
 	var e2: Dictionary = {"role": "martyr", "day": 1, "data": {"target": ev.id, "evil": true}, "text": "x"}
