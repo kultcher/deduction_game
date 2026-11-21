@@ -19,6 +19,7 @@ const MainRoles = preload("res://ui/main_roles.gd")
 
 signal landed      ## the true card has settled: its name and alignment are showing
 signal finished    ## the seal and burden tag are done
+signal card_dealt  ## each dealt card as it leaves the deck (a hook for a sound)
 
 const REF = Vector2(1730, 800)       ## the reference footprint; everything scales with it
 const CARD = Vector2(270, 380)       ## card size at the reference footprint
@@ -36,6 +37,7 @@ var _deck_c := Vector2.ZERO          ## the deck's centre, in this Control's spa
 var _plan: Dictionary = {}           ## the timeline for the current step
 var _emitted_landed := false
 var _emitted_finished := false
+var _dealt_emitted := 0
 var _deal_roles: Array = []
 var _seed := 0
 
@@ -69,7 +71,8 @@ func _notification(what: int) -> void:
 # --- Public ------------------------------------------------------------------------------
 
 ## step: {"portrait": Texture2D, "name": String, "roles": Array (script order), "role": String,
-##   "evil": bool, "burden": String or "", "fakeout_role": String or "", "guess": String or "",
+##   "evil": bool, "burden": String or "" (the tag's full text), "fakeout_role": String or "",
+##   "guess": String or "",
 ##   optional "guess_correct": bool, "dead": bool, "role_text": String, "align_text": String}
 func play(s: Dictionary) -> void:
 	_build()
@@ -78,6 +81,7 @@ func play(s: Dictionary) -> void:
 	playing = true
 	_emitted_landed = false
 	_emitted_finished = false
+	_dealt_emitted = 0
 	_seed = hash(str(s.get("name", "")) + str(s.get("role", "")))
 	_choose_deal()
 	_dress()
@@ -252,7 +256,7 @@ func _dress() -> void:
 	align_label.add_theme_color_override("font_color", ink)
 	seal.evil = evil
 	var burden: String = step.get("burden", "")
-	tag_label.text = ("…and " + burden) if burden != "" else ""
+	tag_label.text = burden   # Herald's full string, e.g. "…and Delusional"
 	for i in range(DEAL):
 		dealt[i].dress(_deal_roles[i], _team_color(_deal_roles[i], _is_evil(_deal_roles[i])))
 	final_card.dress(truth, ink)
@@ -319,6 +323,10 @@ func _make_plan() -> Dictionary:
 	return p
 
 func _emit_due() -> void:
+	var deal: Array = _plan.get("deal", [])
+	while _dealt_emitted < deal.size() and t >= deal[_dealt_emitted][0]:
+		_dealt_emitted += 1
+		card_dealt.emit()
 	if not _emitted_landed and t >= _plan.landed:
 		_emitted_landed = true
 		landed.emit()
@@ -542,10 +550,12 @@ func _pose_deal(p: Dictionary, D: Vector2, k: float) -> void:
 			var v = u / 0.22
 			_place(c, D + Vector2(side * 30 * v, -30 * v) * k, 1.0 + 0.05 * v, 0, v, 0.3 * v, 40 + i)
 		elif u < 0.78:        # arc up and out to the side, and down beside the deck
+			# From where the flip left it, (30, -30), to where the slide back starts,
+			# (250, 30), bulging up on the way; size and shadow meet both ends too.
 			var v = _smooth((u - 0.22) / 0.56)
 			var a = PI * v
-			var off = Vector2(side * (30 + 250 * sin(a)), -30 - 90 * cos(a) * (1.0 - v) - 40 * sin(a) + 60 * v)
-			_place(c, D + off * k, 1.05 + 0.1 * sin(a), side * -12 * sin(a), 1.0, 0.3 + 0.4 * sin(a), 40 + i)
+			var off = Vector2(side * (30 + 220 * v + 40 * sin(a)), -30 + 60 * v - 80 * sin(a))
+			_place(c, D + off * k, 1.05 - 0.05 * v + 0.1 * sin(a), side * -12 * sin(a), 1.0, 0.3 - 0.2 * v + 0.4 * sin(a), 40 + i)
 		else:                 # slide back in under the deck
 			var v = _smooth((u - 0.78) / 0.22)
 			_place(c, D + Vector2(side * 250 * (1.0 - v), 30 * (1.0 - v)) * k, 1.0, 0, 1.0, 0.1, -10)

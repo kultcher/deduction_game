@@ -66,7 +66,12 @@ func _run() -> void:
 	card.set_process(false)
 
 	# A straight reveal.
+	var dealt_count = [0]
+	var on_dealt = func(): dealt_count[0] += 1
+	card.card_dealt.connect(on_dealt)
 	var got = _run_step(card, _step())
+	card.card_dealt.disconnect(on_dealt)
+	_check(dealt_count[0] == RevealCard.DEAL, "card_dealt fires once a dealt card (%d)" % dealt_count[0])
 	_check(got.landed.size() == 1 and got.finished.size() == 1, "landed and finished each fire once")
 	_check(got.landed[0] <= got.finished[0], "landed comes before finished")
 	_check(card.ends_at() >= 2.6 and card.ends_at() <= 3.4, "a straight reveal takes about 3 s (%.2f s)" % card.ends_at())
@@ -82,6 +87,30 @@ func _run() -> void:
 	_check(not card.tag.visible, "no burden, no tag")
 	_check(card.role_label.visible and card.role_label.text == "Poisoner", "the role is named under the card")
 	_check(card.dealt.all(func(c): return not c.visible) and card.stack.all(func(c): return not c.visible), "the deal and the deck have cleared")
+
+	# The dealt cards move continuously: no jump between the flip, the arc and the slide back.
+	card.play(_step())
+	var worst = 0.0
+	var worst_at = ""
+	for i in range(RevealCard.DEAL):
+		var s0 = card._plan.deal[i][0]
+		var d = card._plan.deal[i][1]
+		var prev = null
+		var u = 0.0
+		while u < 0.999:
+			card.t = s0 + d * u
+			card._apply()
+			var c = card.dealt[i]
+			var centre = c.position + c.size / 2.0
+			if prev != null and c.visible:
+				var jump = centre.distance_to(prev)
+				if jump > worst:
+					worst = jump
+					worst_at = "card %d at %.2f of its deal" % [i, u]
+			prev = centre if c.visible else null
+			u += 0.005
+	card.skip_to_end()
+	_check(worst < 12.0, "dealt cards never jump: the biggest step is %.1f px (%s)" % [worst, worst_at])
 
 	# A fakeout.
 	got = _run_step(card, _step({"fakeout_role": "seer", "guess_correct": true}))
@@ -105,7 +134,7 @@ func _run() -> void:
 	var on_f = func(): counts.finished += 1
 	card.landed.connect(on_l)
 	card.finished.connect(on_f)
-	card.play(_step({"burden": "Delusional", "role": "gravedigger", "evil": false}))
+	card.play(_step({"burden": "…and Delusional", "role": "gravedigger", "evil": false}))
 	card.advance(0.5)
 	card.skip_to_end()
 	card.skip_to_end()
