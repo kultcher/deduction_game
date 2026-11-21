@@ -82,6 +82,9 @@ internal static class LiveActivityKernel
     public const int FlagTellerToldCursed = 1 << 14;
     /// A burden claim that explains its claimant's night walks (burdens prototype: Unrequited).
     public const int FlagClaimWalks = 1 << 15;
+    /// The listener's own night out (live_activity_profiles.gd own_home_cards): the blocks it
+    /// walked, as a mask in slot 17 (reading-note gap 2).
+    public const int FlagKnownRoute = 1 << 16;
 
     /// The generic secret errand (every good person ~10% likely to walk on an errand): retired
     /// with the flavour secrets (Michael, Nov 21); the switch is for measuring it.
@@ -1071,8 +1074,17 @@ internal static class LiveActivityKernel
             {
                 if ((flags & FlagKnownSelf) != 0)
                 {
-                    // "I know I was home": only a Sleepwalker's doubt leaves room for being out.
-                    return cardInts[off + 3] != personIdx || !isOut ? 1.0 : 1.0 - cardDoubles[cardIdx * 2];
+                    if (cardInts[off + 3] != personIdx)
+                    {
+                        return 1.0;
+                    }
+                    if ((flags & FlagKnownRoute) != 0)
+                    {
+                        // "I know where I walked": out on exactly those blocks.
+                        return isOut && path.BlockMask == cardInts[off + 17] ? 1.0 : 1.0 - cardDoubles[cardIdx * 2];
+                    }
+                    // "I know I was home": only its tiny self-doubt leaves room for being out.
+                    return !isOut ? 1.0 : 1.0 - cardDoubles[cardIdx * 2];
                 }
                 if (cardInts[off + 3] == personIdx)
                 {
