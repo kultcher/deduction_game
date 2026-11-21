@@ -203,7 +203,7 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, mate.id], "yes": true},
 				"text": "%s's Seer: %s is the Demon" % [seer.name, names]})
 			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
-			var mark: int = _add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "marked", "day": 2, "phase": 0,
+			var mark: int = _add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "marked", "day": 2, "phase": 1,
 				"text": "%s: I've carried the mark since birth" % s.name})
 			cited += [reading, claim_s, mark]
 			sources += [seer, s]
@@ -263,7 +263,8 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			var first: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, pool[0].id], "yes": true},
 				"text": "%s's Seer (night 1): %s or %s is the Demon" % [seer.name, dem.name, pool[0].name]})
 			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
-			var bluff: int = _add(g, {"kind": "secret", "source": dem.id, "subject": [dem.id], "owner": dem.id, "secret_kind": "marked", "day": 2, "phase": 0,
+			# The afternoon after the Seer's night-1 "yes" was heard: the claim answers it.
+			var bluff: int = _add(g, {"kind": "secret", "source": dem.id, "subject": [dem.id], "owner": dem.id, "secret_kind": "marked", "day": 2, "phase": 1,
 				"text": "%s: I've carried the mark since birth" % dem.name})
 			cited += [first, claim_s, bluff]
 			sources.append(seer)
