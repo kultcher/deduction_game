@@ -17,6 +17,7 @@ test_bluff_blend
 test_board
 test_bot_m4
 test_buildings_tavern_town_hall
+test_burden_unrequited_walk
 test_burdens_ui
 test_canvas_card_text
 test_card_wording_fixes

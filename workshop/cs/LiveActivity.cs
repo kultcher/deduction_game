@@ -206,6 +206,9 @@ internal static class LiveActivityKernel
         public double[] ProfMinion = Array.Empty<double>();
         public double[] ProfDemon = Array.Empty<double>();
         public double[] ProfConverted = Array.Empty<double>();
+        /// <summary>A good person's profile in worlds where they hold Unrequited (burdens
+        /// prototype; ComputeUnrequitedProfiles). Empty when the script doesn't deal it.</summary>
+        public double[] ProfUnrequited = Array.Empty<double>();
         public SceneTableData[] SceneTables = Array.Empty<SceneTableData>();
         public ScionSplitData[] ScionSplits = Array.Empty<ScionSplitData>();
         /// <summary>Share of the script's possible demons that never walk at night (0 = walking only).
@@ -837,7 +840,8 @@ internal static class LiveActivityKernel
         int[] demonAttackEvents,
         int[] cardInts,
         double[] cardDoubles,
-        int cardCount)
+        int cardCount,
+        bool skipClaimBump = false)
     {
         double rate = profKind switch
         {
@@ -849,7 +853,7 @@ internal static class LiveActivityKernel
             _ => 0.05
         };
 
-        if (profKind == ProfOrdinary)
+        if (profKind == ProfOrdinary && !skipClaimBump)
         {
             for (int c = 0; c < cardCount; c++)
             {
@@ -1254,6 +1258,209 @@ internal static class LiveActivityKernel
         return outBuf;
     }
 
+    /// <summary>
+    /// Each person's movement likelihood as a good holder of Unrequited (burdens prototype;
+    /// sim/burdens.gd unrequited_visit). Their good profiles as usual, but the ordinary one also
+    /// visits the beloved: a visit on visitChance of nights, forced the night after a missed
+    /// one (once they've visited at all), run forward over every night from the first to the
+    /// last one any card is about (a night with no card weighs 1). A visit is the way to the
+    /// beloved's block, home when it is theirs, the hill once the beloved is dead; any other
+    /// night the ordinary paths, without a claimed walk's raised rate (the visits are what
+    /// explain it here). The beloved is anyone else, equally likely, or the one the person's
+    /// own Unrequited claim names (slot 16). Summed over the beloved and the evening haunt.
+    /// </summary>
+    public static double[] ComputeUnrequitedProfiles(
+        double visitChance,
+        int[] personHomes,
+        int[] personDeathBeforeNight,
+        int[] demonAttackEvents,
+        int[] cardInts,
+        double[] cardDoubles)
+    {
+        int nPeople = personHomes.Length;
+        double[] outBuf = new double[nPeople];
+        int cardCount = cardInts.Length / CardStride;
+        var nights = new List<int>(8);
+        var relevantIndices = new List<int>(cardCount);
+        for (int c = 0; c < cardCount; c++)
+        {
+            int off = c * CardStride;
+            if (IsRelevantCard(cardInts[off], cardInts[off + 7]))
+            {
+                relevantIndices.Add(c);
+                int night = cardInts[off + 9];
+                if (night >= 0 && !nights.Contains(night))
+                {
+                    nights.Add(night);
+                }
+            }
+        }
+        var reportsByNight = BuildReportsByNight(nights, relevantIndices, cardInts);
+        for (int p = 0; p < nPeople; p++)
+        {
+            outBuf[p] = UnrequitedLikelihood(p, visitChance, nights, reportsByNight, personHomes, personDeathBeforeNight,
+                demonAttackEvents, cardInts, cardDoubles, cardCount);
+        }
+        return outBuf;
+    }
+
+    public static double UnrequitedLikelihood(
+        int personIdx,
+        double visitChance,
+        List<int> nights,
+        int[][] reportsByNight,
+        int[] personHomes,
+        int[] personDeathBeforeNight,
+        int[] demonAttackEvents,
+        int[] cardInts,
+        double[] cardDoubles,
+        int cardCount)
+    {
+        Span<int> profKinds = stackalloc int[3];
+        Span<double> profWeights = stackalloc double[3];
+        BuildProfileWeights(personIdx, AlignGood, cardInts, cardDoubles, cardCount, profKinds, profWeights, out int profCount, out int roleCode);
+        int nPeople = personHomes.Length;
+        int nNights = nights.Count;
+        int home = personHomes[personIdx];
+
+        // The beloved: the one the person's own unquoted Unrequited claim names, else anyone.
+        int named = -1;
+        for (int c = 0; c < cardCount; c++)
+        {
+            int off = c * CardStride;
+            int flags = cardInts[off + 1];
+            if (cardInts[off] == KindSecretClaim && (flags & FlagQuoted) == 0 && (flags & FlagClaimWalks) != 0
+                && cardInts[off + 2] == personIdx && cardInts[off + 3] == personIdx
+                && cardInts[off + 16] >= 0 && cardInts[off + 16] < nPeople && cardInts[off + 16] != personIdx)
+            {
+                named = cardInts[off + 16];
+                break;
+            }
+        }
+        var beloveds = new List<int>(nPeople);
+        if (named >= 0)
+        {
+            beloveds.Add(named);
+        }
+        else
+        {
+            for (int b = 0; b < nPeople; b++)
+            {
+                if (b != personIdx)
+                    beloveds.Add(b);
+            }
+        }
+        int nB = beloveds.Count;
+        int maxNight = -1;
+        for (int n = 0; n < nNights; n++)
+        {
+            maxNight = Math.Max(maxNight, nights[n]);
+        }
+
+        double total = 0.0;
+        for (int pr = 0; pr < profCount; pr++)
+        {
+            int profKind = profKinds[pr];
+            double profW = profWeights[pr];
+            bool visits = profKind == ProfOrdinary;
+            // [night][evening] sums: the profile's paths, and (visits) each beloved's visit.
+            double[][] ord = new double[nNights][];
+            double[][][] vis = visits ? new double[nNights][][] : null;
+            for (int n = 0; n < nNights; n++)
+            {
+                int night = nights[n];
+                int[] nightCards = reportsByNight[n];
+                var paths = BuildProfilePaths(personIdx, night, profKind, roleCode, personHomes, personDeathBeforeNight,
+                    demonAttackEvents, cardInts, cardDoubles, cardCount, visits);
+                ord[n] = new double[BlockCount];
+                for (int e = 0; e < BlockCount; e++)
+                {
+                    double sum = 0.0;
+                    for (int pi = 0; pi < paths.Count; pi++)
+                    {
+                        double pv = paths[pi].Weight;
+                        for (int ci = 0; ci < nightCards.Length; ci++)
+                            pv *= Observed(nightCards[ci], cardInts, cardDoubles, personIdx, e, paths[pi], AlignGood, AlignGood);
+                        sum += pv;
+                    }
+                    ord[n][e] = sum;
+                }
+                if (!visits)
+                    continue;
+                vis![n] = new double[nB][];
+                for (int bi = 0; bi < nB; bi++)
+                {
+                    int b = beloveds[bi];
+                    PathSpec path = night >= personDeathBeforeNight[personIdx] ? PathSpec.StayHome(1.0)
+                        : night >= personDeathBeforeNight[b] ? PathSpec.Route(home, BlockHill, 1.0)
+                        : personHomes[b] == home ? PathSpec.StayHome(1.0)
+                        : PathSpec.Route(home, personHomes[b], 1.0);
+                    vis[n][bi] = new double[BlockCount];
+                    for (int e = 0; e < BlockCount; e++)
+                    {
+                        double pv = 1.0;
+                        for (int ci = 0; ci < nightCards.Length; ci++)
+                            pv *= Observed(nightCards[ci], cardInts, cardDoubles, personIdx, e, path, AlignGood, AlignGood);
+                        vis[n][bi][e] = pv;
+                    }
+                }
+            }
+            for (int haunt = 0; haunt < BlockCount; haunt++)
+            {
+                double w0 = profW / (double)BlockCount;
+                if (!visits)
+                {
+                    double weight = w0;
+                    for (int n = 0; n < nNights; n++)
+                    {
+                        double sum = 0.0;
+                        for (int e = 0; e < BlockCount; e++)
+                            sum += (e == haunt ? 0.7 : 0.1) * ord[n][e];
+                        weight *= sum;
+                    }
+                    total += weight;
+                    continue;
+                }
+                double[] foN = new double[nNights];
+                for (int n = 0; n < nNights; n++)
+                {
+                    double sum = 0.0;
+                    for (int e = 0; e < BlockCount; e++)
+                        sum += (e == haunt ? 0.7 : 0.1) * ord[n][e];
+                    foN[n] = sum;
+                }
+                double acc = 0.0;
+                for (int bi = 0; bi < nB; bi++)
+                {
+                    // Forward over nights 0..maxNight: never visited yet, visited last night,
+                    // missed last night after a visit (so tonight's visit is forced).
+                    double sN = 1.0, sV = 0.0, sM = 0.0;
+                    for (int night = 0; night <= maxNight; night++)
+                    {
+                        int n = nights.IndexOf(night);
+                        double fo = 1.0, fv = 1.0;
+                        if (n >= 0)
+                        {
+                            fo = foN[n];
+                            fv = 0.0;
+                            for (int e = 0; e < BlockCount; e++)
+                                fv += (e == haunt ? 0.7 : 0.1) * vis![n][bi][e];
+                        }
+                        double nN = sN * (1.0 - visitChance) * fo;
+                        double nV = (sN * visitChance + sV * visitChance + sM) * fv;
+                        double nM = sV * (1.0 - visitChance) * fo;
+                        sN = nN;
+                        sV = nV;
+                        sM = nM;
+                    }
+                    acc += sN + sV + sM;
+                }
+                total += w0 * acc / nB;
+            }
+        }
+        return total;
+    }
+
     private static int[][] BuildReportsByNight(List<int> nights, List<int> relevantIndices, int[] cardInts)
     {
         int nNights = nights.Count;
@@ -1595,7 +1802,9 @@ internal static class LiveActivityKernel
         int dPos = 0;
 
         int n = metaInts[iPos++];
-        bool hasConv = metaInts[iPos++] != 0;
+        int colFlags = metaInts[iPos++];   // bit 0: converted column; bit 1: Unrequited column
+        bool hasConv = (colFlags & 1) != 0;
+        bool hasUnreq = (colFlags & 2) != 0;
         int sceneCount = metaInts[iPos++];
         int splitCount = metaInts[iPos++];
 
@@ -1609,6 +1818,7 @@ internal static class LiveActivityKernel
             ProfMinion = SliceDoubles(metaDoubles, ref dPos, n),
             ProfDemon = SliceDoubles(metaDoubles, ref dPos, n),
             ProfConverted = hasConv ? SliceDoubles(metaDoubles, ref dPos, n) : Array.Empty<double>(),
+            ProfUnrequited = hasUnreq ? SliceDoubles(metaDoubles, ref dPos, n) : Array.Empty<double>(),
             SceneTables = new SceneTableData[sceneCount],
             ScionSplits = new ScionSplitData[splitCount],
         };
@@ -2163,7 +2373,23 @@ internal static class LiveActivityKernel
             factor.ContestTruth,
             dayType,
             factor.Guards,
-            factor.NormGood);
+            factor.NormGood,
+            UnrequitedHolder(world, factor),
+            factor.ProfUnrequited);
+
+    /// <summary>The good Unrequited holder whose own profile column applies in this world, or -1
+    /// (burdens prototype). The Scion split branches keep the plain good column (an
+    /// approximation, as are the sighting contests' and death scenes' good columns).</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static int UnrequitedHolder(WorldEntry world, CompiledMovementFactor factor)
+    {
+        if (factor.ProfUnrequited.Length == 0 || world.EffectiveModifier != WorldEntry.ModUnrequited || world.Holders == 0)
+            return -1;
+        int h = System.Numerics.BitOperations.TrailingZeroCount((uint)world.Holders);
+        if ((world.Evil & (1 << h)) != 0 || world.ConvertedOrMinusOne == h)
+            return -1;
+        return h;
+    }
 
     /// <summary>The succession branch's movement: before the execution scored with the
     /// executed person as demon, after it with the successor.</summary>
@@ -2199,7 +2425,9 @@ internal static class LiveActivityKernel
         double contestTruth = 1.0,
         bool dayType = false,
         GuardSet guards = null,
-        double[] normGood = null)
+        double[] normGood = null,
+        int unreqIdx = -1,
+        double[] profUnreq = null)
     {
         double[] divisor = normGood ?? profGood;
         double result = 1.0;
@@ -2226,7 +2454,7 @@ internal static class LiveActivityKernel
             }
             else
             {
-                pVal = profGood[i];
+                pVal = i == unreqIdx ? profUnreq![i] : profGood[i];
                 align = 0;
             }
             if (contests != null && i < contests.Length && contests[i] != null)
