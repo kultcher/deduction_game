@@ -544,3 +544,22 @@ claim-weighting options; it isn't the judge's world model, which stays model A (
   the timing results are in.
 - **Open:** whether the town can recover from a bluff nobody contests now rests on how much a
   second reading is worth. That's a separate question.
+
+## 14. Unrequited and trust values (Michael, Nov 21)
+
+Relayed by Seneschal.
+
+- **The Unrequited's night visit:** 65% a night, with a walk at least every other night.
+- **The generic secret errand retires.** The judge's 10% per-person "secret errand" allowance
+  goes, and the Unrequited is the only good burden holder who walks for a secret reason. This
+  settles the allowance questions in sections 6 and 9: no general allowance is left.
+- **When an Unrequited reveals,** good listeners lose trust in them by the same amount as
+  when a secret is spread.
+- **When the spell breaks:** at the existing "truly suspects" level. Michael: "That feels a
+  little low given how early NPCs can start, but I'll trust the recommendation for now."
+- **Held:** the judge's world model for stage 2. The two options are placed holders for all
+  four burdens, or weighted model-A layouts. Michael is waiting for Argon's first report.
+  Lantern found that model A undercounts Unrequited and Ill-Omened by a factor of 5 to 7.
+
+"Caught lying about me", from the same message, is a trust rule outside burdens. It's recorded in
+the backlog item "Rapport and Warden-credit leftovers" (a).
