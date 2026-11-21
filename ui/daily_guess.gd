@@ -27,6 +27,7 @@ const SKIP = "Skip"
 const DONT_ASK = "Don't ask again this case"
 const MENU_ENTRY = "Your suspicions"
 
+const META_LAST = "daily_guess_picks"   # on the game: the circles last confirmed
 const PORTRAIT_SIZE = 112
 const PICKER_PORTRAIT_SIZE = 64
 const FADE_SECONDS = 0.35
@@ -54,18 +55,29 @@ static func pickable(g, role: String, id: String) -> bool:
 	return not (role == "demon" and not n.alive and n.death_cause == "demon")
 
 
-## The circles filled from the player's current private theory: the Demon guess, then Minion
-## types, then plain "evil" guesses, in the order the cast is listed.
+## The circles filled from the player's current private theory. Circles the window filled last
+## time keep their people while those guesses still stand (an untyped Demon is stored as plain
+## "evil", so only the window knows it was the Demon circle). The rest: the Demon guess, then
+## Minion types, then plain "evil" guesses, in the order the cast is listed.
 static func prefill(g) -> Array:
 	var ss: Array = slots(g)
 	var picks: Array = []
 	for s in ss:
 		picks.append({"id": "", "type": _default_type(s)})
 	var used: Dictionary = {}
-	var demon_ids: Array = CaseMetrics.demon_guesses(g.guesses)
-	if not demon_ids.is_empty():
-		picks[0] = {"id": demon_ids[0], "type": str(g.guesses[demon_ids[0]].get("guess", ""))}
-		used[demon_ids[0]] = true
+	var last: Array = g.get_meta(META_LAST, []) if g.has_meta(META_LAST) else []
+	for i in range(mini(last.size(), picks.size())):
+		var id: String = str(last[i].get("id", ""))
+		if id == "" or not g.guesses.has(id):
+			continue
+		if str(g.guesses[id].get("guess", "")) == _written(last[i]):
+			picks[i] = {"id": id, "type": str(last[i].get("type", ""))}
+			used[id] = true
+	if picks[0].id == "":
+		var demon_ids: Array = CaseMetrics.demon_guesses(g.guesses).filter(func(x): return not used.has(x))
+		if not demon_ids.is_empty():
+			picks[0] = {"id": demon_ids[0], "type": str(g.guesses[demon_ids[0]].get("guess", ""))}
+			used[demon_ids[0]] = true
 	var minion_like: Array = []
 	for n in g.w.npcs:
 		var guess: String = str(g.guesses.get(n.id, {}).get("guess", "?"))
@@ -74,16 +86,25 @@ static func prefill(g) -> Array:
 		elif guess == "evil":
 			minion_like.append([1, n.id, ""])
 	minion_like.sort_custom(func(a, b): return a[0] < b[0])
-	var k: int = 1
 	for entry in minion_like:
-		if k >= picks.size():
-			break
 		if used.has(entry[1]):
 			continue
+		var k: int = -1
+		for j in range(1, picks.size()):
+			if picks[j].id == "":
+				k = j
+				break
+		if k < 0:
+			break
 		picks[k] = {"id": entry[1], "type": entry[2]}
 		used[entry[1]] = true
-		k += 1
 	return picks
+
+
+## What a circle writes to the private theory: its type, or plain "evil" without one.
+static func _written(p: Dictionary) -> String:
+	var t: String = str(p.get("type", ""))
+	return t if t != "" else "evil"
 
 
 static func _default_type(s: Dictionary) -> String:
@@ -92,28 +113,37 @@ static func _default_type(s: Dictionary) -> String:
 
 
 ## Writes the picks into the private theory. A circle with a type guesses that type; one
-## without guesses plain "evil". Anyone who held an evil guess before and isn't picked now is
-## set back to "?", so the window and the profile panel stay one source of truth.
+## without guesses plain "evil". Two Minion circles can't share a type (each Minion type is one
+## identity): a repeated type is written as plain "evil" rather than silently replacing the
+## first. Anyone who held an evil guess before and isn't picked now is set back to "?", so the
+## window and the profile panel stay one source of truth.
 static func apply(g, picks: Array) -> bool:
-	var picked: Dictionary = {}
+	var clean: Array = []
+	var seen_types: Dictionary = {}
 	for p in picks:
-		if str(p.get("id", "")) != "":
+		var q: Dictionary = {"id": str(p.get("id", "")), "type": str(p.get("type", ""))}
+		if q.id != "" and q.type != "":
+			if seen_types.has(q.type):
+				q.type = ""
+			seen_types[q.type] = true
+		clean.append(q)
+	var picked: Dictionary = {}
+	for p in clean:
+		if p.id != "":
 			picked[p.id] = true
 	var ok: bool = true
 	for id in g.guesses.keys():
 		var guess: String = str(g.guesses[id].get("guess", "?"))
 		if not picked.has(id) and (guess == "evil" or C.is_demon(guess) or C.is_minion(guess)):
 			ok = g.set_guess(id, "?", 1) and ok
-	for p in picks:
-		var id: String = str(p.get("id", ""))
-		if id == "":
+	for p in clean:
+		if p.id == "":
 			continue
-		var t: String = str(p.get("type", ""))
-		var guess: String = t if t != "" else "evil"
-		var conf: int = int(g.guesses.get(id, {}).get("confidence", DEFAULT_CONFIDENCE))
-		if str(g.guesses.get(id, {}).get("guess", "?")) in ["?", "good"]:
+		var conf: int = int(g.guesses.get(p.id, {}).get("confidence", DEFAULT_CONFIDENCE))
+		if str(g.guesses.get(p.id, {}).get("guess", "?")) in ["?", "good"]:
 			conf = DEFAULT_CONFIDENCE
-		ok = g.set_guess(id, guess, conf) and ok
+		ok = g.set_guess(p.id, _written(p), conf) and ok
+	g.set_meta(META_LAST, clean)
 	return ok
 
 
@@ -241,7 +271,7 @@ func _circle(i: int) -> Dictionary:
 	for t in _slots[i].types:
 		types.add_item(C.role_name(t))
 		types.set_item_metadata(types.item_count - 1, t)
-	types.item_selected.connect(func(idx): picks[i]["type"] = str(types.get_item_metadata(idx)))
+	types.item_selected.connect(func(idx): _pick_type(i, str(types.get_item_metadata(idx))))
 	root.add_child(types)
 	return {"root": root, "face": face, "name": name_label, "types": types}
 
@@ -307,6 +337,14 @@ func _pick(i: int, id: String) -> void:
 	_refresh_circle(i)
 	if _picker != null:
 		_picker.hide()
+
+## A type sits in one circle at a time, like a person.
+func _pick_type(i: int, t: String) -> void:
+	for k in range(picks.size()):
+		if k != i and t != "" and str(picks[k].get("type", "")) == t:
+			picks[k]["type"] = ""
+			_refresh_circle(k)
+	picks[i]["type"] = t
 
 func _finish(confirmed: bool) -> void:
 	if confirmed:

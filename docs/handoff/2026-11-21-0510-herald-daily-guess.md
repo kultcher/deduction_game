@@ -54,7 +54,7 @@ each:
 
 ## Measured
 
-- New `tools/test_daily_guess` (fast list): 28 checks pass. It checks the circle count at both
+- New `tools/test_daily_guess` (fast list): 34 checks pass, 6 of them for the two Codex findings (a repeated Minion type; an untyped Demon reopening in its circle). It checks the circle count at both
   town sizes, the type menus, the prefill from the theory, apply and clear, the Demon
   picker's crossed-out victims, one person per circle, and that Confirm writes while Skip and
   Don't ask again don't.

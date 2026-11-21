@@ -84,6 +84,30 @@ func _init() -> void:
 	check(g.guesses[people[3]].guess == demon_type and g.guesses[people[0]].guess == "?", "moving the Demon guess clears the old one")
 	check(g.guesses[people[5]].guess == "good", "a 'good' guess outside the circles is left alone")
 
+	# Codex on #496: two Minion circles can't share a type. The second is written as plain
+	# evil instead of silently replacing the first.
+	if ss.size() > 2:
+		var dup: Array = [{"id": people[0], "type": demon_type}, {"id": people[1], "type": sc.minions[0]}, {"id": people[2], "type": sc.minions[0]}]
+		DailyGuess.apply(g, dup)
+		check(g.guesses[people[1]].guess == sc.minions[0] and g.guesses[people[2]].guess == "evil",
+			"a repeated Minion type keeps the first and writes the second as evil (got %s, %s)" % [g.guesses[people[1]].guess, g.guesses[people[2]].guess])
+
+	# Codex on #496: an untyped Demon (a multi-Demon script) is stored as plain evil; reopening
+	# keeps it in the Demon circle rather than moving it to a Minion circle.
+	var untyped: Array = [{"id": people[8], "type": ""}]
+	for i in range(1, ss.size()):
+		untyped.append({"id": people[i], "type": sc.minions[0] if i == 1 else ""})
+	DailyGuess.apply(g, untyped)
+	var again: Array = DailyGuess.prefill(g)
+	check(again[0].id == people[8] and again[0].type == "", "an untyped Demon guess reopens in the Demon circle (got %s)" % again[0].id)
+	check(again.slice(1).map(func(p): return p.id) == untyped.slice(1).map(func(p): return p.id), "the Minion circles reopen unchanged")
+	var snapshot = g.guesses.duplicate(true)
+	DailyGuess.apply(g, again)
+	check(g.guesses == snapshot, "confirming an unchanged window changes nothing")
+	# A guess changed elsewhere (the profile panel) wins over the window's memory.
+	g.set_guess(people[8], "good", 2)
+	check(DailyGuess.prefill(g)[0].id != people[8], "a guess changed in the profile panel isn't restored to its old circle")
+
 	# The view: built over a stand-in parent, Confirm writes and calls back; Skip doesn't write.
 	var m = _Host.new()
 	m.g = g
@@ -93,7 +117,8 @@ func _init() -> void:
 	var v = DailyGuess.open(m, func(ok): done.append(ok), func(): off.append(true))
 	check(v.get_node_or_null("DailyGuess") == null and m.get_node_or_null("DailyGuess") == v, "the window opens over the main screen")
 	check(v._circles.size() == ss.size(), "it shows one circle per slot (got %d)" % v._circles.size())
-	check(v._circles[0].name.text == g.w.by_id[people[3]].name, "the Demon circle shows the current guess's name")
+	var shown_id: String = DailyGuess.prefill(g)[0].id
+	check(v._circles[0].name.text == (g.w.by_id[shown_id].name if shown_id != "" else DailyGuess.EMPTY_CIRCLE), "the Demon circle shows the current guess's name")
 	v._open_picker(0, v._circles[0].face)
 	var picker = v._picker
 	check(picker != null and picker.find_child("Pick_" + people[4], true, false) != null, "the picker lists the cast's portraits")
@@ -102,6 +127,10 @@ func _init() -> void:
 	v._pick(1, people[4])
 	check(v.picks[1].id == people[4] and v.picks[0].id == "", "a person sits in one circle at a time")
 	v._pick(0, people[6])
+	if v._circles.size() > 2:
+		v._pick_type(1, sc.minions[0])
+		v._pick_type(2, sc.minions[0])
+		check(v.picks[2].type == sc.minions[0] and v.picks[1].type == "", "choosing a type already in another circle moves it")
 	v._finish(true)
 	check(done == [true], "Confirm calls back with confirmed")
 	check(g.guesses[people[6]].guess == demon_type, "Confirm writes the new Demon guess")
