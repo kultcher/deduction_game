@@ -25,18 +25,20 @@ The sketches are rough mockups in the game's paper palette, made with `sketch.py
 | B. Slot | A paper strip drawn through a slot in a card. | The most readable. The classic "slot machine" tension. | Feels like gambling more than a grimoire, and is less in keeping with the paper look. |
 | C. Card turn | The script's role cards, face down and fanned, with one turned over. | Tarot mood. Fakeouts are natural: turn one card, then the real one. | It's a pick, not a spin, so it has less build-up. The deck also gives away the count. |
 
-**Update after Herald's draft (Nov 21): B, the slot, in Herald's centred layout.**
-Rendered side by side in Herald's narrow centred panel (`herald_layout_slot.jpg` and
-`herald_layout_wheel.jpg`), the slot reads clearly and the wheel's window shrinks too small
-to read the icon. So the joint recommendation is the slot:
-- **Styled as cut paper:** a strip drawn through a slot in a parchment card.
-- **Icons tinted by team,** as on the script sheet: blue gifts, red evil. The burden tag is
-  violet.
+**The choice is a reel and a layout together (Nov 21, with Herald).** Each reel only works
+in its own layout:
+1. **Wide overlay + volvelle (recommended).** The large portrait on the left, the wheel on
+   the right, the tile row along the bottom. Frames: `reel_A_volvelle.jpg`, the `landed_*`
+   frames and the clip.
+2. **Centred overlay + slot (fallback).** Herald's original layout: the town row on top,
+   then the portrait, a paper strip through a slot in a card, and the text below. Frames:
+   `herald_layout_slot*.jpg`. Choose this one if the reveal should cover less of the board.
 
-The volvelle stays as the alternative, but only with a wide overlay (portrait on the left,
-wheel on the right), as in the first sketches below.
+`herald_layout_wheel.jpg` shows why the wheel doesn't fit the centred layout: its window
+gets too small to read. In either pair, the icons are tinted by team, as on the script
+sheet: blue gifts, red evil, and a violet burden tag.
 
-**Original recommendation, kept for the record: A, the volvelle.** It's the one only this game would have: a hand-cut
+**Why A, the volvelle:** It's the one only this game would have: a hand-cut
 paper instrument from the grimoire's own world.
 
 - **The disc:** this script's role icons, in script order, good roles then evil.
