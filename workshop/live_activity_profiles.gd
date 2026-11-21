@@ -501,9 +501,10 @@ static var teller_place: bool = true
 ## Whether a sighting places its teller (FlagTellerAt in C#): one told firsthand by a person in
 ## the view (ids) about someone else, on a known block and night. Not a relay, a quotation, a
 ## person's own "I was out" (admitted), a guard or watch claim (already of the teller), a
-## vigil's complete list, testimony alone, or the listener's own home-night knowledge.
+## vigil's complete list, testimony alone, the listener's own home-night knowledge, or a card
+## marked "places_teller": false (a word about the sighting alone).
 static func teller_place_eligible(card: Dictionary, ids: Array) -> bool:
-	if not teller_place or str(card.get("kind", "")) != "sighting":
+	if not teller_place or str(card.get("kind", "")) != "sighting" or not bool(card.get("places_teller", true)):
 		return false
 	if bool(card.get("quoted", false)) or card.has("relay_source") or bool(card.get("admitted", false)) or card.has("guard_claim") \
 			or card.has("watch_claim") or bool(card.get("complete", false)) or bool(card.get("testimony_only", false)) or bool(card.get("known_self", false)):

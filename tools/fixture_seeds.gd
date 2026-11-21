@@ -195,6 +195,10 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 		c.erase("relay_role")
 		c.erase("relay_observed_at")
 		c["source"] = teller_id
+		# The relayer's word about the sighting alone: a relay says nothing of where the relayer
+		# was, so its own-word yardstick doesn't place it either (a sighting places its teller,
+		# Nov 20; LiveActivity.teller_place_eligible).
+		c["places_teller"] = false
 	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], is_relay, recast)
 	if eff.is_empty():
 		return {}
