@@ -55,6 +55,7 @@ var _deferred_log_events: Array = []  # the phase change after a conversation th
 var _phase_held: bool = false
 var reveal_seen_for = null      # the game whose grim reveal has opened (it opens once, by itself)
 var reduced_motion: bool = false  # the reveal without its deal and slides (More menu)
+var daily_guess_open: bool = false   # the guess window is up: no commands until it closes (Codex on #496)
 var daily_guess_off_for = null   # the game whose daily guess the player turned off ("Don't ask again this case")
 const READING_VERBS = ["gossip", "records", "register", "town_hall", "inspect", "search", "s"]
 var _deferred_meeting_events: Array = []  # the same, when it opened the meeting: the stage takes them up on leaving
@@ -188,7 +189,7 @@ func _new_case() -> void:
 	if is_inside_tree() and show_script_at_start:
 		Roles.open(self)
 func _input(ev: InputEvent) -> void:
-	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible:
+	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE and not case_view.visible and not daily_guess_open:
 		input.grab_focus()
 func _open_case_view() -> void:
 	case_view.refresh()
@@ -217,9 +218,12 @@ func _on_more(i: int) -> void:
 
 ## The daily evil-team guess (ui/daily_guess.gd). `then(confirmed)` runs once it closes.
 func open_daily_guess(then: Callable) -> void:
-	if g == null or g.w.game_over or has_node("DailyGuess"):
+	if g == null or g.w.game_over or daily_guess_open:
 		return
+	daily_guess_open = true
+	input.release_focus()
 	DailyGuess.open(self, func(confirmed):
+		daily_guess_open = false
 		_refresh_all()
 		if then.is_valid():
 			then.call(confirmed),
@@ -245,7 +249,7 @@ func _open_live_workshop(number: int = 0) -> void:
 	case_view.refresh()
 	case_view.open_workshop(number)
 func _run_workshop(cmd: String, progress: Callable) -> void:
-	if conversation_finished or _phase_held:
+	if conversation_finished or _phase_held or daily_guess_open:
 		return
 	var previous_state = g.state
 	_print("\n> " + cmd)
