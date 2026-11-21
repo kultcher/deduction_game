@@ -64,9 +64,10 @@ func try_reading_defence(_w, d, src, src_id: String, rd: Dictionary, mind, works
 ## - It looks for the Demon, not just for evil: anyone its own "no" readings cleared of being
 ##   the Demon goes to the back, however evil it thinks them (Lantern's interim stand-in, Nov 21,
 ##   until the town holds a belief about who is the Demon).
-## - After a "yes" not yet narrowed down, a focused Seer re-checks one of the two with someone
-##   it trusts as good (someone it has cleared, or failing that its least suspected), so the
-##   next reading tells it which of the two set it off.
+## - After a "yes" not yet narrowed down, a focused Seer re-checks one of the two beside either
+##   someone fresh (its likeliest Demon among those it hasn't looked at) or someone it trusts
+##   as good (someone it has cleared, or failing that its least suspected), on a coin flip
+##   (Michael, Nov 21).
 ## - Otherwise a sharp Seer re-checks its top suspect and pairs them with someone it hasn't
 ##   looked at yet; once two readings have said "yes" with that suspect in them, it's settled
 ##   as far as sight can tell, so it spends its sight on two fresh people instead.
@@ -99,7 +100,7 @@ func pick_targets(w, n, mind):
 				if e["data"]["yes"]:
 					yes_on[pid] = yes_on.get(pid, 0) + 1
 	var fresh: Array = ranked.filter(func(m): return not checked.has(m.id))
-	var narrow: Array = _narrowing_pick(w, n, ranked, seen_pairs, yes_on)
+	var narrow: Array = _narrowing_pick(w, n, ranked, seen_pairs, yes_on, checked)
 	if w.day == 0 or ranked.size() < 3:
 		pair = w.shuffled(ranked).slice(0, 2)
 		why = "first look: two at random"
@@ -118,8 +119,8 @@ func pick_targets(w, n, mind):
 			pair = shuf.slice(0, 2)
 		why = "a scattered look (insight %.2f): two unchecked together" % ins
 	elif not narrow.is_empty():
-		pair = narrow
-		why = "narrows a \"yes\": %s again, beside %s, whom it trusts" % [narrow[0].id, narrow[1].id]
+		pair = narrow.slice(0, 2)
+		why = "narrows a \"yes\": %s again, beside %s, %s" % [narrow[0].id, narrow[1].id, narrow[2]]
 	elif ins >= Tuning.Roles.SEER.sharp_insight_threshold and yes_on.get(ranked[0].id, 0) >= 2 and fresh.size() >= 2:
 		pair = w.shuffled(fresh).slice(0, 2)
 		why = "settled on %s (two yeses); looks at two fresh people" % ranked[0].id
@@ -144,10 +145,11 @@ func pick_targets(w, n, mind):
 
 
 ## The latest "yes" not yet narrowed down: neither of the two cleared since, neither in a
-## second "yes". Returns [one of the two, someone the Seer trusts as good], or [] if there's none.
-## The one re-checked is the likelier Demon; the partner is someone its own readings cleared,
-## else its least suspected, avoiding a pair it has already looked at.
-func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictionary) -> Array:
+## second "yes". Returns [one of the two, a partner, why], or [] if there's none. The one
+## re-checked is the likelier Demon. The partner, on a coin flip (Michael, Nov 21), is someone
+## fresh (its likeliest Demon among those unchecked) or someone it trusts as good (one its own
+## readings cleared, else its least suspected), avoiding a pair it has already looked at.
+func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictionary, checked: Dictionary = {}) -> Array:
 	var open: Array = []
 	for i in range(n.info_log.size() - 1, -1, -1):
 		var e: Dictionary = n.info_log[i]
@@ -164,6 +166,9 @@ func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictio
 	if cands.is_empty():
 		return []
 	var target = cands[0]
+	var fresh: Array = ranked.filter(func(m): return not (m.id in open) and not checked.has(m.id))
+	if not fresh.is_empty() and w.decision_roll(n, "seer_confirm_beside_fresh", 0.5, {"fresh": fresh.size()}):
+		return [target, fresh[0], "someone fresh"]
 	var trusted: Array = ranked.filter(func(m): return not (m.id in open))
 	trusted.reverse()
 	var cleared_first: Array = trusted.filter(func(m): return n.cleared.has(m.id)) + trusted.filter(func(m): return not n.cleared.has(m.id))
@@ -171,7 +176,7 @@ func _narrowing_pick(w, n, ranked: Array, seen_pairs: Dictionary, yes_on: Dictio
 		var key: Array = [target.id, m.id]
 		key.sort()
 		if not seen_pairs.has("%s:%s" % [key[0], key[1]]):
-			return [target, m]
+			return [target, m, "whom it trusts"]
 	return []
 
 

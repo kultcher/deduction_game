@@ -2,7 +2,8 @@
 ## - It looks for the Demon, not just for evil: someone its own "no" cleared of being the
 ##   Demon isn't its first pick, however evil it thinks them.
 ## - After a "yes" not yet narrowed down, a focused Seer re-checks one of the two beside
-##   someone it trusts as good (one it has cleared, else its least suspected).
+##   someone fresh or someone it trusts as good (one it has cleared, else its least
+##   suspected), on a coin flip (Michael, Nov 21).
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Mind = preload("res://sim/mind.gd")
@@ -61,6 +62,7 @@ func _init() -> void:
 	# Narrowing a "yes": one of the two again, beside someone it has cleared.
 	var narrowed: int = 0
 	var beside_cleared: int = 0
+	var beside_fresh: int = 0
 	for sd in range(9630, 9660):
 		var ws = _seer(sd)
 		var w = ws[0]
@@ -80,9 +82,10 @@ func _init() -> void:
 		var has_one: bool = (a.id in picks) != (b.id in picks)
 		narrowed += int(narrowing and has_one)
 		beside_cleared += int(narrowing and has_one and (c.id in picks or d.id in picks))
-	print("after a yes: one of the two re-checked %d/30, beside someone cleared %d/30" % [narrowed, beside_cleared])
+		beside_fresh += int(narrowing and has_one and not (c.id in picks or d.id in picks))
+	print("after a yes: one of the two re-checked %d/30, beside someone cleared %d, someone fresh %d" % [narrowed, beside_cleared, beside_fresh])
 	_check(narrowed >= 15, "after a \"yes\", a sharp Seer usually re-checks one of the two")
-	_check(beside_cleared == narrowed, "narrowing, always beside someone it has cleared (a scattered look may still land on one of them)")
+	_check(beside_cleared + beside_fresh == narrowed and beside_cleared >= 5 and beside_fresh >= 5, "narrowing, beside someone it has cleared or someone fresh, about half each")
 	# Once narrowed (the partner cleared since), the "yes" is settled and no longer narrowed.
 	var ws2 = _seer(9660)
 	var w2 = ws2[0]
