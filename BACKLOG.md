@@ -192,6 +192,9 @@ Lantern). Nothing is open here.
     - Beadle measures it on a `mock/` branch first.
   - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
     round.
+  - **Built and measured** (Beadle, Nov 20, #454; handoff `2026-11-20-1940-beadle-silence.md`).
+    With the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1
+    claims rise by a third. [in review]
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
