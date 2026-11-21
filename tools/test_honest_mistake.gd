@@ -226,6 +226,12 @@ func _init() -> void:
 	check(not ("Marked" in no_mark) and "Red Herring" in no_mark and "Marked" in with_mark, "the Seer card names Marked only when it's on the script (%s / %s)" % [no_mark.replace("\n", " "), with_mark.replace("\n", " ")])
 	var none: Dictionary = _game(sd, "misled", true, false)
 	var nv: Dictionary = Live.view(none.g)
+	# Nor does the Seer chooser offer "registered as Marked" on a script without Marked.
+	var nv_marked: Dictionary = nv.duplicate(true)
+	nv_marked["world_options"] = {"modifiers": ["marked"]}
+	var nv_unknown: Dictionary = nv.duplicate(true)
+	nv_unknown.erase("world_options")
+	check(not CanvasModel.new(nv).marked_answers_open() and CanvasModel.new(nv_marked).marked_answers_open() and CanvasModel.new(nv_unknown).marked_answers_open(), "the Seer's Marked answer is offered only when Marked is on the script (or the script is unknown)")
 	print("no causes: refused '%s', minions %s, modifiers %s" % [none.refused, nv.get("script_minions"), nv.get("world_options")])
 	check(none.refused != "", "with no cause on the script, the canvas refuses a Mistaken call on an Archivist reading")
 	# 5. The lie.

@@ -101,7 +101,7 @@ static func evidence_layout(m, id: String) -> Dictionary:
 		y += m.FACE_R * 2 + 22.0
 		if role == "seer" and card.data.get("yes", false):
 			var x: float = 16.0
-			for reg in ([["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]] if m.model.marked_answers else [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"]]):
+			for reg in ([["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"], ["marked", "Marked"]] if m.model.marked_answers_open() else [["", "Any"], ["demon", "Demon"], ["red_herring", "Red Herring"]]):
 				var w: float = 58.0 if reg[0] == "" else (64.0 if reg[0] != "red_herring" else 96.0)
 				els.append({"t": "chip", "rect": Rect2(x, y, w, 24), "text": reg[1], "on": answer.get("registration", "") == reg[0], "field": "reg:" + reg[0],
 					"tip": "Why the Seer got a yes: " + {"": "any valid explanation", "demon": "the Demon is the one you picked", "red_herring": "the one you picked is the Red Herring", "marked": "the one you picked is Marked"}[reg[0]]})
