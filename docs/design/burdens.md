@@ -640,4 +640,5 @@ Relayed by Seneschal; the wording follows his message closely.
   Minions only. The bump's size is a new constant, which Beadle proposes.
   - **Measured:** under the belief-weighted cost, the poison falls once in 40 passive games, so
     the cost is unchanged.
-  - **Still open:** whether a holder turned evil and then hanged triggers the poison.
+  - **The omen falls for a turned holder** (Michael, Nov 21): an Ill-Omened holder turned evil
+    and then hanged still poisons the town, per the script text.

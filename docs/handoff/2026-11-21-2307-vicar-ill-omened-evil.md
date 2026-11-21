@@ -19,3 +19,8 @@ Michael decided (Nov 21, relayed by Seneschal), in `docs/design/burdens.md`:
 ## What I measured
 
 Nothing; it's docs only.
+
+## Added before merge
+
+Michael closed the open question (Nov 21): an Ill-Omened holder turned evil and then hanged
+still poisons the town, per the script text.
