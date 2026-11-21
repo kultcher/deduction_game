@@ -4,7 +4,7 @@
 - **Base:** main at `c1519a3` (`baseline_875370c`)
 - **Branch:** `claude/beadle-caught-lying`
 - **Status:** PR open. Golden moves (trust only; outcomes unchanged) and is re-baselined here to
-  `baseline_d41b5df`. Golden-moving PRs merge one at a
+  `baseline_01f5290`. Golden-moving PRs merge one at a
   time.
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Rapport and Warden-credit leftovers", part (a), unblocked by Anger reasons
@@ -40,12 +40,15 @@
 
 ## Measured
 
-- **New:** `tools/test_caught_lying.gd` (10 checks), on the fast list.
+- **New:** `tools/test_caught_lying.gd` (12 checks), on the fast list.
+- **Codex on #506, fixed:** a Night Watch's route names who was out, not who is evil. It now
+  counts only as a sighting, when it places the listener out on a night spent at home. A
+  Medium's relayed reading never counts against the Medium.
 - **Also pass:** test_agreement_trust, test_meeting_flow, test_social_credibility,
   test_caught_lie_softening, test_conversation_nights, test_npc_interactions,
   test_defence_repeats, test_dialogue.
-- **Golden:** re-baselined to `baseline_d41b5df`; two captures were identical.
-  - Four seeds diverge, from day 1 or 2, through trust only.
+- **Golden:** re-baselined to `baseline_01f5290`; two captures were identical.
+  - Three seeds diverge, from day 2 or 3, through trust only.
   - The same people hang on every seed.
   - See "Current baseline" in `docs/golden_baseline.md`.
 
