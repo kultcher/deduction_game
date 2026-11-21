@@ -1106,17 +1106,17 @@ class Workshop:
 	const BLUFF_WEIGHT = 0.92
 	## A claimed burden (burdens prototype; Michael, Nov 21): how much likelier an evil player is
 	## to make the claim than a real holder, by whether it answers an evil reading of them
-	## (`RoleConstraints.burden_claim_factors`). Measured from evil's bluffs and holders' claims
-	## (Beadle's burden sweeps). STAND-INS until that run lands: reactive, from Beadle's bluff
-	## formula (about 0.55 of evil players read evil claim, against every holder); unprompted,
-	## below zero means the deal's own share (the chance a good claimant holds that burden),
-	## which leaves an unprompted claim neutral (Michael's option B).
-	const BURDEN_BLUFF_REACTIVE = 0.55
+	## (`RoleConstraints.burden_claim_factors`). Measured (Beadle, 80 passive 10-NPC games,
+	## seeds 7000-7079): read evil, evil bluffed Marked in 8 of 56 chances, and all 6 holders
+	## read evil claimed. Unprompted: below zero means the deal's own share (the chance a good
+	## claimant holds that burden), which leaves an unprompted claim neutral (Michael); measured,
+	## it was about 0.09 (8 of 240 evil players against 18 of 47 holders).
+	const BURDEN_BLUFF_REACTIVE = 0.14
 	const BURDEN_BLUFF_UNPROMPTED = -1.0
 	## Softens the reactive ratio so a claim answering an evil reading leaves its claimant about
-	## 70% evil in the dead-holder Seer case rather than about 80% (Michael, Nov 21: "a tad
-	## softer").
-	const BURDEN_REACTIVE_SOFTEN = 0.55
+	## where the reading left them (Michael, Nov 21, revised: neutral against silence): within
+	## about 2 points either side after a Seer's yes in the 7- and 10-person towns.
+	const BURDEN_REACTIVE_SOFTEN = 0.52
 	## Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds
 	## where a report's content holds).
 	const CHANCE_CONTENT_FLOOR = 0.01
