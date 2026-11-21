@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
+### Current baseline (Nov 21, made-up street sightings need a walking claim): `baseline_110537c`
+
+`tools/golden/baseline_110537c/` is the capture from `claude/beadle-street-claimed` at `110537c`
+(main at `03451a8`, after #454, merged in). Evil tells a made-up sighting seen "while out" only
+once its teller has claimed a gift that takes it out at night (Michael, Nov 20).
+- **Divergence from `baseline_5f4629f`:** seed 98933 only, at record 30 (day 2, morning). Evil no
+  longer says it saw Agnes out on the Market or on Chapel Hill on the second night, since it had
+  claimed no walking gift, and the town's suspicion of Agnes on day 2 is lower.
+- **Outcomes:** unchanged on every seed. 98933 still hangs Agnes on day 3, with no winner by day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
 
 `tools/golden/baseline_5f4629f/` is the capture from `claude/beadle-silence` at `5f4629f` (main at
 `c2c5653`, after #412, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion
