@@ -673,6 +673,19 @@ internal static class RoleConstraintsKernel
 
             if (kind == KindClaim)
             {
+                // Impossible pairs for unclaimed holders (slot 13; role_constraints.gd
+                // forbidden_burdens): a good claimant (good when they claimed it) holds the
+                // gift, and the deal never puts these burdens on it (Michael, Nov 21).
+                int forbidden = cardInts[off + 13];
+                if (forbidden != 0 && !contentOnly)
+                {
+                    int held = world.Marked == source ? WorldEntry.ModMarked
+                        : ((world.Holders & (1 << source)) != 0 ? world.EffectiveModifier : -1);
+                    if (held >= 0 && (forbidden & (1 << held)) != 0)
+                    {
+                        return 0.0;
+                    }
+                }
                 continue;
             }
 

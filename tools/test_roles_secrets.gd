@@ -232,6 +232,21 @@ func _test_burden_claim() -> void:
 		var allowed: int = good_of.call([gift.call(3, pr[2], "pg2"), claim.call(3, pr[0], "pb1")], 3)
 		_check(with_gift == 0 and gift_alone > 0 and allowed > 0,
 			"%s: no good claimant can claim both (%d good worlds; the gift alone %d; with a %s instead %d)" % [pr[3], with_gift, gift_alone, pr[2], allowed])
+	# Unclaimed holders too (Michael, Nov 21): a good claimed gift can't hold a burden the deal
+	# keeps off it, even with no burden claim. Count the good-claimant worlds where they hold one.
+	var holding = func(role: String, kinds: Array) -> int:
+		var ws: Array = Solver.solve(view, [gift.call(3, role, "ph1")]).worlds
+		return ws.filter(func(w): return not (int(w.evil) & (1 << 3)) and (
+			("marked" in kinds and int(w.get("marked", -1)) == 3)
+			or (str(w.get("modifier", "")) in kinds and str(w.get("modifier", "")) != "marked" and int(w.get("holders", 0)) & (1 << 3)))).size()
+	var all_burdens: Array = ["delusional", "marked", "ill_omened", "unrequited"]
+	var lamp_u: int = holding.call("lamplighter", ["unrequited"])
+	var lamp_other: int = holding.call("lamplighter", ["delusional", "marked", "ill_omened"])
+	var rumor_any: int = holding.call("rumormonger", all_burdens)
+	var seer_u: int = holding.call("seer", ["unrequited"])
+	_check(lamp_u == 0 and lamp_other > 0, "a good claimed Lamplighter is never an unclaimed Unrequited holder (%d worlds), but may hold another burden (%d)" % [lamp_u, lamp_other])
+	_check(rumor_any == 0, "a good claimed Rumormonger holds no burden at all (%d worlds)" % rumor_any)
+	_check(seer_u > 0, "a good claimed Seer may still hold Unrequited unclaimed (%d worlds)" % seer_u)
 	RC.burden_claims_bind = was_bind
 
 

@@ -373,6 +373,10 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 			# A claimed burden (docs/design/burdens.md): which world field the claim names.
 			card_ints[off + 19] = burden_code(card)
 			card_ints[off + 13] = forbidding_claim_tick(card, live_cards)
+		if kind_code == 2:
+			# Impossible pairs for unclaimed holders (Michael, Nov 21): the burdens the deal never
+			# puts on this claimed role, as modifier-code bits; a good claimant can't hold one.
+			card_ints[off + 13] = forbidden_burdens(card)
 
 		if kind_code == 4: # totem
 			var t_cands: int = 0
@@ -567,6 +571,8 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 			bits |= 1 << teller
 		elif burden_code(card) > 0 and str(card.data.secret_kind) != "marked":
 			claim_bits |= 1 << teller
+		elif forbidden_burdens(card) != 0:
+			claim_bits |= 1 << teller  # a claimed role the deal keeps some burden off
 	return bits | (claim_bits << 16)
 
 static func _live_cards(cards: Array) -> Array:
@@ -581,7 +587,26 @@ static func _routing_cards(cards: Array) -> Array:
 
 static func seer_flag(cards: Array) -> bool:
 	return cards.any(func(c): return not c.get("quoted", false) and (c.get("role") in ["seer", "gravedigger", "martyr", "augur", "executor", "registrar"]
-		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")))
+		or (burden_claims_bind and c.get("kind", "") == "secret_claim" and str(c.get("data", {}).get("secret_kind", "")) == "marked")
+		or (forbidden_burdens(c) & (1 << 1)) != 0))  # a claimed role the deal never makes Marked: the key tells Marked apart
+
+## Impossible pairs for unclaimed holders (Michael, Nov 21): the burdens the deal's placement
+## table never puts on this card's claimed role (ScriptDef.placement_allows), as bits of the
+## world's modifier code (1 << burden_code - 1), for an unquoted own role claim; 0 otherwise.
+## The role check makes a world impossible where its claimant, good when they claimed the
+## role, holds one of them. Read from the table, not a list of roles.
+static func forbidden_burdens(card: Dictionary) -> int:
+	if not burden_claims_bind or str(card.get("kind", "")) != "claim" or card.get("quoted", false) or card.get("content_only", false) \
+			or card.get("inferred", false) or card.get("testimony_only", false):
+		return 0
+	var role: String = str(card.get("role", ""))
+	if role == "":
+		return 0
+	var bits: int = 0
+	for kind in BURDEN_CODES:
+		if not ScriptDef.placement_allows(kind, role):
+			bits |= 1 << (int(BURDEN_CODES[kind]) - 1)
+	return bits
 
 ## A claimed burden this card's claimant must hold if good (0 for none, or the switch off).
 ## Only a person's own claim binds: someone retelling another's burden is not claiming it.
