@@ -108,7 +108,6 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 	var own_role: String = str(knowledge.get("own_role", ""))
 	var own_outings: Dictionary = knowledge.get("own_outings", {})
 	var own_saw: Dictionary = {}
-	var sleepwalkers: Dictionary = {}
 	for card in cards:
 		if card.get("quoted", false):
 			continue
@@ -121,10 +120,6 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 					for who in card.get("subjects", [card.get("subject", "")]):
 						if str(who) != "":
 							own_saw["%s:%d" % [str(who), sn]] = true
-		elif ck in ["secret_claim", "secret"] and str(card.get("data", {}).get("secret_kind", card.get("secret_kind", ""))) == "sleepwalker":
-			var sw_owner: String = str(card.get("source", card.get("subject", "")))
-			if sw_owner != "":
-				sleepwalkers[sw_owner] = true
 
 	# Pass 1: direct caught lies (own role clash, false sighting of listener, impossible Revenant Gravedigger).
 	for card in cards:
@@ -173,15 +168,10 @@ static func derive(plan: Dictionary, ledger: Dictionary = {}, seed_doubt: Dictio
 			for subj in card.get("subjects", [card.get("subject", "")]):
 				var s_id: String = str(subj)
 				if s_id != "" and own_saw.has("%s:%d" % [s_id, cnight]) and not settled_sincere.has(s_id):
-					# "I've been known to sleepwalk" excuses the false "I was home" only where its
-					# claimant is a good Sleepwalker; where they're evil it's a bluff and the lie
-					# stands (Michael, Nov 19). One doubt for every world, so weighed by the
-					# listener's chance they're evil. Before, the claim cancelled it outright, whoever
-					# made it. (Under the secrets rework a Sleepwalker stays self-unaware: then a
-					# claim is never a good holder's knowing one; docs/design/secrets_rework.md.)
-					var excused: float = 1.0 - _evil_chance(listener, s_id) if sleepwalkers.has(s_id) else 0.0
-					var d_night: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT * (1.0 - excused)
-					var d_general: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL * (1.0 - excused)
+					# (The Sleepwalker's "I've been known to sleepwalk" excuse retired with the
+					# burdens rework, docs/design/burdens.md.)
+					var d_night: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_NIGHT
+					var d_general: float = Tuning.Workshop.DOUBT_CAUGHT_ALIBI_GENERAL
 					if card.get("excuse_contradicted", false):
 						# The excuse for this lie was contradicted (LiveAssessment._mark_excuses): a
 						# second caught lie, at CONTRADICTED_EXCUSE_WEIGHT of the first (Michael, Nov 19).

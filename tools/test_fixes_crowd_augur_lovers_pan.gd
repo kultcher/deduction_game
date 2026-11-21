@@ -25,7 +25,7 @@ func _init() -> void:
 	_crowd()
 	_augur()
 	_augur_two_phases()
-	_lovers()
+	# (5.9's Lovers check retired with the Lovers: burdens rework, docs/design/burdens.md.)
 	_canvas_drag()
 	print("Triage Nov 16: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
@@ -131,50 +131,6 @@ func _augur_two_phases() -> void:
 	check(hint.ends_with("+at least 2 unknowns"), "two phases with two unseen each: at least 2, not 4 (%s)" % hint)
 
 
-## 5.9: a Lovers confession names the other, and proves both halves.
-func _lovers() -> void:
-	var g = null
-	var x = null
-	for seed_v in range(100000, 100200):
-		var t = Game.new()
-		t.detailed_logging = false
-		t.new_case(seed_v, 7)
-		var found: Array = t.w.npcs.filter(func(n): return n.lover != "" and str(n.secret.get("kind", "")) == "lover")
-		if not found.is_empty():
-			g = t
-			x = found[0]
-			break
-	check(g != null, "(fixture) a game with Lovers")
-	if g == null:
-		return
-	var partner = g.w.by_id[x.lover]
-	g.w.day = 2
-	var conf: int = GameBoard.add_card(g, {"kind": "secret", "subject": [x.id], "owner": x.id, "source": x.id, "block": partner.home_block, "day": 1, "phase": 3,
-		"secret_kind": "lover", "mod": "lovers", "partner": partner.id, "text": "%s confessed: %s" % [x.name, x.secret.text]})
-	var view: Dictionary = Live.view(g)
-	var card: Dictionary = {}
-	for c in view.cards:
-		if str(c.get("kind", "")) == "secret_claim":
-			card = c
-	check(str(card.get("data", {}).get("partner", "")) == partner.id, "the confession card names the partner (%s)" % str(card.get("data", {})))
-	var CanvasModel = preload("res://workshop/canvas_model.gd")
-	var cases: Dictionary = {}
-	for who in [partner, g.w.npcs.filter(func(n): return n != x and n != partner)[0]]:
-		var m = CanvasModel.new(view)
-		var prem: String = m.add_premise(who.id, "secret_mod", Vector2.ZERO)
-		m.nodes[prem].conclusion["mod"] = "lovers"
-		for id in m.nodes:
-			if m.nodes[id].kind == "evidence" and m.nodes[id].card == card.id:
-				m.connect_cards(id, prem)
-		cases[who.id] = Live.shape_reading(g, m.compile(prem), false)
-	var on_partner: Dictionary = cases[partner.id]
-	var other_id: String = cases.keys().filter(func(k): return k != partner.id)[0]
-	check(on_partner.get("ready", false) and str(on_partner.get("category", "")) == "strong" and float(on_partner.get("lr", 0.0)) > 1000.0, "the confession proves the partner holds the Lovers secret (%s)" % str(on_partner))
-	check(cases[other_id].get("ready", false) and float(cases[other_id].get("lr", 1.0)) < float(on_partner.get("lr", 0.0)), "and says nothing of the kind about anyone else (x%.2f against x%.2f)" % [float(cases[other_id].get("lr", 0.0)), float(on_partner.get("lr", 0.0))])
-
-
-## 8.1, as Michael changed it on Nov 17: on empty canvas a shift+left-drag draws a selection
-## box, and a plain left-drag (or a right-drag) pans.
 func _canvas_drag() -> void:
 	var CanvasModel = preload("res://workshop/canvas_model.gd")
 	var CanvasView = preload("res://ui/workshop_canvas_view.gd")

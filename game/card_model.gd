@@ -239,10 +239,6 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 		"secret":
 			var who: String = ("Rumour: " if _rumour(card) else "") + nm.call(str(card.get("owner", card.get("source", ""))))
 			match str(card.get("secret_kind", "")):
-				"sleepwalker":
-					return "%s sleepwalks" % who
-				"lover":
-					return "%s meets %s in secret" % [who, nm.call(str(card.get("partner", "")))] if str(card.get("partner", "")) != "" else "%s has a lover" % who
 				"insomnia":
 					return "%s prays at night" % who
 				"smuggling":
