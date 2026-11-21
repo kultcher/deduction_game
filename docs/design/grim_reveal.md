@@ -1,12 +1,14 @@
 # The grim reveal (design note)
 
-**Status: direction from Michael (Nov 21, 2026). Nothing is built.** Written by Claude-Vicar
+**Status: direction from Michael (Nov 20–21, 2026). Nothing is built.** Written by Claude-Vicar
 from a talk with Michael on Nov 21. It develops DESIGN's sixth pillar, "Hindsight reveal: end
 of case shows the full grimoire: who was what, who was poisoned when, and every lie."
 - **Today:** the end of a game offers three plain buttons: "Show the grimoire", "Show every
   lie" and "Show who told whom what" (`ui/main_actions.gd`).
 - **This note:** turns those into a paced reveal.
 - **Scoring:** shares the end screen. Its note is drafted separately and not yet published.
+- **The daily evil-team guess** (section 2a) is new player bookkeeping that feeds the end
+  sheet.
 
 ---
 
@@ -38,6 +40,38 @@ for every lie and every poisoning, so the reveal can say *why*, not only *what*.
   on night 2, and the rest was history.
 - **The Storyteller** (BACKLOG section 4) can later use the same "what shaped the game"
   measure as its sense of drama. The first version doesn't need it.
+
+### More decisions (Michael, Nov 20, relayed by Seneschal)
+
+- **The reel** is the card-based version Limner put together, which Michael confirmed.
+  - **Timing:** about 3 seconds per reveal.
+  - **Space:** the reveal has the whole screen, so space isn't a constraint.
+- **Watch again** is in: the player can replay the reveal.
+- **The end-of-game verdict** is prefilled from the player's latest daily guesses (section
+  2a), which can be adjusted before sealing.
+- **Stage 1** shows each guess as right or wrong only, with no points. Scoring follows; see
+  the scoring note.
+
+## 2a. The daily evil-team guess
+
+New (Michael, Nov 20). It has **no mechanical effect**; it's the player's own bookkeeping.
+
+- **When:** each day, after the meeting is settled, the screen fades to black. Before the
+  execution is announced, the player gets a window to guess the evil team.
+- **The layout:**
+  - three portrait circles, the Demon at the top and the Minions below;
+  - a type dropdown under each circle;
+  - clicking a circle picks from the NPC portraits.
+- **Who can be picked:**
+  - the Demon's victims are crossed out in the Demon picker;
+  - they stay selectable for the Minions, in case the Demon ever kills a Minion.
+- **Pre-fill:** on scripts with a single Demon type, the Demon's type is filled in.
+- **Buttons:** Confirm, Skip, and "Don't show again for this case".
+- **Access:** it's also reachable from the Main Menu button.
+- **Seneschal's small calls,** which Herald may flag:
+  - the number of circles follows the script's evil count;
+  - each confirmed guess is a dated snapshot, reusing DESIGN's Private theory;
+  - there's no burden guess until Burdens ships.
 
 ## 3. The order: a walk through the game
 
@@ -93,7 +127,7 @@ misread). It can measure each one's weight by asking what would have changed wit
   - "Claimed Seer on day 2. True."
   - "Lied about being home on the first night, to cover the kill."
   - "Poisoned on the second night. That 'yes' was false."
-- **The player's guess** from the verdict sheet shows under the portrait while the reel spins
+- **The player's guess** from the verdict sheet, which the daily guesses prefill, shows under the portrait while the reel spins
   ("You guessed: Minion"). It builds tension at no cost, and ties the score into the reveal.
 - **Dead NPCs' portraits** stay greyed until their turn, so the board reads as the town that
   ended the game.
@@ -109,7 +143,8 @@ misread). It can measure each one's weight by asking what would have changed wit
 
 ## 6. Pacing and options
 
-- Each spin is short (about a second or two), and quicker after the first few.
+- Each reveal takes about 3 seconds (Michael, Nov 20), and can be quicker after the first
+  few.
 - **Skip** goes straight to the final screen; **click** advances as fast as the player likes.
 - **Reduced motion:** a setting that replaces the spin with a plain reveal.
 - **The final screen:** every NPC's truth at once, the verdict sheet against the truth, then
@@ -124,8 +159,8 @@ misread). It can measure each one's weight by asking what would have changed wit
 - **Scoring** (its own note, in draft): the verdict sheet and the score lines share the final
   screen, so the two notes should agree on its layout.
   - DESIGN's "Private theory" (the timestamped profile guesses, scored from the last copy
-    before the outcome) may already be the verdict sheet's source. Worth reconciling when
-    scoring is picked up.
+    before the outcome) is reused for the daily guess's dated snapshots (section 2a).
+- **Herald:** also the daily guess window (section 2a).
 
 ## 8. Open questions
 
@@ -133,8 +168,7 @@ misread). It can measure each one's weight by asking what would have changed wit
    tuning value, set by watching real reveals.
 2. **The edge weights:** how strongly "confirmed" and "misled" links pull the walk, against
    falling back to time order.
-3. **The reel's style:** a wheel, a slot reel or something else. That's Herald and Limner's
-   call, with Michael approving.
+3. ~~**The reel's style**~~: settled on Limner's card-based reel (section 2).
 4. **Fakeout rules:** a fixed chance, or tied to how strongly the town believed the false
    role.
 5. **Wording** of the key-moment lines and the lead line. It's player-facing, so it's
