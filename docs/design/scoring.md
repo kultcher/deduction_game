@@ -161,9 +161,8 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
 5. **Good case:** measure on the whole town, or only on the voters who acted next?
 6. ~~**"Why you lost"**~~: in the first version (section 9).
 7. ~~**Shown how**~~: a total with a breakdown (section 9).
-8. **The change cost against "positive only"** (principle 1). A Demon-pick change costing
-   score is a subtraction. It could be framed as a bonus for unused changes instead, which
-   adds up the same and keeps the principle. Michael's call.
+8. ~~**The change cost against "positive only"**~~: a bonus for each unused change (Michael,
+   Nov 21).
 
 ## 9. Decided (Michael, Nov 20, relayed by Seneschal)
 
@@ -180,9 +179,10 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
     overnight.
   - **Guess changes are limited** (Michael, Nov 21): only the Demon pick costs a change, with
     one initial selection plus two changes per case. Minion picks and types are free.
-  - **Each change costs a little score** (Michael, Nov 21), so players lean toward being sure
-    rather than guessing that someone might happen to be the Demon. The game shows no line
-    about that cost. *Open: how much.*
+  - **Each unused change earns a small bonus** (Michael, Nov 21), so players lean toward
+    being sure rather than guessing that someone might happen to be the Demon. It's framed as
+    a bonus, not a cost, to keep the positive-only principle. The game shows no line about
+    it before the end. *Open: how much.*
   - **The profile's Demon and Minion marks** prefill the window, greyed out, for the player
     to change or confirm.
   - This replaces DESIGN's "latest pre-outcome copy" rule.
