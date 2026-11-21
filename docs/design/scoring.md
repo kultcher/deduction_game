@@ -170,7 +170,7 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
 - **The daily evil-team guess** feeds the verdict sheet. Each day, after the meeting settles
   and before the execution is announced, the player can guess the evil team. The latest guess
   prefills the end sheet. The full design is in
-  [grim_reveal.md](grim_reveal.md#the-daily-evil-team-guess).
+  [grim_reveal.md](grim_reveal.md#2a-the-daily-evil-team-guess).
 - **Seneschal's small calls,** which Herald may flag:
   - each confirmed guess is a dated snapshot, reusing DESIGN's Private theory;
   - there's no burden guess until Burdens ships, so the sheet's burden line (section 3.2)
