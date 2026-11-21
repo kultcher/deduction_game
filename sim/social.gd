@@ -512,6 +512,17 @@ static func _check_caught_lying(w, l, item: Dictionary) -> void:
 ## - "reading": a reading that names it alone as evil, when it is good.
 ## It can't tell a lie from a mistake (a poisoned reader, say), so it reacts to the falsehood
 ## itself. Once per teller and claim. Returns whether it reacted.
+const EVIL_ASSERTING_SHAPES = ["PING", "GROUP_COUNT", "ROLE_AT_SITE", "ROLE_IN_GROUP"]
+const EVIL_ASSERTING_GIFTS = ["martyr", "executor"]
+
+static func _asserts_evil(e: Dictionary) -> bool:
+	var role: String = str(e.get("role", ""))
+	if role in EVIL_ASSERTING_GIFTS:
+		return true
+	if not C.has_role_def(role):
+		return false
+	return str(C.role_def(role).get("shape")) in EVIL_ASSERTING_SHAPES
+
 static func caught_lying(w, target, teller_id: String, kind: String, data: Dictionary) -> bool:
 	if target == null or not target.alive or teller_id == "" or teller_id == target.id or teller_id == "player" or not w.by_id.has(teller_id):
 		return false
@@ -532,9 +543,11 @@ static func caught_lying(w, target, teller_id: String, kind: String, data: Dicti
 			if not target.id in e.get("data", {}).get("seen", []):
 				return false
 			return caught_lying(w, target, teller_id, "sighting", {"day": int(e.get("day", -1))})
-		if str(e.get("role", "")) in ["medium", "registrar"]:
-			# A Medium relays what it heard; a Registrar's yes says it holds one of the listed
-			# roles, good ones included, not that it's evil (Codex on #506). Neither asserts evil.
+		# Only a reading that asserts evil counts (Codex and Bailiff on #506): an allow-list of
+		# the shapes whose implicated() means "evil among these", plus the bespoke gifts that say
+		# so outright. A Medium relays what it heard; a Registrar's yes says it holds one of the
+		# listed roles, good ones included; any new gift stays out until it's added here.
+		if not _asserts_evil(e):
 			return false
 		if target.is_evil() or Gifts.implicated(e) != [target.id]:
 			return false
