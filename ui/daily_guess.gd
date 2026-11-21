@@ -26,6 +26,9 @@ const CONFIRM = "Confirm"
 const SKIP = "Skip"
 const DONT_ASK = "Don't ask again this case"
 const MENU_ENTRY = "Your suspicions"
+const SEAL_TITLE = "Seal your verdict"
+const SEAL_BUTTON = "Seal my verdict"
+const META_VERDICT = "sealed_verdict"   # on the game: the verdict sealed after an overnight ending
 
 const META_LAST = "daily_guess_picks"   # on the game: the circles last confirmed
 const PORTRAIT_SIZE = 112
@@ -147,6 +150,28 @@ static func apply(g, picks: Array) -> bool:
 	return ok
 
 
+## The verdict the picks make, without touching the private theory (it froze at the outcome):
+## every current guess, with the window's picks written over it as apply() would.
+static func verdict_of(g, picks: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for id in g.guesses:
+		out[id] = str(g.guesses[id].get("guess", "?"))
+	for id in out.keys():
+		if out[id] == "evil" or C.is_demon(out[id]) or C.is_minion(out[id]):
+			out[id] = "?"
+	var seen_types: Dictionary = {}
+	for p in picks:
+		var id: String = str(p.get("id", ""))
+		if id == "":
+			continue
+		var t: String = str(p.get("type", ""))
+		if t != "" and seen_types.has(t):
+			t = ""
+		seen_types[t] = true
+		out[id] = _written({"type": t})
+	return out
+
+
 ## ---- The view ----
 
 var g
@@ -157,12 +182,14 @@ var _shade: ColorRect
 var _panel: PanelContainer
 var _circles: Array = []
 var _picker: PopupPanel
+var seal: bool = false      # the end-of-game seal: writes the verdict, not the theory
 
 ## Opens over the main screen. `on_done(confirmed: bool)` runs after Confirm or Skip; the caller
 ## closes the meeting then. `dont_ask` runs when the player turns the window off for the case.
-static func open(m, on_done: Callable, dont_ask: Callable) -> Control:
+static func open(m, on_done: Callable, dont_ask: Callable, sealing: bool = false) -> Control:
 	var v = load("res://ui/daily_guess.gd").new()
 	v.g = m.g
+	v.seal = sealing
 	v._on_done = on_done
 	v.name = "DailyGuess"
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -190,11 +217,12 @@ func build(dont_ask: Callable) -> void:
 	var fade_line = Label.new()
 	fade_line.name = "FadeLine"
 	fade_line.text = FADE_LINE
+	fade_line.visible = not seal
 	fade_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	fade_line.add_theme_color_override("font_color", UITheme.color("muted"))
 	box.add_child(fade_line)
 	var title = Label.new()
-	title.text = TITLE
+	title.text = SEAL_TITLE if seal else TITLE
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
 	box.add_child(title)
@@ -216,13 +244,14 @@ func build(dont_ask: Callable) -> void:
 	box.add_child(buttons)
 	var confirm = Button.new()
 	confirm.name = "Confirm"
-	confirm.text = CONFIRM
+	confirm.text = SEAL_BUTTON if seal else CONFIRM
 	confirm.pressed.connect(func(): _finish(true))
 	buttons.add_child(confirm)
 	var skip = Button.new()
 	skip.name = "Skip"
 	skip.text = SKIP
 	skip.pressed.connect(func(): _finish(false))
+	skip.visible = not seal
 	buttons.add_child(skip)
 	var off = Button.new()
 	off.name = "DontAsk"
@@ -232,6 +261,7 @@ func build(dont_ask: Callable) -> void:
 		if dont_ask.is_valid():
 			dont_ask.call()
 		_finish(false))
+	off.visible = not seal
 	buttons.add_child(off)
 	for i in range(_circles.size()):
 		_refresh_circle(i)
@@ -347,7 +377,9 @@ func _pick_type(i: int, t: String) -> void:
 	picks[i]["type"] = t
 
 func _finish(confirmed: bool) -> void:
-	if confirmed:
+	if confirmed and seal:
+		g.set_meta(META_VERDICT, verdict_of(g, picks))
+	elif confirmed:
 		apply(g, picks)
 	var cb: Callable = _on_done
 	queue_free()

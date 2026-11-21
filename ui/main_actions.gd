@@ -193,6 +193,9 @@ static func refresh(m) -> void:
 			hint(m, "Tip: click a block or a person on the map to pick them.")
 		"over":
 			m.action_title.text = "The case is closed."
+			if m.reveal_seen_for != m.g:
+				m.call_deferred("open_reveal")
+			m._button(m.actions, "The grim reveal", func(): m.open_reveal())
 			m._button(m.actions, "Show the grimoire", func(): m._run("grimoire"))
 			m._button(m.actions, "Show every lie", func(): m._run("grimoire lies"))
 			m._button(m.actions, "Show who told whom what", func(): m._run("grimoire talk"))
