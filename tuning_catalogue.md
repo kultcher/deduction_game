@@ -300,7 +300,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `GOSSIP_SMEAR_TRUST` | `0.65` |  | `sim/social.gd` |
 | `TRUST_VOTED_AGAINST` | `0.1` | NPC-to-NPC trust reacting to the meeting (Oct 30): a nominee's trust in each voter. | `sim/world_meeting.gd` |
 | `TRUST_VOTED_FOR` | `0.03` |  | `sim/world_meeting.gd` |
-| `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd` |
+| `TRUST_ACCUSED_ME` | `0.1` |  | `sim/mind_meeting.gd`, `sim/social.gd` |
 | `APPROACH_PHASE_CHANCE` | `0.4` |  | `sim/social_approaches.gd` |
 | `APPROACH_SCORE_THRESHOLD` | `0.35` |  | `sim/social_approaches.gd` |
 | `APPROACH_NOISE` | `0.2` |  | `sim/social_approaches.gd` |
