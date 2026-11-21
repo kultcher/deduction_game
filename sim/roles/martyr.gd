@@ -92,7 +92,6 @@ func on_substitute_execution(w, mart, saved, res: Dictionary, mind) -> void:
 	mart.death_day = w.day
 	mart.death_cause = "martyr"
 	mart.loc = "dead"
-	w._bereave(mart)
 	mart.gift_used = true
 	w.executed_today = ""
 	w.executions.append({

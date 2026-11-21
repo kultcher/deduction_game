@@ -59,7 +59,7 @@ static func greeting_line(w, n, context: Dictionary = {}, roll_attitude: bool = 
 		var friend_vid: String = ""
 		for vid in w.deaths_last_night:
 			var s_vid: String = str(vid)
-			if w.by_id.has(s_vid) and (float(n.npc_trust.get(s_vid, 0.5)) >= 0.65 or s_vid in n.friends or s_vid == n.lover):
+			if w.by_id.has(s_vid) and (float(n.npc_trust.get(s_vid, 0.5)) >= 0.65 or s_vid in n.friends):
 				friend_vid = s_vid
 				break
 		if friend_vid != "":
@@ -657,9 +657,6 @@ static func _hidden_thing(w, n) -> String:
 	var kind: String = str(n.secret.get("kind", ""))
 	if kind == "":
 		return "their gift as the %s" % C.role_name(n.role)
-	if kind == "lover":
-		var partner = w.by_id.get(str(n.secret.get("with", "")))
-		return "that they meet %s in secret" % partner.name if partner != null else "a lovers' meeting"
 	if n.secret.has("text"):
 		return "that %s %s" % [n.name, n.secret["text"]]
 	return "a secret"

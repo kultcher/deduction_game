@@ -227,8 +227,7 @@ static func tavern_evening_gossip(g) -> Dictionary:
 						"weight": Tuning.Social.TAVERN_HEARD_SPOKEN_WEIGHT if heard_sec else Tuning.Social.TAVERN_UNHEARD_SPOKEN_WEIGHT,
 						"body": "%s %s." % [o.name, stext],
 						"fact": {"kind": "secret", "subject": [owner], "owner": owner, "source": "rumour",
-							"secret_kind": o.secret.get("kind", ""), "mod": "lovers" if o.secret.get("kind", "") == "lover" else "", "partner": str(o.secret.get("with", "")) if o.secret.get("kind", "") == "lover" else "",
-							"tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
+							"secret_kind": o.secret.get("kind", ""), "tavern_gossip": true, "workshop_usable": false, "pressable": false, "class": "speech",
 							"text": "Tavern rumour: %s %s." % [o.name, stext]}})
 
 	for c in candidates:

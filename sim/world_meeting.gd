@@ -197,7 +197,6 @@ func execute(id: String, res: Dictionary, last_words: Callable = Callable()) -> 
 	n.death_day = day
 	n.death_cause = "executed"
 	n.loc = "dead"
-	_bereave(n)
 	executed_today = id
 	executions.append({"day": day, "id": id, "nominator": res.get("by", ""), "yes": res.get("yes", []).duplicate(),
 		"no": res.get("no", []).duplicate(), "player_yes": res.get("player_yes", false), "player_nominated": res.get("by", "") == "player"})
@@ -265,21 +264,6 @@ func _scion_rises(sc) -> void:
 	C.role_def("scion").promote_to_demon(self, sc)
 
 ## Those who trusted the executed resent whoever pushed for it (shifting allegiances).
-## A Lover's death leaves the other withdrawn for the rest of the case: Privacy to the top,
-## Gossip to the bottom, harder to read. Visible in their profile, so it's a clue.
-func _bereave(dead) -> void:
-	if dead.secret_mod != "lovers" or dead.lover == "" or not by_id.has(dead.lover):
-		return
-	var survivor = by_id[dead.lover]
-	if not survivor.alive or survivor.withdrawn_since != "":
-		return
-	survivor.traits["privacy"] = 1.0
-	survivor.traits["gossip"] = 0.0
-	survivor.traits["composure"] = minf(1.0, survivor.traits.get("composure", 0.5) + 0.3)
-	survivor.withdrawn_since = dead.id
-	dlog.add("bereaved", survivor.id, dead.id, {"traits": survivor.traits.duplicate()},
-		"%s withdraws after %s's death (Lovers)." % [survivor.name, dead.name])
-
 func _grief(ex, res: Dictionary) -> void:
 	if ex.id == demon_id:
 		return  # the town was right; nobody mourns the demon
@@ -349,7 +333,7 @@ func on_execution_reading_heard(listener, source, entry: Dictionary, weight: flo
 		listener.settled_execution_rapport[ex_id] = "good" if ex_good else "evil"
 		if ex_good:
 			# Execution accuracy is tracked by Credibility.dawn; personal Rapport only drops for close personal bonds.
-			if ex_id in listener.friends or ex_id == listener.lover:
+			if ex_id in listener.friends:
 				Mind.set_trust(self, listener, listener.trust + float(Tuning.Roles.GRAVEDIGGER.trust_backed_innocent), "the Demonologist backed hanging %s, an innocent friend" % ex_id)
 		else:
 			Mind.set_trust(self, listener, listener.trust + float(Tuning.Roles.GRAVEDIGGER.trust_proven_right_base) + float(Tuning.Roles.GRAVEDIGGER.trust_proven_right_insight) * Mind.trait_of(listener, "insight"),

@@ -38,8 +38,7 @@ var history = {}         # "d:p" -> location id (or "home:<block>" / "night:<blo
 var friends: Array = []  # seeds for npc_trust
 var rivals: Array = []
 var secret = {}          # personal reason to be out at night (good NPCs only), may be empty
-var secret_mod = ""      # secret modifier on top of their gift: delusional | marked | lovers | sleepwalker
-var lover = ""           # Secret Lovers: the other lover's id
+var secret_mod = ""      # the burden on top of their gift: delusional | marked (burdens prototype)
 var withdrawn_since = ""   # the Lover whose death left them withdrawn (visible in the profile)
 
 ## The player relationship beyond trust.
