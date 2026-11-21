@@ -198,7 +198,7 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 			return pressed_multi
 	# A reading that calls them evil, answered privately by Marked (burdens prototype).
 	if kind == "info" and about_me:
-		var ba: Dictionary = Burdens.answer_evil_reading(w, n, {"role": str(card.get("role", "")), "data": d}, false, "player")
+		var ba: Dictionary = Burdens.answer_evil_reading(w, n, {"role": str(card.get("role", "")), "data": d}, false, "player", w.by_id[str(card.get("source", ""))].name if w.by_id.has(str(card.get("source", ""))) else "")
 		if not ba.is_empty():
 			_dialogue().on_question(w, n)
 			lines.append(ba["line"])
