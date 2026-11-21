@@ -474,8 +474,8 @@ Michael ruled that no NPC line may mention the effect.
 - **Burden gossip** goes through `gossip_secret`, with new phrases for each burden.
 - **The script-sheet rules text** is approved for all four burdens, Ill-Omened in Michael's
   wording below.
-- **When it's built:** only with the burdens work itself. Herald is writing the other 14 voices
-  and holding them on a branch.
+- **When it's built:** only with the burdens work itself. Herald's lines for all 15 voices,
+  burdens and anger alike, are written and held on `claude/herald-burden-anger-lines`.
 
 **Ill-Omened** (revised, Nov 21):
 - **The effect is "poisoned", not "drunk",** throughout the design.
@@ -492,8 +492,9 @@ Michael ruled that no NPC line may mention the effect.
   - **The window** is the night after the hanging plus the following day, and it ends when the
     next night begins. So that night's readings and the next day's day gifts are poisoned.
     This settles Quill's question about a daytime hanging.
-- **The board marker** after a claimed Ill-Omened is hanged stays vague, e.g. "The omen may
-  have fallen", with no mention of poison. Herald drafts it, and the wording is Michael's.
+- **The board marker** (Michael, Nov 21), after a claimed Ill-Omened is hanged: "The omen
+  claimed by {name} may have fallen, poisoning the town's gifts." Its tooltip shows the
+  script-sheet rules text.
 - **No new Mistaken cause.** The existing poison cause covers it. The #455 Poisoner nudge still
   skips Ill-Omened poisoning, so a self-doubt on that night doesn't point at a Poisoner.
 
