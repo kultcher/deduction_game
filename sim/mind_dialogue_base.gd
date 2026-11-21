@@ -10,6 +10,7 @@ const Evil = preload("res://sim/evil.gd")
 const Gifts = preload("res://sim/gifts.gd")
 const Dialogue = preload("res://sim/dialogue.gd")
 const Observations = preload("res://sim/dialogue_observations.gd")
+const Burdens = preload("res://sim/burdens.gd")
 static var _mind_script
 static var _dialogue_script
 static var _press_script

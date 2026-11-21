@@ -190,6 +190,15 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 			var pressed_multi: Dictionary = _challenged(n, {"lines": lines, "facts": facts}, card)
 			pressed_multi["dialogue_exchange"] = {"action": "challenge_trace_case", "subject": n.id}
 			return pressed_multi
+	# A reading that calls them evil, answered privately by Marked (burdens prototype).
+	if kind == "info" and about_me:
+		var ba: Dictionary = Burdens.answer_evil_reading(w, n, {"role": str(card.get("role", "")), "data": d}, false, "player")
+		if not ba.is_empty():
+			_dialogue().on_question(w, n)
+			lines.append(ba["line"])
+			if not ba["fact"].is_empty():
+				facts.append(ba["fact"])
+			return {"lines": lines, "facts": facts, "dialogue_exchange": {"action": "challenge_gift", "subject": n.id}}
 	# Their gift: a true naming opens them up; otherwise pressure decides.
 	var bonus = 1 if naming_me and d.get("role", "") == mine else 0
 	var tier = mini(_dialogue()._target_tier(w, n) + bonus, 4)

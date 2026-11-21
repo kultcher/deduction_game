@@ -166,10 +166,16 @@ static func gossip_item(w, n) -> Dictionary:
 			n.told_to["player|secret:" + owner] = true
 			w.dlog.think(n.id, "gossip", "Tells the player %s's secret (heard via %s)." % [owner, n.known_secrets[owner]])
 			o.secret_spread_by_npc = true
-			var secret_fallback: String = "Between you and me, %s %s. That's why they're about at night." % [o.name, o.secret["text"]]
-			return {"lines": [Mind.say_voiced(n, "gossip_secret", secret_fallback, {"subject": o.name, "secret": o.secret["text"]})],
+			var said: String = Burdens.phrase(o)
+			var gossip_line: Dictionary
+			if o.secret.is_empty():
+				# A burden, not an errand (burdens prototype): nothing to do with being out at night.
+				gossip_line = Mind.say_voiced(n, "gossip_burden", "Between you and me, %s %s." % [o.name, said], {"subject": o.name, "secret": said})
+			else:
+				gossip_line = Mind.say_voiced(n, "gossip_secret", "Between you and me, %s %s. That's why they're about at night." % [o.name, said], {"subject": o.name, "secret": said})
+			return {"lines": [gossip_line],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
-					"secret_kind": o.secret.get("kind", ""), "text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, o.secret["text"]]}]}
+					"secret_kind": o.secret.get("kind", o.secret_mod), "burden": o.secret.is_empty(), "text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, said]}]}
 	for it in items:
 		if it[0] != "hearsay":
 			continue
