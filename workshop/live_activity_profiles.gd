@@ -176,6 +176,144 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 			total += weight
 	return total
 
+## Whether the script deals Unrequited (burdens prototype): the movement model then scores a
+## good holder on their own column, in the worlds where they hold it.
+static func deals_unrequited(view: Dictionary) -> bool:
+	return "unrequited" in view.get("world_options", {}).get("modifiers", [])
+
+## A good person's movement likelihood as the Unrequited holder (C#:
+## LiveActivityKernel.UnrequitedLikelihood, which the kernel uses; this is the mirror the
+## suites check it against). Their good profiles, with the ordinary one also visiting the
+## beloved: on UNREQUITED_VISIT_CHANCE of nights, forced the night after a missed one once
+## they've visited (sim/burdens.gd unrequited_visit), forward over nights 0 to the last night
+## a card is about. A visit is the way to the beloved's block (home if it's theirs, the hill
+## once the beloved is dead); other nights the ordinary paths without a claimed walk's raised
+## rate. The beloved: the one their own Unrequited claim names, else anyone else.
+static func _unrequited_likelihood_gd(view: Dictionary, cards: Array, person: Dictionary) -> float:
+	var q: float = Tuning.Burden.UNREQUITED_VISIT_CHANCE
+	var relevant_cards = relevant(cards)
+	var nights: Array = []
+	for card in relevant_cards:
+		if card.get("night", -1) >= 0 and card.night not in nights:
+			nights.append(card.night)
+	var role = role_of(cards, person.id)
+	var gift: bool = C.ROLES.get(role, {}).get("night_walk", false)
+	var profiles: Array = [{"kind": "ordinary", "weight": WALKER_CLAIM_HOME if gift else 0.75},
+		{"kind": "gift", "weight": WALKER_CLAIM_GIFT if gift else 0.15}, {"kind": "secret", "weight": WALKER_CLAIM_SECRET if gift else 0.1}]
+	if role != "" and not gift:
+		profiles = [{"kind": "ordinary", "weight": 0.9}, {"kind": "secret", "weight": 0.1}]
+	if role != "" and cards.any(func(c): return c.get("source", "") == person.id and c.has("hearing_weight")):
+		var strength: float = role_hearing(cards, person.id, role)
+		profiles = [{"kind": "ordinary", "weight": lerpf(0.75, WALKER_CLAIM_HOME if gift else 0.9, strength)}, {"kind": "gift", "weight": lerpf(0.15, WALKER_CLAIM_GIFT if gift else 0.0, strength)}, {"kind": "secret", "weight": lerpf(0.1, WALKER_CLAIM_SECRET if gift else 0.1, strength)}]
+	if not secret_errand:
+		profiles = _without_errand(profiles)
+	var reports_by_night: Array = []
+	for night in nights:
+		var reports: Array = []
+		var incidents: Array = []
+		for card in relevant_cards:
+			if card.night != night:
+				continue
+			var incident: String = _alibi_incident(card) if card.kind == "alibi" else (("trace:%s:%d" % [str(card.data.get("scene", "")), int(card.data.get("slot", 0))]) if card.kind == "trace" else card.id)
+			if incident in incidents:
+				continue
+			incidents.append(incident)
+			reports.append(card)
+		reports_by_night.append(reports)
+	var named: String = ""
+	for card in cards:
+		if card.get("kind", "") == "secret_claim" and not card.get("quoted", false) and claim_walks(card) and str(card.get("source", "")) == person.id \
+				and str(card.get("subject", "")) == person.id and str(card.get("data", {}).get("beloved", "")) in ids_of_view(view) and str(card.data.beloved) != person.id:
+			named = str(card.data.beloved)
+			break
+	var beloveds: Array = [named] if named != "" else view.people.filter(func(p): return p.id != person.id).map(func(p): return p.id)
+	var max_night: int = -1
+	for night in nights:
+		max_night = maxi(max_night, int(night))
+	var total: float = 0.0
+	for profile in profiles:
+		var visits: bool = profile.kind == "ordinary"
+		var ord: Array = []
+		var vis: Array = []
+		for n in range(nights.size()):
+			var night: int = nights[n]
+			var paths: Array = _profile_paths(view, person, night, profile.kind, cards, visits)
+			var by_e: Array = []
+			for evening in C.BLOCKS:
+				var sum: float = 0.0
+				for path in paths:
+					var pv: float = path.weight
+					for card in reports_by_night[n]:
+						pv *= _observed(card, person.id, evening, path.path, "good", view, night, cards, "good")
+					sum += pv
+				by_e.append(sum)
+			ord.append(by_e)
+			if not visits:
+				vis.append([])
+				continue
+			var per_b: Array = []
+			for b_id in beloveds:
+				var b: Dictionary = view.people.filter(func(p): return p.id == b_id)[0]
+				var path: Array = []
+				if not History.alive_at_night(view, person.id, night):
+					path = []
+				elif not History.alive_at_night(view, b_id, night):
+					path = C.route(person.home, "hill")
+				elif b.home != person.home:
+					path = C.route(person.home, b.home)
+				var by_e_v: Array = []
+				for evening in C.BLOCKS:
+					var pv: float = 1.0
+					for card in reports_by_night[n]:
+						pv *= _observed(card, person.id, evening, path, "good", view, night, cards, "good")
+					by_e_v.append(pv)
+				per_b.append(by_e_v)
+			vis.append(per_b)
+		for haunt in C.BLOCKS:
+			var w0: float = profile.weight / C.BLOCKS.size()
+			var fo_n: Array = []
+			for n in range(nights.size()):
+				var sum: float = 0.0
+				var e: int = 0
+				for evening in C.BLOCKS:
+					sum += (0.7 if evening == haunt else 0.1) * float(ord[n][e])
+					e += 1
+				fo_n.append(sum)
+			if not visits:
+				var weight: float = w0
+				for n in range(nights.size()):
+					weight *= float(fo_n[n])
+				total += weight
+				continue
+			var acc: float = 0.0
+			for bi in range(beloveds.size()):
+				var s_n: float = 1.0
+				var s_v: float = 0.0
+				var s_m: float = 0.0
+				for night in range(max_night + 1):
+					var n: int = nights.find(night)
+					var fo: float = 1.0
+					var fv: float = 1.0
+					if n >= 0:
+						fo = float(fo_n[n])
+						fv = 0.0
+						var e: int = 0
+						for evening in C.BLOCKS:
+							fv += (0.7 if evening == haunt else 0.1) * float(vis[n][bi][e])
+							e += 1
+					var nn: float = s_n * (1.0 - q) * fo
+					var nv: float = (s_n * q + s_v * q + s_m) * fv
+					var nm: float = s_v * (1.0 - q) * fo
+					s_n = nn
+					s_v = nv
+					s_m = nm
+				acc += s_n + s_v + s_m
+			total += w0 * acc / beloveds.size()
+	return total
+
+static func ids_of_view(view: Dictionary) -> Array:
+	return view.people.map(func(p): return p.id)
+
 ## The share of the script's possible demons that never walk at night (the day-killer,
 ## docs/demon_types_plan.md). 0 on every script the game deals today, which leaves every
 ## movement likelihood exactly as before.
@@ -235,12 +373,12 @@ static func good_walk_chance(cards: Array, person: String) -> float:
 ## Each profile's chance of being out on a night (the C# kernel's BuildProfilePaths has the same).
 const PROFILE_RATES = {"minion": 0.25, "gift": 1.0, "secret": 0.55, "ordinary": 0.05}
 
-static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array) -> Array:
+static func _profile_paths(view: Dictionary, person: Dictionary, night: int, profile: String, cards: Array, skip_claim_bump: bool = false) -> Array:
 	var rates = {"demon": 1.0 if night > 0 else 0.0, "minion": PROFILE_RATES.minion, "gift": PROFILE_RATES.gift, "secret": PROFILE_RATES.secret, "ordinary": PROFILE_RATES.ordinary}
 	var rate: float = rates[profile]
 	if profile == "gift" and night < 1 and role_of(cards, person.id) == "warden":
 		rate = 0.0  # no guard on night 0 (triage 7.1): a night-0 outing isn't the Warden's gift
-	if profile == "ordinary":
+	if profile == "ordinary" and not skip_claim_bump:
 		for card in cards:
 			if card.kind == "secret_claim" and not card.get("quoted", false) and card.subject == person.id and night >= card.applies.from and night <= card.applies.through \
 					and (secret_errand or claim_walks(card)):

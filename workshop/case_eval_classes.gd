@@ -250,7 +250,7 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 		1 if has_curse else 0,
 		1 if seer else 0,
 		mediums,
-		0,  # reserved: was the Sleepwalker claimants (retired, burdens rework)
+		1 if movement.any(func(f): return f.get("joint_live", false) and not f.get("profiles", []).is_empty() and f.profiles[0].has("unrequited")) else 0,  # Unrequited holders' own column
 		1 if curr_conv else 0,
 		1 if concl_conv else 0,
 		k,

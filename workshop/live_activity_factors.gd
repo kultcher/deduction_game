@@ -158,6 +158,13 @@ static func _factors_core(view: Dictionary, cards: Array, observations: Array) -
 		if has_curse:
 			p_dict["converted"] = raw_prof[b + 3]
 		profiles[i] = p_dict
+	if deals_unrequited(view):
+		# A good Unrequited holder's own column (burdens prototype): the kernel uses it in the
+		# worlds where they hold it (LiveActivityKernel.UnrequitedHolder).
+		var raw_u: PackedFloat64Array = bridge.LiveUnrequitedProfiles(Tuning.Burden.UNREQUITED_VISIT_CHANCE, env.homes, env.deaths, env.demon_events,
+			packed_checked.ints, packed_checked.doubles)
+		for i in range(n):
+			profiles[i]["unrequited"] = raw_u[i]
 
 	var guards: Dictionary = _quiet_guards(view, ids, env, cards, packed_checked, stride) if quiet_guards_enabled else {}
 	var contests: Array = _sighting_contests(view, ids, env, cards, checked, profiles, guards.get("items", [])) if sighter_contests_enabled else []
@@ -635,12 +642,13 @@ static func _ensure_factor_handle(factor: Dictionary, norm: int = 0) -> int:
 	var profs: Array = factor.get("profiles", [])
 	var n: int = profs.size()
 	var has_conv: bool = n > 0 and profs[0].has("converted")
+	var has_unreq: bool = n > 0 and profs[0].has("unrequited")
 	var scenes: Array = factor.get("scene_tables", [])
 	var splits: Array = factor.get("scion_splits", [])
 
 	var meta_ints := PackedInt32Array([
 		n,
-		1 if has_conv else 0,
+		(1 if has_conv else 0) | (2 if has_unreq else 0),
 		scenes.size(),
 		splits.size(),
 	])
@@ -658,6 +666,9 @@ static func _ensure_factor_handle(factor: Dictionary, norm: int = 0) -> int:
 	if has_conv:
 		for i in range(n):
 			meta_doubles.append(float(profs[i].converted))
+	if has_unreq:
+		for i in range(n):
+			meta_doubles.append(float(profs[i].unrequited))
 
 	for st in scenes:
 		_append_scene_packed(n, st, meta_ints, meta_doubles)
