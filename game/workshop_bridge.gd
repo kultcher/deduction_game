@@ -37,7 +37,7 @@ static func capture(g, selected: Array, listener_id: String = "", venue: String 
 		"people": [], "receipts": [], "selected": [], "arguments": [], "root": 0, "issues": [],
 		"public_events": [], "rules": {"initial_evil_count": 1 + C.SETUPS.get(g.w.n_npcs, {"minions": 1}).minions,
 			"modifier_options": g.w.case_script.secrets.duplicate() if g.w.case_script != null else C.SECRET_MOD_LIST.duplicate(), "one_modifier_kind": true,
-			"lovers_holders": 2, "other_modifier_holders": 1, "roles": possible_roles(g),
+			"other_modifier_holders": 1, "roles": possible_roles(g),
 			"minions": script_minions(g), "demons": script_demons(g),
 			"declared_demon": g.w.declared_demon_type},
 		# Only the Demonologist's own view holds the raw watch record. A listener hears it

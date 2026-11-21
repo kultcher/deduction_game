@@ -39,7 +39,7 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 			"populated": false,
 			"seer": seer_flag(cards),
 			"mediums": relay_mediums(ids, cards),
-			"walkers": sleepwalk_claimants(ids, cards),
+			"walkers": 0,  # the Sleepwalker retired (burdens rework); the C# plumbing is Lantern's
 		}
 	return cache[key]
 
@@ -216,7 +216,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 
 	var seer_on: bool = seer_flag(cards)
 	var mediums_mask: int = relay_mediums(ids, cards)
-	var walkers_mask: int = sleepwalk_claimants(ids, cards)
+	var walkers_mask: int = 0  # the Sleepwalker retired (burdens rework)
 
 	var header := PackedInt32Array([
 		ids.size(),
@@ -512,14 +512,11 @@ static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums:
 		mask = mask * n + int(world.converted) + 1
 	return mask
 
-static func sleepwalk_claimants(ids: Array, cards: Array) -> int:
-	var bits: int = 0
-	for card in cards:
-		if card.get("kind", "") == "secret_claim" and card.get("data", {}).get("secret_kind", "") == "sleepwalker" and not card.get("quoted", false):
-			var i: int = ids.find(card.get("subject", ""))
-			if i >= 0:
-				bits |= 1 << i
-	return bits
+## The Sleepwalker retired with the burdens rework (docs/design/burdens.md): no claim makes
+## anyone a sleepwalker now. Kept as a stub for its callers in the judge (Lantern's to strip,
+## with the C# walkers plumbing).
+static func sleepwalk_claimants(_ids: Array, _cards: Array) -> int:
+	return 0
 
 ## The people whose being the Delusional holder changes the role check, so the coarse
 ## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of every
