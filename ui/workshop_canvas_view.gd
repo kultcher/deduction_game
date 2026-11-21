@@ -959,7 +959,7 @@ func _draw_element(id: String, origin: Vector2, el: Dictionary) -> void:
 				draw_string(font, center + Vector2(radius * 0.4, -radius * 0.55), "M", HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(14), Color("fbf6ea"))
 			if state.begins_with("reason:"):
 				var reason: String = state.trim_prefix("reason:")
-				var tag: String = {"unexplained": "?", "gift": "gift", "evil": "evil", "secret": "errand"}.get(reason, reason)
+				var tag: String = {"unexplained": "?", "gift": "gift", "evil": "evil", "secret": preload("res://ui/live_workshop_fields.gd").UNREQUITED_TAG}.get(reason, reason)
 				var color: Color = {"unexplained": Color("8a8378"), "gift": Color("3f7f9a"), "evil": Color("c0392b"), "secret": Color("6a8a3a")}.get(reason, Color("8a8378"))
 				var tw: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 10
 				var tr = Rect2(center + Vector2(-tw / 2.0, radius + 18) * Vector2(1, 1) + Vector2(0, 0), Vector2(tw, 16) * zoom)

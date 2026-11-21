@@ -525,6 +525,10 @@ public partial class SolverBridge : RefCounted
     public static double CaseEvalPresenceScore(long packedWorld, int handle, double err) =>
         CaseEvalKernel.PresenceScore(packedWorld, SolverContext.GetPresenceWeights(handle), err);
 
+    public static double[] LiveUnrequitedProfiles(double visitChance, int[] personHomes, int[] personDeathBeforeNight,
+        int[] demonAttackEvents, int[] cardInts, double[] cardDoubles) =>
+        LiveActivityKernel.ComputeUnrequitedProfiles(visitChance, personHomes, personDeathBeforeNight, demonAttackEvents, cardInts, cardDoubles);
+
     public static int LiveRegisterMovementFactor(int[] metaInts, double[] metaDoubles) =>
         LiveActivityKernel.RegisterCompiledFactor(metaInts, metaDoubles);
 

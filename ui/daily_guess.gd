@@ -11,6 +11,7 @@ extends Control
 const C = preload("res://sim/content.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const UITheme = preload("res://ui/theme.gd")
+const PortraitFx = preload("res://ui/portrait_fx.gd")
 
 ## Wording (Michael, Nov 21: all approved; "we can tweak it later if needed").
 const TITLE = "Your suspicions"
@@ -276,7 +277,8 @@ func _circle(i: int) -> Dictionary:
 	face.ignore_texture_size = true
 	face.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	face.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
-	face.material = _circle_material()
+	face.material = PortraitFx.material(true)
+	PortraitFx.hover_lift(face)
 	face.pressed.connect(func(): _open_picker(i, face))
 	root.add_child(face)
 	var name_label = Label.new()
@@ -304,6 +306,8 @@ func _refresh_circle(i: int) -> void:
 		c.face.tooltip_text = NO_CHANGES_TIP
 	c.name.text = g.w.by_id[id].name if id != "" else EMPTY_CIRCLE
 	c.face.modulate = GREYED if picks[i].get("from_profile", false) else Color(1, 1, 1)
+	PortraitFx.set_grey(c.face, id != "" and not g.w.by_id[id].alive)
+	PortraitFx.set_ring(c.face, id != "" and not picks[i].get("from_profile", false), UITheme.color("red"))
 	if _note != null:
 		_note.visible = picks.any(func(p): return p.get("from_profile", false))
 	var t: String = str(picks[i].get("type", ""))
@@ -342,8 +346,12 @@ func _open_picker(i: int, anchor: Control) -> void:
 			b.tooltip_text = DEMON_KILLED_TIP
 		elif frozen_demon:
 			b.tooltip_text = NO_CHANGES_TIP
-		elif not n.alive:
-			b.modulate = Color(1, 1, 1, 0.6)
+		if not n.alive:
+			b.material = PortraitFx.material(false)
+			PortraitFx.set_grey(b, true)
+		if n.id == str(picks[i].get("id", "")):
+			PortraitFx.glow(b, UITheme.color("red"))
+		PortraitFx.hover_lift(b)
 		var id: String = n.id
 		b.pressed.connect(func(): _pick(i, id))
 		grid.add_child(b)
@@ -409,10 +417,3 @@ func _finish(confirmed: bool) -> void:
 
 func _portrait(id: String) -> Texture2D:
 	return UITheme.tex("art/portraits/" + id, 0.25)
-
-static func _circle_material() -> ShaderMaterial:
-	var mat = ShaderMaterial.new()
-	var sh = Shader.new()
-	sh.code = "shader_type canvas_item;\nvoid fragment() {\n\tvec4 c = texture(TEXTURE, UV) * COLOR;\n\tfloat d = distance(UV, vec2(0.5));\n\tc.a *= 1.0 - smoothstep(0.48, 0.5, d);\n\tCOLOR = c;\n}\n"
-	mat.shader = sh
-	return mat

@@ -85,8 +85,11 @@ static func marked_style(w, n) -> String:
 static func phrase(o) -> String:
 	if not o.secret.is_empty():
 		return str(o.secret.get("text", ""))
+	# The gossip phrases are Michael's (Nov 21, docs/design/burdens_wording.md).
 	if o.secret_mod == "marked":
-		return "carries the mark: a gift may read them as evil"
+		return "is Marked, and a gift may read them evil"
+	if o.secret_mod == "unrequited":
+		return "pines for someone, and goes to their door at night"
 	if o.secret_mod == "ill_omened":
 		return "is Ill-Omened, and hanging them would cost the town dear"
 	return ""
@@ -113,15 +116,16 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 	elif kind == "unrequited" and w.by_id.has(str(extra.get("beloved", ""))):
 		var bl = w.by_id[str(extra["beloved"])]
 		var me: String = ("was at the graveyard, at %s's grave. I loved them, and now they'll never know" % bl.name) if not bl.alive else ("went to %s's door. I've cared for them a long while, and they've no idea" % bl.name)
-		line = _mind().say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me})
+		# Michael's Nov 21 lines (Herald): the door, or the grave once the beloved is dead.
+		line = _mind().say_voiced(n, "burden_unrequited_grave" if not bl.alive else "burden_unrequited_reveal", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me, "beloved": bl.name})
 		text = "%s admitted they have an unrequited love for %s." % [n.name, bl.name]
 	elif not rival.is_empty() and not n.is_evil():
 		# The real holder answers a claim already made: one of them is lying.
 		var r = w.by_id[rival[0]]
-		line = _mind().say_voiced(n, "burden_counterclaim_marked", "%s isn't Marked. I am: I've carried the mark since birth." % r.name, {"rival": r.name})
+		line = _mind().say_voiced(n, "burden_marked_counterclaim", "%s isn't Marked. I am: I've carried the mark since birth." % r.name, {"rival": r.name, "claimant": r.name})
 		text = "%s says they, not %s, carry the mark: a gift may read them as evil." % [n.name, r.name]
 	else:
-		line = _mind().say_voiced(n, "burden_claim_marked", "I've carried the mark since birth. A gift may read me as evil, but I am not.")
+		line = _mind().say_voiced(n, "burden_marked_public" if public else "burden_marked_private", "I've carried the mark since birth. A gift may read me as evil, but I am not.")
 		text = "%s says they've carried the mark since birth: a gift may read them as evil." % n.name
 	var told: Dictionary = told_at(w)
 	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id, "secret_kind": kind,
@@ -187,20 +191,34 @@ static func counterclaim(w, n) -> Dictionary:
 ## The forced reveal: a reading that calls them evil, faced at the meeting or in private.
 ## A real holder always gives it (Michael: held until "named in an evil reading"); evil may
 ## bluff it (evil_marked_bluff). Returns {} if not.
-static func answer_evil_reading(w, n, rd: Dictionary, public: bool, audience: String = "town") -> Dictionary:
+static func answer_evil_reading(w, n, rd: Dictionary, public: bool, audience: String = "town", reader: String = "") -> Dictionary:
 	if n.silenced or not calls_evil(rd, n.id):
 		return {}
 	if public and n.id in public_claimants(w, "marked"):
 		# Already said before the town: the same words again, no new claim.
-		return {"line": _mind().say_voiced(n, "burden_claim_marked", "I've carried the mark since birth. A gift may read me as evil, but I am not."), "fact": {}}
+		return {"line": _since_birth(n, reader, public), "fact": {}}
 	if holds_known(n, "marked"):
 		if public and n.secret_known:
 			# Already out before the town: the same words again, no new claim.
-			return {"line": _mind().say_voiced(n, "burden_claim_marked", "I've carried the mark since birth. A gift may read me as evil, but I am not."), "fact": {}}
-		return claim(w, n, "marked", public, "a reading that named me evil", audience)
+			return {"line": _since_birth(n, reader, public), "fact": {}}
+		return _with_since_birth(n, claim(w, n, "marked", public, "a reading that named me evil", audience), reader, public)
 	if n.is_evil() and (claimed_by(w, n) == "marked" or evil_marked_bluff(w, n, "a reading that named me evil")):
-		return claim(w, n, "marked", public, "a reading that named it evil", audience)
+		return _with_since_birth(n, claim(w, n, "marked", public, "a reading that named it evil", audience), reader, public)
 	return {}
+
+## The forced reveal's words (Herald, Michael's Nov 21 lines): "carried the mark since birth",
+## naming the reader when the answer knows who read them. Dialogue only.
+static func _since_birth(n, reader: String, public: bool) -> Dictionary:
+	if reader != "":
+		return _mind().say_voiced(n, "burden_marked_since_birth", "I've carried the mark since birth. A gift may read me as evil, but I am not.", {"reader": reader})
+	return _mind().say_voiced(n, "burden_marked_public" if public else "burden_marked_private", "I've carried the mark since birth. A gift may read me as evil, but I am not.")
+
+## A plain claim made in answer to a reading takes the forced reveal's words; a counter-claim
+## keeps its own.
+static func _with_since_birth(n, res: Dictionary, reader: String, public: bool) -> Dictionary:
+	if not res.is_empty() and str(res.get("line", {}).get("statement", "")) == "I've carried the mark since birth. A gift may read me as evil, but I am not.":
+		res["line"] = _since_birth(n, reader, public)
+	return res
 
 ## Private sharing (the "private" tier): with a listener it trusts, the share rising with
 ## that trust. Weight for the peer-talk draw; 0 for anyone not sharing.

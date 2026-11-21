@@ -341,6 +341,8 @@ static func activity_card(e: Dictionary, snapshot: Dictionary) -> Dictionary:
 		card["night"] = -1 # Confessing an explanation does not prove an outing.
 		card["applies"] = {"from": night if e.observed_at.phase == "night" else 0, "through": night if e.observed_at.phase == "night" else snapshot.now.day}
 		card["data"] = {"secret_kind": e.content.secret_kind}
+		if e.content.secret_kind == "unrequited" and str(e.content.get("beloved", "")) in ids:
+			card.data["beloved"] = str(e.content.beloved)  # whom the holder visits (the movement model)
 		return card
 	if e.kind in ["home", "work", "haunt", "trait"] and e.subjects.size() == 1 and e.subjects[0] in ids:
 		if e.kind == "home" and (block not in C.BLOCKS or snapshot.people.filter(func(p): return p.id == e.subjects[0])[0].home != block):

@@ -521,7 +521,7 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 					break
 		# A reading that calls them evil, answered by Marked (burdens prototype): a real holder's
 		# forced reveal, or evil's bluff. It explains the reading, so no "they're lying" follows.
-		var burden_ans: Dictionary = Burdens.answer_evil_reading(w, d, rd, true) if not rd.is_empty() else {}
+		var burden_ans: Dictionary = Burdens.answer_evil_reading(w, d, rd, true, "town", w.by_id[src_id].name if w.by_id.has(src_id) else "") if not rd.is_empty() else {}
 		if not burden_ans.is_empty():
 			lines.append(burden_ans["line"])
 			if not burden_ans["fact"].is_empty():

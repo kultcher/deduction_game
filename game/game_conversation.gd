@@ -830,15 +830,6 @@ static func _record_trait_receipt(g, target, key: String, tier: String, source_i
 		"class": "circumstantial", "text": "%s's %s: %s%s." % [target.name, key, tier, suffix]})
 
 
-static func sync_bereaved_traits(g, target, source_id: String = "player") -> void:
-	if target == null or target.withdrawn_since == "":
-		return
-	for key in target.revealed_traits.keys():
-		var current_tier: String = C.tier(target.traits.get(key, 0.5))
-		target.revealed_traits[key] = current_tier
-		_record_trait_receipt(g, target, key, current_tier, source_id)
-
-
 ## Asked about someone, a talker may also say what that person is like: one trait,
 ## unlocking its bar in the profile. Friends know any trait; anyone else only the
 ## observable ones. The wording follows how the speaker feels about them.
@@ -998,7 +989,6 @@ static func _close_conversation(g) -> void:
 		for key in n.revealed_traits:
 			if not before_traits.has(key):
 				_record_trait_receipt(g, n, key, n.revealed_traits[key], "player")
-		sync_bereaved_traits(g, n, "player")
 	g.state = "day"
 	g.talk_with = null
 	GameDayNight._end_phase(g, n.id)

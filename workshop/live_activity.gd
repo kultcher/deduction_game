@@ -133,6 +133,18 @@ static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Diction
 	))
 	return cs_val
 
+## The C# Unrequited holder column for one person (LiveActivityProfiles._unrequited_likelihood_gd mirrors it).
+static func unrequited_likelihood(view: Dictionary, cards: Array, person: Dictionary) -> float:
+	var ids: Array = view.people.map(func(p): return p.id)
+	var p_idx: int = ids.find(person.id)
+	if p_idx < 0:
+		return _unrequited_likelihood_gd(view, cards, person)
+	var env: Dictionary = _pack_view_env(view, ids)
+	var packed: Dictionary = _pack_activity_cards(ids, env.homes, cards, {}, {}, view.get("chronology", {}).get("curse", {}))
+	var raw: PackedFloat64Array = SolverBackend._bridge().LiveUnrequitedProfiles(Tuning.Burden.UNREQUITED_VISIT_CHANCE, env.homes, env.deaths, env.demon_events,
+		packed.ints, packed.doubles)
+	return raw[p_idx]
+
 static func crossing_probability(view: Dictionary, cards: Array, person: Dictionary, night: int, alignment: String, scene_block: String) -> float:
 	if not SolverBackend.profiling_enabled:
 		return _crossing_probability_dispatch(view, cards, person, night, alignment, scene_block)

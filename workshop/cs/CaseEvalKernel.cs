@@ -234,7 +234,8 @@ internal static class CaseEvalKernel
         //  [3] hasCurse (0/1)
         //  [4] seer (0/1)
         //  [5] mediums
-        //  [6] reserved, always 0 (was the Sleepwalker claimants, retired with the burdens rework)
+        //  [6] unrequitedMove (0/1): a movement factor scores Unrequited holders on their own
+        //      column (burdens prototype), so Unrequited worlds split by holder
         //  [7] currentEpochConvEvil (0/1)
         //  [8] conclEpochConvEvil (0/1)
         //  [9] k (reports count)
@@ -245,6 +246,7 @@ internal static class CaseEvalKernel
         bool hasCurse = headerInts[3] != 0;
         bool seer = headerInts[4] != 0;
         int mediums = headerInts[5];
+        bool unrequitedMove = headerInts[6] != 0;
         bool currentEpochConvEvil = headerInts[7] != 0;
         bool conclEpochConvEvil = headerInts[8] != 0;
         int k = headerInts[9];
@@ -266,6 +268,10 @@ internal static class CaseEvalKernel
                 * (nPeople + 2L)
                 * (mediums != 0 ? (1L << nPeople) * 5L : 1L);
             if (hasCurse)
+            {
+                rmBound *= (nPeople + 1L);
+            }
+            if (unrequitedMove)
             {
                 rmBound *= (nPeople + 1L);
             }
@@ -328,6 +334,21 @@ internal static class CaseEvalKernel
         else
         {
             rms = evilBits;
+        }
+
+        if (unrequitedMove && isLive)
+        {
+            // The movement factor reads who holds Unrequited (LiveActivityKernel.UnrequitedHolder):
+            // only Unrequited worlds split, by holder.
+            long np1 = nPeople + 1L;
+            rms = (long[])rms.Clone();   // rms may be the cached world bits (rms = evilBits)
+            for (int i = 0; i < n; i++)
+            {
+                var w = new WorldEntry(worlds[i]);
+                long h = w.EffectiveModifier == WorldEntry.ModUnrequited && w.Holders != 0
+                    ? System.Numerics.BitOperations.TrailingZeroCount((uint)w.Holders) + 1L : 0L;
+                rms[i] = rms[i] * np1 + h;
+            }
         }
 
         int mTests = testTargetSpecs.Length / 2;
