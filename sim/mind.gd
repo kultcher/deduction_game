@@ -167,6 +167,13 @@ static func _record_grievance(w, n, drop: float, why: String) -> void:
 		"serious": drop >= SERIOUS_GRIEVANCE, "evidence": evidence, "apologised": false, "repaired": 0.0})
 
 
+## Who an incident was about, when its reason doesn't say (an overruled nomination's nominee),
+## so its anger line can name them. Only today's open incident with that reason is tagged.
+static func tag_grievance(w, n, why: String, fields: Dictionary) -> void:
+	for g in n.grievances:
+		if g["why"] == why and int(g["day"]) == w.day and not g["apologised"]:
+			g.merge(fields, true)
+
 ## The incidents the player could still apologise for (most recent first).
 static func open_grievances(n) -> Array:
 	var out: Array = n.grievances.filter(func(g): return not g["apologised"])
@@ -242,12 +249,87 @@ static func _trust_action(w, why: String) -> String:
 				return named_actions[prefix] % w.by_id[person].name
 	return ""
 
+## Anger reasons (Michael, Nov 19): the grievance the player has repaired least, as the
+## id of its voiced line (anger_<id>) with its slots. Only known player actions map to an
+## id; an apologised incident, or one no line covers, is passed over. Empty when none fits.
+const ANGER_REASONS = {
+	"the Demonologist nominated me": "nominated_me",
+	"the Demonologist voted to hang me": "voted_to_hang_me",
+	"the Demonologist overruled my nomination": "overruled_my_nomination",
+	"the Demonologist pressed me with evidence": "pressed_with_evidence",
+	"the Demonologist pressed me before the town without cause": "pressed_before_town",
+	"the Demonologist spread my secret": "spread_my_secret",
+	"the Demonologist spread my secret (very private person)": "spread_my_secret",
+	"the presented reports argue against the claim": "argued_against_me",
+	"the doubted reading holds up": "argued_against_me",
+	"the Demonologist padded a case with thin circumstantial smears": "padded_case"}
+const ANGER_PREFIXES = {
+	"the Demonologist guessed my gift wrong (": "guessed_my_gift_wrong",
+	"the Demonologist broke my confidence (card #": "broke_my_confidence",
+	"the Demonologist broke their word (": "broke_your_word",
+	"grief: the Demonologist nominated ": "nominated_my_friend",
+	"grief: the Demonologist voted to hang ": "hanged_my_friend",
+	"player accused ": "accused_my_friend",
+	"the Demonologist backed hanging ": "backed_hanging",
+	"the Demonologist spared ": "spared_my_suspect"}
+const ANGER_SUBJECT = ["overruled_my_nomination", "spared_my_suspect", "nominated_my_friend", "hanged_my_friend", "accused_my_friend", "backed_hanging"]
+
+static func anger_id(why: String) -> String:
+	if ANGER_REASONS.has(why):
+		return ANGER_REASONS[why]
+	if why.begins_with("pressed with ") and why.ends_with(" questions today"):
+		return "too_many_questions"
+	if why.begins_with("the Demonologist spared ") and not why.ends_with(", whom I suspect"):
+		return ""
+	for prefix in ANGER_PREFIXES:
+		if why.begins_with(prefix):
+			return ANGER_PREFIXES[prefix]
+	return ""
+
+static func anger_reason(w, n) -> Dictionary:
+	var best: Dictionary = {}
+	var best_left: float = 0.0
+	for g in n.grievances:
+		if g["apologised"]:
+			continue
+		var why: String = str(g["why"])
+		var id: String = anger_id(why)
+		if id == "":
+			continue
+		var slots: Dictionary = {}
+		var subject_id: String = str(g.get("subject", ""))
+		for prefix in ANGER_PREFIXES:
+			if why.begins_with(prefix) and ANGER_PREFIXES[prefix] in ANGER_SUBJECT:
+				subject_id = why.trim_prefix(prefix).get_slice(",", 0)
+		if id in ANGER_SUBJECT:
+			if not w.by_id.has(subject_id):
+				continue  # a line that names someone needs them
+			slots["subject"] = w.by_id[subject_id].name
+		if id == "nominated_me":
+			var d: int = int(g["day"])
+			slots["day"] = ("%s day" % C.ORDINALS[d - 1]) if d >= 1 and d <= C.ORDINALS.size() else "day %d" % d
+		if id == "broke_your_word":
+			slots["promise"] = why.trim_prefix("the Demonologist broke their word (").trim_suffix(")")
+		var left: float = float(g["drop"]) - float(g.get("repaired", 0.0))
+		if best.is_empty() or left > best_left:
+			best_left = left
+			var action: String = _trust_action(w, why)
+			if action == "" and slots.has("subject"):
+				action = "You went against me over %s." % slots["subject"]
+			best = {"id": id, "slots": slots, "why": why,
+				"fallback": "I don't trust you. " + (action if action != "" else "You know what you did.")}
+	return best
+
 ## A refusal can explain distrust once per day, without affecting its decision,
 ## facts, RNG or trust. The same safe action vocabulary serves both alignments.
 static func _append_distrust(w, n, lines: Array) -> void:
 	if n.trust >= Tuning.Trust.DISTRUST_EXPLAIN_THRESHOLD or n.distrust_explained_day == w.day:
 		return
 	n.distrust_explained_day = w.day
+	var anger: Dictionary = anger_reason(w, n)
+	if not anger.is_empty():
+		lines.append(say_voiced(n, "anger_" + anger["id"], anger["fallback"], anger["slots"]))
+		return
 	var action: String = n.distrust_memory.get("action", "")
 	if action != "":
 		lines.append(say_voiced(n, "distrust_action", "I don't trust you. " + action, {"action": action}))
