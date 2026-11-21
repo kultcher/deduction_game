@@ -130,7 +130,7 @@ func body(id: String) -> Array:
 		else:
 			count = clampi(int(card.data.get("count", 0)), 0, model.view.people.size())
 		for i in range(count):
-			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and card.data.has("count") and count == 4 else ("Minion" if card.role == "chronicler" else (str(card.data.get("secret", "marked")).capitalize() if card.role == "rumormonger" else "Slot %d" % (i + 1)))
+			var prefix: String = C.block_name(C.BLOCKS.keys()[i]) if card.role == "surveyor" and card.data.has("count") and count == 4 else ("Minion" if card.role == "chronicler" else (C.secret_name(str(card.data.get("secret", "marked"))) if card.role == "rumormonger" else "Slot %d" % (i + 1)))
 			result.append("%s: %s" % [prefix, Solver.person_name(model.view, slots[i]) if i < slots.size() and slots[i] is String and slots[i] != "" else "?"])
 		if card.role == "seer":
 			result.append("Registration: " + str(node.answers.get(card.id, {}).get("registration", "? Any valid cause")).replace("_", " ").capitalize())

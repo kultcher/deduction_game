@@ -538,7 +538,7 @@ func _auto_citations(result: Dictionary) -> void:
 					if not Graph.valid_citation(view, probe, person, night).is_empty():
 						chosen = card.id
 						break
-				elif reason == "secret" and card.get("kind", "") == "secret_claim" and card.get("subject", "") == person:
+				elif reason == "secret" and card.get("kind", "") == "secret_claim" and card.get("subject", "") == person and str(card.get("data", {}).get("secret_kind", "")) == "unrequited":
 					var applies: Dictionary = card.get("applies", {})
 					if night >= int(applies.get("from", 0)) and night <= int(applies.get("through", 99)):
 						chosen = card.id

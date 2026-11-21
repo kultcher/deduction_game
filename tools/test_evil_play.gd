@@ -334,9 +334,10 @@ func _test_2_7_night0_nightwatch_impairment_and_cleanups() -> void:
 	g.new_case(97930, 10)
 	var nom_by = g.w.living_good()[0]
 	var nominee = g.w.living_good()[1]
+	g.w.begin_meeting()
+	# After the meeting opens: its belief refresh would overwrite a suspicion set before it.
 	nom_by.trust = 0.60
 	nom_by.suspicion[nominee.id] = 0.85
-	g.w.begin_meeting()
 	g.w.open_nomination(nom_by.id, nominee.id, "suspect")
 	g.w.clemency()
 	_check(is_equal_approx(nom_by.trust, 0.50), "Clemency applies single -0.10 max Rapport loss on suspicious nominator instead of -0.18 (got %.3f)" % nom_by.trust)

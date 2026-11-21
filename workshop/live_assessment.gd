@@ -669,7 +669,8 @@ static func canvas_issues(value: Dictionary, snapshot: Dictionary) -> Array:
 		if valid and cited[0].kind == "secret":
 			var context = activity_card(cited[0], snapshot)
 			var parts: PackedStringArray = str(key).split(":")
-			valid = not context.is_empty() and parts.size() == 2 and parts[0] == context.subject and parts[1].is_valid_int() and int(parts[1]) >= context.applies.from and int(parts[1]) <= context.applies.through
+			# Only an Unrequited claim explains a night outing (the private errand retired).
+			valid = not context.is_empty() and str(context.get("data", {}).get("secret_kind", "")) == "unrequited" and parts.size() == 2 and parts[0] == context.subject and parts[1].is_valid_int() and int(parts[1]) >= context.applies.from and int(parts[1]) <= context.applies.through
 		elif valid:
 			valid = C.ROLES.get(cited[0].content.get("role", ""), {}).get("night_walk", false) and str(key).begins_with(cited[0].source + ":")
 		if not valid:

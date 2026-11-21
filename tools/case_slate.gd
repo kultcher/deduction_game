@@ -89,6 +89,12 @@ const CASES = {
 	# Argued "S is evil"; his bar is that further evidence lets the player get S hanged.
 	"marked_dead_seer": "M (the real Marked) killed night 1; the Seer's \"yes\" on S and another, night 1; S bluffs Marked; the Seer's \"yes\" on S and a third, night 2",
 	"marked_dead_dowser": "M (the real Marked) killed night 1; the Seer's \"yes\" on S and another, night 1; S bluffs Marked; the Dowser's \"1 evil\" among S and two others, day 3",
+	# Burdens, playtestable pass (Quill, Nov 21): an Ill-Omened claimant nominated, real and
+	# bluffed, and an Unrequited seen walking, real and the Demon's bluff.
+	"omen_bluff": "The real Seer's \"yes\" on S and another, night 1 + S's Ill-Omened claim (a bluff, after the reading), argued \"S is evil\"",
+	"omen_real": "A Minion's Seer bluff \"yes\" on M and another + M's Ill-Omened claim (real, day 1), argued \"M is evil\" (subject M)",
+	"unrequited_walk": "A sighting of U on their beloved's block, night 1 + U's Unrequited claim (real, day 1), argued \"U is evil\" (subject U)",
+	"unrequited_bluff": "A sighting of S on the victim's block on the kill night + S's Unrequited claim (a bluff, after the sighting), argued \"S is evil\"",
 }
 
 var _texts: Dictionary = {}
@@ -276,6 +282,58 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 					"text": "%s's Dowser (day 3): 1 evil among %s, %s and %s" % [dowser.name, dem.name, pool[1].name, pool[2].name]}))
 				cited.append(_add(g, {"kind": "claim", "subject": [dowser.id], "role": "dowser", "source": dowser.id, "text": "%s claims the Dowser" % dowser.name}))
 				sources.append(dowser)
+		"omen_bluff", "omen_real":
+			# The omen: hanging a claimed holder poisons the town's gifts (burdens.md). The
+			# bluff is the Demon's, answering the real Seer's "yes"; the real claim is M's, made
+			# on the first day, before a Minion's false Seer "yes" names them.
+			_add_burden(w, "ill_omened")
+			var real_omen: bool = base == "omen_real"
+			if real_omen and min_ev == null:
+				return {}
+			var seer = min_ev if real_omen else _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			if real_omen:
+				s = pool[-1]
+				pool = pool.filter(func(n): return n != s)
+				_give_burden(w, s, "ill_omened")
+			var mate = pool[0]
+			var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, mate.id], "yes": true},
+				"text": "%s's Seer: %s or %s is the Demon" % [seer.name, s.name, mate.name]})
+			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+			var omen: int = _add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "ill_omened",
+				"day": 1 if real_omen else 2, "phase": 1, "text": "%s: hang me and you'll all pay for it" % s.name})
+			cited += [reading, claim_s, omen]
+			sources += [seer] if real_omen else [seer, s]
+		"unrequited_walk", "unrequited_bluff":
+			# The walk: U, good and Unrequited, goes to the beloved's door on night 1 and owned
+			# to it on the first day; the bluff is the Demon's, seen on the kill night and
+			# answering with a love after the sighting is told.
+			_add_burden(w, "unrequited")
+			var real_love: bool = base == "unrequited_walk"
+			if real_love:
+				s = goods[-1]
+				goods = goods.filter(func(n): return n != s)
+			var b = null
+			for n in goods:
+				if n.home_block != s.home_block:
+					b = n
+					break
+			if b == null:
+				return {}
+			if real_love:
+				_give_burden(w, s, "unrequited")
+				s.beloved = b.id
+			else:
+				_kill(w, b, 1)
+			var wit = goods.filter(func(n): return n != b)[0]
+			cited.append(_add(g, _sight(wit, s, b.home_block, 1)))
+			cited.append(_add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "unrequited",
+				"day": 1 if real_love else 2, "phase": 1, "text": "%s: I went to a door I love, and they've no idea" % s.name}))
+			sources += [wit] if real_love else [wit, b]
 		"lie_seer", "lie_seer_reversed", "lie_gravedigger":
 			# Word against word: the Minion bluffs the gift, the real holder reads, the player
 			# calls one of them a liar on the other's reading.
@@ -601,6 +659,21 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 		row["issues"] = tj.get("issues", [])
 		print("  %s seed %d: not ready: %s" % [name, sd, row.issues])
 	return row
+
+
+## Puts `kind` on the script's burden list, so the judge's worlds can deal it.
+func _add_burden(w, kind: String) -> void:
+	if w.case_script != null and not (kind in w.case_script.secrets):
+		w.case_script.secrets.append(kind)
+
+
+## Makes `n` the burden's one holder (one burden is dealt).
+func _give_burden(w, n, kind: String) -> void:
+	for m in w.npcs:
+		if m.secret_mod == kind:
+			m.secret_mod = ""
+	n.secret_mod = kind
+	w.burden_holder_id = n.id
 
 
 func _sight(witness, s, block: String, night: int) -> Dictionary:

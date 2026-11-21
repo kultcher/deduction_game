@@ -109,7 +109,12 @@ static func _secret_mod_code(mod_name: String) -> int:
 			return 0
 		"marked":
 			return 1
-		# 2 and 3 were the Lovers and Sleepwalker 1.0 (retired, burdens prototype).
+		# 2 and 3 were the Lovers and Sleepwalker 1.0; the burdens prototype reuses them
+		# (WorldEntry.ModIllOmened and ModUnrequited in SolverContext.cs).
+		"ill_omened":
+			return 2
+		"unrequited":
+			return 3
 		_:
 			return -99
 

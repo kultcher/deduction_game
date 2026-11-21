@@ -236,7 +236,7 @@ func _question(card: Dictionary) -> void:
 			var labels: Array = ["? Unexplained", "Night gift â€” choose supporting claim", "Possibly evil activity"]
 			var reasons = ["unexplained", "gift", "evil"]
 			if session.scenario.public_view.get("live_activity", false):
-				labels.append("Private errand â€” choose supporting claim")
+				labels.append("Out for love â€” choose their Unrequited claim") # PLACEHOLDER wording
 				reasons.append("secret")
 			var option = _option(box, labels)
 			option.select(reasons.find(current.reasons.get(key, "unexplained")))
@@ -245,7 +245,7 @@ func _question(card: Dictionary) -> void:
 				_edit())
 			if current.reasons.get(key, "unexplained") in ["gift", "secret"]:
 				var private_errand: bool = current.reasons[key] == "secret"
-				var claims: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == ("secret_claim" if private_errand else "claim") and c.subject == id)
+				var claims: Array = session.scenario.public_view.cards.filter(func(c): return c.kind == ("secret_claim" if private_errand else "claim") and c.subject == id and (not private_errand or str(c.get("data", {}).get("secret_kind", "")) == "unrequited"))
 				var claim_labels: Array = claims.map(func(c): return "%s Â· %s Â· day %s" % [_name(c.subject), C.role_name(c.role), c.acquired_day])
 				# The live editor fills the citation itself from the board (premises step 2):
 				# its first entry is "automatic", and declining is an explicit choice.
