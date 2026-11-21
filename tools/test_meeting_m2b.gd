@@ -190,12 +190,28 @@ func _test_press_night_public() -> void:
 
 func _test_evil_walker() -> void:
 	var ran: int = 0
-	for sd in [8301, 8305]:
-		var g = _played_game(sd, 3)
+	# Two games found by the scenario (tools/fixture_seeds.gd), not named seeds: the day-3
+	# meeting with the Demon alive, nominable and out the night before (burdens prototype:
+	# 8301/8305 moved).
+	var Seeds = preload("res://tools/fixture_seeds.gd")
+	var pick: Callable = func(g):
+		var dm = g.w.demon()
+		if dm == null or not dm.alive or g.w.can_nominate("player", dm.id) != "":
+			return {}
+		return {"ok": true} if str(dm.history.get(g.w.time_key(g.w.day - 1, C.NIGHT), "home")).begins_with("night:") else {}
+	var games: Array = []
+	var from: int = Seeds.SEEDS_FROM
+	for k in 2:
+		var f: Dictionary = Seeds.search(3, pick, 7, from)
+		if f.is_empty():
+			break
+		games.append([f.seed, f.g])
+		from = int(f.seed) + 1
+	for pair in games:
+		var sd: int = pair[0]
+		var g = pair[1]
 		var nd: int = g.w.day - 1
 		var t = g.w.demon()
-		if g.state != "meeting" or not t.alive or g.w.can_nominate("player", t.id) != "":
-			continue
 		ran += 1
 		var was_out: bool = str(t.history.get(g.w.time_key(nd, C.NIGHT), "home")).begins_with("night:")
 		g.command("nominate %s raw" % t.name.to_lower())

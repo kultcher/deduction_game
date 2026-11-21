@@ -387,7 +387,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 	if not omen.is_empty():
 		lines.append(omen["line"])
 		facts.append(omen["fact"])
-		moves.append("ill_omened")
+		# Recorded after the defence is built (below): the omen is said first but doesn't take
+		# the place of the defence itself (every "moves.is_empty()" step still runs).
 	var accuser = w.by_id.get(nominator_id) if nominator_id != "player" else null
 	if accuser == null:
 		var best = 0.0
@@ -664,6 +665,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 			ledger_hear(w, l, identity, [], strength * (0.5 + 0.5 * l.npc_trust.get(d.id, 0.5)),
 				[d.id, -1, "report"], meta)
 	w.dlog.think(d.id, "defence", "Defends against %s: %s." % [nominator_id, ", ".join(PackedStringArray(moves))], {"moves": moves, "evil": d.is_evil()})
+	if not omen.is_empty():
+		moves.push_front("ill_omened")
 	return {"lines": lines, "facts": facts, "moves": moves}
 
 static func defence_line(w, n) -> Dictionary:
