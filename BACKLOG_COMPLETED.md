@@ -9,6 +9,131 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+## Built or cut, Nov 21, 2026, later (closed by Claude-Vicar)
+
+- **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
+  choice policy (the user suspects evil often chooses evil). Make choosing a good person,
+  helping execute them and claiming non-substitution as evidence against them an active
+  scapegoat route. Depends on the item above. An evil-strategy change: design and measure
+  separately. [decided]
+  - **Michael (Nov 20):** today, Martyr bluffers only ever pick evil teammates. It should be
+    the opposite: they always pick a good NPC, ideally one with some heat on them, so that if
+    that NPC is executed the bluffer can frame it as evil. They shouldn't be loud about
+    pushing that person's execution, since that would be an obvious tell. Owner Beadle.
+  - **Michael (Nov 20, later):** the bluffer also copies a real Martyr's reluctance to vote to
+    hang the person it chose.
+
+  > **Closed Nov 21:** built, Beadle #412. A Martyr bluffer now picks a good NPC, ideally one already under some suspicion, and doesn't press for that person's hanging. It also copies a real Martyr's reluctance to vote to hang its chosen. Golden moved on one seed's votes; no outcome changed.
+
+- **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
+  on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
+  and the player took it as a lead. A 0.2 floor on good NPCs' accusations was tried and
+  reverted (Nov 5): those openers also start the meeting. Naming someone gives them +0.35
+  on their turn, which sets off the claims, rebuttals and bluffs, and the loud accuser
+  draws the Demon's kill. With the floor, some Day-1 meetings went silent (seed 2011:
+  3 reactive turns instead of 20; the Demon then killed the Seer who'd otherwise have
+  caught it). A 12-game passive A/B was inconclusive, because skipping a roll reshuffles
+  every later random draw. Idea on the table: keep the floor, and while nothing
+  substantive has been said, let one speaker voice unease at the old odds ("Something
+  about Isolde sits wrong with me"). That gives the target the +0.35 but no pressure,
+  chorus, accusation event, trust cost or "ask why". Measure it with a sweep against main.
+
+  Michael (Nov 17), in place of the voiced-unease idea: a "pressure of silence" check. If
+  everyone has had their turn and the meeting has produced little useful information
+  (roughly fewer than 3 claims or readings), go through the speaking order again with a
+  bonus to speak that rises as Composure falls: less composed characters speak up to fill
+  the silence, even when it isn't the best idea. A full pitch goes to Michael (through
+  Seneschal) before building: how it meets the day-1 accusation floor, what counts as
+  useful information, the bonus size, what the extra speakers say (Herald writes any new
+  lines), and what it does in play, measured on a `mock/` branch if possible. Owner Beadle.
+  [decided]
+  - **Pitch approved (Michael, Nov 20), "pressure of silence":**
+    - the 0.2 floor on good NPCs' accusations, in the first pass;
+    - a silence check after everyone's turn: with fewer than 3 useful items (claims, shared
+      readings, volunteered sightings, accusations with a reason), the order runs once more;
+    - in that pass, a bonus to speak scaled by low Composure, with the floor waived and no
+      bonus for evil;
+    - constants approved: `GOOD_ACCUSE_MIN_SUSP` 0.2, `SILENCE_USEFUL_MIN` 3,
+      `SILENCE_SPEAK_BONUS` 0.6;
+    - a silence-breaker opener per voice (Herald). **Herald's 15 lines approved** (Michael,
+      Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
+      speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
+    - Beadle measures it on a `mock/` branch first.
+  - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
+    round.
+  - **Built and measured** (Beadle, Nov 20, #454; handoff `2026-11-20-1940-beadle-silence.md`).
+    With the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1
+    claims rise by a third. [in review]
+
+  > **Closed Nov 21:** built, Beadle #454 (the pressure of silence, with Herald's silence-breaker openers). With the player, day-1 accusations without a reason fell from 24 to 10 in 36 games, and day-1 claims rose by a third.
+
+- **A reader's self-doubt points at the Poisoner** (Michael, Nov 20). When an NPC voices
+  "my readings may have been tampered with" (gift self-doubt), listeners who hear it focus
+  Poisoner suspicion on anyone seen on that reader's block on any night it read.
+  - It works the same way as a Mistaken call's nudge.
+  - It applies even if the reader is Delusional, or wrong to be suspicious.
+  - It reuses the existing weight, scaled by the listener's trust in the reader.
+
+  Owner Quill, with Lantern and Beadle reviewing. [decided]
+  - **Built** (Quill, Nov 20, `claude/self-doubt-poisoner`, stacked on #445; handoff
+    `2026-11-20-1945-quill-self-doubt-poisoner.md`). With it, both Poisoner floors add to
+    a clear rather than override it (Lantern). [in review]
+
+  > **Closed Nov 21:** built, Quill #455, with Lantern and Beadle reviewing. Both Poisoner floors add to a clear rather than override it.
+
+- **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
+  (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
+  - **Approved (Michael, Nov 19):** the NPC voices the standing grievance the player has
+    repaired least, and the line replaces its refusal line.
+  - **Lines approved (Michael, Nov 21):** Herald's 17-reason batch, as drafted. The
+    broken-promise line stays generic for wards and vigils; a vigil-specific line waits for
+    "Vigil request and reward rework" (section 4).
+    - The broken promise keeps "You promised me a {promise}…" for both wards and vigils.
+    - `spread_my_secret` keeps "I won't forget that easily".
+    - `nominated_my_friend` keeps "I can't look at you the same".
+    - **When it's built:** when Beadle's anger hook lands, in batches if that's easier. Herald is
+      writing the other 14 voices now.
+
+  > **Closed Nov 21:** built, Beadle #487, with Herald's lines for all 15 voices. A refusing NPC now names the grievance the player has repaired least. Golden is unchanged, since the golden games never reach such a refusal.
+
+- **The Sleepwalker's doubt, from what the Rumormonger tells her** (Michael, Nov 20). The
+  flat doubt itself stays as it is (`Workshop.SLEEPWALK_SELF_DOUBT`, not scaled by
+  confidence; moved to BACKLOG_COMPLETED.md). What's left:
+  - **What the Rumormonger tells her.** A Rumormonger she trusts naming
+    her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
+    looks less evil to her. A Rumormonger naming a different secret, which implies no
+    Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
+    in the Rumormonger. Owner Lantern. **[decided]**, built after the reprioritization.
+    - **Not working today** (Lantern, Nov 20): the Sleepwalker's own home doubt is fixed per
+      game and never reads what she believes about secrets.
+    - **Scope:** her doubt scales with her belief that she holds the Sleepwalker secret:
+      - today's value when she has no evidence;
+      - higher when a Rumormonger she trusts names her;
+      - near zero when another secret is named, or the Sleepwalker is shown to be someone
+        else.
+    - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
+      reading.
+    - **Approved (Michael, Nov 20), as built in Lantern's #459:** her doubt that she stayed
+      home scales with her belief that she holds the Sleepwalker secret. It's capped at a coin
+      flip (reusing `SLEEPWALK_CHANCE`, 0.5), and its floor is the own-reading error. No new
+      constant. This item closes when #459 merges.
+
+  > **Closed Nov 21:** built, Lantern #459, as approved: her doubt that she stayed home scales with her belief that she holds the Sleepwalker secret, capped at a coin flip. Outcomes unchanged on every golden seed.
+
+- **Lian's stonewall after "let me tell you in my own words"** (triage 2.7): struck by
+  Michael on Nov 16. The line isn't in the code as quoted, so it may have changed already;
+  revisit if it turns up again.
+
+  > **Closed Nov 21:** cut by Michael (Nov 21).
+
+- **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
+  the time on honest mistakes; to a listener an honest mistake and a lie are the same
+  cards, so no rule separates them. It would need evidence that does (the teller's
+  history, signs of poisoning). Since #296, misled and failed gift are one honest-mistake
+  label, "Mistaken". **[open; Michael]**
+
+  > **Closed Nov 21:** cut by Michael (Nov 21).
+
 ## Built, Nov 21, 2026 (closed by Claude-Vicar)
 
 - **A sighting places its teller** (Michael, Nov 20; from seed 100002, found on #454).
