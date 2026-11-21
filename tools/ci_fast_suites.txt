@@ -168,6 +168,7 @@ test_social_evidence_boundary
 test_social_trust
 test_soundtrack
 test_state_digest
+test_street_sighting_claimed
 test_symmetric_vote
 test_term_defs
 test_text_formatter

@@ -1041,7 +1041,7 @@ static func _append_accusation_sighting(w, n, target, why: String, lines: Array,
 	if n.is_evil():
 		for key in w.evil_plan.get("fake_sightings", {}):
 			var b = w.evil_plan["fake_sightings"][key]
-			if key.begins_with(n.id + ":") and b is Dictionary and b.get("who", "") == target.id:
+			if key.begins_with(n.id + ":") and b is Dictionary and b.get("who", "") == target.id and Evil.street_story_fits(n, b):
 				candidates.append(b)
 	else:
 		candidates = n.beliefs.filter(func(b): return b.get("kind", "") == "saw" and b.get("who", "") == target.id and b.get("phase", -1) == C.NIGHT)
