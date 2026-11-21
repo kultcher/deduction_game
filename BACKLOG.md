@@ -438,6 +438,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 - **Player toolbox:** Autopsy, Séance, Scry, Binding circle; demon types with bestiary
   entries; exorcism / true-name alternate win. [open]
+  - **Progression and the toolbox scoped** (Michael, Nov 21):
+    [docs/design/progression.md](docs/design/progression.md). Score gives XP and levels,
+    which unlock characters, roles, tools, perks and challenges. Two tool slots, and tools
+    generate cards. Tool and perk pitches are listed, all with placeholder names.
 
 - **A case archive** (Michael, Nov 21). Past cases are kept per profile, with lifetime
   stats (Demons named, lies caught and so on), and each one can be replayed through the grim
