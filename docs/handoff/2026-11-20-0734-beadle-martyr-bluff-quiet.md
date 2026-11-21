@@ -1,10 +1,10 @@
 # The evil Martyr bluff stays quiet against its chosen
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `554f2f4` (`baseline_66be26f`, after #448), merged in Nov 21; first written on `ad33789`
+- **Base:** main at `8d60e8e` (`baseline_8d60e8e`, after #455), merged in Nov 21; first written on `ad33789`
 - **Branch:** `claude/beadle-martyr-bluff-quiet`
 - **Status:** draft PR. Golden moves (one seed's vote parts; no outcome changes) and is
-  re-baselined here to `baseline_3add4fb`. The A/B is in, so it's ready. Golden-moving PRs merge
+  re-baselined here to `baseline_1d59c5a`. The A/B is in, so it's ready. Golden-moving PRs merge
   one at a time.
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **BACKLOG item:** "Evil Martyr bluff can frame a good scapegoat" [decided] (Michael, Nov 20).
@@ -58,8 +58,8 @@ person it claims to protect, which is a plain tell. It now never does, wherever 
   test_too_clean_bluffs, test_relay_bluff, test_roles_registry and test_evil_owned_lie.
 - **Also pass (Nov 21):** test_symmetric_vote, test_would_vote, test_meeting_flow and
   test_roles_registry.
-- **Golden:** re-baselined to `baseline_3add4fb` on main at `554f2f4`. Two captures were
-  identical. Only 692 diverges, at record 236 (day 3): Hollis, a Martyr bluff, now carries the
+- **Golden:** re-baselined to `baseline_1d59c5a` on main after #455. Two captures were
+  identical. Only 692 diverges, at record 228 (day 3): Hollis, a Martyr bluff, now carries the
   reluctance on its chosen and its no vote gets firmer. The hangings (Constance, Lian) are the same,
   and no seed has a winner. 42, 54875, 900 and 98933 are identical.
 - **A/B (Nov 21):** 40 passive games, seeds 5000-5039, against main at `0b44cae`. Eight games on
