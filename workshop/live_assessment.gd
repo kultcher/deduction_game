@@ -5,6 +5,9 @@ const Tuning = preload("res://sim/tuning.gd")
 ## first slate's other known burdens, so a claimed Unrequited night visit can explain an outing
 ## once it is dealt. The Lovers, Sleepwalker 1.0 and the flavour secrets retired.
 const CLAIMABLE_BURDENS = ["delusional", "marked", "unrequited", "ill_omened"]
+## The burdens "holds a secret" can argue: only a hidden one, which its holder doesn't know of
+## (ScriptDef.HIDDEN_SECRETS). A known burden (Marked) is argued through its claim.
+const HIDDEN_BURDENS = ["delusional"]
 const Solver = preload("res://workshop/solver.gd")
 const Jury = preload("res://workshop/jury.gd")
 const Domain = preload("res://workshop/world_domain.gd")
@@ -806,8 +809,8 @@ static func conclusion_issues(view: Dictionary, value: Dictionary) -> Array:
 		var minions: Array = view.get("script_minions", [])
 		if not minions.is_empty() and "scion" not in minions:
 			return [HANGED_NO_SCION_ISSUE]
-	if c.type == "secret_mod" and c.get("mod", "") not in C.SECRET_MOD_LIST:
-		return ["Choose a supported modifier for the secret premise."]
+	if c.type == "secret_mod" and c.get("mod", "") not in HIDDEN_BURDENS:
+		return ["Only a hidden secret can be argued this way; a known one is argued through its claim."]
 	# "X was turned by the curse" needs a public curse, and X among the souls it could turn.
 	if c.type == "turned":
 		var curse: Dictionary = view.get("chronology", {}).get("curse", {})

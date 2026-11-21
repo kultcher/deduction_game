@@ -88,8 +88,9 @@ static func record_case_secrets(n, ded: Dictionary, day: int) -> void:
 	for claim in ded.get("workshop_case", {}).get("arguments", []):
 		conclusions.append(claim.get("case", {}).get("conclusion", {}))
 	for c in conclusions:
-		if str(c.get("type", "")) == "secret_mod":
-			record_secret(n, str(c.get("a", c.get("target", ""))), str(c.get("mod", "")), day, Tuning.Trust.CRED_WEIGHT_FORMAL, int(ded.get("n", 0)))
+		if str(c.get("type", "")) == "secret_mod" or str(c.get("type", "")) == "marked":
+			var mod_c: String = "marked" if str(c.get("type", "")) == "marked" else str(c.get("mod", ""))
+			record_secret(n, str(c.get("a", c.get("target", ""))), mod_c, day, Tuning.Trust.CRED_WEIGHT_FORMAL, int(ded.get("n", 0)))
 
 ## Every living NPC everyone heard it from: nominations and public accusations.
 static func record_public(g, type: String, target: String, weight: float = Tuning.Trust.CRED_WEIGHT_FORMAL) -> void:

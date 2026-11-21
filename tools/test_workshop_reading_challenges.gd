@@ -76,8 +76,7 @@ func _alibis() -> void:
 		check(n.workshop_state.requested == applied, "repeated alibi challenge does not stack")
 		board.unmerge(merged)
 		check(board.nodes.has(v) and board.nodes.has(h) and not board.nodes[v].has("merged") and not board.nodes[h].has("merged"), "unmerge restores both originals as visible evidence")
-	n.secret_mod = "sleepwalker"
-	check(GamePresentation.workshop_snapshot(g, [], n.id).listener.own_outings.get("1") == false, "live adapter cannot give a Sleepwalker knowledge of an unremembered outing")
+	# (The Sleepwalker's unremembered-outing check retired with Sleepwalker 1.0: burdens rework.)
 
 func _readings() -> void:
 	var g = Game.new()
