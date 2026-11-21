@@ -149,6 +149,12 @@ static func press(w, n, card: Dictionary, known_haunts: Dictionary = {}) -> Dict
 				return []
 			defence.note_rebuttal(w, n, reb, "In private")
 			return [defence.rebuttal_line(w, n, reb, true)]
+		# Evil may answer a sighting of itself with an Unrequited bluff (burdens prototype).
+		if kind == "sighting":
+			var ub: Dictionary = Burdens.evil_unrequited_bluff(w, n, int(night), str(card.get("block", "")))
+			if not ub.is_empty():
+				_own_night_account(w, n, int(night), str(card.get("block", "")))
+				return {"lines": lines + [ub["line"]], "facts": facts + [ub["fact"]], "dialogue_exchange": {"action": "challenge_night", "subject": n.id}}
 		var caught: Dictionary = _pressed_caught_out(w, n, night, card.get("contradiction", {}) if kind == "deduction" else {})
 		if not caught.is_empty():
 			caught["lines"].append_array(reb_after.call())

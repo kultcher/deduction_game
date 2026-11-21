@@ -77,5 +77,40 @@ func _init() -> void:
 			grave = v2
 			break
 	_check(grave == "hill" and o.secret["dest"] == "hill" and "grave" in o.secret["me"], "once the beloved is dead, it visits their grave on Chapel Hill")
+	_evil_bluff()
 	print("Unrequited: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
+
+func _evil_bluff() -> void:
+	var g = Game.new()
+	g.detailed_logging = false
+	g.new_case(54875, 10)
+	var w = g.w
+	w.day = 2
+	if not "unrequited" in w.case_script.secrets:
+		w.case_script.secrets.append("unrequited")
+	for m in w.npcs:
+		if m.secret_mod == "unrequited":
+			m.secret_mod = ""
+	var e = w.npcs.filter(func(m): return m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w.evil_plan["bluffs"].get(e.id, "")) == "":
+		w.evil_plan["bluffs"][e.id] = "clerk"
+	var other: String = ""
+	for blk in C.BLOCKS.keys():
+		if blk != e.home_block and blk != "hill" and not w.npcs.any(func(m): return m.alive and m != e and m.home_block == blk):
+			other = blk
+	if not w.evil_plan.has("burden_bluffs"):
+		w.evil_plan["burden_bluffs"] = {}
+	w.evil_plan["burden_bluffs"][e.id] = "unrequited"  # set on the bluff, to test the fit alone
+	if other != "":
+		_check(Burdens.evil_unrequited_bluff(w, e, 1, other).is_empty(), "evil never answers a sighting on a block no beloved could explain")
+	var target = w.living_good().filter(func(m): return m.home_block != e.home_block)[0]
+	var ub: Dictionary = Burdens.evil_unrequited_bluff(w, e, 1, target.home_block)
+	_check(not ub.is_empty() and w.by_id[ub["fact"]["beloved"]].home_block == target.home_block, "a sighting on a block where someone lives: evil claims to love someone who lives there")
+	_check(ub["fact"].get("secret_kind", "") == "unrequited" and "unrequited love" in str(ub["fact"].get("text", "")), "with the same card the real one gives")
+	var far: String = ""
+	for blk in C.BLOCKS.keys():
+		if blk != target.home_block and blk != e.home_block and blk != "hill":
+			far = blk
+	_check(Burdens.evil_unrequited_bluff(w, e, 2, far).is_empty(), "once claimed, a sighting elsewhere doesn't fit the same beloved")
+	_check(not Burdens.evil_unrequited_bluff(w, e, 2, e.home_block).is_empty(), "but one on its own block, leaving home, does")

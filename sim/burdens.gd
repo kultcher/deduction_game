@@ -110,6 +110,11 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 		var omen: Dictionary = _omen_words(w, n, rival, bool(extra.get("at_nomination", false)))
 		line = omen["line"]
 		text = omen["text"]
+	elif kind == "unrequited" and w.by_id.has(str(extra.get("beloved", ""))):
+		var bl = w.by_id[str(extra["beloved"])]
+		var me: String = ("was at the graveyard, at %s's grave. I loved them, and now they'll never know" % bl.name) if not bl.alive else ("went to %s's door. I've cared for them a long while, and they've no idea" % bl.name)
+		line = _mind().say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % me, {"secret": me})
+		text = "%s admitted they have an unrequited love for %s." % [n.name, bl.name]
 	elif not rival.is_empty() and not n.is_evil():
 		# The real holder answers a claim already made: one of them is lying.
 		var r = w.by_id[rival[0]]
@@ -400,3 +405,46 @@ static func withholds_for_beloved(w, n, entry: Dictionary) -> bool:
 		n.dialogue_memory[key] = true
 		w.dlog.think(n.id, "withhold", "Holds back a reading against %s, whom they love: not on so little." % w.by_id[n.beloved].name, {"burden": "unrequited", "beloved": n.beloved})
 	return true
+
+## Evil's Unrequited bluff (§9 item 12), pressed with a sighting of itself on `block` on night
+## `nd`: a beloved whose home fits. It answers only a sighting on the claimed beloved's block
+## (their grave on Chapel Hill once they're dead) or one on its own block, "leaving home". It
+## never answers a sighting that puts it on some other block. Once claimed, the same beloved
+## must fit every later sighting. The shared reactive draw decides. {} if it doesn't.
+static func evil_unrequited_bluff(w, n, nd: int, block: String) -> Dictionary:
+	if not n.is_evil() or block == "" or not on_script(w, "unrequited"):
+		return {}
+	if not w.evil_plan.has("unrequited_beloved"):
+		w.evil_plan["unrequited_beloved"] = {}
+	var mine: String = str(w.evil_plan["unrequited_beloved"].get(n.id, ""))
+	var pick: String = mine
+	if pick == "":
+		var fits: Array = []
+		for m in w.npcs:
+			if m == n:
+				continue
+			if block == n.home_block and m.alive:
+				fits.append(m)
+			elif m.alive and m.home_block == block:
+				fits.append(m)
+			elif not m.alive and block == "hill":
+				fits.append(m)
+		if fits.is_empty():
+			return {}
+		# The cover a good-looking beloved gives: a good one, if it can (never a teammate it
+		# might drag down with it).
+		var goods: Array = fits.filter(func(m): return not m.is_evil())
+		var pool: Array = goods if not goods.is_empty() else fits
+		pool.sort_custom(func(a, b): return a.id < b.id)
+		var r := RandomNumberGenerator.new()
+		r.seed = hash([w.seed_value, n.id, "unrequited_beloved", nd, block])
+		pick = pool[r.randi_range(0, pool.size() - 1)].id
+	var b = w.by_id[pick]
+	var fit: bool = (block == "hill" and not b.alive) or (b.alive and (block == b.home_block or block == n.home_block))
+	if not fit:
+		return {}
+	if mine == "" and not evil_burden_bluff(w, n, "unrequited", "explain being out on %s on night %d" % [C.block_name(block), nd]):
+		return {}
+	w.evil_plan["unrequited_beloved"][n.id] = pick
+	return claim(w, n, "unrequited", false, "caught out on %s on night %d" % [C.block_name(block), nd], "player",
+		{"beloved": pick, "block": block, "day": nd, "phase": C.NIGHT})
