@@ -93,6 +93,11 @@ const CASES = {
 	# bluffed, and an Unrequited seen walking, real and the Demon's bluff.
 	"omen_bluff": "The real Seer's \"yes\" on S and another, night 1 + S's Ill-Omened claim (a bluff, after the reading), argued \"S is evil\"",
 	"omen_real": "A Minion's Seer bluff \"yes\" on M and another + M's Ill-Omened claim (real, day 1), argued \"M is evil\" (subject M)",
+	# The Dowser's "0" (reading_interpretation.md 2.2; Michael watches whether it clears too hard).
+	"dowser_zero_good": "The real Dowser's \"0 evil\" among G and two other good, day 2, argued \"G is good\" (subject G)",
+	"dowser_zero_bluff": "A Minion's Dowser bluff \"0 evil\" among S (the Demon) and two good + its Dowser claim, argued \"S is good\"",
+	"seer_once": "The real Seer's \"yes\" on S and G + its claim, alone (the control for seer_dowser_zero)",
+	"seer_dowser_zero": "The real Seer's \"yes\" on S and G + the real Dowser's \"0 evil\" among G and two good, argued \"S is evil\"",
 	"unrequited_walk": "A sighting of U on their beloved's block, night 1 + U's Unrequited claim (real, day 1), argued \"U is evil\" (subject U)",
 	"unrequited_bluff": "A sighting of S on the victim's block on the kill night + S's Unrequited claim naming someone on another block (a bluff, after the sighting), argued \"S is evil\"",
 }
@@ -402,6 +407,45 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			var a_wit = min_ev if innocent else goods[0]
 			cited.append(_add(g, _sight(a_wit, s, other, 1)))
 			sources += [a_wit]
+		"seer_once":
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 3:
+				return {}
+			var cleared = pool[-1]
+			cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, cleared.id], "yes": true},
+				"text": "%s's Seer: %s or %s is the Demon" % [seer.name, dem.name, cleared.name]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name}))
+			sources.append(seer)
+		"dowser_zero_good", "dowser_zero_bluff", "seer_dowser_zero":
+			var bluff_zero: bool = base == "dowser_zero_bluff"
+			var seer = _holder(goods, "seer", []) if base == "seer_dowser_zero" else null
+			if base == "seer_dowser_zero" and seer == null:
+				return {}
+			var dowser = min_ev if bluff_zero else _holder(goods, "dowser", [seer] if seer != null else [])
+			if dowser == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer and n != dowser)
+			if pool.size() < 3:
+				return {}
+			var cleared = pool[-1]
+			var group: Array = [dem.id if bluff_zero else cleared.id, pool[0].id, pool[1].id]
+			var names: String = ", ".join(PackedStringArray(group.map(func(id): return w.by_id[id].name)))
+			cited.append(_add(g, {"kind": "info", "source": dowser.id, "role": "dowser", "day": 2, "phase": C.AFTERNOON, "data": {"group": group, "count": 0, "block": dowser.home_block},
+				"text": "%s's Dowser (day 2): 0 evil among %s" % [dowser.name, names]}))
+			cited.append(_add(g, {"kind": "claim", "subject": [dowser.id], "role": "dowser", "source": dowser.id, "text": "%s claims the Dowser" % dowser.name}))
+			sources.append(dowser)
+			if seer != null:
+				cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, cleared.id], "yes": true},
+					"text": "%s's Seer: %s or %s is the Demon" % [seer.name, dem.name, cleared.name]}))
+				cited.append(_add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name}))
+				sources.append(seer)
+			if base == "dowser_zero_good":
+				s = cleared
+			if base != "seer_dowser_zero":
+				premise = "good"
 		"converging":
 			var seer = _holder(goods, "seer", [])
 			var dowser = _holder(goods, "dowser", [seer])
