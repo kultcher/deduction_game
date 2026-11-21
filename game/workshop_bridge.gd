@@ -212,7 +212,9 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not
 ## evidence: it never enters the ledger, ownership, citations or the world domain. Only a
 ## Sleepwalker could have walked unknowing, so with that secret on the script a night
-## carries SLEEPWALK_SELF_DOUBT; otherwise the tiny own-reading error.
+## carries SLEEPWALK_SELF_DOUBT; otherwise the tiny own-reading error. The Rumormonger
+## readings the listener holds move the first, once each is weighed by its route
+## (SharedLedger.prepare, SourceDoubt.apply_sleepwalk_doubt).
 static func own_home(w, n, outings: Dictionary) -> Dictionary:
 	var doubt: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT if w.case_script != null and "sleepwalker" in w.case_script.secrets else Tuning.Workshop.OWN_ERR
 	var nights: Dictionary = {}
