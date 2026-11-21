@@ -521,7 +521,13 @@ static func _asserts_evil(e: Dictionary) -> bool:
 		return true
 	if not C.has_role_def(role):
 		return false
-	return str(C.role_def(role).get("shape")) in EVIL_ASSERTING_SHAPES
+	var rdef = C.role_def(role)
+	var shape: String = str(rdef.get("shape"))
+	# ROLE_AT_SITE counts only in its evil-count mode (Dowser, Hearthwitch); the Medium's
+	# hearth relay passes on what it heard, asserting nothing itself (Codex on #506).
+	if shape == "ROLE_AT_SITE" and str(rdef.get("site_mode")) != "group_count":
+		return false
+	return shape in EVIL_ASSERTING_SHAPES
 
 static func caught_lying(w, target, teller_id: String, kind: String, data: Dictionary) -> bool:
 	if target == null or not target.alive or teller_id == "" or teller_id == target.id or teller_id == "player" or not w.by_id.has(teller_id):

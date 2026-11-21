@@ -82,6 +82,9 @@ func _init() -> void:
 	# A Registrar's yes says it holds a listed role, good ones included: no evil asserted.
 	var reg: Dictionary = {"role": "registrar", "day": 1, "data": {"target": me.id, "yes": true, "roles": ["clerk", "poisoner"]}, "text": "x"}
 	_check(not Social.caught_lying(w, me, goods[6].id, "reading", {"entry": reg}), "a Registrar's yes isn't an evil reading")
+	# A Medium's relay passes on what it heard: it asserts nothing itself (Codex on #506).
+	var med: Dictionary = {"role": "medium", "day": 1, "data": {"item": {"type": "reading", "entry": e}}, "text": "x"}
+	_check(not Social.caught_lying(w, me, goods[6].id, "reading", {"entry": med}), "a Medium's relayed reading never counts against the Medium")
 	# Evil isn't caught out by a true evil reading of it.
 	var ev = w.npcs.filter(func(m): return m.is_evil())[0]
 	var e2: Dictionary = {"role": "martyr", "day": 1, "data": {"target": ev.id, "evil": true}, "text": "x"}
