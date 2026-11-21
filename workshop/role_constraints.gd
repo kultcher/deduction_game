@@ -529,17 +529,24 @@ static func _coarse_mask_gd(people: int, world: Dictionary, seer: bool, mediums:
 	var mask: int = (int(world.evil) * n + int(world.get("demon", -1)) + 1) * n + (int(world.marked) + 1 if seer else 0)
 	if mediums != 0:
 		var mod: int = SolverBackend.modifier_code(world) if world.has("modifier") else 1
-		var held: int = int(world.get("holders", 0)) & mediums if mod != 1 else 0
+		var tellers: int = mediums & 0xFFFF
+		var claimants: int = (mediums >> 16) & 0xFFFF
+		var held: int = int(world.get("holders", 0)) & ((tellers | claimants) if mod == 0 else (0 if mod == 1 else claimants))
 		mask = (mask * (1 << people) + held) * 5 + ((mod + 1) if held != 0 else 0)
 	if world.has("converted"):
 		mask = mask * n + int(world.converted) + 1
 	return mask
 
-## The people whose being the Delusional holder changes the role check, so the coarse
-## memo key (coarse_mask) must tell them apart: Medium relayers, and the teller of every
-## reading (in play a Delusional teller's reading content isn't checked; Codex, #183).
+## The people whose holding a burden changes the role check, so the coarse memo key
+## (coarse_mask) must tell them apart. Low 16 bits: Medium relayers and the teller of every
+## reading, who matter only as the Delusional (in play a Delusional teller's reading content
+## isn't checked; Codex, #183). High 16 bits: whoever claims a burden other than Marked (their
+## claim is checked in good worlds) and the hanged Ill-Omened claimants (the omen window),
+## who matter for any burden but Marked (Argon, Nov 21).
 static func relay_mediums(ids: Array, cards: Array) -> int:
+	assert(ids.size() <= 15, "relay_mediums packs two masks into a signed 32-bit int")
 	var bits: int = 0
+	var claim_bits: int = 0
 	for card in cards:
 		if card.get("quoted", false):
 			continue
@@ -552,12 +559,15 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 		for c in card.get("omen_claimants", []):
 			var oi: int = ids.find(str(c))
 			if oi >= 0:
-				bits |= 1 << oi
-		if card.get("kind", "") == "report" or (burden_code(card) > 0 and str(card.data.secret_kind) != "marked"):
-			var teller: int = ids.find(str(card.get("source", "")))
-			if teller >= 0:
-				bits |= 1 << teller
-	return bits
+				claim_bits |= 1 << oi
+		var teller: int = ids.find(str(card.get("source", "")))
+		if teller < 0:
+			continue
+		if card.get("kind", "") == "report":
+			bits |= 1 << teller
+		elif burden_code(card) > 0 and str(card.data.secret_kind) != "marked":
+			claim_bits |= 1 << teller
+	return bits | (claim_bits << 16)
 
 static func _live_cards(cards: Array) -> Array:
 	return cards.filter(func(card): return not card.get("testimony_only", false))

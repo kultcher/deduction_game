@@ -83,10 +83,16 @@ internal static class RoleConstraintsKernel
         long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + (seer ? ((long)w.Marked + 1L) : 0L);
         if (mediums != 0)
         {
-            // Which of these people hold a one-holder burden, and which burden: the Delusional
-            // (relayers, tellers) and anyone claiming a burden (burdens prototype).
+            // Which of these people hold a one-holder burden, and which burden. The low 16 bits
+            // are the relayers and tellers, whose holding matters only as the Delusional; the
+            // high 16 are burden and omen claimants, whose holding of any burden but Marked
+            // matters (role_constraints.gd relay_mediums; Argon, Nov 21: keying every
+            // teller's Unrequited or Ill-Omened split classes the role check never reads).
             int mod = w.EffectiveModifier;
-            long held = (mod != WorldEntry.ModMarked) ? (w.Holders & mediums) : 0L;
+            int tellers = mediums & 0xFFFF;
+            int claimants = (int)((uint)mediums >> 16);
+            int relevant = mod == WorldEntry.ModDelusional ? (tellers | claimants) : mod == WorldEntry.ModMarked ? 0 : claimants;
+            long held = w.Holders & relevant;
             mask = (mask * (1L << people) + held) * 5L + (held != 0 ? (long)(mod + 1) : 0L);
         }
         if (w.HasConverted)
