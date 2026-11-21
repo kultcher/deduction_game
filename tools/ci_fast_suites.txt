@@ -69,6 +69,7 @@ test_gift_doubt_good
 test_gossip_tiers
 test_gravedigger_bluff
 test_gravedigger_lean
+test_grim_reveal
 test_group_defence
 test_haunt_learning
 test_held_signals

@@ -20,6 +20,7 @@ const Layout = preload("res://ui/main_layout.gd")
 const Roles = preload("res://ui/main_roles.gd")
 const Actions = preload("res://ui/main_actions.gd")
 const DailyGuess = preload("res://ui/daily_guess.gd")
+const RevealOverlay = preload("res://ui/reveal/reveal_overlay.gd")
 
 var g
 var out: RichTextLabel
@@ -52,6 +53,8 @@ var _deferred_log_events: Array = []  # the phase change after a conversation th
 ## A reading (Town Hall records, tavern gossip, a crime scene's traces) that ended the phase:
 ## the screen holds the old phase until the last page is done (Michael, Nov 19).
 var _phase_held: bool = false
+var reveal_seen_for = null      # the game whose grim reveal has opened (it opens once, by itself)
+var reduced_motion: bool = false  # the reveal without its deal and slides (More menu)
 var daily_guess_open: bool = false   # the guess window is up: no commands until it closes (Codex on #496)
 var daily_guess_off_for = null   # the game whose daily guess the player turned off ("Don't ask again this case")
 const READING_VERBS = ["gossip", "records", "register", "town_hall", "inspect", "search", "s"]
@@ -192,7 +195,7 @@ func _open_case_view() -> void:
 	case_view.refresh()
 	case_view.visible = true
 
-enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS }
+enum MoreItem { CAST, TIMELINE, SIDEBAR, LOG, WORKSHOP, NEW_CASE, SUSPICIONS, REDUCED_MOTION }
 
 func _on_more(i: int) -> void:
 	match i:
@@ -210,6 +213,8 @@ func _on_more(i: int) -> void:
 			_open_new_case_screen()
 		MoreItem.SUSPICIONS:
 			open_daily_guess(Callable())
+		MoreItem.REDUCED_MOTION:
+			reduced_motion = not reduced_motion
 
 ## The daily evil-team guess (ui/daily_guess.gd). `then(confirmed)` runs once it closes.
 func open_daily_guess(then: Callable) -> void:
@@ -223,6 +228,15 @@ func open_daily_guess(then: Callable) -> void:
 		if then.is_valid():
 			then.call(confirmed),
 		func(): daily_guess_off_for = g)
+
+## The grim reveal, once the case is over. Its verdict is the last guesses the player locked in
+## a daily window (Michael, Nov 21): there's no end-of-game seal, which would give away the
+## outcome, and after an overnight ending the last locked guesses stand.
+func open_reveal() -> void:
+	if g == null or not g.w.game_over or has_node("GrimReveal"):
+		return
+	reveal_seen_for = g
+	RevealOverlay.open(self, g, DailyGuess.verdict(g), Callable(), reduced_motion)
 
 ## Closing the meeting: the daily guess comes first, unless it's off for this case.
 func close_meeting() -> void:
