@@ -14,6 +14,7 @@ The sketches are rough mockups in the game's paper palette, made with `sketch.py
 | `landed_evil.jpg` | Odette after a fakeout: the reel shows Poisoner, with the evil seal and her key moment |
 | `landed_burden.jpg` | Edda: Gravedigger and the good seal, then the burden tag "…and Delusional" |
 | `reduced_motion.jpg` | The same beat with no spin |
+| `herald_layout_slot.jpg`, `herald_layout_wheel.jpg`, `herald_layout_slot_spinning.jpg` | Both reels in Herald's centred layout: town row on top, portrait, reel, name and alignment, key moment, burden tag, the guess with a tick, Skip and Next |
 | `reveal_volvelle.mp4` | About 7 s: Odette's fakeout (lands on Seer, holds, lurches to Poisoner), then Edda (spins to Gravedigger, then the tag drops) |
 
 ## 1. The reel: three options, one recommendation
@@ -24,7 +25,18 @@ The sketches are rough mockups in the game's paper palette, made with `sketch.py
 | B. Slot | A paper strip drawn through a slot in a card. | The most readable. The classic "slot machine" tension. | Feels like gambling more than a grimoire, and is less in keeping with the paper look. |
 | C. Card turn | The script's role cards, face down and fanned, with one turned over. | Tarot mood. Fakeouts are natural: turn one card, then the real one. | It's a pick, not a spin, so it has less build-up. The deck also gives away the count. |
 
-**Recommendation: A, the volvelle.** It's the one only this game would have: a hand-cut
+**Update after Herald's draft (Nov 21): B, the slot, in Herald's centred layout.**
+Rendered side by side in Herald's narrow centred panel (`herald_layout_slot.jpg` and
+`herald_layout_wheel.jpg`), the slot reads clearly and the wheel's window shrinks too small
+to read the icon. So the joint recommendation is the slot:
+- **Styled as cut paper:** a strip drawn through a slot in a parchment card.
+- **Icons tinted by team,** as on the script sheet: blue gifts, red evil. The burden tag is
+  violet.
+
+The volvelle stays as the alternative, but only with a wide overlay (portrait on the left,
+wheel on the right), as in the first sketches below.
+
+**Original recommendation, kept for the record: A, the volvelle.** It's the one only this game would have: a hand-cut
 paper instrument from the grimoire's own world.
 
 - **The disc:** this script's role icons, in script order, good roles then evil.
