@@ -58,7 +58,6 @@ func _init() -> void:
 	# (then seeds 100034, 100031 and 100020); searched for, so play changes don't break them
 	# (tools/fixture_seeds.gd).
 	_found_case(Seeds.framed_sighting(2, false, "street"), "subject", "sighter", func(p): return p >= 0.6, "a framed person holds the planter's fake sighting against them")
-	_found_case(Seeds.sleepwalker_sighting(2), "subject", "sighter", func(p): return p < 0.7, "a Sleepwalker, seen by an honest sighter, is far from sure they lied")  # (a plain liar caught this way reads near 0.9)
 	_found_case(Seeds.relay(3, func(t): return t.is_evil(), true), "listener", "teller", func(p): return p >= 0.8, "an evil relayer's invented relay of the listener doesn't clear them")
 	print("Self-sighting: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)

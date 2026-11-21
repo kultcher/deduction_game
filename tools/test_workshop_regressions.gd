@@ -640,8 +640,10 @@ func _test_rumormonger_and_chronicler_chance_content() -> void:
 		"data": {"pair": [pair_a.id, pair_b.id], "secret": "marked"},
 	}
 	var q_rm: float = CaseEval.chance_content(view, rm_card)
-	_check(q_rm > 0.02 and q_rm < 0.08,
-		"10-NPC live Marked Rumormonger chance_content matches ~0.0325 prior hold rate (got %.4f)" % q_rm)
+	# Burdens prototype: with only Delusional and Marked on the script, Marked worlds are a
+	# larger share of the domain, so the prior hold rate rises (0.0325 with all four secrets).
+	_check(q_rm > 0.07 and q_rm < 0.14,
+		"10-NPC live Marked Rumormonger chance_content matches ~0.10 prior hold rate (got %.4f)" % q_rm)
 	var chr_card: Dictionary = {
 		"id": "probe_chr", "kind": "report", "source": speaker.id, "role": "chronicler",
 		"night": 3, "observed_at": {"day": 3, "phase": "night"},

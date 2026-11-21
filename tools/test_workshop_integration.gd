@@ -29,13 +29,12 @@ func _init() -> void:
 		var prepared = Assess.prepare(input)
 		check(prepared.ready, "count reading is supported without a hidden modifier lookup")
 		var worlds = Domain.worlds(prepared.view)
-		check(worlds.size() == (525 if size == 7 else 5040), "all four legal modifier kinds have the expected public domain")
+		check(worlds.size() == (210 if size == 7 else 1680), "the script's legal modifier kinds (burdens prototype: Delusional and Marked) have the expected public domain (%d)" % worlds.size())
 		var unique = {}
 		for world in worlds:
 			unique[TimeModel.key(prepared.view, world)] = true
 		check(unique.size() == worlds.size(), "world IDs distinguish absent Marked, all holder identities and modifier kinds")
 		check(worlds.any(func(w): return w.marked == -1) and worlds.any(func(w): return w.modifier == "marked"), "no-Marked and Marked explanations coexist")
-		check(worlds.filter(func(w): return w.modifier == "lovers").all(func(w): return Solver.popcount(w.holders) == 2 and not w.evil & w.holders), "Lovers worlds contain two originally-good holders")
 		var all = Solver.solve(prepared.view, []).worlds
 		check(all.size() == worlds.size(), "solver preserves the full modifier domain before evidence")
 		if size == 7:
@@ -63,11 +62,7 @@ func _init() -> void:
 		late.observed_at.day = 1
 		check(not Solver._report_holds(prepared.view, marked_source, late, {}), "first-night-only gifts cannot produce a new healthy report on a later night")
 		check(not Domain.claims_compatible([report], {"self": n.id, "own_role": "surveyor"}), "the listener's own known unique gift excludes another healthy claimant")
-		var rumors = report.duplicate(true)
-		rumors.role = "rumormonger"
-		rumors.data = {"pair": [n.id, target.id], "secret": "lovers"}
-		var compatible = Solver.solve(prepared.view, [rumors]).worlds
-		check(not compatible.is_empty() and compatible.any(func(w): return w.modifier == "lovers" and w.marked == -1) and compatible.all(func(w): return w.modifier == "lovers"), "Rumormonger permits Lovers without assuming one Marked (and never a self-held secret: setup rule)")
+		# (The Lovers Rumormonger check retired with the burdens prototype.)
 		var double = report.duplicate(true)
 		double.source = target.id
 		check(Solver.solve(prepared.view, [report, double]).worlds.is_empty(), "two different healthy Surveyors cannot both hold a unique gift")

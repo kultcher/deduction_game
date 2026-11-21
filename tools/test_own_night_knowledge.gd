@@ -124,23 +124,6 @@ func _init() -> void:
 		# 0.97 without the relay; the earlier 100055 shows the same +25 points either way).
 		var lift: float = _logit(e2.with) - _logit(e2.without)
 		check(lift >= _logit(0.65) - _logit(0.5), "%s: the invented relay raises the relayer at least as much as 15 points from even (%+.2f log-odds, %+.3f)" % [label2, lift, e2.with - e2.without])
-	# 3. A real Sleepwalker, honestly seen out: its known-home cards carry the doubt.
-	var s: Dictionary = Seeds.sleepwalker_sighting(2)
-	if s.is_empty():
-		_missing("a Sleepwalker honestly seen")
-	else:
-		var e3: Dictionary = _effect(s.g, s.subject, s.sighter, func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == s.sighter and s.subject in c.get("subjects", [c.get("subject", "")]))
-		var label3: String = "seed %d: Sleepwalker %s, seen by %s" % [s.seed, s.subject, s.sighter]
-		print("%s: %.3f with the sighting, %.3f without" % [label3, e3.with, e3.without])
-		var own3: Array = _own_cards(e3.view, s.subject)
-		check(not own3.is_empty() and own3.all(func(c): return absf(float(c.get("self_doubt", -1.0)) - Tuning.Workshop.SLEEPWALK_SELF_DOUBT) < 1e-9), "%s: its known-home cards carry the Sleepwalker's doubt" % label3)
-		# The sighting's own effect, against the same game read with no sleepwalking doubt (Lantern,
-		# Nov 20): an end state ("< 0.7") depends on the game's other cards.
-		var sight3 = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == s.sighter and s.subject in c.get("subjects", [c.get("subject", "")])
-		var p3: Dictionary = _effect(s.g, s.subject, s.sighter, sight3, true)
-		var lift3: float = _logit(e3.with) - _logit(e3.without)
-		var plain3: float = _logit(p3.with) - _logit(p3.without)
-		print("%s: lift %+.2f log-odds with the doubt, %+.2f without (%.3f / %.3f)" % [label3, lift3, plain3, p3.with, p3.without])
-		check(lift3 < plain3, "%s: the sighting counts less against the sighter than it would with no sleepwalking doubt (%+.2f against %+.2f log-odds)" % [label3, lift3, plain3])
+	# 3. (The Sleepwalker case retired with the burdens prototype.)
 	print("Own night knowledge: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
