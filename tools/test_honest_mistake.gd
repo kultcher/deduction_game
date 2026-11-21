@@ -207,13 +207,23 @@ func _init() -> void:
 	var seer_no: Dictionary = {"kind": "report", "role": "seer", "data": {"pair": ["a", "b"], "yes": false}}
 	var dowse_some: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 1}}
 	var dowse_none: Dictionary = {"kind": "report", "role": "dowser", "data": {"group": ["a", "b"], "count": 0}}
-	check(RC.cause_reaches("red_herring", seer_no) and not RC.cause_reaches("red_herring", dowse_some), "a Red Herring reaches a Seer's reading and no other gift")
+	check(RC.cause_reaches("red_herring", seer_yes) and not RC.cause_reaches("red_herring", seer_no) and not RC.cause_reaches("red_herring", dowse_some), "a Red Herring reaches a Seer's \"yes\", not a \"no\" (it reads falsely as the Demon, never falsely clear), and no other gift")
 	check(RC.cause_reaches("marked", seer_yes) and RC.cause_reaches("marked", dowse_some) and not RC.cause_reaches("marked", dowse_none) and not RC.cause_reaches("marked", seer_no), "Marked doesn't reach a reading that only speaks for people")
 	var parity: Dictionary = {"kind": "report", "role": "surveyor", "data": {"block": "square", "same": false}}
 	check(RC.cause_reaches("marked", parity), "Marked reaches a Surveyor's block parity, which names no one (Codex on #296)")
 	check(RC.cause_reaches("poison", dowse_none) and RC.cause_reaches("delusion", seer_no), "poison and Delusion reach any reading")
 	var bare: Dictionary = {"script_minions": ["scion"], "world_options": {"modifiers": ["lovers"]}}
-	check(not RC.honest_allowed(bare, dowse_some) and RC.honest_allowed(bare, seer_no), "with nothing on the script, no Mistaken, except a Seer's (its Red Herring)")
+	check(not RC.honest_allowed(bare, dowse_some) and RC.honest_allowed(bare, seer_yes) and not RC.honest_allowed(bare, seer_no), "with nothing on the script, no Mistaken, except on a Seer's \"yes\" (its Red Herring)")
+	# The Seer card's reminder names Marked only when Marked is on the script (§2.1).
+	var seer_def = preload("res://sim/content.gd").role_def("seer")
+	var nm_id: Callable = func(id): return id
+	var RoleDefScript = preload("res://sim/role_def.gd")
+	RoleDefScript.script_secrets = ["delusional", "unrequited"]
+	var no_mark: String = seer_def.short_text({"pair": ["a", "b"], "yes": true}, "S", nm_id)
+	RoleDefScript.script_secrets = ["delusional", "marked"]
+	var with_mark: String = seer_def.short_text({"pair": ["a", "b"], "yes": true}, "S", nm_id)
+	RoleDefScript.script_secrets = []
+	check(not ("Marked" in no_mark) and "Red Herring" in no_mark and "Marked" in with_mark, "the Seer card names Marked only when it's on the script (%s / %s)" % [no_mark.replace("\n", " "), with_mark.replace("\n", " ")])
 	var none: Dictionary = _game(sd, "misled", true, false)
 	var nv: Dictionary = Live.view(none.g)
 	print("no causes: refused '%s', minions %s, modifiers %s" % [none.refused, nv.get("script_minions"), nv.get("world_options")])

@@ -30,7 +30,9 @@ func short_text(d: Dictionary, _src: String, nm: Callable) -> String:
 	# A NO rules out the Demon and the Red Herring (a Marked soul may still read NO).
 	var pair: String = _names(d.get("pair", []), nm)
 	if d.get("yes", false):
-		return "%s: Demon? YES\n(Marked or Red Herring?)" % pair
+		# Marked only when it's on the script (reading_interpretation.md §2.1).
+		var marked_possible: bool = script_secrets.is_empty() or "marked" in script_secrets
+		return "%s: Demon? YES\n(%s?)" % [pair, "Marked or Red Herring" if marked_possible else "Red Herring"]
 	return "%s: Demon? NO" % pair
 
 
