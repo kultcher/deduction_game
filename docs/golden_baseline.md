@@ -44,7 +44,19 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, a sighting places its teller): `baseline_b810754`
+### Current baseline (Nov 21, made-up street sightings need a walking claim): `baseline_5c5642c`
+
+`tools/golden/baseline_5c5642c/` is the capture from `claude/beadle-street-claimed` at `5c5642c`
+(main at `f8bc26d`, after #474, merged in). Evil tells a made-up sighting seen "while out" only
+once its teller has claimed a gift that takes it out at night (Michael, Nov 20).
+- **Divergence from `baseline_b810754`:** seed 98933 only, at record 106 (day 2's meeting). Evil
+  no longer says it saw someone out on Chapel Hill on the second night, since it had claimed no
+  walking gift, and the "was out on" readings that followed from it are gone.
+- **Outcomes:** unchanged on every seed. 98933 still hangs Agnes on day 2, with no winner by
+  day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, a sighting places its teller): `baseline_b810754`
 
 `tools/golden/baseline_b810754/` is the capture from `claude/sighting-places-teller` at `b810754` (main at
 `03451a8` after #454, merged in). In a world where its teller is good, a street sighting puts

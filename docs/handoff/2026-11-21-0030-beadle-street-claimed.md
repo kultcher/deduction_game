@@ -1,10 +1,10 @@
 # Evil's made-up street sightings need a claimed walking gift
 
 - **Agent:** Claude-Beadle
-- **Base:** main at `03451a8` (`baseline_5f4629f`, after #454), merged in
+- **Base:** main at `f8bc26d` (`baseline_b810754`, after #474), merged in
 - **Branch:** `claude/beadle-street-claimed`
 - **Status:** PR open. Golden moves on one seed (98933, outcome unchanged) and is re-baselined
-  here to `baseline_110537c`. Golden-moving PRs merge one at a time.
+  here to `baseline_5c5642c`. Golden-moving PRs merge one at a time.
 - **Next actor:** Bailiff (golden queue, review and merge).
 - **Asked by:** Michael, through Lantern (Nov 20): "we need to ensure that evil doesn't bluff night
   sightings that can't be explained by its actual claimed role". With Lantern's coming "a
@@ -53,9 +53,9 @@
   In game terms: evil no longer says "I saw them out on the Market" before it has given any
   reason to have been out itself; it waits until it has claimed its walking gift. Outcomes
   barely move (one game in 40).
-- **Golden:** re-baselined to `baseline_110537c`; two captures were identical. Only seed 98933
-  moves: evil no longer says it saw Agnes out on the Market on the second night, having claimed
-  no walking gift. The same people hang. See "Current baseline" in `docs/golden_baseline.md`.
+- **Golden:** re-baselined to `baseline_5c5642c`; two captures were identical. Only seed 98933
+  moves, at day 2's meeting: evil no longer says it saw someone out on Chapel Hill on the second
+  night, having claimed no walking gift. The same people hang. See "Current baseline" in `docs/golden_baseline.md`.
 - **Also pass after the merge:** test_street_sighting_claimed, test_evil_play, test_relay_bluff,
   test_meeting_flow.
 
