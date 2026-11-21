@@ -463,6 +463,11 @@ through a `claude/` branch cut from it, never directly ("How it lands", below).
   Michael allowed two if Bailiff wanted the judge separate; Bailiff chose one PR, reviewed by
   area, so golden moves once (Nov 21).
 - **When:** after Michael playtests the prototype.
+- **History is kept** (Michael, Nov 21): it merges as a merge commit, not a squash, so the
+  prototype's history survives. Bailiff's process applies:
+  - one PR, reviewed by area, with the four owners signing off;
+  - a golden freeze while it lands;
+  - Bailiff's full local run.
 - **How:** Lantern cuts `claude/burdens` from `mock/burdens-slot`, cleaned of scaffolding.
   This is an explicit exception to "`mock/` branches never merge": the code lands through a
   `claude/` branch.
@@ -475,6 +480,11 @@ through a `claude/` branch cut from it, never directly ("How it lands", below).
 
 - **The Unrequited isn't dealt to a night-walking gift,** for now. It's a deal rule, like the
   ones the Lovers and Sleepwalker had.
+- **The judge checks claims against the deal's placement rules** (Michael, Nov 21). A claimed
+  burden that the deal can't give to the claimant's claimed role counts as a contradiction:
+  for example, Unrequited with a night-walking gift, or a Rumormonger as the lone holder. It's
+  one general rule, read from the placement table, not per-burden logic. Lantern is building it
+  on the prototype.
 - **The spell-break threshold stays as it is** until there are player-driven games. In 12
   passive games it never broke.
 - **Still held:** the stage-2 world model. The options are placed holders now with a hybrid
