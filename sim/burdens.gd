@@ -359,7 +359,8 @@ static func omen_vote_cost(w, nominee: String, v = null) -> float:
 static func on_executed(w, n) -> void:
 	if int(w.omen_restated.get(n.id, -1)) != w.day:
 		return
-	var real: bool = n.secret_mod == "ill_omened" and not n.is_evil()
+	# A holder turned evil still carries the omen (Michael, Nov 21): the script's text holds.
+	var real: bool = n.secret_mod == "ill_omened" and (not n.is_evil() or bool(n.turned))
 	# Public: the town saw a claimed Ill-Omened hanged. Whether the poison fell stays hidden.
 	w.public_event("omen_hanged", [n.id], "world")
 	w.dlog.add("omen_hanged", "world", n.id, {"day": w.day},

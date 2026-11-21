@@ -36,6 +36,7 @@ func _init() -> void:
 	_real()
 	_bluff()
 	_unarmed()
+	_turned()
 	print("Ill-Omened: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -122,3 +123,17 @@ func _unarmed() -> void:
 	Burdens.omen_early_warning(w, o)
 	w.execute(o.id, {})
 	_check(w.npcs.all(func(m): return m.omen_poisoned_day == -1) and _logged(w, "omen_hanged").is_empty(), "claimed only earlier, not restated at the nomination: hanging them does nothing")
+
+## A holder who claimed it and was then turned evil still brings the omen when hanged
+## (Michael, Nov 21: the script's text holds).
+func _turned() -> void:
+	var w = _case().w
+	var o = _holder(w)
+	_check(not Burdens.omen_early_warning(w, o).is_empty(), "the holder claims it while good")
+	w.turn_evil(o, "test")
+	_check(o.is_evil() and o.turned, "then is turned evil")
+	var nom: Dictionary = Burdens.omen_at_nomination(w, o)
+	_check(not nom.is_empty(), "nominated, the turned holder still restates it")
+	w.execute(o.id, {})
+	var goods: Array = w.npcs.filter(func(m): return m.alive and not m.is_evil())
+	_check(goods.all(func(m): return m.omen_poisoned_day == w.day) and _logged(w, "omen_poison").size() == 1, "hanged, the omen still falls on every good person")
