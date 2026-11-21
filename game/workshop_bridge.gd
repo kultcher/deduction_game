@@ -222,12 +222,20 @@ static func own_burden(n) -> Dictionary:
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not
 ## evidence: it never enters the ledger, ownership, citations or the world domain. Each night
 ## carries only the tiny own-reading error (burdens prototype: Sleepwalker 1.0 retired).
+## "out_nights": the nights it was out, with the blocks it walked (reading-note gap 2, Nov 21:
+## everyone knows their own whereabouts). Every block borders every other, so a walk is its
+## home and destination; one ending back home is a tour of every block (Lamplighter, Sexton).
 static func own_home(_w, n, outings: Dictionary) -> Dictionary:
 	var nights: Dictionary = {}
+	var out_nights: Dictionary = {}
 	for k in outings:
 		if not bool(outings[k]):
 			nights[str(k)] = Tuning.Workshop.OWN_ERR
-	return {"self": n.id, "block": n.home_block, "nights": nights}
+		else:
+			var dest: String = str(n.history.get(str(k) + ":3", "")).trim_prefix("night:")
+			if dest in C.BLOCKS:
+				out_nights[str(k)] = C.BLOCKS.keys() if dest == n.home_block else [n.home_block, dest]
+	return {"self": n.id, "block": n.home_block, "nights": nights, "out_nights": out_nights}
 
 
 ## The haunts an NPC knows without being told (regulars know regulars): their own, and
