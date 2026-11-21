@@ -13,7 +13,7 @@ const FPS = 30.0
 const SCRIPT = ["seer", "dowser", "clerk", "gravedigger", "medium", "nightwatch", "magistrate", "lamplighter", "poisoner", "brute", "demon"]
 const STEPS = [
 	{"id": "odette", "name": "Odette", "role": "poisoner", "evil": true, "fakeout_role": "seer", "guess": "You guessed: Minion", "guess_correct": true},
-	{"id": "edda", "name": "Edda", "role": "gravedigger", "evil": false, "burden": "Delusional", "guess": "You guessed: Gravedigger", "guess_correct": true, "dead": true},
+	{"id": "edda", "name": "Edda", "role": "gravedigger", "evil": false, "burden": "…and Delusional", "guess": "You guessed: Gravedigger", "guess_correct": true, "dead": true},
 ]
 
 func _initialize() -> void:

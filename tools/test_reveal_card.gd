@@ -66,7 +66,12 @@ func _run() -> void:
 	card.set_process(false)
 
 	# A straight reveal.
+	var dealt_count = [0]
+	var on_dealt = func(): dealt_count[0] += 1
+	card.card_dealt.connect(on_dealt)
 	var got = _run_step(card, _step())
+	card.card_dealt.disconnect(on_dealt)
+	_check(dealt_count[0] == RevealCard.DEAL, "card_dealt fires once a dealt card (%d)" % dealt_count[0])
 	_check(got.landed.size() == 1 and got.finished.size() == 1, "landed and finished each fire once")
 	_check(got.landed[0] <= got.finished[0], "landed comes before finished")
 	_check(card.ends_at() >= 2.6 and card.ends_at() <= 3.4, "a straight reveal takes about 3 s (%.2f s)" % card.ends_at())
@@ -105,7 +110,7 @@ func _run() -> void:
 	var on_f = func(): counts.finished += 1
 	card.landed.connect(on_l)
 	card.finished.connect(on_f)
-	card.play(_step({"burden": "Delusional", "role": "gravedigger", "evil": false}))
+	card.play(_step({"burden": "…and Delusional", "role": "gravedigger", "evil": false}))
 	card.advance(0.5)
 	card.skip_to_end()
 	card.skip_to_end()

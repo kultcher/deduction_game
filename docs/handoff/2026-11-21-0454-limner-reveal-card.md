@@ -23,8 +23,8 @@
     face-down deck, flips, arcs out to alternating sides and slides back in under the deck.
     The deal quickens as it goes.
   - **The true card:** flips in place and pushes out towards the player. Then the alignment
-    wax seal stamps down (gold for good, red for evil). A burden tag ("…and <burden>") drops
-    in on a thread as a second beat.
+    wax seal stamps down (gold for good, red for evil). A burden tag drops
+    in on a thread as a second beat. Herald passes the tag's full text.
   - **A fakeout:** the false role flips and starts to push out. It tears in half along a
     ragged line, and the halves fall away, showing the true card face up beneath. The
     false name is struck through as it goes.
@@ -37,8 +37,8 @@
       `burden`, `fakeout_role`, `guess`, and optionally `guess_correct`, `dead`,
       `role_text` and `align_text`;
     - `skip_to_end()`, `reduced_motion`, `advance(delta)`;
-    - the signals `landed` (the true card has settled) and `finished` (the seal and tag
-      are done).
+    - the signals `landed` (the true card has settled), `finished` (the seal and tag are
+      done) and `card_dealt` (once a dealt card, a hook for a sound).
   - **Built from a single clock:** every frame's state is a pure function of one clock, so
     a skip, a test or a capture can jump to any moment.
 - **Timing, measured headless:** a straight reveal takes 2.9 s, landing at 2.3 s. With a
@@ -49,7 +49,7 @@
   - the card back is dark red with a gold star in a ring;
   - nothing needs new art. Drawn card, seal or tag art can replace the procedural ones
     later.
-- **`tools/test_reveal_card.gd`:** 31 checks, about 1 s. Added to `tools/ci_fast_suites.txt`.
+- **`tools/test_reveal_card.gd`:** 32 checks, about 1 s. Added to `tools/ci_fast_suites.txt`.
   It covers:
   - the timing;
   - the signal order, and that each signal fires once;
@@ -72,7 +72,7 @@ speed.
 
 ## Measured
 
-- **Suites:** `test_reveal_card` 31/31 and `test_day_conversation_view` pass, both through
+- **Suites:** `test_reveal_card` 32/32 and `test_day_conversation_view` pass, both through
   the runner.
 - **Golden:** not captured. No game logic changed: the diff touches only `ui/reveal/`, two
   new tools and the fast-suite list. CI runs golden.
