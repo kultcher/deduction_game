@@ -71,7 +71,7 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
   7. Observable actions as evidence (Stage 1B) `[tentative]`
   8. \*A sighting places its teller `[decided]`
-  9. Being lied about can pull in evidence that clears the liar `[open]`
+  9. Being lied about can pull in evidence that clears the liar `[open]`, low priority
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -660,8 +660,12 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
   - **What happened:** Edda's core, re-anchored on the night she was lied about, takes in a
     rumour that "one of Bart and Jory is Delusional". That undercuts Jory's watch of Hollis,
     and Hollis falls 78% → 71% overall.
-  - **Held until "A sighting places its teller" lands.** Lantern then re-runs 100002 and
-    reports whether it still matters.
+  - **Seed 100002 is resolved by #474** ("A sighting places its teller"; Lantern, Nov 21).
+    On main the game reaches the lie at the day-3 meeting. Edda now puts Hollis at 66.5%
+    with his fake sighting and 59% without it: the lie counts against him. With the new
+    rule off it would be 64%.
+  - **Low priority, still open** (Michael, Nov 21): one seed doesn't show that no lie pulls
+    in clearing evidence elsewhere.
   - **Interim:** #454's check (#139) uses Michael's option (a). It reads the card's effect
     within its own night, and its comment points to this item.
 
