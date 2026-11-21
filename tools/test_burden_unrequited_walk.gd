@@ -89,6 +89,27 @@ func _init() -> void:
 	var r_two: float = Activity.unrequited_likelihood(_view(two_miss, true), two_miss, a) / Activity._likelihood(_view(two_miss, true), two_miss, a, "good")
 	print("Holder against plain good: visit, miss, visit x%.2f; visit, miss, miss x%.2f" % [r_one, r_two])
 	check(r_one > 1.0 and r_two < r_one * 0.5, "two missed nights running after a visit count against holding it (x%.2f against x%.2f)" % [r_two, r_one])
+	# 3b. A claim that explains evidence already against its claimant is weighed as a bluff
+	# might be (Michael, Nov 21): told after the sightings, the Unrequited claim takes the
+	# reactive weight; told before them (an earlier telling), full credit; a burden that
+	# doesn't explain walks (Marked) isn't made reactive by a sighting.
+	var early: Dictionary = _claim("b")
+	early.id = "uc0"; early.fact_id = "uc0"
+	early.observed_at = {"day": 0, "phase": "afternoon"}
+	var marked: Dictionary = _claim("")
+	marked.id = "mc"; marked.fact_id = "mc"
+	marked.data = {"secret_kind": "marked"}
+	var fl: Callable = func(cards: Array) -> Array:
+		var f: Array = RC.burden_claim_factors(_view(cards, true), cards)
+		return f.map(func(x): return bool(x[3]))
+	var late_flag: Array = fl.call(twice + [_claim("b")])
+	var early_flag: Array = fl.call(twice + [early])
+	var marked_flag: Array = fl.call(twice + [marked])
+	var told_before: float = _p(twice + [early], true)
+	print("Seen out on the Docks twice, then claims Unrequited for b: %.3f evil (reactive %s); told before the walks: %.3f (reactive %s); a Marked claim after them reactive %s" % [named_there, late_flag, told_before, early_flag, marked_flag])
+	check(late_flag == [true], "an Unrequited claim told after the claimant was seen out is reactive (%s)" % [late_flag])
+	check(early_flag == [false] and told_before < named_there, "an earlier telling keeps full credit (%.3f against %.3f)" % [told_before, named_there])
+	check(marked_flag == [false], "a sighting doesn't make a Marked claim reactive (%s)" % [marked_flag])
 	# 4. The kernel and the mirror agree.
 	var sets: Array = [twice, elsewhere, twice + [_claim("b")], elsewhere + [_claim("b")], one_miss, two_miss, []]
 	var worst: float = 0.0

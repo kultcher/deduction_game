@@ -695,6 +695,20 @@ static func _reading_known_tick(card: Dictionary) -> int:
 		return Chronology.tick({"day": int(obs.get("day", 0)) + 1, "phase": "morning"})
 	return Chronology.tick(obs)
 
+## Whether `r` is evidence already against the claimant that the claimed burden explains
+## (Michael, Nov 21: "a burden claim that explains evidence already against the claimant takes
+## the reactive weight"): a reading that names them evil, for any burden; and, for a burden
+## whose claim explains its claimant's night walks (LiveActivity.claim_walks: Unrequited), a
+## sighting of them out at night told by someone else. Dated as a reading is
+## (_reading_known_tick: the morning after a night).
+static func explains_against(view: Dictionary, claim: Dictionary, r: Dictionary, who: int) -> bool:
+	if names_evil(view, r, who):
+		return true
+	if not Activity.claim_walks(claim) or str(r.get("kind", "")) != "sighting" or r.get("quoted", false) or int(r.get("night", -1)) < 0:
+		return false
+	var me: String = str(view.people[who].id) if who >= 0 and who < view.people.size() else ""
+	return me != "" and str(r.get("source", "")) != me and me in r.get("subjects", [r.get("subject", "")])
+
 ## For each claimed burden, [who, factor, statement tick]: the factor weighs a world where the
 ## claimant was evil when they spoke. It's how much likelier an evil player is to make the
 ## claim than a real holder, measured (Tuning.Workshop.BURDEN_BLUFF_*), by whether the claim
@@ -720,7 +734,7 @@ static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
 				first = mini(first, _first_told_tick(c))
 		var reactive: bool = false
 		for r in held + cards:
-			if _reading_known_tick(r) <= first and names_evil(view, r, who):
+			if _reading_known_tick(r) <= first and explains_against(view, card, r, who):
 				reactive = true
 				break
 		var factor: float = Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED
