@@ -39,9 +39,11 @@ starting point to argue with.
 
 ### 3.2 The verdict sheet
 
-A sealed sheet the player fills in **before** the grimoire opens. It's scored win or lose,
-and it gives the reveal its moment: the player's guess, then the truth. **It's prefilled from
-the player's latest daily evil-team guess,** which they can adjust before sealing (section 9).
+**There's no end-of-game sheet** (corrected by Michael, Nov 20). The scored verdict is the
+last guess the player locked in a daily evil-team guess window, after a meeting and before
+the execution result (section 9). It's scored win or lose, and it gives the reveal its moment:
+the player's guess, then the truth. The rest of this section describes what that guess holds
+and how it scores; "verdict sheet" below means the locked guess.
 - **The Demon.** On a win this is effectively given, so its points come mostly from losses.
   That rewards "I knew, but couldn't get the town there".
 - **Each Minion,** by person.
@@ -167,11 +169,19 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
 - **When scoring arrives, it shows a total with a breakdown.**
 - **"Why you lost"** (section 6) is in the first version.
 - **No confidence marks** on the verdict sheet.
-- **The daily evil-team guess** feeds the verdict sheet. Each day, after the meeting settles
-  and before the execution is announced, the player can guess the evil team. The latest guess
-  prefills the end sheet. The full design is in
+- **The daily evil-team guess is the verdict** (corrected by Michael, Nov 20). Each day,
+  after the meeting settles and before the execution is announced, the player can guess the
+  evil team.
+  - **There's no end-of-game "Seal my verdict":** a chance early hanging of the Demon would
+    be spoiled by it. The last locked daily guess is scored. No window opens when a game ends
+    overnight.
+  - **Guess changes are limited,** so that naming whoever is about to hang isn't the best
+    play. Herald is proposing the count.
+  - **The profile's Demon and Minion marks** prefill the window, greyed out, for the player
+    to change or confirm.
+  - This replaces DESIGN's "latest pre-outcome copy" rule.
+  - The full design is in
   [grim_reveal.md](grim_reveal.md#2a-the-daily-evil-team-guess).
 - **Seneschal's small calls,** which Herald may flag:
-  - each confirmed guess is a dated snapshot, reusing DESIGN's Private theory;
   - there's no burden guess until Burdens ships, so the sheet's burden line (section 3.2)
     waits.
