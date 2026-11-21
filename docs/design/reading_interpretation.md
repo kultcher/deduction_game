@@ -76,7 +76,8 @@ yet.** Written by Claude-Vicar.
 
 ### 1.5 What can't be known for certain
 
-- **Whether you were poisoned** at any given time.
+- **Whether you were poisoned** at any given time. Poison comes from the Poisoner, and also
+  from a hanged Ill-Omened holder (Quill's check, Nov 21).
 - **How many evil are alive.** The bounds are known: the starting count, plus anyone turned by
   the curse. Which of the dead were evil isn't.
 - **Anyone else's role or alignment,** short of proof (a Martyr's sacrifice, the curse).
@@ -130,6 +131,9 @@ the Demon (not a Minion), it learns "One of those two people is the Demon"; othe
 of those two people is the Demon". One randomly chosen good person, the Red Herring, registers
 as the Demon to this ability.
 
+**The Red Herring** is drawn once, at the deal, from the good people other than the Seer, and
+stays the same all game (as built; Quill's check, Nov 21).
+
 **What the Seer knows about its rules:**
 - the Red Herring exists, but not who it is;
 - Marked can make a good person register as the Demon, but only if Marked is on the script;
@@ -160,6 +164,9 @@ explanations:
 6. the Seer is an evil bluffer, lying.
 7. If A is Marked, A may have misregistered, though B may still be the Demon or the Red
    Herring.
+
+**The player's side of a "yes"** (as built): the Workshop asks which explanation the player is
+arguing (the Demon, the Red Herring or Marked, and who), and the case is graded on that choice.
 
 *A named in a "no"* (Vicar's draft, to confirm): B isn't the Demon, and I'm not the Red
 Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
