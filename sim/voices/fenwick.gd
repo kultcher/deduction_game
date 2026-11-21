@@ -301,4 +301,16 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. No bow, no encore. I'm still grieving them.",
 	"anger_accused_my_friend": "You accused {subject} before the whole town. They're dear to me, my friend.",
 	"anger_backed_hanging": "You backed hanging {subject}. I didn't want that ending.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Ah, a familiar plot! I've carried the mark since birth, my friend; gifts read me wrong. That's all {reader} saw.",
+	"burden_marked_counterclaim": "{claimant}, Marked? Miscast! The mark is mine, and the part has only one player.",
+	"burden_marked_private": "Between us and the wings, my friend: I'm Marked. If a gift ever names me evil, that's why.",
+	"burden_marked_public": "Hear me, good people! I'm Marked. A gift may read me as evil; it would be wrong.",
+	"burden_unrequited_reveal": "If you must have the scene: I went to {beloved}'s door. I care for them. They don't know.",
+	"burden_unrequited_defend": "{beloved}, the villain? I can't believe it. You'll need a stronger script than that.",
+	"burden_unrequited_spell_breaks": "I've played {beloved}'s champion long enough. I can't any more.",
+	"burden_unrequited_grave": "I went to {beloved}'s grave. I cared for them, and they never knew.",
+	"burden_ill_omened_counterclaim": "{claimant} is lying! I'm the Ill-Omened, and there's only one such part.",
+	"burden_denial": "Me, {burden}? Miscast, my friend! Whoever told you that is wrong.",
+	"burden_double_claim": "{a} and {b} both play {burden}? There's only one such part; one of them is lying.",
 }

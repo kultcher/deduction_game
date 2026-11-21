@@ -283,4 +283,16 @@ const LINES = {
 	"anger_hanged_my_friend": "Your hand went up for {subject}. I'm still grieving them. Give me time.",
 	"anger_accused_my_friend": "You named {subject} in front of everyone. They're dear to me, and that stung.",
 	"anger_backed_hanging": "You pushed for {subject} to hang, and I didn't want it. I'm still sore about it.",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Oh, I know how that sounds. I've carried the mark since I was born, dear, and gifts have always read me crooked. That's what {reader} saw, not wickedness.",
+	"burden_marked_counterclaim": "I'm sorry, but that's not so. The mark is mine, and there's only ever one of us. Whatever {claimant} carries, it isn't that.",
+	"burden_marked_private": "I'll trust you with this, love, and I'd ask you keep it close. I'm Marked. If some gift ever calls me evil, you'll know the reason.",
+	"burden_marked_public": "Better you hear it from me, neighbours: I'm Marked. Should a gift ever name me evil, please remember I told you first.",
+	"burden_unrequited_reveal": "If you must know... I went to {beloved}'s door. I've cared for them a long while, and they've no idea. That's all it was.",
+	"burden_unrequited_defend": "No. Not {beloved}. I'll not hear it on so little. Bring me something sound and I'll listen.",
+	"burden_unrequited_spell_breaks": "I kept telling myself {beloved} was good. I can't keep telling myself that, not after this.",
+	"burden_unrequited_grave": "I was at the graveyard. At {beloved}'s grave. I loved them, and now they'll never know.",
+	"burden_ill_omened_counterclaim": "That isn't true of {claimant}, and I'm sorry to say it so plainly. The omen is mine. There's only one.",
+	"burden_denial": "Me, {burden}? No. Someone's told you wrong.",
+	"burden_double_claim": "Now {a} and {b} can't both be {burden}. There's only ever one. One of them isn't telling us the truth.",
 }

@@ -282,4 +282,16 @@ const LINES = {
 	"anger_hanged_my_friend": "You voted to hang {subject}. Woe, I'm grieving them still.",
 	"anger_accused_my_friend": "You accused {subject} before the whole town! They're so dear to me!",
 	"anger_backed_hanging": "You backed hanging {subject}! I didn't want that, heaven knows!",
+	# Burdens (Michael, Nov 21): held for the Burdens build. The Ill-Omened warnings wait on his redraft.
+	"burden_marked_since_birth": "Woe, the curse of my cradle! I've carried the mark since birth; gifts read me crooked. That is all {reader} saw!",
+	"burden_marked_counterclaim": "Falsehood! {claimant} isn't Marked. The mark is mine, and there's only one!",
+	"burden_marked_private": "Swear you'll keep it close: I'm Marked! If some gift ever names me evil, that is why, I beg you remember!",
+	"burden_marked_public": "Hear me before doom finds me: I'm Marked! A gift may read me evil, and it would be wrong!",
+	"burden_unrequited_reveal": "Oh, have it from me then! I went to {beloved}'s door. I care for them so, and they don't know!",
+	"burden_unrequited_defend": "Not {beloved}, not on so little! Bring me more than shadows, I beg you!",
+	"burden_unrequited_spell_breaks": "Woe! I've defended {beloved} long enough, and my heart can't bear to any more!",
+	"burden_unrequited_grave": "I went to {beloved}'s grave! I loved them, and now they never shall know it!",
+	"burden_ill_omened_counterclaim": "{claimant} lies! The omen is mine, woe is me, and there's only one!",
+	"burden_denial": "Me, {burden}? Heaven forbid! Whoever told you that is wrong!",
+	"burden_double_claim": "Ominous! {a} and {b} both say they're {burden}, yet there's only one. One of them is lying!",
 }
