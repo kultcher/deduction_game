@@ -1129,6 +1129,13 @@ class Workshop:
 	## where the reading left them (Michael, Nov 21, revised: neutral against silence): within
 	## about 2 points either side after a Seer's yes in the 7- and 10-person towns.
 	const BURDEN_REACTIVE_SOFTEN = 0.68
+	## An Unrequited claim told only after its claimant was seen out at night (and with no evil
+	## reading of them first): how much likelier an evil player is to make it than a real
+	## holder. Set by feel so the claim lands about where the sighting left them (Michael, Nov
+	## 21, provisional): in the 7-person test, seen out twice on the beloved's block, 37.6% evil
+	## with no claim, 36.7% with it (it was 5.0% at the Marked reactive weight). No sweep has
+	## measured it: passive games make no Unrequited claims.
+	const BURDEN_BLUFF_UNREQUITED_SIGHTED = 0.85
 	## Smallest chance a bluff fits by luck (`CaseEval.chance_content`, the share of worlds
 	## where a report's content holds).
 	const CHANCE_CONTENT_FLOOR = 0.01
