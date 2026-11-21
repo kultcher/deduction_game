@@ -322,7 +322,6 @@ func _fixes_inside_a_night() -> void:
 	# less. The bystander holds the sighter at least 0.1, so it isn't one that already clears
 	# them outright and so believes the sighting.)
 	var framed_case: Dictionary = _framed_case()
-	var sleep_case: Dictionary = Seeds.sleepwalker_sighting(2)
 	var relay_case: Dictionary = Seeds.relay(3, func(t): return t.is_evil(), true)
 	Connections.force_row = "none"
 	if framed_case.is_empty():
@@ -359,24 +358,8 @@ func _fixes_inside_a_night() -> void:
 		check(lift.call(framed, sg) > lift.call(framed_off, sg), "#139 works through #135: more with the sighter contest than without (%+.3f against %+.3f)" % [lift.call(framed, sg), lift.call(framed_off, sg)])
 		check(not watcher.is_empty() and lift.call(watcher, sg) > lift.call(watcher_off, sg), "#135: a bystander weighs the sighter too (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sg), lift.call(watcher_off, sg)])
 		check(lift.call(watcher, sub) < lift.call(watcher_off, sub), "#135: and holds the sighting less against its subject (%+.3f with the contest, %+.3f without)" % [lift.call(watcher, sub), lift.call(watcher_off, sub)])
-	# The sighting's own effect, against the same game read with no sleepwalking doubt (Lantern,
-	# Nov 20): an end state depends on the game's other cards.
-	if sleep_case.is_empty():
-		check(false, "a seed has a Sleepwalker seen by an honest sighter")
-	else:
-		var sw_sub: String = sleep_case.subject
-		var sw_sg: String = sleep_case.sighter
-		var sw_sight = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == sw_sg and sw_sub in c.get("subjects", [c.get("subject", "")])
-		var plain_nights = func(v):
-			if v.get("own_home") is Dictionary:
-				for k in v.own_home.get("nights", {}):
-					v.own_home.nights[k] = Tuning.Workshop.OWN_ERR
-		var sw: Dictionary = Seeds.cards_effect(sleep_case.g, sw_sub, [sw_sg], sw_sight)
-		var sw_plain: Dictionary = Seeds.cards_effect(sleep_case.g, sw_sub, [sw_sg], sw_sight, Callable(), plain_nights)
-		var logit = func(p): return log(clampf(p, 1e-9, 1.0 - 1e-9) / (1.0 - clampf(p, 1e-9, 1.0 - 1e-9)))
-		var sw_lift: float = logit.call(float(sw.get("with", {}).get(sw_sg, 0.5))) - logit.call(float(sw.get("without", {}).get(sw_sg, 0.5)))
-		var sw_plain_lift: float = logit.call(float(sw_plain.get("with", {}).get(sw_sg, 0.5))) - logit.call(float(sw_plain.get("without", {}).get(sw_sg, 0.5)))
-		check(not sw.is_empty() and not sw_plain.is_empty() and sw_lift < sw_plain_lift, "a Sleepwalker, seen by an honest sighter, holds the sighting less against them than with no sleepwalking doubt (%+.2f against %+.2f log-odds; seed %d)" % [sw_lift, sw_plain_lift, int(sleep_case.seed)])
+	# (The Sleepwalker's home-night doubt check retired with the Sleepwalker: burdens rework.
+	# No deal holds one, so Seeds.sleepwalker_sighting finds none.)
 	# What the relay itself does to its relayer (Seeds.relay_effect: with it held, and left
 	# out), not where the relayer ends up: that depends on the game's other cards, which any
 	# change to play reshuffles (the Delusional self-doubt, Nov 17, moved this game's ending
