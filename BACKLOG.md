@@ -28,10 +28,12 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. \*The Gravedigger in a reluctant town `[decided]`
-    2. Caught out and pressed again: what's left `[decided]`
-    3. Good NPCs lie tactically `[open]`
-    4. \*Rapport and Warden-credit leftovers `[decided: direction]`
+    1. A hidden Seer seeds its readings into the gossip network `[decided: direction]`
+    2. A gift-holder seeks protection before revealing `[decided: direction]`
+    3. \*The Gravedigger in a reluctant town `[decided]`
+    4. Caught out and pressed again: what's left `[decided]`
+    5. Good NPCs lie tactically `[open]`
+    6. \*Rapport and Warden-credit leftovers `[decided: direction]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -120,6 +122,16 @@ Lantern). Nothing is open here.
   [decided]
 
 ### NPC behaviour
+
+- **A hidden Seer seeds its readings into the gossip network** (Michael, Nov 21). Before
+  revealing, a Seer passes its information through someone it trusts, as hearsay, so the town
+  is pointed the right way without exposing the Seer. From
+  [reading_interpretation.md](docs/design/reading_interpretation.md) section 2.1; it may
+  generalise to other gifts as the note grows. Owner Beadle. [decided: direction]
+
+- **A gift-holder seeks protection before revealing** (Michael, Nov 21). A Seer planning to
+  reveal looks for protection first, from the player or a known Warden. Same source; it may
+  generalise. Owner Beadle. [decided: direction]
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
