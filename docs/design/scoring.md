@@ -1,9 +1,9 @@
 # Scoring (design note)
 
-**Status: draft for Michael (Nov 21, 2026). Nothing is decided or built.** Written by
-Claude-Vicar from a talk with Michael on Nov 21. It expands BACKLOG section 4, "Scoring
-system" (`[open]`), and folds in that item's notes. The weights in section 5 are a starting
-point to argue with.
+**Status: draft for Michael (Nov 21, 2026). Partly decided (section 9); nothing is built.**
+Written by Claude-Vicar from a talk with Michael on Nov 21. It expands BACKLOG section 4,
+"Scoring system" (`[open]`), and folds in that item's notes. The weights in section 5 are a
+starting point to argue with.
 
 ---
 
@@ -40,7 +40,8 @@ point to argue with.
 ### 3.2 The verdict sheet
 
 A sealed sheet the player fills in **before** the grimoire opens. It's scored win or lose,
-and it gives the reveal its moment: the player's guess, then the truth.
+and it gives the reveal its moment: the player's guess, then the truth. **It's prefilled from
+the player's latest daily evil-team guess,** which they can adjust before sealing (section 9).
 - **The Demon.** On a win this is effectively given, so its points come mostly from losses.
   That rewards "I knew, but couldn't get the town there".
 - **Each Minion,** by person.
@@ -51,9 +52,8 @@ and it gives the reveal its moment: the player's guess, then the truth.
   - naming a person as evil but with the wrong Minion type still scores, less than an exact
     match;
   - the 61251 example: Jory identified as evil but guessed as the Breathstealer.
-- **Confidence,** from the backlog item: the player can mark each guess sure or unsure. A
-  sure guess scores more when right and nothing when wrong, still never negative. *Open:
-  whether this is worth the extra UI.*
+- **No confidence marks** (Michael, Nov 20). The backlog item's sure-or-unsure idea is
+  dropped.
 
 ### 3.3 "Loud" evils
 
@@ -153,9 +153,25 @@ grim reveal's "key misinformation" question; see the grim reveal discussion (Nov
 1. **The weights** in section 5, especially the Demon (100) against the verdict sheet's
    Demon guess (30). Should a loss with a correct verdict feel close to a win?
 2. **Loud evils:** half or zero for a publicly confirmed type? What counts as confirmed?
-3. **Confidence on the verdict sheet:** worth the UI, or keep a plain guess?
+3. ~~**Confidence on the verdict sheet**~~: dropped (section 9).
 4. **The difficulty multiplier:** what goes into it (town size, Minion count, script
    features)?
 5. **Good case:** measure on the whole town, or only on the voters who acted next?
-6. **"Why you lost":** in the first version, or later with the grim reveal work?
-7. **Shown how:** a total with a breakdown, letter grades, or both?
+6. ~~**"Why you lost"**~~: in the first version (section 9).
+7. ~~**Shown how**~~: a total with a breakdown (section 9).
+
+## 9. Decided (Michael, Nov 20, relayed by Seneschal)
+
+- **Stage 1 shows right or wrong only,** with no points: the verdict sheet against the truth.
+  The points come later.
+- **When scoring arrives, it shows a total with a breakdown.**
+- **"Why you lost"** (section 6) is in the first version.
+- **No confidence marks** on the verdict sheet.
+- **The daily evil-team guess** feeds the verdict sheet. Each day, after the meeting settles
+  and before the execution is announced, the player can guess the evil team. The latest guess
+  prefills the end sheet. The full design is in
+  [grim_reveal.md](grim_reveal.md#the-daily-evil-team-guess).
+- **Seneschal's small calls,** which Herald may flag:
+  - each confirmed guess is a dated snapshot, reusing DESIGN's Private theory;
+  - there's no burden guess until Burdens ships, so the sheet's burden line (section 3.2)
+    waits.
