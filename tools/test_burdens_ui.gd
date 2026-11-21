@@ -9,6 +9,8 @@ const MainRoles = preload("res://ui/main_roles.gd")
 const TextTerms = preload("res://ui/text_terms.gd")
 const RevealPlan = preload("res://ui/reveal/reveal_plan.gd")
 const C = preload("res://sim/content.gd")
+const RevealOverlay = preload("res://ui/reveal/reveal_overlay.gd")
+const GameScreens = preload("res://game/game_screens.gd")
 
 var checks = 0
 var fails = 0
@@ -33,6 +35,7 @@ func _init() -> void:
 	_tooltips()
 	_omen_marker()
 	_reveal_tag()
+	_shot_fixes()
 	print("Burdens UI: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -122,3 +125,17 @@ func _reveal_tag() -> void:
 	_check(step["burden"] == "…and Delusional" and step["burden_name"] == "Delusional", "the reveal card's burden tag reads \"…and Delusional\"")
 	var plain = w.npcs.filter(func(m): return m.secret_mod == "")[0]
 	_check(RevealPlan.step_for(g, plain, {})["burden"] == "", "no burden, no tag")
+
+## Limner's screenshots (Nov 21): the key moments sat under the paper sheet, and the
+## remaining "secret" wording.
+func _shot_fixes() -> void:
+	var sheet_bottom: float = 0.09 + RevealOverlay.CARD_H + RevealOverlay.SHEET_PAD
+	var src: String = FileAccess.get_file_as_string("res://ui/reveal/reveal_overlay.gd")
+	_check("_moments.anchor_top = 0.09 + CARD_H + SHEET_PAD" in src and sheet_bottom < 0.9, "the key moments start below the reveal's paper sheet")
+	_check(C.ROLES["rumormonger"]["desc"].ends_with("a particular burden."), "the Rumormonger's text says burden")
+	var g = _case()
+	var typed: String = GameScreens._script(g)
+	_check("Burdens: one in play, on top of a gift:" in typed and not "secret " in typed.to_lower() and not "secrets" in typed.to_lower(), "the typed script heads its burdens as the sheet does")
+	if "delusional" in g.w.case_script.secrets:
+		_check("Hidden: " in typed, "and tags the hidden burden")
+	_check(MainRoles.BURDEN_TIP.begins_with("Burden: "), "the sheet's Burdens heading carries the Burden tooltip")

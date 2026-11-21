@@ -933,6 +933,9 @@ func _get_tooltip(at: Vector2) -> String:
 	var card: Dictionary = g.board[h["n"] - 1]
 	_tip_card = card if card.get("kind", "") == "trace" else {}
 	var t = "#%d  %s" % [card["n"], card.get("text", "")]
+	if card.get("kind", "") == "omen":
+		# The marker's tooltip is the burden's rules text (Michael, Nov 21).
+		t += "\n%s: %s" % [C.secret_name("ill_omened"), C.SECRET_MODS["ill_omened"]["desc"]]
 	if context_numbers.has(card.n):
 		t += "\n" + EvidenceContext.EXPLANATION
 	var heard = _heard_line(card)

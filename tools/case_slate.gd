@@ -199,11 +199,7 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			if base == "marked_rescue":
 				s = pool[-1]
 				pool = pool.filter(func(n): return n != s)
-				for n in w.npcs:
-					if n.secret_mod == "marked":
-						n.secret_mod = ""
-				s.secret_mod = "marked"
-				w.burden_holder_id = s.id
+				_give_burden(w, s, "marked")
 			var mate = pool[0]
 			var names: String = "%s or %s" % [s.name, mate.name]
 			var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [s.id, mate.id], "yes": true},
@@ -225,11 +221,7 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			if pool.size() < 2:
 				return {}
 			var holder = pool[-1]
-			for n in w.npcs:
-				if n.secret_mod == "marked":
-					n.secret_mod = ""
-			holder.secret_mod = "marked"
-			w.burden_holder_id = holder.id
+			_give_burden(w, holder, "marked")
 			if not counter and w.case_script != null and not ("ill_omened" in w.case_script.secrets):
 				w.case_script.secrets.append("ill_omened")
 			if counter:
@@ -260,11 +252,7 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 				return {}
 			var holder = pool[-1]
 			pool = pool.filter(func(n): return n != holder)
-			for n in w.npcs:
-				if n.secret_mod == "marked":
-					n.secret_mod = ""
-			holder.secret_mod = "marked"
-			w.burden_holder_id = holder.id
+			_give_burden(w, holder, "marked")
 			_kill(w, holder, 1)
 			var first: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, pool[0].id], "yes": true},
 				"text": "%s's Seer (night 1): %s or %s is the Demon" % [seer.name, dem.name, pool[0].name]})
@@ -679,11 +667,14 @@ func _add_burden(w, kind: String) -> void:
 		w.case_script.secrets.append(kind)
 
 
-## Makes `n` the burden's one holder (one burden is dealt).
+## Makes `n` the case's one burden holder (one burden is dealt): whoever the deal gave a
+## burden to loses it, so a case never has two holders.
 func _give_burden(w, n, kind: String) -> void:
 	for m in w.npcs:
-		if m.secret_mod == kind:
+		if m.secret_mod != "":
 			m.secret_mod = ""
+			m.beloved = ""
+			m.secret = {}
 	n.secret_mod = kind
 	w.burden_holder_id = n.id
 

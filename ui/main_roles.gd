@@ -84,6 +84,8 @@ static func build(m, embedded: bool) -> void:
 	m.roles_box.add_child(bottom_pad)
 
 ## The burdens section's heading (Michael, Nov 21: "secret" becomes "burden" on the sheet).
+const BURDEN_TIP = "Burden: something that weighs on a townsperson, on top of their gift. The script lists the possible burdens and how many are in play. A hidden burden's holder doesn't know they carry it."
+
 static func burden_heading(in_play: int) -> String:
 	return "Burdens: %s in play, on top of a gift" % ("one" if in_play == 1 else str(in_play))
 
@@ -128,6 +130,10 @@ static func group(m, parent: Container, title: String, roles: Array, team: Strin
 	h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	h.add_theme_font_size_override("font_size", 18)
 	h.add_theme_color_override("font_color", team_color)
+	if team == "secret":
+		# The Burden term's tooltip on the section heading (Limner's shots).
+		h.mouse_filter = Control.MOUSE_FILTER_STOP
+		h.tooltip_text = BURDEN_TIP
 	box.add_child(h)
 	var rule = ColorRect.new()
 	rule.color = Color(team_color, 0.45)

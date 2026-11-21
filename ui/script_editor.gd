@@ -13,7 +13,7 @@ const ScriptDef = preload("res://sim/script_def.gd")
 const ScriptBuilder = preload("res://sim/script_builder.gd")
 
 const SIDES = [["town", "Town gifts", ScriptDef.TOWN_SIZE], ["minions", "Minions", ScriptDef.MINION_SIZE],
-	["demons", "Demons", ScriptDef.MAX_DEMONS], ["secrets", "Secrets", ScriptDef.SECRET_SIZE]]
+	["demons", "Demons", ScriptDef.MAX_DEMONS], ["secrets", "Burdens", ScriptDef.SECRET_SIZE]]
 
 var working = ScriptDef.default_script()
 var tag_filter: String = ""
