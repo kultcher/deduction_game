@@ -148,3 +148,20 @@ With paper puppets, nothing changes for the reveal: they slot into the portrait 
    match the paper puppets.
 3. The fakeout lurch: cross several notches (as sketched), or arrange the wheel so it's
    always a one-notch slip.
+
+## Card versions (Michael's request, Nov 21)
+
+Two card-deck reveals, each in `reveal_cards_v1.mp4` and `reveal_cards_v2.mp4`, made with
+`sketch_cards.py`. Each clip shows Odette (a fakeout) and then Edda (a straight landing with
+her burden tag).
+- **The deck:** this script's roles, face down, with the real role at the bottom.
+- **Speed:** about six cards in roughly 1.2 s, quickening.
+- **Version 1:** each card slides off the top and flips face up. It arcs up and out to one
+  side, alternating right and left, and slides back in under the deck.
+- **Version 2:** each card flips face up and is tossed in a random direction. It arcs up and
+  falls off the screen, spinning.
+- **The final card, both versions:** it flips in place, then pushes out towards the player
+  (grows, and its shadow lifts). The name, seal and tag follow, as with the reel.
+- **The fakeout:** the false card (Seer) flips and starts to push out. Then it tears in half
+  along a ragged line, and the halves fly apart and fall. The real card (Poisoner) is
+  already face up underneath, and it pushes out. The false name is struck through.
