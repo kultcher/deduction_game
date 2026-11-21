@@ -34,10 +34,6 @@ static func _healthy_modifier_worlds_per_team(g: int, mods: Array) -> float:
 		w_h += float(g)
 	if "delusional" in mods:
 		w_h += float(maxi(0, g - 1))
-	if "sleepwalker" in mods:
-		w_h += float(g)
-	if "lovers" in mods:
-		w_h += float(g * (g - 1)) * 0.5
 	return w_h
 
 static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
@@ -56,14 +52,6 @@ static func _chance_rumormonger(view: Dictionary, d: Dictionary) -> float:
 	var sec: String = str(d.get("secret", "marked"))
 	if sec not in mods:
 		return clampf(1.0 / w_h, 0.01, 0.5)
-	if sec == "lovers":
-		if n < 3 or g < 2:
-			return 0.2
-		var denom: float = float((n - 1) * (n - 2))
-		var both_good: float = float((g - 1) * (g - 2)) / denom
-		var one_good: float = float(2 * (g - 1) * e) / denom
-		var exp_lovers: float = both_good * float(2 * g - 3) + one_good * float(g - 1)
-		return clampf(exp_lovers / w_h, 0.01, 0.5)
 	var exp_solo: float = float(pair_sz) * float(g - 1) / float(n - 1)
 	return clampf(exp_solo / w_h, 0.01, 0.5)
 
@@ -81,14 +69,11 @@ static func _chance_chronicler(view: Dictionary) -> float:
 	if w_h <= 0.0:
 		return 0.15
 	var solo_worlds: float = 0.0
-	for m_kind in ["marked", "delusional", "sleepwalker"]:
+	for m_kind in ["marked", "delusional"]:
 		if m_kind in mods:
 			solo_worlds += float(g - 1)
-	var lovers_with_src: float = float(g - 1) if "lovers" in mods else 0.0
-	var lovers_no_src: float = (float((g - 1) * (g - 2)) * 0.5) if "lovers" in mods else 0.0
 	var trios_one_sec: float = float((e - 1) * (g - 2))
-	var trios_two_sec: float = float((e - 1) * 2 * maxi(0, g - 3))
-	var exp_holds: float = ((solo_worlds + lovers_with_src) * trios_one_sec + lovers_no_src * trios_two_sec) / c_n1_3
+	var exp_holds: float = (solo_worlds * trios_one_sec) / c_n1_3
 	return clampf(exp_holds / w_h, 0.01, 0.5)
 
 ## The chance that a source who can't give a healthy reading (evil, poisoned, Delusional)

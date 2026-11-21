@@ -109,10 +109,7 @@ static func _secret_mod_code(mod_name: String) -> int:
 			return 0
 		"marked":
 			return 1
-		"lovers":
-			return 2
-		"sleepwalker":
-			return 3
+		# 2 and 3 were the Lovers and Sleepwalker 1.0 (retired, burdens prototype).
 		_:
 			return -99
 
@@ -762,25 +759,6 @@ static func _sig_groups_cs(view: Dictionary, u_key: String, u_worlds: Array) -> 
 	}
 
 ## Whether a card is constrained by a report table (reports, and the curse event).
-## A Lovers confession is true (evil never fakes one) and names the other: in a live view
-## with Lovers on the script, only worlds where both hold it stand (triage 5.9: there was
-## no way to prove the other half). One holder bitmask per confession.
-static func lovers_needs(view: Dictionary, cards: Array) -> Array:
-	var out: Array = []
-	if not Domain.live(view) or "lovers" not in view.get("world_options", {}).get("modifiers", []):
-		return out
-	for sc in cards:
-		if sc.get("kind", "") != "secret_claim" or sc.get("quoted", false) or str(sc.get("data", {}).get("secret_kind", "")) != "lover":
-			continue
-		var lx: int = person_index(view, str(sc.get("subject", "")))
-		var lp: int = person_index(view, str(sc.get("data", {}).get("partner", "")))
-		if lx >= 0:
-			out.append((1 << lx) | ((1 << lp) if lp >= 0 else 0))
-	return out
-
-static func lovers_ok(world: Dictionary, need: int) -> bool:
-	return world.get("modifier", "") == "lovers" and (int(world.get("holders", 0)) & need) == need
-
 static func tabled(card: Dictionary) -> bool:
 	return card.kind == "report" or (card.kind == "event" and card.get("event") == "curse")
 
@@ -841,9 +819,6 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 			if not c_act.get("quoted", false):
 				active_fids[str(c_act.get("fact_id", c_act.id))] = true
 				active_fids[str(c_act.id)] = true
-		var lovers_need: Array = lovers_needs(view, cards)
-		for need in lovers_need:
-			worlds = worlds.filter(func(w): return lovers_ok(w, int(need)))
 		for ac in cards:
 			if ac.kind == "report" and ac.get("role", "") == "augur" and not ac.get("quoted", false) and not ac.get("testimony_only", false):
 				var aspec: Dictionary = augur_day_spec(view, cards, ac, answers.get(ac.id, {}))
@@ -856,13 +831,6 @@ static func _solve(view: Dictionary, cards: Array, positions: Dictionary = {}, a
 					var fid1: String = str(pdata_s.statements[1].get("fact_id", ""))
 					if fid0 != "" and fid1 != "" and active_fids.has(fid0) and active_fids.has(fid1):
 						worlds = worlds.filter(func(w): return not source_valid(view, w, ac))
-					var pans_s: Dictionary = answers.get(ac.id, {})
-					if str(pans_s.get("false_slot", "")) in ["0", "1"] and str(pans_s.get("false_reason", "")) == "misled":
-						var st_m: Dictionary = pdata_s.statements[int(str(pans_s.get("false_slot", "0")))]
-						if str(st_m.get("kind", "")) == "alibi" and Domain.live(view) and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
-							var sw_idx: int = person_index(view, str(st_m.get("source", "")))
-							if sw_idx >= 0:
-								worlds = worlds.filter(func(w): return w.get("modifier", "") == "sleepwalker" and (int(w.get("holders", 0)) & (1 << sw_idx)) != 0)
 	var movement = movement_for(view, cards if view.get("live_activity", false) else movement_cards, answers, knowledge)
 	return {"worlds": worlds, "movement": movement.nights, "movement_ok": movement.okay}
 

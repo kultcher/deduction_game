@@ -134,10 +134,6 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		reports.append(card)
 		tables.append(table)
 		valids.append(_valid_table(view, card))
-	for need in Solver.lovers_needs(view, cards):
-		for i in range(n):
-			if not Solver.lovers_ok(universe[i], int(need)):
-				dead[i] = 1
 	var premise = _premise_mask(view, conclusion)
 	var live: bool = Domain.live(view)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
@@ -796,26 +792,6 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
 	var fits: PackedFloat64Array = _personal_fits(view, cc, role_cards, personal, neutral, neutral_key, neutral_ref, bare, base_fit_key, base_fit_ref, u_neutral, w_all)
-	# "Am I the Sleepwalker?" With the secret on the script, a good listener's own nights at
-	# home are a little unsure: with chance SLEEPWALK_SELF_DOUBT they walked without knowing
-	# it, and their home nights say nothing. Being the Sleepwalker is one hidden fact for the
-	# whole case, so the two readings mix whole (Tuning.Workshop.SLEEPWALK_SELF_DOUBT).
-	var home_nights: Array = personal.own_outings.keys().filter(func(k): return not bool(personal.own_outings[k]))
-	if not home_nights.is_empty() and "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
-		var d: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT
-		var walked: Dictionary = personal.duplicate(true)
-		for k in home_nights:
-			walked.own_outings.erase(k)
-		var free: PackedFloat64Array = neutral
-		if not (walked.own_role == "" and walked.own_outings.is_empty() and walked.get("public_roles", {}).is_empty()):
-			free = _personal_fits(view, cc, role_cards, walked, neutral, neutral_key, neutral_ref, bare, base_fit_key, base_fit_ref, u_neutral, w_all)
-		if free == fits:
-			return fits   # nothing the home nights rule out (avoids rounding noise)
-		var mixed := PackedFloat64Array()
-		mixed.resize(nc)
-		for c in range(nc):
-			mixed[c] = (1.0 - d) * fits[c] + d * free[c]
-		return mixed
 	return fits
 
 static var use_cc_reps_handle: bool = true

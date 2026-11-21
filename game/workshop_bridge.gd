@@ -161,7 +161,7 @@ static func _listener(input: Dictionary, n, now: Dictionary, w = null) -> void:
 	input.listener["disowned_reports"] = []
 	for key in n.history:
 		if str(key).ends_with(":3"):
-			input.listener.own_outings[str(key).trim_suffix(":3")] = n.secret_mod != "sleepwalker" and not str(n.history[key]).begins_with("home")
+			input.listener.own_outings[str(key).trim_suffix(":3")] = not str(n.history[key]).begins_with("home")
 	for e in n.info_log:
 		var card = _reading(n.id, e)
 		if e.get("disowned", false):
@@ -210,15 +210,13 @@ static func _reading(source: String, e: Dictionary) -> Dictionary:
 
 ## The nights an NPC knows it spent at home, for its movement model (view.own_home):
 ## {"self", "block", "nights": {night: self-doubt}}. Knowledge, like known_haunts, not
-## evidence: it never enters the ledger, ownership, citations or the world domain. Only a
-## Sleepwalker could have walked unknowing, so with that secret on the script a night
-## carries SLEEPWALK_SELF_DOUBT; otherwise the tiny own-reading error.
-static func own_home(w, n, outings: Dictionary) -> Dictionary:
-	var doubt: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT if w.case_script != null and "sleepwalker" in w.case_script.secrets else Tuning.Workshop.OWN_ERR
+## evidence: it never enters the ledger, ownership, citations or the world domain. Each night
+## carries only the tiny own-reading error (burdens prototype: Sleepwalker 1.0 retired).
+static func own_home(_w, n, outings: Dictionary) -> Dictionary:
 	var nights: Dictionary = {}
 	for k in outings:
 		if not bool(outings[k]):
-			nights[str(k)] = doubt
+			nights[str(k)] = Tuning.Workshop.OWN_ERR
 	return {"self": n.id, "block": n.home_block, "nights": nights}
 
 
