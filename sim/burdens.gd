@@ -329,6 +329,21 @@ static func omen_early_warning(w, n) -> Dictionary:
 ## Weighted by the voter's belief that the claim is true (1 - its suspicion of the claimant),
 ## and shared between rival claimants, since only one can hold it (Michael, Nov 21: option A).
 ## Without a voter, the full cost.
+## A Minion's push to hang a real Ill-Omened (Michael, Nov 21): hanging one poisons every good
+## gift for a night. Non-Scion Minions only; the Demon and the Scion play as their good selves.
+## "Real" is any public claimant who isn't a teammate, since evil knows its own bluffs. Returns
+## the claimant to push, or "".
+static func omen_push_target(w, n) -> String:
+	if not n.is_evil() or n.id == w.demon_id or C.is_demon(n.role) or n.role == "scion":
+		return ""
+	for id in public_claimants(w, "ill_omened"):
+		if w.by_id.has(id) and w.by_id[id].alive and not _evil().is_teammate(w, n, id):
+			return id
+	return ""
+
+static func omen_push(w, n, nominee: String) -> bool:
+	return nominee != "" and omen_push_target(w, n) == nominee
+
 static func omen_vote_cost(w, nominee: String, v = null) -> float:
 	var claim: Array = public_claimants(w, "ill_omened")
 	if not nominee in claim:

@@ -18,8 +18,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `INFO_BEFORE_KILL` | `true` |  | `sim/content.gd`, `sim/evil.gd`, `sim/world_night.gd` |
 | `DEFENCE_MOVES` | `true` |  | `game/game_meeting.gd`, `sim/content.gd` |
 | `SHARED_EXECUTION_PRIORITY_WEIGHT` | `0.22` |  | `sim/content.gd`, `sim/mind.gd`, `sim/mind_meeting.gd`, `sim/mind_vote.gd`, `sim/world.gd` |
-| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd` |
-| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd` |
+| `MARKED_EVIL_CHANCE` | `0.5` | Marked registration probabilities | `sim/roles/magistrate.gd`, `sim/world_base.gd`, `workshop/solver.gd` |
+| `MARKED_DEMON_CHANCE` | `0.5` |  | `sim/world_base.gd`, `workshop/cs/RoleConstraints.cs` |
 | `GRAVEDIGGER_MARKED_EVIL_CHANCE` | `0.3` |  | (only inside `sim/tuning.gd`) |
 | `EXTRA_WORK_SHIFT_CHANCE` | `0.0` | Nov 10: everyone works a single shift (was 0.3) | `sim/world.gd` |
 | `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
@@ -525,6 +525,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `EVIL_CAUTION_MINION` | `0.7` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_ID_DRIFT` | `0.08` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_CAUTION_FLOOR` | `0.25` |  | `sim/content.gd`, `sim/evil.gd` |
+| `OMEN_PUSH_STAKES` | `0.35` | A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the usual exposure cost. Sized so that on a close vote a Minion under about the median scrutiny votes yes, and under heavy scrutiny keeps cover. | `sim/mind_meeting.gd`, `sim/mind_vote.gd` |
 | `DEMON_CAUTION_FLOOR` | `0.45` |  | `sim/evil.gd` |
 | `DEMON_CAUTION_DRIFT` | `0.03` |  | `sim/evil.gd` |
 | `HEAT_FADE` | `0.75` |  | `sim/evil.gd` |
@@ -636,7 +637,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval_base.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/source_doubt.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/live_activity_profiles.gd`, `workshop/source_doubt.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity_pack.gd`, `workshop/live_activity_profiles.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity_factors.gd` |

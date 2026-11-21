@@ -1251,6 +1251,11 @@ static func _evil_nomination_choice(w, n, m: Dictionary, block: String):
 				return _evil_counter_or_pass(w, n, m, ev)
 			sc["reason"] = "Evil (good self): nominates teammate %s; %s" % [sc["nominee"], sc["reason"]]
 		return sc
+	var omen_t: String = Burdens.omen_push_target(w, n)
+	if omen_t != "" and not (omen_t in m["nominated"]) and m.get("block", "") != omen_t and evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + Tuning.Evil.OMEN_PUSH_STAKES, 0.5, "push to hang %s, a real Ill-Omened (good self wouldn't nominate)" % omen_t):
+		var omen_s: float = Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + Tuning.Evil.OMEN_PUSH_STAKES
+		return {"nominee": omen_t, "by": n.id, "score": omen_s,
+			"reason": "Evil: %s claims Ill-Omened and isn't one of us, so it's real; hanging them poisons every good gift for a night." % omen_t}
 	if ev == null:
 		return null
 	var blk2: String = m.get("block", "")

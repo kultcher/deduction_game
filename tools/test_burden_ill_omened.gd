@@ -5,6 +5,7 @@
 extends SceneTree
 const Game = preload("res://game/game.gd")
 const Burdens = preload("res://sim/burdens.gd")
+const Evil = preload("res://sim/evil.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 
@@ -68,6 +69,25 @@ func _real() -> void:
 	_check(not nom.is_empty() and nom["fact"].get("at_nomination", false) and nom["fact"]["secret_kind"] == "ill_omened", "nominated, the holder restates it, marked as the nomination's claim")
 	_check("cost" in str(nom["line"].get("statement", "")) and not "poison" in str(nom["line"].get("statement", "")).to_lower(), "its words name a cost, never the effect")
 	var evil: Array = w.npcs.filter(func(m): return m.alive and m.is_evil())
+	# A Minion's push (Michael, Nov 21): non-Scion Minions want a real claimant hanged.
+	var minions: Array = evil.filter(func(m): return m.id != w.demon_id and not C.is_demon(m.role) and m.role != "scion")
+	var demon = w.by_id[w.demon_id]
+	_check(not minions.is_empty() and Burdens.omen_push_target(w, minions[0]) == o.id, "a Minion sees a real claimant to push")
+	_check(Burdens.omen_push_target(w, demon) == "", "the Demon doesn't push")
+	var was: String = minions[0].role
+	minions[0].role = "scion"
+	_check(Burdens.omen_push_target(w, minions[0]) == "", "nor does the Scion")
+	minions[0].role = was
+	var mate = evil.filter(func(m): return m != minions[0])[0]
+	var pub2: Array = w.burden_claims.get("ill_omened:public", [])
+	pub2.push_front(mate.id)
+	w.burden_claims["ill_omened:public"] = pub2
+	_check(Burdens.omen_push_target(w, minions[0]) == o.id, "a teammate's bluffed claim is never pushed")
+	pub2.erase(mate.id)
+	w.meeting["block"] = ""
+	w.meeting["block_count"] = 0
+	_check(Evil.evil_vote(w, minions[0], o.id, 0), "a Minion's evil self wants the real claimant hanged")
+	_check(Tuning.Evil.OMEN_PUSH_STAKES > 0.0, "with extra stakes to break cover, weighed against its exposure")
 	w.execute(o.id, {})
 	var goods: Array = w.npcs.filter(func(m): return m.alive and not m.is_evil())
 	_check(goods.all(func(m): return m.omen_poisoned_day == 2 and m.gift_broken()), "hanged, every living good person's gift fails")

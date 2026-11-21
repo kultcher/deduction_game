@@ -810,6 +810,11 @@ class Evil:
 	const EVIL_CAUTION_MINION = 0.7
 	const MINION_ID_DRIFT = 0.08
 	const MINION_CAUTION_FLOOR = 0.25
+	## A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant
+	## (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the
+	## usual exposure cost. Sized so that on a close vote a Minion under about the median
+	## scrutiny votes yes, and under heavy scrutiny keeps cover.
+	const OMEN_PUSH_STAKES = 0.35
 	const DEMON_CAUTION_FLOOR = 0.45
 	const DEMON_CAUTION_DRIFT = 0.03
 	const HEAT_FADE = 0.75

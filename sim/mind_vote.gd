@@ -83,7 +83,8 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 			else:
 				stakes = 0.75
 		elif evil_yes:
-			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0)) * pivot + rescue
+			var omen_push: float = Tuning.Evil.OMEN_PUSH_STAKES if Burdens.omen_push(w, v, nominee) else 0.0  # a real Ill-Omened (Michael, Nov 21)
+			stakes = (0.55 + (0.30 if nominee == w.evil_plan.get("scapegoat", "") else 0.0) + omen_push) * pivot + rescue
 		var detail = "%s on %s (good self: %s)" % ["YES" if evil_yes else "no", nominee, "yes" if sh_yes else "no"]
 		return evil_yes if evil_override(w, v, "vote", stakes, 0.6, detail) else sh_yes
 	reconsider(w, v, "thinking it over before the vote")
