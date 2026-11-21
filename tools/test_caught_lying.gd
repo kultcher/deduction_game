@@ -89,6 +89,11 @@ func _init() -> void:
 	var ev = w.npcs.filter(func(m): return m.is_evil())[0]
 	var e2: Dictionary = {"role": "martyr", "day": 1, "data": {"target": ev.id, "evil": true}, "text": "x"}
 	_check(not Social.caught_lying(w, ev, reader.id, "reading", {"entry": e2}), "an evil NPC knows a reading naming it evil is true")
+	# An evil NPC knows its own nights too: told it was out when it was home (Codex on #506).
+	var ev2 = w.npcs.filter(func(m): return m.is_evil())[0]
+	ev2.history[w.time_key(1, C.NIGHT)] = "home:" + ev2.home_block
+	Social._deliver(w, teller, ev2, {"kind": "sighting", "about": ev2.id, "block": "market", "day": 1, "from": teller.id, "key": "sighting:%s:1" % ev2.id})
+	_check(_caught(w, ev2, teller) == 1, "an evil NPC told it was out on a night it spent at home trusts the teller less too")
 	# The player's own word never counts here.
 	_check(not Social.caught_lying(w, me, "player", "sighting", {"day": 1}), "the player's own card isn't an NPC's lie")
 	print("Caught lying about me: %d checks, %d failures" % [checks, fails])

@@ -394,12 +394,13 @@ static func _deliver(w, s, l, item: Dictionary, public: bool = false, original: 
 		w.dlog.think(s.id, "lie", "Told %s %s." % [l.name, desc], {"lie": true})
 		if not public and s.is_evil() and not l.is_evil() and item.get("kind", "") in ["sighting", "opinion"] and s.id == str(w.evil_plan.get("daily_planter", "")):
 			w.evil_plan["plants_today"] = int(w.evil_plan.get("plants_today", 0)) + 1
+	# An evil listener knows its own nights too (Codex on #506): checked before its branch below.
+	_check_caught_lying(w, l, item)
 	if l.is_evil():
 		Evil.intel_from_share(w, l, s, item)
 		if item["kind"] == "secret":
 			l.known_secrets[item["about"]] = s.id
 		return
-	_check_caught_lying(w, l, item)
 	# Repeats are handled by the listener's ledger (same reading never stacks).
 	# The teller's credibility is applied live by the listener's ledger (rel = the source).
 	var wgt = clampf(Tuning.Social.HEARSAY_TRUST_SCALE * l.npc_trust.get(s.id, 0.5), 0.0, Tuning.Social.HEARSAY_WEIGHT_CAP)
