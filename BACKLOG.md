@@ -39,7 +39,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     6. \*Anger reasons `[decided]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
     1. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
@@ -51,14 +50,13 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Vigil request and reward rework `[deferred]`
   3. What does Insight do now? `[deferred]`
   4. The Breathstealer overhaul `[decided: add; option open]`
-  5. The secrets rework `[decided; values open]`
+  5. \*The secrets rework `[decided; values open]`
   6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
   7. Player toolbox `[open]`
   8. Scoring system `[open]`
   9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
-  1. \*Minion gifts: the Poisoner's visit `[decided]`
-  2. Duty claim vs reading
+  1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case `[deferred, Michael, Nov 13]`
   2. Presenting a card to one NPC
@@ -72,6 +70,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. Gift doubt for readings the judge doesn't check `[open]`
   6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
   7. Observable actions as evidence (Stage 1B) `[tentative]`
+  8. \*A sighting places its teller `[decided]`
+  9. Being lied about can pull in evidence that clears the liar `[open]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -150,6 +150,9 @@ Lantern). Nothing is open here.
   - It reuses the existing weight, scaled by the listener's trust in the reader.
 
   Owner Quill, with Lantern and Beadle reviewing. [decided]
+  - **Built** (Quill, Nov 20, `claude/self-doubt-poisoner`, stacked on #445; handoff
+    `2026-11-20-1945-quill-self-doubt-poisoner.md`). With it, both Poisoner floors add to
+    a clear rather than override it (Lantern). [in review]
 
 ### NPC behaviour
 
@@ -261,24 +264,20 @@ Lantern). Nothing is open here.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
   - **Approved (Michael, Nov 19):** the NPC voices the standing grievance the player has
     repaired least, and the line replaces its refusal line.
+  - **Lines approved (Michael, Nov 21):** Herald's 17-reason batch, as drafted. The
+    broken-promise line stays generic for wards and vigils; a vigil-specific line waits for
+    "Vigil request and reward rework" (section 4).
+    - The broken promise keeps "You promised me a {promise}…" for both wards and vigils.
+    - `spread_my_secret` keeps "I won't forget that easily".
+    - `nominated_my_friend` keeps "I can't look at you the same".
+    - **When it's built:** when Beadle's anger hook lands, in batches if that's easier. Herald is
+      writing the other 14 voices now.
 
 ### Numbers
 
 ### Tentative social tuning (Oct 20–21 discussion)
 
 Candidates for a unified retuning proposal, not approved changes.
-
-- **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
-  that night" or "the death happened on another block", as attributed defences rather
-  than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-  - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
-    the town moves block to block.
-  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
-    the podium press of a sighting and the private press, as speech with no weight; a quiet
-    night isn't argued when the defender knows of a possible thwart. Approved block wording in
-    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
-    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
-    [in review]
 
 ### UI
 
@@ -391,6 +390,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
     credit on what the listener can observe; avoid crediting promise, protection and
     outcome twice. [decided: direction; amounts open]
+  - **A vigil-specific anger line** (Michael, Nov 21): the broken-promise anger line stays
+    generic for wards and vigils until this rework settles how vigils are asked for; then
+    Herald writes the vigil one.
 
   [deferred]
 
@@ -462,7 +464,11 @@ The one performance item, "Late-game meeting and presenting cost", is in
   can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
   Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
   "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
-  Marked, Unrequited and Ill-Omened (known); draft note and open questions in
+  Marked, Unrequited and Ill-Omened (known); one burden per script for now. Michael
+  answered every open question the same day, and chose judge model A. **Prototype stage 1
+  started** (Michael approved, Nov 20) on `mock/burdens-slot`: Lantern on the slot world domain
+  with Marked known, Beadle on Marked's disclosure, defence and bluff, and both retiring the
+  Lovers and Sleepwalker 1.0. All in
   [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
@@ -525,23 +531,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 Patterns that come up in play, or that the mechanics make meaningful, but that the Case
 Workshop and the shared model can't express yet.
-
-- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
-  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
-  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
-  fix Seneschal approved; the route version merged in #429). **Michael (Nov 20, later):** a
-  candidate is a person spotted whose destination was on the failed reader's block, not
-  anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
-  **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
-  Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
-  destination is spread over the town. **Declined (Michael, Nov 20):** the fuller
-  Poisoner-presence factor in the judge. Nobody can verify that a reading was mistaken, so the
-  judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
-  This item closes when #445 merges. The other two Minion gifts are
-  built and closed (Quill, Nov 20). Owner Quill. [decided]
-  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
-    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
-    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a
@@ -648,6 +637,35 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     double count in the hub.
 
   **[tentative]**
+
+- **A sighting places its teller** (Michael, Nov 20; from seed 100002, found on #454).
+  - **The change:** an honest street sighting places its teller on that block that night, and
+    a window sighting places them at home. It's a hard fact in the movement check, in both
+    the GDScript and C# paths.
+  - **Why:** today a sighting constrains only the person seen. On 100002, Hollis (the Demon,
+    who lives on the Hill) "saw" Edda on the Market, the block where Agnes was killed that
+    night. Unless he lied, that puts him at the scene, but the judge never sees it, so his lie
+    hardly counts against him: 43% → 45% without Jory's watch.
+  - **Measure, in game terms:**
+    - how much a fake sighting now counts against its teller;
+    - seed 100002, before and after;
+    - the win and hanging shifts over 40 games.
+
+    Re-baseline golden.
+
+  Owner Lantern. [decided]
+
+- **Being lied about can pull in evidence that clears the liar** (Michael, Nov 20; seed
+  100002).
+  - **What happened:** Edda's core, re-anchored on the night she was lied about, takes in a
+    rumour that "one of Bart and Jory is Delusional". That undercuts Jory's watch of Hollis,
+    and Hollis falls 78% → 71% overall.
+  - **Held until "A sighting places its teller" lands.** Lantern then re-runs 100002 and
+    reports whether it still matters.
+  - **Interim:** #454's check (#139) uses Michael's option (a). It reads the card's effect
+    within its own night, and its comment points to this item.
+
+  Owner Lantern. [open]
 
 ## Tabled
 

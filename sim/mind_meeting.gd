@@ -886,6 +886,11 @@ static func _public_accusation(w, n, lines: Array = [], facts: Array = []):
 				w.dlog.think(n.id, "accuse", "Evil patience: waits for a good voice against %s before echoing teammates." % sg)
 				return null
 		t = w.by_id[sg]
+		if Evil.martyr_bluff_chosen(n) == sg:
+			# A Martyr bluff keeps quiet against its own chosen: leading the cry against the one
+			# it "gave its life for" would be a tell. Its frame comes after they hang (Michael, Nov 20).
+			w.dlog.think(n.id, "accuse", "Martyr bluff: leaves the case against %s, its 'chosen', to others." % sg)
+			return null
 		s2 = 0.8
 		why = Evil.bluff_reason(w, n, t)
 	var acc_resent: float = 0.0
@@ -1205,6 +1210,15 @@ static func _evil_counter_or_pass(w, n, m: Dictionary, ev) -> Variant:
 	return null
 
 static func _evil_nomination(w, n, m: Dictionary, block: String):
+	var res = _evil_nomination_choice(w, n, m, block)
+	var chosen: String = Evil.martyr_bluff_chosen(n)
+	if res != null and chosen != "" and str(res.get("nominee", "")) == chosen:
+		# A Martyr bluff never nominates its own chosen (Michael, Nov 20): too loud a tell.
+		w.dlog.think(n.id, "team_strategy", "Martyr bluff: won't be the one to nominate %s, its 'chosen'." % chosen)
+		return null
+	return res
+
+static func _evil_nomination_choice(w, n, m: Dictionary, block: String):
 	var ev = Evil.evil_nomination(w, n)
 	if not C.SHADOW_SELF:
 		return ev

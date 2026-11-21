@@ -44,22 +44,49 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the pressure of silence): `baseline_c1cce1b`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
 
-`tools/golden/baseline_c1cce1b/` is the capture from `claude/beadle-silence` at `c1cce1b` (main at
-`554f2f4`, after #448, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion to accuse in a meeting's first pass; a meeting that
-turns up fewer than three useful things runs its speaking order once more, with the floor waived
-and nervous good NPCs pushed to speak (Michael, Nov 20 and 21).
-- **Divergence from `baseline_66be26f`:** every seed on day 1, at the first meeting (records 7-11),
-  where an accusation under the floor no longer happens and the beliefs that follow differ.
+`tools/golden/baseline_1d59c5a/` is the capture from `claude/beadle-martyr-bluff-quiet` at `1d59c5a`
+(main at `8d60e8e`, after #455, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_8d60e8e`:** only 692, at record 228 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
+
+`tools/golden/baseline_8d60e8e/` is the capture from `claude/self-doubt-poisoner` at `8d60e8e` (main at
+`bcc702a`, merged in). A listener who hears a reader say its gift may have been turned nudges
+suspicion toward anyone seen on that reader's block on a night it read, as an accepted Mistaken call
+does; and the Poisoner nudges (the strongest one, once) now add to a clear instead of overriding it.
+- **Divergence from `baseline_6836d21`:** one seed.
+  - **42**, record 35 (Nisha's refresh, day 2 afternoon): Agnes, seen on a self-doubting
+    reader's block, is pressed a little more (requested 0.113 to 0.146).
+  - 54875, 692, 900 and 98933 are identical. (On earlier baselines 54875 also moved, where a
+    cleared Isolde was nudged; since #444 that refresh no longer arises.)
+- **Outcomes:** unchanged on all five seeds (the same hangings).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
+
+`tools/golden/baseline_6836d21/` is the capture from `claude/joint-reasons-combined` at `6836d21`
+(main at `03968fd` after #448, merged in). A "taken together" reason names only two cards the
+belief model weighed together. An NPC's own reading counts as known to the town or the
+Demonologist by the reading itself (shared, claimed, or cited in a presentation to them), not by
+the cards cited with it, so a reading already shared is no longer "revealed" again. This replaces
+the PR's earlier `baseline_d9f8005` and `baseline_1fe73e4`, taken on older mains.
+- **Divergence from `baseline_66be26f`:** 692 from record 67 and 900 from 41 (both the day 2
+  meeting: an accusation no longer hints at a private reason). 42 diverges at record 71 and
+  54875 at record 51, each at a refresh after a different line in talk. 98933 is identical.
 - **Outcomes:**
-  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
-    day 4 before).
-  - **54875:** hangs Edda on day 1 (day 2 before), then Odette and Jory (Agnes before).
-  - **692:** the same hangings (Constance, Lian).
-  - **900:** hangs Isolde on day 2 instead of Greta.
-  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
-  - No winner by day 4 on 54875, 692, 900 or 98933.
+  - **54875:** the town hangs Edda on day 1 instead of day 2, then Greta (the Poisoner) on
+    day 2, instead of Agnes on day 3. No winner by day 4 either way.
+  - **692:** Constance (the Demon) on day 2 as before. Lian is no longer hanged on day 3.
+    No winner by day 4 either way.
+  - **42 and 900:** the same hangings (none in 42; Greta in 900); only what is said differs.
+  - **98933:** unchanged.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
