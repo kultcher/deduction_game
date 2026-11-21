@@ -42,6 +42,16 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 		}
 	return cache[key]
 
+## The people whose hanged Ill-Omened claim may have poisoned this reading (LiveAssessment
+## tags it with "omen_claimants"), as a bit mask over ids.
+static func omen_mask(ids: Array, card: Dictionary) -> int:
+	var m: int = 0
+	for c in card.get("omen_claimants", []):
+		var i: int = ids.find(str(c))
+		if i >= 0:
+			m |= 1 << i
+	return m
+
 ## The burdens a secret_claim card can name, as RoleConstraints.cs reads them (slot 19: the
 ## world modifier code plus one). A good claimant's claim holds in the world (they know their
 ## own burden); an evil one's may be a bluff. Two claims to the one burden dealt can't both be
@@ -225,6 +235,9 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 
 	var seer_on: bool = seer_flag(cards)
 	var mediums_mask: int = relay_mediums(ids, cards)
+	var omen_all: int = 0
+	for oc in cards:
+		omen_all |= omen_mask(ids, oc)
 
 	var header := PackedInt32Array([
 		ids.size(),
@@ -241,7 +254,7 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 		1 if use_coarse_memo else 0,
 		1 if seer_on else 0,
 		mediums_mask,
-		0,  # reserved: was the Sleepwalker claimants (retired, burdens rework)
+		omen_all,  # the hanged Ill-Omened claimants whose windows cover these cards
 	])
 
 	var events: Array = view.get("timeline", {}).get("events", [])
@@ -281,6 +294,8 @@ static func _eval_cs_weights(view: Dictionary, ids: Array, universe: Array, u_ha
 			flags |= (1 << 2)
 		if bool(card.get("content_only", false)):
 			flags |= (1 << 16) # RoleConstraints.FlagContentOnly
+		if omen_mask(ids, card) != 0:
+			flags |= (1 << 18) # RoleConstraints.FlagOmenWindow
 
 		var src_str: String = str(card.get("source", ""))
 		var src_idx: int = ids.find(src_str)
@@ -532,6 +547,10 @@ static func relay_mediums(ids: Array, cards: Array) -> int:
 				bits |= 1 << medium
 		# Independent of the relay: a relayed reading needs its teller in the key too, and so
 		# does whoever claims to be the Delusional (their claim is checked in good worlds).
+		for c in card.get("omen_claimants", []):
+			var oi: int = ids.find(str(c))
+			if oi >= 0:
+				bits |= 1 << oi
 		if card.get("kind", "") == "report" or (burden_code(card) > 0 and str(card.data.secret_kind) != "marked"):
 			var teller: int = ids.find(str(card.get("source", "")))
 			if teller >= 0:

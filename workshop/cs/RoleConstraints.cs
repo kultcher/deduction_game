@@ -63,6 +63,9 @@ internal static class RoleConstraintsKernel
     /// (role_constraints.gd): it carries FlagMartyrEvil's check (which, like every reading's
     /// content, a world whose Delusional holder is the Martyr skips in play).
     public const int FlagMartyrPromise = 1 << 17;
+    /// A reading inside a hanged Ill-Omened claimant's window (burdens prototype); header[14]
+    /// holds those claimants.
+    public const int FlagOmenWindow = 1 << 18;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
     // A KindSecretClaim card's burden (slot 19; role_constraints.gd): the world modifier code
@@ -681,7 +684,12 @@ internal static class RoleConstraintsKernel
             // doesn't excuse them (Bailiff's run of test_connections_pairings, #194).
             bool deludedReader = live && !contentOnly && source != ownPersonIdx
                 && world.EffectiveModifier == WorldEntry.ModDelusional && (world.Holders & (1 << source)) != 0;
-            if (deludedReader && roleId != RoleMartyr && roleId != RoleExecutor && roleId != RoleVeteran)
+            // A reading under a fallen omen (burdens prototype): every good person was poisoned
+            // that night, the listener too, so its content says nothing in worlds where the
+            // hanged claimant truly held Ill-Omened.
+            bool omenReader = live && !contentOnly && (flags & FlagOmenWindow) != 0
+                && world.EffectiveModifier == WorldEntry.ModIllOmened && (world.Holders & headerInts[14]) != 0;
+            if ((deludedReader || omenReader) && roleId != RoleMartyr && roleId != RoleExecutor && roleId != RoleVeteran)
             {
                 continue;
             }

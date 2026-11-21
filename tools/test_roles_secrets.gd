@@ -64,6 +64,7 @@ func _run_roster() -> void:
 func _run_chunk4_psychologist_mudd() -> void:
 	_test_secret_domain_and_premise()
 	_test_burden_claim()
+	_test_omen_window()
 	_test_retired_secret_in_saved_script()
 
 
@@ -214,3 +215,38 @@ func _test_burden_claim() -> void:
 	var both_good: bool = both.any(func(w): return not (int(w.evil) & (1 << 1)) and not (int(w.evil) & (1 << 2)))
 	_check(not both.is_empty() and not both_good, "two Marked claims can't both come from good people (%d worlds left)" % both.size())
 	RC.burden_claims_bind = was_bind
+
+
+## Ill-Omened (burdens prototype): a reading inside a hanged claimant's window is unhealthy in
+## worlds where the claimant truly held the burden (every good person was poisoned), so it
+## counts for less than the same reading outside one, but not nothing (the claimant may have
+## bluffed).
+func _test_omen_window() -> void:
+	var people: Array = []
+	for i in range(7):
+		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": i != 0})
+	var view: Dictionary = {
+		"people": people, "evil_count": 2, "alignment_epoch": "Original alignment",
+		"world_options": {"modifiers": ["delusional", "marked", "unrequited", "ill_omened"], "roles": true, "identities": true, "bluffs": true},
+	}
+	var seer: Dictionary = {"id": "os1", "fact_id": "os1", "kind": "report", "role": "seer", "source": people[4].id,
+		"observed_at": {"day": 2, "phase": "night"}, "night": 2, "data": {"pair": [people[1].id, people[3].id], "yes": true}, "text": "Seer yes"}
+	var post = func(cards: Array) -> float:
+		var cs = Solver.empty_case()
+		cs.conclusion = {"type": "demon", "target": people[1].id, "at": "Original alignment"}
+		cs.cards = cards.map(func(c): return c.id)
+		view["cards"] = cards
+		preload("res://workshop/caches.gd").clear_all()
+		return float(CaseEval.evaluate(view, cs).posterior)
+	# The hanged claimant restated Ill-Omened at the nomination (a real hanging arms the omen
+	# only then), so the listener holds the claim in both arms.
+	var omen_claim: Dictionary = {"id": "oc1", "fact_id": "oc1", "kind": "secret_claim", "source": people[0].id, "subject": people[0].id,
+		"observed_at": {"day": 2, "phase": "afternoon"}, "night": -1, "applies": {"from": 0, "through": 2},
+		"data": {"secret_kind": "ill_omened"}, "text": "claims Ill-Omened at the nomination"}
+	var prior: float = post.call([omen_claim])
+	var plain: float = post.call([omen_claim, seer])
+	var poisoned: Dictionary = seer.duplicate(true)
+	poisoned["omen_claimants"] = [people[0].id]
+	var under: float = post.call([omen_claim, poisoned])
+	print("Omen window: P(the Seer's pair-mate is the Demon) prior %.3f, the yes %.3f, the yes under a fallen omen %.3f" % [prior, plain, under])
+	_check(under < plain - 0.02 and under > prior, "a reading under a fallen omen counts for less than the same reading, but still counts (%.3f < %.3f, > %.3f)" % [under, plain, prior])

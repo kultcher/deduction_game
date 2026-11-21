@@ -149,7 +149,7 @@ static var _valid_cache: Dictionary = {}
 
 ## Per world: can this card's source give a healthy reading? (cached per card and universe)
 static func _valid_table(view: Dictionary, card: Dictionary) -> PackedByteArray:
-	var ref: Array = [Solver._universe_key(view), card.kind, card.get("source", ""), card.get("observed_at", {}), card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at"), card.get("duty_only", false)]
+	var ref: Array = [Solver._universe_key(view), card.kind, card.get("source", ""), card.get("observed_at", {}), card.get("role", ""), view.get("timeline", {}), card.get("testimony_only", false), card.get("reported_at"), card.get("duty_only", false), card.get("omen_claimants", [])]
 	var key: int = hash(ref)
 	if _valid_cache.has(key) and _valid_cache[key].ref == ref:
 		return _valid_cache[key].out
