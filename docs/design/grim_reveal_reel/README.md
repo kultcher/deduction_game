@@ -165,3 +165,7 @@ her burden tag).
 - **The fakeout:** the false card (Seer) flips and starts to push out. Then it tears in half
   along a ragged line, and the halves fly apart and fall. The real card (Poisoner) is
   already face up underneath, and it pushes out. The false name is struck through.
+
+**Michael, Nov 21:** going with card version 1 (the alternating arcs, cards sliding back
+under the deck) and the torn-card fakeout. Keep the other mockups (the wheel, the slot and
+card version 2): they may come back later, or alternate with version 1.
