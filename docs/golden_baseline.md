@@ -44,7 +44,26 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
+### Current baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
+
+`tools/golden/baseline_5f4629f/` is the capture from `claude/beadle-silence` at `5f4629f` (main at
+`c2c5653`, after #412, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion
+to accuse in a meeting's first pass; a meeting that turns up fewer than three useful things runs
+its speaking order once more, with the floor waived and nervous good NPCs pushed to speak
+(Michael, Nov 20 and 21).
+- **Divergence from `baseline_1d59c5a`:** every seed on day 1, at the first meeting (records 7-11),
+  where an accusation under the floor no longer happens and the beliefs that follow differ.
+- **Outcomes:**
+  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
+    day 4 before).
+  - **54875:** hangs Edda on day 1, then Odette and Jory (Greta on day 2 before).
+  - **692:** hangs Constance on day 2 as before, then Lian on day 3.
+  - **900:** hangs Isolde on day 2 instead of Greta.
+  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
+  - No winner by day 4 on 54875, 692, 900 or 98933.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
 
 `tools/golden/baseline_1d59c5a/` is the capture from `claude/beadle-martyr-bluff-quiet` at `1d59c5a`
 (main at `8d60e8e`, after #455, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
