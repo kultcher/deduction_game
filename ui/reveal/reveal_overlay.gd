@@ -33,7 +33,7 @@ const SUMMARY = "You named %d of the %d evil rightly."
 
 const CARD_W = 0.90
 const CARD_H = 0.74
-const SHEET_PAD = 0.015
+const SHEET_PAD = 0.01
 const TILE = 56
 
 var g
@@ -118,10 +118,10 @@ func _build() -> void:
 	_moments.name = "Moments"
 	_moments.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_moments.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_moments.add_theme_font_size_override("font_size", 20)
+	_moments.add_theme_font_size_override("font_size", 18)
 	_moments.anchor_left = 0.1
 	_moments.anchor_right = 0.9
-	_moments.anchor_top = 0.09 + CARD_H
+	_moments.anchor_top = 0.09 + CARD_H + SHEET_PAD + 0.004   # below the paper sheet (Limner's shots: line one hid under it)
 	_moments.anchor_bottom = 0.9
 	_stage.add_child(_moments)
 	var bar = HBoxContainer.new()
