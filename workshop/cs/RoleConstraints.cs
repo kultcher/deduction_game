@@ -77,10 +77,13 @@ internal static class RoleConstraintsKernel
     public const int PoolAny = 3;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static long CoarseMask(int people, WorldEntry w, bool seer, int mediums)
+    public static long CoarseMask(int people, WorldEntry w, int markedMask, int mediums)
     {
         long n = people + 1L;
-        long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + (seer ? ((long)w.Marked + 1L) : 0L);
+        long m = (markedMask != 0 && w.Marked >= 0 && (markedMask & (1 << w.Marked)) != 0)
+            ? ((long)w.Marked + 1L)
+            : 0L;
+        long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + m;
         if (mediums != 0)
         {
             // Which of these people hold a one-holder burden, and which burden. The low 16 bits
@@ -102,14 +105,98 @@ internal static class RoleConstraintsKernel
         return mask;
     }
 
-    public static long[] CoarseMasks(int people, long[] packedWorlds, bool seer, int mediums)
+    public static long[] CoarseMasks(int people, long[] packedWorlds, int markedMask, int mediums)
     {
         long[] outMasks = new long[packedWorlds.Length];
         for (int i = 0; i < packedWorlds.Length; i++)
         {
-            outMasks[i] = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums);
+            outMasks[i] = CoarseMask(people, new WorldEntry(packedWorlds[i]), markedMask, mediums);
         }
         return outMasks;
+    }
+
+    /// <summary>
+    /// Extracts [source, relayer, stmtTick, forbiddenBits] quads for every unquoted, non-contentOnly
+    /// KindClaim card with a non-zero forbidden-burden mask.
+    /// </summary>
+    public static int[] ExtractForbiddenSpecs(int[] cardInts, int baseCardCount)
+    {
+        List<int>? list = null;
+        for (int c = 0; c < baseCardCount; c++)
+        {
+            int off = c * CardStride;
+            if (cardInts[off] != KindClaim)
+            {
+                continue;
+            }
+            int flags = cardInts[off + 1];
+            if ((flags & (FlagQuoted | FlagContentOnly)) != 0)
+            {
+                continue;
+            }
+            int forbidden = cardInts[off + 13];
+            if (forbidden == 0)
+            {
+                continue;
+            }
+            list ??= new List<int>(16);
+            list.Add(cardInts[off + 2]); // source
+            list.Add((flags & FlagHasRelaySource) != 0 ? cardInts[off + 6] : -1); // relayer
+            list.Add(cardInts[off + 12]); // stmtTick
+            list.Add(forbidden);
+        }
+        return list != null ? list.ToArray() : Array.Empty<int>();
+    }
+
+    /// <summary>
+    /// True iff any good claimant (good at claim time, not behind an evil relayer in play)
+    /// holds a burden forbidden for their claimed role (impossible pairs; Michael, Nov 21).
+    /// Pure binary kill: lets CoarseMask omit forbidden-burden claimants and global Marked splits.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool HasForbiddenPair(
+        WorldEntry world,
+        int[] forbiddenSpecs,
+        bool live,
+        bool viewIsEmpty,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil)
+    {
+        int evil = world.Evil;
+        bool worldHasConverted = world.HasConverted;
+        int worldConverted = worldHasConverted ? world.ConvertedRaw : -1;
+        int count = forbiddenSpecs.Length;
+        for (int i = 0; i < count; i += 4)
+        {
+            int source = forbiddenSpecs[i];
+            if (source < 0)
+            {
+                continue;
+            }
+            int relayer = forbiddenSpecs[i + 1];
+            if (live && relayer >= 0 && (evil & (1 << relayer)) != 0)
+            {
+                continue;
+            }
+            bool sourceEvil = (evil & (1 << source)) != 0;
+            if (worldHasConverted && !viewIsEmpty && !sourceEvil && worldConverted == source && hasCurse)
+            {
+                int stmtTick = forbiddenSpecs[i + 2];
+                sourceEvil = stmtTick >= curseFrom && stmtTick < curseUntil;
+            }
+            if (sourceEvil)
+            {
+                continue;
+            }
+            int held = world.Marked == source ? WorldEntry.ModMarked
+                : ((world.Holders & (1 << source)) != 0 ? world.EffectiveModifier : -1);
+            if (held >= 0 && (forbiddenSpecs[i + 3] & (1 << held)) != 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>
@@ -216,18 +303,27 @@ internal static class RoleConstraintsKernel
         return nCandidates > 0 ? totalWeight / (double)nCandidates : 0.0;
     }
 
-    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, bool seer, int mediums)
+    public static double[] TryLookupMemo(int memoSlot, int people, long[] packedWorlds, int markedMask, int mediums)
     {
-        var memo = SolverContext.GetRoleConstraintMemo(memoSlot);
-        if (memo == null || memo.Count == 0)
+        var entry = SolverContext.GetRoleConstraintMemo(memoSlot);
+        if (entry == null || !entry.Populated)
         {
             return Array.Empty<double>();
         }
+        var memo = entry.Weights;
+        var forbiddenSpecs = entry.ForbiddenSpecs;
+        bool hasForbidden = forbiddenSpecs.Length > 0;
         int n = packedWorlds.Length;
         var outWeights = new double[n];
         for (int i = 0; i < n; i++)
         {
-            long mask = CoarseMask(people, new WorldEntry(packedWorlds[i]), seer, mediums);
+            var world = new WorldEntry(packedWorlds[i]);
+            if (hasForbidden && HasForbiddenPair(world, forbiddenSpecs, entry.Live, entry.ViewIsEmpty, entry.HasCurse, entry.CurseFrom, entry.CurseUntil))
+            {
+                outWeights[i] = 0.0;
+                continue;
+            }
+            long mask = CoarseMask(people, world, markedMask, mediums);
             if (!memo.TryGetValue(mask, out double val))
             {
                 return Array.Empty<double>();
@@ -253,8 +349,13 @@ internal static class RoleConstraintsKernel
         }
 
         int peopleCount = headerInts[0];
+        bool live = headerInts[1] != 0;
+        bool viewIsEmpty = headerInts[2] != 0;
+        bool hasCurse = headerInts[3] != 0;
+        int curseFrom = headerInts[5];
+        int curseUntil = headerInts[6];
         bool reuseMemo = headerInts[11] != 0;
-        bool seerFlag = headerInts[12] != 0;
+        int markedMask = headerInts[12];
         int mediumsMask = headerInts[13];
 
         int baseCardCount = cardInts.Length / CardStride;
@@ -268,15 +369,23 @@ internal static class RoleConstraintsKernel
             }
         }
         int[] relayMediumSourceIndices = relayInferredSources.Count > 0 ? relayInferredSources.ToArray() : Array.Empty<int>();
+        int[] forbiddenSpecs = ExtractForbiddenSpecs(cardInts, baseCardCount);
+        bool hasForbidden = forbiddenSpecs.Length > 0;
 
-        var persistentMemo = SolverContext.GetRoleConstraintMemo(memoSlot);
-        bool useMemo = reuseMemo || persistentMemo != null;
+        var persistentEntry = SolverContext.GetRoleConstraintMemo(memoSlot);
+        bool useMemo = reuseMemo || persistentEntry != null;
         if (!useMemo)
         {
             for (int i = 0; i < uLen; i++)
             {
+                var world = new WorldEntry(packedWorlds[i]);
+                if (hasForbidden && HasForbiddenPair(world, forbiddenSpecs, live, viewIsEmpty, hasCurse, curseFrom, curseUntil))
+                {
+                    outWeights[i] = 0.0;
+                    continue;
+                }
                 outWeights[i] = FitsViewSingle(
-                    new WorldEntry(packedWorlds[i]),
+                    world,
                     headerInts,
                     publicRolesInts,
                     forcedLampIndices,
@@ -287,11 +396,27 @@ internal static class RoleConstraintsKernel
             return outWeights;
         }
 
-        var memo = persistentMemo ?? new Dictionary<long, double>(Math.Min(uLen, 256));
+        if (persistentEntry != null && !persistentEntry.Populated)
+        {
+            persistentEntry.ForbiddenSpecs = forbiddenSpecs;
+            persistentEntry.Live = live;
+            persistentEntry.ViewIsEmpty = viewIsEmpty;
+            persistentEntry.HasCurse = hasCurse;
+            persistentEntry.CurseFrom = curseFrom;
+            persistentEntry.CurseUntil = curseUntil;
+            persistentEntry.Populated = true;
+        }
+
+        var memo = persistentEntry?.Weights ?? new Dictionary<long, double>(Math.Min(uLen, 256));
         for (int i = 0; i < uLen; i++)
         {
             var world = new WorldEntry(packedWorlds[i]);
-            long mask = CoarseMask(peopleCount, world, seerFlag, mediumsMask);
+            if (hasForbidden && HasForbiddenPair(world, forbiddenSpecs, live, viewIsEmpty, hasCurse, curseFrom, curseUntil))
+            {
+                outWeights[i] = 0.0;
+                continue;
+            }
+            long mask = CoarseMask(peopleCount, world, markedMask, mediumsMask);
             if (!memo.TryGetValue(mask, out double w))
             {
                 w = FitsViewSingle(

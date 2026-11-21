@@ -306,21 +306,21 @@ public partial class SolverBridge : RefCounted
 
     // --- Slice C1: RoleConstraints Entry Points (Direct & Handle-Backed) ---
 
-    public static long RoleCoarseMask(int people, long packedWorld, bool seer, int mediums) =>
-        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), seer, mediums);
+    public static long RoleCoarseMask(int people, long packedWorld, int markedMask, int mediums) =>
+        RoleConstraintsKernel.CoarseMask(people, new WorldEntry(packedWorld), markedMask, mediums);
 
-    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, bool seer, int mediums) =>
-        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, seer, mediums);
+    public static long[] RoleCoarseMasks(int people, long[] packedWorlds, int markedMask, int mediums) =>
+        RoleConstraintsKernel.CoarseMasks(people, packedWorlds, markedMask, mediums);
 
     public static long[] RoleCoarseMasksByHandle(
         int people,
         int universeHandle,
         int[] subsetIndices,
         long[] fallbackWorlds,
-        bool seer,
+        int markedMask,
         int mediums) =>
         RoleConstraintsKernel.CoarseMasks(
-            people, SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), seer, mediums);
+            people, SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds), markedMask, mediums);
 
     public static double RoleSeerRhWeight(int candidatesMask, int demon, int marked, int[] readingInts) =>
         RoleConstraintsKernel.SeerRhWeight(candidatesMask, demon, marked, readingInts);
@@ -362,13 +362,13 @@ public partial class SolverBridge : RefCounted
         int universeHandle,
         int[] subsetIndices,
         long[] fallbackWorlds,
-        bool seer,
+        int markedMask,
         int mediums) =>
         RoleConstraintsKernel.TryLookupMemo(
             memoSlot,
             people,
             SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
-            seer,
+            markedMask,
             mediums);
 
     public static double[] RoleFitsWeightsMemoByHandle(
@@ -690,10 +690,11 @@ public partial class SolverBridge : RefCounted
         double[] q,
         int[] testTargetSpecs,
         int[] moveFactorSpecs,
-        double[] moveFactorDoubles) =>
+        double[] moveFactorDoubles,
+        int[] forbiddenSpecs) =>
         CaseEvalKernel.CompileEquivalenceClasses(
             universeHandle, fallbackWorlds, headerInts, dead, premise,
-            flatTables, flatValids, q, testTargetSpecs, moveFactorSpecs, moveFactorDoubles);
+            flatTables, flatValids, q, testTargetSpecs, moveFactorSpecs, moveFactorDoubles, forbiddenSpecs);
 
     public static int[] CaseEvalGetCompiledInts(int ccHandle) =>
         CaseEvalKernel.GetCompiledCaseInts(ccHandle);
@@ -710,10 +711,16 @@ public partial class SolverBridge : RefCounted
         int nc,
         int kOwn,
         byte[] flatTables,
-        byte[] flatValids)
+        byte[] flatValids,
+        int universeHandle,
+        long[] fallbackWorlds,
+        int ownBurdenMe,
+        int ownBurdenMod,
+        int ownBurdenHiddenMask)
     {
         var (ns, of, flatCodes, counts) = CaseEvalKernel.CompileOwnCounts(
-            ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids);
+            ccHandle, fallbackClassOf, nc, kOwn, flatTables, flatValids,
+            universeHandle, fallbackWorlds, ownBurdenMe, ownBurdenMod, ownBurdenHiddenMask);
         _lastOwnOf = of;
         _lastOwnFlatCodes = flatCodes;
         _lastOwnCounts = counts;

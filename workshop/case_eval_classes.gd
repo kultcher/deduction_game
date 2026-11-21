@@ -73,8 +73,6 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 			key_input.append(str(view.get("own_home", {}).get("self", "")))
 	if cards.any(func(c): return c.get("testimony_only", false)):
 		key_input.append(cards.map(func(c): return [c.get("testimony_only", false), c.get("reported_at")]))
-	if not view.get("own_burden", {}).is_empty():
-		key_input.append(["own_burden", view.own_burden])
 	if cards.any(func(c): return c.get("role", "") == "augur") and not case_data.get("reading_challenges", {}).is_empty():
 		key_input.append(case_data.get("reading_challenges", {}).keys())
 	if not view.get("regular_haunts", {}).is_empty():
@@ -140,8 +138,6 @@ static func _compile_impl(view: Dictionary, cards: Array, case_data: Dictionary,
 		valids.append(_valid_table(view, card))
 	var premise = _premise_mask(view, conclusion)
 	var live: bool = Domain.live(view)
-	if live:
-		_own_burden_dead(view, universe, dead)
 	var movement: Array = Movement.factors(view, cards, case_data).duplicate()
 	movement.append_array(PublicEvidence.factors(view))
 	movement.append_array(SpeechEvidence.factors(cards))
@@ -180,9 +176,13 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 	var ids: Array = Solver.person_ids(view)
 	var n_people: int = ids.size()
 	var roles_on: bool = bool(view.get("world_options", {}).get("roles", false))
-	var has_curse: bool = view.get("chronology", {}).has("curse")
-	var seer: bool = Solver.Roles.seer_flag(cards)
+	var chrono: Dictionary = view.get("chronology", {})
+	var has_curse: bool = chrono.has("curse")
+	var curse_from: int = int(chrono.curse.get("from", 0)) if has_curse else 0
+	var curse_until: int = int(chrono.curse.get("until", 0)) if has_curse else 0
+	var marked_m: int = Solver.Roles.marked_mask(ids, cards)
 	var mediums: int = Solver.Roles.relay_mediums(ids, cards)
+	var forbidden_specs: PackedInt32Array = Solver.Roles.forbidden_specs(ids, cards) if (live and roles_on) else PackedInt32Array()
 	var curr_conv: bool = Solver._curse_active_at(view, "Current alignment")
 	var concl_at = conclusion.get("at", view.get("alignment_epoch", ""))
 	var concl_conv: bool = Solver._curse_active_at(view, concl_at)
@@ -254,19 +254,21 @@ static func _compile_classes_cs(view: Dictionary, universe: Array, key_input: Ar
 		1 if live else 0,
 		1 if roles_on else 0,
 		1 if has_curse else 0,
-		1 if seer else 0,
+		marked_m,
 		mediums,
 		1 if movement.any(func(f): return f.get("joint_live", false) and not f.get("profiles", []).is_empty() and f.profiles[0].has("unrequited")) else 0,  # Unrequited holders' own column
 		1 if curr_conv else 0,
 		1 if concl_conv else 0,
 		k,
 		1 if movement_ok else 0,
+		curse_from,
+		curse_until,
 	])
 
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("CaseEval.compile", pack_u)
 	var b = SolverBackend._bridge()
-	var cc_h: int = int(b.CaseEvalCompile(u_handle, fallback, header, dead, premise, flat_tables, flat_valids, q_packed, test_specs, move_specs, move_doubles))
+	var cc_h: int = int(b.CaseEvalCompile(u_handle, fallback, header, dead, premise, flat_tables, flat_valids, q_packed, test_specs, move_specs, move_doubles, forbidden_specs))
 	_cc_handles[key] = cc_h
 
 	var raw_ints: PackedInt32Array = b.CaseEvalGetCompiledInts(cc_h)
@@ -435,12 +437,28 @@ static func _test_like(view: Dictionary, cc: Dictionary, listener: Dictionary, o
 static var _own_cache: Dictionary = {}
 
 ## Class counts refined by the listener's own private readings' states (3^own states).
-## Depends only on which own cards there are, so listeners holding the same share it.
+## Helper: world modifier code (0..3) for a burden name, or -1 for none.
+static func _own_burden_mod(kind: String) -> int:
+	return int(Solver.Roles.BURDEN_CODES.get(kind, 0)) - 1
+
+static func _own_burden_hidden_mask() -> int:
+	var m: int = 0
+	for h in ScriptDefRef.HIDDEN_SECRETS:
+		var code: int = _own_burden_mod(str(h))
+		if code >= 0:
+			m |= 1 << code
+	return m
+
+## Depends only on which own cards there are (and any live listener's own_burden filter),
+## so listeners sharing the same compiled case share it without breaking CaseEval.compile reuse.
 static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Dictionary:
-	if own.is_empty():
+	var ob: Dictionary = view.get("own_burden", {}) if Domain.live(view) else {}
+	var ob_me: int = Solver.person_index(view, str(ob.get("self", ""))) if not ob.is_empty() else -1
+	var ob_mod: int = _own_burden_mod(str(ob.get("kind", ""))) if ob_me >= 0 else -1
+	if own.is_empty() and ob_me < 0:
 		return {"states": 1, "counts": cc.count, "of": PackedInt32Array(), "codes": [PackedByteArray()]}
 	# Keyed by the exact compiled case (its input and C# registration), not only a hash.
-	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id))]
+	var ref: Array = [cc.input, cc.get("cs_gen", -1), cc.get("cs_handle", -1), own.map(func(c): return c.get("fact_id", c.id)), ob_me, ob_mod]
 	var key = hash(ref)
 	if cache_enabled and _own_cache.has(key) and _own_cache[key].get("_ref", []) == ref:
 		return _own_cache[key]
@@ -448,13 +466,13 @@ static func _own_counts(view: Dictionary, cc: Dictionary, own: Array) -> Diction
 		_own_cache.clear()
 	var tables: Array = own.map(func(c): return Solver.report_table(view, c))
 	var valids: Array = own.map(func(c): return _valid_table(view, c))
-	var out: Dictionary = _own_counts_cs(cc, own, tables, valids)
+	var out: Dictionary = _own_counts_cs(view, cc, own, tables, valids, ob_me, ob_mod)
 	out["_ref"] = ref
 	if cache_enabled:
 		_own_cache[key] = out
 	return out
 
-static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Array) -> Dictionary:
+static func _own_counts_cs(view: Dictionary, cc: Dictionary, own: Array, tables: Array, valids: Array, ob_me: int = -1, ob_mod: int = -1) -> Dictionary:
 	_ensure_cc_epoch()
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var cc_h: int = _handle_for(cc)
@@ -469,17 +487,26 @@ static func _own_counts_cs(cc: Dictionary, own: Array, tables: Array, valids: Ar
 			flat_tables.append_array(tables[i])
 			flat_valids.append_array(valids[i])
 	var fb_class_of: PackedInt32Array = cc.class_of if cc_h < 0 else PackedInt32Array()
+	var u_handle: int = -1
+	var fb_worlds := PackedInt64Array()
+	if ob_me >= 0:
+		var u_key: String = Solver._universe_key(view)
+		var universe: Array = Solver.universe(view)
+		u_handle = SolverBackend.get_universe_handle(u_key, universe)
+		if u_handle < 0:
+			fb_worlds = SolverBackend.pack_worlds(universe)
+	var hidden_mask: int = _own_burden_hidden_mask() if ob_me >= 0 else 0
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("CaseEval._own_counts", pack_u)
 	var b = SolverBackend._bridge()
-	var ns: int = int(b.CaseEvalCompileOwnCounts(cc_h, fb_class_of, cc.team.size(), k_own, flat_tables, flat_valids))
+	var ns: int = int(b.CaseEvalCompileOwnCounts(cc_h, fb_class_of, cc.team.size(), k_own, flat_tables, flat_valids, u_handle, fb_worlds, ob_me, ob_mod, hidden_mask))
 	var of: PackedInt32Array = b.CaseEvalGetLastOwnOf()
 	var flat_codes: PackedByteArray = b.CaseEvalGetLastOwnFlatCodes()
 	var counts: PackedFloat64Array = b.CaseEvalGetLastOwnCounts()
 	var codes: Array = []
 	codes.resize(ns)
 	for s in range(ns):
-		codes[s] = flat_codes.slice(s * k_own, (s + 1) * k_own)
+		codes[s] = flat_codes.slice(s * k_own, (s + 1) * k_own) if k_own > 0 else PackedByteArray()
 	return {"states": ns, "counts": counts, "of": of, "codes": codes, "_flat_codes": flat_codes}
 
 ## Likelihood factor of one state for a card: holds, healthy but wrong, or no healthy reading.
@@ -1049,7 +1076,12 @@ static func _expand(cc: Dictionary, oc: Dictionary, w: PackedFloat64Array) -> Pa
 	var of: PackedInt32Array = oc.of
 	var out = PackedFloat64Array()
 	out.resize(class_of.size())
+	var has_of: bool = of.size() == class_of.size()
 	for i in range(class_of.size()):
-		var k: int = class_of[i] * ns + (of[i] if ns > 1 else 0)
+		var o: int = of[i] if has_of else 0
+		if o < 0:
+			out[i] = 0.0
+			continue
+		var k: int = class_of[i] * ns + o
 		out[i] = w[k] / counts[k] if counts[k] > 0.0 else 0.0
 	return out
