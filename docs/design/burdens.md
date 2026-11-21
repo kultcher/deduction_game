@@ -1,7 +1,7 @@
 # Burdens: the secrets rework, scoped (design note)
 
-**Status: scoped with Michael (Nov 20, 2026). Every question so far is answered (section 8).
-Nothing is built.** Written by Claude-Vicar from a talk with Michael on Nov 20. It
+**Status: prototype stage 1 started (Michael approved, Nov 20), on `mock/burdens-slot`,
+which never merges. The design questions are answered (sections 1 to 9).** Written by Claude-Vicar from a talk with Michael on Nov 20. It
 builds on [secrets_rework.md](secrets_rework.md), which keeps the earlier reasoning: the two
 kinds, the Saint and Baron worked examples, confidants and plain folk, and Argon's review.
 Where the two disagree, this note is the newer one.
@@ -59,7 +59,7 @@ Where the two disagree, this note is the newer one.
 | **Delusional** | hidden | Stays exactly as built: the holder's gift gives false readings and the holder doesn't know. | evil |
 | **Marked** | known | Kept as built (may read as evil to gifts), but the holder now knows. | evil, through the bluff |
 | **Unrequited** | known | A one-sided infatuation with one person, who may be evil. Visits that person's home at night, and takes more to be swayed against them. | evil, if the beloved is evil |
-| **Ill-Omened** | known | Hang them and every good gift is drunk that night. Evil's gifts are unaffected. | evil; its bluff is the risk to watch |
+| **Ill-Omened** | known | Hang them (after a claim at the nomination) and every good person is poisoned until the start of the next night. Evil is unaffected. | evil; its bluff is the risk to watch |
 
 The test for each burden: on balance, it either helps evil a little or gives evil a bluff
 worth making. Michael's read of the old set fails it twice: the Sleepwalker was too weak for
@@ -101,8 +101,9 @@ never reveals.
   considered and dropped: if the beloved is the Demon, a follower would trail it to the
   kill, the same gift to good that the Lovers gave.
 
-**Ill-Omened** (Nov 20). Michael wants to try the "everyone is drunk" version first:
-- **What it does:** when the holder is hanged, every good gift is drunk that night. Evil is
+**Ill-Omened** (Nov 20). Michael wants to try the "everyone is poisoned" version first (it
+was called "drunk" until Nov 21):
+- **What it does:** when the holder is hanged, every good person is poisoned that night. Evil is
   unaffected.
 - **Only a hanging sets it off,** and only if the holder **claimed Ill-Omened when
   nominated** (a hard rule, Nov 20). A night death doesn't set it off.
@@ -115,7 +116,7 @@ never reveals.
 - It's in the Saint family: a cost at the hanging.
 - **Michael's earlier lean was the other version**, in which the affected holders know their
   gifts failed. That makes the outcome public, so a claim can be checked after the hanging.
-  The drunk version is the one to try first.
+  The poisoned version is the one to try first.
 
 ### 2.2 On deck (mechanics deferred)
 
@@ -305,6 +306,196 @@ feasibility reports, then a `mock/` prototype with paired sweeps, then Michael p
 
 ## 8. Still open
 
-None. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
+The feasibility reports (Nov 20) raised 24 build-level questions for Michael. They're in
+[burdens_feasibility.md](burdens_feasibility.md), with Argon's detail in
+[burdens_perf_feasibility.md](burdens_perf_feasibility.md). Answers are folded in here as
+they arrive.
+
+Before the reports, none were open. Michael answered the 24 on Nov 20 (section 9); only
+the new constants they imply are left. Michael settled the five follow-ups on Nov 20; the answers are written into sections 1,
 2.1 and 7. Next comes the staged plan (section 5): feasibility reports, then a `mock/`
 prototype.
+
+## 9. Michael's answers to the feasibility questions (Nov 20)
+
+The numbers match the 24 questions in [burdens_feasibility.md](burdens_feasibility.md). These
+add to sections 1 to 7, and win where they differ.
+
+### The judge
+
+1. **An unclaimed Marked is enumerated.** The judge places a possible holder in each world
+   (exact, about 7 worlds per evil team), not a per-person allowance. This answers Quill's
+   warning: a reading that names an unclaimed Marked person needn't look like a lie by the
+   reader.
+2. **The town reasons about which known burden is in play.** A true Rumormonger "Marked" rules
+   out Unrequited, with the usual caveats about what can and can't actually be confirmed.
+3. **The ~10% allowance:** Michael's answer was "Explained to the player? Not directly." It
+   works inside NPC reasoning and isn't shown to the player as a number.
+   - **Resolved with Lantern (Nov 20):** with Marked enumerated, the allowance covers only the
+     Unrequited's night walks. It's per person, about 1 in 7, and only in worlds where
+     Unrequited is in play.
+   - The judge then weighs 2g + 2 worlds per evil team: 5,760 in total at 10 NPCs, against
+     15,120 today. Details in [burdens_feasibility.md](burdens_feasibility.md).
+4. **A script with no burden in play** (a "none" world): eventually, not now.
+
+### Ill-Omened
+
+5. **The readings are poisoned** (called "drunk" until Nov 21). DESIGN's Poisoner row: the gift "fails
+   or lies until the next night". It covers everything good learns from the night after the
+   hanging until the start of the following night: a Day 2 hanging affects Night 2 through
+   the start of Night 3. The town can spot it only through contradictions.
+6. **The poisoned readers don't know.** Hanging a bluffing Ill-Omened gives no poisoned night, and
+   nobody can tell. That's intended: it gives evil power even with a bluff, because good has to
+   consider that its information could be wrong.
+7. **The claim must be restated at the nomination.** An earlier claim under pressure doesn't
+   count on its own.
+8. **Evil plays as its good self** when a real Ill-Omened is claimed. It doesn't push to hang
+   them.
+9. **The cost of a hanging is one general vote term,** fed by the claim, and a reasonably
+   strong deterrent: about enough to cancel the player's "yes" vote bump.
+   - The bump scales with trust (`PLAYER_VOTE_YES_SLOPE` and `_OFFSET` in `sim/tuning.gd`),
+     so the deterrent is sized at the bump for a median-trust listener.
+10. **The player's own night actions aren't affected.** The board marks the possibly-poisoned
+    night after any claimed Ill-Omened is hanged, real or bluffed. It's worded as a
+    possibility, not a confirmation.
+
+### Unrequited
+
+11. **No reading or card names the beloved** before the reveal. Once the Unrequited reveals,
+    it produces a card: "X admitted they have an unrequited love for Y".
+12. **Evil can bluff Unrequited,** with a beloved whose home fits the sighting. The bluff only
+    answers:
+    - a sighting on the claimed beloved's block;
+    - a "leaving home" sighting on the bluffer's own block.
+
+    It never answers a sighting that puts the bluffer on some other block.
+13. **What the Unrequited withholds:** only evidence that implicates the beloved, and only a
+    moderate-to-strong implication. A Dowser reading that puts the beloved as one evil among
+    four isn't withheld.
+14. **The reveal's trust cost** falls on good listeners (and evil's shadow listeners, who model
+    good). Its size will be a new constant.
+- **More on the beloved's death** (Michael, Nov 20):
+  - If the beloved dies, the Unrequited visits the graveyard (Chapel Hill) instead of their
+    home.
+  - An evil bluffer keeps the same cover. Seen on a block other than Chapel Hill, it can't
+    claim an unrequited love for a dead person who lived there.
+
+### Marked
+
+15. **The private share scales directly with trust,** to the player as to a friend.
+
+### Evil's burden bluffs
+
+16. **"Bolder with silence" follows the same rules as good,** damped by caution, so a day 1
+    bluff is extremely rare. Evil mostly, but not always, bluffs a burden reactively, as good
+    NPCs reveal theirs.
+17. **An evil NPC bluffing a burden also bluffs a gift,** and must: only good can truly carry
+    a burden, and for good NPCs the burden sits on top of their gift.
+
+### Sleepwalker 2.0 (held)
+
+18. **She sees nothing while walking,** and honestly says "I was home". Work on Sleepwalker 2.0
+    waits until later.
+19. **The "I've been known to sleepwalk" excuse:** deferred.
+
+### UI and wording
+
+20. **The hidden tag** precedes the rules text: "**Hidden**: The holder of this burden does not
+    know they carry it."
+21. **Burden claims show on the sheet,** in exactly the place secrets have now.
+22. **The Workshop's "private errand" retires.**
+23. **The "Burden" tooltip** is approved as drafted: "Burden: something that weighs on a
+    townsperson, on top of their gift. The script lists the possible burdens and how many are
+    in play. A hidden burden's holder doesn't know they carry it."
+24. **Later:** the Rumormonger phrases and the ~200 voice lines. (No "drink" Mistaken cause:
+    see section 11.)
+
+### The new constants (Michael, Nov 20)
+
+No exact numbers yet: the builders estimate them, and they're tuned from data.
+- **The hanging cost (Q9): the midpoint of the player's "yes" vote bump.** If the bump runs
+  from 0 to 0.2 with trust, the cost is 0.1. If it were flat, the cost would equal it.
+  - Today the bump is `PLAYER_VOTE_YES_SLOPE` × credibility + `PLAYER_VOTE_YES_OFFSET`
+    (0.18 and −0.04, in `sim/mind_vote.gd`). Over credibility 0 to 1 that runs from −0.04 to
+    0.14, so the starting cost would be about **0.05** (the bump at credibility 0.5). This
+    reading of the code is Vicar's; the builder should confirm it.
+- **The Unrequited reveal's trust cost (Q14):** the same as telling someone's secret. That
+  reuses the existing broken-confidence and spread-secret losses (`Tuning.Social`
+  `CONFIDENCE_BROKEN_*` and `SECRET_SPREAD_*`). The builder confirms which one is the match.
+- **"Bolder with silence" (Q16):** Beadle estimates the two caution values so that a day 1
+  bluff is extremely rare. They're tuned from data afterwards.
+
+### The judge's world model: A (Michael, Nov 20)
+
+Decided after Lantern's four worked scenarios (in
+[burdens_feasibility.md](burdens_feasibility.md)).
+- **A:** each known burden has its own place in a world, and an unclaimed Marked is
+  enumerated. That's 2g + 2 per evil team: 5,760 worlds at 10 NPCs against 15,120 today,
+  about 2.6× fewer.
+- **Fallback: C**, if speed turns out to matter. C is per-kind, with Marked under the
+  allowance: 3,600 worlds.
+- **Why not B** (the "none" placement, 2,880 worlds): it can't tell which known burden is in
+  play, so it misses burden bluffs that clash with another burden claim or with a true
+  Rumormonger reading. In Lantern's scenarios 2 and 4, a bluff mostly works under B and is
+  caught under A.
+- **Speed under A** (Argon, Nov 20): 10–20% faster per refresh against main. C isn't needed
+  at today's town sizes (section 10).
+
+Nothing in the design is open now. Building waits on Michael's word to Seneschal.
+
+## 10. The prototype (Michael approved, Nov 20)
+
+It's on `mock/burdens-slot`, which never merges, and is compared against main with paired
+sweeps.
+- **Stage 1:**
+  - Lantern builds the model-A slot world domain, with Marked known, on the judge side.
+  - Beadle builds Marked's tiered disclosure, the "carried the mark since birth" defence, and
+    evil's reactive Marked bluff.
+- **Retirements, by both:** the Lovers and Sleepwalker 1.0.
+- **Stage 2:** Unrequited, Ill-Omened and the hanging cost.
+- **Argon's speed re-estimate** under model A (Nov 20): about 10–20% faster per day-3+ refresh,
+  and 15–30% on reading-heavy presentations, against main. The C fallback isn't needed below
+  12+ NPCs with Minion identities. Details in [burdens_feasibility.md](burdens_feasibility.md).
+
+## 11. Wording approved (Michael, Nov 21)
+
+Herald's burdens lines are approved. The Ill-Omened lines were revised the same day, when
+Michael ruled that no NPC line may mention the effect.
+
+**All burdens:**
+- **Voices:** "honest gift" is fine in a voice. The fallback voice keeps "good gift".
+- **"Good person" replaces "good gift" in rules text.**
+- **The keys** (Herald). Drafts are in Seneschal's batch, a fallback plus Agnes for each key:
+  - **Marked:** since birth, the counter-claim, the private share, the public announcement;
+  - **Unrequited:** the reveal, defending within reason, the spell breaking, the graveyard (its
+    own key);
+  - **Ill-Omened:** the nomination warning, the early warning, the counter-claim;
+  - **Shared:** the denial, and the double-claim challenge.
+- **Burden gossip** goes through `gossip_secret`, with new phrases for each burden.
+- **The script-sheet rules text** is approved for all four burdens, Ill-Omened in Michael's
+  wording below.
+- **When it's built:** only with the burdens work itself. Herald's lines for all 15 voices,
+  burdens and anger alike, are written and held on `claude/herald-burden-anger-lines`.
+
+**Ill-Omened** (revised, Nov 21):
+- **The effect is "poisoned", not "drunk",** throughout the design.
+- **NPC speech never mentions the effect.** It stays vague:
+  - **The nomination warning:** "I am Ill-Omened. Hang me, and it'll come with a cost to us
+    all."
+  - **The early warning:** "Be careful where this goes. I'm Ill-Omened, and hanging me would
+    cost the town."
+  - **Gossip:** "…is Ill-Omened, and hanging them would cost the town dear".
+  - **The Rumormonger:** "…is Ill-Omened, and their hanging would bring a cost".
+  - **The counter-claim** is unchanged.
+- **The script sheet** (final, Michael, Nov 21): "If hanged after claiming this burden, every
+  good person is poisoned that night until the start of the next night."
+  - **The window** is the night after the hanging plus the following day, and it ends when the
+    next night begins. So that night's readings and the next day's day gifts are poisoned.
+    This settles Quill's question about a daytime hanging.
+- **The board marker** (Michael, Nov 21), after a claimed Ill-Omened is hanged: "The omen
+  claimed by {name} may have fallen, poisoning the town's gifts." Its tooltip shows the
+  script-sheet rules text.
+- **No new Mistaken cause.** The existing poison cause covers it. The #455 Poisoner nudge still
+  skips Ill-Omened poisoning, so a self-doubt on that night doesn't point at a Poisoner.
+
+**Unrequited:** the Rumormonger phrase is approved as drafted.

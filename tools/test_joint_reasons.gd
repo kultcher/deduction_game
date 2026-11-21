@@ -19,6 +19,7 @@ extends SceneTree
 
 const Seeds = preload("res://tools/fixture_seeds.gd")
 const CaseEval = preload("res://workshop/case_eval.gd")
+const RA = preload("res://workshop/reason_attribution.gd")
 
 const ALLOW: float = 0.08
 const MINDS: int = 6
@@ -126,7 +127,22 @@ func _init() -> void:
 					p_wo = float(wo.get("people", {}).get(pid, {}).get("posterior", 0.0))
 				var drop: float = CaseEval.shift(p0, p_full) - CaseEval.shift(p0, p_wo)
 				var contrib: float = float(r.get("contrib", 0.0))
+				# Its partner cards are ones the belief model weighed together with it (section 6;
+				# Beadle, Nov 20): a joint reason names only a pairing the NPC put together.
+				if not cx.is_empty() and str(r.get("channel", "")) != "elimination":
+					var groups = RA.combined_groups(cx)
+					var partners: Array = r.get("root_ids", []).filter(func(id): return str(id) != cid)
+					check(partners.all(func(id): return RA.weighed_together(groups, cid, str(id))), "seed %d, %s: a joint reason against %s pairs only cards the model weighed together (%s with %s)" % [int(found.seed), mi.key, pid, cid, str(partners)])
 				check(drop >= 0.5 * contrib / 0.45 - ALLOW, "seed %d, %s: a reason against %s at %.2f, and removing its card moves them %.3f (%.3f without, %.3f with): \"%s\"" % [int(found.seed), mi.key, pid, contrib, drop, p_wo, p_full, str(r.get("why_own", ""))])
+	# The helper itself: cards in one item, in the core, or in one counted case are weighed
+	# together; two cards only summed side by side are not; with no belief result, no filter.
+	var fake: Dictionary = {"result": {"items": [{"key": "u1", "cards": ["a", "b"]}, {"key": "c1", "cards": ["c"]}, {"key": "d1", "cards": ["d"]}, {"key": "e1", "cards": ["e"]}],
+		"core": {"seed": ["c1"], "members": ["d1"], "firsthand": ["f"]}, "cases": {"entries": [{"key": "case:1"}]}},
+		"state": {"cases": [{"key": "case:1", "cards": ["a", "e"]}, {"key": "case:2", "cards": ["b", "e"]}]}}
+	var gs = RA.combined_groups(fake)
+	check(RA.weighed_together(gs, "a", "b") and RA.weighed_together(gs, "c", "d") and RA.weighed_together(gs, "c", "f") and RA.weighed_together(gs, "a", "e"), "a unit, the core and a counted case each count as weighed together")
+	check(not RA.weighed_together(gs, "b", "e") and not RA.weighed_together(gs, "a", "c"), "an uncounted case, or two cards only summed side by side, don't")
+	check(RA.combined_groups({}) == null and RA.weighed_together(null, "a", "z"), "with no belief result, nothing is filtered")
 	print("%d minds with \"taken together\" reasons, %d reasons checked" % [seen, cited])
 	check(seen >= MINDS and cited > 0, "found %d minds with \"taken together\" reasons to check (wanted %d)" % [seen, MINDS])
 	print("Joint reasons: %d checks, %d failures" % [checks, fails])
