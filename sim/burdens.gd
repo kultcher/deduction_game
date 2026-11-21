@@ -127,18 +127,20 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 		w.dlog.think(n.id, "lie", "Claims to carry the mark, to explain %s." % why, {"lie": true, "burden": kind})
 	return {"line": line, "fact": fact}
 
-## When a telling happens, as a card dates it.
+## When a telling happens, as a card dates it: the engine's phase (0 morning .. 3 night), so a
+## morning testimony and an afternoon reading stay in order.
 static func told_at(w) -> Dictionary:
-	return {"day": w.day, "phase": "night" if w.phase == C.NIGHT else "day"}
+	return {"day": w.day, "phase": int(w.phase)}
 
 ## A confidant passes on a burden it was told (or heard second-hand): the claimant stays the
-## source and the original telling keeps its date; the confidant is the relayer, whose
-## credibility decides whether it's believed (Lantern, Nov 21).
+## source and the original telling keeps its date; the confidant is `via`, whose credibility
+## decides whether it's believed (Lantern, Nov 21). No `relay_source`: to the judge that means
+## a Medium's relayed reading.
 static func relay_fact(w, confidant, owner, said: String) -> Dictionary:
 	var first_ear: String = str(confidant.known_secrets.get(owner.id, confidant.id))
 	var told: Dictionary = w.burden_told.get("%s|%s" % [owner.id, first_ear], w.burden_told.get("%s|%s" % [owner.id, confidant.id], told_at(w)))
 	return {"kind": "secret", "subject": [owner.id], "owner": owner.id, "source": owner.id, "via": confidant.id,
-		"relay_source": confidant.id, "secret_kind": owner.secret_mod, "mod": owner.secret_mod, "burden": true,
+		"secret_kind": owner.secret_mod, "mod": owner.secret_mod, "burden": true,
 		"public": false, "private": true, "observed_at": told,
 		"text": "%s told you %s's secret: %s %s." % [confidant.name, owner.name, owner.name, said]}
 
