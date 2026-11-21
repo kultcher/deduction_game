@@ -531,10 +531,12 @@ static var keep_adjusted: bool = false
 static func secret_claims(presented: Dictionary) -> Array:
 	var out: Array = []
 	var add := func(conclusion: Dictionary) -> void:
-		if str(conclusion.get("type", "")) != "secret_mod":
+		# "is Marked" is its own premise in the burdens prototype, and the same word.
+		var ctype: String = str(conclusion.get("type", ""))
+		if ctype != "secret_mod" and ctype != "marked":
 			return
 		var target: String = Assess._target(conclusion)
-		var mod: String = str(conclusion.get("mod", ""))
+		var mod: String = "marked" if ctype == "marked" else str(conclusion.get("mod", ""))
 		if target == "" or mod == "":
 			return
 		var entry = {"target": target, "mod": mod}

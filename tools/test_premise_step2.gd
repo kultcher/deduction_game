@@ -68,7 +68,8 @@ func _seer_case(mod: String, credibility: float, words: bool = true, off_script:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var seer = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
-	var number = GameBoard.file_deduction(g, {"type": "secret_mod", "a": p[3].id, "mod": mod}, [seer])
+	# "is Marked" is its own premise in the burdens prototype; a hidden burden stays "holds a secret".
+	var number = GameBoard.file_deduction(g, {"type": "marked", "a": p[3].id} if mod == "marked" else {"type": "secret_mod", "a": p[3].id, "mod": mod}, [seer])
 	var r = GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var cards: Array = g._workshop_plans.get(n.id + ":good", {}).get("prepared", {}).get("view", {}).get("cards", [])
 	Shared.player_words = true
@@ -101,7 +102,7 @@ func _secret_record() -> void:
 	var n = g.w.npcs[0]
 	var p: Array = g.w.npcs
 	var seer = _read(g, p[2], "seer", 1, {"pair": [p[3].id, p[4].id], "yes": true})
-	var number = GameBoard.file_deduction(g, {"type": "secret_mod", "a": p[3].id, "mod": "marked"}, [seer])
+	var number = GameBoard.file_deduction(g, {"type": "marked", "a": p[3].id}, [seer])
 	GamePresentation._evaluate_deduction(g, n, g.board[number - 1], 1.0, false)
 	var entry: Dictionary = n.claim_record.get("secret:" + p[3].id, {})
 	check(entry.get("type", "") == "secret" and entry.get("mod", "") == "marked", "a presented secret premise joins the player's track record")

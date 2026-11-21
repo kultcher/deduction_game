@@ -47,19 +47,21 @@ var progress_label: Label
 var presenting = false
 
 ## The claim menu (premises pass step 2): one entry per question the solver asks. "Is
-## Marked" is "holds a secret" with Marked; "bluffing" and "told the truth" were "evil" and
+## Marked" was "holds a secret" with Marked (its own premise again in the burdens prototype); "bluffing" and "told the truth" were "evil" and
 ## "good"; "lied", "misled" and "unreliable" are explanations on a reading (the reading
 ## modifiers), not premises. Filed cases with the old types still evaluate.
 ## "turned" (the Revenant's curse turned this person) is offered in the type menu only once
 ## a curse has been announced (Michael, Nov 19), or on a premise that already holds it; the
 ## refusal (LiveAssessment.conclusion_issues) stays for saved cases. This full list stays
 ## as it is for the older off-screen picker, which selects by index.
-const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "inconsistent", "turned"]
+## "marked" is appended (burdens prototype): with Marked a known burden, "holds a secret" is
+## only for the hidden one, so "is Marked" is its own premise; at the end, so indices hold.
+const LIVE_TYPES = ["evil", "suspicious", "good", "demon", "notdemon", "secret_mod", "inconsistent", "turned", "marked"]
 
 ## Premises whose truth can change with the Revenant's curse, so only these get a "When" field
 ## (playtest triage 1.6). The Demon can't change hands through the curse.
 const EPOCH_TYPES = ["evil", "suspicious", "good"]
-const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "holds a secret", "has readings that don't fit together", "was turned by the Revenant's curse"]
+const LIVE_TYPE_NAMES = ["is evil", "is suspicious", "is good", "is the Demon", "is not the Demon", "holds a secret", "has readings that don't fit together", "was turned by the Revenant's curse", "is Marked"]
 
 ## Why their readings don't fit together (premises step 3), and what each blames.
 ## What a claim asks of the town, beside each in the premise picker (triage 5.6, Michael
@@ -70,6 +72,7 @@ const PREMISE_TYPE_HINTS = {
 	"suspicious": "Put pressure on someone without necessarily getting them hanged. It counts for half, but leans on them to explain themselves. You pick the direction and drive it: the town won't sort out \"one of these two\" for you.",
 	"good": "Argue they're on the town's side: clear them.",
 	"demon": "Argue they're the Demon itself.",
+	"marked": "Argue they carry the mark: good, but read as evil by gifts. Cite their claim and the reading it explains.",
 }
 const INCONSISTENT_CAUSES = ["any", "lying", "impaired", "delusional"]
 const INCONSISTENT_CAUSE_NAMES = {"any": "Any cause", "lying": "They lied (evil)", "impaired": preload("res://workshop/reading_challenges.gd").HONEST_LABEL, "delusional": "They're Delusional"}
