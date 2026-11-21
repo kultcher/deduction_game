@@ -33,6 +33,7 @@ const SUMMARY = "You named %d of the %d evil rightly."
 
 const CARD_W = 0.90
 const CARD_H = 0.74
+const SHEET_PAD = 0.015
 const TILE = 56
 
 var g
@@ -87,6 +88,22 @@ func _build() -> void:
 	_lead.anchor_bottom = 0.09
 	_lead.text = plan.lead.text
 	_stage.add_child(_lead)
+	# The card's labels are ink on paper (as in tools/reveal_card_capture.gd), so it sits on a
+	# cream sheet rather than straight on the dark shade (Codex on #499).
+	var sheet = Panel.new()
+	sheet.name = "Sheet"
+	sheet.mouse_filter = Control.MOUSE_FILTER_PASS
+	var sb = StyleBoxFlat.new()
+	sb.bg_color = UITheme.color("paper")
+	sb.set_corner_radius_all(8)
+	sb.shadow_color = Color(0, 0, 0, 0.5)
+	sb.shadow_size = 18
+	sheet.add_theme_stylebox_override("panel", sb)
+	sheet.anchor_left = (1.0 - CARD_W) / 2.0 - SHEET_PAD
+	sheet.anchor_right = 1.0 - (1.0 - CARD_W) / 2.0 + SHEET_PAD
+	sheet.anchor_top = 0.09 - SHEET_PAD
+	sheet.anchor_bottom = 0.09 + CARD_H + SHEET_PAD
+	_stage.add_child(sheet)
 	card = RevealCard.new()
 	card.name = "Card"
 	card.anchor_left = (1.0 - CARD_W) / 2.0
