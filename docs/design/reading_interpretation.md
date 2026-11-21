@@ -60,6 +60,9 @@ yet.** Written by Claude-Vicar.
   - **Open, for Michael** (Lantern's check, Nov 21): today, "not seen out" clears no one. The
     judge doesn't use the sim's sighting chances; only complete watch lists and coverage say
     someone wasn't out. Should the absence of a sighting count for anything?
+- **Walking every block** (Michael, Nov 21): the Lamplighter walks every block every night, and
+  the Sexton does on the night it tolls. A night sighting of either, on any block, on a night
+  they walk, can't be wrong because of where it was.
 - **The witness alibi:** a neighbour at home sometimes notices someone stayed in (20%). It's
   weak, but true.
 - **The vote record:** who was nominated, who voted, and how many votes put someone on the
@@ -187,9 +190,9 @@ Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
 - **Night 0:** essentially random.
 - **Later nights:** the people the Seer most suspects of being the Demon, not just of being
   evil, such as people spotted out at night.
-- **After a "yes":** check again on later nights, pairing one of the "yes" targets with someone
-  it trusts as good, to narrow down which one triggered it. This is gated by Insight today,
-  which is fine.
+- **After a "yes":** check again on later nights, pairing one of the "yes" targets, 50/50, with
+  someone fresh or with someone it trusts as good, to narrow down which one triggered it
+  (Michael, Nov 21). This is gated by Insight today, which is fine.
 
 **Hiding and revealing:**
 - **Aim to hide until it has at least two readings.** The Seer is a major threat to the Demon,
@@ -271,7 +274,8 @@ takes it. It doesn't steer toward crowds, and the player can't ask it to look an
 (confirmed in Beadle's check, Nov 21).
 
 **Hiding and revealing:** still cautious, but a little earlier than the Seer, around day 2 on
-average.
+average. *Deferred (Michael, Nov 21):* the gap against today's timing waits for an overhaul of
+reveal timing across all roles at once.
 - **As built** (Beadle's check, Nov 21): the Dowser uses the same calendar-day taper as the
   Seer. 18 of 24 good Dowsers claimed, at a mean of day 2.3, later than the Seer's 2.1,
   probably because some days give it no crowd to read. Six died on day 1 unclaimed.
@@ -318,3 +322,13 @@ average.
     "keeps".
   - **Unverified:** whether evil reasons that a good claim of one of its bluff roles is a lie
     (section 1.6).
+- **Michael's answers (Nov 21):**
+  - **The Seer's picks:** the most likely Demon, as the note says; Beadle is fixing the code, and
+    Lantern is adding per-person Demon odds.
+  - **Narrowing after a "yes":** a "yes" target paired 50/50 with someone fresh or someone
+    trusted; Beadle is fixing the code.
+  - **The Red Herring defence** stays as built, after two shared yeses.
+  - **The Dowser's reveal timing** is deferred to an overhaul of reveal timing across roles.
+  - **"Not being seen out" as evidence:** on the backlog, under the circumstantial hub.
+  - **Still with Michael:** the strength wording ("good, and not the Red Herring"; two Dowser
+    readings of 1) and how Delusion's game-long doubt is shared across nights.
