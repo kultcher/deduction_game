@@ -546,6 +546,14 @@ static func most_trusted_good(w, exclude: Array = []):
 			best = g
 	return best
 
+## Whom an evil Martyr bluff says it gave its life over for ("" if none): the made-up choice
+## as it stands, told or still to tell (Martyr.generate_bluff_reading).
+static func martyr_bluff_chosen(n) -> String:
+	for e in n.info_log:
+		if e.get("fake", false) and e.get("role", "") == "martyr" and bool(e.get("data", {}).get("chosen", false)):
+			return str(e["data"].get("target", ""))
+	return ""
+
 ## The living good person under the most public heat (the likeliest to hang), or null.
 static func hottest_good(w, exclude: Array = []):
 	var best = null
@@ -1119,7 +1127,23 @@ static func fake_night_sighting(w, n, nd: int, vantage: String = "", how: String
 	var r = cache[key]
 	if not (r is Dictionary) or r["block"] != vantage:
 		return null
+	if not street_story_fits(n, r):
+		# Seen "while out" needs a night-walking gift it has claimed to explain being out
+		# (Michael, Nov 20): until it has, it holds the sighting back rather than tell it bare.
+		var held_key: String = "street_held:" + key
+		if not w.evil_plan.has(held_key):
+			w.evil_plan[held_key] = true
+			w.dlog.think(n.id, "lie", "Holds back its made-up sighting of %s on %s %s: seen while out, and it has claimed no gift that takes it out at night." % [w.by_id[r["who"]].name if w.by_id.has(r["who"]) else r["who"], C.block_name(r["block"]), C.spoken_when(nd, -1)], {"held": true})
+		return null
 	return r
+
+## Whether a made-up sighting is one the teller can tell as it stands: a window sighting
+## always, one seen "while out" only once it has claimed a night-walking gift that explains
+## being out that night (Michael, Nov 20: no street sighting its claimed role can't explain).
+static func street_story_fits(n, sighting: Dictionary) -> bool:
+	if str(sighting.get("how", "window")) != "street":
+		return true
+	return C.ROLES.get(str(n.claimed_role), {}).get("night_walk", false)
 
 ## This member's own made-up reading of the given gift for night nd ({} if none).
 static func _own_fake_reading(n, nd: int, role: String) -> Dictionary:
@@ -1171,7 +1195,7 @@ static func bluff_reason(w, n, t) -> String:
 				opts.append("%s's reading pointed at them" % mt.name)
 	for k in w.evil_plan["fake_sightings"]:
 		var fs = w.evil_plan["fake_sightings"][k]
-		if fs is Dictionary and fs["who"] == t.id and k.begins_with(n.id + ":"):
+		if fs is Dictionary and fs["who"] == t.id and k.begins_with(n.id + ":") and street_story_fits(n, fs):
 			var night: int = int(fs.get("day", k.get_slice(":", 1)))
 			var when_s: String = C.spoken_when(night, w.day)
 			var walking_claim: bool = C.ROLES.get(n.claimed_role, {}).get("night_walk", false)

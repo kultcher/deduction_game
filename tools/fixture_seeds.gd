@@ -195,6 +195,10 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 		c.erase("relay_role")
 		c.erase("relay_observed_at")
 		c["source"] = teller_id
+		# The relayer's word about the sighting alone: a relay says nothing of where the relayer
+		# was, so its own-word yardstick doesn't place it either (a sighting places its teller,
+		# Nov 20; LiveActivity.teller_place_eligible).
+		c["places_teller"] = false
 	var eff: Dictionary = cards_effect(g, listener_id, [teller_id], is_relay, recast)
 	if eff.is_empty():
 		return {}
@@ -218,6 +222,9 @@ static func relay_effect(g, listener_id: String, teller_id: String) -> Dictionar
 ## `recast.call(card)` applied to a copy of each card `drop` picks.
 ## With `view_fn`, both refreshes read a copy of the view that `view_fn.call(view)` changed
 ## (say, the listener's own home nights read without sleepwalking doubt).
+## "item_with"/"item_without": {id: lean} of the item holding the dropped cards (by key), with
+## them and without, so a check can read what they do inside their own night, apart from any
+## regrouping of the core they cause.
 ## Both refreshes start from an empty connections state, not the listener's stored one. That's
 ## fair for the comparison, which shares it, but the absolute chances can differ from the
 ## game's (Lantern on #397).
@@ -269,7 +276,18 @@ static func cards_effect(g, listener_id: String, ids: Array, drop: Callable, rec
 				recast.call(c)
 		recast_r = Connections.refresh(view, plan.prepared.case, weigher, held, state)
 	Connections.cache_enabled = was_cache
-	var out: Dictionary = {"with": {}, "without": {}, "dropped": dropped.filter(func(id): return id in held).size()}
+	var out: Dictionary = {"with": {}, "without": {}, "dropped": dropped.filter(func(id): return id in held).size(), "item_with": {}, "item_without": {}}
+	# The lean of the item (a night, say) that holds the dropped cards, with them and without:
+	# what the cards do inside the night they sit in, apart from how the core regroups.
+	var item_key: String = ""
+	for it in with_.get("items", []):
+		if it.cards.any(func(id): return id in dropped):
+			item_key = str(it.key)
+	for id in ids:
+		for pair in [[with_, "item_with"], [without, "item_without"]]:
+			for it in pair[0].get("items", []):
+				if str(it.key) == item_key:
+					out[pair[1]][id] = float(it.get("lean", {}).get(id, 0.0))
 	if recast.is_valid():
 		out["recast"] = {}
 	for id in ids:

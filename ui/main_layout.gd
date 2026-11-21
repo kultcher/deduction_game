@@ -80,9 +80,13 @@ static func build(m) -> void:
 	var mp: PopupMenu = more.get_popup()
 	# Ids are fixed per entry so reordering the menu never changes what an id does.
 	for it in [["New case…", m.MoreItem.NEW_CASE], ["Cast (text)", m.MoreItem.CAST], ["Timeline (text)", m.MoreItem.TIMELINE],
-			["Card list sidebar", m.MoreItem.SIDEBAR], ["Write dev log", m.MoreItem.LOG], ["Case Workshop", m.MoreItem.WORKSHOP]]:
+			["Card list sidebar", m.MoreItem.SIDEBAR], ["Write dev log", m.MoreItem.LOG], ["Case Workshop", m.MoreItem.WORKSHOP], [m.DailyGuess.MENU_ENTRY, m.MoreItem.SUSPICIONS]]:
 		mp.add_item(it[0], it[1])
-	mp.id_pressed.connect(m._on_more)
+	mp.add_check_item("Reduced motion", m.MoreItem.REDUCED_MOTION)
+	mp.id_pressed.connect(func(i):
+		if i == m.MoreItem.REDUCED_MOTION:
+			mp.set_item_checked(mp.get_item_index(i), not m.reduced_motion)
+		m._on_more(i))
 	top.add_child(more)
 	m.debug_check = CheckBox.new()
 	m.debug_check.text = "Debug"

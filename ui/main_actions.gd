@@ -139,7 +139,7 @@ static func refresh(m) -> void:
 			if nom.disabled:
 				nom.tooltip_text = "No nominations remaining"
 			nom.pressed.connect(func(): Pickers.people(m, nom, "Nominate whom?", func(id): Pickers.nomination_menu(m, nom, id), func(n): return w.can_nominate("player", n.id) == ""))
-			var done = m._button(m.actions, "Close the meeting", func(): m._run("done"))
+			var done = m._button(m.actions, "Close the meeting", func(): m.close_meeting())
 			done.disabled = not m.g.town_quiet
 			if not m.g.town_quiet:
 				done.tooltip_text = "Let the town speak first (wait) until nobody else rises."
@@ -193,6 +193,9 @@ static func refresh(m) -> void:
 			hint(m, "Tip: click a block or a person on the map to pick them.")
 		"over":
 			m.action_title.text = "The case is closed."
+			if m.reveal_seen_for != m.g:
+				m.call_deferred("open_reveal")
+			m._button(m.actions, "The grim reveal", func(): m.open_reveal())
 			m._button(m.actions, "Show the grimoire", func(): m._run("grimoire"))
 			m._button(m.actions, "Show every lie", func(): m._run("grimoire lies"))
 			m._button(m.actions, "Show who told whom what", func(): m._run("grimoire talk"))

@@ -25,18 +25,13 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
 
 - [1. Bugs and quick fixes (hours, low risk)](#1-bugs-and-quick-fixes-hours-low-risk)
 - [2. Small features and tuning (a day or so each)](#2-small-features-and-tuning-a-day-or-so-each)
-  - [Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)](#playtests-78148--77388-deferred-follow-ups-user-oct-27)
-    1. \*Evil Martyr bluff can frame a good scapegoat `[decided]`
   - [Cases and the Workshop](#cases-and-the-workshop)
     1. \*Argon's audit: cleanup `[decided]`
-    2. \*A reader's self-doubt points at the Poisoner `[decided]`
   - [NPC behaviour](#npc-behaviour)
-    1. \*Accusations from starting suspicion read as clues `[decided]`
-    2. \*The Gravedigger in a reluctant town `[decided]`
-    3. Caught out and pressed again: what's left `[decided]`
-    4. Good NPCs lie tactically `[open]`
-    5. \*Rapport and Warden-credit leftovers `[decided: direction]`
-    6. \*Anger reasons `[decided]`
+    1. \*The Gravedigger in a reluctant town `[decided]`
+    2. Caught out and pressed again: what's left `[decided]`
+    3. Good NPCs lie tactically `[open]`
+    4. \*Rapport and Warden-credit leftovers `[decided: direction]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
@@ -53,25 +48,21 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   5. \*The secrets rework `[decided; values open]`
   6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
   7. Player toolbox `[open]`
-  8. Scoring system `[open]`
-  9. Storyteller/director and solvability check `[open]`
+  8. A case archive `[decided: direction]`
+  9. Scoring system `[open]`
+  10. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
   1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case `[deferred, Michael, Nov 13]`
   2. Presenting a card to one NPC
   3. The Test juror reporting a condition separately `[later]`
-  4. Lian's stonewall after "let me tell you in my own words"
 - [6. The connections model: open items](#6-the-connections-model-open-items)
-  1. Honest mistakes against lies in challenges `[open; Michael]`
-  2. \*A reason citing a pairing the model didn't weigh `[polish]`
-  3. \*The Sleepwalker's doubt, from what the Rumormonger tells her `[decided]`
-  4. Brute kills scored as hexes on custom scripts `[later]`
-  5. Gift doubt for readings the judge doesn't check `[open]`
-  6. Persistence Confidence: a working theory that colours new evidence `[tentative]`
-  7. Observable actions as evidence (Stage 1B) `[tentative]`
-  8. \*A sighting places its teller `[decided]`
-  9. Being lied about can pull in evidence that clears the liar `[open]`
+  1. \*A reason citing a pairing the model didn't weigh `[polish]`
+  2. Brute kills scored as hexes on custom scripts `[later]`
+  3. Gift doubt for readings the judge doesn't check `[open]`
+  4. Persistence Confidence: a working theory that colours new evidence `[tentative]`
+  5. Observable actions as evidence (Stage 1B) `[tentative]`
 - [Tabled](#tabled)
 - [Closed](#closed)
 
@@ -106,20 +97,6 @@ Lantern). Nothing is open here.
 
 ## 2. Small features and tuning (a day or so each)
 
-### Playtests 78148 / 77388: deferred follow-ups (user, Oct 27)
-
-- **Evil Martyr bluff can frame a good scapegoat.** (user, Oct 27) Audit the current
-  choice policy (the user suspects evil often chooses evil). Make choosing a good person,
-  helping execute them and claiming non-substitution as evidence against them an active
-  scapegoat route. Depends on the item above. An evil-strategy change: design and measure
-  separately. [decided]
-  - **Michael (Nov 20):** today, Martyr bluffers only ever pick evil teammates. It should be
-    the opposite: they always pick a good NPC, ideally one with some heat on them, so that if
-    that NPC is executed the bluffer can frame it as evil. They shouldn't be loud about
-    pushing that person's execution, since that would be an obvious tell. Owner Beadle.
-  - **Michael (Nov 20, later):** the bluffer also copies a real Martyr's reluctance to vote to
-    hang the person it chose.
-
 ### Cases and the Workshop
 
 - **Argon's audit: cleanup** (Michael, Nov 19, approving all four groups;
@@ -142,56 +119,7 @@ Lantern). Nothing is open here.
 
   [decided]
 
-- **A reader's self-doubt points at the Poisoner** (Michael, Nov 20). When an NPC voices
-  "my readings may have been tampered with" (gift self-doubt), listeners who hear it focus
-  Poisoner suspicion on anyone seen on that reader's block on any night it read.
-  - It works the same way as a Mistaken call's nudge.
-  - It applies even if the reader is Delusional, or wrong to be suspicious.
-  - It reuses the existing weight, scaled by the listener's trust in the reader.
-
-  Owner Quill, with Lantern and Beadle reviewing. [decided]
-  - **Built** (Quill, Nov 20, `claude/self-doubt-poisoner`, stacked on #445; handoff
-    `2026-11-20-1945-quill-self-doubt-poisoner.md`). With it, both Poisoner floors add to
-    a clear rather than override it (Lantern). [in review]
-
 ### NPC behaviour
-
-- **Accusations from starting suspicion read as clues.** (13910) Constance accused Isolde
-  on Day 1 at suspicion 0.13 against a 0.10 start: a 12% roll with no reason behind it,
-  and the player took it as a lead. A 0.2 floor on good NPCs' accusations was tried and
-  reverted (Nov 5): those openers also start the meeting. Naming someone gives them +0.35
-  on their turn, which sets off the claims, rebuttals and bluffs, and the loud accuser
-  draws the Demon's kill. With the floor, some Day-1 meetings went silent (seed 2011:
-  3 reactive turns instead of 20; the Demon then killed the Seer who'd otherwise have
-  caught it). A 12-game passive A/B was inconclusive, because skipping a roll reshuffles
-  every later random draw. Idea on the table: keep the floor, and while nothing
-  substantive has been said, let one speaker voice unease at the old odds ("Something
-  about Isolde sits wrong with me"). That gives the target the +0.35 but no pressure,
-  chorus, accusation event, trust cost or "ask why". Measure it with a sweep against main.
-
-  Michael (Nov 17), in place of the voiced-unease idea: a "pressure of silence" check. If
-  everyone has had their turn and the meeting has produced little useful information
-  (roughly fewer than 3 claims or readings), go through the speaking order again with a
-  bonus to speak that rises as Composure falls: less composed characters speak up to fill
-  the silence, even when it isn't the best idea. A full pitch goes to Michael (through
-  Seneschal) before building: how it meets the day-1 accusation floor, what counts as
-  useful information, the bonus size, what the extra speakers say (Herald writes any new
-  lines), and what it does in play, measured on a `mock/` branch if possible. Owner Beadle.
-  [decided]
-  - **Pitch approved (Michael, Nov 20), "pressure of silence":**
-    - the 0.2 floor on good NPCs' accusations, in the first pass;
-    - a silence check after everyone's turn: with fewer than 3 useful items (claims, shared
-      readings, volunteered sightings, accusations with a reason), the order runs once more;
-    - in that pass, a bonus to speak scaled by low Composure, with the floor waived and no
-      bonus for evil;
-    - constants approved: `GOOD_ACCUSE_MIN_SUSP` 0.2, `SILENCE_USEFUL_MIN` 3,
-      `SILENCE_SPEAK_BONUS` 0.6;
-    - a silence-breaker opener per voice (Herald). **Herald's 15 lines approved** (Michael,
-      Nov 20; fallback "Well, someone ought to say something."). The opener plays for any NPC
-      speaking in the second pass, good or evil, once per meeting, so it isn't a tell;
-    - Beadle measures it on a `mock/` branch first.
-  - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
-    round.
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -248,7 +176,8 @@ Lantern). Nothing is open here.
 
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
   Beadle's proposals):
-  - (a) "caught lying about me" as an NPC-to-NPC trust loss: waits for "Anger reasons";
+  - (a) "caught lying about me" as an NPC-to-NPC trust loss: waited for "Anger reasons",
+    which is now built (Beadle #487, Nov 21), so it's unblocked;
   - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
     meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
     (Michael, Nov 20, later);
@@ -256,19 +185,6 @@ Lantern). Nothing is open here.
     already built.
 
   [decided: direction]
-
-- **Anger reasons.** NPCs track why they're angry at the player and say a fitting line.
-  (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
-  - **Approved (Michael, Nov 19):** the NPC voices the standing grievance the player has
-    repaired least, and the line replaces its refusal line.
-  - **Lines approved (Michael, Nov 21):** Herald's 17-reason batch, as drafted. The
-    broken-promise line stays generic for wards and vigils; a vigil-specific line waits for
-    "Vigil request and reward rework" (section 4).
-    - The broken promise keeps "You promised me a {promise}…" for both wards and vigils.
-    - `spread_my_secret` keeps "I won't forget that easily".
-    - `nominated_my_friend` keeps "I can't look at you the same".
-    - **When it's built:** when Beadle's anger hook lands, in batches if that's easier. Herald is
-      writing the other 14 voices now.
 
 ### Numbers
 
@@ -510,6 +426,11 @@ The one performance item, "Late-game meeting and presenting cost", is in
 - **Player toolbox:** Autopsy, Séance, Scry, Binding circle; demon types with bestiary
   entries; exorcism / true-name alternate win. [open]
 
+- **A case archive** (Michael, Nov 21). Past cases are kept per profile, with lifetime
+  stats (Demons named, lies caught and so on), and each one can be replayed through the grim
+  reveal. It's part of progression and shares the end screen with the reveal and scoring
+  ([grim_reveal.md](docs/design/grim_reveal.md)). The details wait for the progression
+  design note. Owner Herald. [decided: direction]
 - **Scoring system:** identification credit (separating evil alignment, the exact minion
   gift and a useful execution), accuracy of guesses with confidence, and why the player
   lost (wrong read / missed / never available / failed to persuade). Absorbs the removed
@@ -554,9 +475,6 @@ made on Michael's behalf, is `docs/archive/playtest_triage_2026-11-13.md`. These
   premise", labelled "given <premise>". The full version would have the juror say "if
   Fenwick is good, this is strong; Fenwick is good is moderate", which needs new juror
   machinery. **[later]**
-- **Lian's stonewall after "let me tell you in my own words"** (triage 2.7): struck by
-  Michael on Nov 16. The line isn't in the code as quoted, so it may have changed already;
-  revisit if it turns up again.
 
 ## 6. The connections model: open items
 
@@ -574,35 +492,9 @@ obsolescence audit** (`docs/maintenance/bloat_and_obsolescence_audit_2026-11-19.
 be done "relatively soon, before we build any more larger features". Michael approved its
 four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
 
-- **Honest mistakes against lies in challenges.** "Misled" and "failed gift" land 3–12% of
-  the time on honest mistakes; to a listener an honest mistake and a lie are the same
-  cards, so no rule separates them. It would need evidence that does (the teller's
-  history, signs of poisoning). Since #296, misled and failed gift are one honest-mistake
-  label, "Mistaken". **[open; Michael]**
 - **A reason citing a pairing the model didn't weigh.** Attention picks what is cited, the
   connections model what is believed, so a reason can name cards the belief didn't combine.
   **[polish]**
-- **The Sleepwalker's doubt, from what the Rumormonger tells her** (Michael, Nov 20). The
-  flat doubt itself stays as it is (`Workshop.SLEEPWALK_SELF_DOUBT`, not scaled by
-  confidence; moved to BACKLOG_COMPLETED.md). What's left:
-  - **What the Rumormonger tells her.** A Rumormonger she trusts naming
-    her as a possible sleepwalker should raise her own doubt, so a sighter who saw her out
-    looks less evil to her. A Rumormonger naming a different secret, which implies no
-    Sleepwalker is in play, should make that sighter look more evil. Both depend on her trust
-    in the Rumormonger. Owner Lantern. **[decided]**, built after the reprioritization.
-    - **Not working today** (Lantern, Nov 20): the Sleepwalker's own home doubt is fixed per
-      game and never reads what she believes about secrets.
-    - **Scope:** her doubt scales with her belief that she holds the Sleepwalker secret:
-      - today's value when she has no evidence;
-      - higher when a Rumormonger she trusts names her;
-      - near zero when another secret is named, or the Sleepwalker is shown to be someone
-        else.
-    - **Golden** moves only in games with a Sleepwalker on the script and a Rumormonger
-      reading.
-    - **Approved (Michael, Nov 20), as built in Lantern's #459:** her doubt that she stayed
-      home scales with her belief that she holds the Sleepwalker secret. It's capped at a coin
-      flip (reusing `SLEEPWALK_CHANCE`, 0.5), and its floor is the own-reading error. No new
-      constant. This item closes when #459 merges.
 - **Brute kills scored as hexes on custom scripts.** **[later]**
 - **Gift doubt for readings the judge doesn't check** (Lantern's proposal; Michael accepted,
   Nov 19). `OwnGiftDoubt` asks whether a reading's content holds, so it never fires for
@@ -634,35 +526,6 @@ four groups on Nov 19; see "Argon's audit: cleanup" (section 2).
     double count in the hub.
 
   **[tentative]**
-
-- **A sighting places its teller** (Michael, Nov 20; from seed 100002, found on #454).
-  - **The change:** an honest street sighting places its teller on that block that night, and
-    a window sighting places them at home. It's a hard fact in the movement check, in both
-    the GDScript and C# paths.
-  - **Why:** today a sighting constrains only the person seen. On 100002, Hollis (the Demon,
-    who lives on the Hill) "saw" Edda on the Market, the block where Agnes was killed that
-    night. Unless he lied, that puts him at the scene, but the judge never sees it, so his lie
-    hardly counts against him: 43% → 45% without Jory's watch.
-  - **Measure, in game terms:**
-    - how much a fake sighting now counts against its teller;
-    - seed 100002, before and after;
-    - the win and hanging shifts over 40 games.
-
-    Re-baseline golden.
-
-  Owner Lantern. [decided]
-
-- **Being lied about can pull in evidence that clears the liar** (Michael, Nov 20; seed
-  100002).
-  - **What happened:** Edda's core, re-anchored on the night she was lied about, takes in a
-    rumour that "one of Bart and Jory is Delusional". That undercuts Jory's watch of Hollis,
-    and Hollis falls 78% → 71% overall.
-  - **Held until "A sighting places its teller" lands.** Lantern then re-runs 100002 and
-    reports whether it still matters.
-  - **Interim:** #454's check (#139) uses Michael's option (a). It reads the card's effect
-    within its own night, and its comment points to this item.
-
-  Owner Lantern. [open]
 
 ## Tabled
 

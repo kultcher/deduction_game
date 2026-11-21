@@ -25,11 +25,11 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `LEGACY_EXTRA_SHIFT_DRAW` | `0.3` | the old roll, kept only so setup draws stay aligned | `sim/world.gd` |
 | `FRIEND_PAIR_CUTOFF` | `0.2` |  | `sim/world.gd` |
 | `RIVAL_PAIR_CUTOFF` | `0.32` |  | `sim/world.gd` |
-| `INITIAL_SUSPICION_BASE` | `0.1` | Initial NPC-to-NPC suspicion & trust priors | `sim/world.gd` |
+| `INITIAL_SUSPICION_BASE` | `0.1` | Initial NPC-to-NPC suspicion & trust priors | `sim/burdens.gd`, `sim/world.gd` |
 | `INITIAL_SUSPICION_RIVAL` | `0.0` |  | `sim/world.gd` |
-| `INITIAL_SUSPICION_FRIEND` | `0.0` |  | `sim/world.gd` |
+| `INITIAL_SUSPICION_FRIEND` | `0.0` |  | `sim/burdens.gd`, `sim/world.gd` |
 | `INITIAL_TRUST_BASE` | `0.5` |  | `sim/world.gd` |
-| `INITIAL_TRUST_JITTER` | `0.05` |  | `sim/world.gd` |
+| `INITIAL_TRUST_JITTER` | `0.05` |  | `sim/burdens.gd`, `sim/world.gd` |
 | `INITIAL_TRUST_RIVAL` | `-0.25` |  | `sim/world.gd` |
 | `INITIAL_TRUST_FRIEND` | `0.25` |  | `sim/world.gd` |
 | `PLAYER_TRUST_BASE` | `0.425` | Initial NPC-to-Player trust prior | `sim/world.gd` |
@@ -324,6 +324,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `CROWD_FADE_PRIVACY_FLOOR` | `0.45` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SLOPE` | `0.18` |  | `sim/mind_meeting.gd` |
 | `CROWD_FADE_SIGHTING_BAR` | `0.10` |  | `sim/mind_meeting.gd` |
+| `GOOD_ACCUSE_MIN_SUSP` | `0.2` | The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered sightings, accusations with a reason), the speaking order runs once more. In that pass the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by (1 - Composure): the jittery fill the silence. Evil gets no bonus. | `sim/mind_meeting.gd` |
+| `SILENCE_USEFUL_MIN` | `3` |  | `sim/mind_meeting.gd` |
+| `SILENCE_SPEAK_BONUS` | `0.6` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_FULL_MARGIN` | `3.0` | Block safety (Step 2): how safe a nominee is because someone else is firmly on the block. | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_BASE` | `0.15` |  | `sim/mind_meeting.gd` |
 | `BLOCK_SAFETY_HEAT_PER_ACCUSER` | `0.15` |  | `sim/mind_meeting.gd` |
@@ -430,8 +433,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `VOTE_DAY1_PENALTY` | `0.1` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
 | `VOTE_PARANOIA_WEIGHT` | `0.20` |  | `game/workshop_why.gd`, `sim/mind_vote.gd` |
 | `VOTE_URGENCY_PER_DEATH` | `0.02` | Urgency (Oct 30, replaces paranoia drift): the bar drops per death; Composure doesn't cancel it. | `game/workshop_why.gd`, `sim/mind_vote.gd`, `sim/social.gd` |
-| `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/mind_vote.gd` |
-| `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/mind_vote.gd` |
+| `PLAYER_VOTE_YES_SLOPE` | `0.18` |  | `sim/burdens.gd`, `sim/mind_vote.gd` |
+| `PLAYER_VOTE_YES_OFFSET` | `-0.04` |  | `sim/burdens.gd`, `sim/mind_vote.gd` |
 | `PLAYER_VOTE_NO_SLOPE` | `0.12` | The player's no pushes later voters toward no, at about two-thirds of the yes push (Michael, Nov 19; there's no abstaining, so every no counts). At a credibility below a quarter it backfires, as a low-credibility yes does. | `sim/mind_vote.gd` |
 | `PLAYER_VOTE_NO_OFFSET` | `-0.03` |  | `sim/mind_vote.gd` |
 | `VOTE_DISTRUST_NOMINATOR_MIN_SUSP` | `0.7` |  | `sim/mind_vote.gd` |
@@ -626,19 +629,20 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `BLUFF_RUMORMONGER_DAMP` | `0.5` |  | `sim/burdens.gd` |
 | `SILENCE_START` | `0.05` | Evil's unprompted claim at the meeting ("bolder with silence", Michael Q16): the public share x (SILENCE_START + SILENCE_PER_DAY x silent days) x (1 - caution). With caution about 0.7, about 1 in 400 per evil NPC on day 1. Beadle's estimates. | `sim/burdens.gd` |
 | `SILENCE_PER_DAY` | `0.3` |  | `sim/burdens.gd` |
+| `UNREQUITED_VISIT_CHANCE` | `0.5` | The Unrequited's night visit to the beloved's door (or grave): the chance each night. PLACEHOLDER, awaiting Michael (proposed via Seneschal, Nov 21); Lantern's movement allowance assumes the same value. | `sim/burdens.gd` |
 
 ## Workshop
 
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval_base.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/source_doubt.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity_pack.gd`, `workshop/live_activity_profiles.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity_factors.gd` |
 | `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X out") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity_factors.gd` |
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity_factors.gd` |
-| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | (unused) |
+| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `workshop/source_doubt.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
 | `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |

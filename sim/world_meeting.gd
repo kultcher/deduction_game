@@ -83,6 +83,7 @@ func clemency() -> void:
 		if n.id == nm["by"]:
 			var nom_drop: float = Tuning.Trust.CLEMENCY_OVERRULED_HIGH_SUSP_DROP if (not n.is_evil() and Mind.susp(n, spared.id) > Tuning.Trust.CLEMENCY_HIGH_SUSP_MIN) else Tuning.Trust.CLEMENCY_OVERRULED_DROP
 			Mind.set_trust(self, n, n.trust - nom_drop, "the Demonologist overruled my nomination")
+			Mind.tag_grievance(self, n, "the Demonologist overruled my nomination", {"subject": spared.id})
 			continue
 		if n.is_evil():
 			continue
