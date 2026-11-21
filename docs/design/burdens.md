@@ -499,3 +499,21 @@ Michael ruled that no NPC line may mention the effect.
   skips Ill-Omened poisoning, so a self-doubt on that night doesn't point at a Poisoner.
 
 **Unrequited:** the Rumormonger phrase is approved as drafted.
+
+## 12. Stage-1 values (Michael, Nov 21)
+
+Michael approved Beadle's seven `Tuning.Burden` values as the stage-1 baseline, to be tuned in
+testing:
+
+| Constant | Value |
+|---|---|
+| `MARKED_PRIVATE_SHARE_SCALE` | 3.0 |
+| `MARKED_PRIVATE_SHARE_FLOOR` | 0.5 |
+| `BLUFF_REACTIVE` | 0.5 |
+| `BLUFF_SILENCE_PER_DAY` | 0.1 |
+| `BLUFF_RUMORMONGER_DAMP` | 0.5 |
+| `SILENCE_START` | 0.05 |
+| `SILENCE_PER_DAY` | 0.3 |
+
+The names are as relayed; the code on the prototype branch is the authority. Beadle's
+stage-1 NPC side is built on `mock/burdens-slot` (ea0ad8f).
