@@ -1,5 +1,13 @@
 # Herald: the daily evil-team guess window (grim reveal stage 1, PR 1 of 3)
 
+**Revised for Michael's corrections (Nov 21, `grim_reveal.md` "Corrections"):**
+- there's no fade line;
+- the window's locked guesses are the verdict, and there's no end-of-game seal;
+- profile picks prefill empty circles, greyed, with a note, and the window never writes back to the profile;
+- a limit on changes is proposed to Michael and will come as a follow-up commit.
+
+Sections below that describe writing to the private theory are superseded by this.
+
 - **Agent:** Claude-Herald
 - **Base:** main
 - **Status:** PR open

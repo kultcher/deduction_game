@@ -1,40 +1,38 @@
-## The daily evil-team guess (Michael, Nov 21; docs/design/grim_reveal.md).
+## The daily evil-team guess (Michael, Nov 21; docs/design/grim_reveal.md "Corrections").
 ## Each day, once the meeting is settled and before the hanging is announced, the screen fades
-## and the player marks who they believe is evil: a Demon circle on top, a Minion circle for
-## each Minion in play below it, each with its type. It's bookkeeping only: it writes the
-## player's private theory (the profile guesses), which the meeting's close then freezes
-## (GameScreens.capture_prediction "before_execution"). No mechanical effect.
-## The logic (slots, prefill, apply) is static so tests can drive it without a display.
+## to a window where the player locks in who they believe is evil: a Demon circle on top, a
+## Minion circle for each Minion in play below it, each with its type. The last guesses locked
+## here are the player's verdict, which the grim reveal plays against; there's no end-of-game
+## seal. The window keeps its own locked guesses; Demon or Minion picks from the profile
+## prefill empty circles, greyed, until confirmed. It never writes back to the profile.
+## Bookkeeping only: no mechanical effect. The logic is static so tests can drive it.
 extends Control
 
 const C = preload("res://sim/content.gd")
 const CaseMetrics = preload("res://game/case_metrics.gd")
 const UITheme = preload("res://ui/theme.gd")
 
-## Wording: drafts awaiting Michael (Herald, Nov 21).
-const FADE_LINE = "Before the verdict is read, mark who you believe serves the dark."
+## Wording (Michael, Nov 21: approved, except where marked as a draft).
 const TITLE = "Your suspicions"
-const DEMON_LABEL = "DEMON"
-const MINION_LABEL = "MINION"
+const DEMON_LABEL = "DEMON"            # draft, awaiting Michael
+const MINION_LABEL = "MINION"          # draft, awaiting Michael
 const EMPTY_CIRCLE = "Choose…"
 const PICK_DEMON = "Who is the Demon?"
 const PICK_MINION = "Who is a Minion?"
 const DEMON_KILLED_TIP = "Killed by the Demon; it cannot be them."
 const TYPE_PLACEHOLDER = "What kind?"
-const CLEAR_PICK = "No one"
+const CLEAR_PICK = "No one"            # draft, awaiting Michael
+const PROFILE_NOTE = "Greyed: from your notes. Pick someone new, or confirm to lock them in."   # draft
 const CONFIRM = "Confirm"
 const SKIP = "Skip"
 const DONT_ASK = "Don't ask again this case"
 const MENU_ENTRY = "Your suspicions"
-const SEAL_TITLE = "Seal your verdict"
-const SEAL_BUTTON = "Seal my verdict"
-const META_VERDICT = "sealed_verdict"   # on the game: the verdict sealed after an overnight ending
 
-const META_LAST = "daily_guess_picks"   # on the game: the circles last confirmed
+const META_LOCKED = "daily_guess_locked"   # on the game: {"picks": [...], "history": [{"day", "picks"}]}
 const PORTRAIT_SIZE = 112
 const PICKER_PORTRAIT_SIZE = 64
 const FADE_SECONDS = 0.35
-const DEFAULT_CONFIDENCE = 3
+const GREYED = Color(1, 1, 1, 0.45)
 
 
 ## The circles this case shows: the Demon first, then one per Minion in play. Each has a role
@@ -58,53 +56,44 @@ static func pickable(g, role: String, id: String) -> bool:
 	return not (role == "demon" and not n.alive and n.death_cause == "demon")
 
 
-## The circles filled from the player's current private theory. Circles the window filled last
-## time keep their people while those guesses still stand (an untyped Demon is stored as plain
-## "evil", so only the window knows it was the Demon circle). The rest: the Demon guess, then
-## Minion types, then plain "evil" guesses, in the order the cast is listed.
-static func prefill(g) -> Array:
+## The guesses locked so far, one per circle ({"id", "type"}); empty circles have id "".
+static func locked(g) -> Array:
 	var ss: Array = slots(g)
-	var picks: Array = []
-	for s in ss:
-		picks.append({"id": "", "type": _default_type(s)})
+	var stored: Array = g.get_meta(META_LOCKED, {}).get("picks", []) if g.has_meta(META_LOCKED) else []
+	var out: Array = []
+	for i in range(ss.size()):
+		out.append(stored[i].duplicate() if i < stored.size() else {"id": "", "type": _default_type(ss[i])})
+	return out
+
+
+## The circles as the window opens: the locked guesses, then empty circles prefilled from the
+## profile's Demon and Minion picks, marked "from_profile" (greyed) until the player confirms.
+static func prefill(g) -> Array:
+	var picks: Array = locked(g)
+	for p in picks:
+		p["from_profile"] = false
 	var used: Dictionary = {}
-	var last: Array = g.get_meta(META_LAST, []) if g.has_meta(META_LAST) else []
-	for i in range(mini(last.size(), picks.size())):
-		var id: String = str(last[i].get("id", ""))
-		if id == "" or not g.guesses.has(id):
-			continue
-		if str(g.guesses[id].get("guess", "")) == _written(last[i]):
-			picks[i] = {"id": id, "type": str(last[i].get("type", ""))}
-			used[id] = true
+	for p in picks:
+		if p.id != "":
+			used[p.id] = true
 	if picks[0].id == "":
 		var demon_ids: Array = CaseMetrics.demon_guesses(g.guesses).filter(func(x): return not used.has(x))
 		if not demon_ids.is_empty():
-			picks[0] = {"id": demon_ids[0], "type": str(g.guesses[demon_ids[0]].get("guess", ""))}
+			picks[0] = {"id": demon_ids[0], "type": str(g.guesses[demon_ids[0]].get("guess", "")), "from_profile": true}
 			used[demon_ids[0]] = true
-	var minion_like: Array = []
 	for n in g.w.npcs:
 		var guess: String = str(g.guesses.get(n.id, {}).get("guess", "?"))
-		if C.is_minion(guess):
-			minion_like.append([0, n.id, guess])
-		elif guess == "evil":
-			minion_like.append([1, n.id, ""])
-	minion_like.sort_custom(func(a, b): return a[0] < b[0])
-	for entry in minion_like:
-		if used.has(entry[1]):
+		if not C.is_minion(guess) or used.has(n.id):
 			continue
-		var k: int = -1
 		for j in range(1, picks.size()):
 			if picks[j].id == "":
-				k = j
+				picks[j] = {"id": n.id, "type": guess, "from_profile": true}
+				used[n.id] = true
 				break
-		if k < 0:
-			break
-		picks[k] = {"id": entry[1], "type": entry[2]}
-		used[entry[1]] = true
 	return picks
 
 
-## What a circle writes to the private theory: its type, or plain "evil" without one.
+## What a locked circle claims: its type, or plain "evil" without one.
 static func _written(p: Dictionary) -> String:
 	var t: String = str(p.get("type", ""))
 	return t if t != "" else "evil"
@@ -115,11 +104,8 @@ static func _default_type(s: Dictionary) -> String:
 	return s.types[0] if s.role == "demon" and s.types.size() == 1 else ""
 
 
-## Writes the picks into the private theory. A circle with a type guesses that type; one
-## without guesses plain "evil". Two Minion circles can't share a type (each Minion type is one
-## identity): a repeated type is written as plain "evil" rather than silently replacing the
-## first. Anyone who held an evil guess before and isn't picked now is set back to "?", so the
-## window and the profile panel stay one source of truth.
+## Locks the picks in, as today's entry. Two Minion circles can't share a type (each Minion type
+## is one identity): a repeated type is kept as plain evil rather than replacing the first.
 static func apply(g, picks: Array) -> bool:
 	var clean: Array = []
 	var seen_types: Dictionary = {}
@@ -128,47 +114,26 @@ static func apply(g, picks: Array) -> bool:
 		if q.id != "" and q.type != "":
 			if seen_types.has(q.type):
 				q.type = ""
-			seen_types[q.type] = true
+			else:
+				seen_types[q.type] = true
 		clean.append(q)
-	var picked: Dictionary = {}
-	for p in clean:
-		if p.id != "":
-			picked[p.id] = true
-	var ok: bool = true
-	for id in g.guesses.keys():
-		var guess: String = str(g.guesses[id].get("guess", "?"))
-		if not picked.has(id) and (guess == "evil" or C.is_demon(guess) or C.is_minion(guess)):
-			ok = g.set_guess(id, "?", 1) and ok
-	for p in clean:
-		if p.id == "":
-			continue
-		var conf: int = int(g.guesses.get(p.id, {}).get("confidence", DEFAULT_CONFIDENCE))
-		if str(g.guesses.get(p.id, {}).get("guess", "?")) in ["?", "good"]:
-			conf = DEFAULT_CONFIDENCE
-		ok = g.set_guess(p.id, _written(p), conf) and ok
-	g.set_meta(META_LAST, clean)
-	return ok
+	var store: Dictionary = g.get_meta(META_LOCKED, {}).duplicate(true) if g.has_meta(META_LOCKED) else {}
+	store["picks"] = clean
+	var history: Array = store.get("history", [])
+	history.append({"day": g.w.day, "picks": clean.duplicate(true)})
+	store["history"] = history
+	g.set_meta(META_LOCKED, store)
+	return true
 
 
-## The verdict the picks make, without touching the private theory (it froze at the outcome):
-## every current guess, with the window's picks written over it as apply() would.
-static func verdict_of(g, picks: Array) -> Dictionary:
+## The verdict the reveal plays against: person id -> guess ("?" for anyone not locked in).
+static func verdict(g) -> Dictionary:
 	var out: Dictionary = {}
-	for id in g.guesses:
-		out[id] = str(g.guesses[id].get("guess", "?"))
-	for id in out.keys():
-		if out[id] == "evil" or C.is_demon(out[id]) or C.is_minion(out[id]):
-			out[id] = "?"
-	var seen_types: Dictionary = {}
-	for p in picks:
-		var id: String = str(p.get("id", ""))
-		if id == "":
-			continue
-		var t: String = str(p.get("type", ""))
-		if t != "" and seen_types.has(t):
-			t = ""
-		seen_types[t] = true
-		out[id] = _written({"type": t})
+	for n in g.w.npcs:
+		out[n.id] = "?"
+	for p in locked(g):
+		if p.id != "":
+			out[p.id] = _written(p)
 	return out
 
 
@@ -182,14 +147,13 @@ var _shade: ColorRect
 var _panel: PanelContainer
 var _circles: Array = []
 var _picker: PopupPanel
-var seal: bool = false      # the end-of-game seal: writes the verdict, not the theory
+var _note: Label
 
 ## Opens over the main screen. `on_done(confirmed: bool)` runs after Confirm or Skip; the caller
 ## closes the meeting then. `dont_ask` runs when the player turns the window off for the case.
-static func open(m, on_done: Callable, dont_ask: Callable, sealing: bool = false) -> Control:
+static func open(m, on_done: Callable, dont_ask: Callable) -> Control:
 	var v = load("res://ui/daily_guess.gd").new()
 	v.g = m.g
-	v.seal = sealing
 	v._on_done = on_done
 	v.name = "DailyGuess"
 	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -214,18 +178,17 @@ func build(dont_ask: Callable) -> void:
 	var box = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	_panel.add_child(box)
-	var fade_line = Label.new()
-	fade_line.name = "FadeLine"
-	fade_line.text = FADE_LINE
-	fade_line.visible = not seal
-	fade_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fade_line.add_theme_color_override("font_color", UITheme.color("muted"))
-	box.add_child(fade_line)
 	var title = Label.new()
-	title.text = SEAL_TITLE if seal else TITLE
+	title.text = TITLE
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
 	box.add_child(title)
+	_note = Label.new()
+	_note.name = "ProfileNote"
+	_note.text = PROFILE_NOTE
+	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_note.add_theme_color_override("font_color", UITheme.color("muted"))
+	box.add_child(_note)
 	# The triangle: the Demon on top, the Minions in a row beneath.
 	var top = HBoxContainer.new()
 	top.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -244,14 +207,13 @@ func build(dont_ask: Callable) -> void:
 	box.add_child(buttons)
 	var confirm = Button.new()
 	confirm.name = "Confirm"
-	confirm.text = SEAL_BUTTON if seal else CONFIRM
+	confirm.text = CONFIRM
 	confirm.pressed.connect(func(): _finish(true))
 	buttons.add_child(confirm)
 	var skip = Button.new()
 	skip.name = "Skip"
 	skip.text = SKIP
 	skip.pressed.connect(func(): _finish(false))
-	skip.visible = not seal
 	buttons.add_child(skip)
 	var off = Button.new()
 	off.name = "DontAsk"
@@ -261,7 +223,6 @@ func build(dont_ask: Callable) -> void:
 		if dont_ask.is_valid():
 			dont_ask.call()
 		_finish(false))
-	off.visible = not seal
 	buttons.add_child(off)
 	for i in range(_circles.size()):
 		_refresh_circle(i)
@@ -311,6 +272,9 @@ func _refresh_circle(i: int) -> void:
 	c.face.texture_normal = _portrait(id) if id != "" else null
 	c.face.tooltip_text = PICK_DEMON if _slots[i].role == "demon" else PICK_MINION
 	c.name.text = g.w.by_id[id].name if id != "" else EMPTY_CIRCLE
+	c.face.modulate = GREYED if picks[i].get("from_profile", false) else Color(1, 1, 1)
+	if _note != null:
+		_note.visible = picks.any(func(p): return p.get("from_profile", false))
 	var t: String = str(picks[i].get("type", ""))
 	for k in range(c.types.item_count):
 		if str(c.types.get_item_metadata(k)) == t:
@@ -364,6 +328,7 @@ func _pick(i: int, id: String) -> void:
 			picks[k]["id"] = ""
 			_refresh_circle(k)
 	picks[i]["id"] = id
+	picks[i]["from_profile"] = false
 	_refresh_circle(i)
 	if _picker != null:
 		_picker.hide()
@@ -375,11 +340,11 @@ func _pick_type(i: int, t: String) -> void:
 			picks[k]["type"] = ""
 			_refresh_circle(k)
 	picks[i]["type"] = t
+	picks[i]["from_profile"] = false
+	_refresh_circle(i)
 
 func _finish(confirmed: bool) -> void:
-	if confirmed and seal:
-		g.set_meta(META_VERDICT, verdict_of(g, picks))
-	elif confirmed:
+	if confirmed:
 		apply(g, picks)
 	var cb: Callable = _on_done
 	queue_free()
