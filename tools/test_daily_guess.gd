@@ -222,6 +222,39 @@ func _init() -> void:
 	w7._change_dialog.confirmed.emit()
 	check(closed == [true, true] and DailyGuess.verdict(g4)[ids4[1]] != "?", "confirming the dialog locks the change")
 
+	# The portrait treatments (Limner, ui/portrait_fx.gd): the dead greyed, a ring on a chosen
+	# circle (not on a profile prefill), a glow on the picker's current choice, a lift on hover.
+	var g5 = _game(7)
+	var dead5 = g5.w.npcs[2]
+	dead5.alive = false
+	dead5.death_cause = "execution"
+	g5.set_guess(g5.w.npcs[0].id, g5.w.case_script.demons[0], 3)
+	var m5 = _Host.new()
+	m5.g = g5
+	root.add_child(m5)
+	var w8 = DailyGuess.open(m5, func(_ok): pass, Callable())
+	var face: TextureButton = w8._circles[0].face
+	check(face.material.get_shader_parameter("ring") == 0.0, "a profile prefill has no ring")
+	w8._pick(0, dead5.id)
+	check(face.material.get_shader_parameter("grey") == 1.0, "a dead person in a circle is greyed")
+	check(face.material.get_shader_parameter("ring") == 1.0, "a chosen circle gets its ring")
+	w8._pick(0, g5.w.npcs[1].id)
+	check(face.material.get_shader_parameter("grey") == 0.0, "a living person isn't")
+	w8._open_picker(0, face)
+	var dead_btn: Button = w8._picker.find_child("Pick_" + dead5.id, true, false)
+	var chosen_btn: Button = w8._picker.find_child("Pick_" + g5.w.npcs[1].id, true, false)
+	var other_btn: Button = w8._picker.find_child("Pick_" + g5.w.npcs[3].id, true, false)
+	check(dead_btn.material != null and dead_btn.material.get_shader_parameter("grey") == 1.0, "the picker greys the dead")
+	check(other_btn.material == null, "and leaves the living alone")
+	check(chosen_btn.get_meta("glow", false) and not other_btn.get_meta("glow", false), "the picker glows round the current choice only")
+	other_btn.mouse_entered.emit()
+	check(other_btn.z_index == 1, "hovering a portrait lifts it over its row")
+	other_btn.mouse_exited.emit()
+	check(other_btn.z_index == 0, "and it settles when the mouse leaves")
+	other_btn.disabled = true
+	other_btn.mouse_entered.emit()
+	check(other_btn.z_index == 0, "a disabled portrait doesn't lift")
+
 	print("Daily evil-team guess: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
