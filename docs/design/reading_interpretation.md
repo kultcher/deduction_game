@@ -27,8 +27,9 @@ yet.** Written by Claude-Vicar.
 - **Whether a Demon is alive:** always true while the game goes on. The information is in a
   hanging the game survives: either the hanged person wasn't the Demon, or a Scion took over
   (with five or more alive).
-- **How deaths read:** a Demon victim is good in about 95% of worlds. It's strong but not
-  certain, since a Demon may one day kill its own Minion.
+- **How deaths read:** a Demon victim starts at 95:5 odds of being good, rather than a flat
+  95%, so a victim the town already suspected comes out lower (Lantern's check, Nov 21). It's
+  strong but not certain, since a Demon may one day kill its own Minion.
 - **What was said:** every public claim, accusation and case, and what was said to you in
   private. That it was said is certain; whether it's true isn't.
 - **The player's public acts:** nominations, votes and presented cases.
@@ -56,6 +57,9 @@ yet.** Written by Claude-Vicar.
 - **Daytime sightings** of others.
 - **Night sightings:** a walker is seen 50% of the time by someone out on its route, and 15%
   of the time from a home window on it.
+  - **Open, for Michael** (Lantern's check, Nov 21): today, "not seen out" clears no one. The
+    judge doesn't use the sim's sighting chances; only complete watch lists and coverage say
+    someone wasn't out. Should the absence of a sighting count for anything?
 - **The witness alibi:** a neighbour at home sometimes notices someone stayed in (20%). It's
   weak, but true.
 - **The vote record:** who was nominated, who voted, and how many votes put someone on the
@@ -136,7 +140,8 @@ stays the same all game (as built; Quill's check, Nov 21).
 
 **What the Seer knows about its rules:**
 - the Red Herring exists, but not who it is;
-- Marked can make a good person register as the Demon, but only if Marked is on the script;
+- Marked can make a good person register as the Demon, half the time, but only if Marked is
+  on the script;
 - the Scion doesn't register as the Demon until its ability has triggered.
 
 **How the Seer reads its own readings** (and how someone who trusts the Seer should):
