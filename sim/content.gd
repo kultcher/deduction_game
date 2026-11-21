@@ -488,7 +488,7 @@ const SECRET_MODS = {
 	"lovers": {"name": "Secret Lovers", "desc": "Two townsfolk meet in secret at a different place each night."},
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
 }
-const SECRET_MOD_LIST = ["delusional", "marked", "lovers", "sleepwalker"]
+const SECRET_MOD_LIST = ["delusional", "marked"]  # burdens prototype: the Lovers and Sleepwalker 1.0 retired
 
 ## How sure you are of a guess (stored as 1..4).
 const CONFIDENCE = ["Flimsy", "Maybe", "Likely", "Confirmed"]

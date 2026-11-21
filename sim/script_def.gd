@@ -17,7 +17,11 @@ const MAX_DEMONS = 4
 const DEFAULT_NAME = "Default"
 const DEFAULT_TOWN = ["archivist", "clerk", "dowser", "gravedigger", "lamplighter", "martyr", "medium", "nightwatch",
 	"psychologist", "rumormonger", "seer", "sexton", "surveyor", "veteran", "warden"]
-const DEFAULT_SECRETS = ["delusional", "marked", "lovers", "sleepwalker"]
+## Burdens prototype (mock/burdens-slot, Michael Nov 20-21): the first slate lists only
+## Delusional (hidden) and Marked (known); the Lovers and Sleepwalker 1.0 are retired.
+const DEFAULT_SECRETS = ["delusional", "marked"]
+## Burdens whose holder doesn't know they carry it. At most one per script.
+const HIDDEN_SECRETS = ["delusional"]
 const USER_DIR = "user://scripts"
 
 ## Soft coverage the editor suggests: at least this many town roles with the tag.
@@ -85,6 +89,15 @@ var town: Array = []
 var minions: Array = []
 var demons: Array = []
 var secrets: Array = []
+## The script's hidden burden (one of HIDDEN_SECRETS on its list), or "".
+var hidden_secret: String:
+	get:
+		for k in secrets:
+			if k in HIDDEN_SECRETS:
+				return k
+		return ""
+## How many burdens are in play (burdens.md: one per script at both town sizes, for now).
+var secrets_in_play: int = 1
 ## Custom games / debug: roles and secrets that must be dealt (they must be on the script).
 var forced: Array = []
 
@@ -308,7 +321,7 @@ func to_dict() -> Dictionary:
 
 ## Ids that once were on the roster and have been removed. A saved script that still lists
 ## one loads without it, so an old custom script keeps working (the Muddler, Nov 20).
-const RETIRED_IDS = ["muddler"]
+const RETIRED_IDS = ["muddler", "lovers", "sleepwalker"]
 
 static func from_dict(d: Dictionary):
 	var s = new()

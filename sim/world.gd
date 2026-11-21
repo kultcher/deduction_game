@@ -196,7 +196,7 @@ func _assign_roles() -> void:
 		if rdef != null:
 			rdef.setup_world(self, n)
 
-## One secret modifier per case, on a townsfolk (the Lovers take two), on top of their gift.
+## One burden per case, on a townsfolk, on top of their gift (burdens prototype: the Lovers retired).
 func _assign_secret_mod() -> void:
 	initial_secret_holders = []
 	var goods = shuffled(npcs.filter(func(n): return not n.is_evil()))
@@ -217,18 +217,8 @@ func _assign_secret_mod() -> void:
 			return
 	var a = goods[0]
 	a.secret_mod = k
-	if k == "lovers":
-		var b = goods[1]
-		b.secret_mod = "lovers"
-		a.lover = b.id
-		b.lover = a.id
-		for pr in [[a, b], [b, a]]:
-			if not (pr[1].id in pr[0].friends):
-				pr[0].friends.append(pr[1].id)
-			pr[0].rivals.erase(pr[1].id)
-			pr[0].secret = {"kind": "lover", "with": pr[1].id, "dest": pr[1].home_block,
-				"text": "slips out to meet %s in secret" % pr[1].name, "me": "slip out to meet %s in secret" % pr[1].name}
-			pr[0].known_secrets[pr[1].id] = pr[1].id
+	a.burden_self_known = k not in ScriptDef.HIDDEN_SECRETS
+	burden_holder_id = a.id
 	initial_secret_holders = npcs.filter(func(n): return not n.is_evil() and n.secret_mod != "").map(func(n): return n.id)
 	dlog.add("secret_mod", a.id, a.lover, {"mod": k}, "Secret: %s is %s%s." % [a.name, C.secret_name(k),
 		(" with " + by_id[a.lover].name) if a.lover != "" else ""])
