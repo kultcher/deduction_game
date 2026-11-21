@@ -274,6 +274,27 @@ const ANGER_PREFIXES = {
 	"the Demonologist spared ": "spared_my_suspect"}
 const ANGER_SUBJECT = ["overruled_my_nomination", "spared_my_suspect", "nominated_my_friend", "hanged_my_friend", "accused_my_friend", "backed_hanging"]
 
+## The approved plain forms (Michael, Nov 21), for an unvoiced speaker and the statement.
+const ANGER_FALLBACKS = {
+	"nominated_me": "You put me up for hanging on the {day}. I haven't forgotten.",
+	"voted_to_hang_me": "You voted to hang me. That's hard to set aside.",
+	"overruled_my_nomination": "I put {subject} forward and you undid it. I'd like to know why.",
+	"spared_my_suspect": "You spared {subject}. I hope you know what you've done.",
+	"pressed_with_evidence": "You pressed your evidence on me like I was the guilty one. What now?",
+	"pressed_before_town": "You pressed me before the whole town with no cause. People remember that.",
+	"too_many_questions": "You've asked me a great deal today. I've no more answers in me.",
+	"guessed_my_gift_wrong": "You've been guessing at my gift. I don't care to be guessed at.",
+	"broke_my_confidence": "I told you that in confidence, and you shared it with everyone.",
+	"spread_my_secret": "You told people what I'd kept private. I won't forget that easily.",
+	"broke_your_word": "You promised me a {promise} and didn't keep it.",
+	"argued_against_me": "You argued against me in front of the town, and I told you the truth.",
+	"padded_case": "You heaped up scraps against me and called it a case.",
+	"nominated_my_friend": "You named {subject}, and now they're gone. I can't look at you the same.",
+	"hanged_my_friend": "You voted to hang {subject}. I'm still grieving them.",
+	"accused_my_friend": "You accused {subject} before the whole town. They're dear to me.",
+	"backed_hanging": "You backed hanging {subject}. I didn't want that.",
+}
+
 static func anger_id(why: String) -> String:
 	if ANGER_REASONS.has(why):
 		return ANGER_REASONS[why]
@@ -313,11 +334,10 @@ static func anger_reason(w, n) -> Dictionary:
 		var left: float = float(g["drop"]) - float(g.get("repaired", 0.0))
 		if best.is_empty() or left > best_left:
 			best_left = left
-			var action: String = _trust_action(w, why)
-			if action == "" and slots.has("subject"):
-				action = "You went against me over %s." % slots["subject"]
-			best = {"id": id, "slots": slots, "why": why,
-				"fallback": "I don't trust you. " + (action if action != "" else "You know what you did.")}
+			var fallback: String = ANGER_FALLBACKS[id]
+			for slot in slots:
+				fallback = fallback.replace("{" + slot + "}", str(slots[slot]))
+			best = {"id": id, "slots": slots, "why": why, "fallback": fallback}
 	return best
 
 ## A refusal can explain distrust once per day, without affecting its decision,

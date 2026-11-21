@@ -63,6 +63,7 @@ func _ids() -> void:
 			if not Voices.VOICES[v].has("anger_" + id):
 				missing.append("%s/%s" % [v, id])
 	_check(missing.is_empty(), "every voice has a line for every reason %s" % [missing])
+	_check(Mind.ANGER_FALLBACKS.size() == 17 and seen.keys().all(func(k): return Mind.ANGER_FALLBACKS.has(k)), "and every reason has its approved plain form")
 
 func _case():
 	var g = Game.new()
@@ -91,13 +92,13 @@ func _voiced() -> void:
 	var want: String = Voices.VOICES[n.id]["anger_nominated_me"].replace("{day}", "second day")
 	_check(line.get("text", "") == want or line.get("text", "").begins_with(want.substr(0, 12)), "the refusal names the grievance repaired least, in the NPC's voice (\"%s\")" % line.get("text", ""))
 	_check("{" not in str(line.get("text", "")), "every slot in the line is filled")
-	_check(str(line.get("statement", "")).begins_with("I don't trust you."), "its statement keeps the plain refusal")
+	_check(str(line.get("statement", "")) == "You put me up for hanging on the second day. I haven't forgotten.", "its statement is the approved plain form, filled the same way")
 	n.grievances[0]["repaired"] = 0.2
 	line = _refusal(w, n)
-	_check(str(line.get("statement", "")) == "I don't trust you. You pressed me with evidence.", "once the nomination is mostly repaired, the larger standing grievance speaks")
+	_check(str(line.get("statement", "")) == Mind.ANGER_FALLBACKS["pressed_with_evidence"], "once the nomination is mostly repaired, the larger standing grievance speaks")
 	n.grievances[1]["apologised"] = true
 	line = _refusal(w, n)
-	_check(str(line.get("statement", "")) == "I don't trust you. You nominated me.", "an apologised incident is passed over")
+	_check(str(line.get("statement", "")) == "You put me up for hanging on the second day. I haven't forgotten.", "an apologised incident is passed over")
 	# A line that names someone names them.
 	n.grievances.clear()
 	w.day = 2
