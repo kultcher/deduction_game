@@ -65,9 +65,8 @@ internal static class RoleConstraintsKernel
     public const int FlagMartyrPromise = 1 << 17;
 
     // ROLE_IN_GROUP target pool codes (slot 17):
-    // Burden codes for a KindSecretClaim card (slot 19; role_constraints.gd BURDEN_CODES).
-    public const int BurdenMarked = 1;
-    public const int BurdenDelusional = 2;
+    // A KindSecretClaim card's burden (slot 19; role_constraints.gd): the world modifier code
+    // plus one, 0 for none.
 
     public const int PoolGood = 0;
     public const int PoolMinion = 1;
@@ -81,8 +80,11 @@ internal static class RoleConstraintsKernel
         long mask = (((long)w.Evil * n + (long)w.DemonOrMinusOne + 1L) * n) + (seer ? ((long)w.Marked + 1L) : 0L);
         if (mediums != 0)
         {
-            long deluded = (w.EffectiveModifier == WorldEntry.ModDelusional) ? (w.Holders & mediums) : 0L;
-            mask = mask * (1L << people) + deluded;
+            // Which of these people hold a one-holder burden, and which burden: the Delusional
+            // (relayers, tellers) and anyone claiming a burden (burdens prototype).
+            int mod = w.EffectiveModifier;
+            long held = (mod != WorldEntry.ModMarked) ? (w.Holders & mediums) : 0L;
+            mask = (mask * (1L << people) + held) * 5L + (held != 0 ? (long)(mod + 1) : 0L);
         }
         if (w.HasConverted)
         {
@@ -590,11 +592,11 @@ internal static class RoleConstraintsKernel
                 {
                     continue;
                 }
-                if (burden == BurdenMarked && world.Marked != claimant)
-                {
-                    return 0.0;
-                }
-                if (burden == BurdenDelusional && (world.EffectiveModifier != WorldEntry.ModDelusional || (world.Holders & (1 << claimant)) == 0))
+                int burdenMod = burden - 1;
+                bool holds = burdenMod == WorldEntry.ModMarked
+                    ? world.Marked == claimant
+                    : world.EffectiveModifier == burdenMod && (world.Holders & (1 << claimant)) != 0;
+                if (!holds)
                 {
                     return 0.0;
                 }
@@ -1429,7 +1431,21 @@ internal static class RoleConstraintsKernel
         {
             factors[d] = SolverBridge.GodotLerpf(1.0, bluffWeight, hearingWeights[d]);
         }
+        return BluffWeightsFactors(packedWorlds, whoIndices, factors, stmtTicks, hasCurse, curseFrom, curseUntil);
+    }
 
+    /// Each declaration's own factor on the worlds where its declarer was evil when they spoke
+    /// (BluffWeightsTemporal's, and a claimed burden's: role_constraints.gd burden_claim_factors).
+    public static double[] BluffWeightsFactors(
+        long[] packedWorlds,
+        int[] whoIndices,
+        double[] factors,
+        int[] stmtTicks,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil)
+    {
+        int dLen = whoIndices.Length;
         int uLen = packedWorlds.Length;
         double[] outWeights = new double[uLen];
         for (int i = 0; i < uLen; i++)

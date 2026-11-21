@@ -65,9 +65,9 @@ static func modifier_code(world: Dictionary) -> int:
 			return 0
 		"marked":
 			return 1
-		"lovers":
+		"ill_omened":  # 2 and 3 were the Lovers and Sleepwalker 1.0 (burdens prototype)
 			return 2
-		"sleepwalker":
+		"unrequited":
 			return 3
 		_:
 			return -1

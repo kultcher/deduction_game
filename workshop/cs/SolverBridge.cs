@@ -414,6 +414,20 @@ public partial class SolverBridge : RefCounted
         RoleConstraintsKernel.BluffWeightsTemporal(
             packedWorlds, whoIndices, hearingWeights, stmtTicks, hasCurse, curseFrom, curseUntil, bluffWeight);
 
+    public static double[] RoleBluffWeightsFactorsByHandle(
+        int universeHandle,
+        int[] subsetIndices,
+        long[] fallbackWorlds,
+        int[] whoIndices,
+        double[] factors,
+        int[] stmtTicks,
+        bool hasCurse,
+        int curseFrom,
+        int curseUntil) =>
+        RoleConstraintsKernel.BluffWeightsFactors(
+            SolverContext.ResolveWorlds(universeHandle, subsetIndices, fallbackWorlds),
+            whoIndices, factors, stmtTicks, hasCurse, curseFrom, curseUntil);
+
     public static double[] RoleBluffWeightsTemporalByHandle(
         int universeHandle,
         int[] subsetIndices,

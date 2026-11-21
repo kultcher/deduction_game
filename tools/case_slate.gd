@@ -77,6 +77,18 @@ const CASES = {
 	# Marked townsperson M); the bluff is the Demon's, against the real Seer's true "yes".
 	"marked_rescue": "The real Seer's \"yes\" on a Marked good townsperson M and another + M's Marked claim, argued \"M is Marked\" (subject M)",
 	"marked_bluff": "The real Seer's \"yes\" on S and another + S's Marked claim (a bluff), argued \"S is Marked\"",
+	# Burden claims bind (Michael's option B, Nov 21): a counter-claim to the one burden, and a
+	# clash between two different burdens when only one is dealt. Each "_wrong" twin files the
+	# same cards against the real holder M instead.
+	"marked_counter": "The real Seer's \"yes\" on S and another + S's Marked claim (bluff) + the real holder M's Marked claim, argued \"S is evil\"",
+	"marked_counter_wrong": "The same cards, argued \"M is evil\" (subject M, the real Marked holder)",
+	"burden_clash": "S claims Ill-Omened (a bluff) + the real holder M claims Marked, one burden dealt, argued \"S is evil\"",
+	"burden_clash_wrong": "The same cards, argued \"M is evil\" (subject M, the real Marked holder)",
+	# Michael's scenario (Nov 21): the real Marked holder M dies on night 1, the Demon S is the
+	# Seer's "yes" (night 1) and bluffs Marked unopposed, and one more reading names S by day 3.
+	# Argued "S is evil"; his bar is that further evidence lets the player get S hanged.
+	"marked_dead_seer": "M (the real Marked) killed night 1; the Seer's \"yes\" on S and another, night 1; S bluffs Marked; the Seer's \"yes\" on S and a third, night 2",
+	"marked_dead_dowser": "M (the real Marked) killed night 1; the Seer's \"yes\" on S and another, night 1; S bluffs Marked; the Dowser's \"1 evil\" among S and two others, day 3",
 }
 
 var _texts: Dictionary = {}
@@ -196,6 +208,73 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			cited += [reading, claim_s, mark]
 			sources += [seer, s]
 			premise = "marked"
+		"marked_counter", "marked_counter_wrong", "burden_clash", "burden_clash_wrong":
+			# S is the Demon, bluffing a burden; M, a good townsperson, really holds Marked and
+			# says so. The "_wrong" twins argue against M instead.
+			var counter: bool = base.begins_with("marked_counter")
+			var seer = _holder(goods, "seer", []) if counter else null
+			if counter and seer == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer)
+			if pool.size() < 2:
+				return {}
+			var holder = pool[-1]
+			for n in w.npcs:
+				if n.secret_mod == "marked":
+					n.secret_mod = ""
+			holder.secret_mod = "marked"
+			w.burden_holder_id = holder.id
+			if not counter and w.case_script != null and not ("ill_omened" in w.case_script.secrets):
+				w.case_script.secrets.append("ill_omened")
+			if counter:
+				var mate = pool[0]
+				var reading: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, mate.id], "yes": true},
+					"text": "%s's Seer: %s or %s is the Demon" % [seer.name, dem.name, mate.name]})
+				var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+				cited += [reading, claim_s]
+				sources.append(seer)
+			var bluff_kind: String = "marked" if counter else "ill_omened"
+			var bluff: int = _add(g, {"kind": "secret", "source": dem.id, "subject": [dem.id], "owner": dem.id, "secret_kind": bluff_kind, "day": 2, "phase": 0,
+				"text": "%s: %s" % [dem.name, "I've carried the mark since birth" if counter else "hang me and you'll all pay for it"]})
+			var real: int = _add(g, {"kind": "secret", "source": holder.id, "subject": [holder.id], "owner": holder.id, "secret_kind": "marked", "day": 2, "phase": 1,
+				"text": "%s: no, it's I who carry the mark" % holder.name})
+			cited += [bluff, real]
+			sources += [dem, holder]
+			if base.ends_with("_wrong"):
+				s = holder
+		"marked_dead_seer", "marked_dead_dowser":
+			var seer = _holder(goods, "seer", [])
+			if seer == null:
+				return {}
+			var dowser = _holder(goods, "dowser", [seer]) if base == "marked_dead_dowser" else null
+			if base == "marked_dead_dowser" and dowser == null:
+				return {}
+			var pool: Array = goods.filter(func(n): return n != seer and n != dowser)
+			if pool.size() < 4:
+				return {}
+			var holder = pool[-1]
+			pool = pool.filter(func(n): return n != holder)
+			for n in w.npcs:
+				if n.secret_mod == "marked":
+					n.secret_mod = ""
+			holder.secret_mod = "marked"
+			w.burden_holder_id = holder.id
+			_kill(w, holder, 1)
+			var first: int = _add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 1, "phase": C.NIGHT, "data": {"pair": [dem.id, pool[0].id], "yes": true},
+				"text": "%s's Seer (night 1): %s or %s is the Demon" % [seer.name, dem.name, pool[0].name]})
+			var claim_s: int = _add(g, {"kind": "claim", "subject": [seer.id], "role": "seer", "source": seer.id, "text": "%s claims the Seer" % seer.name})
+			var bluff: int = _add(g, {"kind": "secret", "source": dem.id, "subject": [dem.id], "owner": dem.id, "secret_kind": "marked", "day": 2, "phase": 0,
+				"text": "%s: I've carried the mark since birth" % dem.name})
+			cited += [first, claim_s, bluff]
+			sources.append(seer)
+			if base == "marked_dead_seer":
+				cited.append(_add(g, {"kind": "info", "source": seer.id, "role": "seer", "day": 2, "phase": C.NIGHT, "data": {"pair": [dem.id, pool[1].id], "yes": true},
+					"text": "%s's Seer (night 2): %s or %s is the Demon" % [seer.name, dem.name, pool[1].name]}))
+			else:
+				cited.append(_add(g, {"kind": "info", "source": dowser.id, "role": "dowser", "day": 3, "phase": C.MORNING, "data": {"group": [dem.id, pool[1].id, pool[2].id], "count": 1},
+					"text": "%s's Dowser (day 3): 1 evil among %s, %s and %s" % [dowser.name, dem.name, pool[1].name, pool[2].name]}))
+				cited.append(_add(g, {"kind": "claim", "subject": [dowser.id], "role": "dowser", "source": dowser.id, "text": "%s claims the Dowser" % dowser.name}))
+				sources.append(dowser)
 		"lie_seer", "lie_seer_reversed", "lie_gravedigger":
 			# Word against word: the Minion bluffs the gift, the real holder reads, the player
 			# calls one of them a liar on the other's reading.

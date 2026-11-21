@@ -690,6 +690,8 @@ static func _has_bluff_card(cards: Array) -> bool:
 	for card in cards:
 		if card.get("kind", "") in ["report", "claim"] and not card.get("quoted", false) and not card.get("inferred", false) and not card.get("testimony_only", false):
 			return true
+		if Solver.Roles.burden_code(card) > 0:
+			return true
 	return false
 
 static func _bare_world_fits(view: Dictionary, personal: Dictionary, u_neutral: PackedFloat64Array = PackedFloat64Array()) -> PackedFloat64Array:
