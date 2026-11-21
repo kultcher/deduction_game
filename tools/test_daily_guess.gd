@@ -35,6 +35,13 @@ func _init() -> void:
 		check(ss[0].types == g.w.case_script.demons and (ss.size() < 2 or ss[1].types == g.w.case_script.minions),
 			"%d-NPC town: the type menus list the script's Demons and Minions" % size)
 
+	# Codex on #496: a Scion's hidden promotion (it leaves minion_ids) doesn't remove a circle.
+	var gs = _game(10)
+	var before_n: int = DailyGuess.slots(gs).size()
+	if not gs.w.minion_ids.is_empty():
+		gs.w.minion_ids.remove_at(0)
+	check(DailyGuess.slots(gs).size() == before_n, "a Minion leaving the roster mid-case (a Scion's promotion) keeps its circle")
+
 	var g = _game(10)
 	var sc = g.w.case_script
 	var ss: Array = DailyGuess.slots(g)

@@ -42,7 +42,10 @@ static func slots(g) -> Array:
 	var demons: Array = sc.demons.duplicate() if sc != null else C.EVIL_ROLES.filter(func(r): return C.is_demon(r))
 	var minions: Array = sc.minions.duplicate() if sc != null else C.EVIL_ROLES.filter(func(r): return C.is_minion(r))
 	var out: Array = [{"role": "demon", "types": demons}]
-	for i in range(g.w.minion_ids.size()):
+	# Count the Minions dealt at the start: a Scion's hidden promotion takes one off minion_ids,
+	# and dropping a circle would give it away (Codex on #496).
+	var dealt: Array = g.w.initial_minion_ids if not g.w.initial_minion_ids.is_empty() else g.w.minion_ids
+	for i in range(dealt.size()):
 		out.append({"role": "minion", "types": minions})
 	return out
 
