@@ -82,7 +82,7 @@ New (Michael, Nov 20). It has **no mechanical effect**; it's the player's own bo
   - This replaces DESIGN's "Private theory" rule of scoring the last copy before the
     outcome.
 - **Guess changes are limited,** so that naming whoever is about to hang isn't the best play.
-  Herald is proposing the count and the details for Michael.
+  The details are below (Michael, Nov 21).
 - **The profile guesses feed the window (a hybrid).**
   - If the player has marked someone as Demon or Minion in their profile, the window prefills
     that person, greyed out.
@@ -93,6 +93,27 @@ New (Michael, Nov 20). It has **no mechanical effect**; it's the player's own bo
   - Herald's other drafts are approved: "Your suspicions", "Choose…", "Who is the Demon?",
     "Who is a Minion?", "Killed by the Demon; it cannot be them.", "What kind?", "Confirm",
     "Skip" and "Don't ask again this case".
+
+### The change limit (Michael, Nov 21, relayed by Seneschal)
+
+- **No "locked before the hanging day" rule.** Picking the person the player knows will hang
+  is allowed: it still costs a change and forces a commitment. Moving the window before the
+  meeting was considered and rejected as less fun and less dramatic.
+- **Only the Demon pick costs a change.** Minion picks and their types are free.
+- **The allowance:** one initial selection, plus two changes per case.
+- **Confirming** with no new Demon pick, or an unchanged one, just moves on.
+- **A change asks first:** "Change your Demon selection? You can only do this two times per
+  case. (n change(s) remaining)."
+- **Scoring:** each change costs a little score, so players lean toward being sure rather than
+  guessing that someone might happen to be the Demon. The game shows no line about that cost.
+  Details are in the scoring note.
+- **No write-back to the profile:** the window's picks don't change the profile's marks.
+- **Wording:** all of Herald's wording for #496 and #499 is approved, including "Your guess"
+  and "You named %d of the %d evil rightly."
+- **Seneschal's small calls,** which Herald may flag:
+  - clearing the Demon pick counts as a change;
+  - at zero changes left, the picker is disabled, with the tooltip "No changes left this case";
+  - there's no counter label under the title.
 
 ## 3. The order: a walk through the game
 
