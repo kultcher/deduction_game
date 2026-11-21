@@ -44,7 +44,18 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
+### Current baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
+
+`tools/golden/baseline_1d59c5a/` is the capture from `claude/beadle-martyr-bluff-quiet` at `1d59c5a`
+(main at `8d60e8e`, after #455, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_8d60e8e`:** only 692, at record 228 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
 
 `tools/golden/baseline_8d60e8e/` is the capture from `claude/self-doubt-poisoner` at `8d60e8e` (main at
 `bcc702a`, merged in). A listener who hears a reader say its gift may have been turned nudges

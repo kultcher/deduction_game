@@ -57,6 +57,13 @@ static func _vote_impl(w, v, nominee: String, nominator: String, player_yes: boo
 		var sh_yes = shadow_eval(w, v, func(sh): return vote(w, sh, nominee, nominator, player_yes, statement, yes_so_far))
 		if sh_yes == null or sh_yes == evil_yes:
 			return evil_yes
+		if Evil.martyr_bluff_chosen(v) == nominee:
+			# A Martyr bluff votes on its own "chosen" as its good self would, a real Martyr's
+			# reluctance included (Michael, Nov 21): pushing that hanging would be a tell. The one
+			# exception is above: a Demon on the block saving itself by a counter-nomination puts
+			# survival before cover, as it does for any bluff, and that yes is a tell to catch.
+			w.dlog.think(v.id, "team_strategy", "Martyr bluff: votes on %s, its 'chosen', as a real Martyr would." % nominee)
+			return sh_yes
 		var projected: int = have + 1 + expected_later
 		var pivot = 1.0 if (absi(have + 1 - target_votes) <= 1 or (projected >= target_votes - 1 and have + 1 <= target_votes + 1)) else 0.45
 		var landslide: bool = have >= target_votes or projected >= target_votes + 2

@@ -86,6 +86,7 @@ test_lie_severity_votes
 test_location_art
 test_location_solver
 test_map_return
+test_martyr_bluff_quiet
 test_mechanics_claims
 test_mechanics_conclusions
 test_mechanics_defences
