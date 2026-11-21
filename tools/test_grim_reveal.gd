@@ -152,6 +152,23 @@ func _check_martyr(g: Game) -> void:
 	check(RevealPlan.key_moments(g, liar).has(RevealPlan.MOMENT_FABRICATED % "second night"), "a made-up night reading is dated by night")
 	entries.pop_back()
 	entries.append_array(saved)
+	# Codex on #499: a poisoned reading is matched by its own recorded cause, not by day number,
+	# so a daytime gift poisoned the night before reads as poisoned; a Marked misread doesn't.
+	var reader = g.w.npcs.filter(func(x): return not x.is_evil() and x.secret_mod == "")[0]
+	var mark = [reader.secret_mod, reader.turned_day]
+	var kept: Array = entries.filter(func(e): return e["actor"] == reader.id and e["type"] in ["info", "think", "fake_info"] or (e["type"] == "poison" and e["target"] == reader.id))
+	for e in kept:
+		entries.erase(e)
+	entries.append({"type": "poison", "actor": "x", "target": reader.id, "day": 2, "phase": "Night", "data": {}, "reason": ""})
+	entries.append({"type": "info", "actor": reader.id, "target": "", "day": 3, "phase": "Morning", "data": {"true": false, "why": "poisoned"}, "reason": ""})
+	check(RevealPlan.key_moments(g, reader).has(RevealPlan.MOMENT_POISONED % "third day"), "a poisoned daytime reading reads as poisoned (got %s)" % str(RevealPlan.key_moments(g, reader)))
+	entries.pop_back()
+	entries.append({"type": "info", "actor": reader.id, "target": "", "day": 2, "phase": "Night", "data": {"true": false, "why": "a Marked soul reads as evil"}, "reason": ""})
+	var ms2: Array = RevealPlan.key_moments(g, reader)
+	check(not ms2.any(func(x): return x.ends_with("That reading was false.")), "a Marked misread isn't blamed on the poisoning (got %s)" % str(ms2))
+	entries.pop_back()
+	entries.pop_back()
+	entries.append_array(kept)
 
 func _check_overlay(g: Game, verdict: Dictionary) -> void:
 	var host = Control.new()

@@ -162,29 +162,30 @@ static func key_moments(g, n) -> Array:
 	var w = g.w
 	var out: Array = []
 	var poisoned: Array = []
-	var false_nights: Dictionary = {}
+	var misled: Array = []
 	var fabricated: int = -1
 	var fabricated_night: bool = true   # a daytime gift (the Augur) is made up by day (Codex on #499)
 	var lies: int = 0
 	for e in w.dlog.entries:
 		if e["type"] == "poison" and e["target"] == n.id:
 			poisoned.append(int(e["day"]))
-		elif e["type"] == "info" and e["actor"] == n.id and not e["data"].get("true", true):
-			false_nights[int(e["day"])] = true
+		elif e["type"] == "info" and e["actor"] == n.id and not e["data"].get("true", true) and str(e["data"].get("why", "")) == "poisoned":
+			# The reading records its own cause, so daytime gifts (Augur, Dowser) poisoned the night
+			# before match up without comparing day numbers (Codex on #499).
+			misled.append({"day": int(e["day"]), "night": _is_night_entry(e)})
 		elif e["type"] == "fake_info" and e["actor"] == n.id and fabricated < 0:
 			fabricated = int(e["day"])
-			fabricated_night = int(e["day"]) == 0 or str(e.get("phase", "Night")).to_lower() in ["night", "setup"]
+			fabricated_night = _is_night_entry(e)
 		elif e["type"] == "think" and e["actor"] == n.id and e["data"].get("topic", "") == "lie":
 			lies += 1
-	# A poisoning matters most when it made a reading false; a night with no reading is a footnote.
-	var misled: Array = poisoned.filter(func(k): return false_nights.has(k))
-	var quiet: Array = poisoned.filter(func(k): return not false_nights.has(k))
+	# A poisoning matters most when it made a reading false; one that spoiled no reading is a footnote.
+	var quiet: Array = poisoned if misled.is_empty() else []
 	if n.turned or n.turned_day >= 0:
 		out.append(MOMENT_TURNED % _day(n.turned_day))
 	if n.secret_mod == "delusional":
 		out.append(MOMENT_DELUSIONAL)
 	if misled.size() == 1:
-		out.append(MOMENT_POISONED % _night(misled[0]))
+		out.append(MOMENT_POISONED % (_night(misled[0].day) if misled[0].night else _day(misled[0].day)))
 	elif misled.size() > 1:
 		out.append(MOMENT_POISONED_MANY % misled.size())
 	var told: bool = n.claim_public or n.max_tier >= 3
@@ -212,6 +213,11 @@ static func key_moments(g, n) -> Array:
 			_:
 				out.append(MOMENT_HANGED % _day(n.death_day))
 	return out.slice(0, MAX_MOMENTS)
+
+
+## Whether a log entry happened at night: Night, or Setup (day 0, the night before arrival).
+static func _is_night_entry(e: Dictionary) -> bool:
+	return int(e["day"]) == 0 or str(e.get("phase", "Night")).to_lower() in ["night", "setup"]
 
 
 ## "first night" for "on the first night"; night 0 is the night before the player arrived.
