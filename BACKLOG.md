@@ -177,7 +177,13 @@ Lantern). Nothing is open here.
 - **Rapport and Warden-credit leftovers** (social trust pass, Oct 30; Michael, Nov 20, on
   Beadle's proposals):
   - (a) "caught lying about me" as an NPC-to-NPC trust loss: waited for "Anger reasons",
-    which is now built (Beadle #487, Nov 21), so it's unblocked;
+    which is now built (Beadle #487, Nov 21). **[decided]** (Michael, Nov 21):
+    - **What counts:** a claim about the NPC that its own knowledge proves false. That's a
+      sighting of it, or "they were out", on a night it was home, or a fabricated evil reading
+      of a good NPC;
+    - **who loses trust:** only the teller, not someone relaying it;
+    - **how much:** the same as the existing loss for a public accusation;
+    - **scope:** trust between NPCs only. A voiced line comes later. Owner Beadle;
   - (b) evil Wardens faking saves, and (c) the Warden's save as a reason to go public at the
     meeting: **[decided]**, one PR, owner Beadle. `WARDEN.save_claim_bonus` = 0.3 approved
     (Michael, Nov 20, later);
@@ -389,6 +395,13 @@ The one performance item, "Late-game meeting and presenting cost", is in
   good NPCs may lie about their gift with a reason; every secret is unique; the hidden kinds
   (probably Delusional and Sleepwalker) are mutually exclusive by script. Not decided yet:
   plain folk and confidants (section 10). [open]
+  - **Values set (Michael, Nov 21; burdens.md section 14):**
+    - the Unrequited walks 65% of nights, at least every other night;
+    - the generic 10% secret-errand allowance retires;
+    - an Unrequited reveal costs good listeners' trust like a spread secret;
+    - the spell breaks at "truly suspects".
+
+    The stage-2 judge model is held for Argon's report.
   - **Lovers as an excuse** ("I was with X"). Evil pairing two of its own is a two-for-one;
     pairing with a good person only works if real Lovers sometimes leave each other out to
     dry. **If evil ever fakes a Lovers confession**, `Solver.lovers_needs` (and its use in
@@ -425,6 +438,10 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 - **Player toolbox:** Autopsy, Séance, Scry, Binding circle; demon types with bestiary
   entries; exorcism / true-name alternate win. [open]
+  - **Progression and the toolbox scoped** (Michael, Nov 21):
+    [docs/design/progression.md](docs/design/progression.md). Score gives XP and levels,
+    which unlock characters, roles, tools, perks and challenges. Two tool slots, and tools
+    generate cards. Tool and perk pitches are listed, all with placeholder names.
 
 - **A case archive** (Michael, Nov 21). Past cases are kept per profile, with lifetime
   stats (Demons named, lies caught and so on), and each one can be replayed through the grim
