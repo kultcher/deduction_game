@@ -85,8 +85,11 @@ static func marked_style(w, n) -> String:
 static func phrase(o) -> String:
 	if not o.secret.is_empty():
 		return str(o.secret.get("text", ""))
+	# The gossip phrases are Michael's (Nov 21, docs/design/burdens_wording.md).
 	if o.secret_mod == "marked":
-		return "carries the mark: a gift may read them as evil"
+		return "is Marked, and a gift may read them evil"
+	if o.secret_mod == "unrequited":
+		return "pines for someone, and goes to their door at night"
 	if o.secret_mod == "ill_omened":
 		return "is Ill-Omened, and hanging them would cost the town dear"
 	return ""

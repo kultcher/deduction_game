@@ -653,6 +653,11 @@ static func _secret_phrase(k: String) -> String:
 			return "Delusional, their gift a fancy"
 		"marked":
 			return "Marked, and may read as evil"
+		# Michael's (Nov 21, docs/design/burdens_wording.md).
+		"unrequited":
+			return "Unrequited, and walks out at night for love"
+		"ill_omened":
+			return "Ill-Omened, and their hanging would bring a cost"
 	return k
 
 ## Whom someone trusts and suspects most. Evil keep their team close and point at their
