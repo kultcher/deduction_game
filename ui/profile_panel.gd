@@ -149,7 +149,7 @@ func build() -> void:
 	conf_opt.item_selected.connect(func(_i): _save_guess())
 	secret_conf_opt = _conf_menu()
 	secret_conf_opt.item_selected.connect(func(_i): _save_secret())
-	for row in [["Role:", guess_opt, conf_opt], ["Secret:", secret_opt, secret_conf_opt]]:
+	for row in [["Role:", guess_opt, conf_opt], ["Burden:", secret_opt, secret_conf_opt]]:
 		var l1 = Label.new()
 		l1.text = row[0]
 		l1.add_theme_font_size_override("font_size", 15)

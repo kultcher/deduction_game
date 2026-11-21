@@ -409,7 +409,7 @@ const ROLES = {
 	"registrar": {"name": "Registrar", "align": "good", "kind": "info",
 		"desc": "Starts knowing three roles on the script (at most one minion, never the Demon), at least one of which is in play. Each night from night 1, checks one person and learns if they hold one of those roles."},
 	"rumormonger": {"name": "Rumormonger", "align": "good", "kind": "info", "first_night": true,
-		"desc": "Starts knowing that one of two people carries a particular secret."},
+		"desc": "Starts knowing that one of two people carries a particular burden."},
 	"seer": {"name": "Seer", "align": "good", "kind": "info",
 		"desc": "Each night, picks two people and learns if either is the Demon. One good soul reads falsely as the Demon."},
 	"sexton": {"name": "Sexton", "align": "good", "kind": "protect",

@@ -11,7 +11,7 @@ func _init() -> void:
 	kind = "info"
 	tags = ["first_night_info"]
 	first_night = true
-	desc = "Starts knowing that one of two people carries a particular secret."
+	desc = "Starts knowing that one of two people carries a particular burden."
 	shape = "SECRET_PAIR"
 	cannot_hold_solo_secret = true
 

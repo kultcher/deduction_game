@@ -13,4 +13,9 @@ func _make_custom_tooltip(for_text: String) -> Object:
 	tip.add_theme_font_override("font", UITheme.serif())
 	tip.add_theme_font_size_override("font_size", 16)
 	tip.add_theme_color_override("font_color", UITheme.color("ink"))
+	# Measure the wrapped height up front: Godot places the tooltip from its minimum size and
+	# under-measures an autowrapped Label, so long tips ran off the bottom of the window.
+	var font: Font = tip.get_theme_font("font")
+	if font != null:
+		tip.custom_minimum_size.y = font.get_multiline_string_size(for_text, HORIZONTAL_ALIGNMENT_LEFT, tip.custom_minimum_size.x, 16).y + 4
 	return tip

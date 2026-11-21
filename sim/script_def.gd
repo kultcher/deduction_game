@@ -227,7 +227,7 @@ func check(count: int = 0) -> Dictionary:
 	if minions.size() != MINION_SIZE:
 		warnings.append("Scripts usually list %d minions (this one has %d)." % [MINION_SIZE, minions.size()])
 	if secrets.size() != SECRET_SIZE:
-		warnings.append("Scripts usually list %d secrets (this one has %d)." % [SECRET_SIZE, secrets.size()])
+		warnings.append("Scripts usually list %d burdens (this one has %d)." % [SECRET_SIZE, secrets.size()])
 	for tag in SUGGESTED_TAGS:
 		var have: int = town.filter(func(r): return tag in tags_of(r)).size()
 		if have < SUGGESTED_TAGS[tag]:
@@ -303,7 +303,7 @@ func ok(count: int = 0) -> bool:
 
 ## One line for the New Case screen: what may be in play.
 func summary() -> String:
-	return "%s · %d town · %d minion%s · %d demon%s · %d secret%s%s" % [
+	return "%s · %d town · %d minion%s · %d demon%s · %d burden%s%s" % [
 		mode(), town.size(), minions.size(), "" if minions.size() == 1 else "s",
 		demons.size(), "" if demons.size() == 1 else "s", secrets.size(), "" if secrets.size() == 1 else "s",
 		(" · %d forced" % forced.size()) if not forced.is_empty() else ""]
