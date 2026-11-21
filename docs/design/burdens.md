@@ -457,22 +457,31 @@ sweeps.
 
 ## 11. Wording approved (Michael, Nov 21)
 
+**Revised the same day (Michael, through Seneschal): no NPC line about Ill-Omened mentions the
+drunk effect.** The warnings, counter-claim, gossip and Rumormonger phrase stay vague ("It'll
+come with a cost"), and Herald is redrafting them. Three items are pending Michael's answer:
+the board marker, the script-sheet text and the Mistaken cause. Everything else below stands.
+
 Herald's draft batch of burdens lines is approved:
 - **Voices:** "honest gift" is fine in a voice.
 - **The Unrequited's graveyard line** is its own voice key.
-- **The Mistaken cause:** "drink, after an Ill-Omened hanging".
+- **The Mistaken cause:** "drink, after an Ill-Omened hanging". *Pending Michael's answer
+  under the revision.*
 - **The board marker** after a claimed Ill-Omened is hanged: "The omen may have fallen: if
-  {name} was truly Ill-Omened, every good gift was drunk last night."
-- **The script-sheet rules text** is approved as drafted. It's in Herald's batch, alongside
+  {name} was truly Ill-Omened, every good gift was drunk last night." *Pending.*
+- **The script-sheet rules text** is approved as drafted for Marked, Unrequited and Delusional.
+  *Ill-Omened's is pending.* It's in Herald's batch, alongside
   section 9's "Hidden" line and tooltip.
 - **The keys** (Herald, Nov 21). Drafts are in Seneschal's batch, with a fallback plus Agnes
   for each key:
   - **Marked:** since birth, the counter-claim, the private share, the public announcement;
   - **Unrequited:** the reveal, defending within reason, the spell breaking, the graveyard;
-  - **Ill-Omened:** the nomination warning, the early warning, the counter-claim;
+  - **Ill-Omened:** the nomination warning, the early warning, the counter-claim. *Being
+    redrafted without the drunk effect;*
   - **Shared:** the denial, and the double-claim challenge.
 - **Burden gossip** goes through `gossip_secret`, with new phrases for each burden. The
   fallback voice keeps "good gift".
-- **The Rumormonger's phrases** for Unrequited and Ill-Omened are approved as drafted.
+- **The Rumormonger's phrases:** Unrequited's is approved as drafted. Ill-Omened's is being
+  redrafted without the drunk effect, as is its burden gossip.
 - **When it's built:** only with the burdens work itself. Herald is writing the other 14 voices
   now and holding them on a branch.
