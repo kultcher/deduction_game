@@ -1,8 +1,7 @@
 ## Nov 20 — Claude-Lantern: a sighting places its teller
 
-- **Base:** main after #444 (merged in). **Status:** PR open as a draft (one check flagged, below).
-  **Next:** Seneschal (the flagged check), then Bailiff. **Moves golden:** re-baselined in this PR
-  (`baseline_e8ff7e0`).
+- **Base:** main after #455 (merged in). **Status:** PR ready. **Next:** Bailiff. **Moves golden:**
+  re-baselined in this PR (`baseline_7af7d2a`).
 - **What this is:** BACKLOG section 6, "A sighting places its teller", `[decided]` (Michael, Nov 20,
   from seed 100002 on #454).
 
@@ -24,7 +23,17 @@
   - with his fake street sighting of her on the Market: 71% → **83%**;
   - without it: 78%, unchanged;
   - with it, but without Jory's watch: 45% → **63%**.
-- **40 passive games** (seeds 1–40, 10 NPCs): pending; see the PR.
+- **40 passive games** (seeds 1–40, 10 NPCs, the rule off against on, on the same code). Good
+  hangings don't jump:
+
+  | | Rule off | Rule on |
+  |---|---|---|
+  | Good townsfolk hanged | 43 | 42 |
+  | Evil hanged | 59 | 60 |
+  | Good night-walkers (by gift) hanged | 11 | 10 |
+  | Good wins / evil wins | 18 / 22 | 18 / 22 |
+
+  Six games swap winner, three each way.
 
 ### Golden
 Every seed moves.
@@ -40,11 +49,20 @@ Every seed moves.
   - a window sighting barely moves it (×1.2).
 - **`test_warden_quiet_route` and `test_relayed_alibi`** now use window sightings by a witness at
   home, as honest non-walkers make them.
-- **Flagged:** `test_relayed_alibi`, "it counts against the relayer instead", fails on the deal the
-  search now finds (seed 100048).
-  - The relayer falls 0.74 → 0.65 with the rule, and 0.74 → 0.49 without it, so the rule doesn't
-    cause it.
-  - Two fixture attempts made; stopped and asked Seneschal.
+- **`test_relayed_alibi` is now built on a controlled deal** (Seneschal, Nov 21). With the rule on,
+  play changes and the search landed on new deals:
+  - seed 100047, where the sighter was already half-suspected and took the blame;
+  - seed 100048, a relay about the victim's own kill night, where the relayer fell with the sighter
+    contests off too. That fall comes from kill-night reasoning (logged as a model case to look at
+    after this PR).
+  - With those left out, the search found no deal in 120 seeds.
+  - Now an evil Medium relays that a good victim was home on night 0, a night before their kill.
+    They were out on the sighter's block, and a good sighter at home saw them from the window.
+  - The assertion is unchanged: the relayer's suspicion must rise (deal 692: 0.41 → 0.50).
+- **The relay yardstick** (`test_relay_bluff_games`). A relay recast as its relayer's own word
+  (`Seeds.relay_effect`) no longer places the relayer, since a relay never says where its relayer
+  was. The recast cards carry `places_teller: false`, which the rule respects. No card in play
+  carries it.
 - **Passed:** `test_self_sighting`, `test_own_night_knowledge`, `test_connections_pairings`,
   `test_points_elsewhere`, `test_vigil_nightwatch`, `test_warden_quiet_route`,
   `test_lamplighter_count_mix`, `test_nightwatch_whole_list`, `test_mechanics_sightings`,
