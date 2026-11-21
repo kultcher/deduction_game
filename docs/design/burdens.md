@@ -619,6 +619,9 @@ Relayed by Seneschal; the wording follows his message closely.
   be able to fall in play; Beadle is measuring which levers make that happen.
 - **The Unrequited bluff:** a claim that explains a sighting is roughly neutral, like a claim
   made after an evil reading (section 13).
+  - **Its own reactive bluff weight** (Michael, Nov 21): a new constant, set so that an
+    Unrequited claim made after the claimant was seen out lands roughly neutral. It's
+    provisional, to revisit after the role breakdown. Lantern is building it.
 - **Marked with four burdens on the script:** accepted for now. It's revisited after the role
   breakdown, along with the Unrequited numbers.
 - **Impossible pairs** (the placement-rule check in section 10) also cover holders who haven't
