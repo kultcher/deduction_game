@@ -54,6 +54,16 @@ func _real() -> void:
 	_check(not early.is_empty() and early["fact"].get("at_nomination", true) == false, "accused, a real holder may warn early; that claim isn't the nomination's")
 	_check(Burdens.omen_early_warning(w, o).is_empty(), "and only once")
 	_check(is_equal_approx(Burdens.omen_vote_cost(w, o.id), -(Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * 0.5 + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET)), "a claimed omen costs a vote about the median player's yes")
+	var full: float = Burdens.omen_vote_cost(w, o.id)
+	var voter = w.living_good()[1]
+	voter.suspicion[o.id] = 0.6
+	_check(is_equal_approx(Burdens.omen_vote_cost(w, o.id, voter), full * 0.4), "a voter who suspects the claimant weighs the cost by its belief the claim is true (option A)")
+	var rival = w.living_good()[2]
+	var pub: Array = w.burden_claims.get("ill_omened:public", [])
+	pub.append(rival.id)
+	w.burden_claims["ill_omened:public"] = pub
+	_check(is_equal_approx(Burdens.omen_vote_cost(w, o.id, voter), full * 0.4 / float(pub.size())), "and rival claimants share it, since only one can hold it")
+	pub.erase(rival.id)
 	var nom: Dictionary = Burdens.omen_at_nomination(w, o)
 	_check(not nom.is_empty() and nom["fact"].get("at_nomination", false) and nom["fact"]["secret_kind"] == "ill_omened", "nominated, the holder restates it, marked as the nomination's claim")
 	_check("cost" in str(nom["line"].get("statement", "")) and not "poison" in str(nom["line"].get("statement", "")).to_lower(), "its words name a cost, never the effect")

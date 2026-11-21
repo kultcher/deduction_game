@@ -326,10 +326,16 @@ static func omen_early_warning(w, n) -> Dictionary:
 ## The cost of hanging a publicly claimed Ill-Omened, as a vote term: about enough to cancel
 ## the player's yes for a median-trust listener (design §9 item 9). Derived from that bump, so
 ## no new constant. Evil's good self weighs it too, so evil votes as its good self would.
-static func omen_vote_cost(w, nominee: String) -> float:
-	if not nominee in public_claimants(w, "ill_omened"):
+## Weighted by the voter's belief that the claim is true (1 - its suspicion of the claimant),
+## and shared between rival claimants, since only one can hold it (Michael, Nov 21: option A).
+## Without a voter, the full cost.
+static func omen_vote_cost(w, nominee: String, v = null) -> float:
+	var claim: Array = public_claimants(w, "ill_omened")
+	if not nominee in claim:
 		return 0.0
-	return -(Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * 0.5 + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET)
+	var full: float = -(Tuning.Meeting.PLAYER_VOTE_YES_SLOPE * 0.5 + Tuning.Meeting.PLAYER_VOTE_YES_OFFSET)
+	var belief: float = 1.0 if v == null else clampf(1.0 - float(v.suspicion.get(nominee, 0.5)), 0.0, 1.0)
+	return full * belief / float(claim.size())
 
 ## A hanging: if it restated the omen at today's nomination, the town marks it, and if it was
 ## the real holder, every good person is poisoned from now until the next night but one
