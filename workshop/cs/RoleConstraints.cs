@@ -118,6 +118,10 @@ internal static class RoleConstraintsKernel
     /// reasonCode: 0 = "", 1 = "demon", 2 = "red_herring", 3 = "marked".
     /// Preserves exact ascending r_bit summation order and final division.
     /// </summary>
+    /// The chance a Marked person registers as the Demon to the Seer (Tuning.Setup.MARKED_DEMON_CHANCE,
+    /// set from GDScript when the bridge loads; SolverBackend._bridge).
+    public static double MarkedDemonChance = 0.5;
+
     public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts)
     {
         if (candidatesMask == 0)
@@ -152,7 +156,7 @@ internal static class RoleConstraintsKernel
                     }
                     if ((pair & markedBit) != 0)
                     {
-                        w *= 0.5;
+                        w *= 1.0 - MarkedDemonChance;
                     }
                 }
                 else
@@ -188,7 +192,7 @@ internal static class RoleConstraintsKernel
                         }
                         if (!demonIn && !rhIn)
                         {
-                            w *= 0.5;
+                            w *= MarkedDemonChance;
                         }
                     }
                     else
@@ -199,7 +203,7 @@ internal static class RoleConstraintsKernel
                         }
                         else if (markedIn)
                         {
-                            w *= 0.5;
+                            w *= MarkedDemonChance;
                         }
                         else
                         {

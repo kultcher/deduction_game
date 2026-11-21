@@ -347,6 +347,8 @@ public partial class SolverBridge : RefCounted
 
     public static void ActivitySetSecretErrand(bool on) => LiveActivityKernel.SecretErrand = on;
 
+    public static void RoleSetMarkedDemonChance(double chance) => RoleConstraintsKernel.MarkedDemonChance = chance;
+
     public static int GetUniverseSize(int handle) =>
         SolverContext.GetUniverseSize(handle);
 
