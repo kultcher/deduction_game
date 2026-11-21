@@ -122,7 +122,11 @@ internal static class RoleConstraintsKernel
     /// set from GDScript when the bridge loads; SolverBackend._bridge).
     public static double MarkedDemonChance = 0.5;
 
-    public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts)
+    public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts) =>
+        SeerRhWeight(candidatesMask, demon, marked, readingInts, ReadOnlySpan<int>.Empty);
+
+    /// demons: the Demon of each reading's night, or empty for `demon` throughout.
+    public static double SeerRhWeight(int candidatesMask, int demon, int marked, ReadOnlySpan<int> readingInts, ReadOnlySpan<int> demons)
     {
         if (candidatesMask == 0)
         {
@@ -145,6 +149,10 @@ internal static class RoleConstraintsKernel
             for (int r = 0; r < rCount; r++)
             {
                 int b = r * 4;
+                if (r < demons.Length)
+                {
+                    demonBit = demons[r] >= 0 ? (1 << demons[r]) : 0;
+                }
                 bool yes = readingInts[b] != 0;
                 int pair = readingInts[b + 1];
                 if (!yes)
@@ -517,6 +525,9 @@ internal static class RoleConstraintsKernel
         int seerSourceToken = -1;
         int seerSourceIdx = -1;
         Span<int> seerReadingsStack = stackalloc int[128];
+        // The Demon of each Seer reading's night (a Scion may have risen since; slots 20-23).
+        Span<int> seerDemonStack = stackalloc int[32];
+        List<int>? seerDemonOverflow = null;
         List<int>? seerReadingsOverflow = null;
         int seerReadingCount = 0;
         int veteranNight = -1;
@@ -975,6 +986,32 @@ internal static class RoleConstraintsKernel
                 int ping = selectedMask != 0 ? selectedMask : pairMask;
                 int yesInt = (flags & FlagSeerYes) != 0 ? 1 : 0;
                 int reasonCode = cardInts[off + 19];
+                int demonThen = demon;
+                for (int k = 0; k < 2; k++)
+                {
+                    int hx = cardInts[off + 20 + 2 * k];
+                    int hAlive = cardInts[off + 21 + 2 * k];
+                    if (hx >= 0 && hx != demonThen && demonThen >= 0 && (evil & (1 << hx)) != 0 && (hAlive & (1 << demonThen)) != 0)
+                    {
+                        demonThen = hx;
+                    }
+                }
+                if (seerDemonOverflow == null && seerReadingCount < seerDemonStack.Length)
+                {
+                    seerDemonStack[seerReadingCount] = demonThen;
+                }
+                else
+                {
+                    if (seerDemonOverflow == null)
+                    {
+                        seerDemonOverflow = new List<int>(seerReadingCount + 4);
+                        for (int k = 0; k < seerReadingCount; k++)
+                        {
+                            seerDemonOverflow.Add(seerDemonStack[k]);
+                        }
+                    }
+                    seerDemonOverflow.Add(demonThen);
+                }
 
                 if (seerReadingsOverflow == null && (seerReadingCount + 1) * 4 <= seerReadingsStack.Length)
                 {
@@ -1067,7 +1104,10 @@ internal static class RoleConstraintsKernel
             ReadOnlySpan<int> readingsSpan = seerReadingsOverflow != null
                 ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(seerReadingsOverflow)
                 : seerReadingsStack.Slice(0, seerReadingCount * 4);
-            seerWeight = SeerRhWeight(good & ~(1 << seerSourceIdx), demon, world.Marked, readingsSpan);
+            ReadOnlySpan<int> demonsSpan = seerDemonOverflow != null
+                ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(seerDemonOverflow)
+                : seerDemonStack.Slice(0, seerReadingCount);
+            seerWeight = SeerRhWeight(good & ~(1 << seerSourceIdx), demon, world.Marked, readingsSpan, demonsSpan);
             if (seerWeight <= 0.0)
             {
                 return 0.0;

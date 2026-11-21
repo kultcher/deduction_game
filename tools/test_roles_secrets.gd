@@ -64,6 +64,7 @@ func _run_roster() -> void:
 func _run_chunk4_psychologist_mudd() -> void:
 	_test_secret_domain_and_premise()
 	_test_burden_claim()
+	_test_seer_before_scion()
 	_test_omen_window()
 	_test_retired_secret_in_saved_script()
 
@@ -254,6 +255,37 @@ func _test_burden_claim() -> void:
 ## worlds where the claimant truly held the burden (every good person was poisoned), so it
 ## counts for less than the same reading outside one, but not nothing (the claimant may have
 ## bluffed).
+## A Seer reading made before a Scion rose reads the Demon of its night (reading-note gap 1,
+## Nov 21): a true early "yes" on the Demon later hanged, with the Scion risen, must not push
+## the suspicion onto the other person named.
+func _test_seer_before_scion() -> void:
+	var people: Array = []
+	for i in range(7):
+		people.append({"id": C.CAST[i].id, "name": C.CAST[i].name, "home": C.BLOCKS.keys()[i % 4], "alive": i != 1})
+	var hanged: String = people[1].id
+	var view: Dictionary = {
+		"people": people, "evil_count": 2, "alignment_epoch": "Original alignment", "script_minions": ["scion"],
+		"world_options": {"modifiers": ["delusional", "marked"], "roles": true, "identities": true, "bluffs": true},
+		"timeline": {"events": [], "deaths": {hanged: 2}, "death_ticks": {hanged: 2 * 4 + 2}, "executions": {"2": [hanged]}},
+	}
+	var claim: Dictionary = {"id": "sc0", "fact_id": "sc0", "kind": "claim", "source": people[4].id, "subject": people[4].id, "role": "seer",
+		"observed_at": {"day": 1, "phase": "morning"}, "text": "claims Seer"}
+	var yes: Dictionary = {"id": "sy0", "fact_id": "sy0", "kind": "report", "role": "seer", "source": people[4].id,
+		"observed_at": {"day": 0, "phase": "night"}, "reported_at": {"day": 1, "phase": "morning"}, "night": 0,
+		"data": {"pair": [hanged, people[3].id], "yes": true}, "text": "Seer yes on the later-hanged and another"}
+	var post = func(cards: Array, who: int) -> float:
+		var cs = Solver.empty_case()
+		cs.conclusion = {"type": "evil", "target": people[who].id, "at": "Original alignment"}
+		cs.cards = cards.map(func(c): return c.id)
+		view["cards"] = cards
+		return float(CaseEval.evaluate(view, cs).posterior)
+	var other_claim: float = post.call([claim], 3)
+	var other_yes: float = post.call([claim, yes], 3)
+	var hanged_yes: float = post.call([claim, yes], 1)
+	print("Seer yes on night 0 for the later-hanged %s and %s, a Scion since risen: %s %.3f -> %.3f evil; %s %.3f" % [hanged, people[3].id, people[3].id, other_claim, other_yes, hanged, hanged_yes])
+	# Before the fix both rose alike (0.288 -> 0.326 each); now the yes leans on the hanged.
+	_check(hanged_yes > other_yes + 0.05 and other_yes - other_claim < 0.02, "an early yes on a Demon later hanged, the Scion risen, points at the hanged Demon, not the other person (%.3f against %.3f)" % [hanged_yes, other_yes])
+
 func _test_omen_window() -> void:
 	var people: Array = []
 	for i in range(7):
