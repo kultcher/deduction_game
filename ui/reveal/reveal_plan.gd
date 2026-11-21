@@ -60,9 +60,9 @@ static func build(g, verdict: Dictionary) -> Dictionary:
 ## last. In a final-three game the last hanging goes last instead, since it decides the game.
 static func reveal_order(w) -> Array:
 	var order: Array = []
-	for e in w.dlog.entries:
-		if e["type"] in ["kill", "execution"] and w.by_id.has(e["target"]) and not (e["target"] in order):
-			order.append(e["target"])
+	for id in death_sequence(w):
+		if not (id in order):
+			order.append(id)
 	for n in w.npcs:
 		if not (n.id in order) and not n.alive:
 			order.append(n.id)
@@ -83,18 +83,37 @@ static func reveal_order(w) -> Array:
 static func last_hanged(w) -> String:
 	var last: String = ""
 	for e in w.dlog.entries:
-		if e["type"] == "execution":
+		if e["type"] == "execution" and w.by_id.has(str(e["target"])) and not w.by_id[str(e["target"])].alive:
 			last = str(e["target"])
 	return last
 
 
-## A final-three game: it ended on a hanging with three or fewer alive before it.
+## Who died, in the order they died: the Demon's kills, hangings, and a Martyr who died in
+## another's place (logged with the Martyr as the actor; Codex on #499).
+static func death_sequence(w) -> Array:
+	var out: Array = []
+	for e in w.dlog.entries:
+		var who: String = ""
+		if e["type"] in ["kill", "execution"]:
+			who = str(e["target"])
+		elif e["type"] == "martyr":
+			who = str(e["actor"])
+		if who != "" and w.by_id.has(who) and not w.by_id[who].alive and not (who in out):
+			out.append(who)
+	return out
+
+
+## A final-three game: the game ended on a hanging (nobody died after it) with three or fewer
+## alive before it. Same-day dates aren't enough: a hanging and the night kill that ends the game
+## share a day (Codex on #499).
 static func is_final_three(w) -> bool:
-	var last: String = last_hanged(w)
-	if last == "" or not w.game_over:
+	if not w.game_over:
 		return false
-	var n = w.by_id[last]
-	return n.death_day == w.day and w.living().size() + 1 <= 3
+	var seq: Array = death_sequence(w)
+	var last: String = last_hanged(w)
+	if last == "" or seq.is_empty() or seq[-1] != last:
+		return false
+	return w.living().size() + 1 <= 3
 
 
 ## One person's step, in the shape Limner's RevealCard plays (ui/reveal/reveal_card.gd), plus

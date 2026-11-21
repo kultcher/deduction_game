@@ -76,6 +76,7 @@ func _init() -> void:
 		_check_martyr(at_meeting)
 		_check_overlay(at_meeting, DailyGuess.verdict(at_meeting))
 	if overnight != null:
+		check(not RevealPlan.is_final_three(overnight.w), "an ending on a night kill isn't a final-three hanging, even on the hanging's day (Codex on #499)")
 		var v: Dictionary = DailyGuess.verdict(overnight)
 		check(v.values().any(func(x): return x != "?"), "after an overnight ending, the last locked guesses stand as the verdict")
 	print("Grim reveal (stage 1): %d checks, %d failures" % [checks, fails])
@@ -130,6 +131,10 @@ func _check_martyr(g: Game) -> void:
 	n.death_cause = "martyr"
 	n.death_day = 2
 	var ms: Array = RevealPlan.key_moments(g, n)
+	# The Martyr takes their place in the death order from the "martyr" entry (actor = the Martyr).
+	g.w.dlog.entries.insert(0, {"type": "martyr", "actor": n.id, "target": "", "day": 2, "phase": "", "data": {}, "reason": ""})
+	check(RevealPlan.death_sequence(g.w)[0] == n.id, "a Martyr's sacrifice counts in the order of deaths (Codex on #499)")
+	g.w.dlog.entries.remove_at(0)
 	check(ms.has(RevealPlan.MOMENT_MARTYR % "second day") and not ms.any(func(x): return x.begins_with("Hanged")), "a Martyr's death reads as dying in another's place (got %s)" % str(ms))
 	n.alive = keep[0]
 	n.death_cause = keep[1]

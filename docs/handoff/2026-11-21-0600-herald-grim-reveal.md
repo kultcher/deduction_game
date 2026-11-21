@@ -64,7 +64,7 @@ All of it is in constants at the top of `reveal_plan.gd` and `reveal_overlay.gd`
 
 ## Measured
 
-- **New `tools/test_grim_reveal`** (fast list): 40 checks pass, about 35 s. It plays passive 7-NPC
+- **New `tools/test_grim_reveal`** (fast list): 42 checks pass, about 35 s. It plays passive 7-NPC
   games to their end, finds one that ended at a meeting and one that ended overnight, and
   checks:
   - the order, including the final-three rule;
