@@ -44,7 +44,20 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, made-up street sightings need a walking claim): `baseline_5c5642c`
+### Current baseline (Nov 21, the Sleepwalker's doubt reads the Rumormonger): `baseline_875370c`
+
+`tools/golden/baseline_875370c/` is the capture from `claude/sleepwalker-rumour-doubt` at `875370c` (main at
+`db7a0a8`, after #488, merged in). An NPC's "am I the Sleepwalker?" doubt moves with every Rumormonger reading
+it holds, however it learned it, weighted by that reading's route trust (`SourceDoubt.sleepwalk_doubt`,
+applied in `SharedLedger.prepare`). This replaces the PR's earlier `baseline_922d89c` and `baseline_c515fc8`.
+- **Divergence from `baseline_5c5642c`:** four seeds, at a refresh: 54875 at record 9 and 692 at 13
+  (day 1), 42 at 42 and 98933 at 124 (day 2). 900 is identical.
+- **Outcomes:** unchanged everywhere. The same hangings on the same days (42: Agnes, the Demon, on
+  day 2, a good win; 54875: Dorian, then Odette; 692: Constance on day 3; 900: Isolde; 98933: Agnes).
+  No winner by day 4 except 42.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, made-up street sightings need a walking claim): `baseline_5c5642c`
 
 `tools/golden/baseline_5c5642c/` is the capture from `claude/beadle-street-claimed` at `5c5642c`
 (main at `f8bc26d`, after #474, merged in). Evil tells a made-up sighting seen "while out" only

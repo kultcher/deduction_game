@@ -30,6 +30,9 @@ static var poison_self_doubt: bool = true
 ## Measurement switch (on in play): the player's "failed gift" call as testimony (derive,
 ## "Poisoned, not lying", option C).
 static var player_failed_gift: bool = true
+## Tests and tools only: whether the Rumormonger readings a listener holds move its "am I the
+## Sleepwalker?" doubt (apply_sleepwalk_doubt). On in play.
+static var rumour_sleep_doubt: bool = true
 
 ## How far a listener takes the player's word that a reading was a failed gift: one witness
 ## as accurate as the listener's trust in the player (c), against the chance the gift was
@@ -615,3 +618,42 @@ static func _player_failed_gift(view: Dictionary, listener: Dictionary, cards: A
 			var k_r: String = "%s:%d" % [r_id, r_day]
 			out[k_r] = maxf(float(out.get(k_r, 0.0)), w_doubt)
 	return out
+
+
+## How unsure a listener is that it is not the Sleepwalker, on a script that has one
+## (Michael, Nov 20; #459). Without a Rumormonger reading it is SLEEPWALK_SELF_DOUBT. Each
+## Rumormonger reading it holds, {"pair", "secret", "trust"}, moves its chance of carrying
+## the secret, believed as far as `trust` (the card's route trust, SharedLedger): one naming
+## it for the Sleepwalker makes it a coin flip with the other name, if true; any other
+## (another pair, or another secret) rules it out, if true, since a case has one secret on
+## one townsfolk. The doubt scales with that chance against the starting one (one secret of
+## the script's, on one of the good), between the own-reading error and SLEEPWALK_CHANCE (a
+## coin flip whether its home nights mean anything). A Rumormonger never names itself.
+static func sleepwalk_doubt(view: Dictionary, readings: Array, self_id: String) -> float:
+	var base: float = Tuning.Workshop.SLEEPWALK_SELF_DOUBT
+	var secrets: Array = view.get("world_options", {}).get("modifiers", [])
+	var goods: int = view.get("people", []).size() - int(view.get("evil_count", 0))
+	if not rumour_sleep_doubt or readings.is_empty() or secrets.is_empty() or goods < 1:
+		return base
+	var p0: float = 1.0 / float(secrets.size()) / float(goods)
+	var p: float = p0
+	for r in readings:
+		var c: float = clampf(float(r.get("trust", 0.5)), 0.0, 1.0)
+		if self_id in r.get("pair", []) and str(r.get("secret", "")) == "sleepwalker":
+			p = c * 0.5 + (1.0 - c) * p
+		else:
+			p = (1.0 - c) * p
+	return clampf(base * p / p0, Tuning.Workshop.OWN_ERR, Tuning.Setup.SLEEPWALK_CHANCE)
+
+
+## Sets the listener's home nights (view.own_home) to sleepwalk_doubt, and "sleep_doubt",
+## which the role fits' "am I the Sleepwalker?" mix reads (CaseEval). Only on a script with
+## the Sleepwalker, and only when it holds a Rumormonger reading.
+static func apply_sleepwalk_doubt(view: Dictionary, readings: Array, self_id: String) -> void:
+	var own = view.get("own_home", {})
+	if not own is Dictionary or own.is_empty() or readings.is_empty() or not "sleepwalker" in view.get("world_options", {}).get("modifiers", []):
+		return
+	var d: float = sleepwalk_doubt(view, readings, self_id)
+	for k in own.get("nights", {}):
+		own.nights[k] = d
+	own["sleep_doubt"] = d

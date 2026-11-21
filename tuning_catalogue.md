@@ -53,7 +53,7 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PRE_PHASE_CHAT_CHANCE` | `0.65` |  | `sim/world.gd` |
 | `POST_PHASE_PAIR_MULT` | `0.4` |  | `sim/world.gd` |
 | `SAME_BLOCK_SIGHTING_CHANCE` | `0.4` |  | `sim/world.gd` |
-| `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world_night.gd` |
+| `SLEEPWALK_CHANCE` | `0.5` |  | `sim/world_night.gd`, `workshop/source_doubt.gd` |
 | `FLAVOR_SECRET_WALK_CHANCE` | `0.55` |  | `sim/world_night.gd` |
 | `NIGHT_SIGHTING_STREET_CHANCE` | `0.5` | Night sightings & crime scene traces | `sim/world_night.gd` |
 | `NIGHT_SIGHTING_WINDOW_CHANCE` | `0.15` |  | `sim/world_night.gd` |
@@ -627,13 +627,13 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | Constant | Value | Note | Used in |
 | --- | --- | --- | --- |
 | `DEFAULT_ERR` | `0.01` | CaseEval report error rates & likelihood-ratio cutoffs (`workshop/case_eval.gd`) | `workshop/case_eval_base.gd` |
-| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd` |
+| `OWN_ERR` | `0.002` |  | `game/workshop_bridge.gd`, `workshop/case_eval_base.gd`, `workshop/live_activity_factors.gd`, `workshop/source_doubt.gd` |
 | `NIGHTWATCH_REPORT_ERROR` | `0.08` |  | `workshop/live_activity_pack.gd`, `workshop/live_activity_profiles.gd` |
 | `PRESENCE_TESTIMONY_TRUST` | `0.8` | Daytime presence (`workshop/day_presence.gd`): how far an NPC's report of where someone was is trusted (the player's own sightings and watch record are certain). | `workshop/day_presence.gd` |
 | `HEX_UNKNOWN_FLOOR` | `0.15` | A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1. | `workshop/live_activity_factors.gd` |
 | `EVIL_SIGHTER_TRUTH` | `0.15` | A sighting (or a Night Watch's "I saw X out") in a world where its sighter is evil may be invented. It still counts this share of the time, since evil tells the truth when it suits them; otherwise it counts as an invented sighting, as likely as an honest one on average, so a sighter's word against a subject's alibi is decided by priors (LiveActivity._sighting_contests; docs/belief_model.md, Nov 11). | `workshop/live_activity_factors.gd` |
 | `SIGHTER_CONTEST_MAX` | `2` | The most sighters per person whose word is weighed this way (2^k profiles each). | `workshop/live_activity_factors.gd` |
-| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval_classes.gd` |
+| `SLEEPWALK_SELF_DOUBT` | `0.1` | With the Sleepwalker secret on the script, a good NPC's own "I was home" is this unsure: they might be the Sleepwalker and not know it (CaseEval._class_fits). So a sighting of them on a night they spent at home counts against the sighter, but not as certain proof of a lie (Michael, Nov 12; backlog: scale it with confidence). | `game/workshop_bridge.gd`, `workshop/case_eval_classes.gd`, `workshop/source_doubt.gd` |
 | `DELUSIONAL_SELF_DOUBT` | `0.1` | With the Delusional secret on the script, a good NPC's own readings are this unsure: its gift might be the Delusional one and give it wrong readings without it knowing (SourceDoubt.derive: an honest doubt on each night of its own readings, reaching the role check and the readings' weight). Michael, Nov 17: about the Sleepwalker's rate. | `workshop/source_doubt.gd` |
 | `SELF_DOUBT_TRIGGER` | `0.30` | The judge's chance that an NPC's own reading was wrong (OwnGiftDoubt.posterior: its gift failed, from the reading clashing with what else it holds, starting from the poison and Delusional self-doubt) at or above which it doubts its gift for that night (SourceDoubt.doubts_own_gift; Michael, Nov 19). Measured on 42 ten-NPC games at the day-4 meeting: it fires in about 1 game in 4, for about 2 in 3 poisoned or Delusional readings and about 1 in 20 sound ones. | `workshop/own_gift_doubt.gd`, `workshop/source_doubt.gd` |
 | `FAILED_GIFT_DOUBT_LOW` | `0.2` | The player's "failed gift" call (SourceDoubt._player_failed_gift): the player is the expert, so a listener takes a call at its credibility in the player. The doubt runs in a straight line from FAILED_GIFT_DOUBT_LOW at the lowest credibility (Trust.CRED_MIN) to FAILED_GIFT_DOUBT_HIGH at the highest (Trust.CRED_MAX), 0.5 at the starting credibility, or the one-witness doubt where that is more. One call then removes about a fifth, half and four-fifths of what the reading costs its reader at low, default and high trust (Michael, Nov 18). Only where a Poisoner is possible. | `workshop/source_doubt.gd` |

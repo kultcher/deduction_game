@@ -136,7 +136,11 @@ func _init() -> void:
 		var label3: String = "seed %d: Sleepwalker %s, seen by %s" % [s.seed, s.subject, s.sighter]
 		print("%s: %.3f with the sighting, %.3f without" % [label3, e3.with, e3.without])
 		var own3: Array = _own_cards(e3.view, s.subject)
-		check(not own3.is_empty() and own3.all(func(c): return absf(float(c.get("self_doubt", -1.0)) - Tuning.Workshop.SLEEPWALK_SELF_DOUBT) < 1e-9), "%s: its known-home cards carry the Sleepwalker's doubt" % label3)
+		# The doubt starts at SLEEPWALK_SELF_DOUBT and moves with the Rumormonger readings the
+		# Sleepwalker holds (SourceDoubt.sleepwalk_doubt, #459), so it is read off the view.
+		var sleep_d: float = float(e3.view.get("own_home", {}).get("sleep_doubt", Tuning.Workshop.SLEEPWALK_SELF_DOUBT))
+		print("%s: home-night doubt %.3f (starting %.3f)" % [label3, sleep_d, Tuning.Workshop.SLEEPWALK_SELF_DOUBT])
+		check(not own3.is_empty() and sleep_d > 0.0 and sleep_d <= 0.5 and own3.all(func(c): return absf(float(c.get("self_doubt", -1.0)) - sleep_d) < 1e-9), "%s: its known-home cards carry the Sleepwalker's doubt (%.3f)" % [label3, sleep_d])
 		# The sighting's own effect, against the same game read with no sleepwalking doubt (Lantern,
 		# Nov 20): an end state ("< 0.7") depends on the game's other cards.
 		var sight3 = func(c): return str(c.get("kind", "")) == "sighting" and str(c.get("source", "")) == s.sighter and s.subject in c.get("subjects", [c.get("subject", "")])
