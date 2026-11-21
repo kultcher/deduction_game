@@ -112,15 +112,35 @@ static func claim(w, n, kind: String, public: bool, why: String, audience: Strin
 	else:
 		line = _mind().say_voiced(n, "burden_claim_marked", "I've carried the mark since birth. A gift may read me as evil, but I am not.")
 		text = "%s says they've carried the mark since birth: a gift may read them as evil." % n.name
+	var told: Dictionary = told_at(w)
 	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id, "secret_kind": kind,
-		"mod": kind, "burden": true, "public": public, "text": text}
+		"mod": kind, "burden": true, "public": public, "text": text, "observed_at": told}
 	if not public:
 		fact["private"] = true
+		# Corroboration (Michael, Nov 21): when this listener heard it, so a later relay keeps the date.
+		var key: String = "%s|%s" % [n.id, audience]
+		if not w.burden_told.has(key):
+			w.burden_told[key] = told
 	w.dlog.add("burden_claim", n.id, audience, {"kind": kind, "public": public, "evil": n.is_evil(), "why": why, "rival": rival},
 		"%s claims to be %s%s (%s)%s." % [n.name, C.secret_name(kind), " before the town" if public else " to " + audience, why, " [LIE]" if n.is_evil() else ""])
 	if n.is_evil():
 		w.dlog.think(n.id, "lie", "Claims to carry the mark, to explain %s." % why, {"lie": true, "burden": kind})
 	return {"line": line, "fact": fact}
+
+## When a telling happens, as a card dates it.
+static func told_at(w) -> Dictionary:
+	return {"day": w.day, "phase": "night" if w.phase == C.NIGHT else "day"}
+
+## A confidant passes on a burden it was told (or heard second-hand): the claimant stays the
+## source and the original telling keeps its date; the confidant is the relayer, whose
+## credibility decides whether it's believed (Lantern, Nov 21).
+static func relay_fact(w, confidant, owner, said: String) -> Dictionary:
+	var first_ear: String = str(confidant.known_secrets.get(owner.id, confidant.id))
+	var told: Dictionary = w.burden_told.get("%s|%s" % [owner.id, first_ear], w.burden_told.get("%s|%s" % [owner.id, confidant.id], told_at(w)))
+	return {"kind": "secret", "subject": [owner.id], "owner": owner.id, "source": owner.id, "via": confidant.id,
+		"relay_source": confidant.id, "secret_kind": owner.secret_mod, "mod": owner.secret_mod, "burden": true,
+		"public": false, "private": true, "observed_at": told,
+		"text": "%s told you %s's secret: %s %s." % [confidant.name, owner.name, owner.name, said]}
 
 # ---------------------------------------------------------------- when it comes out
 

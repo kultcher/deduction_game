@@ -173,6 +173,8 @@ static func gossip_item(w, n) -> Dictionary:
 				gossip_line = Mind.say_voiced(n, "gossip_burden", "Between you and me, %s %s." % [o.name, said], {"subject": o.name, "secret": said})
 			else:
 				gossip_line = Mind.say_voiced(n, "gossip_secret", "Between you and me, %s %s. That's why they're about at night." % [o.name, said], {"subject": o.name, "secret": said})
+			if o.secret.is_empty():
+				return {"lines": [gossip_line], "facts": [Burdens.relay_fact(w, n, o, said)]}
 			return {"lines": [gossip_line],
 				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
 					"secret_kind": o.secret.get("kind", o.secret_mod), "burden": o.secret.is_empty(), "text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, said]}]}
