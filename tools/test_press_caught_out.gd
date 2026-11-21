@@ -117,15 +117,7 @@ func _init() -> void:
 	n.history[g.w.time_key(1, C.NIGHT)] = "home:" + n.home_block
 	r = _press(g, n)
 	check(not (TRAPPED in _statements(r)) and _home(r, n), "the truly home stand by being home (%s)" % str(_statements(r)))
-	# An unaware Sleepwalker remembers being home.
-	s = _setup()
-	g = s[0]
-	n = s[1]
-	_out(g, n, n.home_block, true)
-	n.secret = {}
-	n.secret_mod = "sleepwalker"
-	r = _press(g, n)
-	check(not (TRAPPED in _statements(r)), "an unaware Sleepwalker doesn't own the night (%s)" % str(_statements(r)))
+	# (The unaware Sleepwalker's check retired with Sleepwalker 1.0 in the burdens prototype.)
 	# Evil keeps its cover.
 	s = _setup(true)
 	g = s[0]
