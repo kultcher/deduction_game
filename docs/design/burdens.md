@@ -445,8 +445,8 @@ Nothing in the design is open now. Building waits on Michael's word to Seneschal
 
 ## 10. The prototype (Michael approved, Nov 20)
 
-It's on `mock/burdens-slot`, which never merges, and is compared against main with paired
-sweeps.
+It's on `mock/burdens-slot` and is compared against main with paired sweeps. It lands
+through a `claude/` branch cut from it, never directly ("How it lands", below).
 - **Stage 1:**
   - Lantern builds the model-A slot world domain, with Marked known, on the judge side.
   - Beadle builds Marked's tiered disclosure, the "carried the mark since birth" defence, and
@@ -456,6 +456,38 @@ sweeps.
 - **Argon's speed re-estimate** under model A (Nov 20): about 10–20% faster per day-3+ refresh,
   and 15–30% on reading-heavy presentations, against main. The C fallback isn't needed below
   12+ NPCs with Minion identities. Details in [burdens_feasibility.md](burdens_feasibility.md).
+
+### How it lands (Michael, Nov 21)
+
+- **One PR with a single golden re-baseline.** It doesn't port to main stage by stage.
+  Michael allowed two if Bailiff wanted the judge separate; Bailiff chose one PR, reviewed by
+  area, so golden moves once (Nov 21).
+- **When:** after Michael playtests the prototype.
+- **History is kept** (Michael, Nov 21): it merges as a merge commit, not a squash, so the
+  prototype's history survives. Bailiff's process applies:
+  - one PR, reviewed by area, with the four owners signing off;
+  - a golden freeze while it lands;
+  - Bailiff's full local run.
+- **How:** Lantern cuts `claude/burdens` from `mock/burdens-slot`, cleaned of scaffolding.
+  This is an explicit exception to "`mock/` branches never merge": the code lands through a
+  `claude/` branch.
+- **Why:** it saves several days in the one-at-a-time golden queue. The paired sweeps against
+  main serve as the behaviour check.
+- **What's given up:** golden drift is harder to attribute, the review is heavier, and there's
+  no partial rollback.
+
+### Also settled on the prototype (Michael, Nov 21)
+
+- **The Unrequited isn't dealt to a night-walking gift,** for now. It's a deal rule, like the
+  ones the Lovers and Sleepwalker had.
+- **The judge checks claims against the deal's placement rules** (Michael, Nov 21). A claimed
+  burden that the deal can't give to the claimant's claimed role counts as a contradiction:
+  for example, Unrequited with a night-walking gift, or a Rumormonger as the lone holder. It's
+  one general rule, read from the placement table, not per-burden logic. Lantern is building it
+  on the prototype.
+- **The spell-break threshold stays as it is** until there are player-driven games. In 12
+  passive games it never broke.
+- **The stage-2 world model** is decided (section 15).
 
 ## 11. Wording approved (Michael, Nov 21)
 
@@ -557,9 +589,24 @@ Relayed by Seneschal.
   when a secret is spread.
 - **When the spell breaks:** at the existing "truly suspects" level. Michael: "That feels a
   little low given how early NPCs can start, but I'll trust the recommendation for now."
-- **Held:** the judge's world model for stage 2. The two options are placed holders for all
-  four burdens, or weighted model-A layouts. Michael is waiting for Argon's first report.
-  Lantern found that model A undercounts Unrequited and Ill-Omened by a factor of 5 to 7.
+- **The judge's world model for stage 2:** held at first, then decided (below). Lantern found
+  that model A undercounts Unrequited and Ill-Omened by a factor of 5 to 7.
 
 "Caught lying about me", from the same message, is a trust rule outside burdens. It's recorded in
 the backlog item "Rapport and Warden-credit leftovers" (a).
+
+## 15. The judge's world model for stage 2 (Michael, Nov 21)
+
+Relayed by Seneschal. It resolves the hold in section 14.
+
+- **With one burden in play (now): every burden places its holder.** Model A's unplaced
+  layouts for Unrequited and Ill-Omened are dropped, because with them the judge would
+  underweight those burdens 5 to 7 times. Argon found an over-split in the CoarseMask that
+  made this slow, and Lantern is fixing it.
+- **With two burdens in play** (once a Baron-type Minion is designed), as direction only:
+  - one fixed universe per game, with Unrequited and Ill-Omened weighted and unplaced;
+  - "which good person holds it" is summed exactly inside each world's likelihood, for
+    claims, the omen window and the Unrequited walk, so there are no 1-in-g approximations;
+  - Marked may also be unplaced at 12 to 13 NPCs.
+- **Rejected:** the per-case "touched-set" hybrid. It fragments the single cached universe,
+  and by days 3 to 4 it saves little.
