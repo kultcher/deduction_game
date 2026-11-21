@@ -7,6 +7,64 @@ session notes are kept for the record; code pointers may have moved since.
 
 
 
+
+
+## Built, Nov 21, 2026 (closed by Claude-Vicar)
+
+- **A sighting places its teller** (Michael, Nov 20; from seed 100002, found on #454).
+  - **The change:** an honest street sighting places its teller on that block that night, and
+    a window sighting places them at home. It's a hard fact in the movement check, in both
+    the GDScript and C# paths.
+  - **Why:** today a sighting constrains only the person seen. On 100002, Hollis (the Demon,
+    who lives on the Hill) "saw" Edda on the Market, the block where Agnes was killed that
+    night. Unless he lied, that puts him at the scene, but the judge never sees it, so his lie
+    hardly counts against him: 43% → 45% without Jory's watch.
+  - **Measure, in game terms:**
+    - how much a fake sighting now counts against its teller;
+    - seed 100002, before and after;
+    - the win and hanging shifts over 40 games.
+
+    Re-baseline golden.
+
+  Owner Lantern. [decided]
+
+  > **Closed Nov 21:** built, Lantern #474 (f8bc26d). On 100002 the teller's lie now counts against them by about 7 points.
+
+## Built, Nov 20, 2026, late (closed by Claude-Vicar)
+
+- **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
+  that night" or "the death happened on another block", as attributed defences rather
+  than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
+  - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
+    the town moves block to block.
+  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
+    the podium press of a sighting and the private press, as speech with no weight; a quiet
+    night isn't argued when the defender knows of a possible thwart. Approved block wording in
+    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
+    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
+   
+
+  > **Closed Nov 20 (Quill confirmed):** built, #415 (49e1530). Speech only, with the approved block wording.
+
+- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
+  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
+  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
+  fix Seneschal approved; the route version merged in #429). **Michael (Nov 20, later):** a
+  candidate is a person spotted whose destination was on the failed reader's block, not
+  anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
+  **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
+  Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
+  destination is spread over the town. **Declined (Michael, Nov 20):** the fuller
+  Poisoner-presence factor in the judge. Nobody can verify that a reading was mistaken, so the
+  judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
+   The other two Minion gifts are
+  built and closed (Quill, Nov 20). Owner Quill. [decided]
+  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
+    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
+    The reading's doubt already reads destinations and is unchanged.
+
+  > **Closed Nov 20 (Quill confirmed):** built, #445 (ce5e127). The fuller presence factor was declined; the self-doubt follow-on is "A reader's self-doubt points at the Poisoner" (#455).
+
 ## Settled, Nov 20, 2026, night (closed by Claude-Vicar)
 
 - **The Seer's rise looks small.** A constructed true Seer "yes" on Day 1 raises the

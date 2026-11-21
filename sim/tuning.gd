@@ -546,6 +546,15 @@ class Meeting:
 	const CROWD_FADE_PRIVACY_FLOOR = 0.45
 	const CROWD_FADE_SLOPE = 0.18
 	const CROWD_FADE_SIGHTING_BAR = 0.10
+	## The pressure of silence (Michael, Nov 20). A good NPC needs at least GOOD_ACCUSE_MIN_SUSP
+	## suspicion to accuse in the meeting's first pass. Once everyone has spoken, if fewer than
+	## SILENCE_USEFUL_MIN useful things came out (gift claims, shared readings, volunteered
+	## sightings, accusations with a reason), the speaking order runs once more. In that pass
+	## the floor is waived and good NPCs get up to SILENCE_SPEAK_BONUS to speak, scaled by
+	## (1 - Composure): the jittery fill the silence. Evil gets no bonus.
+	const GOOD_ACCUSE_MIN_SUSP = 0.2
+	const SILENCE_USEFUL_MIN = 3
+	const SILENCE_SPEAK_BONUS = 0.6
 	## Block safety (Step 2): how safe a nominee is because someone else is firmly on the block.
 	const BLOCK_SAFETY_FULL_MARGIN = 3.0
 	const BLOCK_SAFETY_HEAT_BASE = 0.15
@@ -951,7 +960,7 @@ class Workshop:
 	## A Hexer kill whose victim is a regular of somewhere nobody's learned (an unknown
 	## haunt): the floor on each kill's hex likelihood, relative to a walking demon's 1.
 	const HEX_UNKNOWN_FLOOR = 0.15
-	## A sighting (or a Night Watch's "I saw X pass by") in a world where its sighter is evil
+	## A sighting (or a Night Watch's "I saw X out") in a world where its sighter is evil
 	## may be invented. It still counts this share of the time, since evil tells the truth
 	## when it suits them; otherwise it counts as an invented sighting, as likely as an honest
 	## one on average, so a sighter's word against a subject's alibi is decided by priors

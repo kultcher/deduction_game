@@ -182,12 +182,19 @@ it means the game must teach its own way of thinking and make evidence very read
   walking-gift claim; previews and replies name both relationships ("Seen elsewhere",
   "Scattered sightings").
 - **Sighter contests** (#135): in a world where a sighter is evil, their sighting (or a
-  Night Watch's "I saw X pass by") counts only `Workshop.EVIL_SIGHTER_TRUTH` (0.15) of the
+  Night Watch's "I saw X out") counts only `Workshop.EVIL_SIGHTER_TRUTH` (0.15) of the
   time and otherwise as an invented one, as likely on average as an honest one, so a
   sighter's word against a person's own alibi is decided by priors. A sighter converted by
   the Revenant's curse is doubted only for what they told while converted. At most
   `SIGHTER_CONTEST_MAX` (2) sighters a person, the most-cited first. For a Medium's
   relayed sighting the relayer is weighed as a possible inventor too (#140).
+- **A sighting places its teller** (Michael, Nov 20): in a world where the teller is good, a
+  street sighting says they were out on that block that night, and one from their window
+  (their own block) that they were home or out on their own block. So "I saw Edda on the
+  Market" from someone with no reason to walk is also "I was out on the Market", and a
+  lie about someone who knows they were home weighs fully against its teller. An evil
+  teller's word says nothing of where it was. It binds as far as the sighting is heard
+  (`LiveActivity.teller_place`; `FlagTellerAt` in the kernel), and is never a hard route.
 - **Self-sightings** (#139): a good NPC's sighting of themselves on a night they know they
   spent at home is kept in the weighing, so it counts against the sighter. With the
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`

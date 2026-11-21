@@ -58,7 +58,16 @@ func _init() -> void:
 	_challenges()
 	_movement_challenge()
 	_challenged_factors()
-	_nominations(900, 7, 3)
+	# Seed 900 first, then the next few: a game whose stored cases cite a card some listener
+	# holds. A case citing only cards no listener holds (a nominator's private reading, say:
+	# seed 900 on #454, Kiran's Lamplighter count) rightly counts for nobody.
+	var nom: Dictionary = {}
+	for seed_v in range(900, 906):
+		nom = _nominations(seed_v, 7, 3)
+		if int(nom.get("countable", 0)) > 0:
+			break
+	check(int(nom.get("countable", 0)) > 0 and int(nom.get("counted", 0)) > 0,
+		"seed %d, model on: stored cases citing a card the listener holds count in a refresh (%d of %d)" % [int(nom.get("seed", -1)), int(nom.get("counted", 0)), int(nom.get("countable", 0))])
 	print("Connections cases: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -667,7 +676,7 @@ func _challenged_factors() -> void:
 
 # ------------------------------------------------------------ NPC nominators' cases, in play
 
-func _nominations(seed_v: int, npcs: int, day: int) -> void:
+func _nominations(seed_v: int, npcs: int, day: int) -> Dictionary:
 	LiveActivity.cache.clear()
 	Caches.clear_all()
 	var g = Game.new()
@@ -687,10 +696,11 @@ func _nominations(seed_v: int, npcs: int, day: int) -> void:
 	var tag: String = "seed %d, model on" % seed_v
 	if g.state != "meeting":
 		check(false, "%s reaches the day-%d meeting" % [tag, day])
-		return
+		return {}
 	var nominated: Array = g.w.public_log.filter(func(e): return e.kind == "nomination" and str(e.get("by", "")) != "player")
 	var stored := 0
 	var counted := 0
+	var countable := 0
 	var well_formed := true
 	var own_kept := false
 	var twice := false
@@ -712,6 +722,8 @@ func _nominations(seed_v: int, npcs: int, day: int) -> void:
 		Mind.refresh_beliefs(g.w, n, " (test)")
 		g.w.defer_beliefs = was_defer
 		var c: Dictionary = _proposal(g, n).get("connections", {})
+		var held: Array = g._workshop_plans.get(n.id + ":good", {}).get("prepared", {}).get("view", {}).get("cards", []).map(func(x): return str(x.get("id", "")))
+		countable += store.filter(func(cs): return cs.cards.any(func(id): return str(id) in held)).size()
 		if c.is_empty():
 			continue
 		counted += c.cases.entries.size()
@@ -721,4 +733,4 @@ func _nominations(seed_v: int, npcs: int, day: int) -> void:
 			check(Connections.summary(c).get("cases", []).size() == c.cases.entries.size(), "%s %s: the trace carries the cases" % [tag, n.id])
 	check(not nominated.is_empty() and stored > 0, "%s: NPC nominators' cited cards are kept by the town (%d nominations, %d stored cases)" % [tag, nominated.size(), stored])
 	check(well_formed and not own_kept and not twice, "%s: each has its nominator, target, cards and day; nobody stores its own; one per nominator and target" % tag)
-	check(counted > 0, "%s: some of them count in a refresh (%d)" % [tag, counted])
+	return {"seed": seed_v, "counted": counted, "countable": countable}

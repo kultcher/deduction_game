@@ -428,7 +428,7 @@ func _test_spoken_when_and_sighting_dedup() -> void:
 		"day": 2,
 		"role": "nightwatch",
 		"data": {"block": "market", "seen": [sg.id]},
-		"text": "Last night, I watched the Market: I saw %s pass by." % sg.name,
+		"text": "Last night, I watched the Market: I saw %s out." % sg.name,
 		"true": false,
 		"fake": true,
 		"shared": false,
@@ -466,7 +466,7 @@ func dialogue_batches_5_6_7__game(seed_val: int = 5601, size: int = 10):
 func _test_voice_pack_completeness_and_symmetry() -> void:
 	var ref_keys: Array = Voices.VOICES["agnes"].keys()
 	ref_keys.sort()
-	_check(ref_keys.size() == 260, "Agnes voice pack contains all 260 keys (got %d)" % ref_keys.size())
+	_check(ref_keys.size() == 277, "Agnes voice pack contains all 277 keys (got %d)" % ref_keys.size())
 	for id in CAST_IDS:
 		var ks: Array = Voices.VOICES[id].keys().filter(func(k): return k != "target_epithets")
 		ks.sort()

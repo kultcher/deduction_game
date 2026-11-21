@@ -753,3 +753,26 @@ readings the judge checks, 10 of them false):
   ([open]) is the follow-up.
 - **Behaviour:** nothing reads it yet besides tools; beliefs, votes and hangings don't move
   (golden identical apart from the stored doubt). Beadle's #316 makes it speak.
+
+### A sighting places its teller (Lantern, Nov 20; Michael's decision)
+
+A sighting used to constrain only the people it names; its teller entered only the sighter
+contest, as someone who might have invented it. But an honest street sighting is also its
+teller's own whereabouts: "I saw Edda on the Market" means "I was on the Market". On seed
+100002 (on #454) Hollis, the Demon from the Hill, told a fake street sighting of Edda on the
+Market, where Agnes was killed that night. Without his own whereabouts, the lie barely counted
+(Edda's chance he is evil went 43% to 45% without Jory's watch), and a core regrouping it set
+off took her suspicion of him down overall (78% to 71%).
+
+Now, in a world where the teller is good, a street sighting puts them out on that block that
+night (their destination; anywhere on a Lamplighter's tour), and one from their window (their
+own block) puts them at home or out on their own block, as the sim's honest sightings are made.
+A path that doesn't fit has likelihood 1 minus the card's hearing weight. In a world where the
+teller is evil (or converted that night) it says nothing of where they were. Relays,
+quotations, admitted outings, guard and watch claims, vigil lists and testimony alone are left
+out. On the same deal, Edda now holds Hollis at 83% with his lie against 78% without it.
+
+The side effect: an honest street sighting from someone with no reason to walk now also counts
+a little against its teller, as any unexplained night out does. Evil's own street frames are
+told only once a walking gift that explains them has been claimed (Beadle, follow-up).
+

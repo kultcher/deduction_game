@@ -39,7 +39,6 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
     6. \*Anger reasons `[decided]`
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
-    1. \*Explicit night-sighting rebuttals `[decided]`
   - [UI](#ui)
     1. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
@@ -51,14 +50,13 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   2. Vigil request and reward rework `[deferred]`
   3. What does Insight do now? `[deferred]`
   4. The Breathstealer overhaul `[decided: add; option open]`
-  5. The secrets rework `[decided; values open]`
+  5. \*The secrets rework `[decided; values open]`
   6. Learning resources: tooltips, an in-game wiki and a tutorial `[decided: direction]`
   7. Player toolbox `[open]`
   8. Scoring system `[open]`
   9. Storyteller/director and solvability check `[open]`
 - [Workshop gaps (NYI)](#workshop-gaps-nyi)
-  1. \*Minion gifts: the Poisoner's visit `[decided]`
-  2. Duty claim vs reading
+  1. Duty claim vs reading
 - [5. From the Nov 13 playtest triage (moved Nov 16)](#5-from-the-nov-13-playtest-triage-moved-nov-16)
   1. An NPC defender's challenge isn't stored as a case `[deferred, Michael, Nov 13]`
   2. Presenting a card to one NPC
@@ -150,6 +148,9 @@ Lantern). Nothing is open here.
   - It reuses the existing weight, scaled by the listener's trust in the reader.
 
   Owner Quill, with Lantern and Beadle reviewing. [decided]
+  - **Built** (Quill, Nov 20, `claude/self-doubt-poisoner`, stacked on #445; handoff
+    `2026-11-20-1945-quill-self-doubt-poisoner.md`). With it, both Poisoner floors add to
+    a clear rather than override it (Lantern). [in review]
 
 ### NPC behaviour
 
@@ -189,6 +190,9 @@ Lantern). Nothing is open here.
     - Beadle measures it on a `mock/` branch first.
   - **Approved after the A/B (Michael, Nov 20, evening):** build it, with no cap on the second
     round.
+  - **Built and measured** (Beadle, Nov 20, #454; handoff `2026-11-20-1940-beadle-silence.md`).
+    With the player, day-1 accusations without a reason fall from 24 to 10 in 36 games; day-1
+    claims rise by a third. [in review]
 
 - **The Gravedigger in a reluctant town.** (54875) With no executions the Gravedigger has
   nothing to read. A Gravedigger who knows this could push the town to hang someone ("so
@@ -258,6 +262,14 @@ Lantern). Nothing is open here.
   (Michael, Nov 19) Owners: Beadle (the tracking), Herald (the lines). [decided]
   - **Approved (Michael, Nov 19):** the NPC voices the standing grievance the player has
     repaired least, and the line replaces its refusal line.
+  - **Lines approved (Michael, Nov 21):** Herald's 17-reason batch, as drafted. The
+    broken-promise line stays generic for wards and vigils; a vigil-specific line waits for
+    "Vigil request and reward rework" (section 4).
+    - The broken promise keeps "You promised me a {promise}…" for both wards and vigils.
+    - `spread_my_secret` keeps "I won't forget that easily".
+    - `nominated_my_friend` keeps "I can't look at you the same".
+    - **When it's built:** when Beadle's anger hook lands, in batches if that's easier. Herald is
+      writing the other 14 voices now.
 
 ### Numbers
 
@@ -265,23 +277,12 @@ Lantern). Nothing is open here.
 
 Candidates for a unified retuning proposal, not approved changes.
 
-- **Explicit night-sighting rebuttals.** Let NPCs argue "I was seen out, but no one died
-  that night" or "the death happened on another block", as attributed defences rather
-  than hidden scaling. Don't clear all movement or ignore thwarted attacks. [decided]
-  - **Approved (Michael, Nov 20, later):** speech only. The wording never says "road", since
-    the town moves block to block.
-  - **Built Nov 20** (Quill, `MindDefence.night_route_rebuttal`): said at the meeting defence,
-    the podium press of a sighting and the private press, as speech with no weight; a quiet
-    night isn't argued when the defender knows of a possible thwart. Approved block wording in
-    (Herald). See `docs/handoff/2026-11-20-0815-quill-night-rebuttals.md` and
-    `docs/handoff/2026-11-20-1807-herald-night-rebuttal-lines.md`.
-    [in review]
-
 ### UI
 
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
-  - the Night Watch card's "pass by" is reworded (Herald drafts, Michael approves);
+  - the Night Watch card's "pass by" is reworded, along with the Vigil tooltip's "passing
+    through": Herald #448;
   - no voiced line says "road": Herald #446, merged.
 
   **Wording approved (Michael, Nov 20):**
@@ -387,6 +388,9 @@ The one performance item, "Late-game meeting and presenting cost", is in
     Warden/Veteran intervention stays an alternative, not a reason to deny credit. Base
     credit on what the listener can observe; avoid crediting promise, protection and
     outcome twice. [decided: direction; amounts open]
+  - **A vigil-specific anger line** (Michael, Nov 21): the broken-promise anger line stays
+    generic for wards and vigils until this rework settles how vigils are asked for; then
+    Herald writes the vigil one.
 
   [deferred]
 
@@ -456,7 +460,14 @@ The one performance item, "Late-game meeting and presenting cost", is in
   self-unaware secrets (Marked, Delusional, Sleepwalker) stay enumerated by the judge; the
   ones the holder knows about become ordinary claims, which evil can bluff, and the player
   can argue an unclaimed one per case. The Muddler is cut (Michael, Nov 20; "Remove the
-  Muddler", section 2). Backlogged by
+  Muddler", section 2). **Scoping under way (Michael, Nov 20):** secrets become
+  "burdens"; at most one hidden burden per script; a first slate of Delusional (hidden),
+  Marked, Unrequited and Ill-Omened (known); one burden per script for now. Michael
+  answered every open question the same day, and chose judge model A. **Prototype stage 1
+  started** (Michael approved, Nov 20) on `mock/burdens-slot`: Lantern on the slot world domain
+  with Marked known, Beadle on Marked's disclosure, defence and bluff, and both retiring the
+  Lovers and Sleepwalker 1.0. All in
+  [docs/design/burdens.md](docs/design/burdens.md). Backlogged by
   Michael (Nov 17) in favour of smaller items first; the note's section 9 has the staged
   plan for when it's picked up. Decide it alongside the Breathstealer overhaul: the room
   it frees could go to telling Minions apart. Michael (Nov 18), in the note's section 2:
@@ -518,23 +529,6 @@ The one performance item, "Late-game meeting and presenting cost", is in
 
 Patterns that come up in play, or that the mechanics make meaningful, but that the Case
 Workshop and the shared model can't express yet.
-
-- **Minion gifts: the Poisoner's visit.** A reading that failed on a night someone was near
-  the reader's home. Half built: the doubt and the Mistaken call's candidates exist, and
-  Quill is narrowing the candidates to people seen on the way to the reader's home (a bug
-  fix Seneschal approved; the route version merged in #429). **Michael (Nov 20, later):** a
-  candidate is a person spotted whose destination was on the failed reader's block, not
-  anyone whose route passed it. Quill is applying that rule to the existing filter (#445).
-  **Michael (Nov 20, evening):** only the Mistaken candidate list uses that strict rule. The
-  Poisoner doubt itself (`_outing_poison_chance`) stays destination-based, and an unknown
-  destination is spread over the town. **Declined (Michael, Nov 20):** the fuller
-  Poisoner-presence factor in the judge. Nobody can verify that a reading was mistaken, so the
-  judge shouldn't automate it. The player's Mistaken call keeps focusing suspicion (#445).
-  This item closes when #445 merges. The other two Minion gifts are
-  built and closed (Quill, Nov 20). Owner Quill. [decided]
-  - **Destination rule for the Mistaken call's candidates built** (Quill, Nov 20,
-    `claude/poisoner-destination`; handoff `2026-11-20-1834-quill-poisoner-destination.md`).
-    The reading's doubt already reads destinations and is unchanged. [in review]
 
 - **Duty claim vs reading:** the hearth in the Medium's *reading* ("at Dorian's hearth")
   as a destination, so a reading and a sighting can conflict, not only the alibi and a

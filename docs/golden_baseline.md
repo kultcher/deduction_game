@@ -44,19 +44,112 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 20, the Sleepwalker's doubt reads the Rumormonger): `baseline_c515fc8`
+### Current baseline (Nov 21, made-up street sightings need a walking claim): `baseline_5c5642c`
 
-`tools/golden/baseline_c515fc8/` is the capture from `claude/sleepwalker-rumour-doubt` at `c515fc8` (main at
-`a8a8a78`, merged in). An NPC's "am I the Sleepwalker?" doubt moves with every Rumormonger reading
-it holds, however it learned it, weighted by that reading's route trust (`SourceDoubt.sleepwalk_doubt`,
-applied in `SharedLedger.prepare`). This replaces the PR's earlier `baseline_922d89c`, which read
-only readings heard directly (`known_claims`) and moved only 98933.
-- **Divergence from `baseline_b96d2f2`:** every seed, at a refresh: 54875 at record 9 and 692 at 13
-  (day 1), 98933 at 96 (day 2), 42 at 131 and 900 at 90 (day 3). Most listeners hold some
-  Rumormonger reading, and one that doesn't name them makes them a little surer they were home.
-- **Outcomes:** unchanged everywhere. The same hangings on the same days (54875: Edda, then Agnes;
-  692: Constance, then Lian; 900: Greta; 98933: Agnes, then Lian; 42: none), and no winner by day 4.
-  900 ends one record shorter.
+`tools/golden/baseline_5c5642c/` is the capture from `claude/beadle-street-claimed` at `5c5642c`
+(main at `f8bc26d`, after #474, merged in). Evil tells a made-up sighting seen "while out" only
+once its teller has claimed a gift that takes it out at night (Michael, Nov 20).
+- **Divergence from `baseline_b810754`:** seed 98933 only, at record 106 (day 2's meeting). Evil
+  no longer says it saw someone out on Chapel Hill on the second night, since it had claimed no
+  walking gift, and the "was out on" readings that followed from it are gone.
+- **Outcomes:** unchanged on every seed. 98933 still hangs Agnes on day 2, with no winner by
+  day 4.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, a sighting places its teller): `baseline_b810754`
+
+`tools/golden/baseline_b810754/` is the capture from `claude/sighting-places-teller` at `b810754` (main at
+`03451a8` after #454, merged in). In a world where its teller is good, a street sighting puts
+the teller out on that block that night, and a window sighting puts them home or on their own
+block (`LiveActivity.teller_place`). A teller who was converted when they told it is left
+unconstrained, as the sighter contests do. This replaces the PR's earlier `baseline_e8ff7e0`,
+`baseline_7af7d2a` and `baseline_6f80578`.
+- **Divergence from `baseline_5f4629f`:** every seed, at a refresh or the first step: 98933 at
+  record 1 and 54875 at 4 (day 1), 42 at 41, 900 at 46 and 692 at 50 (day 2).
+- **Outcomes:**
+  - **54875:** Dorian on day 2 and Odette (a good Veteran) on day 3, instead of Edda (the Revenant)
+    on day 1, Odette on day 2 and Jory on day 3.
+  - **692:** Constance (the Demon) on day 3 alone, instead of Constance on day 2 and Lian on day 3.
+  - **98933:** Agnes (a good Medium) on day 2 instead of day 3.
+  - **42 and 900:** the same: the town hangs Agnes, the Demon, on day 2 (a good win), and Isolde
+    on day 2. No winner by day 4 on the others.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
+
+`tools/golden/baseline_5f4629f/` is the capture from `claude/beadle-silence` at `5f4629f` (main at
+`c2c5653`, after #412, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion
+to accuse in a meeting's first pass; a meeting that turns up fewer than three useful things runs
+its speaking order once more, with the floor waived and nervous good NPCs pushed to speak
+(Michael, Nov 20 and 21).
+- **Divergence from `baseline_1d59c5a`:** every seed on day 1, at the first meeting (records 7-11),
+  where an accusation under the floor no longer happens and the beliefs that follow differ.
+- **Outcomes:**
+  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
+    day 4 before).
+  - **54875:** hangs Edda on day 1, then Odette and Jory (Greta on day 2 before).
+  - **692:** hangs Constance on day 2 as before, then Lian on day 3.
+  - **900:** hangs Isolde on day 2 instead of Greta.
+  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
+  - No winner by day 4 on 54875, 692, 900 or 98933.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
+
+`tools/golden/baseline_1d59c5a/` is the capture from `claude/beadle-martyr-bluff-quiet` at `1d59c5a`
+(main at `8d60e8e`, after #455, merged in). An evil Martyr bluff stays quiet against its made-up chosen, and
+now votes on them as a real Martyr would, its reluctance included (Michael, Nov 21).
+- **Divergence from `baseline_8d60e8e`:** only 692, at record 228 (day 3): Hollis, a Martyr bluff,
+  carries `martyr_reluctance` on its chosen, and its no vote gets firmer. 42, 54875, 900 and 98933
+  are identical.
+- **Outcomes:** unchanged on all five seeds.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, a reader's self-doubt points at the Poisoner): `baseline_8d60e8e`
+
+`tools/golden/baseline_8d60e8e/` is the capture from `claude/self-doubt-poisoner` at `8d60e8e` (main at
+`bcc702a`, merged in). A listener who hears a reader say its gift may have been turned nudges
+suspicion toward anyone seen on that reader's block on a night it read, as an accepted Mistaken call
+does; and the Poisoner nudges (the strongest one, once) now add to a clear instead of overriding it.
+- **Divergence from `baseline_6836d21`:** one seed.
+  - **42**, record 35 (Nisha's refresh, day 2 afternoon): Agnes, seen on a self-doubting
+    reader's block, is pressed a little more (requested 0.113 to 0.146).
+  - 54875, 692, 900 and 98933 are identical. (On earlier baselines 54875 also moved, where a
+    cleared Isolde was nudged; since #444 that refresh no longer arises.)
+- **Outcomes:** unchanged on all five seeds (the same hangings).
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, joint reasons only for pairings the NPC weighed): `baseline_6836d21`
+
+`tools/golden/baseline_6836d21/` is the capture from `claude/joint-reasons-combined` at `6836d21`
+(main at `03968fd` after #448, merged in). A "taken together" reason names only two cards the
+belief model weighed together. An NPC's own reading counts as known to the town or the
+Demonologist by the reading itself (shared, claimed, or cited in a presentation to them), not by
+the cards cited with it, so a reading already shared is no longer "revealed" again. This replaces
+the PR's earlier `baseline_d9f8005` and `baseline_1fe73e4`, taken on older mains.
+- **Divergence from `baseline_66be26f`:** 692 from record 67 and 900 from 41 (both the day 2
+  meeting: an accusation no longer hints at a private reason). 42 diverges at record 71 and
+  54875 at record 51, each at a refresh after a different line in talk. 98933 is identical.
+- **Outcomes:**
+  - **54875:** the town hangs Edda on day 1 instead of day 2, then Greta (the Poisoner) on
+    day 2, instead of Agnes on day 3. No winner by day 4 either way.
+  - **692:** Constance (the Demon) on day 2 as before. Lian is no longer hanged on day 3.
+    No winner by day 4 either way.
+  - **42 and 900:** the same hangings (none in 42; Greta in 900); only what is said differs.
+  - **98933:** unchanged.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 20, the Night Watch card says "out"): `baseline_66be26f`
+
+`tools/golden/baseline_66be26f/` is the capture from `claude/herald-nightwatch-card` at `66be26f` (main at
+`fff6b66`, with #413, merged in). The Night Watch card reads "I saw A and B out" instead of "I saw A, B
+pass by", fabricated cards match, and the scapegoat fabrication's logged reason says "watched the
+block of" instead of "the street of".
+- **Divergence from `baseline_b96d2f2`:** text only. 42 and 54875 from record 1, 692 from 45 and
+  98933 from 79, each at a Night Watch card's text (and on 98933 the fabrication's reason). 900 is
+  identical. With " pass by" replaced by " out" and "street of evil" by "block of evil" in the old
+  baseline, all five seeds are identical.
+- **Outcomes:** unchanged on all five seeds.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 21, the Gravedigger's hidden lean): `baseline_b96d2f2`

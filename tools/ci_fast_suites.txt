@@ -6,6 +6,7 @@
 # PRs that each add a suite rarely touch the same line (Nov 17). CI deals the list out
 # to the four shards in this order (suite i goes to shard i mod 4).
 test_agreement_trust
+test_anger_reasons
 test_ask_night_results
 test_attention_0b
 test_augur_wording
@@ -86,6 +87,7 @@ test_lie_severity_votes
 test_location_art
 test_location_solver
 test_map_return
+test_martyr_bluff_quiet
 test_mechanics_claims
 test_mechanics_conclusions
 test_mechanics_defences
@@ -155,15 +157,18 @@ test_roles_people
 test_roles_registry
 test_roles_secrets
 test_roles_shelter
+test_self_doubt_poisoner
 test_shared_model
 test_sighter_contest
 test_sighting_followup
+test_silence_pressure
 test_sleepwalk_bluff
 test_social
 test_social_evidence_boundary
 test_social_trust
 test_soundtrack
 test_state_digest
+test_street_sighting_claimed
 test_symmetric_vote
 test_term_defs
 test_text_formatter

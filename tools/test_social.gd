@@ -265,7 +265,7 @@ func _test_fake_watch_story() -> void:
 		m.max_tier = 3
 		w.evil_plan["fake_watch"]["1"] = "hill"
 		m.info_log.append({"day": 1, "role": "nightwatch", "fake": true, "shared": false, "true": false,
-			"data": {"block": "hill", "seen": [goods[0].id]}, "text": "I watched Chapel Hill: I saw %s pass by" % goods[0].name})
+			"data": {"block": "hill", "seen": [goods[0].id]}, "text": "I watched Chapel Hill: I saw %s out" % goods[0].name})
 		m.traits["gossip"] = 0.9
 		# Undisclosed, the watch result is withheld (never contradicted)...
 		var held = Mind.answer_night(w, m, 1)

@@ -30,8 +30,20 @@ func score_public_claim(w, n, parts: Dictionary) -> void:
 		parts["martyr_chosen"] = Tuning.Roles.MARTYR.claim_chosen_bonus # coming out as the Martyr protects their choice by deterrence
 
 
-func score_vote_reluctance(_w, v, nominee: String, base: float, panic: float, parts: Dictionary) -> void:
-	if v.martyr_target == nominee and not v.gift_broken():
+## Whom `v` has given its life over for: a real Martyr's choice, or, for an evil Martyr
+## bluff's good self (its shadow), the made-up choice it has told or will tell.
+func _chosen(w, v) -> String:
+	if v.martyr_target != "":
+		return v.martyr_target
+	if v.is_shadow and w.by_id.has(v.id):
+		return load("res://sim/evil.gd").martyr_bluff_chosen(w.by_id[v.id])
+	return ""
+
+
+func score_vote_reluctance(w, v, nominee: String, base: float, panic: float, parts: Dictionary) -> void:
+	# A Martyr bluff's good self holds back like a real Martyr (Michael, Nov 21). Its evil
+	# override can still outvote it, as on any vote.
+	if _chosen(w, v) == nominee and not v.gift_broken():
 		# They'd die in this one's place: reluctant, unless the case, the pressure or the
 		# panic is overwhelming.
 		var r: float = Tuning.Roles.MARTYR.reluctance_base - Tuning.Roles.MARTYR.reluctance_panic_scale * panic - Tuning.Roles.MARTYR.reluctance_pressure_scale * v.pressure - Tuning.Roles.MARTYR.reluctance_susp_scale * maxf(0.0, base - Tuning.Roles.MARTYR.reluctance_susp_pivot)
