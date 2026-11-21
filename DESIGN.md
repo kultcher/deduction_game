@@ -198,7 +198,9 @@ it means the game must teach its own way of thinking and make evidence very read
 - **Self-sightings** (#139): a good NPC's sighting of themselves on a night they know they
   spent at home is kept in the weighing, so it counts against the sighter. With the
   Sleepwalker on the script their own home nights carry a `Workshop.SLEEPWALK_SELF_DOUBT`
-  (0.1) doubt. A Night Watch list that wrongly names them is still set aside.
+  (0.1) doubt. A Rumormonger's reading moves it, as far as they trust the teller: named for
+  the Sleepwalker, it rises to at most `SLEEPWALK_CHANCE` (a coin flip); any other reading
+  rules them out if true, so it falls (`SourceDoubt.sleepwalk_doubt`). A Night Watch list that wrongly names them is still set aside.
 - **Vigils see who leaves:** a player vigil on a block sees its residents leaving home, and
   no one else: not walkers arriving from another block or passing through, nor the
   Lamplighter or Sexton on their tour of every block, who are seen only from their own home
@@ -1321,6 +1323,9 @@ creating a final-day tie is left as is (social dynamics as intended). **[watch]*
   frozen before votes, executions and nights. The latest pre-outcome copy is scored at the
   end; abandoned earlier guesses are kept but don't count. One candidate per evil identity.
   Opening a debug grimoire (or the debug overlay) disqualifies identification credit.
+  - *Planned (Michael, Nov 20; not built):* the scored guess becomes the last one locked in
+    the daily evil-team guess window, not the latest pre-outcome copy. See
+    [grim_reveal.md](docs/design/grim_reveal.md#2a-the-daily-evil-team-guess).
 - **The daily evil-team guess** (Michael, Nov 21; `ui/daily_guess.gd`): closing each day's
   meeting fades to a window with a Demon circle and one Minion circle per Minion in play, each
   with a type menu (the Demon's type is given on single-Demon scripts; the Demon picker crosses
