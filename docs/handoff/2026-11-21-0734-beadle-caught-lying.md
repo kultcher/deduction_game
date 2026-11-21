@@ -40,10 +40,17 @@
 
 ## Measured
 
-- **New:** `tools/test_caught_lying.gd` (12 checks), on the fast list.
+- **New:** `tools/test_caught_lying.gd` (14 checks), on the fast list.
 - **Codex on #506, fixed:** a Night Watch's route names who was out, not who is evil. It now
   counts only as a sighting, when it places the listener out on a night spent at home. A
   Medium's relayed reading never counts against the Medium.
+- **Codex and Bailiff on #506, second round, fixed:**
+  - **Only readings that assert evil count:** an allow-list of the PING, GROUP_COUNT,
+    ROLE_AT_SITE and ROLE_IN_GROUP shapes, plus the Martyr and the Executor.
+    - A Registrar's yes (it holds one of the listed roles, good ones included) never counts.
+    - Neither does any other gift, until it's added.
+  - **A public reading is checked for everyone it names,** so a faked route that adds someone
+    who was home that night is caught. Golden was unmoved by this round.
 - **Also pass:** test_agreement_trust, test_meeting_flow, test_social_credibility,
   test_caught_lie_softening, test_conversation_nights, test_npc_interactions,
   test_defence_repeats, test_dialogue.
