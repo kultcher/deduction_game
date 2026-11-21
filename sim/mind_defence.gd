@@ -461,8 +461,8 @@ static func defend_self(w, d, nominator_id: String, disclosed_facts: Array = [])
 		if decide(w, d, "defence_confess", confess_parts, "Confess my secret to explain being out?"):
 			d.secret_known = true
 			lines.append(say_voiced(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % d.secret.get("me", d.secret.get("text", "")), {"secret": d.secret.get("me", d.secret.get("text", ""))}))
-			facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
-				"secret_kind": d.secret.get("kind", ""), "text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]})
+			facts.append(Burdens.with_errand(w, d, {"kind": "secret", "subject": [d.id], "owner": d.id, "source": d.id,
+				"secret_kind": d.secret.get("kind", ""), "text": "%s confessed at the meeting why they were out: %s %s." % [d.name, d.name, d.secret.get("text", "")]}))
 			moves.append("secret")
 			move_strengths["secret"] = minf(Tuning.Meeting.DEFENCE_SECRET_CAP, out_weight)
 			move_scales["secret"] = 1.0

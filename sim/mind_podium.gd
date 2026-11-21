@@ -230,9 +230,9 @@ static func press_night(w, d, nd: int, grounds: bool, admitted: bool = false) ->
 				d.secret_known = true
 				var me: String = d.secret.get("me", d.secret.get("text", ""))
 				lines.append(_say(d, "confess_secret_public", "I wasn't out for anything wicked. I %s." % me, {"secret": me}))
-				facts.append({"kind": "secret", "subject": [d.id], "owner": d.id, "block": block, "day": nd, "phase": C.NIGHT, "source": d.id,
+				facts.append(load("res://sim/burdens.gd").with_errand(w, d, {"kind": "secret", "subject": [d.id], "owner": d.id, "block": block, "day": nd, "phase": C.NIGHT, "source": d.id,
 					"secret_kind": d.secret.get("kind", ""), "public": true,
-					"text": "%s confessed before the town they were out on %s %s: %s %s." % [d.name, C.block_name(block), C.spoken_when(nd, w.day), d.name, d.secret.get("text", "")]})
+					"text": "%s confessed before the town they were out on %s %s: %s %s." % [d.name, C.block_name(block), C.spoken_when(nd, w.day), d.name, d.secret.get("text", "")]}))
 				vantage = block
 				how = "street"
 				outcome = "confess"

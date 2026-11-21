@@ -260,6 +260,11 @@ func _night_movement(poison_t: String, kill_t: String, watch, watch_block: Strin
 	var sx_walk = living_with_role("sexton")
 	if sx_walk and sexton_tolled_night == day:
 		_walk(sx_walk, sx_walk.home_block, "tolling the church bell through every parish", C.BLOCKS.keys())
+	# The Unrequited visits the beloved's door, or their grave once they're gone (burdens prototype).
+	for n in living():
+		var visit: String = load("res://sim/burdens.gd").unrequited_visit(self, n)
+		if visit != "":
+			_walk(n, visit, "secret: unrequited (%s)" % ("the beloved's grave" if visit == "hill" and not by_id[n.beloved].alive else "the beloved's door"))
 	for n in living():
 		n.history[time_key(day, C.NIGHT)] = ("night:" if n.out_last_night else "home:") + n.night_block
 	dlog.add("night_movement", "world", "", {"walkers": night_walkers})

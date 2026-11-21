@@ -328,8 +328,8 @@ static func trapped_explanation(w, n, nd: int) -> Dictionary:
 	_own_night_account(w, n, nd, block)
 	n.secret_known = true
 	var line: Dictionary = say_voiced(n, "confess_secret_private", "...I wasn't home. I %s. Please, keep it quiet." % n.secret.get("me", n.secret["text"]), {"secret": n.secret.get("me", n.secret["text"])})
-	var fact: Dictionary = {"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
-		"secret_kind": n.secret.get("kind", ""), "text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]}
+	var fact: Dictionary = Burdens.with_errand(w, n, {"kind": "secret", "subject": [n.id], "owner": n.id, "block": block, "day": nd, "phase": C.NIGHT, "source": n.id,
+		"secret_kind": n.secret.get("kind", ""), "text": "%s confessed they were out on %s on night %d: %s %s." % [n.name, C.block_name(block), nd, n.name, n.secret["text"]]})
 	w.dlog.think(n.id, "admit_out", "Caught out of a home alibi: owns the night and explains it (secret: %s)." % n.secret.get("kind", "?"))
 	return {"lines": [line], "facts": [fact]}
 

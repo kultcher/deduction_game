@@ -117,6 +117,7 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 			n.npc_trust[m.id] = snappedf(t, 0.01)
 		n.trust = clampf(Tuning.Setup.PLAYER_TRUST_BASE + Tuning.Setup.PLAYER_TRUST_OPENNESS_SCALE * (1.0 - n.traits["privacy"]) + rng.randf_range(Tuning.Setup.PLAYER_TRUST_JITTER_MIN, Tuning.Setup.PLAYER_TRUST_JITTER_MAX), Tuning.Setup.PLAYER_TRUST_MIN, Tuning.Setup.PLAYER_TRUST_MAX)
 		n.trust_at_reconsider = n.trust
+	load("res://sim/burdens.gd").setup_unrequited(self)  # the beloved's place in their heart (burdens prototype)
 
 	# Each good NPC knows their own gift: a firsthand record that counts against anyone
 	# who claims it falsely.

@@ -108,7 +108,7 @@ static func _pick_item(w, s, l):
 			var key = "reading:%d:%s" % [e["day"], e["role"]]
 			if C.has_role_def(str(e.get("role", ""))) and not C.role_def(str(e.get("role", ""))).may_share_reading(w, s, e):
 				continue
-			if not e["shared"] and not _told(s, l, key):
+			if not e["shared"] and not _told(s, l, key) and not Burdens.withholds_for_beloved(w, s, e):
 				var wgt = _reading_weight(s, priv, bond) * unclaimed_mult
 				cands.append([wgt, {"kind": "reading", "entry": e, "about": "", "from": s.id, "key": key}])
 		if not s.secret.is_empty() and not l.known_secrets.has(s.id):

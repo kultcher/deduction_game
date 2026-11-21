@@ -316,6 +316,8 @@ static func on_executed(w, n) -> void:
 	if int(w.omen_restated.get(n.id, -1)) != w.day:
 		return
 	var real: bool = n.secret_mod == "ill_omened" and not n.is_evil()
+	# Public: the town saw a claimed Ill-Omened hanged. Whether the poison fell stays hidden.
+	w.public_event("omen_hanged", [n.id], "world")
 	w.dlog.add("omen_hanged", "world", n.id, {"day": w.day},
 		"%s, who claimed to be Ill-Omened when nominated, is hanged.%s" % [n.name, "" if real else " [BLUFF: no effect]"])
 	if not real:
@@ -333,3 +335,68 @@ static func lift_omen(w) -> void:
 	for m in w.npcs:
 		if int(m.omen_poisoned_day) >= 0 and w.day > int(m.omen_poisoned_day):
 			m.omen_poisoned_day = -1
+
+# ---------------------------------------------------------------- Unrequited (stage 2)
+
+## At the deal: the holder's errand (the confession paths read `secret`), and trust in the
+## beloved near the maximum, so it takes more to sway them against them (Michael, Nov 20).
+static func setup_unrequited(w) -> void:
+	for n in w.npcs:
+		if n.secret_mod != "unrequited" or n.beloved == "" or n.is_evil():
+			continue
+		var b = w.by_id[n.beloved]
+		n.secret = {"kind": "unrequited", "burden": true, "beloved": b.id, "dest": b.home_block,
+			"text": "has an unrequited love for %s" % b.name,
+			"me": "went to %s's door. I've cared for them a long while, and they've no idea" % b.name}
+		n.npc_trust[b.id] = 1.0 - Tuning.Setup.INITIAL_TRUST_JITTER
+		n.suspicion[b.id] = minf(float(n.suspicion.get(b.id, Tuning.Setup.INITIAL_SUSPICION_BASE)), Tuning.Setup.INITIAL_SUSPICION_BASE + Tuning.Setup.INITIAL_SUSPICION_FRIEND)
+
+## Tonight's visit, or "": the beloved's block, or Chapel Hill once they're dead (their
+## grave), on UNREQUITED_VISIT_CHANCE of nights by the holder's own seeded draw (so the
+## world's stream doesn't move). Not on a night it's already out on other business.
+static func unrequited_visit(w, n) -> String:
+	if n.secret_mod != "unrequited" or n.is_evil() or n.beloved == "" or n.out_last_night or not w.by_id.has(n.beloved):
+		return ""
+	var r := RandomNumberGenerator.new()
+	r.seed = hash([w.seed_value, w.day, n.id, "unrequited_visit"])
+	if r.randf() >= Tuning.Burden.UNREQUITED_VISIT_CHANCE:
+		return ""
+	var b = w.by_id[n.beloved]
+	if not b.alive:
+		n.secret["dest"] = "hill"
+		n.secret["me"] = "was at the graveyard, at %s's grave. I loved them, and now they'll never know" % b.name
+		return "hill"
+	return b.home_block if b.home_block != n.home_block else ""
+
+## What any Unrequited confession or gossip adds to its fact: the beloved, the burden flag,
+## the date and the card's words ("X admitted they have an unrequited love for Y", §9 item 11).
+## Empty for any other secret.
+static func errand_extras(w, o) -> Dictionary:
+	if str(o.secret.get("kind", "")) != "unrequited":
+		return {}
+	var b = w.by_id.get(str(o.secret.get("beloved", "")))
+	if b == null:
+		return {}
+	return {"secret_kind": "unrequited", "mod": "unrequited", "burden": true, "beloved": b.id,
+		"observed_at": told_at(w), "text": "%s admitted they have an unrequited love for %s." % [o.name, b.name]}
+
+static func with_errand(w, o, fact: Dictionary) -> Dictionary:
+	fact.merge(errand_extras(w, o), true)
+	return fact
+
+## Defending within reason (§9 item 13): a reading it would volunteer that implicates the
+## beloved moderately to strongly (them among two at most) is held back, with a logged reason.
+## Only what it volunteers: pressed, or nominated itself, it gives it up.
+static func withholds_for_beloved(w, n, entry: Dictionary) -> bool:
+	if n.secret_mod != "unrequited" or n.is_evil() or n.beloved == "":
+		return false
+	var who: Array = Gifts.implicated(entry)
+	if not n.beloved in who or who.size() > 2:
+		return false
+	if str(w.meeting.get("pending", {}).get("nominee", "")) == n.id:
+		return false
+	var key: String = "unrequited_withheld:%s" % str(entry.get("day", -1))
+	if not n.dialogue_memory.get(key, false):
+		n.dialogue_memory[key] = true
+		w.dlog.think(n.id, "withhold", "Holds back a reading against %s, whom they love: not on so little." % w.by_id[n.beloved].name, {"burden": "unrequited", "beloved": n.beloved})
+	return true

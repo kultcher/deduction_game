@@ -718,7 +718,7 @@ static func _go_public(w, n, lines: Array, facts: Array, share_readings: bool = 
 		var PsychRole = preload("res://sim/roles/psychologist.gd")
 		var shared_this_turn: Array = []
 		for e in n.info_log:
-			if e["shared"] or e.get("disowned", false):
+			if e["shared"] or e.get("disowned", false) or Burdens.withholds_for_beloved(w, n, e):
 				continue
 			e["shared"] = true
 			var weights = {}

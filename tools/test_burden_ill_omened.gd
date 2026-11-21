@@ -84,6 +84,7 @@ func _bluff() -> void:
 	w.execute(e.id, {})
 	_check(w.npcs.all(func(m): return m.omen_poisoned_day == -1), "a bluffer's hanging poisons nobody")
 	_check(_logged(w, "omen_hanged").size() == 1 and _logged(w, "omen_poison").is_empty(), "the town still sees an omen-claimer hanged, and can't tell")
+	_check(w.public_log.any(func(e): return str(e.get("kind", "")) == "omen_hanged" and e.get("subjects", []).size() == 1 and int(e.get("phase", -1)) == C.EVENING), "the hanging is a public event, for the judge's view")
 
 func _unarmed() -> void:
 	var w = _case().w

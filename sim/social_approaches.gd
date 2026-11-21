@@ -176,8 +176,8 @@ static func gossip_item(w, n) -> Dictionary:
 			if o.secret.is_empty():
 				return {"lines": [gossip_line], "facts": [Burdens.relay_fact(w, n, o, said)]}
 			return {"lines": [gossip_line],
-				"facts": [{"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
-					"secret_kind": o.secret.get("kind", o.secret_mod), "burden": o.secret.is_empty(), "text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, said]}]}
+				"facts": [Burdens.with_errand(w, o, {"kind": "secret", "subject": [owner], "owner": owner, "source": n.id, "via": n.known_secrets[owner],
+					"secret_kind": o.secret.get("kind", o.secret_mod), "burden": o.secret.is_empty(), "text": "%s told you %s's secret: %s %s." % [n.name, o.name, o.name, said]})]}
 	for it in items:
 		if it[0] != "hearsay":
 			continue
