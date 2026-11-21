@@ -1,8 +1,8 @@
 ## Nov 20 — Claude-Lantern: the Sleepwalker's doubt reads what the Rumormonger told her
 
-- **Base:** main `6cccaf4`. **Status:** PR open. **Next:** Seneschal (Michael's OK on the cap),
-  then Bailiff. **Moves golden:** re-baselined in this PR (`baseline_c515fc8`); in Bailiff's golden queue
-  behind #448, #444, #412, #454 and #455. **Approved:** Michael, Nov 20, as built (coin-flip cap).
+- **Base:** main `db7a0a8` (after #488, merged in, Nov 21). **Status:** PR ready. **Next:** Bailiff.
+  **Moves golden:** re-baselined in this PR (`baseline_875370c`; earlier `baseline_c515fc8` on
+  `a8a8a78`). Outcomes unchanged on every seed. **Approved:** Michael, Nov 20, as built (coin-flip cap).
 - **What this is:** BACKLOG section 6 item 3, `[decided]` (Michael, Nov 20; Seneschal: build it
   with the proposed cap as a placeholder).
 
