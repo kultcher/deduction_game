@@ -754,6 +754,7 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 	var bare: bool = role_cards.is_empty() # the "before" side: no role-constraining case cards (see evaluate)
 	var u_key: String = Solver._universe_key(view)
 	var base_fit_ref: Array
+	var burden_factors: Array = []
 	if bare:
 		var route_tl: Dictionary = view.get("timeline", {}) if not live else {}
 		base_fit_ref = [u_key, view.people, route_tl, view.get("live_activity", false), live, cc.rep, "bare"]
@@ -763,8 +764,8 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 			tl = tl.duplicate(false)
 			tl["events"] = tl.events.filter(func(e): return str(e.get("kind", "")) not in SOFT_EVENTS)
 		# A claimed burden's weight reads the listener's other cards (its timing), so it keys too.
-		base_fit_ref = [u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards,
-			Solver.Roles.burden_claim_factors(view, role_cards) if live else []]
+		burden_factors = Solver.Roles.burden_claim_factors(view, role_cards) if live else []
+		base_fit_ref = [u_key, view.people, tl, view.get("live_activity", false), live, cc.rep, role_cards, burden_factors]
 	var base_fit_key: int = hash(base_fit_ref)
 	var neutral_ref: Array = [base_fit_ref, "neutral"]
 	var neutral_key: int = hash(neutral_ref)
@@ -786,15 +787,15 @@ static func _class_fits(view: Dictionary, cc: Dictionary, cards: Array, knowledg
 				if cc_reps_handle < 0:
 					for c in range(nc):
 						reps.append(universe[cc.rep[c]])
-				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array())
+				w_all = Solver.Roles.bluff_weights(view, reps, role_cards, cc_reps_handle, PackedInt32Array(), burden_factors)
 			neutral = _fits_over(view, cc, role_cards, {}, range(nc), w_all)
 		if cache_enabled:
-			if _fits_cache.size() > 4096:
+			if _fits_cache.size() > 12288:
 				_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 	if personal.own_role == "" and personal.own_outings.is_empty() and personal.get("public_roles", {}).is_empty():
 		return neutral
-	var fits: PackedFloat64Array = _personal_fits(view, cc, role_cards, personal, neutral, neutral_key, neutral_ref, bare, base_fit_key, base_fit_ref, u_neutral, w_all)
+	var fits: PackedFloat64Array = _personal_fits(view, cc, role_cards, personal, neutral, neutral_key, neutral_ref, bare, base_fit_key, base_fit_ref, u_neutral, w_all, burden_factors)
 	return fits
 
 static var use_cc_reps_handle: bool = true
@@ -806,7 +807,7 @@ static func _cc_reps_handle(u_key: String, universe: Array, rep: PackedInt32Arra
 	var sub_key: String = "cc_reps:%d:%d" % [rep.size(), hash([u_key, rep])]
 	return SolverBackend.get_sub_universe_handle(sub_key, base_u_handle, rep)
 
-static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, personal: Dictionary, neutral: PackedFloat64Array, neutral_key: int, neutral_ref: Array, bare: bool, base_fit_key: int, base_fit_ref: Array, u_neutral: PackedFloat64Array = PackedFloat64Array(), w_all: PackedFloat64Array = PackedFloat64Array()) -> PackedFloat64Array:
+static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, personal: Dictionary, neutral: PackedFloat64Array, neutral_key: int, neutral_ref: Array, bare: bool, base_fit_key: int, base_fit_ref: Array, u_neutral: PackedFloat64Array = PackedFloat64Array(), w_all: PackedFloat64Array = PackedFloat64Array(), burden_factors = null) -> PackedFloat64Array:
 	var live: bool = Domain.live(view)
 	var key: int = hash([base_fit_key, personal, live, bare])
 	var ref: Array = [base_fit_ref, personal, live, bare]
@@ -829,10 +830,10 @@ static func _personal_fits(view: Dictionary, cc: Dictionary, cards: Array, perso
 			if cc_reps_handle < 0:
 				for c in range(cc.team.size()):
 					reps.append(universe[cc.rep[c]])
-			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array())
+			w_all = Solver.Roles.bluff_weights(view, reps, cards, cc_reps_handle, PackedInt32Array(), burden_factors)
 		out = _fits_over(view, cc, cards, personal, open, w_all)
 	if cache_enabled:
-		if _fits_cache.size() > 4096:
+		if _fits_cache.size() > 12288:
 			_fits_cache.clear()
 			_fits_cache[neutral_key] = {"ref": neutral_ref.duplicate(true), "out": neutral}
 		_fits_cache[key] = {"ref": ref.duplicate(true), "out": out}
@@ -899,6 +900,16 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 	var relayed_seers: Array = cards.filter(func(card): return card.kind == "report" and card.get("role", "") == "seer" and card.get("testimony_only", false) and not card.get("quoted", false))
 	var ids: Array = Solver.person_ids(view)
 	var all_mask: int = (1 << ids.size()) - 1
+	var rel_entries: Array = []
+	if not relayed_seers.is_empty():
+		for rc in relayed_seers:
+			var p_mask: int = 0
+			for person in rc.data.get("pair", []):
+				var idx: int = ids.find(person)
+				if idx >= 0:
+					p_mask |= 1 << idx
+			rel_entries.append({"yes": bool(rc.data.yes), "pair": p_mask, "ping": p_mask, "reason": ""})
+	var rh_memo: Dictionary = {}
 	for x in range(which.size()):
 		var content: float = t[x]
 		if content == 0.0 and not declarations.is_empty() and declarations[x] != 0:
@@ -908,17 +919,25 @@ static func _fits_over(view: Dictionary, cc: Dictionary, cards: Array, knowledge
 			content = DEFAULT_ERR
 		if content > 0.0 and not relayed_seers.is_empty():
 			var w_rep: Dictionary = reps[x] if cc_reps_handle < 0 else universe[cc.rep[which[x]]]
-			var rel_readings: Array = []
-			for rc in relayed_seers:
-				if Solver.source_valid(view, w_rep, rc):
-					var p_mask = 0
-					for person in rc.data.get("pair", []):
-						var idx: int = ids.find(person)
-						if idx >= 0:
-							p_mask |= 1 << idx
-					rel_readings.append({"yes": bool(rc.data.yes), "pair": p_mask, "ping": p_mask, "reason": ""})
-			if not rel_readings.is_empty():
-				var rh_w: float = Solver.Roles._seer_rh_weight(all_mask & ~int(w_rep.evil), int(w_rep.get("demon", -1)), int(w_rep.marked), rel_readings)
+			var rel_bits: int = 0
+			for ri in range(relayed_seers.size()):
+				if Solver.source_valid(view, w_rep, relayed_seers[ri]):
+					rel_bits |= 1 << ri
+			if rel_bits != 0:
+				var c_mask: int = all_mask & ~int(w_rep.evil)
+				var d_idx: int = int(w_rep.get("demon", -1))
+				var m_idx: int = int(w_rep.marked)
+				var rh_key: int = (((c_mask * 32 + (d_idx + 2)) * 32 + (m_idx + 2)) << 20) | rel_bits
+				var rh_w: float
+				if rh_memo.has(rh_key):
+					rh_w = float(rh_memo[rh_key])
+				else:
+					var rel_readings: Array = []
+					for ri in range(relayed_seers.size()):
+						if (rel_bits & (1 << ri)) != 0:
+							rel_readings.append(rel_entries[ri])
+					rh_w = Solver.Roles._seer_rh_weight(c_mask, d_idx, m_idx, rel_readings)
+					rh_memo[rh_key] = rh_w
 				content *= rh_w if rh_w > 0.0 else DEFAULT_ERR
 		var w_mult: float = w_all[which[x]] if has_w_all else (weights[x] if has_weights else 1.0)
 		out[which[x]] = content * w_mult

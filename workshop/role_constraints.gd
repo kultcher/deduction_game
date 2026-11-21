@@ -29,7 +29,7 @@ static func _get_cache_entry(view: Dictionary, ids: Array, cards: Array, knowled
 	var input = [view.people, _hard_timeline(view), view.get("chronology", {}), view.get("live_activity", false), cards, knowledge.get("self"), knowledge.get("own_role"), knowledge.get("own_outings", {}), answers, knowledge.get("public_roles", {}), bluffs]
 	var key = hash(input)
 	if not cache.has(key) or cache[key].input != input:
-		if cache.size() >= 2048:
+		if cache.size() >= 8192:
 			cache.clear()
 			bridge.RoleClearMemos()
 		var slot: int = int(bridge.RoleCreateMemo())
@@ -561,34 +561,41 @@ static func burden_code(card: Dictionary) -> int:
 ## Measurement switch: when >= 0, every claimed burden takes this factor instead.
 static var burden_factor_override: float = -1.0
 static var _names_evil_cache: Dictionary = {}
+static var _solver_script = null
 
 ## Whether an unquoted reading card points at `who` being evil: over the deal's worlds, its
 ## content holds more often where `who` is evil than where they're good and hold no burden
 ## (a Seer's yes in a pair with them, a Dowser count over a group with them). General: read
 ## off the judge, no list of gifts.
 static func names_evil(view: Dictionary, card: Dictionary, who: int) -> bool:
-	if card.get("kind", "") != "report" or card.get("quoted", false) or ids_of(view).find(str(card.get("source", ""))) == who:
+	if card.get("kind", "") != "report" or card.get("quoted", false):
 		return false
-	var Solver = load("res://workshop/solver.gd")
-	var key: String = str([Solver._universe_key(view), str(card.get("id", "")), who])
+	var people: Array = view.people
+	if who < 0 or who >= people.size() or str(card.get("source", "")) == str(people[who].id):
+		return false
+	if _solver_script == null:
+		_solver_script = load("res://workshop/solver.gd")
+	var Solver = _solver_script
+	var key: String = "%s|%s|%d" % [Solver._universe_key(view), str(card.get("id", "")), who]
 	if _names_evil_cache.has(key):
 		return bool(_names_evil_cache[key])
+	if _names_evil_cache.size() > 4096:
+		_names_evil_cache.clear()
 	var worlds: Array = Solver.universe(view)
 	var table: PackedByteArray = Solver.reading_holds_table(view, card)
 	var e_n := 0
 	var e_h := 0
 	var g_n := 0
 	var g_h := 0
+	var bit: int = 1 << who
 	for i in range(mini(worlds.size(), table.size())):
 		var w: Dictionary = worlds[i]
-		if int(w.evil) & (1 << who):
+		if int(w.evil) & bit:
 			e_n += 1
 			e_h += int(table[i])
-		elif int(w.get("marked", -1)) != who and not (int(w.get("holders", 0)) & (1 << who)):
+		elif int(w.get("marked", -1)) != who and not (int(w.get("holders", 0)) & bit):
 			g_n += 1
 			g_h += int(table[i])
-		if _names_evil_cache.size() > 4096:
-			_names_evil_cache.clear()
 	var evil_rate: float = float(e_h) / float(e_n) if e_n > 0 else 0.0
 	var good_rate: float = float(g_h) / float(g_n) if g_n > 0 else 0.0
 	var out: bool = evil_rate > good_rate * 1.05 + 1e-9
@@ -599,15 +606,16 @@ static var _burden_share_cache: Dictionary = {}
 
 ## The share of the deal's worlds with `who` good in which they hold burden `kind`.
 static func _deal_share(view: Dictionary, who: int, kind: String) -> float:
-	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), who, kind])
+	var ckey: String = "%d|%d|%s|%d|%s" % [view.people.size(), int(view.get("evil_count", 0)), str(view.get("world_options", {}).get("modifiers", [])), who, kind]
 	if not _burden_share_cache.has(ckey):
 		var good: int = 0
 		var held: int = 0
+		var bit: int = 1 << who
 		for w in Domain.worlds(view):
-			if int(w.evil) & (1 << who):
+			if int(w.evil) & bit:
 				continue
 			good += 1
-			if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & (1 << who)):
+			if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & bit):
 				held += 1
 		_burden_share_cache[ckey] = float(held) / float(good) if good > 0 else 1.0
 	return float(_burden_share_cache[ckey])
@@ -639,26 +647,49 @@ static func _reading_known_tick(card: Dictionary) -> int:
 ## the player) dates the claim, so a later public claim with it isn't counted as reactive
 ## (Michael, Nov 21). The judge can't tell a faked earlier telling from a real one.
 static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
+	if not burden_claims_bind or cards.is_empty():
+		return []
+	var has_burden: bool = false
+	for card in cards:
+		if burden_code(card) > 0:
+			has_burden = true
+			break
+	if not has_burden:
+		return []
 	var out: Array = []
 	var ids: Array = ids_of(view)
 	var held: Array = view.get("cards", [])
 	var seen: Dictionary = {}
 	for card in cards:
 		var code: int = burden_code(card)
-		var who: int = ids.find(str(card.get("source", "")))
-		if code == 0 or who < 0 or seen.has("%d:%d" % [who, code]):
+		if code == 0:
 			continue
-		seen["%d:%d" % [who, code]] = true
+		var src_id: String = str(card.get("source", ""))
+		var who: int = ids.find(src_id)
+		if who < 0:
+			continue
+		var skey: int = (who << 4) | code
+		if seen.has(skey):
+			continue
+		seen[skey] = true
 		var kind: String = str(card.data.secret_kind)
 		var first: int = _first_told_tick(card)
-		for c in held + cards:
-			if burden_code(c) == code and str(c.get("source", "")) == ids[who]:
+		for c in held:
+			if burden_code(c) == code and str(c.get("source", "")) == src_id:
+				first = mini(first, _first_told_tick(c))
+		for c in cards:
+			if burden_code(c) == code and str(c.get("source", "")) == src_id:
 				first = mini(first, _first_told_tick(c))
 		var reactive: bool = false
-		for r in held + cards:
-			if _reading_known_tick(r) <= first and names_evil(view, r, who):
+		for r in held:
+			if r.get("kind", "") == "report" and not r.get("quoted", false) and str(r.get("source", "")) != src_id and _reading_known_tick(r) <= first and names_evil(view, r, who):
 				reactive = true
 				break
+		if not reactive:
+			for r in cards:
+				if r.get("kind", "") == "report" and not r.get("quoted", false) and str(r.get("source", "")) != src_id and _reading_known_tick(r) <= first and names_evil(view, r, who):
+					reactive = true
+					break
 		var factor: float = Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED
 		if not reactive and factor < 0.0:
 			factor = _deal_share(view, who, kind)
@@ -737,24 +768,24 @@ static func _seer_rh_weight(candidates_mask: int, demon: int, marked: int, readi
 	var cs_val: float = float(SolverBackend._bridge().RoleSeerRhWeight(candidates_mask, demon, marked, r_ints))
 	return cs_val
 
-static func bluff_weights(view: Dictionary, universe: Array, cards: Array, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array()) -> PackedFloat64Array:
+static func bluff_weights(view: Dictionary, universe: Array, cards: Array, u_handle: int = -1, sub_indices: PackedInt32Array = PackedInt32Array(), precomputed_burdens = null) -> PackedFloat64Array:
 	if not SolverBackend.profiling_enabled:
-		return _bluff_weights_dispatch(view, universe, cards, u_handle, sub_indices)
+		return _bluff_weights_dispatch(view, universe, cards, u_handle, sub_indices, precomputed_burdens)
 	var st: int = SolverBackend.begin_stage("world_domain")
-	var out: PackedFloat64Array = _bluff_weights_dispatch(view, universe, cards, u_handle, sub_indices)
+	var out: PackedFloat64Array = _bluff_weights_dispatch(view, universe, cards, u_handle, sub_indices, precomputed_burdens)
 	SolverBackend.end_stage(st)
 	return out
 
-static func _bluff_weights_dispatch(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
-	return _bluff_weights_cs(view, universe, cards, u_handle, sub_indices)
+static func _bluff_weights_dispatch(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array, precomputed_burdens = null) -> PackedFloat64Array:
+	return _bluff_weights_cs(view, universe, cards, u_handle, sub_indices, precomputed_burdens)
 
-static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array) -> PackedFloat64Array:
+static func _bluff_weights_cs(view: Dictionary, universe: Array, cards: Array, u_handle: int, sub_indices: PackedInt32Array, precomputed_burdens = null) -> PackedFloat64Array:
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var fallback_worlds: PackedInt64Array = SolverBackend.pack_worlds(universe) if u_handle < 0 else PackedInt64Array()
 	var ids: Array = view.people.map(func(p): return p.id)
 	var has_curse: bool = view.get("chronology", {}).has("curse")
 	var has_hw: bool = cards.any(func(c): return c.has("hearing_weight") and c.kind in ["claim", "report"])
-	var burdens: Array = burden_claim_factors(view, cards)
+	var burdens: Array = precomputed_burdens if precomputed_burdens is Array else burden_claim_factors(view, cards)
 	if not has_curse and not has_hw and burdens.is_empty():
 		var declared := PackedInt32Array()
 		var seen: Dictionary = {}
