@@ -656,12 +656,19 @@ static var _burden_share_cache: Dictionary = {}
 
 ## The share of the deal's worlds with `who` good in which they hold burden `kind`.
 static func _deal_share(view: Dictionary, who: int, kind: String) -> float:
-	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), who, kind])
+	# Over the worlds the listener can't rule out: what it knows of its own burden narrows who
+	# else can hold one (CaseEval._own_burden_ok), and a neutral claim must stay neutral there.
+	var ob: Dictionary = view.get("own_burden", {})
+	var me: int = ids_of(view).find(str(ob.get("self", ""))) if not ob.is_empty() else -1
+	var ckey: String = str([ids_of(view), view.get("evil_count", 0), view.get("world_options", {}).get("modifiers", []), who, kind, ob if me >= 0 else {}])
 	if not _burden_share_cache.has(ckey):
 		var good: int = 0
 		var held: int = 0
 		for w in Domain.worlds(view):
 			if int(w.evil) & (1 << who):
+				continue
+			# Only a good listener knows its own burden, so these are worlds where it's good.
+			if me >= 0 and ((int(w.evil) & (1 << me)) or not preload("res://workshop/case_eval_classes.gd")._own_burden_ok(ob, me, w)):
 				continue
 			good += 1
 			if (int(w.get("marked", -1)) == who) if kind == "marked" else (str(w.get("modifier", "")) == kind and int(w.get("holders", 0)) & (1 << who)):

@@ -137,6 +137,8 @@ static func _evaluate_impl(view: Dictionary, case_data: Dictionary, listener: Di
 				if TimeModel.evil_at(view, world, fact.person, fact.at):
 					fits[c] = 0.0
 
+	fits = _own_burden_fits(view, cc, fits)
+	fits_before = _own_burden_fits(view, cc, fits_before)
 	var nc_check: int = cc.team.size()
 	assert(fits.size() == nc_check and fits_before.size() == nc_check, "CaseEval.evaluate: per-class fits size mismatch (nc=%d, fits=%d, fits_before=%d)" % [nc_check, fits.size(), fits_before.size()])
 	_ensure_cc_epoch()

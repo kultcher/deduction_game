@@ -321,18 +321,37 @@ static func _own_burden_dead(view: Dictionary, universe: Array, dead: PackedByte
 	var me: int = Solver.person_index(view, str(ob.get("self", "")))
 	if me < 0:
 		return
-	var known: String = str(ob.get("kind", ""))
-	var hidden: Array = ScriptDefRef.HIDDEN_SECRETS
 	for i in range(universe.size()):
-		var w: Dictionary = universe[i]
-		var mine: String = ""
-		if int(w.get("marked", -1)) == me:
-			mine = "marked"
-		elif int(w.get("holders", 0)) & (1 << me):
-			mine = str(w.get("modifier", ""))
-		var ok: bool = mine == known or (mine in hidden and known == "")
-		if not ok:
+		if not _own_burden_ok(ob, me, universe[i]):
 			dead[i] = 1
+
+## Whether a world fits what the listener knows of its own burden (see _own_burden_dead).
+static func _own_burden_ok(ob: Dictionary, me: int, w: Dictionary) -> bool:
+	var known: String = str(ob.get("kind", ""))
+	var mine: String = ""
+	if int(w.get("marked", -1)) == me:
+		mine = "marked"
+	elif int(w.get("holders", 0)) & (1 << me):
+		mine = str(w.get("modifier", ""))
+	return mine == known or (mine in ScriptDefRef.HIDDEN_SECRETS and known == "")
+
+## Knowledge, not evidence: zero the classes it rules out on both sides of the case (the
+## role fits before and after), as the listener's known-good people are, so a case with no
+## burden evidence moves nobody (test_workshop_secrets, test_workshop_votes on bc9a742d).
+## The classes split by it already (dead, in the class key), so each class's rep speaks for it.
+static func _own_burden_fits(view: Dictionary, cc: Dictionary, fits: PackedFloat64Array) -> PackedFloat64Array:
+	var ob: Dictionary = view.get("own_burden", {})
+	if ob.is_empty() or not Domain.live(view):
+		return fits
+	var me: int = Solver.person_index(view, str(ob.get("self", "")))
+	if me < 0:
+		return fits
+	var worlds: Array = Solver.universe(view)
+	var out: PackedFloat64Array = fits.duplicate() # never modify a cached role table
+	for c in range(out.size()):
+		if not _own_burden_ok(ob, me, worlds[cc.rep[c]]):
+			out[c] = 0.0
+	return out
 
 ## A world's movement/trace likelihood ratio (good everywhere = 1), as the support
 ## model's world_score without its prior ranks.
