@@ -94,7 +94,7 @@ const CASES = {
 	"omen_bluff": "The real Seer's \"yes\" on S and another, night 1 + S's Ill-Omened claim (a bluff, after the reading), argued \"S is evil\"",
 	"omen_real": "A Minion's Seer bluff \"yes\" on M and another + M's Ill-Omened claim (real, day 1), argued \"M is evil\" (subject M)",
 	"unrequited_walk": "A sighting of U on their beloved's block, night 1 + U's Unrequited claim (real, day 1), argued \"U is evil\" (subject U)",
-	"unrequited_bluff": "A sighting of S on the victim's block on the kill night + S's Unrequited claim (a bluff, after the sighting), argued \"S is evil\"",
+	"unrequited_bluff": "A sighting of S on the victim's block on the kill night + S's Unrequited claim naming someone on another block (a bluff, after the sighting), argued \"S is evil\"",
 }
 
 var _texts: Dictionary = {}
@@ -330,9 +330,21 @@ func _one(sd: int, name: String, before_only: bool = false) -> Dictionary:
 			else:
 				_kill(w, b, 1)
 			var wit = goods.filter(func(n): return n != b)[0]
+			# Whom the claim names: the real beloved, or for the bluff a living soul on another
+			# block than the kill's (burdens.md section 11: a bluff answers only a sighting on
+			# the claimed beloved's block).
+			var named = b
+			if not real_love:
+				named = null
+				for n in goods:
+					if n != wit and n.home_block != b.home_block and n.home_block != s.home_block:
+						named = n
+						break
+				if named == null:
+					return {}
 			cited.append(_add(g, _sight(wit, s, b.home_block, 1)))
-			cited.append(_add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "unrequited",
-				"day": 1 if real_love else 2, "phase": 1, "text": "%s: I went to a door I love, and they've no idea" % s.name}))
+			cited.append(_add(g, {"kind": "secret", "source": s.id, "subject": [s.id], "owner": s.id, "secret_kind": "unrequited", "beloved": named.id,
+				"day": 1 if real_love else 2, "phase": 1, "text": "%s admitted they have an unrequited love for %s." % [s.name, named.name]}))
 			sources += [wit] if real_love else [wit, b]
 		"lie_seer", "lie_seer_reversed", "lie_gravedigger":
 			# Word against word: the Minion bluffs the gift, the real holder reads, the player
