@@ -487,8 +487,7 @@ through a `claude/` branch cut from it, never directly ("How it lands", below).
   on the prototype.
 - **The spell-break threshold stays as it is** until there are player-driven games. In 12
   passive games it never broke.
-- **Still held:** the stage-2 world model. The options are placed holders now with a hybrid
-  later, or weighting (section 14).
+- **The stage-2 world model** is decided (section 15).
 
 ## 11. Wording approved (Michael, Nov 21)
 
@@ -590,9 +589,24 @@ Relayed by Seneschal.
   when a secret is spread.
 - **When the spell breaks:** at the existing "truly suspects" level. Michael: "That feels a
   little low given how early NPCs can start, but I'll trust the recommendation for now."
-- **Held:** the judge's world model for stage 2. The two options are placed holders for all
-  four burdens, or weighted model-A layouts. Michael is waiting for Argon's first report.
-  Lantern found that model A undercounts Unrequited and Ill-Omened by a factor of 5 to 7.
+- **The judge's world model for stage 2:** held at first, then decided (below). Lantern found
+  that model A undercounts Unrequited and Ill-Omened by a factor of 5 to 7.
 
 "Caught lying about me", from the same message, is a trust rule outside burdens. It's recorded in
 the backlog item "Rapport and Warden-credit leftovers" (a).
+
+## 15. The judge's world model for stage 2 (Michael, Nov 21)
+
+Relayed by Seneschal. It resolves the hold in section 14.
+
+- **With one burden in play (now): every burden places its holder.** Model A's unplaced
+  layouts for Unrequited and Ill-Omened are dropped, because with them the judge would
+  underweight those burdens 5 to 7 times. Argon found an over-split in the CoarseMask that
+  made this slow, and Lantern is fixing it.
+- **With two burdens in play** (once a Baron-type Minion is designed), as direction only:
+  - one fixed universe per game, with Unrequited and Ill-Omened weighted and unplaced;
+  - "which good person holds it" is summed exactly inside each world's likelihood, for
+    claims, the omen window and the Unrequited walk, so there are no 1-in-g approximations;
+  - Marked may also be unplaced at 12 to 13 NPCs.
+- **Rejected:** the per-case "touched-set" hybrid. It fragments the single cached universe,
+  and by days 3 to 4 it saves little.
