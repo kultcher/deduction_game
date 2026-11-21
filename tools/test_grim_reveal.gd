@@ -177,6 +177,17 @@ func _check_overlay(g: Game, verdict: Dictionary) -> void:
 	check(v.get_node_or_null("Stage/Card") != null and v.index == 0, "the overlay opens on the first person's card")
 	check(v.get_node("Stage/Lead").text == v.plan.lead.text, "the lead line shows")
 	check(v.find_child("TownRow", true, false).get_child_count() == g.w.npcs.size(), "the town row shows every portrait")
+	# Limner's screenshots: the key moments start below the card's paper sheet, not under it.
+	var sheet = v.get_node("Stage/Sheet")
+	check(v.get_node("Stage/Moments").anchor_top > sheet.anchor_bottom, "the key moments sit below the paper sheet")
+	# And a long tooltip measures its wrapped height, so it isn't placed off the window.
+	var ftl = preload("res://ui/formatted_text_label.gd").new()
+	host.add_child(ftl)
+	var long_tip: String = "Burden: something that weighs on a townsperson, on top of their gift. The script lists the possible burdens and how many are in play. A hidden burden's holder doesn't know they carry it."
+	var tip = ftl._make_custom_tooltip(long_tip)
+	check(tip != null and tip.custom_minimum_size.y > 40.0, "a long tooltip reserves its wrapped height")
+	if tip != null:
+		tip.free()
 	# Codex on #499: a click on the reveal (not a button) reaches the overlay and moves it on.
 	var click = InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
