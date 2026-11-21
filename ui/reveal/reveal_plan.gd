@@ -29,6 +29,7 @@ const MOMENT_LIES = "Told %d lies."
 const MOMENT_ONE_LIE = "Told one lie."
 const MOMENT_KILLED = "Killed by the Demon on the %s."
 const MOMENT_HANGED = "Hanged on the %s."
+const MOMENT_MARTYR = "Died at the gallows in another's place on the %s."
 const MOMENT_TURNED = "Turned evil by the Revenant's curse on the %s."
 
 ## Fakeouts (the pitch's Q4): eligible people, a chance tied to how strong the false belief
@@ -181,7 +182,14 @@ static func key_moments(g, n) -> Array:
 	if quiet.size() > 0 and misled.is_empty() and out.size() < MAX_MOMENTS:
 		out.append(MOMENT_POISONED_QUIET % _night(quiet[0]))
 	if not n.alive and out.size() < MAX_MOMENTS:
-		out.append((MOMENT_KILLED % _night(n.death_day)) if n.death_cause == "demon" else (MOMENT_HANGED % _day(n.death_day)))
+		match n.death_cause:
+			"demon":
+				out.append(MOMENT_KILLED % _night(n.death_day))
+			"martyr":
+				# The Martyr dies in the nominee's place; nobody was hanged (Codex on #499).
+				out.append(MOMENT_MARTYR % _day(n.death_day))
+			_:
+				out.append(MOMENT_HANGED % _day(n.death_day))
 	return out.slice(0, MAX_MOMENTS)
 
 

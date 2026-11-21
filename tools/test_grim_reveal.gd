@@ -73,6 +73,7 @@ func _init() -> void:
 			continue
 		_check_plan(g)
 	if at_meeting != null:
+		_check_martyr(at_meeting)
 		_check_overlay(at_meeting, DailyGuess.verdict(at_meeting))
 	if overnight != null:
 		var v: Dictionary = DailyGuess.verdict(overnight)
@@ -121,6 +122,19 @@ func _check_plan(g: Game) -> void:
 	check(not wrong.is_empty() and wrong.all(func(s): return not s.get("guess_correct", true)), "%s: a wrong guess is marked wrong" % tag)
 	check(plan.steps.all(func(s): return s.align_text == (RevealPlan.ALIGN_EVIL if s.evil else RevealPlan.ALIGN_GOOD)), "%s: each card's alignment text matches" % tag)
 
+## Codex on #499: a Martyr who died in another's place isn't reported as hanged.
+func _check_martyr(g: Game) -> void:
+	var n = g.w.npcs.filter(func(x): return not x.is_evil())[0]
+	var keep = [n.alive, n.death_cause, n.death_day]
+	n.alive = false
+	n.death_cause = "martyr"
+	n.death_day = 2
+	var ms: Array = RevealPlan.key_moments(g, n)
+	check(ms.has(RevealPlan.MOMENT_MARTYR % "second day") and not ms.any(func(x): return x.begins_with("Hanged")), "a Martyr's death reads as dying in another's place (got %s)" % str(ms))
+	n.alive = keep[0]
+	n.death_cause = keep[1]
+	n.death_day = keep[2]
+
 func _check_overlay(g: Game, verdict: Dictionary) -> void:
 	var host = Control.new()
 	root.add_child(host)
@@ -128,6 +142,15 @@ func _check_overlay(g: Game, verdict: Dictionary) -> void:
 	check(v.get_node_or_null("Stage/Card") != null and v.index == 0, "the overlay opens on the first person's card")
 	check(v.get_node("Stage/Lead").text == v.plan.lead.text, "the lead line shows")
 	check(v.find_child("TownRow", true, false).get_child_count() == g.w.npcs.size(), "the town row shows every portrait")
+	# Codex on #499: a click on the reveal (not a button) reaches the overlay and moves it on.
+	var click = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	var was: int = v.index
+	v.card.skip_to_end()
+	v._gui_input(click)
+	check(v.index == was + 1, "a click on the reveal moves on to the next person")
+	check(v._stage.mouse_filter == Control.MOUSE_FILTER_PASS and v.card.mouse_filter != Control.MOUSE_FILTER_STOP, "the stage and the card pass clicks up to the overlay")
 	var guard := 0
 	while v._final == null and guard < 100:
 		guard += 1

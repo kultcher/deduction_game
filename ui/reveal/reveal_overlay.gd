@@ -71,8 +71,10 @@ func _build() -> void:
 	shade.color = Color(0.05, 0.04, 0.04, 0.92)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(shade)
+	shade.mouse_filter = Control.MOUSE_FILTER_PASS
 	_stage = Control.new()
 	_stage.name = "Stage"
+	_stage.mouse_filter = Control.MOUSE_FILTER_PASS
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_stage)
 	_lead = Label.new()
@@ -92,6 +94,7 @@ func _build() -> void:
 	card.anchor_top = 0.09
 	card.anchor_bottom = 0.09 + CARD_H
 	card.reduced_motion = reduced_motion
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	card.finished.connect(_on_card_finished)
 	_stage.add_child(card)
 	_moments = Label.new()
@@ -105,6 +108,7 @@ func _build() -> void:
 	_moments.anchor_bottom = 0.9
 	_stage.add_child(_moments)
 	var bar = HBoxContainer.new()
+	bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	bar.anchor_left = 0.03
 	bar.anchor_right = 0.97
 	bar.anchor_top = 0.9
@@ -112,6 +116,7 @@ func _build() -> void:
 	_stage.add_child(bar)
 	_row = HBoxContainer.new()
 	_row.name = "TownRow"
+	_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_row.add_theme_constant_override("separation", 6)
 	bar.add_child(_row)
@@ -281,7 +286,10 @@ func verdict_score() -> Array:
 				right += 1
 	return [right, evil]
 
-func _unhandled_input(ev: InputEvent) -> void:
+## A click anywhere on the reveal (not on a button) lands a playing card, or moves on. The
+## stage and the card pass their clicks up to here (Codex on #499: _unhandled_input never saw
+## them, because the overlay stops GUI events).
+func _gui_input(ev: InputEvent) -> void:
 	if _stage.visible and ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		next()
 		accept_event()
