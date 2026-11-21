@@ -758,11 +758,18 @@ static func burden_claim_factors(view: Dictionary, cards: Array) -> Array:
 			if burden_code(c) == code and str(c.get("source", "")) == ids[who]:
 				first = mini(first, _first_told_tick(c))
 		var reactive: bool = false
+		var by_reading: bool = false
 		for r in held + cards:
 			if _reading_known_tick(r) <= first and explains_against(view, card, r, who):
 				reactive = true
-				break
-		var factor: float = Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED
+				if names_evil(view, r, who):
+					by_reading = true
+					break
+		# A claim that answers only a sighting (Unrequited explaining a walk) has its own
+		# weight, set so it lands about where the sighting left the claimant (Michael, Nov 21:
+		# provisional, until a sweep can measure how often evil bluffs it).
+		var factor: float = Tuning.Workshop.BURDEN_BLUFF_UNREQUITED_SIGHTED if reactive and not by_reading \
+			else (Tuning.Workshop.BURDEN_BLUFF_REACTIVE * Tuning.Workshop.BURDEN_REACTIVE_SOFTEN if reactive else Tuning.Workshop.BURDEN_BLUFF_UNPROMPTED)
 		if not reactive and factor < 0.0:
 			factor = _deal_share(view, who, kind)
 		out.append([who, factor if burden_factor_override < 0.0 else burden_factor_override, Chronology.tick(Chronology.statement_time(card)), reactive])
