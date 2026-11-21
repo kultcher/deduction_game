@@ -40,7 +40,7 @@
 
 ## Measured
 
-- **New:** `tools/test_caught_lying.gd` (15 checks), on the fast list.
+- **New:** `tools/test_caught_lying.gd` (16 checks), on the fast list.
 - **Codex on #506, fixed:** a Night Watch's route names who was out, not who is evil. It now
   counts only as a sighting, when it places the listener out on a night spent at home. A
   Medium's relayed reading never counts against the Medium.
@@ -54,6 +54,11 @@
 - **Codex, third round, fixed:** ROLE_AT_SITE counts only in its evil-count mode (the Dowser,
   the Hearthwitch). The Medium's hearth relay passes on what it heard and never counts. Golden
   was unmoved.
+- **Codex, fourth round, fixed:** an evil listener knows its own nights too, so the check now runs
+  before the evil-listener branch in `Social._deliver`. Golden was unmoved.
+- **`test_own_night_knowledge`:** now prints the planter's overall lift instead of checking it.
+  This applies Michael's Nov 20 interim (Lantern, 6219edce). The case is a belief-model question
+  queued for Michael.
 - **Also pass:** test_agreement_trust, test_meeting_flow, test_social_credibility,
   test_caught_lie_softening, test_conversation_nights, test_npc_interactions,
   test_defence_repeats, test_dialogue.
