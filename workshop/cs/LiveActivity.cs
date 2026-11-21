@@ -76,6 +76,10 @@ internal static class LiveActivityKernel
     /// Heard at cardDoubles[c * 2]: a path that doesn't fit has likelihood 1 - that.
     public const int FlagTellerAt = 1 << 12;
     public const int FlagTellerAtHome = 1 << 13;
+    /// The sighting was told while the Revenant's curse could have converted its teller (its
+    /// statement time inside the curse window): in a world where the teller is the converted
+    /// person, it is an evil teller's word, whatever night it is about (Codex on #474).
+    public const int FlagTellerToldCursed = 1 << 14;
 
     // Movement role codes (slot 7):
     public const int MoveRoleEmpty = 0;
@@ -968,7 +972,8 @@ internal static class LiveActivityKernel
         int personIdx,
         int eveningBlock,
         PathSpec path,
-        int currentAlign)
+        int currentAlign,
+        int baseAlign)
     {
         int off = cardIdx * CardStride;
         int kind = cardInts[off];
@@ -987,9 +992,9 @@ internal static class LiveActivityKernel
             {
                 if ((flags & FlagTellerAt) != 0 && cardInts[off + 2] == personIdx)
                 {
-                    if (currentAlign != AlignGood)
+                    if (currentAlign != AlignGood || (baseAlign == AlignConverted && (flags & FlagTellerToldCursed) != 0))
                     {
-                        return 1.0;   // an evil teller's word says nothing of where it was
+                        return 1.0;   // an evil teller's word (evil when told) says nothing of where it was
                     }
                     int at = cardInts[off + 10];
                     bool fits = (flags & FlagTellerAtHome) != 0
@@ -1315,7 +1320,7 @@ internal static class LiveActivityKernel
                         double p = path.Weight;
                         for (int ci = 0; ci < nightCards.Length; ci++)
                         {
-                            p *= Observed(nightCards[ci], cardInts, cardDoubles, personIdx, e, path, currentAlign);
+                            p *= Observed(nightCards[ci], cardInts, cardDoubles, personIdx, e, path, currentAlign, alignCode);
                         }
                         products[pi] = p;
                     }
@@ -1518,7 +1523,7 @@ internal static class LiveActivityKernel
                     double wP = profW * evP * path.Weight;
                     for (int oi = 0; oi < obsArr.Length; oi++)
                     {
-                        wP *= Observed(obsArr[oi], cardInts, cardDoubles, personIdx, e, path, currentAlign);
+                        wP *= Observed(obsArr[oi], cardInts, cardDoubles, personIdx, e, path, currentAlign, alignCode);
                     }
                     denAll += wP;
                     if (path.Out && path.HasBlock(sceneBlockCode))

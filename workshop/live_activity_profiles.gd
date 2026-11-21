@@ -156,7 +156,7 @@ static func _likelihood_gd(view: Dictionary, cards: Array, person: Dictionary, a
 				for path in paths:
 					var p: float = path.weight
 					for card in reports_by_night[n]:
-						p *= _observed(card, person.id, evening, path.path, current, view, night, cards)
+						p *= _observed(card, person.id, evening, path.path, current, view, night, cards, alignment)
 					products.append(p)
 				by_evening.append(products)
 			tables.append(by_evening)
@@ -353,7 +353,7 @@ static func _crossing_probability_gd(view: Dictionary, cards: Array, person: Dic
 			for path_entry in paths:
 				var w_p: float = float(prof.weight) * ev_p * float(path_entry.weight)
 				for obs in night_obs:
-					w_p *= _observed(obs, person.id, evening, path_entry.path, current, view, night, cards)
+					w_p *= _observed(obs, person.id, evening, path_entry.path, current, view, night, cards, alignment)
 				den_all += w_p
 				if not path_entry.path.is_empty() and scene_block in path_entry.path:
 					num_cross += w_p
@@ -514,6 +514,15 @@ static func teller_place_eligible(card: Dictionary, ids: Array) -> bool:
 		and not src in card.get("subjects", [card.get("subject", "")])
 
 
+## Whether a card was told while the Revenant's curse could have converted its teller (its
+## statement time inside the curse window), as the sighter contests read it (Codex on #474).
+static func teller_told_cursed(curse: Dictionary, card: Dictionary) -> bool:
+	if curse.is_empty():
+		return false
+	var time: int = Chronology.tick(Chronology.statement_time(card))
+	return time >= int(curse.get("from", 0)) and time < int(curse.get("until", 0))
+
+
 ## A person's home block from the view, or "" (C.vigil_sees_path then reads the path).
 static func _home_of(view: Dictionary, person: String) -> String:
 	for p in view.get("people", []):
@@ -521,7 +530,7 @@ static func _home_of(view: Dictionary, person: String) -> String:
 			return str(p.get("home", ""))
 	return ""
 
-static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = []) -> float:
+static func _observed(card: Dictionary, person: String, evening: String, path: Array, alignment: String, view: Dictionary, night: int, all_cards: Array = [], base_alignment: String = "") -> float:
 	if card.get("quoted", false) and card.kind != "alibi":
 		return 1.0
 	var out: bool = not path.is_empty()
@@ -529,7 +538,7 @@ static func _observed(card: Dictionary, person: String, evening: String, path: A
 		"sighting":
 			if str(card.get("source", "")) == person and teller_place_eligible(card, view.get("people", []).map(func(p): return str(p.get("id", "")))):
 				# A sighting places its teller (LiveActivity.teller_place; FlagTellerAt in C#).
-				if alignment != "good":
+				if alignment != "good" or (base_alignment == "converted" and teller_told_cursed(view.get("chronology", {}).get("curse", {}), card)):
 					return 1.0
 				var home: String = _home_of(view, person)
 				var lamp: bool = path.size() > 2

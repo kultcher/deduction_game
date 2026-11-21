@@ -90,6 +90,7 @@ func _init() -> void:
 	_converted_checks()
 	Activity.teller_place = true
 	_teller_place_check(view, cards, w_a_demon, w_c_demon, w_neither, r_on)
+	_teller_place_converted()
 	print("Sighter contest: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -132,6 +133,36 @@ func _teller_place_check(view: Dictionary, cards: Array, w_a_demon: Dictionary, 
 	check(lift_window >= 1.0 and lift_window < lift_street, "from the teller's own window it weighs on c far less than a street sighting does (x%.2f, against x%.2f)" % [lift_window, lift_street])
 	Caches.clear_all()
 	Activity.cache.clear()
+
+
+## Codex on #474: a sighting c told while the curse had converted them, about a night before
+## it, is an evil teller's word in the world where c is the converted person, so it doesn't
+## place c that night (Chronology.statement_time, as the contests read it).
+func _teller_place_converted() -> void:
+	var view: Dictionary = _view()
+	view.timeline = History.from_events([{"kind": "demon_death", "subjects": ["g"], "at": {"day": 3}}])
+	view["chronology"] = {"epochs": {"Original alignment": 0}, "curse": {"from": 10, "until": 1000, "executed": "f",
+		"yes_voters": ["c"], "alive": ["a", "b", "c", "d", "e", "g"]}}
+	var ids: Array = view.people.map(func(p): return p.id)
+	var own: Dictionary = {"id": "own", "fact_id": "own", "kind": "alibi", "source": "a", "subject": "a", "subjects": ["a"], "night": 1, "block": "hill",
+		"data": {}, "role": "", "observed_at": {"day": 1, "phase": "night"}}
+	var seen: Dictionary = {"id": "s1", "fact_id": "s1", "kind": "sighting", "source": "c", "subject": "a", "subjects": ["a"], "night": 1, "block": "square",
+		"data": {}, "role": "", "hearing_weight": 1.0, "observed_at": {"day": 3, "phase": "night"}}
+	var cards: Array = [own, seen]
+	var w_conv: Dictionary = {"evil": (1 << ids.find("f")) | (1 << ids.find("e")), "demon": ids.find("e"), "converted": ids.find("c")}
+	var scores: Array = []
+	for on in [true, false]:
+		Activity.teller_place = on
+		Caches.clear_all()
+		Activity.cache.clear()
+		var f: Array = Activity.factors(view, cards, {})
+		# Against a world where c is evil from the start, which no sighting of c's places either.
+		var w_c_minion: Dictionary = {"evil": (1 << ids.find("c")) | (1 << ids.find("e")), "demon": ids.find("e")}
+		scores.append(Activity.score(w_conv, f[0]) / Activity.score(w_c_minion, f[0]) if not f.is_empty() else -1.0)
+	Activity.teller_place = true
+	Caches.clear_all()
+	Activity.cache.clear()
+	check(scores[0] > 0.0 and is_equal_approx(scores[0], scores[1]), "a sighting told while converted, about a night before, doesn't place its teller where they're the converted one (%s of the c-evil world, as without the rule %s)" % [str(scores[0]), str(scores[1])])
 
 
 ## The Revenant's curse converts a good yes-voter (here c) from day 2's evening. In a world

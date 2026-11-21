@@ -106,7 +106,7 @@ static func _pack_view_env(view: Dictionary, ids: Array) -> Dictionary:
 	_env_cache[env_k] = {"input": env_in.duplicate(true), "env": env_out}
 	return env_out
 
-static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Array, answers: Dictionary, role_tok_map: Dictionary) -> Dictionary:
+static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Array, answers: Dictionary, role_tok_map: Dictionary, curse: Dictionary = {}) -> Dictionary:
 	var c_count: int = cards.size()
 	var card_ints := PackedInt32Array()
 	var card_doubles := PackedFloat64Array()
@@ -170,6 +170,8 @@ static func _pack_activity_cards(ids: Array, homes: PackedInt32Array, cards: Arr
 			flags |= (1 << 12)  # FlagTellerAt
 			if homes[ids.find(str(card.source))] == _block_code(str(card.block)):
 				flags |= (1 << 13)  # FlagTellerAtHome: from their window
+			if teller_told_cursed(curse, card):
+				flags |= (1 << 14)  # FlagTellerToldCursed
 		card_ints[off + 1] = flags
 
 		var src_idx: int = ids.find(str(card.get("source", "")))
@@ -284,7 +286,7 @@ static func _routes_cs(view: Dictionary, cards: Array, answers: Dictionary, know
 	var ids: Array = view.people.map(func(p): return p.id)
 	var env: Dictionary = _pack_view_env(view, ids)
 	var role_tok_map: Dictionary = {}
-	var packed_cards: Dictionary = _pack_activity_cards(ids, env.homes, cards, answers, role_tok_map)
+	var packed_cards: Dictionary = _pack_activity_cards(ids, env.homes, cards, answers, role_tok_map, view.get("chronology", {}).get("curse", {}))
 	var self_id: String = str(knowledge.get("self", "")) if knowledge.get("self") is String else ""
 	var self_idx: int = ids.find(self_id) if self_id != "" else -1
 	var own_role_str: String = str(knowledge.get("own_role", ""))
