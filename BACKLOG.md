@@ -150,6 +150,9 @@ Lantern). Nothing is open here.
   - It reuses the existing weight, scaled by the listener's trust in the reader.
 
   Owner Quill, with Lantern and Beadle reviewing. [decided]
+  - **Built** (Quill, Nov 20, `claude/self-doubt-poisoner`, stacked on #445; handoff
+    `2026-11-20-1945-quill-self-doubt-poisoner.md`). With it, both Poisoner floors add to
+    a clear rather than override it (Lantern). [in review]
 
 ### NPC behaviour
 
