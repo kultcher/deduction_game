@@ -119,7 +119,13 @@ Each gift gets:
 - **how the reader reads it,** which is also how someone who trusts the reader should read it;
 - **how each person named reads it;**
 - **target choice,** where the gift picks;
-- **hiding and revealing.**
+- **hiding and revealing;**
+- **reading with other readings** (added by Michael, Nov 21): with the gift's own other
+  readings, and with other gifts' readings.
+
+**The strength words** (strong, moderate, mild) are Michael's intuition for now. They should be
+checked against the real probabilities, landing somewhere between human intuition, game theory
+and the actual odds (Michael, Nov 21).
 
 The order (Michael, Nov 21):
 1. the reading gifts that name people: Seer, Dowser, Surveyor, Augur, Confessor, Registrar,
@@ -174,8 +180,7 @@ explanations:
 **The player's side of a "yes"** (as built): the Workshop asks which explanation the player is
 arguing (the Demon, the Red Herring or Marked, and who), and the case is graded on that choice.
 
-*A named in a "no"* (Vicar's draft; it matches the judge, per Lantern's check, Nov 21;
-Michael to confirm): B isn't the Demon, and I'm not the Red
+*A named in a "no"* (confirmed by Michael, Nov 21; it matches the judge, per Lantern's check): B isn't the Demon, and I'm not the Red
 Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
 
 **Target choice:**
@@ -196,3 +201,77 @@ Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
   from the player or a known Warden.
 
 The last two are on the backlog (Michael, Nov 21).
+
+**Reading with other readings** (Michael, Nov 21):
+- **With its own readings:** two "yes" readings that both include A strongly suggest that A is
+  the Demon, the Red Herring or Marked. They moderately suggest the Seer isn't Delusional. The
+  maths of the second is uncertain, but it holds up psychologically.
+- **With readings that show alignment:**
+  - an evil reading that overlaps a person in the "yes" moderately suggests that person is the
+    Demon or Marked;
+  - a good reading on one person in the pair moderately suggests the other is the Demon or
+    Marked;
+  - if both people in the pair are cleared, it mildly suggests one of: the Seer's reading was
+    tampered with, the other reading's source is an evil bluffer, or the "yes" came from a
+    Marked person who misregistered for the Seer but not for the other gift.
+- **With night sightings:** a "yes" on someone sighted out at night, with no Hexer on the
+  script, mildly suggests that person is the Demon. It's stronger if they haven't claimed a
+  role that walks at night.
+
+### 2.2 The Dowser (Michael, Nov 21)
+
+**What the reading does.** The first time each day the Dowser is out in public on a block where
+two or more others are also out, it learns how many of those people are evil. It's a daytime
+reading, shared with the time it was taken.
+
+**What the Dowser knows about its rules:**
+- a Marked good person can register as evil, half the time, but only if Marked is on the script;
+- there's no Red Herring;
+- a turned person counts as evil.
+
+**How the Dowser reads its own reading,** say "1 of A, B, C":
+- one of the three is evil;
+- or a Marked good person among them registered as evil;
+- or it was poisoned, or is Delusional, and the true count differs.
+- **A "0"** clears all three hard. It can only be wrong through poison, Delusion, or a Marked
+  person among them happening to register as good. *This may be too strong in play; to watch
+  (Michael, Nov 21).*
+
+**How a person named reads it.** A, good and not Marked, in "1 of A, B, C":
+1. B or C is evil;
+2. B or C is Marked and misregistered;
+3. the Dowser is poisoned or Delusional;
+4. the Dowser is an evil bluffer who made up the count;
+5. the Dowser is an evil bluffer who used a real gathering to frame A;
+6. if A is Marked, A may have misregistered.
+
+**Target choice:** none. There's no manual targeting: the reading is wherever the Dowser's day
+takes it.
+
+**Hiding and revealing:** still cautious, but a little earlier than the Seer, around day 2 on
+average.
+
+**Reading with other readings:**
+- **With its own readings:**
+  - the same person in several readings of 1 or more moderately suggests that person is evil or
+    Marked;
+  - the same person in several readings of 0 strongly suggests that person is good.
+- **With other gifts' evil, Minion or Demon readings:** these moderately suggest the person
+  named is what that reading says, and that the Dowser isn't poisoned or Delusional.
+- **With other signs of good:** a stronger clearing, and support for the Dowser not being
+  Delusional.
+
+## 3. Open questions for the cross-check
+
+- **Agreement lowering self-doubt** (Michael, Nov 21): the more a reader's readings line up
+  with the town's other readings, the less it should think its own readings were poisoned or
+  Delusional. Today the judge recomputes each own reading's chance of having failed at every
+  refresh, from everything the NPC holds, starting from the poison and Delusion prior
+  (`docs/belief_model.md`, "Was my gift turned?"). A reading that fits the rest already falls
+  below the prior. Two things may be missing:
+  - Poison is per night, so agreement on one night says little about another. Delusion is for
+    the whole game, so agreement on several nights should lower the Delusional doubt for all of
+    them. Whether the judge pools that across nights is for Lantern to check.
+  - Nothing is remembered: confidence built up on earlier days isn't kept once the evidence
+    behind it is forgotten or contested. That's the tentative "Persistence Confidence" item in
+    BACKLOG section 6.
