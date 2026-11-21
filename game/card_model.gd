@@ -236,15 +236,8 @@ static func short_text(card: Dictionary, names: Dictionary) -> String:
 			if gist != "":
 				# Tavern gossip isn't the person's own hint, so it keeps its "Rumour:" (Codex on #256).
 				return ("Rumour: %s, %s" if _rumour(card) else "%s hints: %s") % [_subjects(card, nm), gist]
-		"secret":
-			var who: String = ("Rumour: " if _rumour(card) else "") + nm.call(str(card.get("owner", card.get("source", ""))))
-			match str(card.get("secret_kind", "")):
-				"insomnia":
-					return "%s prays at night" % who
-				"smuggling":
-					return "%s smuggles" % who
-				"debt":
-					return "%s pays a gambling debt" % who
+		# Burden cards keep their full text: the flavour secrets' short forms retired with the
+		# Burdens rework (insomnia, smuggling, debt).
 	# No short form: the full text, which the card cuts to fit and ends in "…".
 	return card.get("text", "")
 

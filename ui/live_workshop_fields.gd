@@ -343,7 +343,13 @@ static func set_evidence_field(m, id: String, field: String) -> void:
 	m._edit()
 
 ## Why someone seen at night was out: unexplained, a walking gift (citing their
-## claim), an evil errand, or a private errand (citing their errand claim).
+## claim), an evil errand, or love (citing their own Unrequited claim). The private errand
+## retired with the Burdens rework (Michael, Q22).
+## PLACEHOLDER wording (Herald, for Michael's review): the walker reason an Unrequited claim gives.
+const UNREQUITED_REASON = "For love (their Unrequited claim)"
+## PLACEHOLDER wording: the canvas tag for that reason (was "errand").
+const UNREQUITED_TAG = "love"
+
 static func reason_menu(m, id: String, card: Dictionary, person: String) -> void:
 	m.field_menu.clear()
 	var key: String = "%s:%d" % [person, card.get("night", -1)]
@@ -355,8 +361,8 @@ static func reason_menu(m, id: String, card: Dictionary, person: String) -> void
 	m.field_menu.add_item("Evil errand", options.size())
 	options.append(["evil", ""])
 	if m.board.view.get("live_activity", false):
-		for claim in m.board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person):
-			m.field_menu.add_item("Private errand (their own account)", options.size())
+		for claim in m.board.view.cards.filter(func(c): return c.kind == "secret_claim" and c.subject == person and str(c.get("data", {}).get("secret_kind", "")) == "unrequited"):
+			m.field_menu.add_item(UNREQUITED_REASON, options.size())
 			options.append(["secret", claim.id])
 	m._field_target = {"id": id, "field": "why", "values": options, "key": key}
 	m.field_menu.position = Vector2i(m.get_viewport().get_mouse_position())
