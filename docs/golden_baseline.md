@@ -44,24 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, a sighting places its teller): `baseline_6f80578`
+### Current baseline (Nov 21, the pressure of silence): `baseline_5f4629f`
 
-`tools/golden/baseline_6f80578/` is the capture from `claude/sighting-places-teller` at `6f80578` (main at
-`c2c5653` after #412, merged in). In a world where its teller is good, a street sighting puts
-the teller out on that block that night, and a window sighting puts them home or on their own
-block (`LiveActivity.teller_place`). A teller who was converted when they told it is left
-unconstrained, as the sighter contests do. This replaces the PR's earlier `baseline_e8ff7e0` and
-`baseline_7af7d2a`; against `baseline_7af7d2a` only 692 differs, from record 220 (day 3), where
-#412's Martyr bluff reluctance lands.
-- **Divergence from `baseline_1d59c5a`:** every seed, at a refresh: 98933 at record 1, 54875 at 4
-  (day 1), 42 at 29, 900 at 32 and 692 at 53 (day 2).
+`tools/golden/baseline_5f4629f/` is the capture from `claude/beadle-silence` at `5f4629f` (main at
+`c2c5653`, after #412, merged in; with Codex's three fixes on #454). A good NPC needs 0.2 suspicion
+to accuse in a meeting's first pass; a meeting that turns up fewer than three useful things runs
+its speaking order once more, with the floor waived and nervous good NPCs pushed to speak
+(Michael, Nov 20 and 21).
+- **Divergence from `baseline_1d59c5a`:** every seed on day 1, at the first meeting (records 7-11),
+  where an accusation under the floor no longer happens and the beliefs that follow differ.
 - **Outcomes:**
-  - **54875:** Edda (the Revenant) on day 1 as before, then Odette (a good Veteran) on day 2 and
-    Isolde (a good Lamplighter) on day 3, instead of Greta (the Poisoner) on day 2.
-  - **692:** Constance (the Demon) on day 2 as before, and now Lian (the Revenant) on day 3.
-  - **98933:** Agnes (a good Medium) on day 2 as before; Lian (a good Psychologist) is no longer
-    hanged on day 3.
-  - **42 and 900:** the same hangings (none; Greta). No winner by day 4 anywhere.
+  - **42:** the town hangs Agnes, the Demon, on day 2: a good win (no hanging and no winner by
+    day 4 before).
+  - **54875:** hangs Edda on day 1, then Odette and Jory (Greta on day 2 before).
+  - **692:** hangs Constance on day 2 as before, then Lian on day 3.
+  - **900:** hangs Isolde on day 2 instead of Greta.
+  - **98933:** hangs Agnes on day 3 only (Agnes on day 2 and Lian on day 3 before).
+  - No winner by day 4 on 54875, 692, 900 or 98933.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 21, the Martyr bluff's reluctance): `baseline_1d59c5a`
