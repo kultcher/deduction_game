@@ -44,15 +44,23 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, made-up street sightings need a walking claim): `baseline_110537c`
+### Current baseline (Nov 21, a sighting places its teller): `baseline_b810754`
 
-`tools/golden/baseline_110537c/` is the capture from `claude/beadle-street-claimed` at `110537c`
-(main at `03451a8`, after #454, merged in). Evil tells a made-up sighting seen "while out" only
-once its teller has claimed a gift that takes it out at night (Michael, Nov 20).
-- **Divergence from `baseline_5f4629f`:** seed 98933 only, at record 30 (day 2, morning). Evil no
-  longer says it saw Agnes out on the Market or on Chapel Hill on the second night, since it had
-  claimed no walking gift, and the town's suspicion of Agnes on day 2 is lower.
-- **Outcomes:** unchanged on every seed. 98933 still hangs Agnes on day 3, with no winner by day 4.
+`tools/golden/baseline_b810754/` is the capture from `claude/sighting-places-teller` at `b810754` (main at
+`03451a8` after #454, merged in). In a world where its teller is good, a street sighting puts
+the teller out on that block that night, and a window sighting puts them home or on their own
+block (`LiveActivity.teller_place`). A teller who was converted when they told it is left
+unconstrained, as the sighter contests do. This replaces the PR's earlier `baseline_e8ff7e0`,
+`baseline_7af7d2a` and `baseline_6f80578`.
+- **Divergence from `baseline_5f4629f`:** every seed, at a refresh or the first step: 98933 at
+  record 1 and 54875 at 4 (day 1), 42 at 41, 900 at 46 and 692 at 50 (day 2).
+- **Outcomes:**
+  - **54875:** Dorian on day 2 and Odette (a good Veteran) on day 3, instead of Edda (the Revenant)
+    on day 1, Odette on day 2 and Jory on day 3.
+  - **692:** Constance (the Demon) on day 3 alone, instead of Constance on day 2 and Lian on day 3.
+  - **98933:** Agnes (a good Medium) on day 2 instead of day 3.
+  - **42 and 900:** the same: the town hangs Agnes, the Demon, on day 2 (a good win), and Isolde
+    on day 2. No winner by day 4 on the others.
 - **Stability:** two captures were identical.
 
 ### Earlier baseline (Nov 21, the pressure of silence): `baseline_5f4629f`

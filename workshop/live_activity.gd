@@ -123,7 +123,7 @@ static func _likelihood_dispatch(view: Dictionary, cards: Array, person: Diction
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var env: Dictionary = _pack_view_env(view, ids)
 	var role_tok_map: Dictionary = {}
-	var packed_cards: Dictionary = _pack_activity_cards(ids, env.homes, cards, {}, role_tok_map)
+	var packed_cards: Dictionary = _pack_activity_cards(ids, env.homes, cards, {}, role_tok_map, view.get("chronology", {}).get("curse", {}))
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity._likelihood", pack_u)
 	var cs_val: float = float(SolverBackend._bridge().LiveSingleLikelihood(
@@ -149,7 +149,7 @@ static func _crossing_probability_dispatch(view: Dictionary, cards: Array, perso
 	var t0: int = Time.get_ticks_usec() if SolverBackend.profiling_enabled else 0
 	var env: Dictionary = _pack_view_env(view, ids)
 	var role_tok_map: Dictionary = {}
-	var packed_cards: Dictionary = _pack_activity_cards(ids, env.homes, cards, {}, role_tok_map)
+	var packed_cards: Dictionary = _pack_activity_cards(ids, env.homes, cards, {}, role_tok_map, view.get("chronology", {}).get("curse", {}))
 	var pack_u: int = (Time.get_ticks_usec() - t0) if SolverBackend.profiling_enabled else 0
 	SolverBackend.record_boundary_call("LiveActivity.crossing_probability", pack_u)
 	var cs_val: float = float(SolverBackend._bridge().LiveCrossingProbability(
