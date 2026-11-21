@@ -55,7 +55,8 @@ func _game(sd: int, mode: String, poisoner: bool = true, causes: bool = true) ->
 	if not poisoner or not causes:
 		g.w.case_script.minions = g.w.case_script.minions.filter(func(m): return m != "poisoner")
 	if not causes:
-		g.w.case_script.secrets = g.w.case_script.secrets.filter(func(m): return m not in ["delusional", "marked"])
+		# Ill-Omened poisons the town once a claimed holder hangs, so it is a cause too.
+		g.w.case_script.secrets = g.w.case_script.secrets.filter(func(m): return m not in ["delusional", "marked", "ill_omened"])
 	var goods: Array = g.w.living_good()
 	var reader = goods[0]
 	g.w.day = 2

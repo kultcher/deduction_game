@@ -50,10 +50,16 @@ func _seed(seed_v: int) -> int:
 		var reports: Array = plan.prepared.view.cards.filter(func(c): return c.get("kind", "") == "report" and str(c.get("source", "")) != n.id and not c.has("relay_source") and not c.get("testimony_only", false))
 		if reports.is_empty() or plan.prepared.view.cards.size() < 6:
 			continue
-		var before: int = n.workshop_state.get("reasoning", {}).get("considered", []).size()
-		var rid: String = str(reports[0].id)
+		var considered: Array = n.workshop_state.get("reasoning", {}).get("considered", [])
+		var before: int = considered.size()
+		# A reading the listener attends to: a challenge is only weighed (and held) on one, and
+		# which readings a bounded listener attends to moves with the deal.
+		var attended: Array = reports.filter(func(c): return str(c.id) in considered)
+		if attended.is_empty():
+			continue
+		var rid: String = str(attended[0].id)
 		var eid: String = "def:test:challenge:" + rid
-		Mind.ledger_hear(g.w, n, eid, [], 0.8, [str(reports[0].source), -1, "report"],
+		Mind.ledger_hear(g.w, n, eid, [], 0.8, [str(attended[0].source), -1, "report"],
 			{"kind": "defence", "move": "lying", "scope": {"type": "challenge", "mode": "lying", "reading": rid}, "hearing_scale": 0.05})
 		Mind.refresh_beliefs(g.w, n, " (after defence)")
 		var plan2: Dictionary = g._workshop_plans.get(n.id + ":good", {})
