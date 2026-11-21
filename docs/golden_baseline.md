@@ -44,7 +44,25 @@ only by two intended 2c fixes:
 - 692: role beliefs were derived from the previous refresh's source doubt. Greta kept
   believing Constance's Clerk claim after catching her lying; now she doesn't.
 
-### Current baseline (Nov 21, the Sleepwalker's doubt reads the Rumormonger): `baseline_875370c`
+### Current baseline (Nov 21, caught lying about me): `baseline_d41b5df`
+
+`tools/golden/baseline_d41b5df/` is the capture from `claude/beadle-caught-lying` at `d41b5df`
+(main at `c1519a3`). An NPC told something about itself it knows is false (a sighting of it out
+on a night it spent at home, or a reading naming it alone as evil when it's good) trusts the
+teller less, by the public-accusation loss (Michael, Nov 21).
+- **Divergence from `baseline_875370c`:**
+  - 54875 at record 8 (day 1's meeting);
+  - 42 at record 42 (day 2);
+  - 692 at record 65 (day 2);
+  - 98933 at record 133 (day 2).
+  - In each, an NPC's trust in someone who told a falsehood about it drops, and the beliefs
+    that follow differ.
+  - 900 is identical.
+- **Outcomes:** unchanged on every seed: the same people hang on the same days, and 42 is still a
+  good win on day 2.
+- **Stability:** two captures were identical.
+
+### Earlier baseline (Nov 21, the Sleepwalker's doubt reads the Rumormonger): `baseline_875370c`
 
 `tools/golden/baseline_875370c/` is the capture from `claude/sleepwalker-rumour-doubt` at `875370c` (main at
 `db7a0a8`, after #488, merged in). An NPC's "am I the Sleepwalker?" doubt moves with every Rumormonger reading
