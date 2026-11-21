@@ -445,8 +445,8 @@ Nothing in the design is open now. Building waits on Michael's word to Seneschal
 
 ## 10. The prototype (Michael approved, Nov 20)
 
-It's on `mock/burdens-slot`, which never merges, and is compared against main with paired
-sweeps.
+It's on `mock/burdens-slot` and is compared against main with paired sweeps. It lands
+through a `claude/` branch cut from it, never directly ("How it lands", below).
 - **Stage 1:**
   - Lantern builds the model-A slot world domain, with Marked known, on the judge side.
   - Beadle builds Marked's tiered disclosure, the "carried the mark since birth" defence, and
@@ -456,6 +456,28 @@ sweeps.
 - **Argon's speed re-estimate** under model A (Nov 20): about 10–20% faster per day-3+ refresh,
   and 15–30% on reading-heavy presentations, against main. The C fallback isn't needed below
   12+ NPCs with Minion identities. Details in [burdens_feasibility.md](burdens_feasibility.md).
+
+### How it lands (Michael, Nov 21)
+
+- **One PR, or two at most** if Bailiff wants the judge separate, **with a single golden
+  re-baseline.** It doesn't port to main stage by stage.
+- **When:** after Michael playtests the prototype.
+- **How:** Lantern cuts `claude/burdens` from `mock/burdens-slot`, cleaned of scaffolding.
+  This is an explicit exception to "`mock/` branches never merge": the code lands through a
+  `claude/` branch.
+- **Why:** it saves several days in the one-at-a-time golden queue. The paired sweeps against
+  main serve as the behaviour check.
+- **What's given up:** golden drift is harder to attribute, the review is heavier, and there's
+  no partial rollback.
+
+### Also settled on the prototype (Michael, Nov 21)
+
+- **The Unrequited isn't dealt to a night-walking gift,** for now. It's a deal rule, like the
+  ones the Lovers and Sleepwalker had.
+- **The spell-break threshold stays as it is** until there are player-driven games. In 12
+  passive games it never broke.
+- **Still held:** the stage-2 world model. The options are placed holders now with a hybrid
+  later, or weighting (section 14).
 
 ## 11. Wording approved (Michael, Nov 21)
 
