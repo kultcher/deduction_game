@@ -955,10 +955,9 @@ class Burden:
 	## about 0.7, about 1 in 400 per evil NPC on day 1. Beadle's estimates.
 	const SILENCE_START = 0.05
 	const SILENCE_PER_DAY = 0.3
-	## The Unrequited's night visit to the beloved's door (or grave): the chance each night.
-	## PLACEHOLDER, awaiting Michael (proposed via Seneschal, Nov 21); Lantern's movement
-	## allowance assumes the same value.
-	const UNREQUITED_VISIT_CHANCE = 0.5
+	## The Unrequited's night visit to the beloved's door (or grave): the chance each night,
+	## and never two nights running without one (Michael, Nov 21).
+	const UNREQUITED_VISIT_CHANCE = 0.65
 
 
 # ---------------------------------------------------------------- 9. Workshop Evaluator, Bounded Reasoner & Presentation

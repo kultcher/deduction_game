@@ -362,10 +362,16 @@ static func setup_unrequited(w) -> void:
 static func unrequited_visit(w, n) -> String:
 	if n.secret_mod != "unrequited" or n.is_evil() or n.beloved == "" or n.out_last_night or not w.by_id.has(n.beloved):
 		return ""
+	if n.dialogue_memory.get("unrequited_spell_broken", false):
+		return ""
+	# Never two nights running without a visit (Michael, Nov 21): a night missed forces the next.
+	var last: int = int(n.dialogue_memory.get("unrequited_last_visit", w.day - 1))
+	var due: bool = w.day - last >= 2
 	var r := RandomNumberGenerator.new()
 	r.seed = hash([w.seed_value, w.day, n.id, "unrequited_visit"])
-	if r.randf() >= Tuning.Burden.UNREQUITED_VISIT_CHANCE:
+	if not due and r.randf() >= Tuning.Burden.UNREQUITED_VISIT_CHANCE:
 		return ""
+	n.dialogue_memory["unrequited_last_visit"] = w.day
 	var b = w.by_id[n.beloved]
 	if not b.alive:
 		n.secret["dest"] = "hill"
@@ -393,7 +399,7 @@ static func with_errand(w, o, fact: Dictionary) -> Dictionary:
 ## beloved moderately to strongly (them among two at most) is held back, with a logged reason.
 ## Only what it volunteers: pressed, or nominated itself, it gives it up.
 static func withholds_for_beloved(w, n, entry: Dictionary) -> bool:
-	if n.secret_mod != "unrequited" or n.is_evil() or n.beloved == "":
+	if n.secret_mod != "unrequited" or n.is_evil() or n.beloved == "" or n.dialogue_memory.get("unrequited_spell_broken", false):
 		return false
 	var who: Array = Gifts.implicated(entry)
 	if not n.beloved in who or who.size() > 2:
@@ -448,3 +454,39 @@ static func evil_unrequited_bluff(w, n, nd: int, block: String) -> Dictionary:
 	w.evil_plan["unrequited_beloved"][n.id] = pick
 	return claim(w, n, "unrequited", false, "caught out on %s on night %d" % [C.block_name(block), nd], "player",
 		{"beloved": pick, "block": block, "day": nd, "phase": C.NIGHT})
+
+## The reveal's trust cost (Michael, Nov 21, option a): those who hear it lose trust in the
+## Unrequited, by the secret-spread amount (SECRET_SPREAD_BASE + SECRET_SPREAD_PRIVACY x its
+## Privacy). Once per listener. Evil listeners too: their good selves model the town.
+static func reveal_cost(w, o, listeners: Array) -> void:
+	if str(o.secret.get("kind", "")) != "unrequited":
+		return
+	var loss: float = Tuning.Trust.SECRET_SPREAD_BASE + Tuning.Trust.SECRET_SPREAD_PRIVACY * float(o.traits.get("privacy", 0.5))
+	var heard: Dictionary = o.dialogue_memory.get("unrequited_reveal_heard", {})
+	for l in listeners:
+		if l == o or not l.alive or heard.has(l.id):
+			continue
+		heard[l.id] = true
+		var before: float = float(l.npc_trust.get(o.id, 0.5))
+		l.npc_trust[o.id] = clampf(before - loss, 0.0, 1.0)
+		w.dlog.add("npc_trust", l.id, o.id, {"from": snappedf(before, 0.01), "to": snappedf(l.npc_trust[o.id], 0.01), "why": "unrequited_reveal"},
+			"%s trusts %s less: they hid an unrequited love for %s." % [l.name, o.name, w.by_id[str(o.secret.get("beloved", ""))].name])
+	o.dialogue_memory["unrequited_reveal_heard"] = heard
+
+## The spell breaks (Michael, Nov 21): once its suspicion of the beloved reaches the level that
+## drives a good NPC's accusations (ACCUSE_SUSPICION_PIVOT), the Unrequited says so before the
+## town and gives the burden up. It stops shielding them and stops its visits. {} if not.
+static func spell_breaks(w, n) -> Dictionary:
+	if n.silenced or n.is_evil() or n.secret_mod != "unrequited" or n.beloved == "" or n.dialogue_memory.get("unrequited_spell_broken", false):
+		return {}
+	var b = w.by_id.get(n.beloved)
+	if b == null or not b.alive or float(n.suspicion.get(b.id, 0.0)) < Tuning.Meeting.ACCUSE_SUSPICION_PIVOT:
+		return {}
+	n.dialogue_memory["unrequited_spell_broken"] = true
+	n.secret_known = true
+	w.dlog.think(n.id, "spell_breaks", "Can't keep believing %s is good: suspicion %.2f. Gives up the burden." % [b.name, float(n.suspicion[b.id])], {"burden": "unrequited", "beloved": b.id, "day": w.day})
+	var line: Dictionary = _mind().say_voiced(n, "burden_unrequited_spell_breaks", "I kept telling myself %s was good. I can't keep telling myself that, not after this." % b.name, {"beloved": b.name})
+	var fact: Dictionary = with_errand(w, n, {"kind": "secret", "subject": [n.id], "owner": n.id, "source": n.id, "public": true})
+	fact["spell_broken"] = true
+	reveal_cost(w, n, w.living())
+	return {"line": line, "fact": fact}
