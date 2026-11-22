@@ -29,6 +29,7 @@ func _init() -> void:
 	_vote()
 	_playtest_51795()
 	_doubtful_friend()
+	_reluctant_yes()
 	print("Readings agree: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -165,3 +166,19 @@ func _doubtful_friend() -> void:
 	_check(unvoiced.is_empty(), "every voice says the doubting defence in its own words, naming the nominee (Herald, Michael's set) %s" % [unvoiced])
 	f.friends.erase(t.id)
 	_check(near < 0.0 or not ("would they?" in speak.call(near)), "someone who isn't their friend speaks up plainly")
+
+## A friend who voted to hang the nominee, only just, says so to them (Michael, Nov 22).
+func _reluctant_yes() -> void:
+	var w = _world()
+	var goods: Array = w.living_good()
+	var f = goods[0]
+	var t = goods[1]
+	if not (t.id in f.friends):
+		f.friends.append(t.id)
+	var said := func(margin: float) -> String:
+		var res: Dictionary = {"nominee": t.id, "no": [], "yes": [f.id], "voter_parts": {f.id: {"parts": {}, "margin": margin, "yes": true}}, "threshold": 6, "count": 1, "by": goods[2].id}
+		return " ".join(PackedStringArray(MindVote.vote_resistance_lines(w, res).map(func(x): return str(x.get("statement", x.get("text", ""))))))
+	_check("Forgive me" in said.call(0.05) or t.name in said.call(0.05), "a friend whose yes was close speaks to them (%s)" % said.call(0.05))
+	_check(said.call(0.6) == "", "not one whose yes was firm")
+	f.friends.erase(t.id)
+	_check(said.call(0.05) == "", "nor someone who isn't their friend")

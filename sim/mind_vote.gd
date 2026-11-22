@@ -283,10 +283,16 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 			continue
 		out.append(_resistance_line(w, v, t, key, res))
 		picked.append(vid)
+	# A friend who voted to hang them, only just (Michael, Nov 22): at most one, said to them.
+	var reluctant = _reluctant_friend_yes(w, res, parts_map)
+	if reluctant != null:
+		out.append(say_voiced(reluctant, "vote_yes_doubtful_friend", "Forgive me, %s. I've known you a long time... but I can't look away from this." % t.name, {"nominee": t.name}))
 	if picked.is_empty():
 		var needed: int = maxi(int(res.get("threshold", 0)), int(res.get("prev_block_count", 0)) + 1)
 		if absi(int(res.get("count", 0)) - needed) <= 1:
 			var swing = _swing_voter(w, res, parts_map, picked)
+			if swing != null and swing[0] == reluctant:
+				swing = null  # already spoke, as the friend
 			if swing != null:
 				var sv = swing[0]
 				var skey: String = swing[1]
@@ -298,6 +304,25 @@ static func vote_resistance_lines(w, res: Dictionary) -> Array:
 					out.append(_resistance_line(w, sv, t, skey, res))
 	return out
 
+
+## The good friend of the nominee whose yes was closest to the line, within the close margin, or
+## null: the reluctant yes (vote_yes_doubtful_friend). Never evil's cover vote, never the one
+## on the block, never the nominee.
+static func _reluctant_friend_yes(w, res: Dictionary, parts_map: Dictionary):
+	var nominee: String = str(res.get("nominee", ""))
+	var best = null
+	var best_m: float = 1e9
+	for vid in res.get("yes", []):
+		if vid == nominee or vid == str(res.get("prev_block", "")) or not w.by_id.has(vid) or not parts_map.has(vid):
+			continue
+		var v = w.by_id[vid]
+		if v.is_evil() or v.silenced or not v.alive or not (nominee in v.friends):
+			continue
+		var m: float = float(parts_map[vid].get("margin", -1.0))
+		if m >= 0.0 and m < Tuning.Meeting.VOTE_RESISTANCE_CLOSE_MARGIN and m < best_m:
+			best_m = m
+			best = v
+	return best
 
 ## Which reason a no-voter gives, from the parts their vote actually had.
 static func _resistance_key(w, v, vp: Dictionary, res: Dictionary, granted_lie: bool = false) -> String:
