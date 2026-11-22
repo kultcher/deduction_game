@@ -51,6 +51,8 @@ var t: float = 0.0
 var kill: bool = true
 var people: Array = []
 var victim_index: int = 0
+## The wheel's turn when the spin starts (NAN: a turn of its own choosing).
+var start_angle: float = NAN
 
 var stage: Control
 var frame: Control
@@ -87,10 +89,13 @@ func _init() -> void:
 
 ## Plays the night's beat. `step`: `people` (an array of {id, name, color, portrait}, the
 ## living in wheel order; portrait and color are optional), `victim` (an id) and `kill`
-## (false for the no-kill fakeout, which lands on `victim` harmlessly).
+## (false for the no-kill fakeout, which lands on `victim` harmlessly). Optional
+## `start_angle`: the wheel's turn when the spin begins, so a second kill in one night can
+## pick up where the first stopped (pass the first's `end_angle()`).
 func play(step: Dictionary) -> void:
 	people = step.get("people", [])
 	kill = bool(step.get("kill", true))
+	start_angle = float(step.get("start_angle", NAN))
 	victim_index = maxi(0, people.map(func(p): return str(p.get("id", ""))).find(str(step.get("victim", ""))))
 	_build()
 	_plan = _make_plan()
@@ -257,7 +262,15 @@ func wheel_rotation(tt: float) -> float:
 	var u: float = _u(tt, _plan.spin)
 	var e: float = 1.0 - pow(1.0 - u, 4.0)
 	var total: float = TAU * TURNS + step * 0.5 + 0.7
+	if not is_nan(start_angle):
+		total = TAU * TURNS + fposmod(rest - start_angle, TAU)
 	return rest - (1.0 - e) * total
+
+
+## The wheel's turn once it has stopped: pass it as the next spin's `start_angle`.
+func end_angle() -> float:
+	var n: int = maxi(1, people.size())
+	return fposmod(-victim_index * TAU / n, TAU)
 
 
 func _apply() -> void:

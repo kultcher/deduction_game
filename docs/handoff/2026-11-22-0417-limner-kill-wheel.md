@@ -24,7 +24,9 @@
   about 70 to 90% of the screen height works well.
   - **The interface:**
     - `play({people, victim, kill})`. `people` is an array of `{id, name, color, portrait}`,
-      the living in wheel order (portrait and colour are optional).
+      the living in wheel order (portrait and colour are optional). An optional
+      `start_angle` makes a second kill in one night begin where the first stopped: pass the
+      first's `end_angle()` (Herald's ask).
     - `skip_to_end()`, `advance(delta)`, `reduced_motion`, `landed_at()`, `struck_at()`,
       `ends_at()` and `focus_centre()`.
     - The signals `landed`, `struck` (a hook for a sound or a wider shake) and `finished`.
@@ -59,10 +61,11 @@
   - **The ring now fades with the portrait's alpha.** It was drawn at full alpha even
     when the portrait faded. Nothing changes at full alpha, so the daily window looks the
     same.
-- **`tools/test_kill_wheel.gd`:** 34 checks, under 1 s. Added to `tools/ci_fast_suites.txt`.
+- **`tools/test_kill_wheel.gd`:** 36 checks, under 1 s. Added to `tools/ci_fast_suites.txt`.
   - **Signals:** they fire once each and in order, and a skip sends each once.
   - **Landing:** the wheel stops with the victim under the dagger, for 3, 7 and 10 people
-    and every victim, after more than two turns.
+    and every victim, after more than two turns. A second spin starts where the first
+    stopped.
   - **The isolated portrait:** it never jumps (its biggest step is 3.9 px), and it ends in
     the middle.
   - **A kill:** it leaves only the X, with no flash or shake left over.
@@ -84,7 +87,7 @@
 
 ## Measured
 
-- **Suites:** `test_kill_wheel` 34/34, `test_daily_guess` and `test_reveal_card` pass,
+- **Suites:** `test_kill_wheel` 36/36, `test_daily_guess` and `test_reveal_card` pass,
   through the runner.
 - **Golden:** not captured. No game logic changed.
 - **Clips:** normal and reduced, at 1920×1080 under xvfb, sent to Michael and Herald.

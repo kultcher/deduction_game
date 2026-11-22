@@ -101,6 +101,12 @@ func _run() -> void:
 	_check(worst < 0.001, "the victim's slice stops under the dagger (worst %.4f rad, 3, 7 and 10 people)" % worst)
 	w.play({"people": _people(10), "victim": "edda", "kill": true})
 	_check(absf(w.wheel_rotation(0.3) - w.wheel_rotation(w.landed_at())) > TAU * 2.0, "it turns more than twice before stopping")
+	# A second kill picks up where the first stopped (Herald's ask).
+	var first_end: float = w.end_angle()
+	w.play({"people": _people(9), "victim": "bart", "kill": true, "start_angle": first_end})
+	_check(absf(_wrap(w.wheel_rotation(0.0) - first_end)) < 0.001, "a second spin starts where the first stopped")
+	_check(absf(_wrap(w.wheel_rotation(w.landed_at()) + 1 * TAU / 9)) < 0.001 and absf(w.wheel_rotation(0.3) - w.wheel_rotation(w.landed_at())) > TAU * 2.0,
+		"and still turns more than twice and lands on its victim")
 
 	# The isolated portrait moves without jumps.
 	w.play({"people": _people(10), "victim": "kiran", "kill": false})
