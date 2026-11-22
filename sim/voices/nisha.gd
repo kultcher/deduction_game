@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "Amend your ledger for {nights} accordingly: I was out on my gift's work, and withheld that until my claim was on the table.",
 	"opinion_clear": "Nothing I've observed supports the hypothesis that {subject} is evil.",
 	"vote_resist_readings_agree": "I won't vote to hang {nominee}: their readings are in keeping with what I know.",
+	"support_doubt_for": "I've known {target} a long time, and nothing in all that time points to this. Still, I can't rule it out.",
 	"opinion_readings_agree": "{subject}'s readings are in keeping with what I know, which argues against them being evil.",
 	"opinion_fine": "{subject} seems all right to me—no anomalies so far.",
 	"opinion_unfamiliar": "I don't really know {subject} that well; treat them as an open question.",

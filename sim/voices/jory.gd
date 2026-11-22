@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "So yeah, I was totally out {nights} when I said I was home—had to cover my tracks till you knew what I do!",
 	"opinion_clear": "{subject}? Nah, not one of them. No way.",
 	"vote_resist_readings_agree": "No way I'm hanging {nominee}! Their readings line up with what I know.",
+	"support_doubt_for": "{target}? No way. I've known them forever. They wouldn't... right?",
 	"opinion_readings_agree": "{subject}'s readings line up with what I know. Not one of them, no way.",
 	"opinion_fine": "{subject} seems all right to me! No weirdness there.",
 	"opinion_unfamiliar": "Honestly, I don't really know {subject} that well—barely talked to them!",

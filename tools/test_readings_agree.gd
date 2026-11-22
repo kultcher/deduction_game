@@ -157,5 +157,11 @@ func _doubtful_friend() -> void:
 		return " ".join(PackedStringArray(out["lines"].map(func(x): return str(x.get("statement", x.get("text", ""))))))
 	_check(near >= 0.0 and "would they?" in speak.call(near), "a friend near the yes line speaks up with doubt (suspicion %.2f, dry margin %.2f)" % [near, m0])
 	_check(far >= 0.0 and not ("would they?" in speak.call(far)), "a friend far from it speaks up plainly")
+	var unvoiced: Array = []
+	for vid in load("res://sim/dialogue_voices.gd").VOICES.keys():
+		var said: String = load("res://sim/dialogue.gd").voice_line(vid, "support_doubt_for", "", {"target": t.name})
+		if said == "" or not (t.name in said) or "{" in said:
+			unvoiced.append(vid)
+	_check(unvoiced.is_empty(), "every voice says the doubting defence in its own words, naming the nominee (Herald, Michael's set) %s" % [unvoiced])
 	f.friends.erase(t.id)
 	_check(near < 0.0 or not ("would they?" in speak.call(near)), "someone who isn't their friend speaks up plainly")

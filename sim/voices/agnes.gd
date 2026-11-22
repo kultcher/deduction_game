@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "So yes: I was out {nights}, whatever I told you before. I simply wasn't ready to say why.",
 	"opinion_clear": "I can't believe {subject} has any part in this wickedness, dear.",
 	"vote_resist_readings_agree": "I won't hang {nominee}, dear. Their readings bear out what I know.",
+	"support_doubt_for": "I've known {target} for years. They couldn't do a thing like this... could they?",
 	"opinion_readings_agree": "{subject}'s readings bear out what I know, dear. I can't think them wicked.",
 	"opinion_fine": "{subject} seems all right to me, dear.",
 	"opinion_unfamiliar": "I don't really know {subject} well enough to say.",

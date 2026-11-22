@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "Aye, I was out {nights}. Lied to keep my work quiet. Now you know.",
 	"opinion_clear": "{subject}'s not one of them.",
 	"vote_resist_readings_agree": "Not voting to hang {nominee}. Their readings square with what I know.",
+	"support_doubt_for": "Known {target} a long while. Not the sort to do this. ...Or so I'd have said.",
 	"opinion_readings_agree": "{subject}'s readings square with what I know. Not one of them.",
 	"opinion_fine": "{subject} seems all right to me.",
 	"opinion_unfamiliar": "Don't really know {subject} that well.",

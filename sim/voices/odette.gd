@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "So yes, I was out {nights}, contrary to my earlier story. I wasn't about to hand you my itinerary before you knew my gift.",
 	"opinion_clear": "I don't take {subject} for one of the wicked, which is more than I'd say for most.",
 	"vote_resist_readings_agree": "I shan't hang {nominee}; their readings agree with what I know, tiresome as that is.",
+	"support_doubt_for": "I've known {target} for years, and they never struck me as the murdering kind. Then again, who does?",
 	"opinion_readings_agree": "{subject}'s readings agree with what I know, which is more than I can say for most.",
 	"opinion_fine": "{subject} seems all right to me, by the low standards of this week.",
 	"opinion_unfamiliar": "I don't really know {subject} that well; I've survived without their biography.",

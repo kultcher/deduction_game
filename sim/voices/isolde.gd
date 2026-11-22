@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "And forgive me for what I said before—I truly was out {nights}, only I was too frightened to admit why.",
 	"opinion_clear": "I can't believe {subject} would ever hurt anyone.",
 	"vote_resist_readings_agree": "Please, not {nominee}. Their readings agree with what I know.",
+	"support_doubt_for": "I've known {target} so long—they could never do something so terrible... could they?",
 	"opinion_readings_agree": "{subject}'s readings agree with what I know. I can't believe they'd hurt anyone.",
 	"opinion_fine": "{subject} seems all right to me—gentle enough, as far as I can see.",
 	"opinion_unfamiliar": "I'm sorry, I don't really know {subject} that well.",

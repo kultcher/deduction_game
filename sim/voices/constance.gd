@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "I must therefore amend my earlier account: I was abroad {nights}, as my duty required, before I judged it prudent to say so.",
 	"opinion_clear": "I have seen nothing in {subject}'s conduct to suggest wickedness.",
 	"vote_resist_readings_agree": "I will not hang {nominee}: their readings accord with what I know to be so.",
+	"support_doubt_for": "I have known {target} a long time, and I would not have thought them capable of this. I find I cannot say so with the certainty I would like.",
 	"opinion_readings_agree": "{subject}'s readings accord with what I know; I see no wickedness there.",
 	"opinion_fine": "{subject} seems all right to me; I have observed nothing improper.",
 	"opinion_unfamiliar": "I do not really know {subject} well enough to pronounce judgment.",

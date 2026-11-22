@@ -42,6 +42,7 @@ const LINES = {
 	"own_night_lie": "That also clears up {nights}: yes, I was out, and I told you home because I wasn't ready to burn my cover.",
 	"opinion_clear": "{subject} doesn't flag as evil. Cross them off for now.",
 	"vote_resist_readings_agree": "No on {nominee}. Their readings check out against what I know.",
+	"support_doubt_for": "I've known {target} a long time. They wouldn't do this. I think.",
 	"opinion_readings_agree": "{subject}'s readings check out against what I know. Cross them off for now.",
 	"opinion_fine": "{subject} seems all right to me. Nothing flags them.",
 	"opinion_unfamiliar": "I don't really know {subject} that well. Nothing to go on either way.",

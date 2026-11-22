@@ -61,6 +61,7 @@ const LINES = {
 	"own_night_lie": "And so I confess the harmless deception: I was indeed abroad {nights}! A necessary fib to guard the third act, I assure you.",
 	"opinion_clear": "{subject}? No villain in that one, my friend—wrong casting entirely.",
 	"vote_resist_readings_agree": "Hang {nominee}? Never! Their readings play true to what I know.",
+	"support_doubt_for": "I've known {target} an age, and in every tale I could tell of them, they would never stoop to this... would they?",
 	"opinion_readings_agree": "{subject}'s readings play true to what I know, my friend. Wrong casting for a villain!",
 	"opinion_fine": "{subject} seems all right to me; no villainy in that chapter.",
 	"opinion_unfamiliar": "Alas, I don't really know {subject} that well—a minor character in my circles!",
