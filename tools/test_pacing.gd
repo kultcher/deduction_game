@@ -121,8 +121,11 @@ func _run() -> void:
 	g2.ward_log[2] = warded_id
 	g2.w.ward_saves = []
 	var dawn: Array = [{"k": "headline", "kind": "dawn", "text": "Day 3 Dawns"}]
+	g2.remove_meta("paced")
 	var spent: Array = scene._pacing_plan(dawn).filter(func(x): return x.type == "wheel")
 	check(spent.size() == 1 and spent[0].victim == PacingPlans._fakeout(g2.w, g2.w.npcs.filter(func(n): return n.alive).map(func(n): return n.id)), "a ward that saved nobody: the usual fakeout draw")
+	check(scene._pacing_plan(dawn).is_empty(), "the same night doesn't play twice (look repeats the morning's header)")
+	g2.remove_meta("paced")
 	g2.w.ward_saves = [{"night": 2, "target": warded_id}]
 	var saved: Array = scene._pacing_plan(dawn).filter(func(x): return x.type == "wheel")
 	check(saved.size() == 1 and saved[0].victim == warded_id, "a ward that held: the fakeout lands on that door")

@@ -148,6 +148,15 @@ var pacing_enabled: bool = true
 var pacing_open: bool = false
 var _reveal_after_pacing: bool = false
 
+## True the first time `key` is asked about in this case; the case's game remembers it.
+func _first_time(key: String) -> bool:
+	var played: Dictionary = g.get_meta("paced", {})
+	if played.has(key):
+		return false
+	played[key] = true
+	g.set_meta("paced", played)
+	return true
+
 ## The beats for what just happened: a hanging at the meeting's close, or the night's reveal
 ## at dawn. [] for anything else.
 func _pacing_plan(events: Array) -> Array:
@@ -158,6 +167,8 @@ func _pacing_plan(events: Array) -> Array:
 			if c.get("kind", "") in ["execution", "martyr"] and int(c.get("day", -1)) == g.w.day:
 				card = c
 		if card.is_empty():
+			return []
+		if not _first_time("hanging:%d" % g.w.day):
 			return []
 		if card.kind == "martyr":
 			return PacingPlans.execution(g.w, str(card.get("saved", "")), {"martyr": card.get("martyr", ""), "saved": card.get("saved", "")})
@@ -174,6 +185,9 @@ func _pacing_plan(events: Array) -> Array:
 			if e.k == "narration":
 				result.append(str(e.text))
 		var night_no: int = g.w.day - 1 if dawned else g.w.day
+		# Once per night: "look" repeats the morning's header, and its dawn headline with it (Codex on #537).
+		if not _first_time("night:%d" % night_no):
+			return []
 		var before: Array = g.w.npcs.filter(func(n): return n.alive or n.id in g.w.deaths_last_night).map(func(n): return n.id)
 		# The fakeout lands on the warded door only when the ward actually held that night: a
 		# spent ward isn't a save (w.ward_saves records those; Codex on #537).
