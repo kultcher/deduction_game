@@ -1235,6 +1235,20 @@ static func _evil_counter_or_pass(w, n, m: Dictionary, ev) -> Variant:
 		return ev
 	return null
 
+## The push to hang a known Ill-Omened waits, as evil's scapegoat nominations do, until the
+## town is warm on them: some public heat on them, and scapegoat readiness (room heat,
+## ammunition, less the cool-off after a failed vote) at the same confidence-scaled bar; never
+## on day 1.
+static func _omen_push_ready(w, n, id: String) -> bool:
+	if w.day < 2 or not w.by_id.has(id):
+		return false
+	var ready: Dictionary = Evil.scapegoat_readiness(w, n, w.by_id[id])
+	# Some of it the town's own: a frame in evil's pocket alone isn't heat on them.
+	if float(ready["room_heat"]) <= Tuning.Evil.PUBLIC_HEAT_BASE:
+		return false
+	var thr: float = Tuning.Evil.EVIL_NOMINATION_BASE_HEAT - Tuning.Evil.EVIL_NOMINATION_CONFIDENCE_SCALE * float(n.traits.get("confidence", 0.5))
+	return float(ready["score"]) >= thr
+
 static func _evil_nomination(w, n, m: Dictionary, block: String):
 	var res = _evil_nomination_choice(w, n, m, block)
 	var chosen: String = Evil.martyr_bluff_chosen(n)
@@ -1261,6 +1275,10 @@ static func _evil_nomination_choice(w, n, m: Dictionary, block: String):
 			sc["reason"] = "Evil (good self): nominates teammate %s; %s" % [sc["nominee"], sc["reason"]]
 		return sc
 	var omen_t: String = Burdens.omen_push_target(w, n)
+	# Only once the town is already warm on the holder (Michael, Nov 22): the scapegoat
+	# readiness bar evil's own nominations use, which carries the cool-off after a failed vote.
+	if omen_t != "" and not _omen_push_ready(w, n, omen_t):
+		omen_t = ""
 	if omen_t != "" and not (omen_t in m["nominated"]) and m.get("block", "") != omen_t and evil_override(w, n, "nomination", Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + Tuning.Evil.OMEN_PUSH_STAKES, 0.5, "push to hang %s, a real Ill-Omened (good self wouldn't nominate)" % omen_t):
 		var omen_s: float = Tuning.Meeting.EVIL_NOMINATION_STAKES_BASE + Tuning.Evil.OMEN_PUSH_STAKES
 		return {"nominee": omen_t, "by": n.id, "score": omen_s,

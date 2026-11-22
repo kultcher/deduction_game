@@ -86,6 +86,8 @@ static func _pick_scapegoat(w, why: String) -> void:
 			s += Tuning.Evil.SCAPEGOAT_DISTRUST_BONUS
 		if g.claim_public and C.has_role_def(g.claimed_role) and C.role_def(g.claimed_role).hard_to_kill:
 			s += Tuning.Evil.SCAPEGOAT_HARD_TO_KILL_BONUS  # claims a gift the demon can't kill through: better hanged
+		if g.id == str(w.evil_plan.get("omen_holder", "")):
+			s += Tuning.Evil.OMEN_KNOWN_SCAPEGOAT_BONUS  # a known Ill-Omened: hanging them poisons the town (Michael, Nov 22)
 		if s > best_s:
 			best_s = s
 			best = g
@@ -129,6 +131,8 @@ static func review_scapegoat(w) -> void:
 				clears += Tuning.Evil.SCAPEGOAT_CLEAR_PENALTY * pow(HEAT_FADE, w.day - e["day"])
 		if clears > 0.0:
 			parts["dead_end"] = -clears
+		if g.id == str(w.evil_plan.get("omen_holder", "")):
+			parts["omen_holder"] = Tuning.Evil.OMEN_KNOWN_SCAPEGOAT_BONUS  # a known Ill-Omened (Michael, Nov 22)
 		var flop_cooloff: float = vote_cooloff(w, "", g.id)
 		if flop_cooloff > 0.0:
 			parts["failed_vote"] = -flop_cooloff
@@ -699,6 +703,8 @@ static func choose_kill_target(w) -> String:
 				parts["mood_hungry"] = snappedf(w.rng.randf() * Tuning.Evil.KILL_HUNGRY_MAX, 0.01)
 		if n.id == plan["scapegoat"] and w.living().size() > 4:
 			parts["keep_scapegoat"] = Tuning.Evil.KILL_KEEP_SCAPEGOAT
+		if n.id == str(plan.get("omen_holder", "")):
+			parts["omen_holder_better_hanged"] = Tuning.Evil.OMEN_KNOWN_KILL_PENALTY  # better hanged than killed (Michael, Nov 22)
 		var fails: int = plan["failed"].filter(func(x): return x == n.id).size()
 		var vet = believed_veteran(w, n)
 		var poisoner_up = w.living_with_role("poisoner") != null

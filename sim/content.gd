@@ -489,7 +489,7 @@ const SECRET_MODS = {
 	"sleepwalker": {"name": "Sleepwalker", "desc": "Leaves home each night without knowing it."},
 	# Burdens prototype: the rules text is Michael's, approved Nov 21 (docs/design/burdens_wording.md).
 	"unrequited": {"name": "Unrequited", "desc": "Loves one townsperson, who doesn't know. Visits their home at night, and is slow to suspect them."},
-	"ill_omened": {"name": "Ill-Omened", "desc": "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night."},
+	"ill_omened": {"name": "Ill-Omened", "desc": "If hanged after claiming this burden, every good person is poisoned that night until the start of the next night. The evil team knows who the Ill-Omened is."},
 }
 const SECRET_MOD_LIST = ["delusional", "marked", "unrequited", "ill_omened"]  # burdens prototype: the Lovers and Sleepwalker 1.0 retired
 

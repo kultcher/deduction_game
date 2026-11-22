@@ -6,6 +6,7 @@ extends SceneTree
 const Game = preload("res://game/game.gd")
 const Burdens = preload("res://sim/burdens.gd")
 const Evil = preload("res://sim/evil.gd")
+const MindMeeting = preload("res://sim/mind_meeting.gd")
 const Tuning = preload("res://sim/tuning.gd")
 const C = preload("res://sim/content.gd")
 
@@ -38,6 +39,7 @@ func _init() -> void:
 	_unarmed()
 	_turned()
 	_passed()
+	_evil_knows()
 	print("Ill-Omened: %d checks, %d failures" % [checks, fails])
 	quit(1 if fails else 0)
 
@@ -48,6 +50,7 @@ func _holder(w):
 			m.secret_mod = ""
 	o.secret_mod = "ill_omened"
 	o.burden_self_known = true
+	Burdens.setup_evil_knows_omen(w)  # evil knows the holder from the deal (Michael, Nov 22)
 	return o
 
 func _real() -> void:
@@ -106,7 +109,9 @@ func _real() -> void:
 
 func _bluff() -> void:
 	var w = _case().w
-	_holder(w)
+	var hb = _holder(w)
+	hb.secret_mod = ""
+	w.evil_plan["omen_holder"] = ""  # evil bluffs only when it knows none is dealt
 	var e = w.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
 	if not w.evil_plan.has("burden_bluffs"):
 		w.evil_plan["burden_bluffs"] = {}
@@ -164,3 +169,46 @@ func _passed() -> void:
 	e2.silenced = true
 	Burdens.omen_at_nomination(w2, e2)
 	_check(not w2.omen_unclaimed.has(e2.id), "a silenced nominee couldn't have claimed, so it isn't noted")
+
+## The evil team knows the Ill-Omened from the deal (Michael, Nov 22).
+func _evil_knows() -> void:
+	var w = _case().w
+	var o = _holder(w)
+	_check(str(w.evil_plan.get("omen_holder", "")) == o.id and Burdens.evil_known_omen(w) == o.id, "evil knows who the Ill-Omened is")
+	var e = w.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w.evil_plan.get("bluffs", {}).get(e.id, "")) == "":
+		w.evil_plan["bluffs"][e.id] = "clerk"
+	_check(not Burdens.evil_burden_bluff(w, e, "ill_omened", "stay off the rope"), "and so never bluffs it while a real one is dealt")
+	var minion = w.npcs.filter(func(m): return m.alive and m.is_evil() and m.id != w.demon_id and not C.is_demon(m.role) and m.role != "scion")
+	_check(minion.is_empty() or Burdens.omen_push_target(w, minion[0]) == o.id, "a Minion pushes the known holder, claimed or not")
+	# The push waits for heat (Michael, Nov 22): never cold on day 1, only once the town is warm.
+	if not minion.is_empty():
+		var mm = minion[0]
+		w.day = 1
+		_check(not MindMeeting._omen_push_ready(w, mm, o.id), "no push-nomination on day 1")
+		w.day = 2
+		w.public_log = w.public_log.filter(func(x): return not (o.id in x.get("subjects", [])))
+		_check(not MindMeeting._omen_push_ready(w, mm, o.id), "nor while the town has no heat on the holder")
+		var accusers: Array = w.living_good().filter(func(x): return x != o)
+		for i in range(4):
+			w.public_event("accusation", [o.id], accusers[i % accusers.size()].id)
+			w.public_event("nomination", [o.id], accusers[(i + 1) % accusers.size()].id)
+		_check(MindMeeting._omen_push_ready(w, mm, o.id), "but once the town has turned on them, it may push")
+	# The Demon killed the holder anyway (Michael, Nov 22): evil claims it at its nomination.
+	var w2 = _case().w
+	var o2 = _holder(w2)
+	var e2 = w2.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w2.evil_plan.get("bluffs", {}).get(e2.id, "")) == "":
+		w2.evil_plan["bluffs"][e2.id] = "clerk"
+	_check(Burdens.omen_at_nomination(w2, e2).is_empty(), "while the holder lives, evil never claims it")
+	w2.omen_unclaimed.erase(e2.id)
+	o2.alive = false
+	_check(not Burdens.omen_at_nomination(w2, e2).is_empty(), "once the holder is dead and never claimed it, evil claims it at its nomination")
+	var w3 = _case().w
+	var o3 = _holder(w3)
+	var e3 = w3.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
+	if str(w3.evil_plan.get("bluffs", {}).get(e3.id, "")) == "":
+		w3.evil_plan["bluffs"][e3.id] = "clerk"
+	Burdens.omen_early_warning(w3, o3)
+	o3.alive = false
+	_check(Burdens.omen_at_nomination(w3, e3).is_empty(), "not if the dead holder had claimed it in public")

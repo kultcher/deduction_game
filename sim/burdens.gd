@@ -251,6 +251,8 @@ static func evil_marked_bluff(w, n, why: String) -> bool:
 static func evil_burden_bluff(w, n, kind: String, why: String) -> bool:
 	if not n.is_evil() or not on_script(w, kind) or not known_claimants(w, n, kind).is_empty():
 		return false
+	if kind == "ill_omened" and str(w.evil_plan.get("omen_holder", "")) != "":
+		return _dead_holder_bluff(w, n)  # a real one is dealt: claim it only once they're dead
 	if str(w.evil_plan.get("bluffs", {}).get(n.id, "")) == "" and not n.turned:
 		return false
 	if w.evil_plan.has("burden_bluffs") and w.evil_plan["burden_bluffs"].has(n.id):
@@ -338,9 +340,60 @@ static func omen_early_warning(w, n) -> Dictionary:
 ## gift for a night. Non-Scion Minions only; the Demon and the Scion play as their good selves.
 ## "Real" is any public claimant who isn't a teammate, since evil knows its own bluffs. Returns
 ## the claimant to push, or "".
+## The evil team knows the Ill-Omened (Michael, Nov 22): it learns the holder at the
+## deal. "" when it isn't dealt (evil then knows it isn't in play).
+static func setup_evil_knows_omen(w) -> void:
+	var holder: String = ""
+	for n in w.npcs:
+		if n.secret_mod == "ill_omened" and not n.is_evil():
+			holder = n.id
+	w.evil_plan["omen_holder"] = holder
+	w.dlog.add("evil_knows_omen", "world", holder, {"holder": holder}, "Evil knows the Ill-Omened: %s." % (holder if holder != "" else "not in play"))
+
+## The Demon killed the holder anyway (Michael, Nov 22), so nobody can counter-claim:
+## evil claims it at its nomination, unless the dead holder had claimed it in public, or a
+## Rumormonger reading has shown it in play (then only now and then). The usual rules hold: at
+## the nomination, and never after a nomination passed without it (omen_at_nomination).
+static func _dead_holder_bluff(w, n) -> bool:
+	var h = w.by_id.get(str(w.evil_plan.get("omen_holder", "")))
+	if h == null or h.alive or h.id in public_claimants(w, "ill_omened"):
+		return false
+	if not (claimed_by(w, n) in ["", "ill_omened"]):
+		return false
+	var why: String = "the Ill-Omened %s is dead and never claimed it, so nobody can counter-claim" % h.id
+	if rumor_showed_omen(w):
+		var r := RandomNumberGenerator.new()
+		r.seed = hash([w.seed_value, w.day, n.id, "dead_holder_bluff"])
+		var go: bool = r.randf() < Tuning.Evil.OMEN_DEAD_BLUFF_RUMOR_CHANCE
+		w.dlog.think(n.id, "burden_bluff", "Evil: claim Ill-Omened (%s), though a Rumormonger reading showed it in play? -> %s" % [why, "yes" if go else "no"], {"result": go, "kind": "ill_omened", "dead_holder": h.id, "rumor": true})
+		if not go:
+			return false
+	else:
+		w.dlog.think(n.id, "burden_bluff", "Evil: claims Ill-Omened: %s." % why, {"result": true, "kind": "ill_omened", "dead_holder": h.id})
+	if not w.evil_plan.has("burden_bluffs"):
+		w.evil_plan["burden_bluffs"] = {}
+	w.evil_plan["burden_bluffs"][n.id] = "ill_omened"
+	return true
+
+## A Rumormonger reading naming Ill-Omened, shared before the town.
+static func rumor_showed_omen(w) -> bool:
+	for e in w.public_log:
+		if str(e.get("kind", "")) != "reading" or not w.by_id.has(e["by"]):
+			continue
+		for ie in w.by_id[e["by"]].info_log:
+			if ie.get("role", "") == "rumormonger" and ie.get("shared", false) and str(ie.get("data", {}).get("secret", "")) == "ill_omened":
+				return true
+	return false
+
+static func evil_known_omen(w) -> String:
+	var h: String = str(w.evil_plan.get("omen_holder", ""))
+	return h if h != "" and w.by_id.has(h) and w.by_id[h].alive and not w.by_id[h].is_evil() else ""
+
 static func omen_push_target(w, n) -> String:
 	if not n.is_evil() or n.id == w.demon_id or C.is_demon(n.role) or n.role == "scion":
 		return ""
+	if w.evil_plan.has("omen_holder"):  # the known holder, claimed or not (Michael, Nov 22)
+		return evil_known_omen(w)
 	for id in public_claimants(w, "ill_omened"):
 		if id != n.id and w.by_id.has(id) and w.by_id[id].alive and not _evil().is_teammate(w, n, id):
 			return id

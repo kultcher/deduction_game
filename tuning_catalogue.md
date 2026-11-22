@@ -526,6 +526,9 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `MINION_ID_DRIFT` | `0.08` |  | `sim/content.gd`, `sim/evil.gd` |
 | `MINION_CAUTION_FLOOR` | `0.25` |  | `sim/content.gd`, `sim/evil.gd` |
 | `OMEN_PUSH_STAKES` | `0.35` | A non-Scion Minion's extra stakes for breaking cover to hang a real Ill-Omened claimant (Michael, Nov 21; burdens prototype). Weighed against the heat on the Minion through the usual exposure cost. Sized so that on a close vote a Minion under about the median scrutiny votes yes, and under heavy scrutiny keeps cover. | `sim/mind_meeting.gd`, `sim/mind_vote.gd` |
+| `OMEN_KNOWN_KILL_PENALTY` | `-1.5` | The evil team knows the Ill-Omened (Michael, Nov 22; burdens prototype). A mild pull away from killing them (a Seer's claim is worth 4 to the Demon, a spent first-night gift 0), and toward making them the scapegoat. | `sim/evil.gd` |
+| `OMEN_KNOWN_SCAPEGOAT_BONUS` | `0.4` |  | `sim/evil.gd` |
+| `OMEN_DEAD_BLUFF_RUMOR_CHANCE` | `0.15` | The chance evil still claims a dead holder's Ill-Omened when a Rumormonger reading has shown it in play. | `sim/burdens.gd` |
 | `DEMON_CAUTION_FLOOR` | `0.45` |  | `sim/evil.gd` |
 | `DEMON_CAUTION_DRIFT` | `0.03` |  | `sim/evil.gd` |
 | `HEAT_FADE` | `0.75` |  | `sim/evil.gd` |
@@ -562,8 +565,8 @@ it: a retired value kept for compatibility, or a candidate for deletion.
 | `PLANTER_GOSSIP_WEIGHT` | `0.8` |  | `sim/evil.gd` |
 | `PLANTER_EXPOSURE_PENALTY` | `0.6` |  | `sim/evil.gd` |
 | `PLANTER_OPENNESS_TIEBREAK` | `0.01` |  | `sim/evil.gd` |
-| `EVIL_NOMINATION_BASE_HEAT` | `0.42` |  | `sim/evil.gd` |
-| `EVIL_NOMINATION_CONFIDENCE_SCALE` | `0.16` |  | `sim/evil.gd` |
+| `EVIL_NOMINATION_BASE_HEAT` | `0.42` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
+| `EVIL_NOMINATION_CONFIDENCE_SCALE` | `0.16` |  | `sim/evil.gd`, `sim/mind_meeting.gd` |
 | `EVIL_POCKET_FRAME_BONUS` | `0.16` |  | `sim/evil.gd` |
 | `EVIL_WALKER_INTEL_BONUS` | `0.08` |  | `sim/evil.gd` |
 | `MAX_DIRECT_PLANTS` | `2` |  | `sim/social.gd` |

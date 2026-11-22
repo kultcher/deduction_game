@@ -125,6 +125,7 @@ func setup(seed_in: int, npc_count: int = 7, on_cast_ready: Callable = Callable(
 		if not n.is_evil():
 			Mind.hear_claim(self, n, n.id, n.role, Tuning.Setup.OWN_ROLE_CLAIM_WEIGHT, "own")
 	evil_plan = Evil.make_plan(self)
+	load("res://sim/burdens.gd").setup_evil_knows_omen(self)  # the evil team knows the Ill-Omened (Michael, Nov 22)
 	_log_grimoire()
 	trace_capture("initial_setup", true)
 	if on_cast_ready.is_valid():
