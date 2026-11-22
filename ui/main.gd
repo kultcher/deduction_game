@@ -21,6 +21,8 @@ const Roles = preload("res://ui/main_roles.gd")
 const Actions = preload("res://ui/main_actions.gd")
 const DailyGuess = preload("res://ui/daily_guess.gd")
 const RevealOverlay = preload("res://ui/reveal/reveal_overlay.gd")
+const PacingOverlay = preload("res://ui/pacing/pacing_overlay.gd")
+const PacingPlans = preload("res://ui/pacing/pacing_plans.gd")
 
 var g
 var out: RichTextLabel
@@ -109,9 +111,57 @@ func _ready() -> void:
 	Layout.build(self)
 
 func _consume_headlines() -> void:
+	# The execution and the night's reveal play as a sequence (Michael, Nov 22); the headlines
+	# they replace aren't shown, and the rest wait until the sequence ends.
+	var plan: Array = _pacing_plan(g.last_events)
+	var rest: Array = []
 	for event in g.last_events:
-		if event.k == "headline":
+		if event.k != "headline":
+			continue
+		if not plan.is_empty() and str(event.get("kind", "")) in PACED_HEADLINES:
+			continue
+		rest.append(event)
+	if plan.is_empty():
+		for event in rest:
 			headlines.enqueue(event)
+		return
+	pacing_open = true
+	PacingOverlay.open(self, g.w, plan, reduced_motion, func():
+		pacing_open = false
+		for event in rest:
+			headlines.enqueue(event)
+		if _reveal_after_pacing:
+			_reveal_after_pacing = false
+			open_reveal())
+
+const PACED_HEADLINES = ["execution", "martyr", "death", "quiet"]
+var pacing_open: bool = false
+var _reveal_after_pacing: bool = false
+
+## The beats for what just happened: a hanging at the meeting's close, or the night's reveal
+## at dawn. [] for anything else.
+func _pacing_plan(events: Array) -> Array:
+	var kinds: Array = events.filter(func(e): return e.k == "headline").map(func(e): return str(e.get("kind", "")))
+	if "execution" in kinds or "martyr" in kinds:
+		var card: Dictionary = {}
+		for c in g.board:
+			if c.get("kind", "") in ["execution", "martyr"] and int(c.get("day", -1)) == g.w.day:
+				card = c
+		if card.is_empty():
+			return []
+		if card.kind == "martyr":
+			return PacingPlans.execution(g.w, str(card.get("saved", "")), {"martyr": card.get("martyr", ""), "saved": card.get("saved", "")})
+		return PacingPlans.execution(g.w, str(card.subject[0]))
+	if "dawn" in kinds and g.w.day >= 2:
+		var result: Array = []
+		for e in events:
+			if e.k == "header":
+				break
+			if e.k == "narration":
+				result.append(str(e.text))
+		var before: Array = g.w.npcs.filter(func(n): return n.alive or n.id in g.w.deaths_last_night).map(func(n): return n.id)
+		return PacingPlans.night(g.w, "\n".join(PackedStringArray(result)), before, str(g.ward_log.get(g.w.day - 1, "")))
+	return []
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
 	b.text = text
@@ -234,6 +284,9 @@ func open_daily_guess(then: Callable) -> void:
 ## outcome, and after an overnight ending the last locked guesses stand.
 func open_reveal() -> void:
 	if g == null or not g.w.game_over or has_node("GrimReveal"):
+		return
+	if pacing_open:
+		_reveal_after_pacing = true   # the hanging or the night plays out first
 		return
 	reveal_seen_for = g
 	RevealOverlay.open(self, g, DailyGuess.verdict(g), Callable(), reduced_motion)

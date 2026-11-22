@@ -581,6 +581,11 @@ func _menu_labels(menu: PopupMenu) -> Array:
 	return labels
 
 func _right_click(at: Vector2) -> void:
+	# A hanging or the night's reveal plays over the town and takes clicks until it ends
+	# (ui/pacing/pacing_overlay.gd): end it first, as a player would.
+	for p in root.find_children("Pacing", "", true, false):
+		p.finish()
+	await process_frame
 	var move = InputEventMouseMotion.new()
 	move.position = at
 	root.push_input(move, true)
