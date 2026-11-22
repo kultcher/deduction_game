@@ -33,6 +33,35 @@ static func _meeting():
 static func _unshared_readings(w, n) -> Array:
 	return n.info_log.filter(func(e): return not e.get("shared", false) and not e.get("disowned", false))
 
+## Night sightings n could volunteer and hasn't told the town (the meeting's own eligibility).
+static func _untold_sightings(w, n) -> Array:
+	var M = _meeting()
+	var out: Array = []
+	for b in n.beliefs:
+		if b.get("kind", "") != "saw" or b.get("phase", -1) != load("res://sim/content.gd").NIGHT or b.get("day", -1) < 0 or b.day >= w.day or not w.by_id.has(b.get("who", "")):
+			continue
+		if n.told_to.has(M._town_sighting_key(n, b)) or not M._public_sighting_allowed(w, n, b):
+			continue
+		out.append(b)
+	return out
+
+## A late reader's readings n heard and hasn't passed on to the town.
+static func _untold_late(w, n) -> Array:
+	var M = _meeting()
+	var out: Array = []
+	if n.is_evil():
+		return out
+	for src_id in n.known_claims:
+		if not w.by_id.has(src_id) or w.by_id[src_id].alive or src_id == n.id:
+			continue
+		for e in n.known_claims[src_id].get("readings", []):
+			if not e is Dictionary or M._reading_public(w, w.by_id[src_id], e):
+				continue
+			if n.told_to.has("town|late:%s:%d:%s" % [src_id, int(e.get("day", -1)), str(e.get("role", ""))]):
+				continue
+			out.append(e)
+	return out
+
 static func respond(w, n) -> Dictionary:
 	var M = _meeting()
 	var bump: float = Tuning.Meeting.CALL_ON_PRESSURE_BUMP
@@ -48,11 +77,15 @@ static func respond(w, n) -> Dictionary:
 	M._late_relay(w, n, lines, facts)
 	M._volunteer_night_sightings(w, n, lines, facts, bump)
 	var still: Array = _unshared_readings(w, n)
+	# Everything still held after the attempt (Codex on #545): readings, a late reader's
+	# readings, untold night sightings. Holding any back is a refusal, not "nothing".
+	var still_late: Array = _untold_late(w, n)
+	var still_seen: Array = _untold_sightings(w, n)
 	if not facts.is_empty():
 		lines.insert(0, _mind().say_voiced(n, "call_on_share", "Since you ask, there's something I haven't said:"))
 		w.dlog.think(n.id, "call_on", "Called on by the Demonologist: shares %d item(s)." % facts.size(), {"outcome": "shared"})
 		return {"lines": lines, "facts": facts, "outcome": "shared", "reason": "", "lie": false}
-	if still.is_empty():
+	if still.is_empty() and still_late.is_empty() and still_seen.is_empty():
 		w.dlog.think(n.id, "call_on", "Called on by the Demonologist: has nothing more to tell.", {"outcome": "nothing"})
 		return {"lines": [_mind().say_voiced(n, "call_on_nothing", "I've told the town all I know.")], "facts": [],
 			"outcome": "nothing", "reason": "", "lie": false}
@@ -61,7 +94,7 @@ static func respond(w, n) -> Dictionary:
 		w.dlog.think(n.id, "lie", "Called on by the Demonologist: says it has told all it knows, though it %s." % why, {"lie": true, "why": why, "outcome": "nothing"})
 		return {"lines": [_mind().say_voiced(n, "call_on_nothing", "I've told the town all I know.")], "facts": [],
 			"outcome": "nothing", "reason": "", "lie": true}
-	var reason: String = _defer_reason(w, n, still)
+	var reason: String = _defer_reason(w, n, still + still_late, still_seen)
 	var line: Dictionary
 	match reason:
 		"burden":
@@ -79,12 +112,15 @@ static func respond(w, n) -> Dictionary:
 ## Why a good NPC holds back: a burden that isn't its alone (a Rumormonger's reading; with
 ## Burdens, also the Unrequited shielding its beloved), a reading naming a friend, or distrust
 ## of the Demonologist. "" for none.
-static func _defer_reason(w, n, still: Array) -> String:
+static func _defer_reason(w, n, still: Array, seen: Array = []) -> String:
 	for e in still:
 		if str(e.get("role", "")) == "rumormonger":
 			return "burden"
 	for e in still:
 		if Gifts.implicated(e).any(func(id): return id in n.friends):
+			return "friend"
+	for b in seen:
+		if str(b.get("who", "")) in n.friends:
 			return "friend"
 	if n.trust < Tuning.Trust.DISTRUST_EXPLAIN_THRESHOLD:
 		return "distrust"

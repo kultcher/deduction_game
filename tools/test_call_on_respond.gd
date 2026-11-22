@@ -107,6 +107,28 @@ func _init() -> void:
 	_check(distrust_seen, "distrusting the Demonologist, it says it'll share when it chooses, naming them")
 	_check(deflect_seen, "with no reason, it deflects, visibly a refusal")
 	_check(never_nothing, "a good NPC holding back never pretends it has nothing")
+	# Only an untold night sighting, kept back (Codex on #545): a refusal, never "nothing".
+	var sight_tested := false
+	for k in range(10):
+		var w7 = _world(56000 + k)
+		var cands: Array = w7.living_good().filter(func(m): return m.info_log.is_empty() and not m.claim_public)
+		if cands.is_empty():
+			continue
+		var s7 = cands[0]
+		_hold_back(s7)
+		s7.known_claims = {}
+		s7.beliefs = s7.beliefs.filter(func(x): return x.get("kind", "") != "saw")
+		var seen = w7.living().filter(func(m): return m != s7)[0]
+		s7.beliefs.append({"kind": "saw", "phase": C.NIGHT, "day": 1, "who": seen.id, "block": s7.home_block, "how": "window", "loc": "night:" + s7.home_block})
+		if MindCallOn._untold_sightings(w7, s7).is_empty():
+			continue
+		var r7: Dictionary = MindCallOn.respond(w7, s7)
+		if r7["outcome"] == "shared":
+			continue
+		sight_tested = true
+		_check(r7["outcome"] in ["deferred", "deflected"], "holding back only a night sighting, it refuses visibly (%s)" % r7["outcome"])
+		break
+	_check(sight_tested, "a case with only an untold sighting was found and tested")
 	# Evil, holding a fabricated reading back: says it has told all it knows, a logged lie.
 	var w5 = _world()
 	var ev = w5.npcs.filter(func(m): return m.alive and m.is_evil() and not C.is_demon(m.role))[0]
