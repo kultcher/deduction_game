@@ -37,7 +37,8 @@ record is `docs/archive/playtest_triage_2026-11-13.md`.
   - [Numbers](#numbers)
   - [Tentative social tuning (Oct 20–21 discussion)](#tentative-social-tuning-oct-2021-discussion)
   - [UI](#ui)
-    1. \*Movement wording: "pass by" and "road" `[decided]`
+    1. Show answers carried into the next case when filing `[decided]`
+    2. \*Movement wording: "pass by" and "road" `[decided]`
   - [Performance](#performance)
 - [3. Medium features (several days; touch a few systems)](#3-medium-features-several-days-touch-a-few-systems)
   1. Expanded dialogue and trust management `[tentative]`
@@ -213,6 +214,10 @@ Lantern). Nothing is open here.
 Candidates for a unified retuning proposal, not approved changes.
 
 ### UI
+
+- **Show answers carried into the next case when filing** (Michael, Nov 22; playtest 23973).
+  An answer the player picked on a Workshop card carries into the next case without being
+  shown. Low priority. Owner Herald or Quill, as they agree. [decided]
 
 - **Movement wording: "pass by" and "road"** (Michael, Nov 20). The town moves block to
   block, so:
