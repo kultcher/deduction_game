@@ -40,6 +40,12 @@ I replayed the log at its build (`ac3ec83`).
      not his 80% at the day-3 meeting. Weighed alone, they clear Odette by −0.80 in all;
      weighed with everything Kiran holds, only −0.12. Lantern will weigh one teller's
      readings together, as same-gift claims already are, on `mock/burdens-slot`.
+   - **Built (`353660eb`, `mock/burdens-slot`).** At the day-3 meeting, Jory's counts now
+     clear Odette for Kiran by −0.68 rather than −1.16, and Kiran's suspicion of her rises
+     from 0.00 to 0.05. Jory is a little less suspected, because his counts taken together
+     also clear Fenwick: Kiran's suspicion of Jory falls from 0.52 to 0.43, and Dorian's of
+     Fenwick from 0.30 to 0.20. In 10 autoplay games (seeds 1–10, passive), good won 6;
+     seeds 2 and 6 changed winner.
 3. **Friendship doesn't reach the vote: Isolde came within 0.03 of voting to hang Kiran on
    day 2 (Beadle).**
    - **Her side of it:** she trusts Kiran at 0.95. Moments earlier she'd said "I've known
@@ -139,7 +145,9 @@ A wrong belief held for a human reason, and a big but fitting swing when it brok
   Nisha is the Scion"), which didn't show up among her tested items. Merrin 0.24 by the
   meeting's end. She accused Kiran.
   - **Lantern confirmed it (Nov 22):** Merrin's private tip is most of it, about +0.67
-    of her lean on Kiran at seq 120.
+    of her lean on Kiran at seq 120. It reaches her by a second path too: her private
+    Archivist claim is also a role claim in her ledger, carrying the same reading. That's
+    how a private claim is held, not a bug.
 - **Day 2:** Kiran about 0.55: his Gravedigger reading counted against him, plus Jory's
   count. Nisha 0.26. She nominated Kiran and voted yes on Nisha.
 - **Day 3:** Kiran 0.26 after Isolde's Medium reading, Jory 0.22, Fenwick 0.00 throughout.

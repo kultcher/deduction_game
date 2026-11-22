@@ -18,3 +18,10 @@
 
 - Lantern's numbers come from the playtest build, seed 51795 only. It hasn't rechecked
   them at the branch tip. I didn't re-run them.
+
+## Update (Nov 22, 12:30 UTC)
+
+- Lantern built the teller-grouping fix (`353660eb`, `mock/burdens-slot`) and measured it
+  at the day-3 meeting; the journeys doc now carries its before-and-after numbers.
+- Merrin's tip reaches Odette by a second path, her ledger's copy of Merrin's private
+  role claim. Lantern calls that intended.
