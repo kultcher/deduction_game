@@ -133,7 +133,17 @@ Lantern). Nothing is open here.
   capable of something like this... would he?" (Michael's line, approved). It's a new voice tier.
   It replaces the proposal "a same-day defence holds back the vote", which Michael declined.
   Grief not fading stays as intended (Oct 30). Owners: Beadle (the trigger), Herald (the lines
-  for each voice). [decided]
+  for each voice).
+  - **Revised (Michael, Nov 22): two parts.**
+    1. **The line tier,** as above (`support_doubt_for`, triggered for a friend close to yes).
+    2. **Social pressure is damped for a voter who strongly trusts the nominee,** above a trust
+       level. That covers the player's vote and consensus; evidence-based suspicion isn't
+       damped.
+  - **Why:** the Coroner found Isolde, at trust 0.95 and suspicion 0.18 toward Kiran, pushed to
+    the edge of voting yes by Michael's vote and the consensus.
+  - **Next:** Beadle proposes the shape and the constants.
+
+  [decided]
 
 - **Withheld readings: asking for what someone hasn't said** (Michael, Nov 22; playtest 51795).
   Design in [docs/design/withheld_readings.md](docs/design/withheld_readings.md).
