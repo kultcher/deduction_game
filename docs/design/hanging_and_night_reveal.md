@@ -13,6 +13,10 @@ the effects (the X, the shakes, the wheel), where they land in a UI scene.
 3. The portrait greys out, and a blue X smashes down over it, with a shake.
 4. "... but evil still lurks in Hollowmere."
 
+- **A Martyr's sacrifice** (Michael, Nov 22): "<Martyr> died at the gallows in <saved>'s
+  place...", then the X, then "... but evil still lurks in Hollowmere."
+- **No hanging that day** means no execution sequence.
+
 ## 2. The night and the morning reveal
 
 1. The night action's result shows in the VN window.
@@ -22,6 +26,12 @@ the effects (the X, the shakes, the wheel), where they land in a UI scene.
    lands on the victim.
 5. The dagger stabs, with a shake, a red flash and a red X.
 6. "... and <name> met a grim end at the hand of the fiend."
+
+- **A second Demon kill** gets its own spin, introduced by "...and the fiend was not finished."
+  (approved, Nov 22).
+- **The wheel is for the Demon's kill only** (Nov 22).
+- **A warded save:** the fakeout lands on the warded person, followed by "Your ward held"
+  (Nov 22).
 
 **With no kill,** a fakeout: the dagger bounces off, and in blue, "... but by mettle or
 miracle, no one died at the hand of the fiend."
@@ -40,10 +50,10 @@ share parts.
 ## 4. Also approved
 
 - Herald's wording fixes from playtest 51795.
-- A pass over Nisha's lines for modern words.
+- A pass over Nisha's lines for modern words; her register set (#529) is approved (Nov 22).
 
-## 5. Open, for the builders
+## 5. Pacing and options (Nov 22)
 
-- Whether the hanging's fade and the night's wheel can be skipped or sped up, like the grim
-  reveal's (whose player sets the pace). Michael didn't say.
-- A reduced-motion setting for the shakes and flashes, as the grim reveal has.
+- **Skipping** (Michael): a click ends the current beat, and Esc skips the whole sequence.
+- **Reduced motion** (Seneschal's small call; Michael didn't say): no shake, flash or spin, and
+  the beats are halved.
