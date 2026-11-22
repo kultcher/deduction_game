@@ -112,6 +112,17 @@ static func clear(n) -> void:
 	if n.has_meta(META):
 		n.remove_meta(META)
 
+## The NPC's {"own", "of"} Delusion chances (delusion) from its last applied refresh, asked of
+## the judge the first time: the lazy twin of workshop_state.own_delusion and delusion_of, for
+## when WorkshopOwnership.delusion_exposed is off (it costs a judgement per refresh).
+static func delusion_of_npc(n) -> Dictionary:
+	if not n.has_meta(META):
+		return {"own": -1.0, "of": {}}
+	var staged: Dictionary = n.get_meta(META)
+	if not staged.has("delusion"):
+		staged["delusion"] = delusion(staged.view, staged.listener, staged.held)
+	return staged.delusion.duplicate(true)
+
 ## The NPC's {night: doubt} from its last applied refresh, asked of the judge the first time.
 static func of(n) -> Dictionary:
 	if not n.has_meta(META):

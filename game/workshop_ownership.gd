@@ -353,7 +353,13 @@ static func _stage_own_gift_doubt(n, proposal: Dictionary, adjusted: Dictionary)
 	OwnGiftDoubt.stage(n, adjusted.view, weigher, held)
 	# Each reader's chance of being the Delusional, for Quill (shared Delusion doubt, Nov 22):
 	# own_delusion for a good listener holding its own readings, delusion_of for the others.
-	var dl: Dictionary = OwnGiftDoubt.delusion(adjusted.view, weigher, held) if delusion_exposed else {"own": -1.0, "of": {}}
+	# It costs one judgement per refresh (measured Nov 22: about a third of a ten-NPC game's
+	# time); off, OwnGiftDoubt.delusion_of_npc asks it when first read instead.
+	if not delusion_exposed:
+		n.workshop_state.erase("own_delusion")
+		n.workshop_state.erase("delusion_of")
+		return
+	var dl: Dictionary = OwnGiftDoubt.delusion_of_npc(n)
 	if float(dl.own) >= 0.0:
 		n.workshop_state["own_delusion"] = float(dl.own)
 	else:

@@ -208,3 +208,4 @@ func _exposed() -> void:
 	var again: Dictionary = OwnGiftDoubt.delusion(st.view, st.listener, st.held)
 	print("one delusion judgement: %d ms" % int((Time.get_ticks_usec() - t0) / 1000))
 	check(absf(float(again.own) - own) < 1e-9, "asked again, the judge gives the same own chance (%.4f)" % float(again.own))
+	check(absf(float(OwnGiftDoubt.delusion_of_npc(n).own) - own) < 1e-9, "the lazy accessor gives what the refresh stored")
