@@ -188,7 +188,21 @@ func _evil_knows() -> void:
 		_check(not MindMeeting._omen_push_ready(w, mm, o.id), "no push-nomination on day 1")
 		w.day = 2
 		w.public_log = w.public_log.filter(func(x): return not (o.id in x.get("subjects", [])))
+		for m2 in w.evil_team():
+			m2.info_log = m2.info_log.filter(func(x): return not x.get("fake", false))
+		w.evil_plan["fake_sightings"] = {}
 		_check(not MindMeeting._omen_push_ready(w, mm, o.id), "nor while the town has no heat on the holder")
+		# Evil's own bare accusations don't count (Michael, Nov 22)...
+		var mates: Array = w.evil_team().filter(func(x): return x != mm)
+		for i in range(6):
+			w.public_event("accusation", [o.id], (mates[0] if not mates.is_empty() else mm).id)
+		_check(not MindMeeting._omen_push_ready(w, mm, o.id), "evil's own bare accusations don't make the holder warm")
+		# ...but a planted frame resting on a claim does.
+		mm.info_log.append({"role": "seer", "day": 1, "data": {"pair": [o.id, w.living_good()[1].id], "yes": true}, "text": "x", "fake": true, "shared": false})
+		var warm: Dictionary = Evil.omen_push_heat(w, mm, o)
+		_check(float(warm["heat"]) > Tuning.Evil.PUBLIC_HEAT_BASE, "a fabricated reading against them counts as heat")
+		mm.info_log = mm.info_log.filter(func(x): return not x.get("fake", false))
+		w.public_log = w.public_log.filter(func(x): return not (o.id in x.get("subjects", [])))
 		var accusers: Array = w.living_good().filter(func(x): return x != o)
 		for i in range(4):
 			w.public_event("accusation", [o.id], accusers[i % accusers.size()].id)

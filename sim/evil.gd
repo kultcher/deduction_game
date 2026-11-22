@@ -1299,6 +1299,27 @@ static func scapegoat_readiness(w, n, t) -> Dictionary:
 	var score: float = clampf(room + pocket - cooloff, 0.0, 1.2)
 	return {"score": score, "room_heat": room, "pocket_ammo": pocket, "cooloff": cooloff}
 
+## The heat a push to hang a known Ill-Omened waits for (Michael, Nov 22): the town's own public
+## talk about them, plus evil's planted frames that rest on an actual claim (a fabricated reading,
+## a made-up sighting, a bluffed burden). Not evil's bare accusations, nominations or votes.
+## Less the cool-off after a failed vote. Returns {heat, score}.
+static func omen_push_heat(w, n, t) -> Dictionary:
+	var h: float = Tuning.Evil.PUBLIC_HEAT_BASE
+	for e in w.public_log:
+		if not (t.id in e["subjects"]):
+			continue
+		if w.by_id.has(e["by"]) and w.by_id[e["by"]].is_evil() and str(e["kind"]) in ["accusation", "nomination", "vote_yes"]:
+			continue
+		h += _heat_of(e, t.id) * pow(HEAT_FADE, w.day - e["day"])
+	h = clampf(h, 0.0, 1.0)
+	var framed: bool = n.info_log.any(func(e): return e.get("fake", false) and not e.get("shared", false) and t.id in Gifts.implicated(e))
+	for k in w.evil_plan.get("fake_sightings", {}):
+		var fs = w.evil_plan["fake_sightings"][k]
+		if fs is Dictionary and fs.get("who", "") == t.id:
+			framed = true
+	var heat: float = h + (Tuning.Evil.EVIL_POCKET_FRAME_BONUS if framed else 0.0)
+	return {"heat": heat, "score": clampf(heat - vote_cooloff(w, n.id, t.id), 0.0, 1.2)}
+
 ## What the town seems to think of someone, judged from public events; evil mimics this.
 static func town_view(w, t) -> float:
 	return public_heat(w, t)

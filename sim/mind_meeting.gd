@@ -1236,15 +1236,14 @@ static func _evil_counter_or_pass(w, n, m: Dictionary, ev) -> Variant:
 	return null
 
 ## The push to hang a known Ill-Omened waits, as evil's scapegoat nominations do, until the
-## town is warm on them: some public heat on them, and scapegoat readiness (room heat,
-## ammunition, less the cool-off after a failed vote) at the same confidence-scaled bar; never
-## on day 1.
+## town is warm on them (Evil.omen_push_heat: the town's talk, and evil's claim-backed frames,
+## not its bare accusations; less the cool-off), at the same confidence-scaled bar; never on
+## day 1.
 static func _omen_push_ready(w, n, id: String) -> bool:
 	if w.day < 2 or not w.by_id.has(id):
 		return false
-	var ready: Dictionary = Evil.scapegoat_readiness(w, n, w.by_id[id])
-	# Some of it the town's own: a frame in evil's pocket alone isn't heat on them.
-	if float(ready["room_heat"]) <= Tuning.Evil.PUBLIC_HEAT_BASE:
+	var ready: Dictionary = Evil.omen_push_heat(w, n, w.by_id[id])
+	if float(ready["heat"]) <= Tuning.Evil.PUBLIC_HEAT_BASE:
 		return false
 	var thr: float = Tuning.Evil.EVIL_NOMINATION_BASE_HEAT - Tuning.Evil.EVIL_NOMINATION_CONFIDENCE_SCALE * float(n.traits.get("confidence", 0.5))
 	return float(ready["score"]) >= thr
