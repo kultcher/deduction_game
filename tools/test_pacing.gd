@@ -111,6 +111,21 @@ func _run() -> void:
 	var final_plan: Array = scene._pacing_plan([{"k": "narration", "text": "You sleep."}, {"k": "headline", "kind": "ending", "text": "Defeat"}])
 	check(final_plan.any(func(x): return x.type == "wheel" and x.victim == v.id and x.kill), "a game-ending kill still gets its wheel, though no dawn comes")
 	check(scene._pacing_plan([{"k": "headline", "kind": "phase", "text": "Afternoon"}]).is_empty(), "an ordinary phase change plays nothing")
+	# Codex on #537: a spent ward that saved nobody doesn't decide the fakeout; a save does.
+	v.death_cause = ""
+	v.alive = true
+	g2.w.deaths_last_night = []
+	g2.w.game_over = false
+	g2.w.day = 3
+	var warded_id: String = g2.w.npcs[6].id
+	g2.ward_log[2] = warded_id
+	g2.w.ward_saves = []
+	var dawn: Array = [{"k": "headline", "kind": "dawn", "text": "Day 3 Dawns"}]
+	var spent: Array = scene._pacing_plan(dawn).filter(func(x): return x.type == "wheel")
+	check(spent.size() == 1 and spent[0].victim == PacingPlans._fakeout(g2.w, g2.w.npcs.filter(func(n): return n.alive).map(func(n): return n.id)), "a ward that saved nobody: the usual fakeout draw")
+	g2.w.ward_saves = [{"night": 2, "target": warded_id}]
+	var saved: Array = scene._pacing_plan(dawn).filter(func(x): return x.type == "wheel")
+	check(saved.size() == 1 and saved[0].victim == warded_id, "a ward that held: the fakeout lands on that door")
 	# Codex on #537: the condemned's last words finish on the courtroom stage before it opens.
 	var stage = scene.meeting_view.stage
 	stage.queue.append({"speaker": v.id, "name": v.name, "text": "Remember me kindly.", "expression": "", "log": {}})

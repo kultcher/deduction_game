@@ -175,7 +175,13 @@ func _pacing_plan(events: Array) -> Array:
 				result.append(str(e.text))
 		var night_no: int = g.w.day - 1 if dawned else g.w.day
 		var before: Array = g.w.npcs.filter(func(n): return n.alive or n.id in g.w.deaths_last_night).map(func(n): return n.id)
-		return PacingPlans.night(g.w, "\n".join(PackedStringArray(result)), before, str(g.ward_log.get(night_no, "")))
+		# The fakeout lands on the warded door only when the ward actually held that night: a
+		# spent ward isn't a save (w.ward_saves records those; Codex on #537).
+		var held: String = ""
+		for save in g.w.ward_saves:
+			if int(save.get("night", -1)) == night_no:
+				held = str(save.get("target", ""))
+		return PacingPlans.night(g.w, "\n".join(PackedStringArray(result)), before, held)
 	return []
 func _button(parent: Node, text: String, cb: Callable, color = null) -> Button:
 	var b = Button.new()
