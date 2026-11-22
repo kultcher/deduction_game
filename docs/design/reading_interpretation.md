@@ -193,6 +193,8 @@ Herring, unless the Seer is poisoned, Delusional or a lying bluffer.
 - **After a "yes":** check again on later nights, pairing one of the "yes" targets, 50/50, with
   someone fresh or with someone it trusts as good, to narrow down which one triggered it
   (Michael, Nov 21). This is gated by Insight today, which is fine.
+  - **Only when the top suspect is in that pair** (Michael, Nov 22): the Seer narrows a "yes"
+    only if its current top suspect is in the pair. Otherwise it reads its top suspect.
 
 **Hiding and revealing:**
 - **Aim to hide until it has at least two readings.** The Seer is a major threat to the Demon,
@@ -386,3 +388,18 @@ Demon to fear. It's likely to reveal on day 1 (Michael, Nov 21). "Same" clears p
   - **"Not being seen out" as evidence:** on the backlog, under the circumstantial hub.
   - **Still with Michael:** the strength wording ("good, and not the Red Herring"; two Dowser
     readings of 1) and how Delusion's game-long doubt is shared across nights.
+
+### The shared Delusion doubt (Michael, Nov 22; approved to build)
+
+This answers the self-doubt question above.
+- **One "am I Delusional?" chance per reader,** shared across all its readings. Its prior is
+  about 7% ("paranoia is a powerful force").
+- **In the worlds where the reader is Delusional,** the judge treats each reading as "could say
+  anything": a uniform draw over the possible answers, in anticipation of a storyteller.
+- **Poison stays per night,** and applies to everyone's readings.
+- **Agreement lowers the doubt and clashes raise it,** with no damping to start.
+- **Mistaken calls:** the player picks "poisoned that night" or "Delusional all along".
+- **Two new voiced stages of doubt,** which never name the burden. Herald drafts them, and
+  Michael approves the wording.
+- **Own night sightings and vigils** are firsthand seeds of the core (built), which answers the
+  measurement left open in `docs/belief_model.md`.
